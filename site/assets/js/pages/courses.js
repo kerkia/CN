@@ -1,0 +1,302 @@
+// Courses: every competition of the selected discipline, as a tree —
+// competition → its circuits → the results. Three modes: all competitions,
+// those a runner took part in, those a club took part in. Selecting a circuit
+// moves the tree to the left and shows its results, with category toggles.
+
+import { html, raw, $, $$, fmt, fmtDate, fmtTime, displayName, normalise, debounce, ord } from "../util.js";
+import { xyChart, methodColor } from "../charts.js";
+import { t } from "../i18n.js";
+import * as store from "../store.js";
+import * as data from "../data.js";
+import { R, C } from "../data.js";
+import {
+  methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag,
+  chartCard, bindChartCard, legend, tile,
+} from "../ui.js";
+import * as auth from "../auth.js";
+import { link, replaceQuery } from "../app.js";
+
+const MODES = ["all", "runner", "club"];
+const LEVELS = ["A", "B1", "B2", "C1", "C2", "D"];
+const MAX_CATS = 6;
+const SCORE = { official: C.offScore, v2026: C.v26Score, top6w: C.t6Score };
+
+/** Categories of a circuit, most represented first: [[cat, n]]. */
+function categories(circuit) {
+  const n = new Map();
+  for (const r of circuit.rows) if (r[C.cat]) n.set(r[C.cat], (n.get(r[C.cat]) || 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+export async function render(main, { arg, query }) {
+  if (arg && !query.id) query = { ...query, id: arg };      // old #/course/<id> links
+  const me = auth.session();
+  const terrain = store.get().terrain;
+  const meta = data.meta();
+  const seasons = [...meta.seasons].map(String).reverse();
+  const st = {
+    mode: MODES.includes(query.mode) ? query.mode : "all",
+    runner: query.r || store.get().lastRunner || me?.lic,
+    club: query.club || auth.myClub(),
+    // a race asked for by id brings its own season, so it is in the list
+    season: query.s === "all" ? "" : (seasons.includes(query.s) ? query.s
+      : (query.id && data.comp(query.id) ? String(data.comp(query.id).season) : seasons[0])),
+    level: LEVELS.includes(query.level) ? query.level : "",
+    q: query.q || "",
+    course: query.id || null,
+    circuit: query.circ || null,
+    cats: new Set((query.cats || "").split(",").filter(Boolean)),
+  };
+  const open = new Set(st.course ? [st.course] : []);
+  const files = new Map();                    // course id -> c file
+  const loadCourse = async (id) => {
+    if (!files.has(id)) files.set(id, await data.course(id));
+    return files.get(id);
+  };
+
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("cs.title")}</h1><p class="lede">${t("cs.lede")}</p></div></div>
+    <div class="filters" id="filters"></div>
+    <div class="courses-layout" id="layout">
+      <section class="card tree-pane"><div class="card-body tree-modes" id="modes"></div>
+        <div class="card-head" style="padding-top:0"><h2 id="tree-title"></h2></div><div id="tree" class="tree"></div></section>
+      <section class="card results-pane" id="results"></section>
+    </div>`;
+
+  // ---- filters --------------------------------------------------------------------
+  function drawFilters() {
+    const clubs = Object.entries(meta.names.clubs).sort((a, b) => a[1].localeCompare(b[1]));
+    const runner = data.runner(st.runner);
+    $("#modes").innerHTML = html`
+      ${seg("mode", MODES.map((m) => [m, t(`cs.mode.${m}`)]), st.mode)}
+      ${st.mode === "runner" ? html`<div class="row" style="gap:8px;margin-top:10px"><span class="pill"><a href="${link.runner(st.runner)}">${displayName(runner?.nom || st.runner || "—")}</a></span>
+        ${runnerSearch("cs-runner", t("rn.change"))}</div>` : ""}
+      ${st.mode === "club" ? html`<select id="cs-club" style="margin-top:10px;width:100%">
+        ${clubs.map(([c, n]) => html`<option value="${c}" ${raw(c === st.club ? "selected" : "")}>${n} (${c})</option>`)}</select>` : ""}`;
+    $("#filters").innerHTML = html`
+      <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
+      <label class="field"><span>${t("f.season")}</span><select id="cs-season">
+        <option value="all" ${raw(!st.season ? "selected" : "")}>${t("nw.allSeasons")}</option>
+        ${seasons.map((y) => html`<option value="${y}" ${raw(y === st.season ? "selected" : "")}>${y}</option>`)}</select></label>
+      <label class="field"><span>${t("co.level")}</span><select id="cs-level"><option value="">${t("f.allm")}</option>
+        ${LEVELS.map((l) => html`<option value="${l}" ${raw(l === st.level ? "selected" : "")}>${l}</option>`)}</select></label>
+      <label class="field"><span>${t("cs.search")}</span><input type="search" id="cs-q" value="${st.q}" style="width:180px" placeholder="${t("cs.search.ph")}"></label>`;
+    $$('[data-seg="mode"]').forEach((b) => b.addEventListener("click", () => { st.mode = b.dataset.value; drawFilters(); refresh(); }));
+    if (st.mode === "runner") {
+      bindRunnerSearch($("#cs-runner"), { onPick: (l) => { st.runner = l; store.set({ lastRunner: l }); drawFilters(); refresh(); } });
+    }
+    $("#cs-club")?.addEventListener("change", (e) => { st.club = e.target.value; refresh(); });
+    $("#cs-season").addEventListener("change", (e) => { st.season = e.target.value === "all" ? "" : e.target.value; refresh(); });
+    $("#cs-level").addEventListener("change", (e) => { st.level = e.target.value; refresh(); });
+    $("#cs-q").addEventListener("input", debounce((e) => { st.q = e.target.value; refresh(); }, 180));
+    bindMethodChips(main, () => { drawFilters(); drawResults(); });
+  }
+
+  function sync() {
+    replaceQuery({
+      mode: st.mode === "all" ? null : st.mode,
+      r: st.mode === "runner" && st.runner !== me?.lic ? st.runner : null,
+      club: st.mode === "club" && st.club !== auth.myClub() ? st.club : null,
+      s: st.season === seasons[0] ? null : (st.season || "all"), level: st.level || null, q: st.q || null,
+      id: st.course, circ: st.circuit, cats: st.cats.size ? [...st.cats].join(",") : null,
+    });
+  }
+
+  // ---- which competitions --------------------------------------------------------------
+  let runnerRaces = new Map();                // course id -> [race rows] of the chosen runner
+  let clubSet = new Set();
+  async function scope() {
+    if (st.mode === "runner" && st.runner) {
+      runnerRaces = new Map();
+      for (const r of await data.runnerRaces(st.runner)) {
+        const id = String(r[R.course]);
+        if (!runnerRaces.has(id)) runnerRaces.set(id, []);
+        runnerRaces.get(id).push(r);
+      }
+    }
+    if (st.mode === "club" && st.club) clubSet = new Set((await data.clubCourses(st.club)).map(String));
+  }
+  function list() {
+    const qn = normalise(st.q);
+    const out = [];
+    for (const c of data.comps().values()) {
+      if (c.terrain !== terrain || !c.nCircuits) continue;
+      if (st.season && String(c.season) !== st.season) continue;
+      if (st.level && c.groupe !== st.level) continue;
+      if (st.mode === "runner" && !runnerRaces.has(c.id)) continue;
+      if (st.mode === "club" && !clubSet.has(c.id)) continue;
+      if (qn && !normalise(`${c.title} ${c.location} ${c.organizer}`).includes(qn)) continue;
+      out.push(c);
+    }
+    return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.title.localeCompare(b.title)));
+  }
+
+  // ---- the tree -----------------------------------------------------------------------
+  async function drawTree() {
+    const comps = list();
+    $("#tree-title").textContent = `${fmt(comps.length)} ${t("cs.count")}`;
+    const lic = st.mode === "runner" ? st.runner : null;
+    const expanded = await Promise.all(comps.filter((c) => open.has(c.id)).map(async (c) => [c.id, await loadCourse(c.id)]));
+    const fileOf = new Map(expanded);
+    $("#tree").innerHTML = comps.length ? html`${comps.map((c) => {
+      const isOpen = open.has(c.id);
+      const mine = lic ? runnerRaces.get(c.id) || [] : [];
+      return html`<div class="tree-comp ${isOpen ? "open" : ""} ${c.id === st.course ? "current" : ""}">
+        <button type="button" class="tree-row" data-comp="${c.id}" aria-expanded="${isOpen}">
+          <span class="caret" aria-hidden="true">${isOpen ? "▾" : "▸"}</span>
+          <span class="tree-date num">${fmtDate(c.date, "short")}</span>
+          <span class="tree-title"><b>${c.title}</b><span class="dim"> · ${c.location || ""}</span></span>
+          <span class="tree-meta">${c.groupe ? html`<span class="tag">${c.groupe}</span>` : ""}
+            <span class="tag">${c.epreuve || ""}</span>
+            ${mine.length ? html`<span class="tag tag-in">${mine.map((r) => (r[R.place] ? ord(r[R.place]) : t(`status.${r[R.status]}`) || "—")).join(" · ")}</span>` : ""}
+            <span class="dim num">${fmt(c.n)}</span></span>
+        </button>
+        ${isOpen ? html`<div class="tree-circuits">${(fileOf.get(c.id)?.circuits || []).map((circ) => {
+          const cats = categories(circ);
+          const ran = mine.find((r) => String(r[R.cid]) === String(circ.id));
+          const clubN = st.mode === "club" ? circ.rows.filter((r) => data.clubParts(r[C.club]).code === st.club).length : 0;
+          return html`<button type="button" class="tree-circuit ${String(circ.id) === String(st.circuit) ? "current" : ""}" data-course="${c.id}" data-circ="${circ.id}">
+            <span class="tree-cname">${ran ? html`<span class="me-mark" title="${t("cs.ran")}">●</span>` : ""}${circ.name}
+              <span class="dim num">${circ.dist ? `${fmt(circ.dist, 1)} km · ` : ""}${fmt(circ.rows.length)}</span>
+              ${clubN ? html`<span class="tag tag-in">${fmt(clubN)} ${t("cs.fromClub")}</span>` : ""}</span>
+            <span class="cat-chips">${cats.slice(0, MAX_CATS).map(([k, n]) => html`<span class="cat-chip" title="${fmt(n)}">${k}</span>`)}${cats.length > MAX_CATS ? html`<span class="dim">+${cats.length - MAX_CATS}</span>` : ""}</span>
+          </button>`;
+        })}</div>` : ""}
+      </div>`;
+    })}` : html`<div class="empty">${t("cs.none")}</div>`;
+    $$("[data-comp]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.dataset.comp;
+      if (open.has(id)) open.delete(id); else open.add(id);
+      drawTree();
+    }));
+    $$("[data-circ]").forEach((b) => b.addEventListener("click", () => {
+      if (st.circuit !== b.dataset.circ) st.cats.clear();
+      st.course = b.dataset.course; st.circuit = b.dataset.circ;
+      drawTree(); drawResults();
+    }));
+  }
+
+  // ---- the results of one circuit ---------------------------------------------------------
+  async function drawResults() {
+    sync();
+    const pane = $("#results");
+    $("#layout").classList.toggle("split", !!st.circuit);
+    if (!st.circuit) { pane.innerHTML = ""; return; }
+    const file = await loadCourse(st.course);
+    const circ = file?.circuits.find((c) => String(c.id) === String(st.circuit));
+    const comp = data.comp(st.course);
+    if (!circ || !comp) { pane.innerHTML = html`<div class="empty">${t("err.notfound")}</div>`; return; }
+    const cats = categories(circ);
+    const toggles = cats.length <= MAX_CATS;
+    const everyone = new Set(), clubsSeen = new Set();
+    let finishers = 0;
+    for (const c of file.circuits) for (const r of c.rows) {
+      everyone.add(r[C.lic]);
+      const code = data.clubParts(r[C.club]).code;
+      if (code) clubsSeen.add(code);
+      if (r[C.place]) finishers++;
+    }
+    const stats = { runners: everyone.size, finishers, clubs: clubsSeen.size };
+    for (const k of [...st.cats]) if (!cats.some(([c]) => c === k)) st.cats.delete(k);
+    const methods = store.get().methods;
+    const shown = circ.rows.filter((r) => !st.cats.size || st.cats.has(r[C.cat]));
+    let rank = 0;
+    const rows = shown.map((r) => ({ r, rank: r[C.place] ? ++rank : null }));
+    const hl = (r) => [
+      r[C.lic] === me?.lic ? "me" : "",
+      st.mode === "runner" && r[C.lic] === st.runner && st.runner !== me?.lic ? "selected" : "",
+      st.mode === "club" && data.clubParts(r[C.club]).code === st.club ? "selected" : "",
+    ].join(" ");
+    pane.innerHTML = html`
+      <div class="card-head">
+        <div><button type="button" class="btn btn-ghost btn-sm back-to-list" id="back">← ${t("cs.back")}</button>
+          <h2>${circ.name} <span class="dim" style="font-weight:500">· ${comp.title}</span></h2>
+          <div class="hint">${fmtDate(comp.date)} · ${comp.location || ""} · ${terrainTag(comp.terrain)} ${comp.groupe ? html`<span class="tag">${comp.groupe}</span>` : ""}
+            ${circ.dist ? ` · ${fmt(circ.dist, 1)} km` : ""} · ${fmt(circ.rows.length)} ${t("cs.runners")}</div></div>
+        <div class="row"><a class="btn btn-sm" href="${data.officialCourseUrl(st.course)}" target="_blank" rel="noopener">${t("cs.officialComp")} ↗</a>
+          <a class="btn btn-sm" href="${data.officialCircuitUrl(st.circuit)}" target="_blank" rel="noopener">${t("cs.officialCircuit")} ↗</a></div>
+      </div>
+      <div class="card-body" style="padding-bottom:0">
+        <div class="tiles tiles-compact">
+          ${tile(t("co.circuitsT"), fmt(file.circuits.length), comp.organizer || "")}
+          ${tile(t("co.participants"), fmt(stats.runners))}
+          ${tile(t("co.finishers"), fmt(stats.finishers))}
+          ${tile(t("nav.clubs"), fmt(stats.clubs))}
+        </div>
+        <div class="hint circuit-values" style="margin-top:10px">${t("co.value")} :
+          ${methods.map((m, i) => html`${i ? " · " : ""}<span class="nowrap"><span class="key" style="background:${raw(methodColor(m))};margin:0 5px 0 4px"></span>${methodShort(m)} <b class="num">${fmt(circ.value?.[m])}</b></span>`)}</div>
+      </div>
+      ${toggles && cats.length > 1 ? html`<div class="card-body" style="padding-bottom:0"><div class="chips" role="group" aria-label="${t("rk.col.cat")}">
+        ${cats.map(([k, n]) => html`<button type="button" class="chip toggle" data-cat="${k}" aria-pressed="${st.cats.has(k)}">
+          <span class="tick" aria-hidden="true"></span>${k} <span class="dim num">${fmt(n)}</span></button>`)}
+        ${st.cats.size ? html`<button type="button" class="btn btn-ghost btn-sm" id="cats-all">${t("cs.allCats")}</button>` : ""}
+      </div></div>` : ""}
+      <div id="res-table"></div>
+      <div class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>`;
+    bindChartCard(pane, "sbp");
+    $("#back").addEventListener("click", () => { st.circuit = null; drawTree(); drawResults(); });
+    $$("[data-cat]", pane).forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.cat;
+      if (st.cats.has(k)) st.cats.delete(k); else st.cats.add(k);
+      drawResults();
+    }));
+    $("#cats-all")?.addEventListener("click", () => { st.cats.clear(); drawResults(); });
+    dataTable($("#res-table"), {
+      rows, pageSize: "all", sortKey: "place", sortDir: 1, rowClass: (x) => hl(x.r),
+      columns: [
+        { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (x) => x.r[C.place] ?? 1e6,
+          render: (x) => (x.r[C.place] ? html`${fmt(st.cats.size ? x.rank : x.r[C.place])}${st.cats.size ? html`<span class="dim"> (${fmt(x.r[C.place])})</span>` : ""}` : statusLabel(x.r[C.status])) },
+        { key: "name", label: t("rk.col.name"), sort: (x) => data.runner(x.r[C.lic])?.nom, defaultDir: 1,
+          render: (x) => html`<a class="name" href="${link.runner(x.r[C.lic])}">${displayName(data.runner(x.r[C.lic])?.nom || x.r[C.lic])}</a>` },
+        { key: "cat", label: t("rk.col.cat"), sort: (x) => x.r[C.cat], defaultDir: 1, render: (x) => x.r[C.cat] || "" },
+        { key: "club", label: t("rk.col.club"), cls: "num", sort: (x) => x.r[C.club], defaultDir: 1, render: (x) => {
+          const code = data.clubParts(x.r[C.club]).code;
+          return code ? html`<a href="${link.club(code)}" title="${data.clubName(x.r[C.club])}">${code}</a>` : x.r[C.club] || "";
+        } },
+        { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[C.time], defaultDir: 1, render: (x) => fmtTime(x.r[C.time]) },
+        ...methods.map((m) => ({
+          key: `s_${m}`, label: html`${t("rn.score")} ${methodShort(m)}`, align: "r", cls: "num",
+          sort: (x) => x.r[SCORE[m]], render: (x) => (x.r[SCORE[m]] ? fmt(x.r[SCORE[m]]) : html`<span class="dim">—</span>`),
+        })),
+      ],
+    });
+    drawScoreChart(circ, rows);
+  }
+
+  function drawScoreChart(circ, rows) {
+    const methods = store.get().methods;
+    const ranked = rows.filter((x) => x.r[C.place]);
+    const series = methods.map((m) => ({
+      name: methodShort(m), color: methodColor(m),
+      data: ranked.filter((x) => x.r[SCORE[m]]).map((x) => [st.cats.size ? x.rank : x.r[C.place], x.r[SCORE[m]]]),
+    }));
+    $("#sbp-legend").innerHTML = legend(series.map((x) => ({ label: x.name, color: x.color })));
+    xyChart($("#sbp"), { series, xName: t("col.place"), yName: t("rn.score"), xMin: 1 });
+    $("#sbp-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("col.place")}</th>
+      ${methods.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
+      <tbody>${ranked.map((x) => html`<tr><td class="num">${fmt(st.cats.size ? x.rank : x.r[C.place])}</td>
+        ${methods.map((m) => html`<td class="r num">${fmt(x.r[SCORE[m]])}</td>`)}</tr>`)}</tbody></table>`;
+  }
+
+  async function refresh() {
+    await scope();
+    if (st.course && !st.circuit) {
+      const f = await loadCourse(st.course);
+      const mine = st.mode === "runner" ? runnerRaces.get(String(st.course))?.[0] : null;
+      const busiest = f?.circuits.reduce((b, c) => (!b || c.rows.length > b.rows.length ? c : b), null);
+      st.circuit = mine ? String(mine[R.cid]) : busiest ? String(busiest.id) : null;
+    }
+    // in runner mode, open the competitions of the runner's latest race right away
+    if (st.mode === "runner" && !open.size) {
+      const first = list()[0];
+      if (first) open.add(first.id);
+    }
+    await drawTree();
+    await drawResults();
+    $(".tree-comp.current")?.scrollIntoView({ block: "center" });
+  }
+
+  drawFilters();
+  await refresh();
+  return { title: t("cs.title") };
+}

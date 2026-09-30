@@ -1,0 +1,741 @@
+"""Compute the three CN rankings held side by side in the database.
+
+  method 1  'official'  The values published on the site, copied verbatim.
+                        Nothing is recomputed: this is the reference.
+
+  method 2  'v2026'     The 2026 formula (validated to reproduce the site
+                        exactly for 2020-2026) applied uniformly to every
+                        season from 2010 on, seeded from each runner's
+                        earliest known CN, keeping an annual rescale.
+
+  method 3  'top6w'     Best 6 races in the window, weighted by race group
+                        (A/B = 2, C = 1.5, D = 1), with NO annual step. The
+                        level is held by a smooth normalisation so a runner's
+                        curve can be graphed across years without the
+                        sawtooth a yearly adjustment introduces.
+
+For both computed methods forest and sprint are independent rankings in every
+season — the federation only split them in 2026, but applying one rule
+uniformly is the point of recomputing.
+
+Everything is processed in date order because the layers are mutually
+dependent: a circuit's value needs the runners' CNs, which come from their
+earlier scores. That is sound rather than circular because the CN a race uses
+is the one from 15 days earlier.
+"""
+
+from __future__ import annotations
+
+import logging
+import sqlite3
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from pathlib import Path
+
+from .cn import (
+    CnParams,
+    Decimal_round,
+    RunnerHistory,
+    circuit_value,
+    classify_status,
+    group_weight,
+    parse_time,
+    sexe_of,
+    to_int,
+)
+
+logger = logging.getLogger("ffco_scraper.cn_engine")
+
+# "coefficient de régulation des 10000 points" (k/1000). RC 2023 noted k=950
+# from 1 Jan 2022 and the note vanished afterwards; the archive confirms both
+# halves - 2022 reproduces 1584/1584 at k=0.95, and 2020/2021/2023-2026 at 1.0.
+K_BY_YEAR: dict[int, float] = {2022: 0.95}
+DEFAULT_K = 1.0
+
+
+@dataclass
+class RescalePolicy:
+    """Start-of-year rescaling.
+
+    Which years actually rescaled was measured, not assumed: comparing every
+    runner's last CN of year Y with their first of Y+1 shows a sharp shared
+    jump at 2013, 2023, 2024, 2025 and 2026, and a flat 1.000 everywhere else.
+    The pre-2026 rule only pulled the CN back *into* the 0-10000 band, so it
+    fired only when the top breached 10000; the maximum CN is exactly 10000 in
+    both 2024 and 2025. From 2026 the target became the top-20% mean at 5600.
+    """
+
+    legacy_top_value: float = 10000.0
+    modern_top20_mean: float = 5600.0
+    modern_from_year: int = 2026
+    years_applied: frozenset[int] = frozenset({2013, 2023, 2024, 2025, 2026})
+    apply_every_year: bool = False
+    enabled: bool = True
+
+    def factor(self, year: int, cns: list[int]) -> float:
+        if not self.enabled or not cns:
+            return 1.0
+        if not self.apply_every_year and year not in self.years_applied:
+            return 1.0
+        if year >= self.modern_from_year:
+            ordered = sorted(cns, reverse=True)
+            n = max(1, round(0.20 * len(ordered)))
+            top_mean = sum(ordered[:n]) / n
+            return self.modern_top20_mean / top_mean if top_mean else 1.0
+        top = max(cns)
+        return self.legacy_top_value / top if top else 1.0
+
+
+@dataclass
+class Normalisation:
+    """Smooth level anchor, used instead of a yearly step (method 3).
+
+    The CN is scale-free: multiply every runner's CN by a constant and all
+    circuit values, and hence all scores, scale identically. Nothing in the
+    formula fixes the absolute level, so a from-scratch run drifts (measured
+    at -2 to -3%/year here). A yearly rescale fixes that but puts a visible
+    step in every runner's curve each 1 January, which is exactly what makes
+    long-run progression hard to read.
+
+    So the level is instead fixed at *read* time: the internal computation is
+    left untouched and scale-free, and the published CN is raw x factor(t),
+    with factor(t) chosen so the reference cohort averages `target` and then
+    smoothed. Because it never feeds back into the scores, it is pure gauge
+    fixing and cannot amplify drift.
+    """
+
+    # The mean of the top 30 is held at this level. Anchoring a *mean* rather
+    # than the single best runner keeps one exceptional career from rescaling
+    # everyone else — but it also means the #1 runner sits above the target,
+    # so the target is set below 10000 to leave headroom for them.
+    target: float = 9000.0
+    # The mean of the top 30 is held at `target`, per terrain, by deliberate
+    # choice. Note the two rankings are normalised independently and so are
+    # not commensurable with each other: forest has ~3000 established runners
+    # (30 = its top 1%) against sprint's ~650 (30 = its top 4.6%, and only 34
+    # existed in 2011). Sprint's median consequently sits ~20% high relative
+    # to forest. That is accepted — each CN is a standing within its own
+    # discipline. Setting anchor_top_fraction would scale the cohort with the
+    # population instead, if the two ever need to be plotted together.
+    anchor_top_fraction: float | None = None
+    anchor_top_k: int = 30
+    # How factor(t) is derived from the reference level:
+    #   "monthly_lag"      - refreshed every month from the level `lag_months`
+    #       earlier. Causal, and the lag lets late-arriving results settle
+    #       before they can move the scale.
+    #   "trailing_monthly" - refreshed monthly from a trailing 12-month mean.
+    #   "annual_jan3"      - one factor per year from the *previous* year,
+    #       swapped in on 3 January. Causal, but reintroduces a step: measured
+    #       year-on-year factor changes are 3-7%, versus ~0.4%/month monthly.
+    #   "centred_monthly"  - smoothest, but peeks up to 6 months ahead, so it
+    #       can only ever be used retrospectively.
+    mode: str = "monthly_lag"
+    lag_months: int = 2
+    smooth_months: int = 13        # window for the *_monthly smoothing modes
+    refresh_month: int = 1
+    refresh_day: int = 3
+    active_days: int = 365         # a runner counts if they raced this recently
+    # Only runners whose CN rests on at least this many races anchor the
+    # scale. A CN built from one or two races is extremely high-variance —
+    # at n=2 both aggregations reduce to "best single score" — and such
+    # values land disproportionately in the top 30, which is precisely the
+    # cohort the anchor averages. One two-race fluke otherwise rescales the
+    # entire ranking (2012 forest: top-30 read 17014 against a ~9800 norm).
+    min_kept_for_anchor: int = 4
+    enabled: bool = True
+
+
+@dataclass
+class MethodSpec:
+    name: str
+    params: CnParams
+    rescale: RescalePolicy | None = None
+    normalisation: Normalisation | None = None
+    # Historical k (0.95 in 2022) belongs to what the federation actually ran.
+    # A method that applies one rule uniformly must use one k throughout.
+    use_historical_k: bool = False
+    description: str = ""
+
+
+def build_methods() -> dict[str, MethodSpec]:
+    return {
+        "v2026": MethodSpec(
+            name="v2026",
+            params=CnParams(
+                sample_rounding="ceil",
+                k_over_1000=1.0,
+                aggregation="trimmed",
+            ),
+            # The 2026 rule rescales every year, targeting the top-20% mean.
+            # Applying it from the start is the whole point of this method,
+            # and it also supplies the annual anchor the scale-free CN needs.
+            rescale=RescalePolicy(apply_every_year=True, modern_from_year=0),
+            description="2026 formula applied to every season",
+        ),
+        "top6w": MethodSpec(
+            name="top6w",
+            params=CnParams(
+                sample_rounding="ceil",
+                k_over_1000=1.0,
+                aggregation="top6_weighted",
+                top_n=6,
+                # Thin data is where absurd CNs come from: at two races the
+                # aggregation degenerates to "best single score", which then
+                # feeds back through circuit values. These three thresholds
+                # all say the same thing — do not publish a number computed
+                # from too little evidence.
+                min_ranked=4,            # a circuit needs >3 ranked runners
+                min_scores_for_cn=3,     # a runner needs >=3 races for a CN
+                new_entrant_rescue=False,  # only real CN holders score a circuit
+            ),
+            rescale=None,  # no annual step at all
+            normalisation=Normalisation(),
+            description="best 6 races, group-weighted, smoothly normalised",
+        ),
+    }
+
+
+class CnEngine:
+    def __init__(self, db_path: Path) -> None:
+        self.conn = sqlite3.connect(db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA synchronous=OFF")
+        self._drop_pre_method_tables()
+        schema = (Path(__file__).parent / "cn_schema.sql").read_text(encoding="utf-8")
+        self.conn.executescript(schema)
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_results_licence ON results(licence)")
+        self.conn.commit()
+
+    def _drop_pre_method_tables(self) -> None:
+        """Bring old derived tables up to date.
+
+        A missing `method` means the table predates multi-method support and
+        its shape is fundamentally different, so it is dropped and recomputed
+        (it is pure derived data — the scraped tables are untouched). A merely
+        missing column is added in place so methods already computed survive.
+        """
+        for table in ("scores", "cn_history", "circuit_values"):
+            cols = {r[1] for r in self.conn.execute(f"PRAGMA table_info({table})")}
+            if cols and "method" not in cols:
+                logger.info("dropping pre-method %s (derived, will be recomputed)", table)
+                self.conn.execute(f"DROP TABLE {table}")
+
+        cols = {r[1] for r in self.conn.execute("PRAGMA table_info(scores)")}
+        if cols and "score_raw" not in cols:
+            logger.info("adding scores.score_raw and backfilling from score")
+            self.conn.execute("ALTER TABLE scores ADD COLUMN score_raw INTEGER")
+            self.conn.execute("UPDATE scores SET score_raw = score")
+        self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    # ------------------------------------------------------------------
+    def _circuits(self, seasons: list[int] | None, since: str | None = None):
+        where = ""
+        args: tuple = ()
+        if seasons:
+            where = f"AND comp.season IN ({','.join('?' * len(seasons))})"
+            args = tuple(seasons)
+        if since:
+            where += " AND comp.date_iso >= ?"
+            args += (since,)
+        return self.conn.execute(
+            f"""
+            SELECT c.circuit_id, c.course_id, comp.date_iso, comp.season,
+                   comp.terrain, comp.epreuve, comp.groupe
+            FROM circuits c
+            JOIN competitions comp ON comp.course_id = c.course_id
+            WHERE comp.specialite = 'Pédestre' AND comp.date_iso IS NOT NULL {where}
+            ORDER BY comp.date_iso, c.course_id, c.circuit_id
+            """,
+            args,
+        ).fetchall()
+
+    def _rows_of(self, circuit_id: int):
+        return self.conn.execute(
+            """SELECT licence, nom, categorie, club, temps, cn_j15, points, nouveau_cn
+               FROM results WHERE circuit_id = ? ORDER BY id""",
+            (circuit_id,),
+        ).fetchall()
+
+    # ------------------------------------------------------------------
+    def populate_official(self, seasons: list[int] | None = None, since: str | None = None) -> dict:
+        """Method 1: copy the published values through unchanged. With
+        `since`, only rows dated from then on are replaced."""
+        self.conn.execute("DELETE FROM scores WHERE method='official' AND date_iso >= ?", (since or "",))
+        self.conn.execute("DELETE FROM cn_history WHERE method='official' AND date_iso >= ?", (since or "",))
+        srows, hrows = [], []
+        n = 0
+        for c in self._circuits(seasons, since):
+            terrain = c["terrain"] or "Forêt"
+            w = group_weight(c["groupe"])
+            for r in self._rows_of(c["circuit_id"]):
+                cat = (r["categorie"] or "").strip().upper()
+                status = classify_status(r["temps"])
+                T = parse_time(r["temps"])
+                score = to_int(r["points"])
+                srows.append(
+                    ("official", r["licence"], c["circuit_id"], c["course_id"],
+                     c["date_iso"], c["season"], cat or None, sexe_of(cat),
+                     r["club"] or None, terrain, c["epreuve"], c["groupe"], w,
+                     T, status, to_int(r["cn_j15"]), score, score,   # nothing to normalise: raw = published
+                     1 if score is not None else 0)
+                )
+                ncn = to_int(r["nouveau_cn"])
+                if ncn:
+                    hrows.append(("official", r["licence"], c["date_iso"], terrain,
+                                  ncn, ncn, None, None))
+                n += 1
+            if len(srows) >= 50000:
+                self._flush_scores(srows); self._flush_hist(hrows)
+                srows, hrows = [], []
+        self._flush_scores(srows); self._flush_hist(hrows)
+        self.conn.commit()
+        return {"rows": n}
+
+    # ------------------------------------------------------------------
+    def load_seeds(self, since: str | None, lag_days: int = 15,
+                   bootstrap_days: int = 365) -> dict[str, tuple[int, date | None]]:
+        """Each runner's first known official CN, and the date from which it
+        was known: licence -> (cn, known_from).
+
+        A CN J-15 printed on a race dated D was the runner's CN at D - 15 days,
+        so it may bootstrap their computed CN from then on — never before. Using
+        it earlier would let a CN first seen in 2026 value a runner's 2023 races:
+        a look-ahead that also makes every new result rewrite the past.
+
+        The one exception is the start of the archive: the first season's pages
+        (2010) publish no CN J-15 at all, so the CN those runners already held is
+        only visible on their races of the following months. Seeds first seen
+        within `bootstrap_days` of the first published CN J-15 therefore count
+        from the start. New results are always far past that point, so they can
+        never move a seed earlier.
+        With `since` (a partial run), the latest CN before it applies throughout."""
+        before: dict[str, tuple[int, date | None]] = {}
+        after: dict[str, tuple[int, date | None]] = {}
+        bootstrap_end: str | None = None
+        for licence, cn, d in self.conn.execute(
+            """
+            SELECT r.licence, r.cn_j15, comp.date_iso
+            FROM results r
+            JOIN circuits c ON c.circuit_id = r.circuit_id
+            JOIN competitions comp ON comp.course_id = c.course_id
+            WHERE r.cn_j15 <> '' AND comp.date_iso IS NOT NULL
+            ORDER BY comp.date_iso, c.course_id, c.circuit_id, r.id
+            """
+        ):
+            v = to_int(cn)
+            if not v or v <= 0:
+                continue
+            if bootstrap_end is None:
+                bootstrap_end = (date.fromisoformat(d) + timedelta(days=bootstrap_days)).isoformat()
+            if since and d < since:
+                before[licence] = (v, None)
+            elif licence not in after:
+                after[licence] = (v, None if d < bootstrap_end
+                                  else date.fromisoformat(d) - timedelta(days=lag_days))
+        seeds = {**after, **before}
+        logger.info("seeded %d runners", len(seeds))
+        return seeds
+
+    # ------------------------------------------------------------------
+    def _replay(self, spec: MethodSpec, since: str) -> tuple[dict, int | None]:
+        """Rebuild every runner's history as it stood just before `since`,
+        from the scores already stored, exactly as the full run built it:
+        same raw scores, same order, and each stored 1 January rescale
+        re-applied at the point in the sequence where it happened.
+        Returns (histories, the year the state has reached)."""
+        hist: dict[tuple[str, str], RunnerHistory] = defaultdict(RunnerHistory)
+        factors = {y: f for y, f in self.conn.execute(
+            "SELECT year, factor FROM rescale_factors WHERE method = ?", (spec.name,))}
+        current_year: int | None = None
+
+        def cross_into(year: int) -> None:
+            nonlocal current_year
+            while current_year is not None and year > current_year:
+                current_year += 1
+                f = factors.get(current_year)
+                if f is not None and date(current_year, 1, 1) <= date.fromisoformat(since):
+                    for h in hist.values():
+                        h.scores = [Decimal_round(x * f) for x in h.scores]
+
+        for lic, terrain, d, raw, w in self.conn.execute(
+            """SELECT licence, terrain, date_iso, score_raw, poids FROM scores
+               WHERE method = ? AND date_iso < ? AND counts_for_cn = 1 AND score_raw IS NOT NULL
+               ORDER BY date_iso, course_id, circuit_id""",
+            (spec.name, since),
+        ):
+            dd = date.fromisoformat(d)
+            if current_year is None:
+                current_year = dd.year
+            cross_into(dd.year)
+            hist[(lic, terrain)].add(dd, raw, w)
+        # rescales between the last stored race and `since` were computed from
+        # this same unchanged state, so they are replayed too
+        if current_year is not None:
+            cross_into(date.fromisoformat(since).year)
+        return hist, current_year
+
+    def run_method(self, spec: MethodSpec, seasons: list[int] | None = None, since: str | None = None) -> dict:
+        """Compute a method. With `since`, everything dated before it is kept
+        and the computation resumes from there — exact, because a circuit only
+        ever depends on races before it."""
+        p = spec.params
+        seeds = self.load_seeds(f"{min(seasons)}-01-01" if seasons else None, p.lag_days)
+
+        def seed(licence: str, as_of: date):
+            s = seeds.get(licence)
+            return s[0] if s and (s[1] is None or as_of >= s[1]) else None
+        if since:
+            hist, current_year = self._replay(spec, since)
+            logger.info("%s: resumed %d histories before %s", spec.name, len(hist), since)
+        else:
+            hist = defaultdict(RunnerHistory)
+            current_year = None
+
+        def cn_for(licence: str, terrain: str, as_of: date):
+            # forest and sprint are independent rankings in every season
+            h = hist.get((licence, terrain))
+            if h is not None:
+                cn, n_w, n_k = h.cn_as_of(as_of, p)
+                if cn is not None:
+                    return cn, n_w, n_k
+                if n_w:
+                    return seed(licence, as_of), n_w, 0
+            return seed(licence, as_of), 0, 0
+
+        if since:
+            for table in ("scores", "cn_history", "circuit_values"):
+                self.conn.execute(f"DELETE FROM {table} WHERE method=? AND date_iso >= ?", (spec.name, since))
+            # a rescale on 1 January Y after `since` depends on the new data
+            # (1 January of `since`'s own year is never after it)
+            self.conn.execute("DELETE FROM rescale_factors WHERE method=? AND year > ?",
+                              (spec.name, date.fromisoformat(since).year))
+        else:
+            for table in ("scores", "cn_history", "circuit_values", "rescale_factors"):
+                self.conn.execute(f"DELETE FROM {table} WHERE method=?", (spec.name,))
+        self.conn.commit()
+
+        circuits = self._circuits(seasons, since)
+        logger.info("%s: processing %d circuits", spec.name, len(circuits))
+        stats = {"circuits": 0, "eligible": 0, "scores": 0}
+        srows, hrows, cvrows = [], [], []
+
+        for c in circuits:
+            d = date.fromisoformat(c["date_iso"])
+            if current_year is None:
+                current_year = d.year
+            while d.year > current_year:
+                current_year += 1
+                if spec.rescale:
+                    self._rescale(hist, spec, current_year, p)
+
+            terrain = c["terrain"] or "Forêt"
+            weight = group_weight(c["groupe"])
+            as_of = d - timedelta(days=p.lag_days)
+            rows = self._rows_of(c["circuit_id"])
+
+            participants, ranked = [], []
+            for r in rows:
+                cat = (r["categorie"] or "").strip().upper()
+                status = classify_status(r["temps"])
+                T = parse_time(r["temps"])
+                cn_in, _, _ = cn_for(r["licence"], terrain, as_of)
+                excluded = cat in ("D10", "H10")
+                participants.append((r, status, T, cn_in, cat, excluded))
+                if status == "ok" and T and not excluded and cn_in and cn_in > 0:
+                    ranked.append((cn_in, T))
+
+            if p.new_entrant_rescue and len(ranked) < p.min_ranked:
+                # new entrants count at 2000 only to rescue a circuit that
+                # could not otherwise be valued
+                for r, status, T, cn_in, cat, excluded in participants:
+                    if len(ranked) >= p.min_ranked:
+                        break
+                    if status == "ok" and T and not excluded and not (cn_in and cn_in > 0):
+                        ranked.append((p.new_entrant_value, T))
+
+            k = K_BY_YEAR.get(d.year, DEFAULT_K) if spec.use_historical_k else p.k_over_1000
+            cv, n_sample = circuit_value(ranked, p, k=k)
+            stats["circuits"] += 1
+            if cv is not None:
+                stats["eligible"] += 1
+            cvrows.append((spec.name, c["circuit_id"], c["date_iso"],
+                           sum(1 for x in participants if x[1] == "ok"),
+                           len(ranked), n_sample, cv, 1 if cv is not None else 0))
+
+            for r, status, T, cn_in, cat, excluded in participants:
+                score = None
+                counts = 0
+                if cv is not None and not excluded:
+                    if status == "ok" and T:
+                        score = Decimal_round(cv / T)
+                        counts = 1
+                    elif status in ("pm", "abandon", "disqualifie", "hors_delai"):
+                        score = 0
+                        counts = 1
+                if counts and score is not None:
+                    hist[(r["licence"], terrain)].add(d, score, weight)
+                    stats["scores"] += 1
+                    cn_after, n_w, n_k = cn_for(r["licence"], terrain, d)
+                    # n_kept == 0 means this is the seed showing through, not a
+                    # computed CN. A seed is an official-scale value used only
+                    # to bootstrap circuit values; publishing it would both
+                    # breach "no CN below N races" and get rescaled by the
+                    # normalisation as though it were on the internal scale.
+                    published = cn_after if n_k > 0 else None
+                    hrows.append((spec.name, r["licence"], c["date_iso"], terrain,
+                                  published, published, n_w, n_k))
+                srows.append(
+                    (spec.name, r["licence"], c["circuit_id"], c["course_id"],
+                     c["date_iso"], c["season"], cat or None, sexe_of(cat),
+                     r["club"] or None, terrain, c["epreuve"], c["groupe"], weight,
+                     T, status, cn_in, score, score, counts)
+                )
+
+            if len(srows) >= 50000:
+                self._flush_scores(srows); self._flush_hist(hrows); self._flush_cv(cvrows)
+                srows, hrows, cvrows = [], [], []
+
+        self._flush_scores(srows); self._flush_hist(hrows); self._flush_cv(cvrows)
+        self.conn.commit()
+
+        if spec.normalisation and spec.normalisation.enabled:
+            self._normalise(spec, since)
+        return stats
+
+    # ------------------------------------------------------------------
+    def _rescale(self, hist, spec: MethodSpec, year: int, p: CnParams) -> None:
+        boundary = date(year, 1, 1)
+        cns = []
+        for h in hist.values():
+            cn, _, _ = h.cn_as_of(boundary, p)
+            if cn:
+                cns.append(cn)
+        factor = spec.rescale.factor(year, cns)
+        if abs(factor - 1.0) < 1e-9:
+            return
+        for h in hist.values():
+            h.scores = [Decimal_round(s * factor) for s in h.scores]
+        self.conn.execute(
+            "INSERT OR REPLACE INTO rescale_factors (method, year, factor, n_runners) "
+            "VALUES (?,?,?,?)",
+            (spec.name, year, factor, len(cns)),
+        )
+        logger.info("%s rescale %s: x%.4f over %d runners", spec.name, year, factor, len(cns))
+
+    def _normalise(self, spec: MethodSpec, since: str | None = None) -> None:
+        """Fit factor(t) so the reference cohort sits at the target level.
+
+        With `since`, the schedule is refitted as usual but only rows dated
+        from the first point where it changed (or from `since`) are rewritten."""
+        cfg = spec.normalisation
+        rows = self.conn.execute(
+            "SELECT licence, terrain, date_iso, cn_raw, n_scores_kept FROM cn_history "
+            "WHERE method=? AND cn_raw IS NOT NULL ORDER BY date_iso, licence",
+            (spec.name,),
+        ).fetchall()
+        old_schedule = {(r[0], r[1]): r[2] for r in self.conn.execute(
+            "SELECT terrain, date_iso, factor FROM normalisation WHERE method=?", (spec.name,))}
+        if not rows:
+            return
+
+        by_terrain: dict[str, list] = defaultdict(list)
+        for r in rows:
+            by_terrain[r["terrain"]].append(r)
+
+        # (terrain, effective_from) -> (reference level, factor)
+        schedule: dict[str, list[tuple[date, float, float]]] = {}
+        for terrain, trows in by_terrain.items():
+            level = self._reference_levels(trows, cfg)
+            if not level:
+                continue
+            schedule[terrain] = self._factor_schedule(level, cfg)
+
+        out_factors = [
+            (spec.name, terrain, eff.isoformat(), ref, f)
+            for terrain, entries in schedule.items()
+            for (eff, ref, f) in entries
+        ]
+        # first date from which any factor differs from the stored schedule
+        rewrite_from = since
+        if since:
+            new_schedule = {(t, d): f for _, t, d, _, f in out_factors}
+            moved = [d for key in set(old_schedule) | set(new_schedule)
+                     for d in [key[1]] if old_schedule.get(key) != new_schedule.get(key)]
+            if moved:
+                rewrite_from = min(rewrite_from, min(moved))
+        self.conn.execute("DELETE FROM normalisation WHERE method=?", (spec.name,))
+        self.conn.executemany(
+            """INSERT OR REPLACE INTO normalisation
+               (method, terrain, date_iso, top_mean_raw, factor) VALUES (?,?,?,?,?)""",
+            out_factors,
+        )
+
+        def factor_at(terrain: str, d: date) -> float:
+            entries = schedule.get(terrain)
+            if not entries:
+                return 1.0
+            lo, hi = 0, len(entries)
+            while lo < hi:                       # rightmost entry with eff <= d
+                mid = (lo + hi) // 2
+                if entries[mid][0] <= d:
+                    lo = mid + 1
+                else:
+                    hi = mid
+            return entries[max(0, lo - 1)][2]
+
+        updates = [
+            (Decimal_round(r["cn_raw"] * factor_at(r["terrain"], date.fromisoformat(r["date_iso"]))),
+             spec.name, r["licence"], r["terrain"], r["date_iso"])
+            for r in rows
+            if not rewrite_from or r["date_iso"] >= rewrite_from
+        ]
+        self.conn.executemany(
+            "UPDATE cn_history SET cn=? WHERE method=? AND licence=? AND terrain=? AND date_iso=?",
+            updates,
+        )
+
+        # Scores must live on the same scale as the CN, or a row shows a
+        # normalised CN beside a raw score. Always recomputed from score_raw
+        # so re-normalising is idempotent rather than compounding.
+        srows = self.conn.execute(
+            "SELECT licence, circuit_id, terrain, date_iso, score_raw FROM scores "
+            "WHERE method=? AND score_raw IS NOT NULL AND date_iso >= ?",
+            (spec.name, rewrite_from or ""),
+        ).fetchall()
+        self.conn.executemany(
+            "UPDATE scores SET score=? WHERE method=? AND licence=? AND circuit_id=?",
+            [
+                (Decimal_round(s["score_raw"] * factor_at(s["terrain"],
+                                                          date.fromisoformat(s["date_iso"]))),
+                 spec.name, s["licence"], s["circuit_id"])
+                for s in srows
+            ],
+        )
+        self.conn.commit()
+        logger.info("%s: mode=%s, normalised %d CN points and %d scores over %d factors",
+                    spec.name, cfg.mode, len(updates), len(srows), len(out_factors))
+
+    @staticmethod
+    def _reference_levels(trows, cfg: Normalisation) -> dict[str, float]:
+        """Month -> mean CN of the top-k active runners at that month."""
+        latest: dict[str, tuple[date, int]] = {}
+        monthly: dict[str, float] = {}
+        for r in trows:
+            d = date.fromisoformat(r["date_iso"])
+            if (r["n_scores_kept"] or 0) >= cfg.min_kept_for_anchor:
+                latest[r["licence"]] = (d, r["cn_raw"])
+            ym = r["date_iso"][:7]
+            if ym not in monthly:
+                cutoff = d - timedelta(days=cfg.active_days)
+                active = [cn for (dd, cn) in latest.values() if dd >= cutoff and cn]
+                if active:
+                    active.sort(reverse=True)
+                    k = cfg.anchor_top_k
+                    if cfg.anchor_top_fraction:
+                        k = max(k, round(cfg.anchor_top_fraction * len(active)))
+                    k = max(1, min(k, len(active)))
+                    monthly[ym] = sum(active[:k]) / k
+        return monthly
+
+    @staticmethod
+    def _factor_schedule(monthly: dict[str, float],
+                         cfg: Normalisation) -> list[tuple[date, float, float]]:
+        """Turn monthly reference levels into (effective_from, level, factor)."""
+        months = sorted(monthly)
+        vals = [monthly[m] for m in months]
+        out: list[tuple[date, float, float]] = []
+
+        if cfg.mode == "annual_jan3":
+            # One factor per year, taken from the previous year's December
+            # level and swapped in on 3 January. The first year has no
+            # predecessor, so it uses its own level.
+            by_year: dict[int, float] = {}
+            for m, v in zip(months, vals):
+                by_year[int(m[:4])] = v      # last month seen wins => December
+            years = sorted(by_year)
+            first = years[0]
+            for y in years:
+                ref = by_year[y if y == first else y - 1]
+                eff = (date(y, cfg.refresh_month, cfg.refresh_day)
+                       if y != first else date(y, 1, 1))
+                out.append((eff, ref, cfg.target / ref if ref else 1.0))
+            return out
+
+        half = cfg.smooth_months // 2
+        for i, m in enumerate(months):
+            if cfg.mode == "centred_monthly":
+                lo, hi = max(0, i - half), min(len(vals), i + half + 1)
+            elif cfg.mode == "monthly_lag":
+                # The level from `lag_months` ago, so late results have
+                # settled before they can move the scale.
+                j = max(0, i - cfg.lag_months)
+                lo, hi = max(0, j - cfg.smooth_months + 1), j + 1
+            else:  # trailing_monthly
+                lo, hi = max(0, i - cfg.smooth_months + 1), i + 1
+            sm = sum(vals[lo:hi]) / (hi - lo)
+            y, mo = int(m[:4]), int(m[5:7])
+            out.append((date(y, mo, 1), sm, cfg.target / sm if sm else 1.0))
+        return out
+
+    # ------------------------------------------------------------------
+    def _flush_scores(self, rows) -> None:
+        if rows:
+            self.conn.executemany(
+                """INSERT OR REPLACE INTO scores
+                   (method, licence, circuit_id, course_id, date_iso, season,
+                    categorie, sexe, club, terrain, epreuve, groupe, poids,
+                    temps_s, status, cn_j15, score, score_raw, counts_for_cn)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                rows,
+            )
+
+    def _flush_hist(self, rows) -> None:
+        if rows:
+            self.conn.executemany(
+                """INSERT OR REPLACE INTO cn_history
+                   (method, licence, date_iso, terrain, cn, cn_raw,
+                    n_scores_window, n_scores_kept)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                rows,
+            )
+
+    def _flush_cv(self, rows) -> None:
+        if rows:
+            self.conn.executemany(
+                """INSERT OR REPLACE INTO circuit_values
+                   (method, circuit_id, date_iso, n_finishers, n_ranked, n_sample,
+                    valeur, eligible) VALUES (?,?,?,?,?,?,?,?)""",
+                rows,
+            )
+
+    def write_runners(self) -> None:
+        names: dict[str, str] = {}
+        for licence, nom in self.conn.execute("SELECT licence, nom FROM results WHERE nom <> ''"):
+            names[licence] = nom
+        agg: dict[str, dict] = {}
+        for licence, d, cat, club, sexe in self.conn.execute(
+            "SELECT licence, date_iso, categorie, club, sexe FROM scores "
+            "WHERE method='official' ORDER BY licence, date_iso"
+        ):
+            a = agg.get(licence)
+            if a is None:
+                agg[licence] = a = {"first": d, "last": d, "n": 0,
+                                    "cat": cat, "club": club, "sexe": sexe}
+            a["last"] = d
+            a["n"] += 1
+            for key, val in (("cat", cat), ("club", club), ("sexe", sexe)):
+                if val:
+                    a[key] = val
+        self.conn.execute("DELETE FROM runners")
+        self.conn.executemany(
+            """INSERT INTO runners (licence, nom, first_date, last_date, n_races,
+                                    last_categorie, last_club, sexe)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            [(lic, names.get(lic), a["first"], a["last"], a["n"], a["cat"], a["club"], a["sexe"])
+             for lic, a in agg.items()],
+        )
+        self.conn.commit()

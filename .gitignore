@@ -1,0 +1,32 @@
+# Code only: the results, the runners and everything derived from them stay out
+# of this (public) repository. Between automated runs they live in Cloudflare R2.
+
+# database, HTTP cache and runner state
+*.sqlite3
+*.sqlite3-*
+*.update.lock
+cache/
+.state/
+
+# generated site data and the login index
+site/data/
+site/auth/
+
+# reports, exports, local data files
+exports/
+legacy_listings/
+*.csv
+
+# Python / Node / editors
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.wrangler/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# local assistant settings
+.claude/

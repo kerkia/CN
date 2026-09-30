@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Observatoire du CN — Classement National de course d’orientation</title>
+  <meta name="description" content="Le Classement National (CN) de course d’orientation pédestre, décortiqué : classements, évolution, calcul détaillé, clubs et comparaisons, selon trois méthodes.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/app.css">
+  <script>
+    // Apply the saved theme before first paint so there is no flash.
+    try {
+      const t = localStorage.getItem("cnx.theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
+  <script type="module" src="assets/js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+  <header class="topbar" id="topbar"></header>
+  <main id="main" class="page" tabindex="-1">
+    <div class="boot">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Chargement…</p>
+    </div>
+  </main>
+  <div id="tray" class="tray" hidden></div>
+  <footer class="footer" id="footer"></footer>
+  <noscript><p class="noscript">Ce site nécessite JavaScript.</p></noscript>
+</body>
+</html>

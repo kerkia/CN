@@ -1,0 +1,131 @@
+# Updates the Observatoire du CN from the official results and publishes it.
+#
+#   every hour         quick run: new competitions of the last 2 months only
+#   03:00 Paris time   full run: the last ~3 months, corrections included
+#
+# GitHub's schedules are in UTC, so the full run is scheduled at both 01:00 and
+# 02:00 UTC and goes ahead only on the one that is 03:00 in Paris (summer /
+# winter time). Runs never overlap: a run waits for the previous one to finish.
+#
+# The database and the site data live in Cloudflare R2 between runs (see
+# ci/state.py) and are written back only when something changed.
+#
+# Repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
+
+name: update
+
+on:
+  schedule:
+    - cron: "17 * * * *"     # quick, every hour
+    - cron: "0 1 * * *"      # full, 03:00 Paris in summer (UTC+2)
+    - cron: "0 2 * * *"      # full, 03:00 Paris in winter (UTC+1)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "quick = new competitions only; full = with corrections; deploy = publish the stored site as it is"
+        type: choice
+        options: [quick, full, deploy]
+        default: quick
+
+permissions:
+  contents: read
+  actions: write             # to keep the schedule enabled (see the last step)
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mode="${{ inputs.mode }}"
+          else
+            offset=$(TZ=Europe/Paris date +%z)        # +0200 in summer, +0100 in winter
+            case "${{ github.event.schedule }}" in
+              "0 1 * * *") [ "$offset" = "+0200" ] && mode=full || mode=skip ;;
+              "0 2 * * *") [ "$offset" = "+0100" ] && mode=full || mode=skip ;;
+              *) mode=quick ;;
+            esac
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "mode: $mode"
+
+  update:
+    needs: plan
+    if: needs.plan.outputs.mode != 'skip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    concurrency:
+      group: cn-update
+      cancel-in-progress: false
+    env:
+      MODE: ${{ needs.plan.outputs.mode }}
+      CN_DATA_DIR: ${{ github.workspace }}/.state/data
+      STATE: ${{ github.workspace }}/.state/transfer
+      BUCKET: s3://cn-state
+      R2: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # R2 does not take the newer default checksums of the AWS CLI
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Restore state from R2
+        run: |
+          mkdir -p "$STATE"
+          aws s3 cp "$BUCKET/db.sqlite3.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
+          aws s3 cp "$BUCKET/site-state.tar.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
+          python ci/state.py unpack "$STATE"
+          echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
+          echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
+
+      - name: Update and publish
+        run: |
+          case "$MODE" in
+            quick)  python update.py --new-only --deploy ;;
+            full)   python update.py --deploy ;;
+            deploy) python update.py --deploy-only ;;
+          esac
+
+      # only after a successful update: a run that failed half-way is discarded and
+      # the next one starts again from the stored state (a failed publish is not a
+      # failure: its "deploy pending" marker is saved and the next run publishes)
+      - name: Save state to R2
+        if: success() && env.DB_BEFORE != ''
+        run: |
+          after=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)
+          pending=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)
+          if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ]; then
+            echo "nothing changed — state left as it is"; exit 0
+          fi
+          python ci/state.py pack "$STATE"
+          # site state first: a run cut short after it still leaves a consistent pair
+          # (an older database only makes the next run find the same changes again)
+          aws s3 cp "$STATE/site-state.tar.zst" "$BUCKET/" --endpoint-url "$R2" --only-show-errors
+          if [ "$after" != "$DB_BEFORE" ]; then
+            aws s3 cp "$STATE/db.sqlite3.zst" "$BUCKET/" --endpoint-url "$R2" --only-show-errors
+          fi
+          echo "state saved"
+
+      # GitHub pauses the schedules of a repository without activity for 60 days;
+      # re-enabling the workflow once a day resets that clock.
+      - name: Keep the schedule alive
+        if: env.MODE == 'full'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method PUT "repos/${{ github.repository }}/actions/workflows/update.yml/enable"
