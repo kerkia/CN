@@ -44,9 +44,6 @@ export async function render(main, { arg, query }) {
   const other = terrain === "For" ? "Spr" : "For";
 
   main.innerHTML = html`
-    <section class="card" style="margin-bottom:16px"><div class="card-body row">
-      ${runnerSearch("rn-search", t("rn.change"))}
-    </div></section>
     <section class="card hero" style="margin-bottom:16px">
       <div class="avatar" aria-hidden="true">${initials(person.nom)}</div>
       <div>
@@ -102,7 +99,6 @@ export async function render(main, { arg, query }) {
     </section>
     <section class="card"><div class="card-head"><h2>${t("rn.seasons")}</h2></div><div id="seasons"></div></section>`;
   ["evo", "path", "pct", "curve"].forEach((id) => bindChartCard(main, id));
-  bindRunnerSearch($("#rn-search"), { onPick: (l) => { location.hash = link.runner(l); } });
 
   const cmpBtn = $("#cmp-btn");
   const drawCmp = () => {

@@ -2,6 +2,8 @@
 #
 #   every hour         quick run: new competitions of the last 2 months only
 #   03:00 Paris time   full run: the last ~3 months, corrections included
+#   push to main       publish the site's new code (site/, functions/) with the
+#                      stored data
 #
 # GitHub's schedules are in UTC, so the full run is scheduled at both 01:00 and
 # 02:00 UTC and goes ahead only on the one that is 03:00 in Paris (summer /
@@ -20,6 +22,9 @@ on:
     - cron: "17 * * * *"     # quick, every hour
     - cron: "0 1 * * *"      # full, 03:00 Paris in summer (UTC+2)
     - cron: "0 2 * * *"      # full, 03:00 Paris in winter (UTC+1)
+  push:
+    branches: [main]
+    paths: ["site/**", "functions/**"]
   workflow_dispatch:
     inputs:
       mode:
@@ -42,6 +47,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             mode="${{ inputs.mode }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            mode=deploy
           else
             offset=$(TZ=Europe/Paris date +%z)        # +0200 in summer, +0100 in winter
             case "${{ github.event.schedule }}" in
