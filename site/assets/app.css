@@ -598,3 +598,5 @@ table.data tbody tr.me .name { font-weight: 700; }
   .agenda-table { max-height: 60vh; }
   .agenda-detail { position: static; max-height: none; }
 }
+
+.ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }

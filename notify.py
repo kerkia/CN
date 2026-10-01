@@ -102,3 +102,42 @@ def run(db: Path) -> None:
                   f"{sent} e-mails sent, {res['remaining']} waiting")
     except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
         print(f"5. notify: failed ({e}) — will retry at the next run")
+
+
+def type_label(e: dict) -> str:
+    """Same wording as the Agenda page: Forêt MD, Forêt LD, Sprint, VTT MD, Ski…"""
+    sp, ep = e.get("spec", ""), e.get("epr", "")
+    if sp == "Pédestre":
+        return f"Forêt {ep}" if ep in ("MD", "LD") else ep or "Pédestre"
+    if sp in ("VTT", "Ski"):
+        return f"{sp} {ep}".strip()
+    if sp.startswith("Raid"):
+        return sp
+    return f"{sp} {ep}".strip() or "—"
+
+
+def run_agenda(agenda_json: Path) -> None:
+    """Send the upcoming courses to the site: it alerts the accounts that follow their region about the
+    ones it has not announced yet (the first call only records them). Never raises."""
+    if not _secret():
+        print("6. agenda alert: no NOTIFY_SECRET — skipped")
+        return
+    try:
+        today = date.today().isoformat()
+        a = json.loads(agenda_json.read_text(encoding="utf-8"))
+        depts = a.get("depts", {})
+        keep = ("name", "date", "place", "dep", "region", "groupe", "manif", "org", "referee", "referee2", "controller",
+                "delegate", "contact", "phone", "email", "site", "flechage", "invitation", "obs", "cn")
+        events = []
+        for e in a["events"]:
+            if e["kind"] != "c" or e.get("id") is None or e["date"] < today or e.get("cancelled"):
+                continue
+            ev = {k: e[k] for k in keep if k in e} | {"id": e["id"], "type": type_label(e), "depName": depts.get(e.get("dep", ""), "")}
+            if e.get("reg"):
+                ev["reg"] = {k: e["reg"].get(k) for k in ("url", "close", "mods", "count")}
+            events.append(ev)
+        res = _call("POST", {"agenda": events})
+        print(f"6. agenda alert: {len(events)} upcoming courses checked, {res.get('agendaQueued', 0)} alert e-mails queued, "
+              f"{res['sent']} sent, {res['remaining']} waiting")
+    except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
+        print(f"6. agenda alert: failed ({e}) — will retry at the next run")

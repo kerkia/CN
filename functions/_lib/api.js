@@ -34,9 +34,14 @@ export async function allow(env, key, max, windowSec) {
 export const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
 export const isAdmin = (env, user) => !!user.email_verified && adminEmails(env).includes(user.email);
 
+export function jsonList(s) {
+  try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+
 /** What the browser needs to know about the logged-in user. */
 export const publicUser = (env, u) => ({
   uid: u.id, lic: u.licence, nom: u.display_name, email: u.email, notify: !!u.notify, admin: isAdmin(env, u),
+  agendaAlert: !!u.agenda_alert, agendaRegions: jsonList(u.agenda_regions),
 });
 
 export async function sessionCookie(env, user) {

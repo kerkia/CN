@@ -153,6 +153,8 @@ def main() -> None:
                 DEPLOY_PENDING.touch()
             if args.deploy and DEPLOY_PENDING.exists() and deploy():
                 DEPLOY_PENDING.unlink(missing_ok=True)
+            if args.deploy and not DEPLOY_PENDING.exists():       # the courses are online: alert the subscribers
+                notify.run_agenda(args.out / "agenda.json")
             sys.exit(0)
         rebuilt = _run(args, since, t0)
         if rebuilt:

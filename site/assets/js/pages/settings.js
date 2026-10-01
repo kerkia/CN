@@ -1,11 +1,16 @@
 // Settings: e-mail notifications, password change, account deletion (e-mail accounts only).
 
-import { html, $, displayName } from "../util.js";
+import { html, $, $$, displayName } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
+
+// Same names as the regions of the Agenda page (ffco_scraper/agenda.py).
+const REGIONS = ["Auvergne-Rhône-Alpes", "Bourgogne-Franche-Comté", "Bretagne", "Centre-Val de Loire", "Corse", "Grand Est",
+  "Hauts-de-France", "Île-de-France", "Normandie", "Nouvelle-Aquitaine", "Occitanie", "Pays de la Loire",
+  "Provence-Alpes-Côte d'Azur", "Outre-mer"];
 
 export async function render(main) {
   const me = auth.session();
@@ -27,6 +32,19 @@ export async function render(main) {
         <label class="check"><input id="notify" type="checkbox" ${user.notify ? "checked" : ""}><span>${t("st.notify")}
           <br><span class="muted" style="font-size:12.5px">${t("st.notify.hint")}</span></span></label>
         <div class="notice ok" id="notify-ok" hidden>${t("st.saved")}</div>
+      </div></section>
+
+      <section class="card"><div class="card-head"><h2>${t("st.ag.title")}</h2></div><div class="card-body stack" style="gap:10px">
+        <label class="check"><input id="ag-alert" type="checkbox" ${user.agendaAlert ? "checked" : ""}><span>${t("st.ag.label")}
+          <br><span class="muted" style="font-size:12.5px">${t("st.ag.hint")}</span></span></label>
+        <div id="ag-regions" ${user.agendaAlert ? "" : "hidden"}>
+          <div class="row" style="gap:8px;margin-bottom:8px"><b style="font-size:13.5px">${t("st.ag.regions")}</b>
+            <button type="button" class="btn btn-ghost btn-sm" id="ag-all">${t("st.ag.all")}</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="ag-none">${t("st.ag.clear")}</button></div>
+          <div class="ag-grid">${REGIONS.map((r) => html`<label class="check"><input type="checkbox" data-region="${r}" ${user.agendaRegions.includes(r) ? "checked" : ""}><span>${r}</span></label>`)}</div>
+        </div>
+        <div class="notice" id="ag-hint" hidden>${t("st.ag.none")}</div>
+        <div class="notice ok" id="ag-ok" hidden>${t("st.saved")}</div>
       </div></section>
 
       <section class="card"><div class="card-head"><h2>${t("st.pw.title")}</h2></div><div class="card-body">
@@ -59,6 +77,25 @@ export async function render(main) {
     $("#notify-ok").hidden = false;
     setTimeout(() => { const n = $("#notify-ok"); if (n) n.hidden = true; }, 2500);
   });
+
+  // the agenda alert: saved at each change
+  const agState = () => ({
+    agendaAlert: $("#ag-alert").checked,
+    agendaRegions: $$("[data-region]").filter((i) => i.checked).map((i) => i.dataset.region),
+  });
+  async function saveAlert() {
+    const s = agState();
+    $("#ag-regions").hidden = !s.agendaAlert;
+    $("#ag-hint").hidden = !(s.agendaAlert && !s.agendaRegions.length);
+    const res = await auth.api("api/account/settings", s);
+    if (!res.ok) return;
+    $("#ag-ok").hidden = false;
+    setTimeout(() => { const n = $("#ag-ok"); if (n) n.hidden = true; }, 2500);
+  }
+  $("#ag-alert").addEventListener("change", saveAlert);
+  $$("[data-region]").forEach((i) => i.addEventListener("change", saveAlert));
+  $("#ag-all").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = true)); saveAlert(); });
+  $("#ag-none").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = false)); saveAlert(); });
 
   $("#pw").addEventListener("submit", async (e) => {
     e.preventDefault();

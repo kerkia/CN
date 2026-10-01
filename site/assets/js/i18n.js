@@ -370,6 +370,11 @@ const FR = {
   "st.del.title": "Supprimer mon compte",
   "st.del.lede": "Votre adresse e-mail, votre mot de passe et vos réglages sont effacés définitivement. Les résultats FFCO, publics, ne sont pas concernés.",
   "st.del.submit": "Supprimer mon compte", "st.del.confirm": "Supprimer définitivement votre compte ?",
+  "st.ag.title": "Alerte : nouvelles courses à l'agenda",
+  "st.ag.label": "Me prévenir par e-mail quand une nouvelle course est ajoutée à l'agenda dans les régions choisies",
+  "st.ag.hint": "Au plus un message par jour, avec les courses ajoutées dans vos régions. Désactivable à tout moment.",
+  "st.ag.regions": "Régions suivies", "st.ag.all": "Tout cocher", "st.ag.clear": "Tout décocher",
+  "st.ag.none": "Cochez au moins une région pour recevoir l'alerte.",
   "st.legacy": "Vous êtes connecté(e) avec la connexion historique (nom + licence) : créez un compte pour accéder aux réglages.",
   "st.link": "Réglages", "admin.link": "Administration",
 
