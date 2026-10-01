@@ -112,6 +112,8 @@ def main() -> None:
     ap.add_argument("--since", default=None, help="recompute from this date even if nothing changed")
     ap.add_argument("--deploy", action="store_true", help="publish to Cloudflare Pages when the site changed")
     ap.add_argument("--deploy-only", action="store_true", help="publish the current site, nothing else")
+    ap.add_argument("--agenda-only", action="store_true",
+                    help="refresh the agenda of upcoming events (site/data/agenda.json) and publish it if it changed")
     ap.add_argument("--concurrency", type=int, default=8)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
@@ -135,10 +137,23 @@ def main() -> None:
         sys.exit(0)
     try:
         if args.deploy_only:
+            if not (args.out / "agenda.json").exists():       # first publication after the agenda was added
+                import ffco_scraper.agenda as agenda
+                agenda.refresh(args.out / "agenda.json")
+                print("agenda: built for the first time")
             ok = deploy()
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
             sys.exit(0 if ok else 1)
+        if args.agenda_only:
+            import ffco_scraper.agenda as agenda
+            changed = agenda.refresh(args.out / "agenda.json")
+            print(f"agenda: {'updated' if changed else 'unchanged'} in {time.monotonic() - t0:.0f}s")
+            if changed:
+                DEPLOY_PENDING.touch()
+            if args.deploy and DEPLOY_PENDING.exists() and deploy():
+                DEPLOY_PENDING.unlink(missing_ok=True)
+            sys.exit(0)
         rebuilt = _run(args, since, t0)
         if rebuilt:
             DEPLOY_PENDING.touch()

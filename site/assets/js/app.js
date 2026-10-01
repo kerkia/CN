@@ -21,6 +21,7 @@ const PAGES = {
   clubcompare: () => import("./pages/clubcompare.js"),
   network: () => import("./pages/network.js"),
   courses: () => import("./pages/courses.js"),
+  agenda: () => import("./pages/agenda.js"),
   account: () => import("./pages/account.js"),      // public: sign-up, confirmation, password reset, privacy
   settings: () => import("./pages/settings.js"),
   admin: () => import("./pages/admin.js"),
@@ -45,6 +46,7 @@ function parseHash() {
     : head === "comparer" ? "compare"
     : head === "course" ? "courses"          // old competition links open the Courses tab
     : head === "courses" ? "courses"
+    : head === "agenda" ? "agenda"
     : head === "clubs" ? "clubs"
     : head === "club" ? "club"
     : head === "apercu" ? "overview"
@@ -100,6 +102,7 @@ function renderHeader(route) {
     ["runner", "#/coureur", t("nav.runner")],
     ["ranking", "#/classement", t("nav.ranking")],
     ["courses", "#/courses", t("nav.courses")],
+    ["agenda", "#/agenda", t("nav.agenda")],
     ["compare", "#/comparer", t("nav.compare")],
     ["clubs", "#/clubs", t("nav.clubs")],
     ["network", "#/reseau", t("nav.network")],
@@ -129,9 +132,11 @@ function renderHeader(route) {
       </button>
       <div class="user-chip">
         <a href="${link.runner(me.lic)}" class="user-name" title="${t("auth.myPage")}">${displayName(me.nom)}</a>
-        ${me.admin ? html`<a href="#/admin" class="btn btn-ghost btn-sm">${t("admin.link")}</a>` : ""}
-        <a href="#/reglages" class="btn btn-ghost btn-sm">${t("st.link")}</a>
-        <button type="button" class="btn btn-ghost btn-sm" id="logout-btn">${t("auth.logout")}</button>
+        <div class="user-links">
+          ${me.admin ? html`<a href="#/admin">${t("admin.link")}</a>` : ""}
+          <a href="#/reglages">${t("st.link")}</a>
+          <button type="button" id="logout-btn">${t("auth.logout")}</button>
+        </div>
       </div>` : html`
       <button class="icon-btn" type="button" id="theme-btn" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

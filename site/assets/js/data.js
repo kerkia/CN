@@ -155,6 +155,8 @@ export async function coRunners(lic) {
   return (b && b[n]) || [];
 }
 export const ageCurves = () => getJson("agecurve.json");
+/** Upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py). */
+export const agenda = () => getJson("agenda.json");
 export const eliteSummary = () => getJson("elite_summary.json");
 // elite row layout: [course, licence, category, rank in category, points, club code]
 export const E = { course: 0, lic: 1, cat: 2, rank: 3, pts: 4, club: 5 };

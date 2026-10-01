@@ -53,6 +53,7 @@ const FR = {
   "cs.lede": "Toutes les compétitions, leurs circuits et leurs résultats.",
   "cs.title": "Courses",
   "nav.courses": "Courses",
+  "nav.agenda": "Agenda",
   "cl.myClub": "Mon club",
   "rk.noProgress": "Aucune progression mesurable pour cette sélection.",
   "rk.findMe": "Ma position",

@@ -2,6 +2,7 @@
 #
 #   every hour         quick run: new competitions of the last 2 months only
 #   03:00 Paris time   full run: the last ~3 months, corrections included
+#   06:00 Paris time   agenda run: upcoming events, registrations (site/data/agenda.json)
 #   push to main       publish the site's new code (site/, functions/) with the
 #                      stored data
 #
@@ -23,15 +24,17 @@ on:
     - cron: "17 * * * *"     # quick, every hour
     - cron: "0 1 * * *"      # full, 03:00 Paris in summer (UTC+2)
     - cron: "0 2 * * *"      # full, 03:00 Paris in winter (UTC+1)
+    - cron: "0 4 * * *"      # agenda, 06:00 Paris in summer (UTC+2)
+    - cron: "0 5 * * *"      # agenda, 06:00 Paris in winter (UTC+1)
   push:
     branches: [main]
     paths: ["site/**", "functions/**"]
   workflow_dispatch:
     inputs:
       mode:
-        description: "quick = new competitions only; full = with corrections; deploy = publish the stored site as it is"
+        description: "quick = new competitions only; full = with corrections; agenda = upcoming events; deploy = publish the stored site as it is"
         type: choice
-        options: [quick, full, deploy]
+        options: [quick, full, agenda, deploy]
         default: quick
 
 permissions:
@@ -55,6 +58,8 @@ jobs:
             case "${{ github.event.schedule }}" in
               "0 1 * * *") [ "$offset" = "+0200" ] && mode=full || mode=skip ;;
               "0 2 * * *") [ "$offset" = "+0100" ] && mode=full || mode=skip ;;
+              "0 4 * * *") [ "$offset" = "+0200" ] && mode=agenda || mode=skip ;;
+              "0 5 * * *") [ "$offset" = "+0100" ] && mode=agenda || mode=skip ;;
               *) mode=quick ;;
             esac
           fi
@@ -102,12 +107,14 @@ jobs:
           python ci/state.py unpack "$STATE"
           echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
           echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
+          echo "AGENDA_BEFORE=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"
 
       - name: Update and publish
         run: |
           case "$MODE" in
             quick)  python update.py --new-only --deploy ;;
             full)   python update.py --deploy ;;
+            agenda) python update.py --agenda-only --deploy ;;
             deploy) python update.py --deploy-only ;;
           esac
 
@@ -119,7 +126,8 @@ jobs:
         run: |
           after=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)
           pending=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)
-          if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ]; then
+          agenda=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)
+          if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ] && [ "$agenda" = "$AGENDA_BEFORE" ]; then
             echo "nothing changed — state left as it is"; exit 0
           fi
           python ci/state.py pack "$STATE"
