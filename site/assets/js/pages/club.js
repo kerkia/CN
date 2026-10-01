@@ -24,6 +24,7 @@ export async function render(main, { arg: code, query }) {
   let range = query.range || "all";
   const STATS = ["mean", "max", "sum", "top5"];
   let stat = STATS.includes(query.stat) ? query.stat : "mean";
+  let wkTo = isoDay(new Date()), wkFrom = addDays(wkTo, -7);        // period of the best results
   const members = data.runners().list.filter((r) => data.clubParts(r.club).code === code);
   const ligue = data.clubParts(members[0]?.club).ligue;
 
@@ -41,6 +42,13 @@ export async function render(main, { arg: code, query }) {
     </section>
     <div class="filters" id="filters"></div>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head"><div><h2 class="week-title">${t("cl.week")} ${t("cl.week.from")}
+          <input type="date" id="wk-from" value="${wkFrom}" max="${wkTo}" aria-label="${t("cl.week.from")}"> ${t("cl.week.to")}
+          <input type="date" id="wk-to" value="${wkTo}" aria-label="${t("cl.week.to")}"></h2>
+        <div class="hint">${t("cl.week.hint")}</div></div></div>
+      <div id="week"></div>
+    </section>
     <div class="grid grid-2" style="margin-bottom:16px">
       ${chartCard({ id: "lvl", title: t("cl.evolution"), hint: t("cl.over.mean"),
         tools: html`<span id="stat-seg"></span>` })}
@@ -51,10 +59,6 @@ export async function render(main, { arg: code, query }) {
       <section class="card"><div class="card-head"><div><h2>${t("cl.eliteRecent")}</h2><div class="hint">${t("cl.eliteRecent.hint")}</div></div></div>
         <div id="elite-list"></div></section>
     </div>
-    <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("cl.week")}</h2><div class="hint">${t("cl.week.hint")}</div></div></div>
-      <div id="week"></div>
-    </section>
     <section class="card">
       <div class="card-head"><div><h2>${t("cl.roster")}</h2><div class="hint">${t("cl.roster.hint")}</div></div>
         <label class="checkline"><input type="checkbox" id="all-members">${t("cl.showAll")}</label></div>
@@ -157,8 +161,14 @@ export async function render(main, { arg: code, query }) {
     rows.forEach((r) => { if (r.cn[m0] != null && r.clubCode) counts.set(r.clubCode, (counts.get(r.clubCode) || 0) + 1); });
     const mine = counts.get(code) || 0;
     const pos = mine ? 1 + [...counts.values()].filter((n) => n > mine).length : null;
+    // club rank by the sum of its runners' CN, same method
+    const sums = new Map();
+    rows.forEach((r) => { if (r.cn[m0] != null && r.clubCode) sums.set(r.clubCode, (sums.get(r.clubCode) || 0) + r.cn[m0]); });
+    const mySum = sums.get(code) || 0;
+    const posSum = mySum ? 1 + [...sums.values()].filter((n) => n > mySum).length : null;
     $("#tiles").innerHTML = html`${tiles}${tile(t("cl.rankBySize"), pos ? ord(pos) : "—",
-      `${t("nav.clubs")} · ${fmt(counts.size)} · ${methodLabel(m0)}`)}`;
+      `${t("nav.clubs")} · ${fmt(counts.size)} · ${methodLabel(m0)}`)}${tile(t("cl.rankBySum"), posSum ? ord(posSum) : "—",
+      `Σ ${fmt(mySum)} · ${fmt(sums.size)} ${t("nav.clubs").toLowerCase()} · ${methodLabel(m0)}`)}`;
   }
 
   function drawRoster() {
@@ -221,9 +231,14 @@ export async function render(main, { arg: code, query }) {
 
   /** Each member's best top-10 finish of the last 7 days, all disciplines. On a
    *  circuit with at most 6 categories the place counts within the category. */
+  let weekToken = 0;
   async function drawWeek() {
-    const from = addDays(isoDay(new Date()), -7);
-    const ids = (await data.clubCourses(code)).map(String).filter((id) => (data.comp(id)?.date || "") >= from);
+    const my = ++weekToken;
+    const from = wkFrom, to = wkTo;
+    const ids = (await data.clubCourses(code)).map(String).filter((id) => {
+      const d = data.comp(id)?.date || "";
+      return d >= from && d <= to;
+    });
     const best = new Map();                   // lic -> finish
     for (const [id, file] of await Promise.all(ids.map(async (id) => [id, await data.course(id)]))) {
       for (const circ of file?.circuits || []) {
@@ -241,6 +256,7 @@ export async function render(main, { arg: code, query }) {
         }
       }
     }
+    if (my !== weekToken) return;                // another period was chosen meanwhile
     const who = (lic) => displayName(data.runner(lic)?.nom || lic);
     const rows = [...best.values()].sort((a, b) => a.pos - b.pos || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)
       || who(a.lic).localeCompare(who(b.lic)));
@@ -264,6 +280,15 @@ export async function render(main, { arg: code, query }) {
     drawElite();
     await drawTiles();
     drawRoster();
+  }
+  for (const id of ["wk-from", "wk-to"]) {
+    $(`#${id}`).addEventListener("change", (e) => {
+      if (!e.target.value) { e.target.value = id === "wk-from" ? wkFrom : wkTo; return; }
+      if (id === "wk-from") wkFrom = e.target.value; else wkTo = e.target.value;
+      if (wkFrom > wkTo) { if (id === "wk-from") wkTo = wkFrom; else wkFrom = wkTo; }   // keep the period valid
+      $("#wk-from").value = wkFrom; $("#wk-to").value = wkTo; $("#wk-from").max = wkTo;
+      drawWeek();
+    });
   }
   drawFilters();
   drawWeek();

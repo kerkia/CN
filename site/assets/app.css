@@ -538,3 +538,6 @@ table.data tbody tr.me .name { font-weight: 700; }
   .subbar-field > span { display: none; }
   .subbar .search { flex: 1 1 auto; }
 }
+
+.week-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.week-title input[type="date"] { height: 30px; font-size: 14px; font-weight: 500; }
