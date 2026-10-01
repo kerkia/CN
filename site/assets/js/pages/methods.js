@@ -66,6 +66,11 @@ export async function render(main) {
       </ul>
       <p>La page d'un coureur présente, à côté du CN publié, une reconstruction indicative : la règle documentée appliquée aux scores officiels.
       Les écarts éventuels peuvent venir de résultats absents du site ou de corrections apportées après coup.</p>
+      <p><b>Limites</b></p>
+      <ul>
+        <li>La méthode a évolué au fil des années et inclut des ajustements annuels : les analyses sur le long terme sont impossibles.</li>
+        <li>Elle exclut la meilleure course. Or, pour beaucoup de coureurs, et surtout pour les plus performants, c'est souvent une compétition nationale : un objectif majeur et une course très représentative de leur niveau.</li>
+      </ul>
 
       <h2>${methodKey("v2026")} ${methodLabel("v2026")}</h2>
       <p>La règle 2026 appliquée dès 2010, en partant des CN initiaux publiés :</p>
@@ -78,6 +83,16 @@ export async function render(main) {
       <p>Cette méthode répond à la question : « quel serait mon CN si le règlement actuel avait toujours existé ? ».
       Son défaut est visible sur les courbes : une marche, le plus souvent vers le haut, à chaque 1er janvier.</p>
       <div class="formula">CN = moyenne des scores, hors 10 % meilleurs et 40 % moins bons</div>
+      <p><b>Limites</b> — Cette méthode supprime les discontinuités de méthode et permet de comparer plusieurs années.
+      En revanche, elle comporte les inconvénients propres à la mise à jour 2026, par exemple :</p>
+      <ul>
+        <li>la sélection aux championnats de France se base sur le CN : des coureurs cessent de courir les courses CN dès que leur CN est qualifiant ;</li>
+        <li>des coureurs ne courent que les compétitions qui peuvent rapporter le plus de CN, et pas les autres ;</li>
+        <li>les classements en sprint ont tendance à se resserrer, car les écarts relatifs y sont plus faibles qu'en forêt, et les coureurs à fort CN ont peu d'intérêt à courir : leur CN baisse à la plupart des courses ;</li>
+        <li>de manière générale, la méthode n'incite pas à participer à beaucoup de compétitions CN ;</li>
+        <li>l'ajustement annuel continue de gêner l'évaluation de son niveau sur le long terme ;</li>
+        <li>toutes les courses contribuent également, quels que soient le nombre de participants et leur diversité.</li>
+      </ul>
 
       <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
       <p>Une méthode alternative, pensée pour récompenser les meilleures performances et lisser l'échelle dans le temps :</p>
@@ -94,6 +109,13 @@ export async function render(main) {
       <p>Seuls les coureurs dont le CN repose sur au moins 4 courses servent de référence au recalage : une valeur bâtie sur une ou deux
       courses est trop instable pour fixer l'échelle de tout le classement. Conséquence voulue : les deux classements sont recalés indépendamment
       et ne sont pas directement comparables entre eux (les 30 premiers représentent environ 1 % des coureurs en forêt, mais près de 5 % en sprint).</p>
+      <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'ensemble des inconvénients identifiés ci-dessus :</p>
+      <ul>
+        <li>inspirée du <i>World Ranking</i>, elle calcule le CN sur un nombre limité de courses ;</li>
+        <li>plus un coureur court, plus il peut améliorer son CN, sans risquer de le faire baisser ;</li>
+        <li>elle est stable au fil des années ;</li>
+        <li>elle sépare le sprint et la forêt, comme la méthode CN 2026.</li>
+      </ul>
     </div>
 
     <div class="grid grid-2" style="margin:24px 0 16px">
