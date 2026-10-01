@@ -1,0 +1,29 @@
+# Cloudflare Pages project "observatoire-cn": static site in site/, Functions in functions/.
+# Secrets (never in this file), set with `wrangler pages secret put <NAME> --project-name observatoire-cn`:
+#   SESSION_SECRET  signs the session cookie (and peppers the password hashes)
+#   RESEND_API_KEY  sends the e-mails (confirmation, reset, alerts, digests)
+#   NOTIFY_SECRET   lets update.py call /api/notify from the PC
+name = "observatoire-cn"
+pages_build_output_dir = "site"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ocn"
+database_id = "3bf072a7-0c47-41df-96f0-8943031547fd"
+migrations_dir = "migrations"
+
+[vars]
+SITE_URL = "https://ocn.kerkia.com"
+MAIL_FROM = "ocn@kerkia.com"
+MAIL_FROM_NAME = "O'CN"
+# who gets the duplicate-licence alerts, and which accounts see the admin page
+ALERT_EMAIL = "ocn@kerkia.com"
+ADMIN_EMAILS = "ocn@kerkia.com"
+# "1" opens registration; "0" closes it
+REGISTRATION_OPEN = "1"
+# Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day
+DAILY_EMAIL_LIMIT = "90"
+MONTHLY_EMAIL_LIMIT = "2900"
+# the free Workers plan gives ~10 ms of CPU per request: a light PBKDF2 (the pepper makes up for it)
+PBKDF2_ITER = "20000"

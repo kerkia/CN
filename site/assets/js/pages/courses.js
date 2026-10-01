@@ -4,7 +4,7 @@
 // moves the tree to the left and shows its results, with category toggles.
 
 import { html, raw, $, $$, fmt, fmtDate, fmtTime, displayName, normalise, debounce, ord } from "../util.js";
-import { xyChart, methodColor } from "../charts.js";
+import { xyChart, regressionChart, linreg, methodColor } from "../charts.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -46,6 +46,7 @@ export async function render(main, { arg, query }) {
     course: query.id || null,
     circuit: query.circ || null,
     cats: new Set((query.cats || "").split(",").filter(Boolean)),
+    cnRef: "now",                               // CN on the x axis of the CN-vs-score chart: "now" | "race"
   };
   const open = new Set(st.course ? [st.course] : []);
   const files = new Map();                    // course id -> c file
@@ -232,8 +233,12 @@ export async function render(main, { arg, query }) {
         ${st.cats.size ? html`<button type="button" class="btn btn-ghost btn-sm" id="cats-all">${t("cs.allCats")}</button>` : ""}
       </div></div>` : ""}
       <div id="res-table"></div>
-      <div class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>`;
+      <div class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>
+      <div class="card-body">${chartCard({ id: "cvs", title: t("co.cnVsScore"), hint: t("co.cnVsScore.hint"), short: true,
+        tools: seg("cnref", ["now", "race"].map((k) => [k, t(`co.cnRef.${k}`)]), st.cnRef) })}</div>`;
     bindChartCard(pane, "sbp");
+    bindChartCard(pane, "cvs");
+    $$('[data-seg="cnref"]', pane).forEach((b) => b.addEventListener("click", () => { st.cnRef = b.dataset.value; drawResults(); }));
     $("#back").addEventListener("click", () => { st.circuit = null; drawTree(); drawResults(); });
     $$("[data-cat]", pane).forEach((b) => b.addEventListener("click", () => {
       const k = b.dataset.cat;
@@ -241,6 +246,13 @@ export async function render(main, { arg, query }) {
       drawResults();
     }));
     $("#cats-all")?.addEventListener("click", () => { st.cats.clear(); drawResults(); });
+    const cnOf = await cnGetter(comp, methods);
+    if ($("#res-table") === null || $("#results") !== pane) return;     // redrawn while the CN were loading
+    // score minus CN: positive = did better than the CN suggests
+    const gap = (x, m) => {
+      const cn = cnOf(m, x.r), s = x.r[SCORE[m]];
+      return x.r[C.place] && cn && s ? s - cn : null;
+    };
     dataTable($("#res-table"), {
       rows, pageSize: "all", sortKey: "place", sortDir: 1, rowClass: (x) => hl(x.r),
       columns: [
@@ -254,13 +266,60 @@ export async function render(main, { arg, query }) {
           return code ? html`<a href="${link.club(code)}" title="${data.clubName(x.r[C.club])}">${code}</a>` : x.r[C.club] || "";
         } },
         { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[C.time], defaultDir: 1, render: (x) => fmtTime(x.r[C.time]) },
-        ...methods.map((m) => ({
+        ...methods.flatMap((m) => [{
           key: `s_${m}`, label: html`${t("rn.score")} ${methodShort(m)}`, align: "r", cls: "num",
           sort: (x) => x.r[SCORE[m]], render: (x) => (x.r[SCORE[m]] ? fmt(x.r[SCORE[m]]) : html`<span class="dim">—</span>`),
-        })),
+        }, {
+          key: `cn_${m}`, label: html`${t(`co.cnCol.${st.cnRef}`)} ${methodShort(m)}`, align: "r", cls: "num",
+          sort: (x) => cnOf(m, x.r), render: (x) => { const cn = cnOf(m, x.r); return cn ? fmt(cn) : html`<span class="dim">—</span>`; },
+        }, {
+          key: `g_${m}`, label: html`${t("co.gap")} ${methodShort(m)}`, align: "r", cls: "num",
+          sort: (x) => gap(x, m),
+          render: (x) => {
+            const g = gap(x, m);
+            return g == null ? html`<span class="dim">—</span>`
+              : html`<span class="${g > 0 ? "delta-up" : g < 0 ? "delta-down" : ""}">${g > 0 ? "▲ +" : g < 0 ? "▼ " : ""}${fmt(g)}</span>`;
+          },
+        }]),
       ],
     });
     drawScoreChart(circ, rows);
+    drawCnChart(rows, cnOf);
+  }
+
+  /** (method, result row) -> the runner's CN: today's, or the one 15 days before the race. */
+  async function cnGetter(comp, methods) {
+    const CNJ15 = { official: C.offCnj15, v2026: C.v26Cnj15, top6w: C.t6Cnj15 };
+    if (st.cnRef !== "now") return (m, r) => r[CNJ15[m]];
+    const now = Object.fromEntries(await Promise.all(methods.map(async (m) => [m, await data.cnAt(m, comp.terrain, data.latestMonth())])));
+    return (m, r) => now[m].get(String(r[C.lic]));
+  }
+
+  /** CN of each ranked runner against the score of this race, with a regression line per method. */
+  function drawCnChart(rows, cnOf) {
+    const methods = store.get().methods;
+    const ranked = rows.filter((x) => x.r[C.place]);
+    const series = methods.map((m) => ({
+      name: methodShort(m), color: methodColor(m), method: m,
+      data: ranked.map((x) => {
+        const cn = cnOf(m, x.r);
+        const score = x.r[SCORE[m]];
+        return cn && score ? [cn, score, x.r[C.lic], displayName(data.runner(x.r[C.lic])?.nom || x.r[C.lic])] : null;
+      }).filter(Boolean),
+    }));
+    const fits = series.map((s) => linreg(s.data));
+    $("#cvs-legend").innerHTML = legend(series.map((s, i) => ({
+      label: fits[i] ? html`${s.name} <span class="dim num">· ${t("co.reg.slope")} ${fmt(fits[i].b, 2)} · R² ${fmt(fits[i].r2, 2)} · ${fmt(fits[i].n)} ${t("co.reg.n")}</span>` : s.name,
+      color: s.color,
+    })));
+    regressionChart($("#cvs"), { series, xName: t(`co.cnVsScore.x.${st.cnRef}`), yName: t("rn.score") });
+    $("#cvs-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("rk.col.name")}</th>
+      ${series.map((s) => html`<th class="r">${t(`co.cnVsScore.x.${st.cnRef}`)} ${s.name}</th><th class="r">${t("rn.score")} ${s.name}</th>`)}</tr></thead>
+      <tbody>${ranked.map((x) => html`<tr><td>${displayName(data.runner(x.r[C.lic])?.nom || x.r[C.lic])}</td>
+        ${series.map((s) => {
+          const p = s.data.find((d) => d[2] === x.r[C.lic]);
+          return html`<td class="r num">${p ? fmt(p[0]) : "—"}</td><td class="r num">${p ? fmt(p[1]) : "—"}</td>`;
+        })}</tr>`)}</tbody></table>`;
   }
 
   function drawScoreChart(circ, rows) {

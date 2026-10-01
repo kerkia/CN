@@ -1,11 +1,6 @@
-// Login: "first name last name" + licence number.
-//
-// Two layers. Once hosted on Cloudflare Pages, the check runs on the server
-// (functions/api/login.js): it sets a signed, HttpOnly session cookie, and the
-// middleware refuses every data file without it, so the data really is private.
-// Served locally (python http.server, no functions), the same rule is checked
-// here in the browser against runners.json — convenient for development, but it
-// only hides pages. The session kept here is just who the visitor is, for the UI.
+// Accounts: e-mail + password (functions/api/account/*). The server sets a signed, HttpOnly
+// session cookie and the middleware refuses every data file without it, so the data really
+// is private. The session kept here in localStorage is just who the visitor is, for the UI.
 
 import * as data from "./data.js";
 
@@ -41,41 +36,37 @@ export function forget() {
   try { localStorage.removeItem(KEY); } catch (e) {}
 }
 
-const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) || location.hostname.endsWith(".localhost");
-
-/**
- * Try to log in. Resolves to the session, or rejects with a French message.
- * `wait` enforces a growing pause after failures, so guessing is slow.
- */
-let failures = 0;
-export async function login(name, licence) {
-  const lic = cleanLicence(licence);
-  if (!nameKey(name) || !lic) throw new Error("Saisissez votre prénom, votre nom et votre numéro de licence.");
-  if (failures) await new Promise((r) => setTimeout(r, Math.min(8000, 500 * 2 ** failures)));
-  let who = null;
-  if (!LOCAL) {
-    const r = await fetch("api/login", {
+/** POST JSON to a server endpoint -> { ok, status, data }. status 0: the server has no such endpoint. */
+export async function api(path, body) {
+  try {
+    const r = await fetch(path, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, licence: lic }), credentials: "same-origin",
+      body: JSON.stringify(body || {}), credentials: "same-origin",
     });
-    if (r.status === 429) throw new Error("Trop de tentatives : réessayez dans quelques minutes.");
-    if (r.ok) who = await r.json();                   // { lic, nom }
-  } else {
-    await data.bootPrivate();                         // local development: the list is readable
-    const r = data.runner(lic);
-    if (r && nameKey(r.nom) === nameKey(name)) who = { lic, nom: r.nom };
+    let data = null;
+    try { data = await r.json(); } catch (e) {}
+    return { ok: r.ok, status: data ? r.status : 0, data };
+  } catch (e) {
+    return { ok: false, status: 0, data: null };
   }
-  if (!who) {
-    failures++;
-    throw new Error("Nom ou numéro de licence incorrect.");
+}
+
+/** Log in with e-mail and password. Resolves to the session; rejects with { code, message }. */
+export async function accountLogin(email, password) {
+  const r = await api("api/account/login", { email, password });
+  if (r.ok) {
+    const u = r.data;
+    const s = { lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, until: Date.now() + DAYS * 86400e3 };
+    keep(s);
+    return s;
   }
-  failures = 0;
-  const s = { lic: String(who.lic), nom: who.nom, until: Date.now() + DAYS * 86400e3 };
-  keep(s);
-  return s;
+  const code = r.status === 0 ? "unavailable" : r.status === 429 ? "rate" : r.data?.error || "generic";
+  const err = new Error(code);
+  err.code = ["invalid", "rate", "unverified", "disabled", "unavailable"].includes(code) ? code : "generic";
+  throw err;
 }
 
 export async function logout() {
   forget();
-  if (!LOCAL) { try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {} }
+  try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
 }

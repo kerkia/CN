@@ -2,8 +2,8 @@
 //
 // Public: the site's code (/, /assets/…), the headline statistics
 // (/data/meta.json) and the login endpoints. Everything else needs the session
-// cookie issued by /api/login; /auth (the credentials index the login reads) is
-// never served to anyone. It runs on every request (site/_routes.json) and
+// cookie issued by /api/account/login; /auth (the licensee index the registration
+// checks) is never served to anyone. It runs on every request (site/_routes.json) and
 // judges the decoded path, so encoded spellings cannot slip past it.
 //
 // Needs one secret in the Pages project settings: SESSION_SECRET (any long
@@ -11,7 +11,10 @@
 
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
-const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/log(in|out)$/];
+// (/api/notify checks its own bearer secret; the /api/account and /api/admin endpoints check the session themselves)
+const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
+  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset)$/];
+const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 
 /**
  * The path as the file server will resolve it: percent-decoding undone
@@ -82,14 +85,30 @@ export async function onRequest(context) {
   if (path === "/auth" || path.startsWith("/auth/")) return new Response("Not found", { status: 404 });
   if (PUBLIC.some((re) => re.test(path))) return next();
   const s = await readSession(request, env.SESSION_SECRET);
-  if (!s) {
+  if (!s?.uid) {                      // only account sessions count (the name+licence login is gone)
     return new Response(JSON.stringify({ error: "login required" }), {
       status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
+  // Accounts (cookie carries a uid): at most once an hour, check the account still exists and
+  // is not disabled, then re-sign the cookie.
+  let refreshed = null;
+  if (env.DB && Date.now() - (s.chk || 0) > RECHECK_MS) {
+    const u = await env.DB.prepare("SELECT status, email_verified FROM users WHERE id = ?").bind(s.uid).first();
+    if (!u || u.status !== "active" || !u.email_verified) {
+      return new Response(JSON.stringify({ error: "login required" }), {
+        status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store",
+          "Set-Cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` },
+      });
+    }
+    const token = await signSession({ ...s, chk: Date.now() }, env.SESSION_SECRET);
+    refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
+  }
   const res = await next();
   // private data must not sit in shared caches
   const out = new Response(res.body, res);
-  out.headers.set("Cache-Control", "private, max-age=300");
+  // (the API endpoints set their own no-store: a cached /api/account/me showed stale settings)
+  if (!path.startsWith("/api/")) out.headers.set("Cache-Control", "private, max-age=300");
+  if (refreshed) out.headers.append("Set-Cookie", refreshed);
   return out;
 }

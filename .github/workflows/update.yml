@@ -1,4 +1,4 @@
-# Updates the Observatoire du CN from the official results and publishes it.
+# Updates O'CN from the official results and publishes it.
 #
 #   every hour         quick run: new competitions of the last 2 months only
 #   03:00 Paris time   full run: the last ~3 months, corrections included
@@ -13,7 +13,8 @@
 # ci/state.py) and are written back only when something changed.
 #
 # Repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
-# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
+# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, NOTIFY_SECRET (same value as the Pages project's:
+# lets notify.py send the "new competition" digests through /api/notify).
 
 name: update
 
@@ -82,6 +83,7 @@ jobs:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NOTIFY_SECRET: ${{ secrets.NOTIFY_SECRET }}
     steps:
       - uses: actions/checkout@v4
 

@@ -412,6 +412,66 @@ export function xyChart(el, { series, xName, yName, xMin = null }) {
   return c;
 }
 
+/** Ordinary least squares on [[x, y]]: { a, b, r2, n } for y = a + b·x, or null if undefined. */
+export function linreg(pts) {
+  const n = pts.length;
+  if (n < 3) return null;
+  let sx = 0, sy = 0;
+  for (const [x, y] of pts) { sx += x; sy += y; }
+  const mx = sx / n, my = sy / n;
+  let sxx = 0, sxy = 0, syy = 0;
+  for (const [x, y] of pts) { sxx += (x - mx) ** 2; sxy += (x - mx) * (y - my); syy += (y - my) ** 2; }
+  if (!sxx || !syy) return null;
+  const b = sxy / sxx;
+  return { a: my - b * mx, b, r2: (sxy * sxy) / (sxx * syy), n };
+}
+
+/**
+ * Scatter with one least-squares line per series. series: [{ name, color,
+ * data: [[x, y, lic, label]] }]; the fit is drawn from the series' own x range.
+ */
+export function regressionChart(el, { series, xName, yName }) {
+  const th = theme();
+  const c = init(el);
+  const fits = series.map((s) => linreg(s.data));
+  const lines = series.map((s, i) => {
+    const f = fits[i];
+    if (!f) return null;
+    const xs = s.data.map((p) => p[0]);
+    const lo = Math.min(...xs), hi = Math.max(...xs);
+    return [[lo, f.a + f.b * lo], [hi, f.a + f.b * hi]];
+  });
+  c.setOption({
+    animationDuration: 300,
+    grid: { left: 56, right: 24, top: 26, bottom: 44 },
+    ...zoomable(th, { y: true }),
+    tooltip: baseTooltip(th, {
+      trigger: "item",
+      formatter(p) {
+        if (p.seriesType !== "scatter") return "";
+        const [x, y, , label] = p.value;
+        return `<b style="font-size:14px">${fmt(y)}</b> <span style="color:${th.ink2}">${esc(yName)} · ${esc(p.seriesName)}</span><br>` +
+          `<span style="color:${th.ink3}">${esc(xName)} ${fmt(x)}${label ? " · " + esc(label) : ""}</span>`;
+      },
+    }),
+    xAxis: { type: "value", name: xName, nameLocation: "middle", nameGap: 28, nameTextStyle: { color: th.ink3 },
+      scale: true, ...axisCommon(th), splitLine: { show: false }, axisLabel: { color: th.ink3, formatter: (v) => fmt(v) } },
+    yAxis: { type: "value", name: yName, nameTextStyle: { color: th.ink3 }, scale: true, ...axisCommon(th),
+      axisLabel: { color: th.ink3, formatter: (v) => fmt(v) } },
+    series: [
+      ...series.map((s) => ({
+        name: s.name, type: "scatter", data: s.data, symbolSize: 7, z: 2, progressive: 0,
+        itemStyle: { color: s.color, opacity: 0.6 }, emphasis: { scale: 1.6 },
+      })),
+      ...lines.map((l, i) => (l ? {
+        name: `${series[i].name} — régression`, type: "line", data: l, symbol: "none", silent: true, z: 4,
+        lineStyle: { width: 2.5, color: series[i].color, type: [8, 5] }, tooltip: { show: false },
+      } : null)).filter(Boolean),
+    ],
+  });
+  return c;
+}
+
 /** Scatter with a y = x reference, for method-vs-method agreement. */
 export function scatterChart(el, { series, xName, yName, max }) {
   const th = theme();

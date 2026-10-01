@@ -36,14 +36,14 @@ export async function render(main, { query }) {
             <a class="btn btn-primary" href="${link.runner(me.lic)}">${t("auth.myPage")}</a>
           </div>` : html`
           <h2>${t("auth.title")}</h2>
-          <form id="login-form" class="stack" style="gap:12px;margin-top:10px" autocomplete="on">
-            <label class="field"><span>${t("auth.name")}</span>
-              <input type="text" id="login-name" name="username" autocomplete="name" placeholder="${t("auth.name.ph")}" required></label>
-            <label class="field"><span>${t("auth.licence")}</span>
-              <input type="password" id="login-lic" name="password" autocomplete="current-password" inputmode="numeric" placeholder="${t("auth.licence.ph")}" required></label>
-            <div class="notice" id="login-error" hidden></div>
-            <button class="btn btn-primary" type="submit" id="login-btn">${t("auth.submit")}</button>
-            <p class="muted" style="font-size:12.5px;margin:0">${t("auth.help")}</p>
+          <form id="acct-form" class="stack" style="gap:12px;margin-top:10px" autocomplete="on">
+            <label class="field"><span>${t("ac.email")}</span>
+              <input type="email" id="acct-email" name="email" autocomplete="username" required></label>
+            <label class="field"><span>${t("ac.password")}</span>
+              <input type="password" id="acct-pw" name="password" autocomplete="current-password" required></label>
+            <div class="notice" id="acct-error" hidden></div>
+            <button class="btn btn-primary" type="submit" id="acct-btn">${t("ac.login")}</button>
+            <p class="links"><a href="#/compte/inscription">${t("ac.register")}</a><a href="#/compte/mot-de-passe">${t("ac.forgot")}</a></p>
           </form>`}
       </div>
     </section>
@@ -58,21 +58,22 @@ export async function render(main, { query }) {
   bindChartCard(main, "part");
 
   if (!me) {
-    const form = $("#login-form"), err = $("#login-error"), btn = $("#login-btn");
-    $("#login-name").focus();
-    form.addEventListener("submit", async (e) => {
+    $("#acct-email").focus();
+    const aform = $("#acct-form"), aerr = $("#acct-error"), abtn = $("#acct-btn");
+    aform.addEventListener("submit", async (e) => {
       e.preventDefault();
-      err.hidden = true;
-      btn.disabled = true;
-      btn.textContent = t("auth.checking");
+      aerr.hidden = true;
+      abtn.disabled = true;
+      abtn.textContent = t("auth.checking");
       try {
-        const s = await auth.login($("#login-name").value, $("#login-lic").value);
+        const s = await auth.accountLogin($("#acct-email").value.trim(), $("#acct-pw").value);
         await signedIn(s);
       } catch (x) {
-        err.textContent = x.message;
-        err.hidden = false;
-        btn.disabled = false;
-        btn.textContent = t("auth.submit");
+        aerr.textContent = t(`ac.err.${x.code || "generic"}`);
+        if (x.code === "unverified") aerr.insertAdjacentHTML("beforeend", ` <a href="#/compte/renvoyer">${t("ac.resend")}</a>`);
+        aerr.hidden = false;
+        abtn.disabled = false;
+        abtn.textContent = t("ac.login");
       }
     });
   }

@@ -8,7 +8,7 @@ import * as data from "./data.js";
 import { disposeAll, slotColor } from "./charts.js";
 import * as auth from "./auth.js";
 
-export const SITE = "Observatoire du CN";
+export const SITE = "O'CN";
 
 const PAGES = {
   ranking: () => import("./pages/ranking.js"),
@@ -21,6 +21,9 @@ const PAGES = {
   clubcompare: () => import("./pages/clubcompare.js"),
   network: () => import("./pages/network.js"),
   courses: () => import("./pages/courses.js"),
+  account: () => import("./pages/account.js"),      // public: sign-up, confirmation, password reset, privacy
+  settings: () => import("./pages/settings.js"),
+  admin: () => import("./pages/admin.js"),
 };
 
 // Where the Forêt/Sprint switch means something, and where the runner
@@ -48,6 +51,9 @@ function parseHash() {
     : head === "methodes" ? "methods"
     : head === "comparer-clubs" ? "clubcompare"
     : head === "reseau" ? "network"
+    : head === "compte" ? "account"
+    : head === "reglages" ? "settings"
+    : head === "admin" ? "admin"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -123,6 +129,8 @@ function renderHeader(route) {
       </button>
       <div class="user-chip">
         <a href="${link.runner(me.lic)}" class="user-name" title="${t("auth.myPage")}">${displayName(me.nom)}</a>
+        ${me.admin ? html`<a href="#/admin" class="btn btn-ghost btn-sm">${t("admin.link")}</a>` : ""}
+        <a href="#/reglages" class="btn btn-ghost btn-sm">${t("st.link")}</a>
         <button type="button" class="btn btn-ghost btn-sm" id="logout-btn">${t("auth.logout")}</button>
       </div>` : html`
       <button class="icon-btn" type="button" id="theme-btn" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
@@ -244,7 +252,7 @@ async function route_() {
   const my = ++token;
   // the gate: logged out, only the home (login) page exists
   const me = auth.session();
-  if (!me && r.route !== "overview") {
+  if (!me && r.route !== "overview" && r.route !== "account") {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }

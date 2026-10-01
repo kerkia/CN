@@ -49,6 +49,7 @@ from ffco_scraper.fetcher import Fetcher
 from ffco_scraper.updater import run_update
 
 ROOT = Path(__file__).parent
+import notify  # noqa: E402  (digest e-mails for subscribed accounts)
 import paths  # noqa: E402  (the data folder, outside OneDrive)
 REPORTS = ROOT / "exports" / "updates"
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
@@ -143,6 +144,9 @@ def main() -> None:
             DEPLOY_PENDING.touch()
         if args.deploy and DEPLOY_PENDING.exists() and deploy():
             DEPLOY_PENDING.unlink(missing_ok=True)
+        # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue
+        if args.deploy and not args.dry_run and not DEPLOY_PENDING.exists():
+            notify.run(args.db)
     finally:
         lock.unlink(missing_ok=True)
 
@@ -182,6 +186,8 @@ def _run(args, since, t0) -> bool:
             print(f"   new runners ({len(report.new_runners)}): " + ", ".join(report.new_runners[:12])
                   + (" …" if len(report.new_runners) > 12 else ""))
         print(f"   changes: {s['changes'] or 'none'}; earliest {s['earliest']}; report {path.relative_to(ROOT)}")
+        if not args.dry_run:
+            notify.remember(report.changes)         # announced by main() once the site is deployed
         if report.earliest:
             since = min(since, report.earliest) if since else report.earliest
         if args.dry_run:
