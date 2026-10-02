@@ -184,7 +184,7 @@ export async function render(main, { query }) {
   const me = auth.session();
   // the list is ranked by one method: the first selected, or the one whose column was clicked
   let sortMethod = query.sort && st.methods.includes(query.sort) ? query.sort : st.methods[0];
-  let loaded = null, table = null;
+  let loaded = null, table = null, foundLic = null;       // foundLic: the runner picked in the search box
 
   function syncUrl() {
     replaceQuery({
@@ -266,6 +266,7 @@ export async function render(main, { query }) {
   }
 
   async function reload() {
+    foundLic = null;
     $("#list-card").classList.add("loading-veil");
     loaded = await loadRanking(store.get().methods, terrain, f.month);
     $("#list-card").classList.remove("loading-veil");
@@ -333,7 +334,7 @@ export async function render(main, { query }) {
         refresh();
         return false;
       },
-      rowClass: (r) => [store.inCompare(r.lic) ? "selected" : "", r.lic === me?.lic ? "me" : ""].join(" "),
+      rowClass: (r) => [store.inCompare(r.lic) ? "selected" : "", r.lic === me?.lic ? "me" : "", r.lic === foundLic ? "found" : ""].join(" "),
       emptyText: "—",
       onRender(container) {
         $$("[data-sel]", container).forEach((cb) => cb.addEventListener("change", () => {
@@ -379,6 +380,26 @@ export async function render(main, { query }) {
     if (table?.goTo((r) => r.lic === me?.lic)) $("#list tr.me")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
+  /** The search box chose a runner: bring them into view and highlight them (the page opens on a click on the name). */
+  function pick(lic) {
+    if (!table) return false;
+    const r = loaded?.rows.find((x) => x.lic === lic) || data.runner(lic);
+    const inList = table.goTo((x) => x.lic === lic);
+    if (!inList) {
+      const name = displayName(r?.nom || lic);
+      $("#notice").innerHTML = html`<div class="notice">${name} ${t("rk.pick.absent")}
+        <a href="${link.runner(lic)}">${t("rk.pick.open")}</a></div>`;
+      return true;
+    }
+    foundLic = lic;
+    $("#notice").innerHTML = "";
+    $$("#list tr.found").forEach((tr) => tr.classList.remove("found"));
+    const row = $(`#list [data-sel="${lic}"]`)?.closest("tr");
+    row?.classList.add("found");
+    row?.scrollIntoView({ block: "center", behavior: "smooth" });
+    return true;
+  }
+
   await reload();
-  return { title: t("rk.title") };
+  return { title: t("rk.title"), onRunnerPick: pick };
 }

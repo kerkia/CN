@@ -182,7 +182,7 @@ const FR = {
   "st.top20": "Moyenne des 2 premiers déciles", "st.max": "Meilleur CN", "st.p90": "90e centile",
 
   "rn.back": "Retour au classement", "rn.licence": "Licence", "rn.since": "Depuis", "rn.races": "courses",
-  "rn.current": "CN actuel", "rn.best": "Meilleur CN", "rn.rankAll": "au général", "rn.rank": "Classement", "rn.rankOf": "sur", "rn.unranked": "non classé(e)", "rn.rankCat": "en",
+  "rn.current": "CN actuel", "rn.best": "Meilleur CN", "rn.rankAll": "au général", "rk.pick.absent": "ne figure pas dans la liste affichée (filtres en cours, ou non classé(e) à cette date).", "rk.pick.open": "Ouvrir la page du coureur", "rn.rank": "Classement", "rn.rankOf": "sur", "rn.unranked": "non classé(e)", "rn.rankCat": "en",
   "rn.last12": "Courses sur 12 mois", "rn.podiums": "Podiums", "rn.win": "victoire", "rn.wins": "victoires",
   "rn.evolution": "Évolution du CN", "rn.evolution.hint": "Cliquez sur un point pour détailler le calcul à cette date",
   "rn.showScores": "Afficher les scores de course", "rn.calc": "Détail du calcul du CN",

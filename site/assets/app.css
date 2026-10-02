@@ -613,3 +613,7 @@ table.data tbody tr.me .name { font-weight: 700; }
 .table-scroll { max-height: var(--table-max, 70vh); overflow: auto; }
 .table-more { padding: 6px 14px; font-size: 12.5px; }
 .table-more:empty { display: none; }
+
+/* a runner found with the search box on the Classement page */
+table.data tbody tr.found { background: color-mix(in srgb, var(--warn-ink, #f2b01e) 22%, transparent); box-shadow: inset 4px 0 0 #f2b01e; }
+table.data tbody tr.found .name { font-weight: 700; }

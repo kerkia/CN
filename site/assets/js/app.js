@@ -198,7 +198,7 @@ function bindSearch() {
       return terms.every((w) => n.includes(w)) || r.lic === q;
     }).sort((a, b) => b.n - a.n).slice(0, 12);
     active = -1;
-    box.innerHTML = items.length ? html`${items.map((r, i) => html`<a href="${link.runner(r.lic)}" role="option" data-i="${i}">
+    box.innerHTML = items.length ? html`${items.map((r, i) => html`<a href="${link.runner(r.lic)}" role="option" data-i="${i}" data-lic="${r.lic}">
         <span>${displayName(r.nom)}<div class="sub">${r.cat || ""} · ${data.clubName(r.club)}</div></span>
         <span class="sub num">${fmt(r.n)} ${t("rn.races")}</span></a>`)}`
       : html`<div class="empty">${t("search.none")}</div>`;
@@ -212,7 +212,9 @@ function bindSearch() {
       active = Math.max(0, Math.min(links.length - 1, active + (e.key === "ArrowDown" ? 1 : -1)));
       links.forEach((l, i) => l.classList.toggle("active", i === active));
     } else if (e.key === "Enter" && links[Math.max(0, active)]) {
-      location.hash = links[Math.max(0, active)].getAttribute("href");
+      const a = links[Math.max(0, active)];
+      // the page may handle the choice itself (the Classement scrolls to the runner)
+      if (!current?.onRunnerPick?.(a.dataset.lic)) location.hash = a.getAttribute("href");
       box.classList.add("hidden");
       input.blur();
     } else if (e.key === "Escape") {
@@ -220,7 +222,12 @@ function bindSearch() {
     }
   });
   document.addEventListener("click", (e) => { if (!e.target.closest(".search")) box.classList.add("hidden"); });
-  box.addEventListener("click", () => { box.classList.add("hidden"); input.value = ""; });
+  box.addEventListener("click", (e) => {
+    const a = e.target.closest("a[data-lic]");
+    if (a && current?.onRunnerPick?.(a.dataset.lic)) e.preventDefault();      // handled by the page: do not navigate
+    box.classList.add("hidden");
+    input.value = "";
+  });
 }
 
 function renderFooter() {
