@@ -1,7 +1,8 @@
 // Cloudflare Pages middleware: the login gate, enforced on the server.
 //
 // Public: the site's code (/, /assets/…), the headline statistics
-// (/data/meta.json) and the login endpoints. Everything else needs the session
+// (/data/meta.json), the agenda of upcoming events (/data/agenda.json, all of it public
+// on the FFCO site) and the login endpoints. Everything else needs the session
 // cookie issued by /api/account/login; /auth (the licensee index the registration
 // checks) is never served to anyone. It runs on every request (site/_routes.json) and
 // judges the decoded path, so encoded spellings cannot slip past it.
@@ -12,7 +13,7 @@
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
 // (/api/notify checks its own bearer secret; the /api/account and /api/admin endpoints check the session themselves)
-const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
+const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/data\/agenda\.json$/, /^\/api\/logout$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset)$/];
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 

@@ -102,16 +102,19 @@ function renderHeader(route) {
     ["runner", "#/coureur", t("nav.runner")],
     ["ranking", "#/classement", t("nav.ranking")],
     ["courses", "#/courses", t("nav.courses")],
-    ["agenda", "#/agenda", t("nav.agenda")],
     ["compare", "#/comparer", t("nav.compare")],
     ["clubs", "#/clubs", t("nav.clubs")],
     ["network", "#/reseau", t("nav.network")],
     ["methods", "#/methodes", t("nav.methods")],
-  ] : [];
+    ["agenda", "#/agenda", t("nav.agenda")],
+  ] : [
+    ["overview", "#/", t("auth.title")],
+    ["agenda", "#/agenda", t("nav.agenda")],
+  ];
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs" : route;
   const terrain = store.get().terrain;
   $("#topbar").innerHTML = html`<div class="topbar-inner">
-    <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn" ${raw(me ? "" : "hidden")}>
+    <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <a class="brand" href="#/">
@@ -257,7 +260,7 @@ async function route_() {
   const my = ++token;
   // the gate: logged out, only the home (login) page exists
   const me = auth.session();
-  if (!me && r.route !== "overview" && r.route !== "account") {
+  if (!me && !["overview", "account", "agenda"].includes(r.route)) {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
