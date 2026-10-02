@@ -1,6 +1,10 @@
-// Réseau · Territoires: how many competitions each ligue (region) or département
-// hosted, over one season or all of them, in the chosen discipline — as a map
-// and a table.
+// Réseau · Territoires: for each ligue (region) or département, over one season or all of
+// them, in the chosen discipline: the competitions hosted there, the competitors registered
+// there, and the competitions per competitor — as a map (coloured by any of the three) and a table.
+//
+// Competitors of a place = the runners of its clubs: for one season, those ranked (with a CN,
+// method 2026) in the discipline during the season, placed by their club at the end of the
+// season; over all seasons, those who ever raced the discipline, placed by their latest club.
 
 import { html, raw, $, $$, fmt, ord } from "../util.js";
 import { t } from "../i18n.js";
@@ -8,11 +12,14 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { mapChart } from "../charts.js";
 import { chartCard, bindChartCard, dataTable, tile, seg } from "../ui.js";
-import { DEPT_REGION, placeOf, loadMap, featuresOf } from "../geo.js";
-import { link, replaceQuery } from "../app.js";
+import { DEPT_REGION, regionOf, placeOf, loadMap, featuresOf } from "../geo.js";
+import { replaceQuery } from "../app.js";
+import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const LEVELS = ["region", "dept"];
-const MEASURES = ["comps", "runners"];
+const MEASURES = ["comps", "runners", "ratio"];       // competitions hosted · competitors registered · competitions per 100 competitors
+const RATIO_X = 100;
+const digitsOf = (m) => (m === "ratio" ? 1 : 0);
 
 export async function render(main, query) {
   const seasons = data.meta().seasons.map(String).reverse();
@@ -22,15 +29,17 @@ export async function render(main, query) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("tr.title")}</h1><p class="lede">${t("tr.lede")}</p></div>
-      <div class="row"><a class="btn" href="${link.networkLeaders()}">${t("nw.global")}</a></div></div>
+      ${modeSwitch("territories")}</div>
     <div class="filters" id="filters"></div>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
-    <div class="grid grid-main-side" style="margin-bottom:16px;align-items:start">
+    <div class="grid grid-main-side territory-grid" style="margin-bottom:16px;align-items:start">
       ${chartCard({ id: "map", title: t("tr.map"), hint: t("tr.map.hint"), tall: true })}
       <section class="card"><div class="card-head"><div><h2 id="list-title"></h2><div class="hint" id="list-hint"></div></div></div>
-        <div id="list"></div></section>
+        <div id="list" class="territory-table"></div>
+        <div class="card-body"><p class="muted" style="font-size:12.5px;margin:0" id="def"></p></div></section>
     </div>`;
   bindChartCard(main, "map");
+  bindModeSwitch(main);
 
   function drawFilters() {
     $("#filters").innerHTML = html`
@@ -44,10 +53,29 @@ export async function render(main, query) {
     $$('[data-seg="measure"]').forEach((b) => b.addEventListener("click", () => { measure = b.dataset.value; drawFilters(); draw(); }));
   }
 
-  /** Per place: { code, comps, runners }; plus what could not be placed at this level. */
-  function tally() {
+  /** Map(place code -> number of competitors registered there). */
+  async function registered(terrain) {
+    const by = new Map();
+    const add = (club) => {
+      const p = data.clubParts(club);
+      const region = DEPT_REGION[p.dept] || regionOf(p.ligue);
+      const code = level === "dept" ? (DEPT_REGION[p.dept] ? p.dept : null) : region;
+      if (code) by.set(code, (by.get(code) || 0) + 1);
+    };
+    if (season) {
+      const [ranked, attrs] = await Promise.all([data.rankedIn("v2026", terrain, season), data.attrsAt(season)]);
+      for (const lic of ranked) { const a = attrs.get(lic); if (a) add(a[1]); }
+    } else {
+      for (const r of data.runners().list) if ((terrain === "For" ? r.nFor : r.nSpr) > 0) add(r.club);
+    }
+    return by;
+  }
+
+  /** Per place: { code, comps, runners, ratio }; plus what could not be placed at this level. */
+  async function tally() {
     const terrain = store.get().terrain;
     const by = new Map();
+    const get = (code) => { if (!by.has(code)) by.set(code, { code, comps: 0, runners: 0, ratio: null }); return by.get(code); };
     let unplaced = 0, total = 0;
     for (const c of data.comps().values()) {
       if (c.terrain !== terrain || (season && String(c.season) !== season)) continue;
@@ -55,50 +83,51 @@ export async function render(main, query) {
       const p = placeOf(c.location, c.organizer);
       const code = level === "dept" ? p.dept : p.region;
       if (!code) { unplaced++; continue; }
-      const g = by.get(code) || { code, comps: 0, runners: 0 };
-      g.comps++;
-      g.runners += c.n || 0;
-      by.set(code, g);
+      get(code).comps++;
     }
-    return { rows: [...by.values()], unplaced, total };
+    for (const [code, n] of await registered(terrain)) get(code).runners = n;
+    const rows = [...by.values()];
+    for (const g of rows) g.ratio = g.runners ? (RATIO_X * g.comps) / g.runners : null;
+    return { rows, unplaced, total };
   }
 
   const placeName = (code) => (level === "dept" ? data.deptName(code) : data.ligueName(code));
+  const show = (g, m) => (g[m] == null ? "—" : fmt(g[m], digitsOf(m)));
 
   let token = 0;
   async function draw() {
     const my = ++token;
     replaceQuery({ vue: "territoires", niveau: level === "region" ? null : level, par: measure === "comps" ? null : measure,
       s: season ? (season === seasons[0] ? null : season) : "all" });
-    const { rows, unplaced, total } = tally();
+    const { rows, unplaced, total } = await tally();
+    if (my !== token) return;
     const val = (g) => g[measure];
-    rows.sort((a, b) => val(b) - val(a) || a.code.localeCompare(b.code));
+    rows.sort((a, b) => (val(b) ?? -1) - (val(a) ?? -1) || a.code.localeCompare(b.code));
     let pos = 0, last = null;
-    rows.forEach((g, i) => { if (val(g) !== last) { pos = i + 1; last = val(g); } g.rank = pos; });
-    const sum = rows.reduce((s, g) => s + val(g), 0);
-    const top = rows[0];
+    rows.forEach((g, i) => { if (val(g) !== last) { pos = i + 1; last = val(g); } g.rank = val(g) == null ? null : pos; });
+    const top = rows.find((g) => val(g) != null);
     const period = season ? `${t("f.season")} ${season}` : t("nw.allSeasons");
     $("#tiles").innerHTML = html`
       ${tile(t("tr.m.comps"), fmt(total), period)}
       ${tile(t(`tr.count.${level}`), fmt(rows.length), t(`terrain.${store.get().terrain}`))}
-      ${tile(`1er · ${t(`tr.m.${measure}`)}`, top ? fmt(val(top)) : "—", top ? placeName(top.code) : "")}
+      ${tile(`1er · ${t(`tr.m.${measure}`)}`, top ? show(top, measure) : "—", top ? placeName(top.code) : "")}
       ${tile(t("tr.unplaced"), fmt(unplaced), t(`tr.unplaced.${level}`))}`;
     $("#list-title").textContent = `${t(`tr.by.${level}`)} · ${t(`tr.m.${measure}`)}`;
     $("#list-hint").textContent = period;
+    $("#def").textContent = t(season ? "tr.def.season" : "tr.def.all");
 
+    const num = (m, title) => ({
+      key: m, label: html`<span title="${title}">${t(`tr.col.${m}`)}</span>`, align: "r", cls: "num", sort: (g) => g[m],
+      render: (g) => (m === measure ? html`<b>${show(g, m)}</b>` : show(g, m)),
+    });
     dataTable($("#list"), {
       rows, pageSize: level === "dept" ? 25 : "all", sortKey: "rank", sortDir: 1, emptyText: t("tr.none"),
       columns: [
-        { key: "rank", label: t("rk.col.rank"), cls: "rank num", sort: (g) => g.rank, defaultDir: 1 },
-        { key: "code", label: t("col.code"), cls: "num dim", sort: (g) => g.code, defaultDir: 1, render: (g) => g.code },
+        { key: "rank", label: "#", cls: "rank num", sort: (g) => g.rank, defaultDir: 1, render: (g) => (g.rank == null ? "—" : g.rank) },
         { key: "name", label: t(`tr.level.${level}`), sort: (g) => placeName(g.code), defaultDir: 1,
-          render: (g) => html`<span class="name">${placeName(g.code)}</span>` },
-        ...(level === "dept" ? [{ key: "lg", label: t("f.ligue"), sort: (g) => data.ligueName(DEPT_REGION[g.code]), defaultDir: 1,
-          render: (g) => html`<span class="dim">${data.ligueName(DEPT_REGION[g.code])}</span>` }] : []),
-        ...MEASURES.map((m) => ({ key: m, label: t(`tr.m.${m}`), align: "r", cls: "num", sort: (g) => g[m],
-          render: (g) => (m === measure ? html`<b>${fmt(g[m])}</b>` : fmt(g[m])) })),
-        { key: "share", label: t("tr.share"), align: "r", cls: "num dim", sort: (g) => val(g),
-          render: (g) => `${fmt(sum ? 100 * val(g) / sum : 0, 1)} %` },
+          render: (g) => html`<span class="name">${placeName(g.code)}</span>${level === "dept"
+            ? html`<div class="dim place-sub">${g.code} · ${data.ligueName(DEPT_REGION[g.code])}</div>` : html`<span class="dim"> ${g.code}</span>`}` },
+        num("comps", t("tr.m.comps")), num("runners", t("tr.m.runners")), num("ratio", t("tr.m.ratio")),
       ],
     });
 
@@ -107,19 +136,21 @@ export async function render(main, query) {
     if (my !== token) return;
     const byCode = new Map(rows.map((g) => [g.code, g]));
     const values = new Map();
-    for (const g of rows) for (const f of featuresOf(g.code)) values.set(f, val(g));
+    for (const g of rows) if (val(g) != null) for (const f of featuresOf(g.code)) values.set(f, val(g));
     $("#map-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t(`tr.level.${level}`)}</th>
-      <th class="r">${t(`tr.m.${measure}`)}</th></tr></thead><tbody>${rows.map((g) => html`<tr><td>${g.code} · ${placeName(g.code)}</td>
-      <td class="r num">${fmt(val(g))}</td></tr>`)}</tbody></table>`;
+      <th class="r">${t("tr.col.comps")}</th><th class="r">${t("tr.col.runners")}</th><th class="r">${t("tr.col.ratio")}</th></tr></thead>
+      <tbody>${rows.map((g) => html`<tr><td>${g.code} · ${placeName(g.code)}</td>
+      <td class="r num">${show(g, "comps")}</td><td class="r num">${show(g, "runners")}</td><td class="r num">${show(g, "ratio")}</td></tr>`)}</tbody></table>`;
     if (!map) { $("#map").innerHTML = html`<div class="empty">${t("tr.noMap")}</div>`; return; }
     const code = (f) => (f === "2A" || f === "2B" ? "20" : f);
     mapChart($("#map"), {
-      map, values, name: t(`tr.m.${measure}`),
+      map, values, name: t(`tr.m.${measure}`), digits: digitsOf(measure),
       tip: (f) => {
         const g = byCode.get(code(f));
         return html`<b>${placeName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>
-          <b>${fmt(g?.comps || 0)}</b> ${t("tr.m.comps").toLowerCase()} · ${fmt(g?.runners || 0)} ${t("tr.m.runners").toLowerCase()}
-          ${g ? html`<br><span style="color:var(--ink-3)">${ord(g.rank)} ${t(`tr.of.${level}`)}</span>` : ""}`;
+          <b>${fmt(g?.comps || 0)}</b> ${t("tr.m.comps").toLowerCase()} · <b>${fmt(g?.runners || 0)}</b> ${t("tr.m.runners").toLowerCase()}
+          <br>${g ? show(g, "ratio") : "—"} ${t("tr.m.ratio").toLowerCase()}
+          ${g && g.rank != null ? html`<br><span style="color:var(--ink-3)">${ord(g.rank)} ${t(`tr.of.${level}`)} · ${t(`tr.m.${measure}`).toLowerCase()}</span>` : ""}`;
       },
     });
   }

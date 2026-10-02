@@ -14,6 +14,7 @@ import {
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
 import { link, replaceQuery } from "../app.js";
+import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
 const surname = (nom) => {
@@ -101,8 +102,7 @@ async function ego(main, lic, query) {
   main.innerHTML = html`
     <div class="crumbs"><a href="${link.runner(lic)}">${name}</a><span>›</span><span>${t("nw.title")}</span></div>
     <div class="page-head"><div><h1>${t("nw.title")} · ${name}</h1><p class="lede">${t("nw.lede.ego")}</p></div>
-      <div class="row"><a class="btn" href="${link.networkLeaders()}">${t("nw.global")}</a>
-        <a class="btn" href="${link.territories()}">${t("tr.title")}</a></div></div>
+      ${modeSwitch("ego")}</div>
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}
       <a class="btn btn-sm" href="${link.runner(lic)}">${t("pg.toRunner")}</a>
@@ -117,6 +117,7 @@ async function ego(main, lic, query) {
     <section class="card"><div class="card-head"><h2>${t("nw.list")}</h2></div><div id="list"></div></section>`;
   bindChartCard(main, "net");
   bindRunnerSearch($("#nw-search"), { onPick: (l) => { location.hash = link.network(l); } });
+  bindModeSwitch(main);
 
   if (!list.length) {
     $("#filters").innerHTML = html`${periodSelect(season)}`;
@@ -251,7 +252,7 @@ async function global(main, query) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nw.title")}</h1><p class="lede">${t("nw.lede.global")}</p></div>
-      <div class="row"><a class="btn" href="${link.territories()}">${t("tr.title")}</a></div></div>
+      ${modeSwitch("leaders")}</div>
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}<span class="muted" style="font-size:13.5px">${t("nw.searchHint")}</span>
     </div></section>
@@ -260,6 +261,7 @@ async function global(main, query) {
     <section class="card"><div class="card-head"><h2>${t("nw.nodes")}</h2></div><div id="list"></div></section>`;
   bindChartCard(main, "net");
   bindRunnerSearch($("#nw-search"), { onPick: (l) => { location.hash = link.network(l); } });
+  bindModeSwitch(main);
   $("#net").style.height = "620px";
 
   function drawFilters() {

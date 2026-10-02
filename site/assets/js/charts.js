@@ -230,16 +230,16 @@ export function columnChart(el, { categories, series, yName, digits = 0 }) {
  * features without a value stay neutral. Sequential ramp --q1…--q5, light to dark.
  * tip(code) returns the tooltip HTML of a feature.
  */
-export function mapChart(el, { map, values, tip, onClick, name = "" }) {
+export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0 }) {
   const th = theme();
   const c = init(el);
-  const max = Math.max(1, ...values.values());
+  const max = Math.max(digits ? 0.1 : 1, ...values.values());
   c.setOption({
     animationDuration: 300,
     tooltip: baseTooltip(th, { trigger: "item", formatter: (p) => tip(p.name) }),
     visualMap: {
       type: "continuous", min: 0, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
-      itemWidth: 10, itemHeight: 160, text: [fmt(max), "0"], textStyle: { color: th.ink3, fontSize: 12 },
+      itemWidth: 10, itemHeight: 160, text: [fmt(max, digits), "0"], textStyle: { color: th.ink3, fontSize: 12 },
       inRange: { color: [1, 2, 3, 4, 5].map((i) => css(`--q${i}`)) },
     },
     series: [{

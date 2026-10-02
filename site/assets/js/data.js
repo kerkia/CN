@@ -127,6 +127,11 @@ export async function attrsAt(year) {
   const a = await getJson(`snap/attr_${year}.json`);
   return new Map(Object.entries(a || {}));
 }
+/** Licences ranked (with a CN) in at least one month of `year`, for a method and discipline. */
+export async function rankedIn(method, terrain, year) {
+  const snap = await getJson(`snap/${method}_${snapTerrain(method, terrain, Number(year))}_${year}.json`);
+  return new Set((snap?.rows || []).map((r) => String(r[0])));
+}
 /** Month-end a year before, if it exists in the archive. */
 export function monthYearBefore(monthIso) {
   const y = Number(monthIso.slice(0, 4)) - 1;
