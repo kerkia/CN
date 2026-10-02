@@ -25,5 +25,7 @@ REGISTRATION_OPEN = "1"
 # Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day
 DAILY_EMAIL_LIMIT = "90"
 MONTHLY_EMAIL_LIMIT = "2900"
+# of the day's quota, this many e-mails are kept for account mails (confirmation, reset): digests stop short of it
+ACCOUNT_EMAIL_RESERVE = "20"
 # the free Workers plan gives ~10 ms of CPU per request: a light PBKDF2 (the pepper makes up for it)
 PBKDF2_ITER = "20000"

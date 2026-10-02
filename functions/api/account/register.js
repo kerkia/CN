@@ -11,15 +11,20 @@ import { verifyMail } from "../../_lib/templates.js";
 
 const DAY = 86400e3;
 
-/** A fresh e-mail confirmation link for `user`; returns "sent" | "queued". */
+/**
+ * A fresh e-mail confirmation link for `user`; returns "sent" | "queued". The link is valid for 24 h from the
+ * moment the e-mail is sent (the mailer resets the expiry then), and replaces an older one still waiting.
+ */
 export async function sendVerification(env, user) {
-  const token = newToken();
+  const token = newToken(), hash = await sha256hex(token);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM tokens WHERE user_id = ? AND kind = 'verify'").bind(user.id),
+    env.DB.prepare("DELETE FROM mail_queue WHERE to_email = ? AND kind = 'verify'").bind(user.email),
     env.DB.prepare("INSERT INTO tokens (token_hash, user_id, kind, expires_at) VALUES (?, ?, 'verify', ?)")
-      .bind(await sha256hex(token), user.id, Date.now() + DAY),
+      .bind(hash, user.id, Date.now() + DAY),
   ]);
-  return sendOrQueue(env, { to: user.email, ...verifyMail(env, token, user.first_name), kind: "verify", priority: 1 });
+  return sendOrQueue(env, { to: user.email, ...verifyMail(env, token, user.first_name), kind: "verify", priority: 1,
+    token: { hash, ttl: DAY } });
 }
 
 export async function onRequestPost({ request, env }) {

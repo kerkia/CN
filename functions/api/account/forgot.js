@@ -11,13 +11,16 @@ export async function onRequestPost({ request, env }) {
   if (email && (await allow(env, `forgot:${email}`, 3, 3600)) && (await allow(env, `forgotip:${clientIp(request)}`, 10, 3600))) {
     const u = await env.DB.prepare("SELECT * FROM users WHERE email = ? AND status = 'active'").bind(email).first();
     if (u) {
-      const token = newToken();
+      // the link is valid for 1 h from the moment the e-mail is SENT (the mailer resets the expiry then, so a
+      // message that had to wait for the quota is still good); a request replaces an older one still waiting
+      const token = newToken(), hash = await sha256hex(token);
       await env.DB.batch([
         env.DB.prepare("DELETE FROM tokens WHERE user_id = ? AND kind = 'reset'").bind(u.id),
+        env.DB.prepare("DELETE FROM mail_queue WHERE to_email = ? AND kind = 'reset'").bind(u.email),
         env.DB.prepare("INSERT INTO tokens (token_hash, user_id, kind, expires_at) VALUES (?, ?, 'reset', ?)")
-          .bind(await sha256hex(token), u.id, Date.now() + 3600e3),
+          .bind(hash, u.id, Date.now() + 3600e3),
       ]);
-      await sendOrQueue(env, { to: u.email, ...resetMail(env, token), kind: "reset", priority: 1 });
+      await sendOrQueue(env, { to: u.email, ...resetMail(env, token), kind: "reset", priority: 1, token: { hash, ttl: 3600e3 } });
     }
   }
   return json({ ok: true });
