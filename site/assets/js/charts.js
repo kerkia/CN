@@ -236,7 +236,7 @@ export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0 
   const max = Math.max(digits ? 0.1 : 1, ...values.values());
   c.setOption({
     animationDuration: 300,
-    tooltip: baseTooltip(th, { trigger: "item", formatter: (p) => tip(p.name) }),
+    tooltip: baseTooltip(th, { trigger: "item", triggerOn: "mousemove|click", confine: true, formatter: (p) => tip(p.name) }),
     visualMap: {
       type: "continuous", min: 0, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
       itemWidth: 10, itemHeight: 160, text: [fmt(max, digits), "0"], textStyle: { color: th.ink3, fontSize: 12 },

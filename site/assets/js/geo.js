@@ -1,10 +1,8 @@
-// Where competitions happen. A competition is placed by its lieu, which ends
-// with the département number ("Launaguet (31)"). Failing that (most 2010
-// entries have no lieu), by its organiser: a club ("6803 - …": the first two
-// digits of the club number), a département committee ("63 - Puy-de-Dôme") or
-// a ligue ("IF - …", which gives the region only). Each département belongs to
-// one region; ligues are shown as today's regions, the pre-2016 ligues folding
-// into the one that succeeded them.
+// Where competitions happen. A competition is placed by its organiser alone: a club
+// ("6803 - …": the first two digits of the club number), a département committee
+// ("63 - Puy-de-Dôme") or a ligue ("IF - …", which gives the region only). Each
+// département belongs to one region; ligues are shown as today's regions, the
+// pre-2016 ligues folding into the one that succeeded them.
 
 // today's ligue of each département (the 2016 regions, plus the overseas ligues)
 const REGION_DEPTS = {
@@ -35,10 +33,8 @@ const SUCCESSOR = {
 };
 export const regionOf = (ligue) => SUCCESSOR[ligue] || ligue;
 
-/** { dept, region } of a competition from its lieu, else its organiser; either may be null. */
-export function placeOf(location, organizer) {
-  const l = /\(\s*(\d{2})\s*\)\s*$/.exec(location || "");
-  if (l && DEPT_REGION[l[1]]) return { dept: l[1], region: DEPT_REGION[l[1]] };
+/** { dept, region } of a competition from its organiser; either may be null. */
+export function placeOf(organizer) {
   const o = organizer || "";
   let m = /^(\d{2})\d{2} - /.exec(o) || /^(\d{2}) - /.exec(o);
   if (m) return { dept: m[1], region: DEPT_REGION[m[1]] || null };

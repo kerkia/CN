@@ -1,4 +1,4 @@
-// Réseau · Territoires: for each ligue (region) or département, over one season or all of
+// Réseau · Territoires: for each ligue (region) or département (of the competition's organiser), over one season or all of
 // them, in the chosen discipline: the competitions hosted there, the competitors registered
 // there, and the competitions per competitor — as a map (coloured by any of the three) and a table.
 //
@@ -80,7 +80,7 @@ export async function render(main, query) {
     for (const c of data.comps().values()) {
       if (c.terrain !== terrain || (season && String(c.season) !== season)) continue;
       total++;
-      const p = placeOf(c.location, c.organizer);
+      const p = placeOf(c.organizer);
       const code = level === "dept" ? p.dept : p.region;
       if (!code) { unplaced++; continue; }
       get(code).comps++;
@@ -147,10 +147,10 @@ export async function render(main, query) {
       map, values, name: t(`tr.m.${measure}`), digits: digitsOf(measure),
       tip: (f) => {
         const g = byCode.get(code(f));
-        return html`<b>${placeName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>
+        return String(html`<b>${placeName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>
           <b>${fmt(g?.comps || 0)}</b> ${t("tr.m.comps").toLowerCase()} · <b>${fmt(g?.runners || 0)}</b> ${t("tr.m.runners").toLowerCase()}
           <br>${g ? show(g, "ratio") : "—"} ${t("tr.m.ratio").toLowerCase()}
-          ${g && g.rank != null ? html`<br><span style="color:var(--ink-3)">${ord(g.rank)} ${t(`tr.of.${level}`)} · ${t(`tr.m.${measure}`).toLowerCase()}</span>` : ""}`;
+          ${g && g.rank != null ? html`<br><span style="color:var(--ink-3)">${ord(g.rank)} ${t(`tr.of.${level}`)} · ${t(`tr.m.${measure}`).toLowerCase()}</span>` : ""}`);
       },
     });
   }
