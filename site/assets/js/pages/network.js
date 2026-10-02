@@ -216,7 +216,7 @@ async function ego(main, lic, query) {
   }
 
   dataTable($("#list"), {
-    rows, pageSize: "all", sortKey: "shared", sortDir: -1,
+    rows, sortKey: "shared", sortDir: -1,
     columns: [
       { key: "name", label: t("rk.col.name"), sort: (x) => x.name, defaultDir: 1,
         render: (x) => html`<a class="name" href="${link.runner(x.lic)}">${x.name}</a>` },
@@ -343,7 +343,7 @@ async function global(main, query) {
       <td>${x.r.name}</td><td class="num">${clubCode(x.r.club)}</td><td class="r num">${fmt(x.r.cn[method])}</td><td class="r num">${fmt(x.deg)}</td>
       <td>${x.strong ? `${nameOf(x.strong[0])} (${fmt(x.strong[1])})` : "—"}</td></tr>`)}</tbody></table>`;
     dataTable($("#list"), {
-      rows: tbl, pageSize: "all", sortKey: "pos", sortDir: 1,
+      rows: tbl, sortKey: "pos", sortDir: 1,
       columns: [
         { key: "pos", label: "#", cls: "rank num", sort: (x) => x.pos, defaultDir: 1 },
         { key: "name", label: t("rk.col.name"), sort: (x) => x.r.name, defaultDir: 1,

@@ -201,7 +201,7 @@ export async function render(main, { query }) {
     const rows = store.get().clubs.map((c) => ({ c, g: byCode.get(c.code) }));
     $("#sum-hint").textContent = `${baseLabel(sel.base)}${sel.base === "cn" ? ` · ${methodLabel(m0)}` : ` · ${t("cb.last12")}`} · ${fmtDate(month)} · ${t("cm.rankOf")} ${fmt(res.clubs.filter((g) => g.rank).length)} ${t("nav.clubs").toLowerCase()}`;
     dataTable($("#summary"), {
-      rows, pageSize: "all", sortKey: sel.measure, sortDir: -1, emptyText: t("cm.empty"),
+      rows, sortKey: sel.measure, sortDir: -1, emptyText: t("cm.empty"),
       columns: [
         { key: "name", label: t("col.name"), render: (x) => html`<span class="dot" style="background:${raw(slotColor(x.c.slot))};margin-right:7px"></span><a class="name" href="${link.club(x.c.code)}">${clubName(x.c.code)}</a>` },
         ...MEASURES.map((m) => ({
@@ -218,7 +218,7 @@ export async function render(main, { query }) {
     const qn = normalise(pq);
     const rows = res.clubs.filter((g) => g.rank && (!qn || normalise(`${g.code} ${clubName(g.code)}`).includes(qn)));
     dataTable($("#picker"), {
-      rows, pageSize: 15, sortKey: "rank", sortDir: 1,
+      rows, sortKey: "rank", sortDir: 1,
       rowClass: (g) => (store.inClubs(g.code) ? "selected" : ""),
       columns: [
         { key: "sel", label: "", cls: "c", render: (g) => html`<input type="checkbox" data-club="${g.code}" ${raw(store.inClubs(g.code) ? "checked" : "")} aria-label="${clubName(g.code)}">` },

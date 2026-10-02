@@ -179,7 +179,7 @@ export async function render(main, { arg: code, query }) {
       : ranked;
     for (const r of byLic.values()) if (showAll && !members.some((p) => p.lic === r.lic)) list.push(r);
     dataTable($("#roster"), {
-      rows: list, pageSize: 50, sortKey: m0, sortDir: -1,
+      rows: list, sortKey: m0, sortDir: -1,
       columns: [
         { key: "name", label: t("rk.col.name"), sort: (r) => r.name, defaultDir: 1,
           render: (r) => html`<a class="name" href="${link.runner(r.lic, { t: terrain })}">${r.name}</a>` },
@@ -217,7 +217,7 @@ export async function render(main, { arg: code, query }) {
     const rows = win.rows.filter((r) => r[E.club] === code && (eliteMode === "all" || win.cats.has(r[E.cat])))
       .sort((a, b) => (data.comp(b[E.course]).date < data.comp(a[E.course]).date ? -1 : 1) || a[E.rank] - b[E.rank]);
     dataTable($("#elite-list"), {
-      rows, pageSize: 15, sortKey: null, emptyText: t("cl.eliteNone"),
+      rows, sortKey: null, emptyText: t("cl.eliteNone"),
       columns: [
         { key: "d", label: t("col.date"), cls: "num", render: (r) => fmtDate(data.comp(r[E.course]).date, "short") },
         { key: "c", label: t("col.comp"), render: (r) => html`<a href="${link.course(r[E.course], { mode: "club", club: code })}">${data.comp(r[E.course]).title}</a>` },
@@ -261,7 +261,7 @@ export async function render(main, { arg: code, query }) {
     const rows = [...best.values()].sort((a, b) => a.pos - b.pos || (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)
       || who(a.lic).localeCompare(who(b.lic)));
     dataTable($("#week"), {
-      rows, pageSize: 25, sortKey: null, emptyText: t("cl.week.none"),
+      rows, sortKey: null, emptyText: t("cl.week.none"),
       columns: [
         { key: "pos", label: t("col.place"), align: "r", cls: "num",
           render: (x) => html`<b>${ord(x.pos)}</b> <span class="dim">${t(x.inCat ? "cl.week.inCat" : "cl.week.inCirc")}</span>` },

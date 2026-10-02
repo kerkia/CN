@@ -179,7 +179,6 @@ export async function render(main, { query }) {
     month: query.date ? data.monthFor(query.date) : data.latestMonth(),
     sexe: query.sexe || "", cat: query.cat || "", club: query.club || "", dept: query.dept || "",
     ligue: query.ligue || "", q: query.q || "", podium: query.podium === "1",
-    size: query.size === "all" ? "all" : Number(query.size) || st.pageSize || 50,
   };
   const terrain = st.terrain;
   const me = auth.session();
@@ -191,7 +190,7 @@ export async function render(main, { query }) {
     replaceQuery({
       date: f.month.slice(0, 7) === data.latestMonth().slice(0, 7) ? null : f.month.slice(0, 7),
       sort: sortMethod === store.get().methods[0] ? null : sortMethod, sexe: f.sexe, cat: f.cat, club: f.club, dept: f.dept,
-      ligue: f.ligue, q: f.q, podium: f.podium ? "1" : null, size: f.size === 50 ? null : f.size,
+      ligue: f.ligue, q: f.q, podium: f.podium ? "1" : null,
     });
   }
 
@@ -211,10 +210,6 @@ export async function render(main, { query }) {
       <section class="card" id="list-card">
         <div class="card-head">
           <div><h2 id="list-title"></h2><div class="hint">${t("rk.sortHint")}</div></div>
-          <div class="row"><label class="field" style="flex-direction:row;align-items:center;gap:8px">
-            <span>${t("f.pagesize")}</span>
-            <select id="f-size">${[25, 50, 100, "all"].map((n) => html`<option value="${n}" ${raw(String(n) === String(f.size) ? "selected" : "")}>${n === "all" ? t("page.allRows") : n}</option>`)}</select>
-          </label></div>
         </div>
         <div id="list"></div>
       </section>
@@ -330,8 +325,7 @@ export async function render(main, { query }) {
         render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "" },
     ];
     const opts = {
-      columns: cols, rows: ranked, pageSize: f.size, sortKey: "pos", sortDir: 1,
-      onShowAll: () => setSize("all"),
+      columns: cols, rows: ranked, sortKey: "pos", sortDir: 1,
       // clicking a method's column ranks the list by that method
       onSort: (key) => {
         if (!key.startsWith("cn_")) return true;
@@ -361,7 +355,7 @@ export async function render(main, { query }) {
       ? `${methodShort(sortMethod)} · ${fmtDate(prevMonth, "month")} → ${fmtDate(f.month, "month")}` : "";
     const prog = rows.filter((r) => r.delta[sortMethod] != null).sort((a, b) => b.delta[sortMethod] - a.delta[sortMethod]).slice(0, 10);
     dataTable($("#prog"), {
-      rows: prog, pageSize: "all", sortKey: "d", sortDir: -1, emptyText: t("rk.noProgress"),
+      rows: prog, sortKey: "d", sortDir: -1, emptyText: t("rk.noProgress"),
       rowClass: (r) => (r.lic === me?.lic ? "me" : ""),
       columns: [
         { key: "name", label: t("rk.col.name"), render: (r) => html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>` },
@@ -381,19 +375,8 @@ export async function render(main, { query }) {
     const n = store.get().compare.length;
     $("#go-compare").textContent = n ? `${t("rk.compare")} (${n})` : t("rk.compare");
   }
-  // the page-size choice is remembered, so "all" stays on once chosen
-  function setSize(size) {
-    f.size = size;
-    $("#f-size").value = String(size);
-    store.set({ pageSize: size });
-    syncUrl();
-  }
   $("#find-me").addEventListener("click", () => {
     if (table?.goTo((r) => r.lic === me?.lic)) $("#list tr.me")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-  $("#f-size").addEventListener("change", (e) => {
-    setSize(e.target.value === "all" ? "all" : Number(e.target.value));
-    table?.setPageSize(f.size);
   });
 
   await reload();

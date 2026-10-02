@@ -121,7 +121,7 @@ export async function render(main, query) {
       render: (g) => (m === measure ? html`<b>${show(g, m)}</b>` : show(g, m)),
     });
     dataTable($("#list"), {
-      rows, pageSize: level === "dept" ? 25 : "all", sortKey: "rank", sortDir: 1, emptyText: t("tr.none"),
+      rows, sortKey: "rank", sortDir: 1, emptyText: t("tr.none"),
       columns: [
         { key: "rank", label: "#", cls: "rank num", sort: (g) => g.rank, defaultDir: 1, render: (g) => (g.rank == null ? "—" : g.rank) },
         { key: "name", label: t(`tr.level.${level}`), sort: (g) => placeName(g.code), defaultDir: 1,
@@ -144,7 +144,7 @@ export async function render(main, query) {
     if (!map) { $("#map").innerHTML = html`<div class="empty">${t("tr.noMap")}</div>`; return; }
     const code = (f) => (f === "2A" || f === "2B" ? "20" : f);
     mapChart($("#map"), {
-      map, values, name: t(`tr.m.${measure}`), digits: digitsOf(measure),
+      map, values, name: t(`tr.m.${measure}`), digits: digitsOf(measure), traffic: true,
       tip: (f) => {
         const g = byCode.get(code(f));
         return String(html`<b>${placeName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>

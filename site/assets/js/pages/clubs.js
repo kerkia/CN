@@ -144,7 +144,7 @@ export async function render(main, { query }) {
     $("#tiles").innerHTML = html`${ms.map(tl)}`;
     $("#clubs-title").textContent = `${fmt(shown.length)} ${t("cm.clubsRanked")} — ${measureLabel(sel.measure, sel.base)} · ${baseLabel(sel.base)}`;
     table = dataTable($("#clubs"), {
-      rows: shown, pageSize: 50, sortKey: "rank", sortDir: 1, onShowAll: () => {},
+      rows: shown, sortKey: "rank", sortDir: 1,
       rowClass: (g) => [store.inClubs(g.code) ? "selected" : "", g.code === mine ? "me" : ""].join(" "),
       columns: [
         { key: "sel", label: "", cls: "c", render: (g) => html`<input type="checkbox" data-club="${g.code}" ${raw(store.inClubs(g.code) ? "checked" : "")} aria-label="${clubName(g.code)}">` },
@@ -164,7 +164,7 @@ export async function render(main, { query }) {
       },
     });
     dataTable($("#ligues"), {
-      rows: res.ligues.filter((g) => g.rank), pageSize: "all", sortKey: "rank", sortDir: 1,
+      rows: res.ligues.filter((g) => g.rank), sortKey: "rank", sortDir: 1,
       columns: [
         { key: "rank", label: t("rk.col.rank"), cls: "rank num", sort: (g) => g.rank, defaultDir: 1, render: (g) => g.rank ?? "" },
         { key: "name", label: t("f.ligue"), sort: (g) => data.ligueName(g.code), defaultDir: 1,

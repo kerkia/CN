@@ -236,7 +236,7 @@ export async function render(main, { arg, query }) {
       return html`<span class="tag">${t(histMethod === "v2026" ? "rn.ev.recalYear" : "rn.ev.recalMonth")}</span>`;
     };
     dataTable($("#cnhist"), {
-      rows: ev, pageSize: 25, sortKey: "date", sortDir: -1,
+      rows: ev, sortKey: "date", sortDir: -1,
       emptyText: t("rn.noRaces"),
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date) },
@@ -424,7 +424,7 @@ export async function render(main, { arg, query }) {
       })),
       { key: "ext", label: "", render: (x) => html`<a class="dim" href="${data.officialCircuitUrl(x.r[R.cid])}" target="_blank" rel="noopener" title="${t("rn.officialFfco")}">↗</a>` },
     ];
-    dataTable($("#history"), { columns: cols, rows, pageSize: 25, sortKey: "date", sortDir: -1 });
+    dataTable($("#history"), { columns: cols, rows, sortKey: "date", sortDir: -1 });
   }
   $("#season").addEventListener("change", drawHistory);
 
@@ -438,7 +438,7 @@ export async function render(main, { arg, query }) {
     }
     const rows = [...by.entries()].map(([y, rs]) => ({ y, rs }));
     dataTable($("#seasons"), {
-      rows, pageSize: 50, sortKey: "y", sortDir: -1,
+      rows, sortKey: "y", sortDir: -1,
       columns: [
         { key: "y", label: t("f.season"), sort: (x) => x.y },
         { key: "n", label: t("col.races"), align: "r", cls: "num", sort: (x) => x.rs.length, render: (x) => fmt(x.rs.length) },

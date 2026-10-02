@@ -105,12 +105,15 @@ export function legend(items) {
 }
 
 /**
- * Sortable, paginated table over an array of row objects.
+ * Sortable table over an array of row objects, in a vertical scroll area with a sticky header
+ * (no pages). Up to ALL_BELOW rows are all in the page, so the browser's find works; a longer
+ * list (the whole ranking) shows its first rows and loads the next ones as the user scrolls.
  * columns: [{ key, label, align, sort: (row) => value, render: (row) => html, cls }]
  */
-export function dataTable(container, { columns, rows, pageSize = 50, sortKey, sortDir = -1,
-  rowClass, onRender, emptyText = "—", caption, onShowAll, onSort }) {
-  let key = sortKey, dir = sortDir, page = 0;
+const ALL_BELOW = 2500, CHUNK = 400;
+export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
+  rowClass, onRender, emptyText = "—", caption, onSort, maxHeight }) {
+  let key = sortKey, dir = sortDir, all = [], shown = 0;
   function sorted() {
     const col = columns.find((c) => c.key === key);
     if (!col || !col.sort) return rows;
@@ -122,58 +125,59 @@ export function dataTable(container, { columns, rows, pageSize = 50, sortKey, so
       return (x > y ? 1 : x < y ? -1 : 0) * dir;
     });
   }
+  const rowHtml = (r, i) => html`<tr class="${rowClass ? rowClass(r) : ""}">
+    ${columns.map((c) => html`<td class="${c.align || ""} ${c.cls || ""}">${c.render ? c.render(r, i) : r[c.key]}</td>`)}</tr>`;
+  const status = () => (shown < all.length
+    ? `${fmt(shown)} / ${fmt(all.length)} — faites défiler pour afficher la suite` : "");
+
+  /** Append the next rows (up to index `upTo` if given). */
+  function more(upTo) {
+    if (shown >= all.length) return;
+    const end = Math.min(all.length, Math.max(upTo ?? 0, shown + CHUNK));
+    const tmp = document.createElement("tbody");
+    tmp.innerHTML = all.slice(shown, end).map((r, k) => rowHtml(r, shown + k)).join("");
+    onRender?.(tmp, all.slice(shown, end));              // bind the new rows only
+    $("tbody", container).append(...tmp.children);
+    shown = end;
+    $(".table-more", container).textContent = status();
+  }
+
   function draw() {
-    const all = sorted();
-    const size = pageSize === "all" ? all.length || 1 : pageSize;
-    const pages = Math.max(1, Math.ceil(all.length / size));
-    page = Math.min(page, pages - 1);
-    const slice = all.slice(page * size, page * size + size);
+    all = sorted();
+    shown = all.length <= ALL_BELOW ? all.length : CHUNK;
     container.innerHTML = html`
-      <div class="table-wrap">
+      <div class="table-wrap table-scroll" ${raw(maxHeight ? `style="--table-max:${maxHeight}"` : "")}>
         <table class="data">
           ${caption ? html`<caption class="sr-only">${caption}</caption>` : ""}
           <thead><tr>${columns.map((c) => html`<th scope="col" class="${c.align || ""} ${c.sort ? "sortable" : ""} ${c.cls || ""}"
               data-key="${c.key}" ${raw(c.sort ? `aria-sort="${key === c.key ? (dir > 0 ? "ascending" : "descending") : "none"}"` : "")}>
               ${c.label}${key === c.key ? html`<span class="arrow">${dir > 0 ? "▲" : "▼"}</span>` : ""}</th>`)}</tr></thead>
-          <tbody>${slice.length ? slice.map((r, i) => html`<tr class="${rowClass ? rowClass(r) : ""}">
-              ${columns.map((c) => html`<td class="${c.align || ""} ${c.cls || ""}">${c.render ? c.render(r, page * size + i) : r[c.key]}</td>`)}</tr>`)
+          <tbody>${all.length ? all.slice(0, shown).map((r, i) => rowHtml(r, i))
             : html`<tr><td colspan="${columns.length}" class="empty">${emptyText}</td></tr>`}</tbody>
         </table>
       </div>
-      ${pages > 1 ? html`<div class="pager">
-        <span class="muted num">${fmt(page * size + 1)}–${fmt(Math.min(all.length, (page + 1) * size))} ${t("page.of")} ${fmt(all.length)}</span>
-        <div class="pages">
-          <button type="button" class="btn btn-sm" data-page="prev" ${raw(page === 0 ? "disabled" : "")}>${t("page.prev")}</button>
-          <span class="num muted">${page + 1} / ${pages}</span>
-          <button type="button" class="btn btn-sm" data-page="next" ${raw(page >= pages - 1 ? "disabled" : "")}>${t("page.next")}</button>
-          ${onShowAll ? html`<button type="button" class="btn btn-sm" data-page="all">${t("page.all")} (${fmt(all.length)})</button>` : ""}
-        </div></div>` : ""}`;
+      <div class="table-more muted">${status()}</div>`;
     $$("th.sortable", container).forEach((th) => th.addEventListener("click", () => {
       if (key === th.dataset.key) dir = -dir; else { key = th.dataset.key; dir = columns.find((c) => c.key === key).defaultDir || -1; }
       if (onSort?.(key, dir) === false) return;   // the page took over (e.g. re-ranked)
       draw();
     }));
-    $$("[data-page]", container).forEach((b) => b.addEventListener("click", () => {
-      if (b.dataset.page === "all") { pageSize = "all"; page = 0; draw(); onShowAll?.(); return; }
-      page += b.dataset.page === "next" ? 1 : -1;
-      draw();
-      container.scrollIntoView({ block: "nearest" });
-    }));
-    onRender?.(container, slice);
+    const wrap = $(".table-scroll", container);
+    wrap.addEventListener("scroll", () => {
+      if (shown < all.length && wrap.scrollTop + wrap.clientHeight > wrap.scrollHeight - 500) more();
+    });
+    onRender?.(container, all.slice(0, shown));
   }
   draw();
   return {
-    update(newRows) { rows = newRows; page = 0; draw(); },
-    /** Show the page holding the first row matching `pred`; false if absent. */
+    update(newRows) { rows = newRows; draw(); },
+    /** Make sure the first row matching `pred` is in the page; false if absent. */
     goTo(pred) {
-      const all = sorted();
       const i = all.findIndex(pred);
       if (i < 0) return false;
-      page = pageSize === "all" ? 0 : Math.floor(i / pageSize);
-      draw();
+      if (i >= shown) more(i + 50);
       return true;
     },
-    setPageSize(n) { pageSize = n; page = 0; draw(); },
     redraw: draw,
     rows: () => sorted(),
   };

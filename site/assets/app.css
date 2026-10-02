@@ -608,3 +608,8 @@ table.data tbody tr.me .name { font-weight: 700; }
 .territory-table table.data td.num, .territory-table table.data th.num { white-space: nowrap; }
 .territory-table .place-sub { font-size: 12px; }
 @media (max-width: 1100px) { .territory-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* tables scroll vertically instead of paging; the header stays in view */
+.table-scroll { max-height: var(--table-max, 70vh); overflow: auto; }
+.table-more { padding: 6px 14px; font-size: 12.5px; }
+.table-more:empty { display: none; }

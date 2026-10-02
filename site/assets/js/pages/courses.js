@@ -254,7 +254,7 @@ export async function render(main, { arg, query }) {
       return x.r[C.place] && cn && s ? s - cn : null;
     };
     dataTable($("#res-table"), {
-      rows, pageSize: "all", sortKey: "place", sortDir: 1, rowClass: (x) => hl(x.r),
+      rows, sortKey: "place", sortDir: 1, rowClass: (x) => hl(x.r),
       columns: [
         { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (x) => x.r[C.place] ?? 1e6,
           render: (x) => (x.r[C.place] ? html`${fmt(st.cats.size ? x.rank : x.r[C.place])}${st.cats.size ? html`<span class="dim"> (${fmt(x.r[C.place])})</span>` : ""}` : statusLabel(x.r[C.status])) },

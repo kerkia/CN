@@ -177,7 +177,7 @@ export async function render(main, { query }) {
         pod: races.filter((r) => r[R.place] && r[R.place] <= 3).length, wins: races.filter((r) => r[R.place] === 1).length };
     });
     dataTable($("#summary"), {
-      rows: items, pageSize: "all", sortKey: "cn0", sortDir: -1,
+      rows: items, sortKey: "cn0", sortDir: -1,
       emptyText: t("cp.empty"),
       columns: [
         { key: "name", label: t("rk.col.name"), render: (x) => html`<span class="dot" style="background:${raw(slotColor(x.c.slot))};margin-right:7px"></span><a href="${link.runner(x.c.lic)}">${nameOf(x.c.lic)}</a>` },
@@ -273,7 +273,7 @@ export async function render(main, { query }) {
       .sort((a, b) => b.cn[m0] - a.cn[m0]);
     rows.forEach((r, i) => { r.pos = i + 1; });
     dataTable($("#picker"), {
-      rows, pageSize: 15, sortKey: "pos", sortDir: 1,
+      rows, sortKey: "pos", sortDir: 1,
       rowClass: (r) => (store.inCompare(r.lic) ? "selected" : ""),
       columns: [
         { key: "sel", label: "", cls: "c", render: (r) => html`<input type="checkbox" data-sel="${r.lic}" ${raw(store.inCompare(r.lic) ? "checked" : "")} aria-label="${r.name}">` },

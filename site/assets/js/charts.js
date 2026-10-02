@@ -230,17 +230,20 @@ export function columnChart(el, { categories, series, yName, digits = 0 }) {
  * features without a value stay neutral. Sequential ramp --q1…--q5, light to dark.
  * tip(code) returns the tooltip HTML of a feature.
  */
-export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0 }) {
+export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0, traffic = false }) {
   const th = theme();
   const c = init(el);
-  const max = Math.max(digits ? 0.1 : 1, ...values.values());
+  // traffic light: red at the smallest value, yellow halfway, green at the largest, linear in between
+  const vals = [...values.values()];
+  const lo = traffic && vals.length ? Math.min(...vals) : 0;
+  const max = traffic ? Math.max(lo + (digits ? 0.1 : 1), ...vals) : Math.max(digits ? 0.1 : 1, ...vals);
   c.setOption({
     animationDuration: 300,
     tooltip: baseTooltip(th, { trigger: "item", triggerOn: "mousemove|click", confine: true, formatter: (p) => tip(p.name) }),
     visualMap: {
-      type: "continuous", min: 0, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
-      itemWidth: 10, itemHeight: 160, text: [fmt(max, digits), "0"], textStyle: { color: th.ink3, fontSize: 12 },
-      inRange: { color: [1, 2, 3, 4, 5].map((i) => css(`--q${i}`)) },
+      type: "continuous", min: lo, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
+      itemWidth: 10, itemHeight: 160, text: [fmt(max, digits), fmt(lo, digits)], textStyle: { color: th.ink3, fontSize: 12 },
+      inRange: { color: traffic ? ["#d64545", "#f0c43c", "#2f9e57"] : [1, 2, 3, 4, 5].map((i) => css(`--q${i}`)) },
     },
     series: [{
       type: "map", map, name, nameProperty: "code", roam: false, selectedMode: false,
