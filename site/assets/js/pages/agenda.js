@@ -51,15 +51,25 @@ export async function render(main, { query }) {
   const groupsPresent = [...new Set(events.map(groupOf).filter(Boolean))]
     .sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
 
-  main.innerHTML = html`
+  main.innerHTML = html`<div class="agenda-page" id="agenda-page">
     <div class="page-head"><div><h1>${t("nav.agenda")}</h1>
       <p class="lede">Les prochaines manifestations de course d'orientation en France, d'après l'agenda de la FFCO
         (mis à jour chaque matin${A.generated ? html`, dernière mise à jour le ${fmtDate(A.generated.slice(0, 10))}` : ""}).</p></div></div>
-    <section class="card agenda-filters" id="filters"></section>
+    <details class="filters-fold" id="fold">
+      <summary><span>Filtres</span><span class="badge" id="fold-badge" hidden></span></summary>
+      <section class="card agenda-filters" id="filters"></section>
+    </details>
     <div class="agenda-layout">
-      <section class="card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
+      <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       <section class="card agenda-detail" id="detail"></section>
-    </div>`;
+    </div></div>`;
+  const page = $("#agenda-page");
+  // filters: always open on a wide screen, folded behind a "Filtres" bar on a phone
+  const phone = window.matchMedia("(max-width: 980px)");
+  const mobile = () => phone.matches;
+  const syncFold = () => { if (!phone.matches) $("#fold").open = true; };
+  syncFold();
+  phone.addEventListener("change", syncFold);
 
   // ---- filtering -------------------------------------------------------------------------------
   function visible() {
@@ -113,9 +123,9 @@ export async function render(main, { query }) {
         <label class="field"><span>et le</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>Spécialité</span><select id="f-spec"><option value="">Toutes</option>
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${s}</option>`)}</select></label>
-        <div class="field"><span>Région</span>${multi("m-regions", regionSummary(),
+        <div class="field field-wide"><span>Région</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
-        <div class="field"><span>Département</span>${multi("m-depts", summary(st.depts.size, allDepts.length, "Tous", "Aucun"),
+        <div class="field field-wide"><span>Département</span>${multi("m-depts", summary(st.depts.size, allDepts.length, "Tous", "Aucun"),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
             ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>
         <button type="button" class="btn btn-sm" id="f-reset">Réinitialiser</button>
@@ -165,29 +175,60 @@ export async function render(main, { query }) {
 
   // ---- table ------------------------------------------------------------------------------------------------
   let shown = [];
+  function activeFilters() {
+    return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, st.from !== today, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0]
+      .filter(Boolean).length;
+  }
   function drawTable() {
     shown = visible();
+    const n = activeFilters();
+    $("#fold-badge").hidden = !n;
+    $("#fold-badge").textContent = n;
     $("#count").textContent = `${fmt(shown.length)} manifestation${shown.length > 1 ? "s" : ""}`;
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>Date</th><th>CN</th><th>Événement</th><th>Lieu</th><th>Type</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
-        <td class="num nowrap">${fmtDate(e.date, "short")}</td>
-        <td>${e.cn ? html`<span class="tag tag-in">oui</span>` : html`<span class="dim">non</span>`}</td>
-        <td>${e.name}${e.cancelled ? html` <span class="tag">annulée</span>` : ""}</td>
-        <td>${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
-        <td class="nowrap">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">Aucune manifestation avec ces critères.</div>`;
+        <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
+        <td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">oui</span></span>` : html`<span class="dim"><span class="m-only">hors CN</span><span class="d-only">non</span></span>`}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">annulée</span>` : ""}</td>
+        <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
+        <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">Aucune manifestation avec ces critères.</div>`;
   }
-  const select = (key, scroll) => {
+  // Wide screen: list and details side by side. Phone: one at a time. Opening an event adds a history
+  // entry, so the phone's own Back button (or the one in the details) returns to the list where it was.
+  let pushed = false, listY = 0;
+  function showDetail(key, scroll) {
     st.selected = key;
     $$("#table tr.selected").forEach((r) => r.classList.remove("selected"));
     const row = key && $(`#table tr[data-key="${CSS.escape(key)}"]`);
     row?.classList.add("selected");
-    if (scroll) row?.scrollIntoView({ block: "center" });
     drawDetail();
-    const e = key && byKey.get(key);
-    replaceQuery({ id: e && e.id != null ? e.id : null });
-    if (key && window.matchMedia("(max-width: 980px)").matches) $("#detail").scrollIntoView({ block: "start" });
-  };
+    page.classList.toggle("detail-open", !!key);
+    if (mobile()) window.scrollTo(0, key ? 0 : listY);
+    else if (key && scroll) row?.scrollIntoView({ block: "center" });
+  }
+  function select(key) {
+    const e = byKey.get(key);
+    if (mobile()) {
+      listY = window.scrollY;
+      pushed = true;
+      location.hash = `#/agenda?id=${encodeURIComponent(key)}`;      // the router calls onQuery below
+    } else {
+      showDetail(key);
+      replaceQuery({ id: e && e.id != null ? e.id : null });
+    }
+  }
+  function back() {
+    if (pushed) { pushed = false; history.back(); }
+    else { history.replaceState(null, "", "#/agenda"); showDetail(null); }
+  }
+  /** The address changed within the page (Back / Forward, or a tap): follow it without redrawing the page. */
+  function onQuery(q) {
+    const k = q.id != null && byKey.has(String(q.id)) ? String(q.id) : null;
+    if (!k) pushed = false;
+    if (k !== st.selected) showDetail(k);
+  }
+  $("#detail").addEventListener("click", (e) => { if (e.target.closest("[data-back]")) back(); });
   $("#table").addEventListener("click", (e) => { const r = e.target.closest("tr[data-key]"); if (r && !e.target.closest("a")) select(r.dataset.key); });
   $("#table").addEventListener("keydown", (e) => {
     const r = e.target.closest("tr[data-key]");
@@ -222,9 +263,11 @@ export async function render(main, { query }) {
   function drawDetail() {
     const e = st.selected && byKey.get(st.selected);
     const box = $("#detail");
+    const backBtn = html`<button type="button" class="btn btn-sm detail-back" data-back>← Liste des manifestations</button>`;
     if (!e) { box.innerHTML = html`<div class="empty">Cliquez sur une manifestation pour en voir le détail.</div>`; return; }
     const region = e.region || (e.dep && regionOfDept.get(e.dep)) || "";
     box.innerHTML = html`
+      <div class="detail-nav">${backBtn}</div>
       <div class="card-head"><div><h2>${e.name}</h2>
         <div class="hint">${longDate(e.date)}${e.cancelled ? " · annulée" : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
@@ -251,6 +294,7 @@ export async function render(main, { query }) {
           ${row("Observations", e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
         ${e.id != null ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">Fiche sur le site de la FFCO ↗</a></p>` : ""}
+        <div class="detail-nav">${backBtn}</div>
       </div>`;
   }
 
@@ -260,7 +304,7 @@ export async function render(main, { query }) {
     // a linked event outside the default filters (past date, other kind) must still be visible
     const e = byKey.get(st.selected);
     if (e && !shown.includes(e)) { st.kinds.add(e.kind); if (e.date < st.from) st.from = e.date; drawFilters(); drawTable(); }
-    select(st.selected, true);
+    showDetail(st.selected, true);
   } else drawDetail();
-  return { title: t("nav.agenda"), cleanup: () => document.removeEventListener("click", closeMulti) };
+  return { title: t("nav.agenda"), onQuery, cleanup: () => { document.removeEventListener("click", closeMulti); phone.removeEventListener("change", syncFold); } };
 }

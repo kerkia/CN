@@ -260,10 +260,13 @@ function renderTray(route) {
 
 // ---- routing ---------------------------------------------------------------
 let current = null;
+let lastRoute = null;
 let token = 0;
 async function route_() {
   if (silent) return;
   const r = parseHash();
+  // a page that follows its own address (the Agenda: list <-> details) is not rebuilt for a change of query
+  if (current?.onQuery && lastRoute === r.route) { current.onQuery(r.query); return; }
   const my = ++token;
   // the gate: logged out, only the home (login) page exists
   const me = auth.session();
@@ -287,6 +290,7 @@ async function route_() {
     const mod = await PAGES[r.route]();
     if (my !== token) return;
     current = (await mod.render(main, r)) || null;
+    lastRoute = r.route;
     document.title = (current?.title ? current.title + " — " : "") + SITE;
   } catch (e) {
     console.error(e);
