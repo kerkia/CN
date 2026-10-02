@@ -137,15 +137,16 @@ export async function render(main, { arg, query }) {
     const { rows } = await loadRanking(methods, terrain, month);
     const me = rows.find((r) => r.lic === lic);
     const cat = me?.cat;
-    const tiles = methods.map((m) => {
+    // for each method: the current CN, and the runner's place in the ranking (overall and in the category)
+    const tiles = methods.map((m) => tile(`${t("rn.current")} · ${methodShort(m)}`,
+      me?.cn[m] == null ? "—" : fmt(me.cn[m]), fmtDate(month), methodColor(m)));
+    const rankTiles = methods.map((m) => {
       const cn = me?.cn[m];
-      let catRank = null;
-      if (cn != null && cat) {
-        catRank = 1 + rows.filter((r) => r.cat === cat && r.cn[m] != null && r.cn[m] > cn).length;
-      }
-      const sub = cn == null ? fmtDate(month)
-        : `${ord(me.rank[m])} ${t("rn.rankAll")} · ${ord(catRank)} ${t("rn.rankCat")} ${cat}`;
-      return tile(`${t("rn.current")} · ${methodShort(m)}`, cn == null ? "—" : fmt(cn), sub, methodColor(m));
+      if (cn == null) return tile(`${t("rn.rank")} · ${methodShort(m)}`, "—", t("rn.unranked"), methodColor(m));
+      const n = rows.filter((r) => r.cn[m] != null).length;
+      const catRank = cat ? 1 + rows.filter((r) => r.cat === cat && r.cn[m] != null && r.cn[m] > cn).length : null;
+      return tile(`${t("rn.rank")} · ${methodShort(m)}`, ord(me.rank[m]),
+        `${t("rn.rankOf")} ${fmt(n)}${catRank ? ` · ${ord(catRank)} ${t("rn.rankCat")} ${cat}` : ""}`, methodColor(m));
     });
     const col = CNAFTER_COL[methods[0]];
     let best = null;
@@ -153,7 +154,7 @@ export async function render(main, { arg, query }) {
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
     const wins = mineT.filter((r) => r[R.place] === 1).length;
-    $("#tiles").innerHTML = html`${tiles}
+    $("#tiles").innerHTML = html`${tiles}${rankTiles}
       ${tile(`${t("rn.best")} · ${methodShort(methods[0])}`, best ? fmt(best[col]) : "—", best ? fmtDate(best[R.date]) : "")}
       ${tile(t("rn.last12"), fmt(recent.length), `${t(`terrain.${terrain}`)}`)}
       ${tile(t("rn.podiums"), fmt(podiums), plural(wins, t("rn.win"), t("rn.wins")))}`;
