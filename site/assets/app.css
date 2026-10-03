@@ -28,6 +28,7 @@
   --bad: #c62828;
   --warn-bg: #fff6e0;
   --warn-ink: #6b4d00;
+  --amber: #a66d00;
   --shadow: 0 1px 2px rgba(11, 11, 11, .04), 0 4px 16px rgba(11, 11, 11, .05);
   --shadow-pop: 0 8px 32px rgba(11, 11, 11, .16);
 
@@ -50,7 +51,7 @@
     --border: rgba(255, 255, 255, 0.10); --border-strong: rgba(255, 255, 255, 0.18);
     --link: #86b6ef; --accent: #86b6ef; --accent-ink: #0b0b0b;
     --accent-wash: rgba(57, 135, 229, 0.16); --focus: #5598e7;
-    --good: #0ca30c; --bad: #e66767; --warn-bg: #2e2610; --warn-ink: #f2d38a;
+    --good: #0ca30c; --bad: #e66767; --warn-bg: #2e2610; --warn-ink: #f2d38a; --amber: #f0c43c;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 16px rgba(0, 0, 0, .3);
     --shadow-pop: 0 8px 32px rgba(0, 0, 0, .6);
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
@@ -66,7 +67,7 @@
   --border: rgba(255, 255, 255, 0.10); --border-strong: rgba(255, 255, 255, 0.18);
   --link: #86b6ef; --accent: #86b6ef; --accent-ink: #0b0b0b;
   --accent-wash: rgba(57, 135, 229, 0.16); --focus: #5598e7;
-  --good: #0ca30c; --bad: #e66767; --warn-bg: #2e2610; --warn-ink: #f2d38a;
+  --good: #0ca30c; --bad: #e66767; --warn-bg: #2e2610; --warn-ink: #f2d38a; --amber: #f0c43c;
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 16px rgba(0, 0, 0, .3);
   --shadow-pop: 0 8px 32px rgba(0, 0, 0, .6);
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
@@ -685,7 +686,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .calc-table th.cell-use, .calc-table td.cell-use { width: 104px; }
 .calc-table td.cell-comp { overflow: hidden; }
 .calc-table td.cell-comp a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.role { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
-.role-kept { color: var(--good); font-weight: 700; background: color-mix(in srgb, var(--good) 14%, transparent); }
-.role-mid { color: var(--ink); background: color-mix(in srgb, #f0c43c 34%, transparent); }
+.role { display: inline-block; font-size: 12.5px; white-space: nowrap; }
+.role-kept { color: var(--good); font-weight: 700; }
+.role-mid { color: var(--amber); font-weight: 650; }
 .role-out { color: var(--ink-3); }

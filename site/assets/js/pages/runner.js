@@ -256,7 +256,8 @@ export async function render(main, { arg, query }) {
 
   // ---- the calculation at one date ------------------------------------------------
   function roleLabel(role) {
-    const cls = role === "kept" ? "role-kept" : role === "notTop6" ? "role-mid" : "role-out";
+    // green: kept; yellow: the "best" scores that are not kept (10 % best, or the 60 % best beyond the 6); grey: the rest
+    const cls = role === "kept" ? "role-kept" : role === "notTop6" || role === "best10" ? "role-mid" : "role-out";
     return html`<span class="role ${cls}" title="${t(`calc.${role}`)}">${t(`calc.s.${role}`)}</span>`;
   }
   function drawCalc() {
