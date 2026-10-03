@@ -127,14 +127,15 @@ def run_agenda(agenda_json: Path) -> None:
         a = json.loads(agenda_json.read_text(encoding="utf-8"))
         depts = a.get("depts", {})
         keep = ("name", "date", "place", "dep", "region", "groupe", "manif", "org", "referee", "referee2", "controller",
-                "delegate", "contact", "phone", "email", "site", "flechage", "invitation", "obs", "cn")
+                "delegate", "monitor", "contact", "phone", "email", "site", "flechage", "invitation", "access", "gps",
+                "mapUrl", "obs", "cn")
         events = []
         for e in a["events"]:
             if e["kind"] != "c" or e.get("id") is None or e["date"] < today or e.get("cancelled"):
                 continue
             ev = {k: e[k] for k in keep if k in e} | {"id": e["id"], "type": type_label(e), "depName": depts.get(e.get("dep", ""), "")}
             if e.get("reg"):
-                ev["reg"] = {k: e["reg"].get(k) for k in ("url", "close", "mods", "count")}
+                ev["reg"] = {k: e["reg"].get(k) for k in ("url", "close", "mods", "count", "teams")}
             events.append(ev)
         res = _call("POST", {"agenda": events})
         print(f"6. agenda alert: {len(events)} upcoming courses checked, {res.get('agendaQueued', 0)} alert e-mails queued, "

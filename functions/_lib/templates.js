@@ -89,12 +89,18 @@ function courseRows(env, e) {
   add("Arbitre stagiaire", esc(e.referee2));
   add("Contrôleur des circuits", esc(e.controller));
   add("Délégué", esc(e.delegate));
+  add("Moniteur", esc(e.monitor));
   add("Contact", esc(e.contact));
   add("Téléphone", e.phone ? a(`tel:${e.phone.replace(/\s+/g, "")}`, e.phone) : "", e.phone);
   add("E-mail", e.email ? a(`mailto:${e.email}`, e.email) : "", e.email);
   add("Site web", e.site ? a(e.site) : "", e.site);
   add("Fléchage", e.flechage ? (/^https?:\/\//.test(e.flechage) ? a(e.flechage) : esc(e.flechage)) : "", e.flechage);
-  add("Invitation", e.invitation ? a(e.invitation, "Télécharger l'invitation") : "", e.invitation);
+  add("Annonce de course", e.invitation ? a(e.invitation, "Télécharger l'annonce (PDF)") : "", e.invitation);
+  const g = e.gps;
+  if (g) {
+    add("Itinéraire GPS", `${a(`https://www.google.com/maps/dir/?api=1&destination=${g[0]},${g[1]}&travelmode=driving`, "Google Maps")} · ${a(`https://waze.com/ul?ll=${g[0]},${g[1]}&navigate=yes`, "Waze")} <span style="color:#5b6675">(${g[0]}, ${g[1]})</span>`,
+      `https://www.google.com/maps/dir/?api=1&destination=${g[0]},${g[1]} (${g[0]}, ${g[1]})`);
+  } else if (e.mapUrl) add("Itinéraire GPS", a(e.mapUrl, "Ouvrir l'itinéraire"), e.mapUrl);
   add("Observations", e.obs ? esc(e.obs).replace(/\n/g, "<br>") : "", e.obs);
   return rows;
 }
@@ -105,7 +111,7 @@ function registrationBlock(e) {
   const bits = [];
   if (r.close) bits.push(`clôture des inscriptions le <b>${esc(frShort(r.close))}</b>`);
   if (r.mods) bits.push(`modifications (puces, compositions) jusqu'au ${esc(frShort(r.mods))}`);
-  if (r.count != null) bits.push(`${esc(r.count)} inscrit${r.count > 1 ? "s" : ""} à ce jour`);
+  if (r.count != null) bits.push(`${esc(r.count)} inscrit${r.count > 1 ? "s" : ""}${r.teams != null ? ` (${esc(r.teams)} équipe${r.teams > 1 ? "s" : ""})` : ""} à ce jour`);
   const bitsText = bits.map(plain);
   return {
     html: `${a(r.url, "Inscriptions en ligne")}${bits.length ? ` — ${bits.join(", ")}` : " — dates de clôture non encore publiées"}`,
@@ -126,14 +132,17 @@ export function agendaMail(env, user, events) {
     return `<div style="border:1px solid #dde3ea;border-radius:8px;padding:12px 14px;margin:12px 0">
 <div style="font-size:16px;font-weight:700">${a(link(e), e.name)}</div>
 <div style="color:#5b6675;margin:2px 0 8px">${esc(frLong(e.date))}${e.type ? ` · ${esc(e.type)}` : ""}</div>
+${e.invitation ? `<div style="margin-bottom:8px"><b>${a(e.invitation, "Annonce de course (PDF) →")}</b></div>` : ""}
 <div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;margin-bottom:8px">${reg.html}</div>
+${e.access ? `<div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;margin-bottom:8px"><b>Accès</b> <span style="color:#5b6675;font-size:12px">(extrait de l'annonce)</span><div style="white-space:pre-line;font-size:13.5px;margin-top:4px">${esc(e.access)}</div></div>` : ""}
 <table style="border-collapse:collapse;font-size:14px">${rows.map(([l, h]) => `<tr><td style="padding:2px 12px 2px 0;color:#5b6675;vertical-align:top;white-space:nowrap">${esc(l)}</td><td style="padding:2px 0">${h}</td></tr>`).join("")}</table>
 <div style="margin-top:8px;font-size:13px">${a(link(e), "Voir dans O'CN")} · ${a(ffco(e), "Fiche sur le site de la FFCO")}</div>
 </div>`;
   };
   const blockText = (e) => {
     const rows = courseRows(env, e), reg = registrationBlock(e);
-    return [`${e.name}`, `${frLong(e.date)}${e.type ? ` · ${e.type}` : ""}`, reg.text,
+    return [`${e.name}`, `${frLong(e.date)}${e.type ? ` · ${e.type}` : ""}`, ...(e.invitation ? [`Annonce de course : ${e.invitation}`] : []),
+      reg.text, ...(e.access ? [`Accès (extrait de l'annonce) :\n${e.access}`] : []),
       ...rows.map(([l, , t]) => `${l} : ${t}`), `O'CN : ${link(e)}`, `FFCO : ${ffco(e)}`].join("\n");
   };
 

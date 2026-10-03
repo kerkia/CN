@@ -662,3 +662,9 @@ table.data tbody tr.found .name { font-weight: 700; }
 
 .m-only { display: none; }
 @media (max-width: 700px) { .m-only { display: inline; } .d-only { display: none; } }
+
+/* the access block of an event: its own square, like the registration one */
+.agenda-detail .accessbox { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
+.agenda-detail .accessbox .reg-title { font-weight: 650; margin-bottom: 6px; }
+.access-text { white-space: pre-line; font-size: 14px; }
+.access-src { font-size: 12px; margin-top: 4px; }

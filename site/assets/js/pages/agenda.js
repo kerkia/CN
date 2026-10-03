@@ -254,9 +254,30 @@ export async function render(main, { query }) {
       ${dates ? html`<dl>
         ${row("Clôture des inscriptions", r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
         ${row("Clôture des modifications (puces, compositions)", r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
-        ${row("Nombre d'inscrits", r.count != null ? html`<b>${fmt(r.count)}</b>` : "")}
+        ${row("Nombre d'inscrits", r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${fmt(r.teams)} équipe${r.teams > 1 ? "s" : ""})</span>` : ""}` : "")}
       </dl>` : html`<div class="dim">Dates de clôture non publiées.</div>`}
       <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">Inscriptions en ligne ↗</a></p>
+    </div>`;
+  }
+
+  // access: the "accès" section of the announcement, and the buttons that start a GPS app
+  const gmaps = (g) => `https://www.google.com/maps/dir/?api=1&destination=${g[0]},${g[1]}&travelmode=driving`;
+  const waze = (g) => `https://waze.com/ul?ll=${g[0]},${g[1]}&navigate=yes`;
+  const apple = (g) => `https://maps.apple.com/?daddr=${g[0]},${g[1]}&dirflg=d`;
+  const onApple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  function accessBox(e) {
+    const fl = e.flechage || "";
+    const approx = `${fl && !safeUrl(fl) ? `${fl}, ` : ""}${e.place || ""}${e.dep ? ` ${e.dep}` : ""}`.trim();
+    const go = e.gps ? [[gmaps(e.gps), "Google Maps"], [waze(e.gps), "Waze"], ...(onApple ? [[apple(e.gps), "Plans"]] : [])]
+      : safeUrl(e.mapUrl) ? [[e.mapUrl, "Ouvrir l'itinéraire"]]
+      : approx ? [[`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(approx)}`, "Itinéraire (lieu approximatif)"]] : [];
+    if (!e.access && !fl && !go.length) return "";
+    return html`<div class="accessbox">
+      <div class="reg-title">Accès</div>
+      ${e.access ? html`<div class="access-text">${e.access}</div><div class="dim access-src">Extrait de l'annonce de course</div>` : ""}
+      ${fl && !(e.access || "").includes(fl) ? html`<div style="margin-top:6px">Fléchage : ${link(fl)}</div>` : ""}
+      ${e.gps ? html`<div class="dim" style="margin-top:6px">Coordonnées : ${e.gps[0]}, ${e.gps[1]}</div>` : ""}
+      ${go.length ? html`<div class="row" style="gap:8px;margin-top:10px">${go.map(([u, l]) => html`<a class="btn btn-sm btn-primary" href="${u}" target="_blank" rel="noopener">${l} ↗</a>`)}</div>` : ""}
     </div>`;
   }
 
@@ -273,7 +294,9 @@ export async function render(main, { query }) {
       <div class="card-body stack" style="gap:14px">
         <div class="row" style="gap:6px">${e.cn ? html`<span class="tag tag-in">Compte pour le CN</span>` : html`<span class="tag">Hors CN</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
+        ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">Annonce de course (PDF) ↗</a></div>` : ""}
         ${registration(e)}
+        ${accessBox(e)}
         <dl>
           ${row("Manifestation", e.manif)}
           ${row("Lieu", e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
@@ -285,12 +308,12 @@ export async function render(main, { query }) {
           ${row("Arbitre stagiaire", e.referee2)}
           ${row("Contrôleur des circuits", e.controller)}
           ${row("Délégué", e.delegate)}
-          ${row("Fléchage", e.flechage ? link(e.flechage) : "")}
+          ${row("Moniteur", e.monitor)}
           ${row("Site web", e.site ? link(e.site) : "")}
-          ${row("Invitation", e.invitation ? link(e.invitation, "Télécharger") : "")}
           ${row("Contact", e.contact)}
           ${row("Téléphone", e.phone ? html`<a href="tel:${e.phone.replace(/\s+/g, "")}">${e.phone}</a>` : "")}
           ${row("E-mail", e.email ? html`<a href="mailto:${e.email}">${e.email}</a>` : "")}
+          ${(e.extra || []).map(([l, v]) => row(l, v))}
           ${row("Observations", e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
         ${e.id != null ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">Fiche sur le site de la FFCO ↗</a></p>` : ""}

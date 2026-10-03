@@ -53,6 +53,7 @@ REGIONS = {
     "Provence-Alpes-Côte d'Azur": "04 05 06 13 83 84",
 }
 OUTRE_MER = "Outre-mer"
+AGENDA_VERSION = 3     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
 SPEC_ORDER = ["Pédestre", "VTT", "Ski", "Précision", "Raid Orientation", "Raid Multisport", "Pédestre + VTT"]   # as on FFCO
 
 
@@ -124,8 +125,9 @@ _LABELS = [  # (prefix of the accent-stripped lower-case label, key)
     ("manifestation", "manif"), ("groupe", "groupe"), ("organisateur", "org"), ("classement national", "cn_txt"),
     ("arbitre titulaire", "referee"), ("arbitre stagiaire", "referee2"), ("controleur", "controller"),
     ("delegu", "delegate"), ("flechage", "flechage"), ("site web", "site"), ("contact", "contact"),
-    ("telephone", "phone"), ("invitation", "invitation"),
+    ("telephone", "phone"), ("invitation", "invitation"), ("moniteu", "monitor"),   # the site cuts some labels short
 ]
+_KNOWN = {"no", "date", "lieu", "specialite", "epreuve"}               # shown elsewhere, or not worth showing
 
 
 def _plain(label: str) -> str:
@@ -163,6 +165,9 @@ def parse_detail(h: str) -> dict:
                 if value:
                     d.setdefault(key, value)
                 break
+        else:                                                           # a label we do not know: keep it as it is
+            if label not in _KNOWN and value:
+                d.setdefault("extra", []).append([htmllib.unescape(m.group(1)).strip(), value])
     d.pop("cn_txt", None)
     return d
 
@@ -183,10 +188,13 @@ def registrations() -> dict[int, dict]:
             continue
         txt = [_clean(re.sub(r"<[^>]+>", "", c[1])) for c in cells]
         closed = "red" in cells[4][0]
-        n = re.sub(r"\D", "", txt[6])
+        # "70", or for a relay "46 (20 équipes)": registrants first, then the number of teams
+        n = re.match(r"\s*(\d+)", txt[6])
+        teams = re.search(r"\((\d+)\s*[ée]quipes?\)", txt[6])
         out[int(link.group(1))] = {
             "url": f"{LICENCES}/inscriptions/{link.group(1)}/",
-            "close": _iso(txt[4]), "mods": _iso(txt[5]), "count": int(n) if n else None, "closed": closed,
+            "close": _iso(txt[4]), "mods": _iso(txt[5]), "count": int(n.group(1)) if n else None,
+            "teams": int(teams.group(1)) if teams else None, "closed": closed,
         }
     return out
 
@@ -266,8 +274,98 @@ def locate(events: list[dict], names: dict[str, str]) -> tuple[dict[str, str], l
     return depts, regions
 
 
+# ---- the course announcement (PDF): the "accès" section, coordinates and map links ------------------------------
+MAX_PDF = 12_000_000
+_ACCES_UPPER = re.compile(r"^\W*ACC[EÈ]S\b", re.M)                      # the template's title "ACCÈS (HORAIRES)"
+_ACCES_LOOSE = re.compile(r"^\W*Acc[eè]s\s*(?:et\s+\w+\s*)?:|^\W*Acc[eè]s(?:\s+et\s+\w+)?\s*$", re.M | re.I)
+_NEXT_TITLE = re.compile(r"^\W*(CIRCUITS?|TERRAINS?|CARTES?|INSCRIPTIONS?|ENGAGEMENTS?|R[EÈ]GLEMENT|RESTAURATION|CONTACTS?|"
+                         r"ORGANISATEURS?|SERVICES|CAT[EÉ]GORIES?|PROGRAMME|TARIFS?|P[EÉ]DAGOGIE|BALISES?|S[EÉ]CURIT[EÉ]|"
+                         r"INFORMATIONS?|H[EÉ]BERGEMENT|PARTENAIRES?|REMERCIEMENTS?)\b", re.I)
+
+
+def access_section(text: str) -> str:
+    """The "accès" block of an announcement, cleaned up; "" if there is none."""
+    m = _ACCES_UPPER.search(text) or _ACCES_LOOSE.search(text)
+    if not m:
+        return ""
+    out, size = [], 0
+    for i, ln in enumerate(text[m.start():].splitlines()):
+        s = re.sub(r"\s+", " ", ln).strip()
+        if i == 0:                                                      # the title itself: "ACCÈS HORAIRES" -> ""
+            s = re.sub(r"^\W*ACC[EÈ]S\b\W*(et\s+horaires\W*)?", "", s, flags=re.I)
+            s = re.sub(r"^HORAIRES\b\W*", "", s, flags=re.I)
+        elif (_NEXT_TITLE.match(s) and s.upper() == s) or re.match(r"^Circuits?\s*:", s, re.I):   # the next section ends the block
+            break
+        if s.upper() == "HORAIRES" or not s:
+            continue
+        out.append(s)
+        size += len(s) + 1
+        if size > 1500 or len(out) > 40:
+            break
+    return "\n".join(out).strip()
+
+
+_DMS = re.compile(r"(\d{1,2})\s*[°º]\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:\"|″|”|'')?\s*([NS])[\s,;/-]*"
+                  r"(\d{1,3})\s*[°º]\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:\"|″|”|'')?\s*([EW])")
+_DEC = re.compile(r"(-?\d{1,2}[.,]\d{3,})\s*[,;/ ]\s*(-?\d{1,3}[.,]\d{3,})")
+
+
+def _plausible(lat: float, lon: float, metro: bool) -> bool:
+    return (41 <= lat <= 52 and -6 <= lon <= 10) if metro else (-25 <= lat <= 52 and -65 <= lon <= 170)
+
+
+def find_gps(text: str | None, metro: bool = True) -> list[float] | None:
+    """The first plausible [lat, lon] in a text: degrees-minutes-seconds, or two decimal numbers."""
+    if not text:
+        return None
+    for m in _DMS.finditer(text):
+        f = lambda s: float(s.replace(",", "."))
+        lat = int(m.group(1)) + int(m.group(2)) / 60 + f(m.group(3)) / 3600
+        lon = int(m.group(5)) + int(m.group(6)) / 60 + f(m.group(7)) / 3600
+        lat, lon = lat * (-1 if m.group(4) == "S" else 1), lon * (-1 if m.group(8) == "W" else 1)
+        if _plausible(lat, lon, metro):
+            return [round(lat, 6), round(lon, 6)]
+    for m in _DEC.finditer(text):
+        lat, lon = float(m.group(1).replace(",", ".")), float(m.group(2).replace(",", "."))
+        if _plausible(lat, lon, metro):
+            return [round(lat, 6), round(lon, 6)]
+    return None
+
+
+_MAPURL = re.compile(r"https?://(?:maps\.app\.goo\.gl|goo\.gl/maps|(?:www\.)?google\.[a-z.]+/maps|maps\.google\.[a-z.]+|"
+                     r"waze\.com/ul|(?:www\.)?openstreetmap\.org|maps\.apple\.com)[^\s<>\"']*", re.I)
+
+
+def find_map_url(text: str | None) -> str | None:
+    m = _MAPURL.search(text or "")
+    return m.group(0).rstrip(".,;:)]}") if m else None
+
+
+def pdf_info(url: str, metro: bool = True) -> dict:
+    """{ access, gps, map } read from an announcement PDF (only .pdf files, ≤ 12 MB, first pages)."""
+    info: dict = {"access": "", "gps": None, "map": None}
+    if not url.lower().split("?")[0].endswith(".pdf"):
+        return info
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=45) as r:
+            data = r.read(MAX_PDF + 1)
+        if len(data) > MAX_PDF or not data.startswith(b"%PDF"):
+            return info
+        from pypdf import PdfReader                                     # pure Python; optional: no library, no extract
+        text = "\n".join((pg.extract_text() or "") for pg in PdfReader(io.BytesIO(data)).pages[:4])
+    except Exception:                                                   # unreadable file: the link is still shown
+        return info
+    finally:
+        time.sleep(PAUSE)
+    info["access"] = access_section(text)
+    info["gps"] = find_gps(info["access"], metro) or find_gps(text[:6000], metro)
+    info["map"] = find_map_url(info["access"]) or find_map_url(text[:6000])
+    return info
+
+
 # ---- assemble --------------------------------------------------------------------------------------------------------
-def build(du: str | None = None) -> dict:
+def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
     du = du or date.today().isoformat()
     courses = list_courses(du)
     cancelled = {(_iso(x["date"]), _clean(x["nom"])) for x in read_csv("cou", du) if "annul" in x["validation"].lower()}
@@ -293,10 +391,12 @@ def build(du: str | None = None) -> dict:
         events.append(e)
     for types, kind in (("ent", "e"), ("for", "f")):
         events += [_csv_event(x, kind) for x in read_csv(types, du)]
+    _add_announcements(events, prev_events or [])
     events = [e for e in events if e.get("date")]
     events.sort(key=lambda e: (e["date"], e["name"].lower()))
     depts, regions = locate(events, dept_names())
     return {
+        "v": AGENDA_VERSION,
         "from": du,
         "specs": [x for x in SPEC_ORDER if any(e.get("spec") == x for e in events)]
                  + sorted({e["spec"] for e in events if e.get("spec") and e["spec"] not in SPEC_ORDER}),
@@ -304,6 +404,40 @@ def build(du: str | None = None) -> dict:
         "regions": regions,
         "events": events,
     }
+
+
+def _add_announcements(events: list[dict], prev_events: list[dict]) -> None:
+    """Courses: read each announcement PDF once (a changed link is read again) and give every event its
+    `access` text, `gps` [lat, lon] and `mapUrl` where they can be found."""
+    prev = {e["id"]: e for e in prev_events if e.get("id") is not None}
+    metro = lambda e: not (str(e.get("dep", "")).isdigit() and int(e["dep"]) >= 96)
+    todo = []
+    for e in events:
+        url = e.get("invitation") or ""
+        p = prev.get(e.get("id"))
+        if not url.startswith("http"):
+            continue
+        if p and p.get("annSrc") == url:                                # the same announcement as last time
+            e.update({k: p[k] for k in ("access", "annGps", "annMap", "annSrc") if k in p})
+        else:
+            todo.append(e)
+    with ThreadPoolExecutor(WORKERS) as pool:
+        infos = list(pool.map(lambda e: pdf_info(e["invitation"], metro(e)), todo))
+    for e, info in zip(todo, infos):
+        e["annSrc"] = e["invitation"]
+        if info["access"]:
+            e["access"] = info["access"]
+        if info["gps"]:
+            e["annGps"] = info["gps"]
+        if info["map"]:
+            e["annMap"] = info["map"]
+    for e in events:
+        gps = find_gps(e.get("flechage"), metro(e)) or e.get("annGps") or find_gps(e.get("obs"), metro(e))
+        mapurl = find_map_url(e.get("flechage")) or e.get("annMap")
+        if gps:
+            e["gps"] = gps
+        if mapurl:
+            e["mapUrl"] = mapurl
 
 
 def _digest(a: dict) -> str:
@@ -314,12 +448,12 @@ def _digest(a: dict) -> str:
 
 def refresh(out: Path, du: str | None = None) -> bool:
     """Rebuild the agenda; write it only if its content changed. True when it did."""
-    new = build(du)
     old = None
     try:
         old = json.loads(out.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
+    new = build(du, (old or {}).get("events"))
     if old and _digest(old) == _digest(new):
         return False
     new["generated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

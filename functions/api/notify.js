@@ -43,10 +43,12 @@ async function announceAgenda(env, list) {
     manif: str(e.manif, 100), org: str(e.org, 150), referee: str(e.referee, 80), referee2: str(e.referee2, 80),
     controller: str(e.controller, 80), delegate: str(e.delegate, 80), contact: str(e.contact, 150), phone: str(e.phone, 40),
     email: /^[^\s@<>]+@[^\s@<>]+$/.test(String(e.email || "")) ? str(e.email, 120) : "",
+    monitor: str(e.monitor, 80), access: str(e.access, 1600), mapUrl: url(e.mapUrl),
+    gps: Array.isArray(e.gps) && e.gps.length === 2 && e.gps.every((n) => Number.isFinite(Number(n))) ? e.gps.map(Number) : null,
     site: url(e.site), flechage: str(e.flechage, 400), invitation: url(e.invitation), obs: str(e.obs, 800),
     reg: e.reg && url(e.reg.url) ? {
       url: url(e.reg.url), close: str(e.reg.close, 10), mods: str(e.reg.mods, 10),
-      count: Number.isInteger(e.reg.count) ? e.reg.count : null,
+      count: Number.isInteger(e.reg.count) ? e.reg.count : null, teams: Number.isInteger(e.reg.teams) ? e.reg.teams : null,
     } : null,
   }));
   if (!events.length) return 0;

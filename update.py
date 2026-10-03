@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import shutil
@@ -137,10 +138,14 @@ def main() -> None:
         sys.exit(0)
     try:
         if args.deploy_only:
-            if not (args.out / "agenda.json").exists():       # first publication after the agenda was added
-                import ffco_scraper.agenda as agenda
+            import ffco_scraper.agenda as agenda
+            try:
+                current = json.loads((args.out / "agenda.json").read_text(encoding="utf-8")).get("v", 1) >= agenda.AGENDA_VERSION
+            except (OSError, ValueError):
+                current = False
+            if not current:                                    # missing, or built by an older version of the scraper
                 agenda.refresh(args.out / "agenda.json")
-                print("agenda: built for the first time")
+                print("agenda: rebuilt")
             ok = deploy()
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
