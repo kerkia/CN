@@ -304,38 +304,64 @@ export async function render(main, { arg, query }) {
     }
   }
 
-  // ---- the CN history as the FFCO site publishes it: entries and exits of races in the calculation base
+  // ---- the CN history as the FFCO site publishes it: entries and exits of races in the calculation base,
+  // with the CN and its variation after each — for every selected method (the official ones are FFCO's own
+  // figures; the others are computed at the same dates)
+  let ffPromise = null, ffKey = "";
+  function ffRows() {                                                    // fetched once per runner and discipline
+    const key = `${lic}|${terrain}`;
+    if (ffKey !== key) {
+      ffKey = key;
+      ffPromise = fetch(`api/ffco-history?lic=${encodeURIComponent(lic)}&spe=${terrain}`, { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null);      // offline, or no server (local file server)
+    }
+    return ffPromise;
+  }
   async function drawFfHistory() {
     const box = $("#ffhist");
+    const methods = store.get().methods;
     box.innerHTML = html`<div class="muted" style="padding:14px 18px">${t("misc.loading")}</div>`;
-    const spe = terrain;                                                  // "For" | "Spr", as FFCO's `specialite`
-    const source = `https://cn.ffcorientation.fr/historique/${lic}/?specialite=${spe}`;
-    let res = null;
-    try {
-      const r = await fetch(`api/ffco-history?lic=${encodeURIComponent(lic)}&spe=${spe}`, { credentials: "same-origin" });
-      res = r.ok ? await r.json() : null;
-    } catch (e) { /* offline, or no server (local file server) */ }
+    const res = await ffRows();
     if (!$("#ffhist")) return;                                            // the page changed meanwhile
     if (!res) {
-      box.innerHTML = html`<div class="empty">${t("rn.ffHistory.err")} <a href="${source}" target="_blank" rel="noopener">${t("rn.ffHistory.open")} ↗</a></div>`;
+      box.innerHTML = html`<div class="empty">${t("rn.ffHistory.err")}
+        <a href="https://cn.ffcorientation.fr/historique/${lic}/?specialite=${terrain}" target="_blank" rel="noopener">${t("rn.ffHistory.open")} ↗</a></div>`;
       return;
     }
+    // one row per FFCO entry/exit; each method's CN at that date, and its change since the previous row
+    const prev = {};
+    const rows = [...res.rows].sort((x, y) => (x.date < y.date ? -1 : 1)).map((e) => {
+      const row = { ...e, cn: {}, delta: {} };
+      for (const m of methods) {
+        const official = m === "official";
+        const cn = official ? e.cn : explain(m, races, e.date, terrain, meta).cn;
+        row.cn[m] = cn;
+        row.delta[m] = official ? e.delta : (cn != null && prev[m] != null ? cn - prev[m] : null);
+        if (cn != null) prev[m] = cn;
+      }
+      return row;
+    });
     const byCircuit = new Map(races.map((r) => [String(r[R.cid]), r]));
     const label = (x) => {
       const mine = byCircuit.get(x.id);                                   // our page for it, when the runner is in our data
       return mine ? html`<a href="${raceLink(mine)}">${x.text}</a>`
         : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener">${x.text}</a>`;
     };
+    const several = methods.length > 1;
+    const key = (m) => html`<span class="key" style="background:${raw(methodColor(m))};margin-right:6px"></span>`;
     dataTable(box, {
-      rows: res.rows, sortKey: "date", sortDir: -1, compact: true, emptyText: t("rn.noRaces"),
+      rows, sortKey: "date", sortDir: -1, compact: true, emptyText: t("rn.noRaces"),
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date, "short") },
         { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, defaultDir: 1,
           sort: (e) => e.races[0]?.text || "",
           render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x)}</div>`)}` },
-        { key: "cn", label: "CN", align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
-        { key: "delta", label: t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta,
-          render: (e) => (e.delta == null ? "" : html`<span class="${e.delta > 0 ? "delta-up" : e.delta < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta)}</span>`) },
+        ...methods.flatMap((m) => [
+          { key: `cn_${m}`, label: several ? html`${key(m)}CN ${methodShort(m)}` : "CN", align: "r", cls: "num", sort: (e) => e.cn[m],
+            render: (e) => (e.cn[m] == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn[m])}</b>`) },
+          { key: `d_${m}`, label: several ? html`Var. ${methodShort(m)}` : t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta[m],
+            render: (e) => (e.delta[m] == null ? "" : html`<span class="${e.delta[m] > 0 ? "delta-up" : e.delta[m] < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta[m])}</span>`) },
+        ]),
       ],
     });
   }
