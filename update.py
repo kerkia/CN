@@ -39,6 +39,7 @@ import json
 import logging
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -55,6 +56,34 @@ import paths  # noqa: E402  (the data folder, outside OneDrive)
 REPORTS = ROOT / "exports" / "updates"
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
+# Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
+#   2 (2026-10-03): a Top CN is the aggregate of the published race scores, no factor at the CN level
+TOP6W_CN_VERSION = 2
+
+
+def migrate(db: Path, out: Path) -> bool:
+    """One-off recomputation after a method change; True when the site data was rebuilt."""
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
+    row = con.execute("SELECT value FROM engine_meta WHERE key = 'top6w_cn'").fetchone()
+    con.close()
+    if row and int(row[0]) >= TOP6W_CN_VERSION:
+        return False
+    t0 = time.monotonic()
+    print("migration: Top method — CN rebuilt from the published race scores, every season")
+    engine = CnEngine(db)
+    engine._normalise(build_methods()["top6w"], None)
+    engine.write_runners()
+    engine.close()
+    import build_site
+    build_site.main(["--out", str(out), "--db", str(db)])
+    con = sqlite3.connect(db)
+    con.execute("INSERT OR REPLACE INTO engine_meta (key, value) VALUES ('top6w_cn', ?)", (str(TOP6W_CN_VERSION),))
+    con.commit()
+    con.close()
+    DEPLOY_PENDING.touch()
+    print(f"migration done in {time.monotonic() - t0:.0f}s")
+    return True
 
 
 def deploy() -> bool:
@@ -137,6 +166,8 @@ def main() -> None:
         print("another update is running — skipped")
         sys.exit(0)
     try:
+        if not args.dry_run:
+            migrate(args.db, args.out)                          # no-op once done
         if args.deploy_only:
             import ffco_scraper.agenda as agenda
             try:

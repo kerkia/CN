@@ -52,13 +52,6 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
   return { cn: sw > 0 ? dround(sx / sw) : null, roles, nKept: take };
 }
 
-function factorAt(schedule, iso) {
-  if (!schedule || !schedule.length) return 1;
-  let f = schedule[0][1];
-  for (const [d, v] of schedule) { if (d <= iso) f = v; else break; }
-  return f;
-}
-
 /**
  * Explain the CN of `races` (one runner) at date `iso`, discipline `terrain`.
  * Returns { cn, rows: [{race, value, weight, role, rescaled}], ... } per method.
@@ -92,21 +85,16 @@ export function explain(method, races, iso, terrain, meta) {
 
   if (method === "top6w") {
     const p = meta.methods.top6w.params;
-    // The CN is the weighted mean of the RAW scores times the month's recalage factor. `scaled` is each score
-    // on the CN scale (raw x factor): the weighted mean of the kept ones is the CN. (The Courses page shows
-    // `published`: raw x the factor of the month of the race, so the two differ a little when the factor moved.)
-    const factor = factorAt(meta.normalisation[terrain], iso);
+    // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's month,
+    // the value the Courses page shows); the CN is the weighted mean of the kept ones - no factor here.
     const rows = races
-      .filter((r) => r[R.terrain] === terrain && inWin(r) && r[R.t6Counts] && r[R.t6Raw] != null)
-      .map((r) => ({ race: r, value: r[R.t6Raw], weight: r[R.t6Weight] || 1, scaled: dround(r[R.t6Raw] * factor), published: r[R.t6Score] }));
+      .filter((r) => r[R.terrain] === terrain && inWin(r) && r[R.t6Counts] && r[R.t6Score] != null)
+      .map((r) => ({ race: r, value: r[R.t6Score], weight: r[R.t6Weight] || 1 }));
     const res = topWeighted(rows.map((x) => x.value), rows.map((x) => x.weight), {
       topN: p.top_n, frac: p.eligible_fraction, minScores: p.min_scores,
     });
     rows.forEach((x, i) => { x.role = res.roles[i]; });
-    return {
-      method, raw: res.cn, factor, cn: res.cn == null ? null : dround(res.cn * factor),
-      rows, nKept: res.nKept, from, iso,
-    };
+    return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };
   }
 
   // official: published values, plus an indicative reconstruction

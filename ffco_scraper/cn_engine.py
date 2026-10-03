@@ -98,11 +98,14 @@ class Normalisation:
     step in every runner's curve each 1 January, which is exactly what makes
     long-run progression hard to read.
 
-    So the level is instead fixed at *read* time: the internal computation is
-    left untouched and scale-free, and the published CN is raw x factor(t),
-    with factor(t) chosen so the reference cohort averages `target` and then
-    smoothed. Because it never feeds back into the scores, it is pure gauge
-    fixing and cannot amplify drift.
+    So the level is held by a monthly factor instead: the internal computation
+    is left untouched and scale-free, factor(t) is chosen so the reference
+    cohort averages `target`, and a race's published score is its raw score x
+    the factor of the race's date - computed once, never revised when a later
+    factor arrives. The published CN is then the aggregate of those published
+    scores (no factor at the CN level), so it only moves when a race enters or
+    leaves the window. The factor never feeds back into the internal scores, so
+    it cannot amplify drift.
     """
 
     # The mean of the top 30 is held at this level. Anchoring a *mean* rather
@@ -587,19 +590,8 @@ class CnEngine:
                     hi = mid
             return entries[max(0, lo - 1)][2]
 
-        updates = [
-            (Decimal_round(r["cn_raw"] * factor_at(r["terrain"], date.fromisoformat(r["date_iso"]))),
-             spec.name, r["licence"], r["terrain"], r["date_iso"])
-            for r in rows
-            if not rewrite_from or r["date_iso"] >= rewrite_from
-        ]
-        self.conn.executemany(
-            "UPDATE cn_history SET cn=? WHERE method=? AND licence=? AND terrain=? AND date_iso=?",
-            updates,
-        )
-
-        # Scores must live on the same scale as the CN, or a row shows a
-        # normalised CN beside a raw score. Always recomputed from score_raw
+        # A race's published score: raw x the factor of the race's date. One value
+        # per race, never revised by a later factor. Always derived from score_raw
         # so re-normalising is idempotent rather than compounding.
         srows = self.conn.execute(
             "SELECT licence, circuit_id, terrain, date_iso, score_raw FROM scores "
@@ -615,9 +607,40 @@ class CnEngine:
                 for s in srows
             ],
         )
+        # The published CN: the method's aggregate of those published scores - so the
+        # CN is made of exactly the values shown race by race, and moves only when a
+        # race enters or leaves the window.
+        n_cn = self._publish_cn(spec, rewrite_from)
         self.conn.commit()
-        logger.info("%s: mode=%s, normalised %d CN points and %d scores over %d factors",
-                    spec.name, cfg.mode, len(updates), len(srows), len(out_factors))
+        logger.info("%s: mode=%s, normalised %d scores and %d CN points over %d factors",
+                    spec.name, cfg.mode, len(srows), n_cn, len(out_factors))
+
+    def _publish_cn(self, spec: MethodSpec, rewrite_from: str | None) -> int:
+        """cn_history.cn = aggregate of the published scores in the window (from `rewrite_from`)."""
+        p = spec.params
+        start = ""
+        if rewrite_from:          # the window of the first rewritten row reaches back this far
+            start = (date.fromisoformat(rewrite_from) - timedelta(days=p.window_days + 1)).isoformat()
+        hist: dict = defaultdict(RunnerHistory)
+        for s in self.conn.execute(
+                "SELECT licence, terrain, date_iso, score, poids FROM scores "
+                "WHERE method=? AND counts_for_cn=1 AND score IS NOT NULL AND date_iso >= ? "
+                "ORDER BY date_iso", (spec.name, start)):
+            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score"], s["poids"] or 1.0)
+        updates = []
+        for r in self.conn.execute(
+                "SELECT licence, terrain, date_iso, cn_raw FROM cn_history WHERE method=? AND date_iso >= ?",
+                (spec.name, rewrite_from or "")):
+            cn = None
+            h = hist.get((r["licence"], r["terrain"]))
+            if r["cn_raw"] is not None and h is not None:   # no raw CN: the seed showing through, unpublished
+                cn, _, kept = h.cn_as_of(date.fromisoformat(r["date_iso"]), p)
+                if not kept:
+                    cn = None
+            updates.append((cn, spec.name, r["licence"], r["terrain"], r["date_iso"]))
+        self.conn.executemany(
+            "UPDATE cn_history SET cn=? WHERE method=? AND licence=? AND terrain=? AND date_iso=?", updates)
+        return len(updates)
 
     @staticmethod
     def _reference_levels(trows, cfg: Normalisation) -> dict[str, float]:

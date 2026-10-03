@@ -202,9 +202,7 @@ const FR = {
   "calc.raw": "CN brut", "calc.weights": "Poids : A/B × 2, C × 1,5, D × 1",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
   "calc.v2026.formula": "Moyenne des scores après retrait des 10 % meilleurs et 40 % moins bons (arrondis), minimum 2 courses.",
-  "calc.rawWord": "brut", "calc.published": "page Courses",
-  "calc.top6w.scale": "Les scores du tableau sont à l'échelle du CN du mois (score brut × facteur de recalage) : leur moyenne pondérée, sur les courses retenues, donne le CN. La page Courses les affiche à l'échelle du mois de la course, d'où de légers écarts.",
-  "calc.top6w.formula": "Moyenne pondérée des 6 meilleures courses parmi les 60 % meilleures, minimum 3 courses ; puis recalage mensuel.",
+  "calc.top6w.formula": "Moyenne pondérée des 6 meilleurs scores parmi les 60 % meilleurs, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
@@ -318,7 +316,7 @@ const FR = {
   "chart.12m": "12 mois", "chart.3y": "3 ans", "chart.5y": "5 ans",
 
   "me.rescale": "Recalage annuel · Méthode CN 2026", "me.rescale.hint": "Variation appliquée à tous les scores chaque 1er janvier",
-  "me.norm": "Recalage mensuel · Méthode CN « Top »", "me.norm.hint": "Facteur appliqué au CN brut, par spécialité",
+  "me.norm": "Recalage mensuel · Méthode CN « Top »", "me.norm.hint": "Facteur appliqué aux scores des courses du mois, par spécialité",
 
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
   "page.methods": "Méthodes de calcul", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",

@@ -274,9 +274,7 @@ export async function render(main, { arg, query }) {
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
       if (m === "v2026") formula = html`${t("calc.v2026.formula")} ${x.nKept ? html` — <code>${fmt(x.nKept)} / ${fmt(x.rows.length)}</code>` : ""}`;
-      else if (m === "top6w") formula = html`${t("calc.top6w.formula")} ${t("calc.weights")}.
-        ${x.raw != null ? html`<br><code>${t("calc.raw")} ${fmt(x.raw)} × ${fmt(x.factor, 4)} (${t("calc.factor")}) = ${fmt(x.cn)}</code>` : ""}
-        <br><span class="dim">${t("calc.top6w.scale")}</span>`;
+      else if (m === "top6w") formula = html`${t("calc.top6w.formula")} ${t("calc.weights")}.`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
@@ -288,9 +286,6 @@ export async function render(main, { arg, query }) {
       const el = $(`#calc-t-${m}`);
       if (!el) continue;
       const x = explain(m, races, iso, terrain, meta);
-      const shownScore = (row) => (row.scaled ?? row.value);                // Top: on the CN scale (raw x factor)
-      const scoreTip = (row) => (row.scaled == null ? "" : `${fmt(row.value)} ${t("calc.rawWord")} × ${fmt(x.factor, 4)} = ${fmt(row.scaled)}`
-        + (row.published != null ? ` · ${t("calc.published")} : ${fmt(row.published)}` : ""));
       const place = (row) => { const c = data.comp(row.race[R.course]); return c?.location || c?.title || ""; };
       const full = (row) => { const c = data.comp(row.race[R.course]); return [c?.title, c?.location].filter(Boolean).join(" — "); };
       dataTable(el, {
@@ -301,8 +296,8 @@ export async function render(main, { arg, query }) {
             render: (row) => row.race[R.epreuve] || "" },
           { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (row) => place(row), defaultDir: 1,
             render: (row) => html`<a href="${raceLink(row.race)}" title="${full(row)}">${place(row)}</a>` },
-          { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => shownScore(row),
-            render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}" title="${scoreTip(row)}">${fmt(shownScore(row))}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
+          { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
+            render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
           ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
             render: (row) => html`×${fmt(row.weight, Number.isInteger(row.weight) ? 0 : 1)}` }] : []),

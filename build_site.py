@@ -410,7 +410,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # histories per runner/terrain for each method
     h26 = defaultdict(lambda: ([], []))            # (lic, t) -> dates, scores
-    h6 = defaultdict(lambda: ([], [], []))         # dates, raw scores, weights
+    h6 = defaultdict(lambda: ([], [], []))         # dates, published scores, weights
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
     for (lic, cid), v in sorted(by_method["v2026"].items(), key=lambda kv: kv[1]["date_iso"]):
         if v["counts_for_cn"] and v["score_raw"] is not None:
@@ -418,10 +418,10 @@ def main(argv: list[str] | None = None) -> None:
             h26[k][0].append(date.fromisoformat(v["date_iso"]))
             h26[k][1].append(v["score_raw"])
     for (lic, cid), v in sorted(by_method["top6w"].items(), key=lambda kv: kv[1]["date_iso"]):
-        if v["counts_for_cn"] and v["score_raw"] is not None:
+        if v["counts_for_cn"] and v["score"] is not None:
             k = (lic, TERRAINS.get(v["terrain"], "For"))
             h6[k][0].append(date.fromisoformat(v["date_iso"]))
-            h6[k][1].append(v["score_raw"])
+            h6[k][1].append(v["score"])
             h6[k][2].append(v["poids"] or 1.0)
     # Before 2026 the official ranking was a single pedestrian ranking, so its
     # history is pooled under "Ped"; from 2026 it is per terrain.
@@ -455,10 +455,11 @@ def main(argv: list[str] | None = None) -> None:
         return cn if kept else None
 
     def t6_at(dates, scores, weights, t, X: date):
+        # the aggregate of the published scores (each fixed with its race's factor): no factor here
         lo = bisect_left(dates, X - timedelta(days=p6.window_days))
         hi = bisect_right(dates, X)
         cn, kept = top_n_weighted(scores[lo:hi], weights[lo:hi], p6)
-        return Decimal_round(cn * factor_at(t, X)) if cn and kept else None
+        return Decimal_round(cn) if cn and kept else None
 
     def off_at(dates, cns, X: date):
         hi = bisect_right(dates, X)

@@ -101,11 +101,13 @@ export async function render(main) {
         <li>chaque score est pondéré selon le niveau de la compétition : A et B × ${fmtW(p6.weights.A)}, C × ${fmtW(p6.weights.C)}, D × ${fmtW(p6.weights.D)} ;</li>
         <li>il faut au moins ${fmt(p6.min_scores)} courses pour avoir un CN ; un circuit ne compte que s'il a au moins ${fmt(p6.min_ranked)} coureurs classés ayant un CN ;
           seuls les coureurs ayant un CN entrent dans la valeur du circuit ;</li>
-        <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour que la moyenne des ${fmt(p6.anchor_top_k)} meilleurs CN
-          vaille ${fmt(p6.anchor_target)}, séparément en forêt et en sprint. Le facteur appliqué un mois donné est celui mesuré ${fmt(p6.anchor_lag_months)} mois plus tôt,
-          pour que les résultats tardifs ne fassent pas bouger l'échelle.</li>
+        <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour ramener la moyenne des ${fmt(p6.anchor_top_k)} meilleurs CN
+          à ${fmt(p6.anchor_target)}, séparément en forêt et en sprint. Le facteur appliqué un mois donné est celui mesuré ${fmt(p6.anchor_lag_months)} mois plus tôt,
+          pour que les résultats tardifs ne fassent pas bouger l'échelle ;</li>
+        <li>ce facteur s'applique aux scores des courses du mois : chaque score est calculé une fois pour toutes et n'est jamais revu
+          quand un nouveau facteur arrive. Le CN est la moyenne pondérée de ces scores ; il ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
       </ul>
-      <div class="formula">CN = facteur(mois) × Σ(poids × score) ÷ Σ(poids), sur les 6 meilleurs des 60 % meilleurs scores</div>
+      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les 6 meilleurs des 60 % meilleurs scores — score = score brut × facteur(mois de la course)</div>
       <p>Seuls les coureurs dont le CN repose sur au moins 4 courses servent de référence au recalage : une valeur bâtie sur une ou deux
       courses est trop instable pour fixer l'échelle de tout le classement. Conséquence voulue : les deux classements sont recalés indépendamment
       et ne sont pas directement comparables entre eux (les 30 premiers représentent environ 1 % des coureurs en forêt, mais près de 5 % en sprint).</p>
