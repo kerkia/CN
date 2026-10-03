@@ -122,7 +122,7 @@ def main() -> None:
         engine._normalise(spec)
         engine.close()
         print(f"renormalised {args.method} in {time.monotonic()-t0:.1f}s "
-              f"(anchor: mean of top {spec.normalisation.anchor_top_k} "
+              f"(anchor: mean of top {spec.normalisation.anchor_top_fraction or spec.normalisation.anchor_top_k} "
               f"-> {spec.normalisation.target:.0f})")
     elif args.method:
         engine = CnEngine(args.db)

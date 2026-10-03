@@ -108,21 +108,17 @@ class Normalisation:
     it cannot amplify drift.
     """
 
-    # The mean of the top 30 is held at this level. Anchoring a *mean* rather
-    # than the single best runner keeps one exceptional career from rescaling
-    # everyone else — but it also means the #1 runner sits above the target,
-    # so the target is set below 10000 to leave headroom for them.
-    target: float = 9000.0
-    # The mean of the top 30 is held at `target`, per terrain, by deliberate
-    # choice. Note the two rankings are normalised independently and so are
-    # not commensurable with each other: forest has ~3000 established runners
-    # (30 = its top 1%) against sprint's ~650 (30 = its top 4.6%, and only 34
-    # existed in 2011). Sprint's median consequently sits ~20% high relative
-    # to forest. That is accepted — each CN is a standing within its own
-    # discipline. Setting anchor_top_fraction would scale the cohort with the
-    # population instead, if the two ever need to be plotted together.
-    anchor_top_fraction: float | None = None
-    anchor_top_k: int = 30
+    # FFCO's 2026 rule (RC 2026): the mean of the best 20 % of the CNs is
+    # brought to 5600 points by simple proportionality, per discipline. The
+    # same anchor here, only refreshed monthly instead of each 1 January.
+    # Anchoring a *mean* of a fifth of the ranking rather than the single best
+    # runner keeps one exceptional career - or a two-race fluke - from
+    # rescaling everyone else, and a cohort that grows with the population
+    # makes forest and sprint comparable (a fixed top 30 was 1 % of forest but
+    # nearly 5 % of sprint).
+    target: float = 5600.0
+    anchor_top_fraction: float | None = 0.20
+    anchor_top_k: int = 30         # the cohort size when anchor_top_fraction is None
     # How factor(t) is derived from the reference level:
     #   "monthly_lag"      - refreshed every month from the level `lag_months`
     #       earlier. Causal, and the lag lets late-arriving results settle
@@ -140,12 +136,12 @@ class Normalisation:
     refresh_day: int = 3
     active_days: int = 365         # a runner counts if they raced this recently
     # Only runners whose CN rests on at least this many races anchor the
-    # scale. A CN built from one or two races is extremely high-variance —
-    # at n=2 both aggregations reduce to "best single score" — and such
-    # values land disproportionately in the top 30, which is precisely the
-    # cohort the anchor averages. One two-race fluke otherwise rescales the
-    # entire ranking (2012 forest: top-30 read 17014 against a ~9800 norm).
-    min_kept_for_anchor: int = 4
+    # scale. A CN built from one or two races is high-variance and lands
+    # disproportionately at the top; with a top-30 cohort one two-race fluke
+    # rescaled the whole ranking (2012 forest: 17014 against a ~9800 norm), so
+    # this was 4. A 20 % cohort dilutes them, so, as FFCO does, every runner
+    # with a CN counts.
+    min_kept_for_anchor: int = 0
     enabled: bool = True
 
 
@@ -657,9 +653,8 @@ class CnEngine:
                 active = [cn for (dd, cn) in latest.values() if dd >= cutoff and cn]
                 if active:
                     active.sort(reverse=True)
-                    k = cfg.anchor_top_k
-                    if cfg.anchor_top_fraction:
-                        k = max(k, round(cfg.anchor_top_fraction * len(active)))
+                    k = (round(cfg.anchor_top_fraction * len(active)) if cfg.anchor_top_fraction
+                         else cfg.anchor_top_k)
                     k = max(1, min(k, len(active)))
                     monthly[ym] = sum(active[:k]) / k
         return monthly

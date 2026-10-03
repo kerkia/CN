@@ -220,7 +220,7 @@ export async function render(main, { arg: code, query }) {
       rows, sortKey: null, emptyText: t("cl.eliteNone"),
       columns: [
         { key: "d", label: t("col.date"), cls: "num", render: (r) => fmtDate(data.comp(r[E.course]).date, "short") },
-        { key: "c", label: t("col.comp"), render: (r) => html`<a href="${link.course(r[E.course], { mode: "club", club: code })}">${data.comp(r[E.course]).title}</a>` },
+        { key: "c", label: t("col.comp"), render: (r) => html`<a href="${link.course(r[E.course], { mode: "club", club: code })}" title="${data.comp(r[E.course]).location || ""}">${data.comp(r[E.course]).title}</a>` },
         { key: "n", label: t("rk.col.name"), render: (r) => html`<a href="${link.runner(r[E.lic])}">${displayName(data.runner(r[E.lic])?.nom || r[E.lic])}</a>` },
         { key: "cat", label: t("rk.col.cat"), render: (r) => r[E.cat] },
         { key: "rk", label: t("col.place"), align: "r", cls: "num", render: (r) => ord(r[E.rank]) },
@@ -268,7 +268,7 @@ export async function render(main, { arg: code, query }) {
         { key: "n", label: t("rk.col.name"), render: (x) => html`<a href="${link.runner(x.lic)}">${who(x.lic)}</a>` },
         { key: "cat", label: t("rk.col.cat"), render: (x) => x.cat || "" },
         { key: "c", label: t("col.comp"), render: (x) => html`${terrainTag(data.comp(x.course).terrain)}
-          <a href="${link.course(x.course, { circ: x.circ.id, mode: "club", club: code })}">${data.comp(x.course).title}</a>` },
+          <a href="${link.course(x.course, { circ: x.circ.id, mode: "club", club: code })}" title="${data.comp(x.course).location || ""}">${data.comp(x.course).title}</a>` },
         { key: "circ", label: t("col.circuit"), render: (x) => x.circ.name || "" },
         { key: "d", label: t("col.date"), cls: "num", render: (x) => fmtDate(x.date, "short") },
       ],

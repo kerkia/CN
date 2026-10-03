@@ -584,6 +584,7 @@ def main(argv: list[str] | None = None) -> None:
             "min_scores": p6.min_scores_for_cn, "min_ranked": p6.min_ranked,
             "window_days": p6.window_days, "lag_days": p6.lag_days,
             "anchor_top_k": methods["top6w"].normalisation.anchor_top_k,
+            "anchor_top_fraction": methods["top6w"].normalisation.anchor_top_fraction,
             "anchor_target": methods["top6w"].normalisation.target,
             "anchor_lag_months": methods["top6w"].normalisation.lag_months}},
     }

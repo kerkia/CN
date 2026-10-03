@@ -58,7 +58,8 @@ PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
 # Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
 #   2 (2026-10-03): a Top CN is the aggregate of the published race scores, no factor at the CN level
-TOP6W_CN_VERSION = 2
+#   3 (2026-10-03): the monthly anchor is FFCO's: mean of the best 20 % of the CNs at 5600
+TOP6W_CN_VERSION = 3
 
 
 def migrate(db: Path, out: Path) -> bool:
@@ -70,7 +71,7 @@ def migrate(db: Path, out: Path) -> bool:
     if row and int(row[0]) >= TOP6W_CN_VERSION:
         return False
     t0 = time.monotonic()
-    print("migration: Top method — CN rebuilt from the published race scores, every season")
+    print("migration: Top method — factors, race scores and CN recomputed, every season")
     engine = CnEngine(db)
     engine._normalise(build_methods()["top6w"], None)
     engine.write_runners()

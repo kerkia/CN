@@ -212,7 +212,7 @@ export async function render(main, { arg, query }) {
     if (!all.length) { $("#evo").innerHTML = html`<div class="empty">${t("rn.noRaces")}</div>`; return; }
     timeChart($("#evo"), {
       series, zoom: zoomWindow(all),
-      tooltipExtra: (s, v) => (v[2] ? `<span style="color:var(--ink-3);margin-left:6px">${esc(data.comp(v[2][R.course])?.location || "")}</span>` : ""),
+      tooltipExtra: (s, v) => (v[2] ? `<span style="color:var(--ink-3);margin-left:6px">${esc(data.comp(v[2][R.course])?.title || "")}</span>` : ""),
       onClick: (d) => { calcDate = d; drawCalc(); $("#calc").scrollIntoView({ behavior: "smooth", block: "nearest" }); },
     });
     const dates = [...new Set(methods.flatMap((m) => seriesFor(m).map((p) => p[0])))].sort().reverse();
@@ -232,7 +232,7 @@ export async function render(main, { arg, query }) {
     const ev = cnHistory(histMethod, races, terrain, meta, data.latestMonth());
     const raceLabel = (r) => {
       const c = data.comp(r[R.course]);
-      return html`<a href="${raceLink(r)}">${c?.title || ""}</a> <span class="dim">${r[R.circuit] || ""}</span>`;
+      return html`<a href="${raceLink(r)}" title="${c?.location || ""}">${c?.title || ""}</a> <span class="dim">${r[R.circuit] || ""}</span>`;
     };
     const what = (e) => {
       if (e.kind === "in") return html`${e.races.map((r) => html`<div><span class="tag tag-in">${t("rn.ev.in")}</span> ${raceLabel(r)}
@@ -287,16 +287,16 @@ export async function render(main, { arg, query }) {
       const el = $(`#calc-t-${m}`);
       if (!el) continue;
       const x = explain(m, races, iso, terrain, meta);
-      const place = (row) => { const c = data.comp(row.race[R.course]); return c?.location || c?.title || ""; };
-      const full = (row) => { const c = data.comp(row.race[R.course]); return [c?.title, c?.location].filter(Boolean).join(" — "); };
+      const name = (row) => data.comp(row.race[R.course])?.title || "";
+      const place = (row) => data.comp(row.race[R.course])?.location || "";
       dataTable(el, {
         rows: x.rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
         columns: [
           { key: "date", label: t("col.date"), cls: "num cell-date", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
           { key: "type", label: t("col.type"), cls: "cell-type", sort: (row) => row.race[R.epreuve] || "", defaultDir: 1,
             render: (row) => row.race[R.epreuve] || "" },
-          { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (row) => place(row), defaultDir: 1,
-            render: (row) => html`<a href="${raceLink(row.race)}" title="${full(row)}">${place(row)}</a>` },
+          { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (row) => name(row), defaultDir: 1,
+            render: (row) => html`<a href="${raceLink(row.race)}" title="${place(row)}">${name(row)}</a>` },
           { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
             render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
@@ -360,16 +360,16 @@ export async function render(main, { arg, query }) {
     card.querySelector(".calc-body").innerHTML = rows.length ? html`<div class="calc-table" id="calc-t-official"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
     if (!rows.length) return;
     const ROLE = (role) => ({ kept: 0, best10: 1, worst40: 2 }[role] ?? 3);
-    const full = (x) => [x.title, x.place].filter(Boolean).join(" — ");
+    const name = (x) => (x.race && data.comp(x.race[R.course])?.title) || x.title;
     dataTable($("#calc-t-official"), {
       rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
       columns: [
         { key: "date", label: t("col.date"), cls: "num cell-date", sort: (x) => x.date, render: (x) => fmtDate(x.date, "short") },
         { key: "type", label: t("col.type"), cls: "cell-type", sort: (x) => x.race?.[R.epreuve] || "", defaultDir: 1,
           render: (x) => x.race?.[R.epreuve] || "" },
-        { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (x) => x.place, defaultDir: 1,
-          render: (x) => (x.race ? html`<a href="${raceLink(x.race)}" title="${full(x)}">${x.place || x.title}</a>`
-            : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener" title="${full(x)}">${x.place || x.title}</a>`) },
+        { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (x) => name(x), defaultDir: 1,
+          render: (x) => (x.race ? html`<a href="${raceLink(x.race)}" title="${x.place}">${name(x)}</a>`
+            : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener" title="${x.place}">${name(x)}</a>`) },
         { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (x) => x.points,
           render: (x) => html`<span class="${x.kept ? "cn" : "dim"}">${fmt(x.points)}</span>` },
         { key: "use", label: t("col.use"), cls: "cell-use", sort: (x) => ROLE(x.role), defaultDir: 1, render: (x) => roleLabel(x.role) },
@@ -416,7 +416,7 @@ export async function render(main, { arg, query }) {
     });
     const label = (x, e) => {
       const mine = ourRace(x.id, x.struck ? null : e.date, x.text);      // our page for it (an exit row is dated by the exit)
-      return mine ? html`<a href="${raceLink(mine)}">${x.text}</a>`
+      return mine ? html`<a href="${raceLink(mine)}" title="${data.comp(mine[R.course])?.location || ""}">${x.text}</a>`
         : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener">${x.text}</a>`;
     };
     const several = methods.length > 1;
@@ -560,7 +560,7 @@ export async function render(main, { arg, query }) {
     const cols = [
       { key: "date", label: t("col.date"), cls: "num", sort: (x) => x.r[R.date], render: (x) => fmtDate(x.r[R.date], "short") },
       { key: "comp", label: t("col.comp"), sort: (x) => data.comp(x.r[R.course])?.title,
-        render: (x) => { const c = data.comp(x.r[R.course]); return html`<a href="${raceLink(x.r)}">${c?.title || ""}</a>
+        render: (x) => { const c = data.comp(x.r[R.course]); return html`<a href="${raceLink(x.r)}" title="${c?.location || ""}">${c?.title || ""}</a>
           <div class="dim" style="font-size:12px">${terrainTag(x.r[R.terrain])} ${x.r[R.circuit] || ""} · ${x.r[R.epreuve] || ""} ${x.r[R.groupe] ? html`<span class="tag">${x.r[R.groupe]}</span>` : ""}</div>`; } },
       { key: "cat", label: t("rk.col.cat"), render: (x) => x.r[R.cat] || "" },
       { key: "place", label: t("col.place"), align: "r", cls: "num", sort: (x) => x.r[R.place], defaultDir: 1,
