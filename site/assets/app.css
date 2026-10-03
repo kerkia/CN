@@ -672,3 +672,20 @@ table.data tbody tr.found .name { font-weight: 700; }
 /* history as on the FFCO site: the races leaving the calculation are struck out */
 .struck a { text-decoration: line-through; color: var(--ink-3); }
 .calc-table .table-scroll { max-height: var(--table-max, 480px); }
+
+/* the calculation tables fit their card: fixed columns, the competition shortened (full name in its tooltip) */
+.calc { display: flex; flex-wrap: wrap; gap: 16px; }
+.calc-card { flex: 1 1 360px; min-width: 0; }
+.calc-card.wide { flex: 1.3 1 440px; }      /* the Top method has one more column (weight) */
+.calc-table table.data { table-layout: fixed; min-width: 350px; }
+.calc-table th.cell-date, .calc-table td.cell-date { width: 60px; }
+.calc-table th.cell-type, .calc-table td.cell-type { width: 48px; }
+.calc-table th.cell-score, .calc-table td.cell-score { width: 54px; }
+.calc-table th.cell-w, .calc-table td.cell-w { width: 46px; }
+.calc-table th.cell-use, .calc-table td.cell-use { width: 104px; }
+.calc-table td.cell-comp { overflow: hidden; }
+.calc-table td.cell-comp a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+.role-kept { color: var(--good); font-weight: 700; background: color-mix(in srgb, var(--good) 14%, transparent); }
+.role-mid { color: var(--ink); background: color-mix(in srgb, #f0c43c 34%, transparent); }
+.role-out { color: var(--ink-3); }

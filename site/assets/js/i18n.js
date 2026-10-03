@@ -195,6 +195,7 @@ const FR = {
   "rn.officialFfco": "Page officielle", "rn.noRaces": "Aucune course dans cette spécialité.",
   "rn.cnAfter": "CN après", "rn.score": "Score",
 
+  "calc.s.kept": "✓ retenue", "calc.s.best10": "10 % meilleurs", "calc.s.worst40": "40 % pires", "calc.s.notTop60": "40 % pires", "calc.s.notTop6": "60 % meilleurs", "col.type": "Type",
   "calc.kept": "retenue", "calc.best10": "10 % meilleurs écartés", "calc.worst40": "40 % moins bons écartés",
   "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 6 meilleures",
   "calc.rescaled": "rééchelonné", "calc.factor": "facteur de recalage",

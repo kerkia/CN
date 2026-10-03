@@ -256,8 +256,8 @@ export async function render(main, { arg, query }) {
 
   // ---- the calculation at one date ------------------------------------------------
   function roleLabel(role) {
-    return role === "kept" ? html`<span class="kept">✓ ${t("calc.kept")}</span>`
-      : html`<span class="dropped">${t(`calc.${role}`)}</span>`;
+    const cls = role === "kept" ? "role-kept" : role === "notTop6" ? "role-mid" : "role-out";
+    return html`<span class="role ${cls}" title="${t(`calc.${role}`)}">${t(`calc.s.${role}`)}</span>`;
   }
   function drawCalc() {
     const methods = store.get().methods;
@@ -278,27 +278,30 @@ export async function render(main, { arg, query }) {
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
-      return html`<div class="calc-card">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
+      return html`<div class="calc-card ${m === "top6w" ? "wide" : ""}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
     })}`;
     // each method's table: click a column header to sort by it (date by default, newest first)
-    const ROLE = (role) => (role === "kept" ? "0" : `1${role}`);
+    const ROLE = (role) => ({ kept: 0, notTop6: 1, best10: 2, worst40: 3, notTop60: 4 }[role] ?? 5);
     for (const m of methods) {
       const el = $(`#calc-t-${m}`);
       if (!el) continue;
       const x = explain(m, races, iso, terrain, meta);
       const place = (row) => { const c = data.comp(row.race[R.course]); return c?.location || c?.title || ""; };
+      const full = (row) => { const c = data.comp(row.race[R.course]); return [c?.title, c?.location].filter(Boolean).join(" — "); };
       dataTable(el, {
         rows: x.rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
         columns: [
-          { key: "date", label: t("col.date"), cls: "num", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
-          { key: "comp", label: t("col.comp"), sort: (row) => place(row), defaultDir: 1,
-            render: (row) => html`<a href="${raceLink(row.race)}">${place(row)}</a> <span class="dim">${row.race[R.epreuve] || ""}</span>` },
-          { key: "score", label: t("rn.score"), align: "r", cls: "num", sort: (row) => row.value,
+          { key: "date", label: t("col.date"), cls: "num cell-date", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
+          { key: "type", label: t("col.type"), cls: "cell-type", sort: (row) => row.race[R.epreuve] || "", defaultDir: 1,
+            render: (row) => row.race[R.epreuve] || "" },
+          { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (row) => place(row), defaultDir: 1,
+            render: (row) => html`<a href="${raceLink(row.race)}" title="${full(row)}">${place(row)}</a>` },
+          { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
             render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
-          ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num", sort: (row) => row.weight,
+          ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
             render: (row) => html`×${fmt(row.weight, Number.isInteger(row.weight) ? 0 : 1)}` }] : []),
-          { key: "use", label: t("col.use"), sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role) },
+          { key: "use", label: t("col.use"), cls: "cell-use", sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role) },
         ],
       });
     }
