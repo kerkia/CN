@@ -202,6 +202,8 @@ const FR = {
   "calc.raw": "CN brut", "calc.weights": "Poids : A/B × 2, C × 1,5, D × 1",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
   "calc.v2026.formula": "Moyenne des scores après retrait des 10 % meilleurs et 40 % moins bons (arrondis), minimum 2 courses.",
+  "calc.rawWord": "brut", "calc.published": "page Courses",
+  "calc.top6w.scale": "Les scores du tableau sont à l'échelle du CN du mois (score brut × facteur de recalage) : leur moyenne pondérée, sur les courses retenues, donne le CN. La page Courses les affiche à l'échelle du mois de la course, d'où de légers écarts.",
   "calc.top6w.formula": "Moyenne pondérée des 6 meilleures courses parmi les 60 % meilleures, minimum 3 courses ; puis recalage mensuel.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
