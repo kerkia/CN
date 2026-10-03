@@ -678,6 +678,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .calc { display: flex; flex-wrap: wrap; gap: 16px; }
 .calc-card { flex: 1 1 360px; min-width: 0; }
 .calc-card.wide { flex: 1.3 1 440px; }      /* the Top method has one more column (weight) */
+.calc-card.pending .calc-body { opacity: .25; pointer-events: none; }
 .calc-table table.data { table-layout: fixed; min-width: 350px; }
 .calc-table th.cell-date, .calc-table td.cell-date { width: 60px; }
 .calc-table th.cell-type, .calc-table td.cell-type { width: 48px; }

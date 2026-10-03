@@ -278,10 +278,11 @@ export async function render(main, { arg, query }) {
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
-      return html`<div class="calc-card ${m === "top6w" ? "wide" : ""}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
+      return html`<div class="calc-card ${m === "top6w" ? "wide" : ""}" id="calc-card-${m}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
     })}`;
     // each method's table: click a column header to sort by it (date by default, newest first)
     const ROLE = (role) => ({ kept: 0, notTop6: 1, best10: 2, worst40: 3, notTop60: 4 }[role] ?? 5);
+    if (methods.includes("official")) drawOfficialCalc(iso);
     for (const m of methods) {
       const el = $(`#calc-t-${m}`);
       if (!el) continue;
@@ -305,6 +306,75 @@ export async function render(main, { arg, query }) {
         ],
       });
     }
+  }
+
+  // ---- the official calculation, exactly as FFCO publishes it on the runner's CN page at that date: its races,
+  // the points it counts for each (a race of a past season is re-evaluated for the new season, so these can
+  // differ from the race's results page), the ones it keeps, and its CN. Before the forest/sprint split the
+  // CN was one, published under "Ped".
+  const ffCn = new Map();
+  function ffCnAt(iso) {
+    const spe = Number(iso.slice(0, 4)) < meta.split_year ? "Ped" : terrain;
+    const key = `${lic}|${spe}|${iso}`;
+    if (!ffCn.has(key)) {
+      ffCn.set(key, fetch(`api/ffco-cn?lic=${encodeURIComponent(lic)}&spe=${spe}&d=${iso}`, { credentials: "same-origin" })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null)
+        .then((res) => { if (!res) ffCn.delete(key); return res && { ...res, spe }; }));
+    }
+    return ffCn.get(key);
+  }
+  /** Our row for a race of an FFCO page: same circuit, else same day and competition (re-evaluated circuits get new ids). */
+  const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "");
+  function ourRace(id, iso, title) {
+    const byId = races.find((r) => String(r[R.cid]) === String(id));
+    if (byId) return byId;
+    const same = races.filter((r) => r[R.date] === iso);
+    return same.find((r) => norm(data.comp(r[R.course])?.title) === norm(title)) || (same.length === 1 ? same[0] : null);
+  }
+  async function drawOfficialCalc(iso) {
+    // while FFCO answers, the card waits; without an answer (offline, not signed in) our copy of the published values stays
+    let card = $("#calc-card-official");
+    const saved = card && [card.querySelector(".big").innerHTML, card.querySelector(".calc-formula").innerHTML];
+    if (card) {
+      card.classList.add("pending");
+      card.querySelector(".big").textContent = "…";
+      card.querySelector(".calc-formula").innerHTML = html`<span class="muted">${t("calc.official.loading")}</span>`;
+    }
+    const res = await ffCnAt(iso);
+    card = $("#calc-card-official");
+    if (!card || $("#calc-date").value !== iso) return;                  // redrawn meanwhile: that draw handles it
+    card.classList.remove("pending");
+    if (!res) {
+      if (saved) [card.querySelector(".big").innerHTML, card.querySelector(".calc-formula").innerHTML] = saved;
+      return;
+    }
+    const keptMin = Math.min(...res.rows.filter((x) => x.kept).map((x) => x.points));
+    const rows = res.rows.map((x) => ({
+      ...x, race: ourRace(x.id, x.date, x.title),
+      role: x.kept ? "kept" : res.cn == null ? "noCn" : x.points > keptMin ? "best10" : "worst40",
+    }));
+    const url = `https://cn.ffcorientation.fr/cn/${lic}/?specialite=${res.spe}&jour=${Number(iso.slice(8))}&mois=${Number(iso.slice(5, 7))}&annee=${iso.slice(0, 4)}`;
+    card.querySelector(".big").textContent = res.cn == null ? "—" : fmt(res.cn);
+    card.querySelector(".calc-formula").innerHTML = html`${t("calc.official.ffco")}
+      <a href="${url}" target="_blank" rel="noopener">${t("calc.official.page")} ↗</a>${res.cn == null && res.note ? html`<br>${res.note}` : ""}`;
+    card.querySelector(".calc-body").innerHTML = rows.length ? html`<div class="calc-table" id="calc-t-official"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
+    if (!rows.length) return;
+    const ROLE = (role) => ({ kept: 0, best10: 1, worst40: 2 }[role] ?? 3);
+    const full = (x) => [x.title, x.place].filter(Boolean).join(" — ");
+    dataTable($("#calc-t-official"), {
+      rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
+      columns: [
+        { key: "date", label: t("col.date"), cls: "num cell-date", sort: (x) => x.date, render: (x) => fmtDate(x.date, "short") },
+        { key: "type", label: t("col.type"), cls: "cell-type", sort: (x) => x.race?.[R.epreuve] || "", defaultDir: 1,
+          render: (x) => x.race?.[R.epreuve] || "" },
+        { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (x) => x.place, defaultDir: 1,
+          render: (x) => (x.race ? html`<a href="${raceLink(x.race)}" title="${full(x)}">${x.place || x.title}</a>`
+            : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener" title="${full(x)}">${x.place || x.title}</a>`) },
+        { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (x) => x.points,
+          render: (x) => html`<span class="${x.kept ? "cn" : "dim"}">${fmt(x.points)}</span>` },
+        { key: "use", label: t("col.use"), cls: "cell-use", sort: (x) => ROLE(x.role), defaultDir: 1, render: (x) => roleLabel(x.role) },
+      ],
+    });
   }
 
   // ---- the CN history as the FFCO site publishes it: entries and exits of races in the calculation base,
@@ -344,9 +414,8 @@ export async function render(main, { arg, query }) {
       }
       return row;
     });
-    const byCircuit = new Map(races.map((r) => [String(r[R.cid]), r]));
-    const label = (x) => {
-      const mine = byCircuit.get(x.id);                                   // our page for it, when the runner is in our data
+    const label = (x, e) => {
+      const mine = ourRace(x.id, x.struck ? null : e.date, x.text);      // our page for it (an exit row is dated by the exit)
       return mine ? html`<a href="${raceLink(mine)}">${x.text}</a>`
         : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener">${x.text}</a>`;
     };
@@ -358,7 +427,7 @@ export async function render(main, { arg, query }) {
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date, "short") },
         { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, defaultDir: 1,
           sort: (e) => e.races[0]?.text || "",
-          render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x)}</div>`)}` },
+          render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x, e)}</div>`)}` },
         ...methods.flatMap((m) => [
           { key: `cn_${m}`, label: several ? html`${key(m)}CN ${methodShort(m)}` : "CN", align: "r", cls: "num", sort: (e) => e.cn[m],
             render: (e) => (e.cn[m] == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn[m])}</b>`) },
