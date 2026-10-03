@@ -112,7 +112,7 @@ export function legend(items) {
  */
 const ALL_BELOW = 2500, CHUNK = 400;
 export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
-  rowClass, onRender, emptyText = "—", caption, onSort, maxHeight }) {
+  rowClass, onRender, emptyText = "—", caption, onSort, maxHeight, compact = false }) {
   let key = sortKey, dir = sortDir, all = [], shown = 0;
   function sorted() {
     const col = columns.find((c) => c.key === key);
@@ -147,7 +147,7 @@ export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
     shown = all.length <= ALL_BELOW ? all.length : CHUNK;
     container.innerHTML = html`
       <div class="table-wrap table-scroll" ${raw(maxHeight ? `style="--table-max:${maxHeight}"` : "")}>
-        <table class="data">
+        <table class="data ${compact ? "compact" : ""}">
           ${caption ? html`<caption class="sr-only">${caption}</caption>` : ""}
           <thead><tr>${columns.map((c) => html`<th scope="col" class="${c.align || ""} ${c.sort ? "sortable" : ""} ${c.cls || ""}"
               data-key="${c.key}" ${raw(c.sort ? `aria-sort="${key === c.key ? (dir > 0 ? "ascending" : "descending") : "none"}"` : "")}>

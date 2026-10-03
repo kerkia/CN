@@ -86,6 +86,11 @@ export async function render(main, { arg, query }) {
       <div class="card-body"><div class="calc" id="calc"></div></div>
     </section>
     <section class="card" style="margin-bottom:16px">
+      <div class="card-head"><div><h2>${t("rn.ffHistory")}</h2><div class="hint">${t("rn.ffHistory.hint")}</div></div>
+        </div>
+      <div id="ffhist"></div>
+    </section>
+    <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("pg.title")}</h2><div class="hint" id="pg-hint"></div></div>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("pg.ref")}</span><select id="ref"></select></label></div>
       <div class="card-body">
@@ -263,7 +268,6 @@ export async function render(main, { arg, query }) {
     replaceQuery({ d: calcDate || null, range: range === "all" ? null : range });
     $("#calc").innerHTML = html`${methods.map((m) => {
       const x = explain(m, races, iso, terrain, meta);
-      const rows = [...x.rows].sort((a, b) => (b.race[R.date] > a.race[R.date] ? 1 : -1));
       const head = html`<div class="calc-head">
         <div class="row"><span class="key" style="background:${raw(methodColor(m))}"></span><h3>${methodLabel(m)}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
@@ -273,20 +277,67 @@ export async function render(main, { arg, query }) {
         ${x.raw != null ? html`<br><code>${t("calc.raw")} ${fmt(x.raw)} × ${fmt(x.factor, 4)} (${t("calc.factor")}) = ${fmt(x.cn)}</code>` : ""}`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
-      const body = x.rows.length ? html`<table class="data compact"><thead><tr>
-          <th>${t("col.date")}</th><th>${t("col.comp")}</th><th class="r">${t("rn.score")}</th>
-          ${m === "top6w" ? html`<th class="r">${t("col.weight")}</th>` : ""}<th>${t("col.use")}</th></tr></thead>
-        <tbody>${rows.map((row) => {
-          const c = data.comp(row.race[R.course]);
-          return html`<tr><td class="num">${fmtDate(row.race[R.date], "short")}</td>
-            <td><a href="${raceLink(row.race)}">${c?.location || c?.title || ""}</a> <span class="dim">${row.race[R.epreuve] || ""}</span></td>
-            <td class="r num ${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
-              ? html`<span class="dim" title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</td>
-            ${m === "top6w" ? html`<td class="r num">×${fmt(row.weight, Number.isInteger(row.weight) ? 0 : 1)}</td>` : ""}
-            <td>${roleLabel(row.role)}</td></tr>`;
-        })}</tbody></table>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
+      const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
       return html`<div class="calc-card">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
     })}`;
+    // each method's table: click a column header to sort by it (date by default, newest first)
+    const ROLE = (role) => (role === "kept" ? "0" : `1${role}`);
+    for (const m of methods) {
+      const el = $(`#calc-t-${m}`);
+      if (!el) continue;
+      const x = explain(m, races, iso, terrain, meta);
+      const place = (row) => { const c = data.comp(row.race[R.course]); return c?.location || c?.title || ""; };
+      dataTable(el, {
+        rows: x.rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
+        columns: [
+          { key: "date", label: t("col.date"), cls: "num", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
+          { key: "comp", label: t("col.comp"), sort: (row) => place(row), defaultDir: 1,
+            render: (row) => html`<a href="${raceLink(row.race)}">${place(row)}</a> <span class="dim">${row.race[R.epreuve] || ""}</span>` },
+          { key: "score", label: t("rn.score"), align: "r", cls: "num", sort: (row) => row.value,
+            render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
+              ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
+          ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num", sort: (row) => row.weight,
+            render: (row) => html`×${fmt(row.weight, Number.isInteger(row.weight) ? 0 : 1)}` }] : []),
+          { key: "use", label: t("col.use"), sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role) },
+        ],
+      });
+    }
+  }
+
+  // ---- the CN history as the FFCO site publishes it: entries and exits of races in the calculation base
+  async function drawFfHistory() {
+    const box = $("#ffhist");
+    box.innerHTML = html`<div class="muted" style="padding:14px 18px">${t("misc.loading")}</div>`;
+    const spe = terrain;                                                  // "For" | "Spr", as FFCO's `specialite`
+    const source = `https://cn.ffcorientation.fr/historique/${lic}/?specialite=${spe}`;
+    let res = null;
+    try {
+      const r = await fetch(`api/ffco-history?lic=${encodeURIComponent(lic)}&spe=${spe}`, { credentials: "same-origin" });
+      res = r.ok ? await r.json() : null;
+    } catch (e) { /* offline, or no server (local file server) */ }
+    if (!$("#ffhist")) return;                                            // the page changed meanwhile
+    if (!res) {
+      box.innerHTML = html`<div class="empty">${t("rn.ffHistory.err")} <a href="${source}" target="_blank" rel="noopener">${t("rn.ffHistory.open")} ↗</a></div>`;
+      return;
+    }
+    const byCircuit = new Map(races.map((r) => [String(r[R.cid]), r]));
+    const label = (x) => {
+      const mine = byCircuit.get(x.id);                                   // our page for it, when the runner is in our data
+      return mine ? html`<a href="${raceLink(mine)}">${x.text}</a>`
+        : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener">${x.text}</a>`;
+    };
+    dataTable(box, {
+      rows: res.rows, sortKey: "date", sortDir: -1, compact: true, emptyText: t("rn.noRaces"),
+      columns: [
+        { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date, "short") },
+        { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, defaultDir: 1,
+          sort: (e) => e.races[0]?.text || "",
+          render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x)}</div>`)}` },
+        { key: "cn", label: "CN", align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
+        { key: "delta", label: t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta,
+          render: (e) => (e.delta == null ? "" : html`<span class="${e.delta > 0 ? "delta-up" : e.delta < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta)}</span>`) },
+      ],
+    });
   }
   $("#calc-date").addEventListener("change", (e) => { calcDate = e.target.value || null; drawCalc(); });
   $("#show-scores").addEventListener("change", (e) => { showScores = e.target.checked; drawChart(); });
@@ -460,6 +511,7 @@ export async function render(main, { arg, query }) {
     drawTiles();
     drawChart();
     drawCnHistory();
+    drawFfHistory();
     drawCalc();
     drawProgress();
     drawHistory();

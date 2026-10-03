@@ -668,3 +668,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .agenda-detail .accessbox .reg-title { font-weight: 650; margin-bottom: 6px; }
 .access-text { white-space: pre-line; font-size: 14px; }
 .access-src { font-size: 12px; margin-top: 4px; }
+
+/* history as on the FFCO site: the races leaving the calculation are struck out */
+.struck a { text-decoration: line-through; color: var(--ink-3); }
+.calc-table .table-scroll { max-height: var(--table-max, 480px); }

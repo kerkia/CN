@@ -188,6 +188,8 @@ const FR = {
   "rn.showScores": "Afficher les scores de course", "rn.calc": "Détail du calcul du CN",
   "rn.calc.at": "au", "rn.calc.window": "Fenêtre : 12 mois jusqu'au",
   "rn.calc.none": "Pas de CN à cette date (moins de courses que le minimum requis dans la fenêtre).",
+  "rn.ffHistory": "Historique du CN officiel (FFCO)", "rn.ffHistory.hint": "Tel que publié par la FFCO : chaque entrée d'une course dans la base de calcul, et chaque sortie (en barré) douze mois plus tard, avec le CN et sa variation",
+  "rn.ffHistory.err": "L'historique de la FFCO n'est pas disponible pour le moment.", "rn.ffHistory.open": "Ouvrir la page de la FFCO",
   "rn.history": "Historique des courses", "rn.seasons": "Bilan par saison",
   "rn.addCompare": "Ajouter à la comparaison", "rn.inCompare": "Dans la comparaison",
   "rn.officialFfco": "Page officielle", "rn.noRaces": "Aucune course dans cette spécialité.",
