@@ -47,7 +47,7 @@ from pathlib import Path
 import httpx
 from lxml import html as lhtml
 
-from ffco_scraper.cn import GROUP_WEIGHTS, CnParams, Decimal_round, top_n_weighted, trimmed_mean
+from ffco_scraper.cn import GROUP_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted, trimmed_mean
 from ffco_scraper.cn_engine import build_methods
 import site_extras
 from site_io import WRITES, dump, prune
@@ -272,6 +272,17 @@ def main(argv: list[str] | None = None) -> None:
     ):
         if r["circuit_id"] in circuits:
             raw_res[(r["licence"], r["circuit_id"])] = r
+    # "nc" (non classé): no points, not part of the race for the CN. Such a row is
+    # dropped from every method, so it is in no runner's results and no statistic;
+    # the race's own page still lists it, as FFCO does.
+    nc_rows = {}
+    for key, r in raw_res.items():
+        if is_nc(r["place"]):
+            nc_rows[key] = by_method["official"].get(key)
+            for m in by_method.values():
+                m.pop(key, None)
+    for key in nc_rows:
+        del raw_res[key]
     n_per_circuit = defaultdict(int)
     for (lic, cid), r in raw_res.items():
         n_per_circuit[cid] += 1
@@ -361,6 +372,12 @@ def main(argv: list[str] | None = None) -> None:
             v["score_raw"] if v else None, v["cn_j15"] if v else None,
             t["score"] if t else None, t["cn_j15"] if t else None,
         ])
+    for (lic, cid), o in nc_rows.items():
+        if o is not None:
+            by_course[circuits[cid][0]][cid].append([
+                lic, None, o["temps_s"], "nc", o["categorie"], o["club"],
+                None, o["cn_j15"], None, None, None, None,
+            ])
     for course_id, circ in by_course.items():
         out = []
         for cid, rows in circ.items():

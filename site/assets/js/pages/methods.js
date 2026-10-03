@@ -97,8 +97,11 @@ export async function render(main) {
       <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
       <p>Une méthode alternative, pensée pour récompenser les meilleures performances et lisser l'échelle dans le temps :</p>
       <ul>
-        <li>on ne garde que les ${pct(p6.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche), puis au plus les ${fmt(p6.top_n)} meilleurs d'entre eux ;</li>
+        <li>on ne garde que les ${pct(p6.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
         <li>chaque score est pondéré selon le niveau de la compétition : A et B × ${fmtW(p6.weights.A)}, C × ${fmtW(p6.weights.C)}, D × ${fmtW(p6.weights.D)} ;</li>
+        <li>le CN dispose de ${fmt(p6.top_n)} places : du meilleur score au moins bon, chaque course en occupe autant que son poids, jusqu'à ce qu'elles soient
+          toutes prises ; la dernière course retenue ne compte que pour les places qui restent (une course B arrivant quand il ne reste qu'une place compte × 1).
+          Ainsi, une course de meilleur niveau ou une course de plus ne peut jamais faire baisser le CN ;</li>
         <li>il faut au moins ${fmt(p6.min_scores)} courses pour avoir un CN ; un circuit ne compte que s'il a au moins ${fmt(p6.min_ranked)} coureurs classés ayant un CN ;
           seuls les coureurs ayant un CN entrent dans la valeur du circuit ;</li>
         <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour ramener la moyenne des
@@ -109,7 +112,7 @@ export async function render(main) {
         <li>ce facteur s'applique aux scores des courses du mois : chaque score est calculé une fois pour toutes et n'est jamais revu
           quand un nouveau facteur arrive. Le CN est la moyenne pondérée de ces scores ; il ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
       </ul>
-      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les 6 meilleurs des 60 % meilleurs scores — score = score brut × facteur(mois de la course)</div>
+      <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les 60 % meilleurs scores — score = score brut × facteur(mois de la course)</div>
       <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'ensemble des inconvénients identifiés ci-dessus :</p>
       <ul>
         <li>inspirée du <i>World Ranking</i>, elle calcule le CN sur un nombre limité de courses ;</li>

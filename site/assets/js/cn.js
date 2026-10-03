@@ -39,17 +39,21 @@ export function trimmed(values, minScores = 2) {
 /** Best `topN` races taken from the best `frac` of the window, group-weighted. */
 export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3 } = {}) {
   const n = values.length;
-  if (n < minScores) return { cn: null, roles: values.map(() => null) };
+  if (n < minScores) return { cn: null, roles: values.map(() => null), used: values.map(() => 0), nKept: 0 };
+  // topN is a number of slots: from the best score down, each race fills as many as its weight, the last
+  // one only what is left (`used`), so a stronger event can never lower the CN
   const order = values.map((v, i) => i).sort((a, b) => values[b] - values[a]); // stable
   const pool = Math.max(1, dround(frac * n));
-  const take = Math.min(pool, topN);
-  const roles = new Array(n);
-  let sw = 0, sx = 0;
+  const roles = new Array(n), used = new Array(n).fill(0);
+  let slots = topN, sw = 0, sx = 0, nKept = 0;
   order.forEach((idx, rank) => {
-    if (rank < take) { roles[idx] = "kept"; sw += weights[idx]; sx += values[idx] * weights[idx]; }
-    else roles[idx] = rank >= pool ? "notTop60" : "notTop6";
+    if (rank >= pool) { roles[idx] = "notTop60"; return; }
+    if (slots <= 0) { roles[idx] = "notTop6"; return; }
+    const u = Math.min(weights[idx], slots);
+    slots -= u; used[idx] = u; nKept++;
+    roles[idx] = "kept"; sw += u; sx += values[idx] * u;
   });
-  return { cn: sw > 0 ? dround(sx / sw) : null, roles, nKept: take };
+  return { cn: sw > 0 ? dround(sx / sw) : null, roles, used, nKept };
 }
 
 /**
@@ -93,7 +97,7 @@ export function explain(method, races, iso, terrain, meta) {
     const res = topWeighted(rows.map((x) => x.value), rows.map((x) => x.weight), {
       topN: p.top_n, frac: p.eligible_fraction, minScores: p.min_scores,
     });
-    rows.forEach((x, i) => { x.role = res.roles[i]; });
+    rows.forEach((x, i) => { x.role = res.roles[i]; x.used = res.used[i]; });
     return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };
   }
 

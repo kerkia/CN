@@ -197,7 +197,7 @@ const FR = {
 
   "calc.s.kept": "✓ retenue", "calc.s.best10": "10 % meilleurs", "calc.s.worst40": "40 % pires", "calc.s.notTop60": "40 % pires", "calc.s.notTop6": "60 % meilleurs", "col.type": "Type",
   "calc.kept": "retenue", "calc.best10": "10 % meilleurs écartés", "calc.worst40": "40 % moins bons écartés",
-  "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 6 meilleures",
+  "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 6 places", "calc.partial": "Seule une partie du poids de cette course tient dans les 6 places",
   "calc.rescaled": "rééchelonné", "calc.factor": "facteur de recalage",
   "calc.raw": "CN brut", "calc.weights": "Poids : A/B × 2, C × 1,5, D × 1",
   "calc.official.ffco": "Calcul publié par la FFCO à cette date : courses de la base, points retenus pour chacune, CN.",
@@ -206,7 +206,7 @@ const FR = {
   "calc.noCn": "pas de CN à cette date", "calc.s.noCn": "—",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
   "calc.v2026.formula": "Moyenne des scores après retrait des 10 % meilleurs et 40 % moins bons (arrondis), minimum 2 courses.",
-  "calc.top6w.formula": "Moyenne pondérée des 6 meilleurs scores parmi les 60 % meilleurs, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
+  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
@@ -215,7 +215,7 @@ const FR = {
   "col.members": "Classés", "col.median": "Médiane", "col.top": "Meilleur", "col.name": "Nom",
   "col.code": "Code", "col.value": "Valeur", "col.cnj15": "CN J-15", "col.dist": "Distance",
 
-  "status.ok": "", "status.pm": "PM", "status.abandon": "Abandon", "status.disqualifie": "Disq.",
+  "status.ok": "", "status.nc": "NC", "status.pm": "PM", "status.abandon": "Abandon", "status.disqualifie": "Disq.",
   "status.hors_delai": "Hors délai",
 
   "cp.title": "Comparer des coureurs",

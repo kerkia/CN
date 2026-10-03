@@ -39,6 +39,7 @@ from .cn import (
     RunnerHistory,
     circuit_value,
     classify_status,
+    is_nc,
     group_weight,
     parse_time,
     sexe_of,
@@ -254,7 +255,7 @@ class CnEngine:
 
     def _rows_of(self, circuit_id: int):
         return self.conn.execute(
-            """SELECT licence, nom, categorie, club, temps, cn_j15, points, nouveau_cn
+            """SELECT licence, nom, place, categorie, club, temps, cn_j15, points, nouveau_cn
                FROM results WHERE circuit_id = ? ORDER BY id""",
             (circuit_id,),
         ).fetchall()
@@ -438,6 +439,8 @@ class CnEngine:
 
             participants, ranked = [], []
             for r in rows:
+                if is_nc(r["place"]):           # non classé: not part of the race for the CN
+                    continue
                 cat = (r["categorie"] or "").strip().upper()
                 status = classify_status(r["temps"])
                 T = parse_time(r["temps"])

@@ -301,7 +301,13 @@ export async function render(main, { arg, query }) {
             render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
           ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
-            render: (row) => html`×${fmt(row.weight, Number.isInteger(row.weight) ? 0 : 1)}` }] : []),
+            render: (row) => {
+              const w = (v) => fmt(v, Number.isInteger(v) ? 0 : 1);
+              // the last race kept may only partly fit in the 6 slots
+              return row.used && row.used < row.weight
+                ? html`<span title="${t("calc.partial")}">×${w(row.used)}<span class="dim">/${w(row.weight)}</span></span>`
+                : html`×${w(row.weight)}`;
+            } }] : []),
           { key: "use", label: t("col.use"), cls: "cell-use", sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role) },
         ],
       });

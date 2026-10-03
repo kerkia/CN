@@ -60,26 +60,40 @@ DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet p
 #   2 (2026-10-03): a Top CN is the aggregate of the published race scores, no factor at the CN level
 #   3 (2026-10-03): the monthly anchor is FFCO's: mean of the best 20 % of the CNs at 5600
 TOP6W_CN_VERSION = 3
+# Same for a change of the computation itself: v2026 and Top recomputed from 2010, then the site.
+#   1 (2026-10-03): "nc" (non classé) rows take no part in any calculation; Top: 6 weight slots, not 6 races
+ENGINE_VERSION = 1
 
 
 def migrate(db: Path, out: Path) -> bool:
     """One-off recomputation after a method change; True when the site data was rebuilt."""
     con = sqlite3.connect(db)
     con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
-    row = con.execute("SELECT value FROM engine_meta WHERE key = 'top6w_cn'").fetchone()
+    meta = dict(con.execute("SELECT key, value FROM engine_meta").fetchall())
     con.close()
-    if row and int(row[0]) >= TOP6W_CN_VERSION:
+    engine_due = int(meta.get("engine", 0)) < ENGINE_VERSION
+    top_due = int(meta.get("top6w_cn", 0)) < TOP6W_CN_VERSION
+    if not engine_due and not top_due:
         return False
     t0 = time.monotonic()
-    print("migration: Top method — factors, race scores and CN recomputed, every season")
     engine = CnEngine(db)
-    engine._normalise(build_methods()["top6w"], None)
+    if engine_due:
+        print("migration: v2026 and Top recomputed from the start")
+        methods = build_methods()
+        for name in ("v2026", "top6w"):
+            t1 = time.monotonic()
+            engine.run_method(methods[name])               # the Top run ends with its normalisation
+            print(f"  {name}: {time.monotonic() - t1:.0f}s")
+    else:
+        print("migration: Top method — factors, race scores and CN recomputed, every season")
+        engine._normalise(build_methods()["top6w"], None)
     engine.write_runners()
     engine.close()
     import build_site
     build_site.main(["--out", str(out), "--db", str(db)])
     con = sqlite3.connect(db)
-    con.execute("INSERT OR REPLACE INTO engine_meta (key, value) VALUES ('top6w_cn', ?)", (str(TOP6W_CN_VERSION),))
+    con.executemany("INSERT OR REPLACE INTO engine_meta (key, value) VALUES (?, ?)",
+                    [("top6w_cn", str(TOP6W_CN_VERSION)), ("engine", str(ENGINE_VERSION))])
     con.commit()
     con.close()
     DEPLOY_PENDING.touch()

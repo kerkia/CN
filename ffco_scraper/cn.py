@@ -69,11 +69,15 @@ class CnParams:
     #   "trimmed"      - federation rule: drop best 10% / worst 40%, mean
     #   "top6_weighted"- best N races, weighted by race group
     aggregation: str = "trimmed"
+    # top6_weighted: `top_n` is a number of *slots*, not of races. From the best
+    # score down, each race fills as many slots as its weight (A/B 2, C 1.5,
+    # D 1) until they are full; the last one counts only for what is left. So
+    # a stronger event can never lower the CN, which a mean over a fixed six
+    # races allowed (a B race as 6th weighed twice a D race at the bottom).
     top_n: int = 6
-    # Best `top_n` are taken from the best `eligible_fraction` of the window
-    # rather than from all of it. With 60% this only bites below 10 races:
-    # at 9 races the pool is round(5.4)=5, so 5 count instead of 6; from 10
-    # races up the pool is >= 6 and the result is identical either way.
+    # The races are taken from the best `eligible_fraction` of the window
+    # rather than from all of it, so a runner with few races cannot have all
+    # of them counted.
     eligible_fraction: float = 0.60
     drop_best_frac: float = 0.10
     drop_worst_frac: float = 0.40
@@ -104,6 +108,14 @@ def parse_time(t: str | None) -> int | None:
         return None
     total = h * 3600 + m * 60 + s
     return total if total > 0 else None
+
+
+def is_nc(place: str | None) -> bool:
+    """"nc" (non classé) in the place column: FFCO gives the runner no points
+    and leaves the race out of their CN - unlike a PM or an abandon, which
+    are placed nowhere but score 0 and count. Such a row takes no part in
+    any calculation: not in the circuit's value, not in the runner's results."""
+    return (place or "").strip().lower() == "nc"
 
 
 def classify_status(temps: str | None) -> str:
@@ -201,11 +213,17 @@ def top_n_weighted(
     # Only the best `eligible_fraction` of the window is even considered,
     # so a runner with few races cannot have all of them counted.
     pool = max(1, Decimal_round(params.eligible_fraction * n))
-    kept = pairs[:pool][: params.top_n]
-    total_w = sum(w for _, w in kept)
+    slots, kept = float(params.top_n), []
+    for s, w in pairs[:pool]:
+        if slots <= 0:
+            break
+        used = min(w, slots)                 # the last race may only partly fit
+        kept.append((s, used))
+        slots -= used
+    total_w = sum(u for _, u in kept)
     if total_w <= 0:
         return None, 0
-    return Decimal_round(sum(s * w for s, w in kept) / total_w), len(kept)
+    return Decimal_round(sum(s * u for s, u in kept) / total_w), len(kept)
 
 
 def aggregate(
