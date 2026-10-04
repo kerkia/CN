@@ -41,6 +41,7 @@ from .cn import (
     classify_status,
     is_nc,
     group_weight,
+    race_weight,
     parse_time,
     sexe_of,
     to_int,
@@ -179,7 +180,14 @@ def build_methods() -> dict[str, MethodSpec]:
                 sample_rounding="ceil",
                 k_over_1000=1.0,
                 aggregation="top6_weighted",
-                top_n=6,
+                # 10 places, not 6: with 6, a runner's CN was the mean of their
+                # few best races, well above their usual level, and in groups
+                # that race mostly among themselves (juniors, veterans) that
+                # excess fed back through circuit values. Measured on 2025-26
+                # forest results, 10 places predict head-to-heads better
+                # (78.9 % against 77.1 %) and halve the juniors' drift.
+                top_n=10,
+                weighting="title",       # championnat de France 2, national 1.5, other 1
                 # Thin data is where absurd CNs come from: at two races the
                 # aggregation degenerates to "best single score", which then
                 # feeds back through circuit values. These three thresholds
@@ -244,7 +252,7 @@ class CnEngine:
         return self.conn.execute(
             f"""
             SELECT c.circuit_id, c.course_id, comp.date_iso, comp.season,
-                   comp.terrain, comp.epreuve, comp.groupe
+                   comp.terrain, comp.epreuve, comp.groupe, comp.title
             FROM circuits c
             JOIN competitions comp ON comp.course_id = c.course_id
             WHERE comp.specialite = 'Pédestre' AND comp.date_iso IS NOT NULL {where}
@@ -433,7 +441,7 @@ class CnEngine:
                     self._rescale(hist, spec, current_year, p)
 
             terrain = c["terrain"] or "Forêt"
-            weight = group_weight(c["groupe"])
+            weight = race_weight(c["groupe"], c["title"], p)
             as_of = d - timedelta(days=p.lag_days)
             rows = self._rows_of(c["circuit_id"])
 

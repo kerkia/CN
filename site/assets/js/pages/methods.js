@@ -40,7 +40,7 @@ export async function render(main) {
         <p class="muted">Le règlement 2026 appliqué rétroactivement à toutes les saisons depuis 2010 : moyenne tronquée et recalage annuel.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
-        <p class="muted">Les 6 meilleures courses, pondérées par le niveau de la compétition, avec un recalage mensuel plutôt qu'annuel.</p></div></section>
+        <p class="muted">Les meilleures courses, sur ${fmt(p6.top_n)} places pondérées par le niveau de la compétition, avec un recalage mensuel plutôt qu'annuel.</p></div></section>
     </div>
 
     <div class="prose">
@@ -98,9 +98,10 @@ export async function render(main) {
       <p>Une méthode alternative, pensée pour récompenser les meilleures performances et lisser l'échelle dans le temps :</p>
       <ul>
         <li>on ne garde que les ${pct(p6.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
-        <li>chaque score est pondéré selon le niveau de la compétition : A et B × ${fmtW(p6.weights.A)}, C × ${fmtW(p6.weights.C)}, D × ${fmtW(p6.weights.D)} ;</li>
+        <li>chaque score est pondéré selon le niveau de la compétition : championnat de France × ${fmtW(p6.weights.cdf)},
+          course nationale (O'France, Nationale) × ${fmtW(p6.weights.national)}, toutes les autres × ${fmtW(p6.weights.other)} ;</li>
         <li>le CN dispose de ${fmt(p6.top_n)} places : du meilleur score au moins bon, chaque course en occupe autant que son poids, jusqu'à ce qu'elles soient
-          toutes prises ; la dernière course retenue ne compte que pour les places qui restent (une course B arrivant quand il ne reste qu'une place compte × 1).
+          toutes prises ; la dernière course retenue ne compte que pour les places qui restent (un championnat de France arrivant quand il ne reste qu'une place compte × 1).
           Ainsi, une course de meilleur niveau ou une course de plus ne peut jamais faire baisser le CN ;</li>
         <li>il faut au moins ${fmt(p6.min_scores)} courses pour avoir un CN ; un circuit ne compte que s'il a au moins ${fmt(p6.min_ranked)} coureurs classés ayant un CN ;
           seuls les coureurs ayant un CN entrent dans la valeur du circuit ;</li>
@@ -115,7 +116,8 @@ export async function render(main) {
       <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les 60 % meilleurs scores — score = score brut × facteur(mois de la course)</div>
       <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'ensemble des inconvénients identifiés ci-dessus :</p>
       <ul>
-        <li>inspirée du <i>World Ranking</i>, elle calcule le CN sur un nombre limité de courses ;</li>
+        <li>inspirée du <i>World Ranking</i>, elle calcule le CN sur un nombre limité de courses — ${fmt(p6.top_n)} places, assez pour que
+          les groupes qui courent surtout entre eux (jeunes, vétérans) ne gonflent pas leur CN ;</li>
         <li>plus un coureur court, plus il peut améliorer son CN, sans risquer de le faire baisser ;</li>
         <li>elle est stable au fil des années ;</li>
         <li>elle sépare le sprint et la forêt, comme la méthode CN 2026.</li>

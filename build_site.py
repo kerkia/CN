@@ -47,7 +47,7 @@ from pathlib import Path
 import httpx
 from lxml import html as lhtml
 
-from ffco_scraper.cn import GROUP_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted, trimmed_mean
+from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted, trimmed_mean
 from ffco_scraper.cn_engine import build_methods
 import site_extras
 from site_io import WRITES, dump, prune
@@ -596,8 +596,7 @@ def main(argv: list[str] | None = None) -> None:
             "window_days": p26.window_days, "lag_days": p26.lag_days}},
         "top6w": {"color": 3, "params": {
             "top_n": p6.top_n, "eligible_fraction": p6.eligible_fraction,
-            "weights": {"A": GROUP_WEIGHTS["A"], "B": GROUP_WEIGHTS["B1"],
-                        "C": GROUP_WEIGHTS["C1"], "D": GROUP_WEIGHTS["D"]},
+            "weights": TITLE_WEIGHTS,
             "min_scores": p6.min_scores_for_cn, "min_ranked": p6.min_ranked,
             "window_days": p6.window_days, "lag_days": p6.lag_days,
             "anchor_top_k": methods["top6w"].normalisation.anchor_top_k,

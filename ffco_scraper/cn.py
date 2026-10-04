@@ -25,7 +25,9 @@ CnParams so they can be swept against real data instead of guessed.
 from __future__ import annotations
 
 import math
+import re
 import sqlite3
+import unicodedata
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -54,8 +56,34 @@ def group_weight(groupe: str | None) -> float:
     return GROUP_WEIGHTS.get((groupe or "").strip().upper(), DEFAULT_GROUP_WEIGHT)
 
 
+def _plain(text: str | None) -> str:
+    t = unicodedata.normalize("NFD", (text or "").lower())
+    return "".join(ch for ch in t if not unicodedata.combining(ch)).replace("’", "'")
+
+
+TITLE_WEIGHTS = {"cdf": 2.0, "national": 1.5, "other": 1.0}
+
+
+def title_weight(title: str | None) -> float:
+    """Weight from the competition's name: a championnat de France 2, a national
+    race (O'France, Nationale ...) 1.5, anything else 1."""
+    t = _plain(title)
+    if "championnat de france" in t:
+        return TITLE_WEIGHTS["cdf"]
+    if "o'france" in t or re.search(r"\bnationale\b", t):
+        return TITLE_WEIGHTS["national"]
+    return TITLE_WEIGHTS["other"]
+
+
+def race_weight(groupe: str | None, title: str | None, params: "CnParams") -> float:
+    return title_weight(title) if params.weighting == "title" else group_weight(groupe)
+
+
 @dataclass(frozen=True)
 class CnParams:
+    # how a race is weighted in top6_weighted: "group" (FFCO's A/B/C/D level)
+    # or "title" (championnat de France / national race / other)
+    weighting: str = "group"
     sample_fraction: float = 2 / 3
     sample_rounding: str = "floor"       # floor | round | ceil
     min_ranked: int = 3                  # circuit needs this many ranked runners

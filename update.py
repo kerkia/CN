@@ -62,7 +62,8 @@ DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet p
 TOP6W_CN_VERSION = 3
 # Same for a change of the computation itself: v2026 and Top recomputed from 2010, then the site.
 #   1 (2026-10-03): "nc" (non classé) rows take no part in any calculation; Top: 6 weight slots, not 6 races
-ENGINE_VERSION = 1
+#   2 (2026-10-04): Top: 10 slots; weights by name (championnat de France 2, national 1.5, other 1)
+ENGINE_VERSION = 2
 
 
 def migrate(db: Path, out: Path) -> bool:
