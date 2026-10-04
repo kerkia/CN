@@ -280,7 +280,7 @@ export async function render(main, { arg, query }) {
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
       return html`<div class="calc-card ${m === "top6w" ? "wide" : ""}" id="calc-card-${m}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
     })}`;
-    // each method's table: click a column header to sort by it (date by default, newest first)
+    // each method's table: click a column header to sort by it (score by default, best first)
     const ROLE = (role) => ({ kept: 0, notTop6: 1, best10: 2, worst40: 3, notTop60: 4 }[role] ?? 5);
     if (methods.includes("official")) drawOfficialCalc(iso);
     for (const m of methods) {
@@ -290,7 +290,7 @@ export async function render(main, { arg, query }) {
       const name = (row) => data.comp(row.race[R.course])?.title || "";
       const place = (row) => data.comp(row.race[R.course])?.location || "";
       dataTable(el, {
-        rows: x.rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
+        rows: x.rows, sortKey: "score", sortDir: -1, compact: true, maxHeight: "480px",
         columns: [
           { key: "date", label: t("col.date"), cls: "num cell-date", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
           { key: "type", label: t("col.type"), cls: "cell-type", sort: (row) => row.race[R.epreuve] || "", defaultDir: 1,
@@ -368,7 +368,7 @@ export async function render(main, { arg, query }) {
     const ROLE = (role) => ({ kept: 0, best10: 1, worst40: 2 }[role] ?? 3);
     const name = (x) => (x.race && data.comp(x.race[R.course])?.title) || x.title;
     dataTable($("#calc-t-official"), {
-      rows, sortKey: "date", sortDir: -1, compact: true, maxHeight: "480px",
+      rows, sortKey: "score", sortDir: -1, compact: true, maxHeight: "480px",
       columns: [
         { key: "date", label: t("col.date"), cls: "num cell-date", sort: (x) => x.date, render: (x) => fmtDate(x.date, "short") },
         { key: "type", label: t("col.type"), cls: "cell-type", sort: (x) => x.race?.[R.epreuve] || "", defaultDir: 1,
