@@ -37,10 +37,30 @@ export async function render(main) {
         <p class="muted">Les CN et les scores tels que publiés sur cn.ffcorientation.fr, sans aucun recalcul.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("fair")} ${t("m.fair")}</h2>
-        <p class="muted">Le niveau habituel de chacun : la moyenne pondérée de ses ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage progressif plutôt qu'annuel.</p></div></section>
+        <p class="muted">La force de chaque coureur, qui sert aussi à calculer la valeur des circuits : la moyenne pondérée de ses
+          ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage progressif plutôt qu'annuel.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
-        <p class="muted">Les mêmes scores que la méthode Équitable, mais le CN ne retient que les meilleures courses, sur ${fmt(p6.top_n)} places : courir plus ne peut que le faire monter.</p></div></section>
+        <p class="muted">Le potentiel au meilleur niveau, adapté aux qualifications : les mêmes scores que la méthode Juste, mais seules
+          les meilleures courses comptent, sur ${fmt(p6.top_n)} places. Courir plus ne peut que le faire monter.</p></div></section>
+    </div>
+
+    <div class="prose">
+      <h2>Deux usages du CN, deux méthodes</h2>
+      <p>Le CN sert à deux choses très différentes :</p>
+      <ul>
+        <li><b>estimer la force de chaque coureur</b>, pour calculer la valeur des circuits : il faut alors son niveau habituel,
+          que ne déforment ni une contre-performance ni un exploit isolé ;</li>
+        <li><b>classer les coureurs selon leur potentiel au meilleur niveau</b>, notamment pour les qualifications aux championnats de France :
+          il faut alors ce dont un coureur est capable dans une compétition importante, c'est-à-dire ses meilleures courses.</li>
+      </ul>
+      <p>La ${methodLabel("official")} utilise un seul CN pour les deux. Pour estimer la force moyenne d'un coureur dans le calcul des circuits,
+        il convient : c'est une moyenne qui écarte les scores extrêmes. Mais il ne convient pas pour estimer le potentiel d'un coureur dans une
+        compétition importante : il écarte justement ses meilleures courses, souvent un championnat ou une course nationale, et n'incite pas à
+        courir davantage. C'est pourtant ce CN qui sert à qualifier les coureurs aux championnats de France.</p>
+      <p>Les deux méthodes proposées séparent ces deux usages, à partir des mêmes scores de course : la ${methodLabel("fair")} estime la force
+        des coureurs et sert au calcul de la valeur des circuits ; la ${methodLabel("top6w")} classe les coureurs selon leur potentiel au meilleur
+        niveau, et convient aux qualifications.</p>
     </div>
 
     <div class="prose">
@@ -84,7 +104,8 @@ export async function render(main) {
       </ul>
 
       <h2>${methodKey("fair")} ${methodLabel("fair")}</h2>
-      <p>Une méthode alternative qui estime le niveau habituel de chacun, sur une échelle stable dans le temps, calculée sur toutes les saisons depuis 2010 :</p>
+      <p>Une méthode alternative qui estime la force de chaque coureur, c'est-à-dire son niveau habituel, sur une échelle stable dans le temps,
+        calculée sur toutes les saisons depuis 2010. C'est elle qui sert à calculer la valeur des circuits, pour les deux méthodes proposées :</p>
       <ul>
         <li>on garde les ${pct(pf.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
         <li>chaque score est pondéré selon le niveau de la compétition : championnat de France × ${fmtW(pf.weights.cdf)},
@@ -111,14 +132,15 @@ export async function render(main) {
       </ul>
 
       <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
-      <p>La méthode Équitable, avec une incitation à courir davantage, inspirée du <i>World Ranking</i> :</p>
+      <p>Le classement selon le potentiel au meilleur niveau, adapté aux qualifications, et qui incite à courir davantage. Inspirée du
+        <i>World Ranking</i>, elle part de la méthode Juste :</p>
       <ul>
-        <li>les scores de course, la valeur des circuits et le recalage sont exactement ceux de la méthode Équitable ;</li>
+        <li>les scores de course, la valeur des circuits et le recalage sont exactement ceux de la méthode Juste ;</li>
         <li>le CN dispose de ${fmt(p6.top_n)} places : parmi les ${pct(p6.eligible_fraction)} meilleurs scores, du meilleur au moins bon, chaque course en occupe
           autant que son poids, jusqu'à ce qu'elles soient toutes prises ; la dernière course retenue ne compte que pour les places qui restent
           (un championnat de France arrivant quand il ne reste qu'une place compte × 1) ;</li>
         <li>ainsi, plus un coureur court, plus il peut améliorer son CN, et une course de plus ou de meilleur niveau ne peut jamais le faire baisser ;</li>
-        <li>la valeur des circuits, elle, repose sur le CN Équitable : sinon, plus un coureur court, plus sa sélection des meilleures courses
+        <li>la valeur des circuits, elle, repose sur le CN Juste, qui estime la force des coureurs : sinon, plus un coureur court, plus sa sélection des meilleures courses
           gonflerait les circuits où il court, et les groupes qui courent surtout entre eux (vétérans, jeunes) s'écarteraient des autres.</li>
       </ul>
       <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les ${pct(p6.eligible_fraction)} meilleurs scores</div>

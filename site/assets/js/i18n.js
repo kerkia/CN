@@ -26,7 +26,7 @@ const FR = {
   "nw.mode": "Vue du réseau", "nw.mode.ego": "Réseau d'un coureur", "nw.mode.leaders": "Réseau des meilleurs", "nw.mode.territories": "Territoires",
   "tr.m.ratio": "Compétitions pour 100 coureurs",
   "tr.col.comps": "Compét.", "tr.col.runners": "Coureurs", "tr.col.ratio": "Pour 100",
-  "tr.def.season": "Coureurs : classés (CN, méthode Équitable) dans la spécialité pendant la saison, rattachés à leur club en fin de saison. « Pour 100 » : compétitions organisées pour 100 coureurs.",
+  "tr.def.season": "Coureurs : classés (CN, méthode Juste) dans la spécialité pendant la saison, rattachés à leur club en fin de saison. « Pour 100 » : compétitions organisées pour 100 coureurs.",
   "tr.def.all": "Coureurs : ayant couru la spécialité, rattachés à leur dernier club. « Pour 100 » : compétitions organisées pour 100 coureurs.",
   "cb.desc.org.per100": "Compétitions organisées par le club sur 12 mois, dans la spécialité choisie, pour 100 coureurs classés du club à la date choisie",
   "cb.desc.org.n": "Nombre de compétitions organisées par le club sur 12 mois, dans la spécialité choisie (les compétitions organisées par un comité, une ligue ou la fédération ne sont comptées pour aucun club)",
@@ -140,7 +140,7 @@ const FR = {
   "cb.base": "On compte",
   "terrain.na": "Sans objet sur cette page",
   "m.top6w.short": "Top",
-  "m.fair.short": "Équitable",
+  "m.fair.short": "Juste",
   "m.official.short": "Officiel",
   "nav.runner": "Coureur",
   "brand.sub": "Observatoire du classement national de CO",
@@ -152,10 +152,10 @@ const FR = {
   "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données issues de cn.ffcorientation.fr.",
   "footer.official": "Site officiel du CN",
 
-  "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Équitable »", "m.top6w": "Méthode CN « Top »",
+  "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Juste »", "m.top6w": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",
-  "m.fair.long": "Moyenne pondérée des 60 % meilleures courses, recalage progressif",
-  "m.top6w.long": "Mêmes scores, mais seules les meilleures courses sur 6 places pondérées",
+  "m.fair.long": "La force des coureurs : moyenne pondérée des 60 % meilleures courses",
+  "m.top6w.long": "Le potentiel au meilleur niveau : les meilleures courses, sur 6 places pondérées",
   "terrain.For": "Forêt", "terrain.Spr": "Sprint", "terrain.Ped": "Pédestre",
   "sexe.all": "Tous", "sexe.H": "Hommes", "sexe.D": "Dames",
 
@@ -319,7 +319,7 @@ const FR = {
   "chart.table": "Tableau", "chart.chart": "Graphique", "chart.all": "Tout",
   "chart.12m": "12 mois", "chart.3y": "3 ans", "chart.5y": "5 ans",
 
-  "me.norm": "Recalage · Méthodes « Équitable » et « Top »", "me.norm.hint": "Facteur appliqué au score d'une course selon son jour, par spécialité",
+  "me.norm": "Recalage · Méthodes « Juste » et « Top »", "me.norm.hint": "Facteur appliqué au score d'une course selon son jour, par spécialité",
 
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
   "page.methods": "Méthodes de calcul", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",

@@ -3,7 +3,7 @@
   method 1  'official'  The values published on the site, copied verbatim.
                         Nothing is recomputed: this is the reference.
 
-  method 2  'fair'      "Équitable": the weighted mean of the best 60 % of
+  method 2  'fair'      "Juste": the weighted mean of the best 60 % of
                         the scores in the window (championnat de France 2,
                         national race 1.5, other 1), with NO annual step: the
                         level is held by a monthly recalage applied to each
