@@ -11,7 +11,7 @@ touches few files (and uploads few, once hosted).
 The site is static (no server): everything it needs is precomputed here and
 laid out so each page loads only what it shows.
 
-    site/data/meta.json            methods, params, rescale & normalisation
+    site/data/meta.json            methods, params & the monthly recalage
                                    schedules, reference names, months, stats
     site/data/runners.json         identity & attributes, one row per runner
     site/data/competitions.json    competition metadata
@@ -47,7 +47,7 @@ from pathlib import Path
 import httpx
 from lxml import html as lhtml
 
-from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted, trimmed_mean
+from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted
 from ffco_scraper.cn_engine import build_methods
 import site_extras
 from site_io import WRITES, dump, prune
@@ -199,8 +199,9 @@ def main(argv: list[str] | None = None) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
 
     methods = build_methods()
-    p26: CnParams = methods["v2026"].params
+    pf: CnParams = methods["fair"].params
     p6: CnParams = methods["top6w"].params
+    norm_cfg = methods["fair"].normalisation       # Top shares Fair's scores and recalage
 
     names = reference_names(conn)
     print(f"names: {len(names['clubs'])} clubs, {len(names['ligues'])} ligues, "
@@ -230,11 +231,11 @@ def main(argv: list[str] | None = None) -> None:
             cvals[r["circuit_id"]]["official"] = r["valeur"]
     print(f"{len(comps)} competitions, {len(circuits)} circuits")
 
-    # -- method-3 normalisation schedule & method-2 rescale factors ----------
+    # -- the monthly recalage schedule (Fair's, shared by Top) ------------------
     norm = defaultdict(list)
     for r in conn.execute(
         "SELECT terrain, date_iso, factor, top_mean_raw FROM normalisation "
-        "WHERE method='top6w' ORDER BY date_iso"
+        "WHERE method='fair' ORDER BY date_iso"
     ):
         norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
     norm_dates = {t: [date.fromisoformat(d) for d, _, _ in v] for t, v in norm.items()}
@@ -246,9 +247,6 @@ def main(argv: list[str] | None = None) -> None:
         i = bisect_right(ds, d) - 1
         return norm[t][max(0, i)][1]
 
-    rescales = {r["year"]: r["factor"] for r in conn.execute(
-        "SELECT year, factor FROM rescale_factors WHERE method='v2026' ORDER BY year")}
-    print(f"rescale factors: {rescales}")
 
     # -- load every result row once ----------------------------------------
     by_method = defaultdict(dict)   # method -> (licence, circuit) -> row
@@ -261,11 +259,27 @@ def main(argv: list[str] | None = None) -> None:
         if r["circuit_id"] in circuits:
             by_method[r["method"]][(r["licence"], r["circuit_id"])] = r
     cn_after = defaultdict(dict)    # method -> (licence, date, terrain) -> cn
+    cn_hist = defaultdict(lambda: defaultdict(lambda: ([], [])))   # method -> (licence, terrain) -> dates, cns
     for r in conn.execute(
         "SELECT method, licence, date_iso, terrain, cn FROM cn_history "
-        "WHERE method IN ('v2026','top6w') AND cn IS NOT NULL"
+        "WHERE method IN ('fair','top6w') ORDER BY date_iso"
     ):
-        cn_after[r["method"]][(r["licence"], r["date_iso"], r["terrain"])] = r["cn"]
+        if r["cn"] is not None:
+            cn_after[r["method"]][(r["licence"], r["date_iso"], r["terrain"])] = r["cn"]
+        h = cn_hist[r["method"]][(r["licence"], r["terrain"])]
+        h[0].append(r["date_iso"])
+        h[1].append(r["cn"])
+
+    def cn_j15(method, lic, terrain, d):
+        """The runner's published CN 15 days before a race (the engine's cn_j15 is on its internal scale)."""
+        h = cn_hist[method].get((lic, terrain))
+        if not h:
+            return None
+        asof = date.fromisoformat(d) - timedelta(days=pf.lag_days)
+        i = bisect_right(h[0], asof.isoformat()) - 1
+        if i < 0 or h[0][i] <= (asof - timedelta(days=pf.window_days)).isoformat():
+            return None
+        return h[1][i]
     raw_res = {}
     for r in conn.execute(
         "SELECT circuit_id, licence, nom, place, temps, nouveau_cn, points, cn_j15 FROM results"
@@ -334,7 +348,7 @@ def main(argv: list[str] | None = None) -> None:
             course_id, cname, dist = circuits[cid]
             c = comps[course_id]
             o = by_method["official"][(lic, cid)]
-            v = by_method["v2026"].get((lic, cid))
+            v = by_method["fair"].get((lic, cid))
             t = by_method["top6w"].get((lic, cid))
             raw = raw_res.get((lic, cid))
             terr_full = o["terrain"]
@@ -345,12 +359,12 @@ def main(argv: list[str] | None = None) -> None:
                 o["temps_s"], o["status"],
                 # official: score, cn j-15, cn after
                 o["score"], o["cn_j15"], to_int(raw["nouveau_cn"]) if raw else None,
-                # v2026: raw score (race-time scale), cn j-15, cn after, counts
-                v["score_raw"] if v else None, v["cn_j15"] if v else None,
-                cn_after["v2026"].get((lic, d, terr_full)), v["counts_for_cn"] if v else 0,
-                # top6w: raw score, published score, cn j-15, cn after, counts, weight
+                # fair: published score, cn j-15, cn after, counts
+                v["score"] if v else None, cn_j15("fair", lic, terr_full, d) if v else None,
+                cn_after["fair"].get((lic, d, terr_full)), v["counts_for_cn"] if v else 0,
+                # top6w: raw score, published score (= Fair's), cn j-15, cn after, counts, weight
                 t["score_raw"] if t else None, t["score"] if t else None,
-                t["cn_j15"] if t else None, cn_after["top6w"].get((lic, d, terr_full)),
+                cn_j15("top6w", lic, terr_full, d) if t else None, cn_after["top6w"].get((lic, d, terr_full)),
                 t["counts_for_cn"] if t else 0, t["poids"] if t else None,
             ])
         buckets[int(lic) // 10 if str(lic).isdigit() else 999999][lic] = races
@@ -362,15 +376,15 @@ def main(argv: list[str] | None = None) -> None:
     # -- competition files --------------------------------------------------
     by_course = defaultdict(lambda: defaultdict(list))
     for (lic, cid), o in by_method["official"].items():
-        v = by_method["v2026"].get((lic, cid))
+        v = by_method["fair"].get((lic, cid))
         t = by_method["top6w"].get((lic, cid))
         raw = raw_res.get((lic, cid))
         by_course[circuits[cid][0]][cid].append([
             lic, to_int(raw["place"]) if raw else None, o["temps_s"], o["status"],
             o["categorie"], o["club"],
             o["score"], o["cn_j15"],
-            v["score_raw"] if v else None, v["cn_j15"] if v else None,
-            t["score"] if t else None, t["cn_j15"] if t else None,
+            v["score"] if v else None, cn_j15("fair", lic, o["terrain"], o["date_iso"]) if v else None,
+            t["score"] if t else None, cn_j15("top6w", lic, o["terrain"], o["date_iso"]) if t else None,
         ])
     for (lic, cid), o in nc_rows.items():
         if o is not None:
@@ -384,14 +398,11 @@ def main(argv: list[str] | None = None) -> None:
             rows.sort(key=lambda x: (x[1] is None, x[1] or 0, x[2] or 10**9))
             cv = cvals.get(cid, {})
             d = date.fromisoformat(comps[course_id][0])
-            t6 = cv.get("top6w")
+            fv = cv.get("fair")                     # Top's circuits are Fair's
+            fv = Decimal_round(fv * factor_at(comps[course_id][6], d)) if fv else None
             out.append({
                 "id": cid, "name": circuits[cid][1], "dist": circuits[cid][2],
-                "value": {
-                    "official": cv.get("official"),
-                    "v2026": cv.get("v2026"),
-                    "top6w": Decimal_round(t6 * factor_at(comps[course_id][6], d)) if t6 else None,
-                },
+                "value": {"official": cv.get("official"), "fair": fv, "top6w": fv},
                 "rows": rows,
             })
         out.sort(key=lambda c: c["name"] or "")
@@ -426,15 +437,9 @@ def main(argv: list[str] | None = None) -> None:
     print(f"{len(months)} month-ends {months[0]} .. {months[-1]}")
 
     # histories per runner/terrain for each method
-    h26 = defaultdict(lambda: ([], []))            # (lic, t) -> dates, scores
-    h6 = defaultdict(lambda: ([], [], []))         # dates, published scores, weights
+    h6 = defaultdict(lambda: ([], [], []))         # dates, published scores, weights (Fair's = Top's)
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
-    for (lic, cid), v in sorted(by_method["v2026"].items(), key=lambda kv: kv[1]["date_iso"]):
-        if v["counts_for_cn"] and v["score_raw"] is not None:
-            k = (lic, TERRAINS.get(v["terrain"], "For"))
-            h26[k][0].append(date.fromisoformat(v["date_iso"]))
-            h26[k][1].append(v["score_raw"])
-    for (lic, cid), v in sorted(by_method["top6w"].items(), key=lambda kv: kv[1]["date_iso"]):
+    for (lic, cid), v in sorted(by_method["fair"].items(), key=lambda kv: kv[1]["date_iso"]):
         if v["counts_for_cn"] and v["score"] is not None:
             k = (lic, TERRAINS.get(v["terrain"], "For"))
             h6[k][0].append(date.fromisoformat(v["date_iso"]))
@@ -455,27 +460,11 @@ def main(argv: list[str] | None = None) -> None:
         hoff[(lic, t)][0].append(d)
         hoff[(lic, t)][1].append(ncn)
 
-    rescale_years = sorted(rescales)
-
-    def v26_at(dates, scores, X: date):
-        lo = bisect_left(dates, X - timedelta(days=p26.window_days))
-        hi = bisect_right(dates, X)
-        if hi - lo < p26.min_scores_for_cn:
-            return None
-        w = []
-        for d, s in zip(dates[lo:hi], scores[lo:hi]):
-            for y in rescale_years:           # every 1 January after the race, up to X
-                if d < date(y, 1, 1) <= X:
-                    s = Decimal_round(s * rescales[y])
-            w.append(s)
-        cn, kept = trimmed_mean(w, p26)
-        return cn if kept else None
-
-    def t6_at(dates, scores, weights, t, X: date):
+    def agg_at(dates, scores, weights, X: date, p: CnParams):
         # the aggregate of the published scores (each fixed with its race's factor): no factor here
-        lo = bisect_left(dates, X - timedelta(days=p6.window_days))
+        lo = bisect_left(dates, X - timedelta(days=p.window_days))
         hi = bisect_right(dates, X)
-        cn, kept = top_n_weighted(scores[lo:hi], weights[lo:hi], p6)
+        cn, kept = top_n_weighted(scores[lo:hi], weights[lo:hi], p)
         return Decimal_round(cn) if cn and kept else None
 
     def off_at(dates, cns, X: date):
@@ -499,18 +488,13 @@ def main(argv: list[str] | None = None) -> None:
         ym = [m for m in months if m.year == Y]
         idx = {m: i for i, m in enumerate(ym)}
         files = defaultdict(dict)   # (method, t) -> lic -> [12]
-        for (lic, t), (ds, ss) in h26.items():
-            for m in ym:
-                if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=366):
-                    cn = v26_at(ds, ss, m)
-                    if cn:
-                        files[("v2026", t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         for (lic, t), (ds, ss, ws) in h6.items():
             for m in ym:
                 if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=366):
-                    cn = t6_at(ds, ss, ws, t, m)
-                    if cn:
-                        files[("top6w", t)].setdefault(lic, [0] * 12)[idx[m]] = cn
+                    for mth, p in (("fair", pf), ("top6w", p6)):
+                        cn = agg_at(ds, ss, ws, m, p)
+                        if cn:
+                            files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         for (lic, t), (ds, cs) in hoff.items():
             if (Y < SPLIT_YEAR) != (t == "Ped"):
                 continue
@@ -574,7 +558,7 @@ def main(argv: list[str] | None = None) -> None:
         pairs = []
         Y = years[-1]
         try:
-            s26 = json.loads((OUT / "snap" / f"v2026_{t}_{Y}.json").read_text(encoding="utf-8"))
+            s26 = json.loads((OUT / "snap" / f"fair_{t}_{Y}.json").read_text(encoding="utf-8"))
             s6 = json.loads((OUT / "snap" / f"top6w_{t}_{Y}.json").read_text(encoding="utf-8"))
             so = json.loads((OUT / "snap" / f"official_{t}_{Y}.json").read_text(encoding="utf-8"))
         except FileNotFoundError:
@@ -590,19 +574,19 @@ def main(argv: list[str] | None = None) -> None:
 
     methods_meta = {
         "official": {"color": 1},
-        "v2026": {"color": 2, "params": {
-            "sample": "ceil(2N/3)", "k": 1.0, "trim_best": 0.10, "trim_worst": 0.40,
-            "min_scores": p26.min_scores_for_cn, "min_ranked": p26.min_ranked,
-            "window_days": p26.window_days, "lag_days": p26.lag_days}},
+        "fair": {"color": 2, "params": {
+            "eligible_fraction": pf.eligible_fraction, "weights": TITLE_WEIGHTS,
+            "min_scores": pf.min_scores_for_cn, "min_ranked": pf.min_ranked,
+            "window_days": pf.window_days, "lag_days": pf.lag_days,
+            "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
+            "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
         "top6w": {"color": 3, "params": {
             "top_n": p6.top_n, "eligible_fraction": p6.eligible_fraction,
             "weights": TITLE_WEIGHTS,
             "min_scores": p6.min_scores_for_cn, "min_ranked": p6.min_ranked,
             "window_days": p6.window_days, "lag_days": p6.lag_days,
-            "anchor_top_k": methods["top6w"].normalisation.anchor_top_k,
-            "anchor_top_fraction": methods["top6w"].normalisation.anchor_top_fraction,
-            "anchor_target": methods["top6w"].normalisation.target,
-            "anchor_lag_months": methods["top6w"].normalisation.lag_months}},
+            "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
+            "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
     }
     meta = {
         "built": date.today().isoformat(),
@@ -611,7 +595,6 @@ def main(argv: list[str] | None = None) -> None:
         "months": [m.isoformat() for m in months if m.year >= min_season],
         "split_year": SPLIT_YEAR,
         "methods": methods_meta,
-        "rescale": {str(y): f for y, f in rescales.items()},
         "normalisation": {t: [[d, round(f, 6)] for d, f, _ in v] for t, v in norm.items()},
         "names": names,
         "counts": {"runners": len(runners), "competitions": len(comps),

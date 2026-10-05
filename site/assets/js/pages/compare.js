@@ -16,7 +16,7 @@ import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
 import { link, replaceQuery } from "../app.js";
 
-const DASH_CSS = { official: "solid", v2026: "dashed", top6w: "dotted" };
+const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
 
 export async function render(main, { query }) {
   if (query.r) store.setCompare(query.r.split(",").filter(Boolean));

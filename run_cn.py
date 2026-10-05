@@ -1,7 +1,7 @@
 """Build the three CN rankings and report how they compare.
 
     python run_cn.py --method official
-    python run_cn.py --method v2026
+    python run_cn.py --method fair
     python run_cn.py --method top6w
     python run_cn.py --report
 """
@@ -38,7 +38,7 @@ def report(db: Path) -> None:
     ):
         print(f"  {r['method']:<10} {r['n']:>8,} rows  {r['scored']:>8,} scored")
 
-    print("\n=== v2026 vs official, per-race score ===")
+    print("\n=== fair vs official, per-race score ===")
     for r in conn.execute(
         """
         SELECT a.season, COUNT(*) n,
@@ -46,7 +46,7 @@ def report(db: Path) -> None:
                AVG(ABS(a.score - b.score)) mae
         FROM scores a JOIN scores b
           ON b.method='official' AND b.licence=a.licence AND b.circuit_id=a.circuit_id
-        WHERE a.method='v2026' AND a.score IS NOT NULL AND b.score IS NOT NULL
+        WHERE a.method='fair' AND a.score IS NOT NULL AND b.score IS NOT NULL
         GROUP BY a.season ORDER BY a.season
         """
     ):
@@ -54,10 +54,10 @@ def report(db: Path) -> None:
               f"({100*r['exact']/max(1,r['n']):5.1f}%)  MAE {r['mae']:.0f}")
 
     print("\n=== CN level by method (median of ranked runners, by season) ===")
-    print(f"  {'season':<8}{'official':>10}{'v2026':>10}{'top6w':>10}")
+    print(f"  {'season':<8}{'official':>10}{'fair':>10}{'top6w':>10}")
     for season in range(2010, 2027):
         vals = {}
-        for m in ("official", "v2026", "top6w"):
+        for m in ("official", "fair", "top6w"):
             row = conn.execute(
                 """
                 SELECT cn FROM cn_history
@@ -72,7 +72,7 @@ def report(db: Path) -> None:
         if any(vals.values()):
             print(f"  {season:<8}"
                   + "".join(f"{(vals[m] if vals[m] else '-'):>10}"
-                            for m in ("official", "v2026", "top6w")))
+                            for m in ("official", "fair", "top6w")))
 
     print("\n=== method 3 normalisation: is the top held steady? ===")
     rows = conn.execute(
@@ -92,7 +92,7 @@ def report(db: Path) -> None:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--db", type=Path, default=paths.DB)
-    p.add_argument("--method", choices=["official", "v2026", "top6w"])
+    p.add_argument("--method", choices=["official", "fair", "top6w"])
     p.add_argument("--seasons", type=int, nargs="*", default=None)
     p.add_argument("--runners", action="store_true", help="rebuild the runners table")
     p.add_argument(
@@ -131,7 +131,8 @@ def main() -> None:
             stats = engine.populate_official(args.seasons)
             engine.write_runners()
         else:
-            stats = engine.run_method(spec_for(args.method, args.norm_mode), args.seasons)
+            spec = spec_for(args.method, args.norm_mode)
+            stats = engine.derive(spec) if spec.derived_from else engine.run_method(spec, args.seasons)
         engine.close()
         print(f"{args.method}: {time.monotonic()-t0:.1f}s  " +
               "  ".join(f"{k}={v:,}" for k, v in stats.items()))

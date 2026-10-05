@@ -5,7 +5,7 @@ own copies of the database (SQLite serialises writers within one file, so
 separate files is what actually buys the parallelism). This copies one method's
 derived rows back, in bulk.
 
-    python merge_methods.py work_v2026.sqlite3 v2026
+    python merge_methods.py work_fair.sqlite3 fair
 """
 
 from __future__ import annotations

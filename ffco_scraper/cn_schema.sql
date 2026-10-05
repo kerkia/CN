@@ -8,12 +8,9 @@
 --
 --   'official'  method 1 - the values published on the site, copied verbatim,
 --               not recomputed.
---   'v2026'     method 2 - the 2026 formula applied uniformly to every season
---               from the start, seeded from the earliest known CN, keeping the
---               federation's annual rescale.
---   'top6w'     method 3 - best 6 races weighted by race group (A/B=2, C=1.5,
---               D=1), no annual step; the level is held by a smooth
---               normalisation so a runner's curve is comparable across years.
+--   'fair'      method 2 - weighted mean of the best 60 % of the scores, from 2010,
+--               monthly recalage applied once to each race (no annual step).
+--   'top6w'     method 3 - Fair's race scores, CN on the best 6 weight places.
 --
 -- Runner attributes are denormalised onto each score row deliberately: club,
 -- category and sex change over time, so the value *at the time of the race*

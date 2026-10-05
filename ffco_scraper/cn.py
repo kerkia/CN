@@ -107,6 +107,22 @@ class CnParams:
     # rather than from all of it, so a runner with few races cannot have all
     # of them counted.
     eligible_fraction: float = 0.60
+    # What values a circuit: "cn" - each ranked runner's CN as published by the
+    # method; "pool" - the same weighted mean of the best `eligible_fraction`
+    # of their scores, but without the `top_n` cap; "trimmed" - the 2026 rule's
+    # mean (without the 10 % best and 40 % worst). The last two keep a method that
+    # publishes the best races from feeding that selection back into circuit values.
+    valuation: str = "cn"
+    # A runner without a CN of their own falls back on their first official CN
+    # to value circuits; with seed_until, only for races before that date (the
+    # archive's start), never after.
+    seed_until: str | None = None
+    # Sprint only: when every circuit of a competition has its length, value
+    # them together per kilometre (mean of CN x time / length over the fastest
+    # two thirds of all the competition's ranked runners, by pace), each
+    # circuit then worth that x its length - so a circuit run by one age group
+    # is valued by the whole field, not by that group alone.
+    distance_pooling: bool = False
     drop_best_frac: float = 0.10
     drop_worst_frac: float = 0.40
     trim_rounding: str = "round"         # how the dropped counts round

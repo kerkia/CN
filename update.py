@@ -60,10 +60,13 @@ DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet p
 #   2 (2026-10-03): a Top CN is the aggregate of the published race scores, no factor at the CN level
 #   3 (2026-10-03): the monthly anchor is FFCO's: mean of the best 20 % of the CNs at 5600
 TOP6W_CN_VERSION = 3
-# Same for a change of the computation itself: v2026 and Top recomputed from 2010, then the site.
+# Same for a change of the computation itself: the computed methods recomputed from 2010, then the site.
 #   1 (2026-10-03): "nc" (non classé) rows take no part in any calculation; Top: 6 weight slots, not 6 races
 #   2 (2026-10-04): Top: 10 slots; weights by name (championnat de France 2, national 1.5, other 1)
-ENGINE_VERSION = 2
+#   3 (2026-10-05): Top: circuits valued by the uncapped best 60 %; no fallback first official CN
+#   4 (2026-10-05): the 2026 method replaced by "fair" (weighted best 60 %); Top derived from it, 6 places
+ENGINE_VERSION = 4
+COMPUTED = ("fair", "top6w")            # in this order: Top is derived from Fair
 
 
 def migrate(db: Path, out: Path) -> bool:
@@ -79,15 +82,23 @@ def migrate(db: Path, out: Path) -> bool:
     t0 = time.monotonic()
     engine = CnEngine(db)
     if engine_due:
-        print("migration: v2026 and Top recomputed from the start")
+        print("migration: computed methods recomputed from the start")
         methods = build_methods()
-        for name in ("v2026", "top6w"):
+        for table in ("scores", "cn_history", "circuit_values", "rescale_factors", "normalisation"):
+            engine.conn.execute(f"DELETE FROM {table} WHERE method NOT IN ('official', {', '.join('?' * len(COMPUTED))})",
+                                COMPUTED)             # methods that no longer exist (v2026)
+        engine.conn.commit()
+        for name in COMPUTED:
             t1 = time.monotonic()
-            engine.run_method(methods[name])               # the Top run ends with its normalisation
+            spec = methods[name]
+            engine.derive(spec) if spec.derived_from else engine.run_method(spec)
             print(f"  {name}: {time.monotonic() - t1:.0f}s")
+        engine.conn.execute("VACUUM")
     else:
-        print("migration: Top method — factors, race scores and CN recomputed, every season")
-        engine._normalise(build_methods()["top6w"], None)
+        print("migration: Fair and Top — factors, race scores and CN recomputed, every season")
+        methods = build_methods()
+        engine._normalise(methods["fair"], None)
+        engine.derive(methods["top6w"])
     engine.write_runners()
     engine.close()
     import build_site
@@ -123,10 +134,12 @@ def deploy() -> bool:
 def recompute(db: Path, since: str) -> None:
     engine = CnEngine(db)
     methods = build_methods()
-    for name in ("official", "v2026", "top6w"):
+    for name in ("official", *COMPUTED):
         t0 = time.monotonic()
         if name == "official":
             stats = engine.populate_official(since=since)
+        elif methods[name].derived_from:
+            stats = engine.derive(methods[name], since=since)
         else:
             stats = engine.run_method(methods[name], since=since)
         print(f"  {name}: {time.monotonic() - t0:.0f}s  " + "  ".join(f"{k}={v:,}" for k, v in stats.items()))

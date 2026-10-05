@@ -1,13 +1,13 @@
 // Global, persisted UI state shared by every page.
 
-export const METHODS = ["official", "v2026", "top6w"];
+export const METHODS = ["official", "fair", "top6w"];
 // Disciplines offered by the site-wide selector. Ski-O and VTT-O will join forest and sprint.
 export const TERRAINS = ["For", "Spr"];
 export const MAX_COMPARE = 8;
 
 const KEY = "cnx.state";
 const defaults = {
-  methods: ["official", "v2026", "top6w"],
+  methods: ["official", "fair", "top6w"],
   terrain: "For",
   compare: [],            // [{lic, slot}] — slot is a fixed colour index 0..7
   clubs: [],              // [{code, slot}] — clubs being compared, same slot rule
@@ -22,6 +22,10 @@ function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "{}");
     if (!TERRAINS.includes(s.terrain)) delete s.terrain;
+    if (Array.isArray(s.methods)) {             // the 2026 method was replaced by the Fair one
+      s.methods = [...new Set(s.methods.map((m) => (m === "v2026" ? "fair" : m)))].filter((m) => METHODS.includes(m));
+      if (!s.methods.length) delete s.methods;
+    }
     return { ...defaults, ...s };
   } catch (e) {
     return { ...defaults };

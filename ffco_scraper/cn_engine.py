@@ -3,16 +3,16 @@
   method 1  'official'  The values published on the site, copied verbatim.
                         Nothing is recomputed: this is the reference.
 
-  method 2  'v2026'     The 2026 formula (validated to reproduce the site
-                        exactly for 2020-2026) applied uniformly to every
-                        season from 2010 on, seeded from each runner's
-                        earliest known CN, keeping an annual rescale.
+  method 2  'fair'      "Équitable": the weighted mean of the best 60 % of
+                        the scores in the window (championnat de France 2,
+                        national race 1.5, other 1), with NO annual step: the
+                        level is held by a monthly recalage applied to each
+                        race once. Only runners with a CN of their own value
+                        a circuit.
 
-  method 3  'top6w'     Best 6 races in the window, weighted by race group
-                        (A/B = 2, C = 1.5, D = 1), with NO annual step. The
-                        level is held by a smooth normalisation so a runner's
-                        curve can be graphed across years without the
-                        sawtooth a yearly adjustment introduces.
+  method 3  'top6w'     "Top": the same race scores as 'fair' (derived from
+                        it, not recomputed), but the CN keeps only the best
+                        races filling 6 weight places - it rewards racing.
 
 For both computed methods forest and sprint are independent rankings in every
 season — the federation only split them in 2026, but applying one rule
@@ -26,6 +26,7 @@ is the one from 15 days earlier.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import sqlite3
 from collections import defaultdict
@@ -45,6 +46,8 @@ from .cn import (
     parse_time,
     sexe_of,
     to_int,
+    top_n_weighted,
+    trimmed_mean,
 )
 
 logger = logging.getLogger("ffco_scraper.cn_engine")
@@ -156,50 +159,54 @@ class MethodSpec:
     # Historical k (0.95 in 2022) belongs to what the federation actually ran.
     # A method that applies one rule uniformly must use one k throughout.
     use_historical_k: bool = False
+    # A method that shares another's race scores and circuit values and only
+    # aggregates them differently into a CN (see CnEngine.derive).
+    derived_from: str | None = None
     description: str = ""
 
 
 def build_methods() -> dict[str, MethodSpec]:
+    fair = CnParams(
+        sample_rounding="ceil",
+        k_over_1000=1.0,
+        aggregation="top6_weighted",
+        # The weighted mean of the best 60 % of the window's scores: no cap on
+        # the number of races (top_n = "places" far beyond any window), so the
+        # CN reflects a runner's usual good level whatever how often they race.
+        # A capped best-of (Top) used for circuit values fed its selection back:
+        # the more a group raced among itself, the higher its circuits were
+        # valued (veterans up, H21 down by ~13 %).
+        top_n=10 ** 6,
+        weighting="title",       # championnat de France 2, national 1.5, other 1
+        # No fallback on a runner's first official CN (stale, and on FFCO's
+        # scale) after the archive's first season: only runners with a CN of
+        # their own value a circuit. It valued a third of sprint circuits.
+        seed_until="2011-01-01",
+        # Thin data is where absurd CNs come from: at two races the
+        # aggregation degenerates to "best single score", which then
+        # feeds back through circuit values. These three thresholds
+        # all say the same thing — do not publish a number computed
+        # from too little evidence.
+        min_ranked=4,            # a circuit needs >3 ranked runners
+        min_scores_for_cn=3,     # a runner needs >=3 races for a CN
+        new_entrant_rescue=False,  # only real CN holders score a circuit
+    )
     return {
-        "v2026": MethodSpec(
-            name="v2026",
-            params=CnParams(
-                sample_rounding="ceil",
-                k_over_1000=1.0,
-                aggregation="trimmed",
-            ),
-            # The 2026 rule rescales every year, targeting the top-20% mean.
-            # Applying it from the start is the whole point of this method,
-            # and it also supplies the annual anchor the scale-free CN needs.
-            rescale=RescalePolicy(apply_every_year=True, modern_from_year=0),
-            description="2026 formula applied to every season",
+        "fair": MethodSpec(
+            name="fair",
+            params=fair,
+            rescale=None,  # no annual step at all
+            normalisation=Normalisation(),
+            description="weighted mean of the best 60 %, monthly recalage",
         ),
         "top6w": MethodSpec(
             name="top6w",
-            params=CnParams(
-                sample_rounding="ceil",
-                k_over_1000=1.0,
-                aggregation="top6_weighted",
-                # 10 places, not 6: with 6, a runner's CN was the mean of their
-                # few best races, well above their usual level, and in groups
-                # that race mostly among themselves (juniors, veterans) that
-                # excess fed back through circuit values. Measured on 2025-26
-                # forest results, 10 places predict head-to-heads better
-                # (78.9 % against 77.1 %) and halve the juniors' drift.
-                top_n=10,
-                weighting="title",       # championnat de France 2, national 1.5, other 1
-                # Thin data is where absurd CNs come from: at two races the
-                # aggregation degenerates to "best single score", which then
-                # feeds back through circuit values. These three thresholds
-                # all say the same thing — do not publish a number computed
-                # from too little evidence.
-                min_ranked=4,            # a circuit needs >3 ranked runners
-                min_scores_for_cn=3,     # a runner needs >=3 races for a CN
-                new_entrant_rescue=False,  # only real CN holders score a circuit
-            ),
-            rescale=None,  # no annual step at all
-            normalisation=Normalisation(),
-            description="best 6 races, group-weighted, smoothly normalised",
+            # Fair's race scores, but the CN keeps only the best races filling 6
+            # weight places: racing more can only raise it. Measured on 2025-26,
+            # it predicts head-to-heads as well as Fair (82 % forest, 84 % sprint).
+            params=dataclasses.replace(fair, top_n=6),
+            derived_from="fair",
+            description="Fair's scores, best 6 weighted places",
         ),
     }
 
@@ -252,7 +259,7 @@ class CnEngine:
         return self.conn.execute(
             f"""
             SELECT c.circuit_id, c.course_id, comp.date_iso, comp.season,
-                   comp.terrain, comp.epreuve, comp.groupe, comp.title
+                   comp.terrain, comp.epreuve, comp.groupe, comp.title, c.distance_km
             FROM circuits c
             JOIN competitions comp ON comp.course_id = c.course_id
             WHERE comp.specialite = 'Pédestre' AND comp.date_iso IS NOT NULL {where}
@@ -394,6 +401,8 @@ class CnEngine:
         seeds = self.load_seeds(f"{min(seasons)}-01-01" if seasons else None, p.lag_days)
 
         def seed(licence: str, as_of: date):
+            if p.seed_until and as_of.isoformat() >= p.seed_until:
+                return None
             s = seeds.get(licence)
             return s[0] if s and (s[1] is None or as_of >= s[1]) else None
         if since:
@@ -402,6 +411,23 @@ class CnEngine:
         else:
             hist = defaultdict(RunnerHistory)
             current_year = None
+
+        uncapped = dataclasses.replace(p, top_n=10 ** 6)     # "pool": the whole best fraction counts
+
+        def value_for(licence: str, terrain: str, as_of: date):
+            """What the runner brings to a circuit's value (p.valuation)."""
+            if p.valuation not in ("trimmed", "pool"):
+                return cn_for(licence, terrain, as_of)
+            h = hist.get((licence, terrain))
+            if h is not None:
+                s, w = h.slice(as_of, p.window_days)
+                if s:
+                    lvl, kept = (trimmed_mean(s, p) if p.valuation == "trimmed"
+                                 else top_n_weighted(s, w, uncapped))
+                    if lvl is not None:
+                        return lvl, len(s), kept
+                    return seed(licence, as_of), len(s), 0
+            return seed(licence, as_of), 0, 0
 
         def cn_for(licence: str, terrain: str, as_of: date):
             # forest and sprint are independent rankings in every season
@@ -428,6 +454,31 @@ class CnEngine:
 
         circuits = self._circuits(seasons, since)
         logger.info("%s: processing %d circuits", spec.name, len(circuits))
+        per_km_cache: dict[int, float | None] = {}
+
+        def per_km(course_id: int, terrain: str, as_of: date, k: float) -> float | None:
+            """The competition's value per km (p.distance_pooling), or None."""
+            if course_id not in per_km_cache:
+                per_km_cache.clear()                # one competition at a time
+                circs = self.conn.execute("SELECT circuit_id, distance_km FROM circuits WHERE course_id=?",
+                                          (course_id,)).fetchall()
+                v = None
+                if circs and all(x["distance_km"] and x["distance_km"] > 0 for x in circs):
+                    paces = []
+                    for x in circs:
+                        for r in self._rows_of(x["circuit_id"]):
+                            if is_nc(r["place"]) or (r["categorie"] or "").strip().upper() in ("D10", "H10"):
+                                continue
+                            T = parse_time(r["temps"])
+                            if classify_status(r["temps"]) != "ok" or not T:
+                                continue
+                            cn_in = value_for(r["licence"], terrain, as_of)[0]
+                            if cn_in and cn_in > 0:
+                                paces.append((cn_in, T / x["distance_km"]))
+                    v = circuit_value(paces, p, k=k)[0]
+                per_km_cache[course_id] = v
+            return per_km_cache[course_id]
+
         stats = {"circuits": 0, "eligible": 0, "scores": 0}
         srows, hrows, cvrows = [], [], []
 
@@ -452,7 +503,7 @@ class CnEngine:
                 cat = (r["categorie"] or "").strip().upper()
                 status = classify_status(r["temps"])
                 T = parse_time(r["temps"])
-                cn_in, _, _ = cn_for(r["licence"], terrain, as_of)
+                cn_in, _, _ = value_for(r["licence"], terrain, as_of)
                 excluded = cat in ("D10", "H10")
                 participants.append((r, status, T, cn_in, cat, excluded))
                 if status == "ok" and T and not excluded and cn_in and cn_in > 0:
@@ -469,6 +520,10 @@ class CnEngine:
 
             k = K_BY_YEAR.get(d.year, DEFAULT_K) if spec.use_historical_k else p.k_over_1000
             cv, n_sample = circuit_value(ranked, p, k=k)
+            if p.distance_pooling and terrain == "Sprint" and c["distance_km"]:
+                v_km = per_km(c["course_id"], terrain, as_of, k)
+                if v_km is not None:
+                    cv = v_km * c["distance_km"]
             stats["circuits"] += 1
             if cv is not None:
                 stats["eligible"] += 1
@@ -517,6 +572,62 @@ class CnEngine:
         return stats
 
     # ------------------------------------------------------------------
+    def derive(self, spec: MethodSpec, since: str | None = None) -> dict:
+        """A method sharing another's race scores, circuit values and recalage
+        factors, with its own CN aggregation: the source's rows are copied (from
+        `since`), then each CN point is re-aggregated - raw and published - with
+        this method's params. Nothing about the races is recomputed."""
+        src, p, frm = spec.derived_from, spec.params, since or ""
+        for table in ("scores", "cn_history", "circuit_values"):
+            self.conn.execute(f"DELETE FROM {table} WHERE method=? AND date_iso >= ?", (spec.name, frm))
+        self.conn.execute(
+            """INSERT OR REPLACE INTO scores
+               (method, licence, circuit_id, course_id, date_iso, season, categorie, sexe, club,
+                terrain, epreuve, groupe, poids, temps_s, status, cn_j15, score, score_raw, counts_for_cn)
+               SELECT ?, licence, circuit_id, course_id, date_iso, season, categorie, sexe, club,
+                      terrain, epreuve, groupe, poids, temps_s, status, cn_j15, score, score_raw, counts_for_cn
+               FROM scores WHERE method=? AND date_iso >= ?""", (spec.name, src, frm))
+        self.conn.execute(
+            """INSERT OR REPLACE INTO circuit_values
+               (method, circuit_id, date_iso, n_finishers, n_ranked, n_sample, valeur, eligible)
+               SELECT ?, circuit_id, date_iso, n_finishers, n_ranked, n_sample, valeur, eligible
+               FROM circuit_values WHERE method=? AND date_iso >= ?""", (spec.name, src, frm))
+        self.conn.execute("DELETE FROM normalisation WHERE method=?", (spec.name,))
+        self.conn.execute(
+            """INSERT INTO normalisation (method, terrain, date_iso, top_mean_raw, factor)
+               SELECT ?, terrain, date_iso, top_mean_raw, factor FROM normalisation WHERE method=?""",
+            (spec.name, src))
+
+        start = ""
+        if since:                 # the window of the first rewritten point reaches back this far
+            start = (date.fromisoformat(since) - timedelta(days=p.window_days + 1)).isoformat()
+        raw: dict = defaultdict(RunnerHistory)
+        pub: dict = defaultdict(RunnerHistory)
+        for s in self.conn.execute(
+                "SELECT licence, terrain, date_iso, score, score_raw, poids FROM scores "
+                "WHERE method=? AND counts_for_cn=1 AND score_raw IS NOT NULL AND date_iso >= ? "
+                "ORDER BY date_iso, course_id, circuit_id", (spec.name, start)):
+            d, w, key = date.fromisoformat(s["date_iso"]), s["poids"] or 1.0, (s["licence"], s["terrain"])
+            raw[key].add(d, s["score_raw"], w)
+            pub[key].add(d, s["score"] if s["score"] is not None else s["score_raw"], w)
+        rows = []
+        for r in self.conn.execute(
+                "SELECT licence, terrain, date_iso, cn_raw, n_scores_window FROM cn_history "
+                "WHERE method=? AND date_iso >= ?", (src, frm)):
+            cn = cn_raw = None
+            kept = 0
+            key, d = (r["licence"], r["terrain"]), date.fromisoformat(r["date_iso"])
+            if r["cn_raw"] is not None and key in raw:     # the source published a CN: so does this method
+                cn_raw, _, kept = raw[key].cn_as_of(d, p)
+                cn = pub[key].cn_as_of(d, p)[0] if kept else None
+                if not kept:
+                    cn_raw = None
+            rows.append((spec.name, r["licence"], r["date_iso"], r["terrain"], cn, cn_raw, r["n_scores_window"], kept))
+        self._flush_hist(rows)
+        self.conn.commit()
+        logger.info("%s: derived from %s, %d CN points", spec.name, src, len(rows))
+        return {"cn_points": len(rows)}
+
     def _rescale(self, hist, spec: MethodSpec, year: int, p: CnParams) -> None:
         boundary = date(year, 1, 1)
         cns = []

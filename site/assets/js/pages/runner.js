@@ -239,7 +239,7 @@ export async function render(main, { arg, query }) {
           <span class="dim num">· ${t("rn.score")} ${fmt(r[SCORE_COL[histMethod]])}</span></div>`)}
         ${e.also.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
       if (e.kind === "out") return html`${e.races.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
-      return html`<span class="tag">${t(histMethod === "v2026" ? "rn.ev.recalYear" : "rn.ev.recalMonth")}</span>`;
+      return html`<span class="tag">${t("rn.ev.recalMonth")}</span>`;
     };
     dataTable($("#cnhist"), {
       rows: ev, sortKey: "date", sortDir: -1,
@@ -273,7 +273,7 @@ export async function render(main, { arg, query }) {
         <div class="row"><span class="key" style="background:${raw(methodColor(m))}"></span><h3>${methodLabel(m)}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
-      if (m === "v2026") formula = html`${t("calc.v2026.formula")} ${x.nKept ? html` — <code>${fmt(x.nKept)} / ${fmt(x.rows.length)}</code>` : ""}`;
+      if (m === "fair") formula = html`${t("calc.fair.formula")} ${t("calc.weights")}.`;
       else if (m === "top6w") formula = html`${t("calc.top6w.formula")} ${t("calc.weights")}.`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
@@ -300,7 +300,7 @@ export async function render(main, { arg, query }) {
           { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
             render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
-          ...(m === "top6w" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
+          ...(m === "top6w" || m === "fair" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
             render: (row) => {
               const w = (v) => fmt(v, Number.isInteger(v) ? 0 : 1);
               // the last race kept may only partly fit in the 6 slots

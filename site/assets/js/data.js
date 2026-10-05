@@ -25,16 +25,16 @@ export const R = {
   cid: 0, course: 1, circuit: 2, dist: 3, date: 4, terrain: 5, epreuve: 6, groupe: 7,
   cat: 8, club: 9, place: 10, nOnCircuit: 11, time: 12, status: 13,
   offScore: 14, offCnj15: 15, offCnAfter: 16,
-  v26Score: 17, v26Cnj15: 18, v26CnAfter: 19, v26Counts: 20,
+  fScore: 17, fCnj15: 18, fCnAfter: 19, fCounts: 20,
   t6Raw: 21, t6Score: 22, t6Cnj15: 23, t6CnAfter: 24, t6Counts: 25, t6Weight: 26,
 };
-export const SCORE_COL = { official: R.offScore, v2026: R.v26Score, top6w: R.t6Score };
-export const CNAFTER_COL = { official: R.offCnAfter, v2026: R.v26CnAfter, top6w: R.t6CnAfter };
-export const CNJ15_COL = { official: R.offCnj15, v2026: R.v26Cnj15, top6w: R.t6Cnj15 };
+export const SCORE_COL = { official: R.offScore, fair: R.fScore, top6w: R.t6Score };
+export const CNAFTER_COL = { official: R.offCnAfter, fair: R.fCnAfter, top6w: R.t6CnAfter };
+export const CNJ15_COL = { official: R.offCnj15, fair: R.fCnj15, top6w: R.t6Cnj15 };
 // competition result row
 export const C = {
   lic: 0, place: 1, time: 2, status: 3, cat: 4, club: 5,
-  offScore: 6, offCnj15: 7, v26Score: 8, v26Cnj15: 9, t6Score: 10, t6Cnj15: 11,
+  offScore: 6, offCnj15: 7, fScore: 8, fCnj15: 9, t6Score: 10, t6Cnj15: 11,
 };
 
 // ---- core datasets ---------------------------------------------------------

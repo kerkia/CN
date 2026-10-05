@@ -58,44 +58,24 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
 
 /**
  * Explain the CN of `races` (one runner) at date `iso`, discipline `terrain`.
- * Returns { cn, rows: [{race, value, weight, role, rescaled}], ... } per method.
+ * Returns { cn, rows: [{race, value, weight, role, used}], ... } per method.
  */
 export function explain(method, races, iso, terrain, meta) {
   const from = windowStart(iso);
   const inWin = (r) => r[R.date] >= from && r[R.date] <= iso;
   const splitYear = meta.split_year;
 
-  if (method === "v2026") {
-    const years = Object.keys(meta.rescale).map(Number).sort((a, b) => a - b);
-    const rows = races
-      .filter((r) => r[R.terrain] === terrain && inWin(r) && r[R.v26Counts] && r[R.v26Score] != null)
-      .map((r) => {
-        let s = r[R.v26Score];
-        let rescaled = 1;
-        for (const y of years) {
-          const b = `${y}-01-01`;
-          if (r[R.date] < b && b <= iso) {
-            const f = meta.rescale[String(y)];
-            s = dround(s * f);
-            rescaled *= f;
-          }
-        }
-        return { race: r, value: s, weight: 1, rescaled };
-      });
-    const res = trimmed(rows.map((x) => x.value), meta.methods.v2026.params.min_scores);
-    rows.forEach((x, i) => { x.role = res.roles[i]; });
-    return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };
-  }
-
-  if (method === "top6w") {
-    const p = meta.methods.top6w.params;
+  if (method === "fair" || method === "top6w") {
+    const p = meta.methods[method].params;
     // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's month,
-    // the value the Courses page shows); the CN is the weighted mean of the kept ones - no factor here.
+    // the value the Courses page shows), the same in both methods; the CN is the weighted mean of the best
+    // 60 % of them - all of them for Fair, only those filling the weight places for Top. No factor here.
+    const [score, counts] = method === "fair" ? [R.fScore, R.fCounts] : [R.t6Score, R.t6Counts];
     const rows = races
-      .filter((r) => r[R.terrain] === terrain && inWin(r) && r[R.t6Counts] && r[R.t6Score] != null)
-      .map((r) => ({ race: r, value: r[R.t6Score], weight: r[R.t6Weight] || 1 }));
+      .filter((r) => r[R.terrain] === terrain && inWin(r) && r[counts] && r[score] != null)
+      .map((r) => ({ race: r, value: r[score], weight: r[R.t6Weight] || 1 }));
     const res = topWeighted(rows.map((x) => x.value), rows.map((x) => x.weight), {
-      topN: p.top_n, frac: p.eligible_fraction, minScores: p.min_scores,
+      topN: p.top_n ?? Infinity, frac: p.eligible_fraction, minScores: p.min_scores,
     });
     rows.forEach((x, i) => { x.role = res.roles[i]; x.used = res.used[i]; });
     return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };
@@ -129,9 +109,10 @@ const inSeries = (r, method, terrain, meta) =>
 
 /**
  * A runner's CN history as a list of events, like the federation's "historique"
- * page: every race entering the 12-month window, every race leaving it, and —
- * for the computed methods — every recalage, with the CN after and the change.
- * Returns [{ date, kind: "in"|"out"|"recal", races: [race rows], cn, delta }], oldest first.
+ * page: every race entering the 12-month window and every race leaving it, with the
+ * CN after and the change. (A recalage only sets the scores of the races to come, so
+ * it never moves a CN by itself.)
+ * Returns [{ date, kind: "in"|"out", races: [race rows], cn, delta }], oldest first.
  */
 export function cnHistory(method, races, terrain, meta, until) {
   const mine = races.filter((r) => inSeries(r, method, terrain, meta));
@@ -142,14 +123,6 @@ export function cnHistory(method, races, terrain, meta, until) {
     const out = addDaysIso(r[R.date], WINDOW_DAYS + 1);
     if (method !== "official" && out <= until) at(out).out.push(r);
   }
-  if (mine.length) {
-    const first = mine[0][R.date];
-    if (method === "v2026") {
-      for (const y of Object.keys(meta.rescale)) { const d = `${y}-01-01`; if (d > first && d <= until) at(d).recal = true; }
-    } else if (method === "top6w") {
-      for (const [d] of meta.normalisation[terrain] || []) if (d > first && d <= until) at(d).recal = true;
-    }
-  }
   const out = [];
   let prev = null;
   for (const d of [...events.keys()].sort()) {
@@ -157,7 +130,7 @@ export function cnHistory(method, races, terrain, meta, until) {
     const cn = method === "official"
       ? (e.in.map((r) => r[R.offCnAfter]).filter(Boolean).pop() ?? prev)
       : explain(method, races, d, terrain, meta).cn;
-    if (!e.in.length && cn === prev) continue;       // a race left or a recalage with no visible effect
+    if (!e.in.length && cn === prev) continue;       // a race left with no visible effect
     const kind = e.in.length ? "in" : e.out.length ? "out" : "recal";
     out.push({ date: d, kind, races: e.in.length ? e.in : e.out, also: e.in.length ? e.out : [], recal: e.recal,
       cn, delta: cn != null && prev != null ? cn - prev : null });

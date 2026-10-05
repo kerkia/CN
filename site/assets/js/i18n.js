@@ -26,7 +26,7 @@ const FR = {
   "nw.mode": "Vue du réseau", "nw.mode.ego": "Réseau d'un coureur", "nw.mode.leaders": "Réseau des meilleurs", "nw.mode.territories": "Territoires",
   "tr.m.ratio": "Compétitions pour 100 coureurs",
   "tr.col.comps": "Compét.", "tr.col.runners": "Coureurs", "tr.col.ratio": "Pour 100",
-  "tr.def.season": "Coureurs : classés (CN, méthode 2026) dans la spécialité pendant la saison, rattachés à leur club en fin de saison. « Pour 100 » : compétitions organisées pour 100 coureurs.",
+  "tr.def.season": "Coureurs : classés (CN, méthode Équitable) dans la spécialité pendant la saison, rattachés à leur club en fin de saison. « Pour 100 » : compétitions organisées pour 100 coureurs.",
   "tr.def.all": "Coureurs : ayant couru la spécialité, rattachés à leur dernier club. « Pour 100 » : compétitions organisées pour 100 coureurs.",
   "cb.desc.org.per100": "Compétitions organisées par le club sur 12 mois, dans la spécialité choisie, pour 100 coureurs classés du club à la date choisie",
   "cb.desc.org.n": "Nombre de compétitions organisées par le club sur 12 mois, dans la spécialité choisie (les compétitions organisées par un comité, une ligue ou la fédération ne sont comptées pour aucun club)",
@@ -140,7 +140,7 @@ const FR = {
   "cb.base": "On compte",
   "terrain.na": "Sans objet sur cette page",
   "m.top6w.short": "Top",
-  "m.v2026.short": "2026",
+  "m.fair.short": "Équitable",
   "m.official.short": "Officiel",
   "nav.runner": "Coureur",
   "brand.sub": "Observatoire du classement national de CO",
@@ -152,10 +152,10 @@ const FR = {
   "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données issues de cn.ffcorientation.fr.",
   "footer.official": "Site officiel du CN",
 
-  "m.official": "Méthode CN officielle", "m.v2026": "Méthode CN 2026", "m.top6w": "Méthode CN « Top »",
+  "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Équitable »", "m.top6w": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",
-  "m.v2026.long": "Règle 2026 appliquée à toutes les saisons, recalage annuel",
-  "m.top6w.long": "Meilleures courses sur 10 places, pondérées par niveau, recalage mensuel",
+  "m.fair.long": "Moyenne pondérée des 60 % meilleures courses, recalage mensuel",
+  "m.top6w.long": "Mêmes scores, mais seules les meilleures courses sur 6 places pondérées",
   "terrain.For": "Forêt", "terrain.Spr": "Sprint", "terrain.Ped": "Pédestre",
   "sexe.all": "Tous", "sexe.H": "Hommes", "sexe.D": "Dames",
 
@@ -197,7 +197,7 @@ const FR = {
 
   "calc.s.kept": "✓ retenue", "calc.s.best10": "10 % meilleurs", "calc.s.worst40": "40 % pires", "calc.s.notTop60": "40 % pires", "calc.s.notTop6": "60 % meilleurs", "col.type": "Type",
   "calc.kept": "retenue", "calc.best10": "10 % meilleurs écartés", "calc.worst40": "40 % moins bons écartés",
-  "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 10 places", "calc.partial": "Seule une partie du poids de cette course tient dans les 10 places",
+  "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 6 places", "calc.partial": "Seule une partie du poids de cette course tient dans les 6 places",
   "calc.rescaled": "rééchelonné", "calc.factor": "facteur de recalage",
   "calc.raw": "CN brut", "calc.weights": "Poids : championnat de France × 2, course nationale (O'France, Nationale) × 1,5, autres × 1",
   "calc.official.ffco": "Calcul publié par la FFCO à cette date : courses de la base, points retenus pour chacune, CN.",
@@ -205,8 +205,8 @@ const FR = {
   "calc.official.loading": "Lecture de la page CN de la FFCO…",
   "calc.noCn": "pas de CN à cette date", "calc.s.noCn": "—",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
-  "calc.v2026.formula": "Moyenne des scores après retrait des 10 % meilleurs et 40 % moins bons (arrondis), minimum 2 courses.",
-  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 10 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
+  "calc.fair.formula": "Moyenne pondérée des 60 % meilleurs scores, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
+  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
@@ -319,8 +319,7 @@ const FR = {
   "chart.table": "Tableau", "chart.chart": "Graphique", "chart.all": "Tout",
   "chart.12m": "12 mois", "chart.3y": "3 ans", "chart.5y": "5 ans",
 
-  "me.rescale": "Recalage annuel · Méthode CN 2026", "me.rescale.hint": "Variation appliquée à tous les scores chaque 1er janvier",
-  "me.norm": "Recalage mensuel · Méthode CN « Top »", "me.norm.hint": "Facteur appliqué aux scores des courses du mois, par spécialité",
+  "me.norm": "Recalage mensuel · Méthodes « Équitable » et « Top »", "me.norm.hint": "Facteur appliqué aux scores des courses du mois, par spécialité",
 
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
   "page.methods": "Méthodes de calcul", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",

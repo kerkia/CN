@@ -49,7 +49,7 @@ def cmd_runner(conn: sqlite3.Connection, a: argparse.Namespace) -> None:
           f"{r['last_categorie'] or ''}  {r['last_club'] or ''}")
     print(f"{r['n_races']} races  {r['first_date']} -> {r['last_date']}\n")
 
-    where = ["s.licence = ?", "s.method IN ('official','v2026','top6w')"]
+    where = ["s.licence = ?", "s.method IN ('official','fair','top6w')"]
     args: list = [licence]
     for col, val in (("s.terrain", a.terrain), ("s.categorie", a.categorie),
                      ("s.season", a.season)):
@@ -67,10 +67,10 @@ def cmd_runner(conn: sqlite3.Connection, a: argparse.Namespace) -> None:
         f"""
         SELECT s.date_iso, s.terrain, s.epreuve, s.groupe, s.categorie, s.status,
                MAX(CASE WHEN s.method='official' THEN s.score END) sc_off,
-               MAX(CASE WHEN s.method='v2026'    THEN s.score END) sc_v26,
+               MAX(CASE WHEN s.method='fair'    THEN s.score END) sc_fair,
                MAX(CASE WHEN s.method='top6w'    THEN s.score END) sc_t6,
                MAX(CASE WHEN h.method='official' THEN h.cn END) cn_off,
-               MAX(CASE WHEN h.method='v2026'    THEN h.cn END) cn_v26,
+               MAX(CASE WHEN h.method='fair'    THEN h.cn END) cn_fair,
                MAX(CASE WHEN h.method='top6w'    THEN h.cn END) cn_t6
         FROM scores s
         LEFT JOIN cn_history h
@@ -92,8 +92,8 @@ def cmd_runner(conn: sqlite3.Connection, a: argparse.Namespace) -> None:
     for x in rows:
         print(f"{x['date_iso']:<12}{(x['terrain'] or '')[:5]:<7}{(x['epreuve'] or ''):<6}"
               f"{(x['groupe'] or ''):<4}{(x['categorie'] or ''):<5}{x['status']:<9}"
-              f"{f(x['sc_off'])}{f(x['sc_v26']):>7}{f(x['sc_t6']):>7}"
-              f"{f(x['cn_off']):>7}{f(x['cn_v26']):>7}{f(x['cn_t6']):>7}")
+              f"{f(x['sc_off'])}{f(x['sc_fair']):>7}{f(x['sc_t6']):>7}"
+              f"{f(x['cn_off']):>7}{f(x['cn_fair']):>7}{f(x['cn_t6']):>7}")
     print(f"\n{len(rows)} races")
 
 
@@ -168,7 +168,7 @@ def main() -> None:
     r.set_defaults(fn=cmd_runner)
 
     t = sub.add_parser("top")
-    t.add_argument("--method", default="top6w", choices=["official", "v2026", "top6w"])
+    t.add_argument("--method", default="top6w", choices=["official", "fair", "top6w"])
     t.add_argument("--terrain", default="Forêt")
     t.add_argument("--season", type=int)
     t.add_argument("--categorie")

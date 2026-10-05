@@ -20,7 +20,7 @@ function pearson(xs, ys) {
 
 export async function render(main) {
   const meta = data.meta();
-  const p26 = meta.methods.v2026.params, p6 = meta.methods.top6w.params;
+  const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
   const pct = (x) => `${fmt(100 * x)} %`;
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);   // 1,5 must not read as 2
 
@@ -36,17 +36,17 @@ export async function render(main) {
         <h2>${methodKey("official")} ${t("m.official")}</h2>
         <p class="muted">Les CN et les scores tels que publiés sur cn.ffcorientation.fr, sans aucun recalcul.</p></div></section>
       <section class="card"><div class="card-body">
-        <h2>${methodKey("v2026")} ${t("m.v2026")}</h2>
-        <p class="muted">Le règlement 2026 appliqué rétroactivement à toutes les saisons depuis 2010 : moyenne tronquée et recalage annuel.</p></div></section>
+        <h2>${methodKey("fair")} ${t("m.fair")}</h2>
+        <p class="muted">Le niveau habituel de chacun : la moyenne pondérée de ses ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage mensuel plutôt qu'annuel.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
-        <p class="muted">Les meilleures courses, sur ${fmt(p6.top_n)} places pondérées par le niveau de la compétition, avec un recalage mensuel plutôt qu'annuel.</p></div></section>
+        <p class="muted">Les mêmes scores que la méthode Équitable, mais le CN ne retient que les meilleures courses, sur ${fmt(p6.top_n)} places : courir plus ne peut que le faire monter.</p></div></section>
     </div>
 
     <div class="prose">
       <h2>Le principe commun : le score de course</h2>
       <p>Pour chaque circuit, on calcule une <b>valeur de circuit</b> à partir des coureurs classés qui ont déjà un CN,
-      pris ${fmt(p26.lag_days)} jours avant la course (le « CN J-15 »). On retient les plus rapides — les deux tiers arrondis au supérieur —
+      pris ${fmt(pf.lag_days)} jours avant la course (le « CN J-15 »). On retient les plus rapides — les deux tiers arrondis au supérieur —
       et on fait la moyenne du produit CN × temps :</p>
       <div class="formula">valeur du circuit = moyenne (CN J-15 × temps) sur les ⌈2N/3⌉ plus rapides</div>
       <p>Le score de chaque coureur est alors :</p>
@@ -72,19 +72,8 @@ export async function render(main) {
         <li>Elle exclut la meilleure course. Or, pour beaucoup de coureurs, et surtout pour les plus performants, c'est souvent une compétition nationale : un objectif majeur et une course très représentative de leur niveau.</li>
       </ul>
 
-      <h2>${methodKey("v2026")} ${methodLabel("v2026")}</h2>
-      <p>La règle 2026 appliquée dès 2010, en partant des CN initiaux publiés :</p>
-      <ul>
-        <li>on retire les ${pct(p26.trim_best)} meilleurs scores et les ${pct(p26.trim_worst)} moins bons (nombres arrondis), puis on fait la moyenne des scores restants ;</li>
-        <li>il faut au moins ${fmt(p26.min_scores)} courses dans la fenêtre pour avoir un CN ; un circuit compte s'il a au moins ${fmt(p26.min_ranked)} coureurs classés avec un CN ;</li>
-        <li>chaque 1er janvier, tous les scores sont multipliés par un même facteur pour que la moyenne des 20 % meilleurs CN vaille 5 600 ;</li>
-        <li>coefficient de circuit à 1,00 pour toutes les années.</li>
-      </ul>
-      <p>Cette méthode répond à la question : « quel serait mon CN si le règlement actuel avait toujours existé ? ».
-      Son défaut est visible sur les courbes : une marche, le plus souvent vers le haut, à chaque 1er janvier.</p>
-      <div class="formula">CN = moyenne des scores, hors 10 % meilleurs et 40 % moins bons</div>
-      <p><b>Limites</b> — Cette méthode supprime les discontinuités de méthode et permet de comparer plusieurs années.
-      En revanche, elle comporte les inconvénients propres à la mise à jour 2026, par exemple :</p>
+      <p>Depuis 2026, la règle officielle (moyenne des scores sans les 10 % meilleurs ni les 40 % moins bons, recalage chaque 1er janvier)
+        a en outre ces inconvénients :</p>
       <ul>
         <li>la sélection aux championnats de France se base sur le CN : des coureurs cessent de courir les courses CN dès que leur CN est qualifiant ;</li>
         <li>des coureurs ne courent que les compétitions qui peuvent rapporter le plus de CN, et pas les autres ;</li>
@@ -94,38 +83,48 @@ export async function render(main) {
         <li>toutes les courses contribuent également, quels que soient le nombre de participants et leur diversité.</li>
       </ul>
 
-      <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
-      <p>Une méthode alternative, pensée pour récompenser les meilleures performances et lisser l'échelle dans le temps :</p>
+      <h2>${methodKey("fair")} ${methodLabel("fair")}</h2>
+      <p>Une méthode alternative qui estime le niveau habituel de chacun, sur une échelle stable dans le temps, calculée sur toutes les saisons depuis 2010 :</p>
       <ul>
-        <li>on ne garde que les ${pct(p6.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
-        <li>chaque score est pondéré selon le niveau de la compétition : championnat de France × ${fmtW(p6.weights.cdf)},
-          course nationale (O'France, Nationale) × ${fmtW(p6.weights.national)}, toutes les autres × ${fmtW(p6.weights.other)} ;</li>
-        <li>le CN dispose de ${fmt(p6.top_n)} places : du meilleur score au moins bon, chaque course en occupe autant que son poids, jusqu'à ce qu'elles soient
-          toutes prises ; la dernière course retenue ne compte que pour les places qui restent (un championnat de France arrivant quand il ne reste qu'une place compte × 1).
-          Ainsi, une course de meilleur niveau ou une course de plus ne peut jamais faire baisser le CN ;</li>
-        <li>il faut au moins ${fmt(p6.min_scores)} courses pour avoir un CN ; un circuit ne compte que s'il a au moins ${fmt(p6.min_ranked)} coureurs classés ayant un CN ;
-          seuls les coureurs ayant un CN entrent dans la valeur du circuit ;</li>
+        <li>on garde les ${pct(pf.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
+        <li>chaque score est pondéré selon le niveau de la compétition : championnat de France × ${fmtW(pf.weights.cdf)},
+          course nationale (O'France, Nationale) × ${fmtW(pf.weights.national)}, toutes les autres × ${fmtW(pf.weights.other)} ;
+          le CN est la moyenne pondérée de ces scores ;</li>
+        <li>il faut au moins ${fmt(pf.min_scores)} courses pour avoir un CN ; un circuit ne compte que s'il a au moins ${fmt(pf.min_ranked)} coureurs classés ayant un CN ;
+          seuls les coureurs ayant leur propre CN dans la spécialité entrent dans la valeur du circuit ;</li>
         <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour ramener la moyenne des
-          ${p6.anchor_top_fraction ? html`${pct(p6.anchor_top_fraction)} meilleurs CN` : html`${fmt(p6.anchor_top_k)} meilleurs CN`}
-          à ${fmt(p6.anchor_target)} — la règle de la FFCO depuis 2026, appliquée chaque mois plutôt qu'au 1er janvier —, séparément en forêt et en sprint.
-          Le facteur appliqué un mois donné est celui mesuré ${fmt(p6.anchor_lag_months)} mois plus tôt,
+          ${pf.anchor_top_fraction ? html`${pct(pf.anchor_top_fraction)} meilleurs CN` : html`${fmt(pf.anchor_top_k)} meilleurs CN`}
+          à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée chaque mois plutôt qu'au 1er janvier —, séparément en forêt et en sprint.
+          Le facteur appliqué un mois donné est celui mesuré ${fmt(pf.anchor_lag_months)} mois plus tôt,
           pour que les résultats tardifs ne fassent pas bouger l'échelle ;</li>
         <li>ce facteur s'applique aux scores des courses du mois : chaque score est calculé une fois pour toutes et n'est jamais revu
-          quand un nouveau facteur arrive. Le CN est la moyenne pondérée de ces scores ; il ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
+          quand un nouveau facteur arrive. Le CN ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
       </ul>
-      <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les 60 % meilleurs scores — score = score brut × facteur(mois de la course)</div>
-      <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'ensemble des inconvénients identifiés ci-dessus :</p>
+      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les ${pct(pf.eligible_fraction)} meilleurs scores — score = score brut × facteur(mois de la course)</div>
+      <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'essentiel des inconvénients identifiés ci-dessus :</p>
       <ul>
-        <li>inspirée du <i>World Ranking</i>, elle calcule le CN sur un nombre limité de courses — ${fmt(p6.top_n)} places, assez pour que
-          les groupes qui courent surtout entre eux (jeunes, vétérans) ne gonflent pas leur CN ;</li>
-        <li>plus un coureur court, plus il peut améliorer son CN, sans risquer de le faire baisser ;</li>
-        <li>elle est stable au fil des années ;</li>
-        <li>elle sépare le sprint et la forêt, comme la méthode CN 2026.</li>
+        <li>elle est stable au fil des années : ni marche au 1er janvier, ni changement de règle ;</li>
+        <li>une course de meilleur niveau compte davantage, et les 40 % de courses les moins bonnes ne comptent pas ;</li>
+        <li>le CN de chacun dépend de son niveau habituel, pas du nombre de courses courues : les groupes qui courent surtout entre eux
+          (jeunes, vétérans) ne s'écartent pas des autres ;</li>
+        <li>elle sépare le sprint et la forêt.</li>
       </ul>
+
+      <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
+      <p>La méthode Équitable, avec une incitation à courir davantage, inspirée du <i>World Ranking</i> :</p>
+      <ul>
+        <li>les scores de course, la valeur des circuits et le recalage sont exactement ceux de la méthode Équitable ;</li>
+        <li>le CN dispose de ${fmt(p6.top_n)} places : parmi les ${pct(p6.eligible_fraction)} meilleurs scores, du meilleur au moins bon, chaque course en occupe
+          autant que son poids, jusqu'à ce qu'elles soient toutes prises ; la dernière course retenue ne compte que pour les places qui restent
+          (un championnat de France arrivant quand il ne reste qu'une place compte × 1) ;</li>
+        <li>ainsi, plus un coureur court, plus il peut améliorer son CN, et une course de plus ou de meilleur niveau ne peut jamais le faire baisser ;</li>
+        <li>la valeur des circuits, elle, repose sur le CN Équitable : sinon, plus un coureur court, plus sa sélection des meilleures courses
+          gonflerait les circuits où il court, et les groupes qui courent surtout entre eux (vétérans, jeunes) s'écarteraient des autres.</li>
+      </ul>
+      <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les ${pct(p6.eligible_fraction)} meilleurs scores</div>
     </div>
 
-    <div class="grid grid-2" style="margin:24px 0 16px">
-      ${chartCard({ id: "resc", title: t("me.rescale"), hint: t("me.rescale.hint"), short: true })}
+    <div style="margin:24px 0 16px">
       ${chartCard({ id: "norm", title: t("me.norm"), hint: t("me.norm.hint"), short: true })}
     </div>
 
@@ -166,19 +165,12 @@ export async function render(main) {
       <h2>Limites et précautions</h2>
       <ul>
         <li>Les données proviennent du site du CN de la FFCO. Une course absente, mal saisie ou corrigée ensuite peut expliquer un écart.</li>
-        <li>La ${methodLabel("v2026")} et la ${methodLabel("top6w")} partent des CN initiaux de 2010 ; les premiers mois reflètent donc surtout ce point de départ.</li>
+        <li>La ${methodLabel("fair")} et la ${methodLabel("top6w")} partent des CN initiaux de 2010 ; les premiers mois reflètent donc surtout ce point de départ.</li>
         <li>Les CN des méthodes alternatives ne remplacent en aucun cas le classement officiel, qui reste la seule référence.</li>
         <li>Les instantanés du classement sont calculés en fin de mois ; la page d'un coureur permet de détailler le calcul à n'importe quelle date.</li>
       </ul>
     </div>`;
-  ["resc", "norm", "agr"].forEach((id) => bindChartCard(main, id));
-
-  const years = Object.keys(meta.rescale).sort();
-  // shown as a percentage change: bars of 1.03 vs 1.07 from a zero baseline would all look alike
-  const rescale = [{ name: t("m.v2026"), color: methodColor("v2026"), data: years.map((y) => Number((100 * (meta.rescale[y] - 1)).toFixed(2))) }];
-  columnChart($("#resc"), { categories: years, series: rescale, yName: "%", digits: 2 });
-  $("#resc-table").innerHTML = html`<table class="data compact"><thead><tr><th>1er janvier</th><th class="r">${t("calc.factor")}</th><th class="r">%</th></tr></thead>
-    <tbody>${[...years].reverse().map((y) => html`<tr><td>${y}</td><td class="r num">${fmt(meta.rescale[y], 4)}</td><td class="r num">${fmt(100 * (meta.rescale[y] - 1), 2)}</td></tr>`)}</tbody></table>`;
+  ["norm", "agr"].forEach((id) => bindChartCard(main, id));
 
   const TERRAIN_SLOT = { For: "--s6", Spr: "--s7" };
   const norm = ["For", "Spr"].filter((tr) => meta.normalisation[tr]).map((tr) => ({
@@ -198,7 +190,7 @@ export async function render(main) {
     $("#agr-filters").innerHTML = html`<div class="field"><span>${t("f.terrain")}</span>${seg("agt", [["For", t("terrain.For")], ["Spr", t("terrain.Spr")]], terrain)}</div>`;
     $$('[data-seg="agt"]').forEach((b) => b.addEventListener("click", () => { terrain = b.dataset.value; drawAgreement(); }));
     const pts = meta.agreement[terrain] || [];
-    const series = [["v2026", 1], ["top6w", 2]].map(([m, i]) => ({
+    const series = [["fair", 1], ["top6w", 2]].map(([m, i]) => ({
       name: methodShort(m), color: methodColor(m), data: pts.filter((p) => p[0] && p[i]).map((p) => [p[0], p[i]]),
     }));
     const max = Math.ceil(Math.max(0, ...pts.flat().filter(Boolean)) / 1000) * 1000;
@@ -210,9 +202,9 @@ export async function render(main) {
     };
     const both = pts.filter((p) => p[1] && p[2]);
     const stats = [
-      stat(`${methodShort("v2026")} / ${methodShort("official")}`, series[0].data),
+      stat(`${methodShort("fair")} / ${methodShort("official")}`, series[0].data),
       stat(`${methodShort("top6w")} / ${methodShort("official")}`, series[1].data),
-      stat(`${methodShort("top6w")} / ${methodShort("v2026")}`, both.map((p) => [p[1], p[2]])),
+      stat(`${methodShort("top6w")} / ${methodShort("fair")}`, both.map((p) => [p[1], p[2]])),
     ];
     $("#agr-stats").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th>${t("ov.pair")}</th><th class="r">n</th><th class="r">r</th><th class="r">${t("ov.bias")}</th><th class="r">${t("ov.mae")}</th></tr></thead>

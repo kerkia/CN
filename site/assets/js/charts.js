@@ -9,11 +9,11 @@ const registry = new Set();
 export const css = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-export const METHOD_SLOT = { official: 1, v2026: 2, top6w: 3 };
+export const METHOD_SLOT = { official: 1, fair: 2, top6w: 3 };
 export const methodColor = (m) => css(`--s${METHOD_SLOT[m]}`);
 export const slotColor = (i) => css(`--s${(i % 8) + 1}`);
 // Secondary encoding for method when colour is spent on runners.
-export const METHOD_DASH = { official: "solid", v2026: [8, 5], top6w: [2, 4] };
+export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [2, 4] };
 
 function theme() {
   return {

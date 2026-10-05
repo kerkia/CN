@@ -63,7 +63,7 @@ export async function render(main, query) {
       if (code) by.set(code, (by.get(code) || 0) + 1);
     };
     if (season) {
-      const [ranked, attrs] = await Promise.all([data.rankedIn("v2026", terrain, season), data.attrsAt(season)]);
+      const [ranked, attrs] = await Promise.all([data.rankedIn("fair", terrain, season), data.attrsAt(season)]);
       for (const lic of ranked) { const a = attrs.get(lic); if (a) add(a[1]); }
     } else {
       for (const r of data.runners().list) if ((terrain === "For" ? r.nFor : r.nSpr) > 0) add(r.club);

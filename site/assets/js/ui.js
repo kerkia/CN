@@ -10,7 +10,7 @@ export const methodLabel = (m) => t(`m.${m}`);
 /** Short form for dense table headers. */
 export const methodShort = (m) => t(`m.${m}.short`);
 
-const DASH_SAMPLE = { official: "solid", v2026: "dashed", top6w: "dotted" };
+const DASH_SAMPLE = { official: "solid", fair: "dashed", top6w: "dotted" };
 /**
  * Method picker: toggle buttons, at least one stays on. `dash` shows the
  * line style instead of the colour — for pages where colour identifies

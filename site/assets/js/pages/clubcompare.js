@@ -14,7 +14,7 @@ import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescript
 import { link, replaceQuery } from "../app.js";
 import { myClub } from "../auth.js";
 
-const DASH_CSS = { official: "solid", v2026: "dashed", top6w: "dotted" };
+const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
 
 export async function render(main, { query }) {
   if (query.c) store.setClubs(query.c.split(",").filter(Boolean));
