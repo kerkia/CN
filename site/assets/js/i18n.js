@@ -154,7 +154,7 @@ const FR = {
 
   "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Équitable »", "m.top6w": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",
-  "m.fair.long": "Moyenne pondérée des 60 % meilleures courses, recalage mensuel",
+  "m.fair.long": "Moyenne pondérée des 60 % meilleures courses, recalage progressif",
   "m.top6w.long": "Mêmes scores, mais seules les meilleures courses sur 6 places pondérées",
   "terrain.For": "Forêt", "terrain.Spr": "Sprint", "terrain.Ped": "Pédestre",
   "sexe.all": "Tous", "sexe.H": "Hommes", "sexe.D": "Dames",
@@ -205,8 +205,8 @@ const FR = {
   "calc.official.loading": "Lecture de la page CN de la FFCO…",
   "calc.noCn": "pas de CN à cette date", "calc.s.noCn": "—",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
-  "calc.fair.formula": "Moyenne pondérée des 60 % meilleurs scores, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
-  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du mois de la course.",
+  "calc.fair.formula": "Moyenne pondérée des 60 % meilleurs scores, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
+  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
@@ -319,7 +319,7 @@ const FR = {
   "chart.table": "Tableau", "chart.chart": "Graphique", "chart.all": "Tout",
   "chart.12m": "12 mois", "chart.3y": "3 ans", "chart.5y": "5 ans",
 
-  "me.norm": "Recalage mensuel · Méthodes « Équitable » et « Top »", "me.norm.hint": "Facteur appliqué aux scores des courses du mois, par spécialité",
+  "me.norm": "Recalage · Méthodes « Équitable » et « Top »", "me.norm.hint": "Facteur appliqué au score d'une course selon son jour, par spécialité",
 
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
   "page.methods": "Méthodes de calcul", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",

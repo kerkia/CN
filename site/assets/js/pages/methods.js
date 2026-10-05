@@ -37,7 +37,7 @@ export async function render(main) {
         <p class="muted">Les CN et les scores tels que publiés sur cn.ffcorientation.fr, sans aucun recalcul.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("fair")} ${t("m.fair")}</h2>
-        <p class="muted">Le niveau habituel de chacun : la moyenne pondérée de ses ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage mensuel plutôt qu'annuel.</p></div></section>
+        <p class="muted">Le niveau habituel de chacun : la moyenne pondérée de ses ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage progressif plutôt qu'annuel.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
         <p class="muted">Les mêmes scores que la méthode Équitable, mais le CN ne retient que les meilleures courses, sur ${fmt(p6.top_n)} places : courir plus ne peut que le faire monter.</p></div></section>
@@ -94,13 +94,13 @@ export async function render(main) {
           seuls les coureurs ayant leur propre CN dans la spécialité entrent dans la valeur du circuit ;</li>
         <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour ramener la moyenne des
           ${pf.anchor_top_fraction ? html`${pct(pf.anchor_top_fraction)} meilleurs CN` : html`${fmt(pf.anchor_top_k)} meilleurs CN`}
-          à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée chaque mois plutôt qu'au 1er janvier —, séparément en forêt et en sprint.
-          Le facteur appliqué un mois donné est celui mesuré ${fmt(pf.anchor_lag_months)} mois plus tôt,
-          pour que les résultats tardifs ne fassent pas bouger l'échelle ;</li>
-        <li>ce facteur s'applique aux scores des courses du mois : chaque score est calculé une fois pour toutes et n'est jamais revu
-          quand un nouveau facteur arrive. Le CN ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
+          à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée en continu plutôt qu'au 1er janvier —, séparément en forêt et en sprint,
+          à partir du niveau mesuré ${fmt(pf.anchor_lag_months)} mois plus tôt pour que les résultats tardifs ne fassent pas bouger l'échelle ;</li>
+        <li>le facteur d'une course est celui de son jour : il passe en ligne droite d'une valeur mensuelle à la suivante, sans marche au
+          changement de mois. Chaque score est calculé une fois pour toutes et n'est jamais revu quand un nouveau facteur arrive ;
+          le CN ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
       </ul>
-      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les ${pct(pf.eligible_fraction)} meilleurs scores — score = score brut × facteur(mois de la course)</div>
+      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les ${pct(pf.eligible_fraction)} meilleurs scores — score = score brut × facteur(jour de la course)</div>
       <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'essentiel des inconvénients identifiés ci-dessus :</p>
       <ul>
         <li>elle est stable au fil des années : ni marche au 1er janvier, ni changement de règle ;</li>
@@ -174,7 +174,7 @@ export async function render(main) {
 
   const TERRAIN_SLOT = { For: "--s6", Spr: "--s7" };
   const norm = ["For", "Spr"].filter((tr) => meta.normalisation[tr]).map((tr) => ({
-    name: t(`terrain.${tr}`), color: css(TERRAIN_SLOT[tr]), step: true,
+    name: t(`terrain.${tr}`), color: css(TERRAIN_SLOT[tr]),
     data: meta.normalisation[tr].map(([d, f]) => [d, Number(f.toFixed(4))]),
   }));
   $("#norm-legend").innerHTML = legend(norm.map((s) => ({ label: s.name, color: s.color })));

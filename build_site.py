@@ -48,7 +48,7 @@ import httpx
 from lxml import html as lhtml
 
 from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted
-from ffco_scraper.cn_engine import build_methods
+from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
 import site_extras
 from site_io import WRITES, dump, prune
 
@@ -238,14 +238,10 @@ def main(argv: list[str] | None = None) -> None:
         "WHERE method='fair' ORDER BY date_iso"
     ):
         norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
-    norm_dates = {t: [date.fromisoformat(d) for d, _, _ in v] for t, v in norm.items()}
+    knots = {t: daily_knots([(date.fromisoformat(d), f) for d, f, _ in v]) for t, v in norm.items()}
 
     def factor_at(t: str, d: date) -> float:
-        ds = norm_dates.get(t)
-        if not ds:
-            return 1.0
-        i = bisect_right(ds, d) - 1
-        return norm[t][max(0, i)][1]
+        return factor_on(knots.get(t, []), d)
 
 
     # -- load every result row once ----------------------------------------
@@ -595,7 +591,8 @@ def main(argv: list[str] | None = None) -> None:
         "months": [m.isoformat() for m in months if m.year >= min_season],
         "split_year": SPLIT_YEAR,
         "methods": methods_meta,
-        "normalisation": {t: [[d, round(f, 6)] for d, f, _ in v] for t, v in norm.items()},
+        # the knots of the daily factor: a straight line between them
+        "normalisation": {t: [[d.isoformat(), round(f, 6)] for d, f in k] for t, k in knots.items()},
         "names": names,
         "counts": {"runners": len(runners), "competitions": len(comps),
                    "circuits": len(circuits), "results": len(raw_res)},

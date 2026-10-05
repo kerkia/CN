@@ -59,7 +59,8 @@ DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet p
 # Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
 #   2 (2026-10-03): a Top CN is the aggregate of the published race scores, no factor at the CN level
 #   3 (2026-10-03): the monthly anchor is FFCO's: mean of the best 20 % of the CNs at 5600
-TOP6W_CN_VERSION = 3
+#   4 (2026-10-05): the factor of a race is that of its day (straight line between monthly factors)
+TOP6W_CN_VERSION = 4
 # Same for a change of the computation itself: the computed methods recomputed from 2010, then the site.
 #   1 (2026-10-03): "nc" (non classé) rows take no part in any calculation; Top: 6 weight slots, not 6 races
 #   2 (2026-10-04): Top: 10 slots; weights by name (championnat de France 2, national 1.5, other 1)

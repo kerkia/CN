@@ -92,6 +92,44 @@ class RescalePolicy:
         return self.legacy_top_value / top if top else 1.0
 
 
+def _next_month(d: date) -> date:
+    return date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+
+
+def daily_knots(points: list[tuple[date, float]]) -> list[tuple[date, float]]:
+    """The knots of the daily recalage factor from the monthly ones, given as
+    (first day of the month fitted for, factor), oldest first.
+
+    Each monthly factor is reached on the first day of the FOLLOWING month and
+    the factor moves in a straight line between knots: a race's factor is that
+    of its day, with no step at a month boundary. The month-m factor is fitted
+    on the level `lag_months` earlier, so a day in month m only uses levels at
+    least that old - the same protection against late results as a step
+    applied from the 1st, at the cost of half a month of lag on average."""
+    if not points:
+        return []
+    return [points[0]] + [(_next_month(d), f) for d, f in points]
+
+
+def factor_on(knots: list[tuple[date, float]], d: date) -> float:
+    """The recalage factor of day `d` (see daily_knots); 1 without any factor."""
+    if not knots:
+        return 1.0
+    if d <= knots[0][0]:
+        return knots[0][1]
+    if d >= knots[-1][0]:
+        return knots[-1][1]
+    lo, hi = 0, len(knots) - 1
+    while hi - lo > 1:                  # knots[lo][0] <= d < knots[hi][0]
+        mid = (lo + hi) // 2
+        if knots[mid][0] <= d:
+            lo = mid
+        else:
+            hi = mid
+    (d0, f0), (d1, f1) = knots[lo], knots[hi]
+    return f0 + (f1 - f0) * (d - d0).days / (d1 - d0).days
+
+
 @dataclass
 class Normalisation:
     """Smooth level anchor, used instead of a yearly step (method 3).
@@ -695,20 +733,12 @@ class CnEngine:
             out_factors,
         )
 
-        def factor_at(terrain: str, d: date) -> float:
-            entries = schedule.get(terrain)
-            if not entries:
-                return 1.0
-            lo, hi = 0, len(entries)
-            while lo < hi:                       # rightmost entry with eff <= d
-                mid = (lo + hi) // 2
-                if entries[mid][0] <= d:
-                    lo = mid + 1
-                else:
-                    hi = mid
-            return entries[max(0, lo - 1)][2]
+        knots = {t: daily_knots([(eff, f) for eff, _, f in entries]) for t, entries in schedule.items()}
 
-        # A race's published score: raw x the factor of the race's date. One value
+        def factor_at(terrain: str, d: date) -> float:
+            return factor_on(knots.get(terrain, []), d)
+
+        # A race's published score: raw x the factor of the race's day. One value
         # per race, never revised by a later factor. Always derived from score_raw
         # so re-normalising is idempotent rather than compounding.
         srows = self.conn.execute(
