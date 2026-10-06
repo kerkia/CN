@@ -176,6 +176,8 @@ export async function coRunners(lic, terrain = "") {
   return (own === "*" ? v["*"] : own) || [];
 }
 export const ageCurves = () => getJson("agecurve.json");
+/** Per season: [[club, terrain, competitors, results]] (site_extras.pyramid). */
+export const participation = async () => (await getJson("participation.json"))?.seasons || {};
 /** Head-to-head accuracy of each method, per terrain and season (site_extras.validation). */
 export const validation = () => getJson("validation.json");
 /** Competitors of a season, counted: [[category, club, discipline flags (1 forest, 2 sprint), n]]. */

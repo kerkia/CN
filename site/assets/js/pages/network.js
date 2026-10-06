@@ -83,6 +83,7 @@ async function coRunnersIn(lic, season, terrain) {
 export async function render(main, { arg: lic, query }) {
   if (!lic && query.vue === "territoires") return (await import("./territory.js")).render(main, query);
   if (!lic && query.vue === "ages") return (await import("./ages.js")).render(main, query);
+  if (!lic && query.vue === "activite") return (await import("./activity.js")).render(main, query);
   // no runner in the address: the current runner, unless the leaders' view was asked for
   const who = lic || (query.vue !== "meilleurs" && store.get().lastRunner);
   return who ? ego(main, who, query) : global(main, query);

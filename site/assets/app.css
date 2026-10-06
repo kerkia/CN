@@ -37,6 +37,10 @@
   /* sequential ramp (one hue, light to dark) for magnitudes on maps */
   --q1: #dbe8f8; --q2: #a8c8f0; --q3: #6fa3e4; --q4: #2a78d6; --q5: #16457f;
 
+  /* home landscape: dusk */
+  --ls-sky: #f3e6cf; --ls-sun: #f6c27a; --ls-far: #b9c3d6; --ls-mount: #9aa9c2; --ls-snow: #ffffff;
+  --ls-hill: #6f8f6c; --ls-forest: #2f5a3d; --ls-town: #c9a27e; --ls-wall: #b98f6a; --ls-roof: #8a5a3c;
+  --ls-window: #6b4f3c; --ls-front: #3d6b47; --ls-trail: #e8d5b0; --ls-fig: #22313f; --ls-pole: #444444;
   --radius: 12px;
   --radius-sm: 8px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -57,6 +61,9 @@
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
     --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
     --q1: #1c2a3c; --q2: #1d4270; --q3: #2a64aa; --q4: #4b8fe0; --q5: #a3c8f5;
+    --ls-sky: #0f1a2b; --ls-sun: #e9e4cf; --ls-far: #1d2940; --ls-mount: #283650; --ls-snow: #c9d3e4;
+    --ls-hill: #1b3125; --ls-forest: #0f2318; --ls-town: #3a3227; --ls-wall: #463b2f; --ls-roof: #2a211a;
+    --ls-window: #f2c76a; --ls-front: #132a1c; --ls-trail: #4a4436; --ls-fig: #c9d3e4; --ls-pole: #bbbbbb;
   }
 }
 :root[data-theme="dark"] {
@@ -73,6 +80,9 @@
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
   --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
     --q1: #1c2a3c; --q2: #1d4270; --q3: #2a64aa; --q4: #4b8fe0; --q5: #a3c8f5;
+    --ls-sky: #0f1a2b; --ls-sun: #e9e4cf; --ls-far: #1d2940; --ls-mount: #283650; --ls-snow: #c9d3e4;
+    --ls-hill: #1b3125; --ls-forest: #0f2318; --ls-town: #3a3227; --ls-wall: #463b2f; --ls-roof: #2a211a;
+    --ls-window: #f2c76a; --ls-front: #132a1c; --ls-trail: #4a4436; --ls-fig: #c9d3e4; --ls-pole: #bbbbbb;
 }
 
 /* ---------------------------------------------------------------- base */
@@ -456,6 +466,33 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 }
 
 /* ---------------------------------------------------------------- login & the logged-in runner */
+/* home: the landscape behind the presentation and the login form */
+.home-hero { position: relative; overflow: hidden; border-radius: var(--radius); min-height: 620px; background: var(--ls-sky); }
+.home-landscape { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.home-landscape .ls-sky { fill: var(--ls-sky); } .home-landscape .ls-sun { fill: var(--ls-sun); }
+.home-landscape .ls-far { fill: var(--ls-far); } .home-landscape .ls-mount { fill: var(--ls-mount); }
+.home-landscape .ls-snow { fill: var(--ls-snow); } .home-landscape .ls-hill { fill: var(--ls-hill); }
+.home-landscape .ls-forest { fill: var(--ls-forest); } .home-landscape .ls-town { fill: var(--ls-town); }
+.home-landscape .ls-wall { fill: var(--ls-wall); } .home-landscape .ls-roof { fill: var(--ls-roof); }
+.home-landscape .ls-window { fill: var(--ls-window); } .home-landscape .ls-front { fill: var(--ls-front); }
+.home-landscape .ls-trail { stroke: var(--ls-trail); } .home-landscape .ls-pole { fill: var(--ls-pole); }
+.home-landscape .ls-fig { fill: var(--ls-fig); } .home-landscape .ls-stroke { stroke: var(--ls-fig); }
+.home-inner { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 380px); gap: 28px;
+  padding: 40px; align-items: start; min-height: 620px; }
+.home-intro { max-width: 580px; padding: 22px 26px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 74%, transparent); }
+.home-intro h1 { font-size: 42px; margin: 0; letter-spacing: -0.01em; }
+.home-tag { font-size: 18px; color: var(--ink-2); margin: 2px 0 14px; }
+.home-lede { color: var(--ink); font-size: 16px; margin: 0; }
+.home-points { margin: 14px 0 0; padding-left: 18px; color: var(--ink-2); }
+.home-points li { margin: 5px 0; }
+.home-specs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.home-login { background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: var(--shadow-pop); }
+@media (max-width: 860px) {
+  .home-inner { grid-template-columns: 1fr; padding: 16px 16px 300px; gap: 16px; }
+  .home-landscape { top: auto; height: 380px; }     /* a band at the bottom, the sky above */
+  .home-intro h1 { font-size: 32px; }
+}
 .login-hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); gap: 28px; padding: 28px; align-items: start; }
 .login-intro h1 { font-size: 30px; }
 .login-intro .lede { color: var(--ink-2); margin-top: 8px; font-size: 16px; max-width: 560px; }

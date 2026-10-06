@@ -154,14 +154,22 @@ export async function render(main, { arg, query }) {
       return tile(`${t("rn.rank")} · ${methodShort(m)}`, ord(me.rank[m]),
         `${t("rn.rankOf")} ${fmt(n)}${catRank ? ` · ${ord(catRank)} ${t("rn.rankCat")} ${cat}` : ""}`, methodColor(m));
     });
-    const col = CNAFTER_COL[methods[0]];
-    let best = null;
-    for (const r of races) if (inSeries(r, methods[0]) && r[col] && (!best || r[col] > best[col])) best = r;
+    // for each method: the best CN ever reached in the discipline, and when. Official: at a race (FFCO's CN
+    // only moves then); Juste and Top: also when a weaker race leaves the window, so from the full history
+    const bestTiles = methods.map((m) => {
+      let best = null;
+      if (m === "official") {
+        const col = CNAFTER_COL[m];
+        for (const r of races) if (inSeries(r, m) && r[col] && (!best || r[col] > best.cn)) best = { cn: r[col], date: r[R.date] };
+      } else {
+        for (const e of cnHistory(m, races, terrain, meta, month)) if (e.cn && (!best || e.cn > best.cn)) best = { cn: e.cn, date: e.date };
+      }
+      return tile(`${t("rn.best")} · ${methodShort(m)}`, best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "", methodColor(m));
+    });
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
     const wins = mineT.filter((r) => r[R.place] === 1).length;
-    $("#tiles").innerHTML = html`${tiles}${rankTiles}
-      ${tile(`${t("rn.best")} · ${methodShort(methods[0])}`, best ? fmt(best[col]) : "—", best ? fmtDate(best[R.date]) : "")}
+    $("#tiles").innerHTML = html`${tiles}${rankTiles}${bestTiles}
       ${tile(t("rn.last12"), fmt(recent.length), `${t(`terrain.${terrain}`)}`)}
       ${tile(t("rn.podiums"), fmt(podiums), plural(wins, t("rn.win"), t("rn.wins")))}`;
   }

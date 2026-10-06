@@ -34,7 +34,7 @@ const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
-const ALL_TERRAIN_VIEWS = new Set(["ages", "territoires"]);
+const ALL_TERRAIN_VIEWS = new Set(["ages", "territoires", "activite"]);
 const allowsAllTerrains = (r) => r.route === "network"
   && (!!r.arg || ALL_TERRAIN_VIEWS.has(r.query.vue) || (r.query.vue !== "meilleurs" && !!store.get().lastRunner));
 /** The discipline of such a view: "For", "Spr", "VTT", "Ski", or "" for all of them. */
@@ -84,6 +84,7 @@ export const link = {
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
   territories: (q) => "#/reseau" + qstr({ ...q, vue: "territoires" }),
   ages: (q) => "#/reseau" + qstr({ ...q, vue: "ages" }),
+  activity: (q) => "#/reseau" + qstr({ ...q, vue: "activite" }),
 };
 function qstr(q) {
   if (!q) return "";
@@ -107,8 +108,8 @@ export function replaceQuery(q) {
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
+  // logged in, the home page (the login page) is not needed: the brand leads to one's own page
   const nav = me ? [
-    ["overview", "#/", t("nav.overview")],
     ["runner", "#/coureur", t("nav.runner")],
     ["ranking", "#/classement", t("nav.ranking")],
     ["courses", "#/courses", t("nav.courses")],
@@ -128,7 +129,7 @@ function renderHeader(r) {
     <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
-    <a class="brand" href="#/">
+    <a class="brand" href="${me ? link.runner(me.lic) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="8" fill="#0d366b"/>
         <path d="M16 5 L27 16 L16 27 L5 16 Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
@@ -277,7 +278,7 @@ let lastRoute = null;
 let token = 0;
 async function route_() {
   if (silent) return;
-  const r = parseHash();
+  let r = parseHash();
   // a page that follows its own address (the Agenda: list <-> details) is not rebuilt for a change of query
   if (current?.onQuery && lastRoute === r.route) { current.onQuery(r.query); return; }
   const my = ++token;
@@ -286,6 +287,11 @@ async function route_() {
   if (!me && !["overview", "account", "agenda"].includes(r.route)) {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
+  }
+  // logged in, the home page leads to one's own page
+  if (me && r.route === "overview") {
+    history.replaceState(null, "", link.runner(me.lic));
+    r = parseHash();
   }
   if (me && !data.isPrivateLoaded()) {
     try { await data.bootPrivate(); } catch (e) { return signedOut(); }

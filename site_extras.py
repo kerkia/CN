@@ -16,6 +16,7 @@ Outputs (all under site/data/):
     net/{bucket}.json       each runner's most frequent co-runners
     pyramid/{season}.json   competitors of the season counted by category, club and discipline
                             (pyramid/all.json: every competitor once, as at their last race)
+    participation.json      competitors and results per season, club and discipline (Réseau · Activité)
     validation.json         how well each method's CN predicts who finishes ahead (season 2025;
                             built once - delete it to rebuild, as a method change does)
 """
@@ -333,8 +334,11 @@ def pyramid(comps: dict) -> None:
     included — counted by category and club (both as at their last race of the
     season) and by the disciplines raced: rows [category, club, flags, n].
     "all" counts each competitor once over every season, as at their last race.
-    Counts only, no licences: the age pyramid and the territories need nothing more."""
+    Counts only, no licences: the age pyramid and the territories need nothing more.
+    Also participation.json: per season, [club, terrain, competitors, results],
+    each competitor under the club of their last race of the season."""
     per = defaultdict(dict)                  # season | "all" -> licence -> [date, cat, club, flags]
+    results = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))   # season -> licence -> terrain -> n
     for cid, c in comps.items():
         path = OUT / "c" / f"{cid}.json"
         if not path.exists():
@@ -343,6 +347,7 @@ def pyramid(comps: dict) -> None:
         flag = PYR_FLAG[terrain]
         for circ in load(path)["circuits"]:
             for r in circ["rows"]:
+                results[season][r[0]][terrain] += 1
                 for key in (season, "all"):
                     x = per[key].get(r[0])
                     if x is None:
@@ -359,6 +364,17 @@ def pyramid(comps: dict) -> None:
         dump(OUT / "pyramid" / f"{season}.json", {"rows": [[*k, n] for k, n in sorted(count.items())]})
         keep.add(f"{season}.json")
     prune(OUT / "pyramid", keep)
+    part = {}
+    for season, by_lic in results.items():
+        agg = defaultdict(lambda: [0, 0])                # (club, terrain) -> [competitors, results]
+        for lic, by_t in by_lic.items():
+            club = per[season][lic][2] or ""
+            for terrain, n in by_t.items():
+                a = agg[(club, terrain)]
+                a[0] += 1
+                a[1] += n
+        part[str(season)] = [[*k, *v] for k, v in sorted(agg.items())]
+    dump(OUT / "participation.json", {"cols": ["club", "terrain", "runners", "results"], "seasons": part})
     print(f"  pyramid: {len(per) - 1} seasons, {len(per['all']):,} competitors")
 
 

@@ -71,7 +71,8 @@ ENGINE_VERSION = 5
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
-EXTRAS_VERSION = 2
+#   3 (2026-10-07): participation.json, the statistics moved from the home page to Réseau · Activité
+EXTRAS_VERSION = 3
 COMPUTED = ("fair", "top6w")            # in this order: Top is derived from Fair
 
 
