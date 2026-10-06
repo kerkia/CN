@@ -382,6 +382,55 @@ export function networkChart(el, { nodes, links, onClick, tip, edgeTip }) {
   return c;
 }
 
+/**
+ * Population pyramid: one row per category (first at the bottom), `left` drawn to
+ * the left of the axis, `right` to the right; values are positive. `refLeft` /
+ * `refRight` (optional) are drawn as outlines over the bars, for comparison.
+ * tip(i) returns the tooltip HTML of row i.
+ */
+export function pyramidChart(el, { categories, left, right, refLeft, refRight, tip, unit = " %", digits = 1 }) {
+  const th = theme();
+  const c = init(el);
+  const all = [...left.data, ...right.data, ...(refLeft || []), ...(refRight || [])];
+  const top = Math.max(1, ...all);
+  const step = top > 20 ? 10 : top > 10 ? 5 : top > 4 ? 2 : 1;      // round ends, symmetric
+  const max = Math.ceil((top * 1.02) / step) * step;
+  const bar = (s, sign) => ({
+    name: s.name, type: "bar", data: s.data.map((v) => sign * v), barCategoryGap: "22%", barGap: "-100%", z: 2,
+    itemStyle: { color: s.color, borderRadius: sign < 0 ? [3, 0, 0, 3] : [0, 3, 3, 0] },
+  });
+  const outline = (data, sign) => ({
+    type: "bar", data: data.map((v) => sign * v), barGap: "-100%", z: 3, silent: true,
+    itemStyle: { color: "transparent", borderColor: th.ink, borderWidth: 1.5, borderType: [4, 3], opacity: 0.75 },
+  });
+  c.setOption({
+    animationDuration: 300,
+    textStyle: { fontFamily: css("--font") || "system-ui" },
+    grid: { left: 16, right: 16, top: 30, bottom: 30, containLabel: true },
+    tooltip: baseTooltip(th, {
+      trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: "rgba(127,127,127,.08)" } },
+      formatter: (params) => (params.length ? tip(params[0].dataIndex) : ""),
+    }),
+    xAxis: {
+      type: "value", min: -max, max, interval: step, ...axisCommon(th),
+      axisLabel: { color: th.ink3, fontSize: 12, formatter: (v) => `${fmt(Math.abs(v), Number.isInteger(v) ? 0 : digits)}${unit}` },
+    },
+    yAxis: {
+      type: "category", data: categories, ...axisCommon(th), splitLine: { show: false },
+      axisLine: { show: false }, axisLabel: { color: th.ink2, fontSize: 12 },
+    },
+    graphic: [
+      { type: "text", left: 20, top: 4, style: { text: left.name, fill: left.color, font: `600 13px ${css("--font") || "system-ui"}` } },
+      { type: "text", right: 20, top: 4, style: { text: right.name, fill: right.color, font: `600 13px ${css("--font") || "system-ui"}`, align: "right" } },
+    ],
+    series: [
+      bar(left, -1), bar(right, 1),
+      ...(refLeft ? [outline(refLeft, -1)] : []), ...(refRight ? [outline(refRight, 1)] : []),
+    ],
+  });
+  return c;
+}
+
 /** Numeric x/y lines with markers (e.g. score by finishing place). */
 export function xyChart(el, { series, xName, yName, xMin = null }) {
   const th = theme();

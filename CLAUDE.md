@@ -102,6 +102,9 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
 - `ENGINE_VERSION` — the computation changed: drops data of methods that no longer exist, recomputes `fair` from
   2010 and derives `top6w` (~5 min on CI, ~12 min on the PC).
 - `TOP6W_CN_VERSION` — only the recalage/aggregation changed: re-normalises `fair`, re-derives `top6w`.
+- `EXTRAS_VERSION` — only a second-stage dataset (`site_extras.py`: co-runners, age pyramid, clubs, age
+  curves…) changed: rebuilds them from `site/data` (~35 s), nothing recomputed. Needed when the page code
+  reads a new or reshaped file: the push-triggered run only publishes (`--deploy-only`), after `migrate`.
 Add a dated line to the comment above the constant. Test the migration locally on a DB copy with
 `update.migrate(Path(copy), Path('site/data'))` before pushing.
 

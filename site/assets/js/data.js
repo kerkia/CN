@@ -152,14 +152,21 @@ export const clubSeries = (code) => getJson(`club/${code}.json`);
 // club monthly aggregate layout (see site_extras.py)
 export const CLUB = { n: 0, median: 1, max: 2, sum: 3, top5: 4 };
 
-/** Co-runners: [[licence, shared circuits, finished ahead, finished behind, last met]]. */
-export async function coRunners(lic) {
+/**
+ * Co-runners in one discipline ("For", "Spr") or both (""):
+ * [[licence, shared circuits, finished ahead, finished behind, last met]].
+ */
+export async function coRunners(lic, terrain = "") {
   const n = String(lic);
   const bucket = /^\d+$/.test(n) ? Math.floor(Number(n) / 10) : 999999;
-  const b = await getJson(`net/${bucket}.json`);
-  return (b && b[n]) || [];
+  const v = (await getJson(`net/${bucket}.json`))?.[n];
+  if (!v) return [];
+  const own = v[terrain || "*"];                  // "*": the only discipline raced, same list
+  return (own === "*" ? v["*"] : own) || [];
 }
 export const ageCurves = () => getJson("agecurve.json");
+/** Competitors of a season, counted: [[category, club, discipline flags (1 forest, 2 sprint), n]]. */
+export const pyramid = async (season) => (await getJson(`pyramid/${season}.json`))?.rows || [];
 /** Upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py). */
 export const agenda = () => getJson("agenda.json");
 export const eliteSummary = () => getJson("elite_summary.json");

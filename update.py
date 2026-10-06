@@ -67,6 +67,9 @@ TOP6W_CN_VERSION = 4
 #   3 (2026-10-05): Top: circuits valued by the uncapped best 60 %; no fallback first official CN
 #   4 (2026-10-05): the 2026 method replaced by "fair" (weighted best 60 %); Top derived from it, 6 places
 ENGINE_VERSION = 4
+# Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
+#   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
+EXTRAS_VERSION = 1
 COMPUTED = ("fair", "top6w")            # in this order: Top is derived from Fair
 
 
@@ -78,9 +81,18 @@ def migrate(db: Path, out: Path) -> bool:
     con.close()
     engine_due = int(meta.get("engine", 0)) < ENGINE_VERSION
     top_due = int(meta.get("top6w_cn", 0)) < TOP6W_CN_VERSION
-    if not engine_due and not top_due:
+    extras_due = int(meta.get("extras", 0)) < EXTRAS_VERSION
+    if not engine_due and not top_due and not extras_due:
         return False
     t0 = time.monotonic()
+    if not engine_due and not top_due:
+        print("migration: second-stage site data rebuilt")
+        import site_extras
+        site_extras.main(out)
+        _set_versions(db)
+        DEPLOY_PENDING.touch()
+        print(f"migration done in {time.monotonic() - t0:.0f}s")
+        return True
     engine = CnEngine(db)
     if engine_due:
         print("migration: computed methods recomputed from the start")
@@ -103,15 +115,20 @@ def migrate(db: Path, out: Path) -> bool:
     engine.write_runners()
     engine.close()
     import build_site
-    build_site.main(["--out", str(out), "--db", str(db)])
-    con = sqlite3.connect(db)
-    con.executemany("INSERT OR REPLACE INTO engine_meta (key, value) VALUES (?, ?)",
-                    [("top6w_cn", str(TOP6W_CN_VERSION)), ("engine", str(ENGINE_VERSION))])
-    con.commit()
-    con.close()
+    build_site.main(["--out", str(out), "--db", str(db)])      # site_extras included
+    _set_versions(db)
     DEPLOY_PENDING.touch()
     print(f"migration done in {time.monotonic() - t0:.0f}s")
     return True
+
+
+def _set_versions(db: Path) -> None:
+    con = sqlite3.connect(db)
+    con.executemany("INSERT OR REPLACE INTO engine_meta (key, value) VALUES (?, ?)",
+                    [("top6w_cn", str(TOP6W_CN_VERSION)), ("engine", str(ENGINE_VERSION)),
+                     ("extras", str(EXTRAS_VERSION))])
+    con.commit()
+    con.close()
 
 
 def deploy() -> bool:

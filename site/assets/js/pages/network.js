@@ -13,7 +13,7 @@ import {
 } from "../ui.js";
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, viewTerrain } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
@@ -45,11 +45,11 @@ const clubCode = (club) => {
 };
 
 /**
- * Co-runners over one season, from that season's results — same shape as the
- * all-time lists: [[licence, shared, ahead, behind, last met]].
+ * Co-runners over one season, from that season's results, in one discipline or both ("") —
+ * same shape as the all-time lists: [[licence, shared, ahead, behind, last met]].
  */
-async function coRunnersIn(lic, season) {
-  const races = (await data.runnerRaces(lic)).filter((r) => r[R.date].startsWith(season));
+async function coRunnersIn(lic, season, terrain) {
+  const races = (await data.runnerRaces(lic)).filter((r) => r[R.date].startsWith(season) && (!terrain || r[R.terrain] === terrain));
   const byCourse = new Map();
   for (const r of races) {
     if (!byCourse.has(r[R.course])) byCourse.set(r[R.course], new Set());
@@ -82,6 +82,7 @@ async function coRunnersIn(lic, season) {
 
 export async function render(main, { arg: lic, query }) {
   if (!lic && query.vue === "territoires") return (await import("./territory.js")).render(main, query);
+  if (!lic && query.vue === "ages") return (await import("./ages.js")).render(main, query);
   // no runner in the address: the current runner, unless the leaders' view was asked for
   const who = lic || (query.vue !== "meilleurs" && store.get().lastRunner);
   return who ? ego(main, who, query) : global(main, query);
@@ -93,7 +94,9 @@ async function ego(main, lic, query) {
   if (!person) { main.innerHTML = errorBox(t("err.notfound")); return; }
   store.set({ lastRunner: lic });
   const season = seasonsDesc().includes(query.s) ? query.s : "";
-  const list = season ? await coRunnersIn(lic, season) : await data.coRunners(lic);
+  const terrain = viewTerrain(query);                   // "" = both disciplines (site switch, ?t=)
+  const tq = terrain || null;
+  const list = season ? await coRunnersIn(lic, season, terrain) : await data.coRunners(lic, terrain);
   let k = [10, 20, 30].includes(Number(query.k)) ? Number(query.k) : 20;
   let links2 = query.l2 !== "0";
   const myClub = data.clubParts(person.club).code;
@@ -116,12 +119,12 @@ async function ego(main, lic, query) {
     </div>
     <section class="card"><div class="card-head"><h2>${t("nw.list")}</h2></div><div id="list"></div></section>`;
   bindChartCard(main, "net");
-  bindRunnerSearch($("#nw-search"), { onPick: (l) => { location.hash = link.network(l); } });
+  bindRunnerSearch($("#nw-search"), { onPick: (l) => { location.hash = link.network(l, { t: tq }); } });
   bindModeSwitch(main);
 
   if (!list.length) {
     $("#filters").innerHTML = html`${periodSelect(season)}`;
-    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null }); });
+    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, t: tq }); });
     $("#net").innerHTML = html`<div class="empty">${t("nw.none")}</div>`;
     return { title: `${t("nw.title")} · ${name}` };
   }
@@ -151,11 +154,11 @@ async function ego(main, lic, query) {
       <label class="checkline"><input type="checkbox" id="l2" ${raw(links2 ? "checked" : "")}>${t("nw.links2")}</label>`;
     $$('[data-seg="k"]').forEach((b) => b.addEventListener("click", () => { k = Number(b.dataset.value); drawFilters(); draw(); }));
     $("#l2").addEventListener("change", (e) => { links2 = e.target.checked; draw(); });
-    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, k: k === 20 ? null : k }); });
+    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, k: k === 20 ? null : k, t: tq }); });
   }
 
   async function draw() {
-    replaceQuery({ s: season || null, k: k === 20 ? null : k, l2: links2 ? null : "0" });
+    replaceQuery({ s: season || null, t: tq, k: k === 20 ? null : k, l2: links2 ? null : "0" });
     const top = rows.slice(0, k);
     const inSet = new Set(top.map((x) => x.lic));
     const cSame = css("--s1"), cOther = css("--s2"), cMe = css("--ink");
@@ -170,13 +173,13 @@ async function ego(main, lic, query) {
     const links = top.map((x) => ({ source: lic, target: x.lic, value: x.shared, width: scale(x.shared, lo, hi, 1, 5) }));
     if (links2 && season) {
       // within a season, links between co-runners come from their own circuits that season
-      const sets = await Promise.all(top.map((x) => circuitsOf(x.lic, season)));
+      const sets = await Promise.all(top.map((x) => circuitsOf(x.lic, season, terrain)));
       for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) {
         const w = overlap(sets[i], sets[j]);
         if (w >= 2) links.push({ source: top[i].lic, target: top[j].lic, value: w, width: scale(w, lo, hi, 0.5, 2), opacity: 0.16 });
       }
     } else if (links2) {
-      const lists = await Promise.all(top.map((x) => data.coRunners(x.lic)));
+      const lists = await Promise.all(top.map((x) => data.coRunners(x.lic, terrain)));
       const seen = new Set();
       lists.forEach((l, i) => {
         for (const y of l) {
@@ -197,7 +200,7 @@ async function ego(main, lic, query) {
     const nameOf = (id) => nodes.find((n) => n.id === id)?.name || id;
     networkChart($("#net"), {
       nodes, links,
-      onClick: (id) => { if (id !== lic) location.hash = link.network(id, { k }); },
+      onClick: (id) => { if (id !== lic) location.hash = link.network(id, { k, t: tq }); },
       tip: (n) => (n.meta?.me ? `<b>${esc(n.name)}</b>` : `<b>${esc(n.name)}</b><br><span style="color:var(--ink-3)">${esc(data.clubName(n.meta.club))}</span>
         <br>${fmt(n.meta.shared)} ${t("nw.shared")} · ${t("nw.ahead")} ${fmt(n.meta.ahead)} · ${t("nw.behind")} ${fmt(n.meta.behind)}
         <br><span style="color:var(--ink-3)">${t("nw.clickRecenter")}</span>`),
@@ -227,7 +230,7 @@ async function ego(main, lic, query) {
       { key: "ahead", label: t("nw.ahead"), align: "r", cls: "num", sort: (x) => x.ahead, render: (x) => fmt(x.ahead) },
       { key: "behind", label: t("nw.behind"), align: "r", cls: "num", sort: (x) => x.behind, render: (x) => fmt(x.behind) },
       { key: "last", label: t("nw.last"), align: "r", cls: "num", sort: (x) => x.last, render: (x) => fmtDate(x.last) },
-      { key: "go", label: "", render: (x) => html`<a href="${link.network(x.lic)}" title="${t("nw.clickRecenter")}">${t("nav.network")}</a>` },
+      { key: "go", label: "", render: (x) => html`<a href="${link.network(x.lic, { t: tq })}" title="${t("nw.clickRecenter")}">${t("nav.network")}</a>` },
       { key: "cmp", label: t("nav.compare"), cls: "c", render: (x) => html`<input type="checkbox" data-sel="${x.lic}" ${raw(store.inCompare(x.lic) ? "checked" : "")} aria-label="${x.name}">` },
     ],
     onRender(el) {
@@ -332,7 +335,7 @@ async function global(main, query) {
     const nameOf = (id) => top[inSet.get(id)]?.name || id;
     networkChart($("#net"), {
       nodes, links,
-      onClick: (id) => { location.hash = link.network(id); },
+      onClick: (id) => { location.hash = link.network(id, { t: terrain }); },
       tip: (nd) => `<b>${esc(nd.name)}</b> · ${fmt(nd.meta.cn[method])}<br><span style="color:var(--ink-3)">${esc(data.clubName(nd.meta.club))} · ${esc(nd.meta.cat)}</span>
         <br>${fmt(degree.get(nd.id) || 0)} ${t("nw.links")}<br><span style="color:var(--ink-3)">${t("nw.clickEgo")}</span>`,
       edgeTip: (l) => `${esc(nameOf(l.source))} — ${esc(nameOf(l.target))}<br><b>${fmt(l.value)}</b> ${t("nw.shared")}`,
@@ -347,7 +350,7 @@ async function global(main, query) {
       columns: [
         { key: "pos", label: "#", cls: "rank num", sort: (x) => x.pos, defaultDir: 1 },
         { key: "name", label: t("rk.col.name"), sort: (x) => x.r.name, defaultDir: 1,
-          render: (x) => html`<span class="dot" style="background:${raw(colorOf(x.r.ligue))};margin-right:7px"></span><a class="name" href="${link.network(x.r.lic)}">${x.r.name}</a>` },
+          render: (x) => html`<span class="dot" style="background:${raw(colorOf(x.r.ligue))};margin-right:7px"></span><a class="name" href="${link.network(x.r.lic, { t: terrain })}">${x.r.name}</a>` },
         { key: "code", label: t("nw.clubNo"), cls: "num", sort: (x) => x.r.clubCode, defaultDir: 1, render: (x) => clubCode(x.r.club) },
         { key: "club", label: t("rk.col.club"), render: (x) => data.clubName(x.r.club) },
         { key: "cat", label: t("rk.col.cat"), render: (x) => x.r.cat },

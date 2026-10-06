@@ -31,6 +31,14 @@ const PAGES = {
 // selection tray is worth showing.
 const USES_TERRAIN = new Set(["ranking", "runner", "compare", "clubs", "club", "clubcompare", "network", "courses"]);
 const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
+// Réseau views that count every discipline together by default (all but the leaders, who are
+// ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
+// (?t=For|Spr, none = both). Around one runner = a runner in the address, or the last one seen.
+const ALL_TERRAIN_VIEWS = new Set(["ages", "territoires"]);
+const allowsAllTerrains = (r) => r.route === "network"
+  && (!!r.arg || ALL_TERRAIN_VIEWS.has(r.query.vue) || (r.query.vue !== "meilleurs" && !!store.get().lastRunner));
+/** The discipline of such a view: "For", "Spr", or "" for both. */
+export const viewTerrain = (query) => (store.TERRAINS.includes(query.t) ? query.t : "");
 
 function parseHash() {
   const h = location.hash.replace(/^#/, "") || "/";
@@ -75,6 +83,7 @@ export const link = {
   network: (lic, q) => (lic ? `#/reseau/${encodeURIComponent(lic)}` : "#/reseau") + qstr(q),
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
   territories: (q) => "#/reseau" + qstr({ ...q, vue: "territoires" }),
+  ages: (q) => "#/reseau" + qstr({ ...q, vue: "ages" }),
 };
 function qstr(q) {
   if (!q) return "";
@@ -95,7 +104,8 @@ export function replaceQuery(q) {
 }
 
 // ---- header -------------------------------------------------------------
-function renderHeader(route) {
+function renderHeader(r) {
+  const { route } = r;
   const me = auth.session();
   const nav = me ? [
     ["overview", "#/", t("nav.overview")],
@@ -112,7 +122,8 @@ function renderHeader(route) {
     ["agenda", "#/agenda", t("nav.agenda")],
   ];
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs" : route;
-  const terrain = store.get().terrain;
+  const allTerrains = allowsAllTerrains(r);
+  const terrain = allTerrains ? viewTerrain(r.query) || "all" : store.get().terrain;
   $("#topbar").innerHTML = html`<div class="topbar-inner">
     <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -150,6 +161,7 @@ function renderHeader(route) {
       <label class="subbar-field"><span>${t("f.terrain")}</span>
       <select id="terrain-select" class="terrain-select ${USES_TERRAIN.has(route) ? "" : "is-off"}" aria-label="${t("f.terrain")}"
         title="${USES_TERRAIN.has(route) ? t("f.terrain") : t("terrain.na")}" ${raw(USES_TERRAIN.has(route) ? "" : "disabled")}>
+        ${allTerrains ? html`<option value="all" ${raw(terrain === "all" ? "selected" : "")}>${t("f.all")}</option>` : ""}
         ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(terrain === x ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}
       </select>
       </label>
@@ -177,9 +189,10 @@ function renderHeader(route) {
   if (!me) return;
   // One selector for the whole site: changing it re-renders the current page.
   $("#terrain-select").addEventListener("change", (e) => {
-    store.set({ terrain: e.target.value });
-    const { query } = parseHash();
-    if (query.t) { delete query.t; replaceQuery(query); }
+    const v = e.target.value, now = parseHash(), { query } = now;
+    if (store.TERRAINS.includes(v)) store.set({ terrain: v });
+    if (allowsAllTerrains(now)) replaceQuery({ ...query, t: v === "all" ? null : v });
+    else if (query.t) { delete query.t; replaceQuery(query); }
     route_();
   });
   bindSearch();
@@ -280,7 +293,7 @@ async function route_() {
   }
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
-  renderHeader(r.route);
+  renderHeader(r);
   renderTray(r.route);
   current?.cleanup?.();
   disposeAll();

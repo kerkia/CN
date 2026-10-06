@@ -14,6 +14,8 @@ Outputs (all under site/data/):
     elite_summary.json      the same points summed per club and season
     agecurve.json           CN quantiles per age category and season
     net/{bucket}.json       each runner's most frequent co-runners
+    pyramid/{season}.json   competitors of the season counted by category, club and discipline
+                            (pyramid/all.json: every competitor once, as at their last race)
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from site_io import dump
+from site_io import dump, prune
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "site" / "data"
@@ -243,15 +245,20 @@ def age_curves(years: list[int]) -> None:
 def network(comps: dict) -> None:
     """For every runner, the runners met most often on the same circuit, with
     how often each finished ahead. A runner who did not finish is behind
-    everyone who did; two non-finishers are level."""
+    everyone who did; two non-finishers are level.
+
+    Per runner: {"*": both disciplines, "For": forest, "Spr": sprint}; a
+    discipline is "*" when it is the only one the runner raced (same list),
+    and absent when they never raced it."""
     lic_ix: dict[str, int] = {}
     lics: list[str] = []
-    circ_idx, circ_place, circ_day = [], [], []
+    circ_idx, circ_place, circ_day, circ_terr = [], [], [], []
     for cid, c in comps.items():
         path = OUT / "c" / f"{cid}.json"
         if not path.exists():
             continue
         day = date.fromisoformat(c[0]).toordinal()
+        terrain = "For" if c[6] == "For" else "Spr"
         for circ in load(path)["circuits"]:
             ix, pl = [], []
             for r in circ["rows"]:
@@ -265,6 +272,7 @@ def network(comps: dict) -> None:
                 circ_idx.append(np.asarray(ix, dtype=np.int32))
                 circ_place.append(np.asarray(pl, dtype=float))
                 circ_day.append(day)
+                circ_terr.append(terrain)
     n = len(lics)
     member = defaultdict(list)                   # runner -> [(circuit, position)]
     for k, ix in enumerate(circ_idx):
@@ -272,8 +280,7 @@ def network(comps: dict) -> None:
             member[int(a)].append((k, p))
     print(f"  network: {n:,} runners, {len(circ_idx):,} circuits")
 
-    buckets = defaultdict(dict)
-    for a, mem in member.items():
+    def co_runners(a: int, mem: list) -> list:
         idx = np.concatenate([circ_idx[k] for k, _ in mem])
         ahead = np.concatenate([circ_place[k] > circ_place[k][p] for k, p in mem])
         behind = np.concatenate([circ_place[k] < circ_place[k][p] for k, p in mem])
@@ -283,20 +290,72 @@ def network(comps: dict) -> None:
         top = np.argsort(-shared, kind="stable")[:NET_TOP]
         top = top[shared[top] >= NET_MIN_SHARED]
         if not len(top):
-            continue
+            return []
         n_ahead = np.bincount(idx, weights=ahead, minlength=n)
         n_behind = np.bincount(idx, weights=behind, minlength=n)
         last = np.zeros(n, dtype=np.int64)
         np.maximum.at(last, idx, days)
+        return [[lics[b], int(shared[b]), int(n_ahead[b]), int(n_behind[b]),
+                 date.fromordinal(int(last[b])).isoformat()] for b in top]
+
+    buckets = defaultdict(dict)
+    for a, mem in member.items():
+        both = co_runners(a, mem)
+        if not both:
+            continue
+        out = {"*": both}
+        raced = {circ_terr[k] for k, _ in mem}
+        for terrain in ("For", "Spr"):
+            if raced == {terrain}:
+                out[terrain] = "*"
+            elif terrain in raced:
+                own = co_runners(a, [m for m in mem if circ_terr[m[0]] == terrain])
+                if own:
+                    out[terrain] = own
         lic = lics[a]
         bucket = int(lic) // 10 if lic.isdigit() else 999999
-        buckets[bucket][lic] = [
-            [lics[b], int(shared[b]), int(n_ahead[b]), int(n_behind[b]),
-             date.fromordinal(int(last[b])).isoformat()]
-            for b in top]
+        buckets[bucket][lic] = out
     for bucket, rows in buckets.items():
         dump(OUT / "net" / f"{bucket}.json", rows)
     print(f"  network: {sum(len(v) for v in buckets.values()):,} runners in {len(buckets):,} files")
+
+
+# -- age pyramid -----------------------------------------------------------------
+PYR_FOR, PYR_SPR = 1, 2                      # discipline flags: raced forest, sprint, or both (3)
+
+
+def pyramid(comps: dict) -> None:
+    """The competitors of each season — anyone with a result in it, "nc" rows
+    included — counted by category and club (both as at their last race of the
+    season) and by the disciplines raced: rows [category, club, flags, n].
+    "all" counts each competitor once over every season, as at their last race.
+    Counts only, no licences: the age pyramid and the territories need nothing more."""
+    per = defaultdict(dict)                  # season | "all" -> licence -> [date, cat, club, flags]
+    for cid, c in comps.items():
+        path = OUT / "c" / f"{cid}.json"
+        if not path.exists():
+            continue
+        day, terrain, season = c[0], c[6], c[7]
+        flag = PYR_FOR if terrain == "For" else PYR_SPR
+        for circ in load(path)["circuits"]:
+            for r in circ["rows"]:
+                for key in (season, "all"):
+                    x = per[key].get(r[0])
+                    if x is None:
+                        per[key][r[0]] = [day, r[4], r[5], flag]
+                        continue
+                    x[3] |= flag
+                    if day >= x[0]:
+                        x[:3] = [day, r[4], r[5]]
+    keep = set()
+    for season, runners in per.items():
+        count = defaultdict(int)
+        for _day, cat, club, flags in runners.values():
+            count[(cat or "", club or "", flags)] += 1
+        dump(OUT / "pyramid" / f"{season}.json", {"rows": [[*k, n] for k, n in sorted(count.items())]})
+        keep.add(f"{season}.json")
+    prune(OUT / "pyramid", keep)
+    print(f"  pyramid: {len(per) - 1} seasons, {len(per['all']):,} competitors")
 
 
 def main(out: Path | None = None) -> None:
@@ -312,6 +371,7 @@ def main(out: Path | None = None) -> None:
     club_files(years, elite_rows)
     age_curves(years)
     network(comps)
+    pyramid(comps)
     print(f"extras done in {time.monotonic() - t0:.0f}s")
 
 

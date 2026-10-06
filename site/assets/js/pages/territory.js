@@ -1,31 +1,31 @@
 // Réseau · Territoires: for each ligue (region) or département (of the competition's organiser), over one season or all of
-// them, in the chosen discipline: the competitions hosted there, the competitors registered
+// them, in both disciplines or the one chosen: the competitions hosted there, the competitors registered
 // there, and the competitions per competitor — as a map (coloured by any of the three) and a table.
 //
-// Competitors of a place = the runners of its clubs: for one season, those ranked (with a CN,
-// method 2026) in the discipline during the season, placed by their club at the end of the
-// season; over all seasons, those who ever raced the discipline, placed by their latest club.
+// Competitors of a place = the runners of its clubs: anyone with a result in the period ("nc"
+// rows included, CN or not), placed by the club of their last race in it (site_extras.pyramid).
 
 import { html, raw, $, $$, fmt, ord } from "../util.js";
 import { t } from "../i18n.js";
-import * as store from "../store.js";
 import * as data from "../data.js";
 import { mapChart } from "../charts.js";
 import { chartCard, bindChartCard, dataTable, tile, seg } from "../ui.js";
 import { DEPT_REGION, regionOf, placeOf, loadMap, featuresOf } from "../geo.js";
-import { replaceQuery } from "../app.js";
+import { replaceQuery, viewTerrain } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const LEVELS = ["region", "dept"];
 const MEASURES = ["comps", "runners", "ratio"];       // competitions hosted · competitors registered · competitions per 100 competitors
 const RATIO_X = 100;
 const digitsOf = (m) => (m === "ratio" ? 1 : 0);
+const FLAG = { For: 1, Spr: 2 };
 
 export async function render(main, query) {
   const seasons = data.meta().seasons.map(String).reverse();
   let level = LEVELS.includes(query.niveau) ? query.niveau : "region";
   let measure = MEASURES.includes(query.par) ? query.par : "comps";
   let season = query.s === "all" ? "" : (seasons.includes(query.s) ? query.s : seasons[0]);
+  const terrain = viewTerrain(query);                   // "" = both disciplines
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("tr.title")}</h1><p class="lede">${t("tr.lede")}</p></div>
@@ -54,38 +54,32 @@ export async function render(main, query) {
   }
 
   /** Map(place code -> number of competitors registered there). */
-  async function registered(terrain) {
+  async function registered() {
     const by = new Map();
-    const add = (club) => {
+    const add = (club, n) => {
       const p = data.clubParts(club);
       const region = DEPT_REGION[p.dept] || regionOf(p.ligue);
       const code = level === "dept" ? (DEPT_REGION[p.dept] ? p.dept : null) : region;
-      if (code) by.set(code, (by.get(code) || 0) + 1);
+      if (code) by.set(code, (by.get(code) || 0) + n);
     };
-    if (season) {
-      const [ranked, attrs] = await Promise.all([data.rankedIn("fair", terrain, season), data.attrsAt(season)]);
-      for (const lic of ranked) { const a = attrs.get(lic); if (a) add(a[1]); }
-    } else {
-      for (const r of data.runners().list) if ((terrain === "For" ? r.nFor : r.nSpr) > 0) add(r.club);
-    }
+    for (const [, club, flags, n] of await data.pyramid(season || "all")) if (!terrain || flags & FLAG[terrain]) add(club, n);
     return by;
   }
 
   /** Per place: { code, comps, runners, ratio }; plus what could not be placed at this level. */
   async function tally() {
-    const terrain = store.get().terrain;
     const by = new Map();
     const get = (code) => { if (!by.has(code)) by.set(code, { code, comps: 0, runners: 0, ratio: null }); return by.get(code); };
     let unplaced = 0, total = 0;
     for (const c of data.comps().values()) {
-      if (c.terrain !== terrain || (season && String(c.season) !== season)) continue;
+      if ((terrain && c.terrain !== terrain) || (season && String(c.season) !== season)) continue;
       total++;
       const p = placeOf(c.organizer);
       const code = level === "dept" ? p.dept : p.region;
       if (!code) { unplaced++; continue; }
       get(code).comps++;
     }
-    for (const [code, n] of await registered(terrain)) get(code).runners = n;
+    for (const [code, n] of await registered()) get(code).runners = n;
     const rows = [...by.values()];
     for (const g of rows) g.ratio = g.runners ? (RATIO_X * g.comps) / g.runners : null;
     return { rows, unplaced, total };
@@ -98,7 +92,7 @@ export async function render(main, query) {
   async function draw() {
     const my = ++token;
     replaceQuery({ vue: "territoires", niveau: level === "region" ? null : level, par: measure === "comps" ? null : measure,
-      s: season ? (season === seasons[0] ? null : season) : "all" });
+      s: season ? (season === seasons[0] ? null : season) : "all", t: terrain || null });
     const { rows, unplaced, total } = await tally();
     if (my !== token) return;
     const val = (g) => g[measure];
@@ -109,7 +103,7 @@ export async function render(main, query) {
     const period = season ? `${t("f.season")} ${season}` : t("nw.allSeasons");
     $("#tiles").innerHTML = html`
       ${tile(t("tr.m.comps"), fmt(total), period)}
-      ${tile(t(`tr.count.${level}`), fmt(rows.length), t(`terrain.${store.get().terrain}`))}
+      ${tile(t(`tr.count.${level}`), fmt(rows.length), terrain ? t(`terrain.${terrain}`) : t("ag.allSpecs"))}
       ${tile(`1er · ${t(`tr.m.${measure}`)}`, top ? show(top, measure) : "—", top ? placeName(top.code) : "")}
       ${tile(t("tr.unplaced"), fmt(unplaced), t(`tr.unplaced.${level}`))}`;
     $("#list-title").textContent = `${t(`tr.by.${level}`)} · ${t(`tr.m.${measure}`)}`;
