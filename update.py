@@ -66,10 +66,12 @@ TOP6W_CN_VERSION = 4
 #   2 (2026-10-04): Top: 10 slots; weights by name (championnat de France 2, national 1.5, other 1)
 #   3 (2026-10-05): Top: circuits valued by the uncapped best 60 %; no fallback first official CN
 #   4 (2026-10-05): the 2026 method replaced by "fair" (weighted best 60 %); Top derived from it, 6 places
-ENGINE_VERSION = 4
+#   5 (2026-10-06): VTT and ski: windows of 2 and 3 years, best 70 % (their own params, CnParams.by_terrain)
+ENGINE_VERSION = 5
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
-EXTRAS_VERSION = 1
+#   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
+EXTRAS_VERSION = 2
 COMPUTED = ("fair", "top6w")            # in this order: Top is derived from Fair
 
 
@@ -85,6 +87,7 @@ def migrate(db: Path, out: Path) -> bool:
     if not engine_due and not top_due and not extras_due:
         return False
     t0 = time.monotonic()
+    (out / "validation.json").unlink(missing_ok=True)     # the methods' accuracy, rebuilt with them
     if not engine_due and not top_due:
         print("migration: second-stage site data rebuilt")
         import site_extras

@@ -30,7 +30,7 @@ import sqlite3
 import unicodedata
 from bisect import bisect_left, bisect_right
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -129,11 +129,24 @@ class CnParams:
     min_scores_for_cn: int = 2
     window_days: int = 365
     lag_days: int = 15                   # CN "à J-15"
+    # A discipline's own values over the ones above, e.g. {"VTT": {"window_days": 730}}:
+    # VTT and ski have far fewer competitions than forest and sprint.
+    by_terrain: dict = field(default_factory=dict, hash=False, compare=False)
     per_terrain: bool = True             # 2026+ ranks Forêt and Sprint apart
     # Diagnostic: feed the site's own CN à J-15 into the circuit value
     # instead of our running one. Isolates the scoring formula from the
     # rolling-CN recursion, which is how the formula was validated.
     use_official_cn_for_circuit_value: bool = False
+
+    def for_terrain(self, terrain: str | None) -> "CnParams":
+        """These params as they apply in one discipline (its own values, if any)."""
+        own = self.by_terrain.get(terrain or "")
+        return replace(self, **own) if own else self
+
+    @property
+    def max_window_days(self) -> int:
+        """The longest window of any discipline: how far back a partial run must reach."""
+        return max([self.window_days, *(o.get("window_days", 0) for o in self.by_terrain.values())])
 
 
 def parse_time(t: str | None) -> int | None:

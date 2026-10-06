@@ -234,6 +234,11 @@ def build_methods() -> dict[str, MethodSpec]:
         min_ranked=4,            # a circuit needs >3 ranked runners
         min_scores_for_cn=3,     # a runner needs >=3 races for a CN
         new_entrant_rescue=False,  # only real CN holders score a circuit
+        # VTT (~30 competitions a season) and ski (2-4, on one or two weekends):
+        # a longer window and a larger share of the scores, so enough runners
+        # hold a CN to value the circuits from one season to the next.
+        by_terrain={"VTT": {"window_days": 730, "eligible_fraction": 0.70},
+                    "Ski": {"window_days": 1095, "eligible_fraction": 0.70}},
     )
     return {
         "fair": MethodSpec(
@@ -459,18 +464,25 @@ class CnEngine:
             hist = defaultdict(RunnerHistory)
             current_year = None
 
-        uncapped = dataclasses.replace(p, top_n=10 ** 6)     # "pool": the whole best fraction counts
+        per_t: dict[str, CnParams] = {}
+
+        def pt(terrain: str) -> CnParams:
+            """The params in a discipline (VTT and ski have their own window and share)."""
+            if terrain not in per_t:
+                per_t[terrain] = p.for_terrain(terrain)
+            return per_t[terrain]
 
         def value_for(licence: str, terrain: str, as_of: date):
             """What the runner brings to a circuit's value (p.valuation)."""
             if p.valuation not in ("trimmed", "pool"):
                 return cn_for(licence, terrain, as_of)
+            q = pt(terrain)
             h = hist.get((licence, terrain))
             if h is not None:
-                s, w = h.slice(as_of, p.window_days)
+                s, w = h.slice(as_of, q.window_days)
                 if s:
-                    lvl, kept = (trimmed_mean(s, p) if p.valuation == "trimmed"
-                                 else top_n_weighted(s, w, uncapped))
+                    lvl, kept = (trimmed_mean(s, q) if p.valuation == "trimmed"   # "pool": the whole best fraction counts
+                                 else top_n_weighted(s, w, dataclasses.replace(q, top_n=10 ** 6)))
                     if lvl is not None:
                         return lvl, len(s), kept
                     return seed(licence, terrain, as_of), len(s), 0
@@ -480,7 +492,7 @@ class CnEngine:
             # forest and sprint are independent rankings in every season
             h = hist.get((licence, terrain))
             if h is not None:
-                cn, n_w, n_k = h.cn_as_of(as_of, p)
+                cn, n_w, n_k = h.cn_as_of(as_of, pt(terrain))
                 if cn is not None:
                     return cn, n_w, n_k
                 if n_w:
@@ -647,7 +659,7 @@ class CnEngine:
 
         start = ""
         if since:                 # the window of the first rewritten point reaches back this far
-            start = (date.fromisoformat(since) - timedelta(days=p.window_days + 1)).isoformat()
+            start = (date.fromisoformat(since) - timedelta(days=p.max_window_days + 1)).isoformat()
         raw: dict = defaultdict(RunnerHistory)
         pub: dict = defaultdict(RunnerHistory)
         for s in self.conn.execute(
@@ -665,8 +677,9 @@ class CnEngine:
             kept = 0
             key, d = (r["licence"], r["terrain"]), date.fromisoformat(r["date_iso"])
             if r["cn_raw"] is not None and key in raw:     # the source published a CN: so does this method
-                cn_raw, _, kept = raw[key].cn_as_of(d, p)
-                cn = pub[key].cn_as_of(d, p)[0] if kept else None
+                q = p.for_terrain(r["terrain"])
+                cn_raw, _, kept = raw[key].cn_as_of(d, q)
+                cn = pub[key].cn_as_of(d, q)[0] if kept else None
                 if not kept:
                     cn_raw = None
             rows.append((spec.name, r["licence"], r["date_iso"], r["terrain"], cn, cn_raw, r["n_scores_window"], kept))
@@ -777,7 +790,7 @@ class CnEngine:
         p = spec.params
         start = ""
         if rewrite_from:          # the window of the first rewritten row reaches back this far
-            start = (date.fromisoformat(rewrite_from) - timedelta(days=p.window_days + 1)).isoformat()
+            start = (date.fromisoformat(rewrite_from) - timedelta(days=p.max_window_days + 1)).isoformat()
         hist: dict = defaultdict(RunnerHistory)
         for s in self.conn.execute(
                 "SELECT licence, terrain, date_iso, score, poids FROM scores "
@@ -791,7 +804,7 @@ class CnEngine:
             cn = None
             h = hist.get((r["licence"], r["terrain"]))
             if r["cn_raw"] is not None and h is not None:   # no raw CN: the seed showing through, unpublished
-                cn, _, kept = h.cn_as_of(date.fromisoformat(r["date_iso"]), p)
+                cn, _, kept = h.cn_as_of(date.fromisoformat(r["date_iso"]), p.for_terrain(r["terrain"]))
                 if not kept:
                     cn = None
             updates.append((cn, spec.name, r["licence"], r["terrain"], r["date_iso"]))

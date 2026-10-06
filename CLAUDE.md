@@ -62,6 +62,10 @@ runners holding a CN; score = circuit value ÷ time; PM / abandon / disqualified
 12-month window. Four specialités, each ranked separately: forest (`For`: LD/MD/Nuit), sprint (`Spr`), VTT
 (`VTT`, all formats together) and ski (`Ski`, all formats together) — FFCO's own split (`specialite=` on its
 CN pages). In the DB `competitions.terrain` is "Forêt", "Sprint", "VTT" or "Ski"; the site uses the codes.
+VTT (~30 competitions a season) and ski (2-4, on one or two weekends) have their own Juste/Top params
+(`CnParams.by_terrain`, `for_terrain`; `meta.methods.*.params.by_terrain`, `cn.paramsFor` in the browser):
+window 2 years (VTT) / 3 years (ski), best 70 % — with 12 months, too few riders held a CN to value the
+circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The official window stays 365 days.
 
 1. **`official`** — FFCO's published values, copied verbatim (before 2026 FFCO had one pooled pedestrian
    ranking for forest and sprint, filed under "Ped": `build_site.official_terrain`, `data.snapTerrain`,

@@ -16,6 +16,8 @@ Outputs (all under site/data/):
     net/{bucket}.json       each runner's most frequent co-runners
     pyramid/{season}.json   competitors of the season counted by category, club and discipline
                             (pyramid/all.json: every competitor once, as at their last race)
+    validation.json         how well each method's CN predicts who finishes ahead (season 2025;
+                            built once - delete it to rebuild, as a method change does)
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from pathlib import Path
 import numpy as np
 
 from site_io import dump, prune
+from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "site" / "data"
@@ -359,6 +362,74 @@ def pyramid(comps: dict) -> None:
     print(f"  pyramid: {len(per) - 1} seasons, {len(per['all']):,} competitors")
 
 
+# -- validation ------------------------------------------------------------------
+VAL_METHODS = ("official", "fair", "top6w")
+VAL_CNJ15 = (7, 9, 11)                       # c/ row columns: each method's CN 15 days before the race
+VAL_GROUPS = {"J": lambda a: a <= 20, "V": lambda a: a >= 55}     # juniors, 55 and over — against the 21s
+VAL_SEASON = "2025"                          # the reference season: complete, so built once per method change
+
+
+def validation(comps: dict) -> None:
+    """The yardstick every method change was judged by: for each pair of finishers
+    on a circuit, does the higher CN 15 days before the race predict who finished
+    ahead? All methods on the same pairs (both runners hold a CN in each), per
+    terrain and season: "all" races, and "nat" (championnats de France, national
+    races) alone. "bias": over pairs of a junior (J) or a 55+ runner (V) and a
+    21, the share where that runner finished ahead and where each method put
+    them ahead - a method that over- or under-rates a group shows here.
+    Only VAL_SEASON, and only when the file is missing: its results are final, so
+    the figures change only with a method (update.migrate deletes the file)."""
+    if (OUT / "validation.json").exists():
+        return
+    acc = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0, 0, 0])))   # [pairs, right x 3]
+    bias = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0, 0, 0, 0])))  # [pairs, ahead, pred x 3]
+    for cid, c in comps.items():
+        path = OUT / "c" / f"{cid}.json"
+        if not path.exists():
+            continue
+        terrain, season = c[6], str(c[7])
+        if season != VAL_SEASON:
+            continue
+        scopes = ("all", "nat") if title_weight(c[1]) > 1 else ("all",)
+        for circ in load(path)["circuits"]:
+            rows = [r for r in circ["rows"] if r[3] == "ok" and r[2] and all(r[k] for k in VAL_CNJ15)]
+            if len(rows) < 2:
+                continue
+            t = np.array([r[2] for r in rows], dtype=float)
+            cn = [np.array([r[k] for r in rows], dtype=float) for k in VAL_CNJ15]
+            iu = np.triu_indices(len(rows), 1)
+            dt = np.sign(t[iu[0]] - t[iu[1]])             # -1: the first finished ahead
+            keep = dt != 0
+            dt = dt[keep]
+            right = [int(np.sum(np.sign(x[iu[0]] - x[iu[1]])[keep] == -dt)) for x in cn]
+            for s in scopes:
+                a = acc[terrain][s][season]
+                a[0] += len(dt)
+                for i in range(3):
+                    a[1 + i] += right[i]
+            # group bias: pairs of one runner of the group and one 21
+            age = np.array([int(m.group(1)) if (m := re.match(r"^[HD](\d+)$", r[4] or "")) else -1 for r in rows])
+            for g, inside in VAL_GROUPS.items():
+                gi, ai = np.vectorize(inside)(age) & (age >= 0), age == 21
+                if not gi.any() or not ai.any():
+                    continue
+                pairs = [(i, j) for i in np.flatnonzero(gi) for j in np.flatnonzero(ai) if t[i] != t[j]]
+                if not pairs:
+                    continue
+                i, j = np.array(pairs).T
+                b = bias[terrain][g][season]
+                b[0] += len(pairs)
+                b[1] += int(np.sum(t[i] < t[j]))
+                for k, x in enumerate(cn):
+                    b[2 + k] += int(np.sum(x[i] > x[j]))
+    dump(OUT / "validation.json", {
+        "season": VAL_SEASON, "methods": list(VAL_METHODS), "lag_days": 15,
+        "acc": {t: {s: dict(sorted(v.items())) for s, v in d.items()} for t, d in acc.items()},
+        "bias": {t: {g: dict(sorted(v.items())) for g, v in d.items()} for t, d in bias.items()},
+    })
+    print(f"  validation: {sum(v[0] for d in acc.values() for v in d['all'].values()):,} pairs")
+
+
 def main(out: Path | None = None) -> None:
     global OUT
     if out is not None:
@@ -373,6 +444,7 @@ def main(out: Path | None = None) -> None:
     age_curves(years)
     network(comps)
     pyramid(comps)
+    validation(comps)
     print(f"extras done in {time.monotonic() - t0:.0f}s")
 
 

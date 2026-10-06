@@ -23,6 +23,16 @@ export async function render(main) {
   const meta = data.meta();
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
   const pct = (x) => `${fmt(100 * x)} %`;
+  // where a discipline has its own value (VTT, ski: fewer competitions): "70 % en VTT et en Ski"
+  const own = (p, key, show) => {
+    const by = Object.entries(p.by_terrain || {}).filter(([, o]) => o[key] != null && o[key] !== p[key]);
+    const same = by.length > 1 && by.every(([, o]) => o[key] === by[0][1][key]);
+    if (!by.length) return "";
+    return same ? `${show(by[0][1][key])} en ${by.map(([tr]) => t(`terrain.${tr}`)).join(" et en ")}`
+      : by.map(([tr, o]) => `${show(o[key])} en ${t(`terrain.${tr}`)}`).join(", ");
+  };
+  const years = (d) => `${fmt(Math.round(d / 365))} ans`;
+  const alsoPct = (p) => (own(p, "eligible_fraction", pct) ? ` (${own(p, "eligible_fraction", pct)})` : "");
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);   // 1,5 must not read as 2
 
   main.innerHTML = html`
@@ -39,7 +49,7 @@ export async function render(main) {
       <section class="card"><div class="card-body">
         <h2>${methodKey("fair")} ${t("m.fair")}</h2>
         <p class="muted">La force de chaque coureur, qui sert aussi à calculer la valeur des circuits : la moyenne pondérée de ses
-          ${pct(pf.eligible_fraction)} meilleures courses, avec un recalage progressif plutôt qu'annuel.</p></div></section>
+          ${pct(pf.eligible_fraction)} meilleures courses${alsoPct(pf)}, avec un recalage progressif plutôt qu'annuel.</p></div></section>
       <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
         <p class="muted">Le potentiel au meilleur niveau, adapté aux qualifications : les mêmes scores que la méthode Juste, mais seules
@@ -74,7 +84,8 @@ export async function render(main) {
       <div class="formula">score = valeur du circuit ÷ temps du coureur</div>
       <p>Un coureur qui court aussi vite que son CN le prévoit obtient donc un score proche de son CN. Un poinçon manquant, un abandon,
       une disqualification ou un hors-délai donnent un score de 0 qui compte dans le calcul. Les catégories H10 et D10 ne sont pas prises en compte.</p>
-      <p>Toutes les méthodes utilisent une <b>fenêtre glissante de 12 mois</b> (365 jours) jusqu'à la date de calcul, et
+      <p>Toutes les méthodes utilisent une <b>fenêtre glissante de 12 mois</b> (365 jours) jusqu'à la date de calcul${
+        own(pf, "window_days", years) ? ` — pour les méthodes « ${methodShort("fair")} » et « ${methodShort("top6w")} », ${own(pf, "window_days", years)}, où les compétitions sont plus rares —` : ""}, et
       tiennent un classement séparé par spécialité : <b>Forêt</b>, <b>Sprint</b>, <b>VTT</b> et <b>Ski</b>.
       Exception : avant 2026, la FFCO publiait un classement pédestre unique, forêt et sprint confondus ; la ${methodLabel("official")} l'affiche tel quel.</p>
 
@@ -90,7 +101,10 @@ export async function render(main) {
       <p><b>Limites</b></p>
       <ul>
         <li>La méthode a évolué au fil des années et inclut des ajustements annuels : les analyses sur le long terme sont impossibles.</li>
-        <li>Elle exclut la meilleure course. Or, pour beaucoup de coureurs, et surtout pour les plus performants, c'est souvent une compétition nationale : un objectif majeur et une course très représentative de leur niveau.</li>
+        <li>Elle écarte les meilleures courses : la meilleure avant 2026, les 10 % meilleures depuis. Or, pour les meilleurs coureurs, ce sont le plus
+          souvent les <b>championnats de France et les courses nationales</b> : les compétitions qu'ils préparent en priorité, les plus relevées et les plus
+          représentatives de leur niveau. Le CN officiel se prive ainsi précisément des résultats qui comptent le plus — un effet pervers de la méthode,
+          que corrigent les méthodes ${methodShort("fair")} et ${methodShort("top6w")}.</li>
       </ul>
 
       <p>Depuis 2026, la règle officielle (moyenne des scores sans les 10 % meilleurs ni les 40 % moins bons, recalage chaque 1er janvier)
@@ -108,7 +122,7 @@ export async function render(main) {
       <p>Une méthode alternative qui estime la force de chaque coureur, c'est-à-dire son niveau habituel, sur une échelle stable dans le temps,
         calculée sur toutes les saisons depuis 2010. C'est elle qui sert à calculer la valeur des circuits, pour les deux méthodes proposées :</p>
       <ul>
-        <li>on garde les ${pct(pf.eligible_fraction)} meilleurs scores de la fenêtre (arrondi à l'entier le plus proche) ;</li>
+        <li>on garde les ${pct(pf.eligible_fraction)} meilleurs scores de la fenêtre${alsoPct(pf)} (arrondi à l'entier le plus proche) ;</li>
         <li>chaque score est pondéré selon le niveau de la compétition : championnat de France × ${fmtW(pf.weights.cdf)},
           course nationale (O'France, Nationale) × ${fmtW(pf.weights.national)}, toutes les autres × ${fmtW(pf.weights.other)} ;
           le CN est la moyenne pondérée de ces scores ;</li>
@@ -122,29 +136,32 @@ export async function render(main) {
           changement de mois. Chaque score est calculé une fois pour toutes et n'est jamais revu quand un nouveau facteur arrive ;
           le CN ne change que lorsqu'une course entre dans la fenêtre ou en sort.</li>
       </ul>
-      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les ${pct(pf.eligible_fraction)} meilleurs scores — score = score brut × facteur(jour de la course)</div>
+      <div class="formula">CN = Σ(poids × score) ÷ Σ(poids), sur les ${pct(pf.eligible_fraction)} meilleurs scores${alsoPct(pf)} — score = score brut × facteur(jour de la course)</div>
       <p><b>Ce qu'elle cherche à corriger</b> — Cette méthode vise à éliminer l'essentiel des inconvénients identifiés ci-dessus :</p>
       <ul>
         <li>elle est stable au fil des années : ni marche au 1er janvier, ni changement de règle ;</li>
-        <li>une course de meilleur niveau compte davantage, et les 40 % de courses les moins bonnes ne comptent pas ;</li>
+        <li>les meilleures courses ne sont jamais écartées : les championnats de France et les courses nationales, que les meilleurs coureurs préparent
+          en priorité, comptent au contraire davantage (× ${fmtW(pf.weights.cdf)} et × ${fmtW(pf.weights.national)}), et seules les courses les moins bonnes sont laissées de côté ;</li>
         <li>le CN de chacun dépend de son niveau habituel, pas du nombre de courses courues : les groupes qui courent surtout entre eux
           (jeunes, vétérans) ne s'écartent pas des autres ;</li>
         <li>elle sépare le sprint et la forêt, comme le VTT et le ski.</li>
       </ul>
+      <p>Résultat mesurable : elle prédit nettement mieux que la ${methodLabel("official")} qui terminera devant l'autre
+        (voir <a href="#/methodes" data-goto="validation">la validation</a> en bas de page).</p>
 
       <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
       <p>Le classement selon le potentiel au meilleur niveau, adapté aux qualifications, et qui incite à courir davantage. Inspirée du
         <i>World Ranking</i>, elle part de la méthode Juste :</p>
       <ul>
         <li>les scores de course, la valeur des circuits et le recalage sont exactement ceux de la méthode Juste ;</li>
-        <li>le CN dispose de ${fmt(p6.top_n)} places : parmi les ${pct(p6.eligible_fraction)} meilleurs scores, du meilleur au moins bon, chaque course en occupe
+        <li>le CN dispose de ${fmt(p6.top_n)} places : parmi les ${pct(p6.eligible_fraction)} meilleurs scores${alsoPct(p6)}, du meilleur au moins bon, chaque course en occupe
           autant que son poids, jusqu'à ce qu'elles soient toutes prises ; la dernière course retenue ne compte que pour les places qui restent
           (un championnat de France arrivant quand il ne reste qu'une place compte × 1) ;</li>
         <li>ainsi, plus un coureur court, plus il peut améliorer son CN, et une course de plus ou de meilleur niveau ne peut jamais le faire baisser ;</li>
         <li>la valeur des circuits, elle, repose sur le CN Juste, qui estime la force des coureurs : sinon, plus un coureur court, plus sa sélection des meilleures courses
           gonflerait les circuits où il court, et les groupes qui courent surtout entre eux (vétérans, jeunes) s'écarteraient des autres.</li>
       </ul>
-      <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les ${pct(p6.eligible_fraction)} meilleurs scores</div>
+      <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les ${pct(p6.eligible_fraction)} meilleurs scores${alsoPct(p6)}</div>
     </div>
 
     <div style="margin:24px 0 16px">
@@ -192,8 +209,27 @@ export async function render(main) {
         <li>Les CN des méthodes alternatives ne remplacent en aucun cas le classement officiel, qui reste la seule référence.</li>
         <li>Les instantanés du classement sont calculés en fin de mois ; la page d'un coureur permet de détailler le calcul à n'importe quelle date.</li>
       </ul>
-    </div>`;
+
+      <h2 id="validation">Validation : quelle méthode prédit le mieux les résultats ?</h2>
+      <p>Un classement doit d'abord dire qui est le plus fort. Le test, appliqué à chaque choix de méthode : sur chaque circuit, on prend
+        toutes les paires de coureurs classés, et on regarde si celui qui avait le CN le plus élevé <b>15 jours avant la course</b> — le CN
+        publié par chaque méthode à J-15, donc sans rien savoir de la course — a bien terminé devant l'autre. Les trois méthodes sont
+        comparées <b>sur les mêmes paires</b> : celles où les deux coureurs ont un CN dans chacune.</p>
+      <p id="val-summary"></p>
+    </div>
+    <div class="grid grid-main-side" style="margin-bottom:16px;align-items:start">
+      <section class="card"><div class="card-head"><div><h2 id="val-title"></h2><div class="hint">${t("me.val.hint")}</div></div></div>
+        <div id="val-all"></div></section>
+      <section class="card"><div class="card-head"><div><h2>${t("me.val.nat")}</h2><div class="hint">${t("me.val.nat.hint")}</div></div></div>
+        <div id="val-nat"></div></section>
+    </div>
+    <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("me.val.bias")}</h2><div class="hint">${t("me.val.bias.hint")}</div></div></div>
+      <div id="val-bias"></div></section>`;
   ["norm", "agr"].forEach((id) => bindChartCard(main, id));
+  $$("[data-goto]", main).forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById(a.dataset.goto)?.scrollIntoView({ behavior: "smooth" });
+  }));
 
   const norm = TERRAINS.filter((tr) => meta.normalisation[tr]).map((tr) => ({
     name: t(`terrain.${tr}`), color: terrainColor(tr),
@@ -234,6 +270,62 @@ export async function render(main) {
         <td class="r num">${fmt(s.r, 3)}</td><td class="r num">${fmtSigned(Math.round(s.bias))}</td><td class="r num">${fmt(s.mae)}</td></tr>`)}</tbody></table></div>`;
     $("#agr-table").innerHTML = $("#agr-stats").innerHTML;
   }
+  // ---- validation: who finishes ahead, as predicted by each method's CN 15 days before -------------
+  async function drawValidation() {
+    const v = await data.validation();
+    if (!v) { $("#val-summary").textContent = t("me.val.none"); return; }
+    const M = v.methods;                                    // official, fair, top6w — columns 1..3 of each entry
+    const season = v.season || Object.keys(v.acc.For?.all || {}).pop();
+    const TR = TERRAINS.filter((x) => v.acc[x]?.all?.[season]?.[0]);
+    const share = (x, i) => (x?.[0] ? (100 * x[1 + i]) / x[0] : null);
+    // errors avoided by Juste, relative to the official method's errors
+    const avoided = (x) => (x?.[0] && x[0] - x[1] ? (100 * (x[2] - x[1])) / (x[0] - x[1]) : null);
+    const bold = (on, s) => (on ? html`<b>${s}</b>` : s);
+    const pctCell = (x, i) => {
+      if (!x?.[0]) return html`<td class="r num">—</td>`;
+      const best = Math.max(...M.map((_, k) => x[1 + k]));
+      return html`<td class="r num">${bold(x[1 + i] === best, `${fmt(share(x, i), 1)} %`)}</td>`;
+    };
+    const table = (scope) => html`<div class="table-wrap"><table class="data compact"><thead><tr>
+      <th>${t("f.terrain")}</th><th class="r">${t("me.val.pairs")}</th>${M.map((m) => html`<th class="r">${methodShort(m)}</th>`)}
+      <th class="r" title="${t("me.val.avoided.hint")}">${t("me.val.avoided")}</th></tr></thead>
+      <tbody>${TR.map((x) => {
+        const e = v.acc[x][scope]?.[season];
+        const a = avoided(e);
+        return html`<tr><td>${t(`terrain.${x}`)}</td><td class="r num">${e?.[0] ? fmt(e[0]) : "—"}</td>${M.map((_, i) => pctCell(e, i))}
+          <td class="r num">${a == null ? "—" : `${fmt(Math.round(a))} %`}</td></tr>`;
+      })}</tbody></table></div>`;
+
+    // the figures are read from the data; the seasons 2012-2025 were measured once, on 6 October 2026
+    const name = (x) => (x === "VTT" ? "VTT" : t(`terrain.${x}`).toLowerCase());
+    const parts = ["For", "Spr", "VTT"].filter((x) => v.acc[x]?.all?.[season]?.[0]).map((x) => {
+      const e = v.acc[x].all[season];
+      return `${name(x)} : ${fmt(share(e, 1), 1)} % de bons pronostics contre ${fmt(share(e, 0), 1)} %, soit ${fmt(Math.round(avoided(e)))} % d'erreurs en moins`;
+    });
+    $("#val-summary").innerHTML = html`En ${season}, sur les mêmes duels, la ${methodLabel("fair")} a mieux prédit que la ${methodLabel("official")}
+      qui terminerait devant — ${parts.join(" ; ")}. Mesurée aussi sur chaque saison de 2012 à 2025, elle fait mieux que la méthode
+      officielle <b>à chacune</b>, en forêt comme en sprint. La ${methodLabel("top6w")}, qui garde les mêmes scores mais récompense les
+      meilleures courses, la suit de près. En ski, les duels sont trop peu nombreux (2 à 4 courses par saison) pour conclure.`;
+    $("#val-title").textContent = `${t("me.val.all")} · ${season}`;
+    $("#val-all").innerHTML = table("all");
+    $("#val-nat").innerHTML = table("nat");
+
+    // bias: juniors and 55+ against the 21s, per discipline
+    const groups = [["J", t("me.val.bias.J")], ["V", t("me.val.bias.V")]];
+    const biasRows = TR.filter((x) => x !== "Ski").flatMap((x) => groups.map(([g, label]) => [x, label, v.bias[x]?.[g]?.[season]]))
+      .filter(([, , b]) => b?.[0]);
+    $("#val-bias").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>${t("me.val.bias.group")}</th>
+      <th class="r">${t("me.val.pairs")}</th><th class="r">${t("me.val.bias.actual")}</th>${M.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
+      <tbody>${biasRows.map(([x, label, b]) => {
+        const real = (100 * b[1]) / b[0];
+        const pred = M.map((_, i) => (100 * b[2 + i]) / b[0]);
+        const closest = Math.min(...pred.map((p) => Math.abs(p - real)));
+        return html`<tr><td>${t(`terrain.${x}`)}</td><td>${label}</td><td class="r num">${fmt(b[0])}</td><td class="r num">${fmt(real, 1)} %</td>
+          ${pred.map((p) => html`<td class="r num">${bold(Math.abs(p - real) === closest, `${fmt(p, 1)} %`)}</td>`)}</tr>`;
+      })}</tbody></table></div>`;
+  }
+
   drawAgreement();
+  await drawValidation();
   return { title: t("page.methods") };
 }

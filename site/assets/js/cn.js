@@ -8,10 +8,17 @@ import { R, FOOT, inSeries } from "./data.js";
 
 export const dround = (x) => (x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5));
 
-const WINDOW_DAYS = 365;
-function windowStart(iso) {
+/** A method's params in a discipline: the general ones, with the discipline's own (window, best share). */
+export function paramsFor(meta, method, terrain) {
+  const p = meta.methods[method]?.params || {};
+  return { ...p, ...(p.by_terrain?.[terrain] || {}) };
+}
+/** The window of a method in a discipline, in days (official: FFCO's 12 months). */
+const windowDays = (method, terrain, meta) =>
+  (method === "official" ? 365 : paramsFor(meta, method, terrain).window_days ?? 365);
+function windowStart(iso, days) {
   const d = new Date(iso + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - WINDOW_DAYS);
+  d.setUTCDate(d.getUTCDate() - days);
   return d.toISOString().slice(0, 10);
 }
 
@@ -61,14 +68,14 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
  * Returns { cn, rows: [{race, value, weight, role, used}], ... } per method.
  */
 export function explain(method, races, iso, terrain, meta) {
-  const from = windowStart(iso);
+  const from = windowStart(iso, windowDays(method, terrain, meta));
   const inWin = (r) => r[R.date] >= from && r[R.date] <= iso;
 
   if (method === "fair" || method === "top6w") {
-    const p = meta.methods[method].params;
+    const p = paramsFor(meta, method, terrain);
     // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's month,
     // the value the Courses page shows), the same in both methods; the CN is the weighted mean of the best
-    // 60 % of them - all of them for Fair, only those filling the weight places for Top. No factor here.
+    // 60 % of them (70 % in VTT and ski) - all of them for Fair, only those filling the weight places for Top.
     const [score, counts] = method === "fair" ? [R.fScore, R.fCounts] : [R.t6Score, R.t6Counts];
     const rows = races
       .filter((r) => r[R.terrain] === terrain && inWin(r) && r[counts] && r[score] != null)
@@ -105,18 +112,19 @@ const addDaysIso = (iso, n) => {
 
 /**
  * A runner's CN history as a list of events, like the federation's "historique"
- * page: every race entering the 12-month window and every race leaving it, with the
+ * page: every race entering the window (12 months; longer in VTT and ski) and every race leaving it, with the
  * CN after and the change. (A recalage only sets the scores of the races to come, so
  * it never moves a CN by itself.)
  * Returns [{ date, kind: "in"|"out", races: [race rows], cn, delta }], oldest first.
  */
 export function cnHistory(method, races, terrain, meta, until) {
-  const mine = races.filter((r) => inSeries(r, method, terrain, meta));
+  const mine = races.filter((r) => inSeries(r, method, terrain));
+  const win = windowDays(method, terrain, meta);
   const events = new Map();                       // date -> { in: [], out: [], recal }
   const at = (d) => { if (!events.has(d)) events.set(d, { in: [], out: [], recal: false }); return events.get(d); };
   for (const r of mine) {
     at(r[R.date]).in.push(r);
-    const out = addDaysIso(r[R.date], WINDOW_DAYS + 1);
+    const out = addDaysIso(r[R.date], win + 1);
     if (method !== "official" && out <= until) at(out).out.push(r);
   }
   const out = [];
@@ -137,9 +145,9 @@ export function cnHistory(method, races, terrain, meta, until) {
 
 /** CN at every month-end the runner is ranked: [[monthIso, cn]]. */
 export function monthlyCn(method, races, terrain, meta) {
-  const mine = races.filter((r) => inSeries(r, method, terrain, meta));
+  const mine = races.filter((r) => inSeries(r, method, terrain));
   if (!mine.length) return [];
-  const first = mine[0][R.date], last = addDaysIso(mine[mine.length - 1][R.date], WINDOW_DAYS);
+  const first = mine[0][R.date], last = addDaysIso(mine[mine.length - 1][R.date], windowDays(method, terrain, meta));
   const pts = [];
   for (const m of meta.months) {
     if (m < first || m > last) continue;

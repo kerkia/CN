@@ -25,6 +25,17 @@ const FR = {
   "tr.title": "Territoires",
   "nw.mode": "Vue du réseau", "nw.mode.ego": "Réseau d'un coureur", "nw.mode.leaders": "Réseau des meilleurs", "nw.mode.territories": "Territoires", "nw.mode.ages": "Âges",
   "ag.title": "Pyramide des âges",
+  "me.val.none": "Les données de validation ne sont pas encore disponibles.",
+  "me.val.hint": "Part des duels (deux coureurs classés sur un même circuit) où le CN le plus élevé 15 jours avant la course désignait celui qui a terminé devant ; en gras, la meilleure méthode",
+  "me.val.all": "Toutes les courses",
+  "me.val.nat": "Championnats de France et courses nationales",
+  "me.val.nat.hint": "Les mêmes duels, sur les seules compétitions les plus importantes : celles que la méthode officielle écarte le plus souvent",
+  "me.val.pairs": "Duels",
+  "me.val.avoided": "Erreurs évitées", "me.val.avoided.hint": "Part des erreurs de la méthode officielle que la méthode Juste évite",
+  "me.val.bias": "Jeunes et vétérans : un biais ?",
+  "me.val.bias.hint": "Sur les duels entre un coureur du groupe et un coureur de catégorie 21 : la part où il a réellement terminé devant, et la part où chaque méthode le plaçait devant. Plus c'est proche de la réalité, moins la méthode a de biais ; en gras, la plus proche",
+  "me.val.bias.group": "Groupe", "me.val.bias.actual": "Réellement devant",
+  "me.val.bias.J": "Jeunes (20 et moins) face aux 21", "me.val.bias.V": "55 ans et plus face aux 21",
   "ag.lede": "La répartition des compétiteurs entre les catégories d'âge, dames à gauche, hommes à droite, en pourcentage de l'ensemble sélectionné. Par défaut toute la population, toutes spécialités réunies ; choisissez une spécialité en haut de page, une ligue ou un club pour comparer avec l'ensemble.",
   "ag.chart": "Pyramide", "ag.chart.hint": "Part de chaque catégorie dans le total, dames et hommes réunis",
   "ag.allSpecs": "Toutes spécialités", "ag.allLigues": "Toutes les ligues", "ag.allClubs": "Tous les clubs",
@@ -100,7 +111,7 @@ const FR = {
   "rn.ev.in": "Entrée",
   "rn.ev.delta": "Variation",
   "rn.ev.what": "Entrées et sorties de la base de calcul",
-  "rn.cnHistory.hint": "Chaque entrée ou sortie d'une course dans la fenêtre de 12 mois, et chaque recalage",
+  "rn.cnHistory.hint": "Chaque entrée ou sortie d'une course dans la fenêtre de calcul, et chaque recalage",
   "rn.cnHistory": "Historique du CN",
   "rn.pickLede": "Recherchez un coureur par son nom ou son numéro de licence.",
   "rn.change": "Changer de coureur…",
@@ -164,7 +175,7 @@ const FR = {
 
   "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Juste »", "m.top6w": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",
-  "m.fair.long": "La force des coureurs : moyenne pondérée des 60 % meilleures courses",
+  "m.fair.long": "La force des coureurs : moyenne pondérée des meilleures courses",
   "m.top6w.long": "Le potentiel au meilleur niveau : les meilleures courses, sur 6 places pondérées",
   "terrain.For": "Forêt", "terrain.Spr": "Sprint", "terrain.VTT": "VTT", "terrain.Ski": "Ski", "terrain.Ped": "Pédestre",
   "sexe.all": "Tous", "sexe.H": "Hommes", "sexe.D": "Dames",
@@ -205,9 +216,9 @@ const FR = {
   "rn.officialFfco": "Page officielle", "rn.noRaces": "Aucune course dans cette spécialité.",
   "rn.cnAfter": "CN après", "rn.score": "Score",
 
-  "calc.s.kept": "✓ retenue", "calc.s.best10": "10 % meilleurs", "calc.s.worst40": "40 % pires", "calc.s.notTop60": "40 % pires", "calc.s.notTop6": "60 % meilleurs", "col.type": "Type",
+  "calc.s.kept": "✓ retenue", "calc.s.best10": "10 % meilleurs", "calc.s.worst40": "40 % pires", "calc.s.notTop60": "{rest} % pires", "calc.s.notTop6": "{pct} % meilleurs", "col.type": "Type",
   "calc.kept": "retenue", "calc.best10": "10 % meilleurs écartés", "calc.worst40": "40 % moins bons écartés",
-  "calc.notTop60": "hors des 60 % meilleures", "calc.notTop6": "au-delà des 6 places", "calc.partial": "Seule une partie du poids de cette course tient dans les 6 places",
+  "calc.notTop60": "hors des {pct} % meilleures", "calc.notTop6": "au-delà des 6 places", "calc.partial": "Seule une partie du poids de cette course tient dans les 6 places",
   "calc.rescaled": "rééchelonné", "calc.factor": "facteur de recalage",
   "calc.raw": "CN brut", "calc.weights": "Poids : championnat de France × 2, course nationale (O'France, Nationale) × 1,5, autres × 1",
   "calc.official.ffco": "Calcul publié par la FFCO à cette date : courses de la base, points retenus pour chacune, CN.",
@@ -215,8 +226,8 @@ const FR = {
   "calc.official.loading": "Lecture de la page CN de la FFCO…",
   "calc.noCn": "pas de CN à cette date", "calc.s.noCn": "—",
   "calc.official.note": "Valeurs publiées par la FFCO. La règle documentée (retrait de 10 % / 40 %) appliquée aux scores officiels donne une reconstruction indicative :",
-  "calc.fair.formula": "Moyenne pondérée des 60 % meilleurs scores, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
-  "calc.top6w.formula": "Parmi les 60 % meilleurs scores, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
+  "calc.fair.formula": "Moyenne pondérée des {pct} % meilleurs scores sur {win}, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
+  "calc.top6w.formula": "Parmi les {pct} % meilleurs scores sur {win}, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la moyenne pondérée des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
@@ -415,4 +426,8 @@ const FR = {
 };
 
 // The site is French-only: its audience is French orienteers.
-export const t = (key) => FR[key] ?? key;
+/** The French text of `key`; `vars` fills its {placeholders}. */
+export const t = (key, vars) => {
+  const s = FR[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m) : s;
+};

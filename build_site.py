@@ -59,6 +59,7 @@ OUT = ROOT / "site" / "data"
 NAMES_CACHE = paths.CACHE / "reference_names.json"
 TERRAINS = {"Forêt": "For", "Sprint": "Spr", "VTT": "VTT", "Ski": "Ski"}
 TERRAIN_CODES = list(TERRAINS.values())
+TERRAIN_NAMES = {v: k for k, v in TERRAINS.items()}
 SPLIT_YEAR = 2026
 FOOT = ("For", "Spr")            # one pooled official ranking ("Ped") before SPLIT_YEAR
 
@@ -281,7 +282,7 @@ def main(argv: list[str] | None = None) -> None:
             return None
         asof = date.fromisoformat(d) - timedelta(days=pf.lag_days)
         i = bisect_right(h[0], asof.isoformat()) - 1
-        if i < 0 or h[0][i] <= (asof - timedelta(days=pf.window_days)).isoformat():
+        if i < 0 or h[0][i] <= (asof - timedelta(days=pf.for_terrain(terrain).window_days)).isoformat():
             return None
         return h[1][i]
     raw_res = {}
@@ -490,9 +491,11 @@ def main(argv: list[str] | None = None) -> None:
         idx = {m: i for i, m in enumerate(ym)}
         files = defaultdict(dict)   # (method, t) -> lic -> [12]
         for (lic, t), (ds, ss, ws) in h6.items():
+            full_t = TERRAIN_NAMES[t]                     # params are keyed by the database's terrain
+            pft, p6t = pf.for_terrain(full_t), p6.for_terrain(full_t)
             for m in ym:
-                if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=366):
-                    for mth, p in (("fair", pf), ("top6w", p6)):
+                if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=pft.window_days + 1):
+                    for mth, p in (("fair", pft), ("top6w", p6t)):
                         cn = agg_at(ds, ss, ws, m, p)
                         if cn:
                             files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
@@ -573,19 +576,22 @@ def main(argv: list[str] | None = None) -> None:
                 pairs.append([do[lic], d26[lic], d6[lic]])
         agree[t] = pairs[:4000]
 
+    def by_terrain(p):            # a discipline's own values, by site code (see CnParams.by_terrain)
+        return {TERRAINS.get(t, t): o for t, o in p.by_terrain.items()}
+
     methods_meta = {
         "official": {"color": 1},
         "fair": {"color": 2, "params": {
             "eligible_fraction": pf.eligible_fraction, "weights": TITLE_WEIGHTS,
             "min_scores": pf.min_scores_for_cn, "min_ranked": pf.min_ranked,
-            "window_days": pf.window_days, "lag_days": pf.lag_days,
+            "window_days": pf.window_days, "lag_days": pf.lag_days, "by_terrain": by_terrain(pf),
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
         "top6w": {"color": 3, "params": {
             "top_n": p6.top_n, "eligible_fraction": p6.eligible_fraction,
             "weights": TITLE_WEIGHTS,
             "min_scores": p6.min_scores_for_cn, "min_ranked": p6.min_ranked,
-            "window_days": p6.window_days, "lag_days": p6.lag_days,
+            "window_days": p6.window_days, "lag_days": p6.lag_days, "by_terrain": by_terrain(p6),
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
     }

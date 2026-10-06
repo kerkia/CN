@@ -7,7 +7,7 @@ import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { R, SCORE_COL, CNAFTER_COL } from "../data.js";
-import { explain, cnHistory } from "../cn.js";
+import { explain, cnHistory, paramsFor } from "../cn.js";
 import { timeChart, bandChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
@@ -256,10 +256,17 @@ export async function render(main, { arg, query }) {
   }
 
   // ---- the calculation at one date ------------------------------------------------
-  function roleLabel(role) {
+  /** The share of best scores and the window of a computed method here, for its texts. */
+  function calcVars(m) {
+    const p = paramsFor(meta, m, terrain), pct = Math.round(100 * (p.eligible_fraction ?? 0.6));
+    const days = p.window_days ?? 365;
+    return { pct, rest: 100 - pct, win: days > 365 ? `${Math.round(days / 365)} ans` : "12 mois" };
+  }
+  function roleLabel(role, m) {
     // green: kept; yellow: the "best" scores that are not kept (10 % best, or the 60 % best beyond the 6); grey: the rest
     const cls = role === "kept" ? "role-kept" : role === "notTop6" || role === "best10" ? "role-mid" : "role-out";
-    return html`<span class="role ${cls}" title="${t(`calc.${role}`)}">${t(`calc.s.${role}`)}</span>`;
+    const v = calcVars(m);
+    return html`<span class="role ${cls}" title="${t(`calc.${role}`, v)}">${t(`calc.s.${role}`, v)}</span>`;
   }
   function drawCalc() {
     const methods = store.get().methods;
@@ -274,8 +281,8 @@ export async function render(main, { arg, query }) {
         <div class="row"><span class="key" style="background:${raw(methodColor(m))}"></span><h3>${methodLabel(m)}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
-      if (m === "fair") formula = html`${t("calc.fair.formula")} ${t("calc.weights")}.`;
-      else if (m === "top6w") formula = html`${t("calc.top6w.formula")} ${t("calc.weights")}.`;
+      if (m === "fair") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.`;
+      else if (m === "top6w") formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
@@ -309,7 +316,7 @@ export async function render(main, { arg, query }) {
                 ? html`<span title="${t("calc.partial")}">×${w(row.used)}<span class="dim">/${w(row.weight)}</span></span>`
                 : html`×${w(row.weight)}`;
             } }] : []),
-          { key: "use", label: t("col.use"), cls: "cell-use", sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role) },
+          { key: "use", label: t("col.use"), cls: "cell-use", sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role, m) },
         ],
       });
     }
@@ -379,7 +386,7 @@ export async function render(main, { arg, query }) {
             : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener" title="${x.place}">${name(x)}</a>`) },
         { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (x) => x.points,
           render: (x) => html`<span class="${x.kept ? "cn" : "dim"}">${fmt(x.points)}</span>` },
-        { key: "use", label: t("col.use"), cls: "cell-use", sort: (x) => ROLE(x.role), defaultDir: 1, render: (x) => roleLabel(x.role) },
+        { key: "use", label: t("col.use"), cls: "cell-use", sort: (x) => ROLE(x.role), defaultDir: 1, render: (x) => roleLabel(x.role, "official") },
       ],
     });
   }
