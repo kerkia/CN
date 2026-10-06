@@ -1,12 +1,12 @@
 // Age-category progression: where a CN sits among everyone of the same age
 // category, using the season-end category distributions (agecurve.json).
 
-import { R } from "./data.js";
+import { R, FOOT } from "./data.js";
 import { monthlyCn } from "./cn.js";
 
 /** Snapshot key of a method/discipline in a season (official was pooled before the split). */
 export const curveKey = (m, terrain, season, split) =>
-  m === "official" && (season === "all" || Number(season) < split) ? "official_Ped" : `${m}_${terrain}`;
+  m === "official" && FOOT.includes(terrain) && (season === "all" || Number(season) < split) ? "official_Ped" : `${m}_${terrain}`;
 
 /** Percentile (0–100) of `v` within a distribution given by quantiles q[] at levels qs[]. */
 export function percentileOf(v, qs, q) {

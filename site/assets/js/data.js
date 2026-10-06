@@ -1,6 +1,8 @@
 // Data layer: fetches the static JSON, caches it, and answers the questions
 // the pages ask ("who is ranked, with what CN, at this month-end?").
 
+import { TERRAINS } from "./store.js";
+
 const BASE = "data/";
 const cache = new Map();
 
@@ -13,6 +15,8 @@ async function getJson(path) {
       if (r.status === 401) window.dispatchEvent(new Event("cnx:unauthorised"));
       throw new Error(`${path}: HTTP ${r.status}`);
     }
+    // a file that does not exist is answered with the app's page (the hosting's fallback): missing too
+    if (!(r.headers.get("content-type") || "").includes("json")) return null;
     return r.json();
   });
   cache.set(path, p);
@@ -57,7 +61,7 @@ export async function bootPrivate() {
   const list = runners.rows.map((r) => {
     const o = {
       lic: String(r[ix.licence]), nom: r[ix.nom], sexe: r[ix.sexe], first: r[ix.first],
-      last: r[ix.last], n: r[ix.n], nFor: r[ix.nFor], nSpr: r[ix.nSpr],
+      last: r[ix.last], n: r[ix.n], nBy: Object.fromEntries(TERRAINS.map((x) => [x, r[ix[`n${x}`]] || 0])),
       cat: r[ix.cat], club: r[ix.club],
     };
     byLic.set(o.lic, o);
@@ -102,10 +106,17 @@ export function monthFor(ymStr) {
   return META.months.find((m) => m.startsWith(ymStr)) || latestMonth();
 }
 
-/** The official ranking was a single pedestrian ranking before 2026. */
+// ---- disciplines -------------------------------------------------------------
+/** Forest and sprint: their official CN was one pooled pedestrian ranking ("Ped") before
+ *  split_year. VTT and ski always had their own. */
+export const FOOT = ["For", "Spr"];
+/** The key of a method's ranking in a discipline and year: "Ped" for the pooled official one. */
 export function snapTerrain(method, terrain, year) {
-  return method === "official" && year < META.split_year ? "Ped" : terrain;
+  return method === "official" && FOOT.includes(terrain) && Number(year) < META.split_year ? "Ped" : terrain;
 }
+/** Does a race feed a method's series in a discipline? (the pooled official one: forest and sprint alike) */
+export const inSeries = (r, method, terrain) => r[R.terrain] === terrain
+  || (FOOT.includes(r[R.terrain]) && snapTerrain(method, terrain, r[R.date].slice(0, 4)) === "Ped");
 
 /** Map(licence -> CN) for one method/discipline at one month-end. */
 export async function cnAt(method, terrain, monthIso) {
@@ -153,7 +164,7 @@ export const clubSeries = (code) => getJson(`club/${code}.json`);
 export const CLUB = { n: 0, median: 1, max: 2, sum: 3, top5: 4 };
 
 /**
- * Co-runners in one discipline ("For", "Spr") or both (""):
+ * Co-runners in one discipline ("For", "Spr", "VTT", "Ski") or all of them (""):
  * [[licence, shared circuits, finished ahead, finished behind, last met]].
  */
 export async function coRunners(lic, terrain = "") {

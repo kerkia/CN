@@ -18,7 +18,7 @@ const LEVELS = ["region", "dept"];
 const MEASURES = ["comps", "runners", "ratio"];       // competitions hosted · competitors registered · competitions per 100 competitors
 const RATIO_X = 100;
 const digitsOf = (m) => (m === "ratio" ? 1 : 0);
-const FLAG = { For: 1, Spr: 2 };
+const FLAG = { For: 1, Spr: 2, VTT: 4, Ski: 8 };          // site_extras.PYR_FLAG
 
 export async function render(main, query) {
   const seasons = data.meta().seasons.map(String).reverse();

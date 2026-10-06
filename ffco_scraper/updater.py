@@ -59,7 +59,7 @@ from .store import RESULT_COLUMNS, Store, _iso_date, normalize_rows
 
 logger = logging.getLogger("ffco_scraper.updater")
 
-SPECIALITE = "Pédestre"
+SPECIALITES = ("Pédestre", "VTT", "Ski")      # the specialités with a CN
 META_FIELDS = ("season", "date", "title", "location", "organizer", "groupe", "specialite",
                "epreuve", "terrain", "has_results")
 
@@ -131,7 +131,7 @@ class _Db:
 
     def competitions(self) -> dict[int, sqlite3.Row]:
         return {r["course_id"]: r for r in self.conn.execute(
-            "SELECT * FROM competitions WHERE specialite = ?", (SPECIALITE,))}
+            f"SELECT * FROM competitions WHERE specialite IN ({','.join('?' * len(SPECIALITES))})", SPECIALITES)}
 
     def seasons(self) -> list[int]:
         return [r[0] for r in self.conn.execute("SELECT DISTINCT season FROM competitions ORDER BY season")]
@@ -218,7 +218,7 @@ async def run_update(
         except Exception as exc:                       # network trouble: never read as "empty season"
             report.seasons_not_checked.append(f"{season}: {exc!r}")
             continue
-        rows = [l for l in parse_course_list(html, season) if l.specialite == SPECIALITE]
+        rows = [l for l in parse_course_list(html, season) if l.specialite in SPECIALITES]
         if not rows:
             report.seasons_not_checked.append(f"{season}: listing vide")
             continue

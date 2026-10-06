@@ -1,8 +1,8 @@
 // Global, persisted UI state shared by every page.
 
 export const METHODS = ["official", "fair", "top6w"];
-// Disciplines offered by the site-wide selector. Ski-O and VTT-O will join forest and sprint.
-export const TERRAINS = ["For", "Spr"];
+// Disciplines offered by the site-wide selector: forest, sprint, mountain bike, ski.
+export const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 export const MAX_COMPARE = 8;
 
 const KEY = "cnx.state";

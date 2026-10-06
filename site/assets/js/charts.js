@@ -12,6 +12,9 @@ export const css = (name) =>
 export const METHOD_SLOT = { official: 1, fair: 2, top6w: 3 };
 export const methodColor = (m) => css(`--s${METHOD_SLOT[m]}`);
 export const slotColor = (i) => css(`--s${(i % 8) + 1}`);
+// One colour per discipline wherever disciplines are compared.
+const TERRAIN_SLOT = { For: "--s6", Spr: "--s7", VTT: "--s4", Ski: "--s1" };
+export const terrainColor = (tr) => css(TERRAIN_SLOT[tr]);
 // Secondary encoding for method when colour is spent on runners.
 export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [2, 4] };
 

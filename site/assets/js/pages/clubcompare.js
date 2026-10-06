@@ -119,7 +119,7 @@ export async function render(main, { query }) {
 
   const legendHtml = (selc, withMethods) => html`${selc.map((c) => html`<span><span class="dot" style="background:${raw(slotColor(c.slot))}"></span>${clubName(c.code)}</span>`)}
     ${withMethods && store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span><span class="dash-key" style="border-top-style:${raw(DASH_CSS[m])}"></span>${methodShort(m)}</span>`) : ""}`;
-  const keyFor = (m, y) => (m === "official" && Number(y) < meta.split_year ? "official_Ped" : `${m}_${terrain}`);
+  const keyFor = (m, y) => `${m}_${data.snapTerrain(m, terrain, y)}`;
   const group = () => `${sel.sexe}${sel.age}`;
   const yLabel = () => (sel.measure === "n" ? t("cb.runners") : sel.base === "pts" ? t("cm.points") : "CN");
 
@@ -164,10 +164,10 @@ export async function render(main, { query }) {
     const series = [];
     for (const c of selc) for (const m of methods) {
       const s = files.get(c.code)?.monthly || {};
-      const keys = m === "official" ? ["official_Ped", `official_${terrain}`] : [`${m}_${terrain}`];
+      const keys = [...new Set([keyFor(m, 2000), `${m}_${terrain}`])];
       const pts = [];
       for (const k of keys) for (const [ym, v] of Object.entries(s[k] || {})) {
-        if (m === "official" && (Number(ym.slice(0, 4)) < meta.split_year) !== k.endsWith("_Ped")) continue;
+        if (k !== keyFor(m, ym.slice(0, 4))) continue;                // the pooled ranking before the split
         pts.push([data.monthFor(ym), pick(v)]);
       }
       pts.sort((a, b) => (a[0] < b[0] ? -1 : 1));

@@ -41,7 +41,8 @@ export async function render(main, { arg, query }) {
   const last = races[races.length - 1];
   const club = last?.[R.club] || person.club;
   const cp = data.clubParts(club);
-  const other = terrain === "For" ? "Spr" : "For";
+  // where to look instead: the discipline the runner raced most
+  const other = store.TERRAINS.filter((x) => x !== terrain).sort((a, b) => person.nBy[b] - person.nBy[a])[0];
 
   main.innerHTML = html`
     <section class="card hero" style="margin-bottom:16px">
@@ -53,7 +54,8 @@ export async function render(main, { arg, query }) {
           ${cp.code ? html`<span><a href="${link.club(cp.code)}">${data.clubName(club)}</a></span>` : ""}
           ${cp.ligue ? html`<span>${data.ligueName(cp.ligue)}</span>` : ""}
           <span>${t("rn.since")} ${fmtDate(person.first)}</span>
-          <span class="num">${fmt(person.n)} ${t("rn.races")} (${t("terrain.For")} ${fmt(person.nFor)} · ${t("terrain.Spr")} ${fmt(person.nSpr)})</span>
+          <span class="num">${fmt(person.n)} ${t("rn.races")} (${store.TERRAINS.filter((x) => person.nBy[x])
+            .map((x) => `${t(`terrain.${x}`)} ${fmt(person.nBy[x])}`).join(" · ")})</span>
         </div>
       </div>
       <div class="stack" style="gap:8px"><button class="btn" type="button" id="cmp-btn"></button>
@@ -132,9 +134,8 @@ export async function render(main, { arg, query }) {
     $("#to").addEventListener("change", drawChart);
   }
 
-  /** Races that feed the chosen discipline's series (official is pooled before 2026). */
-  const inSeries = (r, m) => r[R.terrain] === terrain ||
-    (m === "official" && Number(r[R.date].slice(0, 4)) < meta.split_year);
+  /** Races that feed the chosen discipline's series (official forest + sprint pooled before 2026). */
+  const inSeries = (r, m) => data.inSeries(r, m, terrain);
 
   async function drawTiles() {
     const methods = store.get().methods;
@@ -317,10 +318,10 @@ export async function render(main, { arg, query }) {
   // ---- the official calculation, exactly as FFCO publishes it on the runner's CN page at that date: its races,
   // the points it counts for each (a race of a past season is re-evaluated for the new season, so these can
   // differ from the race's results page), the ones it keeps, and its CN. Before the forest/sprint split the
-  // CN was one, published under "Ped".
+  // pedestrian CN was one, published under "Ped" (VTT and ski: always their own).
   const ffCn = new Map();
   function ffCnAt(iso) {
-    const spe = Number(iso.slice(0, 4)) < meta.split_year ? "Ped" : terrain;
+    const spe = data.snapTerrain("official", terrain, iso.slice(0, 4));
     const key = `${lic}|${spe}|${iso}`;
     if (!ffCn.has(key)) {
       ffCn.set(key, fetch(`api/ffco-cn?lic=${encodeURIComponent(lic)}&spe=${spe}&d=${iso}`, { credentials: "same-origin" })

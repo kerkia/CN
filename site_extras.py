@@ -45,6 +45,7 @@ QUANTILES = list(range(0, 101, 5))
 AGE_POOL_FROM = 2012                # the first seasons mostly reflect the seed CNs
 NET_TOP = 30                        # co-runners kept per runner
 NET_MIN_SHARED = 2
+TERRAINS = ("For", "Spr", "VTT", "Ski")
 
 
 def load(path: Path):
@@ -162,7 +163,7 @@ def elite(comps: dict) -> dict:
     open 'H21 court' circuit alongside the elite one does not hand out a second
     set of podiums."""
     by_season = defaultdict(list)
-    summary = {mode: {t: defaultdict(lambda: defaultdict(int)) for t in ("For", "Spr")}
+    summary = {mode: {t: defaultdict(lambda: defaultdict(int)) for t in TERRAINS}
                for mode in ("elite", "all")}
     for cid, c in comps.items():
         d, title, _, _, groupe, _, terrain, season, *_ = c
@@ -247,9 +248,9 @@ def network(comps: dict) -> None:
     how often each finished ahead. A runner who did not finish is behind
     everyone who did; two non-finishers are level.
 
-    Per runner: {"*": both disciplines, "For": forest, "Spr": sprint}; a
-    discipline is "*" when it is the only one the runner raced (same list),
-    and absent when they never raced it."""
+    Per runner: {"*": every discipline, "For": forest, "Spr": sprint, "VTT",
+    "Ski"}; a discipline is "*" when it is the only one the runner raced (same
+    list), and absent when they never raced it."""
     lic_ix: dict[str, int] = {}
     lics: list[str] = []
     circ_idx, circ_place, circ_day, circ_terr = [], [], [], []
@@ -258,7 +259,7 @@ def network(comps: dict) -> None:
         if not path.exists():
             continue
         day = date.fromisoformat(c[0]).toordinal()
-        terrain = "For" if c[6] == "For" else "Spr"
+        terrain = c[6]
         for circ in load(path)["circuits"]:
             ix, pl = [], []
             for r in circ["rows"]:
@@ -305,7 +306,7 @@ def network(comps: dict) -> None:
             continue
         out = {"*": both}
         raced = {circ_terr[k] for k, _ in mem}
-        for terrain in ("For", "Spr"):
+        for terrain in TERRAINS:
             if raced == {terrain}:
                 out[terrain] = "*"
             elif terrain in raced:
@@ -321,7 +322,7 @@ def network(comps: dict) -> None:
 
 
 # -- age pyramid -----------------------------------------------------------------
-PYR_FOR, PYR_SPR = 1, 2                      # discipline flags: raced forest, sprint, or both (3)
+PYR_FLAG = {"For": 1, "Spr": 2, "VTT": 4, "Ski": 8}    # disciplines raced, as bits: 3 = forest and sprint…
 
 
 def pyramid(comps: dict) -> None:
@@ -336,7 +337,7 @@ def pyramid(comps: dict) -> None:
         if not path.exists():
             continue
         day, terrain, season = c[0], c[6], c[7]
-        flag = PYR_FOR if terrain == "For" else PYR_SPR
+        flag = PYR_FLAG[terrain]
         for circ in load(path)["circuits"]:
             for r in circ["rows"]:
                 for key in (season, "all"):

@@ -20,7 +20,7 @@ class CourseListing:
     groupe: str
     specialite: str
     epreuve: str
-    terrain: str  # "Sprint" or "Forêt" — derived from epreuve
+    terrain: str  # "Forêt" or "Sprint" (pedestrian, from epreuve), "VTT" or "Ski" (the specialité)
     has_results: bool
     season: int
 

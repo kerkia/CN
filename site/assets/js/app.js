@@ -33,11 +33,11 @@ const USES_TERRAIN = new Set(["ranking", "runner", "compare", "clubs", "club", "
 const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
-// (?t=For|Spr, none = both). Around one runner = a runner in the address, or the last one seen.
+// (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
 const ALL_TERRAIN_VIEWS = new Set(["ages", "territoires"]);
 const allowsAllTerrains = (r) => r.route === "network"
   && (!!r.arg || ALL_TERRAIN_VIEWS.has(r.query.vue) || (r.query.vue !== "meilleurs" && !!store.get().lastRunner));
-/** The discipline of such a view: "For", "Spr", or "" for both. */
+/** The discipline of such a view: "For", "Spr", "VTT", "Ski", or "" for all of them. */
 export const viewTerrain = (query) => (store.TERRAINS.includes(query.t) ? query.t : "");
 
 function parseHash() {

@@ -52,8 +52,10 @@ def parse_course_list(html_text: str, season: int) -> list[CourseListing]:
         epreuve = _text(cells[6])
         # The site's own UI splits "CN pédestre forêt" (LD/MD/Nuit) from
         # "CN pédestre sprint" (Sprint) — mirror that split as an explicit
-        # column rather than making callers infer it from epreuve.
-        terrain = "Sprint" if epreuve == "Sprint" else "Forêt"
+        # column rather than making callers infer it from epreuve. VTT and Ski
+        # each have one ranking, whatever the format (LD, MD, Sprint).
+        terrain = (specialite if specialite in ("VTT", "Ski")
+                   else "Sprint" if epreuve == "Sprint" else "Forêt")
         img = cells[7].xpath(".//img/@src")
         has_results = bool(link) and course_id is not None
         if img and "icon-no" in img[0]:

@@ -15,7 +15,7 @@ import { DEPT_REGION, regionOf } from "../geo.js";
 import { replaceQuery, viewTerrain } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
-const FLAG = { For: 1, Spr: 2 };
+const FLAG = { For: 1, Spr: 2, VTT: 4, Ski: 8 };          // site_extras.PYR_FLAG
 const SEXES = ["D", "H"];
 
 /** Rows of a season file, with what the filters need. */

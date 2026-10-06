@@ -4,7 +4,7 @@
 // not banker's), same trim counts, same stable tie order — so the breakdown a
 // visitor sees reproduces the published month-end snapshots to the point.
 
-import { R } from "./data.js";
+import { R, FOOT, inSeries } from "./data.js";
 
 export const dround = (x) => (x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5));
 
@@ -63,7 +63,6 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
 export function explain(method, races, iso, terrain, meta) {
   const from = windowStart(iso);
   const inWin = (r) => r[R.date] >= from && r[R.date] <= iso;
-  const splitYear = meta.split_year;
 
   if (method === "fair" || method === "top6w") {
     const p = meta.methods[method].params;
@@ -82,15 +81,15 @@ export function explain(method, races, iso, terrain, meta) {
   }
 
   // official: published values, plus an indicative reconstruction
-  const pooled = Number(iso.slice(0, 4)) < splitYear;
+  const pooled = FOOT.includes(terrain) && Number(iso.slice(0, 4)) < meta.split_year;   // forest + sprint as one
   const rows = races
-    .filter((r) => (pooled || r[R.terrain] === terrain) && inWin(r) && r[R.offScore] != null)
+    .filter((r) => (pooled ? FOOT.includes(r[R.terrain]) : r[R.terrain] === terrain) && inWin(r) && r[R.offScore] != null)
     .map((r) => ({ race: r, value: r[R.offScore], weight: 1 }));
   const res = trimmed(rows.map((x) => x.value), 2);
   rows.forEach((x, i) => { x.role = res.roles[i]; });
   let published = null;
   for (const r of races) {
-    if ((pooled || r[R.terrain] === terrain) && r[R.date] <= iso && r[R.offCnAfter]) {
+    if ((pooled ? FOOT.includes(r[R.terrain]) : r[R.terrain] === terrain) && r[R.date] <= iso && r[R.offCnAfter]) {
       if (r[R.date] >= from) published = r[R.offCnAfter];
     }
   }
@@ -103,9 +102,6 @@ const addDaysIso = (iso, n) => {
   return d.toISOString().slice(0, 10);
 };
 
-/** Races that count towards a method's series (official was pooled before the split). */
-const inSeries = (r, method, terrain, meta) =>
-  r[R.terrain] === terrain || (method === "official" && Number(r[R.date].slice(0, 4)) < meta.split_year);
 
 /**
  * A runner's CN history as a list of events, like the federation's "historique"

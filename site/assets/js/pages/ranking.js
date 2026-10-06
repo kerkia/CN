@@ -57,7 +57,7 @@ export async function loadRanking(methods, terrain, month) {
       lic, nom: r?.nom || lic, name: displayName(r?.nom || lic), key: normalise(r?.nom),
       cat: a[0] || "", sexe: (a[0] || "")[0] || r?.sexe || "", age: (a[0] || "").slice(1),
       club, clubCode: parts.code, dept: parts.dept, ligue: parts.ligue,
-      nRaces: terrain === "For" ? r?.nFor : r?.nSpr, cn, delta, rank,
+      nRaces: r?.nBy[terrain], cn, delta, rank,
     });
   }
   return { rows, attrs, prevMonth };
@@ -281,8 +281,9 @@ export async function render(main, { query }) {
     syncUrl();
     const year = Number(f.month.slice(0, 4));
     const notes = [];
-    if (methods.includes("official") && year < data.meta().split_year) notes.push(t("rk.noted2026"));
-    if (methods.includes("official") && year >= data.meta().split_year) notes.push(t("rk.official2026"));
+    const foot = data.FOOT.includes(terrain);           // VTT and ski: one official ranking all along
+    if (foot && methods.includes("official") && year < data.meta().split_year) notes.push(t("rk.noted2026"));
+    if (foot && methods.includes("official") && year >= data.meta().split_year) notes.push(t("rk.official2026"));
     $("#notice").innerHTML = notes.map((n) => html`<div class="notice info">${n}</div>`).join("");
 
     $("#stats").innerHTML = statRows(methods, (m) => rows.map((r) => r.cn[m]));

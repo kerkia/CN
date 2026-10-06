@@ -5,7 +5,8 @@
 import { html, raw, $, $$, fmt, fmtSigned, fmtDate, mean } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
-import { timeChart, columnChart, scatterChart, methodColor, css } from "../charts.js";
+import { timeChart, columnChart, scatterChart, methodColor, terrainColor, css } from "../charts.js";
+import { TERRAINS } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg } from "../ui.js";
 
 function pearson(xs, ys) {
@@ -74,7 +75,7 @@ export async function render(main) {
       <p>Un coureur qui court aussi vite que son CN le prévoit obtient donc un score proche de son CN. Un poinçon manquant, un abandon,
       une disqualification ou un hors-délai donnent un score de 0 qui compte dans le calcul. Les catégories H10 et D10 ne sont pas prises en compte.</p>
       <p>Toutes les méthodes utilisent une <b>fenêtre glissante de 12 mois</b> (365 jours) jusqu'à la date de calcul, et
-      tiennent un classement <b>Forêt</b> et un classement <b>Sprint</b> séparés.
+      tiennent un classement séparé par spécialité : <b>Forêt</b>, <b>Sprint</b>, <b>VTT</b> et <b>Ski</b>.
       Exception : avant 2026, la FFCO publiait un classement pédestre unique, forêt et sprint confondus ; la ${methodLabel("official")} l'affiche tel quel.</p>
 
       <h2>${methodKey("official")} ${methodLabel("official")}</h2>
@@ -115,7 +116,7 @@ export async function render(main) {
           seuls les coureurs ayant leur propre CN dans la spécialité entrent dans la valeur du circuit ;</li>
         <li>pas de recalage annuel : chaque mois, un facteur de recalage est calculé pour ramener la moyenne des
           ${pf.anchor_top_fraction ? html`${pct(pf.anchor_top_fraction)} meilleurs CN` : html`${fmt(pf.anchor_top_k)} meilleurs CN`}
-          à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée en continu plutôt qu'au 1er janvier —, séparément en forêt et en sprint,
+          à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée en continu plutôt qu'au 1er janvier —, séparément dans chaque spécialité,
           à partir du niveau mesuré ${fmt(pf.anchor_lag_months)} mois plus tôt pour que les résultats tardifs ne fassent pas bouger l'échelle ;</li>
         <li>le facteur d'une course est celui de son jour : il passe en ligne droite d'une valeur mensuelle à la suivante, sans marche au
           changement de mois. Chaque score est calculé une fois pour toutes et n'est jamais revu quand un nouveau facteur arrive ;
@@ -128,7 +129,7 @@ export async function render(main) {
         <li>une course de meilleur niveau compte davantage, et les 40 % de courses les moins bonnes ne comptent pas ;</li>
         <li>le CN de chacun dépend de son niveau habituel, pas du nombre de courses courues : les groupes qui courent surtout entre eux
           (jeunes, vétérans) ne s'écartent pas des autres ;</li>
-        <li>elle sépare le sprint et la forêt.</li>
+        <li>elle sépare le sprint et la forêt, comme le VTT et le ski.</li>
       </ul>
 
       <h2>${methodKey("top6w")} ${methodLabel("top6w")}</h2>
@@ -194,9 +195,8 @@ export async function render(main) {
     </div>`;
   ["norm", "agr"].forEach((id) => bindChartCard(main, id));
 
-  const TERRAIN_SLOT = { For: "--s6", Spr: "--s7" };
-  const norm = ["For", "Spr"].filter((tr) => meta.normalisation[tr]).map((tr) => ({
-    name: t(`terrain.${tr}`), color: css(TERRAIN_SLOT[tr]),
+  const norm = TERRAINS.filter((tr) => meta.normalisation[tr]).map((tr) => ({
+    name: t(`terrain.${tr}`), color: terrainColor(tr),
     data: meta.normalisation[tr].map(([d, f]) => [d, Number(f.toFixed(4))]),
   }));
   $("#norm-legend").innerHTML = legend(norm.map((s) => ({ label: s.name, color: s.color })));
@@ -209,7 +209,7 @@ export async function render(main) {
   // how far the three methods agree, per discipline, on the same runners
   let terrain = "For";
   function drawAgreement() {
-    $("#agr-filters").innerHTML = html`<div class="field"><span>${t("f.terrain")}</span>${seg("agt", [["For", t("terrain.For")], ["Spr", t("terrain.Spr")]], terrain)}</div>`;
+    $("#agr-filters").innerHTML = html`<div class="field"><span>${t("f.terrain")}</span>${seg("agt", TERRAINS.filter((x) => meta.agreement[x]?.length).map((x) => [x, t(`terrain.${x}`)]), terrain)}</div>`;
     $$('[data-seg="agt"]').forEach((b) => b.addEventListener("click", () => { terrain = b.dataset.value; drawAgreement(); }));
     const pts = meta.agreement[terrain] || [];
     const series = [["fair", 1], ["top6w", 2]].map(([m, i]) => ({

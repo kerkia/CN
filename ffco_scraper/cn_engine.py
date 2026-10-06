@@ -14,9 +14,9 @@
                         it, not recomputed), but the CN keeps only the best
                         races filling 6 weight places - it rewards racing.
 
-For both computed methods forest and sprint are independent rankings in every
-season — the federation only split them in 2026, but applying one rule
-uniformly is the point of recomputing.
+For both computed methods forest, sprint, VTT and ski are independent
+rankings in every season — the federation only split forest and sprint in
+2026, but applying one rule uniformly is the point of recomputing.
 
 Everything is processed in date order because the layers are mutually
 dependent: a circuit's value needs the runners' CNs, which come from their
@@ -57,6 +57,12 @@ logger = logging.getLogger("ffco_scraper.cn_engine")
 # halves - 2022 reproduces 1584/1584 at k=0.95, and 2020/2021/2023-2026 at 1.0.
 K_BY_YEAR: dict[int, float] = {2022: 0.95}
 DEFAULT_K = 1.0
+
+
+def family(terrain: str | None) -> str:
+    """The official ranking a terrain's CN J-15 belongs to: forest and sprint shared
+    one pedestrian CN until 2026; VTT and ski always had their own."""
+    return terrain if terrain in ("VTT", "Ski") else "Ped"
 
 
 @dataclass
@@ -300,7 +306,7 @@ class CnEngine:
                    comp.terrain, comp.epreuve, comp.groupe, comp.title, c.distance_km
             FROM circuits c
             JOIN competitions comp ON comp.course_id = c.course_id
-            WHERE comp.specialite = 'Pédestre' AND comp.date_iso IS NOT NULL {where}
+            WHERE comp.specialite IN ('Pédestre', 'VTT', 'Ski') AND comp.date_iso IS NOT NULL {where}
             ORDER BY comp.date_iso, c.course_id, c.circuit_id
             """,
             args,
@@ -350,9 +356,10 @@ class CnEngine:
 
     # ------------------------------------------------------------------
     def load_seeds(self, since: str | None, lag_days: int = 15,
-                   bootstrap_days: int = 365) -> dict[str, tuple[int, date | None]]:
-        """Each runner's first known official CN, and the date from which it
-        was known: licence -> (cn, known_from).
+                   bootstrap_days: int = 365) -> dict[tuple[str, str], tuple[int, date | None]]:
+        """Each runner's first known official CN in each ranking family (see
+        `family`), and the date from which it was known:
+        (licence, family) -> (cn, known_from).
 
         A CN J-15 printed on a race dated D was the runner's CN at D - 15 days,
         so it may bootstrap their computed CN from then on — never before. Using
@@ -366,12 +373,12 @@ class CnEngine:
         from the start. New results are always far past that point, so they can
         never move a seed earlier.
         With `since` (a partial run), the latest CN before it applies throughout."""
-        before: dict[str, tuple[int, date | None]] = {}
-        after: dict[str, tuple[int, date | None]] = {}
-        bootstrap_end: str | None = None
-        for licence, cn, d in self.conn.execute(
+        before: dict[tuple[str, str], tuple[int, date | None]] = {}
+        after: dict[tuple[str, str], tuple[int, date | None]] = {}
+        bootstrap_end: dict[str, str] = {}          # per family: its archive starts on its own
+        for licence, cn, d, terrain in self.conn.execute(
             """
-            SELECT r.licence, r.cn_j15, comp.date_iso
+            SELECT r.licence, r.cn_j15, comp.date_iso, comp.terrain
             FROM results r
             JOIN circuits c ON c.circuit_id = r.circuit_id
             JOIN competitions comp ON comp.course_id = c.course_id
@@ -382,13 +389,15 @@ class CnEngine:
             v = to_int(cn)
             if not v or v <= 0:
                 continue
-            if bootstrap_end is None:
-                bootstrap_end = (date.fromisoformat(d) + timedelta(days=bootstrap_days)).isoformat()
+            fam = family(terrain)
+            if fam not in bootstrap_end:
+                bootstrap_end[fam] = (date.fromisoformat(d) + timedelta(days=bootstrap_days)).isoformat()
+            key = (licence, fam)
             if since and d < since:
-                before[licence] = (v, None)
-            elif licence not in after:
-                after[licence] = (v, None if d < bootstrap_end
-                                  else date.fromisoformat(d) - timedelta(days=lag_days))
+                before[key] = (v, None)
+            elif key not in after:
+                after[key] = (v, None if d < bootstrap_end[fam]
+                              else date.fromisoformat(d) - timedelta(days=lag_days))
         seeds = {**after, **before}
         logger.info("seeded %d runners", len(seeds))
         return seeds
@@ -438,10 +447,10 @@ class CnEngine:
         p = spec.params
         seeds = self.load_seeds(f"{min(seasons)}-01-01" if seasons else None, p.lag_days)
 
-        def seed(licence: str, as_of: date):
+        def seed(licence: str, terrain: str, as_of: date):
             if p.seed_until and as_of.isoformat() >= p.seed_until:
                 return None
-            s = seeds.get(licence)
+            s = seeds.get((licence, family(terrain)))
             return s[0] if s and (s[1] is None or as_of >= s[1]) else None
         if since:
             hist, current_year = self._replay(spec, since)
@@ -464,8 +473,8 @@ class CnEngine:
                                  else top_n_weighted(s, w, uncapped))
                     if lvl is not None:
                         return lvl, len(s), kept
-                    return seed(licence, as_of), len(s), 0
-            return seed(licence, as_of), 0, 0
+                    return seed(licence, terrain, as_of), len(s), 0
+            return seed(licence, terrain, as_of), 0, 0
 
         def cn_for(licence: str, terrain: str, as_of: date):
             # forest and sprint are independent rankings in every season
@@ -475,8 +484,8 @@ class CnEngine:
                 if cn is not None:
                     return cn, n_w, n_k
                 if n_w:
-                    return seed(licence, as_of), n_w, 0
-            return seed(licence, as_of), 0, 0
+                    return seed(licence, terrain, as_of), n_w, 0
+            return seed(licence, terrain, as_of), 0, 0
 
         if since:
             for table in ("scores", "cn_history", "circuit_values"):

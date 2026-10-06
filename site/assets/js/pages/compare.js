@@ -111,7 +111,7 @@ export async function render(main, { query }) {
     replaceQuery({ r: sel.map((c) => c.lic).join(",") || null, range: range === "all" ? null : range });
   }
 
-  const inSeries = (r, m) => r[R.terrain] === terrain || (m === "official" && Number(r[R.date].slice(0, 4)) < meta.split_year);
+  const inSeries = (r, m) => data.inSeries(r, m, terrain);
   function seriesOf(lic, m) {
     const col = CNAFTER_COL[m];
     const pts = [];

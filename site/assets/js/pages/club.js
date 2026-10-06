@@ -100,13 +100,13 @@ export async function render(main, { arg: code, query }) {
   /** [[monthEndIso, n, mean, max, sum, top5]] for a method in the chosen discipline. */
   function monthly(m) {
     const terrain = store.get().terrain;
-    const keys = m === "official" ? ["official_Ped", `official_${terrain}`] : [`${m}_${terrain}`];
+    const keyFor = (y) => `${m}_${data.snapTerrain(m, terrain, y)}`;
+    const keys = [...new Set([keyFor(2000), `${m}_${terrain}`])];
     const out = [];
     for (const k of keys) {
       const s = series?.[k] || {};
       for (const [ym, v] of Object.entries(s)) {
-        const isPed = k.endsWith("_Ped");
-        if (m === "official" && (Number(ym.slice(0, 4)) < meta.split_year) !== isPed) continue;
+        if (k !== keyFor(ym.slice(0, 4))) continue;                   // the pooled ranking before the split
         // stored as [n, median, max, sum, top5]; the page shows the mean instead of the median
         out.push([data.monthFor(ym), v[0], v[0] ? Math.round(v[3] / v[0]) : null, v[2], v[3], v[4]]);
       }

@@ -188,7 +188,7 @@ export function statusLabel(s) {
   return l ? html`<span class="status">${l}</span>` : "";
 }
 export function terrainTag(tcode) {
-  return html`<span class="tag ${tcode === "Spr" ? "tag-spr" : "tag-for"}">${t(`terrain.${tcode}`)}</span>`;
+  return html`<span class="tag tag-${(tcode || "For").toLowerCase()}">${t(`terrain.${tcode}`)}</span>`;
 }
 export function errorBox(msg) {
   return html`<div class="card"><div class="empty">${msg}</div></div>`;

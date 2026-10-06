@@ -57,8 +57,16 @@ import paths  # noqa: E402
 DB = paths.DB
 OUT = ROOT / "site" / "data"
 NAMES_CACHE = paths.CACHE / "reference_names.json"
-TERRAINS = {"Forêt": "For", "Sprint": "Spr"}
+TERRAINS = {"Forêt": "For", "Sprint": "Spr", "VTT": "VTT", "Ski": "Ski"}
+TERRAIN_CODES = list(TERRAINS.values())
 SPLIT_YEAR = 2026
+FOOT = ("For", "Spr")            # one pooled official ranking ("Ped") before SPLIT_YEAR
+
+
+def official_terrain(t: str, year: int) -> str:
+    """Where the official CN of a terrain is filed: forest and sprint shared FFCO's
+    pedestrian ranking until SPLIT_YEAR; VTT and ski always had their own."""
+    return "Ped" if t in FOOT and year < SPLIT_YEAR else t
 
 
 def month_ends(first: date, last: date) -> list[date]:
@@ -212,7 +220,7 @@ def main(argv: list[str] | None = None) -> None:
     for r in conn.execute(
         """SELECT course_id, date_iso, season, title, location, organizer, groupe,
                   epreuve, terrain FROM competitions
-           WHERE specialite='Pédestre' AND date_iso IS NOT NULL AND season >= ?""",
+           WHERE specialite IN ('Pédestre', 'VTT', 'Ski') AND date_iso IS NOT NULL AND season >= ?""",
         (min_season,),
     ):
         comps[r["course_id"]] = [r["date_iso"], r["title"], r["location"], r["organizer"],
@@ -315,23 +323,20 @@ def main(argv: list[str] | None = None) -> None:
     for lic, lst in per_runner.items():
         lst.sort()
         tl = []
-        nF = nS = 0
+        per_t = dict.fromkeys(TERRAIN_CODES, 0)
         for d, cid in lst:
             o = by_method["official"][(lic, cid)]
             tl.append((d, o["categorie"], o["club"]))
-            if comps[circuits[cid][0]][6] == "For":
-                nF += 1
-            else:
-                nS += 1
+            per_t[comps[circuits[cid][0]][6]] += 1
         attrs_timeline[lic] = tl
         last = tl[-1]
         sexe = (last[1] or "")[:1] if (last[1] or "")[:1] in ("H", "D") else None
         runners.append([lic, names_by_lic.get(lic, ""), sexe, lst[0][0], lst[-1][0],
-                        len(lst), nF, nS, last[1], last[2]])
+                        len(lst), *per_t.values(), last[1], last[2]])
     runners.sort(key=lambda x: x[1])
     write_auth_index(runners)
     dump(OUT / "runners.json", {
-        "cols": ["licence", "nom", "sexe", "first", "last", "n", "nFor", "nSpr", "cat", "club"],
+        "cols": ["licence", "nom", "sexe", "first", "last", "n", *(f"n{t}" for t in TERRAIN_CODES), "cat", "club"],
         "rows": runners,
     })
     print(f"{len(runners):,} runners")
@@ -441,15 +446,15 @@ def main(argv: list[str] | None = None) -> None:
             h6[k][0].append(date.fromisoformat(v["date_iso"]))
             h6[k][1].append(v["score"])
             h6[k][2].append(v["poids"] or 1.0)
-    # Before 2026 the official ranking was a single pedestrian ranking, so its
-    # history is pooled under "Ped"; from 2026 it is per terrain.
+    # Before 2026 the official pedestrian ranking was a single one, so its
+    # history is pooled under "Ped"; from 2026 it is per terrain (VTT and ski: always).
     off_events = []
     for (lic, cid), raw in raw_res.items():
         o = by_method["official"].get((lic, cid))
         ncn = to_int(raw["nouveau_cn"])
         if o and ncn:
             d = date.fromisoformat(o["date_iso"])
-            t = TERRAINS.get(o["terrain"], "For") if d.year >= SPLIT_YEAR else "Ped"
+            t = official_terrain(TERRAINS.get(o["terrain"], "For"), d.year)
             off_events.append((d, lic, t, ncn))
     off_events.sort()
     for d, lic, t, ncn in off_events:
@@ -492,7 +497,7 @@ def main(argv: list[str] | None = None) -> None:
                         if cn:
                             files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         for (lic, t), (ds, cs) in hoff.items():
-            if (Y < SPLIT_YEAR) != (t == "Ped"):
+            if t != official_terrain(t if t != "Ped" else "For", Y):     # pooled before, split after
                 continue
             for m in ym:
                 cn = off_at(ds, cs, m)
@@ -538,7 +543,7 @@ def main(argv: list[str] | None = None) -> None:
     # derived from the files above by site_extras.py, called once meta.json exists
 
     # -- overview statistics ------------------------------------------------
-    per_year = defaultdict(lambda: {"For": [0, set(), 0], "Spr": [0, set(), 0]})
+    per_year = defaultdict(lambda: {t: [0, set(), 0] for t in TERRAIN_CODES})
     for cid_, c in comps.items():
         per_year[c[7]][c[6]][0] += 1
     for (lic, cid), o in by_method["official"].items():
@@ -550,7 +555,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # method agreement on a common cohort: same runner, same month-end
     agree = {}
-    for t in ("For", "Spr"):
+    for t in TERRAIN_CODES:
         pairs = []
         Y = years[-1]
         try:

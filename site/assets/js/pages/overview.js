@@ -6,12 +6,11 @@ import { html, $, $$, fmt, displayName } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import * as auth from "../auth.js";
-import { columnChart, css } from "../charts.js";
+import { columnChart, terrainColor } from "../charts.js";
+import { TERRAINS } from "../store.js";
 import { chartCard, bindChartCard, legend, tile, seg } from "../ui.js";
 import { link, replaceQuery, signedIn, SITE } from "../app.js";
 
-const TERRAINS = ["For", "Spr"];
-const TERRAIN_SLOT = { For: "--s6", Spr: "--s7" };
 
 export async function render(main, { query }) {
   const meta = data.meta();
@@ -88,7 +87,7 @@ export async function render(main, { query }) {
     }));
     const i = { comps: 0, runners: 1, results: 2 }[measure];
     const series = TERRAINS.map((tr) => ({
-      name: t(`terrain.${tr}`), color: css(TERRAIN_SLOT[tr]), data: seasons.map((y) => meta.overview[y][tr]?.[i] ?? 0),
+      name: t(`terrain.${tr}`), color: terrainColor(tr), data: seasons.map((y) => meta.overview[y][tr]?.[i] ?? 0),
     }));
     $("#part-legend").innerHTML = legend(series.map((s) => ({ label: s.name, color: s.color })));
     columnChart($("#part"), { categories: seasons, series });

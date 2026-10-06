@@ -32,9 +32,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "quick = new competitions only; full = with corrections; agenda = upcoming events; deploy = publish the stored site as it is"
+        description: "quick = new competitions only; full = with corrections; agenda = upcoming events; deploy = publish the stored site as it is; backfill = every season's competitions not stored yet (the archive needs the FFCO_SESSIONID secret)"
         type: choice
-        options: [quick, full, agenda, deploy]
+        options: [quick, full, agenda, deploy, backfill]
         default: quick
 
 permissions:
@@ -110,12 +110,18 @@ jobs:
           echo "AGENDA_BEFORE=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"
 
       - name: Update and publish
+        env:
+          # an FFCO member session unlocks the archive (seasons before 2024); only the backfill gets it
+          FFCO_SESSIONID: ${{ needs.plan.outputs.mode == 'backfill' && secrets.FFCO_SESSIONID || '' }}
         run: |
           case "$MODE" in
             quick)  python update.py --new-only --deploy ;;
             full)   python update.py --deploy ;;
             agenda) python update.py --agenda-only --deploy ;;
             deploy) python update.py --deploy-only ;;
+            backfill)
+              [ -n "$FFCO_SESSIONID" ] || echo "::warning::no FFCO_SESSIONID secret: the archive seasons will be skipped"
+              python update.py --new-only --recent-days 6500 --deploy ;;
           esac
 
       # only after a successful update: a run that failed half-way is discarded and

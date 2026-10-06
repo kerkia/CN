@@ -59,10 +59,13 @@ commit results, personal data, secrets or credentials.
 
 All methods share the race score: circuit value = mean of (CN J-15 × time) over the fastest ⌈2N/3⌉ ranked
 runners holding a CN; score = circuit value ÷ time; PM / abandon / disqualified / over time score 0 and count.
-12-month window, forest and sprint ranked separately.
+12-month window. Four specialités, each ranked separately: forest (`For`: LD/MD/Nuit), sprint (`Spr`), VTT
+(`VTT`, all formats together) and ski (`Ski`, all formats together) — FFCO's own split (`specialite=` on its
+CN pages). In the DB `competitions.terrain` is "Forêt", "Sprint", "VTT" or "Ski"; the site uses the codes.
 
 1. **`official`** — FFCO's published values, copied verbatim (before 2026 FFCO had one pooled pedestrian
-   ranking, stored under each terrain / "Ped"). The runner page's official calculation card reads FFCO's own
+   ranking for forest and sprint, filed under "Ped": `build_site.official_terrain`, `data.snapTerrain`,
+   `data.inSeries`; VTT and ski always had their own). The runner page's official calculation card reads FFCO's own
    CN page live (`/api/ffco-cn`): FFCO re-evaluates past-season races under **new circuit ids** that only that
    page links, so its points can differ from the race's results page.
 2. **`fair`, « Méthode CN « Juste »** — estimates each runner's **strength** (usual level); it also values the
@@ -80,7 +83,7 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   circuit values: groups racing mostly among themselves (veterans, juniors) inflated, H21 deflated (~13 %).
 - **No fallback on a runner's first official CN** after the archive's first season (`seed_until="2011-01-01"`):
   it was stale and on FFCO's scale, and valued a third of sprint circuits. Only runners with their own CN in the
-  discipline value a circuit.
+  discipline value a circuit. Seeds are per ranking family (`cn_engine.family`: pedestrian, VTT, ski).
 - **"nc" (non classé) result rows** take no part in anything (`cn.is_nc`): not in circuit values, not in the
   runner's results or statistics; the race page lists them as "NC". (PM/abandon *without* "nc" score 0 and count.)
 - **Recalage**: no annual step. Each month a factor brings the mean of the best 20 % of CNs to **5600** (FFCO's
@@ -130,8 +133,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   In Git Bash, heredocs with quotes break easily: write patch scripts to a file, then run them.
 - UI text lives in `i18n.js` (French). Method keys: `official`, `fair`, `top6w` (labels « Juste », « Top »).
   Old saved selections of the removed `v2026` method are mapped to `fair` in `store.js`.
-- The archived seasons (before 2024) are members-only on the FFCO site: a full re-check needs a fresh
-  `FFCO_SESSIONID` in the environment; normal runs never need it.
+- The archived seasons (before 2024) are members-only on the FFCO site — listings and, since 2026, the race
+  pages too: re-reading them needs a fresh `FFCO_SESSIONID` (the `sessionid` cookie of a logged-in member) in
+  the environment; normal runs never need it. The workflow's `backfill` mode (manual) fetches every season's
+  competitions not stored yet, with the repo secret `FFCO_SESSIONID` (the owner sets it, then deletes it).
 - Accounts: e-mail + password with confirmation; registration checks name + licence against the licensee index
   (`site/auth`, never served); several accounts on one licence are allowed but flagged to the admin.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
