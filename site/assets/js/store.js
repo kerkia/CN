@@ -1,7 +1,7 @@
 // Global, persisted UI state shared by every page.
 
 // Every method, in display order. The "Juste" ones (fair, fair2) are analysis methods: shown only to the
-// accounts the administrator allows (and to administrators); everyone sees the official one and the Tops.
+// accounts with the "Analyse" right (admin page, administrators included); everyone sees the official one and the Tops.
 export const METHODS = ["official", "top6w", "top6w2", "fair", "fair2"];
 const ANALYSIS = ["fair", "fair2"];
 let analyst = false;

@@ -159,7 +159,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   competitions not stored yet, with the repo secret `FFCO_SESSIONID` (the owner sets it, then deletes it).
 - Accounts: e-mail + password with confirmation; registration checks name + licence against the licensee index
   (`site/auth`, never served); several accounts on one licence are allowed but flagged to the admin.
-  Rights per account, set on the admin page (D1 `users.analyst`, `users.alerts_allowed`; admins have both): the
+  Rights per account, set on the admin page (D1 `users.analyst`, `users.alerts_allowed`; they apply to admins too,
+  so an admin can uncheck « Analyse » to see the site as a regular user does): the
   analysis methods, and the agenda e-mail alerts — new courses (`agenda_alert`) and registrations closing within
   8 days (`deadline_alert`, `deadline_announced`), sharing one list of regions; both are sent by `/api/notify`
   from the daily agenda run. **D1 migrations are not applied by CI**: run `npx wrangler d1 migrations apply ocn

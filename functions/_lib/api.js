@@ -42,11 +42,11 @@ export function jsonList(s) {
 export const publicUser = (env, u) => ({
   uid: u.id, lic: u.licence, nom: u.display_name, email: u.email, notify: !!u.notify, admin: isAdmin(env, u),
   agendaAlert: !!u.agenda_alert, agendaRegions: jsonList(u.agenda_regions), deadlineAlert: !!u.deadline_alert,
-  // rights granted by the administrator (administrators have them all)
-  analyst: !!u.analyst || isAdmin(env, u), agendaAllowed: !!u.alerts_allowed || isAdmin(env, u),
+  // rights granted on the admin page, administrators included (an admin may uncheck one to see the site as others do)
+  analyst: !!u.analyst, agendaAllowed: !!u.alerts_allowed,
 });
 /** May this account receive the agenda alerts? */
-export const alertsAllowed = (env, u) => !!u.alerts_allowed || isAdmin(env, u);
+export const alertsAllowed = (env, u) => !!u.alerts_allowed;
 
 export async function sessionCookie(env, user) {
   const token = await signSession({ uid: user.id, lic: user.licence, exp: Date.now() + SESSION_DAYS * 86400e3, chk: Date.now() },

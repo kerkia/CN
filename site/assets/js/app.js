@@ -312,7 +312,7 @@ async function route_() {
   }
   // the analysis methods ("Juste") only for the accounts allowed to see them
   const who = auth.session();
-  store.setAnalyst(!!(who?.analyst || who?.admin));
+  store.setAnalyst(!!who?.analyst);
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);
