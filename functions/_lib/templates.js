@@ -37,6 +37,24 @@ export function resetMail(env, token) {
   };
 }
 
+/** To an administrator who asked for it: an account was just confirmed. total: confirmed accounts now. */
+export function newUserMail(env, user, total) {
+  const url = `${siteUrl(env)}/#/admin`;
+  const who = `${user.first_name} ${user.last_name}`;
+  const lines = [`E-mail : ${user.email}`, `Licence : ${user.licence} (${user.display_name})`,
+    `Inscrit le : ${String(user.created_at).slice(0, 10)}`, `Comptes confirmés : ${total}`];
+  return {
+    subject: `Nouveau compte : ${who} — O'CN`,
+    html: wrap(env, `Nouveau compte : ${who}`, `<p>Un nouveau compte vient d'être confirmé.</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Ouvrir la page d'administration")}
+<p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que l'alerte des nouvelles inscriptions est activée sur la page d'administration.</p>`),
+    text: `Un nouveau compte vient d'être confirmé : ${who}
+${lines.join("\n")}
+
+Administration (pour désactiver cette alerte) : ${url}`,
+  };
+}
+
 /** To the administrator: several verified accounts claim the same licence. */
 export function duplicateAlert(env, licence, accounts) {
   const url = `${siteUrl(env)}/#/admin`;

@@ -173,6 +173,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   8 days (`deadline_alert`, `deadline_announced`), sharing one list of regions; both are sent by `/api/notify`
   from the daily agenda run. **D1 migrations are not applied by CI**: run `npx wrangler d1 migrations apply ocn
   --remote` (owner's go-ahead) before deploying code that needs them.
+  New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
+  `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
+  Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
+  browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
+  account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.

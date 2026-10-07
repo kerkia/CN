@@ -315,12 +315,29 @@ async function route_() {
     if (my !== token) return;
     current = (await mod.render(main, r)) || null;
     lastRoute = r.route;
+    track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;
   } catch (e) {
     console.error(e);
     main.innerHTML = html`<div class="card"><div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
   }
   if (!location.hash.includes("?")) window.scrollTo(0, 0);
+}
+
+// ---- usage: one page view of a logged-in account (admin page, « Utilisation ») ---------------------
+/** The page counted: the route, and for Réseau its view. */
+function pageKey(r) {
+  if (r.route !== "network") return r.route;
+  const v = r.query.vue;
+  return `network:${r.arg ? "ego" : v === "meilleurs" ? "leaders" : v === "territoires" ? "territories"
+    : ["stats", "ages", "activite"].includes(v) ? "stats" : store.get().lastRunner ? "ego" : "leaders"}`;
+}
+function track(r) {
+  if (!auth.session()) return;
+  let visit = false;                                     // the first page of a browser session opens a visit
+  try { visit = !sessionStorage.getItem("ocn.visit"); sessionStorage.setItem("ocn.visit", "1"); } catch (e) {}
+  fetch("api/track", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    keepalive: true, body: JSON.stringify({ page: pageKey(r), visit }) }).catch(() => {});
 }
 
 /** The server no longer accepts the session (expired, secret rotated…). */

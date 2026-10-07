@@ -439,7 +439,7 @@ const FR = {
   "st.link": "Réglages", "admin.link": "Administration",
 
   // admin
-  "ad.title": "Administration", "ad.lede": "Comptes inscrits. Plusieurs comptes confirmés pour une même licence sont signalés.",
+  "ad.title": "Administration", "ad.lede": "Les comptes inscrits (plusieurs comptes confirmés pour une même licence sont signalés) et l'utilisation du site.",
   "ad.accounts": "Comptes", "ad.confirmed": "Confirmés", "ad.dups": "Licences en doublon", "ad.queue": "E-mails en attente",
   "ad.search": "Rechercher (e-mail, nom, licence)", "ad.onlyDups": "Doublons seulement",
   "ad.col.email": "E-mail", "ad.col.name": "Nom", "ad.col.lic": "Licence", "ad.col.status": "Statut", "ad.col.created": "Inscrit le",
@@ -448,6 +448,21 @@ const FR = {
   "ad.disable": "Désactiver", "ad.enable": "Réactiver", "ad.delete": "Supprimer",
   "ad.delete.confirm": "Supprimer définitivement ce compte ?", "ad.dup": "doublon", "ad.none": "Aucun compte.",
   "ad.forbidden": "Page réservée à l'administrateur.",
+  "ad.tab.accounts": "Comptes", "ad.tab.usage": "Utilisation",
+  "ad.signupAlert": "M'envoyer un e-mail à chaque nouveau compte confirmé",
+  "ad.pg.club": "Fiche d'un club", "ad.pg.clubcompare": "Comparer des clubs",
+  "ad.u.period": "Période", "ad.u.per.7": "7 jours", "ad.u.per.30": "30 jours", "ad.u.per.90": "3 mois", "ad.u.per.365": "12 mois", "ad.u.per.all": "Tout",
+  "ad.u.from": "Du", "ad.u.to": "Au", "ad.u.account": "Compte", "ad.u.allAccounts": "Tous les comptes", "ad.u.deleted": "Compte supprimé",
+  "ad.u.noAdmins": "Sans les administrateurs", "ad.u.error": "Les statistiques d'utilisation n'ont pas pu être chargées.",
+  "ad.u.active": "Comptes actifs", "ad.u.visits": "Visites", "ad.u.views": "Pages vues", "ad.u.perDay": "par jour",
+  "ad.u.viewsPerVisit": "Pages par visite",
+  "ad.u.chart": "Fréquentation", "ad.u.chart.hint": "Pages vues, visites et comptes actifs ; par jour jusqu'à 3 mois, par semaine jusqu'à 2 ans, par mois au-delà",
+  "ad.u.unit.day": "par jour", "ad.u.unit.week": "par semaine", "ad.u.unit.month": "par mois", "ad.u.weekOf": "sem. du",
+  "ad.u.byUser": "Par compte", "ad.u.byUser.hint": "Cliquez sur un compte pour ne voir que son utilisation",
+  "ad.u.byPage": "Par page", "ad.u.page": "Page", "ad.u.accounts": "Comptes",
+  "ad.u.days": "Jours actifs", "ad.u.last": "Dernière activité", "ad.u.top": "Page la plus vue", "ad.u.pick": "Ne voir que ce compte (cliquer à nouveau pour tous)",
+  "ad.u.admin": "admin", "ad.u.none": "Aucune activité sur cette période.",
+  "ad.u.def": "Une visite commence à la première page ouverte dans un onglet du navigateur ; chaque page ouverte compte une vue (les onglets d'une page, comme ceux de Méthodes, ne comptent pas à part). Jours en heure de Paris ; données conservées 13 mois, visibles des seuls administrateurs.",
 
   // privacy
   "pv.title": "Politique de confidentialité",

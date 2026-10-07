@@ -156,8 +156,12 @@ async function privacy(main) {
         <li><b>Combien de temps :</b> jusqu'à la suppression du compte, que vous pouvez faire à tout moment dans Réglages.</li>
         <li><b>Qui y a accès :</b> l'administrateur du site, et les prestataires techniques qui hébergent le site et envoient les e-mails (Cloudflare et Resend). Aucune donnée n'est vendue ni utilisée à des fins publicitaires.</li>
       </ul>
+      <h2 style="font-size:16px">Statistiques d'utilisation</h2>
+      <p>Pour savoir comment le site est utilisé et l'améliorer, il compte, pour chaque compte, le nombre de pages vues par jour et par
+        rubrique (Classement, Coureur, Réseau…) et le nombre de visites. Rien d'autre n'est enregistré (ni ce que vous cherchez, ni l'adresse IP).
+        Ces chiffres ne sont visibles que de l'administrateur, conservés 13 mois, et supprimés avec le compte.</p>
       <h2 style="font-size:16px">Cookies</h2>
-      <p>Un seul cookie, strictement nécessaire, maintient votre connexion. Le navigateur garde aussi vos préférences d'affichage (thème, discipline choisie). Aucun traceur publicitaire ou de mesure d'audience.</p>
+      <p>Un seul cookie, strictement nécessaire, maintient votre connexion. Le navigateur garde aussi vos préférences d'affichage (thème, discipline choisie). Aucun traceur publicitaire ni outil de mesure d'audience tiers.</p>
       <h2 style="font-size:16px">Vos droits</h2>
       <p>Vous pouvez supprimer votre compte vous-même (Réglages), ou demander l'accès, la rectification ou l'effacement de vos données en écrivant à ocn@kerkia.com. Vous pouvez aussi saisir la CNIL.</p>
       <p><a href="#/">← ${t("ac.toLogin")}</a></p>
