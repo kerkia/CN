@@ -1,9 +1,10 @@
 // Global, persisted UI state shared by every page.
 
-// Every method, in display order. The "Juste" ones (fair, fair2) are analysis methods: shown only to the
-// accounts with the "Analyse" right (admin page, administrators included); everyone sees the official one and the Tops.
-export const METHODS = ["official", "top6w", "top6w2", "fair", "fair2"];
-const ANALYSIS = ["fair", "fair2"];
+// Every method, in display order: the retained (quadratic) variants before the linear ones, studied for reference.
+// Everyone sees the official method and the Top; the others are analysis methods, shown only to the accounts with
+// the "Analyse" right (admin page, administrators included): the linear Top and the « Juste » methods.
+export const METHODS = ["official", "top6w2", "top6w", "fair2", "fair"];
+const ANALYSIS = ["top6w", "fair2", "fair"];
 let analyst = false;
 /** The methods this visitor may see and pick. */
 export const available = () => METHODS.filter((m) => analyst || !ANALYSIS.includes(m));
@@ -13,7 +14,7 @@ export const MAX_COMPARE = 8;
 
 const KEY = "cnx.state";
 const defaults = {
-  methods: ["official", "top6w", "top6w2"],
+  methods: ["official", "top6w2"],
   mv: 2,                  // methods version: 2 = the quadratic Top exists
   terrain: "For",
   compare: [],            // [{lic, slot}] — slot is a fixed colour index 0..7
@@ -32,6 +33,7 @@ function load() {
     if (Array.isArray(s.methods)) {             // the 2026 method was replaced by the Fair one
       s.methods = [...new Set(s.methods.map((m) => (m === "v2026" ? "fair" : m)))].filter((m) => METHODS.includes(m));
       if (s.mv !== 2) { s.methods.push("top6w2"); s.mv = 2; }   // a saved selection gets the new quadratic Top
+      s.methods = METHODS.filter((m) => s.methods.includes(m));   // in display order (the Top first since 2026-10-07)
       if (!s.methods.length) delete s.methods;
     }
     return { ...defaults, ...s };

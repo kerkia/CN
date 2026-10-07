@@ -240,9 +240,12 @@ def build_methods() -> dict[str, MethodSpec]:
         by_terrain={"VTT": {"window_days": 730, "eligible_fraction": 0.70},
                     "Ski": {"window_days": 1095, "eligible_fraction": 0.70}},
     )
-    # The quadratic variants: circuit value and CN as quadratic means (power 2), everything else
-    # equal. Measured 2026-10-07 on the same pairs: +0.3 point forest, +0.1 sprint, +0.3 VTT, +0.6 ski.
-    fair2 = dataclasses.replace(fair, cv_power=2.0, cn_power=2.0)
+    # The quadratic variants: the CN as the weighted quadratic mean of the kept scores, the circuit
+    # value as FFCO's (linear). Measured 2026-10-07 on the same pairs (Top, July 2025 - October 2026),
+    # the CN power alone kept the gain on all races (+0.06 forest, +0.07 sprint) at no cost on national
+    # races in forest; a quadratic circuit value cost on national races (forest and sprint) and brought
+    # nothing in sprint, and narrowed the forest scale (p90/p10 2.65 -> 2.42, against 2.57 here).
+    fair2 = dataclasses.replace(fair, cn_power=2.0)
     return {
         "fair": MethodSpec(
             name="fair",
@@ -265,7 +268,7 @@ def build_methods() -> dict[str, MethodSpec]:
             params=fair2,
             rescale=None,
             normalisation=Normalisation(),
-            description="Fair with quadratic means (circuit value and CN)",
+            description="Fair with the CN as a quadratic mean (circuit value linear)",
         ),
         "top6w2": MethodSpec(
             name="top6w2",

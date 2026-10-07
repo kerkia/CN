@@ -68,7 +68,8 @@ TOP6W_CN_VERSION = 4
 #   4 (2026-10-05): the 2026 method replaced by "fair" (weighted best 60 %); Top derived from it, 6 places
 #   5 (2026-10-06): VTT and ski: windows of 2 and 3 years, best 70 % (their own params, CnParams.by_terrain)
 #   6 (2026-10-07): the quadratic variants "fair2" and "top6w2" (circuit value and CN as quadratic means)
-ENGINE_VERSION = 6
+#   7 (2026-10-07): the quadratic variants keep FFCO's linear circuit value; only the CN is a quadratic mean
+ENGINE_VERSION = 7
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page

@@ -81,17 +81,21 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    **Derived from `fair`** (`CnEngine.derive`): same race scores, circuit values and recalage factors; only the
    CN differs — the best 60 % scores fill **6 weight places** from the best down, the last race only for the
    places left. Racing more can only raise it (monotonic).
-4. **`fair2` and `top6w2`, the quadratic variants** (2026-10-07) — the same two methods with **quadratic means**
-   (`CnParams.cv_power` = `cn_power` = 2): the circuit value is the quadratic mean of CN × time over the sample, the
-   CN the weighted quadratic mean of the kept scores; the race score stays circuit value ÷ time. `top6w2` derives
-   from `fair2` as `top6w` from `fair`. Measured on the same pairs (reference period): +0.3 point forest, +0.1
-   sprint, +0.3 VTT, +0.6 ski; each change alone (circuit value or CN) gave about half. Scores proportional to
-   1/time² instead ("k = 2") predict the same but stretch the scale; the IOF-style log-time z-score was worse.
+4. **`fair2` and `top6w2`, the quadratic variants** (2026-10-07) — the same two methods with the CN as the
+   **weighted quadratic mean** of the kept scores (`CnParams.cn_power` = 2; weights / Top places apply as in the
+   linear mean); the circuit value stays FFCO's linear mean (`cv_power` = 1). `top6w2` derives from `fair2` as
+   `top6w` from `fair`. Why only the CN: on the same pairs (Top, reference period) a k from 1 to 3 was applied to the
+   circuit value and to the CN separately and together (scratch `kgrid.py`): the CN power gains on all races
+   (forest +0.06 at 2, sprint +0.07) at no cost on national races in forest; the circuit-value power costs on
+   national races, gains nothing in sprint and narrows the scale. Both at 2 (the first version, ENGINE 6) gave
+   forest +0.15 but national −0.03 / sprint national −0.09. Scores proportional to 1/time² ("k = 2" on the score)
+   equal both quadratic means; the IOF-style log-time z-score was worse.
 
-**Who sees what**: everyone sees `official`, `top6w` (« Top linéaire ») and `top6w2` (« Top quadratique »); the
-« Juste » methods `fair`/`fair2` are analysis methods, shown only to accounts with the `analyst` right (granted on
-the admin page) and to admins (`store.available()`, `store.setAnalyst`; display only — the data files are the same
-for every logged-in user). The owner will keep only one of the two Tops after comparing them.
+**Who sees what**: everyone sees `official` and `top6w2` (« Top », the method retained: quadratic CN since
+2026-10-07); `top6w` (« Top linéaire », studied for reference) and the « Juste » methods `fair2`/`fair` are analysis
+methods, shown only to accounts with the `analyst` right (granted on the admin page; `store.available()`,
+`store.setAnalyst`; display only — the data files are the same for every logged-in user). The Méthodes page
+presents the Top and gives the linear mean's measured figures to everyone, as the variant studied for reference.
 
 Key design decisions (each was measured — see "Evaluating" below — and agreed with the owner):
 - **Circuits are valued with the Juste CN, never with Top's.** A capped best-of fed its selection back through
@@ -139,9 +143,9 @@ fallback) predict who finished ahead? Compare methods on the **same pairs** (bot
 method compared), per terrain. Also check group bias (share of pairs where juniors / 55+ are predicted ahead vs
 actually ahead, against H21) and rank drift by number of races. Reference results of the current methods:
 forest Juste 82.3 %, Top 82.1 %, official 80.9 %; sprint Juste 84.0 %, Top 83.9 %, official 80.7 %.
-Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.21 % (national races
-82.80 → 82.77), sprint 83.94 → 84.04 % (national 82.18 → 82.09); the quadratic narrows the forest scale (p90/p10 2.65 → 2.42).
-The Méthodes page shows these measurements as dated constants (`pages/methods.js`: `K_TESTS`, `QUAD_PARTS`, `LIN_QUAD`):
+Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.12 % (national races
+82.80 → 82.80), sprint 83.94 → 84.01 % (national 82.18 → 82.11); forest scale p90/p10 2.65 → 2.57.
+The Méthodes page shows these measurements as dated constants (`pages/methods.js`: `K_TESTS`, `K_GRID`, `LIN_QUAD`):
 update them when the methods are re-measured; the 2025 validation tables are read from the data.
 Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace(spec.params, ...)`.
 

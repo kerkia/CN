@@ -30,29 +30,33 @@ const K_TESTS = {
     ["Spr", "2018 – 2024", 320848, 82.37, [84.92, 84.86, 84.74, 84.58, 84.39, 84.09]],
   ],
 };
-// The two quadratic means taken one at a time (same measurement): linear, quadratic circuit value only,
-// quadratic CN only, both (the quadratic variant).
-const QUAD_PARTS = [
-  ["For", 776408, [82.30, 82.51, 82.42, 82.58]],
-  ["Spr", 118138, [83.96, 83.97, 84.04, 84.08]],
-  ["VTT", 16924, [81.95, 82.10, 82.12, 82.23]],
-  ["Ski", 6944, [82.26, 82.40, 82.73, 82.86]],
+// Where to apply k = 2: the circuit value's mean (cv) and the CN's (cn), each power from 1 to 3, alone and
+// together; the Top on the same pairs, July 2025 - October 2026, measured 7 October 2026. Rows: cv, cn, forest all
+// races, forest national races, sprint all, sprint national, forest p90/p10 spread of the Top CNs at that date.
+const K_GRID = [
+  ["cn", [[1, 1, 82.06, 82.80, 83.94, 82.18, 2.65], [1, 1.5, 82.10, 82.80, 83.97, 82.16, 2.61], [1, 2, 82.12, 82.80, 84.01, 82.11, 2.57],
+    [1, 2.5, 82.15, 82.79, 84.04, 82.10, 2.55], [1, 3, 82.17, 82.80, 84.09, 82.07, 2.52]]],
+  ["cv", [[1.5, 1, 82.11, 82.77, 83.94, 82.13, 2.56], [2, 1, 82.17, 82.76, 83.92, 82.09, 2.50], [2.5, 1, 82.17, 82.74, 83.92, 82.01, 2.43],
+    [3, 1, 82.14, 82.66, 83.91, 81.86, 2.38]]],
+  ["both", [[1.5, 1.5, 82.15, 82.78, 83.97, 82.13, 2.53], [2, 2, 82.21, 82.77, 84.04, 82.09, 2.42], [2.5, 2.5, 82.16, 82.67, 84.07, 81.91, 2.33],
+    [3, 3, 82.07, 82.55, 84.09, 81.84, 2.27]]],
 ];
 // Top linéaire vs Top quadratique (and the others), measured once on a database copy, 7 October 2026: same
-// pairs (both runners hold a CN in all five methods), July 2025 - October 2026. Shares in the order of LQ.
+// pairs (both runners hold a CN in all five methods), July 2025 - October 2026; the quadratic variants as
+// published since then (linear circuit value, quadratic CN). Shares in the order of LQ.
 const LQ = ["official", "fair", "top6w", "fair2", "top6w2"];
 const LIN_QUAD = {
   acc: [   // terrain, scope, pairs, shares
-    ["For", "all", 771511, [80.58, 82.32, 82.06, 82.61, 82.21]],
-    ["For", "nat", 276703, [81.69, 83.12, 82.80, 83.11, 82.77]],
-    ["Spr", "all", 113914, [80.35, 83.99, 83.94, 84.12, 84.04]],
-    ["Spr", "nat", 21452, [81.07, 82.06, 82.18, 81.98, 82.09]],
+    ["For", "all", 771511, [80.58, 82.32, 82.06, 82.44, 82.12]],
+    ["For", "nat", 276703, [81.69, 83.12, 82.80, 83.13, 82.80]],
+    ["Spr", "all", 113914, [80.35, 83.99, 83.94, 84.07, 84.01]],
+    ["Spr", "nat", 21452, [81.07, 82.06, 82.18, 82.01, 82.11]],
   ],
   bias: [  // terrain, group, pairs, actually ahead, predicted ahead
-    ["For", "J", 18600, 62.41, [54.91, 56.80, 59.73, 59.84, 62.37]],
-    ["For", "V", 12736, 42.94, [48.08, 49.75, 51.28, 50.57, 52.23]],
-    ["Spr", "J", 3918, 45.58, [36.88, 40.79, 41.04, 40.91, 41.27]],
-    ["Spr", "V", 2540, 15.83, [27.87, 17.95, 18.31, 17.76, 18.03]],
+    ["For", "J", 18600, 62.41, [54.91, 56.80, 59.73, 57.85, 60.44]],
+    ["For", "V", 12736, 42.94, [48.08, 49.75, 51.28, 49.93, 51.38]],
+    ["Spr", "J", 3918, 45.58, [36.88, 40.79, 41.04, 40.76, 41.09]],
+    ["Spr", "V", 2540, 15.83, [27.87, 17.95, 18.31, 18.07, 18.39]],
   ],
 };
 // The worked example: one runner's ten scores in the window, best first; kind: cdf | national | other.
@@ -73,9 +77,11 @@ const roundHalfUp = (x) => Math.sign(x) * Math.round(Math.abs(x));
 export async function render(main, { query = {} } = {}) {
   const meta = data.meta();
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
-  const M = available();
+  const M = available();        // display order: the Top before the Top linéaire, studied and not retained
   const analyst = M.includes("fair");
-  const tops = M.filter((m) => m === "top6w" || m === "top6w2");
+  const tops = M.filter((m) => m === "top6w" || m === "top6w2");     // [the Top, the Top linéaire for analysts]
+  // the linear mean, studied for reference: a method only analysts see, but everyone reads its measured figures
+  const LIN = analyst ? methodShort("top6w") : "Linéaire (étudiée)";
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);   // 1,5 must not read as 2
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p[key];
@@ -136,7 +142,7 @@ export async function render(main, { query = {} } = {}) {
       ["Une course de plus ne fait jamais baisser le CN", (m) => (m === "official" ? NO() : isTop(m) ? YES() : PART("une course moyenne peut le baisser"))],
       ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : isTop(m) ? YES("ses meilleures courses") : PART("son niveau habituel"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("marche au 1er janvier") : YES("recalage progressif"))],
-      ["Simple à expliquer", (m) => (m === "official" || m === "fair" ? YES() : m === "top6w" ? PART("règle des 6 places") : PART("moyennes quadratiques"))],
+      ["Simple à expliquer", (m) => (m === "official" || m === "fair" ? YES() : m === "top6w" ? PART("règle des 6 places") : PART("moyenne quadratique"))],
       ["Fait foi pour les sélections", (m) => (m === "official" ? YES("seul classement officiel") : NO("calcul d'analyse"))],
     ];
 
@@ -187,10 +193,10 @@ export async function render(main, { query = {} } = {}) {
 
     <section class="mx-slide">
       <p class="mx-kicker" style="--c:var(--s3)">Les méthodes proposées</p>
-      <h2>Ce que changent les méthodes « Top »</h2>
+      <h2>Ce que change la méthode « Top »</h2>
       <p class="mx-lead">Mêmes résultats, mêmes temps, même façon de noter une course. Ce qui change : quelles courses comptent, et combien.</p>
       <div class="mx-fix">
-        <div class="head">Méthode officielle</div><div></div><div class="head">Méthodes « Top »</div>
+        <div class="head">Méthode officielle</div><div></div><div class="head">Méthode « Top »</div>
         <div class="p"><b>Les meilleures courses écartées</b>souvent les championnats de France et les nationales</div><div class="arrow">→</div>
         <div class="s"><b>Les meilleures courses comptent le plus</b>championnat de France × ${fmtW(pf.weights.cdf)}, nationale × ${fmtW(pf.weights.national)} ;
           seules les moins bonnes sont laissées de côté</div>
@@ -220,20 +226,24 @@ export async function render(main, { query = {} } = {}) {
         (<a href="#/methodes?onglet=analyses" data-tab-link="analyses">le détail</a>).</p>
     </section>
 
-    ${tops.length === 2 ? html`<section class="mx-slide">
-      <p class="mx-kicker" style="${cvar("top6w2")}">En test</p>
-      <h2>Deux « Top » : linéaire ou quadratique ?</h2>
+    <section class="mx-slide">
+      <p class="mx-kicker" style="${cvar("top6w2")}">Le choix</p>
+      <h2>Le Top retenu : une moyenne quadratique des meilleures courses</h2>
       <div class="mx-grid">
-        <div class="mx-box" style="${cvar("top6w")}"><h3>${methodKey("top6w")} ${methodLabel("top6w")}</h3>
-          <p>Les moyennes habituelles, celles de la FFCO. Le plus simple à expliquer.</p></div>
-        <div class="mx-box" style="${cvar("top6w2")}"><h3>${methodKey("top6w2")} ${methodLabel("top6w2")}</h3>
-          <p>Des moyennes quadratiques, qui donnent un peu plus de poids aux meilleures performances. Elle prédit un peu mieux sur
-            l'ensemble des courses, un peu moins bien sur les seules courses nationales : un dixième de point dans chaque sens.</p></div>
+        <div class="mx-box" style="${cvar("top6w2")}"><h3>${methodKey("top6w2")} ${methodLabel("top6w2")} · retenue</h3>
+          <p>Le CN est une moyenne quadratique des meilleures courses : les meilleures performances pèsent un peu plus, chacune toujours
+            selon son poids ; la valeur des circuits reste celle de la FFCO. Elle prédit un peu mieux sur l'ensemble des courses, sans perte
+            sur les courses nationales en forêt.</p></div>
+        <div class="mx-box" style="${cvar("top6w")}"><h3>${analyst ? html`${methodKey("top6w")} ${methodLabel("top6w")}` : "La moyenne linéaire"}
+          · étudiée, pour référence</h3>
+          <p>La même règle avec la moyenne habituelle, celle de la FFCO. Un peu moins bonne sur l'ensemble des courses : elle reste calculée,
+            pour comparaison.</p></div>
       </div>
-      <div class="mx-callout">Une seule restera. Les deux sont publiées le temps de les comparer —
-        <a href="#/methodes?onglet=detail&voir=quadratique" data-tab-link="detail" data-goto="quadratique">pourquoi le quadratique</a>,
-        <a href="#/methodes?onglet=analyses&voir=lin-quad" data-tab-link="analyses" data-goto="lin-quad">ce que montrent les mesures</a>.</div>
-    </section>` : ""}`;
+      <div class="mx-callout"><a href="#/methodes?onglet=detail&voir=quadratique" data-tab-link="detail" data-goto="quadratique">Pourquoi
+        le quadratique</a> · <a href="#/methodes?onglet=analyses&voir=lin-quad" data-tab-link="analyses" data-goto="lin-quad">ce que montrent
+        les mesures</a> · <a href="#/methodes?onglet=analyses&voir=circuit-quad" data-tab-link="analyses" data-goto="circuit-quad">pourquoi pas
+        une valeur de circuit quadratique</a></div>
+    </section>`;
   }
 
   // ======================================================================================================
@@ -309,8 +319,8 @@ export async function render(main, { query = {} } = {}) {
         <div class="mx-step" style="--c:var(--s1)"><b>Score de course</b>valeur du circuit ÷ temps du coureur</div>
         <div class="mx-step" style="--c:var(--s3)"><b>CN</b>l'agrégation des scores de la fenêtre (12 mois en forêt et en sprint)</div>
       </div>
-      <p>Les trois premières étapes suivent la même formule dans toutes les méthodes ; chacune y met <b>ses propres CN</b>, et la variante
-        quadratique fait autrement la moyenne de l'étape 2. C'est surtout <b>l'étape 4</b> qui les distingue.</p>
+      <p>Les trois premières étapes suivent la même formule dans toutes les méthodes ; chacune y met <b>ses propres CN</b>. C'est
+        <b>l'étape 4</b>, l'agrégation des scores, qui les distingue — variante quadratique comprise.</p>
     </section>
 
     <section class="mx-slide">
@@ -325,7 +335,7 @@ export async function render(main, { query = {} } = {}) {
       <div class="mx-grid">
         <div class="mx-box" style="${cvar("official")}"><h3>${methodKey("official")} ${methodShort("official")}</h3>
           <p>Les CN J-15 sont les CN officiels ; la FFCO publie elle-même les scores.</p></div>
-        <div class="mx-box" style="${cvar(tops[tops.length - 1] || "top6w")}"><h3>Méthodes proposées</h3>
+        <div class="mx-box" style="${cvar(tops[0] || "top6w2")}"><h3>Méthodes proposées</h3>
           <p>Les CN J-15 sont ${force} — le niveau habituel des coureurs, jamais le Top (voir plus bas). Seuls les coureurs ayant leur propre CN
             dans la spécialité comptent, et un circuit en demande au moins ${fmt(pf.min_ranked)}.</p></div>
       </div>
@@ -365,9 +375,12 @@ export async function render(main, { query = {} } = {}) {
     </section>
 
     ${tops.length ? html`<section class="mx-slide" style="${cvar(tops[0])}">
-      <p class="mx-kicker">${tops.map((m) => methodKey(m))} Méthodes « Top »</p>
+      <p class="mx-kicker">${methodKey(tops[0])} ${methodLabel(tops[0])}</p>
       <h2>${fmt(p6.top_n)} places pour vos meilleures courses</h2>
-      <div class="mx-eq">CN = Σ (places × score) ÷ Σ places, au plus ${fmt(p6.top_n)} places, parmi les ${pctOf(p6.eligible_fraction)} meilleurs scores</div>
+      ${tops.includes("top6w2") ? html`<div class="mx-eq">CN = √( Σ (places × score²) ÷ Σ places ), au plus ${fmt(p6.top_n)} places, parmi les
+        ${pctOf(p6.eligible_fraction)} meilleurs scores<small>la moyenne quadratique des scores retenus, chacun compté pour ses places ;
+        la moyenne linéaire, étudiée pour référence : Σ (places × score) ÷ Σ places</small></div>`
+        : html`<div class="mx-eq">CN = Σ (places × score) ÷ Σ places, au plus ${fmt(p6.top_n)} places, parmi les ${pctOf(p6.eligible_fraction)} meilleurs scores</div>`}
       <ul class="mx-list">
         <li><span>Du meilleur score au moins bon, chaque course occupe autant de places que son poids : championnat de France ${fmtW(pf.weights.cdf)},
           nationale (O'France, Nationale) ${fmtW(pf.weights.national)}, toute autre course ${fmtW(pf.weights.other)}. La dernière ne prend que les places qui restent.</span></li>
@@ -397,7 +410,7 @@ export async function render(main, { query = {} } = {}) {
     </section>` : ""}
 
     <section class="mx-slide" id="quadratique" style="${cvar("top6w2")}">
-      <p class="mx-kicker">Linéaire ou quadratique</p>
+      <p class="mx-kicker">Le choix du quadratique</p>
       <h2>Combien doit coûter une minute de retard ?</h2>
       <p class="mx-lead">Le score de course est inversement proportionnel au temps. On peut l'écrire de façon plus générale, avec un exposant
         <i>k</i> qui règle le prix d'un écart de temps :</p>
@@ -413,32 +426,53 @@ export async function render(main, { query = {} } = {}) {
         <tbody>${K_TESTS.rows.map(kRow)}</tbody>
         <tbody><tr><td colspan="${4 + K_TESTS.ks.length}" class="muted" style="font-size:12.5px">Contrôle sur les saisons précédentes</td></tr>
           ${K_TESTS.past.map(kRow)}</tbody></table></div>
-      <p class="muted" style="font-size:13px">Part des duels bien prédits (%), mesurée le 7 octobre 2026 avec ${force}. En gras, le meilleur de chaque ligne.
+      <p class="muted" style="font-size:13px">Part des duels bien prédits (%), mesurée le 7 octobre 2026 avec ${force}, <i>k</i> appliqué au score
+        lui-même. En gras, le meilleur de chaque ligne.
         En ski, trop peu de courses (2 à 4 par saison) pour battre la méthode officielle ; sur 2018–2024, k = 2 l'emporte aussi en forêt, pas en sprint.</p>
 
-      <h3>k = 2, sans changer l'échelle : les moyennes quadratiques</h3>
-      <p>Appliquer k = 2 tel quel donnerait des scores au carré. Or calculer avec k = 2 puis prendre la racine carrée revient exactement à
+      <h3>Où appliquer k = 2 ? Dans la moyenne des courses</h3>
+      <p>Appliquer k = 2 au score donnerait des scores au carré. Calculer avec k = 2 puis prendre la racine carrée revient exactement à
         remplacer deux moyennes par des <b>moyennes quadratiques</b> (la racine de la moyenne des carrés) : celle de la <b>valeur du circuit</b>
-        et celle du <b>CN</b>. C'est la variante quadratique : les classements de k = 2, des CN à l'échelle habituelle.</p>
+        et celle du <b>CN</b>, les scores restant à l'échelle habituelle. Nous les avons mesurées <b>séparément et ensemble</b>, de k = 1 à 3,
+        sur la méthode Top et les mêmes duels :</p>
       <div class="mx-eq">moyenne quadratique de 6 000, 5 000 et 4 000 = √((6 000² + 5 000² + 4 000²) ÷ 3) = 5 066 &nbsp;·&nbsp; moyenne linéaire : 5 000</div>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th class="r">Duels</th><th class="r">Linéaire</th>
-        <th class="r">Valeur du circuit quadratique</th><th class="r">CN quadratique</th><th class="r">Les deux</th></tr></thead>
-        <tbody>${QUAD_PARTS.map(([tr, pairs, vals]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td class="r num">${fmt(pairs)}</td>
-          ${vals.map((x, i) => html`<td class="r num">${i === 3 ? html`<b>${fmt(x, 2)}</b>` : fmt(x, 2)}</td>`)}</tr>`)}</tbody></table></div>
-      <p class="muted" style="font-size:13px">Même mesure, chaque moyenne prise séparément : chacune améliore les pronostics, les deux ensemble davantage.</p>
+      <div class="table-wrap"><table class="data compact mx-ktab"><thead>
+        <tr><th rowspan="2">k appliqué à</th><th class="r" rowspan="2">k circuit</th><th class="r" rowspan="2">k CN</th>
+          <th class="r" colspan="2">Forêt</th><th class="r" colspan="2">Sprint</th><th class="r" rowspan="2">Échelle forêt<br>(p90 ÷ p10)</th></tr>
+        <tr><th class="r">toutes</th><th class="r">nationales</th><th class="r">toutes</th><th class="r">nationales</th></tr></thead>
+        ${K_GRID.map(([what, rows]) => html`<tbody>${rows.map((r, i) => {
+          const chosen = r[0] === 1 && r[1] === 2, today = r[0] === 1 && r[1] === 1;
+          const k = (x) => String(x).replace(".", ",");
+          return html`<tr>${i === 0 ? html`<td rowspan="${rows.length}">${{ cn: "la moyenne des courses (CN)", cv: "la valeur du circuit", both: "les deux" }[what]}</td>` : ""}
+            <td class="r num ${chosen ? "k2" : ""}">${k(r[0])}</td><td class="r num ${chosen ? "k2" : ""}">${k(r[1])}</td>
+            ${r.slice(2, 6).map((x, j) => html`<td class="r num ${chosen ? "k2" : ""}">${x === Math.max(...K_GRID.flatMap(([, rr]) => rr.map((y) => y[2 + j])))
+              ? html`<b>${fmt(x, 2)}</b>` : fmt(x, 2)}</td>`)}
+            <td class="r num ${chosen ? "k2" : ""}">${fmt(r[6], 2)}${today ? html` <span class="muted">(linéaire)</span>` : chosen
+              ? html` <span class="muted">(${methodShort("top6w2")})</span>` : ""}</td></tr>`;
+        })}</tbody>`)}</table></div>
+      <p class="muted" style="font-size:13px">Part des duels bien prédits (%) par la méthode Top, juillet 2025 – octobre 2026, 771 511 duels en forêt
+        (276 703 sur courses nationales), 113 914 en sprint (21 452) ; en gras, le meilleur de chaque colonne. La première ligne est la moyenne linéaire ;
+        en couleur, la variante retenue.</p>
+      <ul class="mx-list">
+        <li><span><b>Dans la moyenne des courses</b>, k fait gagner régulièrement sur l'ensemble des courses, en forêt comme en sprint, sans rien
+          coûter sur les courses nationales en forêt.</span></li>
+        <li><span><b>Dans la valeur du circuit</b>, il fait gagner un peu en forêt, mais coûte sur les courses nationales, n'apporte rien en sprint
+          et resserre l'échelle.</span></li>
+        <li><span><b>Retenu : la valeur du circuit de la FFCO, un CN en moyenne quadratique (k = 2).</b> Au-delà de 2, quelques centièmes de plus
+          sur l'ensemble des courses, au prix d'un poids toujours plus fort des meilleures courses.
+          <a href="#/methodes?onglet=analyses&voir=circuit-quad" data-tab-link="analyses" data-goto="circuit-quad">Pourquoi pas la valeur du
+          circuit ?</a></span></li>
+      </ul>
       <h3>Ses effets</h3>
       <ul class="mx-list">
-        <li><span>Dans la valeur d'un circuit, les coureurs qui ont couru nettement au-dessus de leur CN pèsent un peu plus : un circuit réussi
-          par les meilleurs vaut davantage.</span></li>
-        <li><span>Dans le CN, les meilleures courses pèsent un peu plus que les autres ; pour un coureur régulier, la différence est faible
-          (${fmt(EX.top6w.cn)} → ${fmt(EX.top6w2.cn)} dans l'exemple).</span></li>
-        <li><span><b>En forêt, l'échelle se resserre</b> : les CN montent tous un peu, davantage en bas du classement (+140 environ pour
-          les meilleurs, +350 pour les derniers) ; l'écart entre le 10e et le 90e centile passe d'un facteur 2,65 à 2,42.</span></li>
-        <li><span>Les classements bougent peu : en forêt, un coureur gagne ou perd 61 places sur 3 489 (médiane) ; ceux qui courent
-          beaucoup (13 courses et plus) gagnent 27 places en moyenne, ceux qui n'en ont que 3 ou 4 en perdent 19. En sprint, presque rien
-          ne change (5 places en médiane).</span></li>
+        <li><span>Dans le CN, les meilleures courses pèsent un peu plus que les autres, <b>chacune toujours selon son poids</b> (championnat de
+          France × ${fmtW(pf.weights.cdf)}, nationale × ${fmtW(pf.weights.national)}, ou les places qu'elle occupe dans le Top) ; pour un coureur
+          régulier, la différence est faible (dans l'exemple, ${fmt(EX.top6w2.cn)} contre ${fmt(EX.top6w.cn)} en moyenne linéaire).</span></li>
+        <li><span>Les CN montent un peu, davantage en bas du classement (en forêt, +35 environ pour les meilleurs, +115 pour les derniers) ;
+          l'échelle se resserre à peine (l'écart entre le 10e et le 90e centile passe d'un facteur 2,65 à 2,57).</span></li>
+        <li><span>Les classements bougent peu : un coureur gagne ou perd 15 places sur 3 489 en forêt (médiane), 3 en sprint.</span></li>
       </ul>
-      <p class="muted" style="font-size:13px">Mesures du 7 octobre 2026, Top linéaire et Top quadratique à cette date.</p>
+      <p class="muted" style="font-size:13px">Mesures du 7 octobre 2026 : le Top face à sa version linéaire, à cette date.</p>
     </section>
 
     <section class="mx-slide">
@@ -541,11 +575,46 @@ export async function render(main, { query = {} } = {}) {
         })}</tbody></table></div>
     </section>` : html`<section class="mx-slide"><p>${t("me.val.none")}</p></section>`}
 
-    ${tops.length === 2 ? html`<section class="mx-slide" id="lin-quad" style="${cvar("top6w2")}">
-      <p class="mx-kicker">${methodKey("top6w")}${methodKey("top6w2")} En test</p>
-      <h2>Top linéaire ou Top quadratique ?</h2>
+    <section class="mx-slide" id="lin-quad" style="${cvar("top6w2")}">
+      <p class="mx-kicker">${analyst ? methodKey("top6w") : ""} Moyenne linéaire · étudiée, pour référence</p>
+      <h2>Pourquoi une moyenne quadratique plutôt que linéaire</h2>
       <div id="linquad"></div>
-    </section>` : ""}
+    </section>
+
+    <section class="mx-slide" id="circuit-quad" style="--c:var(--bad)">
+      <p class="mx-kicker">Analysé, puis écarté</p>
+      <h2>Pourquoi pas une valeur de circuit quadratique ?</h2>
+      <p class="mx-lead">La première version du Top quadratique (en ligne le 7 octobre 2026) rendait quadratiques <b>deux</b> moyennes : celle du
+        CN et celle de la valeur du circuit. Mesurées séparément (<a href="#/methodes?onglet=detail&voir=quadratique" data-tab-link="detail"
+        data-goto="quadratique">le tableau complet</a>), elles ne jouent pas le même rôle : le gain vient du CN, la valeur de circuit quadratique
+        ajoute surtout des inconvénients.</p>
+      <div class="table-wrap"><table class="data compact"><thead>
+        <tr><th rowspan="2">Méthode Top</th><th class="r" colspan="2">Forêt</th><th class="r" colspan="2">Sprint</th>
+          <th class="r" rowspan="2">Échelle forêt<br>(p90 ÷ p10)</th><th class="r" rowspan="2">Places gagnées ou<br>perdues (médiane, forêt)</th>
+          <th class="r" rowspan="2">55 ans et + prévus devant<br>un H/D 21 (réel : 42,9 %)</th></tr>
+        <tr><th class="r">toutes</th><th class="r">nationales</th><th class="r">toutes</th><th class="r">nationales</th></tr></thead>
+        <tbody>${[
+          ["Linéaire (circuit et CN)", [82.06, 82.80, 83.94, 82.18], 2.65, "—", 51.3, ""],
+          ["Circuit quadratique seul", [82.17, 82.76, 83.92, 82.09], 2.50, "", 52.0, ""],
+          ["Circuit et CN quadratiques (1re version)", [82.21, 82.77, 84.04, 82.09], 2.42, "61", 52.2, ""],
+          ["CN quadratique seul (retenu)", [82.12, 82.80, 84.01, 82.11], 2.57, "15", 51.4, "k2"],
+        ].map(([label, acc, spread, moves, old, cls]) => html`<tr><td class="${cls}">${cls ? html`<b>${label}</b>` : label}</td>
+          ${acc.map((x) => html`<td class="r num ${cls}">${fmt(x, 2)} %</td>`)}<td class="r num ${cls}">${fmt(spread, 2)}</td>
+          <td class="r num ${cls}">${moves || "—"}</td><td class="r num ${cls}">${fmt(old, 1)} %</td></tr>`)}</tbody></table></div>
+      <p class="muted" style="font-size:13px">Même mesure que plus haut : juillet 2025 – octobre 2026, mêmes duels pour toutes les variantes ;
+        places gagnées ou perdues face à la version linéaire, au 7 octobre 2026.</p>
+      <ul class="mx-list bad">
+        <li><span><b>Elle coûte sur les courses qui comptent le plus</b> : sur les championnats et les nationales, la valeur de circuit
+          quadratique fait moins bien que la linéaire, en forêt comme en sprint (jusqu'à −0,3 point en sprint avec k = 3).</span></li>
+        <li><span><b>Elle n'apporte rien en sprint</b>, et en forêt son petit gain sur l'ensemble des courses (moins d'un dixième de point au-delà
+          du CN quadratique) se paie sur les nationales.</span></li>
+        <li><span><b>Elle resserre l'échelle et rebat les classements</b> : les CN du bas du classement montent bien plus que ceux du haut,
+          et un coureur gagne ou perd 61 places en médiane en forêt, contre 15 avec le seul CN quadratique.</span></li>
+        <li><span><b>Elle surévalue davantage les 55 ans et plus</b> face aux H/D 21, déjà surévalués par toutes les méthodes.</span></li>
+        <li><span><b>Elle s'écarte de la formule de la FFCO</b> : la valeur de chaque circuit, donc chaque score de course, changerait. En gardant
+          la valeur de circuit linéaire, seule l'agrégation des scores diffère, plus simple à expliquer et à vérifier.</span></li>
+      </ul>
+    </section>
 
     <section class="mx-slide">
       <p class="mx-kicker">Accord entre méthodes</p>
@@ -563,14 +632,14 @@ export async function render(main, { query = {} } = {}) {
       <p class="mx-kicker">Conclusion</p>
       <h2>Quelle méthode pour quoi ?</h2>
       <div class="mx-verdict">
-        <div class="mx-box" style="${cvar(tops[tops.length - 1] || "top6w")}"><h3>Classer, qualifier, sélectionner</h3>
-          <div class="who">${tops.map((m) => methodShort(m)).join(" ou ")}</div>
+        <div class="mx-box" style="${cvar(tops[0] || "top6w2")}"><h3>Classer, qualifier, sélectionner</h3>
+          <div class="who">${methodShort(tops[0] || "top6w2")}</div>
           <p>Le potentiel au meilleur niveau, nourri par les grandes compétitions ; une course de plus ne le fait jamais baisser.</p></div>
-        <div class="mx-box" style="${cvar(analyst ? "fair2" : tops[tops.length - 1] || "top6w")}"><h3>Prédire qui finira devant</h3>
-          <div class="who">${analyst ? html`${methodShort("fair2")}, puis les Top` : "Les méthodes proposées"}</div>
+        <div class="mx-box" style="${cvar(analyst ? "fair2" : tops[0] || "top6w2")}"><h3>Prédire qui finira devant</h3>
+          <div class="who">${analyst ? html`${methodShort("fair2")}, puis le ${methodShort(tops[0] || "top6w2")}` : "Les méthodes proposées"}</div>
           <p>À quelques dixièmes près entre elles, et nettement devant la méthode officielle.</p></div>
-        <div class="mx-box" style="${cvar(analyst ? "fair" : "official")}"><h3>Valoriser les circuits</h3>
-          <div class="who">${analyst ? html`${methodShort("fair")} / ${methodShort("fair2")}` : "Le CN « de force »"}</div>
+        <div class="mx-box" style="${cvar(analyst ? "fair2" : "official")}"><h3>Valoriser les circuits</h3>
+          <div class="who">${analyst ? methodShort("fair2") : "Le CN « de force »"}</div>
           <p>Le niveau habituel des coureurs, sans le plafond de places qui fausserait les circuits.</p></div>
         <div class="mx-box" style="${cvar("official")}"><h3>Faire foi</h3>
           <div class="who">${methodShort("official")}</div>
@@ -681,48 +750,55 @@ export async function render(main, { query = {} } = {}) {
   function drawLinQuad() {
     const box = $("#linquad");
     if (!box) return;
-    const show = LQ.filter((m) => M.includes(m));          // the visible methods, measured
+    // the official method, the Top and its linear version (for everyone), the « Juste » ones for analysts
+    const show = ["official", "top6w2", "top6w", ...(analyst ? ["fair2", "fair"] : [])];
+    const col = (m) => (m === "top6w" ? LIN : methodShort(m));
     const at = (vals, m) => vals[LQ.indexOf(m)];
-    const gap = (x) => html`<span style="color:${x > 0 ? "var(--good)" : x < 0 ? "var(--bad)" : "inherit"}">${x > 0 ? "+" : x < 0 ? "−" : "±"}${fmt(Math.abs(x), 2)}</span>`;
+    const gap = (x0) => {
+      const x = Math.round(x0 * 100) / 100;        // the sign of what is shown: 0,004 reads ±0,00
+      return html`<span style="color:${x > 0 ? "var(--good)" : x < 0 ? "var(--bad)" : "inherit"}">${x > 0 ? "+" : x < 0 ? "−" : "±"}${fmt(Math.abs(x), 2)}</span>`;
+    };
     const scope = { all: "toutes les courses", nat: "courses nationales" };
     const group = { J: t("me.val.bias.J"), V: t("me.val.bias.V") };
     const d25 = (x, sc) => { const e = entry(x, sc); return e ? share(e, "top6w2") - share(e, "top6w") : null; };
     box.innerHTML = html`
       <p class="mx-lead">Mesuré sur juillet 2025 – octobre 2026, sur les mêmes duels pour toutes les méthodes : la part des duels bien prédits.</p>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses</th><th class="r">Duels</th>
-        ${show.map((m) => html`<th class="r">${methodShort(m)}</th>`)}<th class="r">Quad. − lin. (Top)</th></tr></thead>
+        ${show.map((m) => html`<th class="r">${col(m)}</th>`)}<th class="r">${methodShort("top6w2")} − linéaire</th></tr></thead>
         <tbody>${LIN_QUAD.acc.map(([tr, sc, pairs, vals]) => {
           const best = Math.max(...show.map((m) => at(vals, m)));
           return html`<tr><td>${t(`terrain.${tr}`)}</td><td>${scope[sc]}</td><td class="r num">${fmt(pairs)}</td>
             ${show.map((m) => html`<td class="r num">${at(vals, m) === best ? html`<b>${fmt(at(vals, m), 2)} %</b>` : `${fmt(at(vals, m), 2)} %`}</td>`)}
             <td class="r num">${gap(at(vals, "top6w2") - at(vals, "top6w"))}</td></tr>`;
         })}</tbody></table></div>
-      ${v ? html`<p class="muted" style="font-size:13px">Sur la seule saison ${season} (tableaux plus haut), même sens :
+      ${v ? html`<p class="muted" style="font-size:13px">Sur la seule saison ${season} (tableaux plus haut), écart ${methodShort("top6w2")} − linéaire :
         ${["For", "Spr", "VTT"].filter((x) => entry(x)).map((x, i) => html`${i ? " ; " : ""}${x === "VTT" ? "VTT" : t(`terrain.${x}`).toLowerCase()} ${gap(d25(x, "all"))}
           sur toutes les courses, ${d25(x, "nat") == null ? "—" : gap(d25(x, "nat"))} sur les nationales`)}.</p>` : ""}
       <h3>Jeunes et vétérans</h3>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>${t("me.val.bias.group")}</th>
-        <th class="r">Duels</th><th class="r">${t("me.val.bias.actual")}</th>${show.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
+        <th class="r">Duels</th><th class="r">${t("me.val.bias.actual")}</th>${show.map((m) => html`<th class="r">${col(m)}</th>`)}</tr></thead>
         <tbody>${LIN_QUAD.bias.map(([tr, g, pairs, real, vals]) => {
           const closest = Math.min(...show.map((m) => Math.abs(at(vals, m) - real)));
           return html`<tr><td>${t(`terrain.${tr}`)}</td><td>${group[g]}</td><td class="r num">${fmt(pairs)}</td><td class="r num">${fmt(real, 1)} %</td>
             ${show.map((m) => html`<td class="r num">${Math.abs(at(vals, m) - real) === closest ? html`<b>${fmt(at(vals, m), 1)} %</b>` : `${fmt(at(vals, m), 1)} %`}</td>`)}</tr>`;
         })}</tbody></table></div>
       <div class="mx-grid" style="margin-top:16px">
-        <div class="mx-box" style="${cvar("top6w2")}"><h3>Pour le quadratique</h3><ul class="mx-list">
-          <li><span>Un peu plus de duels bien prédits sur l'ensemble des courses : +0,15 point en forêt, +0,10 en sprint, dans le même sens en ${season || "2025"}.</span></li>
-          <li><span>Les jeunes, sous-évalués par toutes les méthodes face aux H/D 21, sont mieux placés : en forêt, juste au bon niveau.</span></li>
-          <li><span>Il correspond au réglage k = 2, le meilleur de nos mesures (onglet « En détail »).</span></li>
+        <div class="mx-box" style="${cvar("top6w2")}"><h3>Ce que gagne le Top (retenu)</h3><ul class="mx-list">
+          <li><span>Un peu plus de duels bien prédits sur l'ensemble des courses : +0,06 point en forêt, +0,07 en sprint ; aucune perte sur
+            les courses nationales en forêt.</span></li>
+          <li><span>Les jeunes, sous-évalués par toutes les méthodes face aux H/D 21, sont un peu mieux placés.</span></li>
+          <li><span>Les meilleures courses pèsent un peu plus, sans toucher à la valeur des circuits.</span></li>
         </ul></div>
-        <div class="mx-box" style="${cvar("top6w")}"><h3>Pour le linéaire</h3><ul class="mx-list">
-          <li><span>Un peu meilleur sur les seules courses nationales : +0,03 point en forêt, +0,09 en sprint.</span></li>
-          <li><span>Moins de surévaluation des 55 ans et plus en forêt.</span></li>
-          <li><span>Plus simple à expliquer ; il garde l'échelle actuelle, que le quadratique resserre en forêt.</span></li>
+        <div class="mx-box" style="${cvar("top6w")}"><h3>Ce qu'offrait la moyenne linéaire</h3><ul class="mx-list">
+          <li><span>Un peu meilleur sur les seules courses nationales en sprint : +0,07 point.</span></li>
+          <li><span>La moyenne habituelle : la plus simple à expliquer.</span></li>
+          <li><span>L'échelle actuelle, que le quadratique resserre à peine en forêt.</span></li>
         </ul></div>
       </div>
-      <div class="mx-callout"><b>Bilan provisoire</b> : des écarts d'un ou deux dixièmes de point, bien plus petits que l'écart de l'une ou l'autre
-        avec la méthode officielle (1,1 à 3,7 points). Les deux Top prédisent mieux que la méthode officielle sur chaque ligne ; le choix entre elles tiendra
-        autant à la simplicité et à l'échelle qu'aux pronostics.</div>`;
+      <div class="mx-callout"><b>Le choix</b> : les deux variantes font nettement mieux que la méthode officielle (de 1,1 à 3,7 points selon la
+        ligne) et ne diffèrent entre elles que de quelques centièmes. Le quadratique est retenu : un peu meilleur sur l'ensemble des courses, sans
+        perte sur les nationales en forêt, avec des jeunes mieux placés, et sans toucher à la valeur des circuits. La version linéaire
+        reste calculée, pour référence.</div>`;
   }
   const DRAW = { detail: drawNorm, analyses: () => { drawAgreement(); drawLinQuad(); } };
   const BUILD = { essentiel, detail, analyses, autres };
