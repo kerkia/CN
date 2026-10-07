@@ -35,7 +35,7 @@ const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods",
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
-const ALL_TERRAIN_VIEWS = new Set(["ages", "territoires", "activite"]);
+const ALL_TERRAIN_VIEWS = new Set(["stats", "territoires", "ages", "activite"]);     // ages, activite: old links to stats
 const allowsAllTerrains = (r) => r.route === "network"
   && (!!r.arg || ALL_TERRAIN_VIEWS.has(r.query.vue) || (r.query.vue !== "meilleurs" && !!store.get().lastRunner));
 /** The discipline of such a view: "For", "Spr", "VTT", "Ski", or "" for all of them. */
@@ -85,8 +85,7 @@ export const link = {
   network: (lic, q) => (lic ? `#/reseau/${encodeURIComponent(lic)}` : "#/reseau") + qstr(q),
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
   territories: (q) => "#/reseau" + qstr({ ...q, vue: "territoires" }),
-  ages: (q) => "#/reseau" + qstr({ ...q, vue: "ages" }),
-  activity: (q) => "#/reseau" + qstr({ ...q, vue: "activite" }),
+  stats: (q) => "#/reseau" + qstr({ ...q, vue: "stats" }),
 };
 function qstr(q) {
   if (!q) return "";

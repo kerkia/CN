@@ -12,7 +12,7 @@ import { mapChart } from "../charts.js";
 import { chartCard, bindChartCard, dataTable, tile, seg } from "../ui.js";
 import { DEPT_REGION, regionOf, placeOf, loadMap, featuresOf } from "../geo.js";
 import { replaceQuery, viewTerrain, terrainField } from "../app.js";
-import { modeSwitch, bindModeSwitch } from "./netmodes.js";
+import { netHead, bindModeSwitch } from "./netmodes.js";
 
 const LEVELS = ["region", "dept"];
 const MEASURES = ["comps", "runners", "ratio"];       // competitions hosted · competitors registered · competitions per 100 competitors
@@ -28,8 +28,7 @@ export async function render(main, query) {
   const terrain = viewTerrain(query);                   // "" = both disciplines
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("tr.title")}</h1><p class="lede">${t("tr.lede")}</p></div>
-      ${modeSwitch("territories")}</div>
+    ${netHead("territories", t("tr.title"), t("tr.lede"))}
     <div class="filters" id="filters"></div>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <div class="grid grid-main-side territory-grid" style="margin-bottom:16px;align-items:start">

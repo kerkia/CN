@@ -14,7 +14,7 @@ import {
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
 import { link, replaceQuery, viewTerrain, terrainField } from "../app.js";
-import { modeSwitch, bindModeSwitch } from "./netmodes.js";
+import { netHead, bindModeSwitch } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
 const surname = (nom) => {
@@ -82,8 +82,8 @@ async function coRunnersIn(lic, season, terrain) {
 
 export async function render(main, { arg: lic, query }) {
   if (!lic && query.vue === "territoires") return (await import("./territory.js")).render(main, query);
-  if (!lic && query.vue === "ages") return (await import("./ages.js")).render(main, query);
-  if (!lic && query.vue === "activite") return (await import("./activity.js")).render(main, query);
+  // the statistics; « Âges » and « Activité » were merged into them
+  if (!lic && ["stats", "ages", "activite"].includes(query.vue)) return (await import("./stats.js")).render(main, query);
   // no runner in the address: the current runner, unless the leaders' view was asked for
   const who = lic || (query.vue !== "meilleurs" && store.get().lastRunner);
   return who ? ego(main, who, query) : global(main, query);
@@ -105,8 +105,7 @@ async function ego(main, lic, query) {
 
   main.innerHTML = html`
     <div class="crumbs"><a href="${link.runner(lic)}">${name}</a><span>›</span><span>${t("nw.title")}</span></div>
-    <div class="page-head"><div><h1>${t("nw.title")} · ${name}</h1><p class="lede">${t("nw.lede.ego")}</p></div>
-      ${modeSwitch("ego")}</div>
+    ${netHead("ego", `${t("nw.title")} · ${name}`, t("nw.lede.ego"))}
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}
       <a class="btn btn-sm" href="${link.runner(lic)}">${t("pg.toRunner")}</a>
@@ -255,8 +254,7 @@ async function global(main, query) {
   let season = seasonsDesc().includes(query.s) ? query.s : "";
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("nw.title")}</h1><p class="lede">${t("nw.lede.global")}</p></div>
-      ${modeSwitch("leaders")}</div>
+    ${netHead("leaders", t("nw.title"), t("nw.lede.global"))}
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}<span class="muted" style="font-size:13.5px">${t("nw.searchHint")}</span>
     </div></section>

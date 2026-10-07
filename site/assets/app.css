@@ -182,6 +182,12 @@ p { margin: 0; }
 .page { flex: 1; width: 100%; max-width: 1320px; margin: 0 auto; padding: 24px 20px 96px; outline: none; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
 .page-head .lede { color: var(--ink-2); margin-top: 6px; max-width: 760px; }
+/* Réseau: the title, then the intro text with the views' switch at its right, at the same place in every view */
+.page-head.net-head { display: block; }
+.net-sub { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 24px; margin-top: 6px; }
+.net-sub .lede { margin-top: 0; flex: 1 1 320px; }
+.net-sub > .seg { flex: none; }
+@media (max-width: 960px) { .net-sub { flex-wrap: wrap; } .net-sub > .seg { margin-left: auto; } }
 .crumbs { font-size: 13px; color: var(--ink-3); margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .crumbs a { color: var(--ink-2); }
 .boot { display: grid; place-items: center; gap: 12px; padding: 120px 0; color: var(--ink-3); }
