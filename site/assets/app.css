@@ -149,12 +149,12 @@ p { margin: 0; }
 .nav-count[hidden] { display: none; }
 .topbar-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .search { position: relative; }
-.search input {
+.search input[type="search"] {   /* more specific than the general input rule: room for the icon */
   width: 240px; height: 36px; padding: 0 12px 0 34px;
   border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface);
   color: var(--ink); font: inherit; font-size: 14px;
 }
-.search svg { position: absolute; left: 10px; top: 10px; color: var(--ink-3); pointer-events: none; }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; }
 .search-results {
   position: absolute; right: 0; top: 42px; width: 360px; max-height: 420px; overflow: auto;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px;
