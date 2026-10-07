@@ -141,17 +141,14 @@ function renderHeader(r) {
     ["network", "#/reseau", t("nav.network")],
     ["methods", "#/methodes", t("nav.methods")],
     ["agenda", "#/agenda", t("nav.agenda")],
-  ] : [
-    ["overview", "#/", t("auth.title")],
-    ["agenda", "#/agenda", t("nav.agenda")],
-  ];
+  ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs" : route;
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
   $("#topbar").innerHTML = html`<div class="topbar-inner">
-    <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
+    ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
+    </button>` : ""}
     <a class="brand" href="${me ? link.runner(me.lic) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <rect width="32" height="32" rx="8" fill="#0d366b"/>
@@ -190,7 +187,7 @@ function renderHeader(r) {
         <div class="search-results hidden" id="search-results" role="listbox"></div>
       </div>`}
     </div></div>` : ""}`;
-  $("#menu-btn").addEventListener("click", () => $("#nav").classList.toggle("open"));
+  $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
   $("#theme-btn").addEventListener("click", () => {
     const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
     const next = dark ? "light" : "dark";
@@ -283,9 +280,10 @@ async function route_() {
   // a page that follows its own address (the Agenda: list <-> details) is not rebuilt for a change of query
   if (current?.onQuery && lastRoute === r.route) { current.onQuery(r.query); return; }
   const my = ++token;
-  // the gate: logged out, only the home (login) page exists
+  // the gate: logged out, only the home (login) page exists; the page asked for (a link in an e-mail…) opens after the login
   const me = auth.session();
-  if (!me && !["overview", "account", "agenda"].includes(r.route)) {
+  if (!me && !["overview", "account"].includes(r.route)) {
+    try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
@@ -353,7 +351,9 @@ window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOu
 export async function signedIn(s) {
   await data.bootPrivate();
   store.set({ lastRunner: s.lic });
-  location.hash = link.runner(s.lic);
+  let next = null;
+  try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
+  location.hash = next && next.startsWith("#/") && next !== "#/" ? next : link.runner(s.lic);
 }
 
 store.subscribe(renderCompareCount);
