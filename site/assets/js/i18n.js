@@ -195,8 +195,7 @@ const FR = {
   "nav.progression": "Progression", "nav.network": "Réseau",
   "search.placeholder": "Rechercher un coureur…", "search.none": "Aucun coureur trouvé",
   "theme.toggle": "Changer de thème",
-  "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données CN issues de cn.ffcorientation.fr.",
-  "footer.official": "Site officiel du CN",
+  "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données CN issues de {site}.",
 
   "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Juste » linéaire", "m.fair2": "Méthode CN « Juste » quadratique", "m.top6w": "Méthode CN « Top » linéaire", "m.top6w2": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",

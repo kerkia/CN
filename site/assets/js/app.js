@@ -253,10 +253,10 @@ function bindSearch() {
 
 function renderFooter() {
   const m = data.meta();
+  const [before, after] = t("footer.disclaimer").split("{site}");      // the source, as a link
   $("#footer").innerHTML = html`<div class="footer-inner">
-    <span>${SITE} — ${t("footer.disclaimer")}</span>
-    <span class="num">${fmt(m.counts.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(m.counts.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(m.counts.results)} ${t("ov.results").toLowerCase()} —
-      <a href="https://cn.ffcorientation.fr/" target="_blank" rel="noopener">${t("footer.official")}</a></span>
+    <span>${SITE} — ${before}<a href="https://cn.ffcorientation.fr/" target="_blank" rel="noopener">cn.ffcorientation.fr</a>${after}</span>
+    <span class="num">${fmt(m.counts.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(m.counts.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(m.counts.results)} ${t("ov.results").toLowerCase()}</span>
   </div>`;
 }
 
