@@ -10,7 +10,7 @@ import { distributionChart, cdfChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile, methodLabel, methodShort,
 } from "../ui.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
 
 export const AGES = ["10", "12", "14", "16", "18", "20", "21", "35", "40", "45", "50", "55", "60", "65", "70", "75", "80", "85", "90"];
@@ -229,7 +229,7 @@ export async function render(main, { query }) {
     const clubOpts = [...clubs.entries()].sort((a, b) => a[1].localeCompare(b[1]));
     const ligues = [...new Set(rows.map((r) => r.ligue).filter(Boolean))].sort();
     const depts = [...new Set(rows.map((r) => r.dept).filter(Boolean))].sort();
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(f.month)}
       <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <label class="field"><span>${t("f.sexe")}</span>

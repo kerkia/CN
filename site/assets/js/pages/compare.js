@@ -14,7 +14,7 @@ import {
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 
 const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
 
@@ -85,7 +85,7 @@ export async function render(main, { query }) {
   }
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <div class="field"><span>${t("f.methods")}</span>${methodChips(undefined, { dash: true })}</div>
       <div class="field"><span>${t("f.range")}</span>${seg("range",
         [["1", t("chart.12m")], ["3", t("chart.3y")], ["5", t("chart.5y")], ["all", t("chart.all")]], range)}</div>`;

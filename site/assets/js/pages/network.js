@@ -8,12 +8,12 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { networkChart, css } from "../charts.js";
 import {
-  terrainSeg, bindTerrainSeg, chartCard, bindChartCard, legend, dataTable, tile,
+  chartCard, bindChartCard, legend, dataTable, tile,
   methodLabel, seg, runnerSearch, bindRunnerSearch, errorBox, methodSeg, bindMethodSeg,
 } from "../ui.js";
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
-import { link, replaceQuery, viewTerrain } from "../app.js";
+import { link, replaceQuery, viewTerrain, terrainField } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
@@ -124,7 +124,7 @@ async function ego(main, lic, query) {
   bindModeSwitch(main);
 
   if (!list.length) {
-    $("#filters").innerHTML = html`${periodSelect(season)}`;
+    $("#filters").innerHTML = html`${terrainField()}${periodSelect(season)}`;
     $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, t: tq }); });
     $("#net").innerHTML = html`<div class="empty">${t("nw.none")}</div>`;
     return { title: `${t("nw.title")} · ${name}` };
@@ -149,7 +149,7 @@ async function ego(main, lic, query) {
     ${tile(t("nw.sameClub"), fmt(rows.filter((x) => x.code && x.code === myClub).length), `${t("nw.amongTop")} ${fmt(rows.length)}`)}`;
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       ${periodSelect(season)}
       <div class="field"><span>${t("nw.k")}</span>${seg("k", [["10", "10"], ["20", "20"], ["30", "30"]], String(k))}</div>
       <label class="checkline"><input type="checkbox" id="l2" ${raw(links2 ? "checked" : "")}>${t("nw.links2")}</label>`;
@@ -269,7 +269,7 @@ async function global(main, query) {
   $("#net").style.height = "620px";
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       ${periodSelect(season)}
       <div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>
       <div class="field"><span>${t("f.sexe")}</span>${seg("sexe", [["H", t("sexe.H")], ["D", t("sexe.D")], ["", t("sexe.all")]], sexe)}</div>

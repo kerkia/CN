@@ -27,10 +27,10 @@ const PAGES = {
   admin: () => import("./pages/admin.js"),
 };
 
-// Where the Forêt/Sprint switch means something, and where the runner
-// selection tray is worth showing.
-const USES_TERRAIN = new Set(["ranking", "runner", "compare", "clubs", "club", "clubcompare", "network", "courses"]);
+// Where the runner selection tray is worth showing.
 const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
+// Pages without the runner search of the header: it leads away from what they show.
+const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -104,6 +104,30 @@ export function replaceQuery(q) {
   }
 }
 
+// ---- the discipline -------------------------------------------------------
+/**
+ * The discipline selector, drawn by each page among its filters. One choice for the whole site
+ * (store.terrain), except in the views that also offer "Toutes", where it lives in the address.
+ */
+export function terrainField() {
+  const r = parseHash(), all = allowsAllTerrains(r);
+  const v = all ? viewTerrain(r.query) || "all" : store.get().terrain;
+  return html`<label class="field"><span>${t("f.terrain")}</span>
+    <select id="terrain-select" class="terrain-select" aria-label="${t("f.terrain")}">
+      ${all ? html`<option value="all" ${raw(v === "all" ? "selected" : "")}>${t("f.all")}</option>` : ""}
+      ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(v === x ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}
+    </select></label>`;
+}
+// changing it re-renders the current page
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "terrain-select") return;
+  const v = e.target.value, now = parseHash(), { query } = now;
+  if (store.TERRAINS.includes(v)) store.set({ terrain: v });
+  if (allowsAllTerrains(now)) replaceQuery({ ...query, t: v === "all" ? null : v });
+  else if (query.t) { delete query.t; replaceQuery(query); }
+  route_();
+});
+
 // ---- header -------------------------------------------------------------
 function renderHeader(r) {
   const { route } = r;
@@ -123,8 +147,8 @@ function renderHeader(r) {
     ["agenda", "#/agenda", t("nav.agenda")],
   ];
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs" : route;
-  const allTerrains = allowsAllTerrains(r);
-  const terrain = allTerrains ? viewTerrain(r.query) || "all" : store.get().terrain;
+  // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
+  const showSearch = !NO_SEARCH.has(route);
   $("#topbar").innerHTML = html`<div class="topbar-inner">
     <button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -158,19 +182,12 @@ function renderHeader(r) {
       </button>`}
     </div>
   </div>
-  ${me ? html`<div class="subbar"><div class="subbar-inner">
-      <label class="subbar-field"><span>${t("f.terrain")}</span>
-      <select id="terrain-select" class="terrain-select ${USES_TERRAIN.has(route) ? "" : "is-off"}" aria-label="${t("f.terrain")}"
-        title="${USES_TERRAIN.has(route) ? t("f.terrain") : t("terrain.na")}" ${raw(USES_TERRAIN.has(route) ? "" : "disabled")}>
-        ${allTerrains ? html`<option value="all" ${raw(terrain === "all" ? "selected" : "")}>${t("f.all")}</option>` : ""}
-        ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(terrain === x ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}
-      </select>
-      </label>
-      <div class="search">
+  ${me && showSearch ? html`<div class="subbar"><div class="subbar-inner">
+      ${html`<div class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
         <div class="search-results hidden" id="search-results" role="listbox"></div>
-      </div>
+      </div>`}
     </div></div>` : ""}`;
   $("#menu-btn").addEventListener("click", () => $("#nav").classList.toggle("open"));
   $("#theme-btn").addEventListener("click", () => {
@@ -188,15 +205,7 @@ function renderHeader(r) {
     route_();
   });
   if (!me) return;
-  // One selector for the whole site: changing it re-renders the current page.
-  $("#terrain-select").addEventListener("change", (e) => {
-    const v = e.target.value, now = parseHash(), { query } = now;
-    if (store.TERRAINS.includes(v)) store.set({ terrain: v });
-    if (allowsAllTerrains(now)) replaceQuery({ ...query, t: v === "all" ? null : v });
-    else if (query.t) { delete query.t; replaceQuery(query); }
-    route_();
-  });
-  bindSearch();
+  if (showSearch) bindSearch();
 }
 
 function bindSearch() {

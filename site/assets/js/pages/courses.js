@@ -14,7 +14,7 @@ import {
   chartCard, bindChartCard, legend, tile,
 } from "../ui.js";
 import * as auth from "../auth.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 
 const MODES = ["all", "runner", "club"];
 const LEVELS = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -74,7 +74,7 @@ export async function render(main, { arg, query }) {
         ${runnerSearch("cs-runner", t("rn.change"))}</div>` : ""}
       ${st.mode === "club" ? html`<select id="cs-club" style="margin-top:10px;width:100%">
         ${clubs.map(([c, n]) => html`<option value="${c}" ${raw(c === st.club ? "selected" : "")}>${n} (${c})</option>`)}</select>` : ""}`;
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <label class="field"><span>${t("f.season")}</span><select id="cs-season">
         <option value="all" ${raw(!st.season ? "selected" : "")}>${t("nw.allSeasons")}</option>

@@ -13,7 +13,7 @@ import {
   BASES, SEXES, AGE_GROUPS, baseLabel, measureLabel, sexLabel, ageLabel, clubTable, rankOn, clubName,
   measuresOf, defaultMeasure,
 } from "../clubstats.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
 
 /** The four selectors shared by the club pages; withOrg adds the organised-competitions base. */
@@ -85,7 +85,7 @@ export async function render(main, { query }) {
 
   function drawFilters() {
     const ls = Object.entries(data.meta().names.ligues).sort((a, b) => a[1].localeCompare(b[1]));
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(month)}
       ${clubSelectors(sel, { withOrg: true })}
       ${sel.base !== "pts" ? html`<div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>` : ""}

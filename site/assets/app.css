@@ -270,7 +270,6 @@ select { padding-right: 28px; }
 .dash-key { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--ink-2); flex: none; }
 /* site-wide discipline selector */
 .terrain-select { height: 36px; font-weight: 620; border-radius: 9px; min-width: 110px; cursor: pointer; }
-.terrain-select.is-off { opacity: .45; cursor: default; }
 /* stats: one row per method */
 .statrows { display: grid; gap: 10px; margin-bottom: 16px; }
 .statrow { display: grid; grid-template-columns: 190px repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
@@ -568,14 +567,11 @@ table.data tbody tr.me .name { font-weight: 700; }
 .subbar-inner {
   max-width: 1320px; margin: 0 auto; padding: 6px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
-.subbar-field { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); font-weight: 550; }
 .subbar .search { flex: 0 1 360px; min-width: 0; }
 .subbar .search input { width: 100%; height: 34px; }
 .subbar .search-results { left: 0; right: auto; width: min(420px, calc(100vw - 32px)); }
-.subbar .terrain-select { height: 34px; }
 @media (max-width: 520px) {
   .subbar-inner { padding: 6px 16px; gap: 10px; }
-  .subbar-field > span { display: none; }
   .subbar .search { flex: 1 1 auto; }
 }
 

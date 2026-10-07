@@ -11,7 +11,7 @@ import * as data from "../data.js";
 import { mapChart } from "../charts.js";
 import { chartCard, bindChartCard, dataTable, tile, seg } from "../ui.js";
 import { DEPT_REGION, regionOf, placeOf, loadMap, featuresOf } from "../geo.js";
-import { replaceQuery, viewTerrain } from "../app.js";
+import { replaceQuery, viewTerrain, terrainField } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const LEVELS = ["region", "dept"];
@@ -42,7 +42,7 @@ export async function render(main, query) {
   bindModeSwitch(main);
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <label class="field"><span>${t("f.season")}</span><select id="tr-season">
         <option value="all">${t("nw.allSeasons")}</option>
         ${seasons.map((y) => html`<option value="${y}" ${raw(y === season ? "selected" : "")}>${y}</option>`)}</select></label>

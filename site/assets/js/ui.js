@@ -43,10 +43,6 @@ export function bindMethodSeg(root, onChange) {
   $$("[data-method1]", root).forEach((b) => b.addEventListener("click", () => onChange(b.dataset.method1)));
 }
 
-// Forêt/Sprint now lives in the site header (app.js); pages no longer draw it.
-export const terrainSeg = () => "";
-export const bindTerrainSeg = () => {};
-
 export function seg(name, options, value) {
   return html`<div class="seg" role="group">
     ${options.map(([v, label]) => html`<button type="button" data-seg="${name}" data-value="${v}"

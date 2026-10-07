@@ -79,7 +79,7 @@ export async function render(main) {
       <p>Pour chaque circuit, on calcule une <b>valeur de circuit</b> à partir des coureurs classés qui ont déjà un CN,
       pris ${fmt(pf.lag_days)} jours avant la course (le « CN J-15 »). On retient les plus rapides — les deux tiers arrondis au supérieur —
       et on fait la moyenne du produit CN × temps :</p>
-      <div class="formula">valeur du circuit = moyenne (CN J-15 × temps) sur les ⌈2N/3⌉ plus rapides</div>
+      <div class="formula">valeur du circuit = moyenne (CN J-15 × temps) sur les 2/3 les plus rapides</div>
       <p>Le score de chaque coureur est alors :</p>
       <div class="formula">score = valeur du circuit ÷ temps du coureur</div>
       <p>Un coureur qui court aussi vite que son CN le prévoit obtient donc un score proche de son CN. Un poinçon manquant, un abandon,

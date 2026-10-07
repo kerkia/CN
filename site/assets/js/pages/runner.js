@@ -15,7 +15,7 @@ import {
 } from "../ui.js";
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
 
 export async function render(main, { arg, query }) {
@@ -120,7 +120,7 @@ export async function render(main, { arg, query }) {
   drawCmp();
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <div class="field"><span>${t("f.range")}</span>${seg("range",
         [["1", t("chart.12m")], ["3", t("chart.3y")], ["5", t("chart.5y")], ["all", t("chart.all")]], range)}</div>
@@ -169,6 +169,7 @@ export async function render(main, { arg, query }) {
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
     const wins = mineT.filter((r) => r[R.place] === 1).length;
+    if (!$("#tiles")) return;                           // the page was left while the ranking loaded
     $("#tiles").innerHTML = html`${tiles}${rankTiles}${bestTiles}
       ${tile(t("rn.last12"), fmt(recent.length), `${t(`terrain.${terrain}`)}`)}
       ${tile(t("rn.podiums"), fmt(podiums), plural(wins, t("rn.win"), t("rn.wins")))}`;

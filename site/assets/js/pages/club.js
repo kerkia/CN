@@ -8,13 +8,13 @@ import * as data from "../data.js";
 import { E, C } from "../data.js";
 import { timeChart, columnChart, methodColor, css } from "../charts.js";
 import {
-  methodChips, bindMethodChips, terrainSeg, bindTerrainSeg, chartCard, bindChartCard,
+  methodChips, bindMethodChips, chartCard, bindChartCard,
   legend, dataTable, tile, methodLabel, methodShort, seg, errorBox, terrainTag,
 } from "../ui.js";
 
 const WEEK_MAX_CATS = 6;       // up to this many categories on a circuit, places count per category
 import { loadRanking } from "./ranking.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 
 export async function render(main, { arg: code, query }) {
   const meta = data.meta();
@@ -83,14 +83,13 @@ export async function render(main, { arg: code, query }) {
   $("#all-members").addEventListener("change", (e) => { showAll = e.target.checked; drawRoster(); });
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <div class="field"><span>${t("f.range")}</span>${seg("range",
         [["3", t("chart.3y")], ["5", t("chart.5y")], ["all", t("chart.all")]], range)}</div>`;
     $("#stat-seg").innerHTML = seg("stat", [["mean", t("cb.m.mean")], ["max", t("col.top")], ["sum", t("cb.m.sum")], ["top5", t("cb.m.top5")]], stat);
     $("#elite-seg").innerHTML = seg("elite", [["elite", t("cm.elite")], ["all", t("cm.eliteAll")]], eliteMode);
     $$('[data-seg="elite"]').forEach((b) => b.addEventListener("click", () => { eliteMode = b.dataset.value; drawFilters(); drawElite(); }));
-    bindTerrainSeg(main, () => { drawFilters(); drawAll(); });
     bindMethodChips(main, () => { drawFilters(); drawAll(); });
     $$('[data-seg="range"]').forEach((b) => b.addEventListener("click", () => { range = b.dataset.value; drawFilters(); drawCharts(); }));
     $$('[data-seg="stat"]').forEach((b) => b.addEventListener("click", () => { stat = b.dataset.value; drawFilters(); drawCharts(); }));

@@ -12,7 +12,7 @@ import * as data from "../data.js";
 import { pyramidChart, css } from "../charts.js";
 import { chartCard, bindChartCard, tile, legend } from "../ui.js";
 import { DEPT_REGION, regionOf } from "../geo.js";
-import { replaceQuery, viewTerrain } from "../app.js";
+import { replaceQuery, viewTerrain, terrainField } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const FLAG = { For: 1, Spr: 2, VTT: 4, Ski: 8 };          // site_extras.PYR_FLAG
@@ -64,7 +64,7 @@ export async function render(main, query) {
     for (const r of inSpec) if (r.code && (!ligue || r.region === ligue)) perClub.set(r.code, (perClub.get(r.code) || 0) + r.n);
     const clubs = [...perClub.keys()].sort();             // by club number: département first
     if (club && !perClub.has(club)) club = "";
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <label class="field"><span>${t("f.season")}</span><select id="ag-season">
         ${seasons.map((y) => html`<option value="${y}" ${raw(y === season ? "selected" : "")}>${y}</option>`)}</select></label>
       <label class="field"><span>${t("f.ligue")}</span><select id="ag-ligue">

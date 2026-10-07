@@ -98,9 +98,11 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   when a race enters or leaves the window. Never explain method artefacts in the UI — fix the method instead.
 - The CN J-15 shown for computed methods is the runner's **published** CN 15 days before the race (the engine's
   own `cn_j15` column is on its internal scale).
-- Rejected after testing: Top with 10 places (6 works once circuits use Juste), best 70/80 % pools, 5 races
-  minimum (fewer circuit valuers, worse), feedback on the recalage (oscillates), distance-pooled sprint circuit
-  values (pace not comparable across circuits).
+- Rejected after testing: Top with 10 places (6 works once circuits use Juste), best 70/80 % pools for forest
+  and sprint (re-measured 2026-10-06: −0.4 to −1 point), 5 races minimum (fewer circuit valuers, worse),
+  2 races minimum (2026-10-07: +11 % ranked in forest, +38 % in sprint, and those runners' Juste CN still beats
+  their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
+  recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
 
 ## Changing a method: migrations
 

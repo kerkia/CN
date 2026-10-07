@@ -164,7 +164,6 @@ const FR = {
   "cb.ageGroup": "Âge",
   "cb.measure": "Agrégé par",
   "cb.base": "On compte",
-  "terrain.na": "Sans objet sur cette page",
   "m.top6w.short": "Top",
   "m.fair.short": "Juste",
   "m.official.short": "Officiel",

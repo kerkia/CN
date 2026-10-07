@@ -12,7 +12,7 @@ import { columnChart, terrainColor } from "../charts.js";
 import { chartCard, bindChartCard, tile, seg, legend } from "../ui.js";
 import { TERRAINS } from "../store.js";
 import { DEPT_REGION, regionOf, placeOf } from "../geo.js";
-import { replaceQuery, viewTerrain } from "../app.js";
+import { replaceQuery, viewTerrain, terrainField } from "../app.js";
 import { modeSwitch, bindModeSwitch } from "./netmodes.js";
 
 const MEASURES = ["runners", "comps", "results"];
@@ -68,7 +68,7 @@ export async function render(main, query) {
     if (club && !perClub.has(club)) club = "";
     const regionList = [...regions].sort((a, b) => data.ligueName(a).localeCompare(data.ligueName(b), "fr"));
     const clubList = [...perClub.keys()].sort();           // by club number: département first
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       <label class="field"><span>${t("f.ligue")}</span><select id="act-ligue">
         <option value="">${t("ag.allLigues")}</option>
         ${regionList.map((l) => html`<option value="${l}" ${raw(l === ligue ? "selected" : "")}>${data.ligueName(l)}</option>`)}</select></label>

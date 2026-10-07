@@ -11,7 +11,7 @@ import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import { methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg } from "../ui.js";
 import { MEASURES, measureLabel, baseLabel, clubTable, rankOn, clubName, fromSummary } from "../clubstats.js";
 import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescription } from "./clubs.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
 
 const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
@@ -94,7 +94,7 @@ export async function render(main, { query }) {
   }
 
   function drawFilters() {
-    $("#filters").innerHTML = html`
+    $("#filters").innerHTML = html`${terrainField()}
       ${clubSelectors(sel)}
       ${sel.base === "cn" ? html`<div class="field"><span>${t("f.methods")}</span>${methodChips(undefined, { dash: true })}</div>` : ""}`;
     bindClubSelectors(main, sel, () => { drawFilters(); drawAll(); });
