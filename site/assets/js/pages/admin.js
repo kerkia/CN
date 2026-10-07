@@ -41,7 +41,9 @@ export async function render(main) {
       && (!qn || normalise(`${u.email} ${u.first_name} ${u.last_name} ${u.licence}`).includes(qn)));
     $("#ad-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("ad.col.email")}</th><th>${t("ad.col.name")}</th><th>${t("ad.col.lic")}</th><th>${t("ad.col.status")}</th>
-      <th>${t("ad.col.created")}</th><th>${t("ad.col.login")}</th><th>${t("ad.col.notify")}</th><th>${t("ad.col.actions")}</th></tr></thead>
+      <th>${t("ad.col.created")}</th><th>${t("ad.col.login")}</th><th>${t("ad.col.notify")}</th>
+      <th title="${t("ad.col.analyst.hint")}">${t("ad.col.analyst")}</th><th title="${t("ad.col.alerts.hint")}">${t("ad.col.alerts")}</th>
+      <th>${t("ad.col.actions")}</th></tr></thead>
       <tbody>${rows.map((u) => html`<tr>
         <td>${u.email}</td>
         <td><a href="${link.runner(u.licence)}">${u.display_name}</a><div class="muted" style="font-size:12px">${u.first_name} ${u.last_name}</div></td>
@@ -50,6 +52,9 @@ export async function render(main) {
         <td class="num">${fmtDate(u.created_at.slice(0, 10), "short")}</td>
         <td class="num">${u.last_login ? fmtDate(u.last_login.slice(0, 10), "short") : "—"}</td>
         <td>${u.notify ? "✓" : ""}</td>
+        <td class="c"><input type="checkbox" data-right="analyst" data-id="${u.id}" ${u.analyst ? "checked" : ""} aria-label="${t("ad.col.analyst")}"></td>
+        <td class="c"><input type="checkbox" data-right="alerts" data-id="${u.id}" ${u.alerts_allowed ? "checked" : ""} aria-label="${t("ad.col.alerts")}">
+          ${u.agenda_alert || u.deadline_alert ? html`<div class="muted" style="font-size:11.5px">${[u.agenda_alert ? t("ad.alert.new") : "", u.deadline_alert ? t("ad.alert.deadline") : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
         <td><div class="row" style="gap:6px;flex-wrap:nowrap">
           <button type="button" class="btn btn-sm" data-act="${u.status === "disabled" ? "enable" : "disable"}" data-id="${u.id}">${u.status === "disabled" ? t("ad.enable") : t("ad.disable")}</button>
           <button type="button" class="btn btn-sm" data-act="delete" data-id="${u.id}" style="color:var(--bad)">${t("ad.delete")}</button>
@@ -62,6 +67,15 @@ export async function render(main) {
       const fresh = await (await fetch("api/admin/users", { credentials: "same-origin", cache: "no-store" })).json();
       ({ users, duplicates, queued } = fresh);
       draw();
+    }));
+    // rights: the analysis methods, the agenda alerts — saved at each click
+    $$("[data-right]", $("#ad-table")).forEach((box) => box.addEventListener("change", async () => {
+      box.disabled = true;
+      const res = await auth.api("api/admin/user", { id: Number(box.dataset.id), action: "right", right: box.dataset.right, on: box.checked });
+      box.disabled = false;
+      if (!res.ok) { box.checked = !box.checked; return; }
+      const u = users.find((x) => x.id === Number(box.dataset.id));
+      if (u) u[box.dataset.right === "analyst" ? "analyst" : "alerts_allowed"] = box.checked ? 1 : 0;
     }));
   }
   $("#ad-q").addEventListener("input", (e) => { q = e.target.value; draw(); });

@@ -240,6 +240,9 @@ def build_methods() -> dict[str, MethodSpec]:
         by_terrain={"VTT": {"window_days": 730, "eligible_fraction": 0.70},
                     "Ski": {"window_days": 1095, "eligible_fraction": 0.70}},
     )
+    # The quadratic variants: circuit value and CN as quadratic means (power 2), everything else
+    # equal. Measured 2026-10-07 on the same pairs: +0.3 point forest, +0.1 sprint, +0.3 VTT, +0.6 ski.
+    fair2 = dataclasses.replace(fair, cv_power=2.0, cn_power=2.0)
     return {
         "fair": MethodSpec(
             name="fair",
@@ -256,6 +259,19 @@ def build_methods() -> dict[str, MethodSpec]:
             params=dataclasses.replace(fair, top_n=6),
             derived_from="fair",
             description="Fair's scores, best 6 weighted places",
+        ),
+        "fair2": MethodSpec(
+            name="fair2",
+            params=fair2,
+            rescale=None,
+            normalisation=Normalisation(),
+            description="Fair with quadratic means (circuit value and CN)",
+        ),
+        "top6w2": MethodSpec(
+            name="top6w2",
+            params=dataclasses.replace(fair2, top_n=6),
+            derived_from="fair2",
+            description="Top with quadratic means, derived from fair2",
         ),
     }
 

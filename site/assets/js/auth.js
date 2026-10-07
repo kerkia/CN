@@ -56,7 +56,7 @@ export async function accountLogin(email, password) {
   const r = await api("api/account/login", { email, password });
   if (r.ok) {
     const u = r.data;
-    const s = { lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, until: Date.now() + DAYS * 86400e3 };
+    const s = { ...fromUser(u), until: Date.now() + DAYS * 86400e3 };
     keep(s);
     return s;
   }
@@ -66,6 +66,23 @@ export async function accountLogin(email, password) {
   throw err;
 }
 
+/** What the browser keeps of the account (the rights decide what the pages show). */
+const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, analyst: !!u.analyst,
+  agendaAllowed: !!u.agendaAllowed });
+/** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
+export async function refresh() {
+  const s = session();
+  if (!s) return null;
+  try {
+    const r = await fetch("api/account/me", { credentials: "same-origin", cache: "no-store" });
+    if (!r.ok) return s;
+    const n = { ...s, ...fromUser(await r.json()) };
+    keep(n);
+    return n;
+  } catch (e) {
+    return s;
+  }
+}
 export async function logout() {
   forget();
   try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}

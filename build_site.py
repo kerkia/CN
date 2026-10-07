@@ -208,9 +208,12 @@ def main(argv: list[str] | None = None) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
 
     methods = build_methods()
-    pf: CnParams = methods["fair"].params
-    p6: CnParams = methods["top6w"].params
-    norm_cfg = methods["fair"].normalisation       # Top shares Fair's scores and recalage
+    COMPUTED = list(methods)                       # fair, top6w, fair2, top6w2
+    PARAMS: dict[str, CnParams] = {n: methods[n].params for n in COMPUTED}
+    BASE = {n: methods[n].derived_from or n for n in COMPUTED}   # whose scores and recalage a method uses
+    BASES = [n for n in COMPUTED if BASE[n] == n]
+    pf: CnParams = PARAMS["fair"]
+    norm_cfg = methods["fair"].normalisation       # every Top shares its Fair's scores and recalage
 
     names = reference_names(conn)
     print(f"names: {len(names['clubs'])} clubs, {len(names['ligues'])} ligues, "
@@ -240,17 +243,20 @@ def main(argv: list[str] | None = None) -> None:
             cvals[r["circuit_id"]]["official"] = r["valeur"]
     print(f"{len(comps)} competitions, {len(circuits)} circuits")
 
-    # -- the monthly recalage schedule (Fair's, shared by Top) ------------------
-    norm = defaultdict(list)
-    for r in conn.execute(
-        "SELECT terrain, date_iso, factor, top_mean_raw FROM normalisation "
-        "WHERE method='fair' ORDER BY date_iso"
-    ):
-        norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
-    knots = {t: daily_knots([(date.fromisoformat(d), f) for d, f, _ in v]) for t, v in norm.items()}
+    # -- the monthly recalage schedules (each Fair's, shared by its Top) ----------
+    knots_of = {}
+    for base in BASES:
+        norm = defaultdict(list)
+        for r in conn.execute(
+            "SELECT terrain, date_iso, factor, top_mean_raw FROM normalisation "
+            "WHERE method=? ORDER BY date_iso", (base,)
+        ):
+            norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
+        knots_of[base] = {t: daily_knots([(date.fromisoformat(d), f) for d, f, _ in v]) for t, v in norm.items()}
+    knots = knots_of["fair"]
 
-    def factor_at(t: str, d: date) -> float:
-        return factor_on(knots.get(t, []), d)
+    def factor_at(t: str, d: date, base: str = "fair") -> float:
+        return factor_on(knots_of[base].get(t, []), d)
 
 
     # -- load every result row once ----------------------------------------
@@ -266,8 +272,8 @@ def main(argv: list[str] | None = None) -> None:
     cn_after = defaultdict(dict)    # method -> (licence, date, terrain) -> cn
     cn_hist = defaultdict(lambda: defaultdict(lambda: ([], [])))   # method -> (licence, terrain) -> dates, cns
     for r in conn.execute(
-        "SELECT method, licence, date_iso, terrain, cn FROM cn_history "
-        "WHERE method IN ('fair','top6w') ORDER BY date_iso"
+        f"SELECT method, licence, date_iso, terrain, cn FROM cn_history "
+        f"WHERE method IN ({','.join('?' * len(COMPUTED))}) ORDER BY date_iso", COMPUTED
     ):
         if r["cn"] is not None:
             cn_after[r["method"]][(r["licence"], r["date_iso"], r["terrain"])] = r["cn"]
@@ -282,7 +288,7 @@ def main(argv: list[str] | None = None) -> None:
             return None
         asof = date.fromisoformat(d) - timedelta(days=pf.lag_days)
         i = bisect_right(h[0], asof.isoformat()) - 1
-        if i < 0 or h[0][i] <= (asof - timedelta(days=pf.for_terrain(terrain).window_days)).isoformat():
+        if i < 0 or h[0][i] <= (asof - timedelta(days=PARAMS[method].for_terrain(terrain).window_days)).isoformat():
             return None
         return h[1][i]
     raw_res = {}
@@ -343,6 +349,16 @@ def main(argv: list[str] | None = None) -> None:
     print(f"{len(runners):,} runners")
 
     # -- runner detail files ------------------------------------------------
+    def method_cols(lic, cid, terr_full, d, fm, tm):
+        """A Fair method's published score, CN J-15, CN after, counts; its Top's raw score, published
+        score (= the Fair's), CN J-15, CN after, counts, weight."""
+        v, t = by_method[fm].get((lic, cid)), by_method[tm].get((lic, cid))
+        return [v["score"] if v else None, cn_j15(fm, lic, terr_full, d) if v else None,
+                cn_after[fm].get((lic, d, terr_full)), v["counts_for_cn"] if v else 0,
+                t["score_raw"] if t else None, t["score"] if t else None,
+                cn_j15(tm, lic, terr_full, d) if t else None, cn_after[tm].get((lic, d, terr_full)),
+                t["counts_for_cn"] if t else 0, t["poids"] if t else None]
+
     buckets = defaultdict(dict)
     for lic, lst in per_runner.items():
         races = []
@@ -350,8 +366,6 @@ def main(argv: list[str] | None = None) -> None:
             course_id, cname, dist = circuits[cid]
             c = comps[course_id]
             o = by_method["official"][(lic, cid)]
-            v = by_method["fair"].get((lic, cid))
-            t = by_method["top6w"].get((lic, cid))
             raw = raw_res.get((lic, cid))
             terr_full = o["terrain"]
             races.append([
@@ -361,13 +375,9 @@ def main(argv: list[str] | None = None) -> None:
                 o["temps_s"], o["status"],
                 # official: score, cn j-15, cn after
                 o["score"], o["cn_j15"], to_int(raw["nouveau_cn"]) if raw else None,
-                # fair: published score, cn j-15, cn after, counts
-                v["score"] if v else None, cn_j15("fair", lic, terr_full, d) if v else None,
-                cn_after["fair"].get((lic, d, terr_full)), v["counts_for_cn"] if v else 0,
-                # top6w: raw score, published score (= Fair's), cn j-15, cn after, counts, weight
-                t["score_raw"] if t else None, t["score"] if t else None,
-                cn_j15("top6w", lic, terr_full, d) if t else None, cn_after["top6w"].get((lic, d, terr_full)),
-                t["counts_for_cn"] if t else 0, t["poids"] if t else None,
+                # fair + top6w, then fair2 + top6w2 (see method_cols)
+                *method_cols(lic, cid, terr_full, d, "fair", "top6w"),
+                *method_cols(lic, cid, terr_full, d, "fair2", "top6w2"),
             ])
         buckets[int(lic) // 10 if str(lic).isdigit() else 999999][lic] = races
     for b, content in buckets.items():
@@ -378,21 +388,18 @@ def main(argv: list[str] | None = None) -> None:
     # -- competition files --------------------------------------------------
     by_course = defaultdict(lambda: defaultdict(list))
     for (lic, cid), o in by_method["official"].items():
-        v = by_method["fair"].get((lic, cid))
-        t = by_method["top6w"].get((lic, cid))
         raw = raw_res.get((lic, cid))
-        by_course[circuits[cid][0]][cid].append([
-            lic, to_int(raw["place"]) if raw else None, o["temps_s"], o["status"],
-            o["categorie"], o["club"],
-            o["score"], o["cn_j15"],
-            v["score"] if v else None, cn_j15("fair", lic, o["terrain"], o["date_iso"]) if v else None,
-            t["score"] if t else None, cn_j15("top6w", lic, o["terrain"], o["date_iso"]) if t else None,
-        ])
+        row = [lic, to_int(raw["place"]) if raw else None, o["temps_s"], o["status"],
+               o["categorie"], o["club"], o["score"], o["cn_j15"]]
+        for m in COMPUTED:                          # fair, top6w, fair2, top6w2: score, CN J-15
+            v = by_method[m].get((lic, cid))
+            row += [v["score"] if v else None, cn_j15(m, lic, o["terrain"], o["date_iso"]) if v else None]
+        by_course[circuits[cid][0]][cid].append(row)
     for (lic, cid), o in nc_rows.items():
         if o is not None:
             by_course[circuits[cid][0]][cid].append([
                 lic, None, o["temps_s"], "nc", o["categorie"], o["club"],
-                None, o["cn_j15"], None, None, None, None,
+                None, o["cn_j15"], *([None, None] * len(COMPUTED)),
             ])
     for course_id, circ in by_course.items():
         out = []
@@ -400,12 +407,13 @@ def main(argv: list[str] | None = None) -> None:
             rows.sort(key=lambda x: (x[1] is None, x[1] or 0, x[2] or 10**9))
             cv = cvals.get(cid, {})
             d = date.fromisoformat(comps[course_id][0])
-            fv = cv.get("fair")                     # Top's circuits are Fair's
-            fv = Decimal_round(fv * factor_at(comps[course_id][6], d)) if fv else None
+            value = {"official": cv.get("official")}
+            for m in COMPUTED:                      # a Top's circuits are its Fair's
+                fv = cv.get(BASE[m])
+                value[m] = Decimal_round(fv * factor_at(comps[course_id][6], d, BASE[m])) if fv else None
             out.append({
                 "id": cid, "name": circuits[cid][1], "dist": circuits[cid][2],
-                "value": {"official": cv.get("official"), "fair": fv, "top6w": fv},
-                "rows": rows,
+                "value": value, "rows": rows,
             })
         out.sort(key=lambda c: c["name"] or "")
         dump(OUT / "c" / f"{course_id}.json", {"course": course_id, "circuits": out})
@@ -439,14 +447,15 @@ def main(argv: list[str] | None = None) -> None:
     print(f"{len(months)} month-ends {months[0]} .. {months[-1]}")
 
     # histories per runner/terrain for each method
-    h6 = defaultdict(lambda: ([], [], []))         # dates, published scores, weights (Fair's = Top's)
+    hist_of = {b: defaultdict(lambda: ([], [], [])) for b in BASES}   # base -> (lic, t) -> dates, scores, weights
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
-    for (lic, cid), v in sorted(by_method["fair"].items(), key=lambda kv: kv[1]["date_iso"]):
-        if v["counts_for_cn"] and v["score"] is not None:
-            k = (lic, TERRAINS.get(v["terrain"], "For"))
-            h6[k][0].append(date.fromisoformat(v["date_iso"]))
-            h6[k][1].append(v["score"])
-            h6[k][2].append(v["poids"] or 1.0)
+    for base in BASES:
+        for (lic, cid), v in sorted(by_method[base].items(), key=lambda kv: kv[1]["date_iso"]):
+            if v["counts_for_cn"] and v["score"] is not None:
+                k = (lic, TERRAINS.get(v["terrain"], "For"))
+                hist_of[base][k][0].append(date.fromisoformat(v["date_iso"]))
+                hist_of[base][k][1].append(v["score"])
+                hist_of[base][k][2].append(v["poids"] or 1.0)
     # Before 2026 the official pedestrian ranking was a single one, so its
     # history is pooled under "Ped"; from 2026 it is per terrain (VTT and ski: always).
     off_events = []
@@ -490,15 +499,17 @@ def main(argv: list[str] | None = None) -> None:
         ym = [m for m in months if m.year == Y]
         idx = {m: i for i, m in enumerate(ym)}
         files = defaultdict(dict)   # (method, t) -> lic -> [12]
-        for (lic, t), (ds, ss, ws) in h6.items():
-            full_t = TERRAIN_NAMES[t]                     # params are keyed by the database's terrain
-            pft, p6t = pf.for_terrain(full_t), p6.for_terrain(full_t)
-            for m in ym:
-                if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=pft.window_days + 1):
-                    for mth, p in (("fair", pft), ("top6w", p6t)):
-                        cn = agg_at(ds, ss, ws, m, p)
-                        if cn:
-                            files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
+        for base in BASES:
+            family = [n for n in COMPUTED if BASE[n] == base]      # the Fair and its Top
+            for (lic, t), (ds, ss, ws) in hist_of[base].items():
+                full_t = TERRAIN_NAMES[t]                 # params are keyed by the database's terrain
+                ps = {n: PARAMS[n].for_terrain(full_t) for n in family}
+                for m in ym:
+                    if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=ps[base].window_days + 1):
+                        for mth in family:
+                            cn = agg_at(ds, ss, ws, m, ps[mth])
+                            if cn:
+                                files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         for (lic, t), (ds, cs) in hoff.items():
             if t != official_terrain(t if t != "Ped" else "For", Y):     # pooled before, split after
                 continue
@@ -562,39 +573,33 @@ def main(argv: list[str] | None = None) -> None:
         pairs = []
         Y = years[-1]
         try:
-            s26 = json.loads((OUT / "snap" / f"fair_{t}_{Y}.json").read_text(encoding="utf-8"))
-            s6 = json.loads((OUT / "snap" / f"top6w_{t}_{Y}.json").read_text(encoding="utf-8"))
-            so = json.loads((OUT / "snap" / f"official_{t}_{Y}.json").read_text(encoding="utf-8"))
+            snaps = [json.loads((OUT / "snap" / f"{m}_{t}_{Y}.json").read_text(encoding="utf-8"))
+                     for m in ("official", *COMPUTED)]
         except FileNotFoundError:
             continue
-        last = len(s26["months"]) - 1
-        d26 = {r[0]: r[1 + last] for r in s26["rows"]}
-        d6 = {r[0]: r[1 + last] for r in s6["rows"]}
-        do = {r[0]: r[1 + last] for r in so["rows"]}
-        for lic in sorted(set(d26) & set(d6) & set(do)):   # sorted: the sample below is then stable
-            if d26[lic] and d6[lic] and do[lic]:
-                pairs.append([do[lic], d26[lic], d6[lic]])
+        last = len(snaps[0]["months"]) - 1
+        ds = [{r[0]: r[1 + last] for r in s["rows"]} for s in snaps]
+        for lic in sorted(set.intersection(*(set(d) for d in ds))):   # sorted: the sample below is then stable
+            if all(d[lic] for d in ds):
+                pairs.append([d[lic] for d in ds])     # official, fair, top6w, fair2, top6w2
         agree[t] = pairs[:4000]
 
     def by_terrain(p):            # a discipline's own values, by site code (see CnParams.by_terrain)
         return {TERRAINS.get(t, t): o for t, o in p.by_terrain.items()}
 
-    methods_meta = {
-        "official": {"color": 1},
-        "fair": {"color": 2, "params": {
-            "eligible_fraction": pf.eligible_fraction, "weights": TITLE_WEIGHTS,
-            "min_scores": pf.min_scores_for_cn, "min_ranked": pf.min_ranked,
-            "window_days": pf.window_days, "lag_days": pf.lag_days, "by_terrain": by_terrain(pf),
+    def params_meta(p: CnParams) -> dict:
+        return {
+            **({"top_n": p.top_n} if p.top_n < 10 ** 5 else {}),
+            "eligible_fraction": p.eligible_fraction, "weights": TITLE_WEIGHTS,
+            "min_scores": p.min_scores_for_cn, "min_ranked": p.min_ranked,
+            "window_days": p.window_days, "lag_days": p.lag_days, "by_terrain": by_terrain(p),
+            "cv_power": p.cv_power, "cn_power": p.cn_power,
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
-            "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
-        "top6w": {"color": 3, "params": {
-            "top_n": p6.top_n, "eligible_fraction": p6.eligible_fraction,
-            "weights": TITLE_WEIGHTS,
-            "min_scores": p6.min_scores_for_cn, "min_ranked": p6.min_ranked,
-            "window_days": p6.window_days, "lag_days": p6.lag_days, "by_terrain": by_terrain(p6),
-            "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
-            "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}},
-    }
+            "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}
+
+    COLOR = {"fair": 2, "top6w": 3, "fair2": 5, "top6w2": 4}      # palette slots, as in the browser
+    methods_meta = {"official": {"color": 1},
+                    **{n: {"color": COLOR[n], "params": params_meta(PARAMS[n])} for n in COMPUTED}}
     meta = {
         "built": date.today().isoformat(),
         "min_season": min_season or None,

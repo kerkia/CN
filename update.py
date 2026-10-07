@@ -67,13 +67,14 @@ TOP6W_CN_VERSION = 4
 #   3 (2026-10-05): Top: circuits valued by the uncapped best 60 %; no fallback first official CN
 #   4 (2026-10-05): the 2026 method replaced by "fair" (weighted best 60 %); Top derived from it, 6 places
 #   5 (2026-10-06): VTT and ski: windows of 2 and 3 years, best 70 % (their own params, CnParams.by_terrain)
-ENGINE_VERSION = 5
+#   6 (2026-10-07): the quadratic variants "fair2" and "top6w2" (circuit value and CN as quadratic means)
+ENGINE_VERSION = 6
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
 #   3 (2026-10-07): participation.json, the statistics moved from the home page to Réseau · Activité
 EXTRAS_VERSION = 3
-COMPUTED = ("fair", "top6w")            # in this order: Top is derived from Fair
+COMPUTED = ("fair", "top6w", "fair2", "top6w2")   # in this order: each Top is derived from its Fair
 
 
 def migrate(db: Path, out: Path) -> bool:
@@ -114,8 +115,9 @@ def migrate(db: Path, out: Path) -> bool:
     else:
         print("migration: Fair and Top — factors, race scores and CN recomputed, every season")
         methods = build_methods()
-        engine._normalise(methods["fair"], None)
-        engine.derive(methods["top6w"])
+        for name in COMPUTED:
+            spec = methods[name]
+            engine.derive(spec) if spec.derived_from else engine._normalise(spec, None)
     engine.write_runners()
     engine.close()
     import build_site

@@ -9,14 +9,14 @@ const registry = new Set();
 export const css = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-export const METHOD_SLOT = { official: 1, fair: 2, top6w: 3 };
+export const METHOD_SLOT = { official: 1, fair: 2, top6w: 3, fair2: 5, top6w2: 4 };
 export const methodColor = (m) => css(`--s${METHOD_SLOT[m]}`);
 export const slotColor = (i) => css(`--s${(i % 8) + 1}`);
 // One colour per discipline wherever disciplines are compared.
 const TERRAIN_SLOT = { For: "--s6", Spr: "--s7", VTT: "--s4", Ski: "--s1" };
 export const terrainColor = (tr) => css(TERRAIN_SLOT[tr]);
 // Secondary encoding for method when colour is spent on runners.
-export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [2, 4] };
+export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [2, 4], fair2: [12, 3, 3, 3], top6w2: [6, 3] };
 
 function theme() {
   return {

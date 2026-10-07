@@ -24,13 +24,14 @@ const PAGES = {
   agenda: () => import("./pages/agenda.js"),
   account: () => import("./pages/account.js"),      // public: sign-up, confirmation, password reset, privacy
   settings: () => import("./pages/settings.js"),
+  contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
 };
 
 // Where the runner selection tray is worth showing.
 const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
 // Pages without the runner search of the header: it leads away from what they show.
-const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda"]);
+const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -63,6 +64,7 @@ function parseHash() {
     : head === "reseau" ? "network"
     : head === "compte" ? "account"
     : head === "reglages" ? "settings"
+    : head === "contact" ? "contact"
     : head === "admin" ? "admin"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
@@ -174,6 +176,7 @@ function renderHeader(r) {
         <div class="user-links">
           ${me.admin ? html`<a href="#/admin">${t("admin.link")}</a>` : ""}
           <a href="#/reglages">${t("st.link")}</a>
+          <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}">${t("ct.link.menu")}</a>
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
       </div>` : html`
@@ -304,8 +307,12 @@ async function route_() {
   }
   if (me && !data.isPrivateLoaded()) {
     try { await data.bootPrivate(); } catch (e) { return signedOut(); }
+    await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
   }
+  // the analysis methods ("Juste") only for the accounts allowed to see them
+  const who = auth.session();
+  store.setAnalyst(!!(who?.analyst || who?.admin));
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);

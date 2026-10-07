@@ -129,6 +129,11 @@ class CnParams:
     min_scores_for_cn: int = 2
     window_days: int = 365
     lag_days: int = 15                   # CN "à J-15"
+    # Power means (2026-10-07): 1 = the plain mean (FFCO's rule); 2 = the quadratic mean, which leans towards
+    # the higher values. `cv_power` for the circuit value (mean of CN x time over the sample), `cn_power` for
+    # a runner's CN (weighted mean of the kept scores). Measured: both at 2 predict best in every specialité.
+    cv_power: float = 1.0
+    cn_power: float = 1.0
     # A discipline's own values over the ones above, e.g. {"VTT": {"window_days": 730}}:
     # VTT and ski have far fewer competitions than forest and sprint.
     by_terrain: dict = field(default_factory=dict, hash=False, compare=False)
@@ -235,7 +240,9 @@ def circuit_value(
     else:
         n = max(1, _apply_rounding(params.sample_fraction * n_total, params.sample_rounding))
     subset = ordered[:n]
-    mean_value = sum(cn * t for cn, t in subset) / len(subset)
+    q = params.cv_power
+    mean_value = (sum(cn * t for cn, t in subset) / len(subset) if q == 1
+                  else (sum((cn * t) ** q for cn, t in subset) / len(subset)) ** (1 / q))
     coeff = params.k_over_1000 if k is None else k
     return Decimal_round(mean_value * coeff), n
 
@@ -280,6 +287,9 @@ def top_n_weighted(
     total_w = sum(u for _, u in kept)
     if total_w <= 0:
         return None, 0
+    q = params.cn_power
+    if q != 1:                               # power mean of the kept scores, same weights
+        return Decimal_round((sum(s ** q * u for s, u in kept) / total_w) ** (1 / q)), len(kept)
     return Decimal_round(sum(s * u for s, u in kept) / total_w), len(kept)
 
 

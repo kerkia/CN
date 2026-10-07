@@ -9,14 +9,12 @@ import * as data from "../data.js";
 import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
-  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg,
-  runnerSearch, bindRunnerSearch,
+  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 
-const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
 
 export async function render(main, { query }) {
   if (query.r) store.setCompare(query.r.split(",").filter(Boolean));
@@ -126,7 +124,7 @@ export async function render(main, { query }) {
   }
   const nameOf = (lic) => displayName(data.runner(lic)?.nom || lic);
   const runnerLegend = (sel) => html`${sel.map((c) => html`<span><span class="dot" style="background:${raw(slotColor(c.slot))}"></span>${nameOf(c.lic)}</span>`)}
-    ${store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span><span class="dash-key" style="border-top-style:${raw(DASH_CSS[m])}"></span>${methodShort(m)}</span>`) : ""}`;
+    ${store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span>${dashKey(m)} ${methodShort(m)}</span>`) : ""}`;
 
   function zoomOf(all) {
     const first = all[0], last = all[all.length - 1];

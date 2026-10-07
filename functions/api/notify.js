@@ -9,11 +9,10 @@
 // update.py computes who ran which new competition (it has the database); this side only
 // knows who subscribed, so the server stays small.
 
-import { json, readBody } from "../_lib/api.js";
+import { alertsAllowed, json, jsonList, readBody } from "../_lib/api.js";
 import { sha256hex } from "../_lib/crypto.js";
 import { flushQueue, queueStatement } from "../_lib/mail.js";
 import { agendaMail, digestMail } from "../_lib/templates.js";
-import { jsonList } from "../_lib/api.js";
 
 async function authorised(request, env) {
   const given = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -51,7 +50,7 @@ async function announceAgenda(env, list) {
       count: Number.isInteger(e.reg.count) ? e.reg.count : null, teams: Number.isInteger(e.reg.teams) ? e.reg.teams : null,
     } : null,
   }));
-  if (!events.length) return 0;
+  if (!events.length) return { queued: 0, events };
   const first = (await env.DB.prepare("SELECT COUNT(*) AS n FROM agenda_announced").first()).n === 0;
   const fresh = [];
   for (let i = 0; i < events.length; i += 45) {                     // 2 bound values per row, at most 100 per statement
@@ -62,14 +61,48 @@ async function announceAgenda(env, list) {
     const added = new Set(results.map((r) => r.event_id));
     fresh.push(...part.filter((e) => added.has(e.id)));
   }
-  if (first || !fresh.length) return 0;
+  if (first || !fresh.length) return { queued: 0, events };
   const { results: users } = await env.DB.prepare(
     "SELECT * FROM users WHERE agenda_alert = 1 AND email_verified = 1 AND status = 'active'").all();
   const stmts = [];
   for (const u of users) {
+    if (!alertsAllowed(env, u)) continue;             // a right the administrator grants
     const regions = new Set(jsonList(u.agenda_regions));
     const mine = fresh.filter((e) => regions.has(e.region));
     if (mine.length) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, mine), kind: "agenda", priority: 0 }));
+  }
+  for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
+  return { queued: stmts.length, events };
+}
+
+const DEADLINE_DAYS = 8;
+/** Today in Paris, and a number of days later, as YYYY-MM-DD. */
+const parisDay = (plus = 0) => {
+  const d = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }) + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + plus);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * The courses whose registrations close within DEADLINE_DAYS -> one digest for each account that asked for this
+ * alert, about the ones in its regions it has not been told about yet (deadline_announced), soonest first.
+ */
+async function announceDeadlines(env, events) {
+  const today = parisDay(), until = parisDay(DEADLINE_DAYS);
+  const soon = events.filter((e) => e.reg?.close && e.reg.close >= today && e.reg.close <= until);
+  if (!soon.length) return 0;
+  const { results: users } = await env.DB.prepare(
+    "SELECT * FROM users WHERE deadline_alert = 1 AND email_verified = 1 AND status = 'active'").all();
+  const stmts = [];
+  for (const u of users) {
+    if (!alertsAllowed(env, u)) continue;
+    const regions = new Set(jsonList(u.agenda_regions));
+    const mine = soon.filter((e) => regions.has(e.region)).slice(0, 90);
+    if (!mine.length) continue;
+    const res = await env.DB.batch(mine.map((e) => env.DB.prepare(
+      "INSERT OR IGNORE INTO deadline_announced (user_id, event_id, seen_at) VALUES (?, ?, ?)").bind(u.id, e.id, Date.now())));
+    const fresh = mine.filter((_, i) => res[i].meta.changes).sort((a, b) => a.reg.close.localeCompare(b.reg.close));
+    if (fresh.length) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, fresh, "deadline"), kind: "deadline", priority: 0 }));
   }
   for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
   return stmts.length;
@@ -78,7 +111,12 @@ async function announceAgenda(env, list) {
 export async function onRequestPost({ request, env }) {
   if (!(await authorised(request, env))) return json({ error: "forbidden" }, 403);
   const b = await readBody(request);
-  const agendaQueued = Array.isArray(b?.agenda) ? await announceAgenda(env, b.agenda) : 0;
+  let agendaQueued = 0, deadlineQueued = 0;
+  if (Array.isArray(b?.agenda)) {
+    const r = await announceAgenda(env, b.agenda);
+    agendaQueued = r.queued;
+    deadlineQueued = await announceDeadlines(env, r.events);
+  }
   const items = Array.isArray(b?.items) ? b.items.slice(0, 100) : [];
   let queued = 0;
   if (items.length) {
@@ -99,5 +137,5 @@ export async function onRequestPost({ request, env }) {
       queued = stmts.length;
     }
   }
-  return json({ queued, agendaQueued, ...(await flushQueue(env)) });
+  return json({ queued, agendaQueued, deadlineQueued, ...(await flushQueue(env)) });
 }

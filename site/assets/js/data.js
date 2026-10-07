@@ -31,15 +31,23 @@ export const R = {
   offScore: 14, offCnj15: 15, offCnAfter: 16,
   fScore: 17, fCnj15: 18, fCnAfter: 19, fCounts: 20,
   t6Raw: 21, t6Score: 22, t6Cnj15: 23, t6CnAfter: 24, t6Counts: 25, t6Weight: 26,
+  // the quadratic variants, same layout
+  f2Score: 27, f2Cnj15: 28, f2CnAfter: 29, f2Counts: 30,
+  t2Raw: 31, t2Score: 32, t2Cnj15: 33, t2CnAfter: 34, t2Counts: 35, t2Weight: 36,
 };
-export const SCORE_COL = { official: R.offScore, fair: R.fScore, top6w: R.t6Score };
-export const CNAFTER_COL = { official: R.offCnAfter, fair: R.fCnAfter, top6w: R.t6CnAfter };
-export const CNJ15_COL = { official: R.offCnj15, fair: R.fCnj15, top6w: R.t6Cnj15 };
+export const SCORE_COL = { official: R.offScore, fair: R.fScore, top6w: R.t6Score, fair2: R.f2Score, top6w2: R.t2Score };
+export const CNAFTER_COL = { official: R.offCnAfter, fair: R.fCnAfter, top6w: R.t6CnAfter, fair2: R.f2CnAfter, top6w2: R.t2CnAfter };
+export const CNJ15_COL = { official: R.offCnj15, fair: R.fCnj15, top6w: R.t6Cnj15, fair2: R.f2Cnj15, top6w2: R.t2Cnj15 };
+export const COUNTS_COL = { fair: R.fCounts, top6w: R.t6Counts, fair2: R.f2Counts, top6w2: R.t2Counts };
+export const WEIGHT_COL = { fair: R.t6Weight, top6w: R.t6Weight, fair2: R.t2Weight, top6w2: R.t2Weight };
 // competition result row
 export const C = {
   lic: 0, place: 1, time: 2, status: 3, cat: 4, club: 5,
   offScore: 6, offCnj15: 7, fScore: 8, fCnj15: 9, t6Score: 10, t6Cnj15: 11,
+  f2Score: 12, f2Cnj15: 13, t2Score: 14, t2Cnj15: 15,
 };
+export const C_SCORE = { official: C.offScore, fair: C.fScore, top6w: C.t6Score, fair2: C.f2Score, top6w2: C.t2Score };
+export const C_CNJ15 = { official: C.offCnj15, fair: C.fCnj15, top6w: C.t6Cnj15, fair2: C.f2Cnj15, top6w2: C.t2Cnj15 };
 
 // ---- core datasets ---------------------------------------------------------
 let META, RUNNERS, COMPS;

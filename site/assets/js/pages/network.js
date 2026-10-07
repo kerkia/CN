@@ -248,7 +248,7 @@ async function ego(main, lic, query) {
 
 // ---- the leading runners of a discipline ---------------------------------------
 async function global(main, query) {
-  let method = store.METHODS.includes(query.m) ? query.m : store.get().methods[0];
+  let method = store.available().includes(query.m) ? query.m : store.get().methods[0];
   let sexe = ["H", "D", ""].includes(query.sexe) ? query.sexe : "H";
   let n = [30, 60, 100].includes(Number(query.n)) ? Number(query.n) : 60;
   let minShared = [3, 5, 10].includes(Number(query.min)) ? Number(query.min) : 5;

@@ -6,7 +6,7 @@ import { html, raw, $, $$, fmt, fmtSigned, fmtDate, mean } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { timeChart, columnChart, scatterChart, methodColor, terrainColor, css } from "../charts.js";
-import { TERRAINS } from "../store.js";
+import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg } from "../ui.js";
 
 function pearson(xs, ys) {
@@ -37,23 +37,31 @@ export async function render(main) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
-      <p class="lede">Mêmes résultats, trois façons de compter.</p></div></div>
+      <p class="lede">Mêmes résultats, plusieurs façons de compter.</p></div></div>
 
     <div class="notice info" style="margin-bottom:16px">Site indépendant et non officiel, sans lien avec la Fédération française de course d'orientation.
-      Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; les deux autres sont des calculs alternatifs, à but d'analyse.</div>
+      Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; les autres sont des calculs alternatifs, à but d'analyse.</div>
 
     <div class="grid grid-3" style="margin-bottom:24px">
       <section class="card"><div class="card-body">
         <h2>${methodKey("official")} ${t("m.official")}</h2>
         <p class="muted">Les CN et les scores tels que publiés sur cn.ffcorientation.fr, sans aucun recalcul.</p></div></section>
       <section class="card"><div class="card-body">
-        <h2>${methodKey("fair")} ${t("m.fair")}</h2>
-        <p class="muted">La force de chaque coureur, qui sert aussi à calculer la valeur des circuits : la moyenne pondérée de ses
-          ${pct(pf.eligible_fraction)} meilleures courses${alsoPct(pf)}, avec un recalage progressif plutôt qu'annuel.</p></div></section>
-      <section class="card"><div class="card-body">
         <h2>${methodKey("top6w")} ${t("m.top6w")}</h2>
-        <p class="muted">Le potentiel au meilleur niveau, adapté aux qualifications : les mêmes scores que la méthode Juste, mais seules
-          les meilleures courses comptent, sur ${fmt(p6.top_n)} places. Courir plus ne peut que le faire monter.</p></div></section>
+        <p class="muted">Le potentiel au meilleur niveau, adapté aux qualifications : seules les meilleures courses comptent, sur
+          ${fmt(p6.top_n)} places. Courir plus ne peut que le faire monter.</p></div></section>
+      <section class="card"><div class="card-body">
+        <h2>${methodKey("top6w2")} ${t("m.top6w2")}</h2>
+        <p class="muted">Le même principe, en moyennes quadratiques : les meilleures performances pèsent un peu plus, dans la valeur
+          des circuits comme dans le CN. Elle prédit un peu mieux les résultats ; les deux sont proposées le temps de les comparer.</p></div></section>
+      ${available().includes("fair") ? html`<section class="card"><div class="card-body">
+        <h2>${methodKey("fair")} ${t("m.fair")}</h2>
+        <p class="muted">Méthode d'analyse : la force de chaque coureur, qui sert aussi à calculer la valeur des circuits — la moyenne
+          pondérée de ses ${pct(pf.eligible_fraction)} meilleures courses${alsoPct(pf)}, avec un recalage progressif plutôt qu'annuel.</p></div></section>
+      <section class="card"><div class="card-body">
+        <h2>${methodKey("fair2")} ${t("m.fair2")}</h2>
+        <p class="muted">Méthode d'analyse : la même, en moyennes quadratiques ; c'est elle qui fournit les scores de la
+          ${methodLabel("top6w2")}.</p></div></section>` : ""}
     </div>
 
     <div class="prose">
@@ -162,6 +170,18 @@ export async function render(main) {
           gonflerait les circuits où il court, et les groupes qui courent surtout entre eux (vétérans, jeunes) s'écarteraient des autres.</li>
       </ul>
       <div class="formula">CN = Σ(places × score) ÷ Σ(places), au plus ${fmt(p6.top_n)} places, parmi les ${pct(p6.eligible_fraction)} meilleurs scores${alsoPct(p6)}</div>
+      <h2 id="quadratique">Moyennes linéaires et quadratiques</h2>
+      <p>Les méthodes proposées existent en deux variantes, qui ne diffèrent que par la façon de faire les moyennes :</p>
+      <ul>
+        <li><b>linéaire</b> : la moyenne habituelle, celle de la FFCO — la somme des valeurs divisée par leur nombre ;</li>
+        <li><b>quadratique</b> : la racine carrée de la moyenne des carrés. Elle est toujours au moins égale à la moyenne habituelle et
+          donne plus de poids aux valeurs élevées : par exemple, pour trois scores de 6 000, 5 000 et 4 000, la moyenne linéaire vaut 5 000,
+          la moyenne quadratique 5 066.</li>
+      </ul>
+      <p>La variante quadratique l'applique à deux endroits : la <b>valeur du circuit</b> (moyenne quadratique des CN × temps des plus rapides)
+        et le <b>CN</b> (moyenne quadratique pondérée des meilleurs scores). Le score d'une course reste la valeur du circuit divisée par le temps :
+        il est toujours proportionnel à la vitesse, et les valeurs restent du même ordre qu'aujourd'hui. Mesurée sur les mêmes duels, elle prédit
+        un peu mieux qui terminera devant, dans chaque spécialité (voir la validation en bas de page).</p>
     </div>
 
     <div style="margin:24px 0 16px">
@@ -242,14 +262,18 @@ export async function render(main) {
   $("#norm-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th>
     ${norm.map((s) => html`<th class="r">${s.name}</th>`)}</tr></thead>
     <tbody>${dates.map((d) => html`<tr><td>${d}</td>${idx.map((m) => html`<td class="r num">${fmt(m.get(d), 4)}</td>`)}</tr>`)}</tbody></table>`;
-  // how far the three methods agree, per discipline, on the same runners
+  // how far the methods agree, per discipline, on the same runners: each visible computed method against
+  // the official one. meta.agreement rows: [official, fair, top6w, fair2, top6w2]
+  const AGREE_COL = { fair: 1, top6w: 2, fair2: 3, top6w2: 4 };
+  const computed = available().filter((m) => m !== "official");
   let terrain = "For";
   function drawAgreement() {
     $("#agr-filters").innerHTML = html`<div class="field"><span>${t("f.terrain")}</span>${seg("agt", TERRAINS.filter((x) => meta.agreement[x]?.length).map((x) => [x, t(`terrain.${x}`)]), terrain)}</div>`;
     $$('[data-seg="agt"]').forEach((b) => b.addEventListener("click", () => { terrain = b.dataset.value; drawAgreement(); }));
     const pts = meta.agreement[terrain] || [];
-    const series = [["fair", 1], ["top6w", 2]].map(([m, i]) => ({
-      name: methodShort(m), color: methodColor(m), data: pts.filter((p) => p[0] && p[i]).map((p) => [p[0], p[i]]),
+    const series = computed.map((m) => ({
+      m, name: methodShort(m), color: methodColor(m),
+      data: pts.filter((p) => p[0] && p[AGREE_COL[m]]).map((p) => [p[0], p[AGREE_COL[m]]]),
     }));
     const max = Math.ceil(Math.max(0, ...pts.flat().filter(Boolean)) / 1000) * 1000;
     $("#agr-legend").innerHTML = legend(series.map((s) => ({ label: `${s.name} / ${methodShort("official")}`, color: s.color, dot: true })));
@@ -258,11 +282,12 @@ export async function render(main) {
       const d = pairs.map((p) => p[1] - p[0]);
       return { name, n: pairs.length, r: pearson(pairs.map((p) => p[0]), pairs.map((p) => p[1])), bias: mean(d), mae: mean(d.map(Math.abs)) };
     };
-    const both = pts.filter((p) => p[1] && p[2]);
+    const vs = (a, b) => stat(`${methodShort(b)} / ${methodShort(a)}`,
+      pts.filter((p) => p[AGREE_COL[a]] && p[AGREE_COL[b]]).map((p) => [p[AGREE_COL[a]], p[AGREE_COL[b]]]));
     const stats = [
-      stat(`${methodShort("fair")} / ${methodShort("official")}`, series[0].data),
-      stat(`${methodShort("top6w")} / ${methodShort("official")}`, series[1].data),
-      stat(`${methodShort("top6w")} / ${methodShort("fair")}`, both.map((p) => [p[1], p[2]])),
+      ...series.map((x) => stat(`${x.name} / ${methodShort("official")}`, x.data)),
+      ...(computed.includes("top6w") && computed.includes("top6w2") ? [vs("top6w", "top6w2")] : []),
+      ...(computed.includes("fair") && computed.includes("top6w") ? [vs("fair", "top6w")] : []),
     ];
     $("#agr-stats").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th>${t("ov.pair")}</th><th class="r">n</th><th class="r">r</th><th class="r">${t("ov.bias")}</th><th class="r">${t("ov.mae")}</th></tr></thead>
@@ -274,38 +299,45 @@ export async function render(main) {
   async function drawValidation() {
     const v = await data.validation();
     if (!v) { $("#val-summary").textContent = t("me.val.none"); return; }
-    const M = v.methods;                                    // official, fair, top6w — columns 1..3 of each entry
+    // each entry: [pairs, then the right calls of each method in v.methods]; only the visible methods are shown
+    const M = available().filter((m) => v.methods.includes(m));     // display order, visible methods only
+    const col = (m) => 1 + v.methods.indexOf(m);
     const season = v.season || Object.keys(v.acc.For?.all || {}).pop();
     const TR = TERRAINS.filter((x) => v.acc[x]?.all?.[season]?.[0]);
-    const share = (x, i) => (x?.[0] ? (100 * x[1 + i]) / x[0] : null);
-    // errors avoided by Juste, relative to the official method's errors
-    const avoided = (x) => (x?.[0] && x[0] - x[1] ? (100 * (x[2] - x[1])) / (x[0] - x[1]) : null);
+    const share = (x, m) => (x?.[0] ? (100 * x[col(m)]) / x[0] : null);
+    // the method whose avoided errors are shown: the quadratic Top, the newest
+    const ref = M.includes("top6w2") ? "top6w2" : M[M.length - 1];
+    const avoided = (x, m = ref) => (x?.[0] && x[0] - x[col("official")]
+      ? (100 * (x[col(m)] - x[col("official")])) / (x[0] - x[col("official")]) : null);
     const bold = (on, s) => (on ? html`<b>${s}</b>` : s);
-    const pctCell = (x, i) => {
+    const pctCell = (x, m) => {
       if (!x?.[0]) return html`<td class="r num">—</td>`;
-      const best = Math.max(...M.map((_, k) => x[1 + k]));
-      return html`<td class="r num">${bold(x[1 + i] === best, `${fmt(share(x, i), 1)} %`)}</td>`;
+      const best = Math.max(...M.map((k) => x[col(k)]));
+      return html`<td class="r num">${bold(x[col(m)] === best, `${fmt(share(x, m), 1)} %`)}</td>`;
     };
     const table = (scope) => html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th>${t("f.terrain")}</th><th class="r">${t("me.val.pairs")}</th>${M.map((m) => html`<th class="r">${methodShort(m)}</th>`)}
-      <th class="r" title="${t("me.val.avoided.hint")}">${t("me.val.avoided")}</th></tr></thead>
+      <th class="r" title="${t("me.val.avoided.hint", { m: methodLabel(ref) })}">${t("me.val.avoided")} (${methodShort(ref)})</th></tr></thead>
       <tbody>${TR.map((x) => {
         const e = v.acc[x][scope]?.[season];
         const a = avoided(e);
-        return html`<tr><td>${t(`terrain.${x}`)}</td><td class="r num">${e?.[0] ? fmt(e[0]) : "—"}</td>${M.map((_, i) => pctCell(e, i))}
+        return html`<tr><td>${t(`terrain.${x}`)}</td><td class="r num">${e?.[0] ? fmt(e[0]) : "—"}</td>${M.map((m) => pctCell(e, m))}
           <td class="r num">${a == null ? "—" : `${fmt(Math.round(a))} %`}</td></tr>`;
       })}</tbody></table></div>`;
 
-    // the figures are read from the data; the seasons 2012-2025 were measured once, on 6 October 2026
+    // the figures are read from the data; the seasons 2012-2025 were measured once, on 6 October 2026 (Juste)
     const name = (x) => (x === "VTT" ? "VTT" : t(`terrain.${x}`).toLowerCase());
+    const others = M.filter((m) => m !== "official");
     const parts = ["For", "Spr", "VTT"].filter((x) => v.acc[x]?.all?.[season]?.[0]).map((x) => {
       const e = v.acc[x].all[season];
-      return `${name(x)} : ${fmt(share(e, 1), 1)} % de bons pronostics contre ${fmt(share(e, 0), 1)} %, soit ${fmt(Math.round(avoided(e)))} % d'erreurs en moins`;
+      return `${name(x)} : ${others.map((m) => `${methodShort(m)} ${fmt(share(e, m), 1)} %`).join(", ")}, contre ${fmt(share(e, "official"), 1)} % pour la méthode officielle`;
     });
-    $("#val-summary").innerHTML = html`En ${season}, sur les mêmes duels, la ${methodLabel("fair")} a mieux prédit que la ${methodLabel("official")}
-      qui terminerait devant — ${parts.join(" ; ")}. Mesurée aussi sur chaque saison de 2012 à 2025, elle fait mieux que la méthode
-      officielle <b>à chacune</b>, en forêt comme en sprint. La ${methodLabel("top6w")}, qui garde les mêmes scores mais récompense les
-      meilleures courses, la suit de près. En ski, les duels sont trop peu nombreux (2 à 4 courses par saison) pour conclure.`;
+    const gains = ["For", "Spr", "VTT"].filter((x) => v.acc[x]?.all?.[season]?.[0])
+      .map((x) => `${fmt(Math.round(avoided(v.acc[x].all[season])))} % en ${name(x)}`);
+    $("#val-summary").innerHTML = html`En ${season}, sur les mêmes duels, les méthodes proposées ont mieux prédit que la ${methodLabel("official")}
+      qui terminerait devant — ${parts.join(" ; ")}. La ${methodLabel(ref)} évite ainsi une part des erreurs de la méthode officielle :
+      ${gains.join(", ")}. Le calcul commun à ces méthodes, mesuré aussi sur chaque saison de 2012 à 2025, fait mieux que la méthode
+      officielle <b>à chacune</b>, en forêt comme en sprint. En ski, les duels sont trop peu nombreux (2 à 4 courses par saison) pour conclure.`;
     $("#val-title").textContent = `${t("me.val.all")} · ${season}`;
     $("#val-all").innerHTML = table("all");
     $("#val-nat").innerHTML = table("nat");
@@ -318,10 +350,10 @@ export async function render(main) {
       <th class="r">${t("me.val.pairs")}</th><th class="r">${t("me.val.bias.actual")}</th>${M.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
       <tbody>${biasRows.map(([x, label, b]) => {
         const real = (100 * b[1]) / b[0];
-        const pred = M.map((_, i) => (100 * b[2 + i]) / b[0]);
-        const closest = Math.min(...pred.map((p) => Math.abs(p - real)));
+        const pred = M.map((m) => (100 * b[1 + col(m)]) / b[0]);
+        const closest = Math.min(...pred.map((q) => Math.abs(q - real)));
         return html`<tr><td>${t(`terrain.${x}`)}</td><td>${label}</td><td class="r num">${fmt(b[0])}</td><td class="r num">${fmt(real, 1)} %</td>
-          ${pred.map((p) => html`<td class="r num">${bold(Math.abs(p - real) === closest, `${fmt(p, 1)} %`)}</td>`)}</tr>`;
+          ${pred.map((q) => html`<td class="r num">${bold(Math.abs(q - real) === closest, `${fmt(q, 1)} %`)}</td>`)}</tr>`;
       })}</tbody></table></div>`;
   }
 

@@ -55,7 +55,7 @@ commit results, personal data, secrets or credentials.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
   modules — hard-reload.
 
-## The three CN methods
+## The CN methods
 
 All methods share the race score: circuit value = mean of (CN J-15 × time) over the fastest ⌈2N/3⌉ ranked
 runners holding a CN; score = circuit value ÷ time; PM / abandon / disqualified / over time score 0 and count.
@@ -81,6 +81,17 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    **Derived from `fair`** (`CnEngine.derive`): same race scores, circuit values and recalage factors; only the
    CN differs — the best 60 % scores fill **6 weight places** from the best down, the last race only for the
    places left. Racing more can only raise it (monotonic).
+4. **`fair2` and `top6w2`, the quadratic variants** (2026-10-07) — the same two methods with **quadratic means**
+   (`CnParams.cv_power` = `cn_power` = 2): the circuit value is the quadratic mean of CN × time over the sample, the
+   CN the weighted quadratic mean of the kept scores; the race score stays circuit value ÷ time. `top6w2` derives
+   from `fair2` as `top6w` from `fair`. Measured on the same pairs (reference period): +0.3 point forest, +0.1
+   sprint, +0.3 VTT, +0.6 ski; each change alone (circuit value or CN) gave about half. Scores proportional to
+   1/time² instead ("k = 2") predict the same but stretch the scale; the IOF-style log-time z-score was worse.
+
+**Who sees what**: everyone sees `official`, `top6w` (« Top linéaire ») and `top6w2` (« Top quadratique »); the
+« Juste » methods `fair`/`fair2` are analysis methods, shown only to accounts with the `analyst` right (granted on
+the admin page) and to admins (`store.available()`, `store.setAnalyst`; display only — the data files are the same
+for every logged-in user). The owner will keep only one of the two Tops after comparing them.
 
 Key design decisions (each was measured — see "Evaluating" below — and agreed with the owner):
 - **Circuits are valued with the Juste CN, never with Top's.** A capped best-of fed its selection back through
@@ -137,14 +148,22 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   test, then commit, push and confirm the CI run and the live site.
 - Many files use CRLF line endings: edit them preserving line endings (read/write bytes in Python scripts).
   In Git Bash, heredocs with quotes break easily: write patch scripts to a file, then run them.
-- UI text lives in `i18n.js` (French). Method keys: `official`, `fair`, `top6w` (labels « Juste », « Top »).
-  Old saved selections of the removed `v2026` method are mapped to `fair` in `store.js`.
+- UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
+  / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
+  are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).
+- Runner race rows (`R`) and race result rows (`C`) carry each method's columns, the quadratic ones appended after
+  the linear ones (`data.js`: `SCORE_COL`, `CNAFTER_COL`, `CNJ15_COL`, `COUNTS_COL`, `WEIGHT_COL`, `C_SCORE`, `C_CNJ15`).
 - The archived seasons (before 2024) are members-only on the FFCO site — listings and, since 2026, the race
   pages too: re-reading them needs a fresh `FFCO_SESSIONID` (the `sessionid` cookie of a logged-in member) in
   the environment; normal runs never need it. The workflow's `backfill` mode (manual) fetches every season's
   competitions not stored yet, with the repo secret `FFCO_SESSIONID` (the owner sets it, then deletes it).
 - Accounts: e-mail + password with confirmation; registration checks name + licence against the licensee index
   (`site/auth`, never served); several accounts on one licence are allowed but flagged to the admin.
+  Rights per account, set on the admin page (D1 `users.analyst`, `users.alerts_allowed`; admins have both): the
+  analysis methods, and the agenda e-mail alerts — new courses (`agenda_alert`) and registrations closing within
+  8 days (`deadline_alert`, `deadline_announced`), sharing one list of regions; both are sent by `/api/notify`
+  from the daily agenda run. **D1 migrations are not applied by CI**: run `npx wrangler d1 migrations apply ocn
+  --remote` (owner's go-ahead) before deploying code that needs them.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.

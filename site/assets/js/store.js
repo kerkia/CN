@@ -1,13 +1,20 @@
 // Global, persisted UI state shared by every page.
 
-export const METHODS = ["official", "fair", "top6w"];
+// Every method, in display order. The "Juste" ones (fair, fair2) are analysis methods: shown only to the
+// accounts the administrator allows (and to administrators); everyone sees the official one and the Tops.
+export const METHODS = ["official", "top6w", "top6w2", "fair", "fair2"];
+const ANALYSIS = ["fair", "fair2"];
+let analyst = false;
+/** The methods this visitor may see and pick. */
+export const available = () => METHODS.filter((m) => analyst || !ANALYSIS.includes(m));
 // Disciplines offered by the site-wide selector: forest, sprint, mountain bike, ski.
 export const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 export const MAX_COMPARE = 8;
 
 const KEY = "cnx.state";
 const defaults = {
-  methods: ["official", "fair", "top6w"],
+  methods: ["official", "top6w", "top6w2"],
+  mv: 2,                  // methods version: 2 = the quadratic Top exists
   terrain: "For",
   compare: [],            // [{lic, slot}] — slot is a fixed colour index 0..7
   clubs: [],              // [{code, slot}] — clubs being compared, same slot rule
@@ -24,6 +31,7 @@ function load() {
     if (!TERRAINS.includes(s.terrain)) delete s.terrain;
     if (Array.isArray(s.methods)) {             // the 2026 method was replaced by the Fair one
       s.methods = [...new Set(s.methods.map((m) => (m === "v2026" ? "fair" : m)))].filter((m) => METHODS.includes(m));
+      if (s.mv !== 2) { s.methods.push("top6w2"); s.mv = 2; }   // a saved selection gets the new quadratic Top
       if (!s.methods.length) delete s.methods;
     }
     return { ...defaults, ...s };
@@ -48,6 +56,13 @@ export function set(patch) {
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
+}
+
+/** Whether this visitor may see the analysis methods; a selection keeps only what may be seen. */
+export function setAnalyst(flag) {
+  analyst = !!flag;
+  const ok = state.methods.filter((m) => available().includes(m));
+  if (ok.length !== state.methods.length) set({ methods: ok.length ? ok : defaults.methods });
 }
 
 export function toggleMethod(m) {

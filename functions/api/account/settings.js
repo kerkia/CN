@@ -1,14 +1,15 @@
-// POST /api/account/settings { notify?: bool, agendaAlert?: bool, agendaRegions?: [region names] }
-// Only the fields sent are changed.
-import { json, publicUser, readBody, withUser } from "../../_lib/api.js";
+// POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names] }
+// Only the fields sent are changed. The agenda alerts need the right the administrator grants.
+import { alertsAllowed, json, publicUser, readBody, withUser } from "../../_lib/api.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   if (!b) return json({ error: "bad request" }, 400);
   const sets = [], vals = [];
-  for (const [field, column] of [["notify", "notify"], ["agendaAlert", "agenda_alert"]]) {
+  for (const [field, column] of [["notify", "notify"], ["agendaAlert", "agenda_alert"], ["deadlineAlert", "deadline_alert"]]) {
     if (field in b) {
       if (typeof b[field] !== "boolean") return json({ error: "bad request" }, 400);
+      if (field !== "notify" && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);
       sets.push(`${column} = ?`); vals.push(b[field] ? 1 : 0);
     }
   }

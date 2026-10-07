@@ -492,6 +492,17 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   .home-landscape { top: auto; height: 380px; }     /* a band at the bottom, the sky above */
   .home-intro h1 { font-size: 32px; }
 }
+/* contact: a small rich-text editor */
+.rte { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+.rte-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.rte-bar button { border: 0; background: transparent; color: var(--ink); min-width: 32px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.rte-bar button:hover { background: var(--surface-3); }
+.rte-sep { width: 1px; background: var(--border-strong); margin: 4px 4px; }
+.rte-body { min-height: 220px; max-height: 60vh; overflow: auto; padding: 10px 12px; outline: none; line-height: 1.5; }
+.rte-body:empty::before { content: attr(data-placeholder); color: var(--ink-3); }
+.rte-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; }
+.ct-files { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.ct-files li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .login-hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); gap: 28px; padding: 28px; align-items: start; }
 .login-intro h1 { font-size: 30px; }
 .login-intro .lede { color: var(--ink-2); margin-top: 8px; font-size: 16px; max-width: 560px; }

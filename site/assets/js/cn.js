@@ -4,7 +4,7 @@
 // not banker's), same trim counts, same stable tie order — so the breakdown a
 // visitor sees reproduces the published month-end snapshots to the point.
 
-import { R, FOOT, inSeries } from "./data.js";
+import { R, FOOT, inSeries, SCORE_COL, COUNTS_COL, WEIGHT_COL } from "./data.js";
 
 export const dround = (x) => (x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5));
 
@@ -43,8 +43,8 @@ export function trimmed(values, minScores = 2) {
   return { cn: dround(kept.reduce((s, x) => s + x, 0) / kept.length), roles, nKept: kept.length };
 }
 
-/** Best `topN` races taken from the best `frac` of the window, group-weighted. */
-export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3 } = {}) {
+/** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean. */
+export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3, power = 1 } = {}) {
   const n = values.length;
   if (n < minScores) return { cn: null, roles: values.map(() => null), used: values.map(() => 0), nKept: 0 };
   // topN is a number of slots: from the best score down, each race fills as many as its weight, the last
@@ -58,9 +58,10 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
     if (slots <= 0) { roles[idx] = "notTop6"; return; }
     const u = Math.min(weights[idx], slots);
     slots -= u; used[idx] = u; nKept++;
-    roles[idx] = "kept"; sw += u; sx += values[idx] * u;
+    roles[idx] = "kept"; sw += u; sx += (power === 1 ? values[idx] : values[idx] ** power) * u;
   });
-  return { cn: sw > 0 ? dround(sx / sw) : null, roles, used, nKept };
+  const mean = sw > 0 ? sx / sw : null;
+  return { cn: mean == null ? null : dround(power === 1 ? mean : mean ** (1 / power)), roles, used, nKept };
 }
 
 /**
@@ -71,17 +72,17 @@ export function explain(method, races, iso, terrain, meta) {
   const from = windowStart(iso, windowDays(method, terrain, meta));
   const inWin = (r) => r[R.date] >= from && r[R.date] <= iso;
 
-  if (method === "fair" || method === "top6w") {
+  if (method !== "official") {
     const p = paramsFor(meta, method, terrain);
     // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's month,
     // the value the Courses page shows), the same in both methods; the CN is the weighted mean of the best
     // 60 % of them (70 % in VTT and ski) - all of them for Fair, only those filling the weight places for Top.
-    const [score, counts] = method === "fair" ? [R.fScore, R.fCounts] : [R.t6Score, R.t6Counts];
+    const [score, counts, weight] = [SCORE_COL[method], COUNTS_COL[method], WEIGHT_COL[method]];
     const rows = races
       .filter((r) => r[R.terrain] === terrain && inWin(r) && r[counts] && r[score] != null)
-      .map((r) => ({ race: r, value: r[score], weight: r[R.t6Weight] || 1 }));
+      .map((r) => ({ race: r, value: r[score], weight: r[weight] || 1 }));
     const res = topWeighted(rows.map((x) => x.value), rows.map((x) => x.weight), {
-      topN: p.top_n ?? Infinity, frac: p.eligible_fraction, minScores: p.min_scores,
+      topN: p.top_n ?? Infinity, frac: p.eligible_fraction, minScores: p.min_scores, power: p.cn_power ?? 1,
     });
     rows.forEach((x, i) => { x.role = res.roles[i]; x.used = res.used[i]; });
     return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };

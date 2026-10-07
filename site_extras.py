@@ -379,8 +379,8 @@ def pyramid(comps: dict) -> None:
 
 
 # -- validation ------------------------------------------------------------------
-VAL_METHODS = ("official", "fair", "top6w")
-VAL_CNJ15 = (7, 9, 11)                       # c/ row columns: each method's CN 15 days before the race
+VAL_METHODS = ("official", "fair", "top6w", "fair2", "top6w2")
+VAL_CNJ15 = (7, 9, 11, 13, 15)               # c/ row columns: each method's CN 15 days before the race
 VAL_GROUPS = {"J": lambda a: a <= 20, "V": lambda a: a >= 55}     # juniors, 55 and over — against the 21s
 VAL_SEASON = "2025"                          # the reference season: complete, so built once per method change
 
@@ -397,8 +397,9 @@ def validation(comps: dict) -> None:
     the figures change only with a method (update.migrate deletes the file)."""
     if (OUT / "validation.json").exists():
         return
-    acc = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0, 0, 0])))   # [pairs, right x 3]
-    bias = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0, 0, 0, 0, 0])))  # [pairs, ahead, pred x 3]
+    nm = len(VAL_METHODS)
+    acc = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0] * (1 + nm))))   # [pairs, right per method]
+    bias = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0] * (2 + nm))))  # [pairs, ahead, pred per method]
     for cid, c in comps.items():
         path = OUT / "c" / f"{cid}.json"
         if not path.exists():
@@ -421,7 +422,7 @@ def validation(comps: dict) -> None:
             for s in scopes:
                 a = acc[terrain][s][season]
                 a[0] += len(dt)
-                for i in range(3):
+                for i in range(nm):
                     a[1 + i] += right[i]
             # group bias: pairs of one runner of the group and one 21
             age = np.array([int(m.group(1)) if (m := re.match(r"^[HD](\d+)$", r[4] or "")) else -1 for r in rows])

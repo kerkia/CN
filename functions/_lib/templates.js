@@ -119,7 +119,24 @@ function registrationBlock(e) {
   };
 }
 
-export function agendaMail(env, user, events) {
+// the two agenda alerts: a course newly in the agenda, or its registrations closing within 8 days
+const AGENDA_TEXT = {
+  new: {
+    subject: (n, e) => (n === 1 ? `Nouvelle course à l'agenda : ${e.name} — O'CN` : `${n} nouvelles courses à l'agenda — O'CN`),
+    title: (n) => (n === 1 ? "Une nouvelle course à l'agenda" : `${n} nouvelles courses à l'agenda`),
+    intro: (n) => `${n === 1 ? "Une course vient" : "Des courses viennent"} d'être ajoutée${n > 1 ? "s" : ""} à l'agenda dans les régions que vous suivez :`,
+    why: "« nouvelles courses »",
+  },
+  deadline: {
+    subject: (n, e) => (n === 1 ? `Inscriptions bientôt closes : ${e.name} — O'CN` : `${n} courses : inscriptions bientôt closes — O'CN`),
+    title: (n) => (n === 1 ? "Inscriptions bientôt closes" : `Inscriptions bientôt closes pour ${n} courses`),
+    intro: (n) => `Les inscriptions ferment dans les 8 prochains jours pour ${n === 1 ? "cette course" : "ces courses"}, dans les régions que vous suivez :`,
+    why: "« clôture des inscriptions »",
+  },
+};
+
+export function agendaMail(env, user, events, kind = "new") {
+  const T = AGENDA_TEXT[kind];
   const base = siteUrl(env);
   const n = events.length;
   const full = events.slice(0, FULL), compact = events.slice(FULL, FULL + COMPACT), more = n - full.length - compact.length;
@@ -147,13 +164,35 @@ ${e.access ? `<div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;
   };
 
   return {
-    subject: n === 1 ? `Nouvelle course à l'agenda : ${events[0].name} — O'CN` : `${n} nouvelles courses à l'agenda — O'CN`,
-    html: wrap(env, n === 1 ? "Une nouvelle course à l'agenda" : `${n} nouvelles courses à l'agenda`, `<p>Bonjour ${esc(user.first_name)},</p>
-<p>${n === 1 ? "Une course vient" : "Des courses viennent"} d'être ajoutée${n > 1 ? "s" : ""} à l'agenda dans les régions que vous suivez :</p>
+    subject: T.subject(n, events[0]),
+    html: wrap(env, T.title(n), `<p>Bonjour ${esc(user.first_name)},</p>
+<p>${T.intro(n)}</p>
 ${full.map(blockHtml).join("")}
 ${compact.length ? `<p><b>Et aussi :</b></p><ul style="padding-left:18px">${compact.map((e) => `<li style="margin:4px 0">${a(link(e), e.name)} — ${esc(frShort(e.date))}${e.place ? `, ${esc(e.place)}` : ""}${e.type ? ` (${esc(e.type)})` : ""}</li>`).join("")}</ul>` : ""}
 ${more > 0 ? `<p>… et ${more} autre${more > 1 ? "s" : ""} dans l'${a(`${base}/#/agenda`, "agenda")}.</p>` : ""}
-<p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez activé l'alerte « nouvelles courses ». ${a(settings, "Modifier mes réglages")}.</p>`),
-    text: `Bonjour ${user.first_name},\n\n${n === 1 ? "Une course vient" : "Des courses viennent"} d'être ajoutée${n > 1 ? "s" : ""} à l'agenda dans les régions que vous suivez :\n\n${full.map(blockText).join("\n\n---\n\n")}${compact.length ? `\n\nEt aussi :\n${compact.map((e) => `- ${e.name} — ${frShort(e.date)}${e.place ? `, ${e.place}` : ""}${e.type ? ` (${e.type})` : ""}\n  ${link(e)}`).join("\n")}` : ""}${more > 0 ? `\n\n… et ${more} autre${more > 1 ? "s" : ""} : ${base}/#/agenda` : ""}\n\nPour modifier ou arrêter cette alerte : ${settings}`,
+<p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez activé l'alerte ${T.why}. ${a(settings, "Modifier mes réglages")}.</p>`),
+    text: `Bonjour ${user.first_name},\n\n${T.intro(n)}\n\n${full.map(blockText).join("\n\n---\n\n")}${compact.length ? `\n\nEt aussi :\n${compact.map((e) => `- ${e.name} — ${frShort(e.date)}${e.place ? `, ${e.place}` : ""}${e.type ? ` (${e.type})` : ""}\n  ${link(e)}`).join("\n")}` : ""}${more > 0 ? `\n\n… et ${more} autre${more > 1 ? "s" : ""} : ${base}/#/agenda` : ""}\n\nPour modifier ou arrêter cette alerte : ${settings}`,
+  };
+}
+
+/** A message from the contact page, to the administrator. msg: { category, subject, html, text, from, browser, files }. */
+export function contactMail(env, user, msg) {
+  const base = siteUrl(env);
+  const who = `${user.first_name} ${user.last_name}`;
+  const rows = [
+    ["De", `${esc(who)} (${esc(user.display_name)}) — <a href="mailto:${esc(user.email)}">${esc(user.email)}</a>`, `${who} (${user.display_name}) — ${user.email}`],
+    ["Licence", `<a href="${esc(`${base}/#/coureur/${encodeURIComponent(user.licence)}`)}">${esc(user.licence)}</a>`, user.licence],
+    ["Type", esc(msg.category), msg.category],
+    ...(msg.from ? [["Depuis la page", esc(msg.from), msg.from]] : []),
+    ...(msg.browser ? [["Navigateur", esc(msg.browser), msg.browser]] : []),
+    ...(msg.files.length ? [["Pièces jointes", esc(msg.files.join(", ")), msg.files.join(", ")]] : []),
+  ];
+  return {
+    subject: `[O'CN · ${msg.category}] ${msg.subject}`,
+    html: wrap(env, msg.subject, `<table style="border-collapse:collapse;font-size:13.5px;margin-bottom:14px">${rows.map(([l, h]) =>
+      `<tr><td style="padding:2px 12px 2px 0;color:#5b6675;vertical-align:top;white-space:nowrap">${l}</td><td style="padding:2px 0">${h}</td></tr>`).join("")}</table>
+<div style="border-top:1px solid #dde3ea;padding-top:12px">${msg.html || `<p style="white-space:pre-line">${esc(msg.text)}</p>`}</div>
+<p style="font-size:12px;color:#5b6675">Répondre à ce message écrit directement à ${esc(user.email)}.</p>`),
+    text: `${rows.map(([l, , t]) => `${l} : ${t}`).join("\n")}\n\n${msg.text}`,
   };
 }

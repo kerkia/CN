@@ -10,7 +10,12 @@ export const methodLabel = (m) => t(`m.${m}`);
 /** Short form for dense table headers. */
 export const methodShort = (m) => t(`m.${m}.short`);
 
-const DASH_SAMPLE = { official: "solid", fair: "dashed", top6w: "dotted" };
+/** A short line in a method's dash pattern (charts.METHOD_DASH), for legends. */
+export function dashKey(m) {
+  const d = METHOD_DASH[m];
+  return html`<svg class="dash-svg" width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3"
+    stroke="currentColor" stroke-width="2" ${raw(Array.isArray(d) ? `stroke-dasharray="${d.join(" ")}"` : "")}/></svg>`;
+}
 /**
  * Method picker: toggle buttons, at least one stays on. `dash` shows the
  * line style instead of the colour — for pages where colour identifies
@@ -18,11 +23,11 @@ const DASH_SAMPLE = { official: "solid", fair: "dashed", top6w: "dotted" };
  */
 export function methodChips(selected = store.get().methods, { dash = false } = {}) {
   return html`<div class="chips" role="group" aria-label="${t("f.methods")}">
-    ${store.METHODS.map((m) => html`<button type="button" class="chip toggle" data-method="${m}"
+    ${store.available().map((m) => html`<button type="button" class="chip toggle" data-method="${m}"
         aria-pressed="${selected.includes(m)}" title="${t(`m.${m}.long`)}">
         <span class="tick" aria-hidden="true"></span>
         ${dash
-          ? html`<span class="dash-key" style="border-top-style:${raw(DASH_SAMPLE[m])}"></span>`
+          ? dashKey(m)
           : html`<span class="key" style="background:${raw(methodColor(m))}"></span>`}${methodLabel(m)}
       </button>`)}
   </div>`;
@@ -34,7 +39,7 @@ export function bindMethodChips(root, onChange) {
 /** Single-choice method toggle (one method at a time). */
 export function methodSeg(value) {
   return html`<div class="chips" role="radiogroup" aria-label="${t("cm.method")}">
-    ${store.METHODS.map((m) => html`<button type="button" class="chip toggle" data-method1="${m}" role="radio"
+    ${store.available().map((m) => html`<button type="button" class="chip toggle" data-method1="${m}" role="radio"
       aria-pressed="${m === value}" aria-checked="${m === value}" title="${t(`m.${m}.long`)}">
       <span class="tick" aria-hidden="true"></span><span class="key" style="background:${raw(methodColor(m))}"></span>${methodLabel(m)}</button>`)}
   </div>`;

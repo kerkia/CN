@@ -8,7 +8,7 @@ import { xyChart, regressionChart, linreg, methodColor } from "../charts.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
-import { R, C } from "../data.js";
+import { R, C, C_SCORE, C_CNJ15 } from "../data.js";
 import {
   methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag,
   chartCard, bindChartCard, legend, tile,
@@ -19,7 +19,7 @@ import { link, replaceQuery, terrainField } from "../app.js";
 const MODES = ["all", "runner", "club"];
 const LEVELS = ["A", "B1", "B2", "C1", "C2", "D"];
 const MAX_CATS = 6;
-const SCORE = { official: C.offScore, fair: C.fScore, top6w: C.t6Score };
+const SCORE = C_SCORE;
 
 /** Categories of a circuit, most represented first: [[cat, n]]. */
 function categories(circuit) {
@@ -289,7 +289,7 @@ export async function render(main, { arg, query }) {
 
   /** (method, result row) -> the runner's CN: today's, or the one 15 days before the race. */
   async function cnGetter(comp, methods) {
-    const CNJ15 = { official: C.offCnj15, fair: C.fCnj15, top6w: C.t6Cnj15 };
+    const CNJ15 = C_CNJ15;
     if (st.cnRef !== "now") return (m, r) => r[CNJ15[m]];
     const now = Object.fromEntries(await Promise.all(methods.map(async (m) => [m, await data.cnAt(m, comp.terrain, data.latestMonth())])));
     return (m, r) => now[m].get(String(r[C.lic]));

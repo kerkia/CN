@@ -138,7 +138,7 @@ def run_agenda(agenda_json: Path) -> None:
                 ev["reg"] = {k: e["reg"].get(k) for k in ("url", "close", "mods", "count", "teams")}
             events.append(ev)
         res = _call("POST", {"agenda": events})
-        print(f"6. agenda alert: {len(events)} upcoming courses checked, {res.get('agendaQueued', 0)} alert e-mails queued, "
-              f"{res['sent']} sent, {res['remaining']} waiting")
+        print(f"6. agenda alert: {len(events)} upcoming courses checked, {res.get('agendaQueued', 0)} new-course and "
+              f"{res.get('deadlineQueued', 0)} closing-registration e-mails queued, {res['sent']} sent, {res['remaining']} waiting")
     except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
         print(f"6. agenda alert: failed ({e}) — will retry at the next run")

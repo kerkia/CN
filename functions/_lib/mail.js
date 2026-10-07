@@ -36,7 +36,11 @@ export async function budgetLeft(env, priority = 1) {
 
 /** One delivery attempt. { ok, permanent, rateLimited } — permanent: retrying will not help. */
 async function deliver(env, m) {
-  if (env.DEV_ECHO === "1") { console.log(`[mail] to ${m.to} — ${m.subject}\n${m.text}\n`); return { ok: true }; }
+  if (env.DEV_ECHO === "1") {
+    console.log(`[mail] to ${m.to} — ${m.subject}${m.replyTo ? ` (reply to ${m.replyTo})` : ""}\n${m.text}\n` +
+      (m.attachments?.length ? `[attachments] ${m.attachments.map((a) => `${a.filename} (${Math.round(a.content.length * 0.75 / 1024)} Ko)`).join(", ")}\n` : ""));
+    return { ok: true };
+  }
   if (!env.RESEND_API_KEY) return { ok: false };
   try {
     const r = await fetch("https://api.resend.com/emails", {
@@ -45,6 +49,8 @@ async function deliver(env, m) {
       body: JSON.stringify({
         from: `${env.MAIL_FROM_NAME || "O'CN"} <${env.MAIL_FROM}>`,
         to: [m.to], subject: m.subject, html: m.html, text: m.text,
+        ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+        ...(m.attachments?.length ? { attachments: m.attachments } : {}),   // [{ filename, content: base64 }]
       }),
     });
     if (r.ok) return { ok: true };
@@ -64,6 +70,19 @@ const queue = (env, m) => env.DB.prepare(
 ).bind(m.to, m.subject, m.html, m.text, m.kind, m.priority ?? 0, Date.now(), m.token?.hash ?? null, m.token?.ttl ?? null);
 
 export const queueStatement = queue;
+
+/**
+ * Send at once or fail - never queued (the queue keeps no attachments). For messages to the administrator:
+ * m: { to, subject, html, text, kind, replyTo?, attachments?: [{ filename, content: base64 }] }.
+ * -> "sent" | "quota" (nothing left today) | "failed".
+ */
+export async function sendNow(env, m) {
+  if ((await budgetLeft(env, 1)) <= 0) return "quota";
+  const r = await deliver(env, m);
+  if (!r.ok) return "failed";
+  await logStatement(env, m.kind).run();
+  return "sent";
+}
 
 /** m: { to, subject, html, text, kind, priority, token?: { hash, ttl } }. -> "sent" | "queued". */
 export async function sendOrQueue(env, m) {

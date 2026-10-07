@@ -54,7 +54,7 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
 export async function render(main, { query }) {
   let month = query.date ? data.monthFor(query.date) : data.latestMonth();
   let ligue = query.ligue || "", q = query.q || "";
-  let method = store.METHODS.includes(query.m) ? query.m : store.get().methods[0];
+  let method = store.available().includes(query.m) ? query.m : store.get().methods[0];
   const sel = selFromQuery(query, { withOrg: true });
   const terrain = store.get().terrain;
   const mine = myClub();

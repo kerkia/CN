@@ -269,7 +269,9 @@ export async function render(main, { arg, query }) {
   function calcVars(m) {
     const p = paramsFor(meta, m, terrain), pct = Math.round(100 * (p.eligible_fraction ?? 0.6));
     const days = p.window_days ?? 365;
-    return { pct, rest: 100 - pct, win: days > 365 ? `${Math.round(days / 365)} ans` : "12 mois" };
+    const quad = (p.cn_power ?? 1) === 2;
+    return { pct, rest: 100 - pct, win: days > 365 ? `${Math.round(days / 365)} ans` : "12 mois",
+      Mean: t(quad ? "calc.mean.q" : "calc.mean.l"), mean: t(quad ? "calc.mean.q" : "calc.mean.l").toLowerCase() };
   }
   function roleLabel(role, m) {
     // green: kept; yellow: the "best" scores that are not kept (10 % best, or the 60 % best beyond the 6); grey: the rest
@@ -290,12 +292,13 @@ export async function render(main, { arg, query }) {
         <div class="row"><span class="key" style="background:${raw(methodColor(m))}"></span><h3>${methodLabel(m)}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
-      if (m === "fair") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.`;
-      else if (m === "top6w") formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.`;
+      const top = m === "top6w" || m === "top6w2";
+      if (m === "fair" || m === "fair2") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.`;
+      else if (top) formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
-      return html`<div class="calc-card ${m === "top6w" ? "wide" : ""}" id="calc-card-${m}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
+      return html`<div class="calc-card ${top ? "wide" : ""}" id="calc-card-${m}">${head}<div class="calc-formula">${formula}</div><div class="calc-body">${body}</div></div>`;
     })}`;
     // each method's table: click a column header to sort by it (score by default, best first)
     const ROLE = (role) => ({ kept: 0, notTop6: 1, best10: 2, worst40: 3, notTop60: 4 }[role] ?? 5);
@@ -317,7 +320,7 @@ export async function render(main, { arg, query }) {
           { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
             render: (row) => html`<span class="${row.role === "kept" ? "cn" : "dim"}">${fmt(row.value)}${row.rescaled && Math.abs(row.rescaled - 1) > 1e-6
               ? html`<span title="${t("calc.rescaled")} ×${fmt(row.rescaled, 4)}"> *</span>` : ""}</span>` },
-          ...(m === "top6w" || m === "fair" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
+          ...(m !== "official" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
             render: (row) => {
               const w = (v) => fmt(v, Number.isInteger(v) ? 0 : 1);
               // the last race kept may only partly fit in the 6 slots

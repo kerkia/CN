@@ -8,13 +8,14 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { CLUB } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
-import { methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg } from "../ui.js";
+import {
+  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, dashKey,
+} from "../ui.js";
 import { MEASURES, measureLabel, baseLabel, clubTable, rankOn, clubName, fromSummary } from "../clubstats.js";
 import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescription } from "./clubs.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
 
-const DASH_CSS = { official: "solid", fair: "dashed", top6w: "dotted" };
 
 export async function render(main, { query }) {
   if (query.c) store.setClubs(query.c.split(",").filter(Boolean));
@@ -118,7 +119,7 @@ export async function render(main, { query }) {
   }
 
   const legendHtml = (selc, withMethods) => html`${selc.map((c) => html`<span><span class="dot" style="background:${raw(slotColor(c.slot))}"></span>${clubName(c.code)}</span>`)}
-    ${withMethods && store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span><span class="dash-key" style="border-top-style:${raw(DASH_CSS[m])}"></span>${methodShort(m)}</span>`) : ""}`;
+    ${withMethods && store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span>${dashKey(m)} ${methodShort(m)}</span>`) : ""}`;
   const keyFor = (m, y) => `${m}_${data.snapTerrain(m, terrain, y)}`;
   const group = () => `${sel.sexe}${sel.age}`;
   const yLabel = () => (sel.measure === "n" ? t("cb.runners") : sel.base === "pts" ? t("cm.points") : "CN");
