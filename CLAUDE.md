@@ -139,6 +139,10 @@ fallback) predict who finished ahead? Compare methods on the **same pairs** (bot
 method compared), per terrain. Also check group bias (share of pairs where juniors / 55+ are predicted ahead vs
 actually ahead, against H21) and rank drift by number of races. Reference results of the current methods:
 forest Juste 82.3 %, Top 82.1 %, official 80.9 %; sprint Juste 84.0 %, Top 83.9 %, official 80.7 %.
+Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.21 % (national races
+82.80 → 82.77), sprint 83.94 → 84.04 % (national 82.18 → 82.09); the quadratic narrows the forest scale (p90/p10 2.65 → 2.42).
+The Méthodes page shows these measurements as dated constants (`pages/methods.js`: `K_TESTS`, `QUAD_PARTS`, `LIN_QUAD`):
+update them when the methods are re-measured; the 2025 validation tables are read from the data.
 Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace(spec.params, ...)`.
 
 ## Conventions and gotchas

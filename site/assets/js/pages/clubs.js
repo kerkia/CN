@@ -132,7 +132,7 @@ export async function render(main, { query }) {
   function drawTables() {
     replaceQuery({ date: month === data.latestMonth() ? null : month.slice(0, 7), ligue: ligue || null,
       q: q || null, m: method, ...selToQuery(sel) });
-    $("#by-desc").innerHTML = html`${selDescription(sel)}${sel.base === "pts" ? html` <a href="#/methodes">${t("cm.howElite")}</a>` : html` <span class="dim">(${methodLabel(method)})</span>`}`;
+    $("#by-desc").innerHTML = html`${selDescription(sel)}${sel.base === "pts" ? html` <a href="#/methodes?onglet=autres&voir=elite">${t("cm.howElite")}</a>` : html` <span class="dim">(${methodLabel(method)})</span>`}`;
     rankOn(res.clubs, sel.base, sel.measure);
     rankOn(res.ligues, sel.base, sel.measure);
     const ms = measuresOf(sel.base);
