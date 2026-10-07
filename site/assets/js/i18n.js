@@ -273,7 +273,7 @@ const FR = {
   "cp.max": "Maximum 8 coureurs : la palette ne distingue pas fiablement davantage de couleurs.",
   "cp.chart": "Évolution comparée du CN", "cp.table": "Synthèse", "cp.h2h": "Face-à-face",
   "cp.h2h.hint": "Circuits courus en commun : victoires de la ligne sur la colonne",
-  "cp.peak": "Pic", "cp.clear": "Tout retirer", "cp.pick": "Ajouter des coureurs",
+  "cp.peak": "Pic", "cp.clear": "Tout retirer", "cp.count": "coureur(s) dans la comparaison", "cp.pick": "Ajouter des coureurs",
   "cp.lineStyle": "Style de ligne", "cp.search": "Ajouter un coureur par son nom…", "cp.fromList": "Choisir dans le classement", "cp.shared": "circuits communs",
 
   "cm.title": "Comparer des clubs", "cm.compare": "Comparer des clubs",

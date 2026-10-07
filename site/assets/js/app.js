@@ -1,11 +1,11 @@
 // Application shell: router (with the login gate), header (navigation,
-// discipline selector, search, the logged-in user), comparison tray.
+// discipline selector, search, the logged-in user, the number of runners being compared).
 
 import { html, raw, $, $$, esc, fmt, normalise, displayName, debounce } from "./util.js";
 import { t } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
-import { disposeAll, slotColor } from "./charts.js";
+import { disposeAll } from "./charts.js";
 import * as auth from "./auth.js";
 
 export const SITE = "O'CN";
@@ -28,8 +28,6 @@ const PAGES = {
   admin: () => import("./pages/admin.js"),
 };
 
-// Where the runner selection tray is worth showing.
-const SHOWS_TRAY = new Set(["ranking", "runner", "network"]);
 // Pages without the runner search of the header: it leads away from what they show.
 const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
@@ -163,7 +161,8 @@ function renderHeader(r) {
       <span class="brand-name">${SITE}<small>${t("brand.sub")}</small></span>
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
-      ${nav.map(([k, href, label]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${label}</a>`)}
+      ${nav.map(([k, href, label]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${label}${
+        k === "compare" ? html`<span class="nav-count" id="nav-cmp" hidden></span>` : ""}</a>`)}
     </nav>
     <div class="topbar-tools">
       ${me ? html`
@@ -264,23 +263,14 @@ function renderFooter() {
   </div>`;
 }
 
-// ---- comparison tray ------------------------------------------------------
-function renderTray(route) {
-  const tray = $("#tray");
-  const sel = store.get().compare;
-  if (!sel.length || !SHOWS_TRAY.has(route) || !data.isPrivateLoaded()) { tray.hidden = true; return; }
-  tray.hidden = false;
-  tray.innerHTML = html`<div class="tray-list">
-      ${sel.map((c) => {
-        const r = data.runner(c.lic);
-        return html`<span class="pill"><span class="dot" style="background:${raw(slotColor(c.slot))}"></span>
-          ${displayName(r?.nom || c.lic)}<button type="button" data-remove="${c.lic}" aria-label="×">×</button></span>`;
-      })}
-    </div>
-    <a class="btn btn-primary btn-sm" href="#/comparer">${t("rk.compare")} (${sel.length})</a>
-    <button class="btn btn-ghost btn-sm" type="button" id="tray-clear">${t("cp.clear")}</button>`;
-  $$("[data-remove]", tray).forEach((b) => b.addEventListener("click", () => store.removeCompare(b.dataset.remove)));
-  $("#tray-clear", tray).addEventListener("click", () => store.set({ compare: [] }));
+// ---- the runners being compared: their number next to « Comparer » ------------------
+function renderCompareCount() {
+  const el = $("#nav-cmp");
+  if (!el) return;
+  const n = store.get().compare.length;
+  el.textContent = n ? String(n) : "";
+  el.hidden = !n;
+  el.title = n ? `${n} ${t("cp.count")}` : "";
 }
 
 // ---- routing ---------------------------------------------------------------
@@ -315,7 +305,7 @@ async function route_() {
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);
-  renderTray(r.route);
+  renderCompareCount();
   current?.cleanup?.();
   disposeAll();
   const main = $("#main");
@@ -349,7 +339,7 @@ export async function signedIn(s) {
   location.hash = link.runner(s.lic);
 }
 
-store.subscribe(() => renderTray(parseHash().route));
+store.subscribe(renderCompareCount);
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
 
