@@ -1,7 +1,7 @@
 // Application shell: router (with the login gate), header (navigation,
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
-import { html, raw, $, $$, esc, fmt, normalise, displayName, debounce } from "./util.js";
+import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce } from "./util.js";
 import { t } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
@@ -159,7 +159,7 @@ function renderHeader(r) {
         <path d="M16 5 L27 16 L16 27 L5 16 Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
         <path d="M16 5 L27 16 L16 16 Z" fill="#eb6834"/><path d="M5 16 L16 27 L16 16 Z" fill="#fff"/>
       </svg>
-      <span class="brand-name">${SITE}<small>${t("brand.sub")}</small></span>
+      <span class="brand-name">${SITE}</span>
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
       ${nav.map(([k, href, label]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${label}${
@@ -171,7 +171,7 @@ function renderHeader(r) {
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
       <div class="user-chip">
-        <a href="${link.runner(me.lic)}" class="user-name" title="${t("auth.myPage")}">${displayName(me.nom)}</a>
+        <a href="${link.runner(me.lic)}" class="user-name" title="${t("auth.myPage")}">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</a>
         <div class="user-links">
           ${me.admin ? html`<a href="#/admin">${t("admin.link")}</a>` : ""}
           <a href="#/reglages">${t("st.link")}</a>

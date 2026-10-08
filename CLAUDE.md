@@ -141,7 +141,7 @@ from the agenda — FFCO's api.ffcorientation.fr is closed to robots by its robo
 by the agenda before the pilot started, were added once from its CSV export (one request, the owner's go-ahead
 2026-10-08, `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
 platforms (WinSplits' class pages only when its .spl changed); a race the budget cut short comes first next time;
-the last runs are listed under the « Résultats provisoires » table. **Polite by design:**
+the last runs are listed under the « Résultats » table. **Polite by design:**
 our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga's results
 pages, Livelox results, Sportsregions upload folders, user-agent filters) are recorded as refused, never worked around. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again). No result
@@ -149,7 +149,7 @@ file carries licences: runners are matched by name + club number (`match.py`), u
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
-served to administrators only (`_middleware.js`); pages « Résultats provisoires » (`#/provisoires`) and « Temps
+served to administrators only (`_middleware.js`); pages « Résultats » (`#/provisoires`) and « Temps
 intermédiaires » (`#/temps-inter`), linked from the admin page. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 

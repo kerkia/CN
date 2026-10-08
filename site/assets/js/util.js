@@ -113,6 +113,14 @@ export function displayName(nom) {
   const cap = (w) => w.toLowerCase().replace(/(^|[-' ])\p{L}/gu, (c) => c.toUpperCase());
   return `${rest.join(" ")} ${upper.map(cap).join(" ")}`;
 }
+/** "DUPONT Marie" -> { first: "Marie", last: "Dupont" }: the header shows them on two lines. */
+export function nameParts(nom) {
+  const parts = (nom || "").split(/\s+/).filter(Boolean);
+  const isLast = (p) => p.length > 1 && p === p.toUpperCase();
+  const cap = (w) => w.toLowerCase().replace(/(^|[-' ])\p{L}/gu, (c) => c.toUpperCase());
+  const last = parts.filter(isLast), first = parts.filter((p) => !isLast(p));
+  return last.length && first.length ? { first: first.join(" "), last: last.map(cap).join(" ") } : { first: nom || "", last: "" };
+}
 export function downloadCsv(filename, header, rows) {
   const q = (v) => {
     const s = v == null ? "" : String(v);

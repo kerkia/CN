@@ -135,7 +135,6 @@ p { margin: 0; }
 .brand:hover { text-decoration: none; }
 .brand-mark { width: 30px; height: 30px; flex: none; }
 .brand-name { font-size: 16px; letter-spacing: -0.01em; white-space: nowrap; line-height: 1.2; }
-.brand-name small { display: block; font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; line-height: 1.3; }
 .nav { display: flex; gap: 2px; }
 .nav a {
   color: var(--ink-2); padding: 7px 12px; border-radius: 8px; font-weight: 550; font-size: 14px;
@@ -432,7 +431,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   .grid-main-side, .grid-3 { grid-template-columns: 1fr; }
   .topbar-inner .search input { width: 180px; }
 }
-@media (max-width: 1240px) {
+@media (max-width: 1120px) {             /* the navigation fits beside the brand and the tools above this */
   .menu-btn { display: inline-grid; }
   .nav {
     display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column;
@@ -445,7 +444,6 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 }
 @media (max-width: 820px) {
   .grid-2 { grid-template-columns: 1fr; }
-  .brand-name small { display: none; }
   .hero { grid-template-columns: auto 1fr; }
   .hero > :last-child { grid-column: 1 / -1; }
   .page { padding: 16px 16px 110px; }
@@ -528,8 +526,9 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .login-box .btn-primary { height: 40px; justify-content: center; }
 @media (max-width: 820px) { .login-hero { grid-template-columns: 1fr; padding: 20px; } }
 .user-chip { display: flex; align-items: center; gap: 4px; }
-.user-chip .user-name { font-weight: 620; font-size: 14px; color: var(--ink); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 1240px) { .user-chip .user-name { display: none; } }
+.user-chip .user-name { display: flex; flex-direction: column; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }
+.user-chip .user-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* first name, then last name */
+@media (max-width: 640px) { .user-chip .user-name { display: none; } }
 table.data tbody tr.me { box-shadow: inset 3px 0 0 var(--focus); background: color-mix(in srgb, var(--focus) 8%, transparent); }
 table.data tbody tr.me .name { font-weight: 700; }
 .licence-tag { font-size: 13px; vertical-align: middle; margin-left: 6px; font-weight: 600; }
