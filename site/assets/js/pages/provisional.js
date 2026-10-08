@@ -103,7 +103,7 @@ function list(main, idx, query) {
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
       <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c" style="white-space:normal;min-width:90px">${t("prov.splits")}</th>
-      <th>FFCO</th><th>${t("prov.checked")}</th></tr></thead>
+      <th>FFCO</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td style="white-space:normal;min-width:180px;max-width:280px"><a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
@@ -114,8 +114,7 @@ function list(main, idx, query) {
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
-        <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>` : html`<span class="muted">${t("prov.waiting")}</span>`}</td>
-        <td class="num muted" style="font-size:12px">${when(r.last_check)}${r.done ? "" : html`<div>${t("prov.next")} ${when(r.next_check)}</div>`}</td></tr>`)}</tbody></table>`
+        <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>` : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
   $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
