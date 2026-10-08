@@ -79,7 +79,9 @@ class WinSplits:
         if state is None:                               # first run: find the newest event, fill backwards from it
             top = self.head(START_ID)
             state = {"next": top + 1, "back": top, "events": {}}
-        state.setdefault("back", START_ID - 1)          # a state saved before the backward fill: nothing left to fill
+        if "back" not in state:                         # saved by the forward-only scan: jump to the newest, fill backwards
+            top = self.head(state["next"])
+            state["back"], state["next"] = top, max(state["next"], top + 1)
         found, budget = [], limit
 
         def keep(i: int, ev: dict) -> None:
@@ -121,7 +123,7 @@ class WinSplits:
 
     def catching_up(self) -> bool:
         state = meta_get(self.con, "winsplits", None)
-        return state is None or state.get("back", START_ID - 1) >= START_ID
+        return state is None or "back" not in state or state["back"] >= START_ID
 
     def candidates(self, race) -> list[tuple[float, int]]:
         """Known events of the race's day that look like it: (score, id), best first."""
