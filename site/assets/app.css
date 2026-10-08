@@ -314,7 +314,16 @@ select { padding-right: 28px; }
 .btn-sm { height: 28px; padding: 0 10px; font-size: 13px; }
 
 /* ---------------------------------------------------------------- tables */
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+  overflow-x: auto;
+  /* a shadow at an edge while the table goes on that way: the "local" covers scroll with the table and hide it at
+     the ends; the "scroll" shadows stay put */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) left / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) right / 14px 100% no-repeat scroll;
+}
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.data th, table.data td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 table.data thead th {
@@ -334,6 +343,13 @@ table.data .cn { font-weight: 620; }
 table.data .rank { color: var(--ink-3); width: 44px; }
 table.data .name { font-weight: 560; }
 table.data .dim { color: var(--ink-3); }
+/* on a phone, text cells (names, competitions, clubs) wrap at word boundaries, numbers and times stay whole: the
+   tables shrink to about half their width and the figures that matter show without scrolling */
+@media (max-width: 640px) {
+  table.data { font-size: 13px; }
+  table.data th, table.data td { padding: 6px 7px; }
+  table.data td:not(.num):not(.r):not(.c), table.data th:not(.num):not(.r):not(.c) { white-space: normal !important; }
+}
 table.data input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--focus); cursor: pointer; }
 table.data .strike { color: var(--ink-3); text-decoration: line-through; }
 table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
@@ -392,8 +408,9 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .pill {
   display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 6px 0 10px;
   border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
-  font-size: 13px; font-weight: 560; white-space: nowrap; color: var(--ink);
+  font-size: 13px; font-weight: 560; white-space: nowrap; color: var(--ink); max-width: 100%;
 }
+@media (max-width: 640px) { .pill { white-space: normal; height: auto; min-height: 30px; padding-block: 3px; border-radius: 15px; } }
 .pill button {
   border: 0; background: transparent; color: var(--ink-3); cursor: pointer; width: 20px; height: 20px;
   border-radius: 50%; display: grid; place-items: center; font-size: 14px; line-height: 1;
@@ -434,7 +451,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 @media (max-width: 1120px) {             /* the navigation fits beside the brand and the tools above this */
   .menu-btn { display: inline-grid; }
   .nav {
-    display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column;
+    display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column; z-index: 5;   /* over the search bar */
     background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 14px;
     box-shadow: var(--shadow-pop);
   }
@@ -454,6 +471,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 @media (max-width: 520px) {
   .topbar-inner .search { display: none; }
   .brand-name { display: none; }
+  .guest .brand-name { display: inline; }
   .topbar-inner { gap: 10px; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tile-value { font-size: 22px; }
@@ -491,6 +509,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .home-login { background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: var(--shadow-pop); }
 @media (max-width: 860px) {
   .home-inner { grid-template-columns: 1fr; padding: 16px 16px 300px; gap: 16px; }
+  .home-intro { padding: 16px 16px; }
   .home-landscape { top: auto; height: 380px; }     /* a band at the bottom, the sky above */
   .home-intro h1 { font-size: 32px; }
 }
@@ -527,6 +546,9 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 @media (max-width: 820px) { .login-hero { grid-template-columns: 1fr; padding: 20px; } }
 .user-chip { display: flex; align-items: center; gap: 4px; }
 /* « Déposer des résultats » (pages/upload.js) */
+.pv-race { white-space: normal !important; min-width: 180px; max-width: 280px; }
+.pv-wrap { white-space: normal !important; min-width: 80px; }
+@media (max-width: 640px) { .pv-race { min-width: 150px; } .pv-wrap { min-width: 0; } }
 .upload-card .card-head { flex-wrap: nowrap; align-items: flex-start; }
 .upload-card #up-close { flex: none; }
 .upload-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; }

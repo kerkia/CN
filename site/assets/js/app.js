@@ -26,7 +26,7 @@ const PAGES = {
   settings: () => import("./pages/settings.js"),
   contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
-  provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 30 days
+  provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 60 days
   splits: () => import("./pages/splits.js"),
 };
 
@@ -151,7 +151,7 @@ function renderHeader(r) {
     : route === "splits" ? "provisional" : route;
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
-  $("#topbar").innerHTML = html`<div class="topbar-inner">
+  $("#topbar").innerHTML = html`<div class="topbar-inner${me ? "" : " guest"}">
     ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}

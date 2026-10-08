@@ -69,11 +69,11 @@ function list(main, idx, query) {
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
     ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
         ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
-      <table class="data compact" style="margin-top:6px;max-width:640px"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
+      <div class="table-wrap" style="margin-top:6px;max-width:640px"><table class="data compact"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
         <th class="r">${t("prov.run.changed")}</th><th class="r">${t("prov.run.requests")}</th><th class="r">${t("prov.run.seconds")}</th><th></th></tr></thead>
       <tbody>${[...idx.runs].reverse().map((x) => html`<tr><td class="num">${when(x.at)}</td><td class="r num">${fmt(x.looked)} / ${fmt(x.due)}</td>
         <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
-        <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></details>` : ""}`;
+        <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
   const R = idx.races;
   $("#pv-tiles").innerHTML = html`
     <div class="tile"><div class="tile-label">${t("prov.races")}</div><div class="tile-value">${fmt(R.length)}</div></div>
@@ -106,14 +106,14 @@ function list(main, idx, query) {
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
-      <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c" style="white-space:normal;min-width:90px">${t("prov.splits")}</th>
+      <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c pv-wrap">${t("prov.splits")}</th>
       <th>FFCO</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td style="white-space:normal;min-width:180px;max-width:280px"><a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
+        <td class="pv-race"><a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
-        <td style="white-space:normal;min-width:80px">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
-        <td style="white-space:normal;min-width:110px">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}
+        <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
+        <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}
           ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
