@@ -121,9 +121,11 @@ class LiveResultat:
                     splits = [(int(sp[str(k)]) / 100 if str(sp.get(str(k), "")).isdigit() and int(sp[str(k)]) > 0 else None)
                               for k in [s.get("code") for s in data["splitcontrols"]]]
                 place = x.get("place")
+                start = x.get("start")                      # hundredths of a second after midnight
                 rows.append(runner(x.get("name", ""), place=int(place) if str(place).isdigit() else None,
                                    club=x.get("club"), club_code=club_code(x.get("club")), time_s=t, status=st,
-                                   category=category(name), splits=splits))
+                                   category=category(name), splits=splits,
+                                   start_s=int(start) / 100 if str(start).isdigit() and int(start) > 0 else None))
             classes.append(klass(name, rows, controls=controls))
         by = "category" if classes and all(category(c["name"]) for c in classes) else "circuit"
         info = self.info(comp_id)

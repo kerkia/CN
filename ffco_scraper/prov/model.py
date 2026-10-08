@@ -117,7 +117,8 @@ def category(text: str | None) -> str | None:
 def runner(name: str, **kw) -> dict:
     """A runner row with every key present."""
     r = {"place": None, "name": re.sub(r"\s+", " ", str(name or "")).strip(), "club": None, "club_code": None,
-         "category": None, "birth": None, "bib": None, "time_s": None, "status": "ok", "splits": None}
+         "category": None, "birth": None, "bib": None, "time_s": None, "status": "ok", "splits": None,
+         "start_s": None}                           # start, seconds after midnight (local): who ran with whom
     r.update({k: v for k, v in kw.items() if k in r})
     if r["club"] and not r["club_code"]:
         r["club_code"] = club_code(r["club"])

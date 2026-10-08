@@ -3,18 +3,23 @@
 Events have sequential ids (databaseId). Each run moves forward from the last id seen, reading each new event's
 class page, whose title says "Name, Organiser [dd/mm/yyyy]"; an event of a watched race's day whose name or
 organiser matches it is kept. Its split tables (one HTML table per class: leg and cumulative time per control,
-plus the finish) are then read. The binary .spl download is a private format: the HTML tables are used instead.
+plus the finish) are then read, and the event's .spl file (WinSplits Pro's download) for the start times the tables
+do not give — needed to tell who ran with whom. The .spl format is not documented; what is read of it (see _spl) was
+checked against the tables, and a runner gets a start time only when the file's punches agree with their splits.
 """
 
 from __future__ import annotations
 
 import html as htmllib
 import re
+import struct
+import unicodedata
 
 from ..model import category, club_code, doc, klass, parse_time, plain, runner, status_of
 from ..store import meta_get, meta_set
 
 BASE = "https://obasen.orientering.se/winsplits/online/en"
+SPL = "https://obasen.orientering.se/winsplits/api/winSplitsOnlineHelper/downloadSplFile/{}"
 START_ID = 115300              # early September 2026: the pilot covers the past month
 MISSES_TO_STOP = 8             # consecutive ids that do not exist yet: the end of the list
 
@@ -22,6 +27,57 @@ MISSES_TO_STOP = 8             # consecutive ids that do not exist yet: the end 
 def _text(cell: str) -> str:
     cell = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", cell)
     return re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", cell))).strip()
+
+
+def _key(name: str) -> str:
+    return re.sub(r"[^a-z]", "", unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower())
+
+
+def _spl(b: bytes) -> dict[str, list[list[tuple[int, float]]]]:
+    """The runners of a .spl file ("spl4": tagged fields, a tag byte then a 2-byte length for text) by name key:
+    for each, the punches as (control code, clock time in seconds), the start being code 0x7FE0 and the finish 0x7FF0.
+    A runner is tag 0x87 first name, 0x88 last name, …, then 0x97: a 2-byte count of 5-byte punches (2-byte code,
+    3-byte time in hundredths of a second after midnight)."""
+    out: dict[str, list] = {}
+    if not b.startswith(b"spl"):
+        return out
+    text = lambda i: (b[i + 2:i + 2 + struct.unpack_from("<H", b, i)[0]].decode("latin-1"), i + 2 + struct.unpack_from("<H", b, i)[0])
+    i = 0
+    while (i := b.find(b"\x87", i)) >= 0:
+        try:
+            first, j = text(i + 1)
+            if b[j] != 0x88:
+                i += 1
+                continue
+            last, j = text(j + 1)
+            k = b.find(b"\x97", j)
+            if not (0 < len(first) < 40 and 0 < len(last) < 60) or k < 0 or k - j > 200:
+                i += 1
+                continue
+            n = struct.unpack_from("<H", b, k + 1)[0]
+            punches = [(struct.unpack_from("<H", b, p)[0], int.from_bytes(b[p + 2:p + 5], "little") / 100)
+                       for p in range(k + 3, k + 3 + 5 * n, 5)]
+        except (struct.error, IndexError):
+            i += 1
+            continue
+        if punches and punches[0][0] == 0x7FE0:
+            for key in {_key(first + last), _key(last + first)}:
+                out.setdefault(key, []).append(punches)
+        i = j
+    return out
+
+
+def _start(r: dict, spl: dict) -> float | None:
+    """The runner's start in the .spl file: the record whose punches give their splits (to the second)."""
+    words = r["name"].split()
+    keys = {_key(r["name"]), _key(" ".join(words[1:] + words[:1])), _key(" ".join(words[-1:] + words[:-1]))}
+    sp = [s for s in (r.get("splits") or []) if s is not None]
+    for punches in [p for k in keys for p in spl.get(k, [])]:
+        start = punches[0][1]
+        times = [t - start for c, t in punches if c < 0x7FE0]
+        if sp and all(any(abs(s - t) <= 1 for t in times) for s in sp[:5]):
+            return start
+    return None
 
 
 def _time(text: str | None) -> float | None:
@@ -154,6 +210,13 @@ class WinSplits:
             k = self._table(a.content.decode("latin-1"), name)
             if k:
                 classes.append(k)
+        if classes and not self.f.out_of_time():
+            a = self.f.get(SPL.format(db_id), conditional=False)
+            spl = _spl(a.content) if a.status == 200 else {}
+            for k in classes:
+                for r in k["runners"]:
+                    if r["splits"]:
+                        r["start_s"] = _start(r, spl)
         by = "category" if classes and all(category(c["name"]) for c in classes) else "circuit"
         return doc("winsplits", classes, by=by, title=f"{ev['name']}, {ev['organiser']}", date=ev["date"])
 

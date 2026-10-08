@@ -108,6 +108,12 @@ def _seconds(text: str) -> float | None:
     return model.parse_time(t)
 
 
+def _clock(text: str) -> float | None:
+    """A StartTime ('2026-10-04T09:59:00+02:00' in 3.0, '09:59:00' in 2.0.3's Clock) as seconds after midnight, as written."""
+    m = re.search(r"(?:T|^)(\d{1,2}):(\d{2}):(\d{2}(?:\.\d+)?)", (text or "").strip())
+    return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
+
+
 def _class(cr) -> dict | None:
     name = _txt(cr, "Class", "Name") or _txt(cr, "ClassShortName") or _txt(cr, "Class", "ClassShortName")
     course = _child(cr, "Course")
@@ -196,5 +202,6 @@ def _person(pr, k: dict):
         punches.append((code, None if (st.get("status") or "").lower() == "missing"
                         else _seconds(_txt(st, "Time"))))
     r = model.runner(name, place=place, club=club or None, category=cat, birth=birth,
-                     bib=_txt(res, "BibNumber") or None, time_s=time_s, status=status)
+                     bib=_txt(res, "BibNumber") or None, time_s=time_s, status=status,
+                     start_s=_clock(_txt(res, "StartTime") or _txt(res, "StartTime", "Clock")))
     return r, punches

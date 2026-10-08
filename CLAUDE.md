@@ -129,7 +129,8 @@ drops past races) and of FFCO's last month — relays excluded — and `update.p
 a deploy only when something new was found — Pages' free plan counts deploys. A race is watched 14 days whether
 FFCO has published it or not (FFCO has no splits); a finished race comes back when a platform competition is
 newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by date + name/organiser), WinSplits
-Online (sequential event ids scanned forward; HTML split tables), and the organiser's site (WordPress media/posts
+Online (sequential event ids scanned forward; HTML split tables, start times from the event's .spl file, an
+undocumented format decoded and checked against the tables — `winsplits._spl`), and the organiser's site (WordPress media/posts
 API, Blogger feed, a few pages around the race page; club websites from the agenda — FFCO's api.ffcorientation.fr
 is closed to robots by its robots.txt). **Polite by design:**
 our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga, Livelox

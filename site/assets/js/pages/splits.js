@@ -1,13 +1,19 @@
 // Temps intermédiaires (administrators only, a pilot): the split times organisers publish (WinSplits, their own split
 // files), circuit by circuit, in six views (most after WinSplits Pro's analyses):
 // - Tableau: each leg's time and rank, the cumulative time and rank, the time lost on each leg;
-// - Écarts: the gap to the best cumulative time along the course, for the runners picked;
+// - Écarts: for the runners picked, the gap to a reference along the course — the best cumulative time at each control,
+//   the sum of the best leg times (+ 0 to 100 %, as SplitsBrowser's "fastest time"), the winner or any runner — or
+//   their place after each control, or their rank on each leg;
 // - Inter-postes: leg by leg, the best and median times, how many runners made a mistake and the time lost there, the
 //   leader after it — the tricky legs stand out;
 // - Profil: for the runners picked, each leg as a percentage behind the best — where each one ran well or badly;
 // - Face-à-face: for the runners picked, the legs each one won against each other one;
+// - Groupes: who ran with whom. From the 1st control to the last one (the starts are apart by design, and the run-in to
+//   the finish is everyone's), two runners — of any circuit
+//   of the document, on the same leg (same pair of control codes) — who left a control and reached the next one within
+//   a few seconds of each other ran that leg together; the one who punched first was in front. Needs the start times
+//   (WinSplits' .spl files, liveresultat, IOF XML);
 // - Bilan: one row per runner (legs won, mean leg rank, mistakes, time lost, usual pace, regularity, duels won).
-// Pack running (who followed whom) needs the start times, which WinSplits' tables do not give: not offered.
 //
 // Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — their
 // "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios. A leg run 20 % slower than that,
@@ -23,8 +29,11 @@ import { seg, chartCard, bindChartCard, legend, dataTable } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 
-const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "summary"];
+const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
+const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
+const GRAPHS = ["gap", "pos", "legpos"];
+const REFS = ["cum", "legs", "legs5", "legs25", "legs50", "legs100", "winner", "runner"];
 const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : null; };
 const behind = (ratio) => (ratio == null ? null : (ratio - 1) * 100);           // % behind the best
@@ -52,6 +61,8 @@ export async function render(main, { query = {} } = {}) {
   let key = withSplits.some((r) => r.key === query.course) ? query.course : withSplits[0].key;
   let race = null, docs = [], di = Number(query.doc) || 0, ci = Number(query.c) || 0, picked = null, ideal = query.v === "ideal";
   let view = VIEWS.includes(query.vw) ? query.vw : "table", club = query.cl || "";
+  let graph = GRAPHS.includes(query.g) ? query.g : "gap", ref = REFS.includes(query.ref) ? query.ref : "cum", refName = query.rr || "";
+  let tol = TOLS.includes(Number(query.tol)) ? Number(query.tol) : 10;
 
   async function loadRace() {
     race = await getProv(`${encodeURIComponent(key)}.json`);
@@ -71,13 +82,22 @@ export async function render(main, { query = {} } = {}) {
       <label class="field"><span>${t("spl.club")}</span><select id="sp-club" style="max-width:260px"><option value="">${t("f.allm")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select></label>`;
     $("#sp-views").innerHTML = html`<div class="field"><span>${t("spl.tab")}</span>${seg("spw", VIEWS.map((v) => [v, t(`spl.tab.${v}`)]), view)}</div>
-      ${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}`;
+      ${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
+      ${view === "gaps" ? html`<label class="field"><span>${t("spl.graph")}</span><select id="sp-graph">${GRAPHS.map((g) => html`<option value="${g}" ${raw(g === graph ? "selected" : "")}>${t(`spl.graph.${g}`)}</option>`)}</select></label>
+        ${graph === "gap" ? html`<label class="field"><span>${t("spl.ref")}</span><select id="sp-ref">${REFS.map((x) => html`<option value="${x}" ${raw(x === ref ? "selected" : "")}>${t(`spl.ref.${x}`)}</option>`)}</select></label>` : ""}
+        ${graph === "gap" && ref === "runner" ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sp-rr" style="max-width:240px">${k.runners.filter((x) => x.splits)
+          .sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((x) => html`<option value="${x.name}" ${raw(x.name === refName ? "selected" : "")}>${x.place ? `${x.place}. ` : ""}${x.name}</option>`)}</select></label>` : ""}` : ""}
+      ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}`;
     $("#sp-race").addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
     $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
     $$('[data-seg="spw"]').forEach((b) => b.addEventListener("click", () => { view = b.dataset.value; pickers(); draw(); }));
     $$('[data-seg="spv"]').forEach((b) => b.addEventListener("click", () => { ideal = b.dataset.value === "ideal"; pickers(); draw(); }));
+    $("#sp-graph")?.addEventListener("change", (e) => { graph = e.target.value; pickers(); draw(); });
+    $("#sp-ref")?.addEventListener("change", (e) => { ref = e.target.value; pickers(); draw(); });
+    $("#sp-rr")?.addEventListener("change", (e) => { refName = e.target.value; draw(); });
+    $("#sp-tol")?.addEventListener("change", (e) => { tol = Number(e.target.value); draw(); });
   }
   function fixIndexes() {
     di = docs[di] ? di : 0;
@@ -88,8 +108,11 @@ export async function render(main, { query = {} } = {}) {
   function draw() {
     const k = docs[di].classes[ci];
     const asIdeal = ideal && TIMED.includes(view);
+    const gapView = view === "gaps";
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
-      v: asIdeal ? "ideal" : null, cl: club || null });
+      v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
+      ref: gapView && graph === "gap" && ref !== "cum" ? ref : null, rr: gapView && graph === "gap" && ref === "runner" ? refName : null,
+      tol: view === "groups" && tol !== 10 ? tol : null });
     const n = k.controls?.length || Math.max(...k.runners.map((r) => r.splits?.length || 0));
     const codes = k.controls || Array.from({ length: n }, (_, i) => String(i + 1));
     // cumulative times with the finish as the last "control"; legs between them
@@ -173,15 +196,37 @@ export async function render(main, { query = {} } = {}) {
     }
 
     if (view === "gaps") {
-      body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? t("spl.gap.ideal") : t("spl.gap"), hint: t("spl.gap.hint") })}${chooser()}`;
+      // the reference's cumulative time at each control (the finish last)
+      let refCum, refTitle;
+      if (ref === "cum") {
+        refCum = bestCum.map((v) => (isFinite(v) ? v : null));
+        refTitle = t("spl.ref.t.cum");
+      } else if (ref.startsWith("legs")) {
+        const plus = Number(ref.slice(4)) || 0;
+        let acc = 0;
+        refCum = best.map((v) => (acc == null || !isFinite(v) ? (acc = null) : (acc += v * (1 + plus / 100))));
+        refTitle = plus ? `${t("spl.ref.t.legs")} + ${plus} %` : t("spl.ref.t.legs");
+      } else {
+        const who = ref === "winner" ? R.find((x) => x.place === 1)
+          : R.find((x) => x.r.name === refName) || byPlace(R)[0];
+        refCum = who ? who.vCum : Array(L).fill(null);
+        refTitle = who ? (ref === "winner" ? `${t("spl.ref.t.winner")} (${who.r.name})` : `${t("spl.ref.t.runner")} ${who.r.name}`) : "—";
+      }
+      const title = graph === "gap" ? `${t("spl.gapTo")} ${refTitle}` : t(`spl.graph.t.${graph}`);
+      body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? `${title}, ${t("spl.noLoss")}` : title, hint: t(`spl.graph.hint.${graph}`) })}${chooser()}`;
       bindChartCard(main, "sp-gap");
       redraw = () => {
-        const series = sel().map((x, i) => ({ name: x.r.name, color: slotColor(i), data: x.vCum.map((c, j) => (c == null ? null : c - bestCum[j])) }));
+        const value = graph === "gap" ? (x, j) => (x.vCum[j] == null || refCum[j] == null ? null : x.vCum[j] - refCum[j])
+          : graph === "pos" ? (x, j) => x.cumRank[j] : (x, j) => x.legRank[j];
+        const series = sel().map((x, i) => ({ name: x.r.name, color: slotColor(i), data: legLabels.map((_, j) => value(x, j)) }));
+        const fmtY = graph === "gap" ? (v) => signed(v) : (v) => fmt(v);
         $("#sp-gap-legend").innerHTML = legend(series.map((s) => ({ label: s.name, color: s.color })));
-        lineChart($("#sp-gap"), { categories: ["D", ...legLabels],
-          series: series.map((s) => ({ ...s, data: [0, ...s.data] })), yName: t("spl.behind"), fmtY: (v) => clock(v), inverse: true });
+        // the gap starts at 0 at the start; the places only exist from the first control
+        lineChart($("#sp-gap"), { categories: graph === "gap" ? ["D", ...legLabels] : legLabels,
+          series: graph === "gap" ? series.map((s) => ({ ...s, data: [0, ...s.data] })) : series,
+          yName: t(`spl.graph.y.${graph}`), fmtY, inverse: true });
         $("#sp-gap-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("prov.name")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
-          <tbody>${series.map((s) => html`<tr><td>${s.name}</td>${s.data.map((v) => html`<td class="r num">${v == null ? "—" : signed(v)}</td>`)}</tr>`)}</tbody></table>`;
+          <tbody>${series.map((s) => html`<tr><td>${s.name}</td>${s.data.map((v) => html`<td class="r num">${v == null ? "—" : fmtY(v)}</td>`)}</tr>`)}</tbody></table>`;
       };
     }
 
@@ -260,6 +305,96 @@ export async function render(main, { query = {} } = {}) {
             })}<td class="r num">${fmt(all.filter(([w, l]) => w > l).length)} / ${fmt(all.length)}</td></tr>`;
           })}</tbody></table>`;
       };
+    }
+
+    if (view === "groups") {
+      // every leg run by anyone of the document from the 2nd control on, by its pair of control codes (a circuit
+      // without codes is only compared with itself): [{who, dep, arr}] in clock seconds
+      const legKey = (kc, j) => (kc.controls ? `${kc.controls[j - 1]}>${kc.controls[j]}` : `${kc.name}:${j}`);
+      const board = new Map();
+      for (const kc of docs[di].classes) {
+        const m = kc.controls?.length || Math.max(0, ...kc.runners.map((r) => r.splits?.length || 0));
+        for (const r of kc.runners) {
+          if (r.start_s == null || !r.splits) continue;
+          const cum = [...r.splits.slice(0, m), r.status === "ok" ? r.time_s : null];
+          for (let j = 1; j < m; j++) {                  // control to control: neither the start nor the finish
+            if (cum[j - 1] == null || cum[j] == null) continue;
+            const key = legKey(kc, j);
+            if (!board.has(key)) board.set(key, []);
+            board.get(key).push({ r, cls: kc.name, dep: r.start_s + cum[j - 1], arr: r.start_s + cum[j] });
+          }
+        }
+      }
+      const timed = shown.filter((x) => x.r.start_s != null);
+      const rows = timed.map((x) => {
+        const legs = [];
+        let all = 0, inGroup = 0, behindT = 0, gain = 0;
+        for (let j = 1; j < n; j++) {
+          if (x.cum[j - 1] == null || x.cum[j] == null) { legs.push(null); continue; }
+          const dep = x.r.start_s + x.cum[j - 1], arr = x.r.start_s + x.cum[j];
+          const mates = (board.get(legKey(k, j)) || []).filter((o) => o.r !== x.r && Math.abs(o.dep - dep) <= tol && Math.abs(o.arr - arr) <= tol);
+          const front = mates.every((o) => o.arr >= arr);
+          all += x.legs[j];
+          if (mates.length) {
+            inGroup += x.legs[j];
+            if (!front) {
+              behindT += x.legs[j];
+              if (x.ratio && isFinite(realBest[j])) gain += realBest[j] * x.ratio - x.legs[j];
+            }
+          }
+          legs.push(mates.length ? { mates, front } : { mates });
+        }
+        // the companions, with the controls between which they were together
+        const withs = new Map();
+        legs.forEach((g, j) => g?.mates.forEach((o) => {
+          const id = `${o.r.name}|${o.cls}`;
+          if (!withs.has(id)) withs.set(id, { o, legs: [] });
+          withs.get(id).legs.push(j + 1);
+        }));
+        const spans = (js) => {
+          const out = [];
+          for (const j of js) {
+            const last = out[out.length - 1];
+            if (last && last[1] === j - 1) last[1] = j; else out.push([j, j]);
+          }
+          return out.map(([a, b]) => `${a} → ${b + 1}`).join(", ");
+        };
+        const mates = [...withs.values()].sort((a, b) => b.legs.length - a.legs.length);
+        return { x, legs, place: x.r.place, n: legs.filter((g) => g?.mates.length).length, of: legs.filter(Boolean).length,
+          front: legs.filter((g) => g?.mates.length && g.front).length, behind: legs.filter((g) => g?.mates.length && !g.front).length,
+          pack: all ? (100 * inGroup) / all : null, follow: all ? (100 * behindT) / all : null, gain: behindT ? gain : null,
+          mates: mates.map((m) => ({ name: m.o.r.name, cls: m.o.cls === k.name ? "" : m.o.cls, legs: m.legs.length, span: spans(m.legs) })) };
+      });
+      const legHead = Array.from({ length: n - 1 }, (_, j) => `${j + 1}–${j + 2}`);
+      body.innerHTML = !timed.length ? html`<div class="card"><div class="empty">${t("spl.grp.none")}</div></div>` : html`
+        <section class="card"><div class="card-head"><div><h2>${t("spl.grp.title")} · ${k.name}</h2>
+          <div class="hint">${t("spl.grp.hint1")} ${tol} ${t("spl.grp.hint2")}</div></div></div><div id="sp-grp"></div></section>
+        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.grp.map")}</h2>
+          <div class="hint">${t("spl.grp.map.hint")}</div></div></div>
+          <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.name")}</th>${legHead.map((h) => html`<th class="c" style="font-size:11px">${h}</th>`)}</tr></thead>
+          <tbody>${[...rows].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((g) => html`<tr><td style="white-space:nowrap">${g.place ? `${g.place}. ` : ""}${g.x.r.name}</td>
+            ${g.legs.map((c) => (!c ? html`<td class="c muted">·</td>` : !c.mates.length ? html`<td></td>`
+              : html`<td class="c num" style="${raw(c.front ? GOOD : BAD)}" title="${c.mates.map((o) => o.r.name + (o.cls === k.name ? "" : ` (${o.cls})`)).join(", ")}">${c.mates.length}</td>`))}</tr>`)}</tbody></table></div></section>
+        <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.grp.def")}</p>`;
+      if (timed.length) {
+        dataTable($("#sp-grp"), {
+          compact: true, sortKey: "place", sortDir: 1, rows,
+          columns: [
+            { key: "place", label: t("prov.place"), align: "r num", sort: (r) => r.place, defaultDir: 1, render: (r) => r.place ?? "" },
+            { key: "name", label: t("prov.name"), sort: (r) => r.x.r.name, defaultDir: 1,
+              render: (r) => html`<span style="white-space:nowrap">${name(r.x)}</span><div class="muted" style="font-size:11.5px">${r.x.r.club || ""}</div>` },
+            { key: "n", label: t("spl.grp.legs"), align: "r num", sort: (r) => r.n, render: (r) => html`${fmt(r.n)} <span class="muted" style="font-size:11.5px">/ ${fmt(r.of)}</span>` },
+            { key: "pack", label: t("spl.grp.pack"), align: "r num", sort: (r) => r.pack, render: (r) => (r.pack == null ? "—" : `${fmt(r.pack, 0)} %`) },
+            { key: "front", label: t("spl.grp.front"), align: "r num", sort: (r) => r.front, render: (r) => fmt(r.front) },
+            { key: "behind", label: t("spl.grp.behind"), align: "r num", sort: (r) => r.behind, render: (r) => fmt(r.behind) },
+            { key: "follow", label: t("spl.grp.follow"), align: "r num", sort: (r) => r.follow, render: (r) => (r.follow == null ? "—" : `${fmt(r.follow, 0)} %`) },
+            { key: "gain", label: t("spl.grp.gain"), align: "r num", sort: (r) => r.gain, render: (r) => (r.gain == null ? "—" : signed(r.gain)) },
+            { key: "mates", label: t("spl.grp.with"), sort: (r) => r.mates.length,
+              render: (r) => (r.mates.length ? html`<div style="font-size:12px;min-width:220px">${r.mates.slice(0, 4).map((m) => html`<div>${m.name}${m.cls ? html` <span class="muted">(${m.cls})</span>` : ""} <span class="muted">· ${t("spl.grp.ctl")} ${m.span}</span></div>`)}
+                ${r.mates.length > 4 ? html`<div class="muted">+ ${r.mates.length - 4}</div>` : ""}</div>` : html`<span class="muted">—</span>`) },
+          ],
+        });
+      }
     }
 
     if (view === "summary") {
