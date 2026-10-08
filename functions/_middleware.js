@@ -104,6 +104,14 @@ export async function onRequest(context) {
     const token = await signSession({ ...s, chk: Date.now() }, env.SESSION_SECRET);
     refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
   }
+  // the provisional results (organisers' files, a pilot): administrators only, checked on every request
+  if (path.startsWith("/data/prov/")) {
+    const u = env.DB && await env.DB.prepare("SELECT email, email_verified, status FROM users WHERE id = ?").bind(s.uid).first();
+    const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
+    if (!u || u.status !== "active" || !u.email_verified || !admins.includes(u.email)) {
+      return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+    }
+  }
   const res = await next();
   // private data must not sit in shared caches
   const out = new Response(res.body, res);

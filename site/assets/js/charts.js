@@ -229,6 +229,37 @@ export function columnChart(el, { categories, series, yName, digits = 0 }) {
 }
 
 /**
+ * Lines over named steps (controls of a course…): series [{name, color, data: [number|null…]}]; null breaks a line.
+ * fmtY formats a value (axis and tooltip); inverse puts the smallest value at the top.
+ */
+export function lineChart(el, { categories, series, yName, fmtY = (v) => fmt(v), inverse = false }) {
+  const th = theme();
+  const c = init(el);
+  c.setOption({
+    animationDuration: 300,
+    grid: { left: 64, right: 16, top: 26, bottom: 36 },
+    tooltip: baseTooltip(th, {
+      trigger: "axis",
+      formatter(params) {
+        const rows = params.filter((p) => p.value != null).sort((a, b) => (inverse ? a.value - b.value : b.value - a.value));
+        return `<div style="color:${th.ink3};font-size:12px">${esc(params[0].axisValue)}</div>` +
+          rows.map((p) => `<div style="display:flex;gap:8px;align-items:center;margin-top:3px">${
+            keyLine(series[p.seriesIndex].color)}<b>${esc(fmtY(p.value))}</b><span style="color:${th.ink2}">${
+            esc(series[p.seriesIndex].name)}</span></div>`).join("");
+      },
+    }),
+    xAxis: { type: "category", data: categories, boundaryGap: false, ...axisCommon(th), splitLine: { show: false } },
+    yAxis: { type: "value", name: yName, inverse, nameTextStyle: { color: th.ink3 }, ...axisCommon(th),
+      axisLabel: { color: th.ink3, formatter: (v) => fmtY(v) } },
+    series: series.map((s) => ({
+      name: s.name, type: "line", data: s.data, connectNulls: false, symbolSize: 5, showSymbol: true,
+      lineStyle: { width: 2, color: s.color }, itemStyle: { color: s.color },
+    })),
+  });
+  return c;
+}
+
+/**
  * Choropleth on a registered map (see geo.js). values: Map(feature code -> number);
  * features without a value stay neutral. Sequential ramp --q1…--q5, light to dark.
  * tip(code) returns the tooltip HTML of a feature.

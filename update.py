@@ -249,6 +249,17 @@ def main() -> None:
         rebuilt = _run(args, since, t0)
         if rebuilt:
             DEPLOY_PENDING.touch()
+        # 4b. provisional results (an admin pilot): what organisers publish before FFCO does (ffco_scraper/prov).
+        # Published only when something new was found: a mere "looked again" must not cost a deploy.
+        if not args.dry_run:
+            try:
+                import ffco_scraper.prov.run as prov
+                st = prov.run(args.db, args.out, budget_s=float(os.environ.get("PROV_BUDGET", "240")))
+                print(f"provisional: {st}")
+                if st.get("changed") or st.get("added"):
+                    DEPLOY_PENDING.touch()
+            except Exception as e:                   # the pilot must never stop the site's update
+                print(f"provisional: failed — {type(e).__name__}: {e}")
         if args.deploy and DEPLOY_PENDING.exists() and deploy():
             DEPLOY_PENDING.unlink(missing_ok=True)
         # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue

@@ -26,10 +26,12 @@ const PAGES = {
   settings: () => import("./pages/settings.js"),
   contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
+  provisional: () => import("./pages/provisional.js"),   // administrators only (a pilot)
+  splits: () => import("./pages/splits.js"),
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
-const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin"]);
+const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin", "provisional", "splits"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -64,6 +66,8 @@ function parseHash() {
     : head === "reglages" ? "settings"
     : head === "contact" ? "contact"
     : head === "admin" ? "admin"
+    : head === "provisoires" ? "provisional"
+    : head === "temps-inter" ? "splits"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
