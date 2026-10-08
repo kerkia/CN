@@ -32,8 +32,8 @@ from .parsers import VERSION as PARSER_VERSION
 from .sources.winsplits import BASE as WS_BASE, WinSplits
 
 log = logging.getLogger(__name__)
-KEEP_DAYS = 35                  # races kept and matched to the platforms' competitions: the last five weeks
-SHOW_DAYS = 30                  # races listed on « Récemment » (its text says so)
+KEEP_DAYS = 65                  # races kept and matched to the platforms' competitions: a few days beyond the list
+SHOW_DAYS = 60                  # races listed on « Récemment » (its text says so; 30 until 2026-10-08)
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 CATCH_UP = 4                    # budget multiplier while catching up
 
@@ -281,15 +281,17 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
     try:
         races.refresh_clubs(con, agenda or (out / "agenda.json"))
         stats = races.sync(con, agenda or (out / "agenda.json"), today, days)
-        # once: the races already past when the pilot started (the agenda drops a race once run), from FFCO's
-        # agenda export — one request, agreed with the owner (2026-10-08)
-        if not store.meta_get(con, "agenda_backfill", None):
+        # the races already past when the pilot started, or before a longer window (the agenda drops a race once
+        # run), from FFCO's agenda export — one request each time the window reaches further back than the last one
+        # (agreed with the owner: the first month, 2026-10-08; back to early August when the list went to 60 days)
+        lo_bf = (today - timedelta(days=days)).isoformat()
+        covered = store.meta_get(con, "agenda_backfill_from", None)
+        if covered is None or lo_bf < covered:
             try:
                 from .. import agenda as ffco_agenda
-                lo_bf = (today - timedelta(days=days)).isoformat()
                 rows = [ffco_agenda._csv_event(x, "c") for x in ffco_agenda.read_csv("cou", lo_bf)]
                 stats["backfilled"] = races.backfill(con, rows, lo_bf, today.isoformat())
-                store.meta_set(con, "agenda_backfill", _now())
+                store.meta_set(con, "agenda_backfill_from", lo_bf)
             except Exception:
                 log.exception("provisional: agenda backfill failed")
         # the files organisers uploaded on « Récemment » (sources.upload): read first, they are the freshest news

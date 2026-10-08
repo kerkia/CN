@@ -59,7 +59,7 @@ export function uploadCard(container, { races, preset = "", onClose = () => {} }
   const myClub = auth.myClub();
   const meta = data.meta();
   const clubs = Object.entries(meta?.names?.clubs || {}).sort((a, b) => a[1].localeCompare(b[1], "fr"));
-  const today = new Date(), from = new Date(Date.now() - 30 * 86400e3);
+  const today = new Date(), from = new Date(Date.now() - 60 * 86400e3);
   const sorted = [...races].sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name, "fr"));
   const mine = myClub ? sorted.filter((r) => (r.org || "").startsWith(myClub)) : [];
   const opt = (r) => html`<option value="${r.key}" ${raw(r.key === preset ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.place ? ` · ${r.place}` : ""}</option>`;

@@ -5,9 +5,9 @@ Its results pages (helga-o.com/webres, the helga-o.live home page) answer robots
 SplitsBrowser pages are open to them, and robots.txt allows /splits/ to every robot it does not name: there,
 splitsbrowser.php?lauf=N is a small page titled "Name - d.m.yyyy", and readsplits.php?lauf=N the full result list in
 IOF XML 3.0, with split and start times (parsers.iofxml). Events are numbered in sequence when the organiser creates
-them (before the race): each run reads the titles of the new numbers, and an event whose date and name match a
-watched race (races.assign) has its list read. State in prov_meta 'helga': next = the next number to try, events =
-the titles seen (the last few weeks').
+them (before the race): each run reads the titles of the new numbers, then fills in older ones down to START_ID,
+and an event whose date and name match a watched race (races.assign) has its list read. State in prov_meta 'helga':
+next = the next number to try, low = the lowest number read, events = the titles seen (the last few weeks').
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from ..parsers import iofxml
 from ..store import meta_get, meta_set
 
 BASE = "https://helga-o.live/splits"
-START_ID = 6950                # early September 2026: the pilot covers the past month
+START_ID = 6870                # early August 2026 (about 3 events a day): the list covers the last 60 days
 MISSES_TO_STOP = 12            # numbers in a row without an event: none created yet
 
 
@@ -41,6 +41,7 @@ class Helga:
     def discover(self, limit: int = 200) -> int:
         """Reads the titles of the numbers created since the last run; the number of events found."""
         state = meta_get(self.con, "helga", None) or {"next": START_ID, "events": {}}
+        state.setdefault("low", min(map(int, state["events"]), default=state["next"]))
         i, misses, found = state["next"], 0, 0
         while limit > 0 and misses < MISSES_TO_STOP and not self.f.out_of_time():
             limit -= 1
@@ -53,6 +54,14 @@ class Helga:
                 state["next"] = i + 1
                 found += 1
             i += 1
+        # then the older numbers, down to START_ID (when it was moved back)
+        while limit > 0 and state["low"] > START_ID and not self.f.out_of_time():
+            limit -= 1
+            state["low"] -= 1
+            ev = self.event(state["low"])
+            if ev is not None:
+                state["events"][str(state["low"])] = ev
+                found += 1
         kept = sorted(state["events"], key=int)[-600:]
         state["events"] = {k: state["events"][k] for k in kept}
         meta_set(self.con, "helga", state)

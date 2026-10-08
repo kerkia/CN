@@ -2,7 +2,7 @@
 // yet. The file is the request's body, sent as is (no form to decode: the free plan's ~10 ms of CPU could not take
 // 30 MB), and streamed to R2 untouched: cn-state, uploads/<id>/<name>, beside a meta.json the provisional-results
 // run reads (ffco_scraper/prov/sources/upload.py). The race comes in the X-Upload header (URI-encoded JSON):
-//   { race: "<key of site/data/prov/index.json>" }  or  { new_race: { name, date, place, org_code, terrain, epreuve, cn } }
+//   { race: "<key of site/data/prov/index.json>" }  or  { new_race: { name, date (the last 60 days), place, org_code, terrain, epreuve, cn } }
 // plus { filename, consent: true }. Every upload is published (owner's choice, 2026-10-08): the administrators get
 // an e-mail, can remove it on the admin page, and D1 keeps who uploaded what. When the GH_DISPATCH_TOKEN secret is
 // set, a provisional-results run starts at once (GitHub workflow_dispatch); otherwise the next hourly run reads it.
@@ -35,7 +35,7 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   if (size > MAX_BYTES) return json({ error: "too big", max: MAX_BYTES }, 413);
   if (!(await allow(env, `upload:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
 
-  // the race: one of the list, or a new one (the last 30 days, as on the page)
+  // the race: one of the list, or a new one (the last 60 days, as on the page)
   let raceKey = null, label, newRace = null;
   if (meta.race) {
     raceKey = clean(meta.race, 40);
@@ -45,7 +45,7 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
     label = `${race.name} (${race.date_iso})`;
   } else {
     const r = meta.new_race || {};
-    const today = new Date(), from = new Date(Date.now() - 30 * 86400e3);
+    const today = new Date(), from = new Date(Date.now() - 60 * 86400e3);
     newRace = { name: clean(r.name, 120), date: String(r.date || ""), place: clean(r.place, 80),
       org_code: /^\d{2,4}$/.test(String(r.org_code || "")) ? String(r.org_code) : "",
       terrain: TERRAINS.includes(r.terrain) ? r.terrain : "", epreuve: FORMATS.includes(r.epreuve) ? r.epreuve : "",

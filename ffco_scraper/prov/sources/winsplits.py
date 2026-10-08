@@ -21,7 +21,7 @@ from ..store import meta_get, meta_set
 
 BASE = "https://obasen.orientering.se/winsplits/online/en"
 SPL = "https://obasen.orientering.se/winsplits/api/winSplitsOnlineHelper/downloadSplFile/{}"
-START_ID = 115300              # early September 2026: the pilot covers the past month
+START_ID = 114500              # early August 2026 (about 25 events a day): the list covers the last 60 days
 MISSES_TO_STOP = 8             # consecutive ids that do not exist yet: the end of the list
 
 

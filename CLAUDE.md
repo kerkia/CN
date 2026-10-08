@@ -139,8 +139,8 @@ naming the race first, photo albums never; a subdomain's main site too, `ocastor
 meta-refresh home page followed). A file named for another day is never the race's; an organiser's races of one
 weekend share its files out by their own words (`races.owners`: « KO », « Challenge », « CL »). Club websites come
 from the agenda — FFCO's api.ffcorientation.fr is closed to robots by its robots.txt; the past month's races, dropped
-by the agenda before the pilot started, were added once from its CSV export (one request, the owner's go-ahead
-2026-10-08, `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
+by the agenda before the pilot started, were added from its CSV export (one request each time the window reaches
+further back — `agenda_backfill_from`; the owner's go-ahead 2026-10-08, for September then August; `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
 platforms (WinSplits' class pages only when its .spl changed); a race the budget cut short comes first next time;
 the last runs are listed under the « Résultats » table. **Polite by design:**
 our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga's results
@@ -152,7 +152,7 @@ Juste/Top = the base method's internal CN J-15, circuit value, raw score x the d
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08): on « Récemment »,
 any logged-in user can send a results file (IOF XML best, OE/MeOS HTML, PDF, .zip/.gz; 30 MB) for a race of the
-list or a race added with it (name, date in the last 30 days, place, club, format) — `pages/upload.js` reads it in the
+list or a race added with it (name, date in the last 60 days, place, club, format) — `pages/upload.js` reads it in the
 browser first (circuits, runners, splits, date); `functions/api/upload.js` streams the body to R2 (`cn-state`,
 `uploads/<id>/` + `meta.json`; binding `BUCKET`, the Functions write nowhere else), records it in D1 `uploads`, mails
 the administrators, deletes files older than 60 days, and, when the Pages secret `GH_DISPATCH_TOKEN` is set (a
@@ -160,7 +160,7 @@ fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` 
 every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources/upload.py` turns each upload into
 a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
 is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Récemment » (`#/recemment`, in the
-main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 30 days' races (`run.SHOW_DAYS`), and
+main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
 « Temps intermédiaires » (`#/temps-inter`), linked from it. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
