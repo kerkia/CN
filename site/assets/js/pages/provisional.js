@@ -21,9 +21,12 @@ export const getProv = async (path) => {
 };
 export const clock = (s) => {
   if (s == null) return "—";
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.round(s % 60);
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
 };
+// "Sprint · Sprint" (the format and the terrain) said once
+const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
 const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export async function render(main, { query = {} } = {}) {
@@ -43,8 +46,7 @@ export async function render(main, { query = {} } = {}) {
 function list(main, idx, query) {
   let filter = ["all", "found", "missing", "pending"].includes(query.f) ? query.f : "all", q = query.q || "";
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div>
-      <a class="btn btn-sm" href="#/temps-inter">${t("spl.title")} →</a></div>
+    <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     <div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:240px"></label></div>
@@ -69,17 +71,17 @@ function list(main, idx, query) {
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
-      <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c">${t("prov.splits")}</th>
+      <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c" style="white-space:normal;min-width:90px">${t("prov.splits")}</th>
       <th>FFCO</th><th>${t("prov.checked")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td><a href="#/provisoires?course=${encodeURIComponent(r.key)}">${r.name}</a>
           <div class="muted" style="font-size:12px">${[r.place, r.org].filter(Boolean).join(" · ")}</div></td>
-        <td>${[r.epreuve, r.terrain].filter(Boolean).join(" · ")}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
+        <td>${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td>${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
-        <td class="c">${r.splits ? "✓" : ""}</td>
+        <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
         <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>` : html`<span class="muted">${t("prov.waiting")}</span>`}</td>
         <td class="num muted" style="font-size:12px">${when(r.last_check)}${r.done ? "" : html`<div>${t("prov.next")} ${when(r.next_check)}</div>`}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t("prov.empty")}</div>`;
@@ -103,12 +105,19 @@ async function detail(main, idx, query) {
     : docs.indexOf([...docs].sort((a, b) => rank(b) - rank(a))[0]));
   let ci = Number(query.c) || 0;
   const M = ["official", ...available().filter((m) => m !== "official")];
+  // the splits page lists only the documents with split times: its own indexes
+  const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
+  const splitsLink = (d, c) => {
+    const i = withSplits.indexOf(d);
+    return `#/temps-inter?course=${encodeURIComponent(race.key)}${i > 0 ? `&doc=${i}` : ""}${i >= 0 && c ? `&c=${c}` : ""}`;
+  };
 
   main.innerHTML = html`
     <div class="crumbs"><a href="#/provisoires">${t("prov.title")}</a><span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
-      <p class="lede">${fmtDate(race.date_iso)} · ${[race.place, race.org, race.epreuve, race.terrain].filter(Boolean).join(" · ")}</p></div>
-      <div class="row" style="gap:8px">${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
+      <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
+      <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
+        ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">FFCO ↗</a>` : ""}</div></div>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("prov.documents")}</h2></div>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
@@ -134,7 +143,7 @@ async function detail(main, idx, query) {
     $("#pv-pick").innerHTML = html`
       <label class="field"><span>${t("prov.doc")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${SOURCE[x.source] || x.source} · ${x.kind} · ${x.title || decodeURIComponent(x.url.split("/").pop())}</option>`)}</select></label>
       <label class="field"><span>${d.by === "category" ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${d.classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
-      ${d.classes.some((x) => x.runners.some((r) => r.splits)) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="#/temps-inter?course=${encodeURIComponent(race.key)}&doc=${di}&c=${ci}">${t("spl.title")} →</a>` : ""}`;
+      ${k.runners.some((r) => r.splits) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="${splitsLink(d, ci)}">${t("spl.ofClass")} →</a>` : ""}`;
     $("#pv-doc").addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; draw(); });
     $("#pv-c").addEventListener("change", (e) => { ci = Number(e.target.value); draw(); });
     const v = k.values || {};
