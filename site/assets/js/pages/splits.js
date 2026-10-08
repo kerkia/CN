@@ -1,7 +1,7 @@
 // Temps intermédiaires (administrators only, a pilot): the split times organisers publish (WinSplits, their own split
-// files), circuit by circuit, in five views (most after WinSplits Pro's analyses):
-// - Tableau: each leg's time and rank, the cumulative time and rank, the time lost on each leg, and the gap to the best
-//   cumulative time along the course for the runners picked;
+// files), circuit by circuit, in six views (most after WinSplits Pro's analyses):
+// - Tableau: each leg's time and rank, the cumulative time and rank, the time lost on each leg;
+// - Écarts: the gap to the best cumulative time along the course, for the runners picked;
 // - Inter-postes: leg by leg, the best and median times, how many runners made a mistake and the time lost there, the
 //   leader after it — the tricky legs stand out;
 // - Profil: for the runners picked, each leg as a percentage behind the best — where each one ran well or badly;
@@ -12,7 +12,7 @@
 // Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — their
 // "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios. A leg run 20 % slower than that,
 // with 10 s lost at least, is a mistake. This is the classic split analysis (WinSplits' "time loss"), not a judgement
-// on route choice. « Sans temps perdu » takes each leg's lost time off: the table, the ranks and the chart then show the
+// on route choice. « Sans temps perdu » takes each leg's lost time off: the table, the ranks and the gaps then show the
 // race as if every runner had run each leg at their own pace.
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
@@ -23,7 +23,8 @@ import { seg, chartCard, bindChartCard, legend, dataTable } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 
-const VIEWS = ["table", "legs", "profile", "h2h", "summary"];
+const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "summary"];
+const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : null; };
 const behind = (ratio) => (ratio == null ? null : (ratio - 1) * 100);           // % behind the best
@@ -70,7 +71,7 @@ export async function render(main, { query = {} } = {}) {
       <label class="field"><span>${t("spl.club")}</span><select id="sp-club" style="max-width:260px"><option value="">${t("f.allm")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select></label>`;
     $("#sp-views").innerHTML = html`<div class="field"><span>${t("spl.tab")}</span>${seg("spw", VIEWS.map((v) => [v, t(`spl.tab.${v}`)]), view)}</div>
-      ${view === "table" ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}`;
+      ${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}`;
     $("#sp-race").addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
@@ -86,7 +87,7 @@ export async function render(main, { query = {} } = {}) {
 
   function draw() {
     const k = docs[di].classes[ci];
-    const asIdeal = ideal && view === "table";
+    const asIdeal = ideal && TIMED.includes(view);
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null });
     const n = k.controls?.length || Math.max(...k.runners.map((r) => r.splits?.length || 0));
@@ -148,14 +149,12 @@ export async function render(main, { query = {} } = {}) {
 
     if (view === "table") {
       body.innerHTML = html`
-        ${chartCard({ id: "sp-gap", title: asIdeal ? t("spl.gap.ideal") : t("spl.gap"), hint: t("spl.gap.hint") })}
-        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2>
+        <section class="card"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2>
           <div class="hint">${t(asIdeal ? "spl.table.hint.ideal" : "spl.table.hint")}</div></div></div>
-          <div class="table-wrap"><table class="data compact splits"><thead><tr><th></th><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+          <div class="table-wrap"><table class="data compact splits"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
             <th class="r">${t("prov.time")}</th><th class="r" title="${t("spl.lost.hint")}">${t("spl.lost")}</th>
             ${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
           <tbody>${byPlace(shown).map((x) => html`<tr>
-            <td><input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")} aria-label="${t("spl.pick")}"></td>
             <td class="r num">${x.place ?? ""}${asIdeal && x.r.place ? html`<div class="muted" style="font-size:11px" title="${t("spl.real")}">${x.r.place}</div>` : ""}</td>
             <td style="white-space:nowrap">${name(x)}<div class="muted" style="font-size:11.5px">${x.r.club || ""}</div></td>
             <td class="r num">${x.r.status !== "ok" ? x.r.status.toUpperCase() : asIdeal
@@ -171,6 +170,10 @@ export async function render(main, { query = {} } = {}) {
                 ${lost == null ? "" : html`<div class="${lost >= 5 ? "" : "muted"}" style="font-size:11px${raw(lost >= 5 ? ";color:var(--bad)" : "")}" title="${t("spl.lost.leg")}">${asIdeal ? "−" : "+"}${clock(lost)}</div>`}</td>`;
             })}</tr>`)}</tbody></table></div></section>
         <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.def")}</p>`;
+    }
+
+    if (view === "gaps") {
+      body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? t("spl.gap.ideal") : t("spl.gap"), hint: t("spl.gap.hint") })}${chooser()}`;
       bindChartCard(main, "sp-gap");
       redraw = () => {
         const series = sel().map((x, i) => ({ name: x.r.name, color: slotColor(i), data: x.vCum.map((c, j) => (c == null ? null : c - bestCum[j])) }));
