@@ -199,7 +199,7 @@ def build(con, out: Path, today: date) -> int:
     return written
 
 
-def run(db: Path, out: Path, agenda: Path | None = None, days: int = races.WATCH_DAYS, budget_s: float = 240,
+def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS - 4, budget_s: float = 240,
         today: date | None = None) -> dict:
     t0 = time.monotonic()
     today = today or date.today()
@@ -257,7 +257,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--db", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=Path("site/data"))
-    ap.add_argument("--days", type=int, default=races.WATCH_DAYS, help="races of the last N days (31: the past month's pilot)")
+    ap.add_argument("--days", type=int, default=KEEP_DAYS - 4, help="races of the last N days taken in (each looked at, then watched 14 days)")
     ap.add_argument("--budget", type=float, default=240, help="seconds of fetching, at most")
     ap.add_argument("--build-only", action="store_true", help="rebuild the files from what is stored, fetch nothing")
     a = ap.parse_args(argv)
