@@ -151,7 +151,7 @@ Provisional scores reuse the engine's functions (`compute.py`): official = offic
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08); pages « Récemment » (`#/recemment`, in the
-main menu after « Agenda »; `#/provisoires` still works) listing the last 30 days' races (`run.SHOW_DAYS`), and
+main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 30 days' races (`run.SHOW_DAYS`), and
 « Temps intermédiaires » (`#/temps-inter`), linked from it. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
