@@ -34,7 +34,7 @@ STOP = {"de", "la", "le", "du", "des", "et", "co", "course", "orientation", "clu
 MONTHS = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre"]
 MAX_PAGES = 10                  # pages read per race and run, at most
 PLATFORMS = {"liveresultat.orientering.se": "liveresultat", "obasen.orientering.se": "winsplits", "livelox.com": "livelox",
-             "helga-o.com": "helga", "co-live.fr": "olive", "routegadget": "routegadget"}
+             "helga-o.com": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries"}
 
 
 def _links(page: str, base: str) -> list[tuple[str, str]]:

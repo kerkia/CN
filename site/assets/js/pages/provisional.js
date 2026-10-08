@@ -10,7 +10,8 @@ import { available } from "../store.js";
 import { methodShort, methodKey, seg } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
-const SOURCE = { liveresultat: "liveresultat", winsplits: "WinSplits", site: "site du club", livelox: "Livelox", helga: "Helga", olive: "O'Live" };
+const SOURCE = { liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
+  helga: "Helga", olive: "O'Live" };
 const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC" };
 
 export const getProv = async (path) => {

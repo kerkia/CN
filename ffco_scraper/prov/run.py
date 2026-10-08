@@ -22,6 +22,7 @@ from .compute import Scorer
 from .fetch import Fetcher
 from .match import Matcher
 from .sources.clubsite import ClubSite, download_url
+from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.liveresultat import API as LR_API, LiveResultat
 from .parsers import VERSION as PARSER_VERSION
 from .sources.winsplits import BASE as WS_BASE, WinSplits
@@ -29,6 +30,7 @@ from .sources.winsplits import BASE as WS_BASE, WinSplits
 log = logging.getLogger(__name__)
 KEEP_DAYS = 35                  # races shown on the admin page: the last five weeks
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
+CATCH_UP = 4                    # budget multiplier while catching up
 
 
 def _now() -> str:
@@ -85,7 +87,7 @@ def date_ok(parsed: dict | None, race) -> bool:
 
 
 # ---- one race ------------------------------------------------------------------------------------------------
-def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, cs: ClubSite, links: dict, reread: bool = False) -> int:
+def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs: ClubSite, links: dict, reread: bool = False) -> int:
     """links: the platform competitions assigned to this race ({'liveresultat': id, 'winsplits': id})."""
     changed = 0
     matched = []
@@ -102,6 +104,12 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, cs: ClubSite, l
         d = ws.read(links["winsplits"])
         if d and d["classes"]:
             changed += save(con, race["key"], url, "winsplits", d, note=MATCHED)
+    if links.get("heyries") and not f.out_of_time():
+        url = f"{HY_BASE}/competition/{links['heyries']}/"
+        matched.append(url)
+        d = hy.read(links["heyries"])
+        if d and d["classes"]:
+            changed += save(con, race["key"], url, "heyries", d, note=MATCHED)
     # an earlier match no longer chosen (a better race took it) is dropped
     con.execute(f"""DELETE FROM prov_docs WHERE race_key = ? AND note = ? AND url NOT IN ({",".join("?" * len(matched)) or "''"})""",
                 (race["key"], MATCHED, *matched))
@@ -126,9 +134,10 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, cs: ClubSite, l
             changed += save(con, race["key"], url, "site", d, kind=None if d else "unparsed", sha=a.sha, note=text or None)
         # platforms the club links to: read liveresultat and WinSplits ids directly, note the others
         for url, kind in found["platforms"]:
-            m = re.search(r"comp=(\d+)", url) if kind == "liveresultat" else re.search(r"databaseId=(\d+)", url) if kind == "winsplits" else None
+            m = re.search({"liveresultat": r"comp=(\d+)", "winsplits": r"databaseId=(\d+)", "heyries": r"/competition/(\d+)"}.get(kind, r"^$"), url)
             if m and not f.out_of_time():
-                d = lr.read(int(m.group(1))) if kind == "liveresultat" else ws.read(int(m.group(1)))
+                reader = {"liveresultat": lr, "winsplits": ws, "heyries": hy}[kind]
+                d = reader.read(int(m.group(1)))
                 if d and d["classes"] and date_ok(d, race):
                     changed += save(con, race["key"], url, kind, d)
             elif kind in ("livelox", "helga", "olive", "routegadget"):
@@ -195,6 +204,9 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = races.WATCH
     t0 = time.monotonic()
     today = today or date.today()
     con = store.connect(db)
+    # catching up (the first runs: the WinSplits backlog, races never looked at): a larger budget until done
+    if WinSplits(None, con).catching_up() or con.execute("SELECT COUNT(*) FROM prov_races WHERE last_check IS NULL").fetchone()[0] > 10:
+        budget_s *= CATCH_UP
     f = Fetcher(con, budget_s=budget_s)
     try:
         races.refresh_clubs(con, agenda or (out / "agenda.json"))
@@ -202,7 +214,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = races.WATCH
         ws = WinSplits(f, con)
         # a share of the budget only (2-3 s per WinSplits page): a long catch-up never leaves the races unlooked at
         stats["winsplits_new"] = len(ws.discover(limit=max(30, int(budget_s / 6))))
-        lr, cs = LiveResultat(f), ClubSite(f)
+        lr, cs, hy = LiveResultat(f), ClubSite(f), Heyries(f)
         looked = changed = failed = 0
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
@@ -216,11 +228,13 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = races.WATCH
         lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo])
         ws_events = store.meta_get(con, "winsplits", {"events": {}})["events"]
         ws_map = races.assign(period, [(int(k), e["name"], e["organiser"], e["date"]) for k, e in ws_events.items() if e["date"] >= lo])
+        hy_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in hy.competitions() if c["date"] >= lo])
         for race in races.due(con, today, _now()):
             if f.out_of_time():
                 break
             try:
-                changed += look(con, race, f, lr, ws, cs, {"liveresultat": lr_map.get(race["key"]), "winsplits": ws_map.get(race["key"])}, reread)
+                links = {"liveresultat": lr_map.get(race["key"]), "winsplits": ws_map.get(race["key"]), "heyries": hy_map.get(race["key"])}
+                changed += look(con, race, f, lr, ws, hy, cs, links, reread)
             except Exception:                         # one race's odd page must not stop the others
                 log.exception("provisional: %s failed", race["key"])
                 failed += 1

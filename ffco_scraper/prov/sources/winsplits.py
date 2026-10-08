@@ -55,13 +55,44 @@ class WinSplits:
         return {"id": db_id, "name": head.group(1).strip(), "organiser": head.group(2).strip(),
                 "date": f"{head.group(5)}-{head.group(4)}-{head.group(3)}", "classes": classes}
 
+    def _exists(self, i: int) -> bool:
+        """An event at i, or at one of the next few ids (ids are sometimes skipped)."""
+        return any(self.event(i + k) for k in range(3))
+
+    def head(self, start: int) -> int:
+        """The latest event id: gallop forward from `start`, then halve the gap."""
+        lo, step = start, 256
+        while self._exists(lo + step) and not self.f.out_of_time():
+            lo += step
+            step *= 2
+        hi = lo + step
+        while hi - lo > 1 and not self.f.out_of_time():
+            mid = (lo + hi) // 2
+            lo, hi = (mid, hi) if self._exists(mid) else (lo, mid)
+        return lo
+
     def discover(self, limit: int = 1500) -> list[dict]:
-        """New events since the last run (saved in prov_meta 'winsplits'), each with its header."""
-        state = meta_get(self.con, "winsplits", {"next": START_ID, "events": {}})
-        i, misses, found = state["next"], 0, []
-        for _ in range(limit):           # the run's time budget stops it first
-            if self.f.out_of_time():
-                break
+        """New events since the last run, newest first: forward from the last id seen, then the backlog filled
+        backwards down to START_ID, so the latest races get their splits first. State in prov_meta 'winsplits':
+        next = the next new id to try, back = the next older id still to read."""
+        state = meta_get(self.con, "winsplits", None)
+        if state is None:                               # first run: find the newest event, fill backwards from it
+            top = self.head(START_ID)
+            state = {"next": top + 1, "back": top, "events": {}}
+        state.setdefault("back", START_ID - 1)          # a state saved before the backward fill: nothing left to fill
+        found, budget = [], limit
+
+        def keep(i: int, ev: dict) -> None:
+            state["events"][str(i)] = {k: ev[k] for k in ("name", "organiser", "date")}
+            found.append(ev)
+            if len(found) % 25 == 0:                    # saved as it goes: a long catch-up is never redone
+                meta_set(self.con, "winsplits", state)
+                self.con.commit()
+
+        # the new events first
+        i, misses = state["next"], 0
+        while budget > 0 and not self.f.out_of_time():
+            budget -= 1
             ev = self.event(i)
             if ev is None:
                 misses += 1
@@ -69,19 +100,28 @@ class WinSplits:
                     break
             else:
                 misses = 0
-                state["events"][str(i)] = {k: ev[k] for k in ("name", "organiser", "date")}
                 state["next"] = i + 1
-                found.append(ev)
-                if len(found) % 25 == 0:               # saved as it goes: a long first scan is never redone
-                    meta_set(self.con, "winsplits", state)
-                    self.con.commit()
+                keep(i, ev)
             i += 1
+        # then the backlog, newest to oldest
+        while budget > 0 and state["back"] >= START_ID and not self.f.out_of_time():
+            budget -= 1
+            b = state["back"]
+            if str(b) not in state["events"]:
+                ev = self.event(b)
+                if ev:
+                    keep(b, ev)
+            state["back"] = b - 1
         # keep the headers of the last few weeks only
-        keep = sorted(state["events"], key=int)[-600:]
-        state["events"] = {k: state["events"][k] for k in keep}
+        kept = sorted(state["events"], key=int)[-900:]
+        state["events"] = {k: state["events"][k] for k in kept}
         meta_set(self.con, "winsplits", state)
         self.con.commit()
         return found
+
+    def catching_up(self) -> bool:
+        state = meta_get(self.con, "winsplits", None)
+        return state is None or state.get("back", START_ID - 1) >= START_ID
 
     def candidates(self, race) -> list[tuple[float, int]]:
         """Known events of the race's day that look like it: (score, id), best first."""
