@@ -3,11 +3,12 @@
 // and CNs of each method. For a race FFCO has since published, its own figures sit next to them as a check.
 // The data (site/data/prov/) is served to administrators only (functions/_middleware.js).
 
-import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise, displayName } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
+import * as data from "../data.js";
 import { available } from "../store.js";
-import { methodShort, methodKey, seg } from "../ui.js";
+import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
@@ -27,6 +28,10 @@ export const clock = (s) => {
 };
 // "Sprint · Sprint" (the format and the terrain) said once
 const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
+// the specialité: the CN terrain, or for a race outside the CN its format
+const SPECS = ["For", "Spr", "VTT", "Ski"];
+const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]
+  || (r.epreuve === "Sprint" ? "Spr" : ["MD", "LD", "Nuit"].includes(r.epreuve) ? "For" : null);
 const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export async function render(main, { query = {} } = {}) {
@@ -45,11 +50,20 @@ export async function render(main, { query = {} } = {}) {
 // ---- the races -------------------------------------------------------------------------------------------------
 function list(main, idx, query) {
   let filter = ["all", "found", "missing", "pending"].includes(query.f) ? query.f : "all", q = query.q || "";
+  let spec = SPECS.includes(query.t) ? query.t : "all", reg = query.reg || "";
+  // races a runner took part in (a runner recognised in the results): the logged-in one unless another is chosen
+  const me = auth.session()?.lic;
+  let runner = query.r || me, who = query.r || query.who === "runner" ? "runner" : "all";
+  const regions = [...new Set(idx.races.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     <div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
-      <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:240px"></label></div>
+      <div class="field"><span>${t("f.terrain")}</span><div id="pv-t"></div></div>
+      <label class="field"><span>${t("prov.region")}</span><select id="pv-reg"><option value="">${t("f.all")}</option>
+        ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>
+      <div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>
+      <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>`;
   const R = idx.races;
@@ -62,12 +76,25 @@ function list(main, idx, query) {
       const n = R.reduce((s, r) => s + r.runners, 0), m = R.reduce((s, r) => s + r.matched, 0);
       return n ? `${fmt((100 * m) / n)} %` : "—";
     })()}</div><div class="tile-sub">${t("prov.matched.hint")}</div></div>`;
+  function drawWho() {
+    $("#pv-who").innerHTML = html`${seg("pvwho", [["all", t("f.allm")], ["runner", t("prov.oneRunner")]], who)}
+      ${who === "runner" ? html`<span class="pill">${runner ? html`<a href="${link.runner(runner)}">${displayName(data.runner(runner)?.nom || runner)}</a>` : "—"}</span>
+        ${runnerSearch("pv-runner", t("rn.change"))}` : ""}`;
+    $$('[data-seg="pvwho"]').forEach((b) => b.addEventListener("click", () => { who = b.dataset.value; drawWho(); draw(); }));
+    if (who === "runner") bindRunnerSearch($("#pv-runner"), { onPick: (l) => { runner = l; drawWho(); draw(); } });
+  }
   function draw() {
-    replaceQuery({ f: filter === "all" ? null : filter, q: q || null });
+    const one = who === "runner" && runner;
+    replaceQuery({ f: filter === "all" ? null : filter, t: spec === "all" ? null : spec, reg: reg || null,
+      who: who === "runner" && runner === me ? "runner" : null, r: one && runner !== me ? runner : null, q: q || null });
     $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")], ["pending", t("prov.f.pending")]], filter);
     $$('[data-seg="pvf"]').forEach((b) => b.addEventListener("click", () => { filter = b.dataset.value; draw(); }));
+    $("#pv-t").innerHTML = seg("pvt", [["all", t("f.all")], ...SPECS.map((s) => [s, t(`terrain.${s}`)])], spec);
+    $$('[data-seg="pvt"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
     const qn = normalise(q);
     const rows = R.filter((r) => (filter === "all" || (filter === "found" ? r.docs : filter === "missing" ? !r.docs : !r.ffco_id))
+      && (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
+      && (!one || (r.lics || []).includes(runner))
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
@@ -75,8 +102,8 @@ function list(main, idx, query) {
       <th>FFCO</th><th>${t("prov.checked")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td><a href="#/provisoires?course=${encodeURIComponent(r.key)}">${r.name}</a>
-          <div class="muted" style="font-size:12px">${[r.place, r.org].filter(Boolean).join(" · ")}</div></td>
+        <td><a href="#/provisoires?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
+          <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td>${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td>${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
@@ -84,9 +111,11 @@ function list(main, idx, query) {
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
         <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>` : html`<span class="muted">${t("prov.waiting")}</span>`}</td>
         <td class="num muted" style="font-size:12px">${when(r.last_check)}${r.done ? "" : html`<div>${t("prov.next")} ${when(r.next_check)}</div>`}</td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t("prov.empty")}</div>`;
+      : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
   $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
+  $("#pv-reg").addEventListener("change", (e) => { reg = e.target.value; draw(); });
+  drawWho();
   draw();
   return { title: t("prov.title") };
 }
@@ -104,6 +133,12 @@ async function detail(main, idx, query) {
   let di = Math.max(0, Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc)
     : docs.indexOf([...docs].sort((a, b) => rank(b) - rank(a))[0]));
   let ci = Number(query.c) || 0;
+  const who = query.r || null;
+  if (who && query.doc == null && query.c == null) {
+    const found = docs.flatMap((d, i) => d.classes.map((k, j) => [i, j, k])).filter(([, , k]) => k.runners.some((r) => r.lic === who));
+    const best = found.find(([i]) => docs[i].by !== "category") || found[0];
+    if (best) [di, ci] = best;
+  }
   const M = ["official", ...available().filter((m) => m !== "official")];
   // the splits page lists only the documents with split times: its own indexes
   const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
@@ -139,7 +174,7 @@ async function detail(main, idx, query) {
     const d = docs[di];
     ci = Math.min(ci, d.classes.length - 1);
     const k = d.classes[ci];
-    replaceQuery({ course: race.key, doc: di || null, c: ci || null });
+    replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who });
     $("#pv-pick").innerHTML = html`
       <label class="field"><span>${t("prov.doc")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${SOURCE[x.source] || x.source} · ${x.kind} · ${x.title || decodeURIComponent(x.url.split("/").pop())}</option>`)}</select></label>
       <label class="field"><span>${d.by === "category" ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${d.classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
@@ -166,7 +201,7 @@ async function detail(main, idx, query) {
       <th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th><th class="r">${t("prov.time")}</th>
       ${scored ? M.map((m) => html`<th class="r" title="${t("prov.colHint")}">${methodKey(m)}${methodShort(m)}<div class="muted" style="font-weight:400;font-size:11px">${t("prov.cols")}</div>
         ${published ? html`<div class="muted" style="font-weight:400;font-size:11px">${t("prov.pubCols")}</div>` : ""}</th>`) : ""}</tr></thead>
-      <tbody>${k.runners.map((r) => html`<tr>
+      <tbody>${k.runners.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${r.place ?? ""}</td>
         <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
         <td style="font-size:12.5px">${r.club || ""}</td>

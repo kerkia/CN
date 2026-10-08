@@ -17,6 +17,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from ..agenda import LIGUES, OUTRE_MER, REGIONS
 from . import races, store
 from .compute import Scorer
 from .fetch import Fetcher
@@ -154,6 +155,25 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
 
 
 # ---- the admin's files -----------------------------------------------------------------------------------------
+# The shape of index.json; a new one is published at once (a deploy), not with the next result found.
+# 2 (2026-10-08): each race's region and its runners' licences, for the list's filters.
+INDEX_VERSION = 2
+_BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
+
+
+def region_of(org_code: str | None) -> str | None:
+    """The organiser's region: a club number starts with its département ('6804' -> 68), a committee is one ('13')."""
+    code = (org_code or "").upper()
+    if code in LIGUES:
+        return LIGUES[code]
+    dep = code[:2]
+    if dep in ("2A", "2B"):
+        dep = "20"
+    if dep in _BY_DEPT:
+        return _BY_DEPT[dep]
+    return OUTRE_MER if dep.isdigit() and int(dep) >= 96 else None
+
+
 def build(con, out: Path, today: date) -> int:
     """site/data/prov/: index.json and one file per race of the last KEEP_DAYS days."""
     d = out / "prov"
@@ -165,7 +185,7 @@ def build(con, out: Path, today: date) -> int:
                             (lo, today.isoformat())).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
-        out_docs, n_run, n_lic, splits = [], 0, 0, False
+        out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         for doc in docs:
             parsed = json.loads(doc["parsed"]) if doc["parsed"] else None
             entry = {"url": doc["url"], "source": doc["source"], "kind": doc["kind"], "title": doc["title"],
@@ -187,6 +207,7 @@ def build(con, out: Path, today: date) -> int:
                 runners = [r for k in parsed["classes"] for r in k["runners"]]
                 n_run = max(n_run, len(runners))
                 n_lic = max(n_lic, sum(1 for r in runners if r["lic"]))
+                lics.update(r["lic"] for r in runners if r["lic"])
             out_docs.append(entry)
         body = {k: race[k] for k in ("key", "date_iso", "name", "place", "org", "org_code", "terrain", "epreuve", "cn", "site",
                                       "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done")}
@@ -196,7 +217,8 @@ def build(con, out: Path, today: date) -> int:
         index.append({k: race[k] for k in ("key", "date_iso", "name", "place", "org", "terrain", "epreuve", "cn", "ffco_id",
                                            "last_check", "next_check", "done")} |
                      {"docs": len([x for x in out_docs if x.get("classes")]), "refused": len([x for x in out_docs if x["kind"] in ("refused", "platform")]),
-                      "runners": n_run, "matched": n_lic, "splits": splits,
+                      "runners": n_run, "matched": n_lic, "splits": splits, "region": region_of(race["org_code"]),
+                      "lics": sorted(lics),
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})})
     (d / "index.json").write_text(json.dumps({"generated": _now(), "races": index}, ensure_ascii=False, separators=(",", ":")),
                                   encoding="utf-8")
@@ -261,6 +283,9 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         if reread and not f.out_of_time():
             store.meta_set(con, "parser_version", PARSER_VERSION)
         stats["built"] = build(con, out, today)
+        if store.meta_get(con, "index_version", None) != INDEX_VERSION:
+            store.meta_set(con, "index_version", INDEX_VERSION)
+            stats["reshaped"] = True
         con.commit()
     finally:
         f.close()

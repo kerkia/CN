@@ -276,7 +276,7 @@ def _provisional(args) -> None:
         import ffco_scraper.prov.run as prov
         st = prov.run(args.db, args.out, budget_s=float(os.environ.get("PROV_BUDGET", "240")))
         print(f"provisional: {st}")
-        if st.get("changed") or st.get("added"):
+        if st.get("changed") or st.get("added") or st.get("reshaped"):
             DEPLOY_PENDING.touch()
     except Exception as e:                       # the pilot must never stop the site's update
         print(f"provisional: failed — {type(e).__name__}: {e}")
