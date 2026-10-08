@@ -39,8 +39,7 @@ export async function render(main, { query = {} } = {}) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
-      <div class="row" style="gap:8px"><div id="ad-tabs"></div>
-        <a class="btn btn-sm" href="#/provisoires">${t("prov.title")}</a></div></div>
+      <div class="row" style="gap:8px"><div id="ad-tabs"></div></div></div>
     <div data-panel="accounts" hidden>
       <div class="tiles tiles-compact" id="ad-tiles" style="margin-bottom:14px"></div>
       <div class="filters">

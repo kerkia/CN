@@ -12,7 +12,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/` | Scraper (`fetcher`, `crawler`, `parser`, `store`, `updater`), agenda scraper (`agenda.py`), and the CN engine (`cn.py` = formulas, `cn_engine.py` = methods and computation, `cn_schema.sql`) |
 | `update.py` | The one entry point for updates: fetch → recompute → rebuild site data → deploy → mail digests. Also holds the one-off **migrations** |
 | `build_site.py`, `site_extras.py`, `site_io.py` | Turn the database into the static JSON under `site/data/` (runner buckets `r/`, races `c/`, month-end snapshots `snap/`, clubs, network, `meta.json`) |
-| `ffco_scraper/prov/` | Provisional results (admin pilot): organisers' results before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
+| `ffco_scraper/prov/` | Provisional results (« Récemment »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited) |
@@ -121,7 +121,7 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
 
-## Provisional results (admin pilot)
+## Provisional results (« Récemment »)
 
 Organisers publish results (and often split times) on race day or the next, days before FFCO. `ffco_scraper/prov`
 collects them for the races of the agenda (upcoming ones are kept, with their website and place, since the agenda
@@ -150,8 +150,9 @@ file carries licences: runners are matched by name + club number (`match.py`), u
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
-served to administrators only (`_middleware.js`); pages « Résultats » (`#/provisoires`) and « Temps
-intermédiaires » (`#/temps-inter`), linked from the admin page. By hand: `python -m ffco_scraper.prov --db <db>
+served to every logged-in user (an admin-only pilot until 2026-10-08); pages « Récemment » (`#/recemment`, in the
+main menu after « Agenda »; `#/provisoires` still works) listing the last 30 days' races (`run.SHOW_DAYS`), and
+« Temps intermédiaires » (`#/temps-inter`), linked from it. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
 ## Changing a method: migrations

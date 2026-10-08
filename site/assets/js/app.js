@@ -26,7 +26,7 @@ const PAGES = {
   settings: () => import("./pages/settings.js"),
   contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
-  provisional: () => import("./pages/provisional.js"),   // administrators only (a pilot)
+  provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 30 days
   splits: () => import("./pages/splits.js"),
 };
 
@@ -66,7 +66,7 @@ function parseHash() {
     : head === "reglages" ? "settings"
     : head === "contact" ? "contact"
     : head === "admin" ? "admin"
-    : head === "provisoires" ? "provisional"
+    : head === "recemment" || head === "provisoires" ? "provisional"     // #/provisoires: the pilot's old address
     : head === "temps-inter" ? "splits"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
@@ -145,8 +145,10 @@ function renderHeader(r) {
     ["network", "#/reseau", t("nav.network")],
     ["methods", "#/methodes", t("nav.methods")],
     ["agenda", "#/agenda", t("nav.agenda")],
+    ["provisional", "#/recemment", t("nav.recent")],
   ] : [];                                     // logged out, the home page (the login) is the whole site
-  const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs" : route;
+  const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs"
+    : route === "splits" ? "provisional" : route;
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
   $("#topbar").innerHTML = html`<div class="topbar-inner">

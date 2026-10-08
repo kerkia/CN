@@ -31,7 +31,8 @@ from .parsers import VERSION as PARSER_VERSION
 from .sources.winsplits import BASE as WS_BASE, WinSplits
 
 log = logging.getLogger(__name__)
-KEEP_DAYS = 35                  # races shown on the admin page: the last five weeks
+KEEP_DAYS = 35                  # races kept and matched to the platforms' competitions: the last five weeks
+SHOW_DAYS = 30                  # races listed on « Récemment » (its text says so)
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 CATCH_UP = 4                    # budget multiplier while catching up
 
@@ -211,10 +212,10 @@ def region_of(org_code: str | None) -> str | None:
 
 
 def build(con, out: Path, today: date) -> int:
-    """site/data/prov/: index.json and one file per race of the last KEEP_DAYS days."""
+    """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days."""
     d = out / "prov"
     d.mkdir(parents=True, exist_ok=True)
-    lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
+    lo = (today - timedelta(days=SHOW_DAYS)).isoformat()
     matcher, scorer = Matcher(con, today), Scorer(con)
     index, written = [], 0
     for race in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? ORDER BY date_iso DESC, name",

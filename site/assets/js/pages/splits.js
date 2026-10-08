@@ -1,4 +1,4 @@
-// Temps intermédiaires (administrators only, a pilot): the split times organisers publish (WinSplits, their own split
+// Temps intermédiaires (from « Récemment »): the split times organisers publish (WinSplits, their own split
 // files), circuit by circuit, in six views (most after WinSplits Pro's analyses):
 // - Tableau: each leg's time and rank, the cumulative time and rank, the time lost on each leg;
 // - Écarts: for the runners picked, the gap to a reference along the course — the best cumulative time at each control,
@@ -23,7 +23,6 @@
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
-import * as auth from "../auth.js";
 import { lineChart, columnChart, slotColor, css } from "../charts.js";
 import { seg, chartCard, bindChartCard, legend, dataTable } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
@@ -42,10 +41,6 @@ const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
 export async function render(main, { query = {} } = {}) {
-  if (!auth.session()?.admin) {
-    main.innerHTML = html`<div class="notice">${t("ad.forbidden")}</div>`;
-    return { title: t("spl.title") };
-  }
   const idx = await getProv("index.json");
   const withSplits = (idx?.races || []).filter((r) => r.splits);
   main.innerHTML = html`
@@ -73,8 +68,8 @@ export async function render(main, { query = {} } = {}) {
     const k = docs[di].classes[ci];
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
-    $("#sp-crumbs").innerHTML = html`<a href="#/provisoires">${t("prov.title")}</a><span>›</span>
-      <a href="#/provisoires?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
+    $("#sp-crumbs").innerHTML = html`<a href="#/recemment">${t("prov.title")}</a><span>›</span>
+      <a href="#/recemment?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
     $("#sp-pick").innerHTML = html`
       <label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>
       ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="sp-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select></label>` : ""}

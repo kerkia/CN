@@ -1,7 +1,7 @@
-// Résultats provisoires (administrators only, a pilot): the results organisers publish before FFCO does — found on
+// Récemment: the results organisers publish, often before FFCO does, for the races of the last 30 days — found on
 // liveresultat, WinSplits and the clubs' own websites (ffco_scraper/prov) — race by race, with the provisional scores
 // and CNs of each method. For a race FFCO has since published, its own figures sit next to them as a check.
-// The data (site/data/prov/) is served to administrators only (functions/_middleware.js).
+// The data (site/data/prov/) is served to every logged-in user, like the rest of site/data.
 
 import { html, raw, $, $$, fmt, fmtDate, normalise, displayName } from "../util.js";
 import { t } from "../i18n.js";
@@ -36,10 +36,6 @@ const runLine = (x) => `${when(x.at)}, ${x.looked} ${t("prov.run.of")} ${x.due}$
 const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export async function render(main, { query = {} } = {}) {
-  if (!auth.session()?.admin) {
-    main.innerHTML = html`<div class="notice">${t("ad.forbidden")}</div>`;
-    return { title: t("prov.title") };
-  }
   const idx = await getProv("index.json");
   if (!idx) {
     main.innerHTML = html`<div class="page-head"><div><h1>${t("prov.title")}</h1></div></div><div class="card"><div class="empty">${t("prov.none")}</div></div>`;
@@ -110,7 +106,7 @@ function list(main, idx, query) {
       <th>FFCO</th><th>${t("prov.checked")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td style="white-space:normal;min-width:180px;max-width:280px"><a href="#/provisoires?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
+        <td style="white-space:normal;min-width:180px;max-width:280px"><a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td style="white-space:normal;min-width:80px">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td style="white-space:normal;min-width:110px">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}
@@ -157,7 +153,7 @@ async function detail(main, idx, query) {
   };
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/provisoires">${t("prov.title")}</a><span>›</span><span>${race.name}</span></div>
+    <div class="crumbs"><a href="#/recemment">${t("prov.title")}</a><span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
