@@ -98,18 +98,24 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
         d = lr.read(links["liveresultat"])
         if d and d["classes"]:
             changed += save(con, race["key"], url, "liveresultat", d, note=MATCHED)
+        elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+            save(con, race["key"], url, "liveresultat", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     if links.get("winsplits") and not f.out_of_time():
         url = f"{WS_BASE}/classes.asp?databaseId={links['winsplits']}"
         matched.append(url)
         d = ws.read(links["winsplits"])
         if d and d["classes"]:
             changed += save(con, race["key"], url, "winsplits", d, note=MATCHED)
+        elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+            save(con, race["key"], url, "winsplits", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     if links.get("heyries") and not f.out_of_time():
         url = f"{HY_BASE}/competition/{links['heyries']}/"
         matched.append(url)
         d = hy.read(links["heyries"])
         if d and d["classes"]:
             changed += save(con, race["key"], url, "heyries", d, note=MATCHED)
+        elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+            save(con, race["key"], url, "heyries", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     # an earlier match no longer chosen (a better race took it) is dropped
     con.execute(f"""DELETE FROM prov_docs WHERE race_key = ? AND note = ? AND url NOT IN ({",".join("?" * len(matched)) or "''"})""",
                 (race["key"], MATCHED, *matched))
@@ -231,6 +237,14 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         ws_events = store.meta_get(con, "winsplits", {"events": {}})["events"]
         ws_map = races.assign(period, [(int(k), e["name"], e["organiser"], e["date"]) for k, e in ws_events.items() if e["date"] >= lo])
         hy_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in hy.competitions() if c["date"] >= lo])
+        # a race already finished with comes back when a platform competition is newly matched to it (a WinSplits
+        # event found later by the backward fill, an Orientation Data competition published after the last look)
+        urls = {"liveresultat": "https://liveresultat.orientering.se/followfull.php?comp={}", "winsplits": WS_BASE + "/classes.asp?databaseId={}",
+                "heyries": HY_BASE + "/competition/{}/"}
+        for kind, mp in (("liveresultat", lr_map), ("winsplits", ws_map), ("heyries", hy_map)):
+            for key, pid in mp.items():
+                if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (key, urls[kind].format(pid))).fetchone():
+                    con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE key = ? AND done = 1", (_now(), key))
         for race in races.due(con, today, _now()):
             if f.out_of_time():
                 break

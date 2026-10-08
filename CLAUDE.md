@@ -18,7 +18,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
-| `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, deploy on push |
+| `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
 
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -123,9 +123,12 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
 ## Provisional results (admin pilot)
 
 Organisers publish results (and often split times) on race day or the next, days before FFCO. `ffco_scraper/prov`
-collects them for the races of the agenda and of FFCO's last month, and `update.py` runs it after each hourly
-update (`PROV_BUDGET` seconds, 240 by default; a deploy only when something new was found — Pages' free plan
-counts deploys). Sources: liveresultat.orientering.se (JSON API, matched by date + name/organiser), WinSplits
+collects them for the races of the agenda (upcoming ones are kept, with their website and place, since the agenda
+drops past races) and of FFCO's last month — relays excluded — and `update.py` runs it after each hourly update
+(`PROV_BUDGET` seconds, 240 by default), plus `--prov-only` runs every 20 min on Saturday and Sunday evenings (600 s);
+a deploy only when something new was found — Pages' free plan counts deploys. A race is watched 14 days whether
+FFCO has published it or not (FFCO has no splits); a finished race comes back when a platform competition is
+newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by date + name/organiser), WinSplits
 Online (sequential event ids scanned forward; HTML split tables), and the organiser's site (WordPress media/posts
 API, Blogger feed, a few pages around the race page; club websites from the agenda — FFCO's api.ffcorientation.fr
 is closed to robots by its robots.txt). **Polite by design:**

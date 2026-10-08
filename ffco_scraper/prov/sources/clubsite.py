@@ -25,7 +25,7 @@ from ..model import plain
 
 DOC_EXT = (".pdf", ".htm", ".html", ".xml", ".xls", ".xlsx", ".csv", ".txt")
 RESULT_WORDS = ("resultat", "result", "classement", "temps", "inter", "split", "provisoire", "circuit", "categorie", "si_", "-si")
-NOT_RESULTS = ("depart", "horaire", "startlist", "start list", "inscrit", "inscription", "annonce", "invitation", "convocation",
+NOT_RESULTS = ("relais", "relay", "depart", "horaire", "startlist", "start list", "inscrit", "inscription", "annonce", "invitation", "convocation",
                "reglement", "fleche", "plan d acces")
 PAGE_WORDS = ("resultat", "result", "organisation", "competition", "course", "evenement", "event", "actualite", "news",
               "archive", "saison", "orga", "programme")

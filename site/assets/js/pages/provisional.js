@@ -12,6 +12,7 @@ import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
+const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu" };
 const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC" };
 
 export const getProv = async (path) => {
@@ -116,7 +117,7 @@ async function detail(main, idx, query) {
         <td><span class="tag">${SOURCE[d.source] || d.source}</span></td>
         <td style="max-width:420px;overflow-wrap:anywhere"><a href="${d.url}" target="_blank" rel="noopener">${d.title || d.note || decodeURIComponent(d.url.split("/").pop() || d.url)}</a>
           ${d.note && d.title ? html`<div class="muted" style="font-size:12px">${d.note}</div>` : ""}</td>
-        <td>${d.kind}${d.by ? html` <span class="muted">· ${t(`prov.by.${d.by}`)}</span>` : ""}</td>
+        <td>${KIND[d.kind] || d.kind}${d.by ? html` <span class="muted">· ${t(`prov.by.${d.by}`)}</span>` : ""}</td>
         <td class="r num">${d.classes ? fmt(d.classes.length) : "—"}</td>
         <td class="num" style="font-size:12px">${when(d.found)}</td><td class="num" style="font-size:12px">${when(d.changed)}</td></tr>`)}</tbody></table></div>
       ${race.docs.length ? "" : html`<div class="empty">${t("prov.noDoc")}</div>`}</section>

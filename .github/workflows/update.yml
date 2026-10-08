@@ -3,6 +3,8 @@
 #   every hour         quick run: new competitions of the last 2 months only
 #   03:00 Paris time   full run: the last ~3 months, corrections included
 #   06:00 Paris time   agenda run: upcoming events, registrations (site/data/agenda.json)
+#   Sat/Sun evenings   provisional-results run every 20 min (organisers publish results
+#                      on the evening of the race; live results are complete by then)
 #   push to main       publish the site's new code (site/, functions/) with the
 #                      stored data
 #
@@ -26,15 +28,16 @@ on:
     - cron: "0 2 * * *"      # full, 03:00 Paris in winter (UTC+1)
     - cron: "0 4 * * *"      # agenda, 06:00 Paris in summer (UTC+2)
     - cron: "0 5 * * *"      # agenda, 06:00 Paris in winter (UTC+1)
+    - cron: "*/20 16-22 * * 6,0"   # provisional results, Sat/Sun 18:00-00:40 Paris in summer, 17:00-23:40 in winter
   push:
     branches: [main]
     paths: ["site/**", "functions/**"]
   workflow_dispatch:
     inputs:
       mode:
-        description: "quick = new competitions only; full = with corrections; agenda = upcoming events; deploy = publish the stored site as it is; backfill = every season's competitions not stored yet (the archive needs the FFCO_SESSIONID secret)"
+        description: "quick = new competitions only; full = with corrections; agenda = upcoming events; prov = provisional results only; deploy = publish the stored site as it is; backfill = every season's competitions not stored yet (the archive needs the FFCO_SESSIONID secret)"
         type: choice
-        options: [quick, full, agenda, deploy, backfill]
+        options: [quick, full, agenda, prov, deploy, backfill]
         default: quick
 
 permissions:
@@ -60,6 +63,7 @@ jobs:
               "0 2 * * *") [ "$offset" = "+0100" ] && mode=full || mode=skip ;;
               "0 4 * * *") [ "$offset" = "+0200" ] && mode=agenda || mode=skip ;;
               "0 5 * * *") [ "$offset" = "+0100" ] && mode=agenda || mode=skip ;;
+              "*/20 16-22 * * 6,0") mode=prov ;;
               *) mode=quick ;;
             esac
           fi
@@ -118,6 +122,7 @@ jobs:
             quick)  python update.py --new-only --deploy ;;
             full)   python update.py --deploy ;;
             agenda) python update.py --agenda-only --deploy ;;
+            prov)   PROV_BUDGET=600 python update.py --prov-only --deploy ;;
             deploy) python update.py --deploy-only ;;
             backfill)
               [ -n "$FFCO_SESSIONID" ] || echo "::warning::no FFCO_SESSIONID secret: the archive seasons will be skipped"

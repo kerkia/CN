@@ -198,6 +198,8 @@ def main() -> None:
     ap.add_argument("--deploy-only", action="store_true", help="publish the current site, nothing else")
     ap.add_argument("--agenda-only", action="store_true",
                     help="refresh the agenda of upcoming events (site/data/agenda.json) and publish it if it changed")
+    ap.add_argument("--prov-only", action="store_true",
+                    help="provisional results only (organisers' results before FFCO); publish if something new was found")
     ap.add_argument("--concurrency", type=int, default=8)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
@@ -246,20 +248,19 @@ def main() -> None:
             if args.deploy and not DEPLOY_PENDING.exists():       # the courses are online: alert the subscribers
                 notify.run_agenda(args.out / "agenda.json")
             sys.exit(0)
+        if args.prov_only:
+            _provisional(args)
+            if args.deploy and DEPLOY_PENDING.exists() and deploy():
+                DEPLOY_PENDING.unlink(missing_ok=True)
+            print(f"provisional run done in {time.monotonic() - t0:.0f}s")
+            sys.exit(0)
         rebuilt = _run(args, since, t0)
         if rebuilt:
             DEPLOY_PENDING.touch()
         # 4b. provisional results (an admin pilot): what organisers publish before FFCO does (ffco_scraper/prov).
         # Published only when something new was found: a mere "looked again" must not cost a deploy.
         if not args.dry_run:
-            try:
-                import ffco_scraper.prov.run as prov
-                st = prov.run(args.db, args.out, budget_s=float(os.environ.get("PROV_BUDGET", "240")))
-                print(f"provisional: {st}")
-                if st.get("changed") or st.get("added"):
-                    DEPLOY_PENDING.touch()
-            except Exception as e:                   # the pilot must never stop the site's update
-                print(f"provisional: failed — {type(e).__name__}: {e}")
+            _provisional(args)
         if args.deploy and DEPLOY_PENDING.exists() and deploy():
             DEPLOY_PENDING.unlink(missing_ok=True)
         # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue
@@ -267,6 +268,18 @@ def main() -> None:
             notify.run(args.db)
     finally:
         lock.unlink(missing_ok=True)
+
+
+def _provisional(args) -> None:
+    """Provisional results (an admin pilot, ffco_scraper/prov); marks a deploy when something new was found."""
+    try:
+        import ffco_scraper.prov.run as prov
+        st = prov.run(args.db, args.out, budget_s=float(os.environ.get("PROV_BUDGET", "240")))
+        print(f"provisional: {st}")
+        if st.get("changed") or st.get("added"):
+            DEPLOY_PENDING.touch()
+    except Exception as e:                       # the pilot must never stop the site's update
+        print(f"provisional: failed — {type(e).__name__}: {e}")
 
 
 def _run(args, since, t0) -> bool:

@@ -63,6 +63,8 @@ def match_score(race, name: str, organiser: str) -> float:
     Needs distinctive evidence — a word of the place or of the race's own name, the organiser's initials or club
     number; generic words ("championnat de ligue sprint") count for nothing, and a contradicting race type rules it out."""
     cw = set(_words(f"{name} {organiser}"))
+    if ("relais" in cw or "relay" in cw) and not is_relay(race["name"], race["epreuve"]):
+        return 0.0                            # a relay is never the individual race of the same day
     t = race["epreuve"]
     if t in TYPE_WORDS:
         others = {w for k, ws in TYPE_WORDS.items() if k != t for w in ws}
@@ -141,6 +143,11 @@ def club_site(con, code: str | None) -> str | None:
 
 
 # ---- the races ---------------------------------------------------------------------------------------------
+def is_relay(name: str | None, epreuve: str | None = None) -> bool:
+    """Relays are out of the pilot's scope (team races: neither individual results nor a CN)."""
+    return epreuve == "Relais" or "relais" in plain(name) or "relay" in plain(name)
+
+
 def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
     """Add the races of the last `back_days` days (agenda + FFCO) to prov_races and link them to FFCO."""
     lo = (today - timedelta(days=back_days)).isoformat()
@@ -151,7 +158,8 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
     if agenda_path.exists():
         a = json.loads(agenda_path.read_text(encoding="utf-8"))
         for e in a.get("events", []):
-            if e.get("kind") != "c" or not e.get("id") or not (lo <= e.get("date", "") <= hi) or e.get("cancelled"):
+            # upcoming races too: the agenda drops a race a few days after it, and its website and place go with it
+            if e.get("kind") != "c" or not e.get("id") or e.get("date", "") < lo or e.get("cancelled") or is_relay(e.get("name"), e.get("epr")):
                 continue
             key = f"a{e['id']}"
             code = org_code(e.get("org"))
@@ -167,8 +175,10 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
                              int(bool(e.get("cn"))), site, e["id"], stamp, stamp))
                 added += 1
     # FFCO's competitions of the period: link the agenda's races, add the others (the past month's pilot)
-    for c in con.execute("SELECT course_id, date_iso, title, organizer, terrain, epreuve FROM competitions WHERE date_iso BETWEEN ? AND ?",
+    for c in con.execute("SELECT course_id, date_iso, title, organizer, terrain, epreuve, location FROM competitions WHERE date_iso BETWEEN ? AND ?",
                          (lo, hi)).fetchall():
+        if is_relay(c["title"], c["epreuve"]):
+            continue
         code = org_code(c["organizer"])
         same = con.execute("SELECT key, name, ffco_id FROM prov_races WHERE date_iso = ? AND org_code IS ? AND agenda_id IS NOT NULL",
                            (c["date_iso"], code)).fetchall()
@@ -180,12 +190,22 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
             continue
         key = f"f{c['course_id']}"
         if con.execute("SELECT 1 FROM prov_races WHERE key = ? OR ffco_id = ?", (key, c["course_id"])).fetchone():
+            # a race only FFCO knows: its place (FFCO's location) and website, once known, help find its results
+            con.execute("UPDATE prov_races SET place = COALESCE(place, ?), site = COALESCE(site, ?) WHERE key = ?",
+                        (c["location"], club_site(con, code), key))
             continue
         con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site, ffco_id,
             first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)""",
-                    (key, c["date_iso"], c["title"], None, c["organizer"], code, c["terrain"], c["epreuve"],
+                    (key, c["date_iso"], c["title"], c["location"], c["organizer"], code, c["terrain"], c["epreuve"],
                      club_site(con, code), c["course_id"], stamp, stamp))
         added += 1
+    # relays taken in before they were left out, and relay files found next to an individual race
+    con.execute("DELETE FROM prov_docs WHERE lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' OR lower(COALESCE(title, '')) LIKE '%relais%'")
+    for (key,) in con.execute("SELECT key FROM prov_races").fetchall():
+        r = con.execute("SELECT name, epreuve FROM prov_races WHERE key = ?", (key,)).fetchone()
+        if is_relay(r["name"], r["epreuve"]):
+            con.execute("DELETE FROM prov_docs WHERE race_key = ?", (key,))
+            con.execute("DELETE FROM prov_races WHERE key = ?", (key,))
     con.commit()
     return {"added": added, "linked": linked}
 
@@ -200,7 +220,7 @@ def schedule(con, race, today: date) -> None:
     """After a look: when to look again, or stop."""
     age = (today - date.fromisoformat(race["date_iso"])).days
     now = datetime.now(timezone.utc)
-    if race["ffco_id"] is not None or age > WATCH_DAYS:
+    if age > WATCH_DAYS:                      # FFCO publishing a race does not stop it: FFCO never has the splits
         con.execute("UPDATE prov_races SET last_check = ?, done = 1 WHERE key = ?", (now.isoformat(timespec="seconds"), race["key"]))
         return
     step = timedelta(minutes=50) if age < HOURLY_DAYS else timedelta(hours=23)
