@@ -142,21 +142,27 @@ async function detail(main, idx, query) {
       ${d.by === "category" ? html`<span>${t("prov.byCategory")}</span>` : html`${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
     const scored = d.by !== "category";
-    const hasFfco = k.runners.some((r) => r.ffco);
+    const published = k.runners.some((r) => r.ffco);
+    // one cell per method: the provisional CN J-15 → race score → CN after; below, once the race is published, the
+    // same method's published race score → CN after (FFCO's for the official method, the site's for the others)
+    const gap = (a, b) => (a == null || b == null || a === b ? "" : html` <span style="color:var(--bad)">(${a > b ? "+" : "−"}${fmt(Math.abs(a - b))})</span>`);
+    const cell = (r, m) => {
+      const p = r.ffco?.[m];
+      return html`<td class="r num" style="white-space:nowrap">${r.scores?.[m] != null
+        ? html`<span class="muted" style="font-size:11.5px">${fmt(r.cnj15?.[m])} → </span><b>${fmt(r.scores[m])}</b><span class="muted" style="font-size:11.5px"> → ${fmt(r.cnAfter?.[m])}</span>` : "—"}
+        ${p ? html`<div class="muted" style="font-size:11.5px">${t("prov.pub")} ${fmt(p.score)}${gap(r.scores?.[m], p.score)} → ${fmt(p.cn)}</div>` : ""}</td>`;
+    };
     $("#pv-class").innerHTML = html`<table class="data compact"><thead><tr>
       <th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th><th class="r">${t("prov.time")}</th>
-      ${scored ? M.map((m) => html`<th class="r" title="${t("prov.colHint")}">${methodKey(m)}${methodShort(m)}<div class="muted" style="font-weight:400;font-size:11px">${t("prov.cols")}</div></th>`) : ""}
-      ${hasFfco ? html`<th class="r" title="${t("prov.ffcoHint")}">FFCO<div class="muted" style="font-weight:400;font-size:11px">${t("prov.ffcoCols")}</div></th>` : ""}</tr></thead>
+      ${scored ? M.map((m) => html`<th class="r" title="${t("prov.colHint")}">${methodKey(m)}${methodShort(m)}<div class="muted" style="font-weight:400;font-size:11px">${t("prov.cols")}</div>
+        ${published ? html`<div class="muted" style="font-weight:400;font-size:11px">${t("prov.pubCols")}</div>` : ""}</th>`) : ""}</tr></thead>
       <tbody>${k.runners.map((r) => html`<tr>
         <td class="r num">${r.place ?? ""}</td>
         <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
-        <td style="font-size:12.5px">${r.club || ""}</td><td>${r.category || ""}</td>
+        <td style="font-size:12.5px">${r.club || ""}</td>
+        <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
         <td class="r num">${r.status === "ok" ? clock(r.time_s) : STATUS[r.status]}</td>
-        ${scored ? M.map((m) => html`<td class="r num" style="white-space:nowrap">${r.scores?.[m] != null
-          ? html`<span class="muted" style="font-size:11.5px">${fmt(r.cnj15?.[m])} → </span><b>${fmt(r.scores[m])}</b><span class="muted" style="font-size:11.5px"> → ${fmt(r.cnAfter?.[m])}</span>` : "—"}</td>`) : ""}
-        ${hasFfco ? html`<td class="r num" style="white-space:nowrap">${r.ffco ? html`${fmt(r.ffco.official)}${r.scores?.official != null && r.ffco.official != null && r.ffco.official !== r.scores.official
-          ? html` <span style="color:var(--bad);font-size:11.5px">(${r.scores.official > r.ffco.official ? "+" : "−"}${fmt(Math.abs(r.scores.official - r.ffco.official))})</span>` : ""}
-          <span class="muted" style="font-size:11.5px">· ${fmt(r.ffco.top6w2)}</span>` : "—"}</td>` : ""}</tr>`)}</tbody></table>`;
+        ${scored ? M.map((m) => cell(r, m)) : ""}</tr>`)}</tbody></table>`;
   }
   draw();
   return { title: race.name };

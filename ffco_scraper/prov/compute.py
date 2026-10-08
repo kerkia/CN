@@ -79,7 +79,7 @@ class Scorer:
         d = date.fromisoformat(race["date_iso"])
         weight = title_weight(race["name"])
         values = {}
-        rows = [r for r in klass["runners"] if r.get("lic") and r["status"] != "nc" and (r.get("category") or "") not in ("H10", "D10")]
+        rows = [r for r in klass["runners"] if r.get("lic") and r["status"] != "nc" and (r.get("category") or r.get("catCn") or "") not in ("H10", "D10")]
         # official
         as_of = d - timedelta(days=OFFICIAL.lag_days)
         cn_in = {r["lic"]: self.official_j15(r["lic"], terrain, as_of) for r in rows}
@@ -129,9 +129,13 @@ class Scorer:
 
     # ---- FFCO's own figures for the same race, once published (to check the provisional ones) ---------------
     def ffco_figures(self, course_id: int) -> dict[str, dict]:
-        """licence -> {'official': FFCO points, 'top6w2': engine score…} for a published race."""
+        """For a race published since: licence -> {method: {'score': the race's published score, 'cn': the runner's
+        published CN after it}} — FFCO's own points and CN for 'official', the site's for the other methods."""
         out: dict[str, dict] = {}
-        for lic, method, score in self.con.execute("SELECT licence, method, score FROM scores WHERE course_id = ? AND score IS NOT NULL",
-                                                   (course_id,)):
-            out.setdefault(lic, {})[method] = score
+        for lic, method, score, cn in self.con.execute(
+                """SELECT s.licence, s.method, s.score, h.cn FROM scores s
+                   LEFT JOIN cn_history h ON h.licence = s.licence AND h.method = s.method AND h.date_iso = s.date_iso
+                        AND h.terrain = s.terrain
+                   WHERE s.course_id = ? AND s.score IS NOT NULL""", (course_id,)):
+            out.setdefault(lic, {})[method] = {"score": score, "cn": cn}
         return out

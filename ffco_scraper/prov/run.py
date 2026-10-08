@@ -169,6 +169,8 @@ def build(con, out: Path, today: date) -> int:
                 for k in parsed["classes"]:
                     for r in k["runners"]:
                         r["lic"] = matcher.match(r)
+                        if r["lic"] and not r.get("category"):       # lists by circuit rarely print it: the CN data's
+                            r["catCn"] = matcher.info[r["lic"]]["cat"]
                         if r["lic"] and r["lic"] in ffco:
                             r["ffco"] = ffco[r["lic"]]
                     if parsed.get("by") != "category":
