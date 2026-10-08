@@ -21,7 +21,8 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
 
-Not in git (see `.gitignore`): the database and HTTP cache (`C:\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
+The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
+Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
 `site/data/` and `site/auth/` (generated), `.dev.vars` (local secrets), exports. **The repository is public:** never
 commit results, personal data, secrets or credentials.
 
@@ -51,7 +52,7 @@ commit results, personal data, secrets or credentials.
   local `SESSION_SECRET`/`NOTIFY_SECRET`). Create a local test account through the register flow.
 - Site data for the dev server comes from `site/data/`, built locally: `python -c "import build_site;
   build_site.main(['--out','site/data','--db', <db>])"`. Test engine changes on a **copy** of
-  `C:\cn-data\ffco_results.sqlite3`, never on the original.
+  `C:\kerkia\cn-data\ffco_results.sqlite3`, never on the original.
 - To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
   modules — hard-reload.

@@ -52,7 +52,7 @@ from ffco_scraper.updater import run_update
 
 ROOT = Path(__file__).parent
 import notify  # noqa: E402  (digest e-mails for subscribed accounts)
-import paths  # noqa: E402  (the data folder, outside OneDrive)
+import paths  # noqa: E402  (the data folder, outside the project folder)
 REPORTS = ROOT / "exports" / "updates"
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
