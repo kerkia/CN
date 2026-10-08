@@ -11,6 +11,7 @@ When to look again after a race (next_check): at every run (hourly) for three da
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -45,6 +46,10 @@ GENERIC = {"de", "la", "le", "du", "des", "et", "en", "a", "au", "aux", "d", "l"
            "cdl", "ligue", "sprint", "md", "ld", "moyenne", "longue", "distance", "nuit", "nocturne", "night", "challenge", "urbain",
            "sans", "qualif", "open", "trophee", "etape", "manche", "mass", "start", "vtt", "ski", "pied", "relais", "wre", "o",
            "sport", "sports", "association", "ass", "union", "sportive", "team", "amicale", "laique", "ville"}
+# abbreviations in file names and titles: « CL_Sprint », « CDL MD », « CF LD »
+ABBREV = {"cl": ("championnat", "ligue"), "cdl": ("championnat", "ligue"), "cf": ("championnat", "france"),
+          "cdf": ("championnat", "france"), "chpt": ("championnat",), "champ": ("championnat",),
+          "md": ("moyenne", "distance"), "ld": ("longue", "distance")}
 TYPE_WORDS = {"Sprint": ("sprint",), "MD": ("md", "moyenne"), "LD": ("ld", "longue"), "Nuit": ("nuit", "nocturne", "night")}
 
 
@@ -63,6 +68,7 @@ def match_score(race, name: str, organiser: str) -> float:
     Needs distinctive evidence — a word of the place or of the race's own name, the organiser's initials or club
     number; generic words ("championnat de ligue sprint") count for nothing, and a contradicting race type rules it out."""
     cw = set(_words(f"{name} {organiser}"))
+    cw |= {w for a in cw & ABBREV.keys() for w in ABBREV[a]}
     if ("relais" in cw or "relay" in cw) and not is_relay(race["name"], race["epreuve"]):
         return 0.0                            # a relay is never the individual race of the same day
     t = race["epreuve"]
@@ -76,7 +82,7 @@ def match_score(race, name: str, organiser: str) -> float:
     s = min(2, len(distinct & cw)) * 1.0 + min(1, len(org_words & cw)) * 0.6 + 0.4 * len(weak & cw)
     # generic words in common only break ties between two races of one organiser that day ("Championnat…" vs
     # "Challenge…"): too weak to make a match alone
-    s += 0.15 * len((set(_words(race["name"])) & GENERIC - {"de", "la", "le", "du", "des", "et", "d", "l", "o"}) & set(_words(name)))
+    s += 0.15 * len((set(_words(race["name"])) & GENERIC - {"de", "la", "le", "du", "des", "et", "d", "l", "o"}) & cw)
     # the organiser field written as the club's initials (« BLCO »): evidence, not proof (other countries' clubs
     # have initials too), so it needs a race type or a place to agree
     ini = initials(race["org"])
@@ -88,6 +94,29 @@ def match_score(race, name: str, organiser: str) -> float:
     if t in TYPE_WORDS and cw & set(TYPE_WORDS[t]):
         s += 0.3
     return s
+
+
+SMALL = {"de", "la", "le", "du", "des", "et", "en", "a", "au", "aux", "d", "l", "o"}
+
+
+def owners(group, text: str) -> set:
+    """Which of an organiser's races of one day (« Sprint Rouen Centre », « KO Sprint Rouen Centre ») a document is
+    about: each race is told apart by the words of its name the others lack (« ko »; « challenge »; « championnat
+    ligue », written « CL » too), looked for as words and, for the longer ones, inside run-together file names
+    (« RsultatsSprintRouen »). The races naming the most of their own words; if it names none, the plain ones (those
+    with the fewest own words: the « Sprint » rather than the « KO Sprint »). Returns their keys."""
+    text = re.sub(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", " ", text)      # « KOSprintResultat » -> « KO Sprint Resultat »
+    toks = set(_words(text))
+    toks |= {w for a in toks & ABBREV.keys() for w in ABBREV[a]}
+    squash = re.sub(r"[^a-z0-9]", "", plain(text))
+    names = {r["key"]: set(_words(r["name"])) - SMALL for r in group}
+    own = {k: {w for w in ws if not any(w in names[o] for o in names if o != k)} for k, ws in names.items()}
+    hits = {k: sum(1 for w in ws if w in toks or (len(w) >= 4 and w in squash)) for k, ws in own.items()}
+    best = max(hits.values(), default=0)
+    if best:
+        return {k for k, h in hits.items() if h == best}
+    fewest = min((len(ws) for ws in own.values()), default=0)
+    return {k for k, ws in own.items() if len(ws) == fewest}
 
 
 def assign(races_list, items, min_score: float = 1.0) -> dict:
@@ -107,6 +136,54 @@ def assign(races_list, items, min_score: float = 1.0) -> dict:
         taken_r.add(rk); taken_i.add(iid)
         out[rk] = iid
     return out
+
+
+def backfill(con, events: list[dict], lo: str, hi: str) -> int:
+    """The agenda's races of [lo, hi] from FFCO's CSV export (events as agenda._csv_event): the races already past
+    when the pilot started, which the agenda had dropped. The export has no course id: such a race's key is 'x' + a
+    hash of its date, name and organiser. A race already known (FFCO's, the agenda's) is paired with the export's
+    closest race of its organiser and day — one each, so « Sprint » and « KO Sprint » stay two — and only gains
+    the website it lacked. Returns the number of races added."""
+    stamp = now_iso()
+    rows = [e for e in events if e.get("date") and lo <= e["date"] <= hi and not e.get("cancelled")
+            and not is_relay(e.get("name"), e.get("epr"))]
+    for e in rows:                                    # the clubs' websites too (never overwriting a known one)
+        code = org_code(e.get("org"))
+        if code and e.get("site"):
+            con.execute("INSERT OR IGNORE INTO prov_clubs (code, name, site, read_at) VALUES (?,?,?,?)",
+                        (code.zfill(4) if len(code) > 2 else code, e["org"], e["site"], stamp))
+    added = 0
+    for (day, code), group in _groups(rows):
+        known = con.execute("SELECT key, name, site FROM prov_races WHERE date_iso = ? AND org_code IS ?", (day, code)).fetchall()
+        both = lambda a, b: len(set(_words(a)) & set(_words(b))) / max(1, len(set(_words(a))), len(set(_words(b))))
+        pairs = sorted(((both(k["name"], e["name"]), i, j) for i, k in enumerate(known) for j, e in enumerate(group)
+                        if similarity(k["name"], e["name"]) >= 0.5), reverse=True)
+        used_k, used_e = set(), set()
+        for _, i, j in pairs:
+            if i in used_k or j in used_e:
+                continue
+            used_k.add(i); used_e.add(j)
+            if group[j].get("site") and not known[i]["site"]:
+                con.execute("UPDATE prov_races SET site = ? WHERE key = ?", (group[j]["site"], known[i]["key"]))
+        for j, e in enumerate(group):
+            if j in used_e:
+                continue
+            key = "x" + hashlib.sha1(f"{e['date']}|{e['name']}|{e.get('org')}".encode()).hexdigest()[:10]
+            place = re.sub(r"\s*\([^)]*\)\s*$", "", e.get("place") or "")
+            con.execute("""INSERT OR IGNORE INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site,
+                first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                        (key, e["date"], e["name"], place or None, e.get("org"), code, terrain_of(e), e.get("epr"),
+                         int(bool(e.get("cn"))), e.get("site") or club_site(con, code), stamp, stamp))
+            added += 1
+    con.commit()
+    return added
+
+
+def _groups(rows):
+    out: dict = {}
+    for e in rows:
+        out.setdefault((e["date"], org_code(e.get("org"))), []).append(e)
+    return out.items()
 
 
 def similarity(a: str, b: str) -> float:
@@ -211,9 +288,10 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
 
 
 def due(con, today: date, now: str) -> list:
-    """Races to look at in this run: raced already, not done, and their next check has come."""
+    """Races to look at in this run: raced already, not done, and their next check has come — the longest waiting
+    first (never looked at, then the earliest due), so a short budget never leaves the same races out run after run."""
     return con.execute("""SELECT * FROM prov_races WHERE done = 0 AND date_iso <= ? AND (next_check IS NULL OR next_check <= ?)
-                          ORDER BY date_iso DESC""", (today.isoformat(), now)).fetchall()
+                          ORDER BY next_check IS NOT NULL, next_check, date_iso DESC""", (today.isoformat(), now)).fetchall()
 
 
 def schedule(con, race, today: date) -> None:

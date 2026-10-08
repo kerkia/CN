@@ -10,6 +10,7 @@ checked against the tables, and a runner gets a start time only when the file's 
 
 from __future__ import annotations
 
+import hashlib
 import html as htmllib
 import re
 import struct
@@ -92,6 +93,19 @@ class WinSplits:
     def __init__(self, fetcher, con):
         self.f = fetcher
         self.con = con
+        self._spl: dict[int, bytes | None] = {}
+
+    def spl(self, db_id: int) -> bytes | None:
+        """The event's .spl file (once per run)."""
+        if db_id not in self._spl:
+            a = self.f.get(SPL.format(db_id), conditional=False)
+            self._spl[db_id] = a.content if a.status == 200 and a.content.startswith(b"spl") else None
+        return self._spl[db_id]
+
+    def fingerprint(self, db_id: int) -> str | None:
+        """Changes when the organiser uploads again: no need to read the class pages while it stays the same."""
+        b = self.spl(db_id)
+        return hashlib.sha1(b).hexdigest() if b else None
 
     def event(self, db_id: int) -> dict | None:
         """{id, name, organiser, date, classes: [(categoryId, name)]} or None if the id does not exist."""
@@ -211,8 +225,7 @@ class WinSplits:
             if k:
                 classes.append(k)
         if classes and not self.f.out_of_time():
-            a = self.f.get(SPL.format(db_id), conditional=False)
-            spl = _spl(a.content) if a.status == 200 else {}
+            spl = _spl(self.spl(db_id) or b"")
             for k in classes:
                 for r in k["runners"]:
                     if r["splits"]:

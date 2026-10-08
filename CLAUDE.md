@@ -12,7 +12,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/` | Scraper (`fetcher`, `crawler`, `parser`, `store`, `updater`), agenda scraper (`agenda.py`), and the CN engine (`cn.py` = formulas, `cn_engine.py` = methods and computation, `cn_schema.sql`) |
 | `update.py` | The one entry point for updates: fetch → recompute → rebuild site data → deploy → mail digests. Also holds the one-off **migrations** |
 | `build_site.py`, `site_extras.py`, `site_io.py` | Turn the database into the static JSON under `site/data/` (runner buckets `r/`, races `c/`, month-end snapshots `snap/`, clubs, network, `meta.json`) |
-| `ffco_scraper/prov/` | Provisional results (admin pilot): organisers' results before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
+| `ffco_scraper/prov/` | Provisional results (admin pilot): organisers' results before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited) |
@@ -130,11 +130,20 @@ a deploy only when something new was found — Pages' free plan counts deploys. 
 FFCO has published it or not (FFCO has no splits); a finished race comes back when a platform competition is
 newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by date + name/organiser), WinSplits
 Online (sequential event ids scanned forward; HTML split tables, start times from the event's .spl file, an
-undocumented format decoded and checked against the tables — `winsplits._spl`), and the organiser's site (WordPress media/posts
-API, Blogger feed, a few pages around the race page; club websites from the agenda — FFCO's api.ffcorientation.fr
-is closed to robots by its robots.txt). **Polite by design:**
-our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga, Livelox
-results, Sportsregions upload folders, user-agent filters) are recorded as refused, never worked around. Parsers
+undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
+event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
+and are not read — the owner is telling Helga's developer), Orientation Data (heyries), and the organiser's site
+(WordPress media/posts API, Blogger feed, up to 14 pages from the race's page and the home page — results pages
+naming the race first, photo albums never; a subdomain's main site too, `ocastor.go78.org` -> `www.go78.org`; a
+meta-refresh home page followed). A file named for another day is never the race's; an organiser's races of one
+weekend share its files out by their own words (`races.owners`: « KO », « Challenge », « CL »). Club websites come
+from the agenda — FFCO's api.ffcorientation.fr is closed to robots by its robots.txt; the past month's races, dropped
+by the agenda before the pilot started, were added once from its CSV export (one request, the owner's go-ahead
+2026-10-08, `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
+platforms (WinSplits' class pages only when its .spl changed); a race the budget cut short comes first next time;
+the last runs are listed under the « Résultats provisoires » table. **Polite by design:**
+our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga's results
+pages, Livelox results, Sportsregions upload folders, user-agent filters) are recorded as refused, never worked around. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again). No result
 file carries licences: runners are matched by name + club number (`match.py`), unmatched rows stay unlinked.
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;

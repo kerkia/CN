@@ -32,6 +32,7 @@ const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
 const SPECS = ["For", "Spr", "VTT", "Ski"];
 const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]
   || (r.epreuve === "Sprint" ? "Spr" : ["MD", "LD", "Nuit"].includes(r.epreuve) ? "For" : null);
+const runLine = (x) => `${when(x.at)}, ${x.looked} ${t("prov.run.of")} ${x.due}${x.cut ? ` (${t("prov.run.cut")})` : ""}`;
 const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export async function render(main, { query = {} } = {}) {
@@ -53,7 +54,7 @@ function list(main, idx, query) {
   let spec = SPECS.includes(query.t) ? query.t : "all", reg = query.reg || "";
   // races a runner took part in (a runner recognised in the results): the logged-in one unless another is chosen
   const me = auth.session()?.lic;
-  let runner = query.r || me, who = query.r || query.who === "runner" ? "runner" : "all";
+  let runner = query.r || me, who = query.who === "all" || !runner ? "all" : "runner";     // the logged-in runner's races by default
   const regions = [...new Set(idx.races.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
@@ -65,7 +66,14 @@ function list(main, idx, query) {
       <div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>`;
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
+    ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
+        ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
+      <table class="data compact" style="margin-top:6px;max-width:640px"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
+        <th class="r">${t("prov.run.changed")}</th><th class="r">${t("prov.run.requests")}</th><th class="r">${t("prov.run.seconds")}</th><th></th></tr></thead>
+      <tbody>${[...idx.runs].reverse().map((x) => html`<tr><td class="num">${when(x.at)}</td><td class="r num">${fmt(x.looked)} / ${fmt(x.due)}</td>
+        <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
+        <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></details>` : ""}`;
   const R = idx.races;
   $("#pv-tiles").innerHTML = html`
     <div class="tile"><div class="tile-label">${t("prov.races")}</div><div class="tile-value">${fmt(R.length)}</div></div>
@@ -86,7 +94,7 @@ function list(main, idx, query) {
   function draw() {
     const one = who === "runner" && runner;
     replaceQuery({ f: filter === "all" ? null : filter, t: spec === "all" ? null : spec, reg: reg || null,
-      who: who === "runner" && runner === me ? "runner" : null, r: one && runner !== me ? runner : null, q: q || null });
+      who: who === "all" ? "all" : null, r: one && runner !== me ? runner : null, q: q || null });
     $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")], ["pending", t("prov.f.pending")]], filter);
     $$('[data-seg="pvf"]').forEach((b) => b.addEventListener("click", () => { filter = b.dataset.value; draw(); }));
     $("#pv-t").innerHTML = seg("pvt", [["all", t("f.all")], ...SPECS.map((s) => [s, t(`terrain.${s}`)])], spec);
@@ -105,7 +113,8 @@ function list(main, idx, query) {
         <td><a href="#/provisoires?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td>${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
-        <td>${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}</td>
+        <td>${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}
+          ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
