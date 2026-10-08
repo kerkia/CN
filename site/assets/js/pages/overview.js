@@ -52,7 +52,7 @@ export async function render(main) {
           <p class="home-tag">${t("home.tag")}</p>
           <p class="home-lede">${t("auth.lede")}</p>
           <ul class="home-points">
-            <li>${t("auth.point1")}</li><li>${t("auth.point2")}</li><li>${t("auth.point3")}</li>
+            <li>${t("auth.point1")}</li><li>${t("auth.point2")}</li><li>${t("auth.point4")}</li><li>${t("auth.point3")}</li>
           </ul>
           <div class="home-specs">${["For", "Spr", "VTT", "Ski"].map((x) => html`<span class="tag tag-${x.toLowerCase()}">${t(`terrain.${x}`)}</span>`)}</div>
         </div>
