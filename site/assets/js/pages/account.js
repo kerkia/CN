@@ -149,6 +149,9 @@ async function privacy(main) {
       <p>${SITE} est un site indépendant, sans lien avec la FFCO. Il est exploité à titre personnel et non commercial. Contact : <b>ocn@kerkia.com</b>.</p>
       <h2 style="font-size:16px">Données des résultats</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr (nom, club, catégorie, numéro de licence, temps, place). Pour faire retirer ou rectifier une donnée vous concernant, écrivez-nous : nous en examinerons la demande, sachant que la source reste le site de la FFCO.</p>
+      <p>La page « Récemment » montre aussi, pour les courses des 30 derniers jours, les résultats que les organisateurs publient eux-mêmes (sur leur site, liveresultat, WinSplits, Helga…) ou déposent sur ${SITE}.</p>
+      <h2 style="font-size:16px">Dépôts de résultats</h2>
+      <p>Quand vous déposez un fichier de résultats, nous enregistrons votre compte, la course, le nom et la taille du fichier et la date du dépôt. Le fichier est conservé 60 jours dans le stockage du site (Cloudflare), puis effacé ; les résultats qu'il contient restent affichés. L'administrateur voit qui a déposé quoi et peut retirer un dépôt.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Ce que nous conservons :</b> adresse e-mail, prénom, nom et numéro de licence que vous avez saisis, mot de passe (sous forme chiffrée irréversible), date d'inscription et de dernière connexion, votre réglage de notification et la liste des courses déjà annoncées par e-mail.</li>

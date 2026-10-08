@@ -526,6 +526,25 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .login-box .btn-primary { height: 40px; justify-content: center; }
 @media (max-width: 820px) { .login-hero { grid-template-columns: 1fr; padding: 20px; } }
 .user-chip { display: flex; align-items: center; gap: 4px; }
+/* « Déposer des résultats » (pages/upload.js) */
+.upload-card .card-head { flex-wrap: nowrap; align-items: flex-start; }
+.upload-card #up-close { flex: none; }
+.upload-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 860px) { .upload-grid { grid-template-columns: minmax(0, 1fr); } }
+.upload-form { display: flex; flex-direction: column; gap: 12px; }
+.upload-form select, .upload-form input:not([type="checkbox"]) { width: 100%; }
+.upload-new { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.dropzone { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 14px; text-align: center; cursor: pointer;
+  border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); }
+.dropzone:hover, .dropzone.over { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface-2)); }
+.dropzone span { font-size: 12.5px; }
+.upload-check { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45;
+  background: color-mix(in srgb, var(--good) 12%, transparent); }
+.upload-check.warn { background: color-mix(in srgb, #d9a400 16%, transparent); }
+.upload-check.error { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.upload-help { font-size: 13.5px; }
+.upload-help h3 { font-size: 15px; margin: 0 0 8px; }
+.upload-help p, .upload-help ul { margin: 0 0 8px; }
 .user-chip .user-name { display: flex; flex-direction: column; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }
 .user-chip .user-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* first name, then last name */
 @media (max-width: 640px) { .user-chip .user-name { display: none; } }

@@ -55,6 +55,23 @@ Administration (pour désactiver cette alerte) : ${url}`,
   };
 }
 
+/** To the administrators: an organiser uploaded a results file on « Récemment ». */
+export function uploadMail(env, user, up) {
+  const url = `${siteUrl(env)}/#/admin?onglet=depots`;
+  const lines = [`Course : ${up.race}`, `Fichier : ${up.filename} (${Math.max(1, Math.round(up.size / 1024))} Ko)`,
+    `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
+  return {
+    subject: `Résultats déposés : ${up.race} — O'CN`,
+    html: wrap(env, "Résultats déposés", `<p>Un fichier de résultats vient d'être déposé sur « Récemment ». Il est publié
+au prochain passage de la collecte.</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Voir les dépôts")}`),
+    text: `Un fichier de résultats vient d'être déposé sur « Récemment ».
+${lines.join("\n")}
+
+Les dépôts (pour en retirer un) : ${url}`,
+  };
+}
+
 /** To the administrator: several verified accounts claim the same licence. */
 export function duplicateAlert(env, licence, accounts) {
   const url = `${siteUrl(env)}/#/admin`;

@@ -150,7 +150,16 @@ file carries licences: runners are matched by name + club number (`match.py`), u
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
-served to every logged-in user (an admin-only pilot until 2026-10-08); pages « Récemment » (`#/recemment`, in the
+served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08): on « Récemment »,
+any logged-in user can send a results file (IOF XML best, OE/MeOS HTML, PDF, .zip/.gz; 30 MB) for a race of the
+list or a race added with it (name, date in the last 30 days, place, club, format) — `pages/upload.js` reads it in the
+browser first (circuits, runners, splits, date); `functions/api/upload.js` streams the body to R2 (`cn-state`,
+`uploads/<id>/` + `meta.json`; binding `BUCKET`, the Functions write nowhere else), records it in D1 `uploads`, mails
+the administrators, deletes files older than 60 days, and, when the Pages secret `GH_DISPATCH_TOKEN` is set (a
+fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
+every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources/upload.py` turns each upload into
+a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
+is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Récemment » (`#/recemment`, in the
 main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 30 days' races (`run.SHOW_DAYS`), and
 « Temps intermédiaires » (`#/temps-inter`), linked from it. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).

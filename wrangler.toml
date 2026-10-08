@@ -3,6 +3,8 @@
 #   SESSION_SECRET  signs the session cookie (and peppers the password hashes)
 #   RESEND_API_KEY  sends the e-mails (confirmation, reset, alerts, digests)
 #   NOTIFY_SECRET   lets update.py call /api/notify from the PC
+#   GH_DISPATCH_TOKEN  starts a provisional-results run after an upload (GitHub fine-grained token, repository
+#                      kerkia/CN, "Actions: read and write"); without it, uploads wait for the next hourly run
 name = "observatoire-cn"
 pages_build_output_dir = "site"
 compatibility_date = "2025-06-01"
@@ -13,6 +15,11 @@ database_name = "ocn"
 database_id = "3bf072a7-0c47-41df-96f0-8943031547fd"
 migrations_dir = "migrations"
 
+# the state bucket of the CI runs; the Functions only ever write under uploads/ (organisers' files, api/upload.js)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "cn-state"
+
 [vars]
 SITE_URL = "https://ocn.kerkia.com"
 MAIL_FROM = "ocn@kerkia.com"
@@ -22,6 +29,8 @@ ALERT_EMAIL = "ocn@kerkia.com"
 ADMIN_EMAILS = "ocn@kerkia.com"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"
+# the repository whose workflow an upload starts
+GH_REPO = "kerkia/CN"
 # Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day
 DAILY_EMAIL_LIMIT = "90"
 MONTHLY_EMAIL_LIMIT = "2900"

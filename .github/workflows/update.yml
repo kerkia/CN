@@ -7,6 +7,8 @@
 #                      on the evening of the race; live results are complete by then)
 #   push to main       publish the site's new code (site/, functions/) with the
 #                      stored data
+#   an upload          a provisional-results run, started by functions/api/upload.js
+#                      (workflow_dispatch, mode prov) when the GH_DISPATCH_TOKEN secret is set
 #
 # GitHub's schedules are in UTC, so the full run is scheduled at both 01:00 and
 # 02:00 UTC and goes ahead only on the one that is 03:00 in Paris (summer /
@@ -109,6 +111,8 @@ jobs:
           aws s3 cp "$BUCKET/db.sqlite3.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
           aws s3 cp "$BUCKET/site-state.tar.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
           python ci/state.py unpack "$STATE"
+          # the files organisers uploaded on « Récemment » (functions/api/upload.js), read by the provisional results
+          aws s3 sync "$BUCKET/uploads/" "$CN_DATA_DIR/uploads/" --endpoint-url "$R2" --only-show-errors || echo "no uploads"
           echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
           echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
           echo "AGENDA_BEFORE=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"

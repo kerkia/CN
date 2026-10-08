@@ -35,7 +35,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = query.onglet === "utilisation" ? "usage" : "accounts";
+  let tab = query.onglet === "utilisation" ? "usage" : query.onglet === "depots" ? "uploads" : "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
@@ -60,14 +60,48 @@ export async function render(main, { query = {} } = {}) {
         <section class="card"><div class="card-head"><h2>${t("ad.u.byPage")}</h2></div><div class="table-wrap" id="u-pages"></div></section>
       </div>
       <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ad.u.def")}</p>
+    </div>
+    <div data-panel="uploads" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
+      <section class="card"><div class="table-wrap" id="up-list"></div></section>
     </div>`;
 
   function showTab() {
-    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["usage", t("ad.tab.usage")]], tab);
+    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
-    if (tab === "usage") saveUsage(); else replaceQuery({});              // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery(tab === "uploads" ? { onglet: "depots" } : {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
+    if (tab === "uploads") drawUploads();
+  }
+
+  // « Dépôts »: the results files uploaded on « Récemment » (api/admin/uploads), each one removable
+  async function drawUploads() {
+    const box = $("#up-list");
+    const r = await fetch("api/admin/uploads", { credentials: "same-origin", cache: "no-store" });
+    const list = r.ok ? (await r.json()).uploads : [];
+    const raceOf = (u) => {
+      if (u.race_key) return html`<a href="#/recemment?course=${encodeURIComponent(u.race_key)}">${u.race}</a>`;
+      let n = {};
+      try { n = JSON.parse(u.race); } catch (e) { /* a label */ }
+      return html`${n.name || u.race} <span class="muted">(${n.date ? fmtDate(n.date, "short") : ""} · ${t("ad.up.added")})</span>`;
+    };
+    box.innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("ad.up.when")}</th><th>${t("ad.up.race")}</th>
+      <th>${t("ad.up.file")}</th><th>${t("ad.up.who")}</th><th></th></tr></thead>
+      <tbody>${list.map((u) => html`<tr${raw(u.status === "removed" ? ' style="opacity:.55"' : "")}>
+        <td class="num">${fmtDate(u.created_at.slice(0, 10), "short")} ${u.created_at.slice(11, 16)}</td>
+        <td style="white-space:normal;max-width:320px">${raceOf(u)}</td>
+        <td style="white-space:normal;max-width:260px">${u.filename} <span class="muted">· ${fmt(Math.max(1, Math.round(u.size / 1024)))} Ko</span></td>
+        <td style="white-space:normal">${u.email ? html`${u.first_name} ${u.last_name}<div class="muted" style="font-size:12px">${u.email} · ${u.licence}</div>` : "—"}</td>
+        <td>${u.status === "removed" ? html`<span class="tag">${t("ad.up.removed")}</span>`
+          : html`<button type="button" class="btn btn-sm" data-up-remove="${u.id}">${t("ad.up.remove")}</button>`}</td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("ad.up.none")}</div>`;
+    $$("[data-up-remove]", box).forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm(t("ad.up.confirm"))) return;
+      b.disabled = true;
+      await auth.api("api/admin/uploads", { id: Number(b.dataset.upRemove) });
+      drawUploads();
+    }));
   }
   let usageStarted = false;
 

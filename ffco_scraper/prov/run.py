@@ -26,6 +26,7 @@ from .match import Matcher
 from .sources.clubsite import ClubSite, download_url
 from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
+from .sources import upload
 from .sources.liveresultat import API as LR_API, LiveResultat
 from .parsers import VERSION as PARSER_VERSION
 from .sources.winsplits import BASE as WS_BASE, WinSplits
@@ -291,12 +292,17 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
                 store.meta_set(con, "agenda_backfill", _now())
             except Exception:
                 log.exception("provisional: agenda backfill failed")
+        # the files organisers uploaded on « Récemment » (sources.upload): read first, they are the freshest news
+        uploaded = upload.apply(con, Path(db).parent / "uploads", save, parse_any,
+                                reread=store.meta_get(con, "parser_version") != PARSER_VERSION)
+        stats["uploads"] = uploaded
         ws = WinSplits(f, con)
         # a share of the budget only (2-3 s per WinSplits page): a long catch-up never leaves the races unlooked at
         stats["winsplits_new"] = len(ws.discover(limit=max(30, int(budget_s / 6))))
         lr, cs, hy, hg = LiveResultat(f), ClubSite(f), Heyries(f), Helga(f, con)
         stats["helga_new"] = hg.discover(limit=max(20, int(budget_s / 4)))
-        looked = changed = failed = 0
+        looked = failed = 0
+        changed = uploaded
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
         if reread:                          # including the races already finished with, of the period shown
