@@ -8,7 +8,7 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { distributionChart, cdfChart, methodColor, css } from "../charts.js";
 import {
-  methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile, methodLabel, methodShort,
+  methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile, methodLabel, methodShort, filterFold,
 } from "../ui.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
@@ -203,7 +203,7 @@ export async function render(main, { query }) {
         <a class="btn btn-primary" href="#/comparer" id="go-compare">${t("rk.compare")}</a>
       </div>
     </div>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div id="notice"></div>
     <div id="stats"></div>
     <div class="list-charts">

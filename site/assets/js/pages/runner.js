@@ -11,7 +11,7 @@ import { explain, cnHistory, paramsFor } from "../cn.js";
 import { timeChart, bandChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
-  methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag,
+  methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag, filterFold,
 } from "../ui.js";
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
@@ -63,7 +63,7 @@ export async function render(main, { arg, query }) {
     </section>
     ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
       ${t("rn.switchTo")} ${t(`terrain.${other}`)} ${t("rn.inHeader")}.</div>`}
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("rn.history")}</h2>
       <div class="row"><span id="hist-terrain"></span>

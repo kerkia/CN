@@ -11,7 +11,7 @@ import * as data from "../data.js";
 import { R, C, C_SCORE, C_CNJ15 } from "../data.js";
 import {
   methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag,
-  chartCard, bindChartCard, legend, tile,
+  chartCard, bindChartCard, legend, tile, filterFold,
 } from "../ui.js";
 import * as auth from "../auth.js";
 import { link, replaceQuery, terrainField } from "../app.js";
@@ -57,7 +57,7 @@ export async function render(main, { arg, query }) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cs.title")}</h1><p class="lede">${t("cs.lede")}</p></div></div>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="courses-layout" id="layout">
       <section class="card tree-pane"><div class="card-body tree-modes" id="modes"></div>
         <div class="card-head" style="padding-top:0"><h2 id="tree-title"></h2></div><div id="tree" class="tree"></div></section>

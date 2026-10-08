@@ -9,7 +9,7 @@ import * as data from "../data.js";
 import { CLUB } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
-  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, dashKey,
+  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, dashKey, filterFold,
 } from "../ui.js";
 import { MEASURES, measureLabel, baseLabel, clubTable, rankOn, clubName, fromSummary } from "../clubstats.js";
 import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescription } from "./clubs.js";
@@ -47,7 +47,7 @@ export async function render(main, { query }) {
         <div id="picker"></div>
       </div>
     </div></section>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="desc" style="margin-bottom:16px"></div>
     <div style="margin-bottom:16px">${chartCard({ id: "yrs", title: t("cm.years"), hint: t("cm.years.hint"), tall: true })}</div>
     <section class="card" style="margin-bottom:16px">

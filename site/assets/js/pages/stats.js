@@ -11,7 +11,7 @@ import { html, raw, $, $$, fmt } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { columnChart, pyramidChart, terrainColor, css } from "../charts.js";
-import { chartCard, bindChartCard, tile, seg, legend } from "../ui.js";
+import { chartCard, bindChartCard, tile, seg, legend, filterFold } from "../ui.js";
 import { TERRAINS } from "../store.js";
 import { DEPT_REGION, regionOf, placeOf } from "../geo.js";
 import { replaceQuery, viewTerrain, terrainField } from "../app.js";
@@ -54,7 +54,7 @@ export async function render(main, query) {
 
   main.innerHTML = html`
     ${netHead("stats", t("sx.title"), t("sx.lede"))}
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     ${chartCard({ id: "part", title: t("ov.participation"), hint: t("ov.participation.hint"), short: true,
       tools: html`<span id="measure-seg"></span>` })}

@@ -9,7 +9,7 @@ import { html, raw, $, $$, fmt, ord } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { mapChart } from "../charts.js";
-import { chartCard, bindChartCard, dataTable, tile, seg } from "../ui.js";
+import { chartCard, bindChartCard, dataTable, tile, seg, filterFold } from "../ui.js";
 import { DEPT_REGION, regionOf, placeOf, loadMap, featuresOf } from "../geo.js";
 import { replaceQuery, viewTerrain, terrainField } from "../app.js";
 import { netHead, bindModeSwitch } from "./netmodes.js";
@@ -29,7 +29,7 @@ export async function render(main, query) {
 
   main.innerHTML = html`
     ${netHead("territories", t("tr.title"), t("tr.lede"))}
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <div class="grid grid-main-side territory-grid" style="margin-bottom:16px;align-items:start">
       ${chartCard({ id: "map", title: t("tr.map"), hint: t("tr.map.hint"), tall: true })}

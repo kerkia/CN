@@ -208,7 +208,7 @@ const FR = {
   "f.date": "Date", "f.terrain": "Spécialité", "f.methods": "Méthodes", "f.sort": "Classer selon",
   "f.sexe": "Sexe", "f.cat": "Catégorie", "f.club": "Club", "f.dept": "Département",
   "f.ligue": "Ligue", "f.name": "Nom", "f.pagesize": "Par page", "f.podiums": "Podiums par catégorie",
-  "f.all": "Toutes", "f.allm": "Tous", "f.reset": "Réinitialiser", "f.from": "Du", "f.to": "Au",
+  "f.filters": "Filtres", "f.all": "Toutes", "f.allm": "Tous", "f.reset": "Réinitialiser", "f.from": "Du", "f.to": "Au",
   "f.range": "Période", "f.season": "Saison",
 
   "rk.title": "Classement National",

@@ -9,7 +9,7 @@ import { E, C } from "../data.js";
 import { timeChart, columnChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard,
-  legend, dataTable, tile, methodLabel, methodShort, seg, errorBox, terrainTag,
+  legend, dataTable, tile, methodLabel, methodShort, seg, errorBox, terrainTag, filterFold,
 } from "../ui.js";
 
 const WEEK_MAX_CATS = 6;       // up to this many categories on a circuit, places count per category
@@ -40,7 +40,7 @@ export async function render(main, { arg: code, query }) {
         <span>${t("f.dept")} ${code.slice(0, 2)} · ${data.deptName(code.slice(0, 2))}</span>
         <span class="num">${fmt(members.length)} ${t("cl.everMembers")}</span></div>
     </section>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2 class="week-title">${t("cl.week")} ${t("cl.week.from")}

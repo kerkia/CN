@@ -9,7 +9,7 @@ import * as data from "../data.js";
 import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
-  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey,
+  methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey, filterFold,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
@@ -50,7 +50,7 @@ export async function render(main, { query }) {
         <div id="picker"></div>
       </div>
     </div></section>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart"), tall: true })}</div>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
       <div id="summary"></div></section>

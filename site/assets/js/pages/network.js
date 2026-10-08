@@ -9,7 +9,7 @@ import * as data from "../data.js";
 import { networkChart, css } from "../charts.js";
 import {
   chartCard, bindChartCard, legend, dataTable, tile,
-  methodLabel, seg, runnerSearch, bindRunnerSearch, errorBox, methodSeg, bindMethodSeg,
+  methodLabel, seg, runnerSearch, bindRunnerSearch, errorBox, methodSeg, bindMethodSeg, filterFold,
 } from "../ui.js";
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
@@ -110,7 +110,7 @@ async function ego(main, lic, query) {
       ${runnerSearch("nw-search", t("nw.search"))}
       <a class="btn btn-sm" href="${link.runner(lic)}">${t("pg.toRunner")}</a>
     </div></section>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <div class="grid grid-main-side" style="margin-bottom:16px;align-items:start">
       ${chartCard({ id: "net", title: t("nw.graph"), hint: t("nw.graph.hint"), tall: true })}
@@ -258,7 +258,7 @@ async function global(main, query) {
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}<span class="muted" style="font-size:13.5px">${t("nw.searchHint")}</span>
     </div></section>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div style="margin-bottom:16px">${chartCard({ id: "net", title: t("nw.graphGlobal"), hint: t("nw.graphGlobal.hint"), tall: true })}</div>
     <section class="card"><div class="card-head"><h2>${t("nw.nodes")}</h2></div><div id="list"></div></section>`;
   bindChartCard(main, "net");

@@ -7,7 +7,7 @@ import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { methodColor } from "../charts.js";
-import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg } from "../ui.js";
+import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg, filterFold } from "../ui.js";
 import { dateControls, bindDateControls } from "./ranking.js";
 import {
   BASES, SEXES, AGE_GROUPS, baseLabel, measureLabel, sexLabel, ageLabel, clubTable, rankOn, clubName,
@@ -64,7 +64,7 @@ export async function render(main, { query }) {
     <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
       <div class="row">${mine ? html`<a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a>` : ""}
         <a class="btn btn-primary" href="#/comparer-clubs" id="go-cmp"></a></div></div>
-    <div class="filters" id="filters"></div>
+    ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="by-desc" style="margin-bottom:16px"></div>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <section class="card" style="margin-bottom:16px">

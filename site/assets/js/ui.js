@@ -195,6 +195,16 @@ export function errorBox(msg) {
   return html`<div class="card"><div class="empty">${msg}</div></div>`;
 }
 
+/**
+ * A page's filters, folded behind a « Filtres » bar on a phone or a small tablet (980 px wide or less, as on « Bientôt »),
+ * open on a wider screen, where the bar is hidden (app.css .filters-fold).
+ */
+const NARROW = window.matchMedia("(max-width: 980px)");
+export const filterFold = (inner) => html`<details class="filters-fold" data-fold ${raw(NARROW.matches ? "" : "open")}>
+  <summary><span>${t("f.filters")}</span></summary>${inner}</details>`;
+// a screen that widens (a tablet turned, a window enlarged) shows the filters again
+NARROW.addEventListener("change", (e) => { if (!e.matches) $$("details[data-fold]").forEach((d) => { d.open = true; }); });
+
 /** Inline runner search: markup for a text box whose results call onPick(lic). */
 export function runnerSearch(id, placeholder) {
   return html`<div class="search inline" id="${id}">

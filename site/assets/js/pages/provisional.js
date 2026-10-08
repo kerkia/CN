@@ -8,7 +8,7 @@ import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available } from "../store.js";
-import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch } from "../ui.js";
+import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch, filterFold } from "../ui.js";
 import { uploadCard } from "./upload.js";
 import { link, replaceQuery } from "../app.js";
 
@@ -58,12 +58,12 @@ function list(main, idx, query) {
       <button type="button" class="btn btn-sm" id="pv-up-btn">${t("up.open")}</button></div>
     <div id="pv-upload"></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
-    <div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
+    ${filterFold(html`<div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
       <div class="field"><span>${t("f.terrain")}</span><div id="pv-t"></div></div>
       <label class="field"><span>${t("prov.region")}</span><select id="pv-reg"><option value="">${t("f.all")}</option>
         ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>
       <div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>
-      <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>
+      <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>`)}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p style="margin:12px 2px 0">${t("up.invite")} <button type="button" class="btn btn-sm" id="pv-up-btn2">${t("up.open")}</button></p>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
