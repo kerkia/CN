@@ -124,7 +124,7 @@ const FR = {
   "auth.point3": "Mis à jour toutes les heures, à partir des résultats officiels et de ceux des organisateurs",
   "auth.point4": "Les courses récentes, à chaud : résultats publiés par les organisateurs, scores et CN provisoires, temps intermédiaires analysés (inter-postes, écarts, groupes de coureurs)",
   "auth.point2": "Une foule d'analyses : classements, clubs, rivaux, réseaux de coureurs, territoires, pyramide des âges, activité saison par saison",
-  "auth.point1": "Votre CN selon trois méthodes, en forêt, en sprint, à VTT et à ski",
+  "auth.point1": "Votre CN selon deux méthodes, en forêt, en sprint, à VTT et à ski",
   "auth.lede": "Le Classement National de course d’orientation, décortiqué : votre CN, votre progression, vos rivaux et votre club, les courses récentes dès que les organisateurs publient leurs résultats — et de quoi explorer toute la discipline, saison après saison.",
   "home.tag": "Le classement national, sous tous les angles",
   "nw.clubNo": "N° club",
