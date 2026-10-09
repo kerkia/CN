@@ -1,12 +1,14 @@
 // Home: the login page, for visitors who are not logged in (a logged-in visitor is sent to their
 // own page by the router). A landscape where every specialité has its place — the forest and its
 // runner, the old town of the sprint, the mountain bike trail, the ski slopes, a control flag —
-// behind a short presentation and the login form. The figures are in Réseau · Activité.
+// behind a short presentation and the login form: on wide screens a reel of the site's analyses (reel.js), on
+// phones a few lines. The figures are in Réseau · Activité.
 
 import { html, raw, $ } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { signedIn, SITE } from "../app.js";
+import { reelHtml, mountReel } from "../reel.js";
 
 // The landscape, drawn once: colours come from CSS (.ls-*), so it has a day and a night version.
 const tree = (x, y, h) => `<path d="M${x} ${y} l${h * 0.36} -${h} l${h * 0.36} ${h}Z"/>`;
@@ -50,11 +52,14 @@ export async function render(main) {
         <div class="home-intro">
           <h1>${SITE}</h1>
           <p class="home-tag">${t("home.tag")}</p>
-          <p class="home-lede">${t("auth.lede")}</p>
-          <ul class="home-points">
-            <li>${t("auth.point1")}</li><li>${t("auth.point2")}</li><li>${t("auth.point4")}</li><li>${t("auth.point3")}</li>
-          </ul>
-          <div class="home-specs">${["For", "Spr", "VTT", "Ski"].map((x) => html`<span class="tag tag-${x.toLowerCase()}">${t(`terrain.${x}`)}</span>`)}</div>
+          ${raw(reelHtml())}
+          <div class="home-text">
+            <p class="home-lede">${t("auth.lede")}</p>
+            <ul class="home-points">
+              <li>${t("auth.point1")}</li><li>${t("auth.point2")}</li><li>${t("auth.point4")}</li><li>${t("auth.point3")}</li>
+            </ul>
+            <div class="home-specs">${["For", "Spr", "VTT", "Ski"].map((x) => html`<span class="tag tag-${x.toLowerCase()}">${t(`terrain.${x}`)}</span>`)}</div>
+          </div>
         </div>
         <div class="login-box home-login">
           <h2>${t("auth.title")}</h2>
@@ -71,6 +76,7 @@ export async function render(main) {
       </div>
     </section>`;
 
+  mountReel(main);
   $("#acct-email").focus();
   const aform = $("#acct-form"), aerr = $("#acct-error"), abtn = $("#acct-btn");
   aform.addEventListener("submit", async (e) => {

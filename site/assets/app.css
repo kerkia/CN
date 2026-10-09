@@ -507,7 +507,112 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .home-points li { margin: 5px 0; }
 .home-specs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .home-login { background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: var(--shadow-pop); }
+/* the login page's reel (reel.js): wide screens only, phones keep the few lines of .home-text */
+.home-text { display: none; }
+.reel { margin-top: 4px; outline: none; border-radius: var(--radius); }
+.reel:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
+.reel-bars { display: flex; gap: 4px; margin: 0 0 8px; }
+.reel-bar { flex: 1; padding: 6px 0; border: 0; background: none; cursor: pointer; }
+.reel-bar i { display: block; height: 4px; border-radius: 2px;
+  background: linear-gradient(var(--accent), var(--accent)) 0 0 / 0% 100% no-repeat, color-mix(in srgb, var(--ink) 14%, transparent); }
+.reel-bar.is-done i { background-size: 100% 100%, auto; }
+.reel-bar:hover i { background-color: color-mix(in srgb, var(--ink) 26%, transparent); }
+@keyframes reelFill { from { background-size: 0% 100%, auto; } to { background-size: 100% 100%, auto; } }
+.reel-track { position: relative; height: 446px; }
+.reel-slide { position: absolute; inset: 0; margin: 0; opacity: 0; visibility: hidden; transform: translateX(28px) scale(.985);
+  transition: opacity .5s ease, transform .7s cubic-bezier(.2, .7, .2, 1), visibility 0s linear .5s; }
+.reel-slide.is-on { opacity: 1; visibility: visible; transform: none;
+  transition: opacity .5s ease, transform .7s cubic-bezier(.2, .7, .2, 1), visibility 0s; }
+.reel-vis { border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  overflow: hidden; aspect-ratio: 560 / 300; }
+.reel-vis svg { display: block; width: 100%; height: 100%; font-family: var(--font); transform-origin: 55% 45%; }
+.reel-slide.is-anim .reel-vis svg { animation: reelZoom var(--dur, 6s) linear forwards; }
+@keyframes reelZoom { to { transform: scale(1.035); } }
+.reel-slide figcaption { display: grid; gap: 3px; padding: 12px 2px 0; }
+.reel-slide figcaption > :nth-child(3) { color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.reel-slide figcaption strong { font-size: 21px; line-height: 1.2; letter-spacing: -0.005em; }
+.reel-k { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--link); }
+.reel-slide.is-anim figcaption > * { animation: reelUp .6s cubic-bezier(.2, .8, .2, 1) both; }
+.reel-slide.is-anim figcaption > :nth-child(2) { animation-delay: .08s; }
+.reel-slide.is-anim figcaption > :nth-child(3) { animation-delay: .16s; }
+.reel-slide.is-anim figcaption > :nth-child(4) { animation-delay: .3s; }
+@keyframes reelUp { from { opacity: 0; transform: translateY(10px); } }
+.reel-cta { justify-self: start; margin-top: 8px; }
+.reel-nav { display: flex; align-items: center; gap: 6px; }
+.reel-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink); cursor: pointer; font-size: 17px; line-height: 1; padding: 0; }
+.reel-btn:hover { background: var(--surface-3); }
+.reel-play { font-size: 10px; letter-spacing: -1px; }
+.reel-count { margin-left: auto; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* inside the views */
+.reel .rv-grid { stroke: var(--grid); stroke-width: 1; }
+.reel .rv-lab { fill: var(--ink-2); font-size: 13px; }
+.reel .rv-small { font-size: 11.5px; }
+.reel .rv-tiny { font-size: 9.5px; fill: var(--ink-3); }
+.reel .rv-big { font-size: 19px; font-weight: 700; fill: var(--ink); }
+.reel .rv-num { font-variant-numeric: tabular-nums; }
+.reel .rv-strong { font-weight: 650; fill: var(--ink); }
+.reel .rv-head { font-size: 11px; font-weight: 650; fill: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; }
+.reel .rv-blur { fill: var(--ink); font-size: 13.5px; filter: blur(3.2px); }
+.reel .rv-line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.reel .rv-kept { fill: var(--s1); }
+.reel .rv-left { fill: color-mix(in srgb, var(--ink) 15%, transparent); }
+.reel .rv-in { fill: var(--ink-2); font-size: 9.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.reel .rv-in-kept { fill: #ffffff; }
+.reel .rv-bar { fill: color-mix(in srgb, var(--s1) 50%, var(--surface)); }
+.reel .rv-me { fill: var(--accent-wash); stroke: var(--focus); stroke-width: 1.2; }
+.reel .rv-tag { font-size: 11px; font-weight: 750; fill: var(--focus); text-transform: uppercase; letter-spacing: .06em; }
+.reel .rv-up { fill: var(--good); }
+.reel .rv-down { fill: var(--bad); }
+.reel .rv-badge { fill: #ffffff; font-size: 12.5px; font-weight: 650; }
+.reel .rv-card { fill: var(--surface-2); stroke: var(--border); }
+.reel .rv-date { fill: var(--surface); stroke: var(--border-strong); }
+.reel .rv-ter-for { fill: color-mix(in srgb, var(--s6) 20%, var(--surface)); }
+.reel .rv-ter-spr { fill: color-mix(in srgb, var(--s7) 20%, var(--surface)); }
+.reel .rv-ter-vtt { fill: color-mix(in srgb, var(--s4) 24%, var(--surface)); }
+.reel .rv-ter-ski { fill: color-mix(in srgb, var(--s1) 20%, var(--surface)); }
+.reel .rv-warn { fill: var(--warn-bg); stroke: var(--amber); }
+.reel .rv-warn-t { fill: var(--warn-ink); font-size: 12px; font-weight: 650; }
+.reel .rv-pill { fill: var(--surface-3); }
+.reel .rv-pill-on { fill: var(--accent); }
+.reel .rv-on { fill: var(--accent-ink); font-weight: 650; }
+.reel .rv-good { fill: var(--good); }
+.reel .rv-bad { fill: var(--bad); }
+.reel .rv-cell-best { fill: color-mix(in srgb, var(--good) 20%, transparent); }
+.reel .rv-cell-lost { fill: color-mix(in srgb, var(--bad) 18%, transparent); }
+.reel .rv-edge { stroke: color-mix(in srgb, var(--ink) 16%, transparent); stroke-width: 1; }
+.reel .rv-edge-me { stroke: var(--s8); stroke-width: 1.8; }
+.reel .rv-region { stroke: var(--surface); stroke-width: 1.2; stroke-linejoin: round; }
+.reel .rv-pulse { fill: var(--s2); }
+.reel .rv-pack { fill: color-mix(in srgb, var(--s2) 13%, transparent); stroke: color-mix(in srgb, var(--s2) 60%, transparent); stroke-dasharray: 3 3; }
+.reel .rv-logo { font-size: 92px; font-weight: 800; fill: var(--accent); letter-spacing: -0.02em; }
+/* the views' motion: replayed each time a slide comes (.is-anim), at each element's own delay (--d) */
+.reel .rv-draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.reel .rv-grow-y { transform-box: fill-box; transform-origin: 50% 100%; }
+.reel .rv-grow-x { transform-box: fill-box; transform-origin: 0 50%; }
+.reel .rv-grow-x.rv-from-right { transform-origin: 100% 50%; }
+.reel .rv-pop, .reel .rv-pulse { transform-box: fill-box; transform-origin: center; }
+.reel-slide.is-anim .rv-draw { animation: rvDraw 1.4s var(--d, 0s) cubic-bezier(.4, 0, .2, 1) forwards; }
+.reel-slide.is-anim .rv-grow-y { animation: rvGrowY .8s var(--d, 0s) cubic-bezier(.2, .8, .2, 1) both; }
+.reel-slide.is-anim .rv-grow-x { animation: rvGrowX .8s var(--d, 0s) cubic-bezier(.2, .8, .2, 1) both; }
+.reel-slide.is-anim .rv-pop { animation: rvPop .5s var(--d, 0s) cubic-bezier(.3, 1.5, .5, 1) both; }
+.reel-slide.is-anim .rv-fade { animation: rvFade .6s var(--d, 0s) ease both; }
+.reel-slide.is-anim .rv-slide-in { animation: rvIn .6s var(--d, 0s) cubic-bezier(.2, .8, .2, 1) both; }
+.reel-slide.is-anim .rv-pulse { animation: rvPulse 1.6s 1.2s ease-out infinite; }
+@keyframes rvDraw { to { stroke-dashoffset: 0; } }
+@keyframes rvGrowY { from { transform: scaleY(0); } }
+@keyframes rvGrowX { from { transform: scaleX(0); } }
+@keyframes rvPop { from { transform: scale(0); opacity: 0; } }
+@keyframes rvFade { from { opacity: 0; } }
+@keyframes rvIn { from { opacity: 0; transform: translateX(24px); } }
+@keyframes rvPulse { 0% { transform: scale(1); opacity: 1; } 70% { transform: scale(2.6); opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .reel .rv-draw { stroke-dashoffset: 0; }
+  .reel-slide, .reel-slide *, .reel-bar i { animation: none !important; transition: none !important; }
+}
 @media (max-width: 860px) {
+  .reel { display: none; }
+  .home-text { display: block; }
   .home-inner { grid-template-columns: 1fr; padding: 16px 16px 300px; gap: 16px; }
   .home-intro { padding: 16px 16px; }
   .home-landscape { top: auto; height: 380px; }     /* a band at the bottom, the sky above */
