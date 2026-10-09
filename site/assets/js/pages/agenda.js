@@ -35,7 +35,11 @@ export async function render(main, { query }) {
     return { title: t("nav.agenda") };
   }
   const today = isoDay(new Date());
-  const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) }));
+  // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
+  const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
+  const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || depOrder(a.dep) - depOrder(b.dep)
+      || String(a.name || "").localeCompare(String(b.name || ""), "fr"));
   const byKey = new Map(events.map((e) => [e.key, e]));
   const deptName = (c) => A.depts[c] || c;
   const regionOfDept = new Map(A.regions.flatMap((r) => r.depts.map((d) => [d, r.name])));
