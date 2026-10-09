@@ -172,6 +172,40 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
 _PARSED: dict = {}          # file content hash -> its parse, within one run
 
 
+def place_words(race) -> set[str]:
+    """The words naming a race's place (« Luxeuil (70) » -> luxeuil; « Le Pouldu Clohars Carnoet » -> pouldu…)."""
+    return {w for w in re.findall(r"[a-z]{4,}", plain(re.sub(r"\(.*?\)", " ", race["place"] or "")))
+            if w not in ("foret", "bois", "parc", "saint", "sainte", "sur", "les", "plage", "ville", "centre")}
+
+
+def adopt(con, found_by, d: dict, url: str, text: str, sha: str | None) -> str | None:
+    """A results file met while looking for one race but about another one of the fortnight (an organiser's site
+    posting the week's results together: terres-do.fr's « MD - Luxeuil-les-Bains » found looking for the D88 races):
+    it goes to the race whose place it names, whose day and format it fits — the VTT race if it says VTT, else the
+    foot race. Returns that race's key, or None when no single race fits."""
+    if not d or not d.get("classes"):
+        return None
+    label = f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('title') or ''}"
+    low = plain(label)
+    day = date.fromisoformat(found_by["date_iso"])
+    near = con.execute("SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND key != ?",
+                       ((day - timedelta(days=7)).isoformat(), (day + timedelta(days=7)).isoformat(), found_by["key"])).fetchall()
+    fits = [r for r in near if (not d.get("date") or d["date"] == r["date_iso"]) and date_ok(d, r)
+            and any(w in low for w in place_words(r)) and not not_this_race(r, label)
+            and not address_other_day(url, date.fromisoformat(r["date_iso"]))]
+    bike = bool(re.search(r"\b(vtt|mtbo)\b", low))
+    fits = [r for r in fits if (r["terrain"] == "VTT") == bike] or fits
+    if len(fits) > 1:
+        mine = races.owners(fits, label, False)
+        fits = [r for r in fits if r["key"] in mine]
+    if len(fits) != 1:
+        return None
+    to = fits[0]
+    if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (to["key"], url)).fetchone():
+        save(con, to["key"], url, "site", d, sha=sha, note=text or None)
+    return to["key"]
+
+
 def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs: ClubSite, reread: bool, hg) -> int:
     """The organiser's website: its result files, and the platform competitions it links to."""
     changed = 0
@@ -235,6 +269,8 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
             if d is not None and (not date_ok(d, race) or other_year(d.get("title") or "", day) or
                                   not_this_race(race, f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('title') or ''}")):
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
+                if not other_year(d.get("title") or "", day):
+                    changed += bool(adopt(con, race, d, url, text, a.sha))      # another race's: given to it
                 continue
             # one of the weekend's other races (Le Mans: « 20261003 E1 sprint savigne - result.pdf » is the
             # « SOT2026-E1-Chpt ligue sprint SAVIGNE », the Championnat de Ligue, not the night sprint): the date and
@@ -244,6 +280,7 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                     or race["key"] not in races.owners([race, *[r for r in rivals if not d.get("date") or r["date_iso"] == d["date"]]],
                                                        f"{label(url, text)} {d.get('title') or ''}")):
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
+                changed += bool(adopt(con, race, d, url, text, a.sha))
                 continue
             changed += save(con, race["key"], url, "site", d, kind=None if d else "unparsed", sha=a.sha, note=text or None)
         # platforms the club links to: read liveresultat and WinSplits ids directly, note the others
@@ -274,7 +311,8 @@ INDEX_VERSION = 3
 # 1 (2026-10-09): Helga, the club-site fixes and the 60-day window came after many races' last look.
 # 2 (2026-10-09): robots.txt no longer obeyed, the crawl best-first, sibling WordPress sites, a weekend's files told
 #   apart by the title they print.
-COLLECT_VERSION = 2
+# 3 (2026-10-09): a file about another race of the fortnight goes to that race (the CF week's site posting Luxeuil's).
+COLLECT_VERSION = 3
 _BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
 
 

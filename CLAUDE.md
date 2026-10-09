@@ -151,7 +151,13 @@ not « another day »; on a page about the race's weekend, « MD »/« LD » in 
 A file whose name, link or printed title gives another format (« VTT » for a foot race, « LD » for an MD) or another
 weekday (« Samedi » for Sunday's race) is not the race's (`run.not_this_race`), nor one whose address spells another
 day (« …-dimanche-5-octobre-2025/ »; WordPress's `/uploads/YYYY/MM/` folder aside: `clubsite.address_other_day`).
-PDFs: `pdf._dedupe` replaces pdfplumber's slow `dedupe_chars` (same output, ~4× faster on split lists). A file already parsed (same content hash) is not parsed again for the weekend's other races (`run._PARSED`, then
+PDFs: `pdf._dedupe` replaces pdfplumber's slow `dedupe_chars` (same output, ~4× faster on split lists). A file rejected on one race's look but about another race of the fortnight goes to that race (`run.adopt`: the race
+whose place it names and whose day and format fit — the CF week's site posting Luxeuil's results). In `races.owners`,
+names count with their abbreviations both ways (« CF LD » = « Championnat de France Longue Distance »), and a file
+naming neither race goes to the plain one rather than an « Open », « KO », « Challenge »… A platform competition whose
+name says VTT goes to a VTT race only, and a VTT race prefers one that says so (`match_score`). A race FFCO deletes
+(published twice, one deleted) gives its documents to its twin and goes (`races.drop_deleted`); f-race names follow
+FFCO's. A file already parsed (same content hash) is not parsed again for the weekend's other races (`run._PARSED`, then
 `prov_docs.sha`). Club websites: FFCO's club directory first (`races.read_directory`: api.ffcorientation.fr's map,
 `clubs.geojson` monthly and one popup per club, 40 per run — only the number and the website are kept, never the
 officers' names, phones or e-mails; table `prov_club_dir`), else the site the agenda gave for one of the club's events

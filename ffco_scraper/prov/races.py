@@ -93,10 +93,22 @@ def match_score(race, name: str, organiser: str) -> float:
         s += 1.0
     if t in TYPE_WORDS and cw & set(TYPE_WORDS[t]):
         s += 0.3
+    # a VTT race and a foot race of the same place and day (Luxeuil, 19/08): the competition's name says which —
+    # « MD - Luxeuil-les-Bains » is the foot race's, « MD VTT … » the VTT one's
+    bike = bool(cw & {"vtt", "mtbo", "bike"})
+    if bike and race["terrain"] != "VTT":
+        return 0.0
+    if race["terrain"] == "VTT":
+        # (below a foot race of that day, but never losing a match a VTT race alone would have)
+        s = s + 0.5 if bike else (max(1.0, s - 0.3) if s >= 1.0 else s - 0.3)
     return s
 
 
 SMALL = {"de", "la", "le", "du", "des", "et", "en", "a", "au", "aux", "d", "l", "o"}
+# words of a secondary race beside the day's main one (not formats: a « nocturne » is a race of its own)
+MARKERS = {"open", "ko", "challenge", "finale", "qualif", "decouverte", "loisir"}
+# words of the day's main race: a WRE race is always a major one, most often a Championnat de France
+MAIN = {"wre", "cdf"}
 
 
 def owners(group, text: str, plain_default: bool = True) -> set:
@@ -110,7 +122,13 @@ def owners(group, text: str, plain_default: bool = True) -> set:
     toks = set(_words(text))
     toks |= {w for a in toks & ABBREV.keys() for w in ABBREV[a]}
     squash = re.sub(r"[^a-z0-9]", "", plain(text))
-    names = {r["key"]: set(_words(r["name"])) - SMALL for r in group}
+    # (the names with their abbreviations spelled out too: « D88 CF LD Open » and « Championnat de France Longue
+    # Distance (WRE) » differ by « open » and « wre », not by « cf », « ld »)
+    def spelled(name):
+        ws = set(_words(name))
+        ws |= {w for a in ws & ABBREV.keys() for w in ABBREV[a]}
+        return (ws | {a for a, full in ABBREV.items() if set(full) <= ws}) - SMALL
+    names = {r["key"]: spelled(r["name"]) for r in group}
     own = {k: {w for w in ws if not any(w in names[o] for o in names if o != k)} for k, ws in names.items()}
     hits = {k: sum(1 for w in ws if w in toks or (len(w) >= 4 and w in squash)) for k, ws in own.items()}
     best = max(hits.values(), default=0)
@@ -118,8 +136,11 @@ def owners(group, text: str, plain_default: bool = True) -> set:
         return {k for k, h in hits.items() if h == best}
     if not plain_default:
         return set(names)
-    fewest = min((len(ws) for ws in own.values()), default=0)
-    return {k for k, ws in own.items() if len(ws) == fewest}
+    # the main race: no « open », « ko », « challenge »… of its own, a WRE or Championnat de France first, then the
+    # fewest words of its own
+    rank = lambda ws: (len(ws & MARKERS), -len(ws & MAIN), len(ws))
+    plainest = min((rank(ws) for ws in own.values()), default=(0, 0, 0))
+    return {k for k, ws in own.items() if rank(ws) == plainest}
 
 
 def assign(races_list, items, min_score: float = 1.0) -> dict:
@@ -180,6 +201,26 @@ def backfill(con, events: list[dict], lo: str, hi: str) -> int:
             added += 1
     con.commit()
     return added
+
+
+def drop_deleted(con, lo: str) -> int:
+    """A race FFCO deleted (« WEOCH 2026 (MD) » published twice, 4935 then deleted): its documents go to its twin of the
+    same day, organiser and name, and it goes; without a twin it stays, no longer linked to FFCO."""
+    gone = 0
+    for r in con.execute("""SELECT * FROM prov_races WHERE ffco_id IS NOT NULL AND date_iso >= ?
+                            AND ffco_id NOT IN (SELECT course_id FROM competitions)""", (lo,)).fetchall():
+        twins = con.execute("SELECT * FROM prov_races WHERE date_iso = ? AND org_code IS ? AND key != ?",
+                            (r["date_iso"], r["org_code"], r["key"])).fetchall()
+        twin = next((x for x in twins if similarity(x["name"], r["name"]) >= 0.8), None)
+        if twin is None:
+            con.execute("UPDATE prov_races SET ffco_id = NULL WHERE key = ?", (r["key"],))
+            continue
+        con.execute("UPDATE OR IGNORE prov_docs SET race_key = ? WHERE race_key = ?", (twin["key"], r["key"]))
+        con.execute("DELETE FROM prov_docs WHERE race_key = ?", (r["key"],))
+        con.execute("DELETE FROM prov_races WHERE key = ?", (r["key"],))
+        con.execute("UPDATE prov_races SET done = 0, next_check = NULL WHERE key = ?", (twin["key"],))
+        gone += 1
+    return gone
 
 
 def merge_duplicates(con) -> int:
@@ -334,15 +375,17 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
             continue
         key = f"f{c['course_id']}"
         if con.execute("SELECT 1 FROM prov_races WHERE key = ? OR ffco_id = ?", (key, c["course_id"])).fetchone():
-            # a race only FFCO knows: its place (FFCO's location) and website, once known, help find its results
-            con.execute("UPDATE prov_races SET place = COALESCE(place, ?), site = COALESCE(site, ?) WHERE key = ?",
-                        (c["location"], club_site(con, code), key))
+            # a race only FFCO knows: its place (FFCO's location) and website, once known, help find its results;
+            # its name as FFCO writes it now
+            con.execute("UPDATE prov_races SET name = ?, place = COALESCE(place, ?), site = COALESCE(site, ?) WHERE key = ?",
+                        (c["title"], c["location"], club_site(con, code), key))
             continue
         con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site, ffco_id,
             first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?)""",
                     (key, c["date_iso"], c["title"], c["location"], c["organizer"], code, c["terrain"], c["epreuve"],
                      club_site(con, code), c["course_id"], stamp, stamp))
         added += 1
+    drop_deleted(con, lo)
     merge_duplicates(con)
     # relays taken in before they were left out, and relay files found next to an individual race
     con.execute("DELETE FROM prov_docs WHERE lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' OR lower(COALESCE(title, '')) LIKE '%relais%'")
