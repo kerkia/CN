@@ -354,11 +354,8 @@ export function mountReel(box) {
   // the clock: the time left on the current slide, counted only while it plays (the bar's fill just shows it)
   let left = 0, since = 0, timer = 0;
 
-  // a slide's time on screen: long enough to read its text
-  const dur = (k) => {
-    const s = slides[k].querySelector("figcaption").textContent.trim().length;
-    return Math.max(4200, Math.min(7500, 2600 + 32 * s));
-  };
+  // a slide's time on screen: a brisk 2 s, like a film (the owner's choice); pause or ‹ › to read at leisure
+  const dur = () => 2000;
   const paused = () => userPaused || hover || document.hidden || !wide.matches;
   function sync() {
     const p = paused();
