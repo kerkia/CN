@@ -147,9 +147,17 @@ async function privacy(main) {
   main.innerHTML = html`<section class="card account-card" style="max-width:760px"><div class="card-head"><h1 style="font-size:20px;margin:0">${t("pv.title")}</h1></div>
     <div class="card-body prose">
       <p>${SITE} est un site indépendant, sans lien avec la FFCO. Il est exploité à titre personnel et non commercial. Contact : <b>ocn@kerkia.com</b>.</p>
+      <h2 style="font-size:16px">Utilisation équitable</h2>
+      <p>${SITE} fonctionne sur des ressources gratuites et limitées, partagées par tous ses utilisateurs. Il est fait pour être
+        consulté personnellement par les licenciés, dans un navigateur. Sans notre accord préalable, sont donc exclus : la collecte
+        automatisée (robots, scripts, aspiration des pages ou des fichiers de données), les téléchargements en masse, la
+        réutilisation des données à d'autres fins, et tout usage qui chargerait le site au détriment des autres. Un compte qui ne
+        respecte pas ces règles peut être suspendu.</p>
+      <p>Vous avez un besoin particulier — une étude, les besoins d'un club ou d'une ligue, des données pour un autre outil ?
+        Écrivez-nous (« Nous écrire », ou ocn@kerkia.com) : nous l'étudierons volontiers.</p>
       <h2 style="font-size:16px">Données des résultats</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr (nom, club, catégorie, numéro de licence, temps, place). Pour faire retirer ou rectifier une donnée vous concernant, écrivez-nous : nous en examinerons la demande, sachant que la source reste le site de la FFCO.</p>
-      <p>La page « Récemment » montre aussi, pour les courses des 30 derniers jours, les résultats que les organisateurs publient eux-mêmes (sur leur site, liveresultat, WinSplits, Helga…) ou déposent sur ${SITE}.</p>
+      <p>La page « Récemment » montre aussi, pour les courses des 60 derniers jours, les résultats que les organisateurs publient eux-mêmes (sur leur site, liveresultat, WinSplits, Helga…) ou déposent sur ${SITE}.</p>
       <h2 style="font-size:16px">Dépôts de résultats</h2>
       <p>Quand vous déposez un fichier de résultats, nous enregistrons votre compte, la course, le nom et la taille du fichier et la date du dépôt. Le fichier est conservé 60 jours dans le stockage du site (Cloudflare), puis effacé ; les résultats qu'il contient restent affichés. L'administrateur voit qui a déposé quoi et peut retirer un dépôt.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>

@@ -12,7 +12,7 @@
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
 // (/api/notify checks its own bearer secret; the /api/account and /api/admin endpoints check the session themselves)
-const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
+const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset)$/];
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 

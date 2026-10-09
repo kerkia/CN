@@ -280,6 +280,7 @@ const FR = {
   "nav.progression": "Progression", "nav.network": "Réseau",
   "search.placeholder": "Rechercher un coureur…", "search.none": "Aucun coureur trouvé",
   "theme.toggle": "Changer de thème",
+  "footer.rules": "Règles du site et confidentialité",
   "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données CN issues de {site}.",
 
   "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Juste » linéaire", "m.fair2": "Méthode CN « Juste » quadratique", "m.top6w": "Méthode CN « Top » linéaire", "m.top6w2": "Méthode CN « Top »",
@@ -477,7 +478,7 @@ const FR = {
   "ac.reg.lede": "L'accès est réservé aux licenciés de la FFCO. Vos nom, prénom et numéro de licence sont comparés à la liste des licenciés ; l'adresse e-mail sert à confirmer votre inscription et à réinitialiser votre mot de passe.",
   "ac.reg.first": "Prénom", "ac.reg.last": "Nom", "ac.reg.licence": "Numéro de licence FFCO",
   "ac.reg.consent": "Je certifie être licencié(e) à la FFCO et que ces informations sont exactes.",
-  "ac.reg.privacy": "Voir la politique de confidentialité",
+  "ac.reg.privacy": "Voir les règles du site et la confidentialité",
   "ac.reg.submit": "Créer mon compte",
   "ac.reg.closed": "Les inscriptions ouvriront prochainement.",
   "ac.reg.done": "Compte créé. Un message de confirmation vient d'être envoyé à",
@@ -720,7 +721,7 @@ const FR = {
   "ad.up.confirm": "Retirer ce dépôt ? Ses résultats disparaîtront du site au prochain passage de la collecte.",
   "ad.up.added": "course ajoutée",
   // privacy
-  "pv.title": "Politique de confidentialité",
+  "pv.title": "Règles du site et confidentialité",
 };
 
 // The site is French-only: its audience is French orienteers.
