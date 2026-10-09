@@ -9,6 +9,7 @@ one <race key>.json per race), is served to administrators only (functions/_midd
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import logging
@@ -23,7 +24,8 @@ from . import races, store
 from .compute import Scorer
 from .fetch import Fetcher
 from .match import Matcher
-from .sources.clubsite import ClubSite, download_url
+from .model import plain
+from .sources.clubsite import ClubSite, address_other_day, download_url, other_day, other_year, uploaded_before
 from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
 from .sources import upload
@@ -86,9 +88,37 @@ def save(con, race_key: str, url: str, source: str, parsed: dict | None, kind: s
 
 
 def date_ok(parsed: dict | None, race) -> bool:
-    """A document that prints another date is someone else's (an old edition, another day of the weekend)."""
+    """A document that prints another date is someone else's (an old edition, an earlier day of the weekend) — but a
+    file is often exported the evening after, and prints that day (Larmor-Plage, 26/09, printed 27/09): up to 2 days
+    later is the race's."""
     d = (parsed or {}).get("date")
-    return not d or d == race["date_iso"]
+    if not d:
+        return True
+    try:
+        gap = (date.fromisoformat(d) - date.fromisoformat(race["date_iso"])).days
+    except ValueError:
+        return True
+    return 0 <= gap <= 2
+
+
+WEEKDAYS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
+
+
+def not_this_race(race, text: str) -> bool:
+    """A file whose name or printed title gives another format or another day of the week than the race's: the same
+    organiser's other race (the Championnats de France week: « Chpt France LD » is not the « D88 MD »; « MD VTT » not a
+    foot race; « Vertaco 2026 Samedi » not Sunday's)."""
+    low = plain(text)
+    says = {k for k, pat in (("vtt", r"\b(vtt|mtbo)\b"), ("ski", r"\bski\b"), ("Sprint", r"\bsprint"),
+                             ("MD", r"\bmd\b|moyenne"), ("LD", r"\bld\b|longue")) if re.search(pat, low)}
+    if "vtt" in says and race["terrain"] != "VTT" or "ski" in says and race["terrain"] != "Ski":
+        return True
+    formats = says & {"Sprint", "MD", "LD"}
+    if formats and race["terrain"] not in ("VTT", "Ski") and race["epreuve"] in ("Sprint", "MD", "LD") \
+            and race["epreuve"] not in formats:
+        return True
+    days = {w for w in WEEKDAYS if re.search(rf"\b{w}\b", low)}
+    return bool(days) and WEEKDAYS[date.fromisoformat(race["date_iso"]).weekday()] not in days
 
 
 # ---- one race ------------------------------------------------------------------------------------------------
@@ -139,12 +169,32 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
     return changed
 
 
+_PARSED: dict = {}          # file content hash -> its parse, within one run
+
+
 def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs: ClubSite, reread: bool, hg) -> int:
     """The organiser's website: its result files, and the platform competitions it links to."""
     changed = 0
     sites = [s for s in dict.fromkeys([race["site"], races.club_site(con, race["org_code"])]) if s]
+    # files a looser search took earlier that name another day or season (a club's « all our races » page): not this race's
+    day = date.fromisoformat(race["date_iso"])
+    for row in con.execute("SELECT url, note FROM prov_docs WHERE race_key = ? AND source = 'site'", (race["key"],)).fetchall():
+        name = urllib.parse.unquote(urllib.parse.urlsplit(row["url"]).path.rsplit("/", 1)[-1])
+        if other_day(urllib.parse.unquote(row["url"]), day) or uploaded_before(row["url"], day) or \
+                address_other_day(row["url"], day) or \
+                other_year(f"{name} {row['note'] or ''}", day):
+            con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], row["url"]))
+            changed += 1
     if sites and not f.out_of_time():
         found = cs.find(race, sites)
+        # unreadable files a looser search took earlier (a club's pages taken for results lists): gone once a full
+        # look no longer finds them
+        if not f.out_of_time():
+            for row in con.execute("SELECT url FROM prov_docs WHERE race_key = ? AND source = 'site' AND kind = 'unparsed'",
+                                   (race["key"],)).fetchall():
+                if row["url"] not in {u for u, _, _ in found["docs"]}:
+                    con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], row["url"]))
+                    changed += 1
         # the organiser's other races of the day (« Championnat de Ligue » and « Challenge urbain »): a document goes
         # to the race(s) it is about (races.owners); one about another race is not this race's (dropped if saved before)
         # (a weekend's races too: a club posts Saturday's and Sunday's lists together)
@@ -154,7 +204,7 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                               race["org_code"], race["key"])).fetchall()
         if rivals:
             label = lambda url, text: f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text}"
-            theirs = [u for u, t, _ in found["docs"] if race["key"] not in races.owners([race, *rivals], label(u, t))]
+            theirs = [u for u, t, _ in found["docs"] if race["key"] not in races.owners([race, *rivals], label(u, t), False)]
             found["docs"] = [d for d in found["docs"] if d[0] not in theirs]
             for u in theirs:
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], u))
@@ -163,7 +213,8 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 break
             # a conditional request only for a file this race has already: one first found for another race is read
             has = con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone()
-            a = f.get(download_url(url), conditional=bool(has) and not reread)
+            # (and not when the weekend has other races: the file read again says whose it is)
+            a = f.get(download_url(url), conditional=bool(has) and not reread and not rivals)
             if a.status == 304:
                 continue
             if a.status == -1:
@@ -171,8 +222,28 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 continue
             if a.status != 200:
                 continue
-            d = parse_any(a.content, a.url, a.ctype)
-            if d is not None and not date_ok(d, race):
+            # a file already read for another race (a weekend's races share their organiser's files): its parse, not
+            # another one (a split-time PDF can take a minute)
+            memo = a.sha or a.url
+            if memo not in _PARSED:
+                known = None if reread or not a.sha else con.execute(
+                    "SELECT parsed FROM prov_docs WHERE sha = ? AND parsed IS NOT NULL LIMIT 1", (a.sha,)).fetchone()
+                _PARSED[memo] = json.loads(known["parsed"]) if known else parse_any(a.content, a.url, a.ctype)
+            d = copy.deepcopy(_PARSED[memo])
+            # another day's or (by the title it prints: « Championnat 2018 GE de sprint - Vittel ») another season's
+            # (or another format or weekday, by its name, link and title)
+            if d is not None and (not date_ok(d, race) or other_year(d.get("title") or "", day) or
+                                  not_this_race(race, f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('title') or ''}")):
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
+                continue
+            # one of the weekend's other races (Le Mans: « 20261003 E1 sprint savigne - result.pdf » is the
+            # « SOT2026-E1-Chpt ligue sprint SAVIGNE », the Championnat de Ligue, not the night sprint): the date and
+            # title it prints decide, with its address and link
+            if d is not None and rivals and (
+                    (d.get("date") and d["date"] != race["date_iso"] and any(r["date_iso"] == d["date"] for r in rivals))
+                    or race["key"] not in races.owners([race, *[r for r in rivals if not d.get("date") or r["date_iso"] == d["date"]]],
+                                                       f"{label(url, text)} {d.get('title') or ''}")):
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
                 continue
             changed += save(con, race["key"], url, "site", d, kind=None if d else "unparsed", sha=a.sha, note=text or None)
         # platforms the club links to: read liveresultat and WinSplits ids directly, note the others
@@ -185,6 +256,8 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 if d and d["classes"] and date_ok(d, race):
                     changed += save(con, race["key"], url, kind, d)
             elif kind in ("livelox", "helga", "olive", "routegadget"):
+                if kind in ("livelox", "helga"):
+                    f.note(url, "refused")
                 changed += save(con, race["key"], url, kind, None, kind="platform",
                                 note={"livelox": "Livelox : résultats non ouverts aux robots", "helga": "Helga : pages de résultats fermées aux robots",
                                       "olive": "O'Live : résultats en direct", "routegadget": "RouteGadget"}[kind])
@@ -199,7 +272,9 @@ INDEX_VERSION = 3
 # The collection itself: bump it when finding results improves (a source, the club-site search…) — every race of the
 # window is looked at once more, the finished ones too (documents already read are not downloaded again).
 # 1 (2026-10-09): Helga, the club-site fixes and the 60-day window came after many races' last look.
-COLLECT_VERSION = 1
+# 2 (2026-10-09): robots.txt no longer obeyed, the crawl best-first, sibling WordPress sites, a weekend's files told
+#   apart by the title they print.
+COLLECT_VERSION = 2
 _BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
 
 
@@ -263,10 +338,16 @@ def build(con, out: Path, today: date) -> int:
                       "site": bool(race["site"] or races.club_site(con, race["org_code"])),
                       "lics": sorted(lics),
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})})
+    names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}
+    blocked = [{"host": b["host"], "kind": b["kind"], "example": b["example"], "first": b["first_seen"], "last": b["last_seen"],
+                "hits": b["hits"], "races": [names.get(k) or {"key": k} for k in json.loads(b["races"] or "[]")]}
+               for b in con.execute("SELECT * FROM prov_blocked ORDER BY last_seen DESC").fetchall()]
+    (d / "blocked.json").write_text(json.dumps({"generated": _now(), "sites": blocked}, ensure_ascii=False, separators=(",", ":")),
+                                    encoding="utf-8")
     (d / "index.json").write_text(json.dumps({"generated": _now(), "races": index, "runs": store.meta_get(con, "runs", [])[-12:],
                                               "due": len(races.due(con, today, _now()))}, ensure_ascii=False, separators=(",", ":")),
                                   encoding="utf-8")
-    keep = {f"{r['key']}.json" for r in index} | {"index.json"}
+    keep = {f"{r['key']}.json" for r in index} | {"index.json", "blocked.json"}
     for old in d.glob("*.json"):
         if old.name not in keep:
             old.unlink()
@@ -284,6 +365,10 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
     f = Fetcher(con, budget_s=budget_s)
     try:
         races.refresh_clubs(con, agenda or (out / "agenda.json"))
+        try:
+            stats["club_dir"] = races.read_directory(con, f)
+        except Exception:
+            log.exception("provisional: club directory failed")
         stats = races.sync(con, agenda or (out / "agenda.json"), today, days)
         # the races already past when the pilot started, or before a longer window (the agenda drops a race once
         # run), from FFCO's agenda export — one request each time the window reaches further back than the last one
@@ -341,6 +426,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
             if f.out_of_time():
                 cut = True
                 break
+            f.race = race["key"]
             try:
                 links = {"liveresultat": lr_map.get(race["key"]), "winsplits": ws_map.get(race["key"]), "heyries": hy_map.get(race["key"]),
                          "helga": hg_map.get(race["key"])}

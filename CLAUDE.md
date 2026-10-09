@@ -134,17 +134,39 @@ Online (sequential event ids scanned forward; HTML split tables, start times fro
 undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
 event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
 and are not read — the owner is telling Helga's developer), Orientation Data (heyries), and the organiser's site
-(WordPress media/posts API, Blogger feed, up to 14 pages from the race's page and the home page — results pages
-naming the race first, photo albums never; a subdomain's main site too, `ocastor.go78.org` -> `www.go78.org`; a
-meta-refresh home page followed). A file named for another day is never the race's; an organiser's races of one
-weekend share its files out by their own words (`races.owners`: « KO », « Challenge », « CL »). Club websites come
-from the agenda — FFCO's api.ffcorientation.fr is closed to robots by its robots.txt; the past month's races, dropped
+(WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
+subdomains met on the way, `new.co-lorient.fr` —, Blogger feed, up to 14 pages best-first across the whole crawl from
+the race's page and the home page: pages naming the race (words, its day in any spelling, `2026/10/03` in an address)
+before generic results pages, a multi-sport site's own orientation section before the rest, lists of past events,
+`.html` pages visited too (Joomla); photo albums, other seasons' and other days' pages never; a subdomain's main site
+too, `ocastor.go78.org` -> `www.go78.org`; redirects and meta-refresh followed). A page is « the race's » (its files
+need not name the race) only when its title lines say results and give the race's day and no other day. A file named
+for another day is never the race's, nor one printing another season in its title or a date before the race (up to
+2 days after is fine: exports printed the next evening); an organiser's races of one weekend share its files out by
+their own words, the title printed inside included (`races.owners`: « KO », « Challenge », « CL », « Chpt ligue »).
+FFCO's f-race and the agenda's x-race of the same day and organiser are merged (`races.merge_duplicates`, name words
+≥ 80 % shared). Unreadable files a full look no longer finds are dropped. A post published in the 3 weeks before
+the race (its address `/2026/09/24/…`: the announcement, often updated with the results) is visited, and its date is
+not « another day »; on a page about the race's weekend, « MD »/« LD » in a link read as « moyenne/longue distance ».
+A file whose name, link or printed title gives another format (« VTT » for a foot race, « LD » for an MD) or another
+weekday (« Samedi » for Sunday's race) is not the race's (`run.not_this_race`), nor one whose address spells another
+day (« …-dimanche-5-octobre-2025/ »; WordPress's `/uploads/YYYY/MM/` folder aside: `clubsite.address_other_day`).
+PDFs: `pdf._dedupe` replaces pdfplumber's slow `dedupe_chars` (same output, ~4× faster on split lists). A file already parsed (same content hash) is not parsed again for the weekend's other races (`run._PARSED`, then
+`prov_docs.sha`). Club websites: FFCO's club directory first (`races.read_directory`: api.ffcorientation.fr's map,
+`clubs.geojson` monthly and one popup per club, 40 per run — only the number and the website are kept, never the
+officers' names, phones or e-mails; table `prov_club_dir`), else the site the agenda gave for one of the club's events
+(often the event's own: `prov_clubs`); the past month's races, dropped
 by the agenda before the pilot started, were added from its CSV export (one request each time the window reaches
 further back — `agenda_backfill_from`; the owner's go-ahead 2026-10-08, for September then August; `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
 platforms (WinSplits' class pages only when its .spl changed); a race the budget cut short comes first next time;
 the last runs are listed under the « Résultats » table. **Polite by design:**
-our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga's results
-pages, Livelox results, Sportsregions upload folders, user-agent filters) are recorded as refused, never worked around. Parsers
+our user agent, a pause per host, conditional requests, a few requests per race only around competitions.
+**robots.txt is read but no longer obeyed** (owner's decision, 2026-10-09: low load, occasional reads): a forbidden
+URL is fetched all the same and its site goes on the owner's follow-up list (`prov_blocked`, kind `robots`). Sites
+that actively screen robots (401/403/429, an empty 200 to non-browsers, Helga's results pages, Livelox) are **never
+worked around** — no disguised user agent: recorded as refused and listed too (kind `refused`). The list
+(`site/data/prov/blocked.json`, served to administrators only by `_middleware.js`) is the admin page's « Sites » tab,
+with the races concerned, for the owner to contact the sites' owners. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones
 too). A page or file up to 32 MB is read (`fetch.MAX_BYTES`); a file named for another year is not the race's
@@ -205,6 +227,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   test, then commit, push and confirm the CI run and the live site.
 - Many files use CRLF line endings: edit them preserving line endings (read/write bytes in Python scripts).
   In Git Bash, heredocs with quotes break easily: write patch scripts to a file, then run them.
+- The login page (`pages/overview.js`, public) shows on wide screens a reel of 15 slides (`reel.js`: drawn views of the
+  analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
+  or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
+  automatic under reduced motion); phones keep the short text (`.home-text`).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).

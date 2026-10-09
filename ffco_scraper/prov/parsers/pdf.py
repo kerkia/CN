@@ -169,12 +169,26 @@ def _unglue(w: W) -> list[W]:
     return sorted(parts, key=lambda x: x.x0)
 
 
+def _dedupe(chars) -> list:
+    """Fake bold: the same character drawn twice with a small offset (within 1 pt) — the second one dropped, in
+    content-stream order. pdfplumber's own dedupe_chars does the same but sorts groups over and over: minutes on a
+    100-page split list (the Championnats de France's)."""
+    seen: dict = {}                                # (char, font, size, x cell, y cell) -> [(x0, top)]
+    out = []
+    for c in chars:
+        x, y = c["x0"], c["top"]
+        key = (c.get("text"), c.get("fontname"), round(float(c.get("size") or 0), 1))
+        cx, cy = int(x // 1), int(y // 1)
+        if any(abs(x - x2) <= 1 and abs(y - y2) <= 1
+               for dx in (-1, 0, 1) for dy in (-1, 0, 1) for x2, y2 in seen.get((key, cx + dx, cy + dy), ())):
+            continue
+        seen.setdefault((key, cx, cy), []).append((x, y))
+        out.append(c)
+    return out
+
+
 def _lines(page, pno: int) -> list[Line]:
-    try:
-        page = page.dedupe_chars()          # fake bold: the same text drawn twice with a small offset
-    except Exception:
-        pass
-    words = sorted(_words(page.chars), key=lambda w: (w.top, w.x0))
+    words = sorted(_words(_dedupe(page.chars)), key=lambda w: (w.top, w.x0))
     groups: list[list[W]] = []
     for w in words:
         if groups and abs(w.top - groups[-1][0].top) <= max(1.5, 0.35 * w.size):

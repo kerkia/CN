@@ -4,7 +4,8 @@ prov_races   the races watched: one row per race, from the agenda and from FFCO'
 prov_docs    every document found for a race (a results or split-times file, a liveresultat competition,
              a WinSplits event): where, what, its parse, when it last changed
 prov_fetch   what each URL answered last time (conditional requests, robots.txt refusals, failures)
-prov_clubs   the FFCO club directory: club number -> website
+prov_clubs   club number -> a website the agenda gave for one of its events (a guess: often the event's own site)
+prov_club_dir FFCO's club directory: club number -> the club's own website
 prov_meta    small values (the last WinSplits event id looked at, when the club directory was read…)
 """
 
@@ -61,7 +62,27 @@ CREATE TABLE IF NOT EXISTS prov_clubs (
   site       TEXT,
   read_at    TEXT NOT NULL
 );
+-- FFCO's club directory (api.ffcorientation.fr/iframe/structures/, one popup per club): the number and the website
+-- only — never the officers' names, phones or e-mails it shows too
+CREATE TABLE IF NOT EXISTS prov_club_dir (
+  id         INTEGER PRIMARY KEY,        -- the directory's own id
+  code       TEXT,                       -- FFCO club number ('2104')
+  site       TEXT,
+  read_at    TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS prov_meta (k TEXT PRIMARY KEY, v TEXT);
+-- the sites the owner follows up with (admin page, « Sites »): robots.txt forbids what was read anyway (the owner's
+-- decision, 2026-10-09: a few requests per race), or the site actively refuses robots (never worked around)
+CREATE TABLE IF NOT EXISTS prov_blocked (
+  host       TEXT NOT NULL,
+  kind       TEXT NOT NULL,              -- 'robots' (robots.txt forbids, read anyway) | 'refused' (active block, not read)
+  example    TEXT,                       -- the last address concerned
+  races      TEXT,                       -- JSON list of the races' keys concerned (the last 30)
+  first_seen TEXT NOT NULL,
+  last_seen  TEXT NOT NULL,
+  hits       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (host, kind)
+);
 """
 
 

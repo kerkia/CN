@@ -35,7 +35,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = query.onglet === "utilisation" ? "usage" : query.onglet === "depots" ? "uploads" : "accounts";
+  let tab = { utilisation: "usage", depots: "uploads", sites: "sites" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
@@ -61,18 +61,49 @@ export async function render(main, { query = {} } = {}) {
       </div>
       <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ad.u.def")}</p>
     </div>
+    <div data-panel="sites" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.st.lede")}</p>
+      <section class="card"><div class="table-wrap" id="st-list"></div></section>
+    </div>
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
     </div>`;
 
   function showTab() {
-    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")]], tab);
+    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
+      ["sites", t("ad.tab.sites")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
-    if (tab === "usage") saveUsage(); else replaceQuery(tab === "uploads" ? { onglet: "depots" } : {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ uploads: { onglet: "depots" }, sites: { onglet: "sites" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "uploads") drawUploads();
+    if (tab === "sites") drawSites();
+  }
+
+  // « Sites »: the organisers' sites to follow up with — robots.txt forbids what the collection reads all the same, or
+  // the site actively refuses robots (never worked around) — from site/data/prov/blocked.json (administrators only)
+  async function drawSites() {
+    const box = $("#st-list");
+    const r = await fetch("data/prov/blocked.json", { credentials: "same-origin", cache: "no-store" });
+    const sites = r.ok && (r.headers.get("content-type") || "").includes("json") ? (await r.json()).sites : [];
+    const day = (iso) => (iso ? fmtDate(iso.slice(0, 10), "short") : "—");
+    const race = (c) => (c.name
+      ? html`<div><a href="#/recemment?course=${encodeURIComponent(c.key)}">${c.name}</a> <span class="muted">${fmtDate(c.date, "short")}</span></div>`
+      : html`<div class="muted">${c.key}</div>`);
+    box.innerHTML = sites.length ? html`<table class="data compact"><thead><tr><th>${t("ad.st.site")}</th><th>${t("ad.st.kind")}</th>
+      <th>${t("ad.st.races")}</th><th class="r">${t("ad.st.hits")}</th><th>${t("ad.st.seen")}</th></tr></thead>
+      <tbody>${sites.map((x) => html`<tr>
+        <td style="white-space:normal;max-width:260px"><a href="https://${x.host}/" target="_blank" rel="noopener">${x.host}</a>
+          <div class="muted" style="font-size:12px;overflow-wrap:anywhere">${x.example || ""}</div></td>
+        <td style="white-space:normal;min-width:150px"><span class="tag">${t(`ad.st.kind.${x.kind}`)}</span>
+          <div class="muted" style="font-size:12px">${t(`ad.st.kind.${x.kind}.hint`)}</div></td>
+        <td style="white-space:normal;max-width:300px;font-size:12.5px">${x.races.length ? html`${x.races.slice(0, 5).map(race)}
+          ${x.races.length > 5 ? html`<details><summary class="muted">${t("ad.st.more", { n: x.races.length - 5 })}</summary>
+            ${x.races.slice(5).map(race)}</details>` : ""}` : html`<span class="muted">—</span>`}</td>
+        <td class="r num">${fmt(x.hits)}</td>
+        <td class="num" style="font-size:12.5px">${day(x.first)} → ${day(x.last)}</td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("ad.st.none")}</div>`;
   }
 
   // « Dépôts »: the results files uploaded on « Récemment » (api/admin/uploads), each one removable

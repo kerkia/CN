@@ -1,15 +1,18 @@
 """Polite HTTP for the provisional-results pilot.
 
-Every request: says who we are (user agent with the site's address), obeys robots.txt (a refused URL is
-recorded, never fetched), waits a little between two requests to the same host, sends conditional headers
-(ETag / Last-Modified) so an unchanged page costs nothing, and gives up on files larger than MAX_BYTES.
-Sites that screen robots (an HTTP 200 with an empty or 3-byte body, 403 to non-browsers) are not worked
-around: the answer is recorded as refused.
+Every request: says who we are (user agent with the site's address), waits a little between two requests to the
+same host, sends conditional headers (ETag / Last-Modified) so an unchanged page costs nothing, and gives up on files
+larger than MAX_BYTES. robots.txt is read but no longer obeyed (the owner's decision, 2026-10-09: a few requests per
+race, only around competitions): a URL it forbids is fetched all the same and its site goes on the owner's list
+(prov_blocked, kind 'robots'), to follow up with the site's owner. Sites that actively screen robots (401/403/429, an
+HTTP 200 with an empty or 3-byte body for non-browsers) are never worked around — no disguised user agent: the
+answer is recorded as refused, and the site goes on the list too (kind 'refused').
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 import urllib.parse
 import urllib.robotparser
@@ -43,6 +46,7 @@ class Fetcher:
         self.last_hit: dict[str, float] = {}
         self.deadline = time.monotonic() + budget_s if budget_s else None
         self.requests = 0
+        self.race: str | None = None            # the race being looked at, for the owner's list of sites
 
     def close(self):
         self.client.close()
@@ -80,8 +84,7 @@ class Fetcher:
         full = url if not params else f"{url}{'&' if '?' in url else '?'}{urllib.parse.urlencode(params)}"
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         if not self.allowed(full):
-            self._record(full, now, -1, None, None, None, None)
-            return Answer(full, -1)
+            self.note(full, "robots")           # read all the same; on the owner's list
         prev = self.con.execute("SELECT * FROM prov_fetch WHERE url = ?", (full,)).fetchone()
         headers = {}
         if conditional and prev and prev["status"] == 200:
@@ -115,11 +118,27 @@ class Fetcher:
         if status in (401, 403, 429) or (status == 200 and len(body) < 16 and b"<" not in body):
             # a robot screen (or a login wall): recorded as refused, never worked around
             self._record(full, now, -1, None, None, None, ctype)
+            self.note(full, "refused")
             return Answer(final, -1)
         sha = hashlib.sha1(body).hexdigest() if status == 200 else None
         changed = status == 200 and (not prev or prev["sha"] != sha)
         self._record(full, now, status, etag, modified, sha, ctype)
         return Answer(final, status, body if status == 200 else b"", ctype, changed, sha)
+
+    def note(self, url: str, kind: str) -> None:
+        """A site for the owner's list (prov_blocked): kind 'robots' (read though robots.txt forbids) or 'refused'.
+        Not the APIs probed on the way (WordPress, Blogger): a 401 there says no API, not a site refusing robots."""
+        if "/wp-json/" in url or "public-api.wordpress.com" in url or "/feeds/posts" in url:
+            return
+        host = urllib.parse.urlsplit(url).netloc.lower().removeprefix("www.")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        row = self.con.execute("SELECT races FROM prov_blocked WHERE host = ? AND kind = ?", (host, kind)).fetchone()
+        races = json.loads(row["races"] or "[]") if row else []
+        if self.race and self.race not in races:
+            races = (races + [self.race])[-30:]
+        self.con.execute("""INSERT INTO prov_blocked (host, kind, example, races, first_seen, last_seen, hits) VALUES (?,?,?,?,?,?,1)
+            ON CONFLICT (host, kind) DO UPDATE SET example = excluded.example, races = excluded.races, last_seen = excluded.last_seen,
+            hits = hits + 1""", (host, kind, url[:500], json.dumps(races), now, now))
 
     def _record(self, url, now, status, etag, modified, sha, ctype):
         self.con.execute(

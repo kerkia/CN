@@ -99,12 +99,13 @@ def match_score(race, name: str, organiser: str) -> float:
 SMALL = {"de", "la", "le", "du", "des", "et", "en", "a", "au", "aux", "d", "l", "o"}
 
 
-def owners(group, text: str) -> set:
+def owners(group, text: str, plain_default: bool = True) -> set:
     """Which of an organiser's races of one day (« Sprint Rouen Centre », « KO Sprint Rouen Centre ») a document is
     about: each race is told apart by the words of its name the others lack (« ko »; « challenge »; « championnat
     ligue », written « CL » too), looked for as words and, for the longer ones, inside run-together file names
     (« RsultatsSprintRouen »). The races naming the most of their own words; if it names none, the plain ones (those
-    with the fewest own words: the « Sprint » rather than the « KO Sprint »). Returns their keys."""
+    with the fewest own words: the « Sprint » rather than the « KO Sprint »), or all of them (plain_default False: not
+    decided yet). Returns their keys."""
     text = re.sub(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", " ", text)      # « KOSprintResultat » -> « KO Sprint Resultat »
     toks = set(_words(text))
     toks |= {w for a in toks & ABBREV.keys() for w in ABBREV[a]}
@@ -115,6 +116,8 @@ def owners(group, text: str) -> set:
     best = max(hits.values(), default=0)
     if best:
         return {k for k, h in hits.items() if h == best}
+    if not plain_default:
+        return set(names)
     fewest = min((len(ws) for ws in own.values()), default=0)
     return {k for k, ws in own.items() if len(ws) == fewest}
 
@@ -171,12 +174,33 @@ def backfill(con, events: list[dict], lo: str, hi: str) -> int:
             key = "x" + hashlib.sha1(f"{e['date']}|{e['name']}|{e.get('org')}".encode()).hexdigest()[:10]
             place = re.sub(r"\s*\([^)]*\)\s*$", "", e.get("place") or "")
             con.execute("""INSERT OR IGNORE INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site,
-                first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                agenda_id, first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)""",
                         (key, e["date"], e["name"], place or None, e.get("org"), code, terrain_of(e), e.get("epr"),
                          int(bool(e.get("cn"))), e.get("site") or club_site(con, code), stamp, stamp))
             added += 1
     con.commit()
     return added
+
+
+def merge_duplicates(con) -> int:
+    """A race FFCO published after the agenda export added it (« REGIONALE 1 » twice): FFCO's copy goes into the other
+    one — its course id, its documents — one each, by name, for an organiser and day. Returns the races merged."""
+    merged = 0
+    for f in con.execute("SELECT * FROM prov_races WHERE key LIKE 'f%'").fetchall():
+        others = con.execute("""SELECT * FROM prov_races WHERE date_iso = ? AND org_code IS ? AND key != ? AND key NOT LIKE 'f%'
+                                AND (ffco_id IS NULL OR ffco_id = ?)""", (f["date_iso"], f["org_code"], f["key"], f["ffco_id"])).fetchall()
+        # the same name, both ways: a « Sprint » and a « KO Sprint » of the same day are two races
+        same = lambda r: len(set(_words(r["name"])) & set(_words(f["name"]))) / max(1, len(set(_words(r["name"]))), len(set(_words(f["name"]))))
+        best = max(others, key=same, default=None)
+        if not best or same(best) < 0.8:
+            continue
+        con.execute("UPDATE prov_races SET ffco_id = ?, cn = MAX(cn, ?), place = COALESCE(place, ?), site = COALESCE(site, ?), "
+                    "done = 0, next_check = NULL WHERE key = ?", (f["ffco_id"], f["cn"], f["place"], f["site"], best["key"]))
+        con.execute("UPDATE OR IGNORE prov_docs SET race_key = ? WHERE race_key = ?", (best["key"], f["key"]))
+        con.execute("DELETE FROM prov_docs WHERE race_key = ?", (f["key"],))
+        con.execute("DELETE FROM prov_races WHERE key = ?", (f["key"],))
+        merged += 1
+    return merged
 
 
 def _groups(rows):
@@ -196,9 +220,47 @@ def similarity(a: str, b: str) -> float:
 
 
 # ---- the organisers' websites -----------------------------------------------------------------------------------
+DIR = "https://api.ffcorientation.fr/iframe"
+
+
+def read_directory(con, f, per_run: int = 40, every_days: int = 30) -> int:
+    """FFCO's club directory: the club's own website, by club number. Its map lists the clubs (clubs.geojson, once a
+    month) and a popup per club gives its number and website — read a few per run, the oldest first. Its robots.txt
+    forbids robots: read anyway (the owner's decision, 2026-10-09), on the admin's list of sites."""
+    stamp = now_iso()
+    last = con.execute("SELECT v FROM prov_meta WHERE k = 'club_dir_list'").fetchone()
+    if not last or last["v"] < (datetime.now(timezone.utc) - timedelta(days=every_days)).isoformat():
+        a = f.get(f"{DIR}/clubs.geojson", conditional=False)
+        if a.status != 200:
+            return 0
+        try:
+            ids = [int(x["id"]) for x in json.loads(a.content.decode("utf-8"))["features"]]
+        except (ValueError, KeyError, TypeError):
+            return 0
+        for i in ids:
+            con.execute("INSERT OR IGNORE INTO prov_club_dir (id, read_at) VALUES (?, '')", (i,))
+        con.execute("INSERT OR REPLACE INTO prov_meta (k, v) VALUES ('club_dir_list', ?)", (stamp,))
+    old = (datetime.now(timezone.utc) - timedelta(days=every_days)).isoformat()
+    n = 0
+    for row in con.execute("SELECT id FROM prov_club_dir WHERE read_at < ? ORDER BY read_at LIMIT ?", (old, per_run)).fetchall():
+        if f.out_of_time():
+            break
+        a = f.get(f"{DIR}/clubs/popup/", conditional=False, params={"id": row["id"]})
+        if a.status != 200:
+            continue
+        text = a.content.decode("utf-8", "replace")
+        code = re.search(r"Num[ée]ro FFCO(?:&nbsp;|\s)*:\s*(\d{2,4})", text)
+        site = re.search(r"Site web(?:&nbsp;|\s)*:\s*<a href=\"([^\"]+)\"", text)
+        con.execute("UPDATE prov_club_dir SET code = ?, site = ?, read_at = ? WHERE id = ?",
+                    (code.group(1).zfill(4) if code else None, site.group(1).strip() if site else None, stamp, row["id"]))
+        n += 1
+    con.commit()
+    return n
+
+
 def refresh_clubs(con, agenda_path: Path) -> int:
-    """Club number -> website, from the agenda (each event names its organiser's site). FFCO's club directory
-    (api.ffcorientation.fr) is closed to robots by its robots.txt, so it is not read."""
+    """Club number -> a website, from the agenda (each event names a site: often the event's own, so FFCO's club
+    directory comes first when it has one — read_directory, club_site)."""
     if not agenda_path.exists():
         return 0
     n = 0
@@ -213,9 +275,12 @@ def refresh_clubs(con, agenda_path: Path) -> int:
 
 
 def club_site(con, code: str | None) -> str | None:
+    """The club's website: FFCO's directory's, else the one the agenda gave for one of its events."""
     if not code:
         return None
-    row = con.execute("SELECT site FROM prov_clubs WHERE code = ?", (code.zfill(4) if len(code) > 2 else code,)).fetchone()
+    code = code.zfill(4) if len(code) > 2 else code
+    row = con.execute("SELECT site FROM prov_club_dir WHERE code = ? AND site LIKE 'http%'", (code,)).fetchone() or \
+        con.execute("SELECT site FROM prov_clubs WHERE code = ?", (code,)).fetchone()
     return row["site"] if row else None
 
 
@@ -251,6 +316,8 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
                             (key, e["date"], e["name"], e.get("place"), e.get("org"), code, terrain_of(e), e.get("epr"),
                              int(bool(e.get("cn"))), site, e["id"], stamp, stamp))
                 added += 1
+    # the agenda export's races (x…) and the uploads' (u…) are linked to FFCO's results like the agenda's own: agenda_id 0
+    con.execute("UPDATE prov_races SET agenda_id = 0 WHERE (key LIKE 'x%' OR key LIKE 'u%') AND agenda_id IS NULL")
     # FFCO's competitions of the period: link the agenda's races, add the others (the past month's pilot)
     for c in con.execute("SELECT course_id, date_iso, title, organizer, terrain, epreuve, location FROM competitions WHERE date_iso BETWEEN ? AND ?",
                          (lo, hi)).fetchall():
@@ -276,6 +343,7 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
                     (key, c["date_iso"], c["title"], c["location"], c["organizer"], code, c["terrain"], c["epreuve"],
                      club_site(con, code), c["course_id"], stamp, stamp))
         added += 1
+    merge_duplicates(con)
     # relays taken in before they were left out, and relay files found next to an individual race
     con.execute("DELETE FROM prov_docs WHERE lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' OR lower(COALESCE(title, '')) LIKE '%relais%'")
     for (key,) in con.execute("SELECT key FROM prov_races").fetchall():
