@@ -33,7 +33,7 @@ const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const GRAPHS = ["gap", "pos", "legpos"];
-const ERR_MODES = ["auto", "s", "pct"];
+const ERR_MODES = ["pct", "s"];
 const ERR_DEFAULT = { s: 20, pct: 20 };
 const REFS = ["cum", "legs", "legs5", "legs25", "legs50", "legs100", "winner", "runner"];
 const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
@@ -64,10 +64,10 @@ export async function render(main, { query = {} } = {}) {
   let view = VIEWS.includes(query.vw) ? query.vw : "table", club = query.cl || "";
   let graph = GRAPHS.includes(query.g) ? query.g : "gap", ref = REFS.includes(query.ref) ? query.ref : "cum", refName = query.rr || "";
   let tol = TOLS.includes(Number(query.tol)) ? Number(query.tol) : 10;
-  // what counts as a mistake (red in Tableau, counted in Inter-postes, Profil and Bilan): the default rule, or the time
-  // lost on the leg from N seconds, or from N % of the leg's time
-  let errMode = ERR_MODES.includes(query.em) ? query.em : "auto";
-  let errVal = Number(query.ev) > 0 ? Number(query.ev) : ERR_DEFAULT[errMode] || 0;
+  // what counts as a mistake (red in Tableau, counted in Inter-postes, Profil and Bilan): the time lost on the leg from
+  // N % of the leg's time (and 10 s at least: 20 % by default, the classic rule), or from N seconds
+  let errMode = ERR_MODES.includes(query.em) ? query.em : "pct";
+  let errVal = Number(query.ev) > 0 ? Number(query.ev) : ERR_DEFAULT[errMode];
 
   async function loadRace() {
     race = key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
@@ -98,8 +98,8 @@ export async function render(main, { query = {} } = {}) {
           .sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((x) => html`<option value="${x.name}" ${raw(x.name === refName ? "selected" : "")}>${x.place ? `${x.place}. ` : ""}${x.name}</option>`)}</select></label>` : ""}` : ""}
       ${view === "table" ? html`<div class="field"><span>${t("spl.err")}</span><div class="row" style="gap:6px">
         <select id="sp-em">${ERR_MODES.map((m) => html`<option value="${m}" ${raw(m === errMode ? "selected" : "")}>${t(`spl.err.${m}`)}</option>`)}</select>
-        ${errMode !== "auto" ? html`<input type="number" id="sp-ev" min="1" max="${errMode === "pct" ? 500 : 3600}" step="1" value="${errVal}"
-          style="width:76px" aria-label="${t(`spl.err.${errMode}`)}"><span class="muted" style="align-self:center">${errMode === "pct" ? "%" : "s"}</span>` : ""}</div></div>` : ""}
+        <input type="number" id="sp-ev" min="1" max="${errMode === "pct" ? 500 : 3600}" step="1" value="${errVal}"
+          style="width:76px" aria-label="${t(`spl.err.${errMode}`)}"><span class="muted" style="align-self:center">${errMode === "pct" ? "%" : "s"}</span></div></div>` : ""}
       ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}`;
     $("#sp-race")?.addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
@@ -111,7 +111,7 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-ref")?.addEventListener("change", (e) => { ref = e.target.value; pickers(); draw(); });
     $("#sp-rr")?.addEventListener("change", (e) => { refName = e.target.value; draw(); });
     $("#sp-tol")?.addEventListener("change", (e) => { tol = Number(e.target.value); draw(); });
-    $("#sp-em")?.addEventListener("change", (e) => { errMode = e.target.value; errVal = ERR_DEFAULT[errMode] || 0; pickers(); draw(); });
+    $("#sp-em")?.addEventListener("change", (e) => { errMode = e.target.value; errVal = ERR_DEFAULT[errMode]; pickers(); draw(); });
     $("#sp-ev")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (v > 0) { errVal = v; draw(); } });
   }
   // the mistake rule in words, for the hints
@@ -129,7 +129,7 @@ export async function render(main, { query = {} } = {}) {
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
       ref: gapView && graph === "gap" && ref !== "cum" ? ref : null, rr: gapView && graph === "gap" && ref === "runner" ? refName : null,
-      tol: view === "groups" && tol !== 10 ? tol : null, em: errMode === "auto" ? null : errMode, ev: errMode === "auto" ? null : errVal });
+      tol: view === "groups" && tol !== 10 ? tol : null, em: errMode === "pct" ? null : errMode, ev: errVal === ERR_DEFAULT[errMode] ? null : errVal });
     const n = k.controls?.length || Math.max(...k.runners.map((r) => r.splits?.length || 0));
     const codes = k.controls || Array.from({ length: n }, (_, i) => String(i + 1));
     // cumulative times with the finish as the last "control"; legs between them
@@ -148,7 +148,7 @@ export async function render(main, { query = {} } = {}) {
       x.lost = x.legs.map((v, i) => (v != null && x.ratio && isFinite(realBest[i]) ? Math.max(0, v - realBest[i] * x.ratio) : null));
       x.lostTotal = x.lost.reduce((s, v) => s + (v || 0), 0);
       x.mistake = x.legs.map((v, i) => x.lost[i] != null && v > 0 && (errMode === "s" ? x.lost[i] >= errVal
-        : errMode === "pct" ? x.lost[i] >= (errVal / 100) * v : x.lost[i] > 0.2 * v && x.lost[i] >= 10));
+        : x.lost[i] >= (errVal / 100) * v && x.lost[i] >= 10));
       x.realLegRank = x.legs.map((v, i) => rankOf(R.map((y) => y.legs[i]), v));
       // without the lost time: each leg less its loss, the cumulative times less the losses so far
       let gone = 0;
