@@ -2,6 +2,7 @@
 // session cookie and the middleware refuses every data file without it, so the data really
 // is private. The session kept here in localStorage is just who the visitor is, for the UI.
 
+import * as local from "./local.js";
 import * as data from "./data.js";
 
 const KEY = "cnx.session";
@@ -85,5 +86,6 @@ export async function refresh() {
 }
 export async function logout() {
   forget();
+  local.clear();                  // the results file read on « Déposer »
   try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
 }

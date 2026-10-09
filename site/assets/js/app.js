@@ -28,6 +28,7 @@ const PAGES = {
   admin: () => import("./pages/admin.js"),
   provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 60 days
   splits: () => import("./pages/splits.js"),
+  deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
@@ -68,6 +69,7 @@ function parseHash() {
     : head === "admin" ? "admin"
     : head === "recemment" || head === "provisoires" ? "provisional"     // #/provisoires: the pilot's old address
     : head === "temps-inter" ? "splits"
+    : head === "deposer" ? "deposit"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }

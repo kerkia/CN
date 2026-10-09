@@ -987,3 +987,11 @@ table.data tbody tr.found .name { font-weight: 700; }
   .mx-agg .mx-scores { grid-column: 1 / -1; grid-row: 2; }
   .mx-bar { grid-template-columns: 90px 1fr 56px; }
 }
+/* « Déposer »: the three steps */
+.dep-steps { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 0 2px 14px; font-size: 14px; color: var(--ink-3); }
+.dep-steps li { display: flex; align-items: center; gap: 7px; }
+.dep-steps b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px;
+  border: 1.5px solid var(--border-strong); color: var(--ink-3); }
+.dep-steps li.now { color: var(--ink); font-weight: 600; }
+.dep-steps li.now b { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.dep-steps li.done b { background: var(--accent-wash); border-color: var(--focus); color: var(--ink); }

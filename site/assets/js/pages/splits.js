@@ -27,6 +27,7 @@ import { lineChart, columnChart, slotColor, css } from "../charts.js";
 import { seg, chartCard, bindChartCard, legend, dataTable } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
+import * as local from "../local.js";
 
 const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
@@ -41,8 +42,10 @@ const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
 export async function render(main, { query = {} } = {}) {
-  const idx = await getProv("index.json");
-  const withSplits = (idx?.races || []).filter((r) => r.splits);
+  // the results file read on « Déposer », not published: it alone (local.js)
+  const mine = query.course === local.LOCAL ? local.race() : null;
+  const idx = mine || query.course === local.LOCAL ? null : await getProv("index.json");
+  const withSplits = mine ? (mine.splits ? [mine] : []) : (idx?.races || []).filter((r) => r.splits);
   main.innerHTML = html`
     <div class="crumbs" id="sp-crumbs"></div>
     <div class="page-head"><div><h1>${t("spl.title")}</h1><p class="lede">${t("spl.lede")}</p></div></div>
@@ -50,7 +53,8 @@ export async function render(main, { query = {} } = {}) {
     <div class="filters" id="sp-views"></div>
     <div id="sp-body"></div>`;
   if (!withSplits.length) {
-    $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${t("spl.none")}</div></div>`;
+    $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${query.course === local.LOCAL
+      ? html`${t("dep.gone")} <a href="#/deposer">${t("dep.title")}</a>` : t("spl.none")}</div></div>`;
     return { title: t("spl.title") };
   }
   let key = withSplits.some((r) => r.key === query.course) ? query.course : withSplits[0].key;
@@ -60,7 +64,7 @@ export async function render(main, { query = {} } = {}) {
   let tol = TOLS.includes(Number(query.tol)) ? Number(query.tol) : 10;
 
   async function loadRace() {
-    race = await getProv(`${encodeURIComponent(key)}.json`);
+    race = key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
     docs = (race?.docs || []).filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   }
   function pickers() {
@@ -68,10 +72,14 @@ export async function render(main, { query = {} } = {}) {
     const k = docs[di].classes[ci];
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
-    $("#sp-crumbs").innerHTML = html`<a href="#/recemment">${t("prov.title")}</a><span>›</span>
+    $("#sp-crumbs").innerHTML = key === local.LOCAL
+      ? html`<a href="#/recemment">${t("prov.title")}</a><span>›</span><a href="#/deposer">${t("dep.title")}</a><span>›</span>
+        <span>${r?.name || ""}</span><span>›</span><span>${t("spl.title")}</span>`
+      : html`<a href="#/recemment">${t("prov.title")}</a><span>›</span>
       <a href="#/recemment?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
     $("#sp-pick").innerHTML = html`
-      <label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>
+      ${key === local.LOCAL ? html`<div class="field"><span>${t("dep.file")}</span><span class="pill">${r?.name || ""}</span></div>`
+        : html`<label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>`}
       ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="sp-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select></label>` : ""}
       <label class="field"><span>${t("prov.circuit")}</span><select id="sp-c">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("spl.club")}</span><select id="sp-club" style="max-width:260px"><option value="">${t("f.allm")}</option>
@@ -83,7 +91,7 @@ export async function render(main, { query = {} } = {}) {
         ${graph === "gap" && ref === "runner" ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sp-rr" style="max-width:240px">${k.runners.filter((x) => x.splits)
           .sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((x) => html`<option value="${x.name}" ${raw(x.name === refName ? "selected" : "")}>${x.place ? `${x.place}. ` : ""}${x.name}</option>`)}</select></label>` : ""}` : ""}
       ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}`;
-    $("#sp-race").addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
+    $("#sp-race")?.addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
     $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });

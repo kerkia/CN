@@ -9,13 +9,12 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available } from "../store.js";
 import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch, filterFold } from "../ui.js";
-import { uploadCard } from "./upload.js";
 import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
 const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu" };
-const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC" };
+export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC" };
 
 export const getProv = async (path) => {
   const r = await fetch(`data/prov/${path}`, { credentials: "same-origin", cache: "no-store" });
@@ -42,6 +41,8 @@ export async function render(main, { query = {} } = {}) {
     main.innerHTML = html`<div class="page-head"><div><h1>${t("prov.title")}</h1></div></div><div class="card"><div class="empty">${t("prov.none")}</div></div>`;
     return { title: t("prov.title") };
   }
+  // an old « ?deposer=<race> » link: « Déposer » is its own page now
+  if (query.deposer) { location.replace(`#/deposer?course=${encodeURIComponent(query.deposer)}`); return { title: t("prov.title") }; }
   return query.course ? detail(main, idx, query) : list(main, idx, query);
 }
 
@@ -55,8 +56,7 @@ function list(main, idx, query) {
   const regions = [...new Set(idx.races.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div>
-      <button type="button" class="btn btn-sm" id="pv-up-btn">${t("up.open")}</button></div>
-    <div id="pv-upload"></div>
+      <a class="btn btn-sm" href="#/deposer">${t("up.open")}</a></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     ${filterFold(html`<div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
       <div class="field"><span>${t("f.terrain")}</span><div id="pv-t"></div></div>
@@ -65,7 +65,7 @@ function list(main, idx, query) {
       <div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>`)}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
-    <p style="margin:12px 2px 0">${t("up.invite")} <button type="button" class="btn btn-sm" id="pv-up-btn2">${t("up.open")}</button></p>
+    <p style="margin:12px 2px 0">${t("up.invite")} <a class="btn btn-sm" href="#/deposer">${t("up.open")}</a></p>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
     ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
         ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
@@ -126,11 +126,6 @@ function list(main, idx, query) {
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
   $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  // « Déposer des résultats »: the form above the list (opened from a race's page with ?deposer=<its key>)
-  const openUpload = (preset = "") => uploadCard($("#pv-upload"), { races: R, preset });
-  $("#pv-up-btn").addEventListener("click", () => openUpload());
-  $("#pv-up-btn2").addEventListener("click", () => openUpload());
-  if (query.deposer) openUpload(R.some((r) => r.key === query.deposer) ? query.deposer : "");
   $("#pv-reg").addEventListener("change", (e) => { reg = e.target.value; draw(); });
   drawWho();
   draw();
@@ -168,7 +163,7 @@ async function detail(main, idx, query) {
     <div class="crumbs"><a href="#/recemment">${t("prov.title")}</a><span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
-      <div class="row" style="gap:8px"><a class="btn btn-sm" href="#/recemment?deposer=${encodeURIComponent(race.key)}">${t("up.open")}</a>
+      <div class="row" style="gap:8px"><a class="btn btn-sm" href="#/deposer?course=${encodeURIComponent(race.key)}">${t("up.open")}</a>
         ${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">FFCO ↗</a>` : ""}</div></div>

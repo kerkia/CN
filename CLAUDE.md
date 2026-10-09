@@ -176,10 +176,16 @@ file carries licences: runners are matched by name + club number (`match.py`), u
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
-served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08): on « Récemment »,
-any logged-in user can send a results file (IOF XML best, OE/MeOS HTML, PDF, .zip/.gz; 30 MB) for a race of the
-list or a race added with it (name, date in the last 60 days, place, club, format) — `pages/upload.js` reads it in the
-browser first (circuits, runners, splits, date); `functions/api/upload.js` streams the body to R2 (`cn-state`,
+served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08; three steps since
+2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Récemment ») — 1. the file (IOF XML best, OE/MeOS
+HTML, PDF, .zip/.gz; 30 MB), with what to export; 2. it is **read in the browser** (`localparse.js`, a port of the
+server's iofxml / oe_html / meos_html parsers giving the same documents — keep them in step; checked identical on
+real files) and shown: summary, results by circuit, and every « Temps intermédiaires » tab on it
+(`#/temps-inter?course=fichier`) — nothing is sent; the parse sits in sessionStorage (`local.js`: gone when the tab
+closes, cleared at logout; the File itself in memory only, to be chosen again after a reload); 3. only if the user
+wishes, « Publier sur O'CN » (`pages/upload.js`): the race (those of the file's date first) or a race added with it
+(name, date in the last 60 days, place, club, format; pre-filled from the file), consent, send. A PDF cannot be read in
+the browser: straight to step 3. `functions/api/upload.js` streams the body to R2 (`cn-state`,
 `uploads/<id>/` + `meta.json`; binding `BUCKET`, the Functions write nowhere else), records it in D1 `uploads`, mails
 the administrators, deletes files older than 60 days, and, when the Pages secret `GH_DISPATCH_TOKEN` is set (a
 fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
