@@ -131,8 +131,8 @@ export class LiveRace extends DurableObject {
       reads++;
       const moved = new Set();
       if (p.status === "OK") {
+        if (m.passHash) m.lastChange = Date.now();       // (the first read is no news: passings may be hours old)
         m.passHash = p.hash;
-        m.lastChange = Date.now();
         const items = (p.passings || []).slice(0, 10).map((x) => [x.passtime, x.runnerName, x.class, x.control, x.controlName || "", x.time]);
         for (const x of items) moved.add(x[2]);
         for (const ws of everyone) this.send(ws, { t: "pass", items, at: m.lastChange });

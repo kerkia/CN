@@ -1,5 +1,7 @@
 # O'Cap (working name)
 
+Online at https://ocap.pages.dev (a CNAME for the chosen subdomain to come).
+
 A public, phone-first companion to O'CN: « Bientôt » (upcoming races), « En direct » (live results) and
 « Récemment » (recent results with the split-time analyses). No login, public data only, no CN. French and English.
 
@@ -21,3 +23,10 @@ cd ocap && npx wrangler pages dev --port 8792
 
 Then open http://localhost:8792/#/direct. Recordings hold real results: keep them outside the repository. Without the
 mock (no `LR_API`), the Worker reads the real liveresultat.
+
+## Publishing
+
+- The site and its data: by O'CN's workflow — each time O'CN is deployed, `update.deploy_ocap` runs `ocap/export.py`
+  (from O'CN's `site/data`) and `wrangler pages deploy` in `ocap/` (Pages project `ocap`); a push touching `ocap/site`,
+  `ocap/functions` or `ocap/export.py` triggers it too. The service worker's cache name is stamped with the commit.
+- The live Worker: by hand, `cd ocap/worker && npx wrangler deploy`.

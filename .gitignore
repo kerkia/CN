@@ -31,3 +31,4 @@ Thumbs.db
 # local assistant settings
 .claude/
 .dev.vars
+ocap/site/data/

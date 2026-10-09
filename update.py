@@ -38,6 +38,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -151,6 +152,35 @@ def deploy() -> bool:
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     tail = [ln for ln in (r.stdout + r.stderr).splitlines() if ln.strip()][-4:]
     print(f"4. deploy to {PAGES_PROJECT}: {'ok' if r.returncode == 0 else 'FAILED'} in {time.monotonic() - t0:.0f}s")
+    for ln in tail:
+        print(f"   {ln}")
+    if r.returncode == 0:
+        deploy_ocap(npx)
+    return r.returncode == 0
+
+
+OCAP_PROJECT = os.environ.get("OCAP_PAGES_PROJECT", "ocap")
+
+
+def deploy_ocap(npx: str) -> bool:
+    """O'Cap (ocap/): its public data exported from site/data (no CN, licence or contact), then published — each time
+    O'CN is. A failure here never fails O'CN's update. The live Worker (ocap/worker) is deployed by hand."""
+    t0 = time.monotonic()
+    try:
+        sys.path.insert(0, str(ROOT / "ocap"))
+        import export as ocap_export
+        ocap_export.main(["--src", str(ROOT / "site" / "data"), "--out", str(ROOT / "ocap" / "site" / "data")])
+        # the app's offline cache follows the code: a new version is fetched once, then kept
+        sw = ROOT / "ocap" / "site" / "sw.js"
+        stamp = (os.environ.get("GITHUB_SHA") or str(int(time.time())))[:10]
+        sw.write_text(re.sub(r'const CACHE = "ocap-[^"]*"', f'const CACHE = "ocap-{stamp}"', sw.read_text(encoding="utf-8")), encoding="utf-8")
+    except Exception as e:                                   # noqa: BLE001 — O'Cap must not stop O'CN
+        print(f"5. ocap export FAILED: {e}")
+        return False
+    cmd = [npx, "--yes", "wrangler", "pages", "deploy", "--project-name", OCAP_PROJECT, "--branch", "main", "--commit-dirty=true"]
+    r = subprocess.run(cmd, cwd=ROOT / "ocap", capture_output=True, text=True, encoding="utf-8", errors="replace")
+    tail = [ln for ln in (r.stdout + r.stderr).splitlines() if ln.strip()][-3:]
+    print(f"5. deploy to {OCAP_PROJECT}: {'ok' if r.returncode == 0 else 'FAILED'} in {time.monotonic() - t0:.0f}s")
     for ln in tail:
         print(f"   {ln}")
     return r.returncode == 0

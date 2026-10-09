@@ -33,7 +33,7 @@ on:
     - cron: "*/20 16-22 * * 6,0"   # provisional results, Sat/Sun 18:00-00:40 Paris in summer, 17:00-23:40 in winter
   push:
     branches: [main]
-    paths: ["site/**", "functions/**"]
+    paths: ["site/**", "functions/**", "ocap/site/**", "ocap/functions/**", "ocap/export.py", "ocap/wrangler.toml"]
   workflow_dispatch:
     inputs:
       mode:

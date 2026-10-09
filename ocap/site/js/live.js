@@ -136,7 +136,12 @@ function race(view, id, wanted) {
   function status() {
     const el = $("#status");
     if (!st.up) { el.className = "status"; el.textContent = st.info ? t("live.offline") : t("live.connecting"); return; }
-    const age = st.passAt ? Date.now() - st.passAt : null;
+    // the last passing's own time of day (liveresultat's passtime, in the race's time), else when the server saw it
+    const p = st.pass[0]?.[0]?.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+    let age = p ? (nowAt(st.info) / 100 - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3]))) * 1000 : null;
+    if (age != null && (age < -60000 || age > 12 * 3600e3)) age = null;      // another day, or a clock off
+    if (age == null && st.passAt) age = Date.now() - st.passAt;
+    if (age != null) age = Math.max(0, age);
     const live = age != null && age < 300000;
     el.className = `status${live ? " live" : ""}`;
     el.innerHTML = live ? `<span class="dot" aria-hidden="true"></span>${t("live.on")} · ${t("live.ago", { t: since(age) })}`

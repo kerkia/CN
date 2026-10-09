@@ -1,8 +1,9 @@
 // The app kept on the phone: its files served from the cache at once (and refreshed behind), so it opens instantly
 // and without a network; data and live connections always go to the network.
-const CACHE = "ocap-v1";
+const CACHE = "ocap-v2";
 const SHELL = ["./", "index.html", "app.css", "icon.svg", "manifest.webmanifest",
-  "js/app.js", "js/i18n.js", "js/settings.js", "js/live.js", "js/prefs.js", "js/soon.js", "js/recent.js"];
+  "js/app.js", "js/i18n.js", "js/settings.js", "js/util.js", "js/live.js", "js/prefs.js", "js/soon.js",
+  "js/recent.js", "js/analysis.js", "icon-180.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(caches.keys()
