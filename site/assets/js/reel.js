@@ -320,9 +320,9 @@ function vGroups() {
 
 // 15. the invitation
 function vJoin() {
-  return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="150" text-anchor="middle">O'CN</text></g>
-    ${["For", "Spr", "VTT", "Ski"].map((x, k) => `<g class="rv-pop" ${d(0.3 + 0.1 * k)}><rect x="${W / 2 - 196 + k * 100}" y="186" width="92" height="28" rx="14" class="rv-ter-${x.toLowerCase()}"/>
-      <text class="rv-lab rv-strong" x="${W / 2 - 150 + k * 100}" y="205" text-anchor="middle">${esc(t(`terrain.${x}`))}</text></g>`).join("")}`);
+  return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="118" text-anchor="middle">O'CN</text></g>
+    ${["For", "Spr", "VTT", "Ski"].map((x, k) => `<g class="rv-pop" ${d(0.3 + 0.1 * k)}><rect x="${W / 2 - 196 + k * 100}" y="148" width="92" height="28" rx="14" class="rv-ter-${x.toLowerCase()}"/>
+      <text class="rv-lab rv-strong" x="${W / 2 - 150 + k * 100}" y="167" text-anchor="middle">${esc(t(`terrain.${x}`))}</text></g>`).join("")}`);
 }
 
 const SLIDES = [["methods", vMethods], ["calc", vCalc], ["ranking", vRanking], ["compare", vCompare], ["clubs", vClubs],
@@ -334,9 +334,8 @@ export function reelHtml() {
   return `<div class="reel" tabindex="0" role="region" aria-roledescription="carrousel" aria-label="${esc(t("reel.label"))}">
     <div class="reel-bars">${SLIDES.map(([k], i) => `<button type="button" class="reel-bar" data-go="${i}" aria-label="${esc(t(`reel.${k}.k`))}"><i></i></button>`).join("")}</div>
     <div class="reel-track">${SLIDES.map(([k, view], i) => `<figure class="reel-slide${i ? "" : " is-on"}" data-i="${i}" aria-hidden="${i ? "true" : "false"}">
-      <div class="reel-vis">${view()}</div>
-      <figcaption><span class="reel-k">${esc(t(`reel.${k}.k`))}</span><strong>${esc(t(`reel.${k}.t`))}</strong><span>${esc(t(`reel.${k}.x`))}</span>
-        ${k === "join" ? `<a class="btn btn-primary reel-cta" href="#/compte/inscription">${esc(t("ac.register"))}</a>` : ""}</figcaption></figure>`).join("")}</div>
+      <div class="reel-vis">${view()}${k === "join" ? `<a class="btn btn-primary reel-cta" href="#/compte/inscription">${esc(t("ac.register"))}</a>` : ""}</div>
+      <figcaption><span class="reel-k">${esc(t(`reel.${k}.k`))}</span><strong>${esc(t(`reel.${k}.t`))}</strong><span>${esc(t(`reel.${k}.x`))}</span></figcaption></figure>`).join("")}</div>
     <div class="reel-nav"><button type="button" class="reel-btn" data-step="-1" aria-label="${esc(t("reel.prev"))}">‹</button>
       <button type="button" class="reel-btn reel-play" aria-label="${esc(t("reel.pause"))}">❚❚</button>
       <button type="button" class="reel-btn" data-step="1" aria-label="${esc(t("reel.next"))}">›</button>

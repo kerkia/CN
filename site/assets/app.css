@@ -518,8 +518,8 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .reel-bar.is-done i { background-size: 100% 100%, auto; }
 .reel-bar:hover i { background-color: color-mix(in srgb, var(--ink) 26%, transparent); }
 @keyframes reelFill { from { background-size: 0% 100%, auto; } to { background-size: 100% 100%, auto; } }
-.reel-track { position: relative; height: 446px; }
-.reel-slide { position: absolute; inset: 0; margin: 0; opacity: 0; visibility: hidden; transform: translateX(28px) scale(.985);
+.reel-track { display: grid; }        /* the slides in one cell: as tall as the tallest, no more */
+.reel-slide { grid-area: 1 / 1; position: relative; margin: 0; opacity: 0; visibility: hidden; transform: translateX(28px) scale(.985);
   transition: opacity .3s ease, transform .4s cubic-bezier(.2, .7, .2, 1), visibility 0s linear .3s; }
 .reel-slide.is-on { opacity: 1; visibility: visible; transform: none;
   transition: opacity .3s ease, transform .4s cubic-bezier(.2, .7, .2, 1), visibility 0s; }
@@ -528,7 +528,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .reel-vis svg { display: block; width: 100%; height: 100%; font-family: var(--font); transform-origin: 55% 45%; }
 .reel-slide.is-anim .reel-vis svg { animation: reelZoom var(--dur, 6s) linear forwards; }
 @keyframes reelZoom { to { transform: scale(1.035); } }
-.reel-slide figcaption { display: grid; gap: 3px; padding: 12px 2px 0; }
+.reel-slide figcaption { display: grid; gap: 3px; padding: 10px 2px 6px; }
 .reel-slide figcaption > :nth-child(3) { color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .reel-slide figcaption strong { font-size: 21px; line-height: 1.2; letter-spacing: -0.005em; }
 .reel-k { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--link); }
@@ -537,7 +537,8 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .reel-slide.is-anim figcaption > :nth-child(3) { animation-delay: .1s; }
 .reel-slide.is-anim figcaption > :nth-child(4) { animation-delay: .15s; }
 @keyframes reelUp { from { opacity: 0; transform: translateY(10px); } }
-.reel-cta { justify-self: start; margin-top: 8px; }
+.reel-vis { position: relative; }
+.reel-cta { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); }
 .reel-nav { display: flex; align-items: center; gap: 6px; }
 .reel-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border-strong);
   background: var(--surface); color: var(--ink); cursor: pointer; font-size: 17px; line-height: 1; padding: 0; }
