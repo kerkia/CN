@@ -1,0 +1,13 @@
+{
+  "name": "O'Cap — course d'orientation",
+  "short_name": "O'Cap",
+  "description": "Courses à venir, résultats en direct et récents. Upcoming races, live and recent results.",
+  "start_url": "./#/direct",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f6",
+  "theme_color": "#0f3d3e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

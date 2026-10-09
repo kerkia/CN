@@ -20,6 +20,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
+| `ocap/` | **O'Cap** (working name, 2026-10-09): a separate public, phone-first site — Bientôt, En direct (liveresultat relayed by one Durable Object per race, WebSockets), Récemment; no login, no CN, FR/EN. Its own Cloudflare projects (Pages `ocap` + Worker `ocap-live`), not created yet; see `ocap/README.md` |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),

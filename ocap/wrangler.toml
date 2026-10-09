@@ -1,0 +1,14 @@
+# O'Cap (working name): the public, phone-first site — Bientôt, En direct, Récemment. Cloudflare Pages: static files
+# (free, unlimited) in ./site; the only Functions are /ws/* and /api/* (site/_routes.json), backed by the live Worker.
+name = "ocap"
+pages_build_output_dir = "./site"
+compatibility_date = "2025-09-01"
+
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRace"
+script_name = "ocap-live"
+
+[[services]]
+binding = "LIVEW"
+service = "ocap-live"

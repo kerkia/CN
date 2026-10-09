@@ -1,0 +1,15 @@
+# O'Cap live relay (Durable Objects). The site (ocap/site, Cloudflare Pages) reaches it through its Functions.
+name = "ocap-live"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRace"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRace"]
+
+# LR_API: liveresultat's API; local tests point it at ocap/dev/lr-mock.mjs (wrangler dev --var LR_API:http://localhost:8790/api.php)

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0f3d3e"/>
+  <!-- a control flag, white and orange, with a heading line through it: « cap » -->
+  <path d="M136 120h240v240H136z" fill="#ffffff"/>
+  <path d="M136 120l240 240H136z" fill="#e4572e"/>
+  <path d="M96 416L416 96" stroke="#7cc7c0" stroke-width="22" stroke-linecap="round"/>
+</svg>
