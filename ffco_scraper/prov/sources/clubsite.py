@@ -35,7 +35,7 @@ STOP = {"de", "la", "le", "du", "des", "et", "co", "course", "orientation", "clu
         "regionale", "departementale", "nationale", "championnat", "ligue", "dep", "sprint", "md", "ld", "nuit"}
 MONTHS = ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre"]
 MAX_PAGES = 14                  # pages read per race and run, at most
-NOT_PAGES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".mp4", ".zip", "albumphoto", "/photos", "photo-", "galerie",
+NOT_PAGES = ("iccaldate", "calendrier", "calendar", "/agenda", "ical", "?date=", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".mp4", ".zip", "albumphoto", "/photos", "photo-", "galerie",
              "gallery", "whatsappimage", "/wp-content/uploads/", "/media/uploaded/", "login", "connexion", "inscription")
 # shared hosts: a site on one of their subdomains has nothing to do with the parent domain
 SHARED_HOSTS = ("blogspot.", "wixsite.com", "wordpress.com", "e-monsite.com", "over-blog.com", "jimdofree.com", "jimdo.com",
@@ -102,6 +102,14 @@ def other_day(text: str, d: date) -> bool:
     return False
 
 
+def other_year(name: str, d: date) -> bool:
+    """A file named for another year (« 2025-challenge-poitiers-co… » on a page listing every season's results) is
+    another season's race. Only the file's own name and its link's text: a WordPress folder (/uploads/2025/12/) says
+    when it was uploaded, not which race it is."""
+    years = {int(y) for y in re.findall(r"(?<![0-9a-z])(20\d\d)(?![0-9])", name.lower())}
+    return bool(years) and d.year not in years
+
+
 def headline(page: str) -> str:
     """A page's own title and the lines under it (« Résultats Sprint et KO Sprint — Publiée le 04 oct. 2026 … »), not
     its menus and margins, which list the club's other events."""
@@ -145,7 +153,10 @@ class ClubSite:
         sites = list(dict.fromkeys(sites + [p for p in map(parent_site, sites) if p]))
         d = date.fromisoformat(race["date_iso"])
         dt = date_tokens(d)
-        words = race_words(race)
+        # a word of the club's own address names every page of its site (« poitiers » on poitiersco.org): it says
+        # nothing of the race
+        hosts = [_host(s).replace(".", " ") for s in sites]
+        words = {w for w in race_words(race) if not any(w in h for h in hosts)}
         found: dict[str, tuple[str, str]] = {}
         platforms: dict[str, str] = {}
 
@@ -159,8 +170,9 @@ class ClubSite:
                     if names_race or posted_after:
                         platforms[url] = kind
                     return
-            if other_day(urllib.parse.unquote(url), d):
-                return                                          # a file of another day's race
+            if other_day(urllib.parse.unquote(url), d) or \
+                    other_year(urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1]) + " " + text, d):
+                return                                          # a file of another day's (or season's) race
             path = urllib.parse.urlsplit(url).path.lower()
             is_doc = path.endswith(DOC_EXT) or "drive.google.com/file" in url or "document-download" in url or "/ugd/" in url
             if not is_doc:

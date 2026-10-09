@@ -196,6 +196,10 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
 # 2 (2026-10-08): each race's region and its runners' licences, for the list's filters.
 # 3 (2026-10-08): the last runs, and whether each race's organiser has a known website.
 INDEX_VERSION = 3
+# The collection itself: bump it when finding results improves (a source, the club-site search…) — every race of the
+# window is looked at once more, the finished ones too (documents already read are not downloaded again).
+# 1 (2026-10-09): Helga, the club-site fixes and the 60-day window came after many races' last look.
+COLLECT_VERSION = 1
 _BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
 
 
@@ -307,9 +311,11 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         changed = uploaded
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
-        if reread:                          # including the races already finished with, of the period shown
+        recollect = store.meta_get(con, "collect_version", None) != COLLECT_VERSION
+        if reread or recollect:             # including the races already finished with, of the period shown
             con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE date_iso >= ?",
                         (_now(), (today - timedelta(days=KEEP_DAYS)).isoformat()))
+            store.meta_set(con, "collect_version", COLLECT_VERSION)
         # the platforms' competitions, assigned to the races of the period one-to-one (races.assign)
         period = con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ?",
                              ((today - timedelta(days=KEEP_DAYS)).isoformat(), today.isoformat())).fetchall()
@@ -319,14 +325,16 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         ws_map = races.assign(period, [(int(k), e["name"], e["organiser"], e["date"]) for k, e in ws_events.items() if e["date"] >= lo])
         hy_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in hy.competitions() if c["date"] >= lo])
         hg_map = races.assign(period, [(int(k), e["name"], "", e["date"]) for k, e in hg.events().items() if e["date"] >= lo])
-        # a race already finished with comes back when a platform competition is newly matched to it (a WinSplits
-        # event found later by the backward fill, an Orientation Data competition published after the last look)
+        # a race comes back at once when a platform competition is newly matched to it (a WinSplits event found later
+        # by the backward fill, a Helga event, an Orientation Data competition published after the last look) — a race
+        # still watched too, rather than at its next daily look
         urls = {"liveresultat": "https://liveresultat.orientering.se/followfull.php?comp={}", "winsplits": WS_BASE + "/classes.asp?databaseId={}",
                 "heyries": HY_BASE + "/competition/{}/", "helga": HG_BASE + "/splitsbrowser.php?lauf={}"}
         for kind, mp in (("liveresultat", lr_map), ("winsplits", ws_map), ("heyries", hy_map), ("helga", hg_map)):
             for key, pid in mp.items():
                 if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (key, urls[kind].format(pid))).fetchone():
-                    con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE key = ? AND done = 1", (_now(), key))
+                    con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE key = ? AND (done = 1 OR next_check > ?)",
+                                (_now(), key, _now()))
         due = races.due(con, today, _now())
         cut = False
         for race in due:

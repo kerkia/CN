@@ -75,15 +75,18 @@ function list(main, idx, query) {
         <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
         <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
   const R = idx.races;
-  $("#pv-tiles").innerHTML = html`
-    <div class="tile"><div class="tile-label">${t("prov.races")}</div><div class="tile-value">${fmt(R.length)}</div></div>
-    <div class="tile"><div class="tile-label">${t("prov.withResults")}</div><div class="tile-value">${fmt(R.filter((r) => r.docs).length)}</div>
-      <div class="tile-sub">${R.length ? fmt((100 * R.filter((r) => r.docs).length) / R.length) : 0} %</div></div>
-    <div class="tile"><div class="tile-label">${t("prov.withSplits")}</div><div class="tile-value">${fmt(R.filter((r) => r.splits).length)}</div></div>
-    <div class="tile"><div class="tile-label">${t("prov.matched")}</div><div class="tile-value">${(() => {
-      const n = R.reduce((s, r) => s + r.runners, 0), m = R.reduce((s, r) => s + r.matched, 0);
-      return n ? `${fmt((100 * m) / n)} %` : "—";
-    })()}</div><div class="tile-sub">${t("prov.matched.hint")}</div></div>`;
+  // the tiles: the races the filters keep — the runner, the specialité, the region, the search; not « Afficher »,
+  // which would make « avec résultats » 100 %
+  const drawTiles = (T) => {
+    const found = T.filter((r) => r.docs).length, n = T.reduce((s, r) => s + r.runners, 0), m = T.reduce((s, r) => s + r.matched, 0);
+    $("#pv-tiles").innerHTML = html`
+      <div class="tile"><div class="tile-label">${t("prov.races")}</div><div class="tile-value">${fmt(T.length)}</div></div>
+      <div class="tile"><div class="tile-label">${t("prov.withResults")}</div><div class="tile-value">${fmt(found)}</div>
+        <div class="tile-sub">${T.length ? fmt((100 * found) / T.length) : 0} %</div></div>
+      <div class="tile"><div class="tile-label">${t("prov.withSplits")}</div><div class="tile-value">${fmt(T.filter((r) => r.splits).length)}</div></div>
+      <div class="tile"><div class="tile-label">${t("prov.matched")}</div><div class="tile-value">${n ? `${fmt((100 * m) / n)} %` : "—"}</div>
+        <div class="tile-sub">${t("prov.matched.hint")}</div></div>`;
+  };
   function drawWho() {
     $("#pv-who").innerHTML = html`${seg("pvwho", [["all", t("f.allm")], ["runner", t("prov.oneRunner")]], who)}
       ${who === "runner" ? html`<span class="pill">${runner ? html`<a href="${link.runner(runner)}">${displayName(data.runner(runner)?.nom || runner)}</a>` : "—"}</span>
@@ -100,20 +103,21 @@ function list(main, idx, query) {
     $("#pv-t").innerHTML = seg("pvt", [["all", t("f.all")], ...SPECS.map((s) => [s, t(`terrain.${s}`)])], spec);
     $$('[data-seg="pvt"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
     const qn = normalise(q);
-    const rows = R.filter((r) => (filter === "all" || (filter === "found" ? r.docs : filter === "missing" ? !r.docs : !r.ffco_id))
-      && (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
+    const kept = R.filter((r) => (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
       && (!one || (r.lics || []).includes(runner))
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
+    drawTiles(kept);
+    const rows = kept.filter((r) => filter === "all" || (filter === "found" ? r.docs : filter === "missing" ? !r.docs : !r.ffco_id));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
       <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c pv-wrap">${t("prov.splits")}</th>
       <th>FFCO</th></tr></thead>
-      <tbody>${rows.map((r) => html`<tr>
+      <tbody>${rows.map((r) => html`<tr${raw(r.docs ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td class="pv-race"><a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>
+        <td class="pv-race">${r.docs ? html`<a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
-        <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span class="muted">${r.refused ? t("prov.refusedOnly") : "—"}</span>`}
+        <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
           ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>

@@ -547,6 +547,9 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .user-chip { display: flex; align-items: center; gap: 4px; }
 /* « Déposer des résultats » (pages/upload.js) */
 .pv-race { white-space: normal !important; min-width: 180px; max-width: 280px; }
+/* « Récemment »: a race with no results found yet, greyed */
+table.data tr.pv-none td, table.data tr.pv-none td .muted { color: var(--ink-3); }
+table.data tr.pv-none td .tag { opacity: .7; }
 .pv-wrap { white-space: normal !important; min-width: 80px; }
 @media (max-width: 640px) { .pv-race { min-width: 150px; } .pv-wrap { min-width: 0; } }
 .upload-card .card-head { flex-wrap: nowrap; align-items: flex-start; }

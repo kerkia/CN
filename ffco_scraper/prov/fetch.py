@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 import httpx
 
 UA = "ocn-resultats/1.0 (+https://ocn.kerkia.com; reads results organisers publish, a few times after each race)"
-MAX_BYTES = 12 * 1024 * 1024
+MAX_BYTES = 32 * 1024 * 1024    # a club's « all our results » page can be 17 MB (Poitiers, 2026-10-09); uploads are 30 MB
 PAUSE = 0.6                     # seconds between two requests to the same host
 TIMEOUT = 25.0
 

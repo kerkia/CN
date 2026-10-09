@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import html as htmllib
+from datetime import date, timedelta
 import re
 import struct
 import unicodedata
@@ -21,6 +22,7 @@ from ..store import meta_get, meta_set
 
 BASE = "https://obasen.orientering.se/winsplits/online/en"
 SPL = "https://obasen.orientering.se/winsplits/api/winSplitsOnlineHelper/downloadSplFile/{}"
+KEEP_DAYS = 70                 # event headers kept: the races' window (run.KEEP_DAYS) and a little more
 START_ID = 114500              # early August 2026 (about 25 events a day): the list covers the last 60 days
 MISSES_TO_STOP = 8             # consecutive ids that do not exist yet: the end of the list
 
@@ -152,6 +154,10 @@ class WinSplits:
         if "back" not in state:                         # saved by the forward-only scan: jump to the newest, fill backwards
             top = self.head(state["next"])
             state["back"], state["next"] = top, max(state["next"], top + 1)
+        if state.get("v") != 2:                         # the headers were kept by number (900): the older ones were lost,
+            known = [int(k) for k in state["events"]]   # read them again (2026-10-09)
+            state["back"] = (min(known) - 1) if known else state["back"]
+            state["v"] = 2
         found, budget = [], limit
 
         def keep(i: int, ev: dict) -> None:
@@ -184,9 +190,9 @@ class WinSplits:
                 if ev:
                     keep(b, ev)
             state["back"] = b - 1
-        # keep the headers of the last few weeks only
-        kept = sorted(state["events"], key=int)[-900:]
-        state["events"] = {k: state["events"][k] for k in kept}
+        # keep the headers of the window's events (dated within KEEP_DAYS, as the races they may be matched to)
+        lo = (date.today() - timedelta(days=KEEP_DAYS)).isoformat()
+        state["events"] = {k: e for k, e in state["events"].items() if e.get("date", "") >= lo}
         meta_set(self.con, "winsplits", state)
         self.con.commit()
         return found

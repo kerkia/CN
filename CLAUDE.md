@@ -145,7 +145,11 @@ platforms (WinSplits' class pages only when its .spl changed); a race the budget
 the last runs are listed under the « Résultats » table. **Polite by design:**
 our user agent, robots.txt obeyed, a pause per host, conditional requests; sites that screen robots (Helga's results
 pages, Livelox results, Sportsregions upload folders, user-agent filters) are recorded as refused, never worked around. Parsers
-follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again). No result
+follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
+`run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones
+too). A page or file up to 32 MB is read (`fetch.MAX_BYTES`); a file named for another year is not the race's
+(`clubsite.other_year`), and a word of the club's own address does not name the race. WinSplits headers are kept
+by date (70 days), not by number. No result
 file carries licences: runners are matched by name + club number (`match.py`), unmatched rows stay unlinked.
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
 Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
