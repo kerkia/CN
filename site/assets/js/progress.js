@@ -21,11 +21,30 @@ export function percentileOf(v, qs, q) {
   return 100;
 }
 
-/** Category of the runner at a date: the one of their latest race on or before it. */
-export function catAt(races, iso) {
+const CAT = /^([HD])(\d+)/;
+
+/** The birth year a runner's junior races give: a junior category of age a in season y (H14: 13 or 14 that year)
+ *  means born in y − a or later, and one may run in an older category, never a younger one — so the latest such
+ *  year is the birth year (exact once they have raced in their own category). null without junior races. */
+export function birthYear(races) {
+  let b = null;
+  for (const r of races) {
+    const m = CAT.exec(r[R.cat] || "");
+    if (m && Number(m[2]) <= 20) b = Math.max(b ?? -Infinity, Number(r[R.date].slice(0, 4)) - Number(m[2]));
+  }
+  return b;
+}
+
+/** Category of the runner at a date: their age category while a junior (from the birth year: a category run up,
+ *  or last season's, does not carry into a new season), else the one of their latest race on or before it. */
+export function catAt(races, iso, born = birthYear(races)) {
   let cat = null;
   for (const r of races) { if (r[R.date] > iso) break; if (r[R.cat]) cat = r[R.cat]; }
-  return cat;
+  const m = CAT.exec(cat || "");
+  if (!m || born == null) return cat;
+  const age = Number(iso.slice(0, 4)) - born;
+  if (age <= 20) return `${m[1]}${age <= 10 ? 10 : age + (age % 2)}`;
+  return Number(m[2]) <= 20 ? `${m[1]}21` : cat;
 }
 
 /**
@@ -33,9 +52,10 @@ export function catAt(races, iso) {
  * the runner's percentile in it. [{ iso, cn, cat, curve, pct }]
  */
 export function monthlyProgress(method, races, terrain, meta, ac) {
+  const born = birthYear(races);
   return monthlyCn(method, races, terrain, meta).map(([iso, cn]) => {
     const y = iso.slice(0, 4);
-    const cat = catAt(races, iso);
+    const cat = catAt(races, iso, born);
     const curve = cat ? ac.data[curveKey(method, terrain, y, meta.split_year)]?.[y]?.[cat] : null;
     return { iso, cn, cat, curve, pct: curve ? percentileOf(cn, ac.q, curve.slice(1)) : null };
   });
