@@ -30,6 +30,7 @@ const PAGES = {
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
+  relays: () => import("./pages/relays.js"),       // « Relais »: the relay simulator, from Clubs
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
@@ -72,6 +73,7 @@ function parseHash() {
     : head === "temps-inter" ? "splits"
     : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
+    : head === "relais" ? "relays"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -87,6 +89,7 @@ export const link = {
   club: (code) => `#/club/${encodeURIComponent(code)}`,
   clubs: () => "#/clubs",
   clubCompare: () => "#/comparer-clubs",
+  relays: (q) => "#/relais" + qstr(q),
   progression: (lic, q) => link.runner(lic, q),
   network: (lic, q) => (lic ? `#/reseau/${encodeURIComponent(lic)}` : "#/reseau") + qstr(q),
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
@@ -152,7 +155,7 @@ function renderHeader(r) {
     ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
     ["agenda", "#/agenda", t("nav.agenda")],
   ] : [];                                     // logged out, the home page (the login) is the whole site
-  const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs"
+  const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" ? "provisional" : route;
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);

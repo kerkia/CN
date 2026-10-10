@@ -275,6 +275,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
   automatic under reduced motion); phones keep the short text (`.home-text`).
+- **Relais** (`#/relais`, `pages/relays.js`, from Clubs; 2026-10-10): a relay simulator. Formats from FFCO's 2026
+  rules (`relay.js` `PRESETS`: CFC N1-N4 with their composition criteria and reserved legs — the women's/men's first and
+  last legs alternate with the year's parity —, CNE Hommes/Dames/Jeunes/mini, relais de catégorie) or one's own legs.
+  The owner's model: a runner of CN c runs k x ref / c on a leg; k makes the best team of all clubs (CNE: the mean of
+  the 5 best) total the sum of the reference times. Best team exact: every distinct matching of criteria to legs, then
+  the Hungarian algorithm (checked against brute force); clubs that cannot beat the shown teams are skipped by a bound.
+  Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner.
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).

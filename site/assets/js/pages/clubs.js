@@ -64,6 +64,7 @@ export async function render(main, { query }) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
       <div class="row">${mine ? html`<a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a>` : ""}
+        <a class="btn" href="${link.relays()}">${t("rl.title")}</a>
         <a class="btn btn-primary" href="#/comparer-clubs" id="go-cmp"></a></div></div>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="by-desc" style="margin-bottom:16px"></div>
