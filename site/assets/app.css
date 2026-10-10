@@ -1020,3 +1020,16 @@ table.data tbody tr.found .name { font-weight: 700; }
 .lv-pass { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 2px 12px; font-size: 13px; }
 table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }
 table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var(--surface-2); }
+/* forest plots (Méthodes · analyses): an estimate and its 95 % interval against zero */
+.ev-forest { display: grid; gap: 3px; }
+.ev-row { display: grid; grid-template-columns: 64px 190px minmax(80px, 1fr); gap: 10px; align-items: center; font-size: 13px; min-height: 22px; }
+.ev-val { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ev-val .dim { font-size: 12px; }
+.ev-track { position: relative; height: 18px; }
+.ev-track i { position: absolute; top: 50%; }
+.ev-zero { width: 1px; height: 18px; top: 0 !important; background: var(--ink-3); opacity: .6; }
+.ev-ci { height: 3px; margin-top: -1.5px; border-radius: 2px; background: var(--ink-3); }
+.ev-pt { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--ink-3); }
+.ev-row.up .ev-ci, .ev-row.up .ev-pt { background: var(--good); }
+.ev-row.down .ev-ci, .ev-row.down .ev-pt { background: var(--bad); }
+@media (max-width: 640px) { .ev-row { grid-template-columns: 44px 1fr; } .ev-track { grid-column: 1 / -1; } }

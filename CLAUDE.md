@@ -245,8 +245,18 @@ actually ahead, against H21) and rank drift by number of races. Reference result
 forest Juste 82.3 %, Top 82.1 %, official 80.9 %; sprint Juste 84.0 %, Top 83.9 %, official 80.7 %.
 Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.12 % (national races
 82.80 → 82.80), sprint 83.94 → 84.01 % (national 82.18 → 82.11); forest scale p90/p10 2.65 → 2.57.
-The Méthodes page shows these measurements as dated constants (`pages/methods.js`: `K_TESTS`, `K_GRID`, `LIN_QUAD`):
-update them when the methods are re-measured; the 2025 validation tables are read from the data.
+That duel share was the tuning yardstick. **The published evaluation** (owner, 2026-10-10: the duel counts were
+statistically naive) is `site_eval.py` -> `evaluation.json`, built by `site_extras` when missing (a migration deletes
+it): per circuit Kendall's tau (each circuit counts once), the share of log-time spread explained with the slope fitted
+on the previous season (out of sample), the Plackett-Luce information per runner (beta from the previous season), and
+the duel share; same runners for every method, circuits of 4+; 95 % intervals by a bootstrap over **competitions**
+(pairs within a race are not independent); every season from 2012, the 2012-2024 hold-out (before any tuning) and the
+tuning period. Results (hold-out, Top − official): forest tau +0.044 [0.041, 0.047], R² +9.5 pt; sprint tau +0.050,
+R² +9.2 pt; national races smaller (forest tau +0.023), not established in 2022, 2026 or the tuning period. Top
+quadratic − linear: tau +0.003 forest (not established in sprint), R² +1.3 pt forest, +2.8 pt sprint. The Méthodes
+page's « Les analyses » reads it (forest plots by season, pooled periods); the k-grid tables (`K_TESTS`, `K_GRID`, the
+circuit-value variants) stay as dated exploratory measurements, labelled as such. Say « established » only when the
+interval excludes 0.
 Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace(spec.params, ...)`.
 
 ## Conventions and gotchas

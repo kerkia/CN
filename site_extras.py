@@ -19,6 +19,7 @@ Outputs (all under site/data/):
     participation.json      competitors and results per season, club and discipline (Réseau · Activité)
     validation.json         how well each method's CN predicts who finishes ahead (season 2025;
                             built once - delete it to rebuild, as a method change does)
+    evaluation.json         the same question measured soundly, every season (site_eval.py; built once too)
 """
 
 from __future__ import annotations
@@ -462,6 +463,8 @@ def main(out: Path | None = None) -> None:
     network(comps)
     pyramid(comps)
     validation(comps)
+    import site_eval
+    site_eval.evaluation(comps)
     print(f"extras done in {time.monotonic() - t0:.0f}s")
 
 

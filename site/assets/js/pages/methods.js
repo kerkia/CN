@@ -41,24 +41,6 @@ const K_GRID = [
   ["both", [[1.5, 1.5, 82.15, 82.78, 83.97, 82.13, 2.53], [2, 2, 82.21, 82.77, 84.04, 82.09, 2.42], [2.5, 2.5, 82.16, 82.67, 84.07, 81.91, 2.33],
     [3, 3, 82.07, 82.55, 84.09, 81.84, 2.27]]],
 ];
-// Top linéaire vs Top quadratique (and the others), measured once on a database copy, 7 October 2026: same
-// pairs (both runners hold a CN in all five methods), July 2025 - October 2026; the quadratic variants as
-// published since then (linear circuit value, quadratic CN). Shares in the order of LQ.
-const LQ = ["official", "fair", "top6w", "fair2", "top6w2"];
-const LIN_QUAD = {
-  acc: [   // terrain, scope, pairs, shares
-    ["For", "all", 771511, [80.58, 82.32, 82.06, 82.44, 82.12]],
-    ["For", "nat", 276703, [81.69, 83.12, 82.80, 83.13, 82.80]],
-    ["Spr", "all", 113914, [80.35, 83.99, 83.94, 84.07, 84.01]],
-    ["Spr", "nat", 21452, [81.07, 82.06, 82.18, 82.01, 82.11]],
-  ],
-  bias: [  // terrain, group, pairs, actually ahead, predicted ahead
-    ["For", "J", 18600, 62.41, [54.91, 56.80, 59.73, 57.85, 60.44]],
-    ["For", "V", 12736, 42.94, [48.08, 49.75, 51.28, 49.93, 51.38]],
-    ["Spr", "J", 3918, 45.58, [36.88, 40.79, 41.04, 40.76, 41.09]],
-    ["Spr", "V", 2540, 15.83, [27.87, 17.95, 18.31, 18.07, 18.39]],
-  ],
-};
 // The worked example: one runner's ten scores in the window, best first; kind: cdf | national | other.
 const EXAMPLE = [[7200, "cdf"], [6900, "other"], [6800, "national"], [6500, "other"], [6400, "other"],
   [6100, "other"], [5900, "other"], [5600, "other"], [5200, "other"], [4800, "other"]];
@@ -81,7 +63,6 @@ export async function render(main, { query = {} } = {}) {
   const analyst = M.includes("fair");
   const tops = M.filter((m) => m === "top6w" || m === "top6w2");     // [the Top, the Top linéaire for analysts]
   // the linear mean, studied for reference: a method only analysts see, but everyone reads its measured figures
-  const LIN = analyst ? methodShort("top6w") : "Linéaire (étudiée)";
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);   // 1,5 must not read as 2
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p[key];
@@ -90,6 +71,8 @@ export async function render(main, { query = {} } = {}) {
 
   // ---- the 2025 validation (built once from the data): shares of duels called right --------------------
   const v = await data.validation();
+  // the sound evaluation (site_eval.py): per circuit, out of sample, with bootstrap intervals over competitions
+  const ev = await data.evaluation();
   const season = v ? v.season || Object.keys(v.acc.For?.all || {}).pop() : null;
   const VM = v ? M.filter((m) => v.methods.includes(m)) : [];
   const ref = VM.includes("top6w2") ? "top6w2" : VM.includes("top6w") ? "top6w" : null;
@@ -106,6 +89,56 @@ export async function render(main, { query = {} } = {}) {
     ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}
     <p class="muted" style="font-size:13px;margin-top:8px">Site indépendant et non officiel, sans lien avec la Fédération française de course
       d'orientation. Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; les autres sont des calculs alternatifs, à but d'analyse.</p>`;
+
+  // ---- the sound evaluation: helpers -------------------------------------------------------------------------
+  const EVM = ["tau", "r2", "pl", "acc"];
+  const EV_LABEL = { tau: "Ordre d'arrivée (τ de Kendall)", r2: "Écarts de temps expliqués (R²)", pl: "Ordre complet (Plackett-Luce)",
+    acc: "Duels bien prédits" };
+  const EV_UNIT = { tau: "", r2: " pt", pl: " nat", acc: " pt" };
+  const evRows = (tr, sc = "all") => ev?.rows?.[tr]?.[sc] || {};
+  const evSeasons = (tr, sc = "all") => Object.keys(evRows(tr, sc)).filter((k) => /^\d{4}$/.test(k)).sort();
+  /** A value or a difference of measure `meas`, as shown: τ and nats with 3 decimals, shares in points. */
+  const evFmt = (meas, x, signed = true) => {
+    const pts = meas === "r2" || meas === "acc";
+    const y = pts ? x * 100 : x, d = pts ? (meas === "acc" ? 2 : 1) : 3;
+    const r = Number(y.toFixed(d));
+    return `${signed ? (r > 0 ? "+" : r < 0 ? "−" : "±") : ""}${fmt(signed ? Math.abs(r) : r, d)}`;
+  };
+  const pairLabel = (p) => { const [a, c] = p.split("-"); return `${methodShort(a)} − ${methodShort(c)}`; };
+  /** Seasons where the Top beats the official method on the finishing order, interval clear of zero. */
+  const evWins = (tr) => {
+    const ss = evSeasons(tr);
+    return [ss.filter((y) => evRows(tr)[y].d["top6w2-official"]?.tau[1] > 0).length, ss.length];
+  };
+  const evNoise = () => {
+    const half = (tr, sc) => { const d = evRows(tr, sc).tuned?.d?.["top6w2-top6w"]?.acc; return d ? ((d[2] - d[1]) / 2) * 100 : null; };
+    const f = half("For", "all"), sp = half("Spr", "all"), fn = half("For", "nat");
+    return f == null ? "" : `Pour situer : entre les deux Top publiés, sur la même période, la marge d'incertitude d'un tel écart est d'environ
+      ±${fmt(f, 2)} point en forêt, ±${fmt(sp, 2)} en sprint${fn == null ? "" : ` et ±${fmt(fn, 2)} sur les seules nationales en forêt`} :
+      la plupart des écarts de ce tableau sont de cet ordre.`;
+  };
+  const evClaim = () => {
+    if (!ev) return "en forêt comme en sprint";
+    const [fw, fn] = evWins("For"), [sw, sn] = evWins("Spr");
+    return `mesuré chaque saison depuis ${ev.first} : nettement meilleur en forêt ${fw === fn ? "à chacune" : `${fw} saisons sur ${fn}`},
+      en sprint ${sw} saisons sur ${sn}`;
+  };
+  /** A forest plot: one row per item, the estimate and its 95 % interval against zero. */
+  const forestPlot = (items, meas) => {
+    if (!items.length) return html`<div class="empty">—</div>`;
+    const lo = Math.min(0, ...items.map((i) => i.d[1])), hi = Math.max(0, ...items.map((i) => i.d[2]));
+    const pad = (hi - lo) * 0.04 || 0.01, a = lo - pad, span = hi + pad - a;
+    const pos = (x) => ((x - a) / span) * 100;
+    return html`<div class="ev-forest">${items.map((i) => {
+      const cls = i.d[1] > 0 ? "up" : i.d[2] < 0 ? "down" : "flat";
+      return html`<div class="ev-row ${cls}" title="${cls === "flat" ? "intervalle à cheval sur 0 : pas d'écart établi" : "écart établi"}">
+        <span class="ev-lab">${i.label}</span>
+        <span class="ev-val num">${evFmt(meas, i.d[0])}<span class="dim"> [${evFmt(meas, i.d[1])} ; ${evFmt(meas, i.d[2])}]</span></span>
+        <span class="ev-track"><i class="ev-zero" style="left:${pos(0)}%"></i>
+          <i class="ev-ci" style="left:${pos(i.d[1])}%;width:${Math.max(0.6, pos(i.d[2]) - pos(i.d[1]))}%"></i>
+          <i class="ev-pt" style="left:${pos(i.d[0])}%"></i></span></div>`;
+    })}</div>`;
+  };
 
   // ======================================================================================================
   // 1. L'essentiel
@@ -210,8 +243,8 @@ export async function render(main, { query = {} } = {}) {
         <div class="s"><b>Un CN pour chaque usage</b>les circuits sont valorisés avec le niveau habituel des coureurs${analyst
           ? html` (${methodLabel("fair")})` : ""}, le classement retient leur potentiel</div>
         <div class="p"><b>Des pronostics moins justes</b>qui, de deux coureurs, finira devant ?</div><div class="arrow">→</div>
-        <div class="s"><b>De meilleurs pronostics, chaque saison depuis 2012</b>en forêt comme en sprint —
-          <a href="#/methodes?onglet=analyses" data-tab-link="analyses">voir les analyses</a></div>
+        <div class="s"><b>De meilleurs pronostics, saison après saison</b>${evClaim()} —
+          <a href="#/methodes?onglet=analyses&voir=saisons" data-tab-link="analyses" data-goto="saisons">voir les analyses</a></div>
       </div>
     </section>
 
@@ -427,7 +460,9 @@ export async function render(main, { query = {} } = {}) {
         <tbody><tr><td colspan="${4 + K_TESTS.ks.length}" class="muted" style="font-size:12.5px">Contrôle sur les saisons précédentes</td></tr>
           ${K_TESTS.past.map(kRow)}</tbody></table></div>
       <p class="muted" style="font-size:13px">Part des duels bien prédits (%), mesurée le 7 octobre 2026 avec ${force}, <i>k</i> appliqué au score
-        lui-même. En gras, le meilleur de chaque ligne.
+        lui-même. En gras, le meilleur de chaque ligne. Ce sont les mesures exploratoires faites pendant la mise au point (part des duels,
+        sans intervalle) ; la mesure complète des méthodes retenues, saison par saison et avec sa marge d'incertitude, est dans
+        <a href="#/methodes?onglet=analyses&voir=saisons" data-tab-link="analyses" data-goto="saisons">les analyses</a>.
         En ski, trop peu de courses (2 à 4 par saison) pour battre la méthode officielle ; sur 2018–2024, k = 2 l'emporte aussi en forêt, pas en sprint.</p>
 
       <h3>Où appliquer k = 2 ? Dans la moyenne des courses</h3>
@@ -533,37 +568,74 @@ export async function render(main, { query = {} } = {}) {
       .filter(([, , b]) => b?.[0]);
     const biasCol = (m) => 2 + v.methods.indexOf(m);
 
+    const hf = ev ? evRows("For").holdout : null, hs = ev ? evRows("Spr").holdout : null;
+    const lvl = (e, meas, m) => evFmt(meas, e[meas][m], false);
     return html`
     <section class="mx-slide mx-hero">
       <p class="mx-kicker">Le test</p>
-      <h2>Avant la course, qui est favori ? Après, a-t-il gagné ?</h2>
-      <p class="mx-lead">Sur chaque circuit, chaque paire de coureurs classés est un duel. Chaque méthode désigne un favori : celui qui avait le
-        CN le plus élevé <b>15 jours avant</b> — sans rien savoir de la course. On compte les duels où le favori a bien terminé devant. Toutes
-        les méthodes sont jugées <b>sur les mêmes duels</b> : ceux où les deux coureurs ont un CN dans chacune.</p>
-      ${ref ? html`<div class="mx-stats">${["For", "Spr"].filter((x) => entry(x)).map((x) => {
-        const e = entry(x);
-        return html`<div class="mx-stat"><b>${fmt(share(e, ref), 1)} %</b><span>de duels bien prédits ${x === "For" ? "en forêt" : "en sprint"} par la
-          ${methodLabel(ref)}, contre ${fmt(share(e, "official"), 1)} % pour la méthode officielle (${season})</span></div>`;
-      })}</div>` : ""}
+      <h2>Avant la course, qui est favori ? Après, a-t-il gagné, et de combien ?</h2>
+      <p class="mx-lead">Pour chaque coureur, le CN qu'il avait <b>15 jours avant</b> la course, sans rien savoir d'elle. Sur chaque circuit, on
+        regarde si ces CN annonçaient l'ordre d'arrivée et les écarts de temps. Toutes les méthodes sont jugées sur les mêmes coureurs : ceux qui
+        avaient un CN dans chacune.</p>
+      ${hf && hs ? html`<div class="mx-stats">
+        <div class="mx-stat"><b>${lvl(hf, "r2", "official")} → ${lvl(hf, "r2", "top6w2")} %</b><span>des écarts de temps annoncés par le CN en forêt,
+          méthode officielle puis ${methodLabel("top6w2")} (${ev.holdout[0]}–${ev.holdout[1]})</span></div>
+        <div class="mx-stat"><b>${lvl(hs, "r2", "official")} → ${lvl(hs, "r2", "top6w2")} %</b><span>des écarts de temps annoncés en sprint, sur les
+          mêmes saisons</span></div>
+        <div class="mx-stat"><b>${lvl(hf, "acc", "official")} → ${lvl(hf, "acc", "top6w2")} %</b><span>de duels bien prédits en forêt
+          (${fmt(Math.round(hf.pairs / 1e6 * 10) / 10, 1)} million de duels)</span></div>
+        <div class="mx-stat"><b>${fmt(ev.rows.For.all.holdout.comps + ev.rows.Spr.all.holdout.comps)}</b><span>compétitions de ${ev.holdout[0]} à
+          ${ev.holdout[1]}, avant toute mise au point des méthodes</span></div>
+      </div>` : ""}
     </section>
+
+    ${ev ? html`<section class="mx-slide" id="mesures">
+      <p class="mx-kicker">La méthode de mesure</p>
+      <h2>Trois mesures, et leur marge d'incertitude</h2>
+      <div class="mx-grid">
+        <div class="mx-box"><h3>L'ordre d'arrivée</h3><p>Sur chaque circuit, le <b>τ de Kendall</b> entre le classement des CN et l'ordre
+          d'arrivée (1 : le même ordre, 0 : sans rapport), puis la moyenne sur les circuits : <b>chaque circuit compte une fois</b>. Compter les
+          duels donne à un circuit de 150 coureurs le poids de 500 petits.</p></div>
+        <div class="mx-box"><h3>Les écarts de temps</h3><p>Le temps de chaque coureur, rapporté à la moyenne du circuit, prédit par son CN :
+          ln(temps) = constante du circuit − b · ln(CN). On mesure la <b>part des écarts expliquée</b> (R²). La pente b est apprise sur la saison
+          précédente : <b>chaque saison est prédite sans la connaître</b>.</p></div>
+        <div class="mx-box"><h3>L'ordre complet</h3><p>Le modèle de <b>Plackett-Luce</b> : le vainqueur parmi tous, puis le deuxième parmi les
+          autres…, la chance de chacun proportionnelle à CN<sup>β</sup> (β appris sur la saison précédente). On mesure l'information gagnée sur
+          un ordre tiré au hasard, en nats par coureur : une règle qui récompense la confiance justifiée et pénalise l'erreur assurée.</p></div>
+      </div>
+      <ul class="mx-list">
+        <li><span><b>L'incertitude.</b> Les coureurs d'une même course ne sont pas indépendants (même terrain, même jour) : les intervalles à
+          95 % viennent d'un <i>bootstrap</i> qui retire au sort des compétitions entières (${fmt(ev.boot)} tirages). Un écart dont l'intervalle
+          contient 0 n'est pas établi.</span></li>
+        <li><span><b>Les comparaisons sont appariées</b> : mêmes coureurs, mêmes courses, l'écart entre deux méthodes calculé course par course.</span></li>
+        <li><span><b>Sans retour sur les données de réglage.</b> Les paramètres des méthodes ont été choisis sur juillet 2025 – octobre 2026 ; les
+          saisons ${ev.holdout[0]}–${ev.holdout[1]} n'ont servi à rien d'autre qu'à cette mesure.</span></li>
+        <li><span>On garde aussi la part des duels bien prédits, la mesure utilisée jusqu'ici, pour comparaison.</span></li>
+      </ul>
+    </section>
+
+    <section class="mx-slide" id="saisons">
+      <p class="mx-kicker">Saison après saison</p>
+      <h2>L'écart entre deux méthodes, chaque saison, avec sa marge</h2>
+      <div class="filters" id="ev-controls"></div>
+      <div class="grid grid-2" id="ev-seasons"></div>
+      <p class="muted" style="font-size:13px">Point : l'écart mesuré ; trait : son intervalle à 95 %. En vert, un écart établi en faveur de la
+        première méthode ; en rouge, de la seconde ; en gris, pas d'écart établi. Sont comptés les circuits d'au moins ${ev.min_runners} coureurs
+        comparables. La méthode officielle reprend, avant 2026, le classement commun forêt + sprint de la FFCO.</p>
+    </section>
+
+    <section class="mx-slide" id="periodes">
+      <p class="mx-kicker">Toutes les méthodes</p>
+      <h2>Avant la mise au point, et pendant</h2>
+      <div id="ev-periods"></div>
+    </section>` : ""}
 
     ${v ? html`<section class="mx-slide">
-      <p class="mx-kicker">Saison ${season}</p>
-      <h2>Les méthodes proposées se trompent moins</h2>
-      <div class="mx-grid">${["For", "Spr", "VTT"].filter((x) => entry(x)).map(bars)}</div>
-      <p>Le calcul des méthodes proposées, mesuré aussi saison par saison de 2012 à 2025, fait mieux que la méthode officielle <b>à chacune</b>,
-        en forêt comme en sprint. En ski, les duels sont trop peu nombreux pour conclure.</p>
-      <h3>${t("me.val.all")} · ${season}</h3>${table("all")}
-      <h3>${t("me.val.nat")}</h3><p class="muted" style="font-size:13px;margin-top:-4px">${t("me.val.nat.hint")}</p>${table("nat")}
-      <p class="muted" style="font-size:13px">${t("me.val.hint")}</p>
-    </section>
-
-    <section class="mx-slide">
-      <p class="mx-kicker">Équité entre les âges</p>
+      <p class="mx-kicker">Équité entre les âges · saison ${season}</p>
       <h2>Jeunes et vétérans, à leur juste place</h2>
       <p>Les jeunes et les plus de 55 ans courent surtout entre eux : un mauvais calcul les surévalue ou les sous-évalue face aux H/D 21. Sur
         leurs duels avec un H/D 21, la part où chaque méthode les donne devant, à comparer à la part où ils ont vraiment terminé devant
-        (en gras, la plus proche).</p>
+        (en gras, la plus proche). Une seule saison, sans intervalle : une indication, pas une preuve.</p>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>${t("me.val.bias.group")}</th>
         <th class="r">${t("me.val.pairs")}</th><th class="r">${t("me.val.bias.actual")}</th>${VM.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
         <tbody>${biasRows.map(([x, label, b]) => {
@@ -573,21 +645,27 @@ export async function render(main, { query = {} } = {}) {
           return html`<tr><td>${t(`terrain.${x}`)}</td><td>${label}</td><td class="r num">${fmt(b[0])}</td><td class="r num">${fmt(real, 1)} %</td>
             ${pred.map((q) => html`<td class="r num">${bold(Math.abs(q - real) === closest, `${fmt(q, 1)} %`)}</td>`)}</tr>`;
         })}</tbody></table></div>
-    </section>` : html`<section class="mx-slide"><p>${t("me.val.none")}</p></section>`}
+    </section>` : ""}
 
     <section class="mx-slide" id="lin-quad" style="${cvar("top6w2")}">
       <p class="mx-kicker">${analyst ? methodKey("top6w") : ""} Moyenne linéaire · étudiée, pour référence</p>
-      <h2>Pourquoi une moyenne quadratique plutôt que linéaire</h2>
+      <h2>Moyenne quadratique ou linéaire : ce que disent les données</h2>
       <div id="linquad"></div>
     </section>
 
     <section class="mx-slide" id="circuit-quad" style="--c:var(--bad)">
       <p class="mx-kicker">Analysé, puis écarté</p>
       <h2>Pourquoi pas une valeur de circuit quadratique ?</h2>
-      <p class="mx-lead">La première version du Top quadratique (en ligne le 7 octobre 2026) rendait quadratiques <b>deux</b> moyennes : celle du
-        CN et celle de la valeur du circuit. Mesurées séparément (<a href="#/methodes?onglet=detail&voir=quadratique" data-tab-link="detail"
-        data-goto="quadratique">le tableau complet</a>), elles ne jouent pas le même rôle : le gain vient du CN, la valeur de circuit quadratique
-        ajoute surtout des inconvénients.</p>
+      <p class="mx-lead">La valeur d'un circuit, base de tous les scores de la course, est une moyenne : celle de <b>CN × temps</b> sur les
+        meilleurs classés qui ont un CN (les ⌈2N/3⌉ plus rapides). On peut prendre une moyenne quadratique à la place : la racine de la moyenne
+        des carrés.</p>
+      <div class="mx-eq">trois coureurs : 6 000 × 50 min, 5 000 × 66 min, 4 000 × 80 min, soit 300 000, 330 000 et 320 000
+        <small>moyenne linéaire : (300 000 + 330 000 + 320 000) ÷ 3 = 316 667 · quadratique : √((300 000² + 330 000² + 320 000²) ÷ 3) = 316 912
+        (+0,08 %)</small></div>
+      <p>Sur un circuit homogène, l'écart est infime ; il grandit quand les produits CN × temps sont dispersés, c'est-à-dire quand certains
+        coureurs ont couru bien mieux ou bien moins bien que leur CN : la moyenne quadratique donne alors plus de poids aux plus grands produits,
+        et la valeur du circuit monte, donc tous les scores de la course. La première version du Top quadratique (en ligne le 7 octobre 2026)
+        prenait cette moyenne pour la valeur du circuit <b>et</b> pour le CN ; la version retenue ne la garde que pour le CN.</p>
       <div class="table-wrap"><table class="data compact"><thead>
         <tr><th rowspan="2">Méthode Top</th><th class="r" colspan="2">Forêt</th><th class="r" colspan="2">Sprint</th>
           <th class="r" rowspan="2">Échelle forêt<br>(p90 ÷ p10)</th><th class="r" rowspan="2">Places gagnées ou<br>perdues (médiane, forêt)</th>
@@ -601,18 +679,17 @@ export async function render(main, { query = {} } = {}) {
         ].map(([label, acc, spread, moves, old, cls]) => html`<tr><td class="${cls}">${cls ? html`<b>${label}</b>` : label}</td>
           ${acc.map((x) => html`<td class="r num ${cls}">${fmt(x, 2)} %</td>`)}<td class="r num ${cls}">${fmt(spread, 2)}</td>
           <td class="r num ${cls}">${moves || "—"}</td><td class="r num ${cls}">${fmt(old, 1)} %</td></tr>`)}</tbody></table></div>
-      <p class="muted" style="font-size:13px">Même mesure que plus haut : juillet 2025 – octobre 2026, mêmes duels pour toutes les variantes ;
-        places gagnées ou perdues face à la version linéaire, au 7 octobre 2026.</p>
+      <p class="muted" style="font-size:13px">Part des duels bien prédits, juillet 2025 – octobre 2026, mêmes duels pour toutes les variantes ; places
+        gagnées ou perdues face à la version linéaire, au 7 octobre 2026. Ces variantes ne sont pas publiées : leur mesure, faite pendant la mise au
+        point, porte sur une seule période et sans intervalle. ${evNoise()}</p>
       <ul class="mx-list bad">
-        <li><span><b>Elle coûte sur les courses qui comptent le plus</b> : sur les championnats et les nationales, la valeur de circuit
-          quadratique fait moins bien que la linéaire, en forêt comme en sprint (jusqu'à −0,3 point en sprint avec k = 3).</span></li>
-        <li><span><b>Elle n'apporte rien en sprint</b>, et en forêt son petit gain sur l'ensemble des courses (moins d'un dixième de point au-delà
-          du CN quadratique) se paie sur les nationales.</span></li>
-        <li><span><b>Elle resserre l'échelle et rebat les classements</b> : les CN du bas du classement montent bien plus que ceux du haut,
-          et un coureur gagne ou perd 61 places en médiane en forêt, contre 15 avec le seul CN quadratique.</span></li>
+        <li><span><b>Elle rebat les classements</b> : les CN du bas du classement montent bien plus que ceux du haut ; un coureur gagne ou perd
+          61 places en médiane en forêt, contre 15 avec le seul CN quadratique, et l'échelle se resserre (p90 ÷ p10 de 2,65 à 2,42).</span></li>
         <li><span><b>Elle surévalue davantage les 55 ans et plus</b> face aux H/D 21, déjà surévalués par toutes les méthodes.</span></li>
-        <li><span><b>Elle s'écarte de la formule de la FFCO</b> : la valeur de chaque circuit, donc chaque score de course, changerait. En gardant
-          la valeur de circuit linéaire, seule l'agrégation des scores diffère, plus simple à expliquer et à vérifier.</span></li>
+        <li><span><b>Elle ne fait pas mieux là où cela compte</b> : sur les courses nationales, elle est au niveau de la linéaire, ou un peu en dessous,
+          à des écarts que la mesure ne distingue pas.</span></li>
+        <li><span><b>Elle s'écarte de la formule de la FFCO</b> : chaque valeur de circuit, donc chaque score de course, changerait. En gardant la valeur
+          de circuit linéaire, seule l'agrégation des scores diffère, plus simple à expliquer et à vérifier.</span></li>
       </ul>
     </section>
 
@@ -747,60 +824,88 @@ export async function render(main, { query = {} } = {}) {
         <td class="r num">${fmt(s.r, 3)}</td><td class="r num">${fmtSigned(Math.round(s.bias))}</td><td class="r num">${fmt(s.mae)}</td></tr>`)}</tbody></table></div>`;
     $("#agr-table").innerHTML = $("#agr-stats").innerHTML;
   }
+  // the evaluation's season-by-season chart: one measure, one comparison, one scope, forest and sprint side by side
+  let evMeas = "tau", evPair = "top6w2-official", evScope = "all", evPeriod = "holdout";
+  const EV_PAIRS = () => (analyst ? ev.pairs : ["top6w2-official", "top6w2-top6w"]);
+  function drawEval() {
+    if (!ev || !$("#ev-seasons")) return;
+    if (!EV_PAIRS().includes(evPair)) evPair = EV_PAIRS()[0];
+    $("#ev-controls").innerHTML = html`
+      <div class="field"><span>Mesure</span>${seg("evm", EVM.map((m) => [m, EV_LABEL[m]]), evMeas)}</div>
+      <div class="field"><span>Comparaison</span>${seg("evp", EV_PAIRS().map((p) => [p, pairLabel(p)]), evPair)}</div>
+      <div class="field"><span>Courses</span>${seg("evs", [["all", "toutes"], ["nat", "nationales"]], evScope)}</div>`;
+    $$('[data-seg="evm"]').forEach((x) => x.addEventListener("click", () => { evMeas = x.dataset.value; drawEval(); }));
+    $$('[data-seg="evp"]').forEach((x) => x.addEventListener("click", () => { evPair = x.dataset.value; drawEval(); }));
+    $$('[data-seg="evs"]').forEach((x) => x.addEventListener("click", () => { evScope = x.dataset.value; drawEval(); }));
+    $("#ev-seasons").innerHTML = html`${["For", "Spr"].map((tr) => {
+      const rows = evRows(tr, evScope);
+      const items = [...evSeasons(tr, evScope).map((y) => ({ label: y, d: rows[y].d[evPair][evMeas], n: rows[y].comps })),
+        ...[["holdout", `${ev.holdout[0]}–${String(ev.holdout[1]).slice(2)}`], ["tuned", "réglage"]]
+          .filter(([k]) => rows[k]).map(([k, label]) => ({ label: html`<b>${label}</b>`, d: rows[k].d[evPair][evMeas] }))];
+      const est = items.filter((i) => i.d[1] > 0).length, against = items.filter((i) => i.d[2] < 0).length;
+      return html`<section class="card"><div class="card-head"><div><h2>${t(`terrain.${tr}`)} · ${pairLabel(evPair)}</h2>
+        <div class="hint">${EV_LABEL[evMeas]}${EV_UNIT[evMeas] ? ` (écart en${EV_UNIT[evMeas] === " pt" ? " points" : " nats par coureur"})` : ""}</div></div></div>
+        <div class="card-body">${forestPlot(items, evMeas)}
+          <p class="muted" style="font-size:12.5px;margin:8px 0 0">${fmt(est)} écart${est > 1 ? "s" : ""} établi${est > 1 ? "s" : ""} en faveur du
+            ${methodShort(evPair.split("-")[0])}, ${fmt(against)} en faveur du ${methodShort(evPair.split("-")[1])}, sur ${fmt(items.length)} lignes.</p></div></section>`;
+    })}`;
+    // the pooled periods: every method's level, and the differences with their intervals
+    const shown = M.filter((m) => ev.methods.includes(m));
+    $("#ev-periods").innerHTML = html`
+      <div class="filters"><div class="field"><span>Période</span>${seg("evq", [["holdout", `${ev.holdout[0]}–${ev.holdout[1]} (contrôle)`],
+        ["tuned", "juillet 2025 – octobre 2026 (réglage)"]], evPeriod)}</div></div>
+      <div class="grid grid-2">${["For", "Spr"].map((tr) => {
+        const e = evRows(tr, "all")[evPeriod], en = evRows(tr, "nat")[evPeriod];
+        if (!e) return "";
+        const best = (meas) => Math.max(...shown.map((m) => e[meas][m]));
+        return html`<section class="card"><div class="card-head"><div><h2>${t(`terrain.${tr}`)}</h2>
+          <div class="hint">${fmt(e.comps)} compétitions, ${fmt(e.circuits)} circuits, ${fmt(e.runners)} résultats</div></div></div>
+          <div class="table-wrap"><table class="data compact"><thead><tr><th>Méthode</th>${EVM.map((m) => html`<th class="r">${EV_LABEL[m]}</th>`)}</tr></thead>
+            <tbody>${shown.map((m) => html`<tr><td>${methodKey(m)} ${methodShort(m)}</td>${EVM.map((meas) => {
+              const x = evFmt(meas, e[meas][m], false) + (meas === "r2" || meas === "acc" ? " %" : "");
+              return html`<td class="r num">${e[meas][m] === best(meas) ? html`<b>${x}</b>` : x}</td>`;
+            })}</tr>`)}</tbody></table></div>
+          <div class="card-body"><h3 style="margin:0 0 6px;font-size:14px">Écarts, toutes les courses</h3>
+            ${forestPlot(EV_PAIRS().map((p) => ({ label: pairLabel(p), d: e.d[p][evMeas] })), evMeas)}
+            ${en ? html`<h3 style="margin:12px 0 6px;font-size:14px">Écarts, courses nationales (${fmt(en.comps)} compétitions)</h3>
+              ${forestPlot(EV_PAIRS().map((p) => ({ label: pairLabel(p), d: en.d[p][evMeas] })), evMeas)}` : ""}
+            <p class="muted" style="font-size:12.5px;margin:8px 0 0">Mesure des écarts : ${EV_LABEL[evMeas].toLowerCase()} (choisie plus haut).</p></div></section>`;
+      })}</div>`;
+    $$('[data-seg="evq"]').forEach((x) => x.addEventListener("click", () => { evPeriod = x.dataset.value; drawEval(); }));
+  }
+
   function drawLinQuad() {
     const box = $("#linquad");
     if (!box) return;
-    // the official method, the Top and its linear version (for everyone), the « Juste » ones for analysts
-    const show = ["official", "top6w2", "top6w", ...(analyst ? ["fair2", "fair"] : [])];
-    const col = (m) => (m === "top6w" ? LIN : methodShort(m));
-    const at = (vals, m) => vals[LQ.indexOf(m)];
-    const gap = (x0) => {
-      const x = Math.round(x0 * 100) / 100;        // the sign of what is shown: 0,004 reads ±0,00
-      return html`<span style="color:${x > 0 ? "var(--good)" : x < 0 ? "var(--bad)" : "inherit"}">${x > 0 ? "+" : x < 0 ? "−" : "±"}${fmt(Math.abs(x), 2)}</span>`;
-    };
-    const scope = { all: "toutes les courses", nat: "courses nationales" };
-    const group = { J: t("me.val.bias.J"), V: t("me.val.bias.V") };
-    const d25 = (x, sc) => { const e = entry(x, sc); return e ? share(e, "top6w2") - share(e, "top6w") : null; };
+    if (!ev) { box.innerHTML = html`<p>${t("me.val.none")}</p>`; return; }
+    const pair = "top6w2-top6w";
+    const d = (tr, sc, meas, k = "holdout") => evRows(tr, sc)[k]?.d?.[pair]?.[meas];
+    const line = (tr, meas) => evSeasons(tr).map((y) => ({ label: y, d: evRows(tr)[y].d[pair][meas] }))
+      .concat([["holdout", `${ev.holdout[0]}–${String(ev.holdout[1]).slice(2)}`], ["tuned", "réglage"]]
+        .filter(([k]) => evRows(tr)[k]).map(([k, label]) => ({ label: html`<b>${label}</b>`, d: evRows(tr)[k].d[pair][meas] })));
+    const fx = (tr, sc, meas, k) => { const x = d(tr, sc, meas, k); return x ? `${evFmt(meas, x[0])}${EV_UNIT[meas]} [${evFmt(meas, x[1])} ; ${evFmt(meas, x[2])}]` : "—"; };
     box.innerHTML = html`
-      <p class="mx-lead">Mesuré sur juillet 2025 – octobre 2026, sur les mêmes duels pour toutes les méthodes : la part des duels bien prédits.</p>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses</th><th class="r">Duels</th>
-        ${show.map((m) => html`<th class="r">${col(m)}</th>`)}<th class="r">${methodShort("top6w2")} − linéaire</th></tr></thead>
-        <tbody>${LIN_QUAD.acc.map(([tr, sc, pairs, vals]) => {
-          const best = Math.max(...show.map((m) => at(vals, m)));
-          return html`<tr><td>${t(`terrain.${tr}`)}</td><td>${scope[sc]}</td><td class="r num">${fmt(pairs)}</td>
-            ${show.map((m) => html`<td class="r num">${at(vals, m) === best ? html`<b>${fmt(at(vals, m), 2)} %</b>` : `${fmt(at(vals, m), 2)} %`}</td>`)}
-            <td class="r num">${gap(at(vals, "top6w2") - at(vals, "top6w"))}</td></tr>`;
-        })}</tbody></table></div>
-      ${v ? html`<p class="muted" style="font-size:13px">Sur la seule saison ${season} (tableaux plus haut), écart ${methodShort("top6w2")} − linéaire :
-        ${["For", "Spr", "VTT"].filter((x) => entry(x)).map((x, i) => html`${i ? " ; " : ""}${x === "VTT" ? "VTT" : t(`terrain.${x}`).toLowerCase()} ${gap(d25(x, "all"))}
-          sur toutes les courses, ${d25(x, "nat") == null ? "—" : gap(d25(x, "nat"))} sur les nationales`)}.</p>` : ""}
-      <h3>Jeunes et vétérans</h3>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>${t("me.val.bias.group")}</th>
-        <th class="r">Duels</th><th class="r">${t("me.val.bias.actual")}</th>${show.map((m) => html`<th class="r">${col(m)}</th>`)}</tr></thead>
-        <tbody>${LIN_QUAD.bias.map(([tr, g, pairs, real, vals]) => {
-          const closest = Math.min(...show.map((m) => Math.abs(at(vals, m) - real)));
-          return html`<tr><td>${t(`terrain.${tr}`)}</td><td>${group[g]}</td><td class="r num">${fmt(pairs)}</td><td class="r num">${fmt(real, 1)} %</td>
-            ${show.map((m) => html`<td class="r num">${Math.abs(at(vals, m) - real) === closest ? html`<b>${fmt(at(vals, m), 1)} %</b>` : `${fmt(at(vals, m), 1)} %`}</td>`)}</tr>`;
-        })}</tbody></table></div>
-      <div class="mx-grid" style="margin-top:16px">
-        <div class="mx-box" style="${cvar("top6w2")}"><h3>Ce que gagne le Top (retenu)</h3><ul class="mx-list">
-          <li><span>Un peu plus de duels bien prédits sur l'ensemble des courses : +0,06 point en forêt, +0,07 en sprint ; aucune perte sur
-            les courses nationales en forêt.</span></li>
-          <li><span>Les jeunes, sous-évalués par toutes les méthodes face aux H/D 21, sont un peu mieux placés.</span></li>
-          <li><span>Les meilleures courses pèsent un peu plus, sans toucher à la valeur des circuits.</span></li>
-        </ul></div>
-        <div class="mx-box" style="${cvar("top6w")}"><h3>Ce qu'offrait la moyenne linéaire</h3><ul class="mx-list">
-          <li><span>Un peu meilleur sur les seules courses nationales en sprint : +0,07 point.</span></li>
-          <li><span>La moyenne habituelle : la plus simple à expliquer.</span></li>
-          <li><span>L'échelle actuelle, que le quadratique resserre à peine en forêt.</span></li>
-        </ul></div>
+      <p class="mx-lead">Les deux Top ne diffèrent que par la moyenne des courses retenues : linéaire (la moyenne habituelle) ou quadratique (la racine
+        de la moyenne des carrés), qui donne un peu plus de poids aux meilleures. Écart quadratique − linéaire, saison par saison :</p>
+      <div class="grid grid-2">
+        ${["For", "Spr"].map((tr) => html`<section class="card"><div class="card-head"><h2>${t(`terrain.${tr}`)} · ${EV_LABEL.tau}</h2></div>
+          <div class="card-body">${forestPlot(line(tr, "tau"), "tau")}</div></section>`)}
+        ${["For", "Spr"].map((tr) => html`<section class="card"><div class="card-head"><h2>${t(`terrain.${tr}`)} · ${EV_LABEL.r2}</h2></div>
+          <div class="card-body">${forestPlot(line(tr, "r2"), "r2")}</div></section>`)}
       </div>
-      <div class="mx-callout"><b>Le choix</b> : les deux variantes font nettement mieux que la méthode officielle (de 1,1 à 3,7 points selon la
-        ligne) et ne diffèrent entre elles que de quelques centièmes. Le quadratique est retenu : un peu meilleur sur l'ensemble des courses, sans
-        perte sur les nationales en forêt, avec des jeunes mieux placés, et sans toucher à la valeur des circuits. La version linéaire
-        reste calculée, pour référence.</div>`;
+      <div class="mx-grid" style="margin-top:16px">
+        <div class="mx-box" style="${cvar("top6w2")}"><h3>Sur l'ordre d'arrivée : à peine</h3><p>Sur ${ev.holdout[0]}–${ev.holdout[1]} :
+          ${fx("For", "all", "tau")} en forêt, ${fx("Spr", "all", "tau")} en sprint. Un écart minime, établi en forêt, pas en sprint ;
+          sur les seules courses nationales : ${fx("For", "nat", "tau")} en forêt.</p></div>
+        <div class="mx-box" style="${cvar("top6w2")}"><h3>Sur les écarts de temps : nettement</h3><p>La part des écarts de temps expliquée gagne
+          ${fx("For", "all", "r2")} en forêt et ${fx("Spr", "all", "r2")} en sprint, presque chaque saison : le CN quadratique annonce mieux
+          <b>de combien</b> un coureur précède un autre.</p></div>
+      </div>
+      <div class="mx-callout"><b>Le choix</b> : les deux variantes font nettement mieux que la méthode officielle et classent les coureurs presque
+        de la même façon ; la quadratique annonce mieux les écarts, sans rien perdre sur l'ordre ni sur les courses nationales, et ne touche pas à
+        la valeur des circuits. Elle est retenue ; la linéaire reste calculée, pour référence.</div>`;
   }
-  const DRAW = { detail: drawNorm, analyses: () => { drawAgreement(); drawLinQuad(); } };
+  const DRAW = { detail: drawNorm, analyses: () => { drawAgreement(); drawEval(); drawLinQuad(); } };
   const BUILD = { essentiel, detail, analyses, autres };
 
   // ---- tabs ----------------------------------------------------------------------------------------------------

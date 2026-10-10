@@ -75,7 +75,8 @@ ENGINE_VERSION = 7
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
 #   3 (2026-10-07): participation.json, the statistics moved from the home page to Réseau · Activité
-EXTRAS_VERSION = 3
+#   4 (2026-10-10): evaluation.json, the methods measured per circuit, out of sample, with intervals (site_eval.py)
+EXTRAS_VERSION = 4
 COMPUTED = ("fair", "top6w", "fair2", "top6w2")   # in this order: each Top is derived from its Fair
 
 
@@ -92,6 +93,7 @@ def migrate(db: Path, out: Path) -> bool:
         return False
     t0 = time.monotonic()
     (out / "validation.json").unlink(missing_ok=True)     # the methods' accuracy, rebuilt with them
+    (out / "evaluation.json").unlink(missing_ok=True)
     if not engine_due and not top_due:
         print("migration: second-stage site data rebuilt")
         import site_extras
