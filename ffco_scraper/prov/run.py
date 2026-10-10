@@ -292,11 +292,12 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 d = reader.read(int(m.group(1)))
                 if d and d["classes"] and date_ok(d, race):
                     changed += save(con, race["key"], url, kind, d)
-            elif kind in ("livelox", "helga", "olive", "routegadget"):
-                if kind in ("livelox", "helga"):
+            elif kind in ("helga", "olive", "routegadget"):
+                # (Livelox is left out: it shows only the runners who sent their GPS track, and it refuses robots)
+                if kind == "helga":
                     f.note(url, "refused")
                 changed += save(con, race["key"], url, kind, None, kind="platform",
-                                note={"livelox": "Livelox : résultats non ouverts aux robots", "helga": "Helga : pages de résultats fermées aux robots",
+                                note={"helga": "Helga : pages de résultats fermées aux robots",
                                       "olive": "O'Live : résultats en direct", "routegadget": "RouteGadget"}[kind])
     return changed
 

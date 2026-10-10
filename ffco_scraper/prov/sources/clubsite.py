@@ -11,8 +11,8 @@ CMS, Wix, a static page…), so this looks in three ways and keeps what points t
 A document link is kept when its address or text says results / split times AND names this race (its date,
 its place or words of its name), or when it was uploaded after the race on a WordPress site and names nothing
 else. Links to platforms (liveresultat, WinSplits, Livelox, Helga) are reported too: WinSplits and
-liveresultat ids found here are read directly, and so are Helga's SplitsBrowser links (sources.helga); Livelox and
-Helga's results pages are only noted (they are not open to robots).
+liveresultat ids found here are read directly, and so are Helga's SplitsBrowser links (sources.helga); Helga's
+results pages are only noted (they are not open to robots), Livelox's left out (GPS tracks sent, not results).
 """
 
 from __future__ import annotations

@@ -173,10 +173,12 @@ the last runs are listed under the « Résultats » table. **Polite by design:**
 our user agent, a pause per host, conditional requests, a few requests per race only around competitions.
 **robots.txt is read but no longer obeyed** (owner's decision, 2026-10-09: low load, occasional reads): a forbidden
 URL is fetched all the same and its site goes on the owner's follow-up list (`prov_blocked`, kind `robots`). Sites
-that actively screen robots (401/403/429, an empty 200 to non-browsers, Helga's results pages, Livelox) are **never
+that actively screen robots (401/403/429, an empty 200 to non-browsers, Helga's results pages) are **never
 worked around** — no disguised user agent: recorded as refused and listed too (kind `refused`). The list
 (`site/data/prov/blocked.json`, served to administrators only by `_middleware.js`) is the admin page's « Sites » tab,
-with the races concerned, for the owner to contact the sites' owners. Parsers
+with the races concerned, for the owner to contact the sites' owners. Livelox links are ignored altogether (2026-10-10:
+only the runners who sent their GPS track, and closed to robots): neither a document nor on that list. WinSplits rows with
+no time, no status word and no punch are non-starters (« dns »), with punches mispunches. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones
 too). A page or file up to 32 MB is read (`fetch.MAX_BYTES`); a file named for another year is not the race's

@@ -263,7 +263,9 @@ class WinSplits:
                 place = int(c[0]) if c[0].isdigit() else None
                 cum = [_time(x) for x in nxt[1:-1]] if nxt else []
                 total = cum[-1] if cum and cum[-1] else None
-                st = "ok" if total and place else (status_of(c[-2] if len(c) > 1 else "") or "mp")
+                # no time and no status word: a mispunch if the runner punched somewhere, else a non-starter (WinSplits
+                # lists the start list's no-shows with an empty row)
+                st = "ok" if total and place else (status_of(c[-2] if len(c) > 1 else "") or ("mp" if any(cum) else "dns"))
                 splits = cum[:-1] if len(cum) > 1 else None
                 out.append(runner(c[1], place=place, club=nxt[0] if nxt else None, club_code=club_code(nxt[0] if nxt else ""),
                                   time_s=total if st == "ok" else None, status=st, splits=splits, category=category(name)))

@@ -389,6 +389,9 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
     merge_duplicates(con)
     # relays taken in before they were left out, and relay files found next to an individual race
     con.execute("DELETE FROM prov_docs WHERE lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' OR lower(COALESCE(title, '')) LIKE '%relais%'")
+    # Livelox links noted before it was left out (only the runners who sent their GPS track, and closed to robots)
+    con.execute("DELETE FROM prov_docs WHERE source = 'livelox'")
+    con.execute("DELETE FROM prov_blocked WHERE host LIKE '%livelox.com'")
     for (key,) in con.execute("SELECT key FROM prov_races").fetchall():
         r = con.execute("SELECT name, epreuve FROM prov_races WHERE key = ?", (key,)).fetchone()
         if is_relay(r["name"], r["epreuve"]):
