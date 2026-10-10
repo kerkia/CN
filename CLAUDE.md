@@ -178,7 +178,14 @@ worked around** — no disguised user agent: recorded as refused and listed too 
 (`site/data/prov/blocked.json`, served to administrators only by `_middleware.js`) is the admin page's « Sites » tab,
 with the races concerned, for the owner to contact the sites' owners. Livelox links are ignored altogether (2026-10-10:
 only the runners who sent their GPS track, and closed to robots): neither a document nor on that list. WinSplits rows with
-no time, no status word and no punch are non-starters (« dns »), with punches mispunches. Parsers
+no time, no status word and no punch are non-starters (« dns »), with punches mispunches. A platform competition is stored under one address
+whatever a club's page spells (`run.PLATFORM_URL`, `canonical_docs`: « …?lang=fr&comp=… » made duplicates); Helga links
+that name no event are dropped. liveresultat's « splits » (radio controls only) are not kept. A race's documents are
+shown in the order `run.doc_priority` gives (`prio`, both sites follow it): uploads and the organiser's files, then
+WinSplits / Orientation Data, Helga, liveresultat last (live results are not corrected afterwards); a document with
+under half the runners of the fullest one drops. A split list without start times takes them, by name, from another
+document of the race (`run.share_starts`, for « Groupes »). PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
+Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones
 too). A page or file up to 32 MB is read (`fetch.MAX_BYTES`); a file named for another year is not the race's
@@ -205,7 +212,11 @@ every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources
 a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
 is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Récemment » (`#/recemment`, in the
 main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
-« Temps intermédiaires » (`#/temps-inter`), linked from it. By hand: `python -m ffco_scraper.prov --db <db>
+« Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
+usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
+perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
+WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared; O'Cap's `analysis.js`
+follows the same rules. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
 ## Changing a method: migrations

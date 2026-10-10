@@ -16,10 +16,10 @@
 // - Bilan: one row per runner (legs won, mean leg rank, mistakes, time lost, usual pace, regularity, duels won).
 //
 // Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — their
-// "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios. A leg run 20 % slower than that,
-// with 10 s lost at least, is a mistake. This is the classic split analysis (WinSplits' "time loss"), not a judgement
-// on route choice. « Sans temps perdu » takes each leg's lost time off: the table, the ranks and the gaps then show the
-// race as if every runner had run each leg at their own pace.
+// "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios (negative: a leg run better than
+// usual). A leg lost by 20 % of its time and by 10 s at least (both thresholds adjustable) is a mistake. This is
+// WinSplits' "time loss", not a judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
+// « Sans temps perdu » takes it off: the table, the ranks and the gaps then show the race without the mistakes.
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
@@ -33,9 +33,10 @@ const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const GRAPHS = ["gap", "pos", "legpos"];
-const ERR_MODES = ["pct", "s"];
-const ERR_DEFAULT = { s: 20, pct: 20 };
-const REFS = ["cum", "legs", "legs5", "legs25", "legs50", "legs100", "winner", "runner"];
+const ERR_DEFAULT = { pct: 20, s: 10 };
+// references of the gap chart; « Sel »: computed over the runners compared only (comparing runners far from the
+// lead against the overall best squeezes their lines together)
+const REFS = ["legs", "legsSel", "cum", "cumSel", "legs5", "legs25", "legs50", "legs100", "winner", "runner"];
 const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : null; };
 const behind = (ratio) => (ratio == null ? null : (ratio - 1) * 100);           // % behind the best
@@ -64,10 +65,10 @@ export async function render(main, { query = {} } = {}) {
   let view = VIEWS.includes(query.vw) ? query.vw : "table", club = query.cl || "";
   let graph = GRAPHS.includes(query.g) ? query.g : "gap", ref = REFS.includes(query.ref) ? query.ref : "cum", refName = query.rr || "";
   let tol = TOLS.includes(Number(query.tol)) ? Number(query.tol) : 10;
-  // what counts as a mistake (red in Tableau, counted in Inter-postes, Profil and Bilan): the time lost on the leg from
-  // N % of the leg's time (and 10 s at least: 20 % by default, the classic rule), or from N seconds
-  let errMode = ERR_MODES.includes(query.em) ? query.em : "pct";
-  let errVal = Number(query.ev) > 0 ? Number(query.ev) : ERR_DEFAULT[errMode];
+  // what counts as a mistake (red in Tableau, counted in Inter-postes, Profil and Bilan, taken off « Sans temps
+  // perdu »): a time lost on the leg of N % of the leg's time and of N seconds, both
+  let errPct = Number(query.ep) >= 0 && query.ep != null && query.ep !== "" ? Number(query.ep) : ERR_DEFAULT.pct;
+  let errS = Number(query.es) >= 0 && query.es != null && query.es !== "" ? Number(query.es) : ERR_DEFAULT.s;
 
   async function loadRace() {
     race = key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
@@ -96,10 +97,10 @@ export async function render(main, { query = {} } = {}) {
         ${graph === "gap" ? html`<label class="field"><span>${t("spl.ref")}</span><select id="sp-ref">${REFS.map((x) => html`<option value="${x}" ${raw(x === ref ? "selected" : "")}>${t(`spl.ref.${x}`)}</option>`)}</select></label>` : ""}
         ${graph === "gap" && ref === "runner" ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sp-rr" style="max-width:240px">${k.runners.filter((x) => x.splits)
           .sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((x) => html`<option value="${x.name}" ${raw(x.name === refName ? "selected" : "")}>${x.place ? `${x.place}. ` : ""}${x.name}</option>`)}</select></label>` : ""}` : ""}
-      ${view === "table" ? html`<div class="field"><span>${t("spl.err")}</span><div class="row" style="gap:6px">
-        <select id="sp-em">${ERR_MODES.map((m) => html`<option value="${m}" ${raw(m === errMode ? "selected" : "")}>${t(`spl.err.${m}`)}</option>`)}</select>
-        <input type="number" id="sp-ev" min="1" max="${errMode === "pct" ? 500 : 3600}" step="1" value="${errVal}"
-          style="width:76px" aria-label="${t(`spl.err.${errMode}`)}"><span class="muted" style="align-self:center">${errMode === "pct" ? "%" : "s"}</span></div></div>` : ""}
+      ${["table", "legs", "profile", "summary"].includes(view) ? html`<div class="field"><span>${t("spl.err")}</span><div class="row" style="gap:6px;align-items:center">
+        <input type="number" id="sp-ep" min="0" max="500" step="1" value="${errPct}" style="width:64px" aria-label="${t("spl.err.pct")}"><span class="muted">${t("spl.err.pctUnit")}</span>
+        <span class="muted">${t("spl.err.and")}</span>
+        <input type="number" id="sp-es" min="0" max="3600" step="1" value="${errS}" style="width:64px" aria-label="${t("spl.err.s")}"><span class="muted">s</span></div></div>` : ""}
       ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}`;
     $("#sp-race")?.addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
@@ -111,11 +112,11 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-ref")?.addEventListener("change", (e) => { ref = e.target.value; pickers(); draw(); });
     $("#sp-rr")?.addEventListener("change", (e) => { refName = e.target.value; draw(); });
     $("#sp-tol")?.addEventListener("change", (e) => { tol = Number(e.target.value); draw(); });
-    $("#sp-em")?.addEventListener("change", (e) => { errMode = e.target.value; errVal = ERR_DEFAULT[errMode]; pickers(); draw(); });
-    $("#sp-ev")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (v > 0) { errVal = v; draw(); } });
+    $("#sp-ep")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0) { errPct = v; draw(); } });
+    $("#sp-es")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0) { errS = v; draw(); } });
   }
   // the mistake rule in words, for the hints
-  const errRule = () => t(`spl.err.rule.${errMode}`, { n: fmt(errVal) });
+  const errRule = () => t("spl.err.rule", { p: fmt(errPct), s: fmt(errS) });
   function fixIndexes() {
     di = docs[di] ? di : 0;
     const ks = docs[di].classes;
@@ -129,7 +130,7 @@ export async function render(main, { query = {} } = {}) {
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
       ref: gapView && graph === "gap" && ref !== "cum" ? ref : null, rr: gapView && graph === "gap" && ref === "runner" ? refName : null,
-      tol: view === "groups" && tol !== 10 ? tol : null, em: errMode === "pct" ? null : errMode, ev: errVal === ERR_DEFAULT[errMode] ? null : errVal });
+      tol: view === "groups" && tol !== 10 ? tol : null, ep: errPct === ERR_DEFAULT.pct ? null : errPct, es: errS === ERR_DEFAULT.s ? null : errS, em: null, ev: null });
     const n = k.controls?.length || Math.max(...k.runners.map((r) => r.splits?.length || 0));
     const codes = k.controls || Array.from({ length: n }, (_, i) => String(i + 1));
     // cumulative times with the finish as the last "control"; legs between them
@@ -145,12 +146,14 @@ export async function render(main, { query = {} } = {}) {
     for (const x of R) {
       x.ratios = x.legs.map((v, i) => (v != null && isFinite(realBest[i]) ? v / realBest[i] : null));
       x.ratio = median(x.ratios);
-      x.lost = x.legs.map((v, i) => (v != null && x.ratio && isFinite(realBest[i]) ? Math.max(0, v - realBest[i] * x.ratio) : null));
+      // the leg against the runner's own pace (negative: better than usual); a mistake when the loss passes both thresholds
+      x.delta = x.legs.map((v, i) => (v != null && x.ratio && isFinite(realBest[i]) ? v - realBest[i] * x.ratio : null));
+      x.mistake = x.legs.map((v, i) => x.delta[i] != null && v > 0 && x.delta[i] > 0 && x.delta[i] >= (errPct / 100) * v && x.delta[i] >= errS);
+      // the time lost: the mistakes' only
+      x.lost = x.delta.map((d, i) => (d == null ? null : x.mistake[i] ? d : 0));
       x.lostTotal = x.lost.reduce((s, v) => s + (v || 0), 0);
-      x.mistake = x.legs.map((v, i) => x.lost[i] != null && v > 0 && (errMode === "s" ? x.lost[i] >= errVal
-        : x.lost[i] >= (errVal / 100) * v && x.lost[i] >= 10));
       x.realLegRank = x.legs.map((v, i) => rankOf(R.map((y) => y.legs[i]), v));
-      // without the lost time: each leg less its loss, the cumulative times less the losses so far
+      // without the lost time: each mistake's leg less its loss, the cumulative times less the losses so far
       let gone = 0;
       x.idealLegs = x.legs.map((v, i) => (v == null ? null : v - (x.lost[i] || 0)));
       x.idealCum = x.cum.map((c, i) => { gone += x.lost[i] || 0; return c == null ? null : c - gone; });
@@ -183,6 +186,9 @@ export async function render(main, { query = {} } = {}) {
     // the runners the charts and the face-à-face compare: ticked here or in the table
     const chooser = () => html`<section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.choose")}</h2>
         <div class="hint">${t("spl.choose.hint")}</div></div></div>
+      <div class="card-body" style="padding-bottom:0;display:flex;flex-wrap:wrap;gap:6px">
+        ${["all", "none", "5", "10", "club"].filter((a) => a !== "club" || club).map((a) => html`<button type="button" class="chip" data-pickall="${a}">${t(`spl.pick.${a}`)}</button>`)}
+        <span class="muted" style="font-size:12px;align-self:center">${t("spl.pick.shift")}</span></div>
       <div class="card-body" style="max-height:200px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px 16px">${byPlace(shown).map((x) => html`<label style="white-space:nowrap;font-size:13px">
         <input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")}> ${x.r.place ? `${x.r.place}. ` : ""}${x.r.name}</label>`)}</div></section>`;
     const body = $("#sp-body");
@@ -204,11 +210,13 @@ export async function render(main, { query = {} } = {}) {
             ${x.vLegs.map((v, i) => {
               const isBest = v != null && v === best[i];
               const slow = !asIdeal && x.mistake[i];
-              const lost = x.lost[i] != null && x.lost[i] >= 0.5 ? x.lost[i] : null;
-              return html`<td class="r num" style="${raw(isBest ? GOOD : slow ? BAD : "")}">
-                ${v == null ? "—" : html`${clock(v)} <span class="muted" style="font-size:11px">${x.legRank[i]}</span>`}
-                <div class="muted" style="font-size:11px">${x.vCum[i] == null ? "" : html`${clock(x.vCum[i])} (${x.cumRank[i]})`}</div>
-                ${lost == null ? "" : html`<div class="${lost >= 5 ? "" : "muted"}" style="font-size:11px${raw(lost >= 5 ? ";color:var(--bad)" : "")}" title="${t("spl.lost.leg")}">${asIdeal ? "−" : "+"}${clock(lost)}</div>`}</td>`;
+              // on hover (an estimate, not a measure): the time lost or gained against the runner's own pace
+              // (« Sans temps perdu »: the time taken off); two lines a runner, so that more runners fit on the screen
+              const d = asIdeal ? (x.lost[i] >= 0.5 ? x.lost[i] : null) : x.delta[i] != null && Math.abs(x.delta[i]) >= 0.5 ? x.delta[i] : null;
+              const tip = d == null ? "" : `${t(asIdeal ? "spl.lost.off" : "spl.lost.leg")} : ${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`;
+              return html`<td class="r num" style="${raw(slow ? BAD : "")}" title="${tip}">
+                ${v == null ? "—" : html`<span style="${raw(isBest ? "color:var(--good);font-weight:650" : slow ? "color:var(--bad);font-weight:650" : "")}">${clock(v)}</span> <span class="muted" style="font-size:11px">${x.legRank[i]}</span>`}
+                <div class="muted" style="font-size:11px">${x.vCum[i] == null ? "" : html`${clock(x.vCum[i])} (${x.cumRank[i]})`}</div></td>`;
             })}</tr>`)}</tbody></table></div></section>
         <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.def")}</p>`;
     }
@@ -219,6 +227,9 @@ export async function render(main, { query = {} } = {}) {
       if (ref === "cum") {
         refCum = bestCum.map((v) => (isFinite(v) ? v : null));
         refTitle = t("spl.ref.t.cum");
+      } else if (ref === "cumSel" || ref === "legsSel") {
+        refCum = null;                                   // from the runners compared, at each redraw
+        refTitle = t(`spl.ref.t.${ref}`);
       } else if (ref.startsWith("legs")) {
         const plus = Number(ref.slice(4)) || 0;
         let acc = 0;
@@ -233,8 +244,16 @@ export async function render(main, { query = {} } = {}) {
       const title = graph === "gap" ? `${t("spl.gapTo")} ${refTitle}` : t(`spl.graph.t.${graph}`);
       body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? `${title}, ${t("spl.noLoss")}` : title, hint: t(`spl.graph.hint.${graph}`) })}${chooser()}`;
       bindChartCard(main, "sp-gap");
+      const fromSel = () => {
+        const xs = sel();
+        const low = (vals) => { const v = vals.filter((y) => y != null && y > 0); return v.length ? Math.min(...v) : null; };
+        if (ref === "cumSel") return Array.from({ length: L }, (_, j) => low(xs.map((x) => x.vCum[j])));
+        let acc = 0;
+        return Array.from({ length: L }, (_, j) => { const b = low(xs.map((x) => x.vLegs[j])); return acc == null || b == null ? (acc = null) : (acc += b); });
+      };
       redraw = () => {
-        const value = graph === "gap" ? (x, j) => (x.vCum[j] == null || refCum[j] == null ? null : x.vCum[j] - refCum[j])
+        const rc = refCum || fromSel();
+        const value = graph === "gap" ? (x, j) => (x.vCum[j] == null || rc[j] == null ? null : x.vCum[j] - rc[j])
           : graph === "pos" ? (x, j) => x.cumRank[j] : (x, j) => x.legRank[j];
         const series = sel().map((x, i) => ({ name: x.r.name, color: slotColor(i), data: legLabels.map((_, j) => value(x, j)) }));
         const fmtY = graph === "gap" ? (v) => signed(v) : (v) => fmt(v);
@@ -456,8 +475,21 @@ export async function render(main, { query = {} } = {}) {
       });
     }
 
-    $$("[data-pick]", body).forEach((b) => b.addEventListener("change", () => {
-      b.checked ? picked.add(b.dataset.pick) : picked.delete(b.dataset.pick);
+    // a click ticks one runner; shift + click ticks (or unticks) every runner from the last one clicked
+    const boxes = $$("[data-pick]", body);
+    let lastBox = null;
+    boxes.forEach((b) => b.addEventListener("click", (e) => {
+      const i = boxes.indexOf(b), j = lastBox == null ? -1 : boxes.indexOf(lastBox);
+      const range = e.shiftKey && j >= 0 ? boxes.slice(Math.min(i, j), Math.max(i, j) + 1) : [b];
+      for (const o of range) { o.checked = b.checked; o.checked ? picked.add(o.dataset.pick) : picked.delete(o.dataset.pick); }
+      lastBox = b;
+      redraw();
+    }));
+    $$("[data-pickall]", body).forEach((btn) => btn.addEventListener("click", () => {
+      const a = btn.dataset.pickall, order = byPlace(shown);
+      const keep = a === "all" || a === "club" ? order : a === "none" ? [] : order.slice(0, Number(a));
+      picked = new Set(keep.map((x) => x.r.name));
+      boxes.forEach((o) => { o.checked = picked.has(o.dataset.pick); });
       redraw();
     }));
     redraw();

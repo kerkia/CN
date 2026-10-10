@@ -7,7 +7,8 @@
 // - Groupes: who ran with whom (left a control and reached the next one within 10 s of each other), from start times;
 // - Bilan: one line per runner.
 // Time lost on a leg: the runner's leg time less the best leg time × the median of their leg/best ratios (their usual
-// pace). A mistake: lost ≥ N % of the leg (and 10 s at least; 20 % by default), or lost ≥ N s — set in Tableau.
+// pace; negative: better than usual). A mistake: lost ≥ N % of the leg and ≥ N s (20 % and 10 s by default; set in
+// Tableau). The time lost (« Perdu », « Sans le temps perdu ») counts the mistakes only — as WinSplits does.
 import { t } from "./i18n.js";
 import { settings, save, isMe, follows } from "./settings.js";
 import { esc, clock, signed, segs } from "./util.js";
@@ -20,7 +21,8 @@ const rankOf = (vals, v) => (v == null ? null : 1 + vals.filter((x) => x != null
 
 /** Everything the views need, for circuit k of document doc. */
 export function compute(doc, k) {
-  const s = settings(), mode = s.errMode === "s" ? "s" : "pct", val = Number(s.errVal) > 0 ? Number(s.errVal) : 20;
+  const s = settings(), pct = Number(s.errPct) >= 0 && s.errPct != null ? Number(s.errPct) : 20,
+    sec = Number(s.errS) >= 0 && s.errS != null ? Number(s.errS) : 10;
   const n = k.controls?.length || Math.max(0, ...k.runners.map((r) => r.splits?.length || 0));
   const R = k.runners.filter((r) => r.splits).map((r) => {
     const cum = [...r.splits.slice(0, n), r.status === "ok" ? r.time_s : null];
@@ -33,16 +35,17 @@ export function compute(doc, k) {
   for (const x of R) {
     x.ratios = x.legs.map((v, i) => (v != null && isFinite(best[i]) ? v / best[i] : null));
     x.ratio = median(x.ratios);
-    x.lost = x.legs.map((v, i) => (v != null && x.ratio && isFinite(best[i]) ? Math.max(0, v - best[i] * x.ratio) : null));
+    x.delta = x.legs.map((v, i) => (v != null && x.ratio && isFinite(best[i]) ? v - best[i] * x.ratio : null));
+    x.mistake = x.legs.map((v, i) => x.delta[i] != null && v > 0 && x.delta[i] > 0 && x.delta[i] >= (pct / 100) * v && x.delta[i] >= sec);
+    x.lost = x.delta.map((d, i) => (d == null ? null : x.mistake[i] ? d : 0));
     x.lostTotal = x.lost.reduce((a, v) => a + (v || 0), 0);
-    x.mistake = x.legs.map((v, i) => x.lost[i] != null && v > 0 && (mode === "s" ? x.lost[i] >= val : x.lost[i] >= (val / 100) * v && x.lost[i] >= 10));
     x.legRank = x.legs.map((v, i) => rankOf(R.map((y) => y.legs[i]), v));
     x.cumRank = x.cum.map((v, i) => rankOf(R.map((y) => y.cum[i]), v));
     x.won = x.legRank.filter((r) => r === 1).length;
   }
   R.sort((a, b) => (a.r.place ?? 1e4) - (b.r.place ?? 1e4) || (a.r.time_s ?? 1e9) - (b.r.time_s ?? 1e9));
   const label = (i) => `${i === 0 ? t("an.start") : i}–${i === n ? t("an.finish") : i + 1}`;
-  return { doc, k, n, L, R, best, bestCum, label, mode, val };
+  return { doc, k, n, L, R, best, bestCum, label, pct, sec };
 }
 
 /** The runner a view starts on: you, else someone you follow, else the winner. */
@@ -82,7 +85,7 @@ function parcours(body, c, opts) {
       return `<div class="leg${pick.mistake[i] ? " err" : ""}${pick.legRank[i] === 1 ? " top" : ""}">
         <div class="lg">${esc(c.label(i))}</div>
         <div class="grow"><div><b>${clock(v) || "—"}</b> <span class="muted">${pick.legRank[i] ? `${pick.legRank[i]}${t("an.th")}` : ""}</span>
-          ${pick.lost[i] >= 1 ? `<span class="lostv">${signed(pick.lost[i])}</span>` : ""}</div>
+          ${pick.delta[i] != null && Math.abs(pick.delta[i]) >= 1 ? `<span class="lostv${pick.mistake[i] ? "" : " soft"}">${signed(pick.delta[i])}</span>` : ""}</div>
           ${pick.lost[i] >= 1 ? `<div class="lbar"><i style="width:${Math.round((100 * pick.lost[i]) / maxLost)}%"></i></div>` : ""}</div>
         <div class="cumr"><div>${clock(pick.cum[i]) || ""}</div><div class="muted small">${pick.cumRank[i] ? `${pick.cumRank[i]}${t("an.th")}` : ""}
           ${moved > 0 ? `<span class="up">▲${moved}</span>` : moved < 0 ? `<span class="down">▼${-moved}</span>` : ""}</div></div></div>`;
@@ -94,23 +97,23 @@ function parcours(body, c, opts) {
 // ---- Tableau ----------------------------------------------------------------------------------------------------------
 function tableau(body, c, opts) {
   body.innerHTML = `<div class="pad rule"><span class="muted small">${t("an.rule")}</span>
-      <select id="an-mode" class="select sm"><option value="pct" ${c.mode === "pct" ? "selected" : ""}>${t("an.rule.pct")}</option>
-        <option value="s" ${c.mode === "s" ? "selected" : ""}>${t("an.rule.s")}</option></select>
-      <input id="an-val" type="number" min="1" step="1" value="${c.val}" class="num-in"><span class="muted small">${c.mode === "pct" ? "%" : "s"}</span></div>
+      <input id="an-pct" type="number" min="0" step="1" value="${c.pct}" class="num-in" aria-label="${t("an.rule.pct")}"><span class="muted small">${t("an.rule.pctUnit")}</span>
+      <span class="muted small">${t("an.rule.and")}</span>
+      <input id="an-sec" type="number" min="0" step="1" value="${c.sec}" class="num-in" aria-label="${t("an.rule.s")}"><span class="muted small">s</span></div>
     <div class="scroll"><table class="grid"><thead><tr><th class="sticky">${t("an.runner")}</th>
       ${Array.from({ length: c.L }, (_, i) => `<th>${esc(c.label(i))}</th>`).join("")}<th>${t("an.lost")}</th></tr></thead>
       <tbody>${c.R.map((x) => `<tr${isMe(x.r.name) ? ' class="me"' : ""}><th class="sticky"><span class="pl">${x.r.place ?? ""}</span>${nameCell(x)}
         <div class="muted small">${clock(x.cum[c.n])}</div></th>
-        ${x.legs.map((v, i) => `<td class="${x.legRank[i] === 1 ? "top" : x.mistake[i] ? "err" : ""}">${clock(v) || "·"}<div class="muted small">${x.legRank[i] ?? ""}</div></td>`).join("")}
+        ${x.legs.map((v, i) => `<td class="${x.mistake[i] ? "err" : x.legRank[i] === 1 ? "top" : ""}"${x.delta[i] != null && Math.abs(x.delta[i]) >= 1 ? ` title="${t("an.delta")} ${signed(x.delta[i])}"` : ""}>${clock(v) || "·"}<div class="muted small">${x.legRank[i] ?? ""}</div></td>`).join("")}
         <td>${clock(x.lostTotal)}</td></tr>`).join("")}</tbody></table></div>
-    <p class="muted small pad">${t("an.tableDef", { rule: c.mode === "s" ? t("an.rule.sDef", { n: c.val }) : t("an.rule.pctDef", { n: c.val }) })}</p>`;
+    <p class="muted small pad">${t("an.tableDef", { rule: t("an.rule.def", { p: c.pct, s: c.sec }) })}</p>`;
   const apply = () => {
-    const mode = body.querySelector("#an-mode").value, v = Number(body.querySelector("#an-val").value);
-    save({ errMode: mode, errVal: v > 0 ? v : 20 });
+    const p = body.querySelector("#an-pct").value, s = body.querySelector("#an-sec").value;
+    save({ errPct: p !== "" && Number(p) >= 0 ? Number(p) : 20, errS: s !== "" && Number(s) >= 0 ? Number(s) : 10 });
     opts.redraw?.();
   };
-  body.querySelector("#an-mode").addEventListener("change", (e) => { save({ errMode: e.target.value, errVal: 20 }); opts.redraw?.(); });
-  body.querySelector("#an-val").addEventListener("change", apply);
+  body.querySelector("#an-pct").addEventListener("change", apply);
+  body.querySelector("#an-sec").addEventListener("change", apply);
 }
 
 // ---- Écarts -----------------------------------------------------------------------------------------------------------
