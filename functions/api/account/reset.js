@@ -7,7 +7,7 @@ export async function onRequestPost({ request, env }) {
   const b = await readBody(request);
   const password = String(b?.password || "");
   if (!b?.token) return json({ error: "bad request" }, 400);
-  if (password.length < 10 || password.length > 200) return json({ error: "password" }, 422);
+  if (password.length < 6 || password.length > 200) return json({ error: "password" }, 422);
   const hash = await sha256hex(String(b.token));
   const t = await env.DB.prepare("SELECT * FROM tokens WHERE token_hash = ? AND kind = 'reset'").bind(hash).first();
   if (!t || t.used || t.expires_at < Date.now()) return json({ error: "invalid" }, 410);

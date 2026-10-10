@@ -40,7 +40,7 @@ export async function onRequestPost({ request, env }) {
   const licence = cleanLicence(b.licence);
   const password = String(b.password || "");
   if (!validEmail(email)) return json({ error: "email" }, 422);
-  if (password.length < 10 || password.length > 200 || password.toLowerCase() === email) return json({ error: "password" }, 422);
+  if (password.length < 6 || password.length > 200 || password.toLowerCase() === email) return json({ error: "password" }, 422);
   if (!first || !last || !licence) return json({ error: "fields" }, 422);
   if (b.consent !== true) return json({ error: "consent" }, 422);
 

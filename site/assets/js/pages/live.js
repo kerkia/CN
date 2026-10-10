@@ -74,10 +74,15 @@ async function race(main, id, wanted) {
   const st = { info: null, classes: [], cls: wanted, data: null, justIn: new Map(), pass: [], ws: null, up: false, tries: 0, gone: false, cn: {}, terrain: null };
   main.innerHTML = html`<div class="crumbs"><a href="#/direct">${t("lv.title")}</a><span>›</span><span id="lv-name">…</span></div>
     <div class="page-head"><div><h1 id="lv-title">…</h1><p class="lede" id="lv-sub"></p></div><div class="lv-status" id="lv-status">${t("lv.connecting")}</div></div>
-    <div class="filters"><div class="field field-wide"><span>${t("prov.circuit")}</span><div class="lv-chips" id="lv-chips"></div></div></div>
-    <div id="lv-pass"></div>
-    <section class="card"><div class="card-head"><div><h2 id="lv-class"></h2><div class="hint">${t("lv.hint")}</div></div></div>
-      <div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>`;
+    <div class="lv-layout">
+      <aside class="lv-side"><div class="lv-side-title">${t("prov.circuit")}</div><div class="lv-list" id="lv-chips"></div></aside>
+      <div class="lv-main">
+        <label class="field lv-pick"><span>${t("prov.circuit")}</span><select id="lv-sel"></select></label>
+        <div id="lv-pass"></div>
+        <section class="card"><div class="card-head"><div><h2 id="lv-class"></h2><div class="hint">${t("lv.hint")}</div></div></div>
+          <div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
+      </div>
+    </div>`;
 
   // runners of this site by name, to recognise them: [runner…] per name key
   await data.bootPrivate();
@@ -138,7 +143,9 @@ async function race(main, id, wanted) {
     chips();
   }
   function chips() {
-    $("#lv-chips").innerHTML = html`${st.classes.map((c) => html`<button type="button" class="chip toggle" aria-pressed="${c === st.cls}" data-c="${c}">${c}</button>`)}`;
+    $("#lv-chips").innerHTML = html`${st.classes.map((c) => html`<button type="button" class="lv-item${c === st.cls ? " on" : ""}" aria-pressed="${c === st.cls}" data-c="${c}">${c}</button>`)}`;
+    $("#lv-sel").innerHTML = html`${st.classes.map((c) => html`<option value="${c}" ${raw(c === st.cls ? "selected" : "")}>${c}</option>`)}`;
+    $("#lv-chips .on")?.scrollIntoView({ block: "nearest" });
   }
   function status() {
     const el = $("#lv-status");
@@ -193,24 +200,26 @@ async function race(main, id, wanted) {
       return html`<tr${raw(just ? ' class="lv-just"' : "")}>
         <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b></td>
         <td>${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}${just ? html` <span class="tag" style="color:var(--good)">${t("lv.justIn")}</span>` : ""}
+          <div class="muted lv-m" style="font-size:12px">${club}</div>
           ${sub ? html`<div class="muted" style="font-size:12px">${sub}</div>` : ""}</td>
-        <td style="font-size:12.5px">${club}</td>
-        ${METHODS.map((m) => html`<td class="r num">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>`)}
+        <td class="lv-d" style="font-size:12.5px">${club}</td>
+        ${METHODS.map((m, i) => html`<td class="r num${i ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>`)}
         <td class="r num">${x.expected ?? ""}</td>
-        <td class="r num">${time}</td>
-        <td class="r num">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td></tr>`;
+        <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
+        <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td></tr>`;
     };
-    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${5 + METHODS.length}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${6 + METHODS.length}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
-    $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
-      <th>${t("prov.club")}</th>${METHODS.map((m) => html`<th class="r">CN ${methodShort(m)}</th>`)}<th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>
-      <th class="r">${t("prov.time")}</th><th class="r">${t("lv.behind")}</th></tr></thead>
-      <tbody>${block("fin")}${block("run")}${block("out")}${block("wait")}</tbody></table>`
+    $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+      <th class="lv-d">${t("prov.club")}</th>${METHODS.map((m, i) => html`<th class="r${i ? " lv-d" : ""}">CN ${methodShort(m)}</th>`)}<th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>
+      <th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th></tr></thead>
+      <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;
   }
 
   main.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (b) pick(b.dataset.c); });
+  main.addEventListener("change", (e) => { if (e.target.id === "lv-sel") pick(e.target.value); });
   const tick = setInterval(() => {
     if (!main.isConnected) { cleanup(); return; }
     status();

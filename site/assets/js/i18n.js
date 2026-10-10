@@ -461,7 +461,7 @@ const FR = {
 
   // accounts: e-mail + password
   "ac.email": "Adresse e-mail", "ac.password": "Mot de passe", "ac.password2": "Confirmer le mot de passe",
-  "ac.password.hint": "10 caractères au moins",
+  "ac.password.hint": "6 caractères au moins",
   "ac.login": "Se connecter", "ac.login.title": "Connexion par e-mail",
   "ac.forgot": "Mot de passe oublié ?", "ac.register": "Créer un compte",
   "ac.legacy": "Connexion historique (nom + licence)", "ac.legacy.hint": "Cette connexion disparaîtra bientôt : créez un compte.",
@@ -486,7 +486,7 @@ const FR = {
   "ac.reg.queued": "L'envoi est différé (limite quotidienne) : le message arrivera dans la journée ou le lendemain.",
   "ac.reg.err.mismatch": "Ces informations ne correspondent à aucun licencié. Vérifiez l'orthographe du prénom et du nom, et le numéro de licence.",
   "ac.reg.err.email": "Adresse e-mail invalide.",
-  "ac.reg.err.password": "Le mot de passe doit comporter au moins 10 caractères.",
+  "ac.reg.err.password": "Le mot de passe doit comporter au moins 6 caractères.",
   "ac.reg.err.password2": "Les deux mots de passe sont différents.",
   "ac.reg.err.fields": "Tous les champs sont obligatoires.",
   "ac.reg.err.consent": "Vous devez certifier être licencié(e) pour vous inscrire.",

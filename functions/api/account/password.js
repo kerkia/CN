@@ -5,7 +5,7 @@ import { checkPassword, hashPassword } from "../../_lib/crypto.js";
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   const next = String(b?.password || "");
-  if (next.length < 10 || next.length > 200) return json({ error: "password" }, 422);
+  if (next.length < 6 || next.length > 200) return json({ error: "password" }, 422);
   if (!(await allow(env, `pwchange:${user.id}`, 8, 600))) return json({ error: "rate" }, 429);
   if (!(await checkPassword(String(b?.old || ""), user, env))) return json({ error: "invalid" }, 401);
   const pw = await hashPassword(next, env);

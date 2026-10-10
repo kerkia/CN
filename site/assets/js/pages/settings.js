@@ -53,7 +53,7 @@ export async function render(main) {
       <section class="card"><div class="card-head"><h2>${t("st.pw.title")}</h2></div><div class="card-body">
         <form id="pw" class="stack" style="gap:12px;max-width:360px">
           <label class="field"><span>${t("st.pw.old")}</span><input name="old" type="password" autocomplete="current-password" required></label>
-          <label class="field"><span>${t("st.pw.new")} <span class="muted">· ${t("ac.password.hint")}</span></span><input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="200"></label>
+          <label class="field"><span>${t("st.pw.new")} <span class="muted">· ${t("ac.password.hint")}</span></span><input name="password" type="password" autocomplete="new-password" required minlength="6" maxlength="200"></label>
           <div class="notice" hidden></div>
           <button class="btn" type="submit">${t("st.pw.submit")}</button>
         </form></div></section>
