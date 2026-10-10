@@ -405,7 +405,7 @@ const FR = {
   "nw.list": "Coureurs rencontrés le plus souvent", "nw.nodes": "Coureurs du réseau",
   "nw.none": "Pas assez de courses en commun avec d'autres coureurs.",
   "nw.often": "Rencontré le plus souvent", "nw.prey": "Le plus souvent devancé", "nw.nemesis": "Bête noire",
-  "nw.sameClub": "Du même club", "nw.amongTop": "parmi les", "nw.min5": "au moins 5 rencontres",
+  "nw.sameClub": "Du même club", "nw.amongTop": "parmi les", "nw.min5": "au moins 5 rencontres", "nw.noPrey": "personne qu'il devance plus souvent qu'il n'est devancé", "nw.noNemesis": "personne ne le devance plus souvent qu'il ne le devance",
   "nw.over": "sur", "nw.shared": "circuits en commun", "nw.sharedShort": "Communs",
   "nw.ahead": "Devant", "nw.behind": "Derrière", "nw.last": "Dernière rencontre",
   "nw.k": "Coureurs affichés", "nw.links2": "Liens entre eux", "nw.n": "Coureurs", "nw.min": "Circuits communs min.",

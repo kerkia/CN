@@ -137,14 +137,20 @@ async function ego(main, lic, query) {
 
   // tiles: the most frequent co-runner, the one you beat most, the one who beats you most
   const often = rows[0];
-  const pool = rows.filter((x) => x.shared >= 5);
-  const prey = pool.reduce((b, x) => (!b || x.ahead / x.shared > b.ahead / b.shared ? x : b), null);
-  const nemesis = pool.reduce((b, x) => (!b || x.behind / x.shared > b.behind / b.shared ? x : b), null);
+  // the bête noire: the runner whose wins over you are the surest — the lower bound of a 95 % Wilson interval of their
+  // share of wins, so that 3 – 0 beats 4 – 1 out of 5 and a long, even record does not win; only someone who beats you
+  // more often than you beat them, met twice at least (the « devancé le plus souvent » the same way round)
+  const wilson = (k, n) => { const z = 1.96, p = k / n, d = 1 + (z * z) / n;
+    return (p + (z * z) / (2 * n) - z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d; };
+  const surest = (won, lost) => rows.filter((x) => x.shared >= 2 && won(x) > lost(x))
+    .reduce((b, x) => { const s = wilson(won(x), won(x) + lost(x)); return !b || s > b.s ? { x, s } : b; }, null)?.x || null;
+  const prey = surest((x) => x.ahead, (x) => x.behind);
+  const nemesis = surest((x) => x.behind, (x) => x.ahead);
   const bilan = (x) => `${fmt(x.ahead)} – ${fmt(x.behind)} ${t("nw.over")} ${fmt(x.shared)}`;
   $("#tiles").innerHTML = html`
     ${tile(t("nw.often"), often.name, `${fmt(often.shared)} ${t("nw.shared")}`)}
-    ${tile(t("nw.prey"), prey ? prey.name : "—", prey ? bilan(prey) : t("nw.min5"))}
-    ${tile(t("nw.nemesis"), nemesis ? nemesis.name : "—", nemesis ? bilan(nemesis) : t("nw.min5"))}
+    ${tile(t("nw.prey"), prey ? prey.name : "—", prey ? bilan(prey) : t("nw.noPrey"))}
+    ${tile(t("nw.nemesis"), nemesis ? nemesis.name : "—", nemesis ? bilan(nemesis) : t("nw.noNemesis"))}
     ${tile(t("nw.sameClub"), fmt(rows.filter((x) => x.code && x.code === myClub).length), `${t("nw.amongTop")} ${fmt(rows.length)}`)}`;
 
   function drawFilters() {
