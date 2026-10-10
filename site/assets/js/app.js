@@ -28,6 +28,7 @@ const PAGES = {
   admin: () => import("./pages/admin.js"),
   provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 60 days
   splits: () => import("./pages/splits.js"),
+  live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
 };
 
@@ -69,6 +70,7 @@ function parseHash() {
     : head === "admin" ? "admin"
     : head === "recemment" || head === "provisoires" ? "provisional"     // #/provisoires: the pilot's old address
     : head === "temps-inter" ? "splits"
+    : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
@@ -146,8 +148,9 @@ function renderHeader(r) {
     ["clubs", "#/clubs", t("nav.clubs")],
     ["network", "#/reseau", t("nav.network")],
     ["methods", "#/methodes", t("nav.methods")],
-    ["agenda", "#/agenda", t("nav.agenda")],
     ["provisional", "#/recemment", t("nav.recent")],
+    ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
+    ["agenda", "#/agenda", t("nav.agenda")],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" ? "clubs"
     : route === "splits" ? "provisional" : route;
@@ -309,6 +312,11 @@ async function route_() {
   // the analysis methods ("Juste") only for the accounts allowed to see them
   const who = auth.session();
   store.setAnalyst(!!who?.analyst);
+  // « En direct » only for the accounts allowed to see it
+  if (r.route === "live" && !who?.live) {
+    history.replaceState(null, "", "#/recemment");
+    r = parseHash();
+  }
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);

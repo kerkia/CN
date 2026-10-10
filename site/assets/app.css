@@ -995,3 +995,11 @@ table.data tbody tr.found .name { font-weight: 700; }
 .dep-steps li.now { color: var(--ink); font-weight: 600; }
 .dep-steps li.now b { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .dep-steps li.done b { background: var(--accent-wash); border-color: var(--focus); color: var(--ink); }
+/* « En direct » */
+.lv-status { font-size: 13.5px; color: var(--ink-3); align-self: center; white-space: nowrap; }
+.lv-status.live { color: var(--bad); font-weight: 650; }
+.lv-status.live::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
+.lv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lv-pass { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 2px 12px; font-size: 13px; }
+table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }
+table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var(--surface-2); }

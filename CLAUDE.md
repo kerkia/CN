@@ -39,6 +39,9 @@ commit results, personal data, secrets or credentials.
 - **Deploy by pushing to `main`.** The workflow restores the state from R2, runs `update.py`, publishes, and
   saves the state back. Do **not** `wrangler pages deploy` from the PC: it would publish the PC's possibly
   stale `site/data`, and anything not pushed is overwritten by the next run.
+- `site/_routes.json` keeps the public files (`/`, `/assets/*`, `robots.txt`, `meta.json`…) out of the Functions:
+  served free and unmetered, without the login gate (which only passed them through); the data and the API stay
+  behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN, O'Cap and `ocap-live`.
 - A push only triggers a run when it touches `site/**` or `functions/**`. A Python-only change is picked up by
   the next hourly run (it checks out `main`), or trigger it with `workflow_dispatch`.
 - `gh` is not installed on the PC; read run status with the public API, e.g.
@@ -263,6 +266,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   --remote` (owner's go-ahead) before deploying code that needs them.
   New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
+  « En direct » (`#/direct`, `pages/live.js`; menu: Récemment, En direct, Bientôt) only for accounts with the
+  `users.live` right (migration 0007, admin page checkbox; granted at first to the administrator and one tester by a
+  one-off remote UPDATE — names never go into the public repo): liveresultat's races from O'Cap's live server
+  (`LIVE` = https://ocap.pages.dev: its `/api/live/list`, open to other sites, and `/ws/<race>`), so live traffic
+  never goes through O'CN's gate; each runner recognised by name (+ club number) and linked, their CN Top and
+  official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top
+  CN predicts (« Attendu »). `localStorage["ocn.liveBase"]` points it at a local O'Cap for tests.
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
   account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so.

@@ -68,7 +68,7 @@ export async function accountLogin(email, password) {
 }
 
 /** What the browser keeps of the account (the rights decide what the pages show). */
-const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, analyst: !!u.analyst,
+const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, analyst: !!u.analyst, live: !!u.live,
   agendaAllowed: !!u.agendaAllowed });
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {

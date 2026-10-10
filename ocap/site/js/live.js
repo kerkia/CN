@@ -101,8 +101,11 @@ function race(view, id, wanted) {
       opened({ id: Number(id), name: m.info?.name || id, org: m.info?.organizer || "", date: m.info?.date || "" });
       if (!st.cls || !st.classes.includes(st.cls)) pick(st.classes[0], false);
       chips();
+      if (!st.classes.length) $("#rows").innerHTML = `<p class="muted pad">${t("live.noClasses")}</p>`;
     } else if (m.t === "classes") {
-      st.classes = m.classes; chips();
+      st.classes = m.classes;
+      if (!st.cls) pick(st.classes[0], false);
+      chips();
     } else if (m.t === "class" && m.c === st.cls) {
       if (m.missing) { $("#rows").innerHTML = `<p class="muted pad">${t("live.missing")}</p>`; return; }
       // who finished since the last version: « Vient d'arriver » for a while

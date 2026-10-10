@@ -4,7 +4,7 @@ import { json, withUser } from "../../_lib/api.js";
 export const onRequestGet = withUser(async ({ env }, admin) => {
   const { results } = await env.DB.prepare(
     `SELECT id, email, first_name, last_name, licence, display_name, email_verified, status, notify, created_at, last_login,
-            analyst, alerts_allowed, agenda_alert, deadline_alert
+            analyst, alerts_allowed, live, agenda_alert, deadline_alert
      FROM users ORDER BY created_at DESC`).all();
   const count = new Map();
   for (const u of results) if (u.email_verified) count.set(u.licence, (count.get(u.licence) || 0) + 1);
