@@ -190,6 +190,8 @@ export const participation = async () => (await getJson("participation.json"))?.
 export const validation = () => getJson("validation.json");
 /** The sound evaluation of the methods: per circuit, out of sample, bootstrap intervals (site_eval.py). */
 export const evaluation = () => getJson("evaluation.json");
+/** The Coupe de France des clubs recomputed every season (site_extras.cfc). */
+export const cfc = () => getJson("cfc.json");
 /** Competitors of a season, counted: [[category, club, discipline flags (1 forest, 2 sprint), n]]. */
 export const pyramid = async (season) => (await getJson(`pyramid/${season}.json`))?.rows || [];
 /** Upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py). */

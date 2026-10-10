@@ -53,7 +53,11 @@ export async function render(main, { query }) {
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("cm.summary")}</h2><div class="hint" id="sum-hint"></div></div></div>
       <div id="summary"></div></section>
-    <div>${chartCard({ id: "evo", title: t("cm.monthly"), hint: t("cm.monthly.hint"), tools: html`<span id="range-seg"></span>` })}</div>`;
+    <div style="margin-bottom:16px">${chartCard({ id: "evo", title: t("cm.monthly"), hint: t("cm.monthly.hint"), tools: html`<span id="range-seg"></span>` })}</div>
+    <section class="card" id="cfc-card"><div class="card-head"><div><h2>${t("cfc.title")}</h2><div class="hint">${t("cfc.hint")}</div></div>
+      <div class="row" id="cfc-tools"></div></div><div class="grid grid-main-side" style="align-items:start">
+      <div id="cfc-seasons"></div><div id="cfc-season"></div></div>
+      <p class="muted" style="font-size:12.5px;margin:0 16px 14px">${t("cfc.rule")}</p></section>`;
   bindChartCard(main, "yrs");
   bindChartCard(main, "evo");
 
@@ -102,7 +106,7 @@ export async function render(main, { query }) {
     bindMethodChips(main, () => { drawFilters(); drawAll(); });
   }
   const sync = () => replaceQuery({ c: store.get().clubs.map((c) => c.code).join(",") || null,
-    range: range === "all" ? null : range, ...selToQuery(sel) });
+    range: range === "all" ? null : range, ...selToQuery(sel), cfc: cfcSeason && cfcSeason !== cfcData?.seasons.at(-1) ? cfcSeason : null });
 
   function drawPicked() {
     const selc = store.get().clubs;
@@ -237,12 +241,38 @@ export async function render(main, { query }) {
   }
   $("#pq").addEventListener("input", debounce((e) => { pq = e.target.value; drawPicker(); }, 180));
 
+  // the Coupe de France des clubs, recomputed: the selected clubs season by season, and one season's ranking
+  var cfcData = null, cfcSeason = query.cfc || null;       // (var: sync() may run first)
+  async function drawCfc() {
+    cfcData = cfcData || await data.cfc();
+    if (!cfcData) { $("#cfc-card").hidden = true; return; }
+    const selc = store.get().clubs, seasons = [...cfcData.seasons].reverse();
+    cfcSeason = cfcData.seasons.includes(cfcSeason) ? cfcSeason : seasons[0];
+    const cell = (code, y) => { const v = cfcData.clubs[code]?.[y]; return v ? html`<b>${ord(v[0])}</b> <span class="muted">${fmt(v[1])} pts</span>` : html`<span class="muted">—</span>`; };
+    $("#cfc-seasons").innerHTML = selc.length ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.season")}</th>
+      ${selc.map((c) => html`<th class="r"><span class="dot" style="background:${raw(slotColor(c.slot))};margin-right:4px"></span>${clubName(c.code)}</th>`)}</tr></thead>
+      <tbody>${seasons.map((y) => html`<tr class="${y === cfcSeason ? "selected" : ""}"><td><a href="#" data-cfc="${y}">${y}</a>${["2023", "2024", "2025"].includes(y) ? html` <span class="muted" title="${t("cfc.notAwarded")}">*</span>` : ""}</td>
+        ${selc.map((c) => html`<td class="r num">${cell(c.code, y)}</td>`)}</tr>`)}</tbody></table></div>` : html`<div class="empty">${t("cm.empty")}</div>`;
+    const codes = new Set(selc.map((c) => c.code));
+    const rows = Object.entries(cfcData.clubs).filter(([, d]) => d[cfcSeason]).map(([code, d]) => [code, d[cfcSeason]]).sort((a, b) => a[1][0] - b[1][0]);
+    const shown = rows.filter(([code, v], i) => i < 20 || codes.has(code));
+    $("#cfc-season").innerHTML = html`<div class="card-body" style="padding-bottom:0"><b>${t("cfc.season")} ${cfcSeason}</b>
+        <span class="muted">· ${fmt(rows.length)} ${t("cm.clubsRanked")}</span></div>
+      <div class="table-wrap"><table class="data compact"><thead><tr><th class="r">${t("rk.col.rank")}</th><th>${t("col.name")}</th>
+        <th class="r">${t("cfc.points")}</th><th class="r" title="${t("cfc.runners.hint")}">${t("cfc.runners")}</th><th class="r">${t("cfc.women")}</th></tr></thead>
+        <tbody>${shown.map(([code, v], i) => html`${i && shown[i - 1][1][0] !== v[0] - 1 ? html`<tr><td colspan="5" class="muted c">…</td></tr>` : ""}
+          <tr class="${codes.has(code) ? "selected" : ""}"><td class="r num">${v[0]}</td><td><a href="${link.club(code)}">${clubName(code)}</a></td>
+          <td class="r num"><b>${fmt(v[1])}</b></td><td class="r num">${fmt(v[2])}</td><td class="r num">${v[1] ? `${fmt(Math.round((100 * v[5]) / v[1]))} %` : ""}</td></tr>`)}</tbody></table></div>`;
+    $$("[data-cfc]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); cfcSeason = a.dataset.cfc; sync(); drawCfc(); }));
+  }
+
   async function drawAll() {
     await loadFiles();
     drawPicked();
     drawYears();
     drawMonthly();
     await drawSummary();
+    await drawCfc();
   }
 
   drawFilters();

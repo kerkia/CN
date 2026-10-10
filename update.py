@@ -76,7 +76,8 @@ ENGINE_VERSION = 7
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
 #   3 (2026-10-07): participation.json, the statistics moved from the home page to Réseau · Activité
 #   4 (2026-10-10): evaluation.json, the methods measured per circuit, out of sample, with intervals (site_eval.py)
-EXTRAS_VERSION = 4
+#   5 (2026-10-10): cfc.json, the Coupe de France des clubs recomputed (FFCO's 2026 rule), for Comparer des clubs
+EXTRAS_VERSION = 5
 COMPUTED = ("fair", "top6w", "fair2", "top6w2")   # in this order: each Top is derived from its Fair
 
 

@@ -358,6 +358,10 @@ const FR = {
   "rl.ranking": "Classement prévu", "rl.ranking.hint": "La meilleure équipe de chaque club (la vôtre en surbrillance)", "rl.total": "Temps", "rl.gap": "Écart", "rl.runners": "Équipe",
   "rl.bestShare": "meilleur temps prévu de chaque relais : {p} % du temps de référence en moyenne (FFCO : environ 85 %)",
   "rl.model": "Le modèle : sur un relais, un coureur de CN c met k × temps de référence ÷ c ; k est fixé pour que la meilleure équipe de tous les clubs (pour le CNE, la moyenne des 5 meilleures) totalise la somme des temps de référence, comme le veut la FFCO. La meilleure équipe est calculée exactement, critères de composition et relais réservés compris (règlement des compétitions 2026). L'âge et le sexe viennent de la catégorie du coureur : un vétéran qui court en H21 compte comme un H21.",
+  "cfc.title": "Coupe de France des clubs (recalculée)", "cfc.hint": "Le classement national des clubs de la FFCO, recalculé saison par saison avec la règle de 2026 ; cliquez une saison pour son classement",
+  "cfc.rule": "Règle (règlement des compétitions 2026, annexe 2) : chaque coureur apporte à son club la somme de ses 5 meilleurs scores CN officiels de l'année en pédestre (forêt et sprint), plus ses 5 meilleurs en VTT ou en ski ; les points d'une dame sont multipliés par 1,4. Calcul d'O'CN, non officiel : tous les coureurs classés comptent (le type de licence n'est pas connu), et un coureur qui a changé de club dans l'année compte pour le club de sa dernière course. * La coupe n'a pas été décernée de 2023 à 2025.",
+  "cfc.notAwarded": "La coupe n'a pas été décernée cette saison", "cfc.season": "Saison", "cfc.points": "Points", "cfc.runners": "Coureurs",
+  "cfc.runners.hint": "Coureurs du club ayant marqué des points", "cfc.women": "Part des dames",
   "col.code": "Code", "col.n": "N°", "col.value": "Valeur", "col.cnj15": "CN J-15", "col.dist": "Distance",
 
   "status.ok": "", "status.nc": "NC", "status.pm": "PM", "status.abandon": "Abandon", "status.disqualifie": "Disq.",

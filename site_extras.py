@@ -20,6 +20,7 @@ Outputs (all under site/data/):
     validation.json         how well each method's CN predicts who finishes ahead (season 2025;
                             built once - delete it to rebuild, as a method change does)
     evaluation.json         the same question measured soundly, every season (site_eval.py; built once too)
+    cfc.json                the Coupe de France des clubs recomputed with FFCO's 2026 rule, every season
 """
 
 from __future__ import annotations
@@ -379,6 +380,60 @@ def pyramid(comps: dict) -> None:
     print(f"  pyramid: {len(per) - 1} seasons, {len(per['all']):,} competitors")
 
 
+# -- Coupe de France des clubs ------------------------------------------------------
+# FFCO's « Classement National des Clubs » (Règlement des compétitions 2026, annexe 2): each competitor brings the sum
+# of their 5 best official CN race scores of the year in foot races (forest and sprint together) and of their 5 best in
+# VTT or ski, a woman's points x 1.4; a club's points are its competitors'. Applied to every season, though the cup was
+# not awarded from 2023 to 2025. Not known here: who holds a « compétition » licence (every ranked runner counts) and
+# which club gets a runner who changed club during the year (here: the club of their last race of the year).
+CFC_BEST = 5
+CFC_WOMEN = 1.4
+CFC_FOOT = ("For", "Spr")
+
+
+def cfc(comps: dict) -> None:
+    per = defaultdict(lambda: {"foot": [], "other": [], "last": ("", None, None)})      # (season, lic) -> scores, last race
+    for cid, c in comps.items():
+        path = OUT / "c" / f"{cid}.json"
+        if not path.exists() or c[6] not in TERRAINS:
+            continue
+        season, day, foot = str(c[7]), c[0], c[6] in CFC_FOOT
+        for circ in load(path)["circuits"]:
+            for r in circ["rows"]:
+                if r[3] == "nc" or r[6] is None:
+                    continue
+                p = per[(season, r[0])]
+                (p["foot"] if foot else p["other"]).append(r[6])
+                if day >= p["last"][0]:
+                    p["last"] = (day, (r[5] or "")[:4], (r[4] or "")[:1])
+    clubs = defaultdict(lambda: defaultdict(lambda: [0.0, 0, 0.0, 0.0, 0.0]))         # club -> season -> [pts, n, foot, other, women]
+    for (season, lic), p in per.items():
+        _, club, sex = p["last"]
+        if not club or not club.isdigit():
+            continue
+        f = sum(sorted(p["foot"], reverse=True)[:CFC_BEST])
+        o = sum(sorted(p["other"], reverse=True)[:CFC_BEST])
+        k = CFC_WOMEN if sex == "D" else 1.0
+        if not f + o:
+            continue
+        a = clubs[club][season]
+        a[0] += (f + o) * k
+        a[1] += 1
+        a[2] += f * k
+        a[3] += o * k
+        if sex == "D":
+            a[4] += (f + o) * k
+    out = defaultdict(dict)
+    seasons = sorted({s for d in clubs.values() for s in d})
+    for s in seasons:
+        ranked = sorted(((code, d[s]) for code, d in clubs.items() if s in d), key=lambda x: -x[1][0])
+        for i, (code, a) in enumerate(ranked):
+            out[code][s] = [i + 1, round(a[0]), a[1], round(a[2]), round(a[3]), round(a[4])]
+    dump(OUT / "cfc.json", {"seasons": seasons, "best": CFC_BEST, "women": CFC_WOMEN, "cols": ["rank", "points", "runners", "foot", "other", "women"],
+                            "clubs": out})
+    print(f"  cfc: {len(out)} clubs, {len(seasons)} seasons")
+
+
 # -- validation ------------------------------------------------------------------
 VAL_METHODS = ("official", "fair", "top6w", "fair2", "top6w2")
 VAL_CNJ15 = (7, 9, 11, 13, 15)               # c/ row columns: each method's CN 15 days before the race
@@ -463,6 +518,7 @@ def main(out: Path | None = None) -> None:
     network(comps)
     pyramid(comps)
     validation(comps)
+    cfc(comps)
     import site_eval
     site_eval.evaluation(comps)
     print(f"extras done in {time.monotonic() - t0:.0f}s")

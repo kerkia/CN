@@ -275,6 +275,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
   automatic under reduced motion); phones keep the short text (`.home-text`).
+- **Coupe de France des clubs** (2026-10-10): `site_extras.cfc` -> `cfc.json`, FFCO's « Classement National des Clubs »
+  rule of 2026 (annexe 2: each runner's 5 best official CN race scores of the year in foot + 5 best in VTT or ski, women
+  x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
+  a runner's club is that of their last race of the year. Shown on « Comparer des clubs » (seasons of the selected
+  clubs, one season's ranking). FFCO's own cup pages are gone (404); nothing to scrape.
 - **Relais** (`#/relais`, `pages/relays.js`, from Clubs; 2026-10-10): a relay simulator. Formats from FFCO's 2026
   rules (`relay.js` `PRESETS`: CFC N1-N4 with their composition criteria and reserved legs — the women's/men's first and
   last legs alternate with the year's parity —, CNE Hommes/Dames/Jeunes/mini, relais de catégorie) or one's own legs.
