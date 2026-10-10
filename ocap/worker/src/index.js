@@ -37,6 +37,8 @@ export class LiveRace extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.m = null;                              // memory; reloaded from storage after a hibernation
+    // the pages' heartbeat, answered without waking the object (no request counted)
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
   async load() {
@@ -86,6 +88,7 @@ export class LiveRace extends DurableObject {
 
   async webSocketMessage(ws, raw) {
     let q;
+    if (raw === "ping") { try { ws.send("pong"); } catch (e) { /* closed */ } return; }
     try { q = JSON.parse(raw); } catch (e) { return; }
     if (typeof q.sub !== "string" || q.sub.length > 200) return;
     ws.serializeAttachment({ sub: q.sub });
@@ -165,10 +168,12 @@ export class LiveRace extends DurableObject {
       }
     } catch (e) {
       // liveresultat slow or down: try again at the next wake-up
+      console.error(`race ${m.comp}: ${e.message || e}`);
     }
-    await this.save(changed);
+    // the next wake-up first, whatever happens to the save: a failed save must not stop the pages' updates
     const active = Date.now() - m.lastChange < 120000;
     await this.ctx.storage.setAlarm(Date.now() + (active ? ACTIVE_MS : QUIET_MS));
+    try { await this.save(changed); } catch (e) { console.error(`race ${m.comp}: save failed: ${e.message || e}`); }
   }
 }
 

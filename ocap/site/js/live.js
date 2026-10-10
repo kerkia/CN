@@ -101,8 +101,8 @@ function race(view, id, wanted) {
     if (st.gone) return;
     const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/${id}`);
     st.ws = ws;
-    ws.onopen = () => { st.up = true; st.tries = 0; if (st.cls) ws.send(JSON.stringify({ sub: st.cls })); status(); };
-    ws.onmessage = (e) => on(JSON.parse(e.data));
+    ws.onopen = () => { st.up = true; st.tries = 0; st.heard = Date.now(); if (st.cls) ws.send(JSON.stringify({ sub: st.cls })); status(); };
+    ws.onmessage = (e) => { st.heard = Date.now(); if (e.data !== "pong") on(JSON.parse(e.data)); };
     ws.onclose = () => {
       st.up = false; status();
       if (st.gone || document.hidden) return;
@@ -110,6 +110,14 @@ function race(view, id, wanted) {
     };
   }
 
+  // heartbeat: a « ping » every 25 s, answered by the relay without waking it; nothing heard for a minute (a phone's
+  // connection dead without a word: network change, sleep) — drop it and connect again
+  function heartbeat() {
+    const ws = st.ws;
+    if (!ws || ws.readyState !== 1) return;
+    if (Date.now() - (st.pinged || 0) > 25000) { st.pinged = Date.now(); try { ws.send("ping"); } catch (e) { /* closing */ } }
+    if (Date.now() - (st.heard || Date.now()) > 65000) { ws.onclose = null; ws.close(); st.up = false; status(); connect(); }
+  }
   function on(m) {
     if (m.t === "hello") {
       st.info = m.info; st.classes = m.classes; st.passAt = m.at || 0;
@@ -239,6 +247,7 @@ function race(view, id, wanted) {
   // the clock: running times and « il y a … » every second; the connection closed when the app is put away a while
   const tick = setInterval(() => {
     status();
+    heartbeat();
     const now = nowAt(st.info);
     view.querySelectorAll("[data-start]").forEach((el) => { el.textContent = hs(now - Number(el.dataset.start)); });
     if (st.data && [...st.justIn.values()].some((x) => Date.now() - x > JUST_IN_MS && Date.now() - x < JUST_IN_MS + 1500)) rows();
