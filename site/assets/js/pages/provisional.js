@@ -13,8 +13,13 @@ import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
-const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu" };
-export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC" };
+const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
+  startlist: "liste de départ" };
+export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
+const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
+/** A start time (seconds after midnight) as 10:42 or 10:42:30. */
+const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${
+  Math.round(s % 60) ? `:${String(Math.round(s % 60)).padStart(2, "0")}` : ""}`);
 
 export const getProv = async (path) => {
   const r = await fetch(`data/prov/${path}`, { credentials: "same-origin", cache: "no-store" });
@@ -106,7 +111,7 @@ function list(main, idx, query) {
     const kept = R.filter((r) => (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
       && (!one || (r.lics || []).includes(runner))
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
-    drawTiles(kept);
+    drawTiles(kept.filter((r) => !r.soon));         // a coming race's start list is not a result
     const rows = kept.filter((r) => filter === "all" || (filter === "found" ? r.docs : filter === "missing" ? !r.docs : !r.ffco_id));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
@@ -115,6 +120,7 @@ function list(main, idx, query) {
       <tbody>${rows.map((r) => html`<tr${raw(r.docs ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td class="pv-race">${r.docs ? html`<a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
+          ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
@@ -122,7 +128,8 @@ function list(main, idx, query) {
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
-        <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>` : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
+        <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>`
+          : r.soon ? "" : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
   $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
@@ -200,6 +207,7 @@ async function detail(main, idx, query) {
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
       ${d.by === "category" ? html`<span>${t("prov.byCategory")}</span>` : html`${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
+    if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category";
     const published = k.runners.some((r) => r.ffco);
     // one cell per method: the provisional CN J-15 → race score → CN after; below, once the race is published, the
@@ -222,6 +230,32 @@ async function detail(main, idx, query) {
         <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
         <td class="r num">${r.status === "ok" ? clock(r.time_s) : STATUS[r.status]}</td>
         ${scored ? M.map((m) => cell(r, m)) : ""}</tr>`)}</tbody></table>`;
+  }
+  // a start list: the runners by start time, with their CN today (Top and official, in the race's discipline) and the
+  // place the Top CN gives them among the circuit's runners
+  let cnNow = null;
+  async function startTable(k) {
+    $("#pv-class-hint").innerHTML = html`${t("prov.start.hint")}`;
+    if (!cnNow) {
+      const month = data.latestMonth(), tr = TERRAIN_CODE[race.terrain] || "For";
+      cnNow = Object.fromEntries(await Promise.all(["top6w2", "official"].map(async (m) => [m, await data.cnAt(m, tr, month)])));
+    }
+    const cn = (r, m) => (r.lic ? cnNow[m].get(String(r.lic)) ?? null : null);
+    const rows = [...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9) || a.name.localeCompare(b.name, "fr"));
+    const ranked = rows.filter((r) => cn(r, "top6w2")).sort((a, b) => cn(b, "top6w2") - cn(a, "top6w2"));
+    const expected = new Map(ranked.map((r, i) => [r, i + 1]));
+    $("#pv-class").innerHTML = html`<table class="data compact"><thead><tr>
+      <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
+      <th class="r">CN ${methodShort("top6w2")}</th><th class="r">CN ${methodShort("official")}</th>
+      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
+      <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
+        <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
+        <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
+        <td style="font-size:12.5px">${r.club || ""}</td>
+        <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
+        <td class="r num">${cn(r, "top6w2") ? fmt(cn(r, "top6w2")) : html`<span class="muted">—</span>`}</td>
+        <td class="r num">${cn(r, "official") ? fmt(cn(r, "official")) : html`<span class="muted">—</span>`}</td>
+        <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table>`;
   }
   draw();
   return { title: race.name };

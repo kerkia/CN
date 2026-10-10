@@ -61,6 +61,8 @@ def recent(src: Path, out: Path) -> int:
         shutil.rmtree(d)
     races, names = [], {}
     for r in idx["races"]:
+        if r.get("soon"):                      # a coming race's start list: not « Récemment » on O'Cap (yet)
+            continue
         x = {k: r[k] for k in RACE_KEYS if r.get(k) is not None}
         x.update({"runners": r.get("runners", 0), "splits": bool(r.get("splits")), "docs": r.get("docs", 0),
                   "sources": [s for s in r.get("sources", []) if s in SOURCES]})

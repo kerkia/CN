@@ -1033,3 +1033,5 @@ table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var
 .ev-row.up .ev-ci, .ev-row.up .ev-pt { background: var(--good); }
 .ev-row.down .ev-ci, .ev-row.down .ev-pt { background: var(--bad); }
 @media (max-width: 640px) { .ev-row { grid-template-columns: 44px 1fr; } .ev-track { grid-column: 1 / -1; } }
+.reg-circ { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.reg-circ span { white-space: nowrap; }

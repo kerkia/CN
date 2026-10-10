@@ -8,6 +8,9 @@ Sources (all public, no login):
                                                      "entraînements/stages" and "formations/séminaires"
   * licences.ffcorientation.fr/inscriptions/         one page: closing dates and number of
                                                      registrants of every event open for registration
+  * licences.ffcorientation.fr/inscriptions/liste_course/<id>/   the number of registrants per circuit, for the
+                                                     races of the next REG_DAYS days (the names are members-only:
+                                                     not read)
 
 Run it by hand:   py -3 -m ffco_scraper.agenda --out site/data/agenda.json
 update.py calls refresh() once a day (06:00 Paris time on GitHub).
@@ -27,7 +30,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 API = "https://api.ffcorientation.fr"
@@ -53,7 +56,9 @@ REGIONS = {
     "Provence-Alpes-Côte d'Azur": "04 05 06 13 83 84",
 }
 OUTRE_MER = "Outre-mer"
-AGENDA_VERSION = 3     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
+AGENDA_VERSION = 4     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
+#   4 (2026-10-10): registrants per circuit (reg.circuits)
+REG_DAYS = 21          # races whose registrants are counted circuit by circuit (one page each, once a day)
 SPEC_ORDER = ["Pédestre", "VTT", "Ski", "Précision", "Raid Orientation", "Raid Multisport", "Pédestre + VTT"]   # as on FFCO
 
 
@@ -364,6 +369,21 @@ def pdf_info(url: str, metro: bool = True) -> dict:
     return info
 
 
+def circuit_counts(reg_id: int) -> list[list] | None:
+    """The public list of a registration: [[circuit, registrants], ...] (FFCO shows the names to members only)."""
+    try:
+        h = get(f"{LICENCES}/inscriptions/liste_course/{reg_id}/")
+    except RuntimeError:
+        return None
+    out = []
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", h, re.S):
+        cells = [_clean(re.sub(r"<[^>]+>", "", c)) for c in re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", tr, re.S)]
+        if len(cells) >= 2 and cells[-1].strip().isdigit() and not cells[0].upper().startswith("TOTAL"):
+            name = re.sub(r"^\s*Circuit\s+", "", cells[0]).strip()
+            out.append([name, int(cells[-1])] + ([cells[1]] if len(cells) > 2 and cells[1] else []))
+    return out or None
+
+
 # ---- assemble --------------------------------------------------------------------------------------------------------
 def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
     du = du or date.today().isoformat()
@@ -388,7 +408,17 @@ def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
         reg = regs.get(det.get("reg_id"))
         if det.get("reg_id"):
             e["reg"] = reg or {"url": f"{LICENCES}/inscriptions/{det['reg_id']}/"}
+            e["reg_id"] = det["reg_id"]
         events.append(e)
+    # registrants per circuit, for the coming races with registrants
+    soon = (date.fromisoformat(du) + timedelta(days=REG_DAYS)).isoformat()
+    counted = [e for e in events if e.get("reg_id") and e["reg"].get("count") and e.get("date", "") <= soon]
+    with ThreadPoolExecutor(WORKERS) as pool:
+        for e, circ in zip(counted, pool.map(lambda e: circuit_counts(e["reg_id"]), counted)):
+            if circ:
+                e["reg"]["circuits"] = circ
+    for e in events:
+        e.pop("reg_id", None)
     for types, kind in (("ent", "e"), ("for", "f")):
         events += [_csv_event(x, kind) for x in read_csv(types, du)]
     _add_announcements(events, prev_events or [])

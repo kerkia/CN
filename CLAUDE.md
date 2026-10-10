@@ -184,7 +184,12 @@ that name no event are dropped. liveresultat's « splits » (radio controls only
 shown in the order `run.doc_priority` gives (`prio`, both sites follow it): uploads and the organiser's files, then
 WinSplits / Orientation Data, Helga, liveresultat last (live results are not corrected afterwards); a document with
 under half the runners of the fullest one drops. A split list without start times takes them, by name, from another
-document of the race (`run.share_starts`, for « Groupes »). PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
+document of the race (`run.share_starts`, for « Groupes »). **Start lists** (2026-10-10): for the races of the next 7 days, the liveresultat
+competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat.read(startlist=True)`: status
+"start"); a race with one is listed on « Récemment » as « à venir » (index `soon`, `startlist`, `agenda_id`) and its page
+shows start time, current CN Top / official and the expected place; « Bientôt » links to it. FFCO's public registration
+list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
+the names are members-only and not read. O'Cap's export skips the coming races. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
 Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones

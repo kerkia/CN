@@ -92,8 +92,9 @@ class LiveResultat:
         # keep only French competitions (time zone Europe/Paris), and only the best when they tie badly
         return [(s, c) for s, c in out[:4] if (self.info(c["id"]).get("timezone") or "Europe/Paris") == "Europe/Paris"]
 
-    def read(self, comp_id: int) -> dict | None:
-        """One competition, every class: a model.doc."""
+    def read(self, comp_id: int, startlist: bool = False) -> dict | None:
+        """One competition, every class: a model.doc. startlist: before the race, its runners with their start times
+        (status "start"; a runner already through keeps their result) — kind "startlist"."""
         a = self.f.get(API, conditional=False, params={"method": "getclasses", "comp": comp_id})
         if a.status != 200:
             return None
@@ -112,7 +113,9 @@ class LiveResultat:
             for x in data.get("results", []):
                 st = STATUS.get(int(x.get("status", 0)), None)
                 if st is None:                       # not started yet / still running
-                    continue
+                    if not startlist:
+                        continue
+                    st = "start"
                 res = x.get("result")
                 t = int(res) / 100 if st == "ok" and str(res).lstrip("-").isdigit() else None
                 place = x.get("place")
@@ -124,5 +127,8 @@ class LiveResultat:
             classes.append(klass(name, rows))
         by = "category" if classes and all(category(c["name"]) for c in classes) else "circuit"
         info = self.info(comp_id)
-        return doc("liveresultat", classes, by=by, title=f"{info.get('name', '')} ({info.get('organizer', '')})".strip(),
-                   date=info.get("date"))
+        d = doc("liveresultat", classes, by=by, title=f"{info.get('name', '')} ({info.get('organizer', '')})".strip(),
+                date=info.get("date"))
+        if startlist and d:
+            d["kind"] = "startlist"
+        return d

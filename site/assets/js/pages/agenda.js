@@ -6,6 +6,7 @@ import { html, raw, $, $$, fmt, fmtDate, isoDay } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
+import { getProv } from "./provisional.js";
 
 const KINDS = [["c", "Les courses"], ["e", "Les entraînements/stages"], ["f", "Les formations/séminaires"]];
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -35,6 +36,13 @@ export async function render(main, { query }) {
     return { title: t("nav.agenda") };
   }
   const today = isoDay(new Date());
+  // the coming races whose organiser has published a start list (shown on « Récemment »): agenda id -> race key
+  const starts = new Map();
+  try {
+    for (const r of (await getProv("index.json"))?.races || []) {
+      if (r.startlist && r.soon) starts.set(String(r.agenda_id || r.key.replace(/^a/, "")), r.key);
+    }
+  } catch (e) { /* no start lists then */ }
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
   const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
   const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) }))
@@ -259,7 +267,10 @@ export async function render(main, { query }) {
         ${row("Clôture des inscriptions", r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
         ${row("Clôture des modifications (puces, compositions)", r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
         ${row("Nombre d'inscrits", r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${fmt(r.teams)} équipe${r.teams > 1 ? "s" : ""})</span>` : ""}` : "")}
+        ${row("Par circuit", r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
       </dl>` : html`<div class="dim">Dates de clôture non publiées.</div>`}
+      ${starts.has(String(e.id)) ? html`<p style="margin:10px 0 0"><a class="btn btn-sm" href="#/recemment?course=${encodeURIComponent(starts.get(String(e.id)))}">Liste de départ →</a>
+        <span class="dim" style="font-size:12px">publiée par l'organisateur</span></p>` : ""}
       <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">Inscriptions en ligne ↗</a></p>
     </div>`;
   }

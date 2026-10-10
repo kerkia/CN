@@ -36,6 +36,11 @@ from .sources.winsplits import BASE as WS_BASE, WinSplits
 log = logging.getLogger(__name__)
 KEEP_DAYS = 65                  # races kept and matched to the platforms' competitions: a few days beyond the list
 SHOW_DAYS = 60                  # races listed on « Récemment » (its text says so; 30 until 2026-10-08)
+# Start lists (2026-10-10): the races of the next START_DAYS days whose liveresultat competition already lists its
+# runners and their start times (organisers load them a few days before), read again every START_EVERY hours.
+START_DAYS = 7
+START_EVERY = 6
+STARTLIST = "liste de départ (liveresultat)"
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 # One address per platform competition, however a club's page spells it (« …?lang=fr&comp=… »): the same document
 # is then kept once, whether matched automatically or linked from the organiser's site.
@@ -409,15 +414,45 @@ def share_starts(parsed_docs: list[dict]) -> None:
                     r["start_s"] = starts.get(_name_key(r["name"]))
 
 
+def start_lists(con, f: Fetcher, lr: LiveResultat, today: date) -> int:
+    """The coming races' start lists, from the liveresultat competition assigned to each (races.assign): a document
+    of kind "startlist", replaced by the results once the race has run (same address)."""
+    hi = (today + timedelta(days=START_DAYS)).isoformat()
+    soon = con.execute("SELECT * FROM prov_races WHERE date_iso > ? AND date_iso <= ?", (today.isoformat(), hi)).fetchall()
+    if not soon:
+        return 0
+    comps = [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if today.isoformat() < c["date"] <= hi]
+    seen = store.meta_get(con, "startlists", {})
+    now = datetime.now(timezone.utc)
+    changed = 0
+    for key, pid in races.assign(soon, comps).items():
+        last = seen.get(key)
+        if f.out_of_time() or (last and now - datetime.fromisoformat(last) < timedelta(hours=START_EVERY)):
+            continue
+        if (lr.info(pid).get("timezone") or "Europe/Paris") != "Europe/Paris":
+            continue
+        d = lr.read(pid, startlist=True)
+        seen[key] = now.isoformat(timespec="seconds")
+        if d and any(r.get("start_s") for k in d["classes"] for r in k["runners"]):
+            changed += save(con, key, PLATFORM_URL["liveresultat"].format(pid), "liveresultat", d, note=STARTLIST)
+    # forget the races gone by
+    store.meta_set(con, "startlists", {k: v for k, v in seen.items() if any(r["key"] == k for r in soon)})
+    con.commit()
+    return changed
+
+
 def build(con, out: Path, today: date) -> int:
-    """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days."""
+    """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days, and the coming races with a start
+    list (« soon »)."""
     d = out / "prov"
     d.mkdir(parents=True, exist_ok=True)
     lo = (today - timedelta(days=SHOW_DAYS)).isoformat()
     matcher, scorer = Matcher(con, today), Scorer(con)
     index, written = [], 0
-    for race in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? ORDER BY date_iso DESC, name",
-                            (lo, today.isoformat())).fetchall():
+    hi = (today + timedelta(days=START_DAYS)).isoformat()
+    for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
+                                 (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key AND d.kind = 'startlist')))
+                               ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi)).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
         # the same file under two addresses (http and https, with or without www): shown once, the https one
         docs.sort(key=lambda x: x["url"].startswith("http:"))
@@ -439,7 +474,7 @@ def build(con, out: Path, today: date) -> int:
                             r["catCn"] = matcher.info[r["lic"]]["cat"]
                         if r["lic"] and r["lic"] in ffco:
                             r["ffco"] = ffco[r["lic"]]
-                    if parsed.get("by") != "category":
+                    if parsed.get("by") != "category" and parsed.get("kind") != "startlist":
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):
                         splits = True
@@ -463,6 +498,8 @@ def build(con, out: Path, today: date) -> int:
                      {"docs": len([x for x in out_docs if x.get("classes")]), "refused": len([x for x in out_docs if x["kind"] in ("refused", "platform")]),
                       "runners": n_run, "matched": n_lic, "splits": splits, "region": region_of(race["org_code"]),
                       "site": bool(race["site"] or races.club_site(con, race["org_code"])),
+                      "agenda_id": race["agenda_id"] or None, "soon": race["date_iso"] > today.isoformat() or None,
+                      "startlist": any(x["kind"] == "startlist" for x in out_docs) or None,
                       "lics": sorted(lics),
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})})
     names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}
@@ -546,6 +583,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
                 if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (key, PLATFORM_URL[kind].format(pid))).fetchone():
                     con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE key = ? AND (done = 1 OR next_check > ?)",
                                 (_now(), key, _now()))
+        changed += start_lists(con, f, lr, today)
         due = races.due(con, today, _now())
         cut = False
         for race in due:
