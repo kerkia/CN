@@ -343,6 +343,9 @@ export function bandChart(el, { categories, bands = [], lines = [], yName = "CN"
   const series = [];
   // on a time axis, values aligned to `categories` become [date, value] pairs
   const xy = (arr) => (time ? arr.map((v, k) => (Array.isArray(v) ? v : [categories[k], v])) : arr);
+  // a line whose points are [index, value] pairs (between two categories if need be: line.between) goes on a hidden
+  // numeric axis laid exactly over the category one
+  const between = !time && lines.some((l) => l.between);
   bands.forEach((b, i) => {
     const lo = b.lo.map((v, k) => (v == null || b.hi[k] == null ? null : v));
     series.push({ type: "line", stack: `band${i}`, data: xy(lo), symbol: "none", silent: true, step: b.step,
@@ -353,7 +356,7 @@ export function bandChart(el, { categories, bands = [], lines = [], yName = "CN"
   });
   for (const l of lines) {
     series.push({
-      name: l.name, type: "line", data: xy(l.data), connectNulls: !time, z: 3, step: l.step,
+      name: l.name, type: "line", data: xy(l.data), connectNulls: !time, z: 3, step: l.step, ...(l.between && between ? { xAxisIndex: 1 } : {}),
       symbol: "circle", symbolSize: l.markers === false ? 0 : 8, showSymbol: l.markers !== false,
       lineStyle: { width: l.width || 2, color: l.color, type: l.dash || "solid" },
       itemStyle: { color: l.color, borderColor: th.surface, borderWidth: 2 },
@@ -364,12 +367,17 @@ export function bandChart(el, { categories, bands = [], lines = [], yName = "CN"
     grid: { left: 52, right: 20, top: 18, bottom: time ? 60 : 40 },
     tooltip: baseTooltip(th, {
       trigger: "axis", axisPointer: { type: "line", lineStyle: { color: th.axis } },
-      formatter: (params) => (params.length && tip ? tip(params[0].axisValue, params) : ""),
+      formatter: (params) => {
+        if (!params.length || !tip) return "";
+        const v = params[0].axisValue;
+        return tip(typeof v === "number" && !time ? categories[Math.round(v)] : v, params);
+      },
     }),
     xAxis: time
       ? { type: "time", ...axisCommon(th), splitLine: { show: false } }
-      : { type: "category", data: categories, boundaryGap: false, ...axisCommon(th), splitLine: { show: false },
+      : [{ type: "category", data: categories, boundaryGap: false, ...axisCommon(th), splitLine: { show: false },
           axisLabel: { color: th.ink3, fontSize: 12, interval: 0, hideOverlap: true } },
+        ...(between ? [{ type: "value", min: 0, max: categories.length - 1, show: false, axisPointer: { show: false } }] : [])],
     ...(time ? { dataZoom: [{ type: "inside", xAxisIndex: 0, filterMode: "weakFilter" },
       { type: "slider", xAxisIndex: 0, filterMode: "weakFilter", height: 20, bottom: 8, borderColor: th.grid,
         backgroundColor: "transparent", fillerColor: "rgba(42,120,214,0.10)", textStyle: { color: th.ink3, fontSize: 11 },

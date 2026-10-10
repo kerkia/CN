@@ -547,7 +547,11 @@ export async function render(main, { arg, query }) {
       bands: [{ name: "p10–p90", color: blue, opacity: 0.12, lo: col(10), hi: col(90) },
         { name: "p25–p75", color: blue, opacity: 0.22, lo: col(25), hi: col(75) }],
       lines: [{ name: t("pg.median"), color: blue, data: col(50), markers: false },
-        ...(ends.length ? [{ name, color: ink, data: ends.map((s) => [s.cat, s.cn]) }] : [])],
+        // several seasons in one category: spread side by side around it, oldest on the left (not stacked)
+        ...(ends.length ? [{ name, color: ink, between: true, data: ends.map((s) => {
+          const same = ends.filter((e) => e.cat === s.cat), k = same.indexOf(s), step = Math.min(0.28, 0.6 / same.length);
+          return [catsX.indexOf(s.cat) + (k - (same.length - 1) / 2) * step, s.cn];
+        }) }] : [])],
       tip: (cat) => {
         const r = curves[cat]; if (!r) return "";
         const me = ends.filter((s) => s.cat === cat);
