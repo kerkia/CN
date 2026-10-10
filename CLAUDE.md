@@ -189,7 +189,12 @@ competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat
 "start"); a race with one is listed on « Récemment » as « à venir » (index `soon`, `startlist`, `agenda_id`) and its page
 shows start time, current CN Top / official and the expected place; « Bientôt » links to it. FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
-the names are members-only and not read. O'Cap's export skips the coming races. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
+the names are members-only and not read. O'Cap's export skips the coming races. Organisers' sites too (`run.site_start_lists`,
+`ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
+races of today to +7 days, 8 sites a run, each every 6 h): read by `parsers/startlist.py` (IOF XML StartList, HTML tables,
+OE12 and MeOS PDFs by column positions and section lines; never by the results parsers: a start time is not a race
+time) into kind "startlist", else linked (kind "startfile"); a weekend's files go by the days they print and their
+first lines (`races.owners`, « SPRINT1 » split). The result pass leaves start lists alone; they rank after results. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
 Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones

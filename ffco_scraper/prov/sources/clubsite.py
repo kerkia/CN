@@ -30,6 +30,11 @@ DOC_EXT = (".pdf", ".htm", ".html", ".xml", ".xls", ".xlsx", ".csv", ".txt")
 RESULT_WORDS = ("resultat", "result", "classement", "temps", "inter", "split", "provisoire", "circuit", "categorie", "si_", "-si")
 NOT_RESULTS = ("relais", "relay", "depart", "horaire", "startlist", "start list", "inscrit", "inscription", "annonce", "invitation", "convocation",
                "reglement", "fleche", "plan d acces")
+# start lists (mode "start", before the race): « horaires de départ », « liste de départ », « inscrits »
+START_WORDS = ("depart", "horaire", "startlist", "start list", "start-list", "starttime", "inscrits", "engages", "heures de")
+NOT_START = ("resultat", "result", "classement", "split", "temps inter", "provisoire", "annonce", "invitation", "convocation",
+             "reglement", "fleche", "plan d acces", "acces", "covoiturage", "hebergement", "restauration", "bulletin")
+START_DAYS_BEFORE = 21          # a start list (or its announcement) is posted in the weeks before the race
 PAGE_WORDS = ("resultat", "result", "organisation", "competition", "course", "evenement", "event", "actualite", "news",
               "archive", "saison", "orga", "programme")
 STOP = {"de", "la", "le", "du", "des", "et", "co", "course", "orientation", "club", "d", "l", "les", "en", "a", "au",
@@ -223,8 +228,12 @@ class ClubSite:
             self.pages[url] = text
         return self.pages[url]
 
-    def find(self, race, sites: list[str]) -> dict:
-        """{'docs': [(url, text, via)], 'platforms': [(kind, url)]} for this race."""
+    def find(self, race, sites: list[str], mode: str = "results") -> dict:
+        """{'docs': [(url, text, via)], 'platforms': [(kind, url)]} for this race: its result files, or (mode "start",
+        before the race) its start lists and entry lists."""
+        start = mode == "start"
+        WANT = START_WORDS if start else RESULT_WORDS
+        SKIP = NOT_START if start else NOT_RESULTS
         sites = list(dict.fromkeys(sites + [p for p in map(parent_site, sites) if p]))
         d = date.fromisoformat(race["date_iso"])
         dt = date_tokens(d)
@@ -249,7 +258,7 @@ class ClubSite:
                     if names_race or posted_after:
                         platforms[url] = kind
                     return
-            if other_day(urllib.parse.unquote(url), d) or uploaded_before(url, d) or \
+            if other_day(urllib.parse.unquote(url), d) or (not start and uploaded_before(url, d)) or \
                     address_other_day(url, d) or \
                     other_year(urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1]) + " " + text, d):
                 return                                          # a file of another day's (or season's) race
@@ -257,18 +266,18 @@ class ClubSite:
             is_doc = path.endswith(DOC_EXT) or "drive.google.com/file" in url or "document-download" in url or "/ugd/" in url
             if not is_doc:
                 return
-            if path.endswith((".htm", ".html")) and not any(w in low for w in RESULT_WORDS):
+            if path.endswith((".htm", ".html")) and not any(w in low for w in WANT):
                 return                                          # an ordinary page, not an exported list
-            if any(w in low for w in NOT_RESULTS):
+            if any(w in low for w in SKIP):
                 return                                          # start lists, entries, invitations: their times are not results
-            says_result = any(w in low for w in RESULT_WORDS)
+            says_result = any(w in low for w in WANT)           # (mode "start": says start list)
             names_race = any(t in low for t in dt) or names_day(low, d) or any(w in low for w in words) or on_race_page
-            if (says_result and names_race) or (posted_after and (says_result or names_race)):
+            if (says_result and names_race) or (posted_after and (says_result or names_race and not start)):
                 found.setdefault(url, (text, via))
 
-        # 1. WordPress: uploads and posts since the race
-        after = (d - timedelta(days=1)).isoformat() + "T00:00:00"
-        before = (d + timedelta(days=21)).isoformat() + "T00:00:00"
+        # 1. WordPress: uploads and posts since the race (a start list: in the weeks before it)
+        after = (d - timedelta(days=START_DAYS_BEFORE if start else 1)).isoformat() + "T00:00:00"
+        before = (d + timedelta(days=1 if start else 21)).isoformat() + "T00:00:00"
         probed: set[str] = set()
 
         def wordpress(root: str) -> None:
@@ -343,7 +352,7 @@ class ClubSite:
             # of the day in a menu or a margin listing the club's events is not enough)
             # (nor a page naming another day too: a list of the club's results, or the day before's race page
             # « Etape 1 … 26 au 26 Septembre 2026 », modified the 27th)
-            on_race_page = url in sites or (any(w in about for w in RESULT_WORDS[:3]) and names_day(about, d)
+            on_race_page = url in sites or (any(w in about for w in WANT[:3]) and names_day(about, d)
                                             and not days_named(about) - {(d.month, d.day)} - posted_before(about, d))
             # a page about the race's weekend (it names a day within one of the race's)
             weekend_page = url not in [_root(s) + "/" for s in sites] and bool(days_named(about)) and \
@@ -365,8 +374,8 @@ class ClubSite:
                 if other_year(low, d) or other_day_named(low, d):
                     continue
                 race_named = any(t2 in low for t2 in dt) or names_day(low, d) or any(w in low for w in words)
-                results = any(w in low for w in RESULT_WORDS[:3])
-                past = any(w in low for w in ("passe", "archive", "anciens", "past"))
+                results = any(w in low for w in WANT[:3])
+                past = not start and any(w in low for w in ("passe", "archive", "anciens", "past"))
                 posted = bool(posted_before(low, d))        # the race's announcement, often updated with its results
                 if race_named or results or past or posted or any(w in low for w in PAGE_WORDS):
                     # the most specific pages first: results naming this race, then pages naming it, then results and

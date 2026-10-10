@@ -14,7 +14,7 @@ import { link, replaceQuery } from "../app.js";
 const SOURCE = { upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
 const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
-  startlist: "liste de départ" };
+  startlist: "liste de départ", startfile: "liste de départ (lien)" };
 export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
 const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */
@@ -119,7 +119,7 @@ function list(main, idx, query) {
       <th>FFCO</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(r.docs ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td class="pv-race">${r.docs ? html`<a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
+        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
