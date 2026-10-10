@@ -16,12 +16,13 @@ import {
 import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
 
-/** The four selectors shared by the club pages; withOrg adds the organised-competitions base. */
-export function clubSelectors(sel, { withOrg = false } = {}) {
+/** The four selectors shared by the club pages; withOrg adds the organised-competitions base; without withMeasure,
+ *  the measure is chosen by sorting the table on its column. */
+export function clubSelectors(sel, { withOrg = false, withMeasure = true } = {}) {
   const bases = withOrg ? [...BASES, "org"] : BASES;
   return html`
     <div class="field"><span>${t("cb.base")}</span>${seg("base", bases.map((b) => [b, baseLabel(b)]), sel.base)}</div>
-    <div class="field"><span>${t("cb.measure")}</span>${seg("measure", measuresOf(sel.base).map((m) => [m, measureLabel(m, sel.base)]), sel.measure)}</div>
+    ${withMeasure ? html`<div class="field"><span>${t("cb.measure")}</span>${seg("measure", measuresOf(sel.base).map((m) => [m, measureLabel(m, sel.base)]), sel.measure)}</div>` : ""}
     ${sel.base === "org" ? "" : html`
     <div class="field"><span>${t("f.sexe")}</span>${seg("sexe", SEXES.map((s) => [s, sexLabel(s)]), sel.sexe)}</div>
     <div class="field"><span>${t("cb.ageGroup")}</span>${seg("age", AGE_GROUPS.map((a) => [a, ageLabel(a)]), sel.age)}</div>`}`;
@@ -58,7 +59,7 @@ export async function render(main, { query }) {
   const sel = selFromQuery(query, { withOrg: true });
   const terrain = store.get().terrain;
   const mine = myClub();
-  let table = null;
+  let table = null, sortKey = sel.measure, sortDir = -1;
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
@@ -87,13 +88,16 @@ export async function render(main, { query }) {
     const ls = Object.entries(data.meta().names.ligues).sort((a, b) => a[1].localeCompare(b[1]));
     $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(month)}
-      ${clubSelectors(sel, { withOrg: true })}
+      ${clubSelectors(sel, { withOrg: true, withMeasure: false })}
       ${sel.base !== "pts" ? html`<div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>` : ""}
       <label class="field"><span>${t("f.ligue")}</span><select id="lg"><option value="">${t("f.all")}</option>
         ${ls.map(([c, n]) => html`<option value="${c}" ${raw(c === ligue ? "selected" : "")}>${n}</option>`)}</select></label>`;
     bindDateControls(main, (m) => { month = m; drawFilters(); load(); });
     bindMethodSeg(main, (m) => { method = m; drawFilters(); load(); });
-    bindClubSelectors(main, sel, (k) => { drawFilters(); if (k === "sexe" || k === "age") load(); else drawTables(); });
+    bindClubSelectors(main, sel, (k) => {
+      if (k === "base") { sortKey = sel.measure; sortDir = -1; }
+      drawFilters(); if (k === "sexe" || k === "age") load(); else drawTables();
+    });
     $("#lg").addEventListener("change", (e) => { ligue = e.target.value; drawTables(); });
   }
 
@@ -110,10 +114,14 @@ export async function render(main, { query }) {
   }
 
   const digits = (m) => (sel.base === "org" && m === "per100" ? 1 : 0);
+  // national points and organised competitions: a club with none counts 0 (it is listed); a CN measure without
+  // runners in the group is no value
+  const zeroOk = () => sel.base !== "cn";
+  const valOf = (g, m) => g[sel.base][m] || (zeroOk() && g.org?.members ? 0 : null);
   const valCols = () => [
     ...measuresOf(sel.base).map((m) => ({
-      key: m, label: measureLabel(m, sel.base), align: "r", cls: "num", sort: (g) => g[sel.base][m] || null,
-      render: (g) => (g[sel.base][m] ? (m === sel.measure ? html`<b>${fmt(g[sel.base][m], digits(m))}</b>` : fmt(g[sel.base][m], digits(m))) : html`<span class="dim">—</span>`),
+      key: m, label: measureLabel(m, sel.base), align: "r", cls: "num", sort: (g) => valOf(g, m),
+      render: (g) => { const v = valOf(g, m); return v == null ? html`<span class="dim">—</span>` : m === sel.measure ? html`<b>${fmt(v, digits(m))}</b>` : fmt(v, digits(m)); },
     })),
     // the denominator of the per-100 figure
     ...(sel.base === "org" ? [{ key: "members", label: t("cb.m.org.members"), align: "r", cls: "num dim",
@@ -137,22 +145,32 @@ export async function render(main, { query }) {
     rankOn(res.ligues, sel.base, sel.measure);
     const ms = measuresOf(sel.base);
     const qn = normalise(q);
-    const shown = res.clubs.filter((g) => g.rank && (!ligue || g.ligue === ligue) &&
+    // every club with ranked runners (in the group, for a CN measure): those with no national points or no
+    // organised competition are listed with 0
+    const listed = (g) => (sel.base === "cn" ? g.members.length > 0 : g.org.members > 0 || g.org.n > 0 || g.pts.n > 0);
+    const shown = res.clubs.filter((g) => listed(g) && (!ligue || g.ligue === ligue) &&
       (!qn || normalise(`${g.code} ${clubName(g.code)}`).includes(qn)));
     const lead = (m) => [...res.clubs].filter((g) => g[sel.base][m]).sort((a, b) => b[sel.base][m] - a[sel.base][m])[0];
     const tl = (m) => { const g = lead(m); return tile(`1er · ${measureLabel(m, sel.base)}`, g ? fmt(g[sel.base][m], digits(m)) : "—", g ? clubName(g.code) : ""); };
     $("#tiles").innerHTML = html`${ms.map(tl)}`;
     $("#clubs-title").textContent = `${fmt(shown.length)} ${t("cm.clubsRanked")} — ${measureLabel(sel.measure, sel.base)} · ${baseLabel(sel.base)}`;
+    if (![...measuresOf(sel.base), "code", "name", "lg", "best", "members"].includes(sortKey)) { sortKey = sel.measure; sortDir = -1; }
     table = dataTable($("#clubs"), {
-      rows: shown, sortKey: "rank", sortDir: 1,
+      rows: shown, sortKey, sortDir,
       rowClass: (g) => [store.inClubs(g.code) ? "selected" : "", g.code === mine ? "me" : ""].join(" "),
+      // sorting on a measure's column makes it the measure ranked (the description, the title, the bold column)
+      onSort(key, dir) {
+        sortKey = key; sortDir = dir;
+        if (measuresOf(sel.base).includes(key) && key !== sel.measure) { sel.measure = key; drawTables(); return false; }
+        return true;
+      },
       columns: [
+        { key: "rownum", label: t("col.n"), cls: "rank num", render: (g, i) => i + 1 },
         { key: "sel", label: "", cls: "c", render: (g) => html`<input type="checkbox" data-club="${g.code}" ${raw(store.inClubs(g.code) ? "checked" : "")} aria-label="${clubName(g.code)}">` },
-        { key: "rank", label: t("rk.col.rank"), cls: "rank num", sort: (g) => g.rank, defaultDir: 1, render: (g) => g.rank ?? "" },
         { key: "code", label: t("col.code"), cls: "num dim", sort: (g) => g.code, defaultDir: 1, render: (g) => g.code },
         { key: "name", label: t("col.name"), sort: (g) => clubName(g.code), defaultDir: 1,
           render: (g) => html`<a class="name" href="${link.club(g.code)}">${clubName(g.code)}</a>` },
-        { key: "lg", label: t("f.ligue"), render: (g) => data.ligueName(g.ligue) },
+        { key: "lg", label: t("f.ligue"), sort: (g) => data.ligueName(g.ligue) || null, defaultDir: 1, render: (g) => data.ligueName(g.ligue) },
         ...valCols(), ...(sel.base === "org" ? [] : [bestCol]),
       ],
       onRender(el) {
@@ -164,9 +182,9 @@ export async function render(main, { query }) {
       },
     });
     dataTable($("#ligues"), {
-      rows: res.ligues.filter((g) => g.rank), sortKey: "rank", sortDir: 1,
+      rows: res.ligues.filter((g) => g.rank || g.org.members), sortKey: sel.measure, sortDir: -1,
       columns: [
-        { key: "rank", label: t("rk.col.rank"), cls: "rank num", sort: (g) => g.rank, defaultDir: 1, render: (g) => g.rank ?? "" },
+        { key: "rownum", label: t("col.n"), cls: "rank num", render: (g, i) => i + 1 },
         { key: "name", label: t("f.ligue"), sort: (g) => data.ligueName(g.code), defaultDir: 1,
           render: (g) => html`<span class="name">${data.ligueName(g.code)}</span> <span class="dim">${g.code}</span>` },
         { key: "clubs", label: t("nav.clubs"), align: "r", cls: "num", sort: (g) => g.clubs, render: (g) => fmt(g.clubs) },
@@ -174,8 +192,8 @@ export async function render(main, { query }) {
       ],
     });
     $("#csv").onclick = () => downloadCsv(`clubs_${terrain}_${sel.base}_${month}.csv`,
-      ["rang", "code", "club", "ligue", ...ms],
-      table.rows().map((g) => [g.rank ?? "", g.code, clubName(g.code), g.ligue || "", ...ms.map((m) => g[sel.base][m] ?? "")]));
+      ["n", "code", "club", "ligue", ...ms],
+      table.rows().map((g, i) => [i + 1, g.code, clubName(g.code), g.ligue || "", ...ms.map((m) => valOf(g, m) ?? "")]));
     updateCmp();
   }
   $("#cq").addEventListener("input", debounce((e) => { q = e.target.value; drawTables(); }, 180));

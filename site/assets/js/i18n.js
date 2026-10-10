@@ -347,7 +347,7 @@ const FR = {
   "col.status": "Statut", "col.races": "Courses", "col.best": "Meilleur score", "col.avg": "Score moyen",
   "col.cnEnd": "CN fin de saison", "col.weight": "Poids", "col.use": "Utilisation",
   "col.members": "Classés", "col.median": "Médiane", "col.top": "Meilleur", "col.name": "Nom",
-  "col.code": "Code", "col.value": "Valeur", "col.cnj15": "CN J-15", "col.dist": "Distance",
+  "col.code": "Code", "col.n": "N°", "col.value": "Valeur", "col.cnj15": "CN J-15", "col.dist": "Distance",
 
   "status.ok": "", "status.nc": "NC", "status.pm": "PM", "status.abandon": "Abandon", "status.disqualifie": "Disq.",
   "status.hors_delai": "Hors délai",
