@@ -52,7 +52,7 @@ class Scorer:
 
     def internal_j15(self, lic: str, base: str, terrain: str, as_of: date) -> int | None:
         p = self.params(base, terrain)
-        rows = self.con.execute("""SELECT score_raw, poids FROM scores WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
+        rows = self.con.execute("""SELECT score_raw, poids FROM scores INDEXED BY idx_scores_runner WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
                                    AND score_raw IS NOT NULL AND date_iso >= ? AND date_iso <= ?""",
                                 (lic, base, terrain, (as_of - timedelta(days=p.window_days)).isoformat(), as_of.isoformat())).fetchall()
         if not rows:
@@ -63,7 +63,7 @@ class Scorer:
     # ---- the CN after the race -------------------------------------------------------------------------------
     def cn_after(self, lic: str, method: str, terrain: str, d: date, score: int, weight: float, skip_course: int | None) -> int | None:
         p = self.params(method, terrain)
-        rows = self.con.execute("""SELECT score, poids FROM scores WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
+        rows = self.con.execute("""SELECT score, poids FROM scores INDEXED BY idx_scores_runner WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
                                    AND score IS NOT NULL AND date_iso >= ? AND date_iso <= ? AND course_id IS NOT ?""",
                                 (lic, method, terrain, (d - timedelta(days=p.window_days)).isoformat(), d.isoformat(), skip_course)).fetchall()
         s = [r[0] for r in rows] + [score]

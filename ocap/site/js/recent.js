@@ -67,12 +67,12 @@ async function list(view, idx) {
 }
 
 // ---- one race: results circuit by circuit ----------------------------------------------------------------------------
-// the document shown first: the one with you in it, else one with split times, else by circuit, else the biggest
+// the document shown first: the first one with you in it, else the first (O'CN's order: the organiser's files before
+// the platforms, liveresultat last — live results are not corrected afterwards)
 const hasSplits = (k) => k.runners.some((r) => r.splits);
 function firstDoc(docs) {
-  const score = (d) => (d.classes.some((k) => k.runners.some((r) => isMe(r.name))) ? 1e6 : 0) + (d.classes.some(hasSplits) ? 1e5 : 0)
-    + (d.by !== "category" ? 1e4 : 0) + d.classes.reduce((a, k) => a + k.runners.length, 0);
-  return docs.reduce((best, d, i) => (score(d) > score(docs[best]) ? i : best), 0);
+  const i = docs.findIndex((d) => d.classes.some((k) => k.runners.some((r) => isMe(r.name))));
+  return i >= 0 ? i : 0;
 }
 
 function results(view, race, di, ci) {

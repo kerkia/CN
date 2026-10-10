@@ -140,8 +140,8 @@ async function detail(main, idx, query) {
     return { title: t("prov.title") };
   }
   const docs = race.docs.filter((d) => d.classes?.length);
-  // the document shown first: one with circuits (scored), the most runners
-  const rank = (d) => (d.by !== "category" ? 1e6 : 0) + d.classes.reduce((n, k) => n + k.runners.length, 0);
+  // the document shown first: the build's order (the organiser's files before the platforms, liveresultat last)
+  const rank = (d) => d.prio ?? (d.by !== "category" ? 1e6 : 0) + d.classes.reduce((n, k) => n + k.runners.length, 0);
   let di = Math.max(0, Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc)
     : docs.indexOf([...docs].sort((a, b) => rank(b) - rank(a))[0]));
   let ci = Number(query.c) || 0;

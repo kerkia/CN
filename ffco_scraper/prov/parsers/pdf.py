@@ -310,7 +310,25 @@ def _split_val(text: str) -> float | None:
 # By circuit: "1.  Lucie MOREAU   Bleu   COMulhouse   12:33"            (place, name, class, club, time)
 # Class line: "Orange Long  (19 / 19)  Temps  Retard  Temps perdu", or just "Bleu" / "Parcours A" by circuit.
 # Splits:     after each runner line, lines of "leg (cumulative)" pairs, 5 or 6 per line; the last pair is the
-#             finish. MeOS prints no control codes.
+#             finish. MeOS prints no control codes — except in its other split list: "1 (54): 2:32 (2:32)  2 (55): …
+#             Arrivée: 0:07 (14:44)" (number, code, leg, cumulative; "– (–)" for a missing punch), its class line then
+#             giving the course too: "Open H10 Vert 2280 m, 20 m (35 / 35)" (CF LD 2026).
+
+_CODED_PAIR = re.compile(r"(\d+)\s*\((\d+)\)\s*:\s*(\S+)\s*\(([^()]*)\)")
+_CODED_FIN = re.compile(r"(?:Arriv\w*|Finish|Ziel|M[åa]l)\s*:\s*(\S+)\s*\(([^()]*)\)", re.I)
+# where two cells touch, the PDF's characters come out interleaved: "(1:48:281)7 (109)" for "(1:48:28) 17 (109)"
+_CODED_GLUED = re.compile(r"\((\d+:\d\d(?::\d\d)?)(\d)\)(\d*)")
+_COURSE_SIZE = re.compile(r"\s+\d[\d ]*\s?m\s*,\s*\d+\s?m$")
+
+
+def _meos_coded_split(text: str) -> list[tuple[str, float | None]] | None:
+    """A line of the coded split list: [(control code, cumulative time)…], the finish as "F"; None if it is not one."""
+    t = _CODED_GLUED.sub(r"(\1) \2\3", text)
+    pairs = [(m.group(2), _split_val(m.group(4))) for m in _CODED_PAIR.finditer(t)]
+    fin = _CODED_FIN.search(t)
+    if not pairs and not fin or _CODED_FIN.sub("", _CODED_PAIR.sub("", t)).strip():
+        return None
+    return pairs + ([("F", _split_val(fin.group(2)))] if fin else [])
 
 
 def _parse_meos(pages: list[list[Line]], meta: dict) -> dict | None:
@@ -349,6 +367,12 @@ def _parse_meos(pages: list[list[Line]], meta: dict) -> dict | None:
     classes, cur, last = [], None, None
     for l in lines:
         w0 = l.words[0]
+        coded = _meos_coded_split(l.text)
+        if coded is not None:
+            if last is not None and last.get("_raw") is not None:
+                last["_raw"].extend(v for _, v in coded)
+                last.setdefault("_codes", []).extend(c for c, _ in coded)
+            continue
         if _meos_split_line(l):
             if last is not None and last.get("_raw") is not None:
                 last["_raw"].extend(_split_val(w.text) for w in l.words if w.text.startswith("("))
@@ -476,6 +500,12 @@ def _meos_class_name(l: Line, cols: dict) -> str | None:
             break
         out.append(w.text)
     name = " ".join(out).strip()
+    # "Open H10 Vert 2280 m, 20 m": the class, then its course's name, length and climb
+    short = _COURSE_SIZE.sub("", name)
+    if short != name:
+        words = short.split(" ")
+        cut = 2 if len(words) > 2 and words[-1].lower() in ("bis", "ter") else 1      # "Open H14 S bis 5250 m, 60 m"
+        name = " ".join(words[:-cut]) if len(words) > cut else short
     return name or None
 
 
@@ -483,13 +513,15 @@ def _meos_finish_splits(c: dict) -> None:
     """MeOS split rows end with the finish: the class's control count is the usual number of pairs minus one.
     A runner whose row has another count, or whose finish disagrees with the result time, gets no splits."""
     raws = [r.pop("_raw", None) for r in c["runners"]]
+    codes = Counter(tuple(x) for x in (r.pop("_codes", None) for r in c["runners"]) if x)
     lens = Counter(len(x) for x in raws if x)
     if not lens:
         return
     n = lens.most_common(1)[0][0] - 1
     if n < 1:
         return
-    c["controls"] = [f"#{i}" for i in range(1, n + 1)]
+    usual = [k for k, _ in codes.most_common() if len(k) == n + 1]
+    c["controls"] = list(usual[0][:n]) if usual else [f"#{i}" for i in range(1, n + 1)]
     for r, raw in zip(c["runners"], raws):
         if not raw or len(raw) != n + 1:
             continue

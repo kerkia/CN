@@ -2,8 +2,8 @@
 
 getcompetitions lists every competition (id, name, organizer, date; about 1 MB, read once per run); the French
 ones of a race's day are matched to it by name, place, organiser and race type, then each class is read with
-getclassresults (times in hundredths). No category, no year of birth; splits only when the organiser used radio
-controls. The class is usually the circuit.
+getclassresults (times in hundredths). No category, no year of birth; its radio controls' times are not kept (a
+spectator control and the last one: too few for a split analysis). The class is usually the circuit.
 """
 
 from __future__ import annotations
@@ -107,7 +107,7 @@ class LiveResultat:
             if r.status != 200:
                 continue
             data = _json(r.content)
-            controls = [str(s.get("code")) for s in data.get("splitcontrols") or []] or None
+            # (its "splits" are the radio controls only — a spectator control and the last one —: no split analysis)
             rows = []
             for x in data.get("results", []):
                 st = STATUS.get(int(x.get("status", 0)), None)
@@ -115,18 +115,13 @@ class LiveResultat:
                     continue
                 res = x.get("result")
                 t = int(res) / 100 if st == "ok" and str(res).lstrip("-").isdigit() else None
-                splits = None
-                if controls:
-                    sp = x.get("splits") or {}
-                    splits = [(int(sp[str(k)]) / 100 if str(sp.get(str(k), "")).isdigit() and int(sp[str(k)]) > 0 else None)
-                              for k in [s.get("code") for s in data["splitcontrols"]]]
                 place = x.get("place")
                 start = x.get("start")                      # hundredths of a second after midnight
                 rows.append(runner(x.get("name", ""), place=int(place) if str(place).isdigit() else None,
                                    club=x.get("club"), club_code=club_code(x.get("club")), time_s=t, status=st,
-                                   category=category(name), splits=splits,
+                                   category=category(name),
                                    start_s=int(start) / 100 if str(start).isdigit() and int(start) > 0 else None))
-            classes.append(klass(name, rows, controls=controls))
+            classes.append(klass(name, rows))
         by = "category" if classes and all(category(c["name"]) for c in classes) else "circuit"
         info = self.info(comp_id)
         return doc("liveresultat", classes, by=by, title=f"{info.get('name', '')} ({info.get('organizer', '')})".strip(),

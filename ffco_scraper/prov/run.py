@@ -37,6 +37,41 @@ log = logging.getLogger(__name__)
 KEEP_DAYS = 65                  # races kept and matched to the platforms' competitions: a few days beyond the list
 SHOW_DAYS = 60                  # races listed on « Récemment » (its text says so; 30 until 2026-10-08)
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
+# One address per platform competition, however a club's page spells it (« …?lang=fr&comp=… »): the same document
+# is then kept once, whether matched automatically or linked from the organiser's site.
+PLATFORM_URL = {"liveresultat": "https://liveresultat.orientering.se/followfull.php?comp={}",
+                "winsplits": WS_BASE + "/classes.asp?databaseId={}", "heyries": HY_BASE + "/competition/{}/",
+                "helga": HG_BASE + "/splitsbrowser.php?lauf={}"}
+PLATFORM_ID = {"liveresultat": r"liveresultat\.orientering\.se/.*[?&]comp=(\d+)", "winsplits": r"[?&]databaseId=(\d+)",
+               "heyries": r"/competition/(\d+)", "helga": r"helga-o\.live/splits/\w+\.php\?lauf=(\d+)"}
+
+
+def platform_id(kind: str, url: str) -> str | None:
+    m = re.search(PLATFORM_ID.get(kind, r"^$"), url)
+    return m.group(1) if m else None
+
+
+def canonical_docs(con) -> int:
+    """Platform documents saved under another spelling of their address: renamed, or dropped when the race already
+    has that document (and Helga notes that name no event: its home page, its lists)."""
+    n = 0
+    for row in con.execute("SELECT race_key, url, source FROM prov_docs WHERE source IN ('liveresultat', 'winsplits', 'heyries', 'helga')").fetchall():
+        pid = platform_id(row["source"], row["url"])
+        if pid is None:
+            if row["source"] == "helga" and "lauf=" not in row["url"]:
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (row["race_key"], row["url"]))
+                n += 1
+            continue
+        url = PLATFORM_URL[row["source"]].format(pid)
+        if url == row["url"]:
+            continue
+        if con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (row["race_key"], url)).fetchone():
+            con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (row["race_key"], row["url"]))
+        else:
+            con.execute("UPDATE prov_docs SET url = ? WHERE race_key = ? AND url = ?", (url, row["race_key"], row["url"]))
+        n += 1
+    con.commit()
+    return n
 CATCH_UP = 4                    # budget multiplier while catching up
 
 
@@ -129,7 +164,7 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
     matched = []
     # liveresultat and WinSplits: the competition of that day assigned to this race (races.assign)
     if links.get("liveresultat") and not f.out_of_time() and (lr.info(links["liveresultat"]).get("timezone") or "Europe/Paris") == "Europe/Paris":
-        url = f"https://liveresultat.orientering.se/followfull.php?comp={links['liveresultat']}"
+        url = PLATFORM_URL["liveresultat"].format(links["liveresultat"])
         matched.append(url)                   # kept even if emptied since: live results are cleared after the event
         d = lr.read(links["liveresultat"])
         if d and d["classes"]:
@@ -137,7 +172,7 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
         elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
             save(con, race["key"], url, "liveresultat", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     if links.get("winsplits") and not f.out_of_time():
-        url = f"{WS_BASE}/classes.asp?databaseId={links['winsplits']}"
+        url = PLATFORM_URL["winsplits"].format(links["winsplits"])
         matched.append(url)
         fp = ws.fingerprint(links["winsplits"])
         prev = con.execute("SELECT sha FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone()
@@ -148,7 +183,7 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
         elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
             save(con, race["key"], url, "winsplits", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     if links.get("heyries") and not f.out_of_time():
-        url = f"{HY_BASE}/competition/{links['heyries']}/"
+        url = PLATFORM_URL["heyries"].format(links["heyries"])
         matched.append(url)
         d = hy.read(links["heyries"])
         if d and d["classes"]:
@@ -156,7 +191,7 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
         elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
             save(con, race["key"], url, "heyries", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
     if links.get("helga") and hg and not f.out_of_time():
-        url = f"{HG_BASE}/splitsbrowser.php?lauf={links['helga']}"
+        url = PLATFORM_URL["helga"].format(links["helga"])
         matched.append(url)
         d = hg.read(links["helga"])
         if d and d["classes"]:
@@ -284,14 +319,20 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 continue
             changed += save(con, race["key"], url, "site", d, kind=None if d else "unparsed", sha=a.sha, note=text or None)
         # platforms the club links to: read liveresultat and WinSplits ids directly, note the others
+        seen = set()
         for url, kind in found["platforms"]:
-            m = re.search({"liveresultat": r"comp=(\d+)", "winsplits": r"databaseId=(\d+)", "heyries": r"/competition/(\d+)",
-                           "helga": r"helga-o\.live/splits/\w+\.php\?lauf=(\d+)"}.get(kind, r"^$"), url)
-            if m and not f.out_of_time() and (kind != "helga" or hg):
+            pid = platform_id(kind, url)
+            if pid and not f.out_of_time() and (kind != "helga" or hg):
+                url = PLATFORM_URL[kind].format(pid)
+                if url in seen:
+                    continue
+                seen.add(url)
                 reader = {"liveresultat": lr, "winsplits": ws, "heyries": hy, "helga": hg}[kind]
-                d = reader.read(int(m.group(1)))
+                d = reader.read(int(pid))
                 if d and d["classes"] and date_ok(d, race):
                     changed += save(con, race["key"], url, kind, d)
+            elif kind == "helga" and "lauf=" not in url:
+                continue                      # Helga's home page or lists: no event named
             elif kind in ("helga", "olive", "routegadget"):
                 # (Livelox is left out: it shows only the runners who sent their GPS track, and it refuses robots)
                 if kind == "helga":
@@ -330,6 +371,44 @@ def region_of(org_code: str | None) -> str | None:
     return OUTRE_MER if dep.isdigit() and int(dep) >= 96 else None
 
 
+# The order a race's documents are shown in (the first one opens): the organiser's own files (or a file sent to
+# O'CN) are the reference; liveresultat comes last — live results are not corrected afterwards. A document missing
+# half the runners of the fullest one loses its rank; then a list by circuit (scored), with splits, the most runners.
+SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "helga": 3, "liveresultat": 1}
+
+
+def doc_priority(entry: dict, most: int) -> int:
+    ks = entry.get("classes") or []
+    if not ks:
+        return 0
+    n = sum(len(k["runners"]) for k in ks)
+    return (10**7 * (2 * n >= most) + 10**5 * SOURCE_RANK.get(entry["source"], 2) + 10**4 * (entry.get("by") != "category")
+            + 10**3 * any(r.get("splits") for k in ks for r in k["runners"]) + min(n, 999))
+
+
+def _name_key(name: str) -> str:
+    return " ".join(sorted(plain(name).replace(",", " ").split()))
+
+
+def share_starts(parsed_docs: list[dict]) -> None:
+    """A split file without start times (an organiser's PDF) gets them from another document of the race that has
+    them (liveresultat, WinSplits), runner by runner by name — for the « Groupes » view."""
+    starts: dict[str, float | None] = {}
+    for d in parsed_docs:
+        for k in d["classes"]:
+            for r in k["runners"]:
+                if r.get("start_s") is not None:
+                    key = _name_key(r["name"])
+                    starts[key] = r["start_s"] if starts.get(key, r["start_s"]) == r["start_s"] else None   # two values: none
+    if not starts:
+        return
+    for d in parsed_docs:
+        for k in d["classes"]:
+            if any(r.get("splits") for r in k["runners"]) and not any(r.get("start_s") is not None for r in k["runners"]):
+                for r in k["runners"]:
+                    r["start_s"] = starts.get(_name_key(r["name"]))
+
+
 def build(con, out: Path, today: date) -> int:
     """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days."""
     d = out / "prov"
@@ -340,10 +419,15 @@ def build(con, out: Path, today: date) -> int:
     for race in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? ORDER BY date_iso DESC, name",
                             (lo, today.isoformat())).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
+        # the same file under two addresses (http and https, with or without www): shown once, the https one
+        docs.sort(key=lambda x: x["url"].startswith("http:"))
+        seen_sha: set[str] = set()
+        docs = [x for x in docs if not x["parsed"] or not x["sha"] or not (x["sha"] in seen_sha or seen_sha.add(x["sha"]))]
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
-        for doc in docs:
-            parsed = json.loads(doc["parsed"]) if doc["parsed"] else None
+        all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
+        share_starts([p for p in all_parsed if p])
+        for doc, parsed in zip(docs, all_parsed):
             entry = {"url": doc["url"], "source": doc["source"], "kind": doc["kind"], "title": doc["title"],
                      "found": doc["found_at"], "changed": doc["changed_at"], "note": doc["note"]}
             if parsed:
@@ -365,6 +449,10 @@ def build(con, out: Path, today: date) -> int:
                 n_lic = max(n_lic, sum(1 for r in runners if r["lic"]))
                 lics.update(r["lic"] for r in runners if r["lic"])
             out_docs.append(entry)
+        most = max((sum(len(k["runners"]) for k in e.get("classes") or []) for e in out_docs), default=0)
+        for e in out_docs:
+            e["prio"] = doc_priority(e, most)
+        out_docs.sort(key=lambda e: -e["prio"])
         body = {k: race[k] for k in ("key", "date_iso", "name", "place", "org", "org_code", "terrain", "epreuve", "cn", "site",
                                       "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done")}
         body["docs"] = out_docs
@@ -404,11 +492,12 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
     f = Fetcher(con, budget_s=budget_s)
     try:
         races.refresh_clubs(con, agenda or (out / "agenda.json"))
+        stats = races.sync(con, agenda or (out / "agenda.json"), today, days)
+        stats["renamed"] = canonical_docs(con)
         try:
             stats["club_dir"] = races.read_directory(con, f)
         except Exception:
             log.exception("provisional: club directory failed")
-        stats = races.sync(con, agenda or (out / "agenda.json"), today, days)
         # the races already past when the pilot started, or before a longer window (the agenda drops a race once
         # run), from FFCO's agenda export — one request each time the window reaches further back than the last one
         # (agreed with the owner: the first month, 2026-10-08; back to early August when the list went to 60 days)
@@ -452,11 +541,9 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         # a race comes back at once when a platform competition is newly matched to it (a WinSplits event found later
         # by the backward fill, a Helga event, an Orientation Data competition published after the last look) — a race
         # still watched too, rather than at its next daily look
-        urls = {"liveresultat": "https://liveresultat.orientering.se/followfull.php?comp={}", "winsplits": WS_BASE + "/classes.asp?databaseId={}",
-                "heyries": HY_BASE + "/competition/{}/", "helga": HG_BASE + "/splitsbrowser.php?lauf={}"}
         for kind, mp in (("liveresultat", lr_map), ("winsplits", ws_map), ("heyries", hy_map), ("helga", hg_map)):
             for key, pid in mp.items():
-                if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (key, urls[kind].format(pid))).fetchone():
+                if not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (key, PLATFORM_URL[kind].format(pid))).fetchone():
                     con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE key = ? AND (done = 1 OR next_check > ?)",
                                 (_now(), key, _now()))
         due = races.due(con, today, _now())
