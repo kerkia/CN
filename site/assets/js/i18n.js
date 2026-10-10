@@ -357,7 +357,10 @@ const FR = {
   "cp.empty": "Aucun coureur sélectionné. Cochez des coureurs dans la liste ci-dessous.",
   "cp.max": "Maximum 8 coureurs : la palette ne distingue pas fiablement davantage de couleurs.",
   "cp.chart": "Évolution comparée du CN", "cp.table": "Synthèse", "cp.h2h": "Face-à-face",
-  "cp.h2h.hint": "Circuits courus en commun : victoires de la ligne sur la colonne",
+  "cp.h2h.hint": "Circuits courus en commun : victoires de la ligne sur la colonne (cliquez une case pour la liste des courses)",
+  "cp.common": "Courses en commun", "cp.common.hint": "Les circuits courus par les deux, dans la spécialité et la période choisies ; écart : le temps du premier moins celui du second",
+  "cp.common.vs": "et", "cp.common.none": "Aucun circuit couru par les deux sur la période.", "cp.common.n": "circuits en commun",
+  "cp.common.gap": "Écart", "cp.common.show": "Voir les courses en commun",
   "cp.peak": "Pic", "cp.clear": "Tout retirer", "cp.count": "coureur(s) dans la comparaison", "cp.pick": "Ajouter des coureurs",
   "cp.lineStyle": "Style de ligne", "cp.search": "Ajouter un coureur par son nom…", "cp.fromList": "Choisir dans le classement", "cp.shared": "circuits communs",
 

@@ -2,7 +2,7 @@
 // never moves when others are removed); line style identifies the method.
 // The period applies to every panel: the chart, the summary and the head-to-head.
 
-import { html, raw, esc, $, $$, fmt, fmtDate, displayName, initials, addDays, debounce } from "../util.js";
+import { html, raw, esc, $, $$, fmt, fmtDate, fmtTime, displayName, initials, addDays, debounce } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -10,6 +10,7 @@ import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey, filterFold,
+  statusLabel,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
@@ -55,7 +56,10 @@ export async function render(main, { query }) {
     <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
       <div id="summary"></div></section>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.h2h")}</h2><div class="hint" id="h2h-hint"></div></div></div>
-      <div class="card-body" id="h2h"></div></section>
+      <div class="card-body" id="h2h"></div>
+      <div class="card-head" style="border-top:1px solid var(--border)"><div><h2>${t("cp.common")}</h2><div class="hint">${t("cp.common.hint")}</div></div>
+        <div class="row" id="common-pick"></div></div>
+      <div id="common"></div></section>
     <div>${chartCard({ id: "prog", title: t("pg.pct"), hint: t("cp.prog.hint") })}</div>`;
   bindChartCard(main, "cmp");
   bindChartCard(main, "prog");
@@ -193,10 +197,16 @@ export async function render(main, { query }) {
     });
   }
 
+  // the two runners whose common races are listed (a cell of the face-à-face, or the two selectors)
+  let pair = query.p ? query.p.split(",") : null;
   function drawH2H() {
     const sel = store.get().compare;
     $("#h2h-hint").textContent = `${t("cp.h2h.hint")} · ${t(`terrain.${terrain}`)} · ${periodLabel()}`;
-    if (sel.length < 2) { $("#h2h").innerHTML = html`<div class="empty">${t("cp.h2h.need2")}</div>`; return; }
+    if (sel.length < 2) {
+      $("#h2h").innerHTML = html`<div class="empty">${t("cp.h2h.need2")}</div>`;
+      $("#common-pick").innerHTML = ""; $("#common").innerHTML = "";
+      return;
+    }
     // circuit -> licence -> finishing place (null = did not finish), within the period
     const onCircuit = new Map();
     for (const c of sel) {
@@ -223,8 +233,50 @@ export async function render(main, { query }) {
           if (a.lic === b.lic) return html`<td class="self"></td>`;
           const [w, n] = beats(a.lic, b.lic);
           const [l] = beats(b.lic, a.lic);
-          return html`<td class="cellv">${n ? html`<span class="${w > l ? "win" : ""}">${fmt(w)}</span><span class="dim"> / ${fmt(n)}</span>` : html`<span class="dim">—</span>`}</td>`;
+          return html`<td class="cellv" ${raw(n ? `data-pair="${a.lic},${b.lic}" style="cursor:pointer" title="${esc(t("cp.common.show"))}"` : "")}>${n ? html`<span class="${w > l ? "win" : ""}">${fmt(w)}</span><span class="dim"> / ${fmt(n)}</span>` : html`<span class="dim">—</span>`}</td>`;
         })}</tr>`)}</tbody></table></div>`;
+    $$("[data-pair]", $("#h2h")).forEach((td) => td.addEventListener("click", () => {
+      pair = td.dataset.pair.split(","); drawCommon(onCircuit);
+      $("#common-pick").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }));
+    drawCommon(onCircuit);
+  }
+
+  /** Every circuit both runners of the pair ran (in the discipline and period chosen), newest first. */
+  function drawCommon() {
+    const sel = store.get().compare, lics = sel.map((c) => c.lic);
+    if (!pair || pair.length !== 2 || pair[0] === pair[1] || !pair.every((l) => lics.includes(l))) pair = lics.slice(0, 2);
+    replaceQuery({ p: pair.join(",") === lics.slice(0, 2).join(",") ? null : pair.join(",") });
+    const opt = (i) => html`<select id="common-${i}" aria-label="${t("cp.common")}">${sel.map((c) => html`<option value="${c.lic}" ${raw(c.lic === pair[i] ? "selected" : "")}>${nameOf(c.lic)}</option>`)}</select>`;
+    $("#common-pick").innerHTML = html`${opt(0)}<span class="muted">${t("cp.common.vs")}</span>${opt(1)}`;
+    [0, 1].forEach((i) => $(`#common-${i}`).addEventListener("change", (e) => { pair[i] = e.target.value; drawCommon(); }));
+    const [a, b] = pair;
+    const mine = new Map((racesOf.get(a) || []).filter((r) => r[R.terrain] === terrain && inWindow(r[R.date])).map((r) => [r[R.cid], r]));
+    const rows = (racesOf.get(b) || []).filter((r) => mine.has(r[R.cid])).map((rb) => ({ ra: mine.get(rb[R.cid]), rb }));
+    const res = (r) => (r[R.status] === "ok" ? html`<b>${r[R.place] ?? ""}</b> <span class="dim">${fmtTime(r[R.time])}</span>` : statusLabel(r[R.status]));
+    const ahead = (x, y) => x[R.status] === "ok" && (y[R.status] !== "ok" || x[R.place] < y[R.place]);
+    const dot = (lic) => html`<span class="dot" style="background:${raw(slotColor(sel.find((c) => c.lic === lic).slot))};margin-right:4px"></span>`;
+    const wa = rows.filter((x) => ahead(x.ra, x.rb)).length, wb = rows.filter((x) => ahead(x.rb, x.ra)).length;
+    dataTable($("#common"), {
+      rows, sortKey: "date", sortDir: -1, compact: true, emptyText: t("cp.common.none"),
+      caption: `${nameOf(a)} ${wa} – ${wb} ${nameOf(b)}`,
+      columns: [
+        { key: "date", label: t("col.date"), cls: "num", sort: (x) => x.ra[R.date], render: (x) => fmtDate(x.ra[R.date], "short") },
+        { key: "race", label: t("col.comp"), sort: (x) => data.comp(x.ra[R.course])?.title || "", defaultDir: 1,
+          render: (x) => { const c = data.comp(x.ra[R.course]);
+            return html`<a href="${link.course(x.ra[R.course], { circ: x.ra[R.cid] })}" title="${c?.location || ""}">${c?.title || ""}</a> <span class="dim">${x.ra[R.circuit] || ""}</span>`; } },
+        { key: "a", label: html`${dot(a)}${nameOf(a)}`, align: "r", cls: "num", sort: (x) => (x.ra[R.status] === "ok" ? x.ra[R.place] : null), defaultDir: 1,
+          render: (x) => html`<span class="${ahead(x.ra, x.rb) ? "win" : ""}">${res(x.ra)}</span>` },
+        { key: "b", label: html`${dot(b)}${nameOf(b)}`, align: "r", cls: "num", sort: (x) => (x.rb[R.status] === "ok" ? x.rb[R.place] : null), defaultDir: 1,
+          render: (x) => html`<span class="${ahead(x.rb, x.ra) ? "win" : ""}">${res(x.rb)}</span>` },
+        { key: "gap", label: t("cp.common.gap"), align: "r", cls: "num",
+          sort: (x) => (x.ra[R.status] === "ok" && x.rb[R.status] === "ok" ? x.ra[R.time] - x.rb[R.time] : null),
+          render: (x) => { if (x.ra[R.status] !== "ok" || x.rb[R.status] !== "ok") return ""; const d = x.ra[R.time] - x.rb[R.time];
+            return html`<span class="${d < 0 ? "delta-up" : d > 0 ? "delta-down" : "dim"}">${d < 0 ? "−" : d > 0 ? "+" : ""}${fmtTime(Math.abs(d))}</span>`; } },
+      ],
+    });
+    $("#common").insertAdjacentHTML("afterbegin", html`<div class="card-body muted" style="padding-bottom:0">${dot(a)}${nameOf(a)} <b>${fmt(wa)} – ${fmt(wb)}</b> ${dot(b)}${nameOf(b)}
+      · ${fmt(rows.length)} ${t("cp.common.n")}</div>`);
   }
 
   // percentile within the age category, month by month
