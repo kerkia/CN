@@ -66,14 +66,20 @@ export class LiveRace extends DurableObject {
       try {
         m.info = await lr(this.env, { method: "getcompetitioninfo", comp });
         await this.readClasses(m);
+        await this.readPassings(m);
       } catch (e) {
         return new Response("liveresultat unavailable", { status: 502 });
       }
       await this.save(false);
     }
+    if (!m.pass) {                              // a race relayed before passings were kept: read them once
+      m.passHash = "";
+      try { if (await this.readPassings(m)) await this.save(false); } catch (e) { /* the next wake-up */ }
+    }
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
-    this.send(server, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange });
+    // the last passings come with the hello: a page opened between two arrivals is not left empty
+    this.send(server, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null });
     if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + 2000);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -104,6 +110,16 @@ export class LiveRace extends DurableObject {
     return true;
   }
 
+  /** Reads the last passings (kept in m.pass for the pages that open later); true when they changed. */
+  async readPassings(m) {
+    const p = await lr(this.env, { method: "getlastpassings", comp: m.comp, last_hash: m.passHash });
+    if (p.status !== "OK") return false;
+    if (m.passHash) m.lastChange = Date.now();       // (the first read is no news: passings may be hours old)
+    m.passHash = p.hash;
+    m.pass = (p.passings || []).slice(0, 10).map((x) => [x.passtime, x.runnerName, x.class, x.control, x.controlName || "", x.time]);
+    return true;
+  }
+
   /** Reads one class; true when it changed (and is then in m.data). */
   async readClass(m, name) {
     const k = await lr(this.env, { method: "getclassresults", comp: m.comp, class: name, unformattedTimes: "true", last_hash: m.hashes[name] || "" });
@@ -127,15 +143,11 @@ export class LiveRace extends DurableObject {
     }
     let reads = 0, changed = false;
     try {
-      const p = await lr(this.env, { method: "getlastpassings", comp: m.comp, last_hash: m.passHash });
       reads++;
       const moved = new Set();
-      if (p.status === "OK") {
-        if (m.passHash) m.lastChange = Date.now();       // (the first read is no news: passings may be hours old)
-        m.passHash = p.hash;
-        const items = (p.passings || []).slice(0, 10).map((x) => [x.passtime, x.runnerName, x.class, x.control, x.controlName || "", x.time]);
-        for (const x of items) moved.add(x[2]);
-        for (const ws of everyone) this.send(ws, { t: "pass", items, at: m.lastChange });
+      if (await this.readPassings(m)) {
+        for (const x of m.pass) moved.add(x[2]);
+        for (const ws of everyone) this.send(ws, { t: "pass", items: m.pass, at: m.lastChange });
       }
       if (Date.now() - m.classesAt > 300000) {
         reads++;

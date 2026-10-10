@@ -139,7 +139,10 @@ async function race(main, id, wanted) {
       st.info = m.info; st.classes = m.classes;
       $("#lv-title").textContent = $("#lv-name").textContent = m.info?.name || id;
       $("#lv-sub").textContent = [m.info?.organizer, m.info?.date && fmtDate(m.info.date)].filter(Boolean).join(" · ");
-      if (!st.cls || !st.classes.includes(st.cls)) pick(st.classes[0]);
+      if (m.pass) { st.pass = m.pass; ticker(); }
+      // no class asked for: the one of the latest arrival, else the first
+      const latest = m.pass?.map((x) => x[2]).find((c) => st.classes.includes(c));
+      if (!st.cls || !st.classes.includes(st.cls)) pick(latest || st.classes[0]);
       chips();
       if (!st.classes.length) $("#lv-rows").innerHTML = html`<div class="empty">${t("lv.noClasses")}</div>`;
     } else if (m.t === "classes") { st.classes = m.classes; if (!st.cls) pick(st.classes[0]); chips(); }

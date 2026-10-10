@@ -116,7 +116,10 @@ function race(view, id, wanted) {
       $("#title").textContent = m.info?.name || id;
       $("#sub").textContent = [m.info?.organizer, m.info?.date && fmtDay(m.info.date)].filter(Boolean).join(" · ");
       opened({ id: Number(id), name: m.info?.name || id, org: m.info?.organizer || "", date: m.info?.date || "" });
-      if (!st.cls || !st.classes.includes(st.cls)) pick(st.classes[0], false);
+      if (m.pass) { st.pass = m.pass; ticker(); }
+      // no class chosen yet: the one of the latest arrival, else the first
+      const latest = m.pass?.map((x) => x[2]).find((c) => st.classes.includes(c));
+      if (!st.cls || !st.classes.includes(st.cls)) pick(latest || st.classes[0], false);
       chips();
       if (!st.classes.length) $("#rows").innerHTML = `<p class="muted pad">${t("live.noClasses")}</p>`;
     } else if (m.t === "classes") {
