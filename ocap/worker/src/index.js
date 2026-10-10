@@ -161,29 +161,72 @@ export class LiveRace extends DurableObject {
 }
 
 // The Worker itself: /ws/<comp> straight to the race's object (the site reaches it through its own Function, so that
-// phones stay on the site's address); /list for the races of the coming and past days.
+// phones stay on the site's address); /list for the races of the coming and past days, through the directory object.
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const m = url.pathname.match(/^\/ws\/(\d{1,9})$/);
     if (m) return env.LIVE.get(env.LIVE.idFromName(m[1])).fetch(request);
-    if (url.pathname === "/list") return list(env);
+    if (url.pathname === "/list") return env.DIR.get(env.DIR.idFromName("directory")).fetch(request);
     return new Response("Not found", { status: 404 });
   },
 };
 
-/** The competitions of the last 3 and next 7 days, from liveresultat's whole list (~1 MB, read with a regular
- *  expression: some names hold unescaped quotes that break it as JSON). */
-export async function list(env) {
-  const r = await fetch(`${api(env)}?method=getcompetitions`, { headers: { "User-Agent": UA }, cf: { cacheTtl: 300 } });
-  const s = await r.text();
-  const day = (d) => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
-  const lo = day(-3), hi = day(7), out = [];
-  for (const x of s.matchAll(/"id": *(\d+), *"name": *"(.*?)", *"organizer": *"(.*?)", *"date": *"(\d{4}-\d\d-\d\d)", *"timediff": *(-?\d+)/g)) {
-    if (x[4] >= lo && x[4] <= hi) out.push([Number(x[1]), x[2], x[3], x[4], Number(x[5])]);
+// A race's country, from the time zone its organiser declared on liveresultat (« Europe/Paris »); none declared: a
+// Swedish race (liveresultat's home, where the field predates). Overseas France counts as France.
+const TZ_COUNTRY = {
+  "Europe/Paris": "FR", "Indian/Reunion": "FR", "Indian/Mayotte": "FR", "America/Guadeloupe": "FR", "America/Martinique": "FR",
+  "America/Cayenne": "FR", "Pacific/Noumea": "FR", "Pacific/Tahiti": "FR", "Europe/Monaco": "MC", "Europe/Andorra": "AD",
+  "Europe/Stockholm": "SE", "Europe/Oslo": "NO", "Europe/Copenhagen": "DK", "Europe/Helsinki": "FI", "Atlantic/Reykjavik": "IS",
+  "Europe/Tallinn": "EE", "Europe/Riga": "LV", "Europe/Vilnius": "LT", "Europe/London": "GB", "Europe/Dublin": "IE",
+  "Europe/Brussels": "BE", "Europe/Amsterdam": "NL", "Europe/Luxembourg": "LU", "Europe/Berlin": "DE", "Europe/Zurich": "CH",
+  "Europe/Vienna": "AT", "Europe/Rome": "IT", "Europe/Madrid": "ES", "Atlantic/Canary": "ES", "Europe/Lisbon": "PT",
+  "Atlantic/Madeira": "PT", "Atlantic/Azores": "PT", "Europe/Prague": "CZ", "Europe/Bratislava": "SK", "Europe/Warsaw": "PL",
+  "Europe/Budapest": "HU", "Europe/Ljubljana": "SI", "Europe/Zagreb": "HR", "Europe/Belgrade": "RS", "Europe/Sarajevo": "BA",
+  "Europe/Podgorica": "ME", "Europe/Skopje": "MK", "Europe/Tirane": "AL", "Europe/Sofia": "BG", "Europe/Bucharest": "RO",
+  "Europe/Chisinau": "MD", "Europe/Athens": "GR", "Europe/Istanbul": "TR", "Asia/Istanbul": "TR", "Europe/Kyiv": "UA",
+  "Europe/Kiev": "UA", "Europe/Minsk": "BY", "Europe/Moscow": "RU", "Europe/Malta": "MT", "Asia/Nicosia": "CY",
+  "America/New_York": "US", "America/Chicago": "US", "America/Denver": "US", "America/Los_Angeles": "US", "America/Toronto": "CA",
+  "America/Vancouver": "CA", "America/Montreal": "CA", "America/Sao_Paulo": "BR", "America/Argentina/Buenos_Aires": "AR",
+  "America/Santiago": "CL", "America/Bogota": "CO", "America/Mexico_City": "MX", "Asia/Tokyo": "JP", "Asia/Shanghai": "CN",
+  "Asia/Hong_Kong": "HK", "Asia/Seoul": "KR", "Asia/Singapore": "SG", "Asia/Kolkata": "IN", "Asia/Jerusalem": "IL",
+  "Africa/Johannesburg": "ZA", "Pacific/Auckland": "NZ",
+};
+const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
+const MAX_INFO = 40;                    // races looked up per call (subrequest limit: 50); the rest at the next call
+
+/** The races of the last 3 and next 7 days with their country: liveresultat's whole list (~1 MB, read with a regular
+ *  expression: some names hold unescaped quotes that break it as JSON), each new race's time zone read once and kept. */
+export class Directory extends DurableObject {
+  async fetch() {
+    const r = await fetch(`${api(this.env)}?method=getcompetitions`, { headers: { "User-Agent": UA }, cf: { cacheTtl: 300 } });
+    const s = await r.text();
+    const day = (d) => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
+    const lo = day(-3), hi = day(7), out = [];
+    for (const x of s.matchAll(/"id": *(\d+), *"name": *"(.*?)", *"organizer": *"(.*?)", *"date": *"(\d{4}-\d\d-\d\d)", *"timediff": *(-?\d+)/g)) {
+      if (x[4] >= lo && x[4] <= hi) out.push([Number(x[1]), x[2], x[3], x[4], Number(x[5])]);
+    }
+    const known = (await this.ctx.storage.get("tz")) || {};
+    let asked = 0, added = false;
+    for (const c of out) {
+      if (!(c[0] in known) && asked < MAX_INFO) {
+        asked++;
+        try {
+          const i = await (await fetch(`${api(this.env)}?method=getcompetitioninfo&comp=${c[0]}`, { headers: { "User-Agent": UA } })).text();
+          known[c[0]] = i.match(/"timezone"\s*:\s*"([^"]*)"/)?.[1] ?? "";
+          added = true;
+        } catch (e) { /* next time */ }
+      }
+      c.push(c[0] in known ? countryOf(known[c[0]]) : "?");
+    }
+    if (added) {
+      // only the window's races are kept, so the record stays small
+      const keep = Object.fromEntries(out.filter((c) => c[0] in known).map((c) => [c[0], known[c[0]]]));
+      await this.ctx.storage.put("tz", keep);
+    }
+    out.sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
+    return new Response(JSON.stringify({ at: Date.now(), comps: out }), {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${asked >= MAX_INFO ? 30 : 300}` },
+    });
   }
-  out.sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
-  return new Response(JSON.stringify({ at: Date.now(), comps: out }), {
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300" },
-  });
 }

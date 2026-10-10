@@ -25,27 +25,45 @@ export async function render(main, { path = "", query = {} } = {}) {
 }
 
 // ---- the races ----------------------------------------------------------------------------------------------------
+// the country chosen last (France by default: this site's runners race there)
+const pref = { get: () => { try { return localStorage.getItem("ocn.liveCountry") ?? "FR"; } catch (e) { return "FR"; } },
+  set: (v) => { try { localStorage.setItem("ocn.liveCountry", v); } catch (e) { /* this visit only */ } } };
+const countryName = (() => {
+  let dn = null;
+  try { dn = new Intl.DisplayNames(["fr"], { type: "region" }); } catch (e) { /* codes then */ }
+  return (c) => (c === "?" ? t("lv.country.unknown") : dn?.of(c) || c);
+})();
+
 async function list(main, query) {
-  let q = query.q || "";
+  let q = query.q || "", country = query.pays ?? pref.get();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
-    <div class="filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    <div class="filters"><label class="field"><span>${t("lv.country")}</span><select id="lv-country"></select></label>
+      <label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [];
   try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
   const today = new Date().toLocaleDateString("sv-SE");
+  // the countries of the list, the most races first (France first)
+  const counts = new Map();
+  for (const c of comps) counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
+  const order = [...counts].sort((a, b) => (a[0] === "FR" ? -1 : b[0] === "FR" ? 1 : 0) || b[1] - a[1]);
+  if (country && !counts.has(country) && country !== "FR") country = "FR";
+  $("#lv-country").innerHTML = html`<option value="">${t("lv.country.all")} (${comps.length})</option>
+    ${(counts.has("FR") ? order : [["FR", 0], ...order]).map(([c, n]) => html`<option value="${c}" ${raw(c === country ? "selected" : "")}>${countryName(c)} (${n})</option>`)}`;
   const draw = () => {
-    replaceQuery({ q: q || null });
+    replaceQuery({ q: q || null, pays: country === pref.get() ? null : country });
     const n = normalise(q);
-    const kept = comps.filter((c) => !n || normalise(`${c[1]} ${c[2]}`).includes(n))
+    const kept = comps.filter((c) => (!country || (c[5] || "?") === country) && (!n || normalise(`${c[1]} ${c[2]}`).includes(n)))
       .sort((a, b) => (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
       <tbody>${kept.map(([id, name, org, date]) => html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
         <td><a href="#/direct/${id}">${name}</a></td><td style="font-size:12.5px">${org}</td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t(comps.length ? "lv.none" : "lv.unavailable")}</div>`;
+      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : country && !n ? "lv.noneCountry" : "lv.none", { c: countryName(country) })}</div>`;
   };
   draw();
   $("#lv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
+  $("#lv-country").addEventListener("change", (e) => { country = e.target.value; pref.set(country); draw(); });
   return { title: t("lv.title") };
 }
 

@@ -8,8 +8,16 @@ workers_dev = true
 name = "LIVE"
 class_name = "LiveRace"
 
+[[durable_objects.bindings]]
+name = "DIR"
+class_name = "Directory"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["LiveRace"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Directory"]
 
 # LR_API: liveresultat's API; local tests point it at ocap/dev/lr-mock.mjs (wrangler dev --var LR_API:http://localhost:8790/api.php)

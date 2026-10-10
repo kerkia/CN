@@ -14,7 +14,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   if (hit) return open(hit);
   const fresh = await env.LIVEW.fetch("https://ocap-live/list");
   const res = new Response(fresh.body, fresh);
-  res.headers.set("Cache-Control", "public, max-age=300");
+  // (the directory's own lifetime: 5 minutes, 30 s while it still has races to look up)
+  if (!res.headers.get("Cache-Control")) res.headers.set("Cache-Control", "public, max-age=300");
   waitUntil(cache.put(key, res.clone()));
   return open(res);
 }

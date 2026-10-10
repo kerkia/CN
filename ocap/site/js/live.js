@@ -14,10 +14,21 @@ export function render(view, args) {
 }
 
 // ---- the races --------------------------------------------------------------------------------------------------
+// the phone's country, from its language setting (« fr-FR » -> FR), else every country
+function homeCountry() {
+  const tag = (navigator.languages || [navigator.language || ""]).find((l) => /-[A-Z]{2}$/i.test(l));
+  return tag ? tag.slice(-2).toUpperCase() : "";
+}
+function countryName(c) {
+  if (c === "?") return t("live.country.unknown");
+  try { return new Intl.DisplayNames([lang()], { type: "region" }).of(c) || c; } catch (e) { return c; }
+}
+
 async function list(view) {
-  let q = "";
+  let q = "", country = settings().liveCountry ?? homeCountry();
   view.innerHTML = `<header class="bar"><h1>${t("live.title")}</h1></header>
     <div class="pad"><input type="search" id="q" class="search" placeholder="${t("live.search")}" autocomplete="off"></div>
+    <div class="pad"><select id="country" class="select"></select></div>
     <div id="comps"><p class="muted pad">${t("live.loading")}</p></div>
     <p class="muted pad small">${t("live.source")}</p>`;
   let comps = [];
@@ -34,9 +45,15 @@ async function list(view) {
   const today = day(0), label = { [day(-1)]: t("live.yesterday"), [today]: t("live.today"), [day(1)]: t("live.tomorrow") };
   const row = ([id, name, org, date]) => `<a class="item" href="#/direct/${id}"><div><div class="name">${esc(name)}</div>
     <div class="muted small">${esc(org)}${org ? " · " : ""}${fmtDay(date)}</div></div><span class="chev" aria-hidden="true">›</span></a>`;
+  const counts = new Map();
+  for (const c of comps) counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
+  if (country && !counts.has(country)) country = "";
+  view.querySelector("#country").innerHTML = `<option value="">${t("live.country.all")} (${comps.length})</option>`
+    + [...counts].sort((a, b) => b[1] - a[1]).map(([c, k]) => `<option value="${esc(c)}" ${c === country ? "selected" : ""}>${esc(countryName(c))} (${k})</option>`).join("");
+  view.querySelector("#country").addEventListener("change", (e) => { country = e.target.value; save({ liveCountry: country }); draw(); });
   function draw() {
     const n = norm(q);
-    const kept = comps.filter((c) => !n || norm(`${c[1]} ${c[2]}`).includes(n));
+    const kept = comps.filter((c) => (!country || (c[5] || "?") === country) && (!n || norm(`${c[1]} ${c[2]}`).includes(n)));
     const groups = new Map();
     for (const c of kept) (groups.get(c[3]) || groups.set(c[3], []).get(c[3])).push(c);
     const order = [...groups.keys()].sort((a, b) => (a === today ? -1 : b === today ? 1 : 0) || Math.abs(Date.parse(a) - Date.parse(today)) - Math.abs(Date.parse(b) - Date.parse(today)));
