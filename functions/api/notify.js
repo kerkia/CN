@@ -22,7 +22,7 @@ async function authorised(request, env) {
   const outcome = ok ? "ok" : !given ? "no-secret" : !env.NOTIFY_SECRET ? "site-has-no-secret" : "wrong-secret";
   try {
     await env.DB.prepare("INSERT INTO rate (k, window, n) VALUES (?, ?, 1) ON CONFLICT (k, window) DO UPDATE SET n = n + 1")
-      .bind(`notify:${outcome}`, Math.floor(Date.now() / 3600e3)).run();
+      .bind(`notify:${outcome}`, Math.floor(Date.now() / 3600e3) * 3600).run();      // (seconds, like allow(): kept a day)
   } catch (e) { /* counting must not stop the call */ }
   return ok;
 }
