@@ -13,9 +13,12 @@ export async function onRequestGet({ request, env, waitUntil }) {
   const hit = await cache.match(key);
   if (hit) return open(hit);
   const fresh = await env.LIVEW.fetch("https://ocap-live/list");
-  const res = new Response(fresh.body, fresh);
-  // (the directory's own lifetime: 5 minutes, 30 s while it still has races to look up)
-  if (!res.headers.get("Cache-Control")) res.headers.set("Cache-Control", "public, max-age=300");
-  waitUntil(cache.put(key, res.clone()));
+  const body = await fresh.text();
+  const res = new Response(body, fresh);
+  // (the directory's own lifetime: 2 minutes, 30 s while it still has races to look up); an empty list (liveresultat
+  // overloaded, nothing kept yet) is never kept here
+  if (!res.headers.get("Cache-Control")) res.headers.set("Cache-Control", "public, max-age=120");
+  if (/"comps":\[\]/.test(body)) res.headers.set("Cache-Control", "no-store");
+  else waitUntil(cache.put(key, res.clone()));
   return open(res);
 }

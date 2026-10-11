@@ -210,40 +210,68 @@ const TZ_COUNTRY = {
   "Africa/Johannesburg": "ZA", "Pacific/Auckland": "NZ",
 };
 const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
+const LIST_MS = 240000;                 // liveresultat's list read at most this often
+const TZ_VERSION = 2;
 const MAX_INFO = 40;                    // races looked up per call (subrequest limit: 50); the rest at the next call
 
 /** The races of the last 3 and next 7 days with their country: liveresultat's whole list (~1 MB, read with a regular
  *  expression: some names hold unescaped quotes that break it as JSON), each new race's time zone read once and kept. */
 export class Directory extends DurableObject {
   async fetch() {
-    const r = await fetch(`${api(this.env)}?method=getcompetitions`, { headers: { "User-Agent": UA }, cf: { cacheTtl: 300 } });
-    const s = await r.text();
-    const day = (d) => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
-    const lo = day(-3), hi = day(7), out = [];
-    for (const x of s.matchAll(/"id": *(\d+), *"name": *"(.*?)", *"organizer": *"(.*?)", *"date": *"(\d{4}-\d\d-\d\d)", *"timediff": *(-?\d+)/g)) {
-      if (x[4] >= lo && x[4] <= hi) out.push([Number(x[1]), x[2], x[3], x[4], Number(x[5])]);
-    }
-    const known = (await this.ctx.storage.get("tz")) || {};
-    let asked = 0, added = false;
-    for (const c of out) {
-      if (!(c[0] in known) && asked < MAX_INFO) {
-        asked++;
-        try {
-          const i = await (await fetch(`${api(this.env)}?method=getcompetitioninfo&comp=${c[0]}`, { headers: { "User-Agent": UA } })).text();
-          known[c[0]] = i.match(/"timezone"\s*:\s*"([^"]*)"/)?.[1] ?? "";
-          added = true;
-        } catch (e) { /* next time */ }
+    // liveresultat's list, read at most every LIST_MS; an answer without it (overloaded: « Connect failed: Too many
+    // connections », sent with a 200) changes nothing — the last good list is served meanwhile, never an empty one
+    const now = Date.now();
+    let last = await this.ctx.storage.get("last");
+    let pending = false;
+    if (!last || now - last.at >= LIST_MS) {
+      let s = "";
+      try {
+        const r = await fetch(`${api(this.env)}?method=getcompetitions`, { headers: { "User-Agent": UA } });
+        s = r.ok ? await r.text() : "";
+      } catch (e) { /* liveresultat unreachable */ }
+      if (s.includes('"competitions"')) {
+        const day = (d) => new Date(Date.now() + d * 86400e3).toISOString().slice(0, 10);
+        const lo = day(-3), hi = day(7), out = [];
+        for (const x of s.matchAll(/"id": *(\d+), *"name": *"(.*?)", *"organizer": *"(.*?)", *"date": *"(\d{4}-\d\d-\d\d)", *"timediff": *(-?\d+)/g)) {
+          if (x[4] >= lo && x[4] <= hi) out.push([Number(x[1]), x[2], x[3], x[4], Number(x[5])]);
+        }
+        // each race's time zone, asked once — kept only from a real answer (an error text is no time zone: it would
+        // make a French race Swedish); TZ_VERSION 2 (2026-10-11) forgets those recorded during an overload
+        let known = (await this.ctx.storage.get("tz")) || {};
+        if ((await this.ctx.storage.get("tzv")) !== TZ_VERSION) {
+          known = {};
+          await this.ctx.storage.put("tzv", TZ_VERSION);
+        }
+        let asked = 0, added = false;
+        for (const c of out) {
+          if (!(c[0] in known) && asked < MAX_INFO) {
+            asked++;
+            try {
+              const i = await (await fetch(`${api(this.env)}?method=getcompetitioninfo&comp=${c[0]}`, { headers: { "User-Agent": UA } })).text();
+              if (/"id"\s*:/.test(i)) {
+                known[c[0]] = i.match(/"timezone"\s*:\s*"([^"]*)"/)?.[1] ?? "";
+                added = true;
+              }
+            } catch (e) { /* next time */ }
+          }
+          c.push(c[0] in known ? countryOf(known[c[0]]) : "?");
+        }
+        pending = out.some((c) => !(c[0] in known));
+        if (added) {
+          // only the window's races are kept, so the record stays small
+          await this.ctx.storage.put("tz", Object.fromEntries(out.filter((c) => c[0] in known).map((c) => [c[0], known[c[0]]])));
+        }
+        out.sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
+        // (races still without a country: read again soon)
+        last = { at: pending ? now - LIST_MS + 30000 : now, comps: out };
+        await this.ctx.storage.put("last", last);
+      } else {
+        console.error(`directory: no list from liveresultat (${s.slice(0, 60)})`);
+        pending = true;
       }
-      c.push(c[0] in known ? countryOf(known[c[0]]) : "?");
     }
-    if (added) {
-      // only the window's races are kept, so the record stays small
-      const keep = Object.fromEntries(out.filter((c) => c[0] in known).map((c) => [c[0], known[c[0]]]));
-      await this.ctx.storage.put("tz", keep);
-    }
-    out.sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
-    return new Response(JSON.stringify({ at: Date.now(), comps: out }), {
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${asked >= MAX_INFO ? 30 : 300}` },
+    return new Response(JSON.stringify({ at: last?.at || now, comps: last?.comps || [] }), {
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${pending || !last ? 30 : 120}` },
     });
   }
 }
