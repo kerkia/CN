@@ -27,7 +27,7 @@ from datetime import date, timedelta
 from ..model import plain
 
 DOC_EXT = (".pdf", ".htm", ".html", ".xml", ".xls", ".xlsx", ".csv", ".txt")
-RESULT_WORDS = ("resultat", "result", "classement", "temps", "inter", "split", "provisoire", "circuit", "categorie", "si_", "-si")
+RESULT_WORDS = ("resultat", "result", "resutat", "classement", "temps", "inter", "split", "provisoire", "circuit", "categorie", "si_", "-si")
 NOT_RESULTS = ("relais", "relay", "depart", "horaire", "startlist", "start list", "inscrit", "inscription", "annonce", "invitation", "convocation",
                "reglement", "fleche", "plan d acces")
 # start lists (mode "start", before the race): « horaires de départ », « liste de départ », « inscrits »
@@ -108,7 +108,9 @@ def names_day(text: str, d: date) -> bool:
     """The race's day written in a text (accents removed): « 4 octobre », « 04 oct. 2026 », « 04-oct-2026 », « 04oct »,
     « 04/10/2026 », « dimanche 4 octobre »…"""
     months = "|".join(MONTH_ABBR[d.month - 1])
-    return bool(re.search(rf"(?<!\d)0?{d.day}(?:er)?[\s\-_.]*(?:{months})", text) or any(t in text for t in date_tokens(d)[:8]))
+    # (a weekend's range names its first day too: « 10 et 11 octobre », « 10-11 oct. », « du 10 au 11 octobre »)
+    return bool(re.search(rf"(?<!\d)0?{d.day}(?:er)?(?:[\s\-_.,&]*(?:et|au)?[\s\-_.,&]*[0-3]?\d(?:er)?)?[\s\-_.]*(?:{months})", text)
+                or any(t in text for t in date_tokens(d)[:8]))
 
 
 def other_day(text: str, d: date) -> bool:
@@ -258,7 +260,9 @@ class ClubSite:
                     if names_race or posted_after:
                         platforms[url] = kind
                     return
-            if other_day(urllib.parse.unquote(url), d) or (not start and uploaded_before(url, d)) or \
+            # (a file on the race's own page may sit in an older upload folder: WordPress keeps a replaced file's
+            # first address — Fougères' October results in /uploads/2026/09/; its printed date decides then)
+            if other_day(urllib.parse.unquote(url), d) or (not start and uploaded_before(url, d) and not (on_race_page or weekend_page)) or \
                     address_other_day(url, d) or \
                     other_year(urllib.parse.unquote(urllib.parse.urlsplit(url).path.rsplit("/", 1)[-1]) + " " + text, d):
                 return                                          # a file of another day's (or season's) race
@@ -272,8 +276,14 @@ class ClubSite:
                 return                                          # start lists, entries, invitations: their times are not results
             says_result = any(w in low for w in WANT)           # (mode "start": says start list)
             names_race = any(t in low for t in dt) or names_day(low, d) or any(w in low for w in words) or on_race_page
-            if (says_result and names_race) or (posted_after and (says_result or names_race and not start)):
+            # (on a page about the race's weekend, a results file need not name the race: the weekend's races share
+            # them out by their words afterwards, races.owners — « Résutats Nuit » at Fougères)
+            if (says_result and (names_race or weekend_page)) or (posted_after and (says_result or names_race and not start)):
                 found.setdefault(url, (text, via))
+            elif (on_race_page or weekend_page) and not any(w in low for w in (RESULT_WORDS[:3] if start else START_WORDS[:3])):
+                # a file on the race's (or its weekend's) page that says nothing of what it is (« Fougeres-OTour-Sprint.pdf »,
+                # a start list): read to find out — kept only if it reads as what is looked for
+                found.setdefault(url, (text, f"{via} (à vérifier)"))
 
         # 1. WordPress: uploads and posts since the race (a start list: in the weeks before it)
         after = (d - timedelta(days=START_DAYS_BEFORE if start else 1)).isoformat() + "T00:00:00"

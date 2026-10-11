@@ -280,30 +280,39 @@ def _pdf(content: bytes) -> dict | None:
     if len(rows) < 3:
         return None
     textw = lambda l: [w for w in l.words if not is_clock(w) and not _CHIP.match(w.text)]
-    left = _edges(rows, textw, 0, tx - 2, 0.6)                 # name, then club and category columns
-    if not left:
+    # every column of the rows (left edges they share), told apart by what it holds: categories (« H21 »), a value
+    # repeated over many rows (the circuit: OE's « Orange D », MeOS' « Orange Long »), figures (« 2,9 km », « 16 P »),
+    # else text — the first text column the name, the second the club
+    cols = _edges(rows, textw, 0, 1e6, 0.6)
+    if not cols:
         return None
-    # the words after the time, up to a distance (« 2,9 km ») or a chip: the circuit (OE's « Orange D »)
-    def after(l):
-        out = []
-        for w in sorted(l.words, key=lambda w: w.x0):
-            if w.x0 <= tx + 2:
-                continue
-            if _CHIP.match(w.text) or re.match(r"^\d+[,.]\d+$|^\d+$", w.text) or w.text.lower() in ("km", "p", "m"):
-                break
-            out.append(w.text)
-        return " ".join(out)
-    circuits = [after(l) for l in rows]
-    has_circuit = sum(1 for c in circuits if c) >= 0.6 * len(rows)
-    # which left column holds what: the first the name; one whose words are categories, the category; else the club
+    bounds = cols + [1e6]
+
     def col(l, a, b):
         return " ".join(w.text for w in sorted(textw(l), key=lambda w: w.x0) if a <= w.x0 < b).strip()
-    bounds = left + [tx - 2]
-    kinds = ["name"]
-    for i in range(1, len(left)):
-        vals = [col(l, bounds[i], bounds[i + 1]) for l in rows]
-        cats = sum(1 for v in vals if v and model.category(v.split()[0]))
-        kinds.append("cat" if cats >= 0.6 * len([v for v in vals if v]) else "club" if "club" not in kinds else "cat2")
+    kinds, texts = [], 0
+    for i in range(len(cols)):
+        vals = [v for v in (col(l, bounds[i], bounds[i + 1]) for l in rows) if v]
+        if not vals:
+            kinds.append(None)
+        elif sum(1 for v in vals if model.category(v.split()[0])) >= 0.6 * len(vals):
+            kinds.append("cat")
+        elif sum(1 for v in vals if re.match(r"^\d", v)) >= 0.6 * len(vals) or all(len(v) <= 2 for v in vals):
+            kinds.append(None)                       # figures, units (« 16 P »)
+        elif len(vals) >= 6 and len(set(vals)) <= max(3, len(vals) // 8):
+            kinds.append("class")
+        else:
+            kinds.append(("name", "club")[texts] if texts < 2 else None)
+            texts += 1
+    # a short column right after the circuit, varying (OE's « Orange D » / « Orange H »), is the circuit's too; a
+    # constant one (« P ») is not
+    for i in range(1, len(kinds)):
+        if kinds[i] is None and kinds[i - 1] == "class":
+            vals = [v for v in (col(l, bounds[i], bounds[i + 1]) for l in rows) if v]
+            if vals and all(len(v) <= 2 and not v[0].isdigit() for v in vals) and len(set(vals)) > 1:
+                kinds[i] = "class"
+    if "name" not in kinds:
+        return None
     row_ids = {id(l) for l in rows}
     head_text = " ".join(l.text for l in lines[:6])
     classes: dict[str, dict] = {}
@@ -314,15 +323,18 @@ def _pdf(content: bytes) -> dict | None:
             m = _CLUB_HEAD.match(t)
             if m:
                 cur_club = m.group(2)
-            elif t and len(l.words) <= 5 and len(t) <= 40 and not _BANNER.match(t) and not _pdf_date(t) and                     not re.search(r"\d{1,2}:\d{2}", t):
-                cur_class = re.sub(r"\s*\(\d+\)\s*$", "", t)
+            elif t and len(l.words) <= 7 and len(t) <= 50 and not _BANNER.match(t) and not _pdf_date(t) and                     not re.search(r"\d{1,2}:\d{2}", t):
+                # « D16 3180 mètres Départ 1 », « H21 (12) »: the class's name only
+                cur_class = re.sub(r"\s+\d+\s*m(?:[eè]tres)?\b.*$|\s*\(\d+\)\s*$", "", t).strip() or t
             continue
-        vals = {k: col(l, bounds[i], bounds[i + 1]) for i, k in enumerate(kinds)}
+        vals = {k: col(l, bounds[i], bounds[i + 1]) for i, k in enumerate(kinds) if k and k != "class"}
+        # the circuit's words, over its adjacent columns (« Orange » and « Long » both aligned)
+        vals["class"] = " ".join(x for x in (col(l, bounds[i], bounds[i + 1]) for i, k in enumerate(kinds) if k == "class") if x)
         name = vals.get("name", "")
         if not _wordy(name) or len(name) > 60:
             continue
         start = clock(next(w.text for w in l.words if is_clock(w) and abs(w.x0 - tx) <= 4))
-        cls = after(l) if has_circuit and after(l) else cur_class or "?"
+        cls = vals.get("class") or cur_class or "?"
         k = classes.setdefault(cls, model.klass(cls))
         k["runners"].append(model.runner(name, club=vals.get("club") or cur_club, category=model.category((vals.get("cat") or "").split(" ")[0]),
                                          status="start", start_s=start))

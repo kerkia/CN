@@ -42,6 +42,7 @@ START_DAYS = 7
 START_EVERY = 6
 STARTLIST = "liste de départ (liveresultat)"
 SITE_STARTLIST = "liste de départ (site de l'organisateur)"
+MAYBE = " (à vérifier)"                   # (clubsite: a file found on the race's page that says nothing of itself)
 START_SITES = 8                 # organisers' sites searched for start lists per run (the longest unsearched first)
 START_KINDS = ("startlist", "startfile")       # a start list read, or only linked (a PDF)
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
@@ -326,6 +327,8 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
                 changed += bool(adopt(con, race, d, url, text, a.sha))
                 continue
+            if d is None and via.endswith(MAYBE):
+                continue                          # read to find out (it said nothing of itself): not results
             changed += save(con, race["key"], url, "site", d, kind=None if d else "unparsed", sha=a.sha, note=text or None)
         # platforms the club links to: read liveresultat and WinSplits ids directly, note the others
         seen = set()
@@ -485,6 +488,9 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
                 continue
             d = startlist.parse(a.content, a.url or url)
             head = (d or {}).get("head") or startlist.first_lines(a.content)
+            # read to find out (it said nothing of itself): a start list by its content or its title, else not ours
+            if d is None and via.endswith(MAYBE) and not re.search(r"(?i)d[ée]part|horaire|start ?list|inscrits", head):
+                continue
             # the days it prints: this race's makes it ours; only a sister race's (« CL-Nuit-10-Oct-26 » for Sunday's
             # race), or a later one, makes it theirs; an earlier lone date is when it was printed
             days = startlist.all_dates(f"{url} {text} {head}")
