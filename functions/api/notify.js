@@ -16,8 +16,15 @@ import { agendaMail, digestMail } from "../_lib/templates.js";
 
 async function authorised(request, env) {
   const given = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!env.NOTIFY_SECRET || !given) return false;
-  return (await sha256hex(given)) === (await sha256hex(env.NOTIFY_SECRET));
+  const ok = !!env.NOTIFY_SECRET && !!given && (await sha256hex(given)) === (await sha256hex(env.NOTIFY_SECRET));
+  // each call's outcome, counted by the hour in the rate table (k « notify:ok », « notify:no-secret » — the caller sent
+  // none —, « notify:wrong-secret »): whether the update runs reach the site at all is visible in D1 (their logs need a login)
+  const outcome = ok ? "ok" : !given ? "no-secret" : !env.NOTIFY_SECRET ? "site-has-no-secret" : "wrong-secret";
+  try {
+    await env.DB.prepare("INSERT INTO rate (k, window, n) VALUES (?, ?, 1) ON CONFLICT (k, window) DO UPDATE SET n = n + 1")
+      .bind(`notify:${outcome}`, Math.floor(Date.now() / 3600e3)).run();
+  } catch (e) { /* counting must not stop the call */ }
+  return ok;
 }
 
 const SUBSCRIBED = "notify = 1 AND email_verified = 1 AND status = 'active'";
