@@ -16,11 +16,12 @@ import logging
 import re
 import time
 import urllib.parse
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from ..agenda import LIGUES, OUTRE_MER, REGIONS
-from . import races, store
+from . import model, races, store
 from .compute import Scorer
 from .fetch import Fetcher
 from .match import Matcher
@@ -404,6 +405,52 @@ def _name_key(name: str) -> str:
     return " ".join(sorted(plain(name).replace(",", " ").split()))
 
 
+def category_circuits(parsed_docs: list[dict]) -> dict[str, str]:
+    """{category: circuit} from the race's lists by circuit that give each runner's category (results, start lists):
+    a category goes to the circuit most of its runners ran, when they mostly agree. Several categories share a circuit
+    (« A: H20, H21, H35 »): a list by category is scored circuit by circuit with it, not category by category."""
+    votes: dict[str, Counter] = defaultdict(Counter)
+    for d in parsed_docs:
+        if d.get("by") != "circuit":
+            continue
+        for k in d["classes"]:
+            for r in k["runners"]:
+                if r.get("category"):
+                    votes[r["category"]][k["name"]] += 1
+    out = {}
+    for cat, v in votes.items():
+        circ, n = v.most_common(1)[0]
+        if n >= 0.7 * sum(v.values()):
+            out[cat] = circ
+    # FFCO's registration list (each circuit's categories): for the categories no list by circuit placed
+    for d in parsed_docs:
+        if d.get("kind") == "registration":
+            for name, cats, _ in d.get("circuits") or []:
+                for cat in races.expand_categories(cats):
+                    out.setdefault(cat, name)
+                # the classes it names that are no category (« Open violet »): by their name
+                for part in re.split(r"[,;]", cats or ""):
+                    if part.strip() and not races.expand_categories(part):
+                        out.setdefault(plain(part).strip(), name)
+    return out
+
+
+def score_by_circuit(parsed: dict, circuits: dict[str, str], scorer, race) -> None:
+    """A list by category: its categories regrouped into their circuits (circuits: {category: circuit}) and scored as
+    such; each class gets its circuit's name ("circuit") and values. Categories of unknown circuit stay unscored."""
+    groups: dict[str, list] = defaultdict(list)
+    for k in parsed["classes"]:
+        circ = (circuits.get(model.category(k["name"]) or "") or circuits.get(plain(k["name"]).strip())
+                or (circuits.get(k["runners"][0].get("category") or "") if k["runners"] else None))
+        if circ:
+            k["circuit"] = circ
+            groups[circ] += k["runners"]
+    values = {c: scorer.score_class({"name": c, "runners": rs}, race, race["ffco_id"]) for c, rs in groups.items()}
+    for k in parsed["classes"]:
+        if k.get("circuit"):
+            k["values"] = values[k["circuit"]]
+
+
 def share_starts(parsed_docs: list[dict]) -> None:
     """A split file without start times (an organiser's PDF) gets them from another document of the race that has
     them (liveresultat, WinSplits), runner by runner by name — for the « Groupes » view."""
@@ -531,6 +578,7 @@ def build(con, out: Path, today: date) -> int:
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
         share_starts([p for p in all_parsed if p])
+        circuits = category_circuits([p for p in all_parsed if p])
         for doc, parsed in zip(docs, all_parsed):
             entry = {"url": doc["url"], "source": doc["source"], "kind": doc["kind"], "title": doc["title"],
                      "found": doc["found_at"], "changed": doc["changed_at"], "note": doc["note"]}
@@ -547,6 +595,8 @@ def build(con, out: Path, today: date) -> int:
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):
                         splits = True
+                if parsed.get("by") == "category" and parsed.get("kind") != "startlist" and circuits:
+                    score_by_circuit(parsed, circuits, scorer, race)
                 entry["classes"] = parsed["classes"]
                 runners = [r for k in parsed["classes"] for r in k["runners"]]
                 n_run = max(n_run, len(runners))

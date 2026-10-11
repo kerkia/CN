@@ -563,6 +563,7 @@ const FR = {
   "prov.matched": "Coureurs au CN", "prov.matched.hint": "retrouvés dans la base du CN (nom + club)", "prov.matchedShort": "Au CN",
   "prov.race": "Course", "prov.kind": "Épreuve", "prov.sources": "Sources", "prov.runners": "Coureurs", "prov.splits": "Temps intermédiaires",
   "prov.published": "publiée", "prov.waiting": "en attente",
+  "prov.circuitOf": "Catégorie du circuit {c} (scores calculés sur tout le circuit)",
   "prov.soon": "à venir · liste de départ", "prov.start": "Départ",
   "prov.start.hint": "La liste de départ publiée par l'organisateur (liveresultat), avant la course ; CN : ceux d'aujourd'hui dans la discipline de la course ; attendu : la place que le CN Top donne parmi les coureurs du circuit",
   "prov.notCn": "hors CN", "prov.noResult": "aucun résultat trouvé", "prov.noSite": "site du club inconnu", "prov.noSite.hint": "Ni l'agenda ni les courses du club ne donnent son site : ses fichiers de résultats ne peuvent pas être cherchés",

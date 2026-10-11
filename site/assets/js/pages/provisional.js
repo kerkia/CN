@@ -11,10 +11,10 @@ import { available } from "../store.js";
 import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch, filterFold } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
-const SOURCE = { upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
+const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
 const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
-  startlist: "liste de départ", startfile: "liste de départ (lien)" };
+  startlist: "liste de départ", startfile: "liste de départ (lien)", registration: "circuits et catégories" };
 export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
 const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */
@@ -205,10 +205,10 @@ async function detail(main, idx, query) {
     const v = k.values || {};
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
-      ${d.by === "category" ? html`<span>${t("prov.byCategory")}</span>` : html`${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
+      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
-    const scored = d.by !== "category";
+    const scored = d.by !== "category" || !!k.values;
     const published = k.runners.some((r) => r.ffco);
     // one cell per method: the provisional CN J-15 → race score → CN after; below, once the race is published, the
     // same method's published race score → CN after (FFCO's for the official method, the site's for the others)

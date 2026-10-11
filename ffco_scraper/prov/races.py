@@ -331,6 +331,46 @@ def is_relay(name: str | None, epreuve: str | None = None) -> bool:
     return epreuve == "Relais" or "relais" in plain(name) or "relay" in plain(name)
 
 
+CAT_AGES = (10, 12, 14, 16, 18, 20, 21, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95)
+
+
+def expand_categories(text: str) -> set[str]:
+    """The categories a registration list gives a circuit: « D20/35, H40/45, Open violet » -> D20 D21 D35 H40 H45;
+    « H60 et + » -> H60 … H95; « HD14/18 », « H/D 16 » both sexes; anything else (« Open violet ») nothing."""
+    out = set()
+    for part in re.split(r"[,;]| et (?![+])", text or ""):
+        m = re.match(r"^\s*(H\s*/\s*D|D\s*/\s*H|HD|DH|H|D)\s*(\d{2})[A-Z]?(?:\s*[/-]\s*(\d{2}))?\s*(et\s*\+|\+|et plus)?\s*$",
+                     part.strip(), re.I)
+        if not m:
+            continue
+        sexes = "HD" if len(re.sub(r"[^HD]", "", m.group(1).upper())) == 2 else m.group(1).upper()
+        lo = int(m.group(2))
+        hi = 95 if m.group(4) else int(m.group(3)) if m.group(3) else lo
+        for s in sexes:
+            out |= {f"{s}{a}" for a in CAT_AGES if lo <= a <= hi}
+    return out
+
+
+def save_registration(con, key: str, reg: dict, stamp: str) -> None:
+    """FFCO's registration list of a race, kept as a document: each circuit's categories (« Circuit B : D20/35, H40/45 »)
+    — how a list by category is regrouped into circuits for its scores, before FFCO publishes the race."""
+    circuits = [c for c in reg.get("circuits") or [] if len(c) > 2 and c[2]]
+    if not circuits:
+        return
+    parsed = json.dumps({"kind": "registration", "by": "circuit", "title": "Inscriptions FFCO : circuits et catégories",
+                         "date": None, "classes": [], "circuits": [[c[0], c[2], c[1]] for c in circuits]}, ensure_ascii=False)
+    cur = con.execute("SELECT parsed FROM prov_docs WHERE race_key = ? AND url = ?", (key, reg["url"])).fetchone()
+    if cur and cur["parsed"] == parsed:
+        return
+    if cur:
+        con.execute("UPDATE prov_docs SET parsed = ?, changed_at = ? WHERE race_key = ? AND url = ?", (parsed, stamp, key, reg["url"]))
+    else:
+        con.execute("""INSERT INTO prov_docs (race_key, url, source, kind, title, sha, parsed, found_at, changed_at, note)
+                       VALUES (?, ?, 'ffco', 'registration', ?, NULL, ?, ?, ?, ?)""",
+                    (key, reg["url"], "Inscriptions FFCO : circuits et catégories", parsed, stamp, stamp,
+                     "les catégories de chaque circuit (liste publique des inscrits)"))
+
+
 def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
     """Add the races of the last `back_days` days (agenda + FFCO) to prov_races and link them to FFCO."""
     lo = (today - timedelta(days=back_days)).isoformat()
@@ -357,6 +397,8 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
                             (key, e["date"], e["name"], e.get("place"), e.get("org"), code, terrain_of(e), e.get("epr"),
                              int(bool(e.get("cn"))), site, e["id"], stamp, stamp))
                 added += 1
+            if (e.get("reg") or {}).get("circuits"):
+                save_registration(con, key, e["reg"], stamp)
     # the agenda export's races (x…) and the uploads' (u…) are linked to FFCO's results like the agenda's own: agenda_id 0
     con.execute("UPDATE prov_races SET agenda_id = 0 WHERE (key LIKE 'x%' OR key LIKE 'u%') AND agenda_id IS NULL")
     # FFCO's competitions of the period: link the agenda's races, add the others (the past month's pilot)

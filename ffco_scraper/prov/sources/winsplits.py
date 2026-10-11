@@ -236,7 +236,8 @@ class WinSplits:
                 for r in k["runners"]:
                     if r["splits"]:
                         r["start_s"] = _start(r, spl)
-        by = "category" if classes and all(category(c["name"]) for c in classes) else "circuit"
+        # (a few classes of another kind — « Open bleu », « B » — do not make a list by category one by circuit)
+        by = "category" if classes and sum(1 for c in classes if category(c["name"])) >= 0.6 * len(classes) else "circuit"
         return doc("winsplits", classes, by=by, title=f"{ev['name']}, {ev['organiser']}", date=ev["date"])
 
     def _table(self, s: str, name: str) -> dict | None:
