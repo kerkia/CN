@@ -245,7 +245,7 @@ class ClubSite:
         words = {w for w in race_words(race) if not any(w in h for h in hosts)}
         found: dict[str, tuple[str, str]] = {}
         platforms: dict[str, str] = {}
-        announcements: dict[str, str] = {}             # (mode "start") the race's announcement: its circuits' table
+        announcements: dict[str, str] = {}             # the race's announcement: its circuits' table
 
         def consider(url: str, text: str, via: str, posted_after: bool = False, on_race_page: bool = False,
                      weekend_page: bool = False):
@@ -273,7 +273,7 @@ class ClubSite:
                 return
             if path.endswith((".htm", ".html")) and not any(w in low for w in WANT):
                 return                                          # an ordinary page, not an exported list
-            if start and any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and \
+            if any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and \
                     not path.endswith((".htm", ".html")):
                 announcements.setdefault(url, text)             # the announcement: perhaps the table of its circuits
                 return

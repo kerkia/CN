@@ -187,7 +187,7 @@ under half the runners of the fullest one drops. A split list without start time
 document of the race (`run.share_starts`, for « Groupes »). **Start lists** (2026-10-10): for the races of the next 7 days, the liveresultat
 competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat.read(startlist=True)`: status
 "start"); a race with one is listed on « Récemment » as « à venir » (index `soon`, `startlist`, `agenda_id`) and its page
-shows start time, current CN Top / official and the expected place; « Bientôt » links to it. FFCO's public registration
+shows start time, current CN Top / official and the expected place; « Bientôt » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
 the names are members-only and not read. O'Cap's export skips the coming races. Organisers' sites too (`run.site_start_lists`,
 `ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
@@ -210,7 +210,9 @@ registration list, whose « Catégories » column gives each circuit's (« B : D
 « registration » document by `races.save_registration` from the agenda's `reg.circuits`, expanded by
 `races.expand_categories`), else by the course announcement's table when it has one (`parsers/announcement.py`:
 the agenda's FFCO-hosted announcements, `annCircuits`, and those on the organiser's site found by the start-list search);
-categories of unknown circuit stay unscored. A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
+categories of unknown circuit stay unscored. Such a list also gets a view by circuit (`run.circuit_view`: categories merged,
+places recomputed; the race page's « par circuit / par catégorie »); « by category » is decided at build time from the
+classes (an older reading may say otherwise). The results pass keeps announcements too (races already run). A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08; three steps since
 2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Récemment ») — 1. the file (IOF XML best, OE/MeOS
 HTML, PDF, .zip/.gz; 30 MB), with what to export; 2. it is **read in the browser** (`localparse.js`, a port of the

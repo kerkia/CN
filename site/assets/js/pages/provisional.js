@@ -152,10 +152,15 @@ async function detail(main, idx, query) {
   let di = Math.max(0, Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc)
     : docs.indexOf([...docs].sort((a, b) => rank(b) - rank(a))[0]));
   let ci = Number(query.c) || 0;
+  // a list by category whose circuits are known: seen by circuit (how it is scored) or by category
+  let byCat = query.vue === "categorie";
+  const groupsOf = (d) => (d.circuits?.length && !byCat ? d.circuits : d.classes);
   const who = query.r || null;
-  if (who && query.doc == null && query.c == null) {
-    const found = docs.flatMap((d, i) => d.classes.map((k, j) => [i, j, k])).filter(([, , k]) => k.runners.some((r) => r.lic === who));
-    const best = found.find(([i]) => docs[i].by !== "category") || found[0];
+  // a runner named (r=…): their group, in the document asked for if any (a class number from another view means nothing)
+  if (who && !groupsOf(docs[di])[ci]?.runners.some((r) => r.lic === who)) {
+    const found = docs.flatMap((d, i) => groupsOf(d).map((k, j) => [i, j, k])).filter(([i, , k]) => k.runners.some((r) => r.lic === who)
+      && (query.doc == null || i === di));
+    const best = found.find(([i]) => docs[i].by !== "category" || docs[i].circuits?.length) || found[0];
     if (best) [di, ci] = best;
   }
   const M = ["official", ...available().filter((m) => m !== "official")];
@@ -193,19 +198,34 @@ async function detail(main, idx, query) {
 
   function draw() {
     const d = docs[di];
-    ci = Math.min(ci, d.classes.length - 1);
-    const k = d.classes[ci];
-    replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who });
+    const groups = groupsOf(d), asCircuits = groups === d.circuits;
+    ci = Math.min(ci, groups.length - 1);
+    const k = groups[ci];
+    replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who, vue: d.circuits?.length && byCat ? "categorie" : null });
     $("#pv-pick").innerHTML = html`
       <label class="field"><span>${t("prov.doc")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${SOURCE[x.source] || x.source} · ${x.kind} · ${x.title || decodeURIComponent(x.url.split("/").pop())}</option>`)}</select></label>
-      <label class="field"><span>${d.by === "category" ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${d.classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
+      ${d.circuits?.length ? html`<div class="field"><span>${t("prov.view")}</span>${seg("pvv", [["circ", t("prov.view.circ")], ["cat", t("prov.view.cat")]], byCat ? "cat" : "circ")}</div>` : ""}
+      <label class="field"><span>${d.by === "category" && !asCircuits ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
       ${k.runners.some((r) => r.splits) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="${splitsLink(d, ci)}">${t("spl.ofClass")} →</a>` : ""}`;
-    $("#pv-doc").addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; draw(); });
+    $("#pv-doc").addEventListener("change", (e) => {
+      di = Number(e.target.value);
+      ci = who ? Math.max(0, groupsOf(docs[di]).findIndex((g) => g.runners.some((r) => r.lic === who))) : 0;   // the runner's group
+      draw();
+    });
     $("#pv-c").addEventListener("change", (e) => { ci = Number(e.target.value); draw(); });
+    $$('[data-seg="pvv"]').forEach((x) => x.addEventListener("click", () => {
+      // the same runner's group in the other view: the circuit of the category shown, or the first category of the circuit
+      const next = x.dataset.value === "cat";
+      if (next === byCat) return;
+      const name = next ? k.categories?.[0] : k.circuit;
+      byCat = next;
+      ci = Math.max(0, groupsOf(d).findIndex((g) => g.name === name));
+      draw();
+    }));
     const v = k.values || {};
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
-      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
+      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category" || !!k.values;

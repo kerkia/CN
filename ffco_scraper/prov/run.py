@@ -288,6 +288,7 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
             found["docs"] = [d for d in found["docs"] if d[0] not in theirs]
             for u in theirs:
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], u))
+        changed += save_announcements(con, race, found, f, rivals)
         for url, text, via in found["docs"]:
             if f.out_of_time():
                 break
@@ -436,6 +437,32 @@ def category_circuits(parsed_docs: list[dict]) -> dict[str, str]:
     return out
 
 
+def circuit_view(parsed: dict) -> list[dict]:
+    """A list by category scored circuit by circuit, seen by circuit: each circuit's runners (its categories merged),
+    the finishers by time with places recomputed, then the others; each runner keeps their category."""
+    groups: dict[str, list] = {}
+    values: dict[str, dict] = {}
+    for k in parsed["classes"]:
+        if k.get("circuit"):
+            groups.setdefault(k["circuit"], []).extend(dict(r) for r in k["runners"])
+            values[k["circuit"]] = k.get("values")
+    out = []
+    for name in sorted(groups, key=lambda c: (len(c), c)):
+        rs = groups[name]
+        ok = sorted((r for r in rs if r["status"] == "ok" and r.get("time_s")), key=lambda r: r["time_s"])
+        rest = [r for r in rs if not (r["status"] == "ok" and r.get("time_s"))]
+        last, place = None, 0
+        for i, r in enumerate(ok):
+            if r["time_s"] != last:
+                place, last = i + 1, r["time_s"]
+            r["place"] = place
+        for r in rest:
+            r["place"] = None
+        out.append({"name": name, "length_m": None, "climb_m": None, "controls": None, "runners": ok + rest,
+                    "values": values.get(name), "categories": sorted({r.get("category") for r in rs if r.get("category")})})
+    return out
+
+
 def score_by_circuit(parsed: dict, circuits: dict[str, str], scorer, race) -> None:
     """A list by category: its categories regrouped into their circuits (circuits: {category: circuit}) and scored as
     such; each class gets its circuit's name ("circuit") and values. Categories of unknown circuit stay unscored."""
@@ -498,6 +525,27 @@ def start_lists(con, f: Fetcher, lr: LiveResultat, today: date) -> int:
     return changed
 
 
+def save_announcements(con, race, found: dict, f: Fetcher, rivals) -> int:
+    """The announcements the crawl found on the organiser's site: the table of their circuits, when they have one, kept
+    as an « annonce » document of the race (a weekend's go to the race they are about)."""
+    from .parsers import announcement
+    changed = 0
+    for url, text in found.get("announcements", []):
+        if f.out_of_time() or con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+            continue
+        a = f.get(download_url(url), conditional=False)
+        d = announcement.parse(a.content) if a.status == 200 else None
+        if not d:
+            continue
+        label = re.sub(r"(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ", f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('head', '')}")
+        if rivals and race["key"] not in races.owners([race, *rivals], label, False):
+            continue
+        races.save_circuits_doc(con, race["key"], url, "announcement", "Annonce de course : circuits et catégories",
+                                "les catégories de chaque circuit (annonce de course)", d["circuits"], _now(), source="site")
+        changed += 1
+    return changed
+
+
 def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     """The start lists and entry lists organisers post on their own sites before the race (« horaires de départ »):
     the races of today and the next START_DAYS days, START_SITES a run, each at most every START_EVERY hours. A list
@@ -554,20 +602,7 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=a.sha,
                             note=SITE_STARTLIST if d else f"{SITE_STARTLIST} · {text}".strip(" ·"))
         # the announcement on the organiser's site: its circuits' table, when it has one
-        from .parsers import announcement
-        for url, text in found.get("announcements", []):
-            if f.out_of_time() or con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
-                continue
-            a = f.get(download_url(url), conditional=False)
-            d = announcement.parse(a.content) if a.status == 200 else None
-            if not d:
-                continue
-            label = re.sub(r"(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ", f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('head', '')}")
-            if rivals and race["key"] not in races.owners([race, *rivals], label, False):
-                continue
-            races.save_circuits_doc(con, race["key"], url, "announcement", "Annonce de course : circuits et catégories",
-                                    "les catégories de chaque circuit (annonce de course)", d["circuits"], _now(), source="site")
-            changed += 1
+        changed += save_announcements(con, race, found, f, rivals)
     store.meta_set(con, "startsites", {k: v for k, v in seen.items() if v >= (now - timedelta(days=START_DAYS + 2)).isoformat()})
     con.commit()
     return changed
@@ -599,6 +634,10 @@ def build(con, out: Path, today: date) -> int:
             entry = {"url": doc["url"], "source": doc["source"], "kind": doc["kind"], "title": doc["title"],
                      "found": doc["found_at"], "changed": doc["changed_at"], "note": doc["note"]}
             if parsed:
+                # a list whose classes are mostly categories is one by category, whatever an older reading said
+                names = [k["name"] for k in parsed["classes"]]
+                if names and parsed.get("kind") not in ("startlist", "registration", "announcement"):
+                    parsed["by"] = "category" if sum(1 for n in names if model.category(n)) >= 0.6 * len(names) else parsed.get("by")
                 entry["by"] = parsed.get("by")
                 for k in parsed["classes"]:
                     for r in k["runners"]:
@@ -613,6 +652,7 @@ def build(con, out: Path, today: date) -> int:
                         splits = True
                 if parsed.get("by") == "category" and parsed.get("kind") != "startlist" and circuits:
                     score_by_circuit(parsed, circuits, scorer, race)
+                    entry["circuits"] = circuit_view(parsed)
                 entry["classes"] = parsed["classes"]
                 runners = [r for k in parsed["classes"] for r in k["runners"]]
                 n_run = max(n_run, len(runners))

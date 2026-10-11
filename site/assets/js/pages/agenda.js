@@ -40,7 +40,7 @@ export async function render(main, { query }) {
   const starts = new Map();
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
-      if (r.startlist && r.soon) starts.set(String(r.agenda_id || r.key.replace(/^a/, "")), r.key);
+      if (r.startlist && r.date_iso >= today) starts.set(String(r.agenda_id || r.key.replace(/^a/, "")), r.key);
     }
   } catch (e) { /* no start lists then */ }
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
@@ -202,7 +202,7 @@ export async function render(main, { query }) {
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
         <td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">oui</span></span>` : html`<span class="dim"><span class="m-only">hors CN</span><span class="d-only">non</span></span>`}</td>
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">annulée</span>` : ""}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">annulée</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="Liste de départ publiée">départs</span>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">Aucune manifestation avec ces critères.</div>`;
   }
@@ -255,6 +255,14 @@ export async function render(main, { query }) {
     return n === 0 ? "aujourd'hui" : n === 1 ? "demain" : n > 1 ? `dans ${n} jours` : n === -1 ? "hier" : `il y a ${-n} jours`;
   };
 
+  // the start list the organiser published (liveresultat, their site), shown on « Récemment »
+  function startBox(e) {
+    const key = starts.get(String(e.id));
+    return key ? html`<div class="reg open"><div class="reg-title">Liste de départ publiée</div>
+      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/recemment?course=${encodeURIComponent(key)}">Horaires de départ →</a>
+      <span class="dim" style="font-size:12px">avec le CN de chacun et sa place attendue</span></p></div>` : "";
+  }
+
   function registration(e) {
     if (e.kind !== "c") return "";
     const r = e.reg;
@@ -269,8 +277,7 @@ export async function render(main, { query }) {
         ${row("Nombre d'inscrits", r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${fmt(r.teams)} équipe${r.teams > 1 ? "s" : ""})</span>` : ""}` : "")}
         ${row("Par circuit", r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
       </dl>` : html`<div class="dim">Dates de clôture non publiées.</div>`}
-      ${starts.has(String(e.id)) ? html`<p style="margin:10px 0 0"><a class="btn btn-sm" href="#/recemment?course=${encodeURIComponent(starts.get(String(e.id)))}">Liste de départ →</a>
-        <span class="dim" style="font-size:12px">publiée par l'organisateur</span></p>` : ""}
+
       <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">Inscriptions en ligne ↗</a></p>
     </div>`;
   }
@@ -310,6 +317,7 @@ export async function render(main, { query }) {
         <div class="row" style="gap:6px">${e.cn ? html`<span class="tag tag-in">Compte pour le CN</span>` : html`<span class="tag">Hors CN</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
         ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">Annonce de course (PDF) ↗</a></div>` : ""}
+        ${startBox(e)}
         ${registration(e)}
         ${accessBox(e)}
         <dl>
