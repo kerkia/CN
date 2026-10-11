@@ -152,9 +152,11 @@ async function detail(main, idx, query) {
   let di = Math.max(0, Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc)
     : docs.indexOf([...docs].sort((a, b) => rank(b) - rank(a))[0]));
   let ci = Number(query.c) || 0;
-  // a list by category whose circuits are known: seen by circuit (how it is scored) or by category
+  // both views of a list of results: by circuit (how it is scored) and by category — a list by category gets its
+  // circuits (d.circuits) once known, a list by circuit giving runners' categories its categories (d.catview)
   let byCat = query.vue === "categorie";
-  const groupsOf = (d) => (d.circuits?.length && !byCat ? d.circuits : d.classes);
+  const views = (d) => (d.circuits?.length ? { circ: d.circuits, cat: d.classes } : d.catview?.length ? { circ: d.classes, cat: d.catview } : null);
+  const groupsOf = (d) => (views(d) ? views(d)[byCat ? "cat" : "circ"] : d.classes);
   const who = query.r || null;
   // a runner named (r=…): their group, in the document asked for if any (a class number from another view means nothing)
   if (who && !groupsOf(docs[di])[ci]?.runners.some((r) => r.lic === who)) {
@@ -198,14 +200,14 @@ async function detail(main, idx, query) {
 
   function draw() {
     const d = docs[di];
-    const groups = groupsOf(d), asCircuits = groups === d.circuits;
+    const groups = groupsOf(d), asCircuits = !!views(d) && !byCat;
     ci = Math.min(ci, groups.length - 1);
     const k = groups[ci];
-    replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who, vue: d.circuits?.length && byCat ? "categorie" : null });
+    replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who, vue: views(d) && byCat ? "categorie" : null });
     $("#pv-pick").innerHTML = html`
       <label class="field"><span>${t("prov.doc")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${SOURCE[x.source] || x.source} · ${x.kind} · ${x.title || decodeURIComponent(x.url.split("/").pop())}</option>`)}</select></label>
-      ${d.circuits?.length ? html`<div class="field"><span>${t("prov.view")}</span>${seg("pvv", [["circ", t("prov.view.circ")], ["cat", t("prov.view.cat")]], byCat ? "cat" : "circ")}</div>` : ""}
-      <label class="field"><span>${d.by === "category" && !asCircuits ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
+      ${views(d) ? html`<div class="field"><span>${t("prov.view")}</span>${seg("pvv", [["circ", t("prov.view.circ")], ["cat", t("prov.view.cat")]], byCat ? "cat" : "circ")}</div>` : ""}
+      <label class="field"><span>${(views(d) ? byCat : d.by === "category") ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
       ${k.runners.some((r) => r.splits) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="${splitsLink(d, ci)}">${t("spl.ofClass")} →</a>` : ""}`;
     $("#pv-doc").addEventListener("change", (e) => {
       di = Number(e.target.value);
@@ -217,15 +219,17 @@ async function detail(main, idx, query) {
       // the same runner's group in the other view: the circuit of the category shown, or the first category of the circuit
       const next = x.dataset.value === "cat";
       if (next === byCat) return;
-      const name = next ? k.categories?.[0] : k.circuit;
+      // (the runner named, if any, else the first category of the circuit, or the circuit of the category)
+      const mine = who && k.runners.find((r) => r.lic === who);
+      const name = next ? (mine?.category || mine?.catCn || k.categories?.[0] || k.runners.find((r) => r.category)?.category) : k.circuit;
       byCat = next;
-      ci = Math.max(0, groupsOf(d).findIndex((g) => g.name === name));
+      ci = Math.max(0, groupsOf(d).findIndex((g) => g.name === name || (who && g.runners.some((r) => r.lic === who))));
       draw();
     }));
     const v = k.values || {};
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
-      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
+      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category" || !!k.values;

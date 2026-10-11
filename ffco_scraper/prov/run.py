@@ -437,6 +437,41 @@ def category_circuits(parsed_docs: list[dict]) -> dict[str, str]:
     return out
 
 
+def _ranked(rs: list[dict]) -> list[dict]:
+    """Runners (copies) by time, places recomputed (ties share one), then those without a time."""
+    ok = sorted((r for r in rs if r["status"] == "ok" and r.get("time_s")), key=lambda r: r["time_s"])
+    last, place = None, 0
+    for i, r in enumerate(ok):
+        if r["time_s"] != last:
+            place, last = i + 1, r["time_s"]
+        r["place"] = place
+    rest = [r for r in rs if not (r["status"] == "ok" and r.get("time_s"))]
+    for r in rest:
+        r["place"] = None
+    return ok + rest
+
+
+def category_view(parsed: dict) -> list[dict]:
+    """A list by circuit that gives runners' categories, seen by category: each category's runners (from whichever
+    circuit), places recomputed; a category on one circuit names it ("circuit") and shows its values."""
+    groups: dict[str, list] = {}
+    circ: dict[str, set] = {}
+    values: dict[str, dict] = {}
+    for k in parsed["classes"]:
+        for r in k["runners"]:
+            c = r.get("category") or r.get("catCn")
+            if c:
+                groups.setdefault(c, []).append(dict(r))
+                circ.setdefault(c, set()).add(k["name"])
+                values[k["name"]] = k.get("values")
+    out = []
+    for c in sorted(groups, key=lambda c: (c[0], int(re.sub(r"\D", "", c) or 0))):
+        one = next(iter(circ[c])) if len(circ[c]) == 1 else None
+        out.append({"name": c, "length_m": None, "climb_m": None, "controls": None, "runners": _ranked(groups[c]),
+                    "circuit": one, "values": values.get(one) if one else None})
+    return out
+
+
 def circuit_view(parsed: dict) -> list[dict]:
     """A list by category scored circuit by circuit, seen by circuit: each circuit's runners (its categories merged),
     the finishers by time with places recomputed, then the others; each runner keeps their category."""
@@ -449,16 +484,7 @@ def circuit_view(parsed: dict) -> list[dict]:
     out = []
     for name in sorted(groups, key=lambda c: (len(c), c)):
         rs = groups[name]
-        ok = sorted((r for r in rs if r["status"] == "ok" and r.get("time_s")), key=lambda r: r["time_s"])
-        rest = [r for r in rs if not (r["status"] == "ok" and r.get("time_s"))]
-        last, place = None, 0
-        for i, r in enumerate(ok):
-            if r["time_s"] != last:
-                place, last = i + 1, r["time_s"]
-            r["place"] = place
-        for r in rest:
-            r["place"] = None
-        out.append({"name": name, "length_m": None, "climb_m": None, "controls": None, "runners": ok + rest,
+        out.append({"name": name, "length_m": None, "climb_m": None, "controls": None, "runners": _ranked(rs),
                     "values": values.get(name), "categories": sorted({r.get("category") for r in rs if r.get("category")})})
     return out
 
@@ -653,6 +679,13 @@ def build(con, out: Path, today: date) -> int:
                 if parsed.get("by") == "category" and parsed.get("kind") != "startlist" and circuits:
                     score_by_circuit(parsed, circuits, scorer, race)
                     entry["circuits"] = circuit_view(parsed)
+                # a list by circuit giving most runners' categories: seen by category too
+                runners_all = [r for k in parsed["classes"] for r in k["runners"]]
+                if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and runners_all and \
+                        sum(1 for r in runners_all if r.get("category") or r.get("catCn")) >= 0.6 * len(runners_all):
+                    entry["catview"] = category_view(parsed)
+                    for k in parsed["classes"]:          # each circuit's categories, for its heading
+                        k["categories"] = sorted({r.get("category") or r.get("catCn") for r in k["runners"]} - {None})
                 entry["classes"] = parsed["classes"]
                 runners = [r for k in parsed["classes"] for r in k["runners"]]
                 n_run = max(n_run, len(runners))
