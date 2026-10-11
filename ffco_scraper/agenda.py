@@ -58,6 +58,7 @@ REGIONS = {
 OUTRE_MER = "Outre-mer"
 AGENDA_VERSION = 4     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
 #   4 (2026-10-10): registrants per circuit (reg.circuits)
+ANN_VERSION = 2        # what is read from an announcement; 2 (2026-10-11): its circuits' table too — each read again once
 REG_DAYS = 21          # races whose registrants are counted circuit by circuit (one page each, once a day)
 SPEC_ORDER = ["Pédestre", "VTT", "Ski", "Précision", "Raid Orientation", "Raid Multisport", "Pédestre + VTT"]   # as on FFCO
 
@@ -348,7 +349,7 @@ def find_map_url(text: str | None) -> str | None:
 
 def pdf_info(url: str, metro: bool = True) -> dict:
     """{ access, gps, map } read from an announcement PDF (only .pdf files, ≤ 12 MB, first pages)."""
-    info: dict = {"access": "", "gps": None, "map": None}
+    info: dict = {"access": "", "gps": None, "map": None, "circuits": []}
     if not url.lower().split("?")[0].endswith(".pdf"):
         return info
     try:
@@ -366,6 +367,9 @@ def pdf_info(url: str, metro: bool = True) -> dict:
     info["access"] = access_section(text)
     info["gps"] = find_gps(info["access"], metro) or find_gps(text[:6000], metro)
     info["map"] = find_map_url(info["access"]) or find_map_url(text[:6000])
+    # the circuits' table, when it has one (« A  H20, H21 et H35  Violet … »): the categories of each circuit
+    from .prov.parsers.announcement import circuits_from_text
+    info["circuits"] = circuits_from_text(text)
     return info
 
 
@@ -447,14 +451,17 @@ def _add_announcements(events: list[dict], prev_events: list[dict]) -> None:
         p = prev.get(e.get("id"))
         if not url.startswith("http"):
             continue
-        if p and p.get("annSrc") == url:                                # the same announcement as last time
-            e.update({k: p[k] for k in ("access", "annGps", "annMap", "annSrc") if k in p})
+        if p and p.get("annSrc") == url and p.get("annV") == ANN_VERSION:   # the same announcement as last time
+            e.update({k: p[k] for k in ("access", "annGps", "annMap", "annSrc", "annCircuits", "annV") if k in p})
         else:
             todo.append(e)
     with ThreadPoolExecutor(WORKERS) as pool:
         infos = list(pool.map(lambda e: pdf_info(e["invitation"], metro(e)), todo))
     for e, info in zip(todo, infos):
         e["annSrc"] = e["invitation"]
+        e["annV"] = ANN_VERSION
+        if info["circuits"]:
+            e["annCircuits"] = info["circuits"]
         if info["access"]:
             e["access"] = info["access"]
         if info["gps"]:

@@ -351,24 +351,29 @@ def expand_categories(text: str) -> set[str]:
     return out
 
 
-def save_registration(con, key: str, reg: dict, stamp: str) -> None:
-    """FFCO's registration list of a race, kept as a document: each circuit's categories (« Circuit B : D20/35, H40/45 »)
-    — how a list by category is regrouped into circuits for its scores, before FFCO publishes the race."""
-    circuits = [c for c in reg.get("circuits") or [] if len(c) > 2 and c[2]]
-    if not circuits:
-        return
-    parsed = json.dumps({"kind": "registration", "by": "circuit", "title": "Inscriptions FFCO : circuits et catégories",
-                         "date": None, "classes": [], "circuits": [[c[0], c[2], c[1]] for c in circuits]}, ensure_ascii=False)
-    cur = con.execute("SELECT parsed FROM prov_docs WHERE race_key = ? AND url = ?", (key, reg["url"])).fetchone()
+def save_circuits_doc(con, key: str, url: str, kind: str, title: str, note: str, circuits: list, stamp: str,
+                      source: str = "ffco") -> None:
+    """A document giving each circuit's categories (FFCO's registration list, an announcement): [[circuit, categories
+    text, count or None]]."""
+    parsed = json.dumps({"kind": kind, "by": "circuit", "title": title, "date": None, "classes": [], "circuits": circuits},
+                        ensure_ascii=False)
+    cur = con.execute("SELECT parsed FROM prov_docs WHERE race_key = ? AND url = ?", (key, url)).fetchone()
     if cur and cur["parsed"] == parsed:
         return
     if cur:
-        con.execute("UPDATE prov_docs SET parsed = ?, changed_at = ? WHERE race_key = ? AND url = ?", (parsed, stamp, key, reg["url"]))
+        con.execute("UPDATE prov_docs SET parsed = ?, changed_at = ? WHERE race_key = ? AND url = ?", (parsed, stamp, key, url))
     else:
         con.execute("""INSERT INTO prov_docs (race_key, url, source, kind, title, sha, parsed, found_at, changed_at, note)
-                       VALUES (?, ?, 'ffco', 'registration', ?, NULL, ?, ?, ?, ?)""",
-                    (key, reg["url"], "Inscriptions FFCO : circuits et catégories", parsed, stamp, stamp,
-                     "les catégories de chaque circuit (liste publique des inscrits)"))
+                       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)""", (key, url, source, kind, title, parsed, stamp, stamp, note))
+
+
+def save_registration(con, key: str, reg: dict, stamp: str) -> None:
+    """FFCO's registration list of a race, kept as a document: each circuit's categories (« Circuit B : D20/35, H40/45 »)
+    — how a list by category is regrouped into circuits for its scores, before FFCO publishes the race."""
+    circuits = [[c[0], c[2], c[1]] for c in reg.get("circuits") or [] if len(c) > 2 and c[2]]
+    if circuits:
+        save_circuits_doc(con, key, reg["url"], "registration", "Inscriptions FFCO : circuits et catégories",
+                          "les catégories de chaque circuit (liste publique des inscrits)", circuits, stamp)
 
 
 def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
@@ -399,6 +404,9 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
                 added += 1
             if (e.get("reg") or {}).get("circuits"):
                 save_registration(con, key, e["reg"], stamp)
+            if e.get("annCircuits") and e.get("annSrc"):
+                save_circuits_doc(con, key, e["annSrc"], "announcement", "Annonce de course : circuits et catégories",
+                                  "les catégories de chaque circuit (annonce de course)", e["annCircuits"], stamp)
     # the agenda export's races (x…) and the uploads' (u…) are linked to FFCO's results like the agenda's own: agenda_id 0
     con.execute("UPDATE prov_races SET agenda_id = 0 WHERE (key LIKE 'x%' OR key LIKE 'u%') AND agenda_id IS NULL")
     # FFCO's competitions of the period: link the agenda's races, add the others (the past month's pilot)

@@ -245,6 +245,7 @@ class ClubSite:
         words = {w for w in race_words(race) if not any(w in h for h in hosts)}
         found: dict[str, tuple[str, str]] = {}
         platforms: dict[str, str] = {}
+        announcements: dict[str, str] = {}             # (mode "start") the race's announcement: its circuits' table
 
         def consider(url: str, text: str, via: str, posted_after: bool = False, on_race_page: bool = False,
                      weekend_page: bool = False):
@@ -272,6 +273,10 @@ class ClubSite:
                 return
             if path.endswith((".htm", ".html")) and not any(w in low for w in WANT):
                 return                                          # an ordinary page, not an exported list
+            if start and any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and \
+                    not path.endswith((".htm", ".html")):
+                announcements.setdefault(url, text)             # the announcement: perhaps the table of its circuits
+                return
             if any(w in low for w in SKIP):
                 return                                          # start lists, entries, invitations: their times are not results
             says_result = any(w in low for w in WANT)           # (mode "start": says start list)
@@ -404,7 +409,8 @@ class ClubSite:
         for root in sorted(siblings):
             if not self.f.out_of_time():
                 wordpress(root)
-        return {"docs": [(u, t, v) for u, (t, v) in found.items()], "platforms": sorted(platforms.items(), key=lambda x: x[1])}
+        return {"docs": [(u, t, v) for u, (t, v) in found.items()], "platforms": sorted(platforms.items(), key=lambda x: x[1]),
+                "announcements": sorted(announcements.items())}
 
 
 def download_url(url: str) -> str:

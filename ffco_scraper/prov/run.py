@@ -422,9 +422,10 @@ def category_circuits(parsed_docs: list[dict]) -> dict[str, str]:
         circ, n = v.most_common(1)[0]
         if n >= 0.7 * sum(v.values()):
             out[cat] = circ
-    # FFCO's registration list (each circuit's categories): for the categories no list by circuit placed
-    for d in parsed_docs:
-        if d.get("kind") == "registration":
+    # FFCO's registration list (each circuit's categories), then the announcement's table: for the categories no list
+    # by circuit placed
+    for d in sorted(parsed_docs, key=lambda d: d.get("kind") != "registration"):
+        if d.get("kind") in ("registration", "announcement"):
             for name, cats, _ in d.get("circuits") or []:
                 for cat in races.expand_categories(cats):
                     out.setdefault(cat, name)
@@ -552,6 +553,21 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
                 continue
             changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=a.sha,
                             note=SITE_STARTLIST if d else f"{SITE_STARTLIST} · {text}".strip(" ·"))
+        # the announcement on the organiser's site: its circuits' table, when it has one
+        from .parsers import announcement
+        for url, text in found.get("announcements", []):
+            if f.out_of_time() or con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+                continue
+            a = f.get(download_url(url), conditional=False)
+            d = announcement.parse(a.content) if a.status == 200 else None
+            if not d:
+                continue
+            label = re.sub(r"(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ", f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('head', '')}")
+            if rivals and race["key"] not in races.owners([race, *rivals], label, False):
+                continue
+            races.save_circuits_doc(con, race["key"], url, "announcement", "Annonce de course : circuits et catégories",
+                                    "les catégories de chaque circuit (annonce de course)", d["circuits"], _now(), source="site")
+            changed += 1
     store.meta_set(con, "startsites", {k: v for k, v in seen.items() if v >= (now - timedelta(days=START_DAYS + 2)).isoformat()})
     con.commit()
     return changed

@@ -14,7 +14,7 @@ import { link, replaceQuery } from "../app.js";
 const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
 const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
-  startlist: "liste de départ", startfile: "liste de départ (lien)", registration: "circuits et catégories" };
+  startlist: "liste de départ", startfile: "liste de départ (lien)", registration: "circuits et catégories", announcement: "annonce : circuits et catégories" };
 export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
 const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */

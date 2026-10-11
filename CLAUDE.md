@@ -208,8 +208,9 @@ circuit are scored — a list by category is scored circuit by circuit once its 
 circuit): by the race's lists by circuit that give runners' categories (`run.category_circuits`), else by FFCO's public
 registration list, whose « Catégories » column gives each circuit's (« B : D20/35, H40/45, Open violet »; kept as a
 « registration » document by `races.save_registration` from the agenda's `reg.circuits`, expanded by
-`races.expand_categories`); categories of unknown circuit stay unscored. FFCO's announcement template seldom has the
-table. A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
+`races.expand_categories`), else by the course announcement's table when it has one (`parsers/announcement.py`:
+the agenda's FFCO-hosted announcements, `annCircuits`, and those on the organiser's site found by the start-list search);
+categories of unknown circuit stay unscored. A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08; three steps since
 2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Récemment ») — 1. the file (IOF XML best, OE/MeOS
 HTML, PDF, .zip/.gz; 30 MB), with what to export; 2. it is **read in the browser** (`localparse.js`, a port of the
