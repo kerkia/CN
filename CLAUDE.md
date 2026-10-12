@@ -299,7 +299,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator. A format defines its discipline
   (`relay.terrainOf`: CFC, CNE, relais de catégorie in forest; the sprint relay — 2 women, 2 men of any category, D-H-H-D —
   in sprint), whatever the site-wide one; only one's own format has a discipline selector (owner, 2026-10-12). A club that
-  cannot field a team is told which criterion fails. Formats from FFCO's 2026
+  cannot field a team is told which criterion fails. « Coureurs ajoutés » (2026-10-12): an account adds to a club the people
+  who race relays without a CN (abroad, relays only): name, sex, age group, an expected CN per discipline; they join the club's
+  teams (tag « ajouté »). Saved per account and club in D1 `relay_runners` (migration 0008, `api/account/relay.js` GET/PUT),
+  seen by that account only, deleted with it (the privacy page says so); without the table the page keeps them for the visit. Formats from FFCO's 2026
   rules (`relay.js` `PRESETS`: CFC N1-N4 with their composition criteria and reserved legs — the women's/men's first and
   last legs alternate with the year's parity —, CNE Hommes/Dames/Jeunes/mini, relais de catégorie) or one's own legs.
   The owner's model: a runner of CN c runs k x ref / c on a leg; k makes the best team of all clubs (CNE: the mean of

@@ -21,6 +21,8 @@ const custom = () => ({ label: "Format personnalisé", target: "winner", custom:
   legs: [{ ref: 40 }, { ref: 40 }, { ref: 40 }] });
 const consLabel = (c) => [c.sex === "H" ? "hommes" : c.sex === "D" ? "dames" : "", c.min != null && c.min > 0 ? `${c.min} et +` : "",
   c.max != null ? `jusqu'à ${c.max}` : ""].filter(Boolean).join(" · ");
+// the age groups offered for an added runner (its category: sex + age, as H21 or D45)
+const AGES = [10, 12, 14, 16, 18, 20, 21, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
 const mmss = (min) => (min == null || !isFinite(min) ? "—" : fmtTime(Math.round(min * 60)));
 
 export async function render(main, { query }) {
@@ -31,7 +33,10 @@ export async function render(main, { query }) {
   // the discipline of the CNs: the format's (forest, the sprint relay in sprint), whatever the site-wide one; one's own
   // format: chosen here
   let terrain = key === "perso" ? (store.TERRAINS.includes(query.t) ? query.t : "For") : terrainOf(PRESETS[key]);
-  let runners = [], byClub = new Map(), manual = null;      // manual: the team typed by hand (array of runners), else null
+  let runners = [], byClub = new Map(), manual = null;
+  // the runners this account added to the club (no CN of their own: relays only, abroad), from /api/account/relay;
+  // saved: "" | "saving" | "saved" | "unavailable"
+  let extra = [], extraClub = null, saved = "";      // manual: the team typed by hand (array of runners), else null
 
   main.innerHTML = html`
     <div class="net-head"><h2>${t("rl.title")}</h2><p class="lede">${t("rl.lede")}</p></div>
@@ -43,6 +48,9 @@ export async function render(main, { query }) {
       <section class="card"><div class="card-head"><div><h2>${t("rl.format")}</h2><div class="hint" id="rl-format-hint"></div></div></div>
         <div id="rl-format"></div></section>
     </div>
+    <section class="card" id="rl-extra-card" style="margin-bottom:16px" hidden><div class="card-head"><div><h2 id="rl-extra-title"></h2>
+      <div class="hint">${t("rl.extra.hint")}</div></div><span class="muted" id="rl-extra-state" style="font-size:12.5px"></span></div>
+      <div id="rl-extra"></div></section>
     <section class="card"><div class="card-head"><div><h2>${t("rl.ranking")}</h2><div class="hint">${t("rl.ranking.hint")}</div></div></div>
       <div id="rl-ranking"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("rl.model")}</p>`;
@@ -67,7 +75,7 @@ export async function render(main, { query }) {
       const tr = key === "perso" ? terrain : terrainOf(PRESETS[key]);
       if (tr !== terrain) { terrain = tr; load(); } else { drawFilters(); compute(); }
     });
-    $("#rl-club").addEventListener("change", (e) => { club = e.target.value; manual = null; compute(); });
+    $("#rl-club").addEventListener("change", async (e) => { club = e.target.value; manual = null; await loadExtra(); compute(); });
     bindMethodSeg(main, async (m) => { method = m; manual = null; await load(); });
   }
 
@@ -117,11 +125,79 @@ export async function render(main, { query }) {
     if (club && !byClub.has(club)) club = "";
     drawFilters();
     compute();
+    drawExtra();
   }
 
   // the best team of the strongest clubs (a club that cannot beat the TOP-th team or ours, even with its best runners on
   // the longest legs, is skipped), our club's teams, the constant k
   let res = null;
+  // ---- runners added by hand, saved with the account for this club ------------------------------------------------
+  const added = () => extra.filter((r) => r.cn?.[terrain] > 0).map((r) => ({ lic: `x:${r.id}`, name: r.name, cat: `${r.sex}${r.age}`,
+    sex: r.sex, age: r.age, cn: r.cn[terrain], club, added: true }));
+  const poolOf = (c) => [...(byClub.get(c) || []), ...(c === club ? added() : [])];
+  async function loadExtra() {
+    extra = []; extraClub = club; saved = "";
+    if (club) {
+      try {
+        const r = await fetch(`/api/account/relay?club=${encodeURIComponent(club)}`, { credentials: "same-origin", cache: "no-store" });
+        if (r.ok) extra = (await r.json()).runners || []; else saved = "unavailable";
+      } catch (e) { saved = "unavailable"; }
+    }
+    drawExtra();
+  }
+  async function saveExtra() {
+    saved = "saving"; drawExtraState();
+    try {
+      const r = await fetch("/api/account/relay", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ club: extraClub, runners: extra }) });
+      saved = r.ok ? "saved" : "unavailable";
+    } catch (e) { saved = "unavailable"; }
+    drawExtraState();
+  }
+  const drawExtraState = () => { const el = $("#rl-extra-state"); if (el) el.textContent = saved ? t(`rl.extra.${saved}`) : ""; };
+  function drawExtra() {
+    const card = $("#rl-extra-card");
+    if (!card) return;
+    card.hidden = !club;
+    if (!club) return;
+    const tr = t(`terrain.${terrain}`).toLowerCase();
+    $("#rl-extra-title").textContent = `${t("rl.extra.title")} · ${clubName(club)}`;
+    $("#rl-extra").innerHTML = html`
+      ${extra.length ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("rk.col.name")}</th><th>${t("rk.col.cat")}</th>
+<th class="r">${t("rl.extra.cn", { t: tr })}</th><th></th></tr></thead>
+        <tbody>${extra.map((r, i) => html`<tr><td>${r.name}</td><td>${r.sex}${r.age}</td>
+          <td class="r"><input type="number" min="1" max="20000" step="1" value="${r.cn?.[terrain] ?? ""}" data-extra-cn="${i}" style="width:90px"
+            aria-label="${t("rl.extra.cn", { t: tr })}"></td>
+          <td class="r"><button type="button" class="btn btn-ghost btn-sm" data-extra-del="${i}">${t("rl.extra.del")}</button></td></tr>`)}</tbody></table></div>`
+        : html`<div class="empty" style="padding:12px 16px">${t("rl.extra.none")}</div>`}
+      <div class="filters" style="margin:12px 16px 14px;padding:0;border:0;background:none" id="rl-extra-form">
+        <label class="field"><span>${t("rk.col.name")}</span><input type="text" id="rx-name" maxlength="60" style="width:200px"></label>
+        <label class="field"><span>${t("f.sexe")}</span><select id="rx-sex"><option value="H">${t("rl.extra.H")}</option><option value="D">${t("rl.extra.D")}</option></select></label>
+        <label class="field"><span>${t("rk.col.cat")}</span><select id="rx-age">${AGES.map((a) => html`<option value="${a}" ${raw(a === 21 ? "selected" : "")}>${a}</option>`)}</select></label>
+        <label class="field"><span>${t("rl.extra.cn", { t: tr })}</span><input type="number" id="rx-cn" min="1" max="20000" step="1" style="width:110px"></label>
+        <button type="button" class="btn btn-sm" id="rx-add" style="align-self:flex-end">${t("rl.extra.add")}</button>
+      </div>`;
+    drawExtraState();
+    const changed = () => { manual = null; saveExtra(); compute(); drawExtra(); };
+    $("#rx-add").addEventListener("click", () => {
+      const name = $("#rx-name").value.trim().replace(/\s+/g, " "), cn = Math.round(Number($("#rx-cn").value));
+      if (!name || !(cn > 0 && cn <= 20000)) { $("#rx-name").reportValidity?.(); return; }
+      const sex = $("#rx-sex").value, age = Number($("#rx-age").value);
+      // the same name again: its category and its CN in this discipline are updated
+      const same = extra.find((r) => r.name.toLowerCase() === name.toLowerCase());
+      if (same) Object.assign(same, { sex, age, cn: { ...same.cn, [terrain]: cn } });
+      else if (extra.length < 40) extra.push({ id: Math.random().toString(36).slice(2, 10), name, sex, age, cn: { [terrain]: cn } });
+      changed();
+    });
+    $$("[data-extra-del]").forEach((b) => b.addEventListener("click", () => { extra.splice(Number(b.dataset.extraDel), 1); changed(); }));
+    $$("[data-extra-cn]").forEach((x) => x.addEventListener("change", () => {
+      const r = extra[Number(x.dataset.extraCn)], v = Math.round(Number(x.value));
+      r.cn = { ...r.cn };
+      if (v > 0 && v <= 20000) r.cn[terrain] = v; else delete r.cn[terrain];
+      changed();
+    }));
+  }
+
   function compute() {
     replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method, t: key === "perso" && terrain !== "For" ? terrain : null });
     const f = fmtNow, n = f.legs.length;
@@ -131,7 +207,7 @@ export async function render(main, { query }) {
       const cns = rs.map((r) => r.cn).sort((a, b) => b - a);
       return cns.length < n ? Infinity : refs.reduce((s, x, i) => s + x / cns[i], 0);
     };
-    const mine = club ? clubTeams(byClub.get(club) || [], f, MAX_TEAMS) : [];
+    const mine = club ? clubTeams(poolOf(club), f, MAX_TEAMS) : [];
     const myWorst = mine.length ? Math.max(...mine.map((x) => x.cost)) : 0;
     const order = [...byClub.entries()].filter(([c]) => c !== club).map(([c, rs]) => [c, rs, bound(rs)]).filter((x) => isFinite(x[2]))
       .sort((a, b) => a[2] - b[2]);
@@ -161,9 +237,9 @@ export async function render(main, { query }) {
     const cost = rs.every(Boolean) ? rs.reduce((s, r, i) => s + f.legs[i].ref / r.cn, 0) : null;
     const total = cost != null && res.k ? res.k * cost : null;
     let cum = 0;
-    const pool = byClub.get(club) || [];
+    const pool = poolOf(club);
     const opts = (i, cur) => pool.filter((r) => fits(r.sex, r.age, f.legs[i])).sort((a, b) => b.cn - a.cn)
-      .map((r) => html`<option value="${r.lic}" ${raw(cur && r.lic === cur.lic ? "selected" : "")}>${r.name} · ${r.cat} · ${fmt(r.cn)}</option>`);
+      .map((r) => html`<option value="${r.lic}" ${raw(cur && r.lic === cur.lic ? "selected" : "")}>${r.name}${r.added ? ` (${t("rl.extra.tag")})` : ""} · ${r.cat} · ${fmt(r.cn)}</option>`);
     return html`<div class="rl-team">
       <h3 style="margin:12px 16px 6px;font-size:15px">${t("rl.team")} ${idx + 1}${total != null ? html` · <b>${mmss(total)}</b>
         <span class="muted" style="font-weight:400">· ${t("rl.place")} ${placeOf(cost)}${res.firsts[0] && res.k ? ` · +${mmss(total - res.k * res.firsts[0].cost)}` : ""}</span>` : ""}</h3>
@@ -175,7 +251,8 @@ export async function render(main, { query }) {
           const slot = slotsOk ? f.slots[slotsOk[i]].label : "";
           return html`<tr><td class="r num">${i + 1}</td><td class="r num">${fmt(f.legs[i].ref)}′</td><td class="muted" style="font-size:12.5px">${slot}</td>
             <td>${editable ? html`<select data-pick-leg="${i}" style="max-width:260px"><option value="">—</option>${opts(i, r)}</select>`
-              : r ? html`<a href="${link.runner(r.lic)}">${r.name}</a> <span class="muted">${r.cat}</span>` : "—"}</td>
+              : r ? html`${r.added ? html`<span>${r.name}</span> <span class="tag">${t("rl.extra.tag")}</span>` : html`<a href="${link.runner(r.lic)}">${r.name}</a>`}
+                <span class="muted">${r.cat}</span>` : "—"}</td>
             <td class="r num">${r ? fmt(r.cn) : ""}</td><td class="r num">${mmss(times[i])}</td><td class="r num">${mmss(cum)}</td></tr>`;
         })}</tbody></table></div></div>`;
   }
@@ -195,7 +272,7 @@ export async function render(main, { query }) {
     $("#rl-team-hint").textContent = `${methodLabel(method)}${mean ? ` · ${t("rl.bestShare", { p: fmt(100 * mean) })}` : ""}`;
     if (!res.mine.length && !manual) {
       // which criteria the club cannot fill (runners ranked in the discipline)
-      const pool = byClub.get(club) || [], need = new Map();
+      const pool = poolOf(club), need = new Map();
       for (const s of fmtNow.slots) need.set(s.label, [(need.get(s.label)?.[0] || 0) + 1, s]);
       const short = [...need].filter(([, [n, s]]) => pool.filter((r) => fits(r.sex, r.age, s)).length < n).map(([l]) => l);
       $("#rl-teams").innerHTML = html`<div class="empty">${short.length
@@ -207,7 +284,7 @@ export async function render(main, { query }) {
       ${manual ? "" : res.mine.slice(1).map((tm, i) => teamTable(tm.legs, i + 1, false))}
       <p class="muted" style="font-size:12.5px;margin:8px 16px 14px">${t("rl.edit")}</p>`;
     $$("[data-pick-leg]").forEach((sel) => sel.addEventListener("change", () => {
-      const pool = byClub.get(club) || [];
+      const pool = poolOf(club);
       manual = [...(manual || res.mine[0].legs.map((x) => x.runner))];
       manual[Number(sel.dataset.pickLeg)] = pool.find((r) => r.lic === sel.value) || null;
       drawTeams();
@@ -230,6 +307,7 @@ export async function render(main, { query }) {
   }
 
   drawFormat();
+  await loadExtra();
   await load();
   return { title: t("rl.title") };
 }

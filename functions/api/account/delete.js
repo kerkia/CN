@@ -6,6 +6,8 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   if (!(await allow(env, `pwchange:${user.id}`, 8, 600))) return json({ error: "rate" }, 429);
   if (!(await checkPassword(String(b?.password || ""), user, env))) return json({ error: "invalid" }, 401);
+  // the relay simulator's added runners (a table that may not exist yet: migration 0008)
+  try { await env.DB.prepare("DELETE FROM relay_runners WHERE user_id = ?").bind(user.id).run(); } catch (e) {}
   await env.DB.batch([
     env.DB.prepare("DELETE FROM notified WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM tokens WHERE user_id = ?").bind(user.id),
