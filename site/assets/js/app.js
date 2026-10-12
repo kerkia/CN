@@ -131,15 +131,29 @@ export function terrainField() {
       ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(v === x ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}
     </select></label>`;
 }
+/** The same choice as buttons, for a section's head (at its right, as the runner's « Historique des courses »). */
+export function terrainSeg() {
+  const r = parseHash(), all = allowsAllTerrains(r);
+  const v = all ? viewTerrain(r.query) || "all" : store.get().terrain;
+  return html`<div class="seg" role="group" aria-label="${t("f.terrain")}">${[...(all ? [["all", t("f.all")]] : []),
+    ...store.TERRAINS.map((x) => [x, t(`terrain.${x}`)])].map(([x, label]) => html`<button type="button" data-terrain-pick="${x}"
+      aria-pressed="${x === v}">${label}</button>`)}</div>`;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-terrain-pick]");
+  if (b) pickTerrain(b.dataset.terrainPick);
+});
 // changing it re-renders the current page
 document.addEventListener("change", (e) => {
-  if (e.target.id !== "terrain-select") return;
-  const v = e.target.value, now = parseHash(), { query } = now;
+  if (e.target.id === "terrain-select") pickTerrain(e.target.value);
+});
+function pickTerrain(v) {
+  const now = parseHash(), { query } = now;
   if (store.TERRAINS.includes(v)) store.set({ terrain: v });
   if (allowsAllTerrains(now)) replaceQuery({ ...query, t: v === "all" ? null : v });
   else if (query.t) { delete query.t; replaceQuery(query); }
   route_();
-});
+}
 
 // ---- header -------------------------------------------------------------
 let menusBound = false;
