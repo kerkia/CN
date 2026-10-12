@@ -31,8 +31,8 @@ export async function render(main, { query }) {
   const tabs = [["saisons", t("cm.tab.years")], ["bilan", t("cm.tab.summary")], ["mois", t("cm.tab.monthly")], ["coupe", t("cm.tab.cfc")]];
   const tab = tabFrom(tabs, query);
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/clubs">${t("nav.clubs")}</a><span>›</span><span>${t("cm.title")}</span></div>
-    <div class="page-head"><div><h1>${t("cm.title")}</h1><p class="lede">${t("cm.lede")}</p></div></div>
+    <div class="net-head"><h2>${t("cm.title")}</h2><p class="lede">${t("cm.lede")}</p></div>
+    ${pageTabs(tabs, tab)}
     <section class="card" style="margin-bottom:16px"><div class="card-body stack" style="gap:12px">
       <div class="row">
         <div class="search inline" id="club-search">
@@ -52,7 +52,6 @@ export async function render(main, { query }) {
     </div></section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="desc" style="margin-bottom:16px"></div>
-    ${pageTabs(tabs, tab)}
     <div data-panel="saisons"><div style="margin-bottom:16px">${chartCard({ id: "yrs", title: t("cm.years"), hint: t("cm.years.hint"), tall: true })}</div></div>
     <div data-panel="bilan"><section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("cm.summary")}</h2><div class="hint" id="sum-hint"></div></div></div>

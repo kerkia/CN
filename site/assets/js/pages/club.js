@@ -42,9 +42,9 @@ export async function render(main, { arg: code, query }) {
         <span>${t("f.dept")} ${code.slice(0, 2)} · ${data.deptName(code.slice(0, 2))}</span>
         <span class="num">${fmt(members.length)} ${t("cl.everMembers")}</span></div>
     </section>
+    ${pageTabs(tabs, tab)}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
-    ${pageTabs(tabs, tab)}
     <div data-panel="resultats">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2 class="week-title">${t("cl.week")} ${t("cl.week.from")}

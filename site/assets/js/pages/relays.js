@@ -28,12 +28,13 @@ export async function render(main, { query }) {
   let fmtNow = key === "perso" ? custom() : clone(PRESETS[key]);
   let club = query.club || myClub() || "";
   let method = store.available().includes(query.m) ? query.m : (store.available().includes("top6w2") ? "top6w2" : store.get().methods[0]);
-  const terrain = store.get().terrain;
+  // the relays simulated are forest races (CFC, CNE, relais de catégorie): forest unless chosen otherwise here, whatever
+  // the site-wide discipline
+  let terrain = store.TERRAINS.includes(query.t) ? query.t : "For";
   let runners = [], byClub = new Map(), manual = null;      // manual: the team typed by hand (array of runners), else null
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="${link.clubs()}">${t("nav.clubs")}</a><span>›</span><span>${t("rl.title")}</span></div>
-    <div class="page-head"><div><h1>${t("rl.title")}</h1><p class="lede">${t("rl.lede")}</p></div></div>
+    <div class="net-head"><h2>${t("rl.title")}</h2><p class="lede">${t("rl.lede")}</p></div>
     ${filterFold(html`<div class="filters" id="rl-filters"></div>`)}
     <div class="grid grid-main-side" style="align-items:start;margin-bottom:16px">
       <section class="card"><div class="card-head"><div><h2 id="rl-team-title">${t("rl.teams")}</h2><div class="hint" id="rl-team-hint"></div></div>
@@ -50,13 +51,15 @@ export async function render(main, { query }) {
     const groups = new Map();
     for (const [k, p] of Object.entries(PRESETS)) { if (!groups.has(p.group)) groups.set(p.group, []); groups.get(p.group).push([k, p.label]); }
     const clubs = [...byClub.keys()].sort((a, b) => clubName(a).localeCompare(clubName(b), "fr"));
-    $("#rl-filters").innerHTML = html`${terrainField()}
+    $("#rl-filters").innerHTML = html`<label class="field"><span>${t("f.terrain")}</span><select id="rl-t">
+        ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(x === terrain ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}</select></label>
       <label class="field"><span>${t("rl.format")}</span><select id="rl-f">
         ${[...groups].map(([g, list]) => html`<optgroup label="${g}">${list.map(([k, l]) => html`<option value="${k}" ${raw(k === key ? "selected" : "")}>${l}</option>`)}</optgroup>`)}
         <option value="perso" ${raw(key === "perso" ? "selected" : "")}>${t("rl.custom")}</option></select></label>
       <label class="field"><span>${t("rl.club")}</span><select id="rl-club" style="max-width:280px"><option value="">—</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>
       <div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>`;
+    $("#rl-t").addEventListener("change", (e) => { terrain = e.target.value; manual = null; load(); });
     $("#rl-f").addEventListener("change", (e) => {
       key = e.target.value; fmtNow = key === "perso" ? custom() : clone(PRESETS[key]); manual = null; drawFormat(); compute();
     });
@@ -116,7 +119,7 @@ export async function render(main, { query }) {
   // the longest legs, is skipped), our club's teams, the constant k
   let res = null;
   function compute() {
-    replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method });
+    replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method, t: terrain === "For" ? null : terrain });
     const f = fmtNow, n = f.legs.length;
     if (f.slots.length !== n || !n) return;
     const refs = f.legs.map((l) => l.ref).sort((a, b) => b - a);
@@ -186,7 +189,15 @@ export async function render(main, { query }) {
     const share = res.k ? fmtNow.legs.map((l, i) => Math.min(...res.firsts.map((x) => res.k * l.ref / x.legs[i].runner.cn)) / l.ref) : [];
     const mean = share.length ? share.reduce((s, x) => s + x, 0) / share.length : null;
     $("#rl-team-hint").textContent = `${methodLabel(method)}${mean ? ` · ${t("rl.bestShare", { p: fmt(100 * mean) })}` : ""}`;
-    if (!res.mine.length && !manual) { $("#rl-teams").innerHTML = html`<div class="empty">${t("rl.none")}</div>`; return; }
+    if (!res.mine.length && !manual) {
+      // which criteria the club cannot fill (runners ranked in the discipline)
+      const pool = byClub.get(club) || [], need = new Map();
+      for (const s of fmtNow.slots) need.set(s.label, [(need.get(s.label)?.[0] || 0) + 1, s]);
+      const short = [...need].filter(([, [n, s]]) => pool.filter((r) => fits(r.sex, r.age, s)).length < n).map(([l]) => l);
+      $("#rl-teams").innerHTML = html`<div class="empty">${short.length
+        ? t("rl.missing", { t: t(`terrain.${terrain}`).toLowerCase(), list: short.join(", ") }) : t("rl.none")}</div>`;
+      return;
+    }
     const first = manual || res.mine[0].legs.map((x) => x.runner);
     $("#rl-teams").innerHTML = html`${teamTable(first, 0, true)}
       ${manual ? "" : res.mine.slice(1).map((tm, i) => teamTable(tm.legs, i + 1, false))}

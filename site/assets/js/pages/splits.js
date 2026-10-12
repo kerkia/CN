@@ -52,8 +52,8 @@ export async function render(main, { query = {} } = {}) {
   main.innerHTML = html`
     <div class="crumbs" id="sp-crumbs"></div>
     <div class="page-head"><div><h1>${t("spl.title")}</h1><p class="lede">${t("spl.lede")}</p></div></div>
-    <div class="filters" id="sp-pick"></div>
     <div id="sp-tabs"></div>
+    <div class="filters" id="sp-pick"></div>
     <div class="filters" id="sp-views"></div>
     <div id="sp-body"></div>`;
   if (!withSplits.length) {

@@ -220,6 +220,7 @@ export async function render(main, { arg, query }) {
         <div class="row"><a class="btn btn-sm" href="${data.officialCourseUrl(st.course)}" target="_blank" rel="noopener">${t("cs.officialComp")} ↗</a>
           <a class="btn btn-sm" href="${data.officialCircuitUrl(st.circuit)}" target="_blank" rel="noopener">${t("cs.officialCircuit")} ↗</a></div>
       </div>
+      <div class="card-body" style="padding-bottom:0">${pageTabs(rtabs, rtab)}</div>
       <div class="card-body" style="padding-bottom:0">
         <div class="tiles tiles-compact">
           ${tile(t("co.circuitsT"), fmt(file.circuits.length), comp.organizer || "")}
@@ -235,7 +236,6 @@ export async function render(main, { arg, query }) {
           <span class="tick" aria-hidden="true"></span>${k} <span class="dim num">${fmt(n)}</span></button>`)}
         ${st.cats.size ? html`<button type="button" class="btn btn-ghost btn-sm" id="cats-all">${t("cs.allCats")}</button>` : ""}
       </div></div>` : ""}
-      <div class="card-body" style="padding-bottom:0">${pageTabs(rtabs, rtab)}</div>
       <div data-panel="resultats"><div id="res-table"></div></div>
       <div data-panel="score" class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>
       <div data-panel="cn" class="card-body">${chartCard({ id: "cvs", title: t("co.cnVsScore"), hint: t("co.cnVsScore.hint"), short: true,

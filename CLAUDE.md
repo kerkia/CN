@@ -296,7 +296,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
   a runner's club is that of their last race of the year. Shown on « Comparer des clubs » (seasons of the selected
   clubs, one season's ranking). FFCO's own cup pages are gone (404); nothing to scrape.
-- **Relais** (`#/relais`, `pages/relays.js`, from Clubs; 2026-10-10): a relay simulator. Formats from FFCO's 2026
+- **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator, in forest unless another
+  discipline is chosen on it (its formats are forest relays); a club that cannot field a team is told which criterion fails. Formats from FFCO's 2026
   rules (`relay.js` `PRESETS`: CFC N1-N4 with their composition criteria and reserved legs — the women's/men's first and
   last legs alternate with the year's parity —, CNE Hommes/Dames/Jeunes/mini, relais de catégorie) or one's own legs.
   The owner's model: a runner of CN c runs k x ref / c on a leg; k makes the best team of all clubs (CNE: the mean of
@@ -318,8 +319,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
   of the races per département), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
   classées; Statistiques' views (`netmodes.js`: Réseau d'un coureur, des meilleurs, Territoires, Participation, Âges)
-  and Temps intermédiaires' views use the same tab bar; Statistiques switches its views in place under one head
-  (`network.render`, `netmodes.modeHref`: the address follows by pushState). Do the same for new pages. No count of
+  and Temps intermédiaires' views use the same tab bar; Statistiques and Clubs switch their views in place under one head
+  (`network.render`, `netmodes.modeHref`; `clubs.render`: Clubs, Ligues, Comparer des clubs, Simulateur de relais — the
+  routes `clubcompare` and `relays` load clubs.js; the address follows by pushState). The tab bar is always right under the
+  page's head, above shared filters and tiles (owner, 2026-10-12); a view's own tabs under it are smaller. Do the same for new pages. No count of
   compared runners in the navigation (owner, 2026-10-12).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Fit », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method

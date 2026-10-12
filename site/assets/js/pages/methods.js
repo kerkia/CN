@@ -66,8 +66,9 @@ export async function render(main, { query = {} } = {}) {
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);   // 1,5 must not read as 2
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p[key];
-  // the CN that values the circuits: named for analysts, described for everyone else
-  const force = analyst ? html`le CN de la ${methodLabel("fair")}` : html`le CN « de force »`;
+  // the CN that values the Top's circuits: the quadratic Fit (the Top retained is quadratic); named for analysts,
+  // described for everyone else
+  const force = analyst ? html`le CN de la ${methodLabel("fair2")}` : html`le CN « de force »`;
 
   // ---- the 2025 validation (built once from the data): shares of duels called right --------------------
   const v = await data.validation();
@@ -241,7 +242,7 @@ export async function render(main, { query = {} } = {}) {
           quand une course entre dans la fenêtre ou en sort</div>
         <div class="p"><b>Un seul CN pour deux usages</b>mesurer et classer</div><div class="arrow">→</div>
         <div class="s"><b>Un CN pour chaque usage</b>les circuits sont valorisés avec le niveau habituel des coureurs${analyst
-          ? html` (${methodLabel("fair")})` : ""}, le classement retient leur potentiel</div>
+          ? html` (${methodLabel("fair2")})` : ""}, le classement retient leur potentiel</div>
         <div class="p"><b>Des pronostics moins justes</b>qui, de deux coureurs, finira devant ?</div><div class="arrow">→</div>
         <div class="s"><b>De meilleurs pronostics, saison après saison</b>${evClaim()} —
           <a href="#/methodes?onglet=analyses&voir=saisons" data-tab-link="analyses" data-goto="saisons">voir les analyses</a></div>
@@ -369,7 +370,8 @@ export async function render(main, { query = {} } = {}) {
         <div class="mx-box" style="${cvar("official")}"><h3>${methodKey("official")} ${methodShort("official")}</h3>
           <p>Les CN J-15 sont les CN officiels ; la FFCO publie elle-même les scores.</p></div>
         <div class="mx-box" style="${cvar(tops[0] || "top6w2")}"><h3>Méthodes proposées</h3>
-          <p>Les CN J-15 sont ${force} — le niveau habituel des coureurs, jamais le Top (voir plus bas). Seuls les coureurs ayant leur propre CN
+          <p>Les CN J-15 sont ${force}${analyst ? html` (pour le ${methodShort("top6w")}, ceux de la ${methodLabel("fair")})` : ""} — le niveau
+            habituel des coureurs, jamais le Top (voir plus bas). Seuls les coureurs ayant leur propre CN
             dans la spécialité comptent, et un circuit en demande au moins ${fmt(pf.min_ranked)}.</p></div>
       </div>
     </section>
@@ -426,7 +428,7 @@ export async function render(main, { query = {} } = {}) {
       <h3>Pourquoi les circuits ne sont pas valorisés avec le Top</h3>
       <p>Un CN qui ne garde que les meilleures courses, utilisé pour noter les circuits, se nourrit de lui-même : les groupes qui courent surtout
         entre eux (vétérans, jeunes) se gonflent, les H/D 21 se dévaluent — de 13 % environ dans nos essais. Les circuits sont donc valorisés
-        avec ${force}, la moyenne pondérée des ${pctOf(pf.eligible_fraction)} meilleurs scores sans plafond de places ; le Top n'en diffère que par
+        avec ${force}, la moyenne quadratique pondérée des ${pctOf(pf.eligible_fraction)} meilleurs scores sans plafond de places ; le Top n'en diffère que par
         sa règle des ${fmt(p6.top_n)} places.</p>
     </section>` : ""}
 
@@ -459,7 +461,7 @@ export async function render(main, { query = {} } = {}) {
         <tbody>${K_TESTS.rows.map(kRow)}</tbody>
         <tbody><tr><td colspan="${4 + K_TESTS.ks.length}" class="muted" style="font-size:12.5px">Contrôle sur les saisons précédentes</td></tr>
           ${K_TESTS.past.map(kRow)}</tbody></table></div>
-      <p class="muted" style="font-size:13px">Part des duels bien prédits (%), mesurée le 7 octobre 2026 avec ${force}, <i>k</i> appliqué au score
+      <p class="muted" style="font-size:13px">Part des duels bien prédits (%), mesurée le 7 octobre 2026 avec ${analyst ? html`le CN de la ${methodLabel("fair")}` : html`le CN « de force » (linéaire)`}, <i>k</i> appliqué au score
         lui-même. En gras, le meilleur de chaque ligne. Ce sont les mesures exploratoires faites pendant la mise au point (part des duels,
         sans intervalle) ; la mesure complète des méthodes retenues, saison par saison et avec sa marge d'incertitude, est dans
         <a href="#/methodes?onglet=analyses&voir=saisons" data-tab-link="analyses" data-goto="saisons">les analyses</a>.

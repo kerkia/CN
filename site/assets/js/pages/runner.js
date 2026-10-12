@@ -69,11 +69,11 @@ export async function render(main, { arg, query }) {
       <div class="stack" style="gap:8px"><button class="btn" type="button" id="cmp-btn"></button>
         <a class="btn btn-sm" href="${link.network(lic)}">${t("nw.title")}</a></div>
     </section>
+    ${pageTabs(tabs, tab)}
     ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
       ${t("rn.switchTo")} ${t(`terrain.${other}`)} ${t("rn.inHeader")}.</div>`}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
-    ${pageTabs(tabs, tab)}
     <div data-panel="courses">
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("rn.history")}</h2>
       <div class="row"><span id="hist-terrain"></span>

@@ -34,6 +34,7 @@ export async function render(main, { query }) {
   const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cp.title")}</h1><p class="lede">${t("cp.lede")}</p></div></div>
+    ${pageTabs(tabs, tab)}
     <section class="card" style="margin-bottom:16px"><div class="card-body stack" style="gap:12px">
       <div class="row">
         ${runnerSearch("cmp-search", t("cp.search"))}
@@ -54,7 +55,6 @@ export async function render(main, { query }) {
       </div>
     </div></section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
-    ${pageTabs(tabs, tab)}
     <div data-panel="evolution"><div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart"), tall: true })}</div></div>
     <div data-panel="bilan"><section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
       <div id="summary"></div></section></div>

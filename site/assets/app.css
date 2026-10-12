@@ -944,6 +944,9 @@ table.data tbody tr.found .name { font-weight: 700; }
 .page-tabs button:hover { color: var(--ink); }
 .page-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 @media (max-width: 640px) { .page-tabs button { font-size: 13.5px; padding: 9px 8px; } }
+/* a view's own tabs under a page's (Comparer des clubs inside Clubs): smaller, the hierarchy visible */
+#club-view .page-tabs, #net-view .page-tabs { border-bottom-color: var(--border); margin-bottom: 14px; }
+#club-view .page-tabs button, #net-view .page-tabs button { font-size: 13.5px; font-weight: 550; padding: 7px 11px; }
 .mx-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-strong); margin: 0 0 22px; overflow-x: auto; }
 .mx-tabs button { appearance: none; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--ink-2);
   padding: 10px 16px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap; }

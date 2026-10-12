@@ -7,7 +7,7 @@ import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { methodColor } from "../charts.js";
-import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg, filterFold, pageTabs, tabFrom, bindPageTabs } from "../ui.js";
+import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg, filterFold } from "../ui.js";
 import { dateControls, bindDateControls } from "./ranking.js";
 import {
   BASES, SEXES, AGE_GROUPS, baseLabel, measureLabel, sexLabel, ageLabel, clubTable, rankOn, clubName,
@@ -52,7 +52,38 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
   : `${t(`cb.desc.${s.base}.${s.measure}`)} ${t("cb.desc.over")} ${
     s.sexe === "*" && s.age === "*" ? t("cb.desc.all") : `${sexLabel(s.sexe).toLowerCase()} · ${ageLabel(s.age).toLowerCase()}`}.`);
 
-export async function render(main, { query }) {
+// The Clubs page: one head and its tab bar — the clubs, the ligues, the comparison of clubs, the relay simulator —, the view
+// under them switched in place (the address follows), as on Statistiques: #/clubs, #/clubs?onglet=ligues,
+// #/comparer-clubs and #/relais all open it.
+const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
+async function view(el, v, query) {
+  if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });
+  if (v === "relays") return (await import("./relays.js")).render(el, { query });
+  return listView(el, query, v);
+}
+export async function render(main, { route, query }) {
+  const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : query.onglet === "ligues" ? "ligues" : "clubs";
+  const mine = myClub();
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
+      ${mine ? html`<div class="row"><a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a></div>` : ""}</div>
+    <nav class="page-tabs" role="tablist">${VIEWS.map(([k]) => html`<button type="button" role="tab" data-cview="${k}" aria-selected="${k === v}">${t(`cl.view.${k}`)}</button>`)}</nav>
+    <div id="club-view"></div>`;
+  const el = $("#club-view", main);
+  let shown = await view(el, v, query);
+  $$("[data-cview]", main).forEach((b) => b.addEventListener("click", async () => {
+    const k = b.dataset.cview, href = VIEWS.find(([x]) => x === k)[1];
+    $$("[data-cview]", main).forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    shown?.cleanup?.();
+    history.pushState(null, "", href);
+    shown = await view(el, k, Object.fromEntries(new URLSearchParams(href.split("?")[1] || "")));
+    if (shown?.title) document.title = `${shown.title} — ${document.title.split(" — ").pop()}`;
+  }));
+  return { title: shown?.title || t("cl.title"), cleanup: () => shown?.cleanup?.() };
+}
+
+/** The clubs' or the ligues' table, with the filters and the tiles they share. */
+async function listView(main, query, mode) {
   let month = query.date ? data.monthFor(query.date) : data.latestMonth();
   let ligue = query.ligue || "", q = query.q || "";
   let method = store.available().includes(query.m) ? query.m : store.get().methods[0];
@@ -61,18 +92,11 @@ export async function render(main, { query }) {
   const mine = myClub();
   let table = null, sortKey = sel.measure, sortDir = -1;
 
-  const tabs = [["clubs", t("cs.tab.clubs")], ["ligues", t("cs.tab.ligues")]];
-  const tab = tabFrom(tabs, query);
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
-      <div class="row">${mine ? html`<a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a>` : ""}
-        <a class="btn" href="${link.relays()}">${t("rl.title")}</a>
-        <a class="btn btn-primary" href="#/comparer-clubs" id="go-cmp"></a></div></div>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="by-desc" style="margin-bottom:16px"></div>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
-    ${pageTabs(tabs, tab)}
-    <div data-panel="clubs">
+    <div ${raw(mode === "ligues" ? "hidden" : "")}>
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><h2 id="clubs-title">${t("nav.clubs")}</h2>
         <div class="row">
@@ -83,7 +107,7 @@ export async function render(main, { query }) {
       <div id="clubs"></div>
     </section>
     </div>
-    <div data-panel="ligues">
+    <div ${raw(mode === "ligues" ? "" : "hidden")}>
     <section class="card">
       <div class="card-head"><h2>${t("cl.ligues")}</h2></div>
       <div id="ligues"></div>
@@ -118,7 +142,8 @@ export async function render(main, { query }) {
 
   function updateCmp() {
     const n = store.get().clubs.length;
-    $("#go-cmp").textContent = n ? `${t("cm.compare")} (${n})` : t("cm.compare");
+    const go = $("#go-cmp");
+    if (go) go.textContent = n ? `${t("cm.compare")} (${n})` : t("cm.compare");
   }
 
   const digits = (m) => (sel.base === "org" && m === "per100" ? 1 : 0);
@@ -208,6 +233,5 @@ export async function render(main, { query }) {
 
   drawFilters();
   await load();
-  bindPageTabs(main, tabs, tab);
-  return { title: t("cl.title") };
+  return { title: mode === "ligues" ? `${t("cl.title")} · ${t("cl.view.ligues")}` : t("cl.title") };
 }

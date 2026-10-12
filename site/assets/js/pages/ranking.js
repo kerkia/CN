@@ -206,10 +206,10 @@ export async function render(main, { query }) {
         <a class="btn btn-primary" href="#/comparer" id="go-compare">${t("rk.compare")}</a>
       </div>
     </div>
+    ${pageTabs(tabs, tab)}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div id="notice"></div>
     <div id="stats"></div>
-    ${pageTabs(tabs, tab)}
     <div data-panel="classement">
       <section class="card" id="list-card">
         <div class="card-head">

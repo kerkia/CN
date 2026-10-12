@@ -18,7 +18,7 @@ const PAGES = {
   club: () => import("./pages/club.js"),
   overview: () => import("./pages/overview.js"),
   methods: () => import("./pages/methods.js"),
-  clubcompare: () => import("./pages/clubcompare.js"),
+  clubcompare: () => import("./pages/clubs.js"),      // a view of the Clubs page
   network: () => import("./pages/network.js"),
   courses: () => import("./pages/courses.js"),
   agenda: () => import("./pages/agenda.js"),
@@ -30,7 +30,7 @@ const PAGES = {
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
-  relays: () => import("./pages/relays.js"),       // « Relais »: the relay simulator, from Clubs
+  relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
