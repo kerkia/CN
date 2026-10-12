@@ -266,9 +266,9 @@ async function race(main, id, wanted) {
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
-      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(`CN ${methodShort(store.get().method)}`,
+      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead("CN",
         store.get().method === "official" ? "J-15" : t("lv.today"))}</th>
-      <th class="r" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort(store.get().method)}`, t("lv.estGap"))}</th>
+      <th class="r" title="${t("lv.score.hint")}">${subHead(t("lv.score"), t("lv.estGap"))}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;

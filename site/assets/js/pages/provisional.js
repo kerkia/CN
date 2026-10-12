@@ -240,7 +240,7 @@ async function detail(main, idx, query) {
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
       ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w2", "fair2").replace("top6w", "fair")] != null)
-        .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
+        .map((m) => fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category" || !!k.values;
     // the same table as a race's on « Courses »: per method the CN J-15, then the score with its gap to that CN; the
@@ -268,10 +268,10 @@ async function detail(main, idx, query) {
         { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
           render: (r) => (ok(r) ? clock(r.time_s) : "") },
         ...(scored ? M.flatMap((m) => [{
-          key: `cn_${m}`, label: subHead(`CN ${methodShort(m)}`, "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
+          key: `cn_${m}`, label: subHead("CN", "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
           render: (r) => (r.cnj15?.[m] ? fmt(r.cnj15[m]) : html`<span class="dim">—</span>`),
         }, {
-          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(`${t("rn.score")} ${methodShort(m)}`, t("res.gap"))}</span>`,
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`,
           align: "r", cls: "num", sort: (r) => gap(r, m),
           render: (r) => scoreCell(ok(r) ? r.scores?.[m] ?? null : null, r.cnj15?.[m],
             { title: r.cnAfter?.[m] ? `${t("rn.cnAfter")} : ${fmt(r.cnAfter[m])}` : "", below: pubLine(r, m) }),
@@ -294,7 +294,7 @@ async function detail(main, idx, query) {
     const expected = new Map(ranked.map((r, i) => [r, i + 1]));
     $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
-      <th class="r">CN ${methodShort(storeGet().method)}</th>
+      <th class="r">CN</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>

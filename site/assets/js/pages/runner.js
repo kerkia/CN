@@ -164,15 +164,13 @@ export async function render(main, { arg, query }) {
     const me = rows.find((r) => r.lic === lic);
     const cat = me?.cat;
     // for each method: the current CN, and the runner's place in the ranking (overall and in the category)
-    const tiles = methods.map((m) => tile(`${t("rn.current")} · ${methodShort(m)}`,
-      me?.cn[m] == null ? "—" : fmt(me.cn[m]), fmtDate(month), methodColor(m)));
+    const tiles = methods.map((m) => tile(t("rn.current"), me?.cn[m] == null ? "—" : fmt(me.cn[m]), fmtDate(month)));
     const rankTiles = methods.map((m) => {
       const cn = me?.cn[m];
-      if (cn == null) return tile(`${t("rn.rank")} · ${methodShort(m)}`, "—", t("rn.unranked"), methodColor(m));
+      if (cn == null) return tile(t("rn.rank"), "—", t("rn.unranked"));
       const n = rows.filter((r) => r.cn[m] != null).length;
       const catRank = cat ? 1 + rows.filter((r) => r.cat === cat && r.cn[m] != null && r.cn[m] > cn).length : null;
-      return tile(`${t("rn.rank")} · ${methodShort(m)}`, ord(me.rank[m]),
-        `${t("rn.rankOf")} ${fmt(n)}${catRank ? ` · ${ord(catRank)} ${t("rn.rankCat")} ${cat}` : ""}`, methodColor(m));
+      return tile(t("rn.rank"), ord(me.rank[m]), `${t("rn.rankOf")} ${fmt(n)}${catRank ? ` · ${ord(catRank)} ${t("rn.rankCat")} ${cat}` : ""}`);
     });
     // for each method: the best CN ever reached in the discipline, and when. Official: at a race (FFCO's CN
     // only moves then); Fit and Top: also when a weaker race leaves the window, so from the full history
@@ -184,7 +182,7 @@ export async function render(main, { arg, query }) {
       } else {
         for (const e of cnHistory(m, races, terrain, meta, month)) if (e.cn && (!best || e.cn > best.cn)) best = { cn: e.cn, date: e.date };
       }
-      return tile(`${t("rn.best")} · ${methodShort(m)}`, best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "", methodColor(m));
+      return tile(t("rn.best"), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
     });
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
@@ -221,29 +219,30 @@ export async function render(main, { arg, query }) {
   function drawChart() {
     const methods = store.get().methods;
     const series = [];
+    const prevM = store.prevMethod() && !methods.includes(store.prevMethod()) ? store.prevMethod() : null;
+    const cnName = (m) => (prevM ? `CN · ${methodShort(m)}` : "CN");
     for (const m of methods) {
-      series.push({ name: `CN · ${methodLabel(m)}`, color: methodColor(m), step: true, data: seriesFor(m),
-        endLabel: methods.length <= 4 ? methodShort(m) : null });
+      series.push({ name: cnName(m), color: methodColor(m), step: true, data: seriesFor(m), endLabel: prevM ? methodShort(m) : null });
     }
     if (showScores) {
       for (const m of methods) {
         const col = SCORE_COL[m];
         series.push({
-          name: `${t("rn.score")} · ${methodLabel(m)}`, color: methodColor(m), kind: "dots",
+          name: t("rn.score"), color: methodColor(m), kind: "dots",
           data: mineT.filter((r) => r[col] != null && r[col] > 0).map((r) => [r[R.date], r[col], r]),
         });
       }
     }
     const all = series.flatMap((s) => s.data.map((p) => p[0])).sort();
     $("#evo-legend").innerHTML = legend([
-      ...methods.map((m) => ({ color: methodColor(m), label: `CN · ${methodLabel(m)}` })),
-      ...(store.prevMethod() && !methods.includes(store.prevMethod()) ? [{ color: "var(--ink-3)", label: `CN · ${methodLabel(store.prevMethod())}` }] : []),
+      ...methods.map((m) => ({ color: methodColor(m), label: cnName(m) })),
+      ...(prevM ? [{ color: "var(--ink-3)", label: cnName(prevM) }] : []),
       ...(showScores ? [{ color: "var(--ink-3)", label: t("rn.score"), dot: true }] : []),
     ]);
     // after a switch of method, the previous one as a faint grey line, for reference
     const prev = store.prevMethod();
     if (prev && !methods.includes(prev)) {
-      series.unshift({ name: `CN · ${methodLabel(prev)}`, color: css("--ink-3"), step: true, faint: true, data: seriesFor(prev),
+      series.unshift({ name: cnName(prev), color: css("--ink-3"), step: true, faint: true, data: seriesFor(prev),
         endLabel: methodShort(prev) });
     }
     if (!all.length) { $("#evo").innerHTML = html`<div class="empty">${t("rn.noRaces")}</div>`; return; }
@@ -255,7 +254,7 @@ export async function render(main, { arg, query }) {
     const dates = [...new Set(methods.flatMap((m) => seriesFor(m).map((p) => p[0])))].sort().reverse();
     const lookup = Object.fromEntries(methods.map((m) => [m, new Map(seriesFor(m))]));
     $("#evo-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("col.date")}</th>
-      ${methods.map((m) => html`<th class="r">CN · ${methodShort(m)}</th>`)}</tr></thead><tbody>
+      ${methods.map(() => html`<th class="r">CN</th>`)}</tr></thead><tbody>
       ${dates.map((d) => html`<tr><td>${fmtDate(d)}</td>${methods.map((m) => html`<td class="r num">${fmt(lookup[m].get(d))}</td>`)}</tr>`)}
       </tbody></table>`;
   }
@@ -316,7 +315,7 @@ export async function render(main, { arg, query }) {
     $("#calc").innerHTML = html`${methods.map((m) => {
       const x = explain(m, races, iso, terrain, meta);
       const head = html`<div class="calc-head">
-        <div class="row"><span class="key" style="background:${raw(methodColor(m))}"></span><h3>${methodLabel(m)}</h3></div>
+        <div class="row"><h3>${t("rn.calc.cn")}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
       const top = m === "top6w" || m === "top6w2";
@@ -507,7 +506,7 @@ export async function render(main, { arg, query }) {
     const Q = ac.q, qi = (p) => 1 + Q.indexOf(p);
     const per = Object.fromEntries(methods.map((m) => [m, monthlyProgress(m, races, terrain, meta, ac)]));
     const mine = per[m0];
-    $("#pg-hint").textContent = `${t("pg.hint")} · ${methodLabel(m0)}`;
+    $("#pg-hint").textContent = t("pg.hint");
     const lastS = mine[mine.length - 1];
     const bestPct = mine.reduce((b, s) => (s.pct != null && (!b || s.pct > b.pct) ? s : b), null);
     const cats = [...new Set(mine.map((s) => s.cat))];
@@ -542,18 +541,18 @@ export async function render(main, { arg, query }) {
     });
     c1.dispatchAction({ type: "dataZoom", start: zoom.start, end: zoom.end });
     // percentile, one line per selected method
-    $("#pct-legend").innerHTML = legend(methods.map((m) => ({ color: methodColor(m), label: methodLabel(m) })));
+    $("#pct-legend").innerHTML = "";
     const allIso = [...new Set(methods.flatMap((m) => per[m].map((s) => s.iso)))].sort();
     const c2 = bandChart($("#pct"), {
       categories: allIso, time: true, yName: "%", yMin: 0, yMax: 100, yFormat: (v) => `${fmt(v)} %`,
       bands: [{ name: "p25–p75", color: blue, opacity: 0.10, lo: allIso.map(() => 25), hi: allIso.map(() => 75) }],
       lines: methods.map((m) => {
         const byIso = new Map(per[m].map((s) => [s.iso, s.pct == null ? null : Math.round(s.pct)]));
-        return { name: methodLabel(m), color: methodColor(m), data: allIso.map((d) => byIso.get(d) ?? null), markers: false };
+        return { name: t("pg.pct"), color: methodColor(m), data: allIso.map((d) => byIso.get(d) ?? null), markers: false };
       }),
       tip: (axisValue, params) => {
         const d = typeof axisValue === "number" ? new Date(axisValue).toISOString().slice(0, 10) : axisValue;
-        const rows = methods.map((m) => { const s = per[m].find((x) => x.iso === d); return s?.pct != null ? `<div>${esc(methodShort(m))} : <b>${fmt(s.pct)} %</b> <span style="color:var(--ink-3)">${esc(s.cat)}</span></div>` : ""; });
+        const rows = methods.map((m) => { const s = per[m].find((x) => x.iso === d); return s?.pct != null ? `<div><b>${fmt(s.pct)} %</b> <span style="color:var(--ink-3)">${esc(s.cat)}</span></div>` : ""; });
         return `<div style="color:var(--ink-3);font-size:12px">${fmtDate(d, "month")}</div>${rows.join("")}`;
       },
     });
@@ -657,7 +656,7 @@ export async function render(main, { arg, query }) {
         { key: "n", label: t("col.races"), align: "r", cls: "num", sort: (x) => x.rs.length, render: (x) => fmt(x.rs.length) },
         { key: "pod", label: t("rn.podiums"), align: "r", cls: "num", render: (x) => fmt(x.rs.filter((r) => r[R.place] && r[R.place] <= 3).length) },
         ...methods.flatMap((m) => [
-          { key: `b_${m}`, align: "r", cls: "num", label: html`<span class="key" style="background:${raw(methodColor(m))};margin-right:5px"></span>${t("col.best")}`,
+          { key: `b_${m}`, align: "r", cls: "num", label: t("col.best"),
             render: (x) => { const v = x.rs.map((r) => r[SCORE_COL[m]]).filter((s) => s > 0); return v.length ? fmt(Math.max(...v)) : "—"; } },
           { key: `a_${m}`, align: "r", cls: "num", label: t("col.avg"),
             render: (x) => { const v = x.rs.map((r) => r[SCORE_COL[m]]).filter((s) => s > 0); return v.length ? fmt(v.reduce((a, b) => a + b, 0) / v.length) : "—"; } },

@@ -348,6 +348,7 @@ select { padding-right: 28px; }
 /* stats: one row per method */
 .statrows { display: grid; gap: 10px; margin-bottom: 16px; }
 .statrow { display: grid; grid-template-columns: 190px repeat(4, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.statrow.single { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .statrow .statrow-label { display: flex; align-items: center; gap: 8px; font-weight: 620; font-size: 14px; }
 .statrow .tile { padding: 10px 14px; }
 .statrow .tile-value { font-size: 22px; margin-top: 2px; }

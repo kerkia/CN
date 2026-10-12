@@ -245,7 +245,7 @@ function renderHeader(r) {
     store.setMethod(m);
     const q = parseHash().query;
     if (q.m) replaceQuery({ ...q, m: store.get().method });
-    route_();
+    redraw();
   };
   $$("[data-method-pick]").forEach((b) => b.addEventListener("click", () => pickMethod(b.dataset.methodPick)));
   $("#method-pick")?.addEventListener("change", (e) => pickMethod(e.target.value));
@@ -404,7 +404,9 @@ async function route_() {
   current?.cleanup?.();
   disposeAll();
   const main = $("#main");
-  main.innerHTML = html`<div class="boot"><div class="spinner"></div><p>${t("misc.loading")}</p></div>`;
+  const quiet = inPlace;                 // a redraw in place (a switch of method): no loading screen, no jump to the top
+  inPlace = false;
+  if (!quiet) main.innerHTML = html`<div class="boot"><div class="spinner"></div><p>${t("misc.loading")}</p></div>`;
   try {
     const mod = await PAGES[r.route]();
     if (my !== token) return;
@@ -417,7 +419,28 @@ async function route_() {
     console.error(e);
     main.innerHTML = html`<div class="card"><div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
   }
-  if (!location.hash.includes("?")) window.scrollTo(0, 0);
+  if (!quiet && !location.hash.includes("?")) window.scrollTo(0, 0);
+}
+
+/** Redraws the page for another method without moving anything (owner, 2026-10-12): no loading screen, the page keeps
+ *  its height while it redraws, and the window's and the inner panes' scroll positions (the races' list, the tables)
+ *  are put back, again once the parts drawn later have settled. */
+let inPlace = false;
+const SCROLLERS = ".tree, .table-scroll, .table-wrap, .scroll-box";
+async function redraw() {
+  const main = $("#main"), y = window.scrollY;
+  const inner = $$(SCROLLERS, main).map((el) => el.scrollTop);
+  main.style.minHeight = `${main.offsetHeight}px`;
+  inPlace = true;
+  await route_();
+  const restore = () => {
+    $$(SCROLLERS, main).forEach((el, i) => { if (inner[i]) el.scrollTop = inner[i]; });
+    window.scrollTo(0, y);
+  };
+  restore();
+  requestAnimationFrame(restore);
+  setTimeout(restore, 300);
+  setTimeout(() => { restore(); main.style.minHeight = ""; }, 900);
 }
 
 // ---- usage: one page view of a logged-in account (admin page, « Utilisation ») ---------------------

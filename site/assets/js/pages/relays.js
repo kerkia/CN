@@ -267,7 +267,7 @@ export async function render(main, { query }) {
     // the best predicted time of each leg, as a share of its reference time (FFCO: about 85 %)
     const share = res.k ? fmtNow.legs.map((l, i) => Math.min(...res.firsts.map((x) => res.k * l.ref / x.legs[i].runner.cn)) / l.ref) : [];
     const mean = share.length ? share.reduce((s, x) => s + x, 0) / share.length : null;
-    $("#rl-team-hint").textContent = `${methodLabel(method)}${mean ? ` · ${t("rl.bestShare", { p: fmt(100 * mean) })}` : ""}`;
+    $("#rl-team-hint").textContent = mean ? t("rl.bestShare", { p: fmt(100 * mean) }) : "";
     if (!res.mine.length && !manual) {
       // which criteria the club cannot fill (runners ranked in the discipline)
       const pool = poolOf(club), need = new Map();

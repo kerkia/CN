@@ -136,16 +136,16 @@ export async function render(main, { arg: code, query }) {
     const all = per.flatMap((p) => p.rows.map((r) => r[0])).sort();
     const start = zoomStart(all);
     const col = 2 + STATS.indexOf(stat);     // rows are [month, n, mean, max, sum, top5]
-    const lvl = per.map((p) => ({ name: methodLabel(p.m), color: methodColor(p.m), data: p.rows.map((r) => [r[0], r[col]]) }));
-    const cnt = per.map((p) => ({ name: methodLabel(p.m), color: methodColor(p.m), data: p.rows.map((r) => [r[0], r[1]]) }));
-    $("#lvl-legend").innerHTML = legend(lvl.map((s) => ({ label: s.name, color: s.color })));
-    $("#cnt-legend").innerHTML = legend(cnt.map((s) => ({ label: s.name, color: s.color })));
+    const lvl = per.map((p) => ({ name: "CN", color: methodColor(p.m), data: p.rows.map((r) => [r[0], r[col]]) }));
+    const cnt = per.map((p) => ({ name: t("col.members"), color: methodColor(p.m), data: p.rows.map((r) => [r[0], r[1]]) }));
+    $("#lvl-legend").innerHTML = "";
+    $("#cnt-legend").innerHTML = "";
     timeChart($("#lvl"), { series: lvl, zoom: { start, end: 100 } });
     timeChart($("#cnt"), { series: cnt, zoom: { start, end: 100 }, yName: t("col.members"), yMin: 0 });
     const months = [...new Set(all)].reverse();
     const idx = per.map((p) => new Map(p.rows.map((r) => [r[0], r])));
     const table = (c) => html`<table class="data compact"><thead><tr><th>${t("f.date")}</th>
-      ${methods.map((m) => html`<th class="r">${methodLabel(m)}</th>`)}</tr></thead>
+      ${methods.map(() => html`<th class="r">${c === 1 ? t("col.members") : "CN"}</th>`)}</tr></thead>
       <tbody>${months.map((d) => html`<tr><td>${fmtDate(d, "month")}</td>
         ${idx.map((ix) => html`<td class="r num">${fmt(ix.get(d)?.[c])}</td>`)}</tr>`)}</tbody></table>`;
     $("#lvl-table").innerHTML = table(col);
@@ -161,8 +161,7 @@ export async function render(main, { arg: code, query }) {
     const tiles = methods.map((m) => {
       const v = ranked.map((r) => r.cn[m]).filter((x) => x != null).sort((a, b) => a - b);
       const med = v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
-      return tile(`${t("cl.members")} · ${methodShort(m)}`, fmt(v.length),
-        med ? `${t("cb.m.mean")} ${fmt(med)} · ${t("col.top")} ${fmt(v[v.length - 1])}` : fmtDate(month), methodColor(m));
+      return tile(t("cl.members"), fmt(v.length), med ? `${t("cb.m.mean")} ${fmt(med)} · ${t("col.top")} ${fmt(v[v.length - 1])}` : fmtDate(month));
     });
     // club rank by headcount, first method
     const m0 = methods[0];
@@ -176,8 +175,8 @@ export async function render(main, { arg: code, query }) {
     const mySum = sums.get(code) || 0;
     const posSum = mySum ? 1 + [...sums.values()].filter((n) => n > mySum).length : null;
     $("#tiles").innerHTML = html`${tiles}${tile(t("cl.rankBySize"), pos ? ord(pos) : "—",
-      `${t("nav.clubs")} · ${fmt(counts.size)} · ${methodLabel(m0)}`)}${tile(t("cl.rankBySum"), posSum ? ord(posSum) : "—",
-      `Σ ${fmt(mySum)} · ${fmt(sums.size)} ${t("nav.clubs").toLowerCase()} · ${methodLabel(m0)}`)}`;
+      `${t("nav.clubs")} · ${fmt(counts.size)}`)}${tile(t("cl.rankBySum"), posSum ? ord(posSum) : "—",
+      `Σ ${fmt(mySum)} · ${fmt(sums.size)} ${t("nav.clubs").toLowerCase()}`)}`;
   }
 
   function drawRoster() {
@@ -194,7 +193,7 @@ export async function render(main, { arg: code, query }) {
           render: (r) => html`<a class="name" href="${link.runner(r.lic, { t: terrain })}">${r.name}</a>` },
         { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
         ...methods.flatMap((m) => [
-          { key: m, label: methodShort(m), align: "r", cls: "num", sort: (r) => r.cn[m],
+          { key: m, label: "CN", align: "r", cls: "num", sort: (r) => r.cn[m],
             render: (r) => (r.cn[m] != null ? html`<b>${fmt(r.cn[m])}</b>` : html`<span class="dim">—</span>`) },
           { key: `rk_${m}`, label: t("rk.col.overall"), align: "r", cls: "num dim", sort: (r) => r.rank[m], defaultDir: 1,
             render: (r) => fmt(r.rank[m]) },

@@ -227,7 +227,7 @@ export async function render(main, { arg, query }) {
           ${tile(t("nav.clubs"), fmt(stats.clubs))}
         </div>
         <div class="hint circuit-values" style="margin-top:10px">${t("co.value")} :
-          ${methods.map((m, i) => html`${i ? " · " : ""}<span class="nowrap"><span class="key" style="background:${raw(methodColor(m))};margin:0 5px 0 4px"></span>${methodShort(m)} <b class="num">${fmt(circ.value?.[m])}</b></span>`)}</div>
+          ${methods.map((m, i) => html`${i ? " · " : ""}<b class="num">${fmt(circ.value?.[m])}</b>`)}</div>
       </div>
       ${toggles && cats.length > 1 ? html`<div class="card-body" style="padding-bottom:0"><div class="chips" role="group" aria-label="${t("rk.col.cat")}">
         ${cats.map(([k, n]) => html`<button type="button" class="chip toggle" data-cat="${k}" aria-pressed="${st.cats.has(k)}">
@@ -272,10 +272,10 @@ export async function render(main, { arg, query }) {
         { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[C.time], defaultDir: 1, render: (x) => fmtTime(x.r[C.time]) },
         // per method: the CN, then the score with its gap to that CN (sorted by the gap: by score is by place)
         ...methods.flatMap((m) => [{
-          key: `cn_${m}`, label: subHead(`CN ${methodShort(m)}`, t(`co.cnSub.${st.cnRef}`)), align: "r", cls: "num",
+          key: `cn_${m}`, label: subHead("CN", t(`co.cnSub.${st.cnRef}`)), align: "r", cls: "num",
           sort: (x) => cnOf(m, x.r), render: (x) => { const cn = cnOf(m, x.r); return cn ? fmt(cn) : html`<span class="dim">—</span>`; },
         }, {
-          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(`${t("rn.score")} ${methodShort(m)}`, t("res.gap"))}</span>`, align: "r", cls: "num",
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`, align: "r", cls: "num",
           sort: (x) => gap(x, m), render: (x) => scoreCell(x.r[C.place] ? x.r[SCORE[m]] || null : null, cnOf(m, x.r)),
         }]),
       ],
@@ -297,7 +297,7 @@ export async function render(main, { arg, query }) {
     const methods = store.get().methods;
     const ranked = rows.filter((x) => x.r[C.place]);
     const series = methods.map((m) => ({
-      name: methodShort(m), color: methodColor(m), method: m,
+      name: "CN", color: methodColor(m), method: m,
       data: ranked.map((x) => {
         const cn = cnOf(m, x.r);
         const score = x.r[SCORE[m]];
@@ -323,13 +323,13 @@ export async function render(main, { arg, query }) {
     const methods = store.get().methods;
     const ranked = rows.filter((x) => x.r[C.place]);
     const series = methods.map((m) => ({
-      name: methodShort(m), color: methodColor(m),
+      name: t("rn.score"), color: methodColor(m),
       data: ranked.filter((x) => x.r[SCORE[m]]).map((x) => [st.cats.size ? x.rank : x.r[C.place], x.r[SCORE[m]]]),
     }));
-    $("#sbp-legend").innerHTML = legend(series.map((x) => ({ label: x.name, color: x.color })));
+    $("#sbp-legend").innerHTML = "";
     xyChart($("#sbp"), { series, xName: t("col.place"), yName: t("rn.score"), xMin: 1 });
     $("#sbp-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("col.place")}</th>
-      ${methods.map((m) => html`<th class="r">${methodShort(m)}</th>`)}</tr></thead>
+      ${methods.map(() => html`<th class="r">${t("rn.score")}</th>`)}</tr></thead>
       <tbody>${ranked.map((x) => html`<tr><td class="num">${fmt(st.cats.size ? x.rank : x.r[C.place])}</td>
         ${methods.map((m) => html`<td class="r num">${fmt(x.r[SCORE[m]])}</td>`)}</tr>`)}</tbody></table>`;
   }

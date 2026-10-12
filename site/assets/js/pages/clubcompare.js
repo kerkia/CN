@@ -147,7 +147,7 @@ export async function render(main, { query }) {
           const v = fromSummary(s)?.[sel.measure];
           if (v) pts.push([endOf(y), v]);
         }
-        series.push({ name: m ? `${clubName(c.code)} · ${methodShort(m)}` : clubName(c.code), color: slotColor(c.slot),
+        series.push({ name: clubName(c.code), color: slotColor(c.slot),
           dash: m ? METHOD_DASH[m] : "solid", data: pts, markers: true });
       }
     }
@@ -178,7 +178,7 @@ export async function render(main, { query }) {
         pts.push([data.monthFor(ym), pick(v)]);
       }
       pts.sort((a, b) => (a[0] < b[0] ? -1 : 1));
-      series.push({ name: `${clubName(c.code)} · ${methodShort(m)}`, color: slotColor(c.slot), dash: METHOD_DASH[m], data: pts });
+      series.push({ name: clubName(c.code), color: slotColor(c.slot), dash: METHOD_DASH[m], data: pts });
     }
     const all = series.flatMap((s) => s.data.map((p) => p[0])).sort();
     let start = 0;
@@ -206,7 +206,7 @@ export async function render(main, { query }) {
       return [m, new Map(sorted.map((g, i) => [g.code, i + 1]))];
     }));
     const rows = store.get().clubs.map((c) => ({ c, g: byCode.get(c.code) }));
-    $("#sum-hint").textContent = `${baseLabel(sel.base)}${sel.base === "cn" ? ` · ${methodLabel(m0)}` : ` · ${t("cb.last12")}`} · ${fmtDate(month)} · ${t("cm.rankOf")} ${fmt(res.clubs.filter((g) => g.rank).length)} ${t("nav.clubs").toLowerCase()}`;
+    $("#sum-hint").textContent = `${baseLabel(sel.base)}${sel.base === "cn" ? "" : ` · ${t("cb.last12")}`} · ${fmtDate(month)} · ${t("cm.rankOf")} ${fmt(res.clubs.filter((g) => g.rank).length)} ${t("nav.clubs").toLowerCase()}`;
     dataTable($("#summary"), {
       rows, sortKey: sel.measure, sortDir: -1, emptyText: t("cm.empty"),
       columns: [

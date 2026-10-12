@@ -148,7 +148,7 @@ export async function render(main, { query }) {
     const series = [];
     for (const c of sel) {
       methods.forEach((m, i) => series.push({
-        name: `${nameOf(c.lic)} · ${methodShort(m)}`, color: slotColor(c.slot),
+        name: nameOf(c.lic), color: slotColor(c.slot),
         dash: METHOD_DASH[m], step: true, data: seriesOf(c.lic, m),
         endLabel: i === 0 && sel.length <= 4 ? nameOf(c.lic).split(" ")[0] : null,
       }));
@@ -159,7 +159,7 @@ export async function render(main, { query }) {
     const seasons = [...new Set(all.map((d) => d.slice(0, 4)))].sort().reverse();
     const cols = sel.flatMap((c) => methods.map((m) => ({ c, m, pts: seriesOf(c.lic, m) })));
     $("#cmp-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("f.season")}</th>
-      ${cols.map((x) => html`<th class="r">${nameOf(x.c.lic)}<div class="dim" style="font-weight:400">${methodShort(x.m)}</div></th>`)}</tr></thead>
+      ${cols.map((x) => html`<th class="r">${nameOf(x.c.lic)}</th>`)}</tr></thead>
       <tbody>${seasons.map((y) => html`<tr><td>${y}</td>${cols.map((x) => {
         const inY = x.pts.filter((p) => p[0].startsWith(y));
         return html`<td class="r num">${inY.length ? fmt(inY[inY.length - 1][1]) : "—"}</td>`;
@@ -187,10 +187,10 @@ export async function render(main, { query }) {
         { key: "name", label: t("rk.col.name"), render: (x) => html`<span class="dot" style="background:${raw(slotColor(x.c.slot))};margin-right:7px"></span><a href="${link.runner(x.c.lic)}">${nameOf(x.c.lic)}</a>` },
         { key: "cat", label: t("rk.col.cat"), render: (x) => x.now?.cat || x.r?.cat || "" },
         ...methods.map((m, i) => ({
-          key: `cn${i}`, align: "r", cls: "num", label: `CN ${methodShort(m)}`, sort: (x) => x.now?.cn[m],
+          key: `cn${i}`, align: "r", cls: "num", label: "CN", sort: (x) => x.now?.cn[m],
           render: (x) => x.now?.cn[m] == null ? html`<span class="dim">—</span>` : html`<b>${fmt(x.now.cn[m])}</b>`,
         })),
-        { key: "peak", label: `${t("cp.peak")} ${methodShort(methods[0])}`, align: "r", cls: "num", sort: (x) => x.peak?.[1],
+        { key: "peak", label: t("cp.peak"), align: "r", cls: "num", sort: (x) => x.peak?.[1],
           render: (x) => x.peak ? html`${fmt(x.peak[1])} <span class="dim">${fmtDate(x.peak[0], "short")}</span>` : "—" },
         { key: "n", label: t("col.races"), align: "r", cls: "num", sort: (x) => x.races.length, render: (x) => fmt(x.races.length) },
         { key: "pod", label: t("rn.podiums"), align: "r", cls: "num", sort: (x) => x.pod, render: (x) => fmt(x.pod) },
@@ -290,7 +290,7 @@ export async function render(main, { query }) {
     const series = [];
     for (const c of sel) for (const m of methods) {
       const p = monthlyProgress(m, racesOf.get(c.lic) || [], terrain, meta, ac);
-      series.push({ name: `${nameOf(c.lic)} · ${methodShort(m)}`, color: slotColor(c.slot), dash: METHOD_DASH[m],
+      series.push({ name: nameOf(c.lic), color: slotColor(c.slot), dash: METHOD_DASH[m],
         data: p.filter((s) => s.pct != null).map((s) => [s.iso, Math.round(s.pct), s.cat]) });
     }
     const all = series.flatMap((s) => s.data.map((p) => p[0])).sort();
@@ -331,7 +331,7 @@ export async function render(main, { query }) {
         { key: "sel", label: "", cls: "c", render: (r) => html`<input type="checkbox" data-sel="${r.lic}" ${raw(store.inCompare(r.lic) ? "checked" : "")} aria-label="${r.name}">` },
         { key: "pos", label: "#", cls: "rank num", sort: (r) => r.pos, defaultDir: 1 },
         { key: "name", label: t("rk.col.name"), sort: (r) => r.key, defaultDir: 1, render: (r) => html`<span class="name">${r.name}</span>` },
-        ...methods.map((m) => ({ key: m, label: methodShort(m), align: "r", cls: "num", sort: (r) => r.cn[m], render: (r) => fmt(r.cn[m]) })),
+        ...methods.map((m) => ({ key: m, label: "CN", align: "r", cls: "num", sort: (r) => r.cn[m], render: (r) => fmt(r.cn[m]) })),
         { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
         { key: "club", label: t("rk.col.club"), render: (r) => html`<span title="${data.clubName(r.club)}">${r.clubCode || ""}</span>` },
       ],

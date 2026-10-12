@@ -127,8 +127,8 @@ export function bindDateControls(root, onChange) {
 export function statRows(methods, rowsFor) {
   return html`<div class="statrows">${methods.map((m) => {
     const s = summary(rowsFor(m));
-    return html`<div class="statrow">
-      <div class="statrow-label"><span class="key" style="background:${raw(methodColor(m))}"></span>${methodLabel(m)}</div>
+    return html`<div class="statrow${methods.length > 1 ? "" : " single"}">
+      ${methods.length > 1 ? html`<div class="statrow-label"><span class="key" style="background:${raw(methodColor(m))}"></span>${methodLabel(m)}</div>` : ""}
       ${tile(t("st.ranked"), s ? fmt(s.n) : "—")}
       ${tile(t("st.mean"), s ? fmt(s.mean) : "—")}
       ${tile(t("st.p90"), s ? fmt(s.p90) : "—")}
@@ -292,17 +292,17 @@ export async function render(main, { query }) {
 
     // charts beside the list: the filtered set, the whole field, and the CDF
     drawDistribution("dist", methods.map((m) => ({
-      name: methodLabel(m), color: methodColor(m), bins: bins(rows.map((r) => r.cn[m]).filter((v) => v != null)),
+      name: "CN", color: methodColor(m), bins: bins(rows.map((r) => r.cn[m]).filter((v) => v != null)),
     })));
     drawDistribution("gdist", methods.map((m) => ({
-      name: methodLabel(m), color: methodColor(m), bins: bins(loaded.rows.map((r) => r.cn[m]).filter((v) => v != null)),
+      name: "CN", color: methodColor(m), bins: bins(loaded.rows.map((r) => r.cn[m]).filter((v) => v != null)),
     })));
     const filteredSet = new Set(rows.filter((r) => r.cn[sortMethod] != null).map((r) => r.lic));
     const nAll = loaded.rows.filter((r) => r.cn[sortMethod] != null).length;
     drawCdf("cdf", methods.map((m) => ({
-      name: methodLabel(m), color: methodColor(m), rows: loaded.rows.map((r) => ({ lic: r.lic, name: r.name, value: r.cn[m] })),
+      name: "CN", color: methodColor(m), rows: loaded.rows.map((r) => ({ lic: r.lic, name: r.name, value: r.cn[m] })),
     })), {
-      highlight: filteredSet.size < nAll ? { name: `${t("rk.cdf.filtered")} · ${methodShort(sortMethod)}`, lics: filteredSet, of: methods.indexOf(sortMethod) } : null,
+      highlight: filteredSet.size < nAll ? { name: t("rk.cdf.filtered"), lics: filteredSet, of: methods.indexOf(sortMethod) } : null,
       onClick: (lic) => { location.hash = link.runner(lic); },
     });
 
@@ -316,7 +316,7 @@ export async function render(main, { query }) {
       { key: "name", label: t("rk.col.name"), sort: (r) => r.key, defaultDir: 1, render: (r) => html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>` },
       ...methods.map((m) => ({
         key: `cn_${m}`, align: "r", cls: "num",
-        label: html`<span class="key" style="background:${raw(methodColor(m))};margin-right:6px"></span>${methodShort(m)}${m === sortMethod ? html`<span class="arrow">▼</span>` : ""}`,
+        label: html`CN${m === sortMethod ? html`<span class="arrow">▼</span>` : ""}`,
         sort: (r) => r.cn[m],
         render: (r) => r.cn[m] == null ? html`<span class="dim">—</span>`
           : html`<span class="${m === sortMethod ? "cn" : ""}">${fmt(r.cn[m])}</span>`,
@@ -356,7 +356,7 @@ export async function render(main, { query }) {
     // the biggest progressions over a year, within the current filters
     const prevMonth = loaded.prevMonth;
     $("#prog-hint").textContent = prevMonth
-      ? `${methodShort(sortMethod)} · ${fmtDate(prevMonth, "month")} → ${fmtDate(f.month, "month")}` : "";
+      ? `${fmtDate(prevMonth, "month")} → ${fmtDate(f.month, "month")}` : "";
     const prog = rows.filter((r) => r.delta[sortMethod] != null).sort((a, b) => b.delta[sortMethod] - a.delta[sortMethod]).slice(0, 10);
     dataTable($("#prog"), {
       rows: prog, sortKey: "d", sortDir: -1, emptyText: t("rk.noProgress"),
