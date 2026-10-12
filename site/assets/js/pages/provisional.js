@@ -16,6 +16,14 @@ const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liver
 const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
   startlist: "liste de départ", startfile: "liste de départ (lien)", registration: "circuits et catégories", announcement: "annonce : circuits et catégories" };
 export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
+/** A results source as readers see it: who published it, and what it gives (« avec temps intermédiaires »). */
+const sourceName = (d) => {
+  const who = { site: "Site de l'organisateur", upload: "Fichier déposé sur O'CN", liveresultat: "liveresultat (en direct)", winsplits: "WinSplits",
+    heyries: "Orientation Data", helga: "Helga" }[d.source] || SOURCE[d.source] || d.source;
+  const what = d.kind === "startlist" ? "liste de départ" : d.classes?.some((k) => k.runners.some((r) => r.splits)) ? "avec temps intermédiaires"
+    : d.by === "category" ? "par catégorie" : "par circuit";
+  return `${who} · ${what}`;
+};
 const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */
 const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${
@@ -183,7 +191,10 @@ async function detail(main, idx, query) {
         ${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">FFCO ↗</a>` : ""}</div></div>
-    <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("prov.documents")}</h2></div>
+    ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
+      <div class="hint" id="pv-class-hint"></div></div></div><div class="table-wrap" id="pv-class"></div></section>
+      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
+    ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources")}</h2></summary>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
         <th class="r">${t("prov.classes")}</th><th>${t("prov.found")}</th><th>${t("prov.changed")}</th></tr></thead>
       <tbody>${race.docs.map((d) => html`<tr${raw(d.classes?.length ? "" : ' style="opacity:.65"')}>
@@ -194,10 +205,7 @@ async function detail(main, idx, query) {
         <td>${KIND[d.kind] || d.kind}${d.by ? html` <span class="muted">· ${t(`prov.by.${d.by}`)}</span>` : ""}</td>
         <td class="r num">${d.classes ? fmt(d.classes.length) : "—"}</td>
         <td class="num" style="font-size:12px">${when(d.found)}</td><td class="num" style="font-size:12px">${when(d.changed)}</td></tr>`)}</tbody></table></div>
-      ${race.docs.length ? "" : html`<div class="empty">${t("prov.noDoc")}</div>`}</section>
-    ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
-      <div class="hint" id="pv-class-hint"></div></div></div><div class="table-wrap" id="pv-class"></div></section>
-      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}`;
+      ${race.docs.length ? "" : html`<div class="empty">${t("prov.noDoc")}</div>`}</details>` : ""}`;
   if (!docs.length) return { title: race.name };
 
   function draw() {
@@ -207,11 +215,11 @@ async function detail(main, idx, query) {
     const k = groups[ci];
     replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who, vue: views(d) && byCat ? "categorie" : null });
     $("#pv-pick").innerHTML = html`
-      <label class="field"><span>${t("prov.doc")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${SOURCE[x.source] || x.source} · ${x.kind} · ${x.title || decodeURIComponent(x.url.split("/").pop())}</option>`)}</select></label>
+      ${docs.length > 1 ? html`<label class="field"><span>${t("prov.source")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${sourceName(x)}</option>`)}</select></label>` : ""}
       ${views(d) ? html`<div class="field"><span>${t("prov.view")}</span>${seg("pvv", [["circ", t("prov.view.circ")], ["cat", t("prov.view.cat")]], byCat ? "cat" : "circ")}</div>` : ""}
       <label class="field"><span>${(views(d) ? byCat : d.by === "category") ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
       ${k.runners.some((r) => r.splits) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="${splitsLink(d, ci)}">${t("spl.ofClass")} →</a>` : ""}`;
-    $("#pv-doc").addEventListener("change", (e) => {
+    $("#pv-doc")?.addEventListener("change", (e) => {
       di = Number(e.target.value);
       ci = who ? Math.max(0, groupsOf(docs[di]).findIndex((g) => g.runners.some((r) => r.lic === who))) : 0;   // the runner's group
       draw();
