@@ -7,6 +7,7 @@ import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as auth from "../auth.js";
 import { link } from "../app.js";
+import { setLede } from "../ui.js";
 
 const MODES = ["ego", "leaders", "territories", "stats", "ages"];
 
@@ -14,8 +15,8 @@ const MODES = ["ego", "leaders", "territories", "stats", "ages"];
 export const modeSwitch = (current) => html`<nav class="page-tabs" role="tablist" aria-label="${t("nw.mode")}">
   ${MODES.map((m) => html`<button type="button" role="tab" data-net-mode="${m}" aria-selected="${m === current}">${t(`nw.mode.${m}`)}</button>`)}</nav>`;
 
-/** The head of a view, under the page's tabs (network.render): its title and intro text. */
-export const netHead = (current, title, lede) => html`<div class="net-head"><h2>${title}</h2><p class="lede">${lede}</p></div>`;
+/** A view's text, shown beside the page's title (network.render's head); nothing in the view itself. */
+export const netHead = (current, title, lede) => { setLede(lede); return ""; };
 
 /** A view's address: the views counting both disciplines keep the one chosen (?t=); « around one runner »: the
  *  last runner looked at, else the logged-in one. */

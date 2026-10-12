@@ -32,16 +32,16 @@ export async function render(main, { arg: code, query }) {
   const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="crumbs"><a href="#/clubs">${t("nav.clubs")}</a><span>›</span><span>${name || code}</span></div>
-    <section class="card" style="margin-bottom:16px;padding:20px 22px">
-      <div class="row" style="align-items:flex-start"><h1 style="flex:1;min-width:0">${name || code}</h1>
-        <div class="row"><button class="btn" type="button" id="cmp-club"></button>
+    <div class="page-head">
+      <div><h1>${name || code}</h1>
+        <div class="lede meta"><span class="num">${t("col.code")} ${code}</span>
+          ${ligue ? html`<span>${data.ligueName(ligue)}</span>` : ""}
+          <span>${t("f.dept")} ${code.slice(0, 2)} · ${data.deptName(code.slice(0, 2))}</span>
+          <span class="num">${fmt(members.length)} ${t("cl.everMembers")}</span></div></div>
+      <div class="row"><button class="btn" type="button" id="cmp-club"></button>
         <a class="btn" href="#/comparer-clubs">${t("cm.compare")}</a>
-        <a class="btn" href="${link.ranking({ club: code })}">${t("cl.inRanking")}</a></div></div>
-      <div class="hero-meta"><span class="num">${t("col.code")} ${code}</span>
-        ${ligue ? html`<span>${data.ligueName(ligue)}</span>` : ""}
-        <span>${t("f.dept")} ${code.slice(0, 2)} · ${data.deptName(code.slice(0, 2))}</span>
-        <span class="num">${fmt(members.length)} ${t("cl.everMembers")}</span></div>
-    </section>
+        <a class="btn" href="${link.ranking({ club: code })}">${t("cl.inRanking")}</a></div>
+    </div>
     ${pageTabs(tabs, tab)}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>

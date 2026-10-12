@@ -208,8 +208,16 @@ p { margin: 0; }
 
 /* ---------------------------------------------------------------- page */
 .page { flex: 1; width: 100%; max-width: 1320px; margin: 0 auto; padding: 24px 20px 96px; outline: none; }
-.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
-.page-head .lede { color: var(--ink-2); margin-top: 6px; max-width: 760px; }
+/* every page's head (owner, 2026-10-12): the title, a short text on its right (under it when there is no room), the
+   actions at the far right; the tabs come under it */
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 16px; }
+.page-head > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 18px; min-width: 0; flex: 1 1 0; }
+.page-head > :not(:first-child) { flex: none; }
+@media (max-width: 820px) { .page-head { flex-wrap: wrap; } .page-head > div:first-child { flex-basis: 100%; }
+  .page-head > :not(:first-child) { flex: 1 1 auto; max-width: 100%; flex-wrap: wrap; } }
+.page-head h1 { margin: 0; }
+.page-head .lede { color: var(--ink-2); margin: 0; flex: 1 1 280px; max-width: 760px; }
+.page-head .lede.meta { display: flex; flex-wrap: wrap; gap: 2px 14px; }
 /* Réseau: the title, then the intro text with the views' switch at its right, at the same place in every view */
 .net-head { margin: 0 0 14px; }
 .net-head h2 { font-size: 18px; margin: 0; }

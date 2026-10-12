@@ -104,7 +104,7 @@ const FR = {
   "cs.mode.all": "Toutes",
   "cs.show": "Afficher",
   "cs.lede": "Toutes les compétitions, leurs circuits et leurs résultats.",
-  "cs.title": "Courses",
+  "cs.title": "Courses classées",
   "nav.courses": "Courses",
   "nav.agenda": "Agenda", "nav.recent": "Résultats", "nav.live": "En direct",
   "nav.g.cn": "Classement national", "nav.g.races": "Courses", "nav.coursesCn": "Courses classées", "nav.docs": "Documentation",
@@ -301,7 +301,7 @@ const FR = {
   "f.range": "Période", "f.season": "Saison",
 
   "rk.title": "Classement National",
-  "rk.lede": "",
+  "rk.lede": "Les coureurs classés, méthode par méthode, à la date choisie.",
   "rk.col.rank": "#", "rk.col.overall": "Général", "rk.col.name": "Coureur", "rk.col.licence": "Licence",
   "rk.col.cat": "Cat.", "rk.col.club": "Club", "rk.col.delta": "Δ 1 an", "rk.col.races": "Courses 12 m.",
   "rk.dist": "Distribution des CN", "rk.dist.hint": "Coureurs classés correspondant aux filtres",
@@ -432,7 +432,7 @@ const FR = {
   "pg.nCats": "Catégories", "pg.peak": "Pic de niveau", "pg.peak.sub": "catégorie à la plus forte médiane",
 
   "nw.title": "Réseau", "nw.global": "Réseau des meilleurs",
-  "nw.lede.ego": "Qui court avec qui.",
+  "nw.lede.ego": "Qui court avec qui.", "nw.lede.egoOf": "Qui court avec qui, autour de {n}.",
   "nw.lede.global": "Qui court avec qui, parmi les meilleurs.",
   "nw.search": "Centrer sur un coureur…", "nw.searchHint": "ou cliquez sur un coureur du graphe",
   "nw.graph": "Réseau de rencontres", "nw.graph.hint": "Épaisseur : nombre de circuits communs. Cliquez sur un coureur pour recentrer. Molette : zoom",
@@ -559,7 +559,7 @@ const FR = {
   "st.ag.regions": "Régions suivies", "st.ag.all": "Tout cocher", "st.ag.clear": "Tout décocher",
   "st.ag.none": "Cochez au moins une région pour recevoir l'alerte.",
   "st.legacy": "Vous êtes connecté(e) avec la connexion historique (nom + licence) : créez un compte pour accéder aux réglages.",
-  "st.link": "Réglages", "admin.link": "Administration",
+  "st.link": "Réglages", "st.lede": "Votre compte, vos alertes par e-mail et la suppression du compte.", "admin.link": "Administration",
 
   // admin
   "ad.title": "Administration", "ad.lede": "Les comptes inscrits (plusieurs comptes confirmés pour une même licence sont signalés) et l'utilisation du site.",

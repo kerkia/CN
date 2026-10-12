@@ -6,7 +6,7 @@ import { html, raw, $, $$, fmt, fmtTime } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
-import { methodSeg, bindMethodSeg, methodLabel, filterFold } from "../ui.js";
+import { methodSeg, bindMethodSeg, methodLabel, filterFold, setLede } from "../ui.js";
 import { loadRanking } from "./ranking.js";
 import { clubName } from "../clubstats.js";
 import { link, replaceQuery, terrainField } from "../app.js";
@@ -38,8 +38,8 @@ export async function render(main, { query }) {
   // saved: "" | "saving" | "saved" | "unavailable"
   let extra = [], extraClub = null, saved = "";      // manual: the team typed by hand (array of runners), else null
 
+  setLede(t("rl.lede"));
   main.innerHTML = html`
-    <div class="net-head"><h2>${t("rl.title")}</h2><p class="lede">${t("rl.lede")}</p></div>
     ${filterFold(html`<div class="filters" id="rl-filters"></div>`)}
     <div class="grid grid-main-side" style="align-items:start;margin-bottom:16px">
       <section class="card"><div class="card-head"><div><h2 id="rl-team-title">${t("rl.teams")}</h2><div class="hint" id="rl-team-hint"></div></div>

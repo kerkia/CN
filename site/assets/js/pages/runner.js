@@ -53,11 +53,10 @@ export async function render(main, { arg, query }) {
   const other = store.TERRAINS.filter((x) => x !== terrain).sort((a, b) => person.nBy[b] - person.nBy[a])[0];
 
   main.innerHTML = html`
-    <section class="card hero" style="margin-bottom:16px">
-      <div class="avatar" aria-hidden="true">${initials(person.nom)}</div>
+    <div class="page-head">
       <div>
         <h1>${name} <span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span></h1>
-        <div class="hero-meta">
+        <div class="lede meta">
           <span>${last?.[R.cat] || person.cat || ""}</span>
           ${cp.code ? html`<span><a href="${link.club(cp.code)}">${data.clubName(club)}</a></span>` : ""}
           ${cp.ligue ? html`<span>${data.ligueName(cp.ligue)}</span>` : ""}
@@ -66,9 +65,9 @@ export async function render(main, { arg, query }) {
             .map((x) => `${t(`terrain.${x}`)} ${fmt(person.nBy[x])}`).join(" · ")})</span>
         </div>
       </div>
-      <div class="stack" style="gap:8px"><button class="btn" type="button" id="cmp-btn"></button>
-        <a class="btn btn-sm" href="${link.network(lic)}">${t("nw.title")}</a></div>
-    </section>
+      <div class="row"><button class="btn" type="button" id="cmp-btn"></button>
+        <a class="btn" href="${link.network(lic)}">${t("nw.title")}</a></div>
+    </div>
     ${pageTabs(tabs, tab)}
     ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
       ${t("rn.switchTo")} ${t(`terrain.${other}`)} ${t("rn.inHeader")}.</div>`}

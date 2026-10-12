@@ -7,7 +7,7 @@ import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { methodColor } from "../charts.js";
-import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg, filterFold } from "../ui.js";
+import { dataTable, tile, methodLabel, methodShort, methodSeg, bindMethodSeg, seg, filterFold, setLede } from "../ui.js";
 import { dateControls, bindDateControls } from "./ranking.js";
 import {
   BASES, SEXES, AGE_GROUPS, baseLabel, measureLabel, sexLabel, ageLabel, clubTable, rankOn, clubName,
@@ -57,6 +57,7 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
 // #/comparer-clubs and #/relais all open it.
 const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
 async function view(el, v, query) {
+  setLede(t("cl.lede"));
   if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });
   if (v === "relays") return (await import("./relays.js")).render(el, { query });
   return listView(el, query, v);
@@ -65,7 +66,7 @@ export async function render(main, { route, query }) {
   const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : query.onglet === "ligues" ? "ligues" : "clubs";
   const mine = myClub();
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede">${t("cl.lede")}</p></div>
+    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede" id="page-lede">${t("cl.lede")}</p></div>
       ${mine ? html`<div class="row"><a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a></div>` : ""}</div>
     <nav class="page-tabs" role="tablist">${VIEWS.map(([k]) => html`<button type="button" role="tab" data-cview="${k}" aria-selected="${k === v}">${t(`cl.view.${k}`)}</button>`)}</nav>
     <div id="club-view"></div>`;

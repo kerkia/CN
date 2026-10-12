@@ -102,6 +102,9 @@ export function bindPageTabs(root, tabs, current, onShow) {
   return show;
 }
 
+/** The short text beside a page's title (id page-lede), for pages whose views change it (Statistiques, Clubs). */
+export const setLede = (text) => { const el = document.getElementById("page-lede"); if (el) el.textContent = text; };
+
 /** A results table's column header with what the figure is below it (« CN Top » / « J-15 »). */
 export const subHead = (label, sub) => html`${label}<div class="th-sub">${sub}</div>`;
 

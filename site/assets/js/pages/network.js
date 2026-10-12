@@ -93,7 +93,7 @@ async function view(el, mode, lic, query) {
 
 export async function render(main, { arg: lic, query }) {
   const mode = modeOf(lic, query);
-  main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.network")}</h1></div></div>
+  main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.network")}</h1><p class="lede" id="page-lede"></p></div></div>
     ${modeSwitch(mode)}<div id="net-view"></div>`;
   const el = $("#net-view", main);
   $$("[data-net-mode]", main).forEach((b) => b.addEventListener("click", async () => {
@@ -124,7 +124,7 @@ async function ego(main, lic, query) {
 
   main.innerHTML = html`
     <div class="crumbs"><a href="${link.runner(lic)}">${name}</a><span>›</span><span>${t("nw.title")}</span></div>
-    ${netHead("ego", `${t("nw.title")} · ${name}`, t("nw.lede.ego"))}
+    ${netHead("ego", "", t("nw.lede.egoOf", { n: name }))}
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}
       <a class="btn btn-sm" href="${link.runner(lic)}">${t("pg.toRunner")}</a>

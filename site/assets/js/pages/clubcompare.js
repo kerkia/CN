@@ -10,7 +10,7 @@ import { CLUB } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, dashKey, filterFold,
-  pageTabs, tabFrom, bindPageTabs,
+  pageTabs, tabFrom, bindPageTabs, setLede,
 } from "../ui.js";
 import { MEASURES, measureLabel, baseLabel, clubTable, rankOn, clubName, fromSummary } from "../clubstats.js";
 import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescription } from "./clubs.js";
@@ -30,8 +30,8 @@ export async function render(main, { query }) {
 
   const tabs = [["saisons", t("cm.tab.years")], ["bilan", t("cm.tab.summary")], ["mois", t("cm.tab.monthly")], ["coupe", t("cm.tab.cfc")]];
   const tab = tabFrom(tabs, query);
+  setLede(t("cm.lede"));
   main.innerHTML = html`
-    <div class="net-head"><h2>${t("cm.title")}</h2><p class="lede">${t("cm.lede")}</p></div>
     ${pageTabs(tabs, tab)}
     <section class="card" style="margin-bottom:16px"><div class="card-body stack" style="gap:12px">
       <div class="row">

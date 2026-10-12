@@ -24,7 +24,7 @@ export async function render(main) {
   if (!user) { window.dispatchEvent(new Event("cnx:unauthorised")); return null; }
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("st.title")}</h1></div></div>
+    <div class="page-head"><div><h1>${t("st.title")}</h1><p class="lede">${t("st.lede")}</p></div></div>
     <div class="stack" style="max-width:640px">
       <section class="card"><div class="card-head"><h2>${t("st.account")}</h2></div><div class="card-body stack" style="gap:10px">
         <div><span class="muted">${t("ac.email")}</span><br><b>${user.email}</b></div>

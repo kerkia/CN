@@ -319,6 +319,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages, the runner search at its right on
   pages that have it. One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
   Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
+- **One head for every page** (owner, 2026-10-12): `.page-head` = the title, a short text on its right (`.lede`; under it on a
+  phone; the runner's and the club's facts as `.lede.meta`), the action buttons at the far right, then the tabs. Pages whose
+  views change the text (Statistiques, Clubs) give it `id="page-lede"` and the views call `ui.setLede` (`netmodes.netHead`
+  does); no view repeats a title of its own.
 - **Tabs, not long pages** (owner, 2026-10-12): a page with several sections shows them as tabs (`ui.pageTabs`,
   `tabFrom`, `bindPageTabs`: panels `data-panel`, the tab in the address as `?onglet=`, kept by `replaceQuery`; charts
   drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
