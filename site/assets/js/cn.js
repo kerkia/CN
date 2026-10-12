@@ -74,7 +74,7 @@ export function explain(method, races, iso, terrain, meta) {
 
   if (method !== "official") {
     const p = paramsFor(meta, method, terrain);
-    // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's month,
+    // Each race has ONE score, fixed when it was computed (raw x the recalage factor of the race's day,
     // the value the Courses page shows), the same in both methods; the CN is the weighted mean of the best
     // 60 % of them (70 % in VTT and ski) - all of them for Fair, only those filling the weight places for Top.
     const [score, counts, weight] = [SCORE_COL[method], COUNTS_COL[method], WEIGHT_COL[method]];

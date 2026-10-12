@@ -2,7 +2,7 @@
 
 // Every method, in display order: the retained (quadratic) variants before the linear ones, studied for reference.
 // Everyone sees the official method and the Top; the others are analysis methods, shown only to the accounts with
-// the "Analyse" right (admin page, administrators included): the linear Top and the « Juste » methods.
+// the "Analyse" right (admin page, administrators included): the linear Top and the « Fit » methods.
 export const METHODS = ["official", "top6w2", "top6w", "fair2", "fair"];
 const ANALYSIS = ["top6w", "fair2", "fair"];
 let analyst = false;

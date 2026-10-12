@@ -117,7 +117,7 @@ async function race(main, id, wanted) {
     return c.find((r) => code && String(r.club || "").startsWith(code)) || null;
   };
   // the CNs shown and used: the official one 15 days before the race (as FFCO uses it; the monthly snapshot before
-  // that day), today's Top, and the strength (Juste) one at J-15 that values the circuit for the Top score
+  // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
   async function cnFor(terrain) {
     if (st.cn[terrain]) return st.cn[terrain];
     const day = st.info?.date || new Date().toISOString().slice(0, 10);

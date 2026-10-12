@@ -3,9 +3,9 @@
 The same steps as the engine, with its own functions, on the runners matched to a licence:
  * official: the official CN 15 days before (cn_history), circuit value = mean of CN x time over the fastest
    two thirds (FFCO's rule, cn.CnParams() defaults), score = value / time;
- * Juste and Top (linear and quadratic): the base method's internal CN 15 days before (the aggregate of its raw
+ * Fit and Top (linear and quadratic): the base method's internal CN 15 days before (the aggregate of its raw
    scores, as run_method values circuits), its circuit value, raw score = value / time, published score = raw x
-   the recalage factor of the race's day; Juste and Top share these scores and differ in their CN.
+   the recalage factor of the race's day; Fit and Top share these scores and differ in their CN.
 PM, abandon, disqualified and over time score 0. D10/H10 take no part. The CN after the race: the method's
 aggregate of its published scores in the window plus this one (for a race FFCO already published, its own
 copy of the race is left out). Only classes that are circuits are scored: a circuit's value needs everyone

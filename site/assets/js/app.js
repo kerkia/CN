@@ -349,7 +349,7 @@ async function route_() {
     await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
   }
-  // the analysis methods ("Juste") only for the accounts allowed to see them
+  // the analysis methods ("Fit") only for the accounts allowed to see them
   const who = auth.session();
   store.setAnalyst(!!who?.analyst);
   // « En direct » only for the accounts allowed to see it

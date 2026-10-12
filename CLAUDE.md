@@ -68,7 +68,7 @@ runners holding a CN; score = circuit value ÷ time; PM / abandon / disqualified
 12-month window. Four specialités, each ranked separately: forest (`For`: LD/MD/Nuit), sprint (`Spr`), VTT
 (`VTT`, all formats together) and ski (`Ski`, all formats together) — FFCO's own split (`specialite=` on its
 CN pages). In the DB `competitions.terrain` is "Forêt", "Sprint", "VTT" or "Ski"; the site uses the codes.
-VTT (~30 competitions a season) and ski (2-4, on one or two weekends) have their own Juste/Top params
+VTT (~30 competitions a season) and ski (2-4, on one or two weekends) have their own Fit/Top params
 (`CnParams.by_terrain`, `for_terrain`; `meta.methods.*.params.by_terrain`, `cn.paramsFor` in the browser):
 window 2 years (VTT) / 3 years (ski), best 70 % — with 12 months, too few riders held a CN to value the
 circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The official window stays 365 days.
@@ -78,7 +78,7 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    `data.inSeries`; VTT and ski always had their own). The runner page's official calculation card reads FFCO's own
    CN page live (`/api/ffco-cn`): FFCO re-evaluates past-season races under **new circuit ids** that only that
    page links, so its points can differ from the race's results page.
-2. **`fair`, « Méthode CN « Juste »** — estimates each runner's **strength** (usual level); it also values the
+2. **`fair`, « Méthode CN « Fit »** (« Juste » until 2026-10-12) — estimates each runner's **strength** (usual level); it also values the
    circuits. CN = weighted mean of the best 60 % of the window's scores (`top6_weighted` with an unlimited
    number of places). Weights by competition **name** (`cn.title_weight`): "Championnat de France" 2,
    "O'France" or "Nationale" 1.5, anything else 1 (Sélection races and Championnats de Ligue included, FFCO's
@@ -98,13 +98,13 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    equal both quadratic means; the IOF-style log-time z-score was worse.
 
 **Who sees what**: everyone sees `official` and `top6w2` (« Top », the method retained: quadratic CN since
-2026-10-07); `top6w` (« Top linéaire », studied for reference) and the « Juste » methods `fair2`/`fair` are analysis
+2026-10-07); `top6w` (« Top linéaire », studied for reference) and the « Fit » methods `fair2`/`fair` are analysis
 methods, shown only to accounts with the `analyst` right (granted on the admin page; `store.available()`,
 `store.setAnalyst`; display only — the data files are the same for every logged-in user). The Méthodes page
 presents the Top and gives the linear mean's measured figures to everyone, as the variant studied for reference.
 
 Key design decisions (each was measured — see "Evaluating" below — and agreed with the owner):
-- **Circuits are valued with the Juste CN, never with Top's.** A capped best-of fed its selection back through
+- **Circuits are valued with the Fit CN, never with Top's.** A capped best-of fed its selection back through
   circuit values: groups racing mostly among themselves (veterans, juniors) inflated, H21 deflated (~13 %).
 - **No fallback on a runner's first official CN** after the archive's first season (`seed_until="2011-01-01"`):
   it was stale and on FFCO's scale, and valued a third of sprint circuits. Only runners with their own CN in the
@@ -119,9 +119,9 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   when a race enters or leaves the window. Never explain method artefacts in the UI — fix the method instead.
 - The CN J-15 shown for computed methods is the runner's **published** CN 15 days before the race (the engine's
   own `cn_j15` column is on its internal scale).
-- Rejected after testing: Top with 10 places (6 works once circuits use Juste), best 70/80 % pools for forest
+- Rejected after testing: Top with 10 places (6 works once circuits use Fit), best 70/80 % pools for forest
   and sprint (re-measured 2026-10-06: −0.4 to −1 point), 5 races minimum (fewer circuit valuers, worse),
-  2 races minimum (2026-10-07: +11 % ranked in forest, +38 % in sprint, and those runners' Juste CN still beats
+  2 races minimum (2026-10-07: +11 % ranked in forest, +38 % in sprint, and those runners' Fit CN still beats
   their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
 
@@ -206,7 +206,7 @@ too). A page or file up to 32 MB is read (`fetch.MAX_BYTES`); a file named for a
 by date (70 days), not by number. No result
 file carries licences: runners are matched by name + club number (`match.py`), unmatched rows stay unlinked.
 Provisional scores reuse the engine's functions (`compute.py`): official = official CN J-15 and FFCO's rule;
-Juste/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
+Fit/Top = the base method's internal CN J-15, circuit value, raw score x the day's recalage factor; only lists by
 circuit are scored — a list by category is scored circuit by circuit once its categories are placed (several share a
 circuit): by the race's lists by circuit that give runners' categories (`run.category_circuits`), else by FFCO's public
 registration list, whose « Catégories » column gives each circuit's (« B : D20/35, H40/45, Open violet »; kept as a
@@ -263,7 +263,7 @@ circuit, does the higher CN **15 days before the race** (the runner's own publis
 fallback) predict who finished ahead? Compare methods on the **same pairs** (both runners have a CN in every
 method compared), per terrain. Also check group bias (share of pairs where juniors / 55+ are predicted ahead vs
 actually ahead, against H21) and rank drift by number of races. Reference results of the current methods:
-forest Juste 82.3 %, Top 82.1 %, official 80.9 %; sprint Juste 84.0 %, Top 83.9 %, official 80.7 %.
+forest Fit 82.3 %, Top 82.1 %, official 80.9 %; sprint Fit 84.0 %, Top 83.9 %, official 80.7 %.
 Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.12 % (national races
 82.80 → 82.80), sprint 83.94 → 84.01 % (national 82.18 → 82.11); forest scale p90/p10 2.65 → 2.57.
 That duel share was the tuning yardstick. **The published evaluation** (owner, 2026-10-10: the duel counts were
@@ -322,7 +322,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`network.render`, `netmodes.modeHref`: the address follows by pushState). Do the same for new pages. No count of
   compared runners in the navigation (owner, 2026-10-12).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
-  / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
+  / « Fit », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).
 - Runner race rows (`R`) and race result rows (`C`) carry each method's columns, the quadratic ones appended after
   the linear ones (`data.js`: `SCORE_COL`, `CNAFTER_COL`, `CNJ15_COL`, `COUNTS_COL`, `WEIGHT_COL`, `C_SCORE`, `C_CNJ15`).

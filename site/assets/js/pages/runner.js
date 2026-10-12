@@ -178,7 +178,7 @@ export async function render(main, { arg, query }) {
         `${t("rn.rankOf")} ${fmt(n)}${catRank ? ` · ${ord(catRank)} ${t("rn.rankCat")} ${cat}` : ""}`, methodColor(m));
     });
     // for each method: the best CN ever reached in the discipline, and when. Official: at a race (FFCO's CN
-    // only moves then); Juste and Top: also when a weaker race leaves the window, so from the full history
+    // only moves then); Fit and Top: also when a weaker race leaves the window, so from the full history
     const bestTiles = methods.map((m) => {
       let best = null;
       if (m === "official") {
@@ -272,7 +272,7 @@ export async function render(main, { arg, query }) {
           <span class="dim num">· ${t("rn.score")} ${fmt(r[SCORE_COL[histMethod]])}</span></div>`)}
         ${e.also.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
       if (e.kind === "out") return html`${e.races.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
-      return html`<span class="tag">${t("rn.ev.recalMonth")}</span>`;
+      return "";
     };
     dataTable($("#cnhist"), {
       rows: ev, sortKey: "date", sortDir: -1,

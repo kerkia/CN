@@ -1,7 +1,7 @@
 // Methods, in four tabs: the essentials (what each method does well and badly, what the proposed ones
 // fix), the methods in detail (race score, aggregation, linear or quadratic, recalage), the analyses
 // (which method predicts results best, and for what), and the site's other calculations (clubs, age
-// progression, network). Only the methods this account sees are named: « Juste » is for analysts.
+// progression, network). Only the methods this account sees are named: « Fit » is for analysts.
 
 import { html, $, $$, fmt, fmtSigned, mean } from "../util.js";
 import { t } from "../i18n.js";
@@ -14,7 +14,7 @@ import { replaceQuery } from "../app.js";
 const TABS = [["essentiel", "L'essentiel"], ["detail", "En détail"], ["analyses", "Les analyses"], ["autres", "Autres calculs"]];
 const cvar = (m) => `--c:var(--s${METHOD_SLOT[m]})`;
 
-// Race-score exponent k, measured once on database copies (7 October 2026) with the strength CN (Juste), on
+// Race-score exponent k, measured once on database copies (7 October 2026) with the strength CN (Fit), on
 // the same pairs: ln(score) = C − k·ln(time). Reference period July 2025 - October 2026; ski over 2010-2025
 // (2 to 4 races a season). Then 2018-2024 for forest and sprint, as a check.
 const K_TESTS = {
@@ -385,7 +385,7 @@ export async function render(main, { query = {} } = {}) {
         <div class="cn">${fmt(EX[m].cn)}</div></div>`)}
       <div class="mx-callout">La meilleure course de l'année — un championnat de France — est <b>écartée</b> par la méthode officielle ;
         elle occupe <b>${fmtW(pf.weights.cdf)} places sur ${fmt(p6.top_n)}</b> dans le Top. ×2, ×1,5 : le poids de la course, ou les places qui
-        lui restent. ${analyst ? html`Dans les méthodes « Juste », la course de ${fmt(EXAMPLE[5][0])} compte encore : pas de plafond de places.` : ""}</div>
+        lui restent. ${analyst ? html`Dans les méthodes « Fit », la course de ${fmt(EXAMPLE[5][0])} compte encore : pas de plafond de places.` : ""}</div>
       <p class="muted" style="font-size:13px">Exemple pédagogique : dans la réalité, chaque méthode a aussi ses propres valeurs de circuit, donc
         ses propres scores. Les ${EXAMPLE.filter(([, k]) => k !== "other").map(([s, k]) => `${fmt(s)} (${kindName[k]})`).join(" et ")} sont marqués.</p>
     </section>
@@ -431,7 +431,7 @@ export async function render(main, { query = {} } = {}) {
     </section>` : ""}
 
     ${analyst ? html`<section class="mx-slide" style="${cvar("fair")}">
-      <p class="mx-kicker">${methodKey("fair")}${methodKey("fair2")} Méthodes « Juste » · accès analyse</p>
+      <p class="mx-kicker">${methodKey("fair")}${methodKey("fair2")} Méthodes « Fit » · accès analyse</p>
       <h2>Le niveau habituel, sur une échelle stable depuis 2010</h2>
       <div class="mx-eq">CN = Σ (poids × score) ÷ Σ poids, sur les ${pctOf(pf.eligible_fraction)} meilleurs scores</div>
       <ul class="mx-list">
@@ -514,11 +514,12 @@ export async function render(main, { query = {} } = {}) {
       <p class="mx-kicker">Méthodes proposées</p>
       <h2>Le recalage : progressif, jamais rétroactif</h2>
       <ul class="mx-list">
-        <li><span>Chaque mois, un facteur ramène la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN à ${fmt(pf.anchor_target)} — la règle
-          de la FFCO depuis 2026, appliquée en continu plutôt qu'au 1er janvier —, dans chaque spécialité, à partir du niveau mesuré
-          ${fmt(pf.anchor_lag_months)} mois plus tôt pour que les résultats tardifs ne fassent pas bouger l'échelle.</span></li>
-        <li><span>Le facteur d'une course est celui de son jour : il passe en ligne droite d'une valeur mensuelle à la suivante.</span></li>
-        <li><span>Le score d'une course est fixé une fois pour toutes : le CN ne change que lorsqu'une course entre dans la fenêtre ou en sort.</span></li>
+        <li><span>Le score d'une course est multiplié par le facteur de recalage de son jour, puis fixé une fois pour toutes : le CN ne change
+          que lorsqu'une course entre dans la fenêtre ou en sort, jamais à cause du recalage.</span></li>
+        <li><span>Ce facteur évolue en continu, jour après jour, sans marche : il maintient la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs
+          CN à ${fmt(pf.anchor_target)} — la règle de la FFCO depuis 2026, appliquée en continu plutôt qu'au 1er janvier —, dans chaque spécialité.</span></li>
+        <li><span>Il suit le niveau mesuré ${fmt(pf.anchor_lag_months)} mois plus tôt, lissé sur un an, pour que les résultats tardifs ne fassent
+          pas bouger l'échelle.</span></li>
       </ul>
       <div style="margin-top:16px">${chartCard({ id: "norm", title: t("me.norm"), hint: t("me.norm.hint"), short: true })}</div>
     </section>
