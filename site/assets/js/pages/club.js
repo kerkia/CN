@@ -9,7 +9,7 @@ import { E, C } from "../data.js";
 import { timeChart, columnChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard,
-  legend, dataTable, tile, methodLabel, methodShort, seg, errorBox, terrainTag, filterFold,
+  legend, dataTable, tile, methodLabel, methodShort, seg, errorBox, terrainTag, filterFold, pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
 
 const WEEK_MAX_CATS = 6;       // up to this many categories on a circuit, places count per category
@@ -28,6 +28,8 @@ export async function render(main, { arg: code, query }) {
   const members = data.runners().list.filter((r) => data.clubParts(r.club).code === code);
   const ligue = data.clubParts(members[0]?.club).ligue;
 
+  const tabs = [["resultats", t("cl.tab.week")], ["evolution", t("cl.tab.evolution")], ["elite", t("cl.tab.elite")], ["membres", t("cl.tab.roster")]];
+  const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="crumbs"><a href="#/clubs">${t("nav.clubs")}</a><span>›</span><span>${name || code}</span></div>
     <section class="card" style="margin-bottom:16px;padding:20px 22px">
@@ -42,6 +44,8 @@ export async function render(main, { arg: code, query }) {
     </section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
+    ${pageTabs(tabs, tab)}
+    <div data-panel="resultats">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2 class="week-title">${t("cl.week")} ${t("cl.week.from")}
           <input type="date" id="wk-from" value="${wkFrom}" max="${wkTo}" aria-label="${t("cl.week.from")}"> ${t("cl.week.to")}
@@ -49,21 +53,28 @@ export async function render(main, { arg: code, query }) {
         <div class="hint">${t("cl.week.hint")}</div></div></div>
       <div id="week"></div>
     </section>
+    </div>
+    <div data-panel="evolution">
     <div class="grid grid-2" style="margin-bottom:16px">
       ${chartCard({ id: "lvl", title: t("cl.evolution"), hint: t("cl.over.mean"),
         tools: html`<span id="stat-seg"></span>` })}
       ${chartCard({ id: "cnt", title: t("cl.countOver") })}
     </div>
+    </div>
+    <div data-panel="elite">
     <div class="grid grid-main-side" style="margin-bottom:16px;align-items:start">
       ${chartCard({ id: "eli", title: t("cm.eliteChart"), hint: t("cm.eliteChart.hint"), tools: html`<span id="elite-seg"></span>` })}
       <section class="card"><div class="card-head"><div><h2>${t("cl.eliteRecent")}</h2><div class="hint">${t("cl.eliteRecent.hint")}</div></div></div>
         <div id="elite-list"></div></section>
     </div>
+    </div>
+    <div data-panel="membres">
     <section class="card">
       <div class="card-head"><div><h2>${t("cl.roster")}</h2><div class="hint">${t("cl.roster.hint")}</div></div>
         <label class="checkline"><input type="checkbox" id="all-members">${t("cl.showAll")}</label></div>
       <div id="roster"></div>
-    </section>`;
+    </section>
+    </div>`;
   bindChartCard(main, "lvl");
   bindChartCard(main, "cnt");
   bindChartCard(main, "eli");
@@ -292,5 +303,6 @@ export async function render(main, { arg: code, query }) {
   drawFilters();
   drawWeek();
   await drawAll();
+  bindPageTabs(main, tabs, tab);
   return { title: name || code };
 }

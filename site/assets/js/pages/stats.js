@@ -52,17 +52,22 @@ export async function render(main, query) {
   let ligue = query.ligue || "";
   let club = query.club || "";
 
+  // two views of the Statistiques page: the participation, the ages (one is drawn hidden: the code draws both)
+  const mode = query.vue === "ages" ? "ages" : "stats";
   main.innerHTML = html`
-    ${netHead("stats", t("sx.title"), t("sx.lede"))}
+    ${netHead(mode, t(`nw.mode.${mode}`), t(`sx.lede.${mode}`))}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
+    <div ${raw(mode === "stats" ? "" : "hidden")}>
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     ${chartCard({ id: "part", title: t("ov.participation"), hint: t("ov.participation.hint"), short: true,
       tools: html`<span id="measure-seg"></span>` })}
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 24px">${t("act.def")}</p>
-    <h2 style="margin:0 0 12px">${t("ag.title")}</h2>
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("act.def")}</p>
+    </div>
+    <div ${raw(mode === "ages" ? "" : "hidden")}>
     <div class="tiles" id="pyr-tiles" style="margin-bottom:16px"></div>
     ${chartCard({ id: "pyr", title: t("ag.chart"), hint: t("ag.chart.hint"), tall: true, tools: html`<span id="season-field"></span>` })}
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ag.def")}</p>`;
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ag.def")}</p>
+    </div>`;
   bindChartCard(main, "part");
   bindChartCard(main, "pyr");
   bindModeSwitch(main);
@@ -216,5 +221,5 @@ export async function render(main, query) {
   await loadSeason();
   drawFilters();
   draw();
-  return { title: `${t("nw.title")} · ${t("sx.title")}` };
+  return { title: `${t("nav.network")} · ${t(`nw.mode.${mode}`)}` };
 }

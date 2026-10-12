@@ -10,6 +10,7 @@ import { CLUB } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, dashKey, filterFold,
+  pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
 import { MEASURES, measureLabel, baseLabel, clubTable, rankOn, clubName, fromSummary } from "../clubstats.js";
 import { clubSelectors, bindClubSelectors, selFromQuery, selToQuery, selDescription } from "./clubs.js";
@@ -27,6 +28,8 @@ export async function render(main, { query }) {
   const meta = data.meta();
   const terrain = store.get().terrain;
 
+  const tabs = [["saisons", t("cm.tab.years")], ["bilan", t("cm.tab.summary")], ["mois", t("cm.tab.monthly")], ["coupe", t("cm.tab.cfc")]];
+  const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="crumbs"><a href="#/clubs">${t("nav.clubs")}</a><span>›</span><span>${t("cm.title")}</span></div>
     <div class="page-head"><div><h1>${t("cm.title")}</h1><p class="lede">${t("cm.lede")}</p></div></div>
@@ -49,15 +52,16 @@ export async function render(main, { query }) {
     </div></section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="notice info" id="desc" style="margin-bottom:16px"></div>
-    <div style="margin-bottom:16px">${chartCard({ id: "yrs", title: t("cm.years"), hint: t("cm.years.hint"), tall: true })}</div>
-    <section class="card" style="margin-bottom:16px">
+    ${pageTabs(tabs, tab)}
+    <div data-panel="saisons"><div style="margin-bottom:16px">${chartCard({ id: "yrs", title: t("cm.years"), hint: t("cm.years.hint"), tall: true })}</div></div>
+    <div data-panel="bilan"><section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("cm.summary")}</h2><div class="hint" id="sum-hint"></div></div></div>
-      <div id="summary"></div></section>
-    <div style="margin-bottom:16px">${chartCard({ id: "evo", title: t("cm.monthly"), hint: t("cm.monthly.hint"), tools: html`<span id="range-seg"></span>` })}</div>
-    <section class="card" id="cfc-card"><div class="card-head"><div><h2>${t("cfc.title")}</h2><div class="hint">${t("cfc.hint")}</div></div>
+      <div id="summary"></div></section></div>
+    <div data-panel="mois"><div style="margin-bottom:16px">${chartCard({ id: "evo", title: t("cm.monthly"), hint: t("cm.monthly.hint"), tools: html`<span id="range-seg"></span>` })}</div></div>
+    <div data-panel="coupe"><section class="card" id="cfc-card"><div class="card-head"><div><h2>${t("cfc.title")}</h2><div class="hint">${t("cfc.hint")}</div></div>
       <div class="row" id="cfc-tools"></div></div><div class="grid grid-main-side" style="align-items:start">
       <div id="cfc-seasons"></div><div id="cfc-season"></div></div>
-      <p class="muted" style="font-size:12.5px;margin:0 16px 14px">${t("cfc.rule")}</p></section>`;
+      <p class="muted" style="font-size:12.5px;margin:0 16px 14px">${t("cfc.rule")}</p></section></div>`;
   bindChartCard(main, "yrs");
   bindChartCard(main, "evo");
 
@@ -285,5 +289,6 @@ export async function render(main, { query }) {
     last = now;
     drawAll();
   });
+  bindPageTabs(main, tabs, tab);
   return { title: t("cm.title"), cleanup: unsubscribe };
 }

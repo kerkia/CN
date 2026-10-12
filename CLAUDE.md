@@ -307,10 +307,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
-- Navigation (owner, 2026-10-12): two drop-down groups — « Classement national » (Coureur, Classement, Courses classées
-  = `#/courses`, Comparer, Clubs, Réseau) and « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »;
-  En direct) — and the menu under one's name (Ma page, Documentation = `#/methodes`, Réglages, Nous écrire, Administration,
-  Déconnexion); on a phone the menu button lists both groups under headings (`app.renderHeader`).
+- Navigation (owner, 2026-10-12): the bar shows two groups as tabs — « Classement national » (Coureur, Classement, Courses
+  classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
+  Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
+  (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages, the runner search at its right on
+  pages that have it. One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
+  Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
+- **Tabs, not long pages** (owner, 2026-10-12): a page with several sections shows them as tabs (`ui.pageTabs`,
+  `tabFrom`, `bindPageTabs`: panels `data-panel`, the tab in the address as `?onglet=`, kept by `replaceQuery`; charts
+  drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
+  of the races per département), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
+  classées; Statistiques' views (`netmodes.js`: Réseau d'un coureur, des meilleurs, Territoires, Participation, Âges)
+  and Temps intermédiaires' views use the same tab bar. Do the same for new pages.
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).

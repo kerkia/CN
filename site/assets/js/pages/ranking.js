@@ -9,6 +9,7 @@ import * as data from "../data.js";
 import { distributionChart, cdfChart, methodColor, css } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile, methodLabel, methodShort, filterFold,
+  pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
@@ -194,6 +195,8 @@ export async function render(main, { query }) {
     });
   }
 
+  const tabs = [["classement", t("rk.tab.list")], ["repartition", t("rk.tab.dist")], ["progres", t("rk.tab.progress")]];
+  const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="page-head">
       <h1>${t("rk.title")}</h1>
@@ -206,20 +209,25 @@ export async function render(main, { query }) {
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div id="notice"></div>
     <div id="stats"></div>
-    <div class="list-charts">
+    ${pageTabs(tabs, tab)}
+    <div data-panel="classement">
       <section class="card" id="list-card">
         <div class="card-head">
           <div><h2 id="list-title"></h2><div class="hint">${t("rk.sortHint")}</div></div>
         </div>
         <div id="list"></div>
       </section>
-      <div class="side">
+    </div>
+    <div data-panel="repartition">
+      <div class="grid grid-2" style="margin-bottom:16px">
         ${chartCard({ id: "dist", title: t("rk.dist"), hint: t("rk.dist.hint"), short: true })}
         ${chartCard({ id: "gdist", title: t("rk.gdist"), hint: t("rk.gdist.hint"), short: true })}
-        ${chartCard({ id: "cdf", title: t("rk.cdf"), hint: t("rk.cdf.hint") })}
-        <section class="card"><div class="card-head"><div><h2>${t("ov.progress")}</h2><div class="hint" id="prog-hint"></div></div></div>
-          <div id="prog"></div></section>
       </div>
+      ${chartCard({ id: "cdf", title: t("rk.cdf"), hint: t("rk.cdf.hint") })}
+    </div>
+    <div data-panel="progres">
+      <section class="card"><div class="card-head"><div><h2>${t("ov.progress")}</h2><div class="hint" id="prog-hint"></div></div></div>
+        <div id="prog"></div></section>
     </div>`;
   ["dist", "gdist", "cdf"].forEach((id) => bindChartCard(main, id));
 
@@ -402,5 +410,6 @@ export async function render(main, { query }) {
   }
 
   await reload();
-  return { title: t("rk.title"), onRunnerPick: pick };
+  const showTab = bindPageTabs(main, tabs, tab);
+  return { title: t("rk.title"), onRunnerPick: (lic) => { showTab("classement"); return pick(lic); } };
 }

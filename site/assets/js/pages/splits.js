@@ -24,7 +24,7 @@
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import { lineChart, columnChart, slotColor, css } from "../charts.js";
-import { seg, chartCard, bindChartCard, legend, dataTable } from "../ui.js";
+import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
@@ -53,6 +53,7 @@ export async function render(main, { query = {} } = {}) {
     <div class="crumbs" id="sp-crumbs"></div>
     <div class="page-head"><div><h1>${t("spl.title")}</h1><p class="lede">${t("spl.lede")}</p></div></div>
     <div class="filters" id="sp-pick"></div>
+    <div id="sp-tabs"></div>
     <div class="filters" id="sp-views"></div>
     <div id="sp-body"></div>`;
   if (!withSplits.length) {
@@ -91,8 +92,8 @@ export async function render(main, { query = {} } = {}) {
       <label class="field"><span>${t("prov.circuit")}</span><select id="sp-c">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("spl.club")}</span><select id="sp-club" style="max-width:260px"><option value="">${t("f.allm")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select></label>`;
-    $("#sp-views").innerHTML = html`<div class="field"><span>${t("spl.tab")}</span>${seg("spw", VIEWS.map((v) => [v, t(`spl.tab.${v}`)]), view)}</div>
-      ${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
+    $("#sp-tabs").innerHTML = pageTabs(VIEWS.map((v) => [v, t(`spl.tab.${v}`)]), view);
+    $("#sp-views").innerHTML = html`${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
       ${view === "gaps" ? html`<label class="field"><span>${t("spl.graph")}</span><select id="sp-graph">${GRAPHS.map((g) => html`<option value="${g}" ${raw(g === graph ? "selected" : "")}>${t(`spl.graph.${g}`)}</option>`)}</select></label>
         ${graph === "gap" ? html`<label class="field"><span>${t("spl.ref")}</span><select id="sp-ref">${REFS.map((x) => html`<option value="${x}" ${raw(x === ref ? "selected" : "")}>${t(`spl.ref.${x}`)}</option>`)}</select></label>` : ""}
         ${graph === "gap" && ref === "runner" ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sp-rr" style="max-width:240px">${k.runners.filter((x) => x.splits)
@@ -106,7 +107,7 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
     $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
-    $$('[data-seg="spw"]').forEach((b) => b.addEventListener("click", () => { view = b.dataset.value; pickers(); draw(); }));
+    $$("#sp-tabs [data-ptab]").forEach((b) => b.addEventListener("click", () => { view = b.dataset.ptab; pickers(); draw(); }));
     $$('[data-seg="spv"]').forEach((b) => b.addEventListener("click", () => { ideal = b.dataset.value === "ideal"; pickers(); draw(); }));
     $("#sp-graph")?.addEventListener("change", (e) => { graph = e.target.value; pickers(); draw(); });
     $("#sp-ref")?.addEventListener("change", (e) => { ref = e.target.value; pickers(); draw(); });

@@ -936,7 +936,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .role-out { color: var(--ink-3); }
 /* Méthodes: tabs and slide-like panels (mx-) */
 /* a page's tabs (ui.pageTabs), as the Documentation's */
-.page-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-strong); margin: 0 0 18px; overflow-x: auto; scrollbar-width: thin; }
+.page-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border-strong); margin: 0 0 18px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .page-tabs button { appearance: none; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--ink-2);
   padding: 10px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; white-space: nowrap; }
 .page-tabs button:hover { color: var(--ink); }

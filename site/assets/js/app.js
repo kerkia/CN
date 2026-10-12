@@ -95,6 +95,7 @@ export const link = {
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
   territories: (q) => "#/reseau" + qstr({ ...q, vue: "territoires" }),
   stats: (q) => "#/reseau" + qstr({ ...q, vue: "stats" }),
+  ages: (q) => "#/reseau" + qstr({ ...q, vue: "ages" }),
 };
 function qstr(q) {
   if (!q) return "";

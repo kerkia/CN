@@ -11,7 +11,7 @@ import * as data from "../data.js";
 import { R, C, C_SCORE, C_CNJ15 } from "../data.js";
 import {
   methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag, scoreCell, subHead,
-  chartCard, bindChartCard, legend, tile, filterFold,
+  chartCard, bindChartCard, legend, tile, filterFold, pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
 import * as auth from "../auth.js";
 import { link, replaceQuery, terrainField } from "../app.js";
@@ -208,6 +208,9 @@ export async function render(main, { arg, query }) {
       st.mode === "runner" && r[C.lic] === st.runner && st.runner !== me?.lic ? "selected" : "",
       st.mode === "club" && data.clubParts(r[C.club]).code === st.club ? "selected" : "",
     ].join(" ");
+    // the circuit's results, then its two charts, as tabs (the one chosen stays from circuit to circuit)
+    const rtabs = [["resultats", t("co.tab.results")], ["score", t("co.tab.score")], ["cn", t("co.tab.cn")]];
+    const rtab = st.rtab || (st.rtab = tabFrom(rtabs, Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""))));
     pane.innerHTML = html`
       <div class="card-head">
         <div><button type="button" class="btn btn-ghost btn-sm back-to-list" id="back">← ${t("cs.back")}</button>
@@ -232,10 +235,12 @@ export async function render(main, { arg, query }) {
           <span class="tick" aria-hidden="true"></span>${k} <span class="dim num">${fmt(n)}</span></button>`)}
         ${st.cats.size ? html`<button type="button" class="btn btn-ghost btn-sm" id="cats-all">${t("cs.allCats")}</button>` : ""}
       </div></div>` : ""}
-      <div id="res-table"></div>
-      <div class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>
-      <div class="card-body">${chartCard({ id: "cvs", title: t("co.cnVsScore"), hint: t("co.cnVsScore.hint"), short: true,
+      <div class="card-body" style="padding-bottom:0">${pageTabs(rtabs, rtab)}</div>
+      <div data-panel="resultats"><div id="res-table"></div></div>
+      <div data-panel="score" class="card-body">${chartCard({ id: "sbp", title: t("co.scoreByPlace"), hint: t("co.scoreByPlace.hint"), short: true })}</div>
+      <div data-panel="cn" class="card-body">${chartCard({ id: "cvs", title: t("co.cnVsScore"), hint: t("co.cnVsScore.hint"), short: true,
         tools: seg("cnref", ["now", "race"].map((k) => [k, t(`co.cnRef.${k}`)]), st.cnRef) })}</div>`;
+    bindPageTabs(pane, rtabs, rtab, (k) => { st.rtab = k; });
     bindChartCard(pane, "sbp");
     bindChartCard(pane, "cvs");
     $$('[data-seg="cnref"]', pane).forEach((b) => b.addEventListener("click", () => { st.cnRef = b.dataset.value; drawResults(); }));

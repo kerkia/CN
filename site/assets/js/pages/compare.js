@@ -10,7 +10,7 @@ import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey, filterFold,
-  statusLabel,
+  statusLabel, pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
@@ -30,6 +30,8 @@ export async function render(main, { query }) {
   const from = () => (range === "all" ? null : addDays(end, -365 * Number(range)));
   const inWindow = (d) => !from() || d >= from();
 
+  const tabs = [["evolution", t("cp.tab.evolution")], ["bilan", t("cp.tab.summary")], ["duels", t("cp.tab.h2h")], ["progression", t("cp.tab.progress")]];
+  const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cp.title")}</h1><p class="lede">${t("cp.lede")}</p></div></div>
     <section class="card" style="margin-bottom:16px"><div class="card-body stack" style="gap:12px">
@@ -52,15 +54,16 @@ export async function render(main, { query }) {
       </div>
     </div></section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
-    <div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart"), tall: true })}</div>
-    <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
-      <div id="summary"></div></section>
-    <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.h2h")}</h2><div class="hint" id="h2h-hint"></div></div></div>
+    ${pageTabs(tabs, tab)}
+    <div data-panel="evolution"><div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart"), tall: true })}</div></div>
+    <div data-panel="bilan"><section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
+      <div id="summary"></div></section></div>
+    <div data-panel="duels"><section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.h2h")}</h2><div class="hint" id="h2h-hint"></div></div></div>
       <div class="card-body" id="h2h"></div>
       <div class="card-head" style="border-top:1px solid var(--border)"><div><h2>${t("cp.common")}</h2><div class="hint">${t("cp.common.hint")}</div></div>
         <div class="row" id="common-pick"></div></div>
-      <div id="common"></div></section>
-    <div>${chartCard({ id: "prog", title: t("pg.pct"), hint: t("cp.prog.hint") })}</div>`;
+      <div id="common"></div></section></div>
+    <div data-panel="progression"><div>${chartCard({ id: "prog", title: t("pg.pct"), hint: t("cp.prog.hint") })}</div></div>`;
   bindChartCard(main, "cmp");
   bindChartCard(main, "prog");
   bindRunnerSearch($("#cmp-search"), {
@@ -371,5 +374,6 @@ export async function render(main, { query }) {
     last = now;
     drawAll().then(syncPicker);
   });
+  bindPageTabs(main, tabs, tab);
   return { title: t("cp.title"), cleanup: unsubscribe };
 }
