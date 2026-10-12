@@ -18,7 +18,7 @@ import {
 
 // the page's tabs: the races, the CN over time, its calculation, the progression by age, the seasons, the map
 const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["calcul", "rn.tab.calc"],
-  ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"]];
+  ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"], ["reseau", "rn.tab.network"]];
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
 import { link, replaceQuery, terrainField } from "../app.js";
@@ -65,8 +65,7 @@ export async function render(main, { arg, query }) {
             .map((x) => `${t(`terrain.${x}`)} ${fmt(person.nBy[x])}`).join(" · ")})</span>
         </div>
       </div>
-      <div class="row"><button class="btn" type="button" id="cmp-btn"></button>
-        <a class="btn" href="${link.network(lic)}">${t("nw.title")}</a></div>
+      <div class="row"><button class="btn" type="button" id="cmp-btn"></button></div>
     </div>
     ${pageTabs(tabs, tab)}
     ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
@@ -126,7 +125,8 @@ export async function render(main, { arg, query }) {
     <div data-panel="carte">
     ${chartCard({ id: "rmap", title: t("rn.map"), hint: t("rn.map.hint"), tall: true, tools: html`<span id="rmap-tools"></span>` })}
     <p class="muted" id="rmap-note" style="font-size:12.5px;margin:8px 2px 0"></p>
-    </div>`;
+    </div>
+    <div data-panel="reseau"><div id="rn-net"></div></div>`;
   ["evo", "path", "pct", "curve", "rmap"].forEach((id) => bindChartCard(main, id));
 
   const cmpBtn = $("#cmp-btn");
@@ -718,7 +718,12 @@ export async function render(main, { arg, query }) {
   drawFilters();
   drawAll();
   // the map draws when its tab is first shown (it loads the outlines)
-  const showTab = bindPageTabs(main, tabs, tab, (k) => { if (k === "carte" && !mapDrawn) drawMap(); });
+  // the map and the network draw when their tab is first shown
+  let netDrawn = false;
+  const showTab = bindPageTabs(main, tabs, tab, async (k) => {
+    if (k === "carte" && !mapDrawn) drawMap();
+    if (k === "reseau" && !netDrawn) { netDrawn = true; (await import("./network.js")).ego($("#rn-net"), lic, query); }
+  });
   return { title: name };
 }
 

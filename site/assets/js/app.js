@@ -34,13 +34,12 @@ const PAGES = {
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
-const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin", "provisional", "splits"]);
+const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin", "provisional", "splits", "network", "live"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
 const ALL_TERRAIN_VIEWS = new Set(["stats", "territoires", "ages", "activite"]);     // ages, activite: old links to stats
-const allowsAllTerrains = (r) => r.route === "network"
-  && (!!r.arg || ALL_TERRAIN_VIEWS.has(r.query.vue) || (r.query.vue !== "meilleurs" && !!store.get().lastRunner));
+const allowsAllTerrains = (r) => r.route === "network" && ALL_TERRAIN_VIEWS.has(r.query.vue);
 /** The discipline of such a view: "For", "Spr", "VTT", "Ski", or "" for all of them. */
 export const viewTerrain = (query) => (store.TERRAINS.includes(query.t) ? query.t : "");
 
@@ -91,7 +90,8 @@ export const link = {
   clubCompare: () => "#/comparer-clubs",
   relays: (q) => "#/relais" + qstr(q),
   progression: (lic, q) => link.runner(lic, q),
-  network: (lic, q) => (lic ? `#/reseau/${encodeURIComponent(lic)}` : "#/reseau") + qstr(q),
+  // a runner's network: the « Réseau » tab of their page; without a runner, the best runners' network
+  network: (lic, q) => (lic ? link.runner(lic, { ...q, onglet: "reseau" }) : "#/reseau" + qstr({ ...q, vue: "meilleurs" })),
   networkLeaders: (q) => "#/reseau" + qstr({ ...q, vue: "meilleurs" }),
   territories: (q) => "#/reseau" + qstr({ ...q, vue: "territoires" }),
   stats: (q) => "#/reseau" + qstr({ ...q, vue: "stats" }),

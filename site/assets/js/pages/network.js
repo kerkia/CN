@@ -81,18 +81,20 @@ async function coRunnersIn(lic, season, terrain) {
 }
 
 // The Statistiques page: one head, its views as tabs, the view under them. A tab switches the view in place (the
-// address follows, the page around it stays), as the other pages' tabs do.
-const modeOf = (lic, query) => (lic ? "ego" : query.vue === "territoires" ? "territories" : query.vue === "ages" ? "ages"
-  : ["stats", "activite"].includes(query.vue) ? "stats" : query.vue === "meilleurs" || !store.get().lastRunner ? "leaders" : "ego");
+// address follows, the page around it stays), as the other pages' tabs do. A runner's network is a tab of the
+// Coureur page since 2026-10-12: #/reseau/<licence> leads there.
+const modeOf = (query) => (query.vue === "territoires" ? "territories" : query.vue === "ages" ? "ages"
+  : ["stats", "activite"].includes(query.vue) ? "stats" : "leaders");
 
 async function view(el, mode, lic, query) {
   if (mode === "territories") return (await import("./territory.js")).render(el, query);
   if (mode === "stats" || mode === "ages") return (await import("./stats.js")).render(el, query);   // « Activité »: merged
-  return mode === "ego" ? ego(el, lic || store.get().lastRunner, query) : global(el, query);
+  return global(el, query);
 }
 
 export async function render(main, { arg: lic, query }) {
-  const mode = modeOf(lic, query);
+  if (lic) { location.replace(link.network(lic, { s: query.s, k: query.k, l2: query.l2 })); return null; }
+  const mode = modeOf(query);
   main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.network")}</h1><p class="lede" id="page-lede"></p></div></div>
     ${modeSwitch(mode)}<div id="net-view"></div>`;
   const el = $("#net-view", main);
@@ -109,13 +111,13 @@ export async function render(main, { arg: lic, query }) {
 }
 
 // ---- around one runner ---------------------------------------------------------
-async function ego(main, lic, query) {
+/** Around one runner: the « Réseau » tab of the Coureur page (main: its panel), in the page's discipline. */
+export async function ego(main, lic, query) {
   const person = data.runner(lic);
   if (!person) { main.innerHTML = errorBox(t("err.notfound")); return; }
-  store.set({ lastRunner: lic });
   const season = seasonsDesc().includes(query.s) ? query.s : "";
-  const terrain = viewTerrain(query);                   // "" = both disciplines (site switch, ?t=)
-  const tq = terrain || null;
+  const terrain = store.get().terrain;                  // the page's discipline (its own selector)
+  const tq = null;
   const list = season ? await coRunnersIn(lic, season, terrain) : await data.coRunners(lic, terrain);
   let k = [10, 20, 30].includes(Number(query.k)) ? Number(query.k) : 20;
   let links2 = query.l2 !== "0";
@@ -123,14 +125,8 @@ async function ego(main, lic, query) {
   const name = displayName(person.nom);
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="${link.runner(lic)}">${name}</a><span>›</span><span>${t("nw.title")}</span></div>
-    ${netHead("ego", "", t("nw.lede.egoOf", { n: name }))}
-    <section class="card" style="margin-bottom:16px"><div class="card-body row">
-      ${runnerSearch("nw-search", t("nw.search"))}
-      <a class="btn btn-sm" href="${link.runner(lic)}">${t("pg.toRunner")}</a>
-    </div></section>
-    ${filterFold(html`<div class="filters" id="filters"></div>`)}
-    <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
+    <div class="filters" id="nw-filters" style="margin-bottom:16px"></div>
+    <div class="tiles" id="nw-tiles" style="margin-bottom:16px"></div>
     <div class="grid grid-main-side" style="margin-bottom:16px;align-items:start">
       ${chartCard({ id: "net", title: t("nw.graph"), hint: t("nw.graph.hint"), tall: true })}
       <section class="card"><div class="card-head"><div><h2>${t("nw.rivals")}</h2><div class="hint">${t("nw.rivals.hint")}</div></div></div>
@@ -138,11 +134,9 @@ async function ego(main, lic, query) {
     </div>
     <section class="card"><div class="card-head"><h2>${t("nw.list")}</h2></div><div id="list"></div></section>`;
   bindChartCard(main, "net");
-  bindRunnerSearch($("#nw-search"), { onPick: (l) => { location.hash = link.network(l, { t: tq }); } });
-  bindModeSwitch(main);
 
   if (!list.length) {
-    $("#filters").innerHTML = html`${terrainField()}${periodSelect(season)}`;
+    $("#nw-filters").innerHTML = html`${periodSelect(season)}`;
     $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, t: tq }); });
     $("#net").innerHTML = html`<div class="empty">${t("nw.none")}</div>`;
     return { title: `${t("nw.title")} · ${name}` };
@@ -166,15 +160,14 @@ async function ego(main, lic, query) {
   const prey = surest((x) => x.ahead, (x) => x.behind);
   const nemesis = surest((x) => x.behind, (x) => x.ahead);
   const bilan = (x) => `${fmt(x.ahead)} – ${fmt(x.behind)} ${t("nw.over")} ${fmt(x.shared)}`;
-  $("#tiles").innerHTML = html`
+  $("#nw-tiles").innerHTML = html`
     ${tile(t("nw.often"), often.name, `${fmt(often.shared)} ${t("nw.shared")}`)}
     ${tile(t("nw.prey"), prey ? prey.name : "—", prey ? bilan(prey) : t("nw.noPrey"))}
     ${tile(t("nw.nemesis"), nemesis ? nemesis.name : "—", nemesis ? bilan(nemesis) : t("nw.noNemesis"))}
     ${tile(t("nw.sameClub"), fmt(rows.filter((x) => x.code && x.code === myClub).length), `${t("nw.amongTop")} ${fmt(rows.length)}`)}`;
 
   function drawFilters() {
-    $("#filters").innerHTML = html`${terrainField()}
-      ${periodSelect(season)}
+    $("#nw-filters").innerHTML = html`${periodSelect(season)}
       <div class="field"><span>${t("nw.k")}</span>${seg("k", [["10", "10"], ["20", "20"], ["30", "30"]], String(k))}</div>
       <label class="checkline"><input type="checkbox" id="l2" ${raw(links2 ? "checked" : "")}>${t("nw.links2")}</label>`;
     $$('[data-seg="k"]').forEach((b) => b.addEventListener("click", () => { k = Number(b.dataset.value); drawFilters(); draw(); }));

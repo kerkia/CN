@@ -9,7 +9,7 @@ import * as auth from "../auth.js";
 import { link } from "../app.js";
 import { setLede } from "../ui.js";
 
-const MODES = ["ego", "leaders", "territories", "stats", "ages"];
+const MODES = ["leaders", "territories", "stats", "ages"];
 
 /** current: "ego" | "leaders" | "territories" | "stats" | "ages" — the page's tabs (ui.pageTabs' look). */
 export const modeSwitch = (current) => html`<nav class="page-tabs" role="tablist" aria-label="${t("nw.mode")}">
@@ -18,15 +18,11 @@ export const modeSwitch = (current) => html`<nav class="page-tabs" role="tablist
 /** A view's text, shown beside the page's title (network.render's head); nothing in the view itself. */
 export const netHead = (current, title, lede) => { setLede(lede); return ""; };
 
-/** A view's address: the views counting both disciplines keep the one chosen (?t=); « around one runner »: the
- *  last runner looked at, else the logged-in one. */
+/** A view's address: the views counting both disciplines keep the one chosen (?t=). */
 export function modeHref(m) {
   const sp = new URLSearchParams(location.hash.split("?")[1] || "").get("t");
-  return m === "leaders" ? link.networkLeaders()
-    : m === "territories" ? link.territories({ t: sp })
-    : m === "stats" ? link.stats({ t: sp })
-    : m === "ages" ? link.ages({ t: sp })
-    : link.network(store.get().lastRunner || auth.session()?.lic, { t: sp });
+  return m === "territories" ? link.territories({ t: sp }) : m === "stats" ? link.stats({ t: sp })
+    : m === "ages" ? link.ages({ t: sp }) : link.networkLeaders();
 }
 
 /** The tabs are bound once by the page (network.render); the views' own call does nothing. */

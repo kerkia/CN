@@ -332,8 +332,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Tabs, not long pages** (owner, 2026-10-12): a page with several sections shows them as tabs (`ui.pageTabs`,
   `tabFrom`, `bindPageTabs`: panels `data-panel`, the tab in the address as `?onglet=`, kept by `replaceQuery`; charts
   drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
-  of the races per département), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
-  classées; Statistiques' views (`netmodes.js`: Réseau d'un coureur, des meilleurs, Territoires, Participation, Âges)
+  of the races per département —, Réseau — the runner's network, `network.ego`, moved from Statistiques on 2026-10-12;
+  `link.network(lic)` and the old #/reseau/<licence> open it), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
+  classées; Statistiques' views (`netmodes.js`: Réseau des meilleurs, Territoires, Participation, Âges)
   and Temps intermédiaires' views use the same tab bar; Statistiques and Clubs switch their views in place under one head
   (`network.render`, `netmodes.modeHref`; `clubs.render`: Clubs, Ligues, Comparer des clubs, Simulateur de relais — the
   routes `clubcompare` and `relays` load clubs.js; the address follows by pushState). The tab bar is always right under the
