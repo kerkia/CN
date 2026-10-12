@@ -24,6 +24,12 @@ const sourceName = (d) => {
     : d.by === "category" ? "par catégorie" : "par circuit";
   return `${who} · ${what}`;
 };
+/** A runner's club: the file's, else — a file without clubs — that of the runner recognised, from the CN data. */
+const clubOf = (r) => {
+  if (r.club_code) return { code: r.club_code, name: r.club || data.clubName(r.club_code) };
+  const own = r.lic ? data.runner(r.lic)?.club : null, code = own ? data.clubParts(own).code : null;
+  return code ? { code, name: data.clubName(own) } : { code: null, name: r.club || "" };
+};
 const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */
 const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${
@@ -262,9 +268,9 @@ async function detail(main, idx, query) {
             : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`) },
         { key: "cat", label: t("rk.col.cat"), defaultDir: 1, sort: (r) => r.category || r.catCn,
           render: (r) => r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "") },
-        { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => r.club_code || r.club,
-          render: (r) => (r.club_code ? html`<a href="${link.club(r.club_code)}" title="${r.club || ""}">${r.club_code}</a>`
-            : html`<span style="font-size:12.5px">${r.club || ""}</span>`) },
+        { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => clubOf(r).code || r.club,
+          render: (r) => { const c = clubOf(r);
+            return c.code ? html`<a href="${link.club(c.code)}" title="${c.name}">${c.code}</a>` : html`<span style="font-size:12.5px">${r.club || ""}</span>`; } },
         { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
           render: (r) => (ok(r) ? clock(r.time_s) : "") },
         ...(scored ? M.flatMap((m) => [{
@@ -299,7 +305,7 @@ async function detail(main, idx, query) {
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
         <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
-        <td style="font-size:12.5px">${r.club || ""}</td>
+        <td style="font-size:12.5px">${clubOf(r).code ? html`<a href="${link.club(clubOf(r).code)}" title="${clubOf(r).name}">${clubOf(r).code}</a>` : r.club || ""}</td>
         <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
         <td class="r num">${cn(r) ? fmt(cn(r)) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table></div>`;
