@@ -25,7 +25,7 @@ export async function render(main, { query = {} } = {}) {
   let di = 0, ci = 0, publishing = query.publier === "1", sessionNote = "";
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/recemment">${t("prov.title")}</a><span>›</span><span>${t("dep.title")}</span></div>
+    <div class="crumbs"><a href="#/resultats">${t("prov.title")}</a><span>›</span><span>${t("dep.title")}</span></div>
     <div class="page-head"><div><h1>${t("dep.title")}</h1><p class="lede">${t("dep.lede")}</p></div></div>
     <ol class="dep-steps" id="dep-steps"></ol>
     <div id="dep-body"></div>

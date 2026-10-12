@@ -12,7 +12,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/` | Scraper (`fetcher`, `crawler`, `parser`, `store`, `updater`), agenda scraper (`agenda.py`), and the CN engine (`cn.py` = formulas, `cn_engine.py` = methods and computation, `cn_schema.sql`) |
 | `update.py` | The one entry point for updates: fetch → recompute → rebuild site data → deploy → mail digests. Also holds the one-off **migrations** |
 | `build_site.py`, `site_extras.py`, `site_io.py` | Turn the database into the static JSON under `site/data/` (runner buckets `r/`, races `c/`, month-end snapshots `snap/`, clubs, network, `meta.json`) |
-| `ffco_scraper/prov/` | Provisional results (« Récemment »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
+| `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited) |
@@ -125,7 +125,7 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
 
-## Provisional results (« Récemment »)
+## Provisional results (« Résultats »)
 
 Organisers publish results (and often split times) on race day or the next, days before FFCO. `ffco_scraper/prov`
 collects them for the races of the agenda (upcoming ones are kept, with their website and place, since the agenda
@@ -189,8 +189,8 @@ WinSplits / Orientation Data, Helga, liveresultat last (live results are not cor
 under half the runners of the fullest one drops. A split list without start times takes them, by name, from another
 document of the race (`run.share_starts`, for « Groupes »). **Start lists** (2026-10-10): for the races of the next 7 days, the liveresultat
 competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat.read(startlist=True)`: status
-"start"); a coming race is not listed on « Récemment » (index `soon`, `startlist`, `agenda_id`): its start list is reached from « Bientôt », and its page
-shows start time, current CN Top / official and the expected place; « Bientôt » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
+"start"); a coming race is not listed on « Résultats » (index `soon`, `startlist`, `agenda_id`): its start list is reached from « Agenda », and its page
+shows start time, current CN Top / official and the expected place; « Agenda » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
 the names are members-only and not read. O'Cap's export skips the coming races. Organisers' sites too (`run.site_start_lists`,
 `ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
@@ -217,7 +217,7 @@ categories of unknown circuit stay unscored. Such a list also gets a view by cir
 places recomputed; the race page's « par circuit / par catégorie »); « by category » is decided at build time from the
 classes (an older reading may say otherwise). The results pass keeps announcements too (races already run). A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08; three steps since
-2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Récemment ») — 1. the file (IOF XML best, OE/MeOS
+2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Résultats ») — 1. the file (IOF XML best, OE/MeOS
 HTML, PDF, .zip/.gz; 30 MB), with what to export; 2. it is **read in the browser** (`localparse.js`, a port of the
 server's iofxml / oe_html / meos_html parsers giving the same documents — keep them in step; checked identical on
 real files) and shown: summary, results by circuit, and every « Temps intermédiaires » tab on it
@@ -231,8 +231,8 @@ the administrators, deletes files older than 60 days, and, when the Pages secret
 fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
 every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources/upload.py` turns each upload into
 a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
-is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Récemment » (`#/recemment`, in the
-main menu after « Bientôt », the agenda; `#/provisoires` still works) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
+is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Résultats » (`#/resultats`, « Récemment » until 2026-10-12, in the
+menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still work) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
 « Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
@@ -304,9 +304,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the Hungarian algorithm (checked against brute force); clubs that cannot beat the shown teams are skipped by a bound.
   Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner.
 - Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
-  (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses, Récemment, En direct —
+  (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
+- Navigation (owner, 2026-10-12): two drop-down groups — « Classement national » (Coureur, Classement, Courses classées
+  = `#/courses`, Comparer, Clubs, Réseau) and « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »;
+  En direct) — and the menu under one's name (Ma page, Documentation = `#/methodes`, Réglages, Nous écrire, Administration,
+  Déconnexion); on a phone the menu button lists both groups under headings (`app.renderHeader`).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).
@@ -326,7 +330,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   --remote` (owner's go-ahead) before deploying code that needs them.
   New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
-  « En direct » (`#/direct`, `pages/live.js`; menu: Récemment, En direct, Bientôt) only for accounts with the
+  « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) only for accounts with the
   `users.live` right (migration 0007, admin page checkbox; granted at first to the administrator and one tester by a
   one-off remote UPDATE — names never go into the public repo): liveresultat's races from O'Cap's live server
   (`LIVE` = https://ocap.pages.dev: its `/api/live/list`, open to other sites, and `/ws/<race>`), so live traffic

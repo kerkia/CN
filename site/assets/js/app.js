@@ -26,7 +26,7 @@ const PAGES = {
   settings: () => import("./pages/settings.js"),
   contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
-  provisional: () => import("./pages/provisional.js"),   // « Récemment »: the organisers' results of the last 60 days
+  provisional: () => import("./pages/provisional.js"),   // « Résultats »: the organisers' results of the last 60 days
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
@@ -69,7 +69,7 @@ function parseHash() {
     : head === "reglages" ? "settings"
     : head === "contact" ? "contact"
     : head === "admin" ? "admin"
-    : head === "recemment" || head === "provisoires" ? "provisional"     // #/provisoires: the pilot's old address
+    : head === "resultats" || head === "recemment" || head === "provisoires" ? "provisional"     // #/recemment, #/provisoires: old addresses
     : head === "temps-inter" ? "splits"
     : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
@@ -139,24 +139,31 @@ document.addEventListener("change", (e) => {
 });
 
 // ---- header -------------------------------------------------------------
+let menusBound = false;
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
   // logged in, the home page (the login page) is not needed: the brand leads to one's own page
-  const nav = me ? [
-    ["runner", "#/coureur", t("nav.runner")],
-    ["ranking", "#/classement", t("nav.ranking")],
-    ["courses", "#/courses", t("nav.courses")],
-    ["compare", "#/comparer", t("nav.compare")],
-    ["clubs", "#/clubs", t("nav.clubs")],
-    ["network", "#/reseau", t("nav.network")],
-    ["methods", "#/methodes", t("nav.methods")],
-    ["provisional", "#/recemment", t("nav.recent")],
-    ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
-    ["agenda", "#/agenda", t("nav.agenda")],
+  // two groups (owner, 2026-10-12): the national ranking's analyses, and the races — coming, run, live; the
+  // documentation, settings, contact and logout under one's name
+  const groups = me ? [
+    ["cn", t("nav.g.cn"), [
+      ["runner", "#/coureur", t("nav.runner")],
+      ["ranking", "#/classement", t("nav.ranking")],
+      ["courses", "#/courses", t("nav.coursesCn")],
+      ["compare", "#/comparer", t("nav.compare")],
+      ["clubs", "#/clubs", t("nav.clubs")],
+      ["network", "#/reseau", t("nav.network")],
+    ]],
+    ["races", t("nav.g.races"), [
+      ["agenda", "#/agenda", t("nav.agenda")],
+      ["provisional", "#/resultats", t("nav.recent")],
+      ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
+    ]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
-    : route === "splits" ? "provisional" : route;
+    : route === "splits" || route === "deposit" ? "provisional" : route;
+  const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
   $("#topbar").innerHTML = html`<div class="topbar-inner${me ? "" : " guest"}">
@@ -172,20 +179,29 @@ function renderHeader(r) {
       <span class="brand-name">${SITE}</span>
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
-      ${nav.map(([k, href, label]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${label}${
-        k === "compare" ? html`<span class="nav-count" id="nav-cmp" hidden></span>` : ""}</a>`)}
+      ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
+        <button type="button" class="nav-top" aria-expanded="false" ${raw(items.some(([k]) => k === current) ? 'aria-current="true"' : "")}>${label}${
+          g === "cn" ? html`<span class="nav-count" id="nav-cmp-top" hidden></span>` : ""}${caret}</button>
+        <div class="nav-menu">${items.map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${
+          k === "compare" ? html`<span class="nav-count" id="nav-cmp" hidden></span>` : ""}</a>`)}</div>
+      </div>`)}
     </nav>
     <div class="topbar-tools">
       ${me ? html`
       <button class="icon-btn" type="button" id="theme-btn" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
       </button>
-      <div class="user-chip">
-        <a href="${link.runner(me.lic)}" class="user-name" title="${t("auth.myPage")}">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</a>
-        <div class="user-links">
-          ${me.admin ? html`<a href="#/admin">${t("admin.link")}</a>` : ""}
-          <a href="#/reglages">${t("st.link")}</a>
-          <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}">${t("ct.link.menu")}</a>
+      <div class="nav-group user-menu" data-group="me">
+        <button type="button" class="nav-top user-btn" aria-expanded="false" aria-label="${t("auth.menu")}"
+          ${raw(["methods", "settings", "contact", "admin"].includes(route) ? 'aria-current="true"' : "")}>
+          <span class="user-name">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</span>
+          <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
+        <div class="nav-menu">
+          <a href="${link.runner(me.lic)}" ${raw(route === "runner" && parseHash().arg === me.lic ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>
+          <a href="#/methodes" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
+          <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
+          <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
+          ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
       </div>` : html`
@@ -202,6 +218,30 @@ function renderHeader(r) {
       </div>`}
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
+  // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice
+  const closeMenus = (except) => $$(".nav-group.open").forEach((g) => {
+    if (g === except) return;
+    g.classList.remove("open");
+    $(".nav-top", g).setAttribute("aria-expanded", "false");
+  });
+  $$(".nav-group > .nav-top").forEach((b) => b.addEventListener("click", () => {
+    const g = b.parentElement, open = !g.classList.contains("open");
+    closeMenus(g);
+    g.classList.toggle("open", open);
+    b.setAttribute("aria-expanded", String(open));
+    if (open) $(".nav-menu a", g)?.focus({ preventScroll: true });
+  }));
+  $$(".nav-menu a").forEach((a) => a.addEventListener("click", () => { closeMenus(); $("#nav")?.classList.remove("open"); }));
+  if (!menusBound) {
+    menusBound = true;
+    document.addEventListener("click", (e) => { if (!e.target.closest(".nav-group")) closeMenus(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const g = $(".nav-group.open");
+      closeMenus();
+      if (g) $(".nav-top", g).focus();
+    });
+  }
   $("#theme-btn").addEventListener("click", () => {
     const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
     const next = dark ? "light" : "dark";
@@ -277,12 +317,14 @@ function renderFooter() {
 
 // ---- the runners being compared: their number next to « Comparer » ------------------
 function renderCompareCount() {
-  const el = $("#nav-cmp");
-  if (!el) return;
   const n = store.get().compare.length;
-  el.textContent = n ? String(n) : "";
-  el.hidden = !n;
-  el.title = n ? `${n} ${t("cp.count")}` : "";
+  // next to « Comparer », and on its group's button (the menu is closed)
+  for (const el of [$("#nav-cmp"), $("#nav-cmp-top")]) {
+    if (!el) continue;
+    el.textContent = n ? String(n) : "";
+    el.hidden = !n;
+    el.title = n ? `${n} ${t("cp.count")}` : "";
+  }
 }
 
 // ---- routing ---------------------------------------------------------------
@@ -317,7 +359,7 @@ async function route_() {
   store.setAnalyst(!!who?.analyst);
   // « En direct » only for the accounts allowed to see it
   if (r.route === "live" && !who?.live) {
-    history.replaceState(null, "", "#/recemment");
+    history.replaceState(null, "", "#/resultats");
     r = parseHash();
   }
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch

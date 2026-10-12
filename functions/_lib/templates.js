@@ -62,10 +62,10 @@ export function uploadMail(env, user, up) {
     `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
   return {
     subject: `Résultats déposés : ${up.race} — O'CN`,
-    html: wrap(env, "Résultats déposés", `<p>Un fichier de résultats vient d'être déposé sur « Récemment ». Il est publié
+    html: wrap(env, "Résultats déposés", `<p>Un fichier de résultats vient d'être déposé sur « Résultats ». Il est publié
 au prochain passage de la collecte.</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Voir les dépôts")}`),
-    text: `Un fichier de résultats vient d'être déposé sur « Récemment ».
+    text: `Un fichier de résultats vient d'être déposé sur « Résultats ».
 ${lines.join("\n")}
 
 Les dépôts (pour en retirer un) : ${url}`,

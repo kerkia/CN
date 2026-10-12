@@ -90,7 +90,7 @@ export async function render(main, { query = {} } = {}) {
     const sites = r.ok && (r.headers.get("content-type") || "").includes("json") ? (await r.json()).sites : [];
     const day = (iso) => (iso ? fmtDate(iso.slice(0, 10), "short") : "—");
     const race = (c) => (c.name
-      ? html`<div><a href="#/recemment?course=${encodeURIComponent(c.key)}">${c.name}</a> <span class="muted">${fmtDate(c.date, "short")}</span></div>`
+      ? html`<div><a href="#/resultats?course=${encodeURIComponent(c.key)}">${c.name}</a> <span class="muted">${fmtDate(c.date, "short")}</span></div>`
       : html`<div class="muted">${c.key}</div>`);
     box.innerHTML = sites.length ? html`<table class="data compact"><thead><tr><th>${t("ad.st.site")}</th><th>${t("ad.st.kind")}</th>
       <th>${t("ad.st.races")}</th><th class="r">${t("ad.st.hits")}</th><th>${t("ad.st.seen")}</th></tr></thead>
@@ -113,7 +113,7 @@ export async function render(main, { query = {} } = {}) {
     const r = await fetch("api/admin/uploads", { credentials: "same-origin", cache: "no-store" });
     const list = r.ok ? (await r.json()).uploads : [];
     const raceOf = (u) => {
-      if (u.race_key) return html`<a href="#/recemment?course=${encodeURIComponent(u.race_key)}">${u.race}</a>`;
+      if (u.race_key) return html`<a href="#/resultats?course=${encodeURIComponent(u.race_key)}">${u.race}</a>`;
       let n = {};
       try { n = JSON.parse(u.race); } catch (e) { /* a label */ }
       return html`${n.name || u.race} <span class="muted">(${n.date ? fmtDate(n.date, "short") : ""} · ${t("ad.up.added")})</span>`;

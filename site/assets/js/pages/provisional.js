@@ -128,7 +128,7 @@ function list(main, idx, query) {
       <th>FFCO</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(r.docs ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/recemment?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
+        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
@@ -184,7 +184,7 @@ async function detail(main, idx, query) {
 
   main.innerHTML = html`
     <div class="crumbs">${race.date_iso > new Date().toISOString().slice(0, 10)
-      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/recemment">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
+      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/resultats">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
       <div class="row" style="gap:8px"><a class="btn btn-sm" href="#/deposer?course=${encodeURIComponent(race.key)}">${t("up.open")}</a>

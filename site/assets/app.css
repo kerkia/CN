@@ -136,13 +136,37 @@ p { margin: 0; }
 .brand-mark { width: 30px; height: 30px; flex: none; }
 .brand-name { font-size: 16px; letter-spacing: -0.01em; white-space: nowrap; line-height: 1.2; }
 .nav { display: flex; gap: 2px; }
-.nav a {
-  color: var(--ink-2); padding: 7px 12px; border-radius: 8px; font-weight: 550; font-size: 14px;
+/* a group's button and its drop-down menu (also the menu under one's name) */
+.nav-group { position: relative; }
+.nav-top {
+  display: inline-flex; align-items: center; gap: 6px; position: relative; font: inherit; cursor: pointer;
+  color: var(--ink-2); background: none; border: 0; padding: 7px 12px; border-radius: 8px; font-weight: 550; font-size: 14px;
 }
-.nav a:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
-.nav a[aria-current="page"] { background: var(--accent-wash); color: var(--ink); }
-/* the number of runners being compared, next to « Comparer » */
+.nav-top:hover, .nav-group.open > .nav-top { background: var(--surface-2); color: var(--ink); }
+.nav-top[aria-current="true"] { background: var(--accent-wash); color: var(--ink); }
+.nav-top .caret { color: var(--ink-3); transition: transform .15s; }
+.nav-group.open > .nav-top .caret { transform: rotate(180deg); }
+.nav-menu {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 210px; flex-direction: column; gap: 1px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; box-shadow: var(--shadow-pop);
+}
+.nav-group.open > .nav-menu { display: flex; }
+.nav-menu a, .nav-menu button {
+  display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; cursor: pointer; background: none; border: 0;
+  color: var(--ink-2); padding: 7px 10px; border-radius: 7px; font-weight: 550; font-size: 14px; white-space: nowrap;
+}
+.nav-menu a:hover, .nav-menu button:hover, .nav-menu a:focus-visible { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+.nav-menu a[aria-current="page"] { background: var(--accent-wash); color: var(--ink); }
+.nav-menu button#logout-btn { border-top: 1px solid var(--grid); border-radius: 0 0 7px 7px; margin-top: 4px; padding-top: 9px; }
+.user-menu .nav-menu { left: auto; right: 0; }
+.user-btn { padding: 4px 8px; }
+.user-btn .user-name { display: flex; flex-direction: column; align-items: flex-start; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }
+.user-btn .user-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.user-btn .user-icon { display: none; }
+@media (max-width: 640px) { .user-btn .user-name { display: none; } .user-btn .user-icon { display: block; } }
+/* the number of runners being compared, next to « Comparer » and on its group */
 .nav a:has(.nav-count) { position: relative; }
+.nav-menu a .nav-count { position: static; margin-left: auto; }
 .nav-count { position: absolute; top: -3px; right: -2px; display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 10.5px; font-weight: 700; line-height: 1; pointer-events: none; }
 .nav-count[hidden] { display: none; }
@@ -462,6 +486,11 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
     box-shadow: var(--shadow-pop);
   }
   .nav.open { display: flex; }
+  /* the menu button's panel: each group's name, then its pages (no drop-down) */
+  .nav .nav-group:not(.user-menu) > .nav-top { pointer-events: none; padding: 10px 10px 4px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--ink-3); background: none; }
+  .nav .nav-group:not(.user-menu) > .nav-top .caret, .nav .nav-group:not(.user-menu) > .nav-top .nav-count { display: none; }
+  .nav .nav-group:not(.user-menu) > .nav-menu { display: flex; position: static; box-shadow: none; border: 0; padding: 0 0 4px; min-width: 0; background: none; }
   .nav a:has(.nav-count) { display: flex; align-items: center; gap: 8px; }
   .nav .nav-count { position: static; }   /* the menu: just after the label */
 }

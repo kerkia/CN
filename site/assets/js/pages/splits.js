@@ -80,10 +80,10 @@ export async function render(main, { query = {} } = {}) {
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
     $("#sp-crumbs").innerHTML = key === local.LOCAL
-      ? html`<a href="#/recemment">${t("prov.title")}</a><span>›</span><a href="#/deposer">${t("dep.title")}</a><span>›</span>
+      ? html`<a href="#/resultats">${t("prov.title")}</a><span>›</span><a href="#/deposer">${t("dep.title")}</a><span>›</span>
         <span>${r?.name || ""}</span><span>›</span><span>${t("spl.title")}</span>`
-      : html`<a href="#/recemment">${t("prov.title")}</a><span>›</span>
-      <a href="#/recemment?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
+      : html`<a href="#/resultats">${t("prov.title")}</a><span>›</span>
+      <a href="#/resultats?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
     $("#sp-pick").innerHTML = html`
       ${key === local.LOCAL ? html`<div class="field"><span>${t("dep.file")}</span><span class="pill">${r?.name || ""}</span></div>`
         : html`<label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>`}

@@ -108,7 +108,7 @@ export function publishCard(container, { races, preset = "", onDone = () => {} }
       try { r = JSON.parse(x.responseText); } catch (e) { /* not JSON */ }
       if (x.status === 200 && r.ok) {
         msg.className = "notice ok";
-        msg.innerHTML = html`${r.soon ? t("up.done.soon") : t("up.done.later")} <a href="#/recemment">${t("prov.title")} →</a>`;
+        msg.innerHTML = html`${r.soon ? t("up.done.soon") : t("up.done.later")} <a href="#/resultats">${t("prov.title")} →</a>`;
         onDone(body);
         return;
       }

@@ -259,7 +259,7 @@ export async function render(main, { query }) {
   function startBox(e) {
     const key = starts.get(String(e.id));
     return key ? html`<div class="reg open"><div class="reg-title">Liste de départ publiée</div>
-      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/recemment?course=${encodeURIComponent(key)}">Horaires de départ →</a>
+      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">Horaires de départ →</a>
       <span class="dim" style="font-size:12px">avec le CN de chacun et sa place attendue</span></p></div>` : "";
   }
 
