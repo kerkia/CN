@@ -75,12 +75,33 @@ def _races_by_licence(db: Path, ids: list[int], licences: set[str]) -> dict[str,
     return out
 
 
+CATCHUP = paths.DATA_DIR / "notify.catchup"     # (once: see run)
+CATCHUP_DAYS = 21
+
+
+def _catch_up(db: Path) -> None:
+    """Once: the competitions of the last CATCHUP_DAYS days go back to the pending list. Until 2026-10-12 the update
+    runs' secret did not match the site's and the pending list was not kept between runs: no digest was ever sent.
+    (The site never mails a competition twice to one account: « notified ».)"""
+    if CATCHUP.exists():
+        return
+    con = sqlite3.connect(db)
+    try:
+        ids = {r[0] for r in con.execute("SELECT course_id FROM competitions WHERE date_iso >= ?",
+                                         ((date.today() - timedelta(days=CATCHUP_DAYS)).isoformat(),))}
+    finally:
+        con.close()
+    old = set(json.loads(PENDING.read_text())) if PENDING.exists() else set()
+    PENDING.write_text(json.dumps(sorted(old | {int(i) for i in ids})))
+
+
 def run(db: Path) -> None:
     """Announce the pending competitions, then drain the mail queue. Never raises."""
     if not _secret():
         print("5. notify: no NOTIFY_SECRET — skipped")
         return
     try:
+        _catch_up(db)
         ids = sorted(json.loads(PENDING.read_text())) if PENDING.exists() else []
         items: list[dict] = []
         if ids:
@@ -97,6 +118,7 @@ def run(db: Path) -> None:
             res = _call("POST", {"items": []})
             sent += res["sent"]
         PENDING.unlink(missing_ok=True)
+        CATCHUP.write_text(date.today().isoformat())
         if ids or sent or res["remaining"]:
             print(f"5. notify: {len(ids)} competitions, {len(items)} subscribed runners, {queued} digests queued, "
                   f"{sent} e-mails sent, {res['remaining']} waiting")

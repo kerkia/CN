@@ -28,6 +28,10 @@ DB_FILE = "db.sqlite3.zst"
 SITE_FILE = "site-state.tar.zst"
 NAMES = paths.CACHE / "reference_names.json"
 PENDING = paths.DATA_DIR / "deploy.pending"
+# the competitions not yet announced to subscribers (notify.py): kept from run to run, so that a failed call to the
+# site (or a run stopped before it) does not lose them
+NOTIFY_PENDING = paths.DATA_DIR / "notify.pending.json"
+NOTIFY_DONE = paths.DATA_DIR / "notify.catchup"
 
 
 def pack(out: Path) -> None:
@@ -42,6 +46,9 @@ def pack(out: Path) -> None:
             tar.add(NAMES, arcname="cache/reference_names.json")
         if PENDING.exists():
             tar.add(PENDING, arcname="deploy.pending")
+        for f in (NOTIFY_PENDING, NOTIFY_DONE):
+            if f.exists():
+                tar.add(f, arcname=f.name)
     sizes = ", ".join(f"{p.name} {p.stat().st_size / 2**20:.0f} MiB" for p in (out / DB_FILE, out / SITE_FILE))
     print(f"packed in {time.monotonic() - t0:.0f}s: {sizes}")
 
