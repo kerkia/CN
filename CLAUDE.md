@@ -303,6 +303,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the 5 best) total the sum of the reference times. Best team exact: every distinct matching of criteria to legs, then
   the Hungarian algorithm (checked against brute force); clubs that cannot beat the shown teams are skipped by a bound.
   Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner.
+- Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
+  (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses, Récemment, En direct —
+  share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
+  coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).

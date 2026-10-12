@@ -10,7 +10,7 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { R, C, C_SCORE, C_CNJ15 } from "../data.js";
 import {
-  methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag,
+  methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag, scoreCell, subHead,
   chartCard, bindChartCard, legend, tile, filterFold,
 } from "../ui.js";
 import * as auth from "../auth.js";
@@ -267,20 +267,13 @@ export async function render(main, { arg, query }) {
           return code ? html`<a href="${link.club(code)}" title="${data.clubName(x.r[C.club])}">${code}</a>` : x.r[C.club] || "";
         } },
         { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[C.time], defaultDir: 1, render: (x) => fmtTime(x.r[C.time]) },
+        // per method: the CN, then the score with its gap to that CN (sorted by the gap: by score is by place)
         ...methods.flatMap((m) => [{
-          key: `s_${m}`, label: html`${t("rn.score")} ${methodShort(m)}`, align: "r", cls: "num",
-          sort: (x) => x.r[SCORE[m]], render: (x) => (x.r[SCORE[m]] ? fmt(x.r[SCORE[m]]) : html`<span class="dim">—</span>`),
-        }, {
-          key: `cn_${m}`, label: html`${t(`co.cnCol.${st.cnRef}`)} ${methodShort(m)}`, align: "r", cls: "num",
+          key: `cn_${m}`, label: subHead(`CN ${methodShort(m)}`, t(`co.cnSub.${st.cnRef}`)), align: "r", cls: "num",
           sort: (x) => cnOf(m, x.r), render: (x) => { const cn = cnOf(m, x.r); return cn ? fmt(cn) : html`<span class="dim">—</span>`; },
         }, {
-          key: `g_${m}`, label: html`${t("co.gap")} ${methodShort(m)}`, align: "r", cls: "num",
-          sort: (x) => gap(x, m),
-          render: (x) => {
-            const g = gap(x, m);
-            return g == null ? html`<span class="dim">—</span>`
-              : html`<span class="${g > 0 ? "delta-up" : g < 0 ? "delta-down" : ""}">${g > 0 ? "▲ +" : g < 0 ? "▼ " : ""}${fmt(g)}</span>`;
-          },
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(`${t("rn.score")} ${methodShort(m)}`, t("res.gap"))}</span>`, align: "r", cls: "num",
+          sort: (x) => gap(x, m), render: (x) => scoreCell(x.r[C.place] ? x.r[SCORE[m]] || null : null, cnOf(m, x.r)),
         }]),
       ],
     });

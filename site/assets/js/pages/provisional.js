@@ -8,7 +8,7 @@ import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available } from "../store.js";
-import { methodShort, methodKey, seg, runnerSearch, bindRunnerSearch, filterFold } from "../ui.js";
+import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
@@ -192,7 +192,7 @@ async function detail(main, idx, query) {
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">FFCO ↗</a>` : ""}</div></div>
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
-      <div class="hint" id="pv-class-hint"></div></div></div><div class="table-wrap" id="pv-class"></div></section>
+      <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
       <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
     ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources")}</h2></summary>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
@@ -243,27 +243,41 @@ async function detail(main, idx, query) {
         .map((m) => `${methodShort(m)} ${fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w2" ? "fair2" : m])}`).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category" || !!k.values;
-    const published = k.runners.some((r) => r.ffco);
-    // one cell per method: the provisional CN J-15 → race score → CN after; below, once the race is published, the
-    // same method's published race score → CN after (FFCO's for the official method, the site's for the others)
-    const gap = (a, b) => (a == null || b == null || a === b ? "" : html` <span style="color:var(--bad)">(${a > b ? "+" : "−"}${fmt(Math.abs(a - b))})</span>`);
-    const cell = (r, m) => {
-      const p = r.ffco?.[m];
-      return html`<td class="r num" style="white-space:nowrap">${r.scores?.[m] != null
-        ? html`<span class="muted" style="font-size:11.5px">${fmt(r.cnj15?.[m])} → </span><b>${fmt(r.scores[m])}</b><span class="muted" style="font-size:11.5px"> → ${fmt(r.cnAfter?.[m])}</span>` : "—"}
-        ${p ? html`<div class="muted" style="font-size:11.5px">${t("prov.pub")} ${fmt(p.score)}${gap(r.scores?.[m], p.score)} → ${fmt(p.cn)}</div>` : ""}</td>`;
+    // the same table as a race's on « Courses »: per method the CN J-15, then the score with its gap to that CN; the
+    // CN after the race in the score's tooltip; once the race is published, the published score below
+    const ok = (r) => r.status === "ok";
+    const gap = (r, m) => (ok(r) && r.scores?.[m] && r.cnj15?.[m] ? r.scores[m] - r.cnj15[m] : null);
+    const pubLine = (r, m) => {
+      const p = r.ffco?.[m], s = r.scores?.[m];
+      return p ? html`<div class="pub">${t("prov.pub")} ${fmt(p.score)}${s != null && s !== p.score
+        ? html` <span style="color:var(--bad)">(${s > p.score ? "+" : "−"}${fmt(Math.abs(s - p.score))})</span>` : ""}</div>` : "";
     };
-    $("#pv-class").innerHTML = html`<table class="data compact"><thead><tr>
-      <th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th><th class="r">${t("prov.time")}</th>
-      ${scored ? M.map((m) => html`<th class="r" title="${t("prov.colHint")}">${methodKey(m)}${methodShort(m)}<div class="muted" style="font-weight:400;font-size:11px">${t("prov.cols")}</div>
-        ${published ? html`<div class="muted" style="font-weight:400;font-size:11px">${t("prov.pubCols")}</div>` : ""}</th>`) : ""}</tr></thead>
-      <tbody>${k.runners.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
-        <td class="r num">${r.place ?? ""}</td>
-        <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
-        <td style="font-size:12.5px">${r.club || ""}</td>
-        <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
-        <td class="r num">${r.status === "ok" ? clock(r.time_s) : STATUS[r.status]}</td>
-        ${scored ? M.map((m) => cell(r, m)) : ""}</tr>`)}</tbody></table>`;
+    dataTable($("#pv-class"), {
+      compact: true, rows: k.runners, sortKey: "place", sortDir: 1, rowClass: (r) => (who && r.lic === who ? "selected" : ""),
+      columns: [
+        { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (r) => r.place ?? 1e6,
+          render: (r) => (r.place != null ? fmt(r.place) : html`<span class="dim">${STATUS[r.status]}</span>`) },
+        { key: "name", label: t("rk.col.name"), defaultDir: 1, sort: (r) => r.name,
+          render: (r) => (r.lic ? html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>`
+            : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`) },
+        { key: "cat", label: t("rk.col.cat"), defaultDir: 1, sort: (r) => r.category || r.catCn,
+          render: (r) => r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "") },
+        { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => r.club_code || r.club,
+          render: (r) => (r.club_code ? html`<a href="${link.club(r.club_code)}" title="${r.club || ""}">${r.club_code}</a>`
+            : html`<span style="font-size:12.5px">${r.club || ""}</span>`) },
+        { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
+          render: (r) => (ok(r) ? clock(r.time_s) : "") },
+        ...(scored ? M.flatMap((m) => [{
+          key: `cn_${m}`, label: subHead(`CN ${methodShort(m)}`, "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
+          render: (r) => (r.cnj15?.[m] ? fmt(r.cnj15[m]) : html`<span class="dim">—</span>`),
+        }, {
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(`${t("rn.score")} ${methodShort(m)}`, t("res.gap"))}</span>`,
+          align: "r", cls: "num", sort: (r) => gap(r, m),
+          render: (r) => scoreCell(ok(r) ? r.scores?.[m] ?? null : null, r.cnj15?.[m],
+            { title: r.cnAfter?.[m] ? `${t("rn.cnAfter")} : ${fmt(r.cnAfter[m])}` : "", below: pubLine(r, m) }),
+        }]) : []),
+      ],
+    });
   }
   // a start list: the runners by start time, with their CN today (Top and official, in the race's discipline) and the
   // place the Top CN gives them among the circuit's runners
@@ -278,7 +292,7 @@ async function detail(main, idx, query) {
     const rows = [...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9) || a.name.localeCompare(b.name, "fr"));
     const ranked = rows.filter((r) => cn(r, "top6w2")).sort((a, b) => cn(b, "top6w2") - cn(a, "top6w2"));
     const expected = new Map(ranked.map((r, i) => [r, i + 1]));
-    $("#pv-class").innerHTML = html`<table class="data compact"><thead><tr>
+    $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
       <th class="r">CN ${methodShort("top6w2")}</th><th class="r">CN ${methodShort("official")}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
@@ -289,7 +303,7 @@ async function detail(main, idx, query) {
         <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
         <td class="r num">${cn(r, "top6w2") ? fmt(cn(r, "top6w2")) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${cn(r, "official") ? fmt(cn(r, "official")) : html`<span class="muted">—</span>`}</td>
-        <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table>`;
+        <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table></div>`;
   }
   draw();
   return { title: race.name };

@@ -63,6 +63,18 @@ export function tile(label, value, sub, keyColor) {
   </div>`;
 }
 
+/** The results tables' one way of showing a race score (Courses, Récemment, En direct): the score and, beside it, the
+ *  gap to the runner's CN, coloured — green above their level, red below; a failed run (score 0) has none.
+ *  `title`: a tooltip on the score (Récemment: the CN after the race). `below`: a second line (the published score). */
+export function scoreCell(score, cn, { title = "", below = "" } = {}) {
+  if (score == null) return html`<span class="dim">—</span>`;
+  const g = score && cn ? score - cn : null;
+  return html`<span ${raw(title ? `title="${esc(title)}"` : "")}>${score ? fmt(score) : html`<span class="dim">0</span>`}</span><span class="gap ${
+    g == null ? "" : g > 0 ? "delta-up" : g < 0 ? "delta-down" : "dim"}">${g == null ? "" : `${g > 0 ? "+" : g < 0 ? "−" : "±"}${fmt(Math.abs(g))}`}</span>${below}`;
+}
+/** A results table's column header with what the figure is below it (« CN Top » / « J-15 »). */
+export const subHead = (label, sub) => html`${label}<div class="th-sub">${sub}</div>`;
+
 export const methodKey = (m, dash = false) =>
   html`<span class="key" style="background:${raw(methodColor(m))}${raw(
     dash && METHOD_DASH[m] !== "solid" ? ";background:repeating-linear-gradient(90deg," + methodColor(m) + " 0 5px,transparent 5px 8px)" : "")}"></span>`;

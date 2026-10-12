@@ -324,7 +324,13 @@ select { padding-right: 28px; }
     radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) left / 14px 100% no-repeat scroll,
     radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) right / 14px 100% no-repeat scroll;
 }
+/* a long table scrolls within the page's height, its header row frozen at the top (th: position sticky) */
+.table-wrap { max-height: var(--table-max, calc(100vh - 110px)); overflow-y: auto; }
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* the results tables (Courses, Récemment, En direct): a score and its gap to the runner's CN, aligned */
+table.data .gap { display: inline-block; min-width: 3.7em; margin-left: 5px; text-align: right; font-size: 11.5px; }
+table.data .th-sub { font-weight: 400; font-size: 11px; color: var(--ink-3); }
+table.data .pub { font-size: 11.5px; color: var(--ink-3); }
 table.data th, table.data td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 table.data thead th {
   position: sticky; top: 0; background: var(--surface); z-index: 1;

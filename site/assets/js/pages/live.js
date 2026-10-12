@@ -7,7 +7,7 @@ import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { nameKey } from "../auth.js";
-import { methodShort } from "../ui.js";
+import { methodShort, scoreCell, subHead } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
 // O'Cap: its list (/api/live/list) and live connections (/ws/<race>); a developer may point it at a local O'Cap
@@ -193,6 +193,7 @@ async function race(main, id, wanted) {
   }
   function status() {
     const el = $("#lv-status");
+    if (!el) return;                                     // (the page was left: the socket's close lands here)
     if (!st.up) { el.className = "lv-status"; el.textContent = st.info ? t("lv.offline") : t("lv.connecting"); return; }
     const p = st.pass[0]?.[0]?.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
     let age = p ? nowAt(st.info) / 100 - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3])) : null;
@@ -253,27 +254,22 @@ async function race(main, id, wanted) {
           <div class="muted lv-m" style="font-size:12px">${club}</div>
           ${sub ? html`<div class="muted" style="font-size:12px">${sub}</div>` : ""}</td>
         <td class="lv-d" style="font-size:12.5px">${club}</td>
-        ${["official", "top6w2"].map((m) => html`<td class="r num${m === "official" ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>`)}
-        ${["official", "top6w2"].map((m) => {
-          const sc = x.score?.[m], g = sc != null && x.cn[m] != null ? sc - x.cn[m] : null;
-          return html`<td class="r num${m === "official" ? " lv-d" : ""}">${sc == null ? "" : html`<b>${fmt(sc)}</b>${g == null ? ""
-            : html`<div class="${g > 0 ? "delta-up" : g < 0 ? "delta-down" : "muted"}" style="font-size:11.5px">${g > 0 ? "▲ +" : g < 0 ? "▼ " : "±"}${fmt(Math.abs(g))}</div>`}`}</td>`;
-        })}
-        <td class="r num">${x.expected ?? ""}</td>
         <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
-        <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td></tr>`;
+        <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td>
+        ${["official", "top6w2"].map((m) => html`<td class="r num${m === "official" ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>
+          <td class="r num${m === "official" ? " lv-d" : ""}">${x.score?.[m] != null ? scoreCell(x.score[m], x.cn[m]) : ""}</td>`)}
+        <td class="r num">${x.expected ?? ""}</td></tr>`;
     };
     const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="10">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
-      <th class="lv-d">${t("prov.club")}</th>
-      <th class="r lv-d" title="${t("lv.cnJ15.hint")}">CN ${methodShort("official")}<div class="muted" style="font-weight:400;font-size:11px">J-15</div></th>
-      <th class="r">CN ${methodShort("top6w2")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.today")}</div></th>
-      <th class="r lv-d" title="${t("lv.score.hint")}">${t("lv.score")} ${methodShort("official")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.est")}</div></th>
-      <th class="r" title="${t("lv.score.hint")}">${t("lv.score")} ${methodShort("top6w2")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.est")}</div></th>
-      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>
-      <th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th></tr></thead>
+      <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
+      <th class="r lv-d" title="${t("lv.cnJ15.hint")}">${subHead(`CN ${methodShort("official")}`, "J-15")}</th>
+      <th class="r lv-d" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort("official")}`, t("lv.estGap"))}</th>
+      <th class="r">${subHead(`CN ${methodShort("top6w2")}`, t("lv.today"))}</th>
+      <th class="r" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort("top6w2")}`, t("lv.estGap"))}</th>
+      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;
   }
