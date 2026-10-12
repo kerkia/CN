@@ -151,7 +151,7 @@ for another day is never the race's, nor one printing another season in its titl
 2 days after is fine: exports printed the next evening); an organiser's races of one weekend share its files out by
 their own words, the title printed inside included (`races.owners`: « KO », « Challenge », « CL », « Chpt ligue »).
 FFCO's f-race and the agenda's x-race of the same day and organiser are merged (`races.merge_duplicates`, name words
-≥ 80 % shared). Unreadable files a full look no longer finds are dropped. A post published in the 3 weeks before
+≥ 80 % shared). Unreadable files a full look no longer finds are dropped. A post published in the 4 weeks before
 the race (its address `/2026/09/24/…`: the announcement, often updated with the results) is visited, and its date is
 not « another day »; on a page about the race's weekend, « MD »/« LD » in a link read as « moyenne/longue distance ».
 A file whose name, link or printed title gives another format (« VTT » for a foot race, « LD » for an MD) or another
@@ -182,7 +182,8 @@ with the races concerned, for the owner to contact the sites' owners. Livelox li
 only the runners who sent their GPS track, and closed to robots): neither a document nor on that list. WinSplits rows with
 no time, no status word and no punch are non-starters (« dns »), with punches mispunches. A platform competition is stored under one address
 whatever a club's page spells (`run.PLATFORM_URL`, `canonical_docs`: « …?lang=fr&comp=… » made duplicates); Helga links
-that name no event are dropped. liveresultat's « splits » (radio controls only) are not kept. A race's documents are
+that name no event are dropped. liveresultat's splits are kept when a class's « splitcontrols » cover the course (4 or more: MeOS feeds every
+control, code 1000 + number, repeats 101031…; a radio control or two are not kept). A race's documents are
 shown in the order `run.doc_priority` gives (`prio`, both sites follow it): uploads and the organiser's files, then
 WinSplits / Orientation Data, Helga, liveresultat last (live results are not corrected afterwards); a document with
 under half the runners of the fullest one drops. A split list without start times takes them, by name, from another

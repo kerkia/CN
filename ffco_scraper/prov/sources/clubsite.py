@@ -177,7 +177,7 @@ def days_named(text: str) -> set[tuple[int, int]]:
 
 
 def posted_before(text: str, d: date) -> set[tuple[int, int]]:
-    """The publication day of a post in the three weeks before the race, from its address (WordPress:
+    """The publication day of a post in the four weeks before the race, from its address (WordPress:
     « …/2026/09/24/duathlo-2026-et-championnat-de-ligue-md… »): the race's announcement, often updated with its
     results — that day is not « another day »."""
     out = set()
@@ -186,7 +186,7 @@ def posted_before(text: str, d: date) -> set[tuple[int, int]]:
             p = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
         except ValueError:
             continue
-        if timedelta(0) <= d - p <= timedelta(days=21):
+        if timedelta(0) <= d - p <= timedelta(days=28):      # (O'Jura posted its page 22 days before)
             out.add((p.month, p.day))
     return out
 

@@ -2,8 +2,10 @@
 
 getcompetitions lists every competition (id, name, organizer, date; about 1 MB, read once per run); the French
 ones of a race's day are matched to it by name, place, organiser and race type, then each class is read with
-getclassresults (times in hundredths). No category, no year of birth; its radio controls' times are not kept (a
-spectator control and the last one: too few for a split analysis). The class is usually the circuit.
+getclassresults (times in hundredths). No category, no year of birth. Split times: a class whose « splitcontrols »
+cover the course (MIN_CONTROLS or more: MeOS sends every control, code 1000 + its number, a repeated one 101031,
+201031…, its printed number in « name ») keeps them, cumulative; a class with only a radio control or two (a spectator
+control, the last one) does not — too few for a split analysis. The class is usually the circuit.
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ import re
 from ..model import club_code, category, doc, klass, plain, runner
 
 log = logging.getLogger(__name__)
+MIN_CONTROLS = 4
 API = "https://liveresultat.orientering.se/api.php"
 # liveresultat status codes -> ours (0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ, 5 OT, 9/10 not started yet, 11 walkover, 12 moved up)
 STATUS = {0: "ok", 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc", 13: "ok"}
@@ -114,7 +117,10 @@ class LiveResultat:
             except ValueError:                       # an empty or broken answer (« Too many connections » when
                 log.warning("liveresultat %s: class %s unreadable", comp_id, name)    # overloaded): a partial read
                 return None                          # must not replace a whole one — try again next time
-            # (its "splits" are the radio controls only — a spectator control and the last one —: no split analysis)
+            sc = data.get("splitcontrols") or []
+            full = len(sc) >= MIN_CONTROLS               # the course's controls, not just a radio one or two
+            controls = [str(c.get("name") or int(c.get("code", 0)) % 1000) for c in sc] if full else None
+            codes = [str(c.get("code")) for c in sc]
             rows = []
             for x in data.get("results", []):
                 st = STATUS.get(int(x.get("status", 0)), None)
@@ -124,13 +130,16 @@ class LiveResultat:
                     st = "start"
                 res = x.get("result")
                 t = int(res) / 100 if st == "ok" and str(res).lstrip("-").isdigit() else None
+                sp = x.get("splits") or {}
+                splits = [(int(sp[k]) / 100 if str(sp.get(k, "")).lstrip("-").isdigit() and int(sp[k]) > 0 else None)
+                          for k in codes] if full else None
                 place = x.get("place")
                 start = x.get("start")                      # hundredths of a second after midnight
                 rows.append(runner(x.get("name", ""), place=int(place) if str(place).isdigit() else None,
                                    club=x.get("club"), club_code=club_code(x.get("club")), time_s=t, status=st,
-                                   category=category(name),
+                                   category=category(name), splits=splits if splits and any(splits) else None,
                                    start_s=int(start) / 100 if str(start).isdigit() and int(start) > 0 else None))
-            classes.append(klass(name, rows))
+            classes.append(klass(name, rows, controls=controls))
         # (a few classes of another kind — « Open bleu », « B » — do not make a list by category one by circuit)
         by = "category" if classes and sum(1 for c in classes if category(c["name"])) >= 0.6 * len(classes) else "circuit"
         info = self.info(comp_id)
