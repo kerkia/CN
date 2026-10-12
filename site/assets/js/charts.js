@@ -122,7 +122,7 @@ export function timeChart(el, { series, yName = "CN", onClick, zoom, tooltipExtr
     } : {
       name: s.name, type: "line", data: s.data, step: s.step ? "end" : false,
       showSymbol: !!s.markers, symbol: "circle", symbolSize: 8, connectNulls: false,
-      lineStyle: { width: 2, color: s.color, type: s.dash || "solid", cap: "round", join: "round" },
+      lineStyle: { width: s.faint ? 1.5 : 2, color: s.color, type: s.dash || "solid", cap: "round", join: "round", opacity: s.faint ? 0.55 : 1 },
       itemStyle: { color: s.color, borderColor: th.surface, borderWidth: 2 },
       areaStyle: s.area ? { color: s.color, opacity: 0.10 } : undefined,
       emphasis: { focus: "series", lineStyle: { width: 2.5 } },
@@ -131,7 +131,7 @@ export function timeChart(el, { series, yName = "CN", onClick, zoom, tooltipExtr
         formatter: (p) => `${s.endLabel}  ${fmt(p.value[1])}`,
       } : undefined,
       labelLayout: { moveOverlap: "shiftY" },
-      z: 2,
+      z: s.faint ? 1 : 2,
     })),
   };
   c.setOption(opt);
@@ -280,7 +280,7 @@ export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0,
     visualMap: {
       type: "continuous", min: lo, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
       itemWidth: 10, itemHeight: 160, textStyle: { color: th.ink3, fontSize: 12 },
-      text: log ? [fmt(Math.max(1, ...raw.values())), "0"] : [fmt(max, digits), fmt(lo, digits)],
+      text: log ? [fmt(Math.max(1, ...raw.values())), traffic ? fmt(Math.min(...raw.values())) : "0"] : [fmt(max, digits), fmt(lo, digits)],
       inRange: { color: traffic ? ["#d64545", "#f0c43c", "#2f9e57"] : [1, 2, 3, 4, 5].map((i) => css(`--q${i}`)) },
     },
     series: [{

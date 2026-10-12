@@ -95,7 +95,6 @@ export async function render(main, { arg: code, query }) {
 
   function drawFilters() {
     $("#filters").innerHTML = html`${terrainField()}
-      <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <div class="field"><span>${t("f.range")}</span>${seg("range",
         [["3", t("chart.3y")], ["5", t("chart.5y")], ["all", t("chart.all")]], range)}</div>`;
     $("#stat-seg").innerHTML = seg("stat", [["mean", t("cb.m.mean")], ["max", t("col.top")], ["sum", t("cb.m.sum")], ["top5", t("cb.m.top5")]], stat);

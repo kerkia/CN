@@ -7,7 +7,7 @@ import { html, raw, $, $$, fmt, fmtDate, normalise, displayName } from "../util.
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { available } from "../store.js";
+import { available, get as storeGet } from "../store.js";
 import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
@@ -174,7 +174,7 @@ async function detail(main, idx, query) {
     const best = found.find(([i]) => docs[i].by !== "category" || docs[i].circuits?.length) || found[0];
     if (best) [di, ci] = best;
   }
-  const M = ["official", ...available().filter((m) => m !== "official")];
+  const M = [storeGet().method];
   // the splits page lists only the documents with split times: its own indexes
   const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   const splitsLink = (d, c) => {
@@ -286,23 +286,22 @@ async function detail(main, idx, query) {
     $("#pv-class-hint").innerHTML = html`${t("prov.start.hint")}`;
     if (!cnNow) {
       const month = data.latestMonth(), tr = TERRAIN_CODE[race.terrain] || "For";
-      cnNow = Object.fromEntries(await Promise.all(["top6w2", "official"].map(async (m) => [m, await data.cnAt(m, tr, month)])));
+      cnNow = await data.cnAt(storeGet().method, tr, month);      // the site's method, today
     }
-    const cn = (r, m) => (r.lic ? cnNow[m].get(String(r.lic)) ?? null : null);
+    const cn = (r) => (r.lic ? cnNow.get(String(r.lic)) ?? null : null);
     const rows = [...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9) || a.name.localeCompare(b.name, "fr"));
-    const ranked = rows.filter((r) => cn(r, "top6w2")).sort((a, b) => cn(b, "top6w2") - cn(a, "top6w2"));
+    const ranked = rows.filter((r) => cn(r)).sort((a, b) => cn(b) - cn(a));
     const expected = new Map(ranked.map((r, i) => [r, i + 1]));
     $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
-      <th class="r">CN ${methodShort("top6w2")}</th><th class="r">CN ${methodShort("official")}</th>
+      <th class="r">CN ${methodShort(storeGet().method)}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
         <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
         <td style="font-size:12.5px">${r.club || ""}</td>
         <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
-        <td class="r num">${cn(r, "top6w2") ? fmt(cn(r, "top6w2")) : html`<span class="muted">—</span>`}</td>
-        <td class="r num">${cn(r, "official") ? fmt(cn(r, "official")) : html`<span class="muted">—</span>`}</td>
+        <td class="r num">${cn(r) ? fmt(cn(r)) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table></div>`;
   }
   draw();

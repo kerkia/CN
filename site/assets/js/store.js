@@ -13,9 +13,11 @@ export const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 export const MAX_COMPARE = 8;
 
 const KEY = "cnx.state";
+// One method at a time for the whole site (owner, 2026-10-12: several at once confused most users), chosen at the right
+// of the header's second row; « methods » stays as the one-element list the pages read.
 const defaults = {
-  methods: ["official", "top6w2"],
-  mv: 2,                  // methods version: 2 = the quadratic Top exists
+  method: "official",
+  methods: ["official"],
   terrain: "For",
   compare: [],            // [{lic, slot}] — slot is a fixed colour index 0..7
   clubs: [],              // [{code, slot}] — clubs being compared, same slot rule
@@ -30,12 +32,10 @@ function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "{}");
     if (!TERRAINS.includes(s.terrain)) delete s.terrain;
-    if (Array.isArray(s.methods)) {             // the 2026 method was replaced by the Fair one
-      s.methods = [...new Set(s.methods.map((m) => (m === "v2026" ? "fair" : m)))].filter((m) => METHODS.includes(m));
-      if (s.mv !== 2) { s.methods.push("top6w2"); s.mv = 2; }   // a saved selection gets the new quadratic Top
-      s.methods = METHODS.filter((m) => s.methods.includes(m));   // in display order (the Top first since 2026-10-07)
-      if (!s.methods.length) delete s.methods;
-    }
+    // (a selection of several methods, saved before 2026-10-12, gives way to the default)
+    if (!METHODS.includes(s.method)) s.method = defaults.method;
+    s.methods = [s.method];
+    delete s.mv;
     return { ...defaults, ...s };
   } catch (e) {
     return { ...defaults };
@@ -60,23 +60,22 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 
-/** Whether this visitor may see the analysis methods; a selection keeps only what may be seen. */
+/** Whether this visitor may see the analysis methods; the method chosen must be one they may see. */
 export function setAnalyst(flag) {
   analyst = !!flag;
-  const ok = state.methods.filter((m) => available().includes(m));
-  if (ok.length !== state.methods.length) set({ methods: ok.length ? ok : defaults.methods });
+  if (!available().includes(state.method)) set({ method: defaults.method, methods: [defaults.method] });
 }
 
-export function toggleMethod(m) {
-  const cur = new Set(state.methods);
-  if (cur.has(m)) {
-    if (cur.size === 1) return;          // keep at least one method visible
-    cur.delete(m);
-  } else {
-    cur.add(m);
-  }
-  set({ methods: METHODS.filter((x) => cur.has(x)) });
+// the method shown before the last switch (this visit only): the runner's chart draws it as a faint grey line
+let previous = null;
+export const prevMethod = () => previous;
+/** The site's method; `quiet`: from a link (?m=), not a switch, so no previous method to show. */
+export function setMethod(m, { quiet = false } = {}) {
+  if (!available().includes(m) || m === state.method) return;
+  previous = quiet ? null : state.method;
+  set({ method: m, methods: [m] });
 }
+export const toggleMethod = (m) => setMethod(m);
 
 // ---- comparison set -------------------------------------------------------
 // Colour follows the runner, not their position: a runner keeps its slot until

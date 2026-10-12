@@ -6,6 +6,7 @@ import { t } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
 import { disposeAll } from "./charts.js";
+import { methodSwitch } from "./ui.js";
 import * as auth from "./auth.js";
 
 export const SITE = "O'CN";
@@ -235,9 +236,19 @@ function renderHeader(r) {
   </div>
   ${me && group ? html`<div class="subbar"><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</nav>` : ""}
+      ${route === "agenda" ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
+  // the method: one for the whole site; a switch redraws the page (a ?m= in the address follows)
+  const pickMethod = (m) => {
+    store.setMethod(m);
+    const q = parseHash().query;
+    if (q.m) replaceQuery({ ...q, m: store.get().method });
+    route_();
+  };
+  $$("[data-method-pick]").forEach((b) => b.addEventListener("click", () => pickMethod(b.dataset.methodPick)));
+  $("#method-pick")?.addEventListener("change", (e) => pickMethod(e.target.value));
   // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice
   const closeMenus = (except) => $$(".nav-group.open").forEach((g) => {
     if (g === except) return;
@@ -380,6 +391,8 @@ async function route_() {
   // the analysis methods ("Fit") only for the accounts allowed to see them
   const who = auth.session();
   store.setAnalyst(!!who?.analyst);
+  // a link may carry the method (?m=official|top6w2…): it becomes the site's
+  if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « En direct » only for the accounts allowed to see it
   if (r.route === "live" && !who?.live) {
     history.replaceState(null, "", "#/resultats");

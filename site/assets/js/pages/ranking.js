@@ -184,7 +184,7 @@ export async function render(main, { query }) {
   const terrain = st.terrain;
   const me = auth.session();
   // the list is ranked by one method: the first selected, or the one whose column was clicked
-  let sortMethod = query.sort && st.methods.includes(query.sort) ? query.sort : st.methods[0];
+  let sortMethod = st.method;
   let loaded = null, table = null, foundLic = null;       // foundLic: the runner picked in the search box
 
   function syncUrl() {
@@ -239,7 +239,6 @@ export async function render(main, { query }) {
     const depts = [...new Set(rows.map((r) => r.dept).filter(Boolean))].sort();
     $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(f.month)}
-      <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <label class="field"><span>${t("f.sexe")}</span>
         <select id="f-sexe"><option value="">${t("sexe.all")}</option>
           <option value="H" ${raw(f.sexe === "H" ? "selected" : "")}>${t("sexe.H")}</option>
@@ -256,11 +255,6 @@ export async function render(main, { query }) {
       <label class="checkline"><input type="checkbox" id="f-podium" ${raw(f.podium ? "checked" : "")}>${t("f.podiums")}</label>
       <button class="btn btn-ghost" type="button" id="f-reset">${t("f.reset")}</button>`;
     bindDateControls(main, (m) => { f.month = m; reload(); });
-    bindMethodChips(main, () => {
-      const ms = store.get().methods;
-      if (!ms.includes(sortMethod)) sortMethod = ms[0];
-      reload();
-    });
     for (const k of ["sexe", "cat", "club", "dept", "ligue"]) {
       $(`#f-${k}`).addEventListener("change", (e) => { f[k] = e.target.value; refresh(); });
     }

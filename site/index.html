@@ -8,11 +8,12 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/app.css">
   <script>
-    // Apply the saved theme before first paint so there is no flash.
-    try {
-      const t = localStorage.getItem("cnx.theme");
-      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-    } catch (e) {}
+    // Apply the theme before first paint so there is no flash: the one chosen with the moon button, else (owner,
+    // 2026-10-12) light on a computer, dark on a phone — whatever the system's own setting.
+    let t = null;
+    try { t = localStorage.getItem("cnx.theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = t;
   </script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
   <script type="module" src="assets/js/app.js"></script>

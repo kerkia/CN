@@ -808,6 +808,10 @@ table.data tbody tr.me .name { font-weight: 700; }
   max-width: 1320px; margin: 0 auto; padding: 6px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
 .subbar .search { flex: 0 1 320px; min-width: 0; margin-left: auto; }
+/* the site's method, at the right of the second row */
+.subbar .method-switch { margin-left: auto; flex: none; }
+.subbar .method-switch select { height: 32px; }
+@media (max-width: 520px) { .subbar .method-switch { margin-left: 0; } }
 /* the current group's pages */
 .subnav { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .subnav::-webkit-scrollbar { display: none; }

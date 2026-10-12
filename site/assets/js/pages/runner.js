@@ -6,14 +6,14 @@ import { html, raw, esc, $, $$, fmt, fmtSigned, fmtDate, fmtTime, displayName, i
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
-import { R, SCORE_COL, CNAFTER_COL } from "../data.js";
+import { R, SCORE_COL, CNAFTER_COL, CNJ15_COL } from "../data.js";
 import { explain, cnHistory, paramsFor } from "../cn.js";
 import { timeChart, bandChart, methodColor, css, mapChart } from "../charts.js";
 import { placeOf, loadMap, featuresOf, DEPT_REGION } from "../geo.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
   methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag, filterFold,
-  pageTabs, tabFrom, bindPageTabs,
+  pageTabs, tabFrom, bindPageTabs, scoreCell, subHead,
 } from "../ui.js";
 
 // the page's tabs: the races, the CN over time, its calculation, the progression by age, the seasons, the map
@@ -143,12 +143,10 @@ export async function render(main, { arg, query }) {
 
   function drawFilters() {
     $("#filters").innerHTML = html`${terrainField()}
-      <div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
       <div class="field"><span>${t("f.range")}</span>${seg("range",
         [["1", t("chart.12m")], ["3", t("chart.3y")], ["5", t("chart.5y")], ["all", t("chart.all")]], range)}</div>
       <label class="field"><span>${t("f.from")}</span><input type="date" id="from"></label>
       <label class="field"><span>${t("f.to")}</span><input type="date" id="to"></label>`;
-    bindMethodChips(main, () => { drawFilters(); drawAll(); });
     $$('[data-seg="range"]').forEach((b) => b.addEventListener("click", () => {
       range = b.dataset.value; drawFilters(); drawChart(); drawProgress();
     }));
@@ -239,8 +237,15 @@ export async function render(main, { arg, query }) {
     const all = series.flatMap((s) => s.data.map((p) => p[0])).sort();
     $("#evo-legend").innerHTML = legend([
       ...methods.map((m) => ({ color: methodColor(m), label: `CN · ${methodLabel(m)}` })),
+      ...(store.prevMethod() && !methods.includes(store.prevMethod()) ? [{ color: "var(--ink-3)", label: `CN · ${methodLabel(store.prevMethod())}` }] : []),
       ...(showScores ? [{ color: "var(--ink-3)", label: t("rn.score"), dot: true }] : []),
     ]);
+    // after a switch of method, the previous one as a faint grey line, for reference
+    const prev = store.prevMethod();
+    if (prev && !methods.includes(prev)) {
+      series.unshift({ name: `CN · ${methodLabel(prev)}`, color: css("--ink-3"), step: true, faint: true, data: seriesFor(prev),
+        endLabel: methodShort(prev) });
+    }
     if (!all.length) { $("#evo").innerHTML = html`<div class="empty">${t("rn.noRaces")}</div>`; return; }
     timeChart($("#evo"), {
       series, zoom: zoomWindow(all),
@@ -618,12 +623,18 @@ export async function render(main, { arg, query }) {
       { key: "place", label: t("col.place"), align: "r", cls: "num", sort: (x) => x.r[R.place], defaultDir: 1,
         render: (x) => x.r[R.place] ? html`${fmt(x.r[R.place])}<span class="dim"> / ${fmt(x.r[R.nOnCircuit])}</span>` : statusLabel(x.r[R.status]) },
       { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[R.time], defaultDir: 1, render: (x) => x.r[R.time] ? fmtTime(x.r[R.time]) : "" },
-      // score and CN after, one column per method
-      ...methods.map((m) => ({
-        key: `s_${m}`, align: "r", cls: "num", sort: (x) => x.r[SCORE_COL[m]],
-        label: html`<span class="key" style="background:${raw(methodColor(m))};margin-right:5px"></span>${methodShort(m)}<div class="dim" style="font-weight:400">${t("rn.scoreCn")}</div>`,
-        render: (x) => html`${x.r[SCORE_COL[m]] == null ? html`<span class="dim">—</span>` : fmt(x.r[SCORE_COL[m]])}<div class="dim">${x.r[CNAFTER_COL[m]] ? fmt(x.r[CNAFTER_COL[m]]) : ""}</div>`,
-      })),
+      // the method's CN before the race, the score with its gap to that CN, the CN after (as the results tables)
+      ...methods.flatMap((m) => [{
+        key: `j_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNJ15_COL[m]], label: subHead("CN", "J-15"),
+        render: (x) => (x.r[CNJ15_COL[m]] ? fmt(x.r[CNJ15_COL[m]]) : html`<span class="dim">—</span>`),
+      }, {
+        key: `s_${m}`, align: "r", cls: "num", label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`,
+        sort: (x) => (x.r[SCORE_COL[m]] && x.r[CNJ15_COL[m]] ? x.r[SCORE_COL[m]] - x.r[CNJ15_COL[m]] : null),
+        render: (x) => scoreCell(x.r[R.place] ? x.r[SCORE_COL[m]] || null : null, x.r[CNJ15_COL[m]]),
+      }, {
+        key: `a_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNAFTER_COL[m]], label: subHead("CN", t("rn.after")),
+        render: (x) => (x.r[CNAFTER_COL[m]] ? fmt(x.r[CNAFTER_COL[m]]) : html`<span class="dim">—</span>`),
+      }]),
       { key: "ext", label: "", render: (x) => html`<a class="dim" href="${data.officialCircuitUrl(x.r[R.cid])}" target="_blank" rel="noopener" title="${t("rn.officialFfco")}">↗</a>` },
     ];
     dataTable($("#history"), { columns: cols, rows, sortKey: "date", sortDir: -1 });
@@ -695,7 +706,7 @@ export async function render(main, { arg, query }) {
     for (const [d, g] of rows) for (const f of featuresOf(d)) values.set(f, g.n);
     const code = (f) => (f === "2A" || f === "2B" ? "20" : f);
     mapChart($("#rmap"), {
-      map, values, name: t("rn.map.n"), log: true,
+      map, values, name: t("rn.map.n"), log: true, traffic: true,
       tip: (f) => {
         const g = by.get(code(f));
         return String(html`<b>${data.deptName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>

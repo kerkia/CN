@@ -29,7 +29,7 @@ export async function render(main, { query }) {
   let key = PRESETS[query.f] || query.f === "perso" ? query.f : "cfc1";
   let fmtNow = key === "perso" ? custom() : clone(PRESETS[key]);
   let club = query.club || myClub() || "";
-  let method = store.available().includes(query.m) ? query.m : (store.available().includes("top6w2") ? "top6w2" : store.get().methods[0]);
+  const method = store.get().method;
   // the discipline of the CNs: the format's (forest, the sprint relay in sprint), whatever the site-wide one; one's own
   // format: chosen here
   let terrain = key === "perso" ? (store.TERRAINS.includes(query.t) ? query.t : "For") : terrainOf(PRESETS[key]);
@@ -66,8 +66,7 @@ export async function render(main, { query }) {
         ${[...groups].map(([g, list]) => html`<optgroup label="${g}">${list.map(([k, l]) => html`<option value="${k}" ${raw(k === key ? "selected" : "")}>${l}</option>`)}</optgroup>`)}
         <option value="perso" ${raw(key === "perso" ? "selected" : "")}>${t("rl.custom")}</option></select></label>
       <label class="field"><span>${t("rl.club")}</span><select id="rl-club" style="max-width:280px"><option value="">—</option>
-        ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>
-      <div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>`;
+        ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>`;
     $("#rl-t")?.addEventListener("change", (e) => { terrain = e.target.value; manual = null; load(); });
     $("#rl-f").addEventListener("change", (e) => {
       key = e.target.value; fmtNow = key === "perso" ? custom() : clone(PRESETS[key]); manual = null; drawFormat();
@@ -76,7 +75,6 @@ export async function render(main, { query }) {
       if (tr !== terrain) { terrain = tr; load(); } else { drawFilters(); compute(); }
     });
     $("#rl-club").addEventListener("change", async (e) => { club = e.target.value; manual = null; await loadExtra(); compute(); });
-    bindMethodSeg(main, async (m) => { method = m; manual = null; await load(); });
   }
 
   // ---- the format: its legs (reference times editable; one's own format entirely) -------------------------------

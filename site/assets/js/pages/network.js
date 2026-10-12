@@ -265,7 +265,7 @@ export async function ego(main, lic, query) {
 
 // ---- the leading runners of a discipline ---------------------------------------
 async function global(main, query) {
-  let method = store.available().includes(query.m) ? query.m : store.get().methods[0];
+  const method = store.get().method;
   let sexe = ["H", "D", ""].includes(query.sexe) ? query.sexe : "H";
   let n = [30, 60, 100].includes(Number(query.n)) ? Number(query.n) : 60;
   let minShared = [3, 5, 10].includes(Number(query.min)) ? Number(query.min) : 5;
@@ -287,11 +287,9 @@ async function global(main, query) {
   function drawFilters() {
     $("#filters").innerHTML = html`${terrainField()}
       ${periodSelect(season)}
-      <div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>
       <div class="field"><span>${t("f.sexe")}</span>${seg("sexe", [["H", t("sexe.H")], ["D", t("sexe.D")], ["", t("sexe.all")]], sexe)}</div>
       <div class="field"><span>${t("nw.n")}</span>${seg("n", [["30", "30"], ["60", "60"], ["100", "100"]], String(n))}</div>
       <div class="field"><span>${t("nw.min")}</span>${seg("min", [["3", "3"], ["5", "5"], ["10", "10"]], String(minShared))}</div>`;
-    bindMethodSeg(main, (m) => { method = m; drawFilters(); draw(); });
     $("#period").addEventListener("change", (e) => { season = e.target.value; drawFilters(); draw(); });
     const on = (name, fn) => $$(`[data-seg="${name}"]`).forEach((b) => b.addEventListener("click", () => { fn(b.dataset.value); drawFilters(); draw(); }));
     on("sexe", (v) => { sexe = v; });

@@ -87,7 +87,7 @@ export async function render(main, { route, query }) {
 async function listView(main, query, mode) {
   let month = query.date ? data.monthFor(query.date) : data.latestMonth();
   let ligue = query.ligue || "", q = query.q || "";
-  let method = store.available().includes(query.m) ? query.m : store.get().methods[0];
+  const method = store.get().method;
   const sel = selFromQuery(query, { withOrg: true });
   const terrain = store.get().terrain;
   const mine = myClub();
@@ -122,11 +122,9 @@ async function listView(main, query, mode) {
     $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(month)}
       ${clubSelectors(sel, { withOrg: true, withMeasure: false })}
-      ${sel.base !== "pts" ? html`<div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>` : ""}
       <label class="field"><span>${t("f.ligue")}</span><select id="lg"><option value="">${t("f.all")}</option>
         ${ls.map(([c, n]) => html`<option value="${c}" ${raw(c === ligue ? "selected" : "")}>${n}</option>`)}</select></label>`;
     bindDateControls(main, (m) => { month = m; drawFilters(); load(); });
-    bindMethodSeg(main, (m) => { method = m; drawFilters(); load(); });
     bindClubSelectors(main, sel, (k) => {
       if (k === "base") { sortKey = sel.measure; sortDir = -1; }
       drawFilters(); if (k === "sexe" || k === "age") load(); else drawTables();

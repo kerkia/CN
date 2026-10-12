@@ -21,32 +21,21 @@ export function dashKey(m) {
  * line style instead of the colour — for pages where colour identifies
  * something else (compared runners or clubs).
  */
-export function methodChips(selected = store.get().methods, { dash = false } = {}) {
-  return html`<div class="chips" role="group" aria-label="${t("f.methods")}">
-    ${store.available().map((m) => html`<button type="button" class="chip toggle" data-method="${m}"
-        aria-pressed="${selected.includes(m)}" title="${t(`m.${m}.long`)}">
-        <span class="tick" aria-hidden="true"></span>
-        ${dash
-          ? dashKey(m)
-          : html`<span class="key" style="background:${raw(methodColor(m))}"></span>`}${methodLabel(m)}
-      </button>`)}
-  </div>`;
+/** The site's method switch (app.renderHeader, at the right of the second row): Officiel | Top, every available
+ *  method for the analysts. The pages have no method choice of their own since 2026-10-12. */
+export function methodSwitch() {
+  const cur = store.get().method, ms = store.available();
+  return ms.length <= 2
+    ? html`<div class="seg method-switch" role="group" aria-label="${t("cm.method")}">${ms.map((m) => html`<button type="button"
+        data-method-pick="${m}" aria-pressed="${m === cur}" title="${methodLabel(m)}">${methodShort(m)}</button>`)}</div>`
+    : html`<label class="method-switch"><span class="sr-only">${t("cm.method")}</span><select id="method-pick" aria-label="${t("cm.method")}">
+        ${ms.map((m) => html`<option value="${m}" ${raw(m === cur ? "selected" : "")}>${methodLabel(m)}</option>`)}</select></label>`;
 }
-export function bindMethodChips(root, onChange) {
-  $$("[data-method]", root).forEach((b) =>
-    b.addEventListener("click", () => { store.toggleMethod(b.dataset.method); onChange?.(); }));
-}
-/** Single-choice method toggle (one method at a time). */
-export function methodSeg(value) {
-  return html`<div class="chips" role="radiogroup" aria-label="${t("cm.method")}">
-    ${store.available().map((m) => html`<button type="button" class="chip toggle" data-method1="${m}" role="radio"
-      aria-pressed="${m === value}" aria-checked="${m === value}" title="${t(`m.${m}.long`)}">
-      <span class="tick" aria-hidden="true"></span><span class="key" style="background:${raw(methodColor(m))}"></span>${methodLabel(m)}</button>`)}
-  </div>`;
-}
-export function bindMethodSeg(root, onChange) {
-  $$("[data-method1]", root).forEach((b) => b.addEventListener("click", () => onChange(b.dataset.method1)));
-}
+// (the pages' former method choices: nothing to draw any more)
+export const methodChips = () => "";
+export const bindMethodChips = () => {};
+export const methodSeg = () => "";
+export const bindMethodSeg = () => {};
 
 export function seg(name, options, value) {
   return html`<div class="seg" role="group">

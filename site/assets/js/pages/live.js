@@ -8,6 +8,7 @@ import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { nameKey } from "../auth.js";
 import { methodShort, scoreCell, subHead } from "../ui.js";
+import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 
 // O'Cap: its list (/api/live/list) and live connections (/ws/<race>); a developer may point it at a local O'Cap
@@ -16,7 +17,8 @@ const devBase = (() => { try { return localStorage.getItem("ocn.liveBase"); } ca
 export const LIVE = devBase || "https://ocap.pages.dev";
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
 const ST_LABEL = { dns: "Non partant", dnf: "Abandon", mp: "PM", dsq: "Disq.", ot: "Hors délai", nc: "NC" };
-const METHODS = ["top6w2", "official"];
+// the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
+const VALUER = { official: "official", top6w: "fair", top6w2: "fair2", fair: "fair", fair2: "fair2" };
 const JUST_IN_MS = 90000;
 
 export async function render(main, { path = "", query = {} } = {}) {
@@ -119,14 +121,14 @@ async function race(main, id, wanted) {
   // the CNs shown and used: the official one 15 days before the race (as FFCO uses it; the monthly snapshot before
   // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
   async function cnFor(terrain) {
-    if (st.cn[terrain]) return st.cn[terrain];
+    const m = store.get().method, k = `${terrain}|${m}`;
+    if (st.cn[k]) return st.cn[k];
     const day = st.info?.date || new Date().toISOString().slice(0, 10);
     const j15 = new Date(Date.parse(day) - 15 * 86400e3).toISOString().slice(0, 10);
-    const mJ15 = data.meta().months.filter((m) => m <= j15).pop() || data.latestMonth();
-    const [official, top, fair] = await Promise.all([data.cnAt("official", terrain, mJ15), data.cnAt("top6w2", terrain, data.latestMonth()),
-      data.cnAt("fair2", terrain, mJ15)]);
-    st.cn[terrain] = { official, top6w2: top, fair2: fair, monthJ15: mJ15 };
-    return st.cn[terrain];
+    const mJ15 = data.meta().months.filter((x) => x <= j15).pop() || data.latestMonth();
+    const [shown, valuer] = await Promise.all([data.cnAt(m, terrain, m === "official" ? mJ15 : data.latestMonth()), data.cnAt(VALUER[m], terrain, mJ15)]);
+    st.cn[k] = { shown, valuer, monthJ15: mJ15 };
+    return st.cn[k];
   }
   /** A class's estimated race scores, FFCO's way: circuit value = mean of CN × time over the fastest ⌈2N/3⌉ finishers
    *  holding a CN, score = circuit value ÷ time; null below 3 such finishers. key: the CN that values the circuit. */
@@ -218,15 +220,14 @@ async function race(main, id, wanted) {
     const enriched = d.rows.map((r) => {
       const me = who(r[1], r[2]);
       const get = (k) => (me ? cn[k].get(me.lic) ?? null : null);
-      return { r, me, time: r[4] === 0 && r[3] != null ? r[3] / 100 : null,
-        cn: { top6w2: get("top6w2"), official: get("official") }, cnv: { official: get("official"), fair2: get("fair2") } };
+      return { r, me, time: r[4] === 0 && r[3] != null ? r[3] / 100 : null, cn: get("shown"), cnv: { v: get("valuer") } };
     });
-    // the scores each finisher's time earns, estimated on the class's finishers (its circuit's when it is one)
+    // the score each finisher's time earns, estimated on the class's finishers (its circuit's when it is one)
     const fin = enriched.filter((x) => x.time);
-    const offScore = scores(fin, "official"), topScore = scores(fin, "fair2");
-    for (const x of fin) x.score = { official: offScore(x), top6w2: topScore(x) };
-    // the place each runner's CN (Top) predicts, among those of the class who hold one
-    const ranked = enriched.filter((x) => x.cn.top6w2 != null).sort((a, b) => b.cn.top6w2 - a.cn.top6w2);
+    const score = scores(fin, "v");
+    for (const x of fin) x.score = score(x);
+    // the place each runner's CN predicts, among those of the class who hold one
+    const ranked = enriched.filter((x) => x.cn != null).sort((a, b) => b.cn - a.cn);
     ranked.forEach((x, i) => { x.expected = i + 1; });
     const kind = (x) => {
       const [, , , result, status, , , start] = x.r;
@@ -236,7 +237,7 @@ async function race(main, id, wanted) {
     for (const x of enriched) groups[kind(x)].push(x);
     groups.fin.sort((a, b) => (a.r[0] ?? 1e9) - (b.r[0] ?? 1e9));
     groups.run.sort((a, b) => (a.r[7] ?? 0) - (b.r[7] ?? 0));
-    groups.wait.sort((a, b) => (b.cn.top6w2 ?? -1) - (a.cn.top6w2 ?? -1));
+    groups.wait.sort((a, b) => (b.cn ?? -1) - (a.cn ?? -1));
     const line = (x, k) => {
       const [place, name, club, result, status, timeplus, , start, splits] = x.r;
       const just = k === "fin" && Date.now() - (st.justIn.get(`${name}|${club}`) || 0) < JUST_IN_MS;
@@ -256,19 +257,18 @@ async function race(main, id, wanted) {
         <td class="lv-d" style="font-size:12.5px">${club}</td>
         <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
         <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td>
-        ${["official", "top6w2"].map((m) => html`<td class="r num${m === "official" ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>
-          <td class="r num${m === "official" ? " lv-d" : ""}">${x.score?.[m] != null ? scoreCell(x.score[m], x.cn[m]) : ""}</td>`)}
+        <td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>
+        <td class="r num">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>
         <td class="r num">${x.expected ?? ""}</td></tr>`;
     };
-    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="10">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="8">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
-      <th class="r lv-d" title="${t("lv.cnJ15.hint")}">${subHead(`CN ${methodShort("official")}`, "J-15")}</th>
-      <th class="r lv-d" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort("official")}`, t("lv.estGap"))}</th>
-      <th class="r">${subHead(`CN ${methodShort("top6w2")}`, t("lv.today"))}</th>
-      <th class="r" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort("top6w2")}`, t("lv.estGap"))}</th>
+      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(`CN ${methodShort(store.get().method)}`,
+        store.get().method === "official" ? "J-15" : t("lv.today"))}</th>
+      <th class="r" title="${t("lv.score.hint")}">${subHead(`${t("lv.score")} ${methodShort(store.get().method)}`, t("lv.estGap"))}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;

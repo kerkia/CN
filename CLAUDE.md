@@ -319,6 +319,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages. The runner search sits at the right
   end of the page's tab row (`app.placeSearch`, `.tabs-row`) on Coureur, Classement and Comparer only (`SEARCH_IN_TABS`). One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
   Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
+- **One method at a time** (owner, 2026-10-12): `store.method` (default `official`; `store.methods` = `[method]` for the
+  pages that read a list), chosen with the switch at the right of the header's second row (`ui.methodSwitch`: Officiel |
+  Top, a list of every available method for analysts; `?m=` in a link sets it); no page has a method choice of its own
+  (the former `methodChips`/`methodSeg` draw nothing). After a switch the runner's CN chart shows the previous method as a
+  faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
+  runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
+  of today, the circuit valued with `VALUER` (Top: the Fit of the same mean). The Documentation still compares methods.
+- **Theme** (owner, 2026-10-12): light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px), unless
+  the visitor chose one with the moon button (`localStorage cnx.theme`).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the group's name above each page title

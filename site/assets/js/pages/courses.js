@@ -74,8 +74,7 @@ export async function render(main, { arg, query }) {
         ${runnerSearch("cs-runner", t("rn.change"))}</div>` : ""}
       ${st.mode === "club" ? html`<select id="cs-club" style="margin-top:10px;width:100%">
         ${clubs.map(([c, n]) => html`<option value="${c}" ${raw(c === st.club ? "selected" : "")}>${n} (${c})</option>`)}</select>` : ""}`;
-    $("#filters").innerHTML = html`<div class="field"><span>${t("f.methods")}</span>${methodChips()}</div>
-      <label class="field"><span>${t("f.season")}</span><select id="cs-season">
+    $("#filters").innerHTML = html`<label class="field"><span>${t("f.season")}</span><select id="cs-season">
         <option value="all" ${raw(!st.season ? "selected" : "")}>${t("nw.allSeasons")}</option>
         ${seasons.map((y) => html`<option value="${y}" ${raw(y === st.season ? "selected" : "")}>${y}</option>`)}</select></label>
       <label class="field"><span>${t("co.level")}</span><select id="cs-level"><option value="">${t("f.allm")}</option>

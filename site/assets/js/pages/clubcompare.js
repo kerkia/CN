@@ -103,8 +103,7 @@ export async function render(main, { query }) {
 
   function drawFilters() {
     $("#filters").innerHTML = html`${terrainField()}
-      ${clubSelectors(sel)}
-      ${sel.base === "cn" ? html`<div class="field"><span>${t("f.methods")}</span>${methodChips(undefined, { dash: true })}</div>` : ""}`;
+      ${clubSelectors(sel)}`;
     bindClubSelectors(main, sel, () => { drawFilters(); drawAll(); });
     bindMethodChips(main, () => { drawFilters(); drawAll(); });
   }

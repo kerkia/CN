@@ -332,7 +332,7 @@ const FR = {
   "cm.tab.years": "Saisons", "cm.tab.summary": "Bilan", "cm.tab.monthly": "Mois par mois", "cm.tab.cfc": "Coupe de France",
   "cl.view.clubs": "Clubs", "cl.view.ligues": "Ligues", "cl.view.compare": "Comparer des clubs", "cl.view.relays": "Simulateur de relais",
   "co.tab.results": "Résultats", "co.tab.score": "Score par place", "co.tab.cn": "CN et score",
-  "rn.tab.races": "Courses", "rn.tab.evolution": "Évolution", "rn.tab.calc": "Calcul du CN", "rn.tab.progress": "Progression",
+  "rn.after": "après", "rn.tab.races": "Courses", "rn.tab.evolution": "Évolution", "rn.tab.calc": "Calcul du CN", "rn.tab.progress": "Progression",
   "rn.tab.seasons": "Saisons", "rn.tab.map": "Carte", "rn.tab.network": "Réseau",
   "rn.map": "Courses par département", "rn.map.hint": "Le nombre de compétitions courues dans chaque département (celui du club ou du comité organisateur)",
   "rn.map.n": "Courses", "rn.map.races": "courses", "rn.map.depts": "départements", "rn.map.last": "Dernière",
