@@ -185,6 +185,8 @@ function renderHeader(r) {
   // a group's tab leads back to the page last seen in it
   const lastIn = (g, items) => { try { return localStorage.getItem(`ocn.nav.${g}`) || items[0][1]; } catch (e) { return items[0][1]; } };
   if (group) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash || group[2][0][1]); } catch (e) {} }
+  document.body.dataset.group = group?.[0] || "";
+  document.body.style.setProperty("--kicker", group ? JSON.stringify(group[1]) : "none");
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
@@ -194,9 +196,8 @@ function renderHeader(r) {
     </button>` : ""}
     <a class="brand" href="${me ? link.runner(me.lic) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="8" fill="#0d366b"/>
-        <path d="M16 5 L27 16 L16 27 L5 16 Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
-        <path d="M16 5 L27 16 L16 16 Z" fill="#eb6834"/><path d="M5 16 L16 27 L16 16 Z" fill="#fff"/>
+        <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        <path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="currentColor"/>
       </svg>
       <span class="brand-name">${SITE}</span>
     </a>

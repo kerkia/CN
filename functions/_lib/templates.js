@@ -7,13 +7,13 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 function wrap(env, title, bodyHtml) {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f4f6f9;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#1b2430">
 <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-<div style="font-weight:700;font-size:20px;color:#0d366b;margin-bottom:12px">O'CN <span style="font-weight:500;font-size:13px;color:#5b6675">Observatoire du classement national de CO</span></div>
+<div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px">O'CN <span style="font-weight:500;font-size:13px;color:#5b6675">Observatoire du classement national de CO</span></div>
 <div style="background:#fff;border-radius:10px;padding:22px 24px;line-height:1.5">
 <h1 style="font-size:18px;margin:0 0 12px">${esc(title)}</h1>${bodyHtml}</div>
 <p style="font-size:12px;color:#5b6675;margin:14px 4px">Site indépendant, sans lien avec la FFCO. Message envoyé automatiquement ; vous pouvez écrire à ${esc(env.MAIL_FROM)}.</p>
 </div></body></html>`;
 }
-const button = (href, label) => `<p style="margin:18px 0"><a href="${esc(href)}" style="background:#0d366b;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">${esc(label)}</a></p>
+const button = (href, label) => `<p style="margin:18px 0"><a href="${esc(href)}" style="background:#d4561a;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">${esc(label)}</a></p>
 <p style="font-size:12px;color:#5b6675;word-break:break-all">Si le bouton ne fonctionne pas, copiez ce lien : ${esc(href)}</p>`;
 
 export function verifyMail(env, token, firstName) {
