@@ -87,7 +87,7 @@ export async function render(main, query) {
   let pyrRows = [];
   async function loadSeason() { pyrRows = prepare(await data.pyramid(season)); }
 
-  const save = () => replaceQuery({ vue: "stats", t: spec || null, ligue: ligue || null, club: club || null,
+  const save = () => replaceQuery({ vue: mode, t: spec || null, ligue: ligue || null, club: club || null,
     par: measure === "runners" ? null : measure, s: season === pyrSeasons[0] ? null : season });
 
   function drawFilters() {

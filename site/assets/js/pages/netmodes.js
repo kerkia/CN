@@ -14,20 +14,19 @@ const MODES = ["ego", "leaders", "territories", "stats", "ages"];
 export const modeSwitch = (current) => html`<nav class="page-tabs" role="tablist" aria-label="${t("nw.mode")}">
   ${MODES.map((m) => html`<button type="button" role="tab" data-net-mode="${m}" aria-selected="${m === current}">${t(`nw.mode.${m}`)}</button>`)}</nav>`;
 
-/** The head of a view: the title and the intro text, then the views as tabs. */
-export const netHead = (current, title, lede) => html`<div class="page-head"><div><h1>${title}</h1><p class="lede">${lede}</p></div></div>
-  ${modeSwitch(current)}`;
+/** The head of a view, under the page's tabs (network.render): its title and intro text. */
+export const netHead = (current, title, lede) => html`<div class="net-head"><h2>${title}</h2><p class="lede">${lede}</p></div>`;
 
-export function bindModeSwitch(root) {
-  $$("[data-net-mode]", root).forEach((b) => b.addEventListener("click", () => {
-    const m = b.dataset.netMode;
-    // the views counting both disciplines keep the one chosen (?t=)
-    const sp = new URLSearchParams(location.hash.split("?")[1] || "").get("t");
-    // "around one runner": the last runner looked at, else the logged-in one
-    location.hash = m === "leaders" ? link.networkLeaders()
-      : m === "territories" ? link.territories({ t: sp })
-      : m === "stats" ? link.stats({ t: sp })
-      : m === "ages" ? link.ages({ t: sp })
-      : link.network(store.get().lastRunner || auth.session()?.lic, { t: sp });
-  }));
+/** A view's address: the views counting both disciplines keep the one chosen (?t=); « around one runner »: the
+ *  last runner looked at, else the logged-in one. */
+export function modeHref(m) {
+  const sp = new URLSearchParams(location.hash.split("?")[1] || "").get("t");
+  return m === "leaders" ? link.networkLeaders()
+    : m === "territories" ? link.territories({ t: sp })
+    : m === "stats" ? link.stats({ t: sp })
+    : m === "ages" ? link.ages({ t: sp })
+    : link.network(store.get().lastRunner || auth.session()?.lic, { t: sp });
 }
+
+/** The tabs are bound once by the page (network.render); the views' own call does nothing. */
+export function bindModeSwitch() {}

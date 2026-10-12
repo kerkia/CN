@@ -318,7 +318,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
   of the races per département), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
   classées; Statistiques' views (`netmodes.js`: Réseau d'un coureur, des meilleurs, Territoires, Participation, Âges)
-  and Temps intermédiaires' views use the same tab bar. Do the same for new pages.
+  and Temps intermédiaires' views use the same tab bar; Statistiques switches its views in place under one head
+  (`network.render`, `netmodes.modeHref`: the address follows by pushState). Do the same for new pages. No count of
+  compared runners in the navigation (owner, 2026-10-12).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w2`, `fair`, `fair2` (labels « Top »
   / « Juste », linéaire / quadratique; better names to come). Old saved selections of the removed `v2026` method
   are mapped to `fair` in `store.js`; saved selections from before `top6w2` get it added once (`mv`).

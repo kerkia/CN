@@ -188,10 +188,8 @@ function renderHeader(r) {
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
       ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
-        <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}${
-          g === "cn" ? html`<span class="nav-count" id="nav-cmp-top" hidden></span>` : ""}</a>
-        <div class="nav-menu">${items.map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${
-          k === "compare" ? html`<span class="nav-count" id="nav-cmp" hidden></span>` : ""}</a>`)}</div>
+        <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}</a>
+        <div class="nav-menu">${items.map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</div>
       </div>`)}
     </nav>
     <div class="topbar-tools">
@@ -219,8 +217,7 @@ function renderHeader(r) {
     </div>
   </div>
   ${me && (group || showSearch) ? html`<div class="subbar"><div class="subbar-inner">
-      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${
-        k === "compare" ? html`<span class="nav-count" id="nav-cmp-sub" hidden></span>` : ""}</a>`)}</nav>` : ""}
+      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</nav>` : ""}
       ${showSearch ? html`<div class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
@@ -325,18 +322,6 @@ function renderFooter() {
   </div>`;
 }
 
-// ---- the runners being compared: their number next to « Comparer » ------------------
-function renderCompareCount() {
-  const n = store.get().compare.length;
-  // next to « Comparer », and on its group's button (the menu is closed)
-  for (const el of [$("#nav-cmp"), $("#nav-cmp-top"), $("#nav-cmp-sub")]) {
-    if (!el) continue;
-    el.textContent = n ? String(n) : "";
-    el.hidden = !n;
-    el.title = n ? `${n} ${t("cp.count")}` : "";
-  }
-}
-
 // ---- routing ---------------------------------------------------------------
 let current = null;
 let lastRoute = null;
@@ -375,7 +360,6 @@ async function route_() {
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);
-  renderCompareCount();
   current?.cleanup?.();
   disposeAll();
   const main = $("#main");
@@ -428,7 +412,6 @@ export async function signedIn(s) {
   location.hash = next && next.startsWith("#/") && next !== "#/" ? next : link.runner(s.lic);
 }
 
-store.subscribe(renderCompareCount);
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
 

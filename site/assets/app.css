@@ -211,7 +211,9 @@ p { margin: 0; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
 .page-head .lede { color: var(--ink-2); margin-top: 6px; max-width: 760px; }
 /* Réseau: the title, then the intro text with the views' switch at its right, at the same place in every view */
-.page-head.net-head { display: block; }
+.net-head { margin: 0 0 14px; }
+.net-head h2 { font-size: 18px; margin: 0; }
+.net-head .lede { margin: 4px 0 0; }
 .net-sub { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 24px; margin-top: 6px; }
 .net-sub .lede { margin-top: 0; flex: 1 1 320px; }
 .net-sub > .seg { flex: none; }

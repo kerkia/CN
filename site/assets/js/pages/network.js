@@ -14,7 +14,7 @@ import {
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
 import { link, replaceQuery, viewTerrain, terrainField } from "../app.js";
-import { netHead, bindModeSwitch } from "./netmodes.js";
+import { netHead, bindModeSwitch, modeSwitch, modeHref } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
 const surname = (nom) => {
@@ -80,13 +80,32 @@ async function coRunnersIn(lic, season, terrain) {
   return [...acc.values()].filter((x) => x[1] >= 2).sort((a, b) => b[1] - a[1]).slice(0, 30);
 }
 
+// The Statistiques page: one head, its views as tabs, the view under them. A tab switches the view in place (the
+// address follows, the page around it stays), as the other pages' tabs do.
+const modeOf = (lic, query) => (lic ? "ego" : query.vue === "territoires" ? "territories" : query.vue === "ages" ? "ages"
+  : ["stats", "activite"].includes(query.vue) ? "stats" : query.vue === "meilleurs" || !store.get().lastRunner ? "leaders" : "ego");
+
+async function view(el, mode, lic, query) {
+  if (mode === "territories") return (await import("./territory.js")).render(el, query);
+  if (mode === "stats" || mode === "ages") return (await import("./stats.js")).render(el, query);   // « Activité »: merged
+  return mode === "ego" ? ego(el, lic || store.get().lastRunner, query) : global(el, query);
+}
+
 export async function render(main, { arg: lic, query }) {
-  if (!lic && query.vue === "territoires") return (await import("./territory.js")).render(main, query);
-  // the statistics; « Âges » and « Activité » were merged into them
-  if (!lic && ["stats", "ages", "activite"].includes(query.vue)) return (await import("./stats.js")).render(main, query);
-  // no runner in the address: the current runner, unless the leaders' view was asked for
-  const who = lic || (query.vue !== "meilleurs" && store.get().lastRunner);
-  return who ? ego(main, who, query) : global(main, query);
+  const mode = modeOf(lic, query);
+  main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.network")}</h1></div></div>
+    ${modeSwitch(mode)}<div id="net-view"></div>`;
+  const el = $("#net-view", main);
+  $$("[data-net-mode]", main).forEach((b) => b.addEventListener("click", async () => {
+    const m = b.dataset.netMode, href = modeHref(m);
+    $$("[data-net-mode]", main).forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    history.pushState(null, "", href);
+    const [path, qs] = href.replace(/^#/, "").split("?");
+    const arg = path.split("/").filter(Boolean)[1];
+    const res = await view(el, m, arg ? decodeURIComponent(arg) : null, Object.fromEntries(new URLSearchParams(qs || "")));
+    if (res?.title) document.title = `${res.title} — ${document.title.split(" — ").pop()}`;
+  }));
+  return view(el, mode, lic, query);
 }
 
 // ---- around one runner ---------------------------------------------------------
@@ -260,7 +279,7 @@ async function global(main, query) {
   let season = seasonsDesc().includes(query.s) ? query.s : "";
 
   main.innerHTML = html`
-    ${netHead("leaders", t("nw.title"), t("nw.lede.global"))}
+    ${netHead("leaders", t("nw.mode.leaders"), t("nw.lede.global"))}
     <section class="card" style="margin-bottom:16px"><div class="card-body row">
       ${runnerSearch("nw-search", t("nw.search"))}<span class="muted" style="font-size:13.5px">${t("nw.searchHint")}</span>
     </div></section>
@@ -368,5 +387,5 @@ async function global(main, query) {
 
   drawFilters();
   await draw();
-  return { title: t("nw.title") };
+  return { title: `${t("nav.network")} · ${t("nw.mode.leaders")}` };
 }

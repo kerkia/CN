@@ -150,5 +150,5 @@ export async function render(main, query) {
 
   drawFilters();
   await draw();
-  return { title: `${t("nw.title")} · ${t("tr.title")}` };
+  return { title: `${t("nav.network")} · ${t("tr.title")}` };
 }
