@@ -34,7 +34,9 @@ const PAGES = {
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
-const NO_SEARCH = new Set(["courses", "clubs", "club", "clubcompare", "methods", "agenda", "contact", "settings", "admin", "provisional", "splits", "network", "live"]);
+// Pages with the runner search, at the right end of their tab row (owner, 2026-10-12): where picking a runner leads
+// somewhere (the Classement scrolls to them); the other pages have none.
+const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -189,7 +191,7 @@ function renderHeader(r) {
   document.body.style.setProperty("--kicker", group ? JSON.stringify(group[1]) : "none");
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
-  const showSearch = !NO_SEARCH.has(route);
+
   $("#topbar").innerHTML = html`<div class="topbar-inner${me ? "" : " guest"}">
     ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
@@ -231,13 +233,9 @@ function renderHeader(r) {
       </button>`}
     </div>
   </div>
-  ${me && (group || showSearch) ? html`<div class="subbar"><div class="subbar-inner">
+  ${me && group ? html`<div class="subbar"><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</nav>` : ""}
-      ${showSearch ? html`<div class="search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
-        <div class="search-results hidden" id="search-results" role="listbox"></div>
-      </div>` : ""}
+
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
   // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice
@@ -279,7 +277,22 @@ function renderHeader(r) {
     route_();
   });
   if (!me) return;
-  if (showSearch) bindSearch();
+
+}
+
+/** The runner search at the right end of the page's tab row (the bar and the search share its bottom line). */
+function placeSearch(main) {
+  const bar = $(".page-tabs", main);
+  if (!bar || !auth.session() || bar.parentElement.classList.contains("tabs-row")) return;
+  const row = document.createElement("div");
+  row.className = "tabs-row";
+  bar.replaceWith(row);
+  row.append(bar);
+  row.insertAdjacentHTML("beforeend", html`<div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
+    <div class="search-results hidden" id="search-results" role="listbox"></div></div>`);
+  bindSearch();
 }
 
 function bindSearch() {
@@ -383,6 +396,7 @@ async function route_() {
     const mod = await PAGES[r.route]();
     if (my !== token) return;
     current = (await mod.render(main, r)) || null;
+    if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
     lastRoute = r.route;
     track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;

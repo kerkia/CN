@@ -983,6 +983,13 @@ table.data tbody tr.found .name { font-weight: 700; }
 .page-tabs button:hover { color: var(--ink); }
 .page-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--grp); }
 @media (max-width: 640px) { .page-tabs button { font-size: 13.5px; padding: 9px 8px; } }
+/* the tab row with the runner search at its right end (app.placeSearch): one bottom line for both */
+.tabs-row { display: flex; align-items: flex-end; gap: 6px 16px; border-bottom: 1px solid var(--border-strong); margin: 0 0 18px; }
+.tabs-row > .page-tabs { border-bottom: 0; margin: 0; flex: 1 1 auto; min-width: 0; }
+.tabs-row > .search { flex: 0 1 280px; margin: 0 0 6px auto; }
+.tabs-row > .search input { width: 100%; height: 34px; }
+.tabs-row .search-results { left: auto; right: 0; width: min(420px, calc(100vw - 32px)); }
+@media (max-width: 640px) { .tabs-row { flex-wrap: wrap; } .tabs-row > .search { flex: 1 1 100%; order: -1; margin: 0 0 4px; } }
 /* a view's own tabs under a page's (Comparer des clubs inside Clubs): smaller, the hierarchy visible */
 #club-view .page-tabs, #net-view .page-tabs { border-bottom-color: var(--border); margin-bottom: 14px; }
 #club-view .page-tabs button, #net-view .page-tabs button { font-size: 13.5px; font-weight: 550; padding: 7px 11px; }

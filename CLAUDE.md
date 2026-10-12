@@ -316,8 +316,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - Navigation (owner, 2026-10-12): the bar shows two groups as tabs — « Classement national » (Coureur, Classement, Courses
   classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
   Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
-  (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages, the runner search at its right on
-  pages that have it. One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
+  (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages. The runner search sits at the right
+  end of the page's tab row (`app.placeSearch`, `.tabs-row`) on Coureur, Classement and Comparer only (`SEARCH_IN_TABS`). One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
   Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
