@@ -48,18 +48,37 @@ NOT_PAGES = ("share=", "trackback", "/feed", "replytocom", "wp-login", "/tag/", 
 SHARED_HOSTS = ("blogspot.", "wixsite.com", "wordpress.com", "e-monsite.com", "over-blog.com", "jimdofree.com", "jimdo.com",
                 "free.fr", "webnode.", "sportsregions.fr", "clubeo.com", "kalisport.com", "github.io", "netlify.app",
                 "pagesperso-orange.fr", "alwaysdata.net", "assoconnect.com", "helloasso.com", "google.com")
+# hosts of uploaded files (no extension in their addresses)
+FILE_HOSTS = ("res.cloudinary.com", "dl.dropboxusercontent.com", "www.dropbox.com", "dropbox.com", "1drv.ms",
+              "docs.google.com", "drive.google.com")
 PLATFORMS = {"liveresultat.orientering.se": "liveresultat", "obasen.orientering.se": "winsplits", "livelox.com": "livelox",
              "helga-o.com": "helga", "helga-o.live": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries"}
 
 
+_HEADING = re.compile(r"(?is)<(h[1-6]|strong|b|th|dt|caption|legend)\b[^>]*>(.*?)</\1>")
+
+
 def _links(page: str, base: str) -> list[tuple[str, str]]:
-    """(absolute url, link text) of every <a href> of a page."""
+    """(absolute url, link text) of every <a href> of a page. A short link text (« Résultats SI », « Télécharger ») gets
+    the heading it sits under (« Régionale LIFCO, le 11/10/2026 à Montigny »): on a page listing every event of a club,
+    the link alone says neither which race nor which day."""
     out = []
-    for href, text in re.findall(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\'#]+)["\'][^>]*>(.*?)</a>', page):
-        href = htmllib.unescape(href.strip())
+    for m in re.finditer(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\'#]+)["\'][^>]*>(.*?)</a>', page):
+        href, text = htmllib.unescape(m.group(1).strip()), m.group(2)
         if href.startswith(("mailto:", "tel:", "javascript:")):
             continue
-        out.append((urllib.parse.urljoin(base, href), re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", text))).strip()))
+        text = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", text))).strip()
+        if len(text) < 30:
+            heads = list(_HEADING.finditer(page, max(0, m.start() - 2500), m.start()))
+            if heads:
+                ctx = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", heads[-1].group(2)))).strip()
+                if ctx and len(ctx) <= 200:
+                    text = f"{text} — {ctx}"
+        url = urllib.parse.urljoin(base, href)
+        # a Cloudinary file's address changes at each page load (« /v1791801252/ », « ?_a=… »): its stable form
+        if _host(url) == "res.cloudinary.com":
+            url = re.sub(r"/v[0-9]+/", "/", url.split("?", 1)[0])
+        out.append((url, text))
     return out
 
 
@@ -269,11 +288,18 @@ class ClubSite:
                 return                                          # a file of another day's (or season's) race
             path = urllib.parse.urlsplit(url).path.lower()
             is_doc = path.endswith(DOC_EXT) or "drive.google.com/file" in url or "document-download" in url or "/ugd/" in url
+            # a file without an extension (a Cloudinary upload: « …/organisations/resultat_si69 »), or a link saying
+            # what it holds: read to find out (kept only if it reads as such)
+            last = path.rsplit("/", 1)[-1]
+            noext = not is_doc and "." not in last and (_host(url) in FILE_HOSTS or any(w in plain(text) for w in (
+                "resultat", "result", "depart", "horaire", "annonce", "inscrit", "temps inter", "splits")))
+            if noext:
+                is_doc = True
             if not is_doc:
                 return
             if path.endswith((".htm", ".html")) and not any(w in low for w in WANT):
                 return                                          # an ordinary page, not an exported list
-            if any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and \
+            if any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and                     not other_day_named(low, d) and \
                     not path.endswith((".htm", ".html")):
                 announcements.setdefault(url, text)             # the announcement: perhaps the table of its circuits
                 return
@@ -284,7 +310,7 @@ class ClubSite:
             # (on a page about the race's weekend, a results file need not name the race: the weekend's races share
             # them out by their words afterwards, races.owners — « Résutats Nuit » at Fougères)
             if (says_result and (names_race or weekend_page)) or (posted_after and (says_result or names_race and not start)):
-                found.setdefault(url, (text, via))
+                found.setdefault(url, (text, f"{via} (à vérifier)" if noext else via))
             elif (on_race_page or weekend_page) and not any(w in low for w in (RESULT_WORDS[:3] if start else START_WORDS[:3])):
                 # a file on the race's (or its weekend's) page that says nothing of what it is (« Fougeres-OTour-Sprint.pdf »,
                 # a start list): read to find out — kept only if it reads as what is looked for

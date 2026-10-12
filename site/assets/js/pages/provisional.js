@@ -79,7 +79,8 @@ function list(main, idx, query) {
       <tbody>${[...idx.runs].reverse().map((x) => html`<tr><td class="num">${when(x.at)}</td><td class="r num">${fmt(x.looked)} / ${fmt(x.due)}</td>
         <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
         <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
-  const R = idx.races;
+  // the races run so far (today's too): a coming race's start list is reached from « Bientôt »
+  const R = idx.races.filter((r) => !r.soon);
   // the tiles: the races the filters keep — the runner, the specialité, the region, the search; not « Afficher »,
   // which would make « avec résultats » 100 %
   const drawTiles = (T) => {
@@ -174,7 +175,8 @@ async function detail(main, idx, query) {
   };
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/recemment">${t("prov.title")}</a><span>›</span><span>${race.name}</span></div>
+    <div class="crumbs">${race.date_iso > new Date().toISOString().slice(0, 10)
+      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/recemment">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
       <div class="row" style="gap:8px"><a class="btn btn-sm" href="#/deposer?course=${encodeURIComponent(race.key)}">${t("up.open")}</a>

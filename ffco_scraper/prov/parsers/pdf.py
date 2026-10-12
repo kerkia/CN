@@ -650,6 +650,15 @@ def _oe_assign(l: Line, cols: list[_Col], overflow: bool = True) -> dict[str, li
 def _oe_class_line(l: Line, time_col: _Col) -> tuple | None:
     """'H21 (9) 10,6 km 0 m 27 P' -> (name, length_m, climb_m, n_controls, continued)."""
     ws = l.words
+    # OE's provisional lists stamp each class line « Etat de: 16:53 » (the time of the list, not a race time), and give
+    # the count only on the class's first line: such a line is a class line, the words before « Etat » its name
+    etat = next((i for i, w in enumerate(ws) if model.plain(w.text).rstrip(":") == "etat"), None)
+    if etat and etat + 2 < len(ws) + 1 and any(model.plain(w.text).startswith("de") for w in ws[etat + 1:etat + 2]):
+        ws = ws[:etat]
+        if not any(_COUNT.match(w.text) for w in ws[:8]):
+            # (a count cut short by the next column: « Violet court hommes (19/2 »)
+            name = re.sub(r"\s*\(\d*(?:/\d*)?\)?\s*$", "", " ".join(w.text for w in ws)).strip()
+            return (name, None, None, None, False) if name and not any(_is_time(w.text) for w in ws) else None
     ci = next((i for i, w in enumerate(ws[:8]) if _COUNT.match(w.text)), None)
     if not ci:
         return None

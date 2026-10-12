@@ -138,7 +138,9 @@ Online (sequential event ids scanned forward; HTML split tables, start times fro
 undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
 event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
 and are not read — the owner is telling Helga's developer), Orientation Data (heyries), and the organiser's site
-(WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
+(a short link text gets the heading it sits under — « Résultats SI » under « Régionale LIFCO, le 11/10/2026 » —, links
+without an extension on file hosts or saying « Résultats / départs / Annonce » are read to find out, Cloudinary's addresses
+kept in their stable form; WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
 subdomains met on the way, `new.co-lorient.fr` —, Blogger feed, up to 14 pages best-first across the whole crawl from
 the race's page and the home page: pages naming the race (words, its day in any spelling, `2026/10/03` in an address)
 before generic results pages, a multi-sport site's own orientation section before the rest, lists of past events,
@@ -186,7 +188,7 @@ WinSplits / Orientation Data, Helga, liveresultat last (live results are not cor
 under half the runners of the fullest one drops. A split list without start times takes them, by name, from another
 document of the race (`run.share_starts`, for « Groupes »). **Start lists** (2026-10-10): for the races of the next 7 days, the liveresultat
 competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat.read(startlist=True)`: status
-"start"); a race with one is listed on « Récemment » as « à venir » (index `soon`, `startlist`, `agenda_id`) and its page
+"start"); a coming race is not listed on « Récemment » (index `soon`, `startlist`, `agenda_id`): its start list is reached from « Bientôt », and its page
 shows start time, current CN Top / official and the expected place; « Bientôt » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
 the names are members-only and not read. O'Cap's export skips the coming races. Organisers' sites too (`run.site_start_lists`,
