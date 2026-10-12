@@ -105,7 +105,9 @@ function qstr(q) {
 /** Update the URL's query for the current page without re-rendering it. */
 let silent = false;
 export function replaceQuery(q) {
-  const { path } = parseHash();
+  const { path, query } = parseHash();
+  // the tab shown (ui.pageTabs: ?onglet=) stays unless the page says otherwise
+  if (query.onglet && q && !("onglet" in q)) q = { ...q, onglet: query.onglet };
   const next = "#" + (path || "/") + qstr(q);
   if (location.hash !== next) {
     silent = true;
@@ -144,8 +146,9 @@ function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
   // logged in, the home page (the login page) is not needed: the brand leads to one's own page
-  // two groups (owner, 2026-10-12): the national ranking's analyses, and the races — coming, run, live; the
-  // documentation, settings, contact and logout under one's name
+  // two groups (owner, 2026-10-12): the national ranking's analyses, and the races — coming, run, live. The bar shows
+  // the groups, the row under it the current group's pages (and the runner search); the documentation, settings,
+  // contact and logout are under one's name
   const groups = me ? [
     ["cn", t("nav.g.cn"), [
       ["runner", "#/coureur", t("nav.runner")],
@@ -163,6 +166,10 @@ function renderHeader(r) {
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" || route === "deposit" ? "provisional" : route;
+  const group = groups.find(([, , items]) => items.some(([k]) => k === current));
+  // a group's tab leads back to the page last seen in it
+  const lastIn = (g, items) => { try { return localStorage.getItem(`ocn.nav.${g}`) || items[0][1]; } catch (e) { return items[0][1]; } };
+  if (group) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash || group[2][0][1]); } catch (e) {} }
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
   const showSearch = !NO_SEARCH.has(route);
@@ -180,8 +187,8 @@ function renderHeader(r) {
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
       ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
-        <button type="button" class="nav-top" aria-expanded="false" ${raw(items.some(([k]) => k === current) ? 'aria-current="true"' : "")}>${label}${
-          g === "cn" ? html`<span class="nav-count" id="nav-cmp-top" hidden></span>` : ""}${caret}</button>
+        <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}${
+          g === "cn" ? html`<span class="nav-count" id="nav-cmp-top" hidden></span>` : ""}</a>
         <div class="nav-menu">${items.map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${
           k === "compare" ? html`<span class="nav-count" id="nav-cmp" hidden></span>` : ""}</a>`)}</div>
       </div>`)}
@@ -210,12 +217,14 @@ function renderHeader(r) {
       </button>`}
     </div>
   </div>
-  ${me && showSearch ? html`<div class="subbar"><div class="subbar-inner">
-      ${html`<div class="search">
+  ${me && (group || showSearch) ? html`<div class="subbar"><div class="subbar-inner">
+      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${
+        k === "compare" ? html`<span class="nav-count" id="nav-cmp-sub" hidden></span>` : ""}</a>`)}</nav>` : ""}
+      ${showSearch ? html`<div class="search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
         <div class="search-results hidden" id="search-results" role="listbox"></div>
-      </div>`}
+      </div>` : ""}
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
   // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice
@@ -224,7 +233,7 @@ function renderHeader(r) {
     g.classList.remove("open");
     $(".nav-top", g).setAttribute("aria-expanded", "false");
   });
-  $$(".nav-group > .nav-top").forEach((b) => b.addEventListener("click", () => {
+  $$(".nav-group > button.nav-top").forEach((b) => b.addEventListener("click", () => {
     const g = b.parentElement, open = !g.classList.contains("open");
     closeMenus(g);
     g.classList.toggle("open", open);
@@ -319,7 +328,7 @@ function renderFooter() {
 function renderCompareCount() {
   const n = store.get().compare.length;
   // next to « Comparer », and on its group's button (the menu is closed)
-  for (const el of [$("#nav-cmp"), $("#nav-cmp-top")]) {
+  for (const el of [$("#nav-cmp"), $("#nav-cmp-top"), $("#nav-cmp-sub")]) {
     if (!el) continue;
     el.textContent = n ? String(n) : "";
     el.hidden = !n;

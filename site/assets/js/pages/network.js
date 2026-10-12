@@ -236,7 +236,7 @@ async function ego(main, lic, query) {
       { key: "ahead", label: t("nw.ahead"), align: "r", cls: "num", sort: (x) => x.ahead, render: (x) => fmt(x.ahead) },
       { key: "behind", label: t("nw.behind"), align: "r", cls: "num", sort: (x) => x.behind, render: (x) => fmt(x.behind) },
       { key: "last", label: t("nw.last"), align: "r", cls: "num", sort: (x) => x.last, render: (x) => fmtDate(x.last) },
-      { key: "go", label: "", render: (x) => html`<a href="${link.network(x.lic, { t: tq })}" title="${t("nw.clickRecenter")}">${t("nav.network")}</a>` },
+      { key: "go", label: "", render: (x) => html`<a href="${link.network(x.lic, { t: tq })}" title="${t("nw.clickRecenter")}">${t("nw.title")}</a>` },
       { key: "cmp", label: t("nav.compare"), cls: "c", render: (x) => html`<input type="checkbox" data-sel="${x.lic}" ${raw(store.inCompare(x.lic) ? "checked" : "")} aria-label="${x.name}">` },
     ],
     onRender(el) {

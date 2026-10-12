@@ -264,7 +264,10 @@ export function lineChart(el, { categories, series, yName, fmtY = (v) => fmt(v),
  * features without a value stay neutral. Sequential ramp --q1…--q5, light to dark.
  * tip(code) returns the tooltip HTML of a feature.
  */
-export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0, traffic = false }) {
+export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0, traffic = false, log = false }) {
+  // log: colours on a log scale (counts from 1 to a few dozen: 1, 3 and 10 told apart), the legend in plain numbers
+  const raw = values;
+  if (log) values = new Map([...values].map(([k, v]) => [k, Math.log1p(v)]));
   const th = theme();
   const c = init(el);
   // traffic light: red at the smallest value, yellow halfway, green at the largest, linear in between
@@ -276,7 +279,8 @@ export function mapChart(el, { map, values, tip, onClick, name = "", digits = 0,
     tooltip: baseTooltip(th, { trigger: "item", triggerOn: "mousemove|click", confine: true, formatter: (p) => tip(p.name) }),
     visualMap: {
       type: "continuous", min: lo, max, calculable: false, orient: "horizontal", left: "center", bottom: 4,
-      itemWidth: 10, itemHeight: 160, text: [fmt(max, digits), fmt(lo, digits)], textStyle: { color: th.ink3, fontSize: 12 },
+      itemWidth: 10, itemHeight: 160, textStyle: { color: th.ink3, fontSize: 12 },
+      text: log ? [fmt(Math.max(1, ...raw.values())), "0"] : [fmt(max, digits), fmt(lo, digits)],
       inRange: { color: traffic ? ["#d64545", "#f0c43c", "#2f9e57"] : [1, 2, 3, 4, 5].map((i) => css(`--q${i}`)) },
     },
     series: [{

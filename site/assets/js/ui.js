@@ -72,6 +72,36 @@ export function scoreCell(score, cn, { title = "", below = "" } = {}) {
   return html`<span ${raw(title ? `title="${esc(title)}"` : "")}>${score ? fmt(score) : html`<span class="dim">0</span>`}</span><span class="gap ${
     g == null ? "" : g > 0 ? "delta-up" : g < 0 ? "delta-down" : "dim"}">${g == null ? "" : `${g > 0 ? "+" : g < 0 ? "−" : "±"}${fmt(Math.abs(g))}`}</span>${below}`;
 }
+/**
+ * A page's sections as tabs (owner, 2026-10-12: on every page with several sections, rather than a long scroll).
+ * tabs: [[key, label]]. The panels are the elements with data-panel="key"; only the current one is shown. The tab
+ * chosen is in the address (?onglet=…, none for the first), so a link or a reload opens it.
+ */
+export const pageTabs = (tabs, current) => html`<nav class="page-tabs" role="tablist">${tabs.map(([k, label]) =>
+  html`<button type="button" role="tab" data-ptab="${k}" aria-selected="${k === current}">${label}</button>`)}</nav>`;
+/** The tab asked for in the address, else the first. */
+export const tabFrom = (tabs, query) => (tabs.some(([k]) => k === query.onglet) ? query.onglet : tabs[0][0]);
+/** Binds the tabs; returns show(key). onShow(key) runs each time a tab is shown (a panel may draw itself then). */
+export function bindPageTabs(root, tabs, current, onShow) {
+  const show = (k) => {
+    $$("[data-ptab]", root).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.ptab === k)));
+    $$("[data-panel]", root).forEach((p) => { p.hidden = p.dataset.panel !== k; });
+    const [path, qs] = location.hash.split("?");
+    const q = new URLSearchParams(qs || "");
+    if (k === tabs[0][0]) q.delete("onglet"); else q.set("onglet", k);
+    const next = `${path}${q.toString() ? `?${q}` : ""}`;
+    if (next !== location.hash) history.replaceState(null, "", next);
+    // charts drawn while their panel was hidden have no width yet: size them now it shows
+    requestAnimationFrame(() => $$(`[data-panel="${k}"] [_echarts_instance_]`, root)
+      .forEach((el) => window.echarts?.getInstanceByDom(el)?.resize()));
+    onShow?.(k);
+  };
+  $$("[data-ptab]", root).forEach((b) => b.addEventListener("click", () => show(b.dataset.ptab)));
+  $$("[data-panel]", root).forEach((p) => { p.hidden = p.dataset.panel !== current; });
+  onShow?.(current);
+  return show;
+}
+
 /** A results table's column header with what the figure is below it (« CN Top » / « J-15 »). */
 export const subHead = (label, sub) => html`${label}<div class="th-sub">${sub}</div>`;
 

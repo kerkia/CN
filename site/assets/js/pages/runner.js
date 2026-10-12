@@ -8,11 +8,17 @@ import * as store from "../store.js";
 import * as data from "../data.js";
 import { R, SCORE_COL, CNAFTER_COL } from "../data.js";
 import { explain, cnHistory, paramsFor } from "../cn.js";
-import { timeChart, bandChart, methodColor, css } from "../charts.js";
+import { timeChart, bandChart, methodColor, css, mapChart } from "../charts.js";
+import { placeOf, loadMap, featuresOf, DEPT_REGION } from "../geo.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
   methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag, filterFold,
+  pageTabs, tabFrom, bindPageTabs,
 } from "../ui.js";
+
+// the page's tabs: the races, the CN over time, its calculation, the progression by age, the seasons, the map
+const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["calcul", "rn.tab.calc"],
+  ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"]];
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
 import { link, replaceQuery, terrainField } from "../app.js";
@@ -34,6 +40,8 @@ export async function render(main, { arg, query }) {
   let range = query.range || "all";
   let calcDate = query.d || null;
   let histMethod = null, ref = "all";
+  const tabs = TABS.map(([k, l]) => [k, t(l)]);
+  const tab = tabFrom(tabs, query);
 
   const name = displayName(person.nom);
   // a race opens in the Courses tab, in Coureur mode, on this runner's circuit
@@ -59,21 +67,27 @@ export async function render(main, { arg, query }) {
         </div>
       </div>
       <div class="stack" style="gap:8px"><button class="btn" type="button" id="cmp-btn"></button>
-        <a class="btn btn-sm" href="${link.network(lic)}">${t("nav.network")}</a></div>
+        <a class="btn btn-sm" href="${link.network(lic)}">${t("nw.title")}</a></div>
     </section>
     ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
       ${t("rn.switchTo")} ${t(`terrain.${other}`)} ${t("rn.inHeader")}.</div>`}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
+    ${pageTabs(tabs, tab)}
+    <div data-panel="courses">
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("rn.history")}</h2>
       <div class="row"><span id="hist-terrain"></span>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("f.season")}</span>
         <select id="season"></select></label></div></div>
       <div id="history" class="scroll-box"></div></section>
+    </div>
+    <div data-panel="evolution">
     <div style="margin-bottom:16px">${chartCard({
       id: "evo", title: t("rn.evolution"), hint: t("rn.evolution.hint"), tall: true,
       tools: html`<label class="checkline"><input type="checkbox" id="show-scores" ${raw(showScores ? "checked" : "")}>${t("rn.showScores")}</label>`,
     })}</div>
+    </div>
+    <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint">${t("rn.cnHistory.hint")}</div></div>
         <span id="hist-seg"></span></div>
@@ -92,6 +106,8 @@ export async function render(main, { arg, query }) {
         </div>
       <div id="ffhist"></div>
     </section>
+    </div>
+    <div data-panel="progression">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("pg.title")}</h2><div class="hint" id="pg-hint"></div></div>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("pg.ref")}</span><select id="ref"></select></label></div>
@@ -104,8 +120,15 @@ export async function render(main, { arg, query }) {
         <div style="margin-top:16px">${chartCard({ id: "curve", title: t("pg.curve"), hint: t("pg.curve.hint") })}</div>
       </div>
     </section>
-    <section class="card"><div class="card-head"><h2>${t("rn.seasons")}</h2></div><div id="seasons"></div></section>`;
-  ["evo", "path", "pct", "curve"].forEach((id) => bindChartCard(main, id));
+    </div>
+    <div data-panel="saisons">
+    <section class="card"><div class="card-head"><h2>${t("rn.seasons")}</h2></div><div id="seasons"></div></section>
+    </div>
+    <div data-panel="carte">
+    ${chartCard({ id: "rmap", title: t("rn.map"), hint: t("rn.map.hint"), tall: true, tools: html`<span id="rmap-tools"></span>` })}
+    <p class="muted" id="rmap-note" style="font-size:12.5px;margin:8px 2px 0"></p>
+    </div>`;
+  ["evo", "path", "pct", "curve", "rmap"].forEach((id) => bindChartCard(main, id));
 
   const cmpBtn = $("#cmp-btn");
   const drawCmp = () => {
@@ -223,7 +246,7 @@ export async function render(main, { arg, query }) {
     timeChart($("#evo"), {
       series, zoom: zoomWindow(all),
       tooltipExtra: (s, v) => (v[2] ? `<span style="color:var(--ink-3);margin-left:6px">${esc(data.comp(v[2][R.course])?.title || "")}</span>` : ""),
-      onClick: (d) => { calcDate = d; drawCalc(); $("#calc").scrollIntoView({ behavior: "smooth", block: "nearest" }); },
+      onClick: (d) => { calcDate = d; drawCalc(); showTab("calcul"); },
     });
     const dates = [...new Set(methods.flatMap((m) => seriesFor(m).map((p) => p[0])))].sort().reverse();
     const lookup = Object.fromEntries(methods.map((m) => [m, new Map(seriesFor(m))]));
@@ -635,7 +658,55 @@ export async function render(main, { arg, query }) {
     });
   }
 
+  // ---- the map: the races run in each département, whatever the discipline unless one is chosen ---------------
+  // (a race is placed by its organiser: a club or a département committee gives the département; a ligue, none)
+  let mapTerrain = "", mapSeason = "", mapDrawn = false;
+  async function drawMap() {
+    mapDrawn = true;
+    const pool = races.filter((r) => (!mapTerrain || r[R.terrain] === mapTerrain) && (!mapSeason || r[R.date].startsWith(mapSeason)));
+    const seasonsR = [...new Set(races.filter((r) => !mapTerrain || r[R.terrain] === mapTerrain).map((r) => r[R.date].slice(0, 4)))].sort().reverse();
+    $("#rmap-tools").innerHTML = html`<span class="row" style="gap:10px">${seg("mt", [["", t("f.all")], ...store.TERRAINS.map((x) => [x, t(`terrain.${x}`)])], mapTerrain)}
+      <select id="rmap-season" aria-label="${t("f.season")}"><option value="">${t("nw.allSeasons")}</option>
+        ${seasonsR.map((s) => html`<option value="${s}" ${raw(s === mapSeason ? "selected" : "")}>${s}</option>`)}</select></span>`;
+    $$('[data-seg="mt"]').forEach((b) => b.addEventListener("click", () => { mapTerrain = b.dataset.value; drawMap(); }));
+    $("#rmap-season").addEventListener("change", (e) => { mapSeason = e.target.value; drawMap(); });
+    // one race = one competition (two circuits the same day count once)
+    const by = new Map();
+    let unplaced = 0;
+    for (const id of new Set(pool.map((r) => r[R.course]))) {
+      const c = data.comp(id), { dept } = placeOf(c?.organizer);
+      if (!dept) { unplaced++; continue; }
+      const g = by.get(dept) || { n: 0, last: "", title: "" };
+      g.n++;
+      if ((c?.date || "") > g.last) { g.last = c.date; g.title = c.title; }
+      by.set(dept, g);
+    }
+    const rows = [...by.entries()].sort((a, b) => b[1].n - a[1].n);
+    const total = rows.reduce((s, [, g]) => s + g.n, 0);
+    $("#rmap-note").textContent = `${fmt(total + unplaced)} ${t("rn.map.races")} · ${fmt(rows.length)} ${t("rn.map.depts")}`
+      + (unplaced ? ` · ${fmt(unplaced)} ${t("rn.map.unplaced")}` : "");
+    $("#rmap-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("tr.level.dept")}</th>
+      <th class="r">${t("rn.map.n")}</th><th>${t("rn.map.last")}</th></tr></thead>
+      <tbody>${rows.map(([d, g]) => html`<tr><td>${d} · ${data.deptName(d)}</td><td class="r num">${fmt(g.n)}</td>
+        <td>${fmtDate(g.last, "short")} · ${g.title}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("rn.noRaces")}</div>`;
+    const map = await loadMap("departements");
+    if (!$("#rmap")) return;                                          // the page was left
+    if (!map) { $("#rmap").innerHTML = html`<div class="empty">${t("tr.noMap")}</div>`; return; }
+    const values = new Map();
+    for (const [d, g] of rows) for (const f of featuresOf(d)) values.set(f, g.n);
+    const code = (f) => (f === "2A" || f === "2B" ? "20" : f);
+    mapChart($("#rmap"), {
+      map, values, name: t("rn.map.n"), log: true,
+      tip: (f) => {
+        const g = by.get(code(f));
+        return String(html`<b>${data.deptName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>
+          <b>${fmt(g?.n || 0)}</b> ${t("rn.map.races")}${g ? html`<br><span style="color:var(--ink-3)">${t("rn.map.last")} : ${fmtDate(g.last, "short")} · ${g.title}</span>` : ""}`);
+      },
+    });
+  }
+
   function drawAll() {
+    if (mapDrawn) drawMap();
     drawTiles();
     drawChart();
     drawCnHistory();
@@ -647,6 +718,8 @@ export async function render(main, { arg, query }) {
   }
   drawFilters();
   drawAll();
+  // the map draws when its tab is first shown (it loads the outlines)
+  const showTab = bindPageTabs(main, tabs, tab, (k) => { if (k === "carte" && !mapDrawn) drawMap(); });
   return { title: name };
 }
 
