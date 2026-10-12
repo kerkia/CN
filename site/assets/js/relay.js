@@ -64,7 +64,13 @@ export const PRESETS = {
   rcH20: cat("H20 (H16 à H20)", "H", 16, 20, 3, 105), rcD20: cat("D20 (D16 à D20)", "D", 16, 20, 2, 70),
   rcH16: cat("H16 (H14 à H16)", "H", 14, 16, 3, 90), rcD16: cat("D16 (D14 à D16)", "D", 14, 16, 2, 60),
   rcH12: cat("H12", "H", 0, 12, 2, 40), rcD12: cat("D12", "D", 0, 12, 2, 40),
+  // the sprint relay: 2 women and 2 men of any category, woman - man - man - woman; sprint CNs
+  spr: { label: "Relais sprint (2 dames, 2 hommes)", group: "Championnat de France de relais sprint", target: "winner", terrain: "Spr",
+    slots: [S("Dame", "D"), S("Homme", "H"), S("Homme", "H"), S("Dame", "D")],
+    legs: legs([15, 15, 15, 15], { 1: { sex: "D" }, 2: { sex: "H" }, 3: { sex: "H" }, 4: { sex: "D" } }) },
 };
+/** A format's discipline: its own (the sprint relay), else forest — CFC, CNE and relais de catégorie are forest races. */
+export const terrainOf = (f) => f?.terrain || "For";
 export const TARGETS = { winner: "l'équipe gagnante totalise la somme des temps de référence",
   top5: "la moyenne des 5 meilleures équipes totalise la somme des temps de référence" };
 

@@ -296,8 +296,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
   a runner's club is that of their last race of the year. Shown on « Comparer des clubs » (seasons of the selected
   clubs, one season's ranking). FFCO's own cup pages are gone (404); nothing to scrape.
-- **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator, in forest unless another
-  discipline is chosen on it (its formats are forest relays); a club that cannot field a team is told which criterion fails. Formats from FFCO's 2026
+- **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator. A format defines its discipline
+  (`relay.terrainOf`: CFC, CNE, relais de catégorie in forest; the sprint relay — 2 women, 2 men of any category, D-H-H-D —
+  in sprint), whatever the site-wide one; only one's own format has a discipline selector (owner, 2026-10-12). A club that
+  cannot field a team is told which criterion fails. Formats from FFCO's 2026
   rules (`relay.js` `PRESETS`: CFC N1-N4 with their composition criteria and reserved legs — the women's/men's first and
   last legs alternate with the year's parity —, CNE Hommes/Dames/Jeunes/mini, relais de catégorie) or one's own legs.
   The owner's model: a runner of CN c runs k x ref / c on a leg; k makes the best team of all clubs (CNE: the mean of

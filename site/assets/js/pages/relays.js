@@ -11,7 +11,7 @@ import { loadRanking } from "./ranking.js";
 import { clubName } from "../clubstats.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
-import { PRESETS, TARGETS, catParts, fits, bestTeam, clubTeams, checkTeam } from "../relay.js";
+import { PRESETS, TARGETS, catParts, fits, bestTeam, clubTeams, checkTeam, terrainOf } from "../relay.js";
 
 const TOP = 20;                 // teams in the predicted ranking
 const MAX_TEAMS = 4;            // the club's teams, made automatically
@@ -28,9 +28,9 @@ export async function render(main, { query }) {
   let fmtNow = key === "perso" ? custom() : clone(PRESETS[key]);
   let club = query.club || myClub() || "";
   let method = store.available().includes(query.m) ? query.m : (store.available().includes("top6w2") ? "top6w2" : store.get().methods[0]);
-  // the relays simulated are forest races (CFC, CNE, relais de catégorie): forest unless chosen otherwise here, whatever
-  // the site-wide discipline
-  let terrain = store.TERRAINS.includes(query.t) ? query.t : "For";
+  // the discipline of the CNs: the format's (forest, the sprint relay in sprint), whatever the site-wide one; one's own
+  // format: chosen here
+  let terrain = key === "perso" ? (store.TERRAINS.includes(query.t) ? query.t : "For") : terrainOf(PRESETS[key]);
   let runners = [], byClub = new Map(), manual = null;      // manual: the team typed by hand (array of runners), else null
 
   main.innerHTML = html`
@@ -51,17 +51,21 @@ export async function render(main, { query }) {
     const groups = new Map();
     for (const [k, p] of Object.entries(PRESETS)) { if (!groups.has(p.group)) groups.set(p.group, []); groups.get(p.group).push([k, p.label]); }
     const clubs = [...byClub.keys()].sort((a, b) => clubName(a).localeCompare(clubName(b), "fr"));
-    $("#rl-filters").innerHTML = html`<label class="field"><span>${t("f.terrain")}</span><select id="rl-t">
-        ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(x === terrain ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}</select></label>
+    $("#rl-filters").innerHTML = html`${key === "perso" ? html`<label class="field"><span>${t("f.terrain")}</span><select id="rl-t">
+        ${store.TERRAINS.map((x) => html`<option value="${x}" ${raw(x === terrain ? "selected" : "")}>${t(`terrain.${x}`)}</option>`)}</select></label>`
+        : ""}
       <label class="field"><span>${t("rl.format")}</span><select id="rl-f">
         ${[...groups].map(([g, list]) => html`<optgroup label="${g}">${list.map(([k, l]) => html`<option value="${k}" ${raw(k === key ? "selected" : "")}>${l}</option>`)}</optgroup>`)}
         <option value="perso" ${raw(key === "perso" ? "selected" : "")}>${t("rl.custom")}</option></select></label>
       <label class="field"><span>${t("rl.club")}</span><select id="rl-club" style="max-width:280px"><option value="">—</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>
       <div class="field"><span>${t("cm.method")}</span>${methodSeg(method)}</div>`;
-    $("#rl-t").addEventListener("change", (e) => { terrain = e.target.value; manual = null; load(); });
+    $("#rl-t")?.addEventListener("change", (e) => { terrain = e.target.value; manual = null; load(); });
     $("#rl-f").addEventListener("change", (e) => {
-      key = e.target.value; fmtNow = key === "perso" ? custom() : clone(PRESETS[key]); manual = null; drawFormat(); compute();
+      key = e.target.value; fmtNow = key === "perso" ? custom() : clone(PRESETS[key]); manual = null; drawFormat();
+      // another discipline (the sprint relay): its runners' CNs
+      const tr = key === "perso" ? terrain : terrainOf(PRESETS[key]);
+      if (tr !== terrain) { terrain = tr; load(); } else { drawFilters(); compute(); }
     });
     $("#rl-club").addEventListener("change", (e) => { club = e.target.value; manual = null; compute(); });
     bindMethodSeg(main, async (m) => { method = m; manual = null; await load(); });
@@ -119,7 +123,7 @@ export async function render(main, { query }) {
   // the longest legs, is skipped), our club's teams, the constant k
   let res = null;
   function compute() {
-    replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method, t: terrain === "For" ? null : terrain });
+    replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method, t: key === "perso" && terrain !== "For" ? terrain : null });
     const f = fmtNow, n = f.legs.length;
     if (f.slots.length !== n || !n) return;
     const refs = f.legs.map((l) => l.ref).sort((a, b) => b - a);
