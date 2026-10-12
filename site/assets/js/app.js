@@ -38,6 +38,13 @@ const PAGES = {
 // Pages with the runner search, at the right end of their tab row (owner, 2026-10-12): where picking a runner leads
 // somewhere (the Classement scrolls to them); the other pages have none.
 const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
+// Lean pages (owner, 2026-10-12): where the title only repeats the menu, the page starts with its tabs; its text is the
+// tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
+// or a race's name stays as a title, and the pages outside the menu keep theirs.
+const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede" };
+const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda"].includes(r.route)
+  || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -189,7 +196,6 @@ function renderHeader(r) {
   const lastIn = (g, items) => { try { return localStorage.getItem(`ocn.nav.${g}`) || items[0][1]; } catch (e) { return items[0][1]; } };
   if (group) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash || group[2][0][1]); } catch (e) {} }
   document.body.dataset.group = group?.[0] || "";
-  document.body.style.setProperty("--kicker", group ? JSON.stringify(group[1]) : "none");
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
 
@@ -235,7 +241,7 @@ function renderHeader(r) {
     </div>
   </div>
   ${me && group ? html`<div class="subbar"><div class="subbar-inner">
-      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</nav>` : ""}
+      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`)}</nav>` : ""}
       ${route === "agenda" ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
@@ -292,13 +298,36 @@ function renderHeader(r) {
 }
 
 /** The runner search at the right end of the page's tab row (the bar and the search share its bottom line). */
-function placeSearch(main) {
+/** The page's tab row, made a .tabs-row (the tabs, then things at its right) — null when the page has no tabs. */
+function tabsRow(main) {
   const bar = $(".page-tabs", main);
-  if (!bar || !auth.session() || bar.parentElement.classList.contains("tabs-row")) return;
+  if (!bar) return null;
+  if (bar.parentElement.classList.contains("tabs-row")) return bar.parentElement;
   const row = document.createElement("div");
   row.className = "tabs-row";
   bar.replaceWith(row);
   row.append(bar);
+  return row;
+}
+/** A lean page: no title line; its buttons at the right of the tab row, else alone on a slim row. */
+function leanHead(main) {
+  const head = $(".page-head", main);
+  if (!head) return;
+  const [titleBox, ...actions] = [...head.children];
+  titleBox?.remove();
+  const row = actions.length ? tabsRow(main) : null;
+  if (row) {
+    const box = document.createElement("div");
+    box.className = "tabs-actions";
+    box.append(...actions);
+    row.insertBefore(box, $(".search", row));
+  }
+  if (!head.children.length) head.remove(); else head.classList.add("lean");
+}
+
+function placeSearch(main) {
+  const row = auth.session() ? tabsRow(main) : null;
+  if (!row || $(".search", row)) return;
   row.insertAdjacentHTML("beforeend", html`<div class="search">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="search-input" type="search" autocomplete="off" placeholder="${t("search.placeholder")}" aria-label="${t("search.placeholder")}">
@@ -412,6 +441,7 @@ async function route_() {
     if (my !== token) return;
     current = (await mod.render(main, r)) || null;
     if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
+    if (isLean(r)) leanHead(main);
     lastRoute = r.route;
     track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;

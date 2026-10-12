@@ -330,10 +330,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the visitor chose one with the moon button (`localStorage cnx.theme`).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
-  `--grp`: the group's dot and tab in the bar, the current page in the row under it, the group's name above each page title
-  via `--kicker`, the active tab's underline), the main button (`.btn-primary`) in control-flag orange, faint contour
-  lines behind page heads (a CSS mask, brown). Logo: the original hourglass — a diamond whose top-right triangle is orange
+  `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button
+  (`.btn-primary`) in control-flag orange, contour lines behind the header's second row (a CSS mask, brown). Logo: the original hourglass — a diamond whose top-right triangle is orange
   and bottom-left one in the text colour — without the blue square (app.js, favicon.svg; e-mails: ink name, orange button).
+- **Lean pages** (owner, 2026-10-12): where the title only repeats the menu (Classement, Courses classées, Comparer, Clubs,
+  Statistiques, Agenda, the lists of Résultats and En direct: `app.isLean`), `app.leanHead` drops the title line: the page
+  starts with its tabs, its buttons go to the right of the tab row (`.tabs-actions`), its text is the tooltip of its name
+  in the second row (`NAV_HINT`). The runner's, a club's and a race's names stay as titles, as do Documentation and Réglages.
 - **One head for every page** (owner, 2026-10-12): `.page-head` = the title, a short text on its right (`.lede`; under it on a
   phone; the runner's and the club's facts as `.lede.meta`), the action buttons at the far right, then the tabs. Pages whose
   views change the text (Statistiques, Clubs) give it `id="page-lede"` and the views call `ui.setLede` (`netmodes.netHead`
