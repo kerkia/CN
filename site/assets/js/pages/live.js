@@ -116,11 +116,26 @@ async function race(main, id, wanted) {
     const code = String(club || "").match(/\b(\d{4})/)?.[1];
     return c.find((r) => code && String(r.club || "").startsWith(code)) || null;
   };
+  // the CNs shown and used: the official one 15 days before the race (as FFCO uses it; the monthly snapshot before
+  // that day), today's Top, and the strength (Juste) one at J-15 that values the circuit for the Top score
   async function cnFor(terrain) {
     if (st.cn[terrain]) return st.cn[terrain];
-    const m = data.latestMonth();
-    st.cn[terrain] = Object.fromEntries(await Promise.all(METHODS.map(async (x) => [x, await data.cnAt(x, terrain, m)])));
+    const day = st.info?.date || new Date().toISOString().slice(0, 10);
+    const j15 = new Date(Date.parse(day) - 15 * 86400e3).toISOString().slice(0, 10);
+    const mJ15 = data.meta().months.filter((m) => m <= j15).pop() || data.latestMonth();
+    const [official, top, fair] = await Promise.all([data.cnAt("official", terrain, mJ15), data.cnAt("top6w2", terrain, data.latestMonth()),
+      data.cnAt("fair2", terrain, mJ15)]);
+    st.cn[terrain] = { official, top6w2: top, fair2: fair, monthJ15: mJ15 };
     return st.cn[terrain];
+  }
+  /** A class's estimated race scores, FFCO's way: circuit value = mean of CN × time over the fastest ⌈2N/3⌉ finishers
+   *  holding a CN, score = circuit value ÷ time; null below 3 such finishers. key: the CN that values the circuit. */
+  function scores(finishers, key) {
+    const held = finishers.filter((x) => x.cnv[key] && x.time > 0).sort((a, b) => a.time - b.time);
+    if (held.length < 3) return () => null;
+    const top = held.slice(0, Math.ceil((2 * held.length) / 3));
+    const cv = top.reduce((s, x) => s + x.cnv[key] * x.time, 0) / top.length;
+    return (x) => (x.time > 0 ? Math.round(cv / x.time) : null);
   }
 
   function connect() {
@@ -201,8 +216,14 @@ async function race(main, id, wanted) {
     const ctl = d.controls || [];
     const enriched = d.rows.map((r) => {
       const me = who(r[1], r[2]);
-      return { r, me, cn: Object.fromEntries(METHODS.map((m) => [m, me ? cn[m].get(me.lic) ?? null : null])) };
+      const get = (k) => (me ? cn[k].get(me.lic) ?? null : null);
+      return { r, me, time: r[4] === 0 && r[3] != null ? r[3] / 100 : null,
+        cn: { top6w2: get("top6w2"), official: get("official") }, cnv: { official: get("official"), fair2: get("fair2") } };
     });
+    // the scores each finisher's time earns, estimated on the class's finishers (its circuit's when it is one)
+    const fin = enriched.filter((x) => x.time);
+    const offScore = scores(fin, "official"), topScore = scores(fin, "fair2");
+    for (const x of fin) x.score = { official: offScore(x), top6w2: topScore(x) };
     // the place each runner's CN (Top) predicts, among those of the class who hold one
     const ranked = enriched.filter((x) => x.cn.top6w2 != null).sort((a, b) => b.cn.top6w2 - a.cn.top6w2);
     ranked.forEach((x, i) => { x.expected = i + 1; });
@@ -232,16 +253,26 @@ async function race(main, id, wanted) {
           <div class="muted lv-m" style="font-size:12px">${club}</div>
           ${sub ? html`<div class="muted" style="font-size:12px">${sub}</div>` : ""}</td>
         <td class="lv-d" style="font-size:12.5px">${club}</td>
-        ${METHODS.map((m, i) => html`<td class="r num${i ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>`)}
+        ${["official", "top6w2"].map((m) => html`<td class="r num${m === "official" ? " lv-d" : ""}">${x.cn[m] != null ? fmt(x.cn[m]) : html`<span class="muted">—</span>`}</td>`)}
+        ${["official", "top6w2"].map((m) => {
+          const sc = x.score?.[m], g = sc != null && x.cn[m] != null ? sc - x.cn[m] : null;
+          return html`<td class="r num${m === "official" ? " lv-d" : ""}">${sc == null ? "" : html`<b>${fmt(sc)}</b>${g == null ? ""
+            : html`<div class="${g > 0 ? "delta-up" : g < 0 ? "delta-down" : "muted"}" style="font-size:11.5px">${g > 0 ? "▲ +" : g < 0 ? "▼ " : "±"}${fmt(Math.abs(g))}</div>`}`}</td>`;
+        })}
         <td class="r num">${x.expected ?? ""}</td>
         <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
         <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td></tr>`;
     };
-    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${6 + METHODS.length}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="10">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
-      <th class="lv-d">${t("prov.club")}</th>${METHODS.map((m, i) => html`<th class="r${i ? " lv-d" : ""}">CN ${methodShort(m)}</th>`)}<th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>
+      <th class="lv-d">${t("prov.club")}</th>
+      <th class="r lv-d" title="${t("lv.cnJ15.hint")}">CN ${methodShort("official")}<div class="muted" style="font-weight:400;font-size:11px">J-15</div></th>
+      <th class="r">CN ${methodShort("top6w2")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.today")}</div></th>
+      <th class="r lv-d" title="${t("lv.score.hint")}">${t("lv.score")} ${methodShort("official")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.est")}</div></th>
+      <th class="r" title="${t("lv.score.hint")}">${t("lv.score")} ${methodShort("top6w2")}<div class="muted" style="font-weight:400;font-size:11px">${t("lv.est")}</div></th>
+      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>
       <th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th></tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;

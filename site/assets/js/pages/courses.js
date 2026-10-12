@@ -254,6 +254,7 @@ export async function render(main, { arg, query }) {
       return x.r[C.place] && cn && s ? s - cn : null;
     };
     dataTable($("#res-table"), {
+      compact: true,                     // (a desktop shows every method's columns without a scrollbar)
       rows, sortKey: "place", sortDir: 1, rowClass: (x) => hl(x.r),
       columns: [
         { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (x) => x.r[C.place] ?? 1e6,

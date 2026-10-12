@@ -685,7 +685,7 @@ table.data tbody tr.me .name { font-weight: 700; }
 
 /* ---------------------------------------------------------------- courses: tree + results */
 .courses-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
-.courses-layout.split { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
+.courses-layout.split { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); }   /* the results' columns first */
 .courses-layout:not(.split) .results-pane { display: none; }
 .courses-layout.split .tree { max-height: calc(100vh - 150px); overflow: auto; }
 .tree { padding: 8px 8px 12px; }
