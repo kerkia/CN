@@ -456,6 +456,13 @@ async function route_() {
  *  its height while it redraws, and the window's and the inner panes' scroll positions (the races' list, the tables)
  *  are put back, again once the parts drawn later have settled. */
 let inPlace = false;
+/** Another runner (or another choice) on the same page without moving (owner, 2026-10-13): the address changes, the page
+ *  redraws in place — same tab, same scroll positions. */
+export async function goInPlace(href) {
+  if (!href || location.hash === href) return;
+  history.pushState(null, "", href);
+  await redraw();
+}
 const SCROLLERS = ".tree, .table-scroll, .table-wrap, .scroll-box";
 async function redraw() {
   const main = $("#main"), y = window.scrollY;

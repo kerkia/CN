@@ -13,7 +13,7 @@ import {
 } from "../ui.js";
 import { loadRanking } from "./ranking.js";
 import { R, C } from "../data.js";
-import { link, replaceQuery, viewTerrain, terrainField } from "../app.js";
+import { link, replaceQuery, viewTerrain, terrainField, goInPlace } from "../app.js";
 import { netHead, bindModeSwitch, modeSwitch, modeHref } from "./netmodes.js";
 
 const NET = { lic: 0, shared: 1, ahead: 2, behind: 3, last: 4 };
@@ -137,7 +137,7 @@ export async function ego(main, lic, query) {
 
   if (!list.length) {
     $("#nw-filters").innerHTML = html`${periodSelect(season)}`;
-    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, t: tq }); });
+    $("#period").addEventListener("change", (e) => { goInPlace(link.network(lic, { s: e.target.value || null, t: tq })); });
     $("#net").innerHTML = html`<div class="empty">${t("nw.none")}</div>`;
     return { title: `${t("nw.title")} · ${name}` };
   }
@@ -172,7 +172,7 @@ export async function ego(main, lic, query) {
       <label class="checkline"><input type="checkbox" id="l2" ${raw(links2 ? "checked" : "")}>${t("nw.links2")}</label>`;
     $$('[data-seg="k"]').forEach((b) => b.addEventListener("click", () => { k = Number(b.dataset.value); drawFilters(); draw(); }));
     $("#l2").addEventListener("change", (e) => { links2 = e.target.checked; draw(); });
-    $("#period").addEventListener("change", (e) => { location.hash = link.network(lic, { s: e.target.value || null, k: k === 20 ? null : k, t: tq }); });
+    $("#period").addEventListener("change", (e) => { goInPlace(link.network(lic, { s: e.target.value || null, k: k === 20 ? null : k, t: tq })); });
   }
 
   async function draw() {
@@ -218,7 +218,7 @@ export async function ego(main, lic, query) {
     const nameOf = (id) => nodes.find((n) => n.id === id)?.name || id;
     networkChart($("#net"), {
       nodes, links,
-      onClick: (id) => { if (id !== lic) location.hash = link.network(id, { k, t: tq }); },
+      onClick: (id) => { if (id !== lic) goInPlace(link.network(id, { k, t: tq, s: season || null })); },
       tip: (n) => (n.meta?.me ? `<b>${esc(n.name)}</b>` : `<b>${esc(n.name)}</b><br><span style="color:var(--ink-3)">${esc(data.clubName(n.meta.club))}</span>
         <br>${fmt(n.meta.shared)} ${t("nw.shared")} · ${t("nw.ahead")} ${fmt(n.meta.ahead)} · ${t("nw.behind")} ${fmt(n.meta.behind)}
         <br><span style="color:var(--ink-3)">${t("nw.clickRecenter")}</span>`),

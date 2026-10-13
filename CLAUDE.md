@@ -326,6 +326,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
   runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
   of today, the circuit valued with `VALUER` (Top: the Fit of the same mean). The Documentation still compares methods.
+- **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
+  Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
+  same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
 - **Theme** (owner, 2026-10-12): light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px), unless
   the visitor chose one with the moon button (`localStorage cnx.theme`).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,

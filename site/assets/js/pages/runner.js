@@ -21,7 +21,7 @@ const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["
   ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"], ["reseau", "rn.tab.network"]];
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
-import { link, replaceQuery, terrainField } from "../app.js";
+import { link, replaceQuery, terrainField, goInPlace } from "../app.js";
 import * as auth from "../auth.js";
 
 export async function render(main, { arg, query }) {
@@ -728,13 +728,31 @@ export async function render(main, { arg, query }) {
   drawFilters();
   drawAll();
   // the map draws when its tab is first shown (it loads the outlines)
+  // another runner from this page — the search, a name in the network's list —: the same tab, the same settings, the page
+  // where it is (owner, 2026-10-13); a click with a modifier key still opens the link normally
+  const sameView = (other, extra = {}) => {
+    const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""));
+    return link.runner(other, { ...q, d: null, ...extra });
+  };
+  const onLink = (e) => {
+    const a = e.target.closest('a[href^="#/coureur/"]');
+    if (!a || e.defaultPrevented || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    const [path, qs] = a.getAttribute("href").split("?");
+    const other = decodeURIComponent(path.split("/")[2] || "");
+    if (!other || other === lic) return;
+    e.preventDefault();
+    goInPlace(sameView(other, Object.fromEntries(new URLSearchParams(qs || ""))));
+  };
+  main.addEventListener("click", onLink);
+
   // the map and the network draw when their tab is first shown
   let netDrawn = false;
   const showTab = bindPageTabs(main, tabs, tab, async (k) => {
     if (k === "carte" && !mapDrawn) drawMap();
     if (k === "reseau" && !netDrawn) { netDrawn = true; (await import("./network.js")).ego($("#rn-net"), lic, query); }
   });
-  return { title: name };
+  return { title: name, onRunnerPick: (other) => { if (other !== lic) goInPlace(sameView(other)); return true; },
+    cleanup: () => main.removeEventListener("click", onLink) };
 }
 
 /** #/coureur with nobody chosen yet: a search. */
