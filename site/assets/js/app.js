@@ -33,6 +33,7 @@ const PAGES = {
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
   analysis: () => import("./pages/analysis.js"),   // « Analyse »: a GPS trace on one's map (administrators only for now)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
+  games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps (administrators only for now)
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
@@ -43,8 +44,8 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
-  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede" };
-const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda", "analysis"].includes(r.route)
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede" };
+const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda", "analysis", "games"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
@@ -85,6 +86,7 @@ function parseHash() {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "relais" ? "relays"
+    : head === "jeux" ? "games"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -270,6 +272,8 @@ function renderHeader(r) {
       ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
       ...(me.admin ? [["analysis", "#/analyse", t("nav.analysis")]] : []),     // administrators only for now (owner, 2026-10-13)
     ]],
+    // « Jeux »: training games on generated maps; administrators only for now (owner, 2026-10-13)
+    ...(me.admin ? [["games", t("nav.g.games"), [["games", "#/jeux", t("nav.games")]]]] : []),
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" || route === "deposit" ? "provisional" : route;
@@ -319,7 +323,7 @@ function renderHeader(r) {
   </div>
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`)}</nav>` : ""}
-      ${route === "agenda" ? "" : methodSwitch()}
+      ${route === "agenda" || route === "games" ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
@@ -509,6 +513,11 @@ async function route_() {
   // « En direct » only for the accounts allowed to see it
   if (r.route === "live" && !who?.live) {
     history.replaceState(null, "", "#/resultats");
+    r = parseHash();
+  }
+  // « Jeux » only for administrators for now
+  if (r.route === "games" && !who?.admin) {
+    history.replaceState(null, "", link.runner(who?.lic));
     r = parseHash();
   }
   // « Analyse » only for administrators for now
