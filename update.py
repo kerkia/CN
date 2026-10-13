@@ -70,7 +70,10 @@ TOP6W_CN_VERSION = 4
 #   5 (2026-10-06): VTT and ski: windows of 2 and 3 years, best 70 % (their own params, CnParams.by_terrain)
 #   6 (2026-10-07): the quadratic variants "fair2" and "top6w2" (circuit value and CN as quadratic means)
 #   7 (2026-10-07): the quadratic variants keep FFCO's linear circuit value; only the CN is a quadratic mean
-ENGINE_VERSION = 7
+#   8 (2026-10-13): "fair3" and "top6w3" replace the quadratic variants: cubic mean, geometric circuit value (the
+#                   whole field in forest, the fastest two-thirds in sprint), recalage anchored on the Top with the
+#                   drift of the raw scale corrected (the forest level sat 7 % above 5600)
+ENGINE_VERSION = 8
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
@@ -78,7 +81,7 @@ ENGINE_VERSION = 7
 #   4 (2026-10-10): evaluation.json, the methods measured per circuit, out of sample, with intervals (site_eval.py)
 #   5 (2026-10-10): cfc.json, the Coupe de France des clubs recomputed (FFCO's 2026 rule), for Comparer des clubs
 EXTRAS_VERSION = 5
-COMPUTED = ("fair", "top6w", "fair2", "top6w2")   # in this order: each Top is derived from its Fair
+COMPUTED = ("fair", "top6w", "fair3", "top6w3")   # in this order: each Top is derived from its Fit
 
 
 def migrate(db: Path, out: Path) -> bool:

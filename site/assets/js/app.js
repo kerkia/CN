@@ -501,7 +501,7 @@ async function route_() {
   // the analysis methods ("Fit") only for the accounts allowed to see them
   const who = auth.session();
   store.setAnalyst(!!who?.analyst);
-  // a link may carry the method (?m=official|top6w2…): it becomes the site's
+  // a link may carry the method (?m=official|top6w3…): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « En direct » only for the accounts allowed to see it
   if (r.route === "live" && !who?.live) {

@@ -27,8 +27,8 @@ is the one from 15 days earlier.
 from __future__ import annotations
 
 import dataclasses
-import logging
 import math
+import logging
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -39,8 +39,6 @@ from .cn import (
     CnParams,
     Decimal_round,
     RunnerHistory,
-    circuit_elasticity,
-    circuit_info,
     circuit_value,
     classify_status,
     is_nc,
@@ -181,21 +179,22 @@ class Normalisation:
     #       year-on-year factor changes are 3-7%, versus ~0.4%/month monthly.
     #   "centred_monthly"  - smoothest, but peeks up to 6 months ahead, so it
     #       can only ever be used retrospectively.
-    #   "monthly_trend"    - (study of 2026-10-13) the same window as "monthly_lag", but the level is the
-    #       straight line fitted to ln(level) over it, extrapolated to the month the factor applies to. The
-    #       raw scale drifts upwards (the CN keeps the best races), and a mean over 13 months ending 2 months
-    #       back lags about 8 months, leaving the published level above the target; the fitted line has no lag
-    #       for a steady drift.
+    #   "monthly_drift"    - (study of 2026-10-13) the "monthly_lag" mean, carried forward by the drift of
+    #       ln(level) fitted over the `drift_months` months that end with the window, to `trend_ahead_months`
+    #       past the month fitted for. The raw scale climbs steadily (a CN keeps the best races, and the next
+    #       circuits are valued with those CNs), and the plain mean trails the scores it scales by 18 to 20
+    #       months: the published forest level sat 7 % above the target, 18 % with the geometric circuit value.
+    #       A slope over ten years barely moves from one month to the next, so the factors stay as smooth.
     mode: str = "monthly_lag"
+    # a discipline's own mode over `mode`: VTT and ski have too few monthly levels for a drift to be fitted
+    mode_by_terrain: dict = field(default_factory=dict)
     lag_months: int = 2
     smooth_months: int = 13        # window for the *_monthly smoothing modes
-    # "monthly_trend": how far past the month fitted for the line is read. 1 = the day the factor applies; a
-    # CN averages a year of race scores, so its level trails the scores' scale by about half a year more.
-    trend_ahead_months: float = 1.0
-    # "monthly_drift": the "monthly_lag" mean, carried forward to trend_ahead_months past the month by the drift of
-    # ln(level) fitted over the `drift_months` months that end with the window - a slope that barely moves from
-    # one month to the next, so the factors stay as smooth as the plain mean's.
-    drift_months: int = 37
+    trend_ahead_months: float = 7.0   # "monthly_drift": the mean is carried this far past the month fitted for
+    drift_months: int = 121           # "monthly_drift": the drift is fitted over this many months
+    # The cohort anchored at the target is that of the method's Top (owner, 2026-10-13): at each CN point, the CN
+    # the Top derived from the same raw scores would publish - this many places (None: the method's own CN).
+    anchor_top_n: int | None = None
     refresh_month: int = 1
     refresh_day: int = 3
     active_days: int = 365         # a runner counts if they raced this recently
@@ -255,12 +254,25 @@ def build_methods() -> dict[str, MethodSpec]:
         by_terrain={"VTT": {"window_days": 730, "eligible_fraction": 0.70},
                     "Ski": {"window_days": 1095, "eligible_fraction": 0.70}},
     )
-    # The quadratic variants: the CN as the weighted quadratic mean of the kept scores, the circuit
-    # value as FFCO's (linear). Measured 2026-10-07 on the same pairs (Top, July 2025 - October 2026),
-    # the CN power alone kept the gain on all races (+0.06 forest, +0.07 sprint) at no cost on national
-    # races in forest; a quadratic circuit value cost on national races (forest and sprint) and brought
-    # nothing in sprint, and narrowed the forest scale (p90/p10 2.65 -> 2.42, against 2.57 here).
-    fair2 = dataclasses.replace(fair, cn_power=2.0)
+    # The method retained (study of 2026-10-13, owner's go-ahead): the CN as the weighted cubic mean of the kept
+    # scores - k = 3: computed at race level, a runner 1 % slower than another gets 3 % fewer points and the CN
+    # is the plain mean of those scores, shown on the usual scale -, the circuit valued by the geometric mean of
+    # CN J-15 x time over every ranked CN holder in forest, over the fastest two-thirds in sprint. FFCO's
+    # two-thirds leave out the runners who made mistakes: the value came out 4.8 % too low on average in forest,
+    # unevenly (standard deviation 5.4 points, following the circuit's mistake rate); in sprint, where mistakes
+    # are rarer, the whole field loses. VTT and ski keep FFCO's circuit value and the quadratic mean (the whole
+    # field hurt the VTT Top since 2022; ski cannot be measured). Measured against the quadratic Top on the same
+    # runners, 2012-2024: forest tau +0.014 [+0.012, +0.015] (14 seasons of 15; national races +0.004), sprint
+    # +0.0025 [+0.0014, +0.0035]; juniors no longer rated 3 % too low against H/D21 in forest. The recalage
+    # anchors the Top's cohort (the published CN) and corrects the drift of the raw scale, in forest and sprint.
+    fair3 = dataclasses.replace(fair, by_terrain={
+        "Forêt": {"sample_fraction": 1.0, "cv_power": 0.0, "cn_power": 3.0},
+        "Sprint": {"cv_power": 0.0, "cn_power": 3.0},
+        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cn_power": 2.0},
+        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cn_power": 2.0},
+    })
+    norm3 = Normalisation(mode="monthly_drift", mode_by_terrain={"VTT": "monthly_lag", "Ski": "monthly_lag"},
+                          anchor_top_n=6)
     return {
         "fair": MethodSpec(
             name="fair",
@@ -278,18 +290,19 @@ def build_methods() -> dict[str, MethodSpec]:
             derived_from="fair",
             description="Fair's scores, best 6 weighted places",
         ),
-        "fair2": MethodSpec(
-            name="fair2",
-            params=fair2,
+        "fair3": MethodSpec(
+            name="fair3",
+            params=fair3,
             rescale=None,
-            normalisation=Normalisation(),
-            description="Fair with the CN as a quadratic mean (circuit value linear)",
+            normalisation=norm3,
+            description="Fit: geometric circuit value (whole field in forest), cubic mean; recalage on the Top",
         ),
-        "top6w2": MethodSpec(
-            name="top6w2",
-            params=dataclasses.replace(fair2, top_n=6),
-            derived_from="fair2",
-            description="Top with quadratic means, derived from fair2",
+        "top6w3": MethodSpec(
+            name="top6w3",
+            params=dataclasses.replace(fair3, top_n=6),
+            derived_from="fair3",
+            normalisation=norm3,
+            description="Top, derived from fair3: the same scores, 6 weighted places, cubic mean",
         ),
     }
 
@@ -602,7 +615,6 @@ class CnEngine:
                 if status == "ok" and T and not excluded and cn_in and cn_in > 0:
                     ranked.append((cn_in, T))
 
-            cp = pt(terrain)        # the circuit's rules in its discipline (sample, means, elasticity)
             if p.new_entrant_rescue and len(ranked) < p.min_ranked:
                 # new entrants count at 2000 only to rescue a circuit that
                 # could not otherwise be valued
@@ -613,14 +625,7 @@ class CnEngine:
                         ranked.append((p.new_entrant_value, T))
 
             k = K_BY_YEAR.get(d.year, DEFAULT_K) if spec.use_historical_k else p.k_over_1000
-            kr = circuit_elasticity(ranked, cp)              # the race's elasticity (1: FFCO's rule)
-            w_race = weight * circuit_info(ranked, cp)       # the title weight x the race's information (1: title only)
-            cv, n_sample = circuit_value(ranked, cp, k=k, kr=kr)
-            bend = None                                      # the bent score (race_curvature): mean CN, t_ref
-            if cp.race_curvature and cv is not None:
-                sample = sorted(ranked, key=lambda r: r[1])[:n_sample]
-                cbar = sum(c for c, _ in sample) / len(sample)
-                bend = (cbar, (cv / k / cbar) ** (1 / kr))
+            cv, n_sample = circuit_value(ranked, pt(terrain), k=k)     # the circuit's rules in its discipline
             if p.distance_pooling and terrain == "Sprint" and c["distance_km"]:
                 v_km = per_km(c["course_id"], terrain, as_of, k)
                 if v_km is not None:
@@ -630,25 +635,20 @@ class CnEngine:
                 stats["eligible"] += 1
             cvrows.append((spec.name, c["circuit_id"], c["date_iso"],
                            sum(1 for x in participants if x[1] == "ok"),
-                           len(ranked), n_sample, cv if kr == 1 or cv is None else float(cv),   # (CN x t^k: past 64 bits)
-                           1 if cv is not None else 0))
+                           len(ranked), n_sample, cv, 1 if cv is not None else 0))
 
             for r, status, T, cn_in, cat, excluded in participants:
                 score = None
                 counts = 0
                 if cv is not None and not excluded:
                     if status == "ok" and T:
-                        if bend:
-                            x = min(math.log(T / bend[1]), kr / (2 * cp.race_curvature))
-                            score = Decimal_round(bend[0] * k * math.exp(-kr * x + cp.race_curvature * x * x))
-                        else:
-                            score = Decimal_round(cv / T if kr == 1 else cv / T ** kr)
+                        score = Decimal_round(cv / T)
                         counts = 1
                     elif status in ("pm", "abandon", "disqualifie", "hors_delai"):
                         score = 0
                         counts = 1
                 if counts and score is not None:
-                    hist[(r["licence"], terrain)].add(d, score, w_race)
+                    hist[(r["licence"], terrain)].add(d, score, weight)
                     stats["scores"] += 1
                     cn_after, n_w, n_k = cn_for(r["licence"], terrain, d)
                     # n_kept == 0 means this is the seed showing through, not a
@@ -662,7 +662,7 @@ class CnEngine:
                 srows.append(
                     (spec.name, r["licence"], c["circuit_id"], c["course_id"],
                      c["date_iso"], c["season"], cat or None, sexe_of(cat),
-                     r["club"] or None, terrain, c["epreuve"], c["groupe"], w_race,
+                     r["club"] or None, terrain, c["epreuve"], c["groupe"], weight,
                      T, status, cn_in, score, score, counts)
                 )
 
@@ -760,7 +760,7 @@ class CnEngine:
         With `since`, the schedule is refitted as usual but only rows dated
         from the first point where it changed (or from `since`) are rewritten."""
         cfg = spec.normalisation
-        rows = self.conn.execute(
+        rows = self._anchor_rows(spec) if cfg.anchor_top_n else self.conn.execute(
             "SELECT licence, terrain, date_iso, cn_raw, n_scores_kept FROM cn_history "
             "WHERE method=? AND cn_raw IS NOT NULL ORDER BY date_iso, licence",
             (spec.name,),
@@ -780,7 +780,8 @@ class CnEngine:
             level = self._reference_levels(trows, cfg)
             if not level:
                 continue
-            schedule[terrain] = self._factor_schedule(level, cfg)
+            schedule[terrain] = self._factor_schedule(
+                level, dataclasses.replace(cfg, mode=cfg.mode_by_terrain.get(terrain, cfg.mode)))
 
         out_factors = [
             (spec.name, terrain, eff.isoformat(), ref, f)
@@ -831,6 +832,33 @@ class CnEngine:
         self.conn.commit()
         logger.info("%s: mode=%s, normalised %d scores and %d CN points over %d factors",
                     spec.name, cfg.mode, len(srows), n_cn, len(out_factors))
+
+    def _anchor_rows(self, spec: MethodSpec) -> list[dict]:
+        """The rows the recalage is fitted on when it anchors on the Top (Normalisation.anchor_top_n): at each
+        of the method's CN points, the raw CN its Top would publish from the same raw scores - the best places
+        only -, so that the published Top's cohort, not the Fit's, sits at the target."""
+        cfg, p = spec.normalisation, spec.params
+        hist: dict = defaultdict(RunnerHistory)
+        for s in self.conn.execute(
+                "SELECT licence, terrain, date_iso, score_raw, poids FROM scores "
+                "WHERE method=? AND counts_for_cn=1 AND score_raw IS NOT NULL "
+                "ORDER BY date_iso, course_id, circuit_id", (spec.name,)):
+            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score_raw"], s["poids"] or 1.0)
+        tops: dict[str, CnParams] = {}
+        rows = []
+        for r in self.conn.execute(
+                "SELECT licence, terrain, date_iso FROM cn_history "
+                "WHERE method=? AND cn_raw IS NOT NULL ORDER BY date_iso, licence", (spec.name,)):
+            h = hist.get((r["licence"], r["terrain"]))
+            if h is None:
+                continue
+            if r["terrain"] not in tops:
+                tops[r["terrain"]] = dataclasses.replace(p.for_terrain(r["terrain"]), top_n=cfg.anchor_top_n)
+            cn, _, kept = h.cn_as_of(date.fromisoformat(r["date_iso"]), tops[r["terrain"]])
+            if cn is not None and kept:
+                rows.append({"licence": r["licence"], "terrain": r["terrain"], "date_iso": r["date_iso"],
+                             "cn_raw": cn, "n_scores_kept": kept})
+        return rows
 
     def _publish_cn(self, spec: MethodSpec, rewrite_from: str | None) -> int:
         """cn_history.cn = aggregate of the published scores in the window (from `rewrite_from`)."""
@@ -908,7 +936,7 @@ class CnEngine:
         for i, m in enumerate(months):
             if cfg.mode == "centred_monthly":
                 lo, hi = max(0, i - half), min(len(vals), i + half + 1)
-            elif cfg.mode in ("monthly_lag", "monthly_trend", "monthly_drift"):
+            elif cfg.mode in ("monthly_lag", "monthly_drift"):
                 # The level from `lag_months` ago, so late results have
                 # settled before they can move the scale.
                 j = max(0, i - cfg.lag_months)
@@ -916,14 +944,8 @@ class CnEngine:
             else:  # trailing_monthly
                 lo, hi = max(0, i - cfg.smooth_months + 1), i + 1
             sm = sum(vals[lo:hi]) / (hi - lo)
-            if cfg.mode == "monthly_trend" and hi - lo >= 6 and all(v > 0 for v in vals[lo:hi]):
-                xs = list(range(lo, hi))
-                ys = [math.log(v) for v in vals[lo:hi]]
-                mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
-                slope = (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
-                         / sum((x - mx) ** 2 for x in xs))
-                sm = math.exp(my + slope * (i + cfg.trend_ahead_months - mx))
             if cfg.mode == "monthly_drift":
+                # the mean sits at the window's middle: carried to trend_ahead_months past month i by the drift
                 dlo = max(0, hi - cfg.drift_months)
                 if hi - dlo >= 12 and all(v > 0 for v in vals[dlo:hi]):
                     xs = list(range(dlo, hi))

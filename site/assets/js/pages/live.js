@@ -6,6 +6,7 @@
 import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
+import * as cn from "../cn.js";
 import { nameKey } from "../auth.js";
 import { methodShort, scoreCell, subHead } from "../ui.js";
 import * as store from "../store.js";
@@ -18,7 +19,7 @@ export const LIVE = devBase || "https://ocap.pages.dev";
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
 const ST_LABEL = { dns: "Non partant", dnf: "Abandon", mp: "PM", dsq: "Disq.", ot: "Hors délai", nc: "NC" };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
-const VALUER = { official: "official", top6w: "fair", top6w2: "fair2", fair: "fair", fair2: "fair2" };
+const VALUER = { official: "official", top6w: "fair", top6w3: "fair3", fair: "fair", fair3: "fair3" };
 const JUST_IN_MS = 90000;
 
 export async function render(main, { path = "", query = {} } = {}) {
@@ -130,14 +131,17 @@ async function race(main, id, wanted) {
     st.cn[k] = { shown, valuer, monthJ15: mJ15 };
     return st.cn[k];
   }
-  /** A class's estimated race scores, FFCO's way: circuit value = mean of CN × time over the fastest ⌈2N/3⌉ finishers
-   *  holding a CN, score = circuit value ÷ time; null below 3 such finishers. key: the CN that values the circuit. */
-  function scores(finishers, key) {
-    const held = finishers.filter((x) => x.cnv[key] && x.time > 0).sort((a, b) => a.time - b.time);
+  /** A class's estimated race scores: circuit value = the method's mean of CN × time over its sample of the finishers
+   *  holding a CN (FFCO: the arithmetic mean over the fastest ⌈2N/3⌉; the Top: its Fit's rule in the discipline —
+   *  geometric, the whole field in forest), score = circuit value ÷ time; null below 3 such finishers. key: the CN
+   *  that values the circuit. */
+  function scores(finishers, key, terrain) {
+    const held = finishers.filter((x) => x.cnv[key] && x.time > 0);
     if (held.length < 3) return () => null;
-    const top = held.slice(0, Math.ceil((2 * held.length) / 3));
-    const cv = top.reduce((s, x) => s + x.cnv[key] * x.time, 0) / top.length;
-    return (x) => (x.time > 0 ? Math.round(cv / x.time) : null);
+    const m = store.get().method;
+    const p = m === "official" ? {} : cn.paramsFor(data.meta(), VALUER[m], terrain);
+    const cv = cn.circuitValue(held.map((x) => [x.cnv[key], x.time]), { ...p, min_ranked: 3 });
+    return (x) => (cv != null && x.time > 0 ? Math.round(cv / x.time) : null);
   }
 
   function connect() {
@@ -224,7 +228,7 @@ async function race(main, id, wanted) {
     });
     // the score each finisher's time earns, estimated on the class's finishers (its circuit's when it is one)
     const fin = enriched.filter((x) => x.time);
-    const score = scores(fin, "v");
+    const score = scores(fin, "v", st.terrain);
     for (const x of fin) x.score = score(x);
     // the place each runner's CN predicts, among those of the class who hold one
     const ranked = enriched.filter((x) => x.cn != null).sort((a, b) => b.cn - a.cn);

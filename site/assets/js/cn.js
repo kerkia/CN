@@ -22,6 +22,20 @@ function windowStart(iso, days) {
   return d.toISOString().slice(0, 10);
 }
 
+/** A circuit's value from its ranked CN holders' [CN J-15, time in seconds], mirroring cn.circuit_value: the
+ *  fastest ⌈sample_fraction × N⌉ (all of them at min_ranked), the arithmetic mean of CN × time (cv_power 1, FFCO's
+ *  rule) or the geometric mean (cv_power 0); null below min_ranked runners. Only the live page estimates one. */
+export function circuitValue(pairs, { sample_fraction = 2 / 3, min_ranked = 4, cv_power = 1 } = {}) {
+  const n = pairs.length;
+  if (n < min_ranked) return null;
+  const ordered = pairs.slice().sort((a, b) => a[1] - b[1]);
+  const k = n === min_ranked ? n : Math.max(1, Math.ceil(sample_fraction * n - 1e-9));
+  const sub = ordered.slice(0, k);
+  if (cv_power === 0) return dround(Math.exp(sub.reduce((s, [c, t]) => s + Math.log(c * t), 0) / k));
+  if (cv_power === 1) return dround(sub.reduce((s, [c, t]) => s + c * t, 0) / k);
+  return dround((sub.reduce((s, [c, t]) => s + (c * t) ** cv_power, 0) / k) ** (1 / cv_power));
+}
+
 /** Federation trim: drop the best 10% and worst 40% (rounded), mean the rest. */
 export function trimmed(values, minScores = 2) {
   const n = values.length;
@@ -43,7 +57,7 @@ export function trimmed(values, minScores = 2) {
   return { cn: dround(kept.reduce((s, x) => s + x, 0) / kept.length), roles, nKept: kept.length };
 }
 
-/** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean. */
+/** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean, 3 = cubic. */
 export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3, power = 1 } = {}) {
   const n = values.length;
   if (n < minScores) return { cn: null, roles: values.map(() => null), used: values.map(() => 0), nKept: 0 };

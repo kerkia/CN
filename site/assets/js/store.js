@@ -1,10 +1,12 @@
 // Global, persisted UI state shared by every page.
 
-// Every method, in display order: the retained (quadratic) variants before the linear ones, studied for reference.
-// Everyone sees the official method and the Top; the others are analysis methods, shown only to the accounts with
-// the "Analyse" right (admin page, administrators included): the linear Top and the « Fit » methods.
-export const METHODS = ["official", "top6w2", "top6w", "fair2", "fair"];
-const ANALYSIS = ["top6w", "fair2", "fair"];
+// Every method, in display order: the retained pair (fair3 / top6w3, 2026-10-13: cubic mean, geometric circuit value)
+// before the linear ones, studied for reference. Everyone sees the official method and the Top; the others are analysis
+// methods, shown only to the accounts with the "Analyse" right (admin page, administrators included): the linear Top
+// and the « Fit » methods.
+export const METHODS = ["official", "top6w3", "top6w", "fair3", "fair"];
+const ANALYSIS = ["top6w", "fair3", "fair"];
+const RENAMED = { top6w2: "top6w3", fair2: "fair3" };     // the quadratic pair, replaced on 2026-10-13
 let analyst = false;
 /** The methods this visitor may see and pick. */
 export const available = () => METHODS.filter((m) => analyst || !ANALYSIS.includes(m));
@@ -33,6 +35,7 @@ function load() {
     const s = JSON.parse(localStorage.getItem(KEY) || "{}");
     if (!TERRAINS.includes(s.terrain)) delete s.terrain;
     // (a selection of several methods, saved before 2026-10-12, gives way to the default)
+    if (RENAMED[s.method]) s.method = RENAMED[s.method];
     if (!METHODS.includes(s.method)) s.method = defaults.method;
     s.methods = [s.method];
     delete s.mv;
@@ -71,6 +74,7 @@ let previous = null;
 export const prevMethod = () => previous;
 /** The site's method; `quiet`: from a link (?m=), not a switch, so no previous method to show. */
 export function setMethod(m, { quiet = false } = {}) {
+  m = RENAMED[m] || m;                                     // an old link (?m=top6w2)
   if (!available().includes(m) || m === state.method) return;
   previous = quiet ? null : state.method;
   set({ method: m, methods: [m] });

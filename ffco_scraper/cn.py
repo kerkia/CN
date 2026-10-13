@@ -130,43 +130,13 @@ class CnParams:
     window_days: int = 365
     lag_days: int = 15                   # CN "à J-15"
     # Power means (2026-10-07): 1 = the plain mean (FFCO's rule); 2 = the quadratic mean, which leans towards
-    # the higher values. `cv_power` for the circuit value (mean of CN x time over the sample), `cn_power` for
-    # a runner's CN (weighted mean of the kept scores). Measured: both at 2 predict best in every specialité.
+    # the higher values. `cn_power` for a runner's CN (weighted mean of the kept scores): 3 since the study of
+    # 2026-10-13 (the cubic mean: computed at race level, a runner 1 % slower than another gets 3 % fewer points
+    # and the CN is the plain mean of those scores, shown on the usual scale). `cv_power` for the circuit value,
+    # the mean of CN x time over the sample: 1 = FFCO's arithmetic mean, 0 = the geometric mean (the same study:
+    # the natural estimate of a circuit's difficulty when a run is multiplicative, one disaster cannot carry it).
     cv_power: float = 1.0
     cn_power: float = 1.0
-    # The race's elasticity (study of 2026-10-13): a runner's score is V / time^k with V = mean(CN x time^k) over
-    # the sample - k = 1 is FFCO's rule (1 % slower, 1 % fewer points); k = 2, 2 % fewer. "circuit": each
-    # circuit's own k, the ratio of the spreads of log CN and log time among its ranked CN holders (reduced major
-    # axis), shrunk towards `race_power` with the weight n / (n + race_power_n0). cv_power 0: the geometric mean.
-    race_power: float = 1.0
-    race_power_mode: str = "fixed"       # fixed | circuit | ols
-    race_power_n0: float = 30.0
-    # The item-response view (study of 2026-10-13): on a circuit, ln time = delta - beta ln CN + noise. "ols": the
-    # race's elasticity is race_power x race_beta_ref / beta, beta the least-squares slope over the ranked CN holders
-    # shrunk towards race_beta_ref (the discipline's typical slope) with the weight n / (n + race_power_n0) - a
-    # circuit where a given gap in level makes a larger gap in time has its scores compressed accordingly.
-    # race_weight_mode "info": a race's weight (title weight x this) follows the information it carries about the
-    # runner's level, beta^2 / sigma^2 relative to the discipline's typical (race_sigma_ref: the residual sd of
-    # ln time), sigma^2 shrunk with n / (n + race_weight_n0); clamped to [1 / race_weight_max, race_weight_max].
-    race_beta_ref: float = 0.93
-    race_sigma_ref: float = 0.14
-    race_weight_mode: str = "title"      # title | info
-    race_weight_n0: float = 10.0
-    race_weight_max: float = 3.0
-    # A bent race score (study of 2026-10-13): with x = ln(time / t_ref), t_ref the time of a runner of the sample's
-    # mean CN, ln score = ln(mean CN) - k x + gamma x^2 - big time losses (often mistakes) count less than
-    # proportionally. 0: FFCO's straight rule. Past the curve's lowest point the score stays flat (never rises).
-    race_curvature: float = 0.0
-    # A robust geometric circuit value (study of 2026-10-13): with cv_power 0, Huber's M-estimate of the location
-    # of ln(CN x time^k) instead of its mean - a runner further than cv_huber robust standard deviations
-    # (1.4826 x MAD) from it counts as if they were at that distance. 0: the plain mean.
-    cv_huber: float = 0.0
-    # aggregation "mle" (study of 2026-10-13): the CN is the level that makes the runner's race scores most likely,
-    # given the distribution of a race's log score around a runner's level (MLE_TABLES[mle_table], measured on the
-    # data); a race's weight multiplies its term. mle_zeros: "ignore" (a PM says nothing about speed) or "low" (it
-    # counts as a race at the bottom of the distribution).
-    mle_table: str = ""
-    mle_zeros: str = "ignore"
     # A discipline's own values over the ones above, e.g. {"VTT": {"window_days": 730}}:
     # VTT and ski have far fewer competitions than forest and sprint.
     by_terrain: dict = field(default_factory=dict, hash=False, compare=False)
@@ -252,75 +222,10 @@ def Decimal_round(x: float) -> int:
     return math.floor(x + 0.5) if x >= 0 else math.ceil(x - 0.5)
 
 
-def circuit_fit(ranked: list[tuple[int, int]], params: CnParams) -> tuple[float, float, int] | None:
-    """(beta, sigma, n) of ln time = delta - beta ln CN + noise over the ranked CN holders, both shrunk towards the
-    discipline's typical values (params.race_beta_ref, race_sigma_ref); None under 6 runners or a flat field."""
-    n = len(ranked)
-    if n < 6:
-        return None
-    lc = [math.log(cn) for cn, _ in ranked]
-    lt = [math.log(t) for _, t in ranked]
-    mc, mt = sum(lc) / n, sum(lt) / n
-    sxx = sum((x - mc) ** 2 for x in lc)
-    if sxx <= 0:
-        return None
-    beta = -sum((x - mc) * (y - mt) for x, y in zip(lc, lt)) / sxx
-    s2 = sum((y - mt + beta * (x - mc)) ** 2 for x, y in zip(lc, lt)) / (n - 2)
-    w = n / (n + params.race_power_n0)
-    beta_s = w * beta + (1 - w) * params.race_beta_ref
-    wv = n / (n + params.race_weight_n0)
-    sigma_s = math.sqrt(wv * s2 + (1 - wv) * params.race_sigma_ref ** 2)
-    return beta_s, sigma_s, n
-
-
-def circuit_info(ranked: list[tuple[int, int]], params: CnParams) -> float:
-    """The race's weight factor (params.race_weight_mode "info"): its information about a runner's level, beta^2 /
-    sigma^2, relative to the discipline's typical; 1 otherwise."""
-    if params.race_weight_mode != "info":
-        return 1.0
-    fit = circuit_fit(ranked, params)
-    if fit is None:
-        return 1.0
-    beta, sigma, _ = fit
-    beta = max(beta, 0.2)
-    r = (beta / params.race_beta_ref) ** 2 * (params.race_sigma_ref / sigma) ** 2
-    return min(params.race_weight_max, max(1 / params.race_weight_max, r))
-
-
-def circuit_elasticity(ranked: list[tuple[int, int]], params: CnParams) -> float:
-    """The race's elasticity k (params.race_power_mode): the given power, or for "circuit" the circuit's own -
-    the ratio of the robust spreads (interquartile ranges) of log CN and log time among the ranked CN holders,
-    which makes the scores' spread match the field's CN spread, shrunk towards race_power - or for "ols" the
-    power x the discipline's typical slope over the circuit's (circuit_fit)."""
-    k0 = params.race_power
-    if params.race_power_mode == "ols":
-        fit = circuit_fit(ranked, params)
-        if fit is None:
-            return k0
-        return k0 * min(2.0, max(0.5, params.race_beta_ref / max(fit[0], 0.2)))
-    if params.race_power_mode != "circuit" or len(ranked) < 6:
-        return k0
-    lc = sorted(math.log(cn) for cn, _ in ranked)
-    lt = sorted(math.log(t) for _, t in ranked)
-    n = len(ranked)
-
-    def iqr(v):
-        return v[(3 * n) // 4] - v[n // 4]
-    # the spreads must go the right way (stronger runners faster): else the circuit says nothing about k
-    mc, mt = sum(lc) / n, sum(lt) / n
-    cov = sum((math.log(cn) - mc) * (math.log(t) - mt) for cn, t in ranked)
-    if cov >= 0 or iqr(lt) <= 0:
-        return k0
-    kc = min(4.0, max(0.25, iqr(lc) / iqr(lt)))
-    w = n / (n + params.race_power_n0)
-    return w * kc + (1 - w) * k0
-
-
 def circuit_value(
     ranked: list[tuple[int, int]],
     params: CnParams,
     k: float | None = None,
-    kr: float = 1.0,
 ) -> tuple[int | None, int]:
     """ranked: (cn_at_j15, time_seconds) for ranked finishers.
 
@@ -339,35 +244,14 @@ def circuit_value(
         n = max(1, _apply_rounding(params.sample_fraction * n_total, params.sample_rounding))
     subset = ordered[:n]
     q = params.cv_power
-    if kr == 1 and q == 1:
+    if q == 1:
         mean_value = sum(cn * t for cn, t in subset) / len(subset)
-    elif q == 0:                         # geometric mean
-        xs = [math.log(cn) + kr * math.log(t) for cn, t in subset]
-        mu = huber_location(xs, params.cv_huber) if params.cv_huber > 0 and len(xs) >= 4 else sum(xs) / len(xs)
-        mean_value = math.exp(mu)
+    elif q == 0:                         # the geometric mean: exp of the mean of ln(CN x time)
+        mean_value = math.exp(sum(math.log(cn * t) for cn, t in subset) / len(subset))
     else:
-        mean_value = (sum((cn * t ** kr) ** q for cn, t in subset) / len(subset)) ** (1 / q)
+        mean_value = (sum((cn * t) ** q for cn, t in subset) / len(subset)) ** (1 / q)
     coeff = params.k_over_1000 if k is None else k
     return Decimal_round(mean_value * coeff), n
-
-
-def huber_location(xs: list[float], c: float) -> float:
-    """Huber's M-estimate of location, tuning constant c in robust standard deviations (1.4826 x MAD)."""
-    s = sorted(xs)
-    n = len(s)
-    med = (s[(n - 1) // 2] + s[n // 2]) / 2
-    dev = sorted(abs(x - med) for x in xs)
-    h = c * 1.4826 * (dev[(n - 1) // 2] + dev[n // 2]) / 2
-    if h <= 0:
-        return med
-    mu = med
-    for _ in range(100):
-        w = [1.0 if abs(x - mu) <= h else h / abs(x - mu) for x in xs]
-        new = sum(wi * x for wi, x in zip(w, xs)) / sum(w)
-        if abs(new - mu) < 1e-10:
-            return new
-        mu = new
-    return mu
 
 
 def trimmed_mean(scores: list[int], params: CnParams) -> tuple[int | None, int]:
@@ -416,46 +300,9 @@ def top_n_weighted(
     return Decimal_round(sum(s * u for s, u in kept) / total_w), len(kept)
 
 
-# name -> (first grid point, step, log density on the grid) of a race's log score around the runner's level
-MLE_TABLES: dict[str, tuple] = {}
-
-
-def mle_level(scores: list[int], weights: list[float], params: CnParams) -> tuple[int | None, int]:
-    """The maximum-likelihood level (see CnParams.mle_table): exp(theta) maximising sum w log f(ln s - theta)."""
-    import numpy as np
-    n = len(scores)
-    if n < params.min_scores_for_cn:
-        return None, 0
-    g0, step, logf = MLE_TABLES[params.mle_table]
-    pos = [(math.log(s), w) for s, w in zip(scores, weights) if s > 0]
-    if not pos:
-        return 0, n
-    lv = np.array([x for x, _ in pos])
-    wv = np.array([w for _, w in pos])
-    med = float(np.median(lv))
-    zw = [w for s, w in zip(scores, weights) if s <= 0]
-    if params.mle_zeros == "low" and zw:             # a PM: a pseudo-race far below the runner's usual level
-        lv = np.concatenate([lv, np.full(len(zw), med - 1.0)])
-        wv = np.concatenate([wv, np.array(zw, dtype=float)])
-    thetas = med + np.arange(-0.8, 0.80001, 0.005)
-    x = lv[:, None] - thetas[None, :]
-    idx = np.clip(np.rint((x - g0) / step).astype(int), 0, len(logf) - 1)
-    ll = (wv[:, None] * logf[idx]).sum(axis=0)
-    j = int(np.argmax(ll))
-    th = float(thetas[j])
-    if 0 < j < len(thetas) - 1:                       # parabolic refinement between the grid points
-        a, b, c = ll[j - 1], ll[j], ll[j + 1]
-        den = a - 2 * b + c
-        if den < 0:
-            th += 0.005 * 0.5 * (a - c) / den
-    return Decimal_round(math.exp(th)), n
-
-
 def aggregate(
     scores: list[int], weights: list[float], params: CnParams
 ) -> tuple[int | None, int]:
-    if params.aggregation == "mle":
-        return mle_level(scores, weights, params)
     if params.aggregation == "top6_weighted":
         return top_n_weighted(scores, weights, params)
     return trimmed_mean(scores, params)

@@ -41,7 +41,7 @@ from ffco_scraper.cn import title_weight
 ROOT = Path(__file__).parent
 OUT = ROOT / "site" / "data"
 
-METHODS = ("official", "fair", "top6w", "fair2", "top6w2")
+METHODS = ("official", "fair", "top6w", "fair3", "top6w3")
 CNJ15 = (7, 9, 11, 13, 15)          # c/ row columns: each method's CN 15 days before the race
 TERRAINS = ("For", "Spr")           # VTT and ski: too few races a season for per-season figures
 FIRST = 2012                        # the first seasons mostly reflect the seed CNs
@@ -50,8 +50,8 @@ TUNED_FROM = "2025-07-01"           # the tuning period: July 2025 - October 202
 MIN_RUNNERS = 4                     # runners compared on a circuit
 BOOT = 2000
 BETAS = np.round(np.arange(0.0, 24.01, 0.25), 2)
-PAIRS = (("top6w2", "official"), ("fair2", "official"), ("top6w", "official"), ("fair", "official"),
-         ("top6w2", "top6w"), ("fair2", "fair"), ("fair2", "top6w2"), ("fair", "top6w"))
+PAIRS = (("top6w3", "official"), ("fair3", "official"), ("top6w", "official"), ("fair", "official"),
+         ("top6w3", "top6w"), ("fair3", "fair"), ("fair3", "top6w3"), ("fair", "top6w"))
 NM = len(METHODS)
 
 
