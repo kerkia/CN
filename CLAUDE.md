@@ -320,8 +320,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   end of the page's tab row (`app.placeSearch`, `.tabs-row`) on Coureur, Classement and Comparer only (`SEARCH_IN_TABS`). One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
   Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
 - **One method at a time** (owner, 2026-10-12): `store.method` (default `official`; `store.methods` = `[method]` for the
-  pages that read a list), chosen with the switch at the right of the header's second row (`ui.methodSwitch`: Officiel |
-  Top, a list of every available method for analysts; `?m=` in a link sets it); no page has a method choice of its own
+  pages that read a list), chosen with the switch at the right of the header's second row (`ui.methodSwitch`: « Calcul du
+  CN » then Officiel | Top, each with a one-line tooltip `m.<method>.tip` — owner, 2026-10-13: the buttons alone did not say
+  what they chose —, a list of every available method for analysts; `?m=` in a link sets it); no page has a method choice of its own
   (the former `methodChips`/`methodSeg` draw nothing). After a switch the runner's CN chart shows the previous method as a
   faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
   runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
@@ -329,12 +330,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
-- **Theme** (owner, 2026-10-12): light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px), unless
-  the visitor chose one with the moon button (`localStorage cnx.theme`).
+- **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Clair, Papier (a printed map's warm paper),
+  Crépuscule (a greenish dusk), Sous-bois (dark green), Nuit —, each its own token set in `app.css` (`:root[data-theme=…]`;
+  Crépuscule and Sous-bois share Nuit's series and landscape), chosen under the moon button (`app.js` `THEMES`, `themeMenu`;
+  `localStorage cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button
-  (`.btn-primary`) in control-flag orange, contour lines behind the header's second row (a CSS mask, brown). Logo: the original hourglass — a diamond whose top-right triangle is orange
+  (`.btn-primary`) in control-flag orange, contour lines behind the header's second row (`app.drawContours`, 2026-10-13: a
+  relief of a few hills drawn on a canvas by marching squares in the map's brown, an index contour every fifth line, as on
+  the study's page; redrawn with the bar and on resize). Logo: the original hourglass — a diamond whose top-right triangle is orange
   and bottom-left one in the text colour — without the blue square (app.js, favicon.svg; e-mails: ink name, orange button).
 - **Lean pages** (owner, 2026-10-12): where the title only repeats the menu (Classement, Courses classées, Comparer, Clubs,
   Statistiques, Agenda, the lists of Résultats and En direct: `app.isLean`), `app.leanHead` drops the title line: the page
