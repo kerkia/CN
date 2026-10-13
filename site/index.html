@@ -13,8 +13,9 @@
     // system's own setting.
     let t = null;
     try { t = localStorage.getItem("cnx.theme"); } catch (e) {}
-    if (t === "paper") t = "clearing";                       // the theme's first name, for a few hours on 2026-10-13
-    if (!["light", "clearing", "dusk", "forest", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
+    // the themes' first names, for a few hours on 2026-10-13
+    if (t === "paper") t = "clearing"; else if (t === "forest") t = "undergrowth"; else if (t === "dusk") t = "forest";
+    if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = t;
   </script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>

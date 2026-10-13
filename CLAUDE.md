@@ -330,10 +330,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
-- **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Clair, Clairière (the pale yellow of open land),
-  Crépuscule (a greenish dusk), Sous-bois (dark green), Nuit —, each its own token set in `app.css` (`:root[data-theme=…]`;
-  Crépuscule and Sous-bois share Nuit's series and landscape), chosen under the moon button (`app.js` `THEMES`, `themeMenu`;
-  `localStorage cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
+- **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Jour (`light`), Clairière (`clearing`, the pale
+  yellow of open land), Forêt (`forest`, a greenish half-light), Sous-bois (`undergrowth`, dark green), Nuit (`dark`) —, each
+  its own token set in `app.css` (`:root[data-theme=…]`; Forêt and Sous-bois share Nuit's series and landscape), chosen under
+  the moon button (`app.js` `THEMES`, `themeMenu`: a swatch of each theme's ground and one colour of its own; `localStorage
+  cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button

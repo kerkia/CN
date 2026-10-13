@@ -99,9 +99,9 @@
     --water: #55b5e8; --water-wash: #12293a;
     --contour: #d38d58;
 }
-/* Three themes between Clair and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Clairière, the
-   pale yellow of open land; Crépuscule, a greenish dusk; Sous-bois, the dark green under the trees. Each is
-   selected, not flipped: its own surfaces and inks; Crépuscule and Sous-bois share Nuit's series and landscape. */
+/* Three themes between Jour and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Clairière, the
+   pale yellow of open land; Forêt, a greenish half-light; Sous-bois, the dark green under the trees. Each is
+   selected, not flipped: its own surfaces and inks; Forêt and Sous-bois share Nuit's series and landscape. */
 :root[data-theme="clearing"] {
   color-scheme: light;
   --plane: #f6efd4; --surface: #fbf7e6; --surface-2: #efe6c8; --surface-3: #e5d9b4;
@@ -114,7 +114,7 @@
   --ls-sky: #efe0c4; --ls-trail: #e4cfa6;
   --flag-wash: #f8e2cc; --forest-wash: #dfeccf; --water-wash: #d8e8f0;
 }
-:root[data-theme="dusk"], :root[data-theme="forest"] {
+:root[data-theme="forest"], :root[data-theme="undergrowth"] {
   color-scheme: dark;
   --link: #9cc3ee; --accent: #9cc3ee; --accent-ink: #0b0b0b; --accent-wash: rgba(90, 150, 220, 0.18); --focus: #6ea4e8;
   --good: #3fb53f; --bad: #ea7a7a; --warn-bg: #3a3119; --warn-ink: #f2d38a; --amber: #f0c43c;
@@ -129,14 +129,14 @@
   --flag: #ff8f4a; --flag-ink: #1b1a17;
   --contour: #d6935f;
 }
-:root[data-theme="dusk"] {
-  --plane: #262d28; --surface: #2f3731; --surface-2: #38413a; --surface-3: #424c44;
-  --ink: #f2f0e6; --ink-2: #c7c5b8; --ink-3: #979588;
-  --grid: #3a443c; --axis: #4e5950;
-  --border: rgba(255, 255, 255, 0.11); --border-strong: rgba(255, 255, 255, 0.2);
-  --flag-wash: #4a2c1a; --forest: #6fc77a; --forest-wash: #27402c; --water: #62bbe8; --water-wash: #223846;
-}
 :root[data-theme="forest"] {
+  --plane: #313b34; --surface: #3a453d; --surface-2: #434f46; --surface-3: #4d5a50;
+  --ink: #f4f2e8; --ink-2: #cdcbbe; --ink-3: #9f9d90;
+  --grid: #46524a; --axis: #5a675d;
+  --border: rgba(255, 255, 255, 0.12); --border-strong: rgba(255, 255, 255, 0.22);
+  --flag-wash: #553320; --forest: #7fd18a; --forest-wash: #2f4a35; --water: #6cc2ea; --water-wash: #28404f;
+}
+:root[data-theme="undergrowth"] {
   --plane: #121a14; --surface: #1a241c; --surface-2: #222e25; --surface-3: #2b382e;
   --ink: #f3f2e8; --ink-2: #c4c7b9; --ink-3: #8f9588;
   --grid: #26332a; --axis: #384838;

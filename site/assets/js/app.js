@@ -167,10 +167,12 @@ function pickTerrain(v) {
 
 // ---- header -------------------------------------------------------------
 let menusBound = false;
-// The themes, from the lightest to the darkest (owner, 2026-10-13): the ground and the green of each, for the
-// swatches of the menu; the tokens are in app.css. index.html applies the saved one before the first paint.
-const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["clearing", "#f6efd4", "#2f8a3e"], ["dusk", "#262d28", "#6fc77a"],
-  ["forest", "#121a14", "#66c472"], ["dark", "#0d0d0d", "#5fbf6c"]];
+// The themes, from the lightest to the darkest (owner, 2026-10-13): the ground of each and one colour of its own
+// (Jour the forest green, Clairière the open-land yellow, Forêt a light green, Sous-bois the contour brown, Nuit the
+// water blue), for the swatches of the menu; the tokens are in app.css. index.html applies the saved one before the
+// first paint.
+const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["clearing", "#f6efd4", "#e0a92e"], ["forest", "#313b34", "#8fd398"],
+  ["undergrowth", "#121a14", "#d38d58"], ["dark", "#0d0d0d", "#55b5e8"]];
 
 function themeMenu() {
   const cur = document.documentElement.dataset.theme || "light";
@@ -178,7 +180,7 @@ function themeMenu() {
     <button class="icon-btn nav-top" type="button" id="theme-btn" aria-expanded="false" aria-haspopup="menu" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
     </button>
-    <div class="nav-menu" role="menu">${THEMES.map(([k, ground, green]) => html`<button type="button" role="menuitemradio" aria-checked="${String(k === cur)}" data-theme-pick="${k}"><i class="swatch" style="background: linear-gradient(135deg, ${ground} 58%, ${green} 58%)"></i>${t("theme." + k)}</button>`)}</div>
+    <div class="nav-menu" role="menu">${THEMES.map(([k, ground, mark]) => html`<button type="button" role="menuitemradio" aria-checked="${String(k === cur)}" data-theme-pick="${k}"><i class="swatch" style="background: linear-gradient(135deg, ${ground} 58%, ${mark} 58%)"></i>${t("theme." + k)}</button>`)}</div>
   </div>`;
 }
 
