@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import math
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -38,6 +39,8 @@ from .cn import (
     CnParams,
     Decimal_round,
     RunnerHistory,
+    circuit_elasticity,
+    circuit_info,
     circuit_value,
     classify_status,
     is_nc,
@@ -178,9 +181,21 @@ class Normalisation:
     #       year-on-year factor changes are 3-7%, versus ~0.4%/month monthly.
     #   "centred_monthly"  - smoothest, but peeks up to 6 months ahead, so it
     #       can only ever be used retrospectively.
+    #   "monthly_trend"    - (study of 2026-10-13) the same window as "monthly_lag", but the level is the
+    #       straight line fitted to ln(level) over it, extrapolated to the month the factor applies to. The
+    #       raw scale drifts upwards (the CN keeps the best races), and a mean over 13 months ending 2 months
+    #       back lags about 8 months, leaving the published level above the target; the fitted line has no lag
+    #       for a steady drift.
     mode: str = "monthly_lag"
     lag_months: int = 2
     smooth_months: int = 13        # window for the *_monthly smoothing modes
+    # "monthly_trend": how far past the month fitted for the line is read. 1 = the day the factor applies; a
+    # CN averages a year of race scores, so its level trails the scores' scale by about half a year more.
+    trend_ahead_months: float = 1.0
+    # "monthly_drift": the "monthly_lag" mean, carried forward to trend_ahead_months past the month by the drift of
+    # ln(level) fitted over the `drift_months` months that end with the window - a slope that barely moves from
+    # one month to the next, so the factors stay as smooth as the plain mean's.
+    drift_months: int = 37
     refresh_month: int = 1
     refresh_day: int = 3
     active_days: int = 365         # a runner counts if they raced this recently
@@ -587,6 +602,7 @@ class CnEngine:
                 if status == "ok" and T and not excluded and cn_in and cn_in > 0:
                     ranked.append((cn_in, T))
 
+            cp = pt(terrain)        # the circuit's rules in its discipline (sample, means, elasticity)
             if p.new_entrant_rescue and len(ranked) < p.min_ranked:
                 # new entrants count at 2000 only to rescue a circuit that
                 # could not otherwise be valued
@@ -597,7 +613,14 @@ class CnEngine:
                         ranked.append((p.new_entrant_value, T))
 
             k = K_BY_YEAR.get(d.year, DEFAULT_K) if spec.use_historical_k else p.k_over_1000
-            cv, n_sample = circuit_value(ranked, p, k=k)
+            kr = circuit_elasticity(ranked, cp)              # the race's elasticity (1: FFCO's rule)
+            w_race = weight * circuit_info(ranked, cp)       # the title weight x the race's information (1: title only)
+            cv, n_sample = circuit_value(ranked, cp, k=k, kr=kr)
+            bend = None                                      # the bent score (race_curvature): mean CN, t_ref
+            if cp.race_curvature and cv is not None:
+                sample = sorted(ranked, key=lambda r: r[1])[:n_sample]
+                cbar = sum(c for c, _ in sample) / len(sample)
+                bend = (cbar, (cv / k / cbar) ** (1 / kr))
             if p.distance_pooling and terrain == "Sprint" and c["distance_km"]:
                 v_km = per_km(c["course_id"], terrain, as_of, k)
                 if v_km is not None:
@@ -607,20 +630,25 @@ class CnEngine:
                 stats["eligible"] += 1
             cvrows.append((spec.name, c["circuit_id"], c["date_iso"],
                            sum(1 for x in participants if x[1] == "ok"),
-                           len(ranked), n_sample, cv, 1 if cv is not None else 0))
+                           len(ranked), n_sample, cv if kr == 1 or cv is None else float(cv),   # (CN x t^k: past 64 bits)
+                           1 if cv is not None else 0))
 
             for r, status, T, cn_in, cat, excluded in participants:
                 score = None
                 counts = 0
                 if cv is not None and not excluded:
                     if status == "ok" and T:
-                        score = Decimal_round(cv / T)
+                        if bend:
+                            x = min(math.log(T / bend[1]), kr / (2 * cp.race_curvature))
+                            score = Decimal_round(bend[0] * k * math.exp(-kr * x + cp.race_curvature * x * x))
+                        else:
+                            score = Decimal_round(cv / T if kr == 1 else cv / T ** kr)
                         counts = 1
                     elif status in ("pm", "abandon", "disqualifie", "hors_delai"):
                         score = 0
                         counts = 1
                 if counts and score is not None:
-                    hist[(r["licence"], terrain)].add(d, score, weight)
+                    hist[(r["licence"], terrain)].add(d, score, w_race)
                     stats["scores"] += 1
                     cn_after, n_w, n_k = cn_for(r["licence"], terrain, d)
                     # n_kept == 0 means this is the seed showing through, not a
@@ -634,7 +662,7 @@ class CnEngine:
                 srows.append(
                     (spec.name, r["licence"], c["circuit_id"], c["course_id"],
                      c["date_iso"], c["season"], cat or None, sexe_of(cat),
-                     r["club"] or None, terrain, c["epreuve"], c["groupe"], weight,
+                     r["club"] or None, terrain, c["epreuve"], c["groupe"], w_race,
                      T, status, cn_in, score, score, counts)
                 )
 
@@ -880,7 +908,7 @@ class CnEngine:
         for i, m in enumerate(months):
             if cfg.mode == "centred_monthly":
                 lo, hi = max(0, i - half), min(len(vals), i + half + 1)
-            elif cfg.mode == "monthly_lag":
+            elif cfg.mode in ("monthly_lag", "monthly_trend", "monthly_drift"):
                 # The level from `lag_months` ago, so late results have
                 # settled before they can move the scale.
                 j = max(0, i - cfg.lag_months)
@@ -888,6 +916,22 @@ class CnEngine:
             else:  # trailing_monthly
                 lo, hi = max(0, i - cfg.smooth_months + 1), i + 1
             sm = sum(vals[lo:hi]) / (hi - lo)
+            if cfg.mode == "monthly_trend" and hi - lo >= 6 and all(v > 0 for v in vals[lo:hi]):
+                xs = list(range(lo, hi))
+                ys = [math.log(v) for v in vals[lo:hi]]
+                mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+                slope = (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+                         / sum((x - mx) ** 2 for x in xs))
+                sm = math.exp(my + slope * (i + cfg.trend_ahead_months - mx))
+            if cfg.mode == "monthly_drift":
+                dlo = max(0, hi - cfg.drift_months)
+                if hi - dlo >= 12 and all(v > 0 for v in vals[dlo:hi]):
+                    xs = list(range(dlo, hi))
+                    ys = [math.log(v) for v in vals[dlo:hi]]
+                    mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+                    slope = (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+                             / sum((x - mx) ** 2 for x in xs))
+                    sm *= math.exp(slope * (i + cfg.trend_ahead_months - (lo + hi - 1) / 2))
             y, mo = int(m[:4]), int(m[5:7])
             out.append((date(y, mo, 1), sm, cfg.target / sm if sm else 1.0))
         return out
