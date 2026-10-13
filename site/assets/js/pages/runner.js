@@ -24,6 +24,9 @@ import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
 import { link, replaceQuery, terrainField, goInPlace } from "../app.js";
 import * as auth from "../auth.js";
 
+/** A discipline's name inside a sentence: « forêt », « sprint », but « VTT » (owner, 2026-10-13). */
+const inSentence = (name) => (name === name.toUpperCase() ? name : name.toLowerCase());
+
 export async function render(main, { arg, query }) {
   // #/coureur alone opens the runner last looked at, else the logged-in runner
   const lic = arg || store.get().lastRunner || auth.session()?.lic;
@@ -49,8 +52,6 @@ export async function render(main, { arg, query }) {
   const last = races[races.length - 1];
   const club = last?.[R.club] || person.club;
   const cp = data.clubParts(club);
-  // where to look instead: the discipline the runner raced most
-  const other = store.TERRAINS.filter((x) => x !== terrain).sort((a, b) => person.nBy[b] - person.nBy[a])[0];
 
   main.innerHTML = html`
     <div class="page-head">
@@ -68,8 +69,7 @@ export async function render(main, { arg, query }) {
       <div class="row"><button class="btn" type="button" id="cmp-btn"></button></div>
     </div>
     ${pageTabs(tabs, tab)}
-    ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${t(`terrain.${terrain}`).toLowerCase()} —
-      ${t("rn.switchTo")} ${t(`terrain.${other}`)} ${t("rn.inHeader")}.</div>`}
+    ${mineT.length ? "" : html`<div class="notice info">${t("rn.noRacesIn")} ${inSentence(t(`terrain.${terrain}`))}.</div>`}
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
     <div class="tiles" id="tiles" style="margin-bottom:16px"></div>
     <div data-panel="courses">

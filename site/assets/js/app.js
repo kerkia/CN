@@ -167,6 +167,83 @@ function pickTerrain(v) {
 
 // ---- header -------------------------------------------------------------
 let menusBound = false;
+// The themes, from the lightest to the darkest (owner, 2026-10-13): the ground and the green of each, for the
+// swatches of the menu; the tokens are in app.css. index.html applies the saved one before the first paint.
+const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["paper", "#f2ecdc", "#2f8a3e"], ["dusk", "#262d28", "#6fc77a"],
+  ["forest", "#121a14", "#66c472"], ["dark", "#0d0d0d", "#5fbf6c"]];
+
+function themeMenu() {
+  const cur = document.documentElement.dataset.theme || "light";
+  return html`<div class="nav-group theme-menu" data-group="theme">
+    <button class="icon-btn nav-top" type="button" id="theme-btn" aria-expanded="false" aria-haspopup="menu" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <div class="nav-menu" role="menu">${THEMES.map(([k, ground, green]) => html`<button type="button" role="menuitemradio" aria-checked="${String(k === cur)}" data-theme-pick="${k}"><i class="swatch" style="background: linear-gradient(135deg, ${ground} 58%, ${green} 58%)"></i>${t("theme." + k)}</button>`)}</div>
+  </div>`;
+}
+
+/** The relief behind the second row (owner, 2026-10-13, as on the study's page): a few hills, their contour lines
+ *  drawn by marching squares in the map's brown, an index contour every fifth line. Redrawn when the bar is, and on resize. */
+function drawContours(retry = 2) {
+  const c = $("#contours");
+  if (!c) return;
+  const w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h) {                 // not laid out yet: once more on the next frame
+    if (retry) requestAnimationFrame(() => drawContours(retry - 1));
+    return;
+  }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const R = Math.max(200, w * 0.15);
+  // hills: x (share of the width), y (share of the height; most sit above or below the row, whose band crosses their
+  // flanks), radius (share of R), height
+  const hills = [[0.05, 1.5, 1.0, 1.0], [0.2, -0.5, 0.8, 0.85], [0.37, 1.4, 1.1, 0.9], [0.52, -0.3, 0.9, 0.75],
+    [0.68, 1.6, 0.9, 1.0], [0.84, -0.5, 0.85, 0.9], [0.97, 1.2, 0.7, 0.8], [0.3, 0.5, 0.45, 0.3], [0.76, 0.5, 0.4, 0.25]];
+  const f = (x, y) => {
+    let v = 0;
+    for (const [hx, hy, r, a] of hills) {
+      const dx = (x - hx * w) / (r * R), dy = (y - hy * h) / (r * R * 0.5);
+      v += a * Math.exp(-(dx * dx + dy * dy));
+    }
+    return v + 0.02 * Math.sin(x / 43) * Math.cos(y / 17);
+  };
+  const st = 4, nx = Math.ceil(w / st) + 1, ny = Math.ceil(h / st) + 1;
+  const V = new Float32Array(nx * ny);
+  let lo = Infinity, hi = -Infinity;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const v = f(i * st, j * st);
+    V[j * nx + i] = v;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const SEG = { 1: [["L", "B"]], 2: [["B", "R"]], 3: [["L", "R"]], 4: [["T", "R"]], 5: [["T", "R"], ["L", "B"]], 6: [["T", "B"]], 7: [["T", "L"]],
+    8: [["T", "L"]], 9: [["T", "B"]], 10: [["T", "L"], ["R", "B"]], 11: [["T", "R"]], 12: [["L", "R"]], 13: [["R", "B"]], 14: [["L", "B"]] };
+  const lines = Math.max(6, Math.round(h / 6)), step = (hi - lo) / (lines + 1);
+  const col = getComputedStyle(document.documentElement).getPropertyValue("--contour").trim();
+  for (let n = 1; n <= lines; n++) {
+    const L = lo + n * step;
+    g.beginPath();
+    for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+      const a = V[j * nx + i], b = V[j * nx + i + 1], cc = V[(j + 1) * nx + i + 1], d = V[(j + 1) * nx + i];
+      const segs = SEG[(a > L ? 8 : 0) | (b > L ? 4 : 0) | (cc > L ? 2 : 0) | (d > L ? 1 : 0)];
+      if (!segs) continue;
+      const x0 = i * st, y0 = j * st;
+      const P = { T: [x0 + st * (L - a) / (b - a), y0], R: [x0 + st, y0 + st * (L - b) / (cc - b)],
+        B: [x0 + st * (L - d) / (cc - d), y0 + st], L: [x0, y0 + st * (L - a) / (d - a)] };
+      for (const [p, q] of segs) { g.moveTo(P[p][0], P[p][1]); g.lineTo(P[q][0], P[q][1]); }
+    }
+    g.strokeStyle = col;
+    g.globalAlpha = n % 5 === 0 ? 0.68 : 0.45;
+    g.lineWidth = n % 5 === 0 ? 1.7 : 1;
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+let contoursBound = false;
+
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
@@ -217,10 +294,8 @@ function renderHeader(r) {
       </div>`)}
     </nav>
     <div class="topbar-tools">
+      ${themeMenu()}
       ${me ? html`
-      <button class="icon-btn" type="button" id="theme-btn" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      </button>
       <div class="nav-group user-menu" data-group="me">
         <button type="button" class="nav-top user-btn" aria-expanded="false" aria-label="${t("auth.menu")}"
           ${raw(["methods", "settings", "contact", "admin"].includes(route) ? 'aria-current="true"' : "")}>
@@ -234,13 +309,10 @@ function renderHeader(r) {
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
-      </div>` : html`
-      <button class="icon-btn" type="button" id="theme-btn" title="${t("theme.toggle")}" aria-label="${t("theme.toggle")}">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      </button>`}
+      </div>` : ""}
     </div>
   </div>
-  ${me && group ? html`<div class="subbar"><div class="subbar-inner">
+  ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`)}</nav>` : ""}
       ${route === "agenda" ? "" : methodSwitch()}
 
@@ -279,13 +351,20 @@ function renderHeader(r) {
       if (g) $(".nav-top", g).focus();
     });
   }
-  $("#theme-btn").addEventListener("click", () => {
-    const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
-    const next = dark ? "light" : "dark";
+  $$("[data-theme-pick]").forEach((b) => b.addEventListener("click", () => {
+    const next = b.dataset.themePick;
+    closeMenus();
+    if (next === document.documentElement.dataset.theme) return;
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("cnx.theme", next); } catch (e) {}
     route_();                     // charts read colours at render time
-  });
+  }));
+  drawContours();
+  if (!contoursBound) {
+    contoursBound = true;
+    let tm;
+    window.addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(drawContours, 120); });
+  }
   $("#logout-btn")?.addEventListener("click", async () => {
     await auth.logout();
     data.dropPrivate();

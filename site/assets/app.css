@@ -99,6 +99,50 @@
     --water: #55b5e8; --water-wash: #12293a;
     --contour: #d38d58;
 }
+/* Three themes between Clair and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Papier, the
+   warm paper of a printed map; Crépuscule, a greenish dusk; Sous-bois, the dark green under the trees. Each is
+   selected, not flipped: its own surfaces and inks; Crépuscule and Sous-bois share Nuit's series and landscape. */
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --plane: #f2ecdc; --surface: #faf6ea; --surface-2: #ece4cf; --surface-3: #e2d8bd;
+  --ink: #1e1a12; --ink-2: #5b5447; --ink-3: #8b8371;
+  --grid: #e0d7c0; --axis: #c4b99c;
+  --border: rgba(30, 26, 18, 0.11); --border-strong: rgba(30, 26, 18, 0.2);
+  --link: #1b5aa6; --accent: #163b6c; --accent-wash: rgba(42, 110, 190, 0.11); --focus: #2a72c8;
+  --warn-bg: #fbefd0; --warn-ink: #6b4d00;
+  --shadow: 0 1px 2px rgba(30, 26, 18, .05), 0 4px 16px rgba(30, 26, 18, .07);
+  --ls-sky: #efe0c4; --ls-trail: #e4cfa6;
+  --flag-wash: #f8e2cc; --forest-wash: #dfeccf; --water-wash: #d8e8f0;
+}
+:root[data-theme="dusk"], :root[data-theme="forest"] {
+  color-scheme: dark;
+  --link: #9cc3ee; --accent: #9cc3ee; --accent-ink: #0b0b0b; --accent-wash: rgba(90, 150, 220, 0.18); --focus: #6ea4e8;
+  --good: #3fb53f; --bad: #ea7a7a; --warn-bg: #3a3119; --warn-ink: #f2d38a; --amber: #f0c43c;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 16px rgba(0, 0, 0, .25);
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, .5);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --q1: #1c2a3c; --q2: #1d4270; --q3: #2a64aa; --q4: #4b8fe0; --q5: #a3c8f5;
+  --ls-sky: #0f1a2b; --ls-sun: #e9e4cf; --ls-far: #1d2940; --ls-mount: #283650; --ls-snow: #c9d3e4;
+  --ls-hill: #1b3125; --ls-forest: #0f2318; --ls-town: #3a3227; --ls-wall: #463b2f; --ls-roof: #2a211a;
+  --ls-window: #f2c76a; --ls-front: #132a1c; --ls-trail: #4a4436; --ls-fig: #c9d3e4; --ls-pole: #bbbbbb;
+  --flag: #ff8f4a; --flag-ink: #1b1a17;
+  --contour: #d6935f;
+}
+:root[data-theme="dusk"] {
+  --plane: #262d28; --surface: #2f3731; --surface-2: #38413a; --surface-3: #424c44;
+  --ink: #f2f0e6; --ink-2: #c7c5b8; --ink-3: #979588;
+  --grid: #3a443c; --axis: #4e5950;
+  --border: rgba(255, 255, 255, 0.11); --border-strong: rgba(255, 255, 255, 0.2);
+  --flag-wash: #4a2c1a; --forest: #6fc77a; --forest-wash: #27402c; --water: #62bbe8; --water-wash: #223846;
+}
+:root[data-theme="forest"] {
+  --plane: #121a14; --surface: #1a241c; --surface-2: #222e25; --surface-3: #2b382e;
+  --ink: #f3f2e8; --ink-2: #c4c7b9; --ink-3: #8f9588;
+  --grid: #26332a; --axis: #384838;
+  --border: rgba(255, 255, 255, 0.10); --border-strong: rgba(255, 255, 255, 0.18);
+  --flag-wash: #3f2415; --forest: #66c472; --forest-wash: #1c3a23; --water: #5ab7ea; --water-wash: #15303f;
+}
 /* the current group's colour (app.renderHeader sets body[data-group]) */
 body[data-group="races"] { --grp: var(--water); --grp-wash: var(--water-wash); }
 
@@ -181,6 +225,11 @@ p { margin: 0; }
 .nav-menu a[aria-current="page"] { background: var(--accent-wash); color: var(--ink); }
 .nav-menu button#logout-btn { border-top: 1px solid var(--grid); border-radius: 0 0 7px 7px; margin-top: 4px; padding-top: 9px; }
 .user-menu .nav-menu { left: auto; right: 0; }
+/* the themes, under the moon button: a swatch (the theme's ground and its green) and the name; the current one marked */
+.theme-menu > .icon-btn.nav-top { padding: 0; }
+.theme-menu .nav-menu { left: auto; right: 0; min-width: 160px; }
+.theme-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
+.swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-strong); flex: none; }
 .user-btn { padding: 4px 8px; }
 .user-btn .user-name { display: flex; flex-direction: column; align-items: flex-start; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }
 .user-btn .user-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
@@ -247,10 +296,8 @@ p { margin: 0; }
 @media (min-width: 1101px) { .tabs-row > .tabs-actions + .search { margin-left: 0; } }
 /* faint contour lines behind the head, in the map's brown (a mask, so that the colour follows the theme) */
 .subbar { position: relative; isolation: isolate; overflow: hidden; }
-.subbar::before { content: ""; position: absolute; inset: -6px 0; z-index: -1; pointer-events: none; opacity: .42;
-  background: var(--contour);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 120' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='black' stroke-width='2.2'%3E%3Cpath d='M-10 92 C 80 70, 150 104, 240 84 S 420 52, 520 76 S 610 90, 620 80'/%3E%3Cpath d='M-10 74 C 70 54, 160 88, 250 66 S 410 30, 510 56 S 600 72, 620 60'/%3E%3Cpath d='M-10 56 C 90 36, 170 70, 260 48 S 400 14, 500 38 S 600 54, 620 42'/%3E%3Cpath d='M120 120 C 160 98, 230 104, 280 120'/%3E%3Cpath d='M430 0 C 470 22, 540 24, 600 6'/%3E%3Cellipse cx='455' cy='30' rx='26' ry='9'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 120' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='black' stroke-width='2.2'%3E%3Cpath d='M-10 92 C 80 70, 150 104, 240 84 S 420 52, 520 76 S 610 90, 620 80'/%3E%3Cpath d='M-10 74 C 70 54, 160 88, 250 66 S 410 30, 510 56 S 600 72, 620 60'/%3E%3Cpath d='M-10 56 C 90 36, 170 70, 260 48 S 400 14, 500 38 S 600 54, 620 42'/%3E%3Cpath d='M120 120 C 160 98, 230 104, 280 120'/%3E%3Cpath d='M430 0 C 470 22, 540 24, 600 6'/%3E%3Cellipse cx='455' cy='30' rx='26' ry='9'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat; }
+/* the relief behind the second row: contour lines drawn by app.drawContours (owner, 2026-10-13) */
+.subbar .contours { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 .page-head .lede { color: var(--ink-2); margin: 0; flex: 1 1 280px; max-width: 760px; }
 .page-head .lede.meta { display: flex; flex-wrap: wrap; gap: 2px 14px; }
 /* Réseau: the title, then the intro text with the views' switch at its right, at the same place in every view */
@@ -814,9 +861,11 @@ table.data tbody tr.me .name { font-weight: 700; }
 }
 .subbar .search { flex: 0 1 320px; min-width: 0; margin-left: auto; }
 /* the site's method, at the right of the second row */
-.subbar .method-switch { margin-left: auto; flex: none; }
+.subbar .method-pick { margin-left: auto; flex: none; display: flex; align-items: center; gap: 8px; }
+.subbar .method-pick .lab { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; cursor: help; }
+.subbar .method-switch { flex: none; }
 .subbar .method-switch select { height: 32px; }
-@media (max-width: 520px) { .subbar .method-switch { margin-left: 0; } }
+@media (max-width: 520px) { .subbar .method-pick { margin-left: 0; } }
 /* the current group's pages */
 .subnav { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .subnav::-webkit-scrollbar { display: none; }

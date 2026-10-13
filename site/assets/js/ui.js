@@ -23,13 +23,18 @@ export function dashKey(m) {
  */
 /** The site's method switch (app.renderHeader, at the right of the second row): Officiel | Top, every available
  *  method for the analysts. The pages have no method choice of their own since 2026-10-12. */
+/** The site's method, at the right of the header's second row: « Calcul du CN » (owner, 2026-10-13: the buttons alone
+ *  did not say what they chose), then Officiel | Top, each with a one-line tooltip (`m.<method>.tip`); analysts get a
+ *  list of every method. */
 export function methodSwitch() {
   const cur = store.get().method, ms = store.available();
-  return ms.length <= 2
+  const tip = (m) => t(`m.${m}.tip`);
+  const pick = ms.length <= 2
     ? html`<div class="seg method-switch" role="group" aria-label="${t("cm.method")}">${ms.map((m) => html`<button type="button"
-        data-method-pick="${m}" aria-pressed="${m === cur}" title="${methodLabel(m)}">${methodShort(m)}</button>`)}</div>`
-    : html`<label class="method-switch"><span class="sr-only">${t("cm.method")}</span><select id="method-pick" aria-label="${t("cm.method")}">
-        ${ms.map((m) => html`<option value="${m}" ${raw(m === cur ? "selected" : "")}>${methodLabel(m)}</option>`)}</select></label>`;
+        data-method-pick="${m}" aria-pressed="${m === cur}" title="${tip(m)}">${methodShort(m)}</button>`)}</div>`
+    : html`<label class="method-switch" title="${tip(cur)}"><span class="sr-only">${t("cm.method")}</span><select id="method-pick" aria-label="${t("cm.method")}">
+        ${ms.map((m) => html`<option value="${m}" ${raw(m === cur ? "selected" : "")} title="${tip(m)}">${methodLabel(m)}</option>`)}</select></label>`;
+  return html`<div class="method-pick"><span class="lab" title="${t("cm.pick.tip")}">${t("cm.pick")}</span>${pick}</div>`;
 }
 // (the pages' former method choices: nothing to draw any more)
 export const methodChips = () => "";
