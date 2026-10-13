@@ -384,6 +384,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   routes `clubcompare` and `relays` load clubs.js; the address follows by pushState). The tab bar is always right under the
   page's head, above shared filters and tiles (owner, 2026-10-12); a view's own tabs under it are smaller. Do the same for new pages. No count of
   compared runners in the navigation (owner, 2026-10-12).
+- **Analyse** (`#/analyse`, `pages/analysis.js`, menu « Courses » after En direct; **administrators only for now**, owner 2026-10-13:
+  the nav entry and the route gate check `me.admin`): a runner's GPS trace on their own map for a race of « Résultats ».
+  The map (image, or a PDF's first page through pdf.js from jsdelivr) and the trace (GPX/TCX) are read in the browser,
+  never sent; only the calibration (the clicks) is kept (`localStorage ocn.an.cal.<race>.<doc>.<circuit>.<runner>.<WxH>`).
+  Calibration: the user clicks each control's centre in order (start, 1…, finish); the runner's published splits give the
+  trace point of each click; a similarity (rotation, scale, translation) is fitted by least squares and the trace's clock
+  offset searched second by second over the whole trace (± 15 min around the results' start time when known), refined to
+  0.1 s. Two clicks suffice with a start time, three otherwise. Distances along the trace use positions smoothed over ± 3 s
+  (1 Hz jitter adds metres at every step); the trace is drawn raw. Playback: trace plain or by pace, runner with a tail,
+  play/speed/jump by control, « suivre », a pace strip (click to seek), a legs table (time, class best, rank, time lost by the
+  split-times page's rule, trace vs straight distance, pace; a row click zooms on the leg). Tested with a synthetic map +
+  trace built from a real race's splits (scratch `gen_test.py`): fit 4 m for 5 m GPS noise, offset found with no start time.
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
   « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

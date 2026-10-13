@@ -31,6 +31,7 @@ const PAGES = {
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
+  analysis: () => import("./pages/analysis.js"),   // « Analyse »: a GPS trace on one's map (administrators only for now)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
 };
 
@@ -42,8 +43,8 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
-  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede" };
-const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda"].includes(r.route)
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede" };
+const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda", "analysis"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
@@ -82,6 +83,7 @@ function parseHash() {
     : head === "temps-inter" ? "splits"
     : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
+    : head === "analyse" ? "analysis"
     : head === "relais" ? "relays"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
@@ -266,6 +268,7 @@ function renderHeader(r) {
       ["agenda", "#/agenda", t("nav.agenda")],
       ["provisional", "#/resultats", t("nav.recent")],
       ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
+      ...(me.admin ? [["analysis", "#/analyse", t("nav.analysis")]] : []),     // administrators only for now (owner, 2026-10-13)
     ]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
@@ -505,6 +508,11 @@ async function route_() {
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « En direct » only for the accounts allowed to see it
   if (r.route === "live" && !who?.live) {
+    history.replaceState(null, "", "#/resultats");
+    r = parseHash();
+  }
+  // « Analyse » only for administrators for now
+  if (r.route === "analysis" && !who?.admin) {
     history.replaceState(null, "", "#/resultats");
     r = parseHash();
   }
