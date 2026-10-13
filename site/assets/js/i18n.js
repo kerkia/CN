@@ -281,7 +281,7 @@ const FR = {
   "search.placeholder": "Rechercher un coureur…", "search.none": "Aucun coureur trouvé",
   "theme.toggle": "Thème",
   "theme.light": "Clair",
-  "theme.paper": "Papier",
+  "theme.clearing": "Clairière",
   "theme.dusk": "Crépuscule",
   "theme.forest": "Sous-bois",
   "theme.dark": "Nuit",

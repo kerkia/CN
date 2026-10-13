@@ -99,12 +99,12 @@
     --water: #55b5e8; --water-wash: #12293a;
     --contour: #d38d58;
 }
-/* Three themes between Clair and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Papier, the
-   warm paper of a printed map; Crépuscule, a greenish dusk; Sous-bois, the dark green under the trees. Each is
+/* Three themes between Clair and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Clairière, the
+   pale yellow of open land; Crépuscule, a greenish dusk; Sous-bois, the dark green under the trees. Each is
    selected, not flipped: its own surfaces and inks; Crépuscule and Sous-bois share Nuit's series and landscape. */
-:root[data-theme="paper"] {
+:root[data-theme="clearing"] {
   color-scheme: light;
-  --plane: #f2ecdc; --surface: #faf6ea; --surface-2: #ece4cf; --surface-3: #e2d8bd;
+  --plane: #f6efd4; --surface: #fbf7e6; --surface-2: #efe6c8; --surface-3: #e5d9b4;
   --ink: #1e1a12; --ink-2: #5b5447; --ink-3: #8b8371;
   --grid: #e0d7c0; --axis: #c4b99c;
   --border: rgba(30, 26, 18, 0.11); --border-strong: rgba(30, 26, 18, 0.2);

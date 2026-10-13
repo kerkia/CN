@@ -330,7 +330,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
-- **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Clair, Papier (a printed map's warm paper),
+- **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Clair, Clairière (the pale yellow of open land),
   Crépuscule (a greenish dusk), Sous-bois (dark green), Nuit —, each its own token set in `app.css` (`:root[data-theme=…]`;
   Crépuscule and Sous-bois share Nuit's series and landscape), chosen under the moon button (`app.js` `THEMES`, `themeMenu`;
   `localStorage cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).

@@ -169,7 +169,7 @@ function pickTerrain(v) {
 let menusBound = false;
 // The themes, from the lightest to the darkest (owner, 2026-10-13): the ground and the green of each, for the
 // swatches of the menu; the tokens are in app.css. index.html applies the saved one before the first paint.
-const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["paper", "#f2ecdc", "#2f8a3e"], ["dusk", "#262d28", "#6fc77a"],
+const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["clearing", "#f6efd4", "#2f8a3e"], ["dusk", "#262d28", "#6fc77a"],
   ["forest", "#121a14", "#66c472"], ["dark", "#0d0d0d", "#5fbf6c"]];
 
 function themeMenu() {
