@@ -200,7 +200,7 @@ async function detail(main, idx, query) {
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
       <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
-    ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources")}</h2></summary>
+    ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources.admin")}</h2></summary>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
         <th class="r">${t("prov.classes")}</th><th>${t("prov.found")}</th><th>${t("prov.changed")}</th></tr></thead>
       <tbody>${race.docs.map((d) => html`<tr${raw(d.classes?.length ? "" : ' style="opacity:.65"')}>
