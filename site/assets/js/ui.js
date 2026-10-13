@@ -34,7 +34,7 @@ export function methodSwitch() {
         data-method-pick="${m}" aria-pressed="${m === cur}" title="${tip(m)}">${methodShort(m)}</button>`)}</div>`
     : html`<label class="method-switch" title="${tip(cur)}"><span class="sr-only">${t("cm.method")}</span><select id="method-pick" aria-label="${t("cm.method")}">
         ${ms.map((m) => html`<option value="${m}" ${raw(m === cur ? "selected" : "")} title="${tip(m)}">${methodLabel(m)}</option>`)}</select></label>`;
-  return html`<div class="method-pick"><span class="lab" title="${t("cm.pick.tip")}">${t("cm.pick")}</span>${pick}</div>`;
+  return html`<div class="method-pick"><span class="lab" title="${t("msw.tip")}">${t("msw.label")}</span>${pick}</div>`;
 }
 // (the pages' former method choices: nothing to draw any more)
 export const methodChips = () => "";

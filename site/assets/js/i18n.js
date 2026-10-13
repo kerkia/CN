@@ -291,8 +291,8 @@ const FR = {
   "m.official": "Méthode CN officielle", "m.fair": "Méthode CN « Fit » linéaire", "m.fair2": "Méthode CN « Fit » quadratique", "m.top6w": "Méthode CN « Top » linéaire", "m.top6w2": "Méthode CN « Top »",
   "m.official.long": "Valeurs publiées par la FFCO",
   // the one-line tooltips of the header's switch
-  "cm.pick": "Calcul du CN",
-  "cm.pick.tip": "Deux calculs du CN à partir des mêmes résultats : l'officiel, publié par la FFCO, et le Top, recalculé par O'CN.",
+  "msw.label": "Calcul du CN",
+  "msw.tip": "Deux calculs du CN à partir des mêmes résultats : l'officiel, publié par la FFCO, et le Top, recalculé par O'CN.",
   "m.official.tip": "Officiel : le CN publié par la FFCO (moyenne des meilleures courses, recalé chaque 1er janvier).",
   "m.top6w2.tip": "Top : le potentiel au meilleur niveau, recalculé par O'CN sur les mêmes courses (6 places, les meilleures performances pèsent plus).",
   "m.top6w.tip": "Top linéaire : le Top avec une moyenne simple des meilleures courses (méthode d'analyse).",
