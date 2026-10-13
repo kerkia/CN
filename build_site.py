@@ -253,7 +253,7 @@ def main(argv: list[str] | None = None) -> None:
         ):
             norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
         knots_of[base] = {t: daily_knots([(date.fromisoformat(d), f) for d, f, _ in v]) for t, v in norm.items()}
-    knots = knots_of["fair"]
+    knots = knots_of["fair3"]                    # meta.normalisation: the retained method's factors (the Top's)
 
     def factor_at(t: str, d: date, base: str = "fair") -> float:
         return factor_on(knots_of[base].get(t, []), d)
