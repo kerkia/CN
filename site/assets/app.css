@@ -1013,7 +1013,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .access-src { font-size: 12px; margin-top: 4px; }
 
 /* history as on the FFCO site: the races leaving the calculation are struck out */
-.struck a { text-decoration: line-through; color: var(--ink-3); }
+.struck, .struck a { text-decoration: line-through; color: var(--ink-3); }   /* an exit, in the CN histories */
 .calc-table .table-scroll { max-height: var(--table-max, 480px); }
 
 /* the calculation tables fit their card: fixed columns, the competition shortened (full name in its tooltip) */
