@@ -1,144 +1,90 @@
 // « Analyse » (#/analyse, menu « Courses »; administrators only for now — owner, 2026-10-13): a runner's GPS trace on
 // their own map, for a race of « Résultats », played back as Livelox does.
 // 1. The race (one with results), the circuit and the runner — the logged-in one by default.
-// 2. The map (an image, or a PDF's first page) and the trace (GPX or TCX), both read in the browser: nothing is sent,
-//    nothing is kept but the calibration (the points clicked), on this device.
-// 3. The calibration: the user clicks the centre of each control on the map, in order (start, 1, 2…, finish). The
-//    published split times say when the runner punched each one, so each click pairs a map point with a trace point:
-//    a similarity transform (rotation, scale, translation — the map is drawn to magnetic north) is fitted by least
-//    squares, together with the trace's clock offset (the watch and the timing clock rarely agree; the start time is
-//    often unknown): the offset is searched second by second over the trace, the fit refined around the best.
-//    Two clicks suffice when the start time is known, three otherwise; more absorbs the GPS noise.
-// 4. The playback: the trace on the map, plain or coloured by pace, the runner moving with a tail, play / pause and
-//    speed, a jump to any control, « suivre le coureur »; the pace along the race under the map; a table of the legs
-//    with their times, ranks and time lost (the split-times page's rule: lost ≥ 20 % of the leg and ≥ 10 s is a
-//    mistake), the trace's length against the straight line, the pace.
+// 2. The files, all read in the browser and never sent: the map (an image, a PDF's first page, or a KMZ), the trace
+//    (GPX, TCX or FIT — with heart rate, cadence, altitude…), and if there are any a world file (+ .prj) or a KML for
+//    the map's georeferencing, and an IOF XML CourseData (Purple Pen, OCAD, Condes) for the course.
+// 3. The calibration, automatic: the course is read on the map (trace/course.js: the purple circles, the start
+//    triangle, the finish's double circle); if the map is georeferenced, the trace's place on it follows; else the
+//    trace is laid over the controls (trace/align.js: the similarity that makes it run through most of them, no
+//    split times needed) and the controls are ordered by the trace's passes. The runner's published split times,
+//    when there are any, refine the result (each click/circle pairs with the trace point of its time: least-squares
+//    similarity plus the trace's clock offset — the start time is often unknown). The user can correct anything by
+//    hand (clicks snap to the circles found).
+// 4. The playback: the trace, plain or coloured by pace, the runner moving with a tail, play / pause / speed, jumps
+//    by control, « suivre le coureur »; under the map the pace and the file's channels along the race; a table of
+//    the legs (times and ranks when published, else the trace's own times; time lost by the split-times page's
+//    rule; the trace's length against the straight line; pace; mean heart rate and cadence).
+// Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
+import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
+import { fitSimilarity, toPx, toM, registerPoints } from "../trace/geom.js";
+import { detectCourse } from "../trace/course.js";
+import { alignTrack, visitOrder } from "../trace/align.js";
+import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
 const ERR = { pct: 20, s: 10 };                        // the split-times page's mistake rule
-const CAL_KEY = "ocn.an.cal";                          // localStorage: the clicks, per race / circuit / runner / image
+const TOL = 20;                                        // metres: a control is "reached" within this of the trace
+const CAL_KEY = "ocn.an.cal";                          // localStorage: the positions, per race / circuit / runner / image
 const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 const MAX_SIDE = 4200;                                 // a PDF page rendered at most this wide or high
-const R_EARTH = 6371000;
 const TRACE = "#c8102e";                               // the trace's own colour: a red the map's colours never use
+const CHANNEL_LABEL = { hr: "an.ch.hr", cad: "an.ch.cad", ele: "an.ch.ele", temp: "an.ch.temp", pw: "an.ch.pw" };
+const CHANNEL_UNIT = { hr: "bpm", cad: "", ele: "m", temp: "°C", pw: "W" };
 const pace = (v) => (v > 0.05 ? `${Math.floor(1000 / v / 60)}'${String(Math.round((1000 / v) % 60)).padStart(2, "0")}` : "—");   // min/km from m/s
 const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
+const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${fmt(Math.abs(p))} %`; };
+const tick = () => new Promise((r) => setTimeout(r, 30));
 
-// ---- the trace ------------------------------------------------------------------------------------------------------
-/** GPX (trkpt) or TCX (Trackpoint) text -> { ms0, t[], x[], y[], cum[], v[], n, lat0, lon0 } in local metres, north up
- *  (y down, like the image). Throws "gpx" when unreadable, "time" when the points carry no time. */
-export function parseTrack(text) {
-  const doc = new DOMParser().parseFromString(text, "application/xml");
-  if (doc.querySelector("parsererror")) throw new Error("gpx");
-  const pts = [];
-  for (const p of doc.getElementsByTagName("trkpt")) {
-    const time = p.getElementsByTagName("time")[0]?.textContent;
-    pts.push({ lat: +p.getAttribute("lat"), lon: +p.getAttribute("lon"), ms: time ? Date.parse(time) : NaN });
-  }
-  if (!pts.length) for (const p of doc.getElementsByTagName("Trackpoint")) {
-    const pos = p.getElementsByTagName("Position")[0];
-    if (!pos) continue;
-    pts.push({ lat: +pos.getElementsByTagName("LatitudeDegrees")[0]?.textContent, lon: +pos.getElementsByTagName("LongitudeDegrees")[0]?.textContent,
-      ms: Date.parse(p.getElementsByTagName("Time")[0]?.textContent || "") });
-  }
-  const located = pts.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
-  if (!located.length) throw new Error("gpx");
-  const timed = located.filter((p) => Number.isFinite(p.ms)).sort((a, b) => a.ms - b.ms);
-  if (timed.length < 2) throw new Error("time");
-  const P = timed.filter((p, i) => !i || p.ms > timed[i - 1].ms);           // one point per instant
-  const n = P.length, lat0 = P.reduce((s, p) => s + p.lat, 0) / n, lon0 = P.reduce((s, p) => s + p.lon, 0) / n;
-  const kx = (Math.PI / 180) * R_EARTH * Math.cos((lat0 * Math.PI) / 180), ky = (Math.PI / 180) * R_EARTH;
-  const tt = new Float64Array(n), x = new Float64Array(n), y = new Float64Array(n), cum = new Float64Array(n), v = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    tt[i] = (P[i].ms - P[0].ms) / 1000;
-    x[i] = (P[i].lon - lon0) * kx;
-    y[i] = -(P[i].lat - lat0) * ky;
-  }
-  const tr = { ms0: P[0].ms, t: tt, x, y, cum, v, n, lat0, lon0, dur: tt[n - 1] };
-  // the distance run: along the track smoothed over ± 3 s — the jitter of a 1 Hz trace adds metres at every step
-  // (the trace is drawn raw); the pace: that distance over a window of ± 5 s
-  let sx = x[0], sy = y[0];
-  for (let i = 0; i < n; i++) {
-    const a = indexAt(tr, tt[i] - 3), b = Math.min(n - 1, indexAt(tr, tt[i] + 3) + 1);
-    let mx = 0, my = 0;
-    for (let j = a; j <= b; j++) { mx += x[j]; my += y[j]; }
-    mx /= b - a + 1; my /= b - a + 1;
-    cum[i] = i ? cum[i - 1] + Math.hypot(mx - sx, my - sy) : 0;
-    sx = mx; sy = my;
-  }
-  for (let i = 0; i < n; i++) {
-    const a = indexAt(tr, tt[i] - 5), b = indexAt(tr, tt[i] + 5);
-    v[i] = b > a && tt[b] > tt[a] ? (cum[b] - cum[a]) / (tt[b] - tt[a]) : 0;
-  }
-  return tr;
-}
-/** The last index whose time is ≤ s (0 before the trace). */
-function indexAt(tr, s) {
-  let lo = 0, hi = tr.n - 1;
-  if (s <= tr.t[0]) return 0;
-  if (s >= tr.t[hi]) return hi;
-  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tr.t[m] <= s) lo = m; else hi = m; }
-  return lo;
-}
-/** The position (metres) at trace time s, interpolated; clamped to the ends. */
-function posAt(tr, s) {
-  const i = indexAt(tr, s);
-  if (i >= tr.n - 1 || s <= tr.t[0]) return [tr.x[i], tr.y[i]];
-  const f = (s - tr.t[i]) / (tr.t[i + 1] - tr.t[i]);
-  return [tr.x[i] + f * (tr.x[i + 1] - tr.x[i]), tr.y[i] + f * (tr.y[i + 1] - tr.y[i])];
-}
-const cumAt = (tr, s) => { const i = indexAt(tr, s); if (i >= tr.n - 1 || s <= tr.t[0]) return tr.cum[i];
-  return tr.cum[i] + ((s - tr.t[i]) / (tr.t[i + 1] - tr.t[i])) * (tr.cum[i + 1] - tr.cum[i]); };
-const speedAt = (tr, s) => tr.v[indexAt(tr, s)];
-
-// ---- the fit --------------------------------------------------------------------------------------------------------
-/** Least-squares similarity w = s·z + t (s complex) from metres (src) to pixels (dst): { a, b, tx, ty, rms, scale }. */
-function fitSimilarity(src, dst) {
-  const n = src.length;
-  let mx = 0, my = 0, ux = 0, uy = 0;
-  for (let i = 0; i < n; i++) { mx += src[i][0]; my += src[i][1]; ux += dst[i][0]; uy += dst[i][1]; }
-  mx /= n; my /= n; ux /= n; uy /= n;
-  let zz = 0, re = 0, im = 0;
-  for (let i = 0; i < n; i++) {
-    const zx = src[i][0] - mx, zy = src[i][1] - my, wx = dst[i][0] - ux, wy = dst[i][1] - uy;
-    zz += zx * zx + zy * zy; re += zx * wx + zy * wy; im += zx * wy - zy * wx;
-  }
-  if (!zz) return null;
-  const a = re / zz, b = im / zz, tx = ux - (a * mx - b * my), ty = uy - (b * mx + a * my);
-  let ss = 0;
-  for (let i = 0; i < n; i++) {
-    ss += (a * src[i][0] - b * src[i][1] + tx - dst[i][0]) ** 2 + (b * src[i][0] + a * src[i][1] + ty - dst[i][1]) ** 2;
-  }
-  return { a, b, tx, ty, rms: Math.sqrt(ss / n), scale: Math.hypot(a, b) };
-}
+// ---- the precise calibration, with split times -----------------------------------------------------------------------
 /**
- * The calibration: pairs [{ tau (race seconds), px, py }] -> the similarity and the clock offset (the trace time of the
- * race start). guess: the offset the results' start time gives, if any; the search covers ± 15 min around it, else
- * the whole trace. Two pairs: the offset is the guess (or 0, the trace started at the start).
+ * pairs [{ tau (race seconds), px, py }] -> the similarity and the clock offset (the trace time of the race start).
+ * guess: the offset already estimated (the results' start time, the trace's own passes); the search covers ± 15 min
+ * around it, else the whole trace. fixed: an affine transform already known (a georeferenced map): then only the
+ * offset is searched. Two pairs without a fixed geometry: the offset is the guess (or 0).
  */
-function calibrate(tr, pairs, guess) {
-  if (pairs.length < 2) return null;
-  const evaluate = (d) => fitSimilarity(pairs.map((p) => posAt(tr, d + p.tau)), pairs.map((p) => [p.px, p.py]));
-  if (pairs.length === 2) { const d = guess ?? 0; const f = evaluate(d); return f && { ...f, offset: d }; }
+function calibrate(tr, pairs, guess, fixed = null) {
+  if (pairs.length < (fixed ? 1 : 2)) return null;
+  const evaluate = fixed
+    ? (d) => { let ss = 0; for (const p of pairs) { const [px, py] = toPx(fixed, ...posAt(tr, d + p.tau)); ss += (px - p.px) ** 2 + (py - p.py) ** 2; } return { ...fixed, rms: Math.sqrt(ss / pairs.length) }; }
+    : (d) => fitSimilarity(pairs.map((p) => posAt(tr, d + p.tau)), pairs.map((p) => [p.px, p.py]));
+  if (!fixed && pairs.length === 2) { const d = guess ?? 0; const f = evaluate(d); return f && { fit: f, offset: d, rms: f.rms }; }
   const last = Math.max(...pairs.map((p) => p.tau));
   const lo = guess != null ? guess - 900 : Math.min(0, tr.dur - last) - 60, hi = guess != null ? guess + 900 : Math.max(0, tr.dur - last) + 60;
   let best = null;
-  for (let d = lo; d <= hi; d += 1) { const f = evaluate(d); if (f && (!best || f.rms < best.rms)) best = { ...f, offset: d }; }
+  for (let d = lo; d <= hi; d += 1) { const f = evaluate(d); if (f && (!best || f.rms < best.rms)) best = { fit: f, offset: d, rms: f.rms }; }
   if (!best) return null;
-  for (let d = best.offset - 1; d <= best.offset + 1; d += 0.1) { const f = evaluate(d); if (f && f.rms < best.rms) best = { ...f, offset: d }; }
+  for (let d = best.offset - 1; d <= best.offset + 1; d += 0.1) { const f = evaluate(d); if (f && f.rms < best.rms) best = { fit: f, offset: d, rms: f.rms }; }
   return best;
 }
-const toPx = (f, x, y) => [f.a * x - f.b * y + f.tx, f.b * x + f.a * y + f.ty];
-const toM = (f, px, py) => { const wx = px - f.tx, wy = py - f.ty, d = f.a * f.a + f.b * f.b;
-  return [(f.a * wx + f.b * wy) / d, (f.a * wy - f.b * wx) / d]; };
+/** Two increasing time sequences matched by dynamic programming (gaps allowed): pairs [i, j] with |Δt| ≤ 240 s. */
+function matchTimes(det, off, P = 120) {
+  const m = det.length, n = off.length;
+  const M = Array.from({ length: m + 1 }, () => new Float64Array(n + 1).fill(Infinity));
+  const B = Array.from({ length: m + 1 }, () => new Int8Array(n + 1));
+  M[0][0] = 0;
+  for (let i = 1; i <= m; i++) { M[i][0] = i * P; B[i][0] = 1; }
+  for (let j = 1; j <= n; j++) { M[0][j] = j * P; B[0][j] = 2; }
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const c = off[j - 1] == null ? Infinity : Math.abs(det[i - 1] - off[j - 1]);
+    const d = M[i - 1][j - 1] + c, u = M[i - 1][j] + P, l = M[i][j - 1] + P;
+    if (d <= u && d <= l) { M[i][j] = d; B[i][j] = 0; } else if (u <= l) { M[i][j] = u; B[i][j] = 1; } else { M[i][j] = l; B[i][j] = 2; }
+  }
+  const pairs = [];
+  for (let i = m, j = n; i > 0 || j > 0;) {
+    const b = B[i][j];
+    if (b === 0) { if (Math.abs(det[i - 1] - off[j - 1]) <= 240) pairs.push([i - 1, j - 1]); i--; j--; } else if (b === 1) i--; else j--;
+  }
+  return pairs.reverse();
+}
 
 /** Paris's offset to UTC on a day (ms): the results' start times are wall-clock, the trace's are UTC. */
 function parisOffsetMs(dateIso) {
@@ -168,8 +114,8 @@ async function readMap(file) {
   }
   try { return await createImageBitmap(file); } catch (e) { throw new Error("map"); }
 }
-const isTrace = (f) => /\.(gpx|tcx)$/i.test(f.name);
-const isMap = (f) => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(f.name) || f.type.startsWith("image/") || f.type === "application/pdf";
+const isImage = (f) => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(f.name) || f.type.startsWith("image/") || f.type === "application/pdf";
+const ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.xml,.jgw,.pgw,.tfw,.gfw,.bpw,.wld,.prj,image/*,application/pdf";
 
 // ---- the page -------------------------------------------------------------------------------------------------------
 export async function render(main, { query = {} } = {}) {
@@ -189,7 +135,8 @@ export async function render(main, { query = {} } = {}) {
           <div class="an-hud" id="an-hud"></div></div>
         <aside class="an-side" id="an-side"></aside>
       </div>
-      <div class="card an-strip-card" id="an-strip-card" hidden><canvas id="an-strip"></canvas><div class="hint">${t("an.strip.hint")}</div></div>
+      <div class="card an-strip-card" id="an-strip-card" hidden><div class="an-strip-head"><span class="hint">${t("an.strip.hint")}</span><label class="an-chan"><span>${t("an.strip.channel")}</span><select id="an-chan"></select></label></div>
+        <canvas id="an-strip"></canvas></div>
       <section class="card" id="an-legs" hidden></section>
     </div>`;
   if (!races.length) {
@@ -200,16 +147,23 @@ export async function render(main, { query = {} } = {}) {
   // ---- state
   let key = races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
-  let map = null, mapName = "", track = null, traceName = "", notes = { map: "", gpx: "" };
-  let targets = [], clicks = {}, cur = 0, fit = null, calibrated = false;
+  let map = null, track = null;
+  const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null };     // { name, note, ... } per role
+  let iofIndex = 0, northUp = true;
+  let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
+  let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
   let view = { k: 1, ox: 0, oy: 0 }, follow = true, colour = "plain", marks = true, tail = 60, speed = 10, playing = false, tNow = 0;
-  let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
+  let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false, channel = "";
   let vLo = 0, vHi = 1;                               // the pace colours' range (10-90 % of the trace's speeds)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
   const strip = $("#an-strip"), sctx = strip.getContext("2d");
 
   const steps = (n) => { $("#an-steps").innerHTML = html`${[t("an.s1"), t("an.s2"), t("an.s3"), t("an.s4")].map((s, i) => html`<li class="${i + 1 < n ? "done" : i + 1 === n ? "now" : ""}"><b>${i + 1}</b> ${s}</li>`)}`; };
   const stage = () => (!map || !track ? 2 : calibrated ? 4 : 3);
+  const runner = () => docs[di]?.classes[ci]?.runners[ri], klass = () => docs[di]?.classes[ci];
+  /** The runner's official sequence of race times: start, the controls, the finish (null where unknown), or null. */
+  const officialTaus = () => { const r = runner(); if (!r?.splits) return null; return [0, ...r.splits, r.status === "ok" && r.time_s != null ? r.time_s : null]; };
+  const totalOfficial = () => { const r = runner(); return r && r.status === "ok" && r.time_s != null ? r.time_s : null; };
 
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
@@ -217,16 +171,13 @@ export async function render(main, { query = {} } = {}) {
     docs = (race?.docs || []).filter((d) => d.classes?.length && d.by !== "category");
     const rank = (d) => (d.classes.some((k) => k.runners.some((r) => r.splits)) ? 1e9 : 0) + (d.prio ?? 0);
     docs.sort((a, b) => rank(b) - rank(a));
-    // the runner asked for (?r=), else the logged-in one, in the first document and circuit that holds them
     const wanted = query.r || null;
     const pick = (test) => { for (let i = 0; i < docs.length; i++) for (let j = 0; j < docs[i].classes.length; j++) {
       const n = docs[i].classes[j].runners.findIndex(test); if (n >= 0) return [i, j, n]; } return null; };
-    const found = (wanted && pick((r) => r.name === wanted)) || (me && pick((r) => r.lic && r.lic === me.lic)) || [0, 0, 0];
-    [di, ci, ri] = found;
+    [di, ci, ri] = (wanted && pick((r) => r.name === wanted)) || (me && pick((r) => r.lic && r.lic === me.lic)) || [0, 0, 0];
     if (Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] && !wanted) { di = Number(query.doc); ci = Math.min(Number(query.c) || 0, docs[di].classes.length - 1); ri = 0; }
     if (query.r && docs[di]?.classes[ci]) { const n = docs[di].classes[ci].runners.findIndex((r) => r.name === query.r); if (n >= 0) ri = n; }
   }
-  const klass = () => docs[di]?.classes[ci], runner = () => klass()?.runners[ri];
   function pickers() {
     const k = klass();
     $("#an-pick").innerHTML = html`
@@ -243,77 +194,110 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // ---- 2. the files
-  function files() {
-    const box = (id, name, note, drop, hint) => html`<div class="an-file">
-      <label class="dropzone${name ? " filled" : ""}" id="an-drop-${id}">
-        <input type="file" id="an-in-${id}" accept="${id === "map" ? ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,image/*,application/pdf" : ".gpx,.tcx"}" multiple hidden>
-        <strong>${name ? html`${t(`an.${id}`)} : ${name}` : drop}</strong><span class="muted">${name ? t("an.change") : hint}</span></label>
-      ${note ? html`<div class="notice" style="margin-top:6px">${note}</div>` : ""}</div>`;
-    $("#an-files").innerHTML = html`<div class="card-body"><div class="an-files">
-      ${box("map", mapName, notes.map, t("an.map.drop"), t("an.map.hint"))}
-      ${box("gpx", traceName, notes.gpx, t("an.gpx.drop"), t("an.gpx.hint"))}</div>
-      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}</p></div>`;
-    for (const id of ["map", "gpx"]) {
-      $(`#an-in-${id}`).addEventListener("change", (e) => take([...e.target.files]));
-      const drop = $(`#an-drop-${id}`);
-      drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-      drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-      drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
-    }
+  function filesCard() {
+    const row = (role, f, extra = "") => html`<tr><th>${t(`an.role.${role}`)}</th><td>${f ? html`<b>${f.name}</b>${f.detail ? html` <span class="muted">· ${f.detail}</span>` : ""}` : html`<span class="muted">${t(`an.role.${role}.none`)}</span>`}${extra}
+      ${f?.note ? html`<div class="notice" style="margin-top:4px">${f.note}</div>` : ""}</td></tr>`;
+    const iof = files.iof;
+    const courseSel = iof?.data?.courses?.length > 1 ? html` <select id="an-iof-course" style="margin-left:8px">${iof.data.courses.map((c, i) => html`<option value="${i}" ${raw(i === iofIndex ? "selected" : "")}>${c.name || `#${i + 1}`}${c.length ? ` · ${fmt(c.length / 1000, 1)} km` : ""}</option>`)}</select>` : "";
+    $("#an-files").innerHTML = html`<div class="card-body">
+      <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${ACCEPT}">
+        <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
+      <table class="data compact an-filelist"><tbody>
+        ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}
+      </tbody></table>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}</p>
+      <details class="an-formats"><summary>${t("an.formats")}</summary><ul>
+        <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
+      </div>`;
+    $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+    const drop = $("#an-drop");
+    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
+    $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
   }
   async function take(list) {
     for (const f of list) {
-      if (isTrace(f)) {
-        try { track = parseTrack(await f.text()); traceName = f.name; notes.gpx = ""; }
-        catch (e) { track = null; traceName = ""; notes.gpx = t(e.message === "time" ? "an.err.time" : "an.err.gpx"); }
-      } else if (isMap(f)) {
-        notes.map = t("an.reading");
-        files();
-        try { map = await readMap(f); mapName = f.name; notes.map = ""; }
-        catch (e) { map = null; mapName = ""; notes.map = t(e.message === "pdf" ? "an.err.pdf" : "an.err.map"); }
-      } else notes[isTrace(f) ? "gpx" : "map"] = t("an.err.type");
+      const name = f.name, low = name.toLowerCase();
+      try {
+        if (isTraceName(name)) {
+          files.trace = { name, note: "" };
+          filesCard();
+          track = parseTrace(name, await f.arrayBuffer());
+          files.trace.detail = `${t(`an.src.${track.source}`)} · ${fmt(track.n)} ${t("an.points")} · ${clock(track.dur)}${Object.keys(track.ch).filter((c) => c !== "ele").length ? ` · ${Object.keys(track.ch).filter((c) => c !== "ele").map((c) => t(CHANNEL_LABEL[c])).join(", ")}` : ""}`;
+          if (race?.date_iso) { const day = parisDay(track.ms0); if (day !== race.date_iso) files.trace.note = t("an.date.diff", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }); }
+        } else if (low.endsWith(".kmz")) {
+          files.geo = { name, note: t("an.reading") }; filesCard();
+          const entries = await readZip(await f.arrayBuffer());
+          const kml = entries.find((e) => /\.kml$/i.test(e.name));
+          const ovs = kml ? parseKml(new TextDecoder().decode(kml.data)) : [];
+          if (!ovs.length) throw new Error("kmz");
+          const ov = ovs[0], img = entries.find((e) => e.name.toLowerCase() === ov.href.toLowerCase().replace(/^\.\//, "")) || entries.find((e) => /\.(png|jpe?g|webp|gif)$/i.test(e.name));
+          files.geo = { name, kind: "kmz", overlay: ov, note: "", detail: ov.quad ? "LatLonQuad" : `LatLonBox${ov.box.rot ? ` · ${fmt(ov.box.rot, 1)}°` : ""}` };
+          if (img) { map = await createImageBitmap(new Blob([img.data])); files.map = { name: `${name} › ${img.name}`, note: "", detail: `${map.width} × ${map.height}` }; courseCache = null; }
+          else files.geo.note = t("an.kmz.noImage");
+        } else if (low.endsWith(".kml")) {
+          const ovs = parseKml(await f.text());
+          if (!ovs.length) throw new Error("kml");
+          files.geo = { name, kind: "kml", overlay: ovs[0], note: "", detail: ovs[0].href ? `→ ${ovs[0].href}` : "" };
+        } else if (isWorldFileName(name)) {
+          const wf = parseWorldFile(await f.text());
+          if (!wf) throw new Error("world");
+          files.world = { name, wf, note: "" }; files.geo = null;
+        } else if (low.endsWith(".prj")) {
+          const crs = crsFromWkt(await f.text());
+          files.prj = { name, crs, note: crs ? "" : t("an.prj.unknown"), detail: crs?.name || "" };
+        } else if (low.endsWith(".xml")) {
+          const text = await f.text();
+          const data = parseIofCourse(text);
+          if (data) { files.iof = { name, data, note: data.courses.length ? "" : t("an.iof.noCourse"), detail: `${data.courses.length} ${t("an.iof.courses")} · ${data.controls.size} ${t("prov.controls")}${[...data.controls.values()].some((c) => c.lat != null) ? ` · ${t("an.iof.geo")}` : ""}` }; iofIndex = pickCourse(data); }
+          else if (/<gpx[\s>]/.test(text)) { files.trace = { name, note: "" }; track = parseTrace(name, new TextEncoder().encode(text).buffer); files.trace.detail = `GPX · ${fmt(track.n)} ${t("an.points")}`; }
+          else throw new Error("xml");
+        } else if (isImage(f)) {
+          files.map = { name, note: t("an.reading") }; filesCard();
+          map = await readMap(f); courseCache = null;
+          files.map = { name, note: "", detail: `${map.width} × ${map.height}` };
+        } else { notes.push(t("an.err.type", { f: name })); }
+      } catch (e) {
+        const msg = { time: "an.err.time", gpx: "an.err.gpx", pdf: "an.err.pdf", map: "an.err.map", kmz: "an.err.kmz", kml: "an.err.kml", world: "an.err.world", xml: "an.err.xml" }[e.message] || "an.err.gpx";
+        if (isTraceName(name) || e.message === "time" || e.message === "gpx") { track = null; files.trace = { name, note: t(msg) }; }
+        else if (low.endsWith(".kmz") || low.endsWith(".kml")) files.geo = { name, note: t(msg) };
+        else if (isWorldFileName(name)) files.world = { name, note: t(msg) };
+        else if (low.endsWith(".xml")) files.iof = { name, note: t(msg) };
+        else { map = null; files.map = { name, note: t(msg) }; }
+      }
     }
-    if (track && race?.date_iso) {
-      const day = parisDay(track.ms0);
-      if (day !== race.date_iso) notes.gpx = t("an.date.diff", { d1: fmtDate(day), d2: fmtDate(race.date_iso) });
-    }
-    files();
+    filesCard();
     setup();
   }
+  /** The course of the IOF file to use: the one named like the circuit, else the first. */
+  function pickCourse(data) {
+    const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const want = norm(klass()?.name);
+    const i = want ? data.courses.findIndex((c) => norm(c.name) === want || (norm(c.name) && want.includes(norm(c.name)))) : -1;
+    return i >= 0 ? i : 0;
+  }
 
-  // ---- 3. the targets (start, the controls, the finish) and the calibration
+  // ---- 3. the calibration ------------------------------------------------------------------------------------------
   function setup() {
     stop();
-    const k = klass(), r = runner();
-    targets = [];
-    if (r) {
-      const codes = k.controls || [];
-      const n = Math.max(codes.length, r.splits?.length || 0);
-      targets.push({ i: 0, label: t("an.start"), tau: 0 });
-      for (let i = 0; i < n; i++) targets.push({ i: i + 1, label: `${i + 1}`, code: codes[i] || "", tau: r.splits?.[i] ?? null });
-      targets.push({ i: n + 1, label: t("an.finish"), tau: r.status === "ok" && r.time_s != null ? r.time_s : null });
-    }
-    clicks = restoreClicks();
-    cur = nextTarget(0);
-    fit = null; calibrated = false; tNow = 0;
-    vLo = 0; vHi = 1;                                   // the pace colours follow this trace
+    calibrated = false; fit = null; offset = null; rmsM = null; auto = null; mode = "auto"; targets = []; cur = 0; tNow = 0;
+    vLo = 0; vHi = 1;
     hideResults();
-    steps(stage());
+    const r = runner();
     const work = $("#an-work");
     work.hidden = !(map && track && r);
+    steps(stage());
     if (work.hidden) return;
     size();
     fitView();
-    refit();
-    if (fit && Object.keys(clicks).length >= 3) finish(); else side();
-    draw();
+    prepare();
   }
-  // the playback's legs table and pace strip belong to one calibration: gone until the next one is done
   const hideResults = () => { $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-hud").textContent = ""; };
+  const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
-  function restoreClicks() { try { return JSON.parse(localStorage.getItem(calKey()) || "{}"); } catch (e) { return {}; } }
-  function saveClicks() { try { localStorage.setItem(calKey(), JSON.stringify(clicks)); } catch (e) { /* not kept */ } }
-  const nextTarget = (from) => { for (let i = from; i < targets.length; i++) if (!clicks[i]) return i; return -1; };
+  function savePositions() { try { localStorage.setItem(calKey(), JSON.stringify(targets.map((g) => (g.pos ? [g.kind, g.code || "", g.pos[0], g.pos[1]] : null)))); } catch (e) { /* not kept */ } }
+  function savedPositions() { try { return JSON.parse(localStorage.getItem(calKey()) || "null"); } catch (e) { return null; } }
   /** The offset the results' start time gives: the trace's time at the race start (seconds), if the start is known. */
   function guessOffset() {
     const r = runner();
@@ -321,46 +305,214 @@ export async function render(main, { query = {} } = {}) {
     const startMs = Date.parse(`${race.date_iso}T00:00:00Z`) - parisOffsetMs(race.date_iso) + r.start_s * 1000;
     return (startMs - track.ms0) / 1000;
   }
-  function refit() {
-    const pairs = targets.filter((g) => g.tau != null && clicks[g.i]).map((g) => ({ tau: g.tau, px: clicks[g.i][0], py: clicks[g.i][1] }));
-    fit = pairs.length >= 2 ? calibrate(track, pairs, guessOffset()) : null;
-    if (!fit) { pxs = pys = fullPath = null; return; }
-    pxs = new Float64Array(track.n); pys = new Float64Array(track.n);
-    fullPath = new Path2D();
-    for (let i = 0; i < track.n; i++) {
-      const [px, py] = toPx(fit, track.x[i], track.y[i]);
-      pxs[i] = px; pys[i] = py;
-      if (i) fullPath.lineTo(px, py); else fullPath.moveTo(px, py);
+  const ptsOf = (gs) => gs.map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind }));
+
+  /** The automatic calibration: read the course, place the trace, order the controls, refine with the split times. */
+  async function prepare() {
+    const my = ++prepToken;
+    notes = [];
+    mode = "auto";
+    setStatus(t("an.st.reading"));
+    await tick();
+    if (!courseCache || courseCache.image !== map) {
+      let c = null;
+      try { c = await detectCourse(map); } catch (e) { console.error(e); }
+      courseCache = { image: map, course: c };
     }
-    computeLegs();
+    if (my !== prepToken) return;
+    course = courseCache.course;
+    if (!course) notes.push(t("an.st.noCourse"));
+    // the georeferencing
+    geoFit = null; geoHow = "";
+    const W = map.width, H = map.height;
+    if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
+    else if (files.world?.wf) {
+      const crs = files.prj?.crs || guessCrs(files.world.wf[4], files.world.wf[5], track.lon0);
+      if (!crs) notes.push(t("an.geo.noCrs"));
+      else { geoFit = fitFromWorld(files.world.wf, crs, W, H, track); geoHow = `${t("an.geo.world")} · ${crs.name}`; }
+    }
+    if (geoFit) {
+      const [mx, my_] = toM(geoFit, W / 2, H / 2);
+      if (Math.hypot(mx - track.x[0], my_ - track.y[0]) > 30000) { notes.push(t("an.geo.far")); geoFit = null; geoHow = ""; }
+    }
+    // the course's points
+    const pts = [];
+    const iofData = files.iof?.data, iofCourse = iofData?.courses[iofIndex] || null;
+    const r = course?.r || null;
+    if (iofCourse) {
+      const seq = iofCourse.controls.map((cc) => ({ ...(iofData.controls.get(cc.id) || { id: cc.id }), type: cc.type }));
+      const circles = [...(course?.controls || []).map((c) => [c.x, c.y]), ...(course?.start ? [[course.start.x, course.start.y]] : []), ...(course?.finish ? [[course.finish.x, course.finish.y]] : [])];
+      const withMm = seq.filter((c) => c.mx != null && c.my != null);
+      let mmFit = null;
+      if (withMm.length >= 3 && circles.length >= 3) {
+        const src = withMm.map((c) => [c.mx, -c.my]);
+        const ext = (A, k) => Math.max(...A.map((p) => p[k])) - Math.min(...A.map((p) => p[k]));
+        const s0 = Math.hypot(ext(circles, 0), ext(circles, 1)) / Math.max(1e-6, Math.hypot(ext(src, 0), ext(src, 1)));
+        const reg = registerPoints(src, circles, Math.max(8, 0.7 * (r || 20)), { scaleRange: [s0 / 3, s0 * 3], rotRange: (15 * Math.PI) / 180, minInliers: Math.max(3, Math.ceil(0.5 * withMm.length)) });
+        if (reg) mmFit = reg.fit;
+      }
+      if (!mmFit && iofData.map.tl && iofData.map.br) {      // the image is the whole map
+        const [lx, ty] = iofData.map.tl, [rx, by] = iofData.map.br;
+        if (rx !== lx && ty !== by) mmFit = { m11: W / (rx - lx), m12: 0, m21: 0, m22: H / (ty - by), tx: (-W * lx) / (rx - lx), ty: (H * ty) / (ty - by), scale: W / (rx - lx) };
+      }
+      if (!mmFit) notes.push(t("an.iof.noPlace"));
+      for (const c of seq) {
+        let pos = mmFit && c.mx != null ? toPx(mmFit, c.mx, -c.my) : null;
+        if (pos && r) { const near = circles.map((q) => [Math.hypot(q[0] - pos[0], q[1] - pos[1]), q]).sort((a, b) => a[0] - b[0])[0]; if (near && near[0] <= 0.8 * r) pos = near[1]; }
+        pts.push({ kind: c.type === "Start" ? "start" : c.type === "Finish" ? "finish" : "control", code: c.type === "Control" ? c.id : "", pos, lat: c.lat, lon: c.lon });
+      }
+      const geo = pts.filter((p) => p.pos && p.lat != null && p.lon != null);
+      if (!geoFit && geo.length >= 3) { geoFit = fitSimilarity(geo.map((p) => toLocal(track, p.lat, p.lon)), geo.map((p) => p.pos)); geoHow = "IOF XML"; }
+    } else if (course) {
+      if (course.start) pts.push({ kind: "start", code: "", pos: [course.start.x, course.start.y] });
+      for (const c of course.controls) pts.push({ kind: "control", code: "", pos: [c.x, c.y] });
+      if (course.finish) pts.push({ kind: "finish", code: "", pos: [course.finish.x, course.finish.y] });
+    }
+    // the geometry
+    const located = pts.filter((p) => p.pos);
+    let geometry = geoFit;
+    auto = null;
+    if (!geometry && located.length >= 3) {
+      setStatus(t("an.st.aligning"));
+      await tick();
+      if (my !== prepToken) return;
+      auto = alignTrack(track, ptsOf(located), { rStar: r, northUp, tol: TOL });
+      geometry = auto?.fit || null;
+      if (!auto) notes.push(t("an.st.noAlign"));
+    } else if (!geometry) notes.push(t("an.st.fewPoints", { n: located.length }));
+    // the targets: in the course's order (IOF), else in the trace's visiting order
+    const saved = savedPositions();
+    if (!geometry) {
+      targets = iofCourse ? pts.map((p, i) => ({ i, label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : String(pts.slice(0, i).filter((q) => q.kind === "control").length + 1), ...p, tau: null, tEst: null }))
+        : officialTargets(null);
+      if (saved) restorePositions(saved);
+      mode = "manual"; cur = nextTarget(0);
+      recompute();
+      side(); draw();
+      return;
+    }
+    const vo = visitOrder(track, geometry, ptsOf(located), TOL);
+    const passOf = (p) => { const i = located.indexOf(p); return i >= 0 && vo.pass.has(i) ? vo.pass.get(i) : null; };
+    // two circles passed within 15 s are not two controls (a leg takes longer): the second is a phantom
+    let prevT = -Infinity;
+    const visited = vo.order.map((i) => located[i]).map((p) => { const tp = passOf(p); const ok = tp == null || tp - prevT >= 15; if (ok && tp != null) prevT = tp; return ok ? p : { ...p, missed: true }; });
+    const ordered = iofCourse ? pts : [...pts.filter((p) => p.kind === "start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), ...pts.filter((p) => p.kind === "finish")];
+    let seqTargets = ordered.map((p, i) => ({ i, kind: p.kind, code: p.code, pos: p.pos, tEst: passOf(p), tau: null, missed: !!p.missed,
+      label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : String(ordered.slice(0, i).filter((q) => q.kind === "control").length + 1) }));
+    const taus = officialTaus();
+    if (taus) {
+      // the official sequence, each control placed by the detected one that passed at its time
+      const off = [], det = seqTargets.filter((g) => g.kind === "control" && g.tEst != null);
+      const startT = vo.startT ?? (vo.finishT != null && totalOfficial() ? vo.finishT - totalOfficial() : null);
+      const ctrlTaus = taus.slice(1, -1);
+      const shift = startT != null ? startT : (det.length && ctrlTaus.some((x) => x != null) ? median(det.map((g) => g.tEst)) - median(ctrlTaus.filter((x) => x != null)) : 0);
+      for (const g of seqTargets) if (g.kind === "control") off.push(g);
+      // the pairs, with the clock shift re-estimated twice from the pairs themselves (a phantom circle passed early
+      // would otherwise hijack a control), then the pairs far from the shift dropped
+      let pairs = matchTimes(det.map((g) => g.tEst - shift), ctrlTaus), sh = shift;
+      for (let it = 0; it < 2 && pairs.length >= 3; it++) {
+        sh = sh + median(pairs.map(([a, b]) => det[a].tEst - sh - ctrlTaus[b]));
+        pairs = matchTimes(det.map((g) => g.tEst - sh), ctrlTaus);
+      }
+      if (pairs.length >= 3) { const res = pairs.map(([a, b]) => det[a].tEst - sh - ctrlTaus[b]), md = median(res); pairs = pairs.filter((p, i) => Math.abs(res[i] - md) <= 60); }
+      targets = officialTargets(null);
+      for (const [a, b] of pairs) { targets[b + 1].pos = det[a].pos; targets[b + 1].tEst = det[a].tEst; }
+      const st = seqTargets.find((g) => g.kind === "start"), fi = seqTargets.find((g) => g.kind === "finish");
+      if (st?.pos) { targets[0].pos = st.pos; targets[0].tEst = st.tEst; }
+      if (fi?.pos) { targets[targets.length - 1].pos = fi.pos; targets[targets.length - 1].tEst = fi.tEst; }
+      if (!pairs.length && !st?.pos && !fi?.pos) notes.push(t("an.st.noMatch"));
+    } else targets = seqTargets;
+    savePositions();
+    recompute({ geometry, vo });
+    cur = nextTarget(0);
+    side(); draw();
+    if (fit && !notes.length && targets.filter((g) => g.pos).length >= 3) steps(3);
   }
-  /** The race in legs: times and ranks from the class's splits, lengths from the trace. */
+  const median = (xs) => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : 0; };
+  /** The official sequence of targets (start, the controls with their codes, the finish), positions from a saved set. */
+  function officialTargets(saved) {
+    const k = klass(), r = runner();
+    const codes = k?.controls || [], n = Math.max(codes.length, r?.splits?.length || 0);
+    const taus = officialTaus();
+    const out = [{ i: 0, kind: "start", label: t("an.start"), code: "", tau: 0, tEst: null, pos: null }];
+    for (let i = 0; i < n; i++) out.push({ i: i + 1, kind: "control", label: `${i + 1}`, code: codes[i] || "", tau: taus?.[i + 1] ?? null, tEst: null, pos: null });
+    out.push({ i: n + 1, kind: "finish", label: t("an.finish"), code: "", tau: taus ? taus[n + 1] : null, tEst: null, pos: null });
+    if (saved) restorePositions(saved, out);
+    return out;
+  }
+  function restorePositions(saved, gs = targets) { if (Array.isArray(saved) && saved.length === gs.length) saved.forEach((s, i) => { if (s) gs[i].pos = [s[2], s[3]]; }); }
+  const nextTarget = (from) => { for (let i = from; i < targets.length; i++) if (!targets[i].pos && !targets[i].missed) return i; return -1; };
+  /** The race time of a target: published, else the trace's own. */
+  const timeOf = (g) => (g.tau != null ? g.tau : g.tEst != null && offset != null ? g.tEst - offset : null);
+
+  /** The geometry and the clock from the targets as they stand: the split times when published, else the trace. */
+  function recompute({ geometry = null, vo = null } = {}) {
+    window.anDebug = () => ({ fit, offset, geoFit, targets, course, auto });        // for support, in the console
+    const located = targets.filter((g) => g.pos && !g.missed);
+    const taus = officialTaus();
+    fit = null; offset = null; rmsM = null;
+    if (taus) {
+      const pairs = targets.filter((g) => g.tau != null && g.pos && !g.missed).map((g) => ({ tau: g.tau, px: g.pos[0], py: g.pos[1] }));
+      const guess = vo?.startT ?? guessOffset() ?? (geometry && located.length ? visitOrder(track, geometry, ptsOf(located), TOL).startT : null);
+      const c = pairs.length >= (geoFit ? 1 : 2) ? calibrate(track, pairs, guess, geoFit) : null;
+      if (c) { fit = c.fit; offset = c.offset; rmsM = c.rms / fit.scale; }
+      else if (geoFit) { fit = geoFit; offset = guess; }
+      if (fit && offset == null) { const v = visitOrder(track, fit, ptsOf(located), TOL); offset = v.startT; }
+    } else {
+      if (geoFit) fit = geoFit;
+      else if (geometry) fit = geometry;
+      else if (located.length >= 3) { auto = alignTrack(track, ptsOf(located), { rStar: course?.r || null, northUp, tol: TOL }); fit = auto?.fit || null; }
+      if (fit) {
+        const v = visitOrder(track, fit, ptsOf(located), TOL);
+        located.forEach((g, i) => { g.tEst = v.pass.has(i) ? v.pass.get(i) : null; });
+        const tot = totalOfficial();
+        offset = v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (located.find((g) => g.kind === "control" && g.tEst != null)?.tEst ?? null);
+        rmsM = auto ? auto.rms / fit.scale : null;
+      }
+    }
+    if (fit) {
+      pxs = new Float64Array(track.n); pys = new Float64Array(track.n);
+      fullPath = new Path2D();
+      for (let i = 0; i < track.n; i++) {
+        const [px, py] = toPx(fit, track.x[i], track.y[i]);
+        pxs[i] = px; pys[i] = py;
+        if (i) fullPath.lineTo(px, py); else fullPath.moveTo(px, py);
+      }
+      computeLegs();
+    } else { pxs = pys = fullPath = null; legs = []; total = 0; }
+  }
+  /** The race in legs: times and ranks from the class's splits when published, else the trace's; lengths from the trace. */
   function computeLegs() {
     const k = klass(), r = runner();
-    const timed = targets.filter((g) => g.tau != null);
-    total = timed.length ? timed[timed.length - 1].tau : Math.max(0, track.dur - (fit?.offset || 0));
-    // the class's legs (the split-times page's rule for the time lost)
+    const times = targets.map(timeOf);
+    const tot = totalOfficial();
+    const lastT = [...times].reverse().find((x) => x != null);
+    total = tot ?? lastT ?? Math.max(0, track.dur - (offset || 0));
     const n = targets.length - 1;
-    const cumOf = (x) => Array.from({ length: n }, (_, i) => (i < n - 1 ? x.splits?.[i] ?? null : x.status === "ok" ? x.time_s : null));
-    const legsOf = (x) => { const c = cumOf(x); return c.map((v, i) => (v != null && (i === 0 || c[i - 1] != null) ? v - (i ? c[i - 1] : 0) : null)); };
-    const all = k.runners.filter((x) => x.splits).map(legsOf);
-    const best = Array.from({ length: n }, (_, i) => { const v = all.map((l) => l[i]).filter((x) => x != null && x > 0); return v.length ? Math.min(...v) : null; });
-    const mine = legsOf(r);
-    const ratios = mine.map((v, i) => (v != null && best[i] ? v / best[i] : null)).filter((x) => x != null).sort((a, b) => a - b);
-    const med = ratios.length ? ratios[Math.floor((ratios.length - 1) / 2)] : null;
+    const taus = officialTaus();
+    let best = [], all = [], mine = [], med = null;
+    if (taus) {
+      const cumOf = (x) => Array.from({ length: n }, (_, i) => (i < n - 1 ? x.splits?.[i] ?? null : x.status === "ok" ? x.time_s : null));
+      const legsOf = (x) => { const c = cumOf(x); return c.map((v, i) => (v != null && (i === 0 || c[i - 1] != null) ? v - (i ? c[i - 1] : 0) : null)); };
+      all = k.runners.filter((x) => x.splits).map(legsOf);
+      best = Array.from({ length: n }, (_, i) => { const v = all.map((l) => l[i]).filter((x) => x != null && x > 0); return v.length ? Math.min(...v) : null; });
+      mine = legsOf(r);
+      const ratios = mine.map((v, i) => (v != null && best[i] ? v / best[i] : null)).filter((x) => x != null).sort((a, b) => a - b);
+      med = ratios.length ? ratios[Math.floor((ratios.length - 1) / 2)] : null;
+    } else mine = times.map((v, i) => (i && v != null && times[i - 1] != null ? v - times[i - 1] : null));
     legs = [];
     for (let i = 0; i < n; i++) {
-      const from = targets[i], to = targets[i + 1];
-      const t0 = from.tau, t1 = to.tau;
-      const leg = { n: i + 1, code: to.code || "", label: to.label, t0, t1, time: mine[i], best: best[i], rank: null, lost: null, mistake: false, dist: null, straight: null, v: null };
-      if (leg.time != null) leg.rank = 1 + all.filter((l) => l[i] != null && l[i] < leg.time).length;
-      if (leg.time != null && best[i] && med) { leg.lost = leg.time - best[i] * med; leg.mistake = leg.lost >= ERR.s && leg.lost >= (ERR.pct / 100) * leg.time; }
-      if (fit && t0 != null && t1 != null) {
-        leg.dist = cumAt(track, fit.offset + t1) - cumAt(track, fit.offset + t0);
-        const a = clicks[from.i] ? toM(fit, ...clicks[from.i]) : posAt(track, fit.offset + t0);
-        const b = clicks[to.i] ? toM(fit, ...clicks[to.i]) : posAt(track, fit.offset + t1);
+      const from = targets[i], to = targets[i + 1], t0 = times[i], t1 = times[i + 1];
+      const leg = { n: i + 1, code: to.code || "", label: to.label, t0, t1, time: mine[i], best: best[i] ?? null, rank: null, lost: null, mistake: false, dist: null, straight: null, v: null, hr: null, cad: null, estimated: !taus };
+      if (taus && leg.time != null) leg.rank = 1 + all.filter((l) => l[i] != null && l[i] < leg.time).length;
+      if (taus && leg.time != null && best[i] && med) { leg.lost = leg.time - best[i] * med; leg.mistake = leg.lost >= ERR.s && leg.lost >= (ERR.pct / 100) * leg.time; }
+      if (fit && t0 != null && t1 != null && offset != null) {
+        leg.dist = cumAt(track, offset + t1) - cumAt(track, offset + t0);
+        const a = from.pos ? toM(fit, ...from.pos) : posAt(track, offset + t0), b = to.pos ? toM(fit, ...to.pos) : posAt(track, offset + t1);
         leg.straight = Math.hypot(a[0] - b[0], a[1] - b[1]);
         leg.v = leg.time > 0 ? leg.dist / leg.time : null;
+        leg.hr = meanBetween(track, "hr", offset + t0, offset + t1);
+        leg.cad = meanBetween(track, "cad", offset + t0, offset + t1);
       }
       legs.push(leg);
     }
@@ -368,45 +520,71 @@ export async function render(main, { query = {} } = {}) {
 
   function side() {
     steps(stage());
-    const pairs = targets.filter((g) => g.tau != null && clicks[g.i]).length, need = Math.max(0, (guessOffset() != null ? 2 : 3) - pairs);
-    const r = runner();
-    $("#an-side").innerHTML = html`<div class="an-side-title">${t("an.cal.title")}</div>
-      <p class="hint">${t("an.cal.help")}</p>
-      ${r?.splits ? "" : html`<div class="notice" style="margin-bottom:8px">${t("an.cal.noSplits")}</div>`}
-      <div class="an-targets">${targets.map((g) => html`<button type="button" class="an-target${g.i === cur ? " now" : ""}${clicks[g.i] ? " done" : ""}" data-target="${g.i}">
-        <b>${g.label}</b>${g.code ? html`<span class="muted">${g.code}</span>` : ""}<span class="num">${g.tau != null ? clock(g.tau) : "—"}</span><span class="an-mark">${clicks[g.i] ? "✓" : g.i === cur ? "▶" : ""}</span></button>`)}</div>
-      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">
+    if (calibrated) return;
+    const taus = officialTaus(), r = runner();
+    const placed = targets.filter((g) => g.pos && !g.missed).length, want = targets.filter((g) => !g.missed).length;
+    const summary = [];
+    if (status && !targets.length) summary.push(status);
+    if (course) summary.push(t("an.st.found", { n: course.controls.length, s: course.start ? "✓" : "—", f: course.finish ? "✓" : "—" }));
+    if (geoHow) summary.push(`${t("an.st.geo")} ${geoHow}`);
+    else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
+    if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
+    else if (r) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    const need = mode === "manual" ? Math.max(0, (taus ? (guessOffset() != null || geoFit ? 2 : 3) : 3) - placed) : 0;
+    $("#an-side").innerHTML = html`<div class="an-side-title">${t(mode === "manual" ? "an.cal.title" : "an.cal.auto")}</div>
+      ${summary.length ? html`<ul class="an-summary">${summary.map((s) => html`<li>${s}</li>`)}</ul>` : ""}
+      ${notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}
+      ${mode === "manual" ? html`<p class="hint">${t("an.cal.help")}</p>${taus ? "" : html`<p class="hint">${t("an.cal.noSplits")}</p>`}` : ""}
+      <div class="an-targets">${targets.map((g) => html`<button type="button" class="an-target${g.i === cur && mode === "manual" ? " now" : ""}${g.pos ? " done" : ""}${g.missed ? " missed" : ""}" data-target="${g.i}" title="${g.missed ? t("an.missed") : ""}">
+        <b>${g.label}</b>${g.code ? html`<span class="muted">${g.code}</span>` : html`<span></span>`}<span class="num">${g.tau != null ? clock(g.tau) : timeOf(g) != null ? html`<span class="muted">~${clock(timeOf(g))}</span>` : "—"}</span>
+        <span class="an-mark">${g.pos ? "✓" : g.i === cur && mode === "manual" ? "▶" : ""}</span></button>`)}</div>
+      ${mode === "manual" ? html`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">
         <button type="button" class="btn btn-sm" id="an-skip">${t("an.cal.skip")}</button>
         <button type="button" class="btn btn-sm" id="an-undo">${t("an.cal.undo")}</button>
-        <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button></div>
-      <div class="an-fitbox">${fit ? html`<div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(fit.rms / fit.scale)} m</b> <span class="muted" title="${t("an.cal.fit.hint")}">ⓘ</span></div>
-          ${guessOffset() != null ? html`<div><span class="muted">${t("an.cal.offset")}</span> <b>${signed(fit.offset - guessOffset())}</b> <span class="muted" title="${t("an.cal.offset.hint")}">ⓘ</span></div>` : ""}`
-        : html`<div class="muted">${t("an.cal.need", { n: need })}</div>`}</div>
-      <button type="button" class="btn btn-primary" id="an-done" style="margin-top:10px" ${raw(fit ? "" : "disabled")}>${t("an.cal.done")}</button>`;
-    $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); side(); draw(); }));
-    $("#an-skip").addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });
-    $("#an-undo").addEventListener("click", () => {
-      const done = Object.keys(clicks).map(Number);
-      if (done.length) { const lastI = Math.max(...done); delete clicks[lastI]; cur = lastI; saveClicks(); refit(); side(); draw(); }
+        <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button></div>` : ""}
+      <div class="an-fitbox">${fit ? html`${rmsM != null ? html`<div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(rmsM)} m</b> <span class="muted" title="${t("an.cal.fit.hint")}">ⓘ</span></div>` : ""}
+          ${offset != null && guessOffset() != null ? html`<div><span class="muted">${t("an.cal.offset")}</span> <b>${signed(offset - guessOffset())}</b> <span class="muted" title="${t("an.cal.offset.hint")}">ⓘ</span></div>` : ""}
+          ${offset == null ? html`<div class="notice">${t("an.cal.noStart")}</div>` : ""}`
+        : html`<div class="muted">${mode === "manual" ? t("an.cal.need", { n: need }) : status}</div>`}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">
+        <button type="button" class="btn btn-primary" id="an-done" ${raw(fit && offset != null ? "" : "disabled")}>${t("an.cal.done")}</button>
+        ${mode === "manual" ? html`<button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>` : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>`}</div>
+      <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label>`;
+    $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); if (mode !== "manual") { mode = "manual"; } side(); draw(); }));
+    $("#an-skip")?.addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });
+    $("#an-undo")?.addEventListener("click", () => {
+      const done = targets.filter((g) => g.pos).map((g) => g.i);
+      if (done.length) { const lastI = Math.max(...done); targets[lastI].pos = null; targets[lastI].tEst = null; cur = lastI; savePositions(); recompute(); side(); draw(); }
     });
-    $("#an-clear").addEventListener("click", () => { clicks = {}; cur = 0; saveClicks(); refit(); side(); draw(); });
+    $("#an-clear")?.addEventListener("click", () => { targets.forEach((g) => { g.pos = null; g.tEst = null; }); cur = 0; savePositions(); recompute(); side(); draw(); });
     $("#an-done").addEventListener("click", finish);
+    $("#an-manual")?.addEventListener("click", () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); });
+    $("#an-auto")?.addEventListener("click", () => prepare());
+    $("#an-north").addEventListener("change", (e) => { northUp = e.target.checked; prepare(); });
   }
+  /** A click on the map in manual mode: the current target goes there (snapped to a circle found nearby). */
   function placeClick(px, py) {
-    if (cur < 0) return;
-    clicks[cur] = [Math.round(px * 10) / 10, Math.round(py * 10) / 10];
+    if (cur < 0 || mode !== "manual") return;
+    let pos = [Math.round(px * 10) / 10, Math.round(py * 10) / 10];
+    if (course?.r) {
+      const all = [...course.controls, ...(course.start ? [course.start] : []), ...(course.finish ? [course.finish] : [])];
+      const near = all.map((c) => [Math.hypot(c.x - px, c.y - py), c]).sort((a, b) => a[0] - b[0])[0];
+      if (near && near[0] <= 1.2 * course.r) pos = [near[1].x, near[1].y];
+    }
+    targets[cur].pos = pos; targets[cur].missed = false;
     cur = nextTarget(cur + 1);
-    saveClicks();
-    refit();
+    savePositions();
+    recompute();
     side();
     draw();
   }
 
-  // ---- 4. the playback
+  // ---- 4. the playback ----------------------------------------------------------------------------------------------
   function finish() {
-    if (!fit) return;
+    if (!fit || offset == null) return;
     calibrated = true; marks = false; tNow = 0;
     steps(4);
+    const chans = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     $("#an-side").innerHTML = html`<div class="an-side-title">${t("an.play.title")}</div>
       <div class="an-transport">
         <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
@@ -418,13 +596,14 @@ export async function render(main, { query = {} } = {}) {
         <div class="tile"><div class="tile-label">${t("an.time")}</div><div class="tile-value" id="an-t">0:00</div><div class="tile-sub" id="an-t-sub"></div></div>
         <div class="tile"><div class="tile-label">${t("an.leg")}</div><div class="tile-value" id="an-leg">—</div><div class="tile-sub" id="an-leg-sub"></div></div>
         <div class="tile"><div class="tile-label">${t("an.pace")}</div><div class="tile-value" id="an-pace">—</div><div class="tile-sub">${t("an.pace.hint")}</div></div>
-        <div class="tile"><div class="tile-label">${t("an.dist")}</div><div class="tile-value" id="an-dist">0 m</div><div class="tile-sub" id="an-dist-sub"></div></div></div>
+        <div class="tile"><div class="tile-label">${t("an.dist")}</div><div class="tile-value" id="an-dist">0 m</div><div class="tile-sub" id="an-dist-sub"></div></div>
+        ${chans.filter((c) => c !== "ele").map((c) => html`<div class="tile"><div class="tile-label">${t(CHANNEL_LABEL[c])}</div><div class="tile-value" id="an-ch-${c}">—</div><div class="tile-sub">${CHANNEL_UNIT[c]}</div></div>`)}</div>
       <div class="an-opts">
         <label><input type="checkbox" id="an-follow" ${raw(follow ? "checked" : "")}> ${t("an.follow")}</label>
         <label><input type="checkbox" id="an-marks" ${raw(marks ? "checked" : "")}> ${t("an.marks")}</label>
         <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
         <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label></div>
-      <div class="an-fitbox"><div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(fit.rms / fit.scale)} m</b></div></div>
+      <div class="an-fitbox">${rmsM != null ? html`<div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(rmsM)} m</b></div>` : ""}${geoHow ? html`<div class="muted">${t("an.st.geo")} ${geoHow}</div>` : ""}</div>
       <button type="button" class="btn btn-sm" id="an-again" style="margin-top:8px">${t("an.cal.again")}</button>`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
@@ -438,7 +617,14 @@ export async function render(main, { query = {} } = {}) {
     $("#an-marks").addEventListener("change", (e) => { marks = e.target.checked; draw(); });
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; draw(); });
     $("#an-tail").addEventListener("change", (e) => { tail = Number(e.target.value); draw(); });
-    $("#an-again").addEventListener("click", () => { stop(); calibrated = false; marks = true; cur = nextTarget(0); if (cur < 0) cur = targets.length - 1; hideResults(); side(); draw(); });
+    $("#an-again").addEventListener("click", () => { stop(); calibrated = false; marks = true; mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; hideResults(); side(); draw(); });
+    // the strip's channel
+    const sel = $("#an-chan");
+    sel.innerHTML = html`<option value="">${t("an.ch.none")}</option>${chans.map((c) => html`<option value="${c}" ${raw(c === channel ? "selected" : "")}>${t(CHANNEL_LABEL[c])}</option>`)}`;
+    if (!chans.includes(channel)) channel = chans.includes("hr") ? "hr" : chans[0] || "";
+    sel.value = channel;
+    sel.onchange = (e) => { channel = e.target.value; drawStrip(); };
+    $(".an-chan").hidden = !chans.length;
     $("#an-strip-card").hidden = false;
     legsTable();
     sizeStrip();
@@ -479,39 +665,44 @@ export async function render(main, { query = {} } = {}) {
   }
   function hud() {
     if (!calibrated) return;
-    const s = fit.offset + tNow, j = legAt(tNow), leg = legs[j];
+    const s = offset + tNow, j = legAt(tNow), leg = legs[j];
     const slider = $("#an-time"); if (slider && !scrubbing) slider.value = String(tNow);
     const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
     set("#an-t", clock(tNow)); set("#an-t-sub", total ? `${t("an.of")} ${clock(total)}` : "");
     set("#an-leg", leg ? `${leg.n}${leg.code ? ` (${leg.code})` : ""}` : "—");
-    set("#an-leg-sub", leg ? `${leg.time != null ? clock(leg.time) : ""}${leg.dist != null ? ` · ${fmt(leg.dist)} m` : ""}${leg.rank ? ` · ${t("an.rankShort")} ${leg.rank}` : ""}` : "");
+    set("#an-leg-sub", leg ? `${leg.time != null ? `${leg.estimated ? "~" : ""}${clock(leg.time)}` : ""}${leg.dist != null ? ` · ${fmt(leg.dist)} m` : ""}${leg.rank ? ` · ${t("an.rankShort")} ${leg.rank}` : ""}` : "");
     const win = Math.min(30, tNow);
     set("#an-pace", win >= 5 ? pace((cumAt(track, s) - cumAt(track, s - win)) / win) : "—");
-    const d = cumAt(track, s) - cumAt(track, fit.offset);
+    const d = cumAt(track, s) - cumAt(track, offset);
     set("#an-dist", `${fmt(d >= 1000 ? d / 1000 : d, d >= 1000 ? 2 : 0)} ${d >= 1000 ? "km" : "m"}`);
     const len = klass()?.length_m;
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
+    for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
     $("#an-hud").textContent = `${clock(tNow)}${leg ? ` · ${leg.n}` : ""}`;
   }
   function legsTable() {
-    const k = klass();
+    const k = klass(), r = runner(), est = !officialTaus();
+    const hasHr = !!track.ch.hr, hasCad = !!track.ch.cad;
     const sum = legs.reduce((a, l) => ({ dist: a.dist + (l.dist || 0), straight: a.straight + (l.straight || 0), lost: a.lost + (l.mistake ? l.lost : 0), n: a.n + (l.mistake ? 1 : 0) }), { dist: 0, straight: 0, lost: 0, n: 0 });
     $("#an-legs").hidden = false;
-    $("#an-legs").innerHTML = html`<div class="card-head"><div><h2>${t("an.legs")}</h2><div class="hint">${t("an.legs.hint")}</div></div></div>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}</th><th class="r">${t("an.col.best")}</th>
-        <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th><th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th></tr></thead>
+    $("#an-legs").innerHTML = html`<div class="card-head"><div><h2>${t("an.legs")}</h2><div class="hint">${t(est ? "an.legs.hint.est" : "an.legs.hint")}</div></div></div>
+      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
+        <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th>`}<th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th>
+        ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r">${t("an.col.cad")}</th>` : ""}</tr></thead>
       <tbody>${legs.map((l, i) => html`<tr data-leg="${i}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">
         <td>${l.label}${l.code ? html` <span class="muted">${l.code}</span>` : ""}</td>
-        <td class="r num">${l.time != null ? clock(l.time) : "—"}</td><td class="r num">${l.best != null ? clock(l.best) : "—"}</td>
-        <td class="r num">${l.rank ?? "—"}</td><td class="r num${l.mistake ? " an-lost" : ""}">${l.lost != null ? signed(Math.round(l.lost)) : "—"}</td>
+        <td class="r num">${l.time != null ? clock(l.time) : "—"}</td>${est ? "" : html`<td class="r num">${l.best != null ? clock(l.best) : "—"}</td>
+        <td class="r num">${l.rank ?? "—"}</td><td class="r num${l.mistake ? " an-lost" : ""}">${l.lost != null ? signed(Math.round(l.lost)) : "—"}</td>`}
         <td class="r num">${l.dist != null ? `${fmt(l.dist)} m` : "—"}</td><td class="r num">${l.straight != null ? `${fmt(l.straight)} m` : "—"}</td>
-        <td class="r num">${l.dist != null && l.straight ? `+${fmt((100 * l.dist) / l.straight - 100)} %` : "—"}</td>
-        <td class="r num">${l.v != null ? pace(l.v) : "—"}</td></tr>`)}
-      <tr class="an-total"><td>${t("an.total")}</td><td class="r num">${runner().status === "ok" ? clock(runner().time_s) : "—"}</td><td></td><td class="r num">${runner().place ?? "—"}</td>
-        <td class="r num">${sum.n ? `${signed(Math.round(sum.lost))} (${sum.n})` : "—"}</td><td class="r num">${fmt(sum.dist)} m</td>
+        <td class="r num">${l.dist != null && l.straight ? detour(l.dist, l.straight) : "—"}</td>
+        <td class="r num">${l.v != null ? pace(l.v) : "—"}</td>
+        ${hasHr ? html`<td class="r num">${l.hr != null ? fmt(l.hr) : "—"}</td>` : ""}${hasCad ? html`<td class="r num">${l.cad != null ? fmt(l.cad) : "—"}</td>` : ""}</tr>`)}
+      <tr class="an-total"><td>${t("an.total")}</td><td class="r num">${r.status === "ok" && r.time_s != null ? clock(r.time_s) : total ? `~${clock(total)}` : "—"}</td>${est ? "" : html`<td></td><td class="r num">${r.place ?? "—"}</td>
+        <td class="r num">${sum.n ? `${signed(Math.round(sum.lost))} (${sum.n})` : "—"}</td>`}<td class="r num">${fmt(sum.dist)} m</td>
         <td class="r num">${sum.straight ? `${fmt(sum.straight)} m` : "—"}${k.length_m ? html`<div class="muted" style="font-size:11.5px">${t("an.course.len")} ${fmt(k.length_m)} m</div>` : ""}</td>
-        <td class="r num">${sum.straight ? `+${fmt((100 * sum.dist) / sum.straight - 100)} %` : "—"}</td>
-        <td class="r num">${total && sum.dist ? pace(sum.dist / total) : "—"}</td></tr></tbody></table></div>`;
+        <td class="r num">${sum.straight ? detour(sum.dist, sum.straight) : "—"}</td>
+        <td class="r num">${total && sum.dist ? pace(sum.dist / total) : "—"}</td>
+        ${hasHr ? html`<td class="r num">${fmt(meanBetween(track, "hr", offset, offset + total))}</td>` : ""}${hasCad ? html`<td class="r num">${fmt(meanBetween(track, "cad", offset, offset + total))}</td>` : ""}</tr></tbody></table></div>`;
     $$("#an-legs tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => {
       const l = legs[Number(tr.dataset.leg)];
       if (l.t0 == null) return;
@@ -523,7 +714,7 @@ export async function render(main, { query = {} } = {}) {
   /** The view on one leg: its trace, with a margin. */
   function zoomTo(l) {
     if (!fit || l.t1 == null) return;
-    const a = indexAt(track, fit.offset + l.t0), b = indexAt(track, fit.offset + l.t1);
+    const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + l.t1);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
     const { w, h } = box();
@@ -602,7 +793,7 @@ export async function render(main, { query = {} } = {}) {
     if (!map) return;
     const dpr = window.devicePixelRatio || 1, { w, h } = box();
     if (calibrated && follow && fit) {               // the runner kept at the centre
-      const [px, py] = toPx(fit, ...posAt(track, fit.offset + tNow));
+      const [px, py] = toPx(fit, ...posAt(track, offset + tNow));
       view = { ...view, ox: w / 2 - px * view.k, oy: h / 2 - py * view.k };
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -612,8 +803,8 @@ export async function render(main, { query = {} } = {}) {
     ctx.drawImage(map, 0, 0);
     const lw = (px) => px / view.k;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if (fit && fullPath) {
-      const s = fit.offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, fit.offset));
+    if (fit && fullPath && offset != null) {
+      const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
       // the whole trace, faint; the part run so far, full; the tail, thicker
       ctx.globalAlpha = calibrated ? 0.28 : 0.85; ctx.strokeStyle = TRACE; ctx.lineWidth = lw(2.5); ctx.stroke(fullPath);
       ctx.globalAlpha = 1;
@@ -632,29 +823,33 @@ export async function render(main, { query = {} } = {}) {
           part(i0, Math.min(iNow, iTail), 3);
           part(iTail, iNow, 5);
         }
-        // the runner
         const [px, py] = toPx(fit, ...posAt(track, s));
         ctx.beginPath(); ctx.arc(px, py, lw(9), 0, Math.PI * 2); ctx.fillStyle = "#ffffff"; ctx.fill();
         ctx.beginPath(); ctx.arc(px, py, lw(6.5), 0, Math.PI * 2); ctx.fillStyle = "#e8641c"; ctx.fill();
       }
     }
-    // the controls clicked: a ring and the number
     if (marks || !calibrated) {
+      // the circles read on the map, faint
+      if (course && !calibrated) {
+        ctx.strokeStyle = "rgba(166, 38, 164, 0.45)"; ctx.lineWidth = lw(1.5);
+        for (const c of course.controls) { ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.15, 0, Math.PI * 2); ctx.stroke(); }
+      }
+      // the targets placed: a ring and the number
       ctx.font = `${lw(13)}px system-ui, sans-serif`; ctx.textBaseline = "middle";
       for (const g of targets) {
-        const c = clicks[g.i];
+        const c = g.pos;
         if (!c) continue;
-        const now = g.i === cur && !calibrated;
+        const now = g.i === cur && mode === "manual" && !calibrated;
         ctx.beginPath(); ctx.arc(c[0], c[1], lw(now ? 11 : 9), 0, Math.PI * 2);
-        ctx.strokeStyle = now ? "#e8641c" : "#a626a4"; ctx.lineWidth = lw(now ? 3 : 2); ctx.stroke();
+        ctx.strokeStyle = now ? "#e8641c" : g.missed ? "#999999" : "#a626a4"; ctx.lineWidth = lw(now ? 3 : 2); ctx.stroke();
         ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = lw(3); ctx.strokeText(g.label, c[0] + lw(13), c[1]);
-        ctx.fillStyle = "#a626a4"; ctx.fillText(g.label, c[0] + lw(13), c[1]);
+        ctx.fillStyle = g.missed ? "#999999" : "#a626a4"; ctx.fillText(g.label, c[0] + lw(13), c[1]);
       }
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  // ---- the pace along the race
+  // ---- the pace and the channels along the race
   function sizeStrip() {
     const dpr = window.devicePixelRatio || 1;
     strip.width = Math.round(strip.clientWidth * dpr); strip.height = Math.round(strip.clientHeight * dpr);
@@ -667,24 +862,34 @@ export async function render(main, { query = {} } = {}) {
     sctx.clearRect(0, 0, w, h);
     if (!vHi || vHi === 1) paceScale();
     const X = (s) => (s / total) * w, top = 14, bottom = h - 4;
-    // the mistakes' legs, washed
     for (const l of legs) if (l.mistake && l.t1 != null) { sctx.fillStyle = "rgba(198,40,40,0.12)"; sctx.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
-    // the pace, as an area (fast up)
     const step = Math.max(1, Math.floor(total / w));
     sctx.beginPath(); sctx.moveTo(0, bottom);
     for (let s = 0; s <= total; s += step) {
-      const v = speedAt(track, fit.offset + s), y = bottom - ((Math.max(vLo * 0.7, Math.min(vHi * 1.15, v)) - vLo * 0.7) / (vHi * 1.15 - vLo * 0.7 || 1)) * (bottom - top);
+      const v = speedAt(track, offset + s), y = bottom - ((Math.max(vLo * 0.7, Math.min(vHi * 1.15, v)) - vLo * 0.7) / (vHi * 1.15 - vLo * 0.7 || 1)) * (bottom - top);
       sctx.lineTo(X(s), y);
     }
     sctx.lineTo(w, bottom); sctx.closePath();
     sctx.fillStyle = "rgba(200,16,46,0.25)"; sctx.fill();
-    // the controls
+    // the chosen channel, as a line on its own scale
+    const ch = channel && track.ch[channel];
+    if (ch) {
+      let lo = Infinity, hi = -Infinity;
+      const i0 = indexAt(track, offset), i1 = indexAt(track, offset + total);
+      for (let i = i0; i <= i1; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (hi > lo) {
+        sctx.beginPath();
+        for (let s = 0; s <= total; s += step) { const v = valueAt(track, channel, offset + s), y = bottom - ((v - lo) / (hi - lo)) * (bottom - top) * 0.9 - 2; if (s) sctx.lineTo(X(s), y); else sctx.moveTo(X(s), y); }
+        sctx.strokeStyle = channel === "hr" ? "#d6336c" : channel === "ele" ? "#8a5a2b" : "#1c80bb"; sctx.lineWidth = 1.6; sctx.stroke();
+        sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "right"; sctx.fillStyle = sctx.strokeStyle;
+        sctx.fillText(`${fmt(hi, channel === "temp" ? 1 : 0)} ${CHANNEL_UNIT[channel]}`, w - 3, top + 8); sctx.fillText(`${fmt(lo, channel === "temp" ? 1 : 0)}`, w - 3, bottom - 3);
+      }
+    }
     sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "center"; sctx.fillStyle = ink; sctx.strokeStyle = ink; sctx.lineWidth = 1;
-    for (const g of targets) if (g.tau != null && g.i) { const x = X(g.tau); sctx.beginPath(); sctx.moveTo(x, top); sctx.lineTo(x, bottom); sctx.globalAlpha = 0.5; sctx.stroke(); sctx.globalAlpha = 1; sctx.fillText(g.label, x, 7); }
-    // now
+    targets.forEach((g, i) => { const tt = timeOf(g); if (tt == null || !i) return; const x = X(tt); sctx.beginPath(); sctx.moveTo(x, top); sctx.lineTo(x, bottom); sctx.globalAlpha = 0.5; sctx.stroke(); sctx.globalAlpha = 1; sctx.fillText(g.label, x, 7); });
     sctx.strokeStyle = "#e8641c"; sctx.lineWidth = 2; sctx.beginPath(); sctx.moveTo(X(tNow), 0); sctx.lineTo(X(tNow), h); sctx.stroke();
   }
-  const scrub = (e) => { if (!calibrated) return; const x = e.offsetX, w = strip.clientWidth; stop(); seek((x / w) * total); };
+  const scrub = (e) => { if (!calibrated) return; stop(); seek((e.offsetX / strip.clientWidth) * total); };
   strip.addEventListener("pointerdown", (e) => { scrub(e); strip.setPointerCapture(e.pointerId); strip.dataset.down = "1"; });
   strip.addEventListener("pointermove", (e) => { if (strip.dataset.down) scrub(e); });
   const stripUp = () => { delete strip.dataset.down; };
@@ -694,7 +899,7 @@ export async function render(main, { query = {} } = {}) {
   steps(1);
   await loadRace();
   pickers();
-  files();
+  filesCard();
   setup();
-  return { title: t("an.title"), cleanup: () => { stop(); ro.disconnect(); if (map?.close) map.close(); } };
+  return { title: t("an.title"), cleanup: () => { stop(); ro.disconnect(); prepToken++; if (map?.close) map.close(); } };
 }
