@@ -121,6 +121,41 @@ async function readMap(file) {
 const isImage = (f) => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(f.name) || f.type.startsWith("image/") || f.type === "application/pdf";
 const ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.xml,.jgw,.pgw,.tfw,.gfw,.bpw,.wld,.prj,image/*,application/pdf";
 
+// ---- the memory between visits ---------------------------------------------------------------------------------------
+// The files and the work stay while the site is open: a visit to another page and back finds the map, the trace and the
+// course read on it as they were (memo, in memory). The files themselves are also kept in the browser's IndexedDB for
+// the tab's session (a tag in sessionStorage: a reload recovers them, a new tab does not), never sent; « Oublier les
+// fichiers » drops them. The calibration (the controls' positions, the geometry found) is in localStorage, so a finished
+// calibration comes back as it was left rather than being redone — the controls placed by hand included.
+let memo = null;
+const DB = "ocn-analyse", STORE = "files";
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open(DB, 1);
+    q.onupgradeneeded = () => q.result.createObjectStore(STORE);
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function idbWrite(value) {
+  const db = await idbOpen();
+  await new Promise((res, rej) => { const tx = db.transaction(STORE, "readwrite"); if (value) tx.objectStore(STORE).put(value, "files"); else tx.objectStore(STORE).delete("files"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  db.close();
+}
+async function idbRead() {
+  const db = await idbOpen();
+  const v = await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get("files"); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  db.close();
+  return v;
+}
+function sessionTag() {
+  try {
+    let tag = sessionStorage.getItem("ocn.an.tag");
+    if (!tag) { tag = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem("ocn.an.tag", tag); }
+    return tag;
+  } catch (e) { return null; }
+}
+
 // ---- the page -------------------------------------------------------------------------------------------------------
 export async function render(main, { query = {} } = {}) {
   const me = auth.session();
@@ -150,11 +185,14 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // ---- state
+  // the race, circuit and runner of the last visit (the menu's link carries no query): the tab's session remembers them
+  const selKey = "ocn.an.sel";
+  if (!query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && races.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
   let key = races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
   const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null };     // { name, note, ... } per role
-  let iofIndex = 0, northUp = true;
+  let iofIndex = 0, northUp = true, restoredFiles = false;
   let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
   const prefs = loadPrefs();
@@ -202,6 +240,7 @@ export async function render(main, { query = {} } = {}) {
     $("#an-c")?.addEventListener("change", (e) => { ci = Number(e.target.value); ri = 0; pickers(); setup(); });
     $("#an-r")?.addEventListener("change", (e) => { ri = Number(e.target.value); pickers(); setup(); });
     replaceQuery({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null });
+    try { sessionStorage.setItem(selKey, JSON.stringify({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null })); } catch (e) { /* not kept */ }
   }
 
   // ---- 2. the files
@@ -216,20 +255,29 @@ export async function render(main, { query = {} } = {}) {
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}
       </tbody></table>
-      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}</p>
+      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
+        ${files.map || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
       <details class="an-formats"><summary>${t("an.formats")}</summary><ul>
         <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+    $("#an-forget")?.addEventListener("click", () => {
+      stop();
+      for (const role of Object.keys(files)) files[role] = null;
+      map = null; track = null; courseCache = null; course = null; restoredFiles = false; memo = null;
+      idbWrite(null).catch(() => {});
+      filesCard(); setup();
+    });
     const drop = $("#an-drop");
     drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
     drop.addEventListener("dragleave", () => drop.classList.remove("over"));
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
   }
-  async function take(list) {
+  async function take(list, { remember = true } = {}) {
     for (const f of list) {
       const name = f.name, low = name.toLowerCase();
+      for (const role of Object.keys(files)) if (files[role]?.file === f) files[role] = null;
       try {
         if (isTraceName(name)) {
           files.trace = { name, note: "" };
@@ -270,6 +318,7 @@ export async function render(main, { query = {} } = {}) {
           files.map = { name, note: "", detail: `${map.width} × ${map.height}` };
         } else { notes.push(t("an.err.type", { f: name })); }
       } catch (e) {
+        e.__role = true;
         const msg = { time: "an.err.time", gpx: "an.err.gpx", pdf: "an.err.pdf", map: "an.err.map", kmz: "an.err.kmz", kml: "an.err.kml", world: "an.err.world", xml: "an.err.xml" }[e.message] || "an.err.gpx";
         if (isTraceName(name) || e.message === "time" || e.message === "gpx") { track = null; files.trace = { name, note: t(msg) }; }
         else if (low.endsWith(".kmz") || low.endsWith(".kml")) files.geo = { name, note: t(msg) };
@@ -277,9 +326,29 @@ export async function render(main, { query = {} } = {}) {
         else if (low.endsWith(".xml")) files.iof = { name, note: t(msg) };
         else { map = null; files.map = { name, note: t(msg) }; }
       }
+      // the file itself, with its role (a KMZ gives both the map and its georeferencing)
+      for (const role of Object.keys(files)) { const rec = files[role]; if (rec && !rec.file && (rec.name === name || rec.name?.startsWith(`${name} › `))) rec.file = f; }
     }
+    if (remember) rememberFiles();
     filesCard();
     setup();
+  }
+  /** The files kept for the tab's session, in IndexedDB (never sent). */
+  function rememberFiles() {
+    const tag = sessionTag();
+    if (!tag) return;
+    const seen = new Set(), entries = [];
+    for (const role of Object.keys(files)) { const f = files[role]?.file; if (f && !seen.has(f)) { seen.add(f); entries.push({ role, name: f.name, type: f.type, blob: f }); } }
+    idbWrite(entries.length ? { tag, at: Date.now(), entries } : null).catch(() => {});
+  }
+  /** The files of the last visit of this tab, read again. */
+  async function restoreFromIdb() {
+    const tag = sessionTag();
+    let rec = null;
+    try { rec = await idbRead(); } catch (e) { return; }
+    if (!rec || rec.tag !== tag || !rec.entries?.length || map || track) return;
+    restoredFiles = true;
+    await take(rec.entries.map((e) => new File([e.blob], e.name, { type: e.type })), { remember: false });
   }
   /** The course of the IOF file to use: the one named like the circuit, else the first. */
   function pickCourse(data) {
@@ -319,8 +388,12 @@ export async function render(main, { query = {} } = {}) {
   }
   const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
-  function savePositions() { try { localStorage.setItem(calKey(), JSON.stringify(targets.map((g) => (g.pos ? [g.kind, g.code || "", g.pos[0], g.pos[1]] : null)))); } catch (e) { /* not kept */ } }
-  function savedPositions() { try { return JSON.parse(localStorage.getItem(calKey()) || "null"); } catch (e) { return null; } }
+  function savePositions(done = calibrated) {
+    const rec = { v: 2, done, items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
+      fit: fit && !geoFit ? { kind: fit.kind, m11: fit.m11, m12: fit.m12, m21: fit.m21, m22: fit.m22, tx: fit.tx, ty: fit.ty, scale: fit.scale, rotation: fit.rotation } : null };
+    try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ }
+  }
+  function savedPositions() { try { const r = JSON.parse(localStorage.getItem(calKey()) || "null"); return r && r.v === 2 && Array.isArray(r.items) ? r : null; } catch (e) { return null; } }
   /** The offset the results' start time gives: the trace's time at the race start (seconds), if the start is known. */
   function guessOffset() {
     const r = runner();
@@ -337,10 +410,11 @@ export async function render(main, { query = {} } = {}) {
   const ptsOf = (gs) => gs.map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind }));
 
   /** The automatic calibration: read the course, place the trace, order the controls, refine with the split times. */
-  async function prepare() {
+  async function prepare({ fresh = false } = {}) {
     const my = ++prepToken;
     notes = [];
     mode = "auto";
+    if (fresh) { try { localStorage.removeItem(calKey()); } catch (e) { /* nothing kept */ } }
     setStatus(t("an.st.reading"));
     await tick();
     if (!courseCache || courseCache.image !== map) {
@@ -363,6 +437,20 @@ export async function render(main, { query = {} } = {}) {
     if (geoFit) {
       const [mx, my_] = toM(geoFit, W / 2, H / 2);
       if (Math.hypot(mx - track.x[0], my_ - track.y[0]) > 30000) { notes.push(t("an.geo.far")); geoFit = null; geoHow = ""; }
+    }
+    // a calibration kept from an earlier visit: back as it was left, the controls placed by hand included
+    const kept = fresh ? null : savedPositions();
+    if (kept && kept.items.some((s) => s.pos)) {
+      const taus = officialTaus();
+      if (taus) { targets = officialTargets(null); if (kept.items.length === targets.length) kept.items.forEach((s, i) => { targets[i].pos = s.pos; }); }
+      else targets = kept.items.map((s, i) => ({ i, kind: s.kind, code: s.code || "", pos: s.pos, tau: null, tEst: null, label: s.kind === "start" ? t("an.start") : s.kind === "finish" ? t("an.finish") : "" }));
+      const geometry = geoFit || (kept.fit ? { ...kept.fit } : null);
+      notes.push(t("an.st.restored"));
+      recompute({ geometry });
+      cur = nextTarget(0);
+      side(); draw();
+      if (kept.done && fit && offset != null) finish();
+      return;
     }
     // the course's points
     const pts = [];
@@ -496,7 +584,7 @@ export async function render(main, { query = {} } = {}) {
     if (saved) restorePositions(saved, out);
     return out;
   }
-  function restorePositions(saved, gs = targets) { if (Array.isArray(saved) && saved.length === gs.length) saved.forEach((s, i) => { if (s) gs[i].pos = [s[2], s[3]]; }); }
+  function restorePositions(saved, gs = targets) { if (saved?.items?.length === gs.length) saved.items.forEach((s, i) => { if (s?.pos) gs[i].pos = s.pos; }); }
   const nextTarget = (from) => { for (let i = from; i < targets.length; i++) if (!targets[i].pos && !targets[i].missed) return i; return -1; };
   /** The race time of a target: published, else the trace's own. */
   const timeOf = (g) => (g.tau != null ? g.tau : g.tEst != null && offset != null ? g.tEst - offset : null);
@@ -638,7 +726,7 @@ export async function render(main, { query = {} } = {}) {
     $("#an-clear")?.addEventListener("click", () => { targets.forEach((g) => { g.pos = null; g.tEst = null; }); cur = 0; savePositions(); recompute(); side(); draw(); });
     $("#an-done").addEventListener("click", finish);
     $("#an-manual")?.addEventListener("click", () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); });
-    $("#an-auto")?.addEventListener("click", () => prepare());
+    $("#an-auto")?.addEventListener("click", () => prepare({ fresh: true }));
     $("#an-north").addEventListener("change", (e) => { northUp = e.target.checked; prepare(); });
   }
   /** A click on the map in manual mode: the current target goes there (snapped to a circle found nearby). */
@@ -666,6 +754,7 @@ export async function render(main, { query = {} } = {}) {
   function finish() {
     if (!fit || offset == null) return;
     calibrated = true; marks = false; tNow = 0;
+    savePositions(true);
     steps(4);
     showPanels(false);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
@@ -1014,7 +1103,17 @@ export async function render(main, { query = {} } = {}) {
   steps(1);
   await loadRace();
   pickers();
-  filesCard();
-  setup();
-  return { title: t("an.title"), cleanup: () => { stop(); ro.disconnect(); prepToken++; if (map?.close) map.close(); } };
+  if (memo) {
+    ({ map, track, courseCache, iofIndex, northUp, restoredFiles } = memo);
+    Object.assign(files, memo.files);
+    memo = null;
+    filesCard(); setup();
+  } else {
+    filesCard(); setup();
+    restoreFromIdb();
+  }
+  return { title: t("an.title"), cleanup: () => {
+    stop(); ro.disconnect(); prepToken++;
+    if (map || track) memo = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
+  } };
 }

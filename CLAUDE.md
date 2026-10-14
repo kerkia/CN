@@ -456,7 +456,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   file's channels, each on its own scale), « suivre » off by default, all kept in `localStorage ocn.an.prefs`; the
   view opens zoomed on the race's trace (⤢; ▭ = the whole map); during the playback the pickers and the files card
   give way to one line (« Course et fichiers » brings them back); the clock runs on a timer, not on
-  requestAnimationFrame, which a hidden pane pauses.
+  requestAnimationFrame, which a hidden pane pauses. **Memory between visits** (owner, 2026-10-14): the files and the
+  work stay in memory while the site is open (`memo`: a visit to another page and back finds them), the files are
+  also kept in IndexedDB (`ocn-analyse`) for the tab's session (a tag in `sessionStorage ocn.an.tag`: a reload
+  recovers them, a new tab does not; « Oublier les fichiers » drops them), the race/circuit/runner in
+  `sessionStorage ocn.an.sel` (the menu's link carries no query), and a calibration is saved in localStorage with its
+  geometry and a `done` flag (v2): it comes back as it was left, hand-placed controls included, straight into the
+  playback when finished; « Refaire le calage automatique » starts afresh.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
