@@ -60,7 +60,8 @@ async function listPage(main, kind) {
       <button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.new")}</button></div>
     <section class="card sh-create" id="sh-create" hidden></section>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>`;
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
+    <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
   let data;
   try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.${kind}.title`) }; }
   const races = kind === "race" ? ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso)) : [];
@@ -70,9 +71,13 @@ async function listPage(main, kind) {
       ${kind === "race" ? html`<th>${t("prov.race")}</th>` : ""}<th>${t("sh.col.owner")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th></tr></thead>
     <tbody>${rows.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td>
       <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.mine ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
-      ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName}</td>
+      ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName || "—"}</td>
       <td>${t(`sh.vis.${a.vis}`)}${a.access === "locked" ? " 🔒" : ""}</td><td class="r num">${a.courses}</td></tr>`)}</tbody></table>`
     : html`<div class="empty">${t(`sh.${kind}.none`)}</div>`;
+  if (auth.session()?.admin) {
+    const mb = (b) => (b >= 1e9 ? `${fmt(b / 1e9, 2)} Go` : `${fmt(b / 1e6, 1)} Mo`);
+    api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
+  }
   $("#sh-new").addEventListener("click", () => {
     const box = $("#sh-create");
     box.hidden = !box.hidden;
@@ -119,7 +124,7 @@ async function eventPage(main, kind, id) {
   main.innerHTML = html`
     <div class="sh-top">
       <a class="btn btn-sm" href="${ROUTE[kind]}">← ${t(`sh.${kind}.title`)}</a>
-      <b class="sh-title">${A.title}</b><span class="muted">${fmtDate(A.date)} · ${A.ownerName} · ${t(`sh.vis.${A.vis}`)}</span>
+      <b class="sh-title">${A.title}</b><span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       ${race ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(A.race)}">${t("sh.results")}</a>` : ""}
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button>` : ""}</div>
@@ -403,15 +408,17 @@ async function editor(box, ctx) {
     const n = course?.n ?? Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
     note.textContent = t("sh.saving");
     try {
-      let type = st.mapType;
+      let type = st.mapType, k = 1;
       if (st.mapFile || !course) {
-        const blob = await imageBlob(st.mapFile, st.image);
-        type = blob.type || "image/jpeg";
+        const { blob, scale } = await imageBlob(st.mapFile, st.image);
+        type = blob.type || "image/jpeg"; k = scale;
         await api(`/${id}/map/${n}`, { method: "PUT", body: blob, type, key: keyOf(id) });
       }
-      const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r,
-        map: { w: st.image.width, h: st.image.height, type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo: st.geo,
-        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })) };
+      // a map made smaller to be kept: its georeference and controls follow
+      const geo = k === 1 ? st.geo : Object.fromEntries(Object.entries(st.geo).map(([q, v]) => [q, v * k]));
+      const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r * k,
+        map: { w: Math.round(st.image.width * k), h: Math.round(st.image.height * k), type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo,
+        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * k * 10) / 10, y: Math.round(y * k * 10) / 10 })) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -486,6 +493,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: official(rec), abs0: tr.ms0 / 1000 };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
+  const visKey = `ocn.an.vis.${id}.${course.n}`;
+  try { const hidden = JSON.parse(sessionStorage.getItem(visKey) || "[]"); runners.forEach((r) => { r.visible = !hidden.includes(r.uid); }); } catch (e) { /* all shown */ }
+  const saveVis = () => { try { sessionStorage.setItem(visKey, JSON.stringify(runners.filter((r) => !r.visible).map((r) => r.uid))); } catch (e) { /* this visit only */ } };
   runners.sort((a, b) => (total(a) ?? 1e9) - (total(b) ?? 1e9));
   runners.forEach((r, i) => { r.colour = COLOURS[i % COLOURS.length]; r.rank = total(r) != null ? i + 1 : null; });
 
@@ -493,7 +503,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   const legTime = (r, j) => (r.passes[j - 1] != null && r.passes[j] != null ? r.passes[j] - r.passes[j - 1] : null);
   let waits = [];
   function range() {
-    const R = runners;
+    const shown = runners.filter((r) => r.visible), R = shown.length ? shown : runners;
     if (leg) return [0, Math.max(1, ...R.map((r) => legTime(r, leg) ?? 0))];
     if (mode === "clock") return [Math.min(...R.map((r) => r.abs0 + r.start)) - 30, Math.max(...R.map((r) => r.abs0 + (r.finish ?? r.tr.dur))) + 30];
     if (mode === "mass") return [0, Math.max(1, ...R.map((r) => (r.finish ?? r.tr.dur) - r.start))];
@@ -561,13 +571,17 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   function left() {
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
-    $("#sh-left").innerHTML = html`<div class="an-side-title">${leg ? legName(leg) : t("sh.runners", { n: runners.length })}</div>
-      <div class="row" style="gap:4px;margin-bottom:6px"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button></div>
+    const nShown = runners.filter((r) => r.visible).length;
+    $("#sh-left").innerHTML = html`<div class="an-side-title">${leg ? legName(leg) : t("sh.runners.shown", { k: nShown, n: runners.length })}</div>
+      <div class="row" style="gap:4px;margin-bottom:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button>
+        <button type="button" class="btn btn-sm" id="sh-invert">${t("sh.invert")}</button>${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-mine-only">${t("sh.meOnly")}</button>` : ""}</div>
+      <p class="hint" style="margin:0 0 6px">${t("sh.pick.hint")}</p>
       ${rowsL.length ? html`<div class="sh-runners">${rowsL.map((r) => {
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
-        return html`<div class="sh-runner${r === sel ? " sel" : ""}" data-uid="${r.uid}">
-          <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")}><span class="sh-swatch" style="background:${r.colour}"></span>
+        return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
+          <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
           <span class="sh-name">${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
+          <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
           ${leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}</div>`; })}</div>`
@@ -577,10 +591,31 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
         <input type="file" id="sh-file" accept=".gpx,.tcx,.fit" hidden></div>
       <div id="sh-upload"></div>`;
-    $$("[data-vis]").forEach((c) => c.addEventListener("click", (e) => { e.stopPropagation(); const r = runners.find((x) => x.uid === Number(c.dataset.vis)); r.visible = c.checked; mv.draw(); splits(); }));
-    $$(".sh-runner").forEach((el) => el.addEventListener("click", () => { const r = runners.find((x) => x.uid === Number(el.dataset.uid)); sel = sel === r ? null : r; left(); right(); frame(); }));
-    $("#sh-all").addEventListener("click", () => { runners.forEach((r) => { r.visible = true; }); left(); frame(); splits(); });
-    $("#sh-none").addEventListener("click", () => { runners.forEach((r) => { r.visible = false; }); left(); frame(); splits(); });
+    const shownChanged = () => {
+      saveVis();
+      const was = [T0, T1];
+      [T0, T1] = range();
+      if (T < T0 || T > T1 || (was[0] === T && T0 !== T)) T = Math.min(T1, Math.max(T0, T));
+      left(); right(); frame(); splits();
+    };
+    $$(".sh-runner").forEach((el) => el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-follow]")) return;
+      const r = runners.find((x) => x.uid === Number(el.dataset.uid));
+      r.visible = !r.visible;
+      if (!r.visible && sel === r) sel = null;
+      shownChanged();
+    }));
+    $$("[data-follow]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const r = runners.find((x) => x.uid === Number(b.dataset.follow));
+      if (sel === r) { sel = null; if (follow === "sel") follow = "all"; }
+      else { sel = r; r.visible = true; follow = "sel"; }
+      shownChanged();
+    }));
+    $("#sh-all").addEventListener("click", () => { runners.forEach((r) => { r.visible = true; }); shownChanged(); });
+    $("#sh-none").addEventListener("click", () => { runners.forEach((r) => { r.visible = false; }); sel = null; shownChanged(); });
+    $("#sh-invert").addEventListener("click", () => { runners.forEach((r) => { r.visible = !r.visible; }); if (sel && !sel.visible) sel = null; shownChanged(); });
+    $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
     $("#sh-add").addEventListener("click", () => $("#sh-file").click());
     $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); reload(); } catch (e) { alert(errText(e)); } });

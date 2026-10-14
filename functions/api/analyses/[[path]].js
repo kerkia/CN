@@ -135,6 +135,13 @@ export const onRequest = withUser(async (ctx, user) => {
   if (!parts.length) {
     if (method === "GET") {
       const url = new URL(request.url), kind = url.searchParams.get("kind"), race = url.searchParams.get("race");
+      // the administrators: how much of R2's 10 free GB the site uses (maps are kept as long as their analysis)
+      if (url.searchParams.get("stats") && isAdmin(env, user)) {
+        const all = await listAll(env, "", false);
+        const an = all.filter((o) => o.key.startsWith(DATA) || o.key.startsWith(META));
+        return json({ bytes: all.reduce((s, o) => s + o.size, 0), analyses: an.reduce((s, o) => s + o.size, 0),
+          maps: an.filter((o) => o.key.includes("/map-")).length, traces: an.filter((o) => o.key.includes("/trace-")).length });
+      }
       const objs = await listAll(env, META);
       const out = [];
       for (const o of objs) {

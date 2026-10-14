@@ -166,7 +166,8 @@ async function privacy(main) {
         sa propre trace : elle est alors envoyée et conservée dans le stockage du site (Cloudflare), avec votre nom et votre numéro de licence,
         réduite aux positions et aux heures sur la zone de la carte (ni fréquence cardiaque, ni cadence, ni le trajet hors de la carte). Elle est visible
         des personnes qui peuvent ouvrir l'analyse — tous les licenciés connectés, les membres du club de l'organisateur ou ceux qui ont son mot de
-        passe, selon son choix. Vous pouvez la retirer à tout moment ; elle est effacée avec l'analyse et avec votre compte.</p>
+        passe, selon son choix. Vous pouvez la retirer à tout moment ; elle est effacée avec l'analyse et avec votre compte. Les cartes
+        d'une analyse sont conservées tant qu'elle existe ; si son organisateur supprime son compte, l'analyse reste, sans son nom.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Ce que nous conservons :</b> adresse e-mail, prénom, nom et numéro de licence que vous avez saisis, mot de passe (sous forme chiffrée irréversible), date d'inscription et de dernière connexion, votre réglage de notification et la liste des courses déjà annoncées par e-mail, et, pour le simulateur de relais, les coureurs que vous ajoutez (nom, catégorie, CN estimé) et ceux que vous marquez indisponibles, que vous seul voyez.</li>

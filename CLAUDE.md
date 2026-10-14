@@ -535,6 +535,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Passes: `coursePasses` (first visit within 25 m after the previous control, its closest point; start = departure,
   finish = arrival). Tested 2026-10-14 with four local test accounts (local D1 only) and synthetic traces: access rules,
   ownership, every mode; a search around a control is timed at its first approach (published splits would be better).
+  **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
+  mienne »), ⌖ follows one runner; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
+  **Maps are kept as long as their analysis** (owner, 2026-10-14: « forever »): the bucket has no expiry rule (only the
+  default abort of unfinished multipart uploads), an organiser's account deletion keeps their analyses (owner 0, no
+  name; the administrators manage them). To keep within R2's free 10 GB (420 MB used on 2026-10-14: the database and the
+  site state), `mapfile.imageBlob` keeps a JPEG/WebP ≤ 6 MB and ≤ 8000 px as it is and re-encodes anything else as WebP
+  q 0.9, at most 8000 px (the circuit's georeference and controls scaled alike: a 9 MB 9000 px PNG became a 1 MB WebP,
+  traces still on every control); the administrators see the bucket's use on the list pages (`/api/analyses?stats=1`).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
   « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

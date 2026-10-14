@@ -17,6 +17,22 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
         cursor = r.truncated ? r.cursor : undefined;
       } while (cursor);
       for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+      // the analyses the account organised stay (their maps are kept, the other runners' traces too), without its
+      // name: the administrators manage them from then on
+      cursor = undefined;
+      do {
+        const r = await env.BUCKET.list({ prefix: "analyses-meta/", cursor, limit: 1000, include: ["customMetadata"] });
+        for (const o of r.objects) {
+          if (Number(o.customMetadata?.owner) !== user.id) continue;
+          const obj = await env.BUCKET.get(o.key);
+          const meta = obj ? await obj.json() : null;
+          if (!meta) continue;
+          meta.owner = 0; meta.ownerName = "";
+          const custom = { ...(o.customMetadata || {}), owner: "0", ownerName: "" };
+          await env.BUCKET.put(o.key, JSON.stringify(meta), { httpMetadata: { contentType: "application/json" }, customMetadata: custom });
+        }
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
     } catch (e) { /* the account goes all the same */ }
   }
   // the relay simulator's added runners (a table that may not exist yet: migration 0008)

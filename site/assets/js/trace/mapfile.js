@@ -29,11 +29,23 @@ export async function readMap(file) {
   try { return await createImageBitmap(file); } catch (e) { throw new Error("map"); }
 }
 
-/** The map as a file to store: the original when it is a PNG, JPEG or WebP image, else a JPEG of what was drawn. */
+/**
+ * The map as a file to keep (maps are kept as long as their analysis, so their size counts): a JPEG or WebP of up to
+ * 6 MB and 8000 px is kept as it is; anything else — a PNG, a PDF's rendering, a heavier file — is re-encoded as WebP
+ * (quality 0.9, the longest side at most 8000 px; JPEG where the browser cannot write WebP), unless that is no smaller.
+ * Returns { blob, scale }: scale < 1 when the map was made smaller (positions on it are to be scaled alike).
+ */
 export async function imageBlob(file, image) {
-  if (file && /^image\/(png|jpeg|webp)$/.test(file.type) && file.size <= 25 * 1024 * 1024) return file;
-  const c = document.createElement("canvas");
-  c.width = image.width; c.height = image.height;
-  c.getContext("2d").drawImage(image, 0, 0);
-  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("map"))), "image/jpeg", 0.9));
+  const MAX = 8000, side = Math.max(image.width, image.height);
+  if (file && /^image\/(jpeg|webp)$/.test(file.type) && file.size <= 6 * 1024 * 1024 && side <= MAX) return { blob: file, scale: 1 };
+  const k = Math.min(1, MAX / side), c = document.createElement("canvas");
+  c.width = Math.round(image.width * k); c.height = Math.round(image.height * k);
+  const g = c.getContext("2d");
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height);         // a transparent PNG on white
+  g.drawImage(image, 0, 0, c.width, c.height);
+  const encode = (type, q) => new Promise((res) => c.toBlob((b) => res(b), type, q));
+  let b = await encode("image/webp", 0.9);
+  if (!b || b.type !== "image/webp") b = await encode("image/jpeg", 0.9);
+  if (!b) throw new Error("map");
+  return { blob: file && /^image\/(png|jpeg|webp)$/.test(file.type) && file.size <= b.size && k === 1 ? file : b, scale: k };
 }
