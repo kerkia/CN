@@ -216,7 +216,7 @@ export async function render(main, { query }) {
       <div class="filters" style="margin:12px 16px 14px;padding:0;border:0;background:none">
         <label class="field"><span>${t("rl.out.mark")}</span><select id="rx-out" style="max-width:280px"><option value="">—</option>
           ${available.map((r) => html`<option value="${r.lic}">${r.name}${r.added ? ` (${t("rl.extra.tag")})` : ""} · ${r.cat} · ${fmt(r.cn)}</option>`)}</select></label>
-        <button type="button" class="btn btn-sm" id="rx-out-add" style="align-self:flex-end">${t("rl.out.btn")}</button>
+        <button type="button" class="btn btn-sm" id="rx-out-add" style="align-self:flex-end">${t("rl.out.add")}</button>
       </div>`;
     drawExtraState();
     const changed = () => { manual = null; saveExtra(); compute(); drawExtra(); };
@@ -303,18 +303,21 @@ export async function render(main, { query }) {
         <span class="muted" style="font-weight:400">· ${t("rl.place")} ${placeOf(cost)}${res.firsts[0] && res.k ? ` · +${mmss(total - res.k * res.firsts[0].cost)}` : ""}</span>` : ""}</h3>
       ${slotsOk ? "" : html`<div class="notice warn" style="margin:0 16px 8px">${t("rl.invalid")}</div>`}
       <div class="table-wrap"><table class="data compact"><thead><tr>${editable ? html`<th></th>` : ""}<th class="r">${t("rl.leg")}</th><th class="r">${t("rl.ref")}</th>
-        <th>${t("rl.slot")}</th><th>${t("rl.runner")}</th><th class="r">CN</th><th class="r">${t("rl.time")}</th><th class="r">${t("rl.cum")}</th></tr></thead>
+        <th>${t("rl.slot")}</th><th>${t("rl.runner")}</th><th class="r">CN</th><th class="r">${t("rl.time")}</th><th class="r">${t("rl.cum")}</th><th></th></tr></thead>
         <tbody>${rs.map((r, i) => {
           cum = times[i] != null && cum != null ? cum + times[i] : null;
           const slot = slotsOk ? f.slots[slotsOk[i]].label : "";
-          const outBtn = r ? html` <button type="button" class="btn btn-ghost btn-sm rl-out" data-out="${r.lic}" title="${t("rl.out.mark")} : ${r.name}">${t("rl.out.btn")}</button>` : "";
-          return html`<tr ${raw(editable ? `data-leg="${i}"` : "")}>${editable ? html`<td class="rl-move"><span class="rl-grip" draggable="true" data-grip="${i}" title="${t("rl.grip")}">⋮⋮</span>
+          // the runner taken out of the teams: a « ✕ » in a column of its own (owner, 2026-10-14: a word « indispo » after
+          // each name read as that runner's status)
+          const outBtn = r ? html`<button type="button" class="btn btn-sm rl-out" data-out="${r.lic}" title="${t("rl.out.mark")} : ${r.name}"
+            aria-label="${t("rl.out.mark")} : ${r.name}">✕</button>` : "";
+          return html`<tr ${raw(editable ? `data-leg="${i}"` : "")}>${editable ? html`<td class="c rl-move"><span class="rl-grip" draggable="true" data-grip="${i}" title="${t("rl.grip")}">⋮⋮</span>
               <button type="button" class="btn btn-ghost btn-sm" data-move="${i}:-1" title="${t("rl.move.up")}" ${raw(i ? "" : "disabled")}>▲</button><button type="button" class="btn btn-ghost btn-sm" data-move="${i}:1" title="${t("rl.move.down")}" ${raw(i < rs.length - 1 ? "" : "disabled")}>▼</button></td>` : ""}
             <td class="r num">${i + 1}</td><td class="r num">${fmt(f.legs[i].ref)}′</td><td class="muted" style="font-size:12.5px">${slot}</td>
-            <td>${editable ? html`<select data-pick-leg="${i}" style="max-width:260px"><option value="">—</option>${opts(i, r)}</select>${outBtn}`
+            <td>${editable ? html`<select data-pick-leg="${i}" style="max-width:260px"><option value="">—</option>${opts(i, r)}</select>`
               : r ? html`${r.added ? html`<span>${r.name}</span> <span class="tag">${t("rl.extra.tag")}</span>` : html`<a href="${link.runner(r.lic)}">${r.name}</a>`}
-                <span class="muted">${r.cat}</span>${outBtn}` : "—"}</td>
-            <td class="r num">${r ? fmt(r.cn) : ""}</td><td class="r num">${mmss(times[i])}</td><td class="r num">${mmss(cum)}</td></tr>`;
+                <span class="muted">${r.cat}</span>` : "—"}</td>
+            <td class="r num">${r ? fmt(r.cn) : ""}</td><td class="r num">${mmss(times[i])}</td><td class="r num">${mmss(cum)}</td><td class="c">${outBtn}</td></tr>`;
         })}</tbody></table></div></div>`;
   }
 

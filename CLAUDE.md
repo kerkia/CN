@@ -333,7 +333,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the Hungarian algorithm (checked against brute force); clubs that cannot beat the shown teams are skipped by a bound.
   Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner, two
   legs exchange their runners (▲ ▼, or the row's grip ⋮⋮ dropped on another row; owner, 2026-10-14), and a runner of the
-  club can be marked **unavailable** (« indispo » on any team row, or the « Indisponibles » block of the added-runners card:
+  club can be marked **unavailable** (the « ✕ » at the end of any team row, or the « Indisponibles » block of the added-runners card:
   out of the pool and the teams, saved with the added runners — `relay_runners.runners` holds `{ runners, out }` since
   2026-10-14, a plain list before; `/api/account/relay` reads both). **The format proposed** (owner, 2026-10-14): the link's
   `?f=`, else the one chosen last time (`localStorage ocn.relay`: format, the custom format's legs, discipline, club) unless
