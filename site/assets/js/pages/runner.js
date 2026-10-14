@@ -17,7 +17,7 @@ import {
 } from "../ui.js";
 
 // the page's tabs: the races, the CN over time, its calculation, the progression by age, the seasons, the map
-const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["calcul", "rn.tab.calc"],
+const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["calcul", "rn.tab.calc"], ["historique", "rn.tab.history"],
   ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"], ["reseau", "rn.tab.network"]];
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
@@ -94,6 +94,8 @@ export async function render(main, { arg, query }) {
       </div>
       <div class="card-body"><div class="calc" id="calc"></div></div>
     </section>
+    </div>
+    <div data-panel="historique">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
         <span id="hist-seg"></span></div>

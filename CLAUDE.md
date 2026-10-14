@@ -351,9 +351,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
   runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
   of today, the circuit valued with `VALUER` (Top: the Fit of the same mean). The Documentation still compares methods.
-  The runner's « Calcul du CN » tab has one « Historique du CN », the selected method's (owner, 2026-10-14): FFCO's
+  The runner's « Historique du CN » tab is the selected method's (owner, 2026-10-14; one history, not two): FFCO's
   published history read live for the official CN (`runner.drawFfHistory`), the computed window's entries and exits for
-  a Top or Fit (`cn.cnHistory`).
+  a Top or Fit (`cn.cnHistory`), exits struck through in both.
 - **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
@@ -379,7 +379,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   does); no view repeats a title of its own.
 - **Tabs, not long pages** (owner, 2026-10-12): a page with several sections shows them as tabs (`ui.pageTabs`,
   `tabFrom`, `bindPageTabs`: panels `data-panel`, the tab in the address as `?onglet=`, kept by `replaceQuery`; charts
-  drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Progression, Saisons, Carte — the map
+  drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Historique du CN — its own tab since
+  2026-10-14 —, Progression, Saisons, Carte — the map
   of the races per département —, Réseau — the runner's network, `network.ego`, moved from Statistiques on 2026-10-12;
   `link.network(lic)` and the old #/reseau/<licence> open it), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
   classées; Statistiques' views (`netmodes.js`: Réseau des meilleurs, Territoires, Participation, Âges)
