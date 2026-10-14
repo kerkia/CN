@@ -9,6 +9,7 @@
 // the start's departure and the finish's arrival.
 
 import { toM, fitSimilarity, fitAffine, similarityFrom2, simplify, distanceField, spatialHash } from "./geom.js";
+import { finishArrival } from "./track.js";
 
 const angleDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
@@ -103,7 +104,7 @@ export function alignTrack(track, pts, { rStar = null, northUp = true, tol = 20 
  * The passes of the trace at each point, once the geometry is known: for every point, the local minima of its
  * distance along the trace (within 1.5 tol), each with its time; the controls' visiting order (their closest pass);
  * the start's departure (the last pass before the first control, left when the trace leaves tol) and the finish's
- * arrival (the first pass after the last control). pts: [{ x, y, kind }].
+ * arrival (after the last control found, the pass that ends the race: `finishArrival`). pts: [{ x, y, kind }].
  */
 export function visitOrder(track, fit, pts, tol = 20) {
   const n = track.n;
@@ -146,12 +147,11 @@ export function visitOrder(track, fit, pts, tol = 20) {
     }
   }
   if (fi >= 0) {
-    const after = passes[fi].out.filter((p) => p.d <= 1.5 * tol && p.t >= lastT);
-    if (after.length) {
-      let k = after[0].k;
-      while (k > 0 && passes[fi].d[k - 1] <= 1.5 * tol && track.t[k - 1] >= lastT) k--;    // the arrival
-      finishT = track.t[k];
-    }
+    // the controls found may be the first few only: a pass by the finish after them is the arrival only if it ends the race
+    let k0 = 0;
+    while (k0 < n && track.t[k0] < lastT) k0++;
+    const k = finishArrival(track, passes[fi].d, k0, 1.5 * tol);
+    if (k >= 0) finishT = track.t[k];
   }
   const pass = new Map(controls.map((c) => [c.i, c.t]));
   if (startT != null) pass.set(si, startT);

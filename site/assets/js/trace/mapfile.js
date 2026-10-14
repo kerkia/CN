@@ -1,6 +1,6 @@
 // A map file read in the browser, for the Analyse pages: an image (PNG, JPEG, WebP, GIF, BMP) as an ImageBitmap, or a
 // PDF's first page rendered on a canvas by pdf.js (from jsdelivr, loaded only when a PDF comes). imageBlob() gives the
-// map back as a file to store (the original image when it is one, else a JPEG of the rendering).
+// map back as a file to store, never degraded: the original image when it is one, else a lossless PNG of the rendering.
 
 const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
@@ -29,23 +29,21 @@ export async function readMap(file) {
   try { return await createImageBitmap(file); } catch (e) { throw new Error("map"); }
 }
 
+/** An image file's type, from its name when the system gave none. */
+const typeOf = (f) => f.type || ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" })[(f.name.split(".").pop() || "").toLowerCase()] || "";
+
 /**
- * The map as a file to keep (maps are kept as long as their analysis, so their size counts): a JPEG or WebP of up to
- * 6 MB and 8000 px is kept as it is; anything else — a PNG, a PDF's rendering, a heavier file — is re-encoded as WebP
- * (quality 0.9, the longest side at most 8000 px; JPEG where the browser cannot write WebP), unless that is no smaller.
- * Returns { blob, scale }: scale < 1 when the map was made smaller (positions on it are to be scaled alike).
+ * The map as a file to keep, at its full resolution and quality (owner, 2026-10-14: a stored map is never degraded):
+ * a PNG, JPEG or WebP image exactly as it came; anything else — a PDF's page as rendered, a GIF, a BMP — as a PNG
+ * (lossless) of what was drawn. Returns a Blob with its type.
  */
 export async function imageBlob(file, image) {
-  const MAX = 8000, side = Math.max(image.width, image.height);
-  if (file && /^image\/(jpeg|webp)$/.test(file.type) && file.size <= 6 * 1024 * 1024 && side <= MAX) return { blob: file, scale: 1 };
-  const k = Math.min(1, MAX / side), c = document.createElement("canvas");
-  c.width = Math.round(image.width * k); c.height = Math.round(image.height * k);
-  const g = c.getContext("2d");
-  g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height);         // a transparent PNG on white
-  g.drawImage(image, 0, 0, c.width, c.height);
-  const encode = (type, q) => new Promise((res) => c.toBlob((b) => res(b), type, q));
-  let b = await encode("image/webp", 0.9);
-  if (!b || b.type !== "image/webp") b = await encode("image/jpeg", 0.9);
+  const type = file ? typeOf(file) : "";
+  if (/^image\/(png|jpeg|webp)$/.test(type)) return file.type === type ? file : new Blob([file], { type });
+  const c = document.createElement("canvas");
+  c.width = image.width; c.height = image.height;
+  c.getContext("2d").drawImage(image, 0, 0);
+  const b = await new Promise((res) => c.toBlob((x) => res(x), "image/png"));
   if (!b) throw new Error("map");
-  return { blob: file && /^image\/(png|jpeg|webp)$/.test(file.type) && file.size <= b.size && k === 1 ? file : b, scale: k };
+  return b;
 }

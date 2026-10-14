@@ -27,6 +27,10 @@ const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
 const TOL = 25;                                           // metres: a control reached
+const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
+const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × 2 px
+const PREFS_KEY = "ocn.sh.prefs";                         // the replay's display settings, kept on the device
+const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch (e) { return {}; } };
 const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const pace = (v) => (v > 0.05 ? `${Math.floor(1000 / v / 60)}'${String(Math.round((1000 / v) % 60)).padStart(2, "0")}` : "—");
 const hms = (sec) => new Date(sec * 1000).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -408,17 +412,17 @@ async function editor(box, ctx) {
     const n = course?.n ?? Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
     note.textContent = t("sh.saving");
     try {
-      let type = st.mapType, k = 1;
+      // the map kept as it came, at its full resolution (a PDF's page as a lossless PNG)
+      let type = st.mapType;
       if (st.mapFile || !course) {
-        const { blob, scale } = await imageBlob(st.mapFile, st.image);
-        type = blob.type || "image/jpeg"; k = scale;
+        const blob = await imageBlob(st.mapFile, st.image);
+        if (blob.size > MAX_MAP) return (note.textContent = t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) }));
+        type = blob.type || "image/jpeg";
         await api(`/${id}/map/${n}`, { method: "PUT", body: blob, type, key: keyOf(id) });
       }
-      // a map made smaller to be kept: its georeference and controls follow
-      const geo = k === 1 ? st.geo : Object.fromEntries(Object.entries(st.geo).map(([q, v]) => [q, v * k]));
-      const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r * k,
-        map: { w: Math.round(st.image.width * k), h: Math.round(st.image.height * k), type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo,
-        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * k * 10) / 10, y: Math.round(y * k * 10) / 10 })) };
+      const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r,
+        map: { w: st.image.width, h: st.image.height, type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo: st.geo,
+        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -459,7 +463,13 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   const ctrls = course.controls, legsN = ctrls.length - 1;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
   const ctrlLabel = (i) => { const p = ctrls[i]; if (p.kind === "start") return t("an.start"); if (p.kind === "finish") return t("an.finish"); return String(ctrls.slice(0, i + 1).filter((q) => q.kind === "control").length); };
-  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, tail = 60, follow = "all", showCourse = true, width = 2, playing = false, timer = 0, last = 0, sel = null, ref = null;
+  // the display as on « Analyse perso » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
+  const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
+  let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;
+  let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
+  let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha })); } catch (e) { /* not kept */ } };
+  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null, ref = null;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <aside class="sh-panel" id="sh-left"></aside>
@@ -536,14 +546,21 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   // ---- drawing
   function drawOver(g, view, lw) {
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
-    const shown = runners.filter((r) => r.visible);
+    const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
+    const path = (r, a, b) => { g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]); };
+    g.lineCap = "round"; g.lineJoin = "round";
     for (const r of shown) {
       const s = sAt(r, T);
       if (s == null) continue;
       const lo = leg ? r.passes[leg - 1] : Math.max(r.start, tail && !leg ? s - tail : r.start), from = indexAt(r.tr, lo), to = indexAt(r.tr, s);
+      // the route still to run, faint, to its finish (or the leg's end) — hidden by default
+      if (future === "faint") {
+        const a = indexAt(r.tr, leg ? r.passes[leg - 1] : r.start), b = indexAt(r.tr, leg ? r.passes[leg] ?? r.tr.dur : r.finish ?? r.tr.dur);
+        if (b > a) { g.strokeStyle = r.colour; g.lineWidth = lw(2 * width); g.globalAlpha = 0.3 * ta; path(r, a, b); g.stroke(); }
+      }
       if (mode === "clock" && !leg && s < r.start - 1) continue;           // not started yet
-      g.strokeStyle = r.colour; g.lineWidth = lw((r === sel ? 4 : 3) * width / 2); g.globalAlpha = r === sel || !sel ? 1 : 0.75;
-      if (to > from) { g.beginPath(); g.moveTo(r.pxs[from], r.pys[from]); for (let i = from + 1; i <= to; i++) g.lineTo(r.pxs[i], r.pys[i]); const [mx, my] = posAt(r.tr, s); const [x, y] = toPx(r.fit, mx, my); g.lineTo(x, y); g.stroke(); }
+      g.strokeStyle = r.colour; g.lineWidth = lw((r === sel ? 2.8 : 2) * width); g.globalAlpha = (r === sel || !sel ? 1 : 0.75) * ta;
+      if (to > from) { path(r, from, to); const [mx, my] = posAt(r.tr, s); const [x, y] = toPx(r.fit, mx, my); g.lineTo(x, y); g.stroke(); }
       const [mx, my] = posAt(r.tr, s), [x, y] = toPx(r.fit, mx, my);
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
@@ -651,11 +668,16 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
         ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${["clock", "mass", "from", "wait"].map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <label><span>${t("sh.follow")}</span><select id="sh-follow">${["all", "sel", "none"].map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
-        ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
-        <label><span>${t("an.width")}</span><select id="sh-width">${[[1.4, "an.width.thin"], [2, "an.width.normal"], [3, "an.width.thick"]].map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
-        <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div>
-      <p class="hint" style="margin-top:8px">${t(`sh.mode.${leg ? "leg" : mode}.hint`)}</p>`;
+        <label><span>${t("sh.follow")}</span><select id="sh-follow">${["all", "sel", "none"].map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
+      <p class="hint" style="margin-top:8px">${t(`sh.mode.${leg ? "leg" : mode}.hint`)}</p>
+      <details class="an-settings" open><summary>${t("an.display")}</summary>
+        <div class="an-opts">
+          <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
+          <label><span>${t("an.future")}</span><select id="sh-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
+          ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
+          <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
+          <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
+          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div></details>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
@@ -665,9 +687,12 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
     $("#sh-follow").addEventListener("change", (e) => { follow = e.target.value; frame(); });
-    $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); mv.draw(); });
-    $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); mv.draw(); });
-    $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; mv.draw(); });
+    $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
+    $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
+    $("#sh-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); mv.draw(); });
+    $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
+    $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
+    $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -734,6 +759,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); mv.fitAll(); mv.draw(); });
   window.scrollTo(0, 0);
   fit();
+  mv.setAlpha(mapAlpha / 100);
   mv.setImage(image);
   left(); right(); splits();
   fitRoutes();

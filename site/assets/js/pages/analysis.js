@@ -284,7 +284,7 @@ export async function render(main, { query = {}, route } = {}) {
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     $("#an-forget")?.addEventListener("click", () => {
-      stop();
+      stop(); prepToken++;                                  // a calibration under way stops with its files
       for (const role of Object.keys(files)) files[role] = null;
       map = null; track = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
       idbWrite(null, fileKey).catch(() => {});
@@ -719,7 +719,8 @@ export async function render(main, { query = {}, route } = {}) {
         let n = 0;
         targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = reached.includes(g) ? String(++n) : g.pos ? "?" : "+"; });
         const tot = totalOfficial();
-        const firstPass = located.find((g) => g.kind === "control" && g.tEst != null)?.tEst ?? null;
+        const passT = located.filter((g) => g.kind === "control" && g.tEst != null).map((g) => g.tEst);
+        const firstPass = passT.length ? Math.min(...passT) : null;           // the earliest pass (the list is not in time order)
         // the published start time first (the clock the results keep); else the start symbol's departure; else the
         // finish's arrival less the published total time; else the trace's own beginning when the first control comes
         // within 10 minutes (the watch started at the start), else the first control's pass

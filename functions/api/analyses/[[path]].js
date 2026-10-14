@@ -27,7 +27,7 @@ const META = "analyses-meta/";
 const DATA = "analyses/";
 const KINDS = ["club", "race"];
 const VIS = ["public", "club", "password"];
-const MAX_MAP = 25 * 1024 * 1024, MAX_TRACE = 3 * 1024 * 1024, MAX_POINTS = 40000;
+const MAX_MAP = 80 * 1024 * 1024, MAX_TRACE = 3 * 1024 * 1024, MAX_POINTS = 40000;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);

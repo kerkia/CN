@@ -510,6 +510,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   time, else the finish's arrival, else the trace's end — never the last control found (it cut Nadejda's race at
   56:31 of 1:01:39 when the finish, over the lake, was not read). The trace still to run is hidden by default
   (« Trace à venir : masquée / estompée »); the trace colour shows only for the plain trace, under that choice.
+  **The finish's arrival** (owner, 2026-10-14: the race stopped at 25:01 near control 8, far from the finish): with only
+  the first controls found, a finish read (or placed) where the course runs past it gave a mid-race « arrival ».
+  `track.finishArrival` (used by `visitOrder` and `coursePasses`) takes a pass by the finish as the arrival only if the
+  runner then stays within 300 m of it and stops running (the trace ends within a minute, or the next minute is run at
+  under 60 % of the two minutes before); else the last such pass; else none — the race then runs to the trace's end
+  (shared analyses: the first pass after the last control when every control was passed). Without a start, the race
+  clock is the earliest control passed (it was the first in the list, not in time: the race began 26 min into the trace).
+  **Map resolution** (2026-10-14): `detectCourse`'s tolerances are in pixels and were tuned on the owner's photo at
+  960 × 1280 (overprint line 3 px); a phone's photo at 3000-4000 px read at 1800 px gave 4 px lines and the title's
+  letters as rings (21 « circles », the trace laid at 18°). The image is now read at the size that makes the measured line
+  width 3 px (`lw > 3`: scaled by 3 / lw): the ×2 and ×3 copies read as the original, the synthetic maps unchanged.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
@@ -557,12 +568,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   ownership, every mode; a search around a control is timed at its first approach (published splits would be better).
   **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
   mienne »), ⌖ follows one runner; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
+  **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
+  as on « Analyse perso » — width (4 steps), « Trace à venir » (masquée by default / estompée: each runner's route to its
+  finish, faint), tail, the map's and the traces' opacity, the course overlay — kept in `localStorage ocn.sh.prefs`.
   **Maps are kept as long as their analysis** (owner, 2026-10-14: « forever »): the bucket has no expiry rule (only the
   default abort of unfinished multipart uploads), an organiser's account deletion keeps their analyses (owner 0, no
-  name; the administrators manage them). To keep within R2's free 10 GB (420 MB used on 2026-10-14: the database and the
-  site state), `mapfile.imageBlob` keeps a JPEG/WebP ≤ 6 MB and ≤ 8000 px as it is and re-encodes anything else as WebP
-  q 0.9, at most 8000 px (the circuit's georeference and controls scaled alike: a 9 MB 9000 px PNG became a 1 MB WebP,
-  traces still on every control); the administrators see the bucket's use on the list pages (`/api/analyses?stats=1`).
+  name; the administrators manage them). **A stored map is never degraded** (owner, 2026-10-14; it was re-encoded as
+  WebP and capped at 8000 px the same day): `mapfile.imageBlob` keeps a PNG, JPEG or WebP byte for byte, and stores a
+  PDF's rendered page (4200 px at most), a GIF or a BMP as a lossless PNG; up to 80 MB a map (`MAX_MAP`, server and
+  editor; Cloudflare takes 100 MB a request). R2's free 10 GB (420 MB used on 2026-10-14: the database and the site
+  state) hold some 2000 phone photos of 5 MB; the administrators see the bucket's use on the list pages
+  (`/api/analyses?stats=1`).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
   « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

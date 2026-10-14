@@ -202,6 +202,26 @@ export const cumAt = (tr, s) => { const i = indexAt(tr, s); if (i >= tr.n - 1 ||
 export const speedAt = (tr, s) => tr.v[indexAt(tr, s)];
 /** A channel's value at trace time s (the last recorded), or null. */
 export const valueAt = (tr, c, s) => (tr.ch[c] ? tr.ch[c][indexAt(tr, s)] : null);
+/**
+ * The finish's arrival on a trace: index of the first entry into the finish's zone (d[k] <= lim), from index k0, that
+ * ends the race — the runner stays near the finish afterwards (never again `far` m from it) and stops running there
+ * (the trace ends within a minute, or the next minute goes at under 60 % of the speed of the two minutes before); else
+ * the last entry after which the runner stays near; else -1. A course often runs past its finish: such a pass, the
+ * runner going on to further controls, never ends the race (owner, 2026-10-14: the race stopped after control 8).
+ * d: each trace point's distance to the finish, in metres.
+ */
+export function finishArrival(tr, d, k0 = 0, lim = 25, far = 300) {
+  const n = tr.n, T = tr.t;
+  if (k0 < 0 || k0 >= n) return -1;
+  const farAfter = new Float32Array(n);
+  for (let k = n - 1, m = 0; k >= 0; k--) { if (d[k] > m) m = d[k]; farAfter[k] = m; }
+  const near = [];
+  for (let k = k0; k < n; k++) if (d[k] <= lim && (k === k0 || d[k - 1] > lim) && farAfter[k] <= far) near.push(k);
+  if (!near.length) return -1;
+  const speed = (a, b) => (b > a ? (cumAt(tr, b) - cumAt(tr, a)) / (b - a) : 0);
+  const stops = (k) => T[n - 1] - T[k] <= 60 || speed(T[k], T[k] + 60) < 0.6 * speed(T[k] - 120, T[k]);
+  return near.find(stops) ?? near[near.length - 1];
+}
 /** A channel's mean between two trace times, or null. */
 export function meanBetween(tr, c, s0, s1) {
   const a = tr.ch[c];

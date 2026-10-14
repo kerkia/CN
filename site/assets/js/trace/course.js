@@ -1,7 +1,7 @@
 // Reading the course printed on the map — the purple overprint: the control circles, the finish's double circle, the
 // start triangle, the leg lines — by image analysis in the browser, nothing sent anywhere.
-// 1. A purple mask over the image (downsampled to 1800 px at most): the pixels whose hue runs from violet to magenta
-//    and that are saturated. The overprint stays purple over yellow and green; over black it is lost, which the ring
+// 1. A purple mask over the image (read at 1800 px at most, smaller when its lines come out wider than 3 px): the
+//    pixels whose hue runs from violet to magenta and that are saturated. The overprint stays purple over yellow and green; over black it is lost, which the ring
 //    scores tolerate.
 // 2. Circles by a Hough vote: every purple pixel votes, at 24 angles, for the centres at each of 20 radii, on a grid
 //    of 4 px; the peaks are refined at full resolution by the share of the ring that is purple (72 samples, a pixel of
@@ -21,15 +21,20 @@ const ANGLES = 24, STRIDE = 4;
 
 export async function detectCourse(image, { maxSide = 1800, debug = false } = {}) {
   const W = image.width, H = image.height;
-  const s = Math.min(1, maxSide / Math.max(W, H));
-  const w = Math.max(1, Math.round(W * s)), h = Math.max(1, Math.round(H * s));
-  const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
-  const g = cv.getContext("2d", { willReadFrequently: true });
-  g.drawImage(image, 0, 0, w, h);
-  const data = g.getImageData(0, 0, w, h).data;
-  const full = purpleMask(data, w, h);
+  let s = Math.min(1, maxSide / Math.max(W, H)), w, h, full, lw;
+  const read = () => {
+    w = Math.max(1, Math.round(W * s)); h = Math.max(1, Math.round(H * s));
+    const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
+    const g = cv.getContext("2d", { willReadFrequently: true });
+    g.drawImage(image, 0, 0, w, h);
+    full = purpleMask(g.getImageData(0, 0, w, h).data, w, h);
+    lw = lineWidth(full, w, h);
+  };
+  read();
+  // the reading is made for an overprint line about 3 px wide (its tolerances are in pixels): a sharper image — a
+  // phone's photo of the whole map, 4000 px — is read smaller, else the title's letters come out as rings (2026-10-14)
+  if (lw > 3) { s *= 3 / lw; read(); }
   // thick purple — a title, the class names, a logo — is not the course: keep what is thinner than three line widths
-  const lw = lineWidth(full, w, h);
   const mask = thinOnly(full, w, h, Math.max(1, Math.round(1.5 * lw)));
   const dil = dilate(mask, w, h);
   const { circles, rStar, found } = findCircles(mask, dil, w, h, lw);
