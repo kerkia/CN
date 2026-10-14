@@ -40,7 +40,21 @@ const TRACE = "#3b0764";                               // the trace's default co
 const TRACE_PRESETS = ["#3b0764", "#c8102e", "#0b3d91", "#111111", "#ff6a00"];
 const CHANNEL_LABEL = { hr: "an.ch.hr", cad: "an.ch.cad", ele: "an.ch.ele", temp: "an.ch.temp", pw: "an.ch.pw" };
 const CHANNEL_UNIT = { hr: "bpm", cad: "", ele: "m", temp: "°C", pw: "W" };
-const CHANNEL_COLOUR = { hr: "#d6336c", cad: "#1c80bb", ele: "#8a5a2b", temp: "#2a9d8f", pw: "#6f42c1" };
+const CHANNEL_COLOUR = { hr: "#d6336c", cad: "#1c80bb", ele: "#8a5a2b", temp: "#2a9d8f", pw: "#6f42c1" };   // the curves' order
+// the curves' colours, readable on the light themes and on the dark ones (owner, 2026-10-14: the pace in the trace's
+// dark purple vanished on Sous-bois)
+const CURVE_LIGHT = { pace: "#6d28d9", hr: "#d6336c", cad: "#1c7ed6", ele: "#8a5a2b", temp: "#2a9d8f", pw: "#e8590c" };
+const CURVE_DARK = { pace: "#b197fc", hr: "#ff6b9a", cad: "#4dabf7", ele: "#d9a066", temp: "#63e6be", pw: "#ffa94d" };
+/** Whether the current theme is dark: the luminance of its surface colour. */
+function isDark() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
+  let r, g, b;
+  const m = /^#([0-9a-f]{6})$/i.exec(v);
+  if (m) { const n = parseInt(m[1], 16); r = n >> 16; g = (n >> 8) & 255; b = n & 255; }
+  else { const q = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(v); if (!q) return false; [r, g, b] = q.slice(1).map(Number); }
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 110;
+}
+const curveColour = (c) => (isDark() ? CURVE_DARK : CURVE_LIGHT)[c] || "#888888";
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × the trace's base widths
 const PREFS_KEY = "ocn.an.prefs";                      // the playback's settings, kept on the device
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch (e) { return {}; } }
@@ -903,10 +917,11 @@ export async function render(main, { query = {} } = {}) {
     // the curves under the map: the pace and the file's channels, any number of them, one above the other
     const chipsBox = $("#an-chips");
     const drawChips = () => {
-      chipsBox.innerHTML = html`${["pace", ...avail].map((c) => html`<button type="button" class="an-chip" data-ch="${c}" aria-pressed="${chans.has(c)}" style="--chip:${c === "pace" ? traceColour : CHANNEL_COLOUR[c]}">${t(c === "pace" ? "an.ch.pace" : CHANNEL_LABEL[c])}</button>`)}`;
+      chipsBox.innerHTML = html`${["pace", ...avail].map((c) => html`<button type="button" class="an-chip" data-ch="${c}" aria-pressed="${chans.has(c)}" style="--chip:${curveColour(c)}">${t(c === "pace" ? "an.ch.pace" : CHANNEL_LABEL[c])}</button>`)}`;
       $$("[data-ch]", chipsBox).forEach((b) => b.addEventListener("click", () => { const c = b.dataset.ch; if (chans.has(c)) chans.delete(c); else chans.add(c); savePrefs(); drawChips(); sizeStrip(); drawStrip(); }));
     };
     drawChips();
+    redrawChips = drawChips;
     $("#an-strip-card").hidden = false; $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
     applyLayout();
     if (known) legsTable(); else { $("#an-legs").hidden = true; $("#an-legs").innerHTML = ""; }
@@ -1095,6 +1110,9 @@ export async function render(main, { query = {} } = {}) {
     size(); sizeStrip(); draw(); drawStrip();
   });
   ro.observe(canvas); ro.observe(strip);
+  let redrawChips = null;
+  const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); });
+  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   // the pace colours: from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
   const PACE_COLOURS = ["#1c5fd6", "#19a0c9", "#1aa34a", "#8bc34a", "#f2c200", "#f28a00", "#e23a1f", "#8e0f1f"];
@@ -1195,30 +1213,32 @@ export async function render(main, { query = {} } = {}) {
       const top = TOP + r * ROW + 2, bottom = top + ROW - 6;
       if (r) { sctx.strokeStyle = grid; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(0, top - 3); sctx.lineTo(w, top - 3); sctx.stroke(); }
       if (known) for (const l of legs) if (l.mistake && l.t1 != null) { sctx.fillStyle = "rgba(198,40,40,0.12)"; sctx.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
+      // each point is the mean over the time a pixel spans (a point sample aliased into spikes), at least 6 s
       let label, range;
+      const colr = curveColour(c), win = Math.max(step, c === "pace" ? 15 : 6), vals = [];       // the pace over 15 s at least
       if (c === "pace") {
-        sctx.beginPath(); sctx.moveTo(0, bottom);
-        for (let s = 0; s <= total; s += step) {
-          const v = speedAt(track, offset + s), y = bottom - ((Math.max(vLo * 0.7, Math.min(vHi * 1.15, v)) - vLo * 0.7) / (vHi * 1.15 - vLo * 0.7 || 1)) * (bottom - top);
-          sctx.lineTo(X(s), y);
-        }
-        sctx.lineTo(w, bottom); sctx.closePath();
-        sctx.fillStyle = traceColour; sctx.globalAlpha = 0.3; sctx.fill(); sctx.globalAlpha = 1;
-        label = t("an.ch.pace"); range = `${pace(vHi)} – ${pace(vLo)}`;
-        sctx.fillStyle = traceColour;
+        for (let q = 0; q <= total; q += step) vals.push((cumAt(track, offset + q + win / 2) - cumAt(track, offset + q - win / 2)) / win);
+        const sorted = [...vals].sort((p, q) => p - q), lo = sorted[Math.floor(sorted.length * 0.02)] || 0, hi = sorted[Math.floor(sorted.length * 0.98)] || 1;
+        const Y = (v) => bottom - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1)) * (bottom - top - 4) - 2;
+        sctx.beginPath();
+        vals.forEach((v, k) => { const x = X(k * step), y = Y(v); if (k) sctx.lineTo(x, y); else sctx.moveTo(x, y); });
+        sctx.strokeStyle = colr; sctx.lineWidth = 1.6; sctx.stroke();
+        sctx.lineTo(X((vals.length - 1) * step), bottom); sctx.lineTo(0, bottom); sctx.closePath();
+        sctx.fillStyle = colr; sctx.globalAlpha = 0.18; sctx.fill(); sctx.globalAlpha = 1;
+        label = t("an.ch.pace"); range = `${pace(hi)} – ${pace(lo)}`;
       } else {
-        const ch = track.ch[c];
+        for (let q = 0; q <= total; q += step) vals.push(meanBetween(track, c, offset + q - win / 2, offset + q + win / 2));
         let lo = Infinity, hi = -Infinity;
-        for (let i = i0; i <= i1; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+        for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
         if (hi > lo) {
           sctx.beginPath();
-          for (let s = 0; s <= total; s += step) { const v = valueAt(track, c, offset + s), y = bottom - ((v - lo) / (hi - lo)) * (bottom - top - 4) - 2; if (s) sctx.lineTo(X(s), y); else sctx.moveTo(X(s), y); }
-          sctx.strokeStyle = CHANNEL_COLOUR[c]; sctx.lineWidth = 1.6; sctx.stroke();
+          vals.forEach((v, k) => { const x = X(k * step), y = bottom - ((v - lo) / (hi - lo)) * (bottom - top - 4) - 2; if (k) sctx.lineTo(x, y); else sctx.moveTo(x, y); });
+          sctx.strokeStyle = colr; sctx.lineWidth = 1.6; sctx.stroke();
         }
         const dec = c === "temp" ? 1 : 0;
         label = t(CHANNEL_LABEL[c]); range = hi > lo ? `${fmt(lo, dec)} – ${fmt(hi, dec)} ${CHANNEL_UNIT[c]}` : "";
-        sctx.fillStyle = CHANNEL_COLOUR[c];
       }
+      sctx.fillStyle = colr;
       sctx.font = "600 10px system-ui, sans-serif"; sctx.textAlign = "left"; sctx.fillText(label, 4, top + 9);
       sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "right"; sctx.fillText(range, w - 4, top + 9);
     });
@@ -1249,6 +1269,7 @@ export async function render(main, { query = {} } = {}) {
   return { title: t("an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     window.removeEventListener("resize", onWinResize);
+    themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++;
     if (map || track) memo = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
