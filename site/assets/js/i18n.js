@@ -880,7 +880,7 @@ const FR = {
   "an.width": "Trait", "an.width.thin": "fin", "an.width.normal": "normal", "an.width.thick": "épais", "an.width.thicker": "très épais",
   "an.fitTrace": "Toute la trace", "an.fitMap": "Toute la carte", "an.brief.edit": "Course et fichiers",
   "an.mapAlpha": "Opacité de la carte", "an.traceAlpha": "Opacité de la trace", "an.traceColour": "Couleur de la trace", "an.traceColour.any": "une autre couleur",
-  "an.display": "Affichage", "an.follow.short": "Suivre",
+  "an.display": "Affichage", "an.follow.short": "Suivre", "an.future": "Trace à venir", "an.future.hide": "masquée", "an.future.faint": "estompée",
   "an.graphs": "Courbes", "an.graphs.open": "Afficher les courbes", "an.graphs.close": "Replier les courbes", "an.graphs.where": "Courbes",
   "an.graphs.left": "à gauche", "an.graphs.below": "sous la carte", "an.split": "Glisser pour redimensionner ; double-clic : replier les courbes",
   "an.st.whose": "La trace commence à {t} ; {r} ({rs}) ne semble pas l'avoir courue.", "an.st.whose.dns": "non partant", "an.st.whose.start": "départ à {s}", "an.st.whose.noStart": "heure de départ inconnue",

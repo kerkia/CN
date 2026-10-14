@@ -196,6 +196,7 @@ export async function render(main, { query = {}, route } = {}) {
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = prefs.colour === "speed" ? "speed" : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
+  let future = prefs.future === "faint" ? "faint" : "hide";            // the trace still to run: hidden, or faded
   let traceColour = /^#[0-9a-f]{6}$/i.test(prefs.traceColour || "") ? prefs.traceColour : TRACE;
   let chans = new Set(Array.isArray(prefs.chans) ? prefs.chans : ["pace", "hr"]);        // the curves under the map
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
@@ -206,7 +207,7 @@ export async function render(main, { query = {}, route } = {}) {
   let glayout = prefs.glayout === "left" || prefs.glayout === "below" ? prefs.glayout : (innerWidth >= 1100 ? "left" : "below");
   let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22))));
   let gh = px(prefs.gh, 80, 900, 200), sw = px(prefs.sw, 200, 600, 270), gcol = !!prefs.gcol;
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
@@ -737,7 +738,10 @@ export async function render(main, { query = {}, route } = {}) {
     const times = targets.map(timeOf);
     const tot = totalOfficial();
     const lastT = [...times].reverse().find((x) => x != null);
-    total = tot ?? lastT ?? Math.max(0, track.dur - (offset || 0));
+    // the race ends at the published time, else at the finish's arrival; with neither (a finish not read on the map,
+    // no published time), the trace's end — never the last control found, which cut the race short (owner, 2026-10-14)
+    const finT = targets[targets.length - 1]?.kind === "finish" ? times[times.length - 1] : null;
+    total = tot ?? finT ?? Math.max(lastT ?? 0, track.dur - (offset || 0));
     const n = targets.length - 1;
     const taus = officialTaus();
     let best = [], all = [], mine = [], med = null;
@@ -875,9 +879,10 @@ export async function render(main, { query = {}, route } = {}) {
       <details class="an-settings" open><summary>${t("an.display")}</summary>
         <div class="an-opts">
           <label><span>${t("an.graphs.where")}</span><select id="an-glayout"><option value="left" ${raw(glayout === "left" ? "selected" : "")}>${t("an.graphs.left")}</option><option value="below" ${raw(glayout === "below" ? "selected" : "")}>${t("an.graphs.below")}</option></select></label>
-          <label><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
+          <label id="an-colour-row" ${raw(colour === "speed" ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
+          <label><span>${t("an.future")}</span><select id="an-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
@@ -896,11 +901,13 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
     $("#an-marks").addEventListener("change", (e) => { marks = e.target.checked; draw(); });
     $("#an-glayout").addEventListener("change", (e) => { glayout = e.target.value; savePrefs(); applyLayout(); });
-    $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; savePrefs(); draw(); });
+    // the trace's colour applies to the plain trace only: hidden while it is coloured by pace
+    $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; $("#an-colour-row").hidden = colour === "speed"; savePrefs(); draw(); });
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-tail").addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); draw(); });
+    $("#an-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); draw(); });
     const setColour = (c) => { traceColour = c; savePrefs(); $$(".an-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.colour === c))); $("#an-colour-pick").value = c; draw(); drawChips(); };
     $$(".an-swatch").forEach((b) => b.addEventListener("click", () => setColour(b.dataset.colour)));
     $("#an-colour-pick").addEventListener("input", (e) => setColour(e.target.value));
@@ -1134,13 +1141,13 @@ export async function render(main, { query = {}, route } = {}) {
       const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
       // the whole trace, faint; the part run so far, full; the tail, thicker
       const bySpeed = calibrated && colour === "speed";
-      if (!bySpeed) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
+      if (!bySpeed && (!calibrated || future === "faint")) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
       ctx.globalAlpha = ta;
       if (calibrated) {
         const iTail = tail ? Math.max(i0, indexAt(track, s - tail)) : i0;
         if (bySpeed) {                                   // the whole race coloured by pace, the part to come faint
           if (!vHi || vHi === 1) paceScale();
-          const iEnd = indexAt(track, offset + total);
+          const iEnd = future === "faint" ? indexAt(track, offset + total) : iNow;
           for (let i = i0 + 1; i <= iEnd; i++) {
             ctx.globalAlpha = (i <= iNow ? 1 : 0.45) * ta;
             ctx.strokeStyle = paceColour(track.v[i]); ctx.lineWidth = lw((i > iTail && i <= iNow ? 5 : 3) * width);

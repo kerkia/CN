@@ -504,7 +504,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (default ≥ 1100 px) or under the map (« Affichage › Courbes »), collapsible (‹ or double-click on the splitter), the
   splitters resizing the curves and the side panel (`--an-gw`, `--an-gh`, `--an-sw`, kept in `ocn.an.prefs`), drags
   followed on the window; the map keeps its centre on a resize (`lastBox`); « Affichage » open; the first leg at
-  margin 1.15 + 30 px; `fitTrace` restored (dropped by c00a655: ⤢ threw during playback).
+  margin 1.15 + 30 px; `fitTrace` restored (dropped by c00a655: ⤢ threw during playback). The race's length: the published
+  time, else the finish's arrival, else the trace's end — never the last control found (it cut Nadejda's race at
+  56:31 of 1:01:39 when the finish, over the lake, was not read). The trace still to run is hidden by default
+  (« Trace à venir : masquée / estompée »); the trace colour shows only for the plain trace, under that choice.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
