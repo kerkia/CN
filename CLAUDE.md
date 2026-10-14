@@ -451,7 +451,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
   less the published total. The finish on the lake
   (purple over blue) cannot be read. `window.anDebug()` in the console returns the fit, offset, targets, detection,
-  view and `place(x, y)` for support and scripted tests.
+  view and `place(x, y)` for support and scripted tests. Playback settings (owner, 2026-10-14): the trace's width
+  (« Trait »), the map's and the trace's opacity, the curves under the map as toggle chips (pace plus any of the
+  file's channels, each on its own scale), « suivre » off by default, all kept in `localStorage ocn.an.prefs`; the
+  view opens zoomed on the race's trace (⤢; ▭ = the whole map); during the playback the pickers and the files card
+  give way to one line (« Course et fichiers » brings them back); the clock runs on a timer, not on
+  requestAnimationFrame, which a hidden pane pauses.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
