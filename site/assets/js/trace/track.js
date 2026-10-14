@@ -21,6 +21,8 @@ export function parseTrace(name, buf) {
   throw new Error("gpx");
 }
 export const isTraceName = (name) => /\.(gpx|tcx|fit)$/i.test(name);
+/** A track from points [{ lat, lon, ms }] (a trace shared on an analysis: positions and times only). */
+export const fromPoints = (pts, source = "shared") => build(pts, source);
 
 // ---- GPX / TCX ------------------------------------------------------------------------------------------------------
 const num = (s) => { const v = s == null ? NaN : Number(String(s).trim()); return Number.isFinite(v) ? v : null; };

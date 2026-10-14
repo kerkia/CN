@@ -1,0 +1,121 @@
+// Traces shared on an analysis (« Analyse club », « Analyse compétition »): what is stored and how it is laid on the map.
+// - A shared trace keeps positions and times only — no heart rate, cadence or power — and only the part of the run on
+//   the map's area (with 300 m of margin), from the first such point to the last: the drive, the warm-up far away and
+//   the way home stay on the runner's device. Stored compactly: whole seconds and millionths of a degree, as deltas.
+// - A course's georeference is an affine map from (longitude, latitude) to the image's pixels (fine over a map's few
+//   kilometres); each trace's own frame (local metres) gets its transform from it.
+// - The passes of a trace at the course's controls, in the course's order: each control's closest approach on the first
+//   visit after the previous control; the start's departure (the last moment near the start before control 1) and the
+//   finish's arrival (the first moment near the finish after the last control).
+
+import { fromPoints } from "./track.js";
+import { toM } from "./geom.js";
+
+/** The track's points back as latitude and longitude. */
+function latLonAt(track, i) {
+  return [track.lat0 - track.y[i] / track.ky, track.lon0 + track.x[i] / track.kx];
+}
+
+/** The part of the track on the map's area: [i0, i1], or null when it never comes on the map. */
+export function cropToMap(track, geo, W, H, marginM = 300) {
+  const fit = fitFromGeo(geo, track), m = marginM * fit.scale;
+  let i0 = -1, i1 = -1;
+  for (let i = 0; i < track.n; i++) {
+    const px = fit.m11 * track.x[i] + fit.m12 * track.y[i] + fit.tx, py = fit.m21 * track.x[i] + fit.m22 * track.y[i] + fit.ty;
+    if (px >= -m && py >= -m && px <= W + m && py <= H + m) { if (i0 < 0) i0 = i; i1 = i; }
+  }
+  return i0 < 0 || i1 - i0 < 10 ? null : [i0, i1];
+}
+
+/** The stored form of the track between two indices: { v, t0, dt, la, lo } (seconds, millionths of a degree, deltas). */
+export function encodeTrace(track, i0 = 0, i1 = track.n - 1) {
+  const dt = [], la = [], lo = [];
+  let pt = 0, pla = 0, plo = 0, first = true;
+  const t0 = Math.round(track.ms0 / 1000 + track.t[i0]);
+  for (let i = i0; i <= i1; i++) {
+    const t = Math.round(track.t[i] - track.t[i0]);
+    if (!first && t <= pt) continue;                       // one point per second
+    const [lat, lon] = latLonAt(track, i), ila = Math.round(lat * 1e6), ilo = Math.round(lon * 1e6);
+    dt.push(first ? 0 : t - pt); la.push(first ? ila : ila - pla); lo.push(first ? ilo : ilo - plo);
+    pt = t; pla = ila; plo = ilo; first = false;
+  }
+  return { v: 1, t0, dt, la, lo };
+}
+
+/** A stored trace as a track (null when malformed). */
+export function decodeTrace(rec) {
+  if (!rec || rec.v !== 1 || !Array.isArray(rec.dt) || rec.dt.length !== rec.la?.length || rec.dt.length !== rec.lo?.length) return null;
+  const pts = [];
+  let t = 0, la = 0, lo = 0;
+  for (let i = 0; i < rec.dt.length; i++) {
+    t += rec.dt[i]; la += rec.la[i]; lo += rec.lo[i];
+    pts.push({ lat: la / 1e6, lon: lo / 1e6, ms: (rec.t0 + t) * 1000 });
+  }
+  try { return pts.length >= 2 ? fromPoints(pts) : null; } catch (e) { return null; }
+}
+
+/** The georeference (lon, lat) -> px of a transform in a track's frame (metres -> px). */
+export function geoFromFit(fit, frame) {
+  const { kx, ky, lon0, lat0 } = frame;
+  return {
+    a: fit.m11 * kx, b: -fit.m12 * ky, c: fit.tx - fit.m11 * kx * lon0 + fit.m12 * ky * lat0,
+    d: fit.m21 * kx, e: -fit.m22 * ky, f: fit.ty - fit.m21 * kx * lon0 + fit.m22 * ky * lat0,
+  };
+}
+/** The transform in a track's frame (metres -> px) of a georeference. */
+export function fitFromGeo(geo, frame) {
+  const { kx, ky, lon0, lat0 } = frame;
+  const f = { kind: "affine", m11: geo.a / kx, m12: -geo.b / ky, tx: geo.a * lon0 + geo.b * lat0 + geo.c,
+    m21: geo.d / kx, m22: -geo.e / ky, ty: geo.d * lon0 + geo.e * lat0 + geo.f, n: 0, rms: 0 };
+  f.scale = Math.sqrt(Math.abs(f.m11 * f.m22 - f.m12 * f.m21));
+  f.rotation = Math.atan2(f.m21, f.m11);
+  return f;
+}
+/** A frame (local metres) around a point, for the georeferenced inputs that come without a trace. */
+export function frameAt(lat, lon) {
+  const R = 6371000;
+  return { lat0: lat, lon0: lon, kx: (Math.PI / 180) * R * Math.cos((lat * Math.PI) / 180), ky: (Math.PI / 180) * R };
+}
+/** A georeference is usable: finite, not degenerate. */
+export const validGeo = (g) => !!g && ["a", "b", "c", "d", "e", "f"].every((k) => Number.isFinite(g[k])) && Math.abs(g.a * g.e - g.b * g.d) > 1e-6;
+
+/**
+ * The passes at a course's controls (px, in order: start, controls, finish), in trace seconds, null where not found.
+ * tol: metres. A control's pass is the closest approach on the first visit (within tol, else 1.6 tol) after the
+ * previous control's pass; the start's, the departure before control 1; the finish's, the arrival after the last one.
+ */
+export function coursePasses(track, fit, controls, tol = 25) {
+  const n = track.n, out = new Array(controls.length).fill(null);
+  const dist = (c) => { const [mx, my] = toM(fit, c.x, c.y), d = new Float32Array(n); for (let k = 0; k < n; k++) d[k] = Math.hypot(track.x[k] - mx, track.y[k] - my); return d; };
+  const visit = (d, from, lim) => {                       // the first visit from `from`: its closest point
+    let k = from;
+    while (k < n && d[k] > lim) k++;
+    if (k >= n) return -1;
+    let best = k;
+    while (k < n && d[k] <= 1.6 * lim) { if (d[k] < d[best]) best = k; k++; }
+    return best;
+  };
+  let from = 0;
+  for (let j = 0; j < controls.length; j++) {
+    const c = controls[j];
+    if (c.kind === "start") continue;
+    const d = dist(c);
+    let k = c.kind === "finish" ? -1 : visit(d, from, tol);
+    if (c.kind === "finish") {                              // the arrival: the first point within tol after the last control
+      k = from; while (k < n && d[k] > tol) k++;
+      if (k >= n) { k = from; while (k < n && d[k] > 1.6 * tol) k++; }
+      if (k >= n) k = -1;
+    } else if (k < 0) k = visit(d, from, 1.6 * tol);
+    if (k >= 0) { out[j] = track.t[k]; from = k; }
+  }
+  // the start: the departure, the last point near it before the first control's pass
+  const si = controls.findIndex((c) => c.kind === "start");
+  if (si >= 0) {
+    const firstPass = out.find((v, j) => j !== si && v != null);
+    const d = dist(controls[si]);
+    let last = -1;
+    for (let k = 0; k < n && (firstPass == null || track.t[k] < firstPass); k++) if (d[k] <= tol) last = k;
+    if (last >= 0) out[si] = track.t[last];
+  }
+  return out;
+}

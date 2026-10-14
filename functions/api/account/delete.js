@@ -6,6 +6,19 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   if (!(await allow(env, `pwchange:${user.id}`, 8, 600))) return json({ error: "rate" }, 429);
   if (!(await checkPassword(String(b?.password || ""), user, env))) return json({ error: "invalid" }, 401);
+  // the account's traces on shared analyses (R2: analyses/<id>/trace-<n>-<uid>.json)
+  if (env.BUCKET) {
+    try {
+      const keys = [];
+      let cursor;
+      do {
+        const r = await env.BUCKET.list({ prefix: "analyses/", cursor, limit: 1000 });
+        for (const o of r.objects) if (o.key.includes("/trace-") && o.key.endsWith(`-${user.id}.json`)) keys.push(o.key);
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
+      for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+    } catch (e) { /* the account goes all the same */ }
+  }
   // the relay simulator's added runners (a table that may not exist yet: migration 0008)
   try { await env.DB.prepare("DELETE FROM relay_runners WHERE user_id = ?").bind(user.id).run(); } catch (e) {}
   await env.DB.batch([

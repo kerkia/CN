@@ -27,15 +27,13 @@ import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geo
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
+import { readMap, isImage } from "../trace/mapfile.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
 const ERR = { pct: 20, s: 10 };                        // the split-times page's mistake rule
 const TOL = 20;                                        // metres: a control is "reached" within this of the trace
 const CAL_KEY = "ocn.an.cal";                          // localStorage: the positions, per race / circuit / runner / image
-const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
-const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
-const MAX_SIDE = 4200;                                 // a PDF page rendered at most this wide or high
 const TRACE = "#3b0764";                               // the trace's default colour: a dark purple (owner, 2026-10-14)
 const TRACE_PRESETS = ["#3b0764", "#c8102e", "#0b3d91", "#111111", "#ff6a00"];
 const CHANNEL_LABEL = { hr: "an.ch.hr", cad: "an.ch.cad", ele: "an.ch.ele", temp: "an.ch.temp", pw: "an.ch.pw" };
@@ -114,26 +112,6 @@ function parisOffsetMs(dateIso) {
 const parisDay = (ms) => new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 
 // ---- the files ------------------------------------------------------------------------------------------------------
-async function readMap(file) {
-  if (/\.pdf$/i.test(file.name) || file.type === "application/pdf") {
-    let pdfjs;
-    try { pdfjs = await import(/* webpackIgnore: true */ PDFJS); } catch (e) { throw new Error("pdf"); }
-    try {
-      pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-      const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-      const page = await pdf.getPage(1);
-      const v1 = page.getViewport({ scale: 1 });
-      const scale = Math.min(MAX_SIDE / v1.width, MAX_SIDE / v1.height, 6);
-      const vp = page.getViewport({ scale });
-      const c = document.createElement("canvas");
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
-      return c;
-    } catch (e) { throw new Error("pdf"); }
-  }
-  try { return await createImageBitmap(file); } catch (e) { throw new Error("map"); }
-}
-const isImage = (f) => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(f.name) || f.type.startsWith("image/") || f.type === "application/pdf";
 const ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.xml,.jgw,.pgw,.tfw,.gfw,.bpw,.wld,.prj,image/*,application/pdf";
 
 // ---- the memory between visits ---------------------------------------------------------------------------------------
@@ -142,7 +120,7 @@ const ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.x
 // the tab's session (a tag in sessionStorage: a reload recovers them, a new tab does not), never sent; « Oublier les
 // fichiers » drops them. The calibration (the controls' positions, the geometry found) is in localStorage, so a finished
 // calibration comes back as it was left rather than being redone — the controls placed by hand included.
-let memo = null;
+const memos = {};                                       // per mode: "race" (Courses) and "perso" (Entrainement)
 const DB = "ocn-analyse", STORE = "files";
 function idbOpen() {
   return new Promise((res, rej) => {
@@ -152,14 +130,14 @@ function idbOpen() {
     q.onerror = () => rej(q.error);
   });
 }
-async function idbWrite(value) {
+async function idbWrite(value, key = "files") {
   const db = await idbOpen();
-  await new Promise((res, rej) => { const tx = db.transaction(STORE, "readwrite"); if (value) tx.objectStore(STORE).put(value, "files"); else tx.objectStore(STORE).delete("files"); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  await new Promise((res, rej) => { const tx = db.transaction(STORE, "readwrite"); if (value) tx.objectStore(STORE).put(value, key); else tx.objectStore(STORE).delete(key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   db.close();
 }
-async function idbRead() {
+async function idbRead(key = "files") {
   const db = await idbOpen();
-  const v = await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get("files"); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  const v = await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
   db.close();
   return v;
 }
@@ -172,12 +150,14 @@ function sessionTag() {
 }
 
 // ---- the page -------------------------------------------------------------------------------------------------------
-export async function render(main, { query = {} } = {}) {
+export async function render(main, { query = {}, route } = {}) {
   const me = auth.session();
-  const idx = await getProv("index.json");
+  // « Analyse perso » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
+  const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
+  const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("an.title")}</h1><p class="lede">${t("an.lede")}</p></div></div>
+    <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
@@ -197,7 +177,7 @@ export async function render(main, { query = {} } = {}) {
       </div>
       <section class="card" id="an-legs" hidden></section>
     </div>`;
-  if (!races.length) {
+  if (!perso && !races.length) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
     return { title: t("an.title") };
   }
@@ -205,8 +185,8 @@ export async function render(main, { query = {} } = {}) {
   // ---- state
   // the race, circuit and runner of the last visit (the menu's link carries no query): the tab's session remembers them
   const selKey = "ocn.an.sel";
-  if (!query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && races.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
-  let key = races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
+  if (!perso && !query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && races.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
+  let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
   const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null };     // { name, note, ... } per role
@@ -237,7 +217,11 @@ export async function render(main, { query = {} } = {}) {
   let lastBox = null;                                   // the map's box when the view was last set (its centre kept on a resize)
   const strip = $("#an-strip"), sctx = strip.getContext("2d");
 
-  const steps = (n) => { $("#an-steps").innerHTML = html`${[t("an.s1"), t("an.s2"), t("an.s3"), t("an.s4")].map((s, i) => html`<li class="${i + 1 < n ? "done" : i + 1 === n ? "now" : ""}"><b>${i + 1}</b> ${s}</li>`)}`; };
+  const steps = (n) => {
+    const labels = perso ? [t("an.s2"), t("an.s3"), t("an.s4")] : [t("an.s1"), t("an.s2"), t("an.s3"), t("an.s4")];
+    if (perso) n = Math.max(1, n - 1);                    // no race to choose: three steps
+    $("#an-steps").innerHTML = html`${labels.map((s, i) => html`<li class="${i + 1 < n ? "done" : i + 1 === n ? "now" : ""}"><b>${i + 1}</b> ${s}</li>`)}`;
+  };
   const stage = () => (!map || !track ? 2 : calibrated ? 4 : 3);
   const runner = () => docs[di]?.classes[ci]?.runners[ri], klass = () => docs[di]?.classes[ci];
   /** The runner's official sequence of race times: start, the controls, the finish (null where unknown), or null. */
@@ -246,6 +230,12 @@ export async function render(main, { query = {} } = {}) {
 
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
+    if (perso) {                                          // no race: one runner, the account's
+      race = { key: "perso", name: t("an.perso.title"), date_iso: null, docs: [] };
+      docs = [{ source: "", title: "", classes: [{ name: "", controls: null, runners: [{ name: me?.nom || "", status: null }] }] }];
+      di = 0; ci = 0; ri = 0;
+      return;
+    }
     race = await getProv(`${encodeURIComponent(key)}.json`);
     docs = (race?.docs || []).filter((d) => d.classes?.length && d.by !== "category");
     const rank = (d) => (d.classes.some((k) => k.runners.some((r) => r.splits)) ? 1e9 : 0) + (d.prio ?? 0);
@@ -258,6 +248,7 @@ export async function render(main, { query = {} } = {}) {
     if (query.r && docs[di]?.classes[ci]) { const n = docs[di].classes[ci].runners.findIndex((r) => r.name === query.r); if (n >= 0) ri = n; }
   }
   function pickers() {
+    if (perso) { $("#an-pick").hidden = true; return; }
     const k = klass();
     $("#an-pick").innerHTML = html`
       <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
@@ -294,8 +285,8 @@ export async function render(main, { query = {} } = {}) {
     $("#an-forget")?.addEventListener("click", () => {
       stop();
       for (const role of Object.keys(files)) files[role] = null;
-      map = null; track = null; courseCache = null; course = null; restoredFiles = false; memo = null;
-      idbWrite(null).catch(() => {});
+      map = null; track = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
+      idbWrite(null, fileKey).catch(() => {});
       filesCard(); setup();
     });
     const drop = $("#an-drop");
@@ -369,13 +360,13 @@ export async function render(main, { query = {} } = {}) {
     if (!tag) return;
     const seen = new Set(), entries = [];
     for (const role of Object.keys(files)) { const f = files[role]?.file; if (f && !seen.has(f)) { seen.add(f); entries.push({ role, name: f.name, type: f.type, blob: f }); } }
-    idbWrite(entries.length ? { tag, at: Date.now(), entries } : null).catch(() => {});
+    idbWrite(entries.length ? { tag, at: Date.now(), entries } : null, fileKey).catch(() => {});
   }
   /** The files of the last visit of this tab, read again. */
   async function restoreFromIdb() {
     const tag = sessionTag();
     let rec = null;
-    try { rec = await idbRead(); } catch (e) { return; }
+    try { rec = await idbRead(fileKey); } catch (e) { return; }
     if (!rec || rec.tag !== tag || !rec.entries?.length || map || track) return;
     restoredFiles = true;
     await take(rec.entries.map((e) => new File([e.blob], e.name, { type: e.type })), { remember: false });
@@ -452,13 +443,13 @@ export async function render(main, { query = {} } = {}) {
   window.addEventListener("resize", onWinResize);
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
   function showPanels(on) {
-    $("#an-pick").hidden = !on; $("#an-files").hidden = !on;
+    $("#an-pick").hidden = perso || !on; $("#an-files").hidden = !on;
     const brief = $("#an-brief");
     brief.hidden = on;
     if (on) return;
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit">← ${t("an.brief.edit")}</button>
-      <span><b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}</span>
+      <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
       <span class="muted">${[files.map?.name, files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
     $("#an-brief-edit").addEventListener("click", leavePlayback);
   }
@@ -788,7 +779,7 @@ export async function render(main, { query = {} } = {}) {
     if (geoHow) summary.push(`${t("an.st.geo")} ${geoHow}`);
     else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
     if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
-    else if (r) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    else if (r && !perso) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
     const whose = whoseTrace();
     const whoseNote = !whose ? "" : html`<div class="notice" style="margin-bottom:6px">${t("an.st.whose", { t: hhmm(whose.t0), r: runner()?.name || "", rs: whose.dns ? t("an.st.whose.dns") : whose.mine != null ? t("an.st.whose.start", { s: hhmm(whose.mine) }) : t("an.st.whose.noStart") })}
       ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}">${t("an.switch")}</button>` : ""}</div>`;
@@ -1257,20 +1248,21 @@ export async function render(main, { query = {} } = {}) {
   steps(1);
   await loadRace();
   pickers();
+  const memo = memos[pageMode];
   if (memo) {
     ({ map, track, courseCache, iofIndex, northUp, restoredFiles } = memo);
     Object.assign(files, memo.files);
-    memo = null;
+    memos[pageMode] = null;
     filesCard(); setup();
   } else {
     filesCard(); setup();
     restoreFromIdb();
   }
-  return { title: t("an.title"), cleanup: () => {
+  return { title: t(perso ? "an.perso.title" : "an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     window.removeEventListener("resize", onWinResize);
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++;
-    if (map || track) memo = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
+    if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
 }

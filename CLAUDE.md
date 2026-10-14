@@ -15,7 +15,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
-| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited) |
+| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
@@ -509,6 +509,32 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
   fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
+- **Analyse perso / club / compétition** (owner, 2026-10-14; administrators only for now, like their groups): « Analyse
+  perso » exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »
+  (`#/analyse-perso`, route `analysisPerso`: the same `analysis.js` with no race — one pseudo-runner, three steps, its own
+  memory `memos.perso` and IndexedDB key `files:perso`). « Analyse club » (`#/analyse-club`, Entrainement) and « Analyse
+  compétition » (`#/analyse-competition`, Courses; tied to a race of `prov/index.json`, its circuits offered, the runners'
+  published results beside their traces) are `pages/shared.js` on `/api/analyses` (`functions/api/analyses/[[path]].js`):
+  **no D1 table** — R2 (`cn-state`, binding `BUCKET`) holds `analyses-meta/<id>.json` (the analysis; its summary in the
+  object's custom metadata, so the list is one R2 list), `analyses/<id>/map-<n>` (images) and
+  `analyses/<id>/trace-<n>-<uid>.json` (one per account and circuit). CI never touches these prefixes (it copies only
+  `uploads/`). Access: organiser and admins always; else `public` (every logged-in account), `club` (the organiser's club =
+  the club of one's latest race in `site/data/r/<lic/10>.json`, read through `env.ASSETS`), or `password` (PBKDF2 as for
+  accounts, checked once by `/unlock`, which returns an HMAC key of analysis + account + salt, sent as `X-Analysis-Key`;
+  the browser keeps it in sessionStorage). Each account adds, replaces or removes **only its own** trace (the server sets
+  name and licence from the account); the organiser may remove any. A shared trace keeps positions and times only
+  (`trace/share.js`: whole seconds and 1e-6° deltas, ~20 KB for 40 min), cropped to the map's area + 300 m, consent asked;
+  account deletion removes one's traces (`api/account/delete.js`); the privacy page says so. The organiser's circuit editor
+  reads the map (`trace/mapfile.js`), detects the course, georeferences from a KMZ/KML, a world file (+ .prj), an IOF XML
+  with coordinates, or the organiser's own trace (alignment); the controls' order from the IOF course, else the trace's
+  visiting order, else as read, and can be clicked in order (snapping to the circles); stored as an affine (lon, lat) → px
+  (`geoFromFit`/`fitFromGeo`). The replay (Livelox's features, checked on its documentation): clock time, mass start, mass
+  start from a chosen control, « attente aux postes »; follow all / the selected runner / no one; tail; a leg view (routes on
+  one leg synchronised at its start, the left list ranked by leg time with gap, distance and pace; ⏮ ⏭ step legs); the
+  splits table (leg time, rank, cumulative; « Comparer à » gives the duel's gaps; a click on a control opens its leg).
+  Passes: `coursePasses` (first visit within 25 m after the previous control, its closest point; start = departure,
+  finish = arrival). Tested 2026-10-14 with four local test accounts (local D1 only) and synthetic traces: access rules,
+  ownership, every mode; a search around a control is timed at its first approach (published splits would be better).
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
   « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

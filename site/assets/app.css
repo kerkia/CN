@@ -1284,6 +1284,34 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
   body.an-theatre .an-side { order: 2; }
   body.an-theatre .an-split { display: none; }
 }
+/* « Analyse club » / « Analyse compétition » (pages/shared.js) */
+.sh-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; font-size: 13.5px; }
+.sh-title { font-size: 15px; }
+.sh-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.sh-setup { margin-bottom: 12px; }
+.sh-vis { border: 0; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.sh-vis legend { font-weight: 600; color: var(--ink-2); margin-bottom: 4px; padding: 0; }
+.sh-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr) 260px; gap: 10px; height: 75vh; }
+.sh-map { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; min-height: 0; }
+.sh-map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.sh-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; overflow-y: auto; font-size: 13px; min-height: 0; }
+.sh-runners { display: flex; flex-direction: column; gap: 1px; }
+.sh-runner { display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) auto; gap: 2px 6px; align-items: center; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+.sh-runner:hover { background: var(--surface-3); }
+.sh-runner.sel { background: var(--flag-wash); box-shadow: inset 3px 0 0 var(--flag); }
+.sh-runner .sh-sub { grid-column: 3 / 5; font-size: 11.5px; }
+.sh-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+.sh-behind { color: var(--bad); font-size: 11.5px; }
+.sh-mine { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.sh-consent { margin-top: 8px; font-size: 12.5px; }
+.sh-clock { font-size: 15px; font-variant-numeric: tabular-nums; }
+.sh-splits td { white-space: nowrap; }
+.sh-splits .sh-sub { font-size: 11.5px; }
+.sh-best { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.sh-e-work { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 10px; height: 60vh; min-height: 360px; }
+.sh-e-list { margin: 8px 0 0; padding-left: 22px; font-size: 13px; max-height: 30vh; overflow-y: auto; }
+@media (max-width: 900px) { .sh-layout, .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; } }
 /* « En direct » */
 .lv-status { font-size: 13.5px; color: var(--ink-3); align-self: center; white-space: nowrap; }
 .lv-status.live { color: var(--bad); font-weight: 650; }

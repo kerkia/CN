@@ -20,7 +20,8 @@ function pageName(k) {
   const NAMES = { overview: "nav.overview", ranking: "nav.ranking", runner: "nav.runner", compare: "nav.compare", clubs: "nav.clubs",
     club: "ad.pg.club", clubcompare: "ad.pg.clubcompare", courses: "nav.courses", agenda: "nav.agenda", methods: "nav.methods",
     settings: "st.link", contact: "ct.title", admin: "ad.title", provisional: "prov.title", splits: "spl.title",
-    deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "an.title", games: "nav.games", vma: "nav.vma" };
+    deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "an.title", games: "nav.games", vma: "nav.vma",
+    analysisPerso: "nav.analysisPerso", analysisClub: "nav.analysisClub", analysisRace: "nav.analysisRace" };
   if (k.startsWith("network:")) {
     const v = k.slice(8);
     return v === "ego" || v === "leaders" ? t(`nw.mode.${v}`) : `${t("nav.network")} · ${t(`nw.mode.${v}`)}`;
