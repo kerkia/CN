@@ -2,7 +2,7 @@
 // teams, made automatically or changed runner by runner, their predicted times and their place among every club's
 // best team. The model and the solver: relay.js.
 
-import { html, raw, $, $$, fmt, fmtTime } from "../util.js";
+import { html, raw, $, $$, fmt, fmtTime, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -11,7 +11,7 @@ import { loadRanking } from "./ranking.js";
 import { clubName } from "../clubstats.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
-import { PRESETS, TARGETS, catParts, fits, bestTeam, clubTeams, checkTeam, terrainOf } from "../relay.js";
+import { PRESETS, TARGETS, catParts, fits, bestTeam, clubTeams, checkTeam, terrainOf, nextNationalRelay } from "../relay.js";
 
 const TOP = 20;                 // teams in the predicted ranking
 const MAX_TEAMS = 4;            // the club's teams, made automatically
@@ -24,19 +24,40 @@ const consLabel = (c) => [c.sex === "H" ? "hommes" : c.sex === "D" ? "dames" : "
 // the age groups offered for an added runner (its category: sex + age, as H21 or D45)
 const AGES = [10, 12, 14, 16, 18, 20, 21, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
 const mmss = (min) => (min == null || !isFinite(min) ? "—" : fmtTime(Math.round(min * 60)));
+// what the visitor chose last time (owner, 2026-10-14): the format (one's own format's legs too), its discipline, the
+// club, and the agenda's next national relay at that time — when that relay changes, the agenda's format is proposed again
+const MEM = "ocn.relay";
+const readMem = () => { try { return JSON.parse(localStorage.getItem(MEM) || "{}") || {}; } catch (e) { return {}; } };
+const validFormat = (f) => !!f && Array.isArray(f.legs) && Array.isArray(f.slots) && f.legs.length > 0 && f.legs.length === f.slots.length
+  && f.legs.every((l) => l && Number(l.ref) > 0) && f.slots.every((s) => s && typeof s === "object");
 
 export async function render(main, { query }) {
-  let key = PRESETS[query.f] || query.f === "perso" ? query.f : "cfc1";
-  let fmtNow = key === "perso" ? custom() : clone(PRESETS[key]);
-  let club = query.club || myClub() || "";
+  const mem = readMem();
+  let next = null;                                   // the agenda's next national relay: the format to propose
+  try { next = nextNationalRelay((await data.agenda())?.events); } catch (e) { next = null; }
+  // the format: the link's, else the one chosen last time — unless the agenda's next national relay changed since —,
+  // else that relay's, else the CFC's N1
+  const valid = (k) => (PRESETS[k] || k === "perso" ? k : null);
+  let key = valid(query.f) || (mem.f && (!next || mem.next === next.id) ? valid(mem.f) : null) || next?.key || valid(mem.f) || "cfc1";
+  const perso = validFormat(mem.perso) ? { ...custom(), slots: mem.perso.slots.map((s) => ({ ...s })), legs: mem.perso.legs.map((l) => ({ ...l, ref: Number(l.ref) })) } : custom();
+  let fmtNow = key === "perso" ? perso : clone(PRESETS[key]);
+  let club = query.club || mem.club || myClub() || "";
   const method = store.get().method;
   // the discipline of the CNs: the format's (forest, the sprint relay in sprint), whatever the site-wide one; one's own
   // format: chosen here
-  let terrain = key === "perso" ? (store.TERRAINS.includes(query.t) ? query.t : "For") : terrainOf(PRESETS[key]);
+  const qt = query.t || mem.t;
+  let terrain = key === "perso" ? (store.TERRAINS.includes(qt) ? qt : "For") : terrainOf(PRESETS[key]);
   let runners = [], byClub = new Map(), manual = null;
-  // the runners this account added to the club (no CN of their own: relays only, abroad), from /api/account/relay;
-  // saved: "" | "saving" | "saved" | "unavailable"
-  let extra = [], extraClub = null, saved = "";      // manual: the team typed by hand (array of runners), else null
+  // the runners this account added to the club (no CN of their own: relays only, abroad), and the club's runners it
+  // marked unavailable (licences; out of the teams), from /api/account/relay; saved: "" | "saving" | "saved" | "unavailable"
+  let extra = [], out = new Set(), extraClub = null, saved = "";      // manual: the team typed by hand (array of runners), else null
+  function remember() {
+    try {
+      const m = readMem();
+      localStorage.setItem(MEM, JSON.stringify({ ...m, f: key, t: terrain, club: club || null, next: next?.id ?? null,
+        perso: key === "perso" ? { slots: fmtNow.slots, legs: fmtNow.legs } : m.perso || null }));
+    } catch (e) {}
+  }
 
   setLede(t("rl.lede"));
   main.innerHTML = html`
@@ -68,13 +89,14 @@ export async function render(main, { query }) {
       <label class="field"><span>${t("rl.club")}</span><select id="rl-club" style="max-width:280px"><option value="">—</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>`;
     $("#rl-t")?.addEventListener("change", (e) => { terrain = e.target.value; manual = null; load(); });
-    $("#rl-f").addEventListener("change", (e) => {
-      key = e.target.value; fmtNow = key === "perso" ? custom() : clone(PRESETS[key]); manual = null; drawFormat();
-      // another discipline (the sprint relay): its runners' CNs
-      const tr = key === "perso" ? terrain : terrainOf(PRESETS[key]);
-      if (tr !== terrain) { terrain = tr; load(); } else { drawFilters(); compute(); }
-    });
+    $("#rl-f").addEventListener("change", (e) => setFormat(e.target.value));
     $("#rl-club").addEventListener("change", async (e) => { club = e.target.value; manual = null; await loadExtra(); compute(); });
+  }
+  function setFormat(k) {
+    key = k; fmtNow = key === "perso" ? perso : clone(PRESETS[key]); manual = null; drawFormat();
+    // another discipline (the sprint relay): its runners' CNs
+    const tr = key === "perso" ? terrain : terrainOf(PRESETS[key]);
+    if (tr !== terrain) { terrain = tr; load(); } else { drawFilters(); compute(); }
   }
 
   // ---- the format: its legs (reference times editable; one's own format entirely) -------------------------------
@@ -92,7 +114,10 @@ export async function render(main, { query }) {
           : html`<span class="muted">${consLabel(l) || "—"}</span>`}</td>
         ${f.custom ? html`<td><button class="btn btn-sm" type="button" data-leg-del="${i}" ${raw(f.legs.length < 2 ? "disabled" : "")}>✕</button></td>` : ""}</tr>`)}</tbody></table></div>
       <div class="card-body">${f.custom ? html`<button class="btn btn-sm" type="button" id="rl-add">${t("rl.addLeg")}</button>`
-        : html`<div class="muted" style="font-size:12.5px"><b>${t("rl.slots")}</b> : ${f.slots.map((s) => s.label).join(" · ")}</div>`}</div>`;
+        : html`<div class="muted" style="font-size:12.5px"><b>${t("rl.slots")}</b> : ${f.slots.map((s) => s.label).join(" · ")}</div>`}
+        ${next ? html`<div class="muted" style="font-size:12.5px;margin-top:8px">${t("rl.next")} : <a href="#/agenda?id=${next.id}">${next.name}</a>,
+          ${fmtDate(next.date)}${next.place ? ` · ${next.place}` : ""}${next.key === key ? "" : html` — <a href="#/relais" id="rl-next-use">${t("rl.next.use")}</a>`}</div>` : ""}</div>`;
+    $("#rl-next-use")?.addEventListener("click", (e) => { e.preventDefault(); setFormat(next.key); });
     const changed = () => { manual = manual && manual.length === fmtNow.legs.length ? manual : null; compute(); drawFormat(); };
     $$("[data-leg-ref]").forEach((x) => x.addEventListener("change", () => { const v = Number(x.value); if (v > 0) { fmtNow.legs[x.dataset.legRef].ref = v; changed(); } }));
     if (f.custom) {
@@ -132,13 +157,14 @@ export async function render(main, { query }) {
   // ---- runners added by hand, saved with the account for this club ------------------------------------------------
   const added = () => extra.filter((r) => r.cn?.[terrain] > 0).map((r) => ({ lic: `x:${r.id}`, name: r.name, cat: `${r.sex}${r.age}`,
     sex: r.sex, age: r.age, cn: r.cn[terrain], club, added: true }));
-  const poolOf = (c) => [...(byClub.get(c) || []), ...(c === club ? added() : [])];
+  // one's own club: without the runners marked unavailable
+  const poolOf = (c) => [...(byClub.get(c) || []), ...(c === club ? added() : [])].filter((r) => c !== club || !out.has(r.lic));
   async function loadExtra() {
-    extra = []; extraClub = club; saved = "";
+    extra = []; out = new Set(); extraClub = club; saved = "";
     if (club) {
       try {
         const r = await fetch(`/api/account/relay?club=${encodeURIComponent(club)}`, { credentials: "same-origin", cache: "no-store" });
-        if (r.ok) extra = (await r.json()).runners || []; else saved = "unavailable";
+        if (r.ok) { const j = await r.json(); extra = j.runners || []; out = new Set((j.out || []).map(String)); } else saved = "unavailable";
       } catch (e) { saved = "unavailable"; }
     }
     drawExtra();
@@ -147,7 +173,7 @@ export async function render(main, { query }) {
     saved = "saving"; drawExtraState();
     try {
       const r = await fetch("/api/account/relay", { method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ club: extraClub, runners: extra }) });
+        body: JSON.stringify({ club: extraClub, runners: extra, out: [...out] }) });
       saved = r.ok ? "saved" : "unavailable";
     } catch (e) { saved = "unavailable"; }
     drawExtraState();
@@ -160,6 +186,10 @@ export async function render(main, { query }) {
     if (!club) return;
     const tr = t(`terrain.${terrain}`).toLowerCase();
     $("#rl-extra-title").textContent = `${t("rl.extra.title")} · ${clubName(club)}`;
+    // the club's runners marked unavailable (a licence no longer in the club's pool is shown as such), and the others
+    const all = [...(byClub.get(club) || []), ...added()];
+    const outList = [...out].map((lic) => all.find((r) => r.lic === lic) || { lic, name: lic, cat: "", cn: null });
+    const available = all.filter((r) => !out.has(r.lic)).sort((a, b) => a.name.localeCompare(b.name, "fr"));
     $("#rl-extra").innerHTML = html`
       ${extra.length ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("rk.col.name")}</th><th>${t("rk.col.cat")}</th>
 <th class="r">${t("rl.extra.cn", { t: tr })}</th><th></th></tr></thead>
@@ -174,9 +204,24 @@ export async function render(main, { query }) {
         <label class="field"><span>${t("rk.col.cat")}</span><select id="rx-age">${AGES.map((a) => html`<option value="${a}" ${raw(a === 21 ? "selected" : "")}>${a}</option>`)}</select></label>
         <label class="field"><span>${t("rl.extra.cn", { t: tr })}</span><input type="number" id="rx-cn" min="1" max="20000" step="1" style="width:110px"></label>
         <button type="button" class="btn btn-sm" id="rx-add" style="align-self:flex-end">${t("rl.extra.add")}</button>
+      </div>
+      <h3 style="margin:4px 16px 4px;font-size:15px">${t("rl.out.title")}</h3>
+      <div class="hint" style="margin:0 16px 8px">${t("rl.out.hint")}</div>
+      ${outList.length ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("rk.col.name")}</th><th>${t("rk.col.cat")}</th>
+        <th class="r">CN</th><th></th></tr></thead>
+        <tbody>${outList.map((r) => html`<tr><td>${r.name}${r.added ? html` <span class="tag">${t("rl.extra.tag")}</span>` : ""}</td><td>${r.cat}</td>
+          <td class="r num">${r.cn ? fmt(r.cn) : ""}</td>
+          <td class="r"><button type="button" class="btn btn-ghost btn-sm" data-out-back="${r.lic}">${t("rl.out.back")}</button></td></tr>`)}</tbody></table></div>`
+        : html`<div class="empty" style="padding:12px 16px">${t("rl.out.none")}</div>`}
+      <div class="filters" style="margin:12px 16px 14px;padding:0;border:0;background:none">
+        <label class="field"><span>${t("rl.out.mark")}</span><select id="rx-out" style="max-width:280px"><option value="">—</option>
+          ${available.map((r) => html`<option value="${r.lic}">${r.name}${r.added ? ` (${t("rl.extra.tag")})` : ""} · ${r.cat} · ${fmt(r.cn)}</option>`)}</select></label>
+        <button type="button" class="btn btn-sm" id="rx-out-add" style="align-self:flex-end">${t("rl.out.btn")}</button>
       </div>`;
     drawExtraState();
     const changed = () => { manual = null; saveExtra(); compute(); drawExtra(); };
+    $("#rx-out-add").addEventListener("click", () => { const lic = $("#rx-out").value; if (lic) setOut(lic, true); });
+    $$("[data-out-back]").forEach((b) => b.addEventListener("click", () => setOut(b.dataset.outBack, false)));
     $("#rx-add").addEventListener("click", () => {
       const name = $("#rx-name").value.trim().replace(/\s+/g, " "), cn = Math.round(Number($("#rx-cn").value));
       if (!name || !(cn > 0 && cn <= 20000)) { $("#rx-name").reportValidity?.(); return; }
@@ -196,8 +241,22 @@ export async function render(main, { query }) {
     }));
   }
 
+  /** Marks a runner of the club unavailable (or available again): out of the teams, kept with the account. */
+  function setOut(lic, isOut) {
+    if (isOut) out.add(lic); else out.delete(lic);
+    if (manual) {
+      // the hand-made team keeps the others; the leg left takes the best available runner who fits it
+      manual = manual.map((r) => (r && r.lic === lic ? null : r));
+      const pool = poolOf(club);
+      manual = manual.map((r, i) => r || pool.filter((x) => fits(x.sex, x.age, fmtNow.legs[i]) && !manual.some((y) => y && y.lic === x.lic))
+        .sort((a, b) => b.cn - a.cn)[0] || null);
+    }
+    saveExtra(); compute(); drawExtra();
+  }
+
   function compute() {
     replaceQuery({ f: key === "cfc1" ? null : key, club: club || null, m: method, t: key === "perso" && terrain !== "For" ? terrain : null });
+    remember();
     const f = fmtNow, n = f.legs.length;
     if (f.slots.length !== n || !n) return;
     const refs = f.legs.map((l) => l.ref).sort((a, b) => b - a);
@@ -236,21 +295,25 @@ export async function render(main, { query }) {
     const total = cost != null && res.k ? res.k * cost : null;
     let cum = 0;
     const pool = poolOf(club);
-    const opts = (i, cur) => pool.filter((r) => fits(r.sex, r.age, f.legs[i])).sort((a, b) => b.cn - a.cn)
+    // the runners who fit the leg — and the one on it, whatever the leg's restriction (moved there by a swap: the warning says)
+    const opts = (i, cur) => pool.filter((r) => fits(r.sex, r.age, f.legs[i]) || (cur && r.lic === cur.lic)).sort((a, b) => b.cn - a.cn)
       .map((r) => html`<option value="${r.lic}" ${raw(cur && r.lic === cur.lic ? "selected" : "")}>${r.name}${r.added ? ` (${t("rl.extra.tag")})` : ""} · ${r.cat} · ${fmt(r.cn)}</option>`);
     return html`<div class="rl-team">
       <h3 style="margin:12px 16px 6px;font-size:15px">${t("rl.team")} ${idx + 1}${total != null ? html` · <b>${mmss(total)}</b>
         <span class="muted" style="font-weight:400">· ${t("rl.place")} ${placeOf(cost)}${res.firsts[0] && res.k ? ` · +${mmss(total - res.k * res.firsts[0].cost)}` : ""}</span>` : ""}</h3>
       ${slotsOk ? "" : html`<div class="notice warn" style="margin:0 16px 8px">${t("rl.invalid")}</div>`}
-      <div class="table-wrap"><table class="data compact"><thead><tr><th class="r">${t("rl.leg")}</th><th class="r">${t("rl.ref")}</th>
+      <div class="table-wrap"><table class="data compact"><thead><tr>${editable ? html`<th></th>` : ""}<th class="r">${t("rl.leg")}</th><th class="r">${t("rl.ref")}</th>
         <th>${t("rl.slot")}</th><th>${t("rl.runner")}</th><th class="r">CN</th><th class="r">${t("rl.time")}</th><th class="r">${t("rl.cum")}</th></tr></thead>
         <tbody>${rs.map((r, i) => {
           cum = times[i] != null && cum != null ? cum + times[i] : null;
           const slot = slotsOk ? f.slots[slotsOk[i]].label : "";
-          return html`<tr><td class="r num">${i + 1}</td><td class="r num">${fmt(f.legs[i].ref)}′</td><td class="muted" style="font-size:12.5px">${slot}</td>
-            <td>${editable ? html`<select data-pick-leg="${i}" style="max-width:260px"><option value="">—</option>${opts(i, r)}</select>`
+          const outBtn = r ? html` <button type="button" class="btn btn-ghost btn-sm rl-out" data-out="${r.lic}" title="${t("rl.out.mark")} : ${r.name}">${t("rl.out.btn")}</button>` : "";
+          return html`<tr ${raw(editable ? `data-leg="${i}"` : "")}>${editable ? html`<td class="rl-move"><span class="rl-grip" draggable="true" data-grip="${i}" title="${t("rl.grip")}">⋮⋮</span>
+              <button type="button" class="btn btn-ghost btn-sm" data-move="${i}:-1" title="${t("rl.move.up")}" ${raw(i ? "" : "disabled")}>▲</button><button type="button" class="btn btn-ghost btn-sm" data-move="${i}:1" title="${t("rl.move.down")}" ${raw(i < rs.length - 1 ? "" : "disabled")}>▼</button></td>` : ""}
+            <td class="r num">${i + 1}</td><td class="r num">${fmt(f.legs[i].ref)}′</td><td class="muted" style="font-size:12.5px">${slot}</td>
+            <td>${editable ? html`<select data-pick-leg="${i}" style="max-width:260px"><option value="">—</option>${opts(i, r)}</select>${outBtn}`
               : r ? html`${r.added ? html`<span>${r.name}</span> <span class="tag">${t("rl.extra.tag")}</span>` : html`<a href="${link.runner(r.lic)}">${r.name}</a>`}
-                <span class="muted">${r.cat}</span>` : "—"}</td>
+                <span class="muted">${r.cat}</span>${outBtn}` : "—"}</td>
             <td class="r num">${r ? fmt(r.cn) : ""}</td><td class="r num">${mmss(times[i])}</td><td class="r num">${mmss(cum)}</td></tr>`;
         })}</tbody></table></div></div>`;
   }
@@ -287,6 +350,24 @@ export async function render(main, { query }) {
       manual[Number(sel.dataset.pickLeg)] = pool.find((r) => r.lic === sel.value) || null;
       drawTeams();
     }));
+    $$("[data-out]").forEach((b) => b.addEventListener("click", () => setOut(b.dataset.out, true)));
+    // two runners of the first team exchange their legs: the arrows, or a row's grip dropped on another row (owner, 2026-10-14)
+    const swap = (i, j) => {
+      if (i === j || !(i in first) || !(j in first)) return;
+      manual = [...(manual || first)];
+      [manual[i], manual[j]] = [manual[j], manual[i]];
+      drawTeams();
+    };
+    $$("[data-move]").forEach((b) => b.addEventListener("click", () => { const [i, d] = b.dataset.move.split(":").map(Number); swap(i, i + d); }));
+    $$("[data-grip]").forEach((g) => {
+      g.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", g.dataset.grip); e.dataTransfer.effectAllowed = "move"; g.closest("tr").classList.add("dragging"); });
+      g.addEventListener("dragend", () => $$("tr.dragging, tr.drop").forEach((x) => x.classList.remove("dragging", "drop")));
+    });
+    $$("tr[data-leg]").forEach((tr) => {
+      tr.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; tr.classList.add("drop"); });
+      tr.addEventListener("dragleave", () => tr.classList.remove("drop"));
+      tr.addEventListener("drop", (e) => { e.preventDefault(); const i = Number(e.dataTransfer.getData("text/plain")); if (Number.isInteger(i)) swap(i, Number(tr.dataset.leg)); });
+    });
   }
   $("#rl-auto").addEventListener("click", () => { manual = null; drawTeams(); });
 

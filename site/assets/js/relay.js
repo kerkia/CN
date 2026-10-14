@@ -71,6 +71,22 @@ export const PRESETS = {
 };
 /** A format's discipline: its own (the sprint relay), else forest — CFC, CNE and relais de catégorie are forest races. */
 export const terrainOf = (f) => f?.terrain || "For";
+/** The next national relay of the agenda — CNE, CFC, the championnats de France de relais (de catégorie, sprint) — as
+ *  the preset to propose, with the event; null when none is planned. Ligue and regional relays are not national. */
+export function nextNationalRelay(events, today = new Date().toISOString().slice(0, 10)) {
+  const strip = (s) => (s || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const coming = (events || []).filter((e) => e.kind === "c" && e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  for (const e of coming) {
+    const s = strip(`${e.name} ${e.manif || ""}`);
+    if (e.epr !== "Relais" && !/relais/.test(s)) continue;
+    let key = null;
+    if (/criterium national des equipes|\bcne\b/.test(s)) key = "cneH";
+    else if (/championnat de france des clubs|\bcfc\b/.test(s)) key = "cfc1";
+    else if (/championnat de france|\bcf\b/.test(s)) key = /sprint/.test(s) ? "spr" : "rcH21";
+    if (key) return { key, id: e.id, name: e.name, date: e.date, place: e.place || "" };
+  }
+  return null;
+}
 export const TARGETS = { winner: "l'équipe gagnante totalise la somme des temps de référence",
   top5: "la moyenne des 5 meilleures équipes totalise la somme des temps de référence" };
 
