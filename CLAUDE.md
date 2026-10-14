@@ -436,7 +436,19 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   inputs 7 m with the clock offset to 0.1 s. Playback: trace plain or by pace, runner with a tail, play/speed/jump by
   control, « suivre », the strip under the map (pace, plus one channel — heart rate by default), the legs table (times,
   class best, rank and time lost when published; trace vs straight distance; pace; mean heart rate and cadence).
-  `window.anDebug()` in the console returns the fit, offset, targets and detection for support.
+  **Real photo** (owner's Fougères night-champs photo + FIT, 2026-10-14, 960 × 1280 px): the magenta ink photographed in
+  poor light is a dark plum (r and b above g, low saturation) — the mask accepts it; thick purple (titles, class names)
+  is removed by an opening before the Hough vote (`thinOnly`, 1.5 line widths; the line width is the lower quartile of
+  runs); the vote floor is 8 % of the strongest peak (a letter's bowl can be the strongest); a ring needs tolerant ≥ 0.8
+  or (tolerant ≥ 0.55 and raw ≥ 0.5), hollow and clear; a control circle never overlaps the start/finish symbols; the
+  start triangle's sides (2.1 r*) survive the line test only with runs of 2.9 r*, and a triangle a leg line leaves beats
+  the control descriptions' own start symbol. Once the trace is laid, its sharp turns with no control nearby are
+  **probed** for faint rings (`course.probe`, `probeTurns`) and the alignment redone; with ≥ 6 controls the fit becomes
+  affine (a photographed page is skewed). Result on that photo: 6 rings read + 4 probed of 16, fit 6 m, scale 0.47 px/m,
+  the rest placed by hand (clicks snap to a ring found on the spot; « Ajouter un poste » when no split times exist; the
+  trace's visiting order renumbers them); a hand-placed point counts as reached within 30 m. The finish on the lake
+  (purple over blue) cannot be read. `window.anDebug()` in the console returns the fit, offset, targets, detection,
+  view and `place(x, y)` for support and scripted tests.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

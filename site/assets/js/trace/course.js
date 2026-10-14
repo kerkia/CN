@@ -27,22 +27,26 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   const g = cv.getContext("2d", { willReadFrequently: true });
   g.drawImage(image, 0, 0, w, h);
   const data = g.getImageData(0, 0, w, h).data;
-  const mask = purpleMask(data, w, h);
+  const full = purpleMask(data, w, h);
+  // thick purple — a title, the class names, a logo — is not the course: keep what is thinner than three line widths
+  const lw = lineWidth(full, w, h);
+  const mask = thinOnly(full, w, h, Math.max(1, Math.round(1.5 * lw)));
   const dil = dilate(mask, w, h);
-  const { circles, rStar, lw, found } = findCircles(mask, dil, w, h);
-  let controls = [], finish = null, start = null;
+  const { circles, rStar, found } = findCircles(mask, dil, w, h, lw);
+  let controls = [], finish = null, start = null, startCands = null;
   if (rStar) {
     controls = circles.filter((c) => c.r >= 0.75 * rStar && c.r <= 1.25 * rStar);
     // the finish: the larger circle concentric with a control-sized one (or alone, if clearly a ring)
     for (const o of circles.filter((c) => c.r > 1.25 * rStar && c.r <= 1.8 * rStar).sort((a, b) => b.score - a.score)) {
       const inner = controls.find((c) => Math.hypot(c.x - o.x, c.y - o.y) < 0.35 * rStar);
-      if (inner || o.score >= 0.65) {
+      if (inner || (o.score >= 0.8 && o.raw >= 0.5)) {
         finish = { x: inner ? (o.x + inner.x) / 2 : o.x, y: inner ? (o.y + inner.y) / 2 : o.y, r1: inner ? inner.r : null, r2: o.r, score: o.score };
         if (inner) controls = controls.filter((c) => c !== inner);
         break;
       }
     }
-    const lines = markLines(mask, dil, w, h, rStar);
+    const lines = markLines(mask, dil, w, h, rStar, 2.2);
+    const longLines = markLines(mask, dil, w, h, rStar, 2.9);              // a triangle's side (2.1 r*) must survive
     // a control circle never overlaps the finish's circles or the start triangle: what is found there is their own
     const nearSymbol = (c) => (finish && Math.hypot(c.x - finish.x, c.y - finish.y) < 1.2 * rStar);
     controls = controls.filter((c) => !nearSymbol(c));
@@ -51,28 +55,48 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
     for (const c of controls) c.touch = ringTouch(lines, w, h, c.x, c.y, c.r);
     const oneEnd = lw * (Math.max(6, 0.5 * rStar) - 2);                  // the line pixels one leg's end leaves in the ring
     // a perfect ring is a control whatever its lines look like (a photo breaks them); a lesser one needs a line
-    const reached = controls.filter((c) => c.touch >= Math.max(3, 0.2 * oneEnd) || (c.score >= 0.95 && c.raw >= 0.9));
+    const reached = controls.filter((c) => c.touch >= Math.max(3, 0.2 * oneEnd) || (c.score >= 0.75 && c.raw >= 0.5));
     if (reached.length >= 3) controls = reached;
-    start = findStart(mask, dil, lines, circles, w, h, rStar, [...controls, ...(finish ? [finish] : [])]);
+    start = findStart(mask, dil, longLines, lines, circles, w, h, rStar, [...controls, ...(finish ? [finish] : [])], debug ? (startCands = []) : null);
     if (start) controls = controls.filter((c) => Math.hypot(c.x - start.x, c.y - start.y) >= 1.2 * rStar);
   }
   const back = (p) => (p ? { ...p, x: p.x / s, y: p.y / s, r: p.r != null ? p.r / s : undefined } : null);
-  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back),
+  /** A ring of the control's size near an image point (within `radius` px): the best one, with its scores, or null.
+   *  For the page: once the trace is laid, its sharp turns say where to look for rings the first pass missed. */
+  const probe = (X, Y, radius) => {
+    if (!rStar) return null;
+    const x0 = X * s, y0 = Y * s, R = Math.max(4, radius * s);
+    let best = null;
+    for (let r = Math.max(4, Math.round(rStar) - 2); r <= Math.round(rStar) + 2; r++) {
+      for (let y = Math.round(y0 - R); y <= y0 + R; y += 2) for (let x = Math.round(x0 - R); x <= x0 + R; x += 2) {
+        const sc = ringScore(dil, w, h, x, y, r, 48);
+        if (!best || sc > best.score) best = { x, y, r, score: sc };
+      }
+    }
+    if (!best) return null;
+    const c = refineCircle(mask, dil, w, h, best.x, best.y, best.r);
+    return c ? { ...back(c) } : null;
+  };
+  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe,
     finish: finish && { ...back(finish), r1: finish.r1 == null ? null : finish.r1 / s, r2: finish.r2 / s },
     start: start && { ...back(start), R: start.R / s }, nCircles: circles.length, lw,
-    found: debug ? found.map(back) : undefined };
+    found: debug ? found.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };
 }
 
-/** The purple pixels: hue from violet (265°) to pink (338°), saturated, not dark. */
+/** The purple pixels: hue from violet to pink with green the weakest channel — saturated when light; when dark (the
+ *  magenta ink photographed in poor light comes out a dark plum), red and blue both clearly above green, which black
+ *  lines, brown contours and blue water never give. */
 function purpleMask(d, w, h) {
   const m = new Uint8Array(w * h);
   for (let i = 0, p = 0; i < m.length; i++, p += 4) {
     const r = d[p], gg = d[p + 1], b = d[p + 2];
     const max = r > b ? (r > gg ? r : gg) : (b > gg ? b : gg), min = r < b ? (r < gg ? r : gg) : (b < gg ? b : gg);
-    if (max < 60 || gg !== min || max - min < 0.3 * max) continue;      // dark, green not the weakest, or grey
+    if (max < 40 || gg !== min || max === min) continue;                  // black, grey, or green not the weakest
     const span = max - min;
     const hue = max === r ? 360 - (60 * (b - gg)) / span : 240 + (60 * (r - gg)) / span;
-    if (hue >= 265 && hue <= 338) m[i] = 1;
+    if (hue < 255 || hue > 345) continue;
+    if (max >= 60 && span >= 0.3 * max) m[i] = 1;                          // the overprint as printed
+    else if (max <= 150 && r - gg >= 12 && b - gg >= 6 && r - gg >= 0.2 * max) m[i] = 1;    // dark plum on a photo
   }
   return m;
 }
@@ -115,7 +139,8 @@ function refineCircle(mask, dil, w, h, x0, y0, r0) {
   c.outer = ringScore(dil, w, h, c.x, c.y, c.r * 1.45, 48);
   return c;
 }
-/** The overprint's line width: the median, over the purple pixels, of the shorter straight run through each. */
+/** The overprint's line width: the lower quartile, over the purple pixels, of the shorter straight run through
+ *  each (the median would follow a big title or a thick class name, not the course's lines). */
 function lineWidth(mask, w, h) {
   const runs = [];
   for (let i = 0; i < mask.length; i += 7) {
@@ -130,15 +155,33 @@ function lineWidth(mask, w, h) {
   }
   if (!runs.length) return 2;
   runs.sort((p, q) => p - q);
-  return runs[Math.floor(runs.length / 2)];
+  return Math.max(1, runs[Math.floor(runs.length / 4)]);
 }
-function findCircles(mask, dil, w, h) {
+/** The pixels of the mask thinner than 2k + 1: the mask less its opening by a (2k + 1) square. */
+function thinOnly(m, w, h, k) {
+  const er = new Uint8Array(w * h), out = m.slice();
+  for (let y = k; y < h - k; y++) for (let x = k; x < w - k; x++) {
+    if (!m[y * w + x]) continue;
+    let all = true;
+    for (let dy = -k; dy <= k && all; dy++) for (let dx = -k; dx <= k; dx++) if (!m[(y + dy) * w + x + dx]) { all = false; break; }
+    if (all) er[y * w + x] = 1;
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (!er[y * w + x]) continue;
+    for (let dy = -k - 1; dy <= k + 1; dy++) for (let dx = -k - 1; dx <= k + 1; dx++) {
+      const X = x + dx, Y = y + dy;
+      if (X >= 0 && Y >= 0 && X < w && Y < h) out[Y * w + X] = 0;
+    }
+  }
+  return out;
+}
+function findCircles(mask, dil, w, h, lw) {
   const px = [];
   for (let i = 0; i < mask.length; i++) if (mask[i]) px.push(i);
-  if (!px.length) return [];
+  if (!px.length) return { circles: [], rStar: null, found: [] };
   const step = Math.max(1, Math.ceil(px.length / 250000));            // a purple-tinted photo: a sample of its pixels
   const cw = Math.ceil(w / STRIDE), ch = Math.ceil(h / STRIDE), acc = new Uint16Array(cw * ch);
-  const found = [], lw = lineWidth(mask, w, h);
+  const found = [];
   for (const r of RADII) {
     if (r * 2 > Math.min(w, h)) break;
     if (r < 2.5 * lw) continue;                                      // a circle this small lies within a line
@@ -155,7 +198,7 @@ function findCircles(mask, dil, w, h) {
     }
     let top = 0;
     for (let i = 0; i < acc.length; i++) if (acc[i] > top) top = acc[i];
-    const floor = Math.max(4, top * 0.25), cands = [];
+    const floor = Math.max(4, top * 0.08), cands = [];
     for (let cy = 1; cy < ch - 1; cy++) for (let cx = 1; cx < cw - 1; cx++) {
       const k = cy * cw + cx, v = acc[k];
       if (v < floor) continue;
@@ -163,7 +206,7 @@ function findCircles(mask, dil, w, h) {
       cands.push([v, cx, cy]);
     }
     cands.sort((a, b) => b[0] - a[0]);
-    for (const [, cx, cy] of cands.slice(0, 100)) {
+    for (const [, cx, cy] of cands.slice(0, 160)) {
       const c = refineCircle(mask, dil, w, h, cx * STRIDE + STRIDE / 2, cy * STRIDE + STRIDE / 2, r);
       if (c && c.score >= 0.55 && c.raw >= 0.3) found.push(c);
     }
@@ -173,12 +216,12 @@ function findCircles(mask, dil, w, h) {
   // finish's inner circle) — never a small circle, which a thick purple patch would fill
   // a ring: nearly complete with a pixel of tolerance (a photo blurs the line), or crisp though partly hidden —
   // a small circle where a line meets a ring scores 0.6 to 0.7 tolerant and less raw; hollow inside, clear outside
-  const strict = (c) => ((c.score >= 0.8 && c.raw >= 0.3) || (c.score >= 0.55 && c.raw >= 0.6)) && c.inner <= 0.3 && c.outer <= 0.4;
+  const strict = (c) => ((c.score >= 0.8 && c.raw >= 0.3) || (c.score >= 0.55 && c.raw >= 0.5)) && c.inner <= 0.3 && c.outer <= 0.4;
   const kept = suppress(found.filter(strict));
   const rStar = controlRadius(kept);
-  if (!rStar) return { circles: kept, rStar, lw, found };
+  if (!rStar) return { circles: kept, rStar, found };
   const more = found.filter((c) => !strict(c) && c.score >= 0.85 && c.raw >= 0.6 && c.outer <= 0.6 && c.inner <= 0.75 && c.r >= 0.75 * rStar && c.r <= 1.8 * rStar);
-  return { circles: suppress([...kept, ...more]), rStar, lw, found };
+  return { circles: suppress([...kept, ...more]), rStar, found };
 }
 /** One circle per place: the best-scoring of those within 0.6 r of each other with radii within 15 % (the finish's
  *  two circles differ by 35 %). */
@@ -204,8 +247,8 @@ function controlRadius(circles) {
 }
 /** The leg lines' pixels: those a straight purple run of 2.2 r* passes through, in one of 12 directions (the run
  *  need not be centred on the pixel: the lines' ends count; a ring's longest chord and a triangle's side are shorter). */
-function markLines(mask, dil, w, h, rStar) {
-  const need = Math.max(12, Math.round(2.2 * rStar)), N = 12, lines = new Uint8Array(w * h), cs = [], sn = [];
+function markLines(mask, dil, w, h, rStar, times = 2.2) {
+  const need = Math.max(12, Math.round(times * rStar)), N = 12, lines = new Uint8Array(w * h), cs = [], sn = [];
   for (let d = 0; d < N; d++) { cs.push(Math.cos((Math.PI * d) / N)); sn.push(Math.sin((Math.PI * d) / N)); }
   const at = (x, y) => x >= 0 && y >= 0 && x < w && y < h && dil[y * w + x];
   const run = (x, y, d, sign, max) => {
@@ -236,9 +279,9 @@ function ringTouch(lines, w, h, cx, cy, r) {
   return n;
 }
 /** The start: among the purple blobs left once rings and lines are gone, the one that best matches a triangle. */
-function findStart(mask, dil, lines, circles, w, h, rStar, centres = []) {
+function findStart(mask, dil, longLines, lines, circles, w, h, rStar, centres = [], debugList = null) {
   const res = new Uint8Array(w * h);
-  for (let i = 0; i < mask.length; i++) res[i] = mask[i] && !lines[i] ? 1 : 0;
+  for (let i = 0; i < mask.length; i++) res[i] = mask[i] && !longLines[i] ? 1 : 0;
   for (const c of circles) {
     const band = Math.max(3, 0.3 * c.r), R = c.r + band;
     for (let y = Math.max(0, Math.floor(c.y - R)); y <= Math.min(h - 1, Math.ceil(c.y + R)); y++) {
@@ -249,6 +292,8 @@ function findStart(mask, dil, lines, circles, w, h, rStar, centres = []) {
   }
   const seen = new Uint8Array(w * h), stack = [];
   const minB = 1.2 * rStar, maxB = 3.6 * rStar;
+  // a triangle a leg line leaves counts for more than a stray one (the control descriptions' own start symbol)
+  const rate = (tri) => { tri.touch = ringTouch(lines, w, h, tri.x, tri.y, tri.R); return { ...tri, rank: tri.score + (tri.touch >= 3 ? 0.25 : 0) }; };
   let best = null;
   for (let i0 = 0; i0 < res.length; i0++) {
     if (!res[i0] || seen[i0]) continue;
@@ -267,13 +312,13 @@ function findStart(mask, dil, lines, circles, w, h, rStar, centres = []) {
     }
     const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
     if (bw < minB || bh < minB || bw > maxB || bh > maxB || cnt < 2 * rStar) continue;
-    const tri = triangleAt(dil, w, h, (x0 + x1) / 2, (y0 + y1) / 2, rStar);
-    if (tri && (!best || tri.score > best.score)) best = tri;
+    let tri = triangleAt(dil, w, h, (x0 + x1) / 2, (y0 + y1) / 2, rStar);
+    if (tri) { tri = rate(tri); if (debugList) debugList.push({ ...tri, bw, bh, cnt }); if (!best || tri.rank > best.rank) best = tri; }
   }
   // the start drawn in the finish's circles, or on a control: its sides are cut by the rings above, so try the centres
   for (const c of centres) {
-    const tri = triangleAt(dil, w, h, c.x, c.y, rStar);
-    if (tri && (!best || tri.score > best.score)) best = tri;
+    let tri = triangleAt(dil, w, h, c.x, c.y, rStar);
+    if (tri) { tri = rate(tri); if (!best || tri.rank > best.rank) best = tri; }
   }
   return best && best.score >= 0.62 ? best : null;
 }

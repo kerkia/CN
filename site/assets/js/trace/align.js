@@ -8,7 +8,7 @@
 // visitOrder: once the geometry is known, the controls' passing times (the closest approach), their visiting order,
 // the start's departure and the finish's arrival.
 
-import { toM, fitSimilarity, similarityFrom2, simplify, distanceField, spatialHash } from "./geom.js";
+import { toM, fitSimilarity, fitAffine, similarityFrom2, simplify, distanceField, spatialHash } from "./geom.js";
 
 const angleDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
@@ -85,6 +85,17 @@ export function alignTrack(track, pts, { rStar = null, northUp = true, tol = 20 
     if (res && (!best || res.inl > best.inl || (res.inl === best.inl && res.rms < best.rms))) best = res;
   }
   if (!best || best.inl < Math.max(3, Math.ceil(0.5 * pts.length))) return null;
+  // a photographed or scanned map is slightly skewed: with enough controls, an affine fit absorbs it
+  if (best.inl >= 6) {
+    const S = [], T = [];
+    for (const q of Q) { const [mx, my] = toM(best.f, q[0], q[1]); const k = hash.nearest(mx, my); if (k >= 0 && hash.dist(mx, my, k) <= tol) { S.push([track.x[k], track.y[k]]); T.push(q); } }
+    const g = S.length >= 6 ? fitAffine(S, T) : null;
+    if (g) {
+      let inl = 0;
+      for (const q of Q) { const [mx, my] = toM(g, q[0], q[1]); const k = hash.nearest(mx, my); if (k >= 0 && hash.dist(mx, my, k) <= tol) inl++; }
+      if (inl >= best.inl && g.rms <= best.rms) best = { f: g, inl, rms: g.rms };
+    }
+  }
   return { fit: best.f, inliers: best.inl, rms: best.rms, rotationDeg: (best.f.rotation * 180) / Math.PI, pxPerM: best.f.scale };
 }
 
@@ -110,26 +121,35 @@ export function visitOrder(track, fit, pts, tol = 20) {
     }
     return { d, out };
   });
-  const inlier = (i) => passes[i].out.some((p) => p.d <= tol);
+  const inlier = (i) => passes[i].out.some((p) => p.d <= 1.5 * tol);           // a hand-placed point on a photo is rough
+  // the heading change around a point (over ± 10 s), in degrees: a runner punching turns away, a passer-by does not
+  const turnAt = (k) => {
+    const a = Math.max(0, k - 10), b = Math.min(n - 1, k + 10);
+    if (a === k || b === k) return 0;
+    const h1 = Math.atan2(track.y[k] - track.y[a], track.x[k] - track.x[a]), h2 = Math.atan2(track.y[b] - track.y[k], track.x[b] - track.x[k]);
+    let d = Math.abs(h2 - h1); if (d > Math.PI) d = 2 * Math.PI - d;
+    return (d * 180) / Math.PI;
+  };
+  const cost = (p) => p.d - 0.15 * Math.min(120, turnAt(p.k));
   const controls = pts.map((p, i) => i).filter((i) => pts[i].kind === "control" && inlier(i))
-    .map((i) => { const best = passes[i].out.reduce((a, p) => (p.d < a.d ? p : a)); return { i, t: best.t, k: best.k, d: best.d }; })
+    .map((i) => { const best = passes[i].out.filter((p) => p.d <= 1.5 * tol).reduce((a, p) => (cost(p) < cost(a) ? p : a)); return { i, t: best.t, k: best.k, d: best.d }; })
     .sort((a, b) => a.t - b.t);
   const firstT = controls.length ? controls[0].t : Infinity, lastT = controls.length ? controls[controls.length - 1].t : -Infinity;
   let startT = null, finishT = null;
   const si = pts.findIndex((p) => p.kind === "start"), fi = pts.findIndex((p) => p.kind === "finish");
   if (si >= 0) {
-    const before = passes[si].out.filter((p) => p.d <= tol && p.t < firstT);
+    const before = passes[si].out.filter((p) => p.d <= 1.5 * tol && p.t < firstT);
     if (before.length) {
       let k = before[before.length - 1].k;
-      while (k + 1 < n && passes[si].d[k + 1] <= tol && track.t[k + 1] < firstT) k++;      // the departure
+      while (k + 1 < n && passes[si].d[k + 1] <= 1.5 * tol && track.t[k + 1] < firstT) k++;      // the departure
       startT = track.t[k];
     }
   }
   if (fi >= 0) {
-    const after = passes[fi].out.filter((p) => p.d <= tol && p.t >= lastT);
+    const after = passes[fi].out.filter((p) => p.d <= 1.5 * tol && p.t >= lastT);
     if (after.length) {
       let k = after[0].k;
-      while (k > 0 && passes[fi].d[k - 1] <= tol && track.t[k - 1] >= lastT) k--;          // the arrival
+      while (k > 0 && passes[fi].d[k - 1] <= 1.5 * tol && track.t[k - 1] >= lastT) k--;    // the arrival
       finishT = track.t[k];
     }
   }

@@ -23,7 +23,7 @@ import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
-import { fitSimilarity, toPx, toM, registerPoints } from "../trace/geom.js";
+import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
@@ -369,7 +369,7 @@ export async function render(main, { query = {} } = {}) {
       if (course.finish) pts.push({ kind: "finish", code: "", pos: [course.finish.x, course.finish.y] });
     }
     // the geometry
-    const located = pts.filter((p) => p.pos);
+    let located = pts.filter((p) => p.pos);
     let geometry = geoFit;
     auto = null;
     if (!geometry && located.length >= 3) {
@@ -380,6 +380,16 @@ export async function render(main, { query = {} } = {}) {
       geometry = auto?.fit || null;
       if (!auto) notes.push(t("an.st.noAlign"));
     } else if (!geometry) notes.push(t("an.st.fewPoints", { n: located.length }));
+    // the rings the first pass missed: where the trace turns sharply and no control is placed, look again
+    if (geometry && course?.probe && !iofCourse) {
+      const added = probeTurns(geometry, located);
+      if (added.length) {
+        pts.push(...added.filter((a) => !pts.some((p) => p.pos && Math.hypot(p.pos[0] - a.pos[0], p.pos[1] - a.pos[1]) < 1.5 * r)));
+        located = pts.filter((p) => p.pos);
+        if (!geoFit) { const again = alignTrack(track, ptsOf(located), { rStar: r, northUp, tol: TOL }); if (again && again.inliers > (auto?.inliers || 0)) { auto = again; geometry = again.fit; } }
+        notes.push(t("an.st.probed", { n: added.length }));
+      }
+    }
     // the targets: in the course's order (IOF), else in the trace's visiting order
     const saved = savedPositions();
     if (!geometry) {
@@ -396,9 +406,10 @@ export async function render(main, { query = {} } = {}) {
     // two circles passed within 15 s are not two controls (a leg takes longer): the second is a phantom
     let prevT = -Infinity;
     const visited = vo.order.map((i) => located[i]).map((p) => { const tp = passOf(p); const ok = tp == null || tp - prevT >= 15; if (ok && tp != null) prevT = tp; return ok ? p : { ...p, missed: true }; });
-    const ordered = iofCourse ? pts : [...pts.filter((p) => p.kind === "start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), ...pts.filter((p) => p.kind === "finish")];
+    const slot = (kind) => pts.find((p) => p.kind === kind) || { kind, code: "", pos: null };
+    const ordered = iofCourse ? pts : [slot("start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), slot("finish")];
     let seqTargets = ordered.map((p, i) => ({ i, kind: p.kind, code: p.code, pos: p.pos, tEst: passOf(p), tau: null, missed: !!p.missed,
-      label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : String(ordered.slice(0, i).filter((q) => q.kind === "control").length + 1) }));
+      label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : p.missed ? "?" : String(ordered.slice(0, i).filter((q) => q.kind === "control" && !q.missed).length + 1) }));
     const taus = officialTaus();
     if (taus) {
       // the official sequence, each control placed by the detected one that passed at its time
@@ -429,6 +440,22 @@ export async function render(main, { query = {} } = {}) {
     if (fit && !notes.length && targets.filter((g) => g.pos).length >= 3) steps(3);
   }
   const median = (xs) => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : 0; };
+  /** The trace's sharp turns (over 50°) with no control placed nearby, probed on the map for a ring: the rings found. */
+  function probeTurns(geometry, located) {
+    const r = course.r, V = simplify(track.x, track.y, track.n, 10), out = [];
+    const diff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+    for (let k = 1; k < V.length - 1 && out.length < 40; k++) {
+      const i = V[k], a = V[k - 1], b = V[k + 1];
+      const ang = Math.abs(diff(Math.atan2(track.y[i] - track.y[a], track.x[i] - track.x[a]), Math.atan2(track.y[b] - track.y[i], track.x[b] - track.x[i])));
+      if (ang < (50 * Math.PI) / 180) continue;
+      const [px, py] = toPx(geometry, track.x[i], track.y[i]);
+      if (px < 0 || py < 0 || px > map.width || py > map.height) continue;
+      if (located.some((p) => Math.hypot(p.pos[0] - px, p.pos[1] - py) < 2.5 * r) || out.some((p) => Math.hypot(p.pos[0] - px, p.pos[1] - py) < 2.5 * r)) continue;
+      const hit = course.probe(px, py, 2.5 * r);
+      if (hit && hit.score >= 0.45 && hit.raw >= 0.3 && hit.inner <= 0.35 && hit.outer <= 0.5) out.push({ kind: "control", code: "", pos: [hit.x, hit.y], probed: true });
+    }
+    return out;
+  }
   /** The official sequence of targets (start, the controls with their codes, the finish), positions from a saved set. */
   function officialTargets(saved) {
     const k = klass(), r = runner();
@@ -447,7 +474,7 @@ export async function render(main, { query = {} } = {}) {
 
   /** The geometry and the clock from the targets as they stand: the split times when published, else the trace. */
   function recompute({ geometry = null, vo = null } = {}) {
-    window.anDebug = () => ({ fit, offset, geoFit, targets, course, auto });        // for support, in the console
+    window.anDebug = () => ({ fit, offset, geoFit, targets, course, auto, view, mode, place: placeClick, manual: () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); } });   // for support, in the console
     const located = targets.filter((g) => g.pos && !g.missed);
     const taus = officialTaus();
     fit = null; offset = null; rmsM = null;
@@ -461,12 +488,22 @@ export async function render(main, { query = {} } = {}) {
     } else {
       if (geoFit) fit = geoFit;
       else if (geometry) fit = geometry;
+      else if (auto?.fit) fit = auto.fit;                                   // placed by hand: the geometry found stays
       else if (located.length >= 3) { auto = alignTrack(track, ptsOf(located), { rStar: course?.r || null, northUp, tol: TOL }); fit = auto?.fit || null; }
       if (fit) {
         const v = visitOrder(track, fit, ptsOf(located), TOL);
         located.forEach((g, i) => { g.tEst = v.pass.has(i) ? v.pass.get(i) : null; });
+        // the controls in the trace's visiting order, the unreached ones after, then renumbered
+        const ctrls = targets.filter((g) => g.kind === "control");
+        const reached = ctrls.filter((g) => g.pos && g.tEst != null && !g.missed).sort((a, b) => a.tEst - b.tEst), rest = ctrls.filter((g) => !reached.includes(g));
+        targets = [...targets.filter((g) => g.kind === "start"), ...reached, ...rest, ...targets.filter((g) => g.kind === "finish")];
+        let n = 0;
+        targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = reached.includes(g) ? String(++n) : g.pos ? "?" : "+"; });
         const tot = totalOfficial();
-        offset = v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (located.find((g) => g.kind === "control" && g.tEst != null)?.tEst ?? null);
+        const firstPass = located.find((g) => g.kind === "control" && g.tEst != null)?.tEst ?? null;
+        // no start symbol, no published time: the trace's own beginning when the first control comes within 10 minutes
+        // (the watch started at the start), else the first control's pass
+        offset = v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass);
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
@@ -499,7 +536,7 @@ export async function render(main, { query = {} } = {}) {
       mine = legsOf(r);
       const ratios = mine.map((v, i) => (v != null && best[i] ? v / best[i] : null)).filter((x) => x != null).sort((a, b) => a - b);
       med = ratios.length ? ratios[Math.floor((ratios.length - 1) / 2)] : null;
-    } else mine = times.map((v, i) => (i && v != null && times[i - 1] != null ? v - times[i - 1] : null));
+    } else mine = times.slice(1).map((v, i) => (v != null && times[i] != null ? v - times[i] : null));     // per leg
     legs = [];
     for (let i = 0; i < n; i++) {
       const from = targets[i], to = targets[i + 1], t0 = times[i], t1 = times[i + 1];
@@ -539,6 +576,7 @@ export async function render(main, { query = {} } = {}) {
         <b>${g.label}</b>${g.code ? html`<span class="muted">${g.code}</span>` : html`<span></span>`}<span class="num">${g.tau != null ? clock(g.tau) : timeOf(g) != null ? html`<span class="muted">~${clock(timeOf(g))}</span>` : "—"}</span>
         <span class="an-mark">${g.pos ? "✓" : g.i === cur && mode === "manual" ? "▶" : ""}</span></button>`)}</div>
       ${mode === "manual" ? html`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">
+        ${taus ? "" : html`<button type="button" class="btn btn-sm" id="an-add">${t("an.cal.add")}</button>`}
         <button type="button" class="btn btn-sm" id="an-skip">${t("an.cal.skip")}</button>
         <button type="button" class="btn btn-sm" id="an-undo">${t("an.cal.undo")}</button>
         <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button></div>` : ""}
@@ -552,6 +590,14 @@ export async function render(main, { query = {} } = {}) {
       <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label>`;
     $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); if (mode !== "manual") { mode = "manual"; } side(); draw(); }));
     $("#an-skip")?.addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });
+    $("#an-add")?.addEventListener("click", () => {
+      // a new control before the finish (or at the end), then the controls renumbered
+      const fi = targets.findIndex((g) => g.kind === "finish"), at = fi >= 0 ? fi : targets.length;
+      targets.splice(at, 0, { kind: "control", label: "", code: "", tau: null, tEst: null, pos: null });
+      let n = 0;
+      targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = String(++n); });
+      cur = at; side(); draw();
+    });
     $("#an-undo")?.addEventListener("click", () => {
       const done = targets.filter((g) => g.pos).map((g) => g.i);
       if (done.length) { const lastI = Math.max(...done); targets[lastI].pos = null; targets[lastI].tEst = null; cur = lastI; savePositions(); recompute(); side(); draw(); }
@@ -570,6 +616,10 @@ export async function render(main, { query = {} } = {}) {
       const all = [...course.controls, ...(course.start ? [course.start] : []), ...(course.finish ? [course.finish] : [])];
       const near = all.map((c) => [Math.hypot(c.x - px, c.y - py), c]).sort((a, b) => a[0] - b[0])[0];
       if (near && near[0] <= 1.2 * course.r) pos = [near[1].x, near[1].y];
+      else if (course.probe && targets[cur].kind === "control") {                  // a ring the first pass missed, right here?
+        const hit = course.probe(px, py, 1.2 * course.r);
+        if (hit && hit.score >= 0.4 && hit.raw >= 0.25 && hit.inner <= 0.4) pos = [hit.x, hit.y];
+      }
     }
     targets[cur].pos = pos; targets[cur].missed = false;
     cur = nextTarget(cur + 1);
