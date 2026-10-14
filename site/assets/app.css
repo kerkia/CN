@@ -431,8 +431,10 @@ select { padding-right: 28px; }
 .btn-sm { height: 28px; padding: 0 10px; font-size: 13px; }
 
 /* ---------------------------------------------------------------- tables */
-.table-wrap {
-  overflow-x: auto;
+/* every box a table scrolls in — .table-wrap (and dataTable's .table-scroll), the runner's history (.scroll-box), the
+   agenda's list, the Courses tree — looks the same (owner, 2026-10-14): the shadows and the scrollbar below */
+.table-wrap { overflow-x: auto; }
+.table-wrap, .scroll-box, .agenda-table, .tree {
   /* a shadow at an edge while the table goes on that way: the "local" covers scroll with the table and hide it at
      the ends; the "scroll" shadows stay put */
   background:
@@ -448,10 +450,10 @@ select { padding-right: 28px; }
 .table-wrap { max-height: var(--table-max, calc(100vh - 110px)); overflow-y: auto; }
 /* its scrollbar always shown (owner, 2026-10-14): a styled scrollbar is a classic one, not the overlay kind Windows and
    macOS hide until the pointer moves; the standard properties for Firefox and Chrome, the WebKit ones for Safari */
-.table-wrap { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 35%, transparent) transparent; }
-.table-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
-.table-wrap::-webkit-scrollbar-track { background: transparent; }
-.table-wrap::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 32%, transparent); border-radius: 5px;
+.table-wrap, .scroll-box, .agenda-table, .tree { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 35%, transparent) transparent; }
+:is(.table-wrap, .scroll-box, .agenda-table, .tree)::-webkit-scrollbar { width: 10px; height: 10px; }
+:is(.table-wrap, .scroll-box, .agenda-table, .tree)::-webkit-scrollbar-track { background: transparent; }
+:is(.table-wrap, .scroll-box, .agenda-table, .tree)::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 32%, transparent); border-radius: 5px;
   border: 2px solid transparent; background-clip: padding-box; }
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
 /* the results tables (Courses, Récemment, En direct): a score and its gap to the runner's CN, aligned */
