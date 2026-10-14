@@ -36,7 +36,8 @@ const CAL_KEY = "ocn.an.cal";                          // localStorage: the posi
 const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 const MAX_SIDE = 4200;                                 // a PDF page rendered at most this wide or high
-const TRACE = "#c8102e";                               // the trace's own colour: a red the map's colours never use
+const TRACE = "#3b0764";                               // the trace's default colour: a dark purple (owner, 2026-10-14)
+const TRACE_PRESETS = ["#3b0764", "#c8102e", "#0b3d91", "#111111", "#ff6a00"];
 const CHANNEL_LABEL = { hr: "an.ch.hr", cad: "an.ch.cad", ele: "an.ch.ele", temp: "an.ch.temp", pw: "an.ch.pw" };
 const CHANNEL_UNIT = { hr: "bpm", cad: "", ele: "m", temp: "°C", pw: "W" };
 const CHANNEL_COLOUR = { hr: "#d6336c", cad: "#1c80bb", ele: "#8a5a2b", temp: "#2a9d8f", pw: "#6f42c1" };
@@ -197,11 +198,15 @@ export async function render(main, { query = {} } = {}) {
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = prefs.colour === "speed" ? "speed" : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
-  let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;              // the trace's thickness, × the base
+  let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
+  let traceColour = /^#[0-9a-f]{6}$/i.test(prefs.traceColour || "") ? prefs.traceColour : TRACE;
   let chans = new Set(Array.isArray(prefs.chans) ? prefs.chans : ["pace", "hr"]);        // the curves under the map
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, chans: [...chans], mapAlpha, traceAlpha })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, chans: [...chans], mapAlpha, traceAlpha, traceColour })); } catch (e) { /* not kept */ } };
+  /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
+   *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
+  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
   let vLo = 0, vHi = 1;                               // the pace colours' range (10-90 % of the trace's speeds)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
@@ -373,7 +378,7 @@ export async function render(main, { query = {} } = {}) {
     fitView();
     prepare();
   }
-  const hideResults = () => { $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-hud").textContent = ""; showPanels(true); };
+  const hideResults = () => { $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-hud").textContent = ""; showPanels(true); document.body.classList.remove("an-theatre"); };
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
   function showPanels(on) {
     $("#an-pick").hidden = !on; $("#an-files").hidden = !on;
@@ -381,10 +386,10 @@ export async function render(main, { query = {} } = {}) {
     brief.hidden = on;
     if (on) return;
     const r = runner(), rc = races.find((x) => x.key === key);
-    brief.innerHTML = html`<span><b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}</span>
-      <span class="muted">${[files.map?.name, files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>
-      <button type="button" class="btn btn-sm" id="an-brief-edit">${t("an.brief.edit")}</button>`;
-    $("#an-brief-edit").addEventListener("click", () => { const open = $("#an-pick").hidden; $("#an-pick").hidden = !open; $("#an-files").hidden = !open; });
+    brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit">← ${t("an.brief.edit")}</button>
+      <span><b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}</span>
+      <span class="muted">${[files.map?.name, files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
+    $("#an-brief-edit").addEventListener("click", leavePlayback);
   }
   const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
@@ -591,7 +596,7 @@ export async function render(main, { query = {} } = {}) {
 
   /** The geometry and the clock from the targets as they stand: the split times when published, else the trace. */
   function recompute({ geometry = null, vo = null } = {}) {
-    window.anDebug = () => ({ fit, offset, geoFit, targets, course, auto, view, mode, place: placeClick, manual: () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); } });   // for support, in the console
+    window.anDebug = () => ({ fit, offset, geoFit, targets, course, auto, view, mode, legs, total, place: placeClick, manual: () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); } });   // for support, in the console
     const located = targets.filter((g) => g.pos && !g.missed);
     const taus = officialTaus();
     fit = null; offset = null; rmsM = null;
@@ -623,7 +628,8 @@ export async function render(main, { query = {} } = {}) {
         // the published start time first (the clock the results keep); else the start symbol's departure; else the
         // finish's arrival less the published total time; else the trace's own beginning when the first control comes
         // within 10 minutes (the watch started at the start), else the first control's pass
-        const published = guessOffset();
+        let published = guessOffset();
+        if (published != null && (runner()?.status === "dns" || (firstPass != null && (firstPass < published || firstPass - published > 1800)))) published = null;
         offset = published ?? v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass);
         rmsM = auto ? auto.rms / fit.scale : null;
       }
@@ -757,30 +763,36 @@ export async function render(main, { query = {} } = {}) {
     savePositions(true);
     steps(4);
     showPanels(false);
+    document.body.classList.add("an-theatre");           // the site's menus give way to the map (owner, 2026-10-14)
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
-    $("#an-side").innerHTML = html`<div class="an-side-title">${t("an.play.title")}</div>
+    const known = sequenceKnown();
+    $("#an-side").innerHTML = html`
       <div class="an-transport">
         <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
         <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
         <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
-        <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select></div>
-      <input type="range" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" style="width:100%;margin:8px 0">
-      <div class="tiles tiles-compact an-tiles">
-        <div class="tile"><div class="tile-label">${t("an.time")}</div><div class="tile-value" id="an-t">0:00</div><div class="tile-sub" id="an-t-sub"></div></div>
-        <div class="tile"><div class="tile-label">${t("an.leg")}</div><div class="tile-value" id="an-leg">—</div><div class="tile-sub" id="an-leg-sub"></div></div>
-        <div class="tile"><div class="tile-label">${t("an.pace")}</div><div class="tile-value" id="an-pace">—</div><div class="tile-sub">${t("an.pace.hint")}</div></div>
-        <div class="tile"><div class="tile-label">${t("an.dist")}</div><div class="tile-value" id="an-dist">0 m</div><div class="tile-sub" id="an-dist-sub"></div></div>
-        ${avail.filter((c) => c !== "ele").map((c) => html`<div class="tile"><div class="tile-label">${t(CHANNEL_LABEL[c])}</div><div class="tile-value" id="an-ch-${c}">—</div><div class="tile-sub">${CHANNEL_UNIT[c]}</div></div>`)}</div>
-      <div class="an-opts">
-        <label><input type="checkbox" id="an-follow" ${raw(follow ? "checked" : "")}> ${t("an.follow")}</label>
-        <label><input type="checkbox" id="an-marks" ${raw(marks ? "checked" : "")}> ${t("an.marks")}</label>
-        <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
-        <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
-        <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}" style="width:110px"></label>
-        <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}" style="width:110px"></label>
-        <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label></div>
-      <div class="an-fitbox">${rmsM != null ? html`<div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(rmsM)} m</b></div>` : ""}${geoHow ? html`<div class="muted">${t("an.st.geo")} ${geoHow}</div>` : ""}</div>
-      <button type="button" class="btn btn-sm" id="an-again" style="margin-top:8px">${t("an.cal.again")}</button>`;
+        <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
+        <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button></div>
+      <input type="range" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" style="width:100%;margin:6px 0 4px">
+      <dl class="an-stats">
+        <dt>${t("an.time")}</dt><dd><b id="an-t">0:00</b> <span class="muted" id="an-t-sub"></span></dd>
+        <dt>${t(known ? "an.leg" : "an.legNear")}</dt><dd><b id="an-leg">—</b> <span class="muted" id="an-leg-sub"></span></dd>
+        <dt>${t("an.pace")}</dt><dd><b id="an-pace">—</b> <span class="muted">${t("an.pace.short")}</span></dd>
+        <dt>${t("an.dist")}</dt><dd><b id="an-dist">0 m</b> <span class="muted" id="an-dist-sub"></span></dd>
+        ${avail.filter((c) => c !== "ele").map((c) => html`<dt>${t(CHANNEL_LABEL[c])}</dt><dd><b id="an-ch-${c}">—</b> <span class="muted">${CHANNEL_UNIT[c]}</span></dd>`)}
+      </dl>
+      <details class="an-settings"><summary>${t("an.display")}</summary>
+        <div class="an-opts">
+          <label><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
+          <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
+          <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
+          <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>
+          <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
+          <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
+          <label><input type="checkbox" id="an-marks" ${raw(marks ? "checked" : "")}> ${t("an.marks")}</label>
+        </div></details>
+      <div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html` · ${t("an.st.geo")} ${geoHow}` : ""}
+        <button type="button" class="btn btn-sm" id="an-again" style="margin-left:6px">${t("an.cal.again")}</button></div>`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
     $("#an-next").addEventListener("click", () => jumpLeg(1));
@@ -789,38 +801,36 @@ export async function render(main, { query = {} } = {}) {
     slider.addEventListener("input", (e) => { seek(Number(e.target.value)); });
     slider.addEventListener("pointerdown", () => { scrubbing = true; });
     slider.addEventListener("pointerup", () => { scrubbing = false; });
-    $("#an-follow").addEventListener("change", (e) => { follow = e.target.checked; savePrefs(); draw(); });
+    $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
     $("#an-marks").addEventListener("change", (e) => { marks = e.target.checked; draw(); });
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; savePrefs(); draw(); });
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-tail").addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); draw(); });
-    $("#an-again").addEventListener("click", () => { stop(); calibrated = false; marks = true; mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; hideResults(); side(); draw(); });
-    // the curves under the map: the pace and the file's channels, any number of them at once
+    const setColour = (c) => { traceColour = c; savePrefs(); $$(".an-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.colour === c))); $("#an-colour-pick").value = c; draw(); drawChips(); };
+    $$(".an-swatch").forEach((b) => b.addEventListener("click", () => setColour(b.dataset.colour)));
+    $("#an-colour-pick").addEventListener("input", (e) => setColour(e.target.value));
+    $("#an-again").addEventListener("click", leavePlayback);
+    // the curves under the map: the pace and the file's channels, any number of them, one above the other
     const chipsBox = $("#an-chips");
     const drawChips = () => {
-      chipsBox.innerHTML = html`${["pace", ...avail].map((c) => html`<button type="button" class="an-chip" data-ch="${c}" aria-pressed="${chans.has(c)}" style="--chip:${c === "pace" ? TRACE : CHANNEL_COLOUR[c]}">${t(c === "pace" ? "an.ch.pace" : CHANNEL_LABEL[c])}</button>`)}`;
-      $$("[data-ch]", chipsBox).forEach((b) => b.addEventListener("click", () => { const c = b.dataset.ch; if (chans.has(c)) chans.delete(c); else chans.add(c); savePrefs(); drawChips(); drawStrip(); }));
+      chipsBox.innerHTML = html`${["pace", ...avail].map((c) => html`<button type="button" class="an-chip" data-ch="${c}" aria-pressed="${chans.has(c)}" style="--chip:${c === "pace" ? traceColour : CHANNEL_COLOUR[c]}">${t(c === "pace" ? "an.ch.pace" : CHANNEL_LABEL[c])}</button>`)}`;
+      $$("[data-ch]", chipsBox).forEach((b) => b.addEventListener("click", () => { const c = b.dataset.ch; if (chans.has(c)) chans.delete(c); else chans.add(c); savePrefs(); drawChips(); sizeStrip(); drawStrip(); }));
     };
     drawChips();
     $("#an-strip-card").hidden = false;
-    legsTable();
+    if (known) legsTable(); else { $("#an-legs").hidden = true; $("#an-legs").innerHTML = ""; }
     sizeStrip();
-    fitTrace();
+    if (legs[0]?.t1 != null) zoomTo(legs[0], 2.4); else fitTrace();    // the first leg, with room around it
     seek(0);
   }
-  /** The view on the race: the whole trace, as large as the box allows. */
-  function fitTrace() {
-    if (!fit || offset == null || !pxs) return;
-    const a = indexAt(track, offset), b = indexAt(track, offset + total);
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
-    const { w, h } = box();
-    if (!w || !h || x1 <= x0) return;
-    const k = Math.min(w / (x1 - x0 + 60), h / (y1 - y0 + 60), 8);
-    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+  /** Back from the playback to the calibration and the files. */
+  function leavePlayback() {
+    stop(); calibrated = false; marks = true; mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0;
+    hideResults(); side(); draw();
   }
+  function setFollow(on) { follow = on; savePrefs(); const b = $("#an-follow"); if (b) b.setAttribute("aria-pressed", String(on)); }
   const legAt = (s) => { let j = -1; for (let i = 0; i < legs.length; i++) if (legs[i].t0 != null && s >= legs[i].t0) j = i; return j; };
   function jumpLeg(dir) {
     const j = legAt(tNow);
@@ -863,7 +873,7 @@ export async function render(main, { query = {} } = {}) {
     const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
     set("#an-t", clock(tNow)); set("#an-t-sub", total ? `${t("an.of")} ${clock(total)}` : "");
     set("#an-leg", leg ? `${leg.n}${leg.code ? ` (${leg.code})` : ""}` : "—");
-    set("#an-leg-sub", leg ? `${leg.time != null ? `${leg.estimated ? "~" : ""}${clock(leg.time)}` : ""}${leg.dist != null ? ` · ${fmt(leg.dist)} m` : ""}${leg.rank ? ` · ${t("an.rankShort")} ${leg.rank}` : ""}` : "");
+    set("#an-leg-sub", leg ? `${leg.time != null ? `${leg.estimated ? "~" : ""}${clock(leg.time)}` : ""}${leg.dist != null ? ` · ${fmt(leg.dist)} m` : ""}${leg.rank ? ` · ${t("an.rankShort")} ${leg.rank}` : ""}`.replace(/^ · /, "") : "");
     const win = Math.min(30, tNow);
     set("#an-pace", win >= 5 ? pace((cumAt(track, s) - cumAt(track, s - win)) / win) : "—");
     const d = cumAt(track, s) - cumAt(track, offset);
@@ -905,15 +915,15 @@ export async function render(main, { query = {} } = {}) {
     }));
   }
   /** The view on one leg: its trace, with a margin. */
-  function zoomTo(l) {
+  function zoomTo(l, margin = 1.3) {
     if (!fit || l.t1 == null) return;
     const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + l.t1);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
     const { w, h } = box();
-    const k = Math.min(w / Math.max(40, x1 - x0 + 80), h / Math.max(40, y1 - y0 + 80), 8);
+    const k = Math.min(w / Math.max(60, (x1 - x0) * margin + 40), h / Math.max(60, (y1 - y0) * margin + 40), 6);
     view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
-    follow = false; const f = $("#an-follow"); if (f) f.checked = false;
+    setFollow(false);
   }
 
   // ---- the map canvas: pan, zoom, click
@@ -955,7 +965,7 @@ export async function render(main, { query = {} } = {}) {
     } else if (drag) {
       const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
       if (Math.hypot(dx, dy) > 4) drag.moved = true;
-      if (drag.moved) { view = { ...view, ox: drag.ox + dx, oy: drag.oy + dy }; if (follow && playing) { follow = false; const f = $("#an-follow"); if (f) f.checked = false; } draw(); }
+      if (drag.moved) { view = { ...view, ox: drag.ox + dx, oy: drag.oy + dy }; if (follow && playing) setFollow(false); draw(); }
     }
   });
   const up = (e) => {
@@ -970,7 +980,7 @@ export async function render(main, { query = {} } = {}) {
   canvas.addEventListener("dblclick", (e) => zoomBy(1.6, e.offsetX, e.offsetY));
   $("#an-zin").addEventListener("click", () => zoomBy(1.4));
   $("#an-zout").addEventListener("click", () => zoomBy(1 / 1.4));
-  $("#an-fit").addEventListener("click", () => { if (!map) return; if (calibrated) { fitTrace(); follow = false; const f = $("#an-follow"); if (f) f.checked = false; } else fitView(); draw(); });
+  $("#an-fit").addEventListener("click", () => { if (!map) return; if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
   $("#an-map").addEventListener("click", () => { if (map) { fitView(); draw(); } });
   const ro = new ResizeObserver(() => { if (map) { size(); sizeStrip(); draw(); drawStrip(); } });
   ro.observe(canvas);
@@ -1003,20 +1013,24 @@ export async function render(main, { query = {} } = {}) {
     if (fit && fullPath && offset != null) {
       const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
       // the whole trace, faint; the part run so far, full; the tail, thicker
-      ctx.globalAlpha = (calibrated ? 0.28 : 0.85) * ta; ctx.strokeStyle = TRACE; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath);
+      const bySpeed = calibrated && colour === "speed";
+      if (!bySpeed) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
       ctx.globalAlpha = ta;
       if (calibrated) {
         const iTail = tail ? Math.max(i0, indexAt(track, s - tail)) : i0;
-        if (colour === "speed") {
+        if (bySpeed) {                                   // the whole race coloured by pace, the part to come faint
           if (!vHi || vHi === 1) paceScale();
-          for (let i = i0 + 1; i <= iNow; i++) {
-            ctx.strokeStyle = paceColour(track.v[i]); ctx.lineWidth = lw((i > iTail ? 5 : 3) * width);
+          const iEnd = indexAt(track, offset + total);
+          for (let i = i0 + 1; i <= iEnd; i++) {
+            ctx.globalAlpha = (i <= iNow ? 1 : 0.45) * ta;
+            ctx.strokeStyle = paceColour(track.v[i]); ctx.lineWidth = lw((i > iTail && i <= iNow ? 5 : 3) * width);
             ctx.beginPath(); ctx.moveTo(pxs[i - 1], pys[i - 1]); ctx.lineTo(pxs[i], pys[i]); ctx.stroke();
           }
+          ctx.globalAlpha = ta;
         } else {
           const part = (from, to, width) => { if (to <= from) return; ctx.lineWidth = lw(width); ctx.beginPath(); ctx.moveTo(pxs[from], pys[from]);
             for (let i = from + 1; i <= to; i++) ctx.lineTo(pxs[i], pys[i]); ctx.stroke(); };
-          ctx.strokeStyle = TRACE;
+          ctx.strokeStyle = traceColour;
           part(i0, Math.min(iNow, iTail), 3 * width);
           part(iTail, iNow, 5 * width);
         }
@@ -1048,49 +1062,60 @@ export async function render(main, { query = {} } = {}) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  // ---- the pace and the channels along the race
+  // ---- the curves under the map: one row per curve chosen, the same time axis, the controls' passes when the sequence is known
+  const ROW = 56, TOP = 14;
+  const stripRows = () => ["pace", ...Object.keys(CHANNEL_COLOUR)].filter((c) => chans.has(c) && (c === "pace" || track.ch[c]));
   function sizeStrip() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1, rows = Math.max(1, stripRows().length);
+    strip.style.height = `${TOP + rows * ROW + 4}px`;
     strip.width = Math.round(strip.clientWidth * dpr); strip.height = Math.round(strip.clientHeight * dpr);
+    document.documentElement.style.setProperty("--an-strip", `${TOP + rows * ROW + 4}px`);
   }
   function drawStrip() {
     if (!calibrated || !total) return;
     const dpr = window.devicePixelRatio || 1, w = strip.clientWidth, h = strip.clientHeight;
     const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink-3").trim() || "#888";
+    const grid = getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#ddd";
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     sctx.clearRect(0, 0, w, h);
     if (!vHi || vHi === 1) paceScale();
-    const X = (s) => (s / total) * w, top = 14, bottom = h - 4;
-    for (const l of legs) if (l.mistake && l.t1 != null) { sctx.fillStyle = "rgba(198,40,40,0.12)"; sctx.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
-    const step = Math.max(1, Math.floor(total / w));
-    if (chans.has("pace")) {                           // the pace as an area, fast up
-      sctx.beginPath(); sctx.moveTo(0, bottom);
-      for (let s = 0; s <= total; s += step) {
-        const v = speedAt(track, offset + s), y = bottom - ((Math.max(vLo * 0.7, Math.min(vHi * 1.15, v)) - vLo * 0.7) / (vHi * 1.15 - vLo * 0.7 || 1)) * (bottom - top);
-        sctx.lineTo(X(s), y);
+    const X = (s) => (s / total) * w, step = Math.max(1, Math.floor(total / w));
+    const i0 = indexAt(track, offset), i1 = indexAt(track, offset + total), known = sequenceKnown();
+    const rows = stripRows();
+    rows.forEach((c, r) => {
+      const top = TOP + r * ROW + 2, bottom = top + ROW - 6;
+      if (r) { sctx.strokeStyle = grid; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(0, top - 3); sctx.lineTo(w, top - 3); sctx.stroke(); }
+      if (known) for (const l of legs) if (l.mistake && l.t1 != null) { sctx.fillStyle = "rgba(198,40,40,0.12)"; sctx.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
+      let label, range;
+      if (c === "pace") {
+        sctx.beginPath(); sctx.moveTo(0, bottom);
+        for (let s = 0; s <= total; s += step) {
+          const v = speedAt(track, offset + s), y = bottom - ((Math.max(vLo * 0.7, Math.min(vHi * 1.15, v)) - vLo * 0.7) / (vHi * 1.15 - vLo * 0.7 || 1)) * (bottom - top);
+          sctx.lineTo(X(s), y);
+        }
+        sctx.lineTo(w, bottom); sctx.closePath();
+        sctx.fillStyle = traceColour; sctx.globalAlpha = 0.3; sctx.fill(); sctx.globalAlpha = 1;
+        label = t("an.ch.pace"); range = `${pace(vHi)} – ${pace(vLo)}`;
+        sctx.fillStyle = traceColour;
+      } else {
+        const ch = track.ch[c];
+        let lo = Infinity, hi = -Infinity;
+        for (let i = i0; i <= i1; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+        if (hi > lo) {
+          sctx.beginPath();
+          for (let s = 0; s <= total; s += step) { const v = valueAt(track, c, offset + s), y = bottom - ((v - lo) / (hi - lo)) * (bottom - top - 4) - 2; if (s) sctx.lineTo(X(s), y); else sctx.moveTo(X(s), y); }
+          sctx.strokeStyle = CHANNEL_COLOUR[c]; sctx.lineWidth = 1.6; sctx.stroke();
+        }
+        const dec = c === "temp" ? 1 : 0;
+        label = t(CHANNEL_LABEL[c]); range = hi > lo ? `${fmt(lo, dec)} – ${fmt(hi, dec)} ${CHANNEL_UNIT[c]}` : "";
+        sctx.fillStyle = CHANNEL_COLOUR[c];
       }
-      sctx.lineTo(w, bottom); sctx.closePath();
-      sctx.fillStyle = "rgba(200,16,46,0.25)"; sctx.fill();
-    }
-    // the channels chosen, each a line on its own scale, its range written at the right in its colour
-    const i0 = indexAt(track, offset), i1 = indexAt(track, offset + total);
-    let col = 0;
-    for (const c of Object.keys(CHANNEL_COLOUR)) {
-      const ch = chans.has(c) && track.ch[c];
-      if (!ch) continue;
-      let lo = Infinity, hi = -Infinity;
-      for (let i = i0; i <= i1; i++) { const v = ch[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
-      if (!(hi > lo)) continue;
-      sctx.beginPath();
-      for (let s = 0; s <= total; s += step) { const v = valueAt(track, c, offset + s), y = bottom - ((v - lo) / (hi - lo)) * (bottom - top) * 0.9 - 2; if (s) sctx.lineTo(X(s), y); else sctx.moveTo(X(s), y); }
-      sctx.strokeStyle = CHANNEL_COLOUR[c]; sctx.lineWidth = 1.6; sctx.stroke();
-      sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "right"; sctx.fillStyle = CHANNEL_COLOUR[c];
-      const dec = c === "temp" ? 1 : 0, x = w - 3 - col * 58;
-      sctx.fillText(`${fmt(hi, dec)} ${CHANNEL_UNIT[c]}`, x, top + 8); sctx.fillText(`${fmt(lo, dec)}`, x, bottom - 3);
-      col++;
-    }
+      sctx.font = "600 10px system-ui, sans-serif"; sctx.textAlign = "left"; sctx.fillText(label, 4, top + 9);
+      sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "right"; sctx.fillText(range, w - 4, top + 9);
+    });
+    // the controls' passes, numbered when the sequence is known
     sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "center"; sctx.fillStyle = ink; sctx.strokeStyle = ink; sctx.lineWidth = 1;
-    targets.forEach((g, i) => { const tt = timeOf(g); if (tt == null || !i) return; const x = X(tt); sctx.beginPath(); sctx.moveTo(x, top); sctx.lineTo(x, bottom); sctx.globalAlpha = 0.5; sctx.stroke(); sctx.globalAlpha = 1; sctx.fillText(g.label, x, 7); });
+    targets.forEach((g, i) => { const tt = timeOf(g); if (tt == null || !i) return; const x = X(tt); sctx.globalAlpha = 0.45; sctx.beginPath(); sctx.moveTo(x, TOP); sctx.lineTo(x, h - 2); sctx.stroke(); sctx.globalAlpha = 1; if (known) sctx.fillText(g.label, x, 9); });
     sctx.strokeStyle = "#e8641c"; sctx.lineWidth = 2; sctx.beginPath(); sctx.moveTo(X(tNow), 0); sctx.lineTo(X(tNow), h); sctx.stroke();
   }
   const scrub = (e) => { if (!calibrated) return; stop(); seek((e.offsetX / strip.clientWidth) * total); };

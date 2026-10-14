@@ -1204,8 +1204,25 @@ table.data tbody tr.found .name { font-weight: 700; }
 .an-chip::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--chip); opacity: 0.5; vertical-align: 0; }
 .an-chip[aria-pressed="true"] { color: var(--ink); border-color: var(--chip); background: color-mix(in srgb, var(--chip) 12%, var(--surface)); }
 .an-chip[aria-pressed="true"]::before { opacity: 1; }
-.an-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; margin: 0 2px 10px; }
-.an-brief .btn { margin-left: auto; }
+.an-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; margin: 0 2px 8px; }
+/* the theatre: while the race plays, the site's menus give way to the map, the curves and the controls */
+body.an-theatre .nav, body.an-theatre .subbar, body.an-theatre #footer, body.an-theatre .dep-steps, body.an-theatre .page-head { display: none !important; }
+body.an-theatre .page { padding-top: 8px; }
+body.an-theatre .an-layout { margin-top: 0; }
+body.an-theatre .an-map, body.an-theatre .an-side { height: calc(100vh - 252px - var(--an-strip, 80px)); max-height: none; min-height: 300px; }
+body.an-theatre .an-strip-card { margin-top: 10px; padding: 6px 10px 4px; }
+body.an-theatre .an-brief { margin-bottom: 6px; }
+.an-transport select { margin-left: 0; }
+.an-stats { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 4px 0 6px; font-size: 13px; }
+.an-stats dt { color: var(--ink-3); } .an-stats dd { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-settings { font-size: 13px; } .an-settings summary { cursor: pointer; color: var(--ink-2); margin-bottom: 4px; }
+.an-settings .an-opts input[type="range"] { width: 100px; }
+.an-swatches { display: flex; align-items: center; gap: 4px; }
+.an-swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.an-swatch[aria-pressed="true"] { border-color: var(--ink); }
+.an-swatches input[type="color"] { width: 24px; height: 22px; padding: 0; border: 1px solid var(--border-strong); border-radius: 5px; background: none; cursor: pointer; }
+.an-follow[aria-pressed="true"] { background: var(--flag-wash); border-color: var(--flag); color: var(--ink); }
+.an-fitbox.muted { font-size: 12.5px; }
 .an-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; margin-top: 14px; }
 .an-map { position: relative; height: min(76vh, 780px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; }
 .an-map canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
@@ -1228,13 +1245,15 @@ table.data tbody tr.found .name { font-weight: 700; }
 .an-transport .btn { min-width: 36px; }
 .an-transport select { margin-left: auto; }
 .an-tiles { grid-template-columns: 1fr 1fr; margin: 6px 0 10px; }
+.an-transport .an-follow { margin-left: 0; }
 .an-tiles .tile { padding: 8px 10px; }
 .an-tiles .tile-value { font-size: 20px; }
 .an-opts { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .an-opts label { display: flex; align-items: center; gap: 6px; }
 .an-opts label > span { flex: 1; }
 .an-strip-card { margin-top: 14px; padding: 8px 10px 6px; }
-.an-strip-card canvas { width: 100%; height: 110px; display: block; cursor: pointer; touch-action: none; }
+.an-strip-card canvas { width: 100%; height: 76px; display: block; cursor: pointer; touch-action: none; }
+.an-strip-card .an-strip-head .hint { display: none; }
 .an-strip-card .hint { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
 #an-legs { margin-top: 14px; }
 tr.an-mistake td.an-lost { color: var(--bad); font-weight: 650; }

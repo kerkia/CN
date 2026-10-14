@@ -462,7 +462,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   recovers them, a new tab does not; « Oublier les fichiers » drops them), the race/circuit/runner in
   `sessionStorage ocn.an.sel` (the menu's link carries no query), and a calibration is saved in localStorage with its
   geometry and a `done` flag (v2): it comes back as it was left, hand-placed controls included, straight into the
-  playback when finished; « Refaire le calage automatique » starts afresh.
+  playback when finished; « Refaire le calage automatique » starts afresh. **Playback layout** (owner's review,
+  2026-10-14): `body.an-theatre` hides the site's menus, the steps and the page head — the top bar keeps the logo, theme
+  and name, one line gives « ← Course et fichiers », the race, runner and files; the map and the side panel take
+  `100vh − 252px − var(--an-strip)` so a desktop screen needs no scrollbar; the side panel is a compact list (transport,
+  slider, stats as dt/dd, « Affichage » folded: trace colour with swatches and a picker, width, by pace, tail,
+  opacities, marks). Trace colour default dark purple `#3b0764`, width 2.4, the part to come at 0.45 alpha; by pace
+  colours the whole race. The curves under the map are stacked rows (56 px each, `--an-strip` follows). The legs
+  table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
+  course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
+  « Suivre » is a toggle button in the transport row. A published start time is ignored for a `dns` runner or when the
+  first control's pass precedes it or comes over 30 min later.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
