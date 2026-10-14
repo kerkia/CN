@@ -343,7 +343,7 @@ const FR = {
   "rn.lede.nav": "Le CN d'un coureur, ses courses, son évolution, sa progression, sa carte et son réseau.",
   "nw.lede.nav": "Le réseau des meilleurs, les territoires, la participation et la pyramide des âges.",
   "ag.lede.nav": "Les prochaines manifestations de course d'orientation, d'après l'agenda de la FFCO.",
-  "rn.after": "après", "rn.calc.cn": "CN à cette date", "rn.tab.races": "Courses", "rn.tab.evolution": "Évolution", "rn.tab.calc": "Calcul du CN", "rn.tab.history": "Historique du CN", "rn.tab.progress": "Progression",
+  "rn.after": "après", "rn.calc.cn": "CN à cette date", "rn.tab.races": "Courses", "rn.tab.calc": "Calcul du CN", "rn.tab.history": "Historique du CN", "rn.tab.progress": "Progression",
   "rn.tab.seasons": "Saisons", "rn.tab.map": "Carte", "rn.tab.network": "Réseau",
   "rn.map": "Courses par département", "rn.map.hint": "Le nombre de compétitions courues dans chaque département (celui du club ou du comité organisateur)",
   "rn.map.n": "Courses", "rn.map.races": "courses", "rn.map.depts": "départements", "rn.map.last": "Dernière",

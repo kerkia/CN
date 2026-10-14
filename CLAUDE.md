@@ -379,8 +379,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   does); no view repeats a title of its own.
 - **Tabs, not long pages** (owner, 2026-10-12): a page with several sections shows them as tabs (`ui.pageTabs`,
   `tabFrom`, `bindPageTabs`: panels `data-panel`, the tab in the address as `?onglet=`, kept by `replaceQuery`; charts
-  drawn hidden are resized when shown). Coureur (Courses, Évolution, Calcul du CN, Historique du CN — its own tab since
-  2026-10-14 —, Progression, Saisons, Carte — the map
+  drawn hidden are resized when shown). Coureur (Courses, Calcul du CN, Historique du CN — its own tab since
+  2026-10-14 —, Progression — the « Évolution du CN » chart first, then the progression against the age category: one tab
+  since 2026-10-14, owner; old `?onglet=evolution` links open it —, Saisons, Carte — the map
   of the races per département —, Réseau — the runner's network, `network.ego`, moved from Statistiques on 2026-10-12;
   `link.network(lic)` and the old #/reseau/<licence> open it), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
   classées; Statistiques' views (`netmodes.js`: Réseau des meilleurs, Territoires, Participation, Âges)
@@ -427,6 +428,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   control, « suivre », the strip under the map (pace, plus one channel — heart rate by default), the legs table (times,
   class best, rank and time lost when published; trace vs straight distance; pace; mean heart rate and cadence).
   `window.anDebug()` in the console returns the fit, offset, targets and detection for support.
+- **Documentation** (`#/methodes`, `pages/methods.js`; owner, 2026-10-14): four tabs — « CN officiel » and « CN Top », each
+  method's rules and formulas, facts only; « L'étude », the white paper in ten chapters (objectives, the point of departure,
+  the measure, the base choices, the score and its mean, the circuit's value, the recalage, the results, the alternatives
+  discarded, the conclusion) with the figures that support each decision, drawn as SVG from `site/assets/study.json` (the
+  study of 2026-10-13's aggregate numbers, built by the scratch `study_json.py` from the evaluations under
+  `C:\kerkia\cn-data\study`; public, nothing personal) and from the live `evaluation.json`; « Les calculs du site » (clubs,
+  coureurs, réseau, résultats et temps intermédiaires, relais, limites). Chapters are a second row of tabs (`?voir=`); the old
+  tab names (`essentiel`, `detail`, `analyses`, `autres`) still open the right tab. The page's texts are in the module (French).
+  The PDF white paper (`site/assets/ocn-methode-top.pdf`, public, linked from the study) is LaTeX: `docs/whitepaper/`
+  (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
+  `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
+  fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
 - UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
   « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

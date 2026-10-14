@@ -16,9 +16,12 @@ import {
   pageTabs, tabFrom, bindPageTabs, scoreCell, subHead,
 } from "../ui.js";
 
-// the page's tabs: the races, the CN over time, its calculation, the progression by age, the seasons, the map
-const TABS = [["courses", "rn.tab.races"], ["evolution", "rn.tab.evolution"], ["calcul", "rn.tab.calc"], ["historique", "rn.tab.history"],
+// the page's tabs: the races, the CN's calculation, its history, the progression (the CN over time, then against the
+// age category: one tab since 2026-10-14, owner — the chart read with the seasons' progression), the seasons, the map
+const TABS = [["courses", "rn.tab.races"], ["calcul", "rn.tab.calc"], ["historique", "rn.tab.history"],
   ["progression", "rn.tab.progress"], ["saisons", "rn.tab.seasons"], ["carte", "rn.tab.map"], ["reseau", "rn.tab.network"]];
+/** Tabs of old links: « Évolution » (until 2026-10-14) now sits in Progression. */
+const OLD_TABS = { evolution: "progression" };
 import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
 import { link, replaceQuery, terrainField, goInPlace } from "../app.js";
@@ -44,7 +47,8 @@ export async function render(main, { arg, query }) {
   let calcDate = query.d || null;
   let histMethod = null, ref = "all";
   const tabs = TABS.map(([k, l]) => [k, t(l)]);
-  const tab = tabFrom(tabs, query);
+  const tab = tabFrom(tabs, { ...query, onglet: OLD_TABS[query.onglet] || query.onglet });
+  if (OLD_TABS[query.onglet]) replaceQuery({ onglet: tab });                   // the address says the tab's current name
 
   const name = displayName(person.nom);
   // a race opens in the Courses tab, in Coureur mode, on this runner's circuit
@@ -79,12 +83,6 @@ export async function render(main, { arg, query }) {
         <select id="season"></select></label></div></div>
       <div id="history" class="scroll-box"></div></section>
     </div>
-    <div data-panel="evolution">
-    <div style="margin-bottom:16px">${chartCard({
-      id: "evo", title: t("rn.evolution"), hint: t("rn.evolution.hint"), tall: true,
-      tools: html`<label class="checkline"><input type="checkbox" id="show-scores" ${raw(showScores ? "checked" : "")}>${t("rn.showScores")}</label>`,
-    })}</div>
-    </div>
     <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head">
@@ -103,6 +101,10 @@ export async function render(main, { arg, query }) {
     </section>
     </div>
     <div data-panel="progression">
+    <div style="margin-bottom:16px">${chartCard({
+      id: "evo", title: t("rn.evolution"), hint: t("rn.evolution.hint"), tall: true,
+      tools: html`<label class="checkline"><input type="checkbox" id="show-scores" ${raw(showScores ? "checked" : "")}>${t("rn.showScores")}</label>`,
+    })}</div>
     <section class="card" style="margin-bottom:16px">
       <div class="card-head"><div><h2>${t("pg.title")}</h2><div class="hint" id="pg-hint"></div></div>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("pg.ref")}</span><select id="ref"></select></label></div>
