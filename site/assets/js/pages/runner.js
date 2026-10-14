@@ -13,7 +13,7 @@ import { placeOf, loadMap, featuresOf, DEPT_REGION } from "../geo.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
   methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag, filterFold,
-  pageTabs, tabFrom, bindPageTabs, scoreCell, subHead,
+  pageTabs, tabFrom, bindPageTabs, scoreCell, subHead, cnLabel, scoreLabel,
 } from "../ui.js";
 
 // the page's tabs: the races, the CN's calculation, its history, the progression (the CN over time, then against the
@@ -86,7 +86,7 @@ export async function render(main, { arg, query }) {
     <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head">
-        <h2>${t("rn.calc")}</h2>
+        <h2>${t("rn.calc", { cn: cnLabel(store.get().method) })}</h2>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("f.date")}</span>
           <input type="date" id="calc-date"></label>
       </div>
@@ -95,7 +95,7 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="historique">
     <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
+      <div class="card-head"><div><h2>${t("rn.cnHistory", { cn: cnLabel(store.get().method) })}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
         <span id="hist-seg"></span></div>
       <div id="cnhist"></div>
     </section>
@@ -163,7 +163,7 @@ export async function render(main, { arg, query }) {
     const me = rows.find((r) => r.lic === lic);
     const cat = me?.cat;
     // for each method: the current CN, and the runner's place in the ranking (overall and in the category)
-    const tiles = methods.map((m) => tile(t("rn.current"), me?.cn[m] == null ? "—" : fmt(me.cn[m]), fmtDate(month)));
+    const tiles = methods.map((m) => tile(t("rn.current", { cn: cnLabel(m) }), me?.cn[m] == null ? "—" : fmt(me.cn[m]), fmtDate(month)));
     const rankTiles = methods.map((m) => {
       const cn = me?.cn[m];
       if (cn == null) return tile(t("rn.rank"), "—", t("rn.unranked"));
@@ -181,7 +181,7 @@ export async function render(main, { arg, query }) {
       } else {
         for (const e of cnHistory(m, races, terrain, meta, month)) if (e.cn && (!best || e.cn > best.cn)) best = { cn: e.cn, date: e.date };
       }
-      return tile(t("rn.best"), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
+      return tile(t("rn.best", { cn: cnLabel(m) }), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
     });
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
@@ -219,7 +219,7 @@ export async function render(main, { arg, query }) {
     const methods = store.get().methods;
     const series = [];
     const prevM = store.prevMethod() && !methods.includes(store.prevMethod()) ? store.prevMethod() : null;
-    const cnName = (m) => (prevM ? `CN · ${methodShort(m)}` : "CN");
+    const cnName = (m) => cnLabel(m);
     for (const m of methods) {
       series.push({ name: cnName(m), color: methodColor(m), step: true, data: seriesFor(m), endLabel: prevM ? methodShort(m) : null });
     }
@@ -629,14 +629,14 @@ export async function render(main, { arg, query }) {
       { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[R.time], defaultDir: 1, render: (x) => x.r[R.time] ? fmtTime(x.r[R.time]) : "" },
       // the method's CN before the race, the score with its gap to that CN, the CN after (as the results tables)
       ...methods.flatMap((m) => [{
-        key: `j_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNJ15_COL[m]], label: subHead("CN", "J-15"),
+        key: `j_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNJ15_COL[m]], label: subHead(cnLabel(m), "J-15"),
         render: (x) => (x.r[CNJ15_COL[m]] ? fmt(x.r[CNJ15_COL[m]]) : html`<span class="dim">—</span>`),
       }, {
-        key: `s_${m}`, align: "r", cls: "num", label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`,
+        key: `s_${m}`, align: "r", cls: "num", label: html`<span title="${t("res.score.hint")}">${subHead(scoreLabel(m), t("res.gap"))}</span>`,
         sort: (x) => (x.r[SCORE_COL[m]] && x.r[CNJ15_COL[m]] ? x.r[SCORE_COL[m]] - x.r[CNJ15_COL[m]] : null),
         render: (x) => scoreCell(x.r[R.place] ? x.r[SCORE_COL[m]] || null : null, x.r[CNJ15_COL[m]]),
       }, {
-        key: `a_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNAFTER_COL[m]], label: subHead("CN", t("rn.after")),
+        key: `a_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNAFTER_COL[m]], label: subHead(cnLabel(m), t("rn.after")),
         render: (x) => (x.r[CNAFTER_COL[m]] ? fmt(x.r[CNAFTER_COL[m]]) : html`<span class="dim">—</span>`),
       }]),
       { key: "ext", label: "", render: (x) => html`<a class="dim" href="${data.officialCircuitUrl(x.r[R.cid])}" target="_blank" rel="noopener" title="${t("rn.officialFfco")}">↗</a>` },

@@ -8,7 +8,7 @@ import { t } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
 import { nameKey } from "../auth.js";
-import { methodShort, scoreCell, subHead } from "../ui.js";
+import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 
@@ -270,9 +270,9 @@ async function race(main, id, wanted) {
     $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
-      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead("CN",
+      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),
         store.get().method === "official" ? "J-15" : t("lv.today"))}</th>
-      <th class="r" title="${t("lv.score.hint")}">${subHead(t("lv.score"), t("lv.estGap"))}</th>
+      <th class="r" title="${t("lv.score.hint")}">${subHead(scoreLabel(store.get().method), t("lv.estGap"))}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;

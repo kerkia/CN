@@ -11,7 +11,7 @@ import * as data from "../data.js";
 import { R, C, C_SCORE, C_CNJ15 } from "../data.js";
 import {
   methodChips, bindMethodChips, seg, runnerSearch, bindRunnerSearch, dataTable, methodShort, statusLabel, terrainTag, scoreCell, subHead,
-  chartCard, bindChartCard, legend, tile, filterFold, pageTabs, tabFrom, bindPageTabs,
+  chartCard, bindChartCard, legend, tile, filterFold, pageTabs, tabFrom, bindPageTabs, cnLabel, scoreLabel,
 } from "../ui.js";
 import * as auth from "../auth.js";
 import { link, replaceQuery, terrainSeg } from "../app.js";
@@ -272,10 +272,10 @@ export async function render(main, { arg, query }) {
         { key: "time", label: t("col.time"), align: "r", cls: "num", sort: (x) => x.r[C.time], defaultDir: 1, render: (x) => fmtTime(x.r[C.time]) },
         // per method: the CN, then the score with its gap to that CN (sorted by the gap: by score is by place)
         ...methods.flatMap((m) => [{
-          key: `cn_${m}`, label: subHead("CN", t(`co.cnSub.${st.cnRef}`)), align: "r", cls: "num",
+          key: `cn_${m}`, label: subHead(cnLabel(m), t(`co.cnSub.${st.cnRef}`)), align: "r", cls: "num",
           sort: (x) => cnOf(m, x.r), render: (x) => { const cn = cnOf(m, x.r); return cn ? fmt(cn) : html`<span class="dim">—</span>`; },
         }, {
-          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`, align: "r", cls: "num",
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(scoreLabel(m), t("res.gap"))}</span>`, align: "r", cls: "num",
           sort: (x) => gap(x, m), render: (x) => scoreCell(x.r[C.place] ? x.r[SCORE[m]] || null : null, cnOf(m, x.r)),
         }]),
       ],

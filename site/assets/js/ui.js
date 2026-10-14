@@ -9,6 +9,11 @@ import { methodColor, METHOD_DASH } from "./charts.js";
 export const methodLabel = (m) => t(`m.${m}`);
 /** Short form for dense table headers. */
 export const methodShort = (m) => t(`m.${m}.short`);
+/** The two quantities of a method, named as the World Ranking separates them (owner, 2026-10-14): a race's points,
+ *  « score Top » / « score officiel », and a runner's ranking value, « CN Top » / « CN officiel ». The Fit shares the
+ *  Top's scores; the linear pair has its own. `lower`: inside a sentence. */
+export const cnLabel = (m) => t(`cn.${m}`);
+export const scoreLabel = (m, lower = false) => { const s = t(`score.${m}`); return lower ? s.charAt(0).toLowerCase() + s.slice(1) : s; };
 
 /** A short line in a method's dash pattern (charts.METHOD_DASH), for legends. */
 export function dashKey(m) {

@@ -437,6 +437,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   control, « suivre », the strip under the map (pace, plus one channel — heart rate by default), the legs table (times,
   class best, rank and time lost when published; trace vs straight distance; pace; mean heart rate and cadence).
   `window.anDebug()` in the console returns the fit, offset, targets and detection for support.
+- **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
+  officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
+  `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
+  for analysts it is the « CN Fit » (it shares the Top's scores; the linear pair has its own « score linéaire »). The results
+  tables' headers, the runner page's tiles and cards (`rn.current`, `rn.best`, `rn.calc`, `rn.cnHistory` take `{cn}`), the
+  switch's tooltips and the documentation use these words.
 - **Documentation** (`#/methodes`, `pages/methods.js`; owner, 2026-10-14): four tabs — « CN officiel » and « CN Top », each
   method's rules and formulas, facts only; « L'étude », the white paper in ten chapters (objectives, the point of departure,
   the measure, the base choices, the score and its mean, the circuit's value, the recalage, the results, the alternatives

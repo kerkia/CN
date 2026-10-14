@@ -8,7 +8,7 @@ import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available, get as storeGet } from "../store.js";
-import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead } from "../ui.js";
+import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
 const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
@@ -274,10 +274,10 @@ async function detail(main, idx, query) {
         { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
           render: (r) => (ok(r) ? clock(r.time_s) : "") },
         ...(scored ? M.flatMap((m) => [{
-          key: `cn_${m}`, label: subHead("CN", "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
+          key: `cn_${m}`, label: subHead(cnLabel(m), "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
           render: (r) => (r.cnj15?.[m] ? fmt(r.cnj15[m]) : html`<span class="dim">—</span>`),
         }, {
-          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(t("rn.score"), t("res.gap"))}</span>`,
+          key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(scoreLabel(m), t("res.gap"))}</span>`,
           align: "r", cls: "num", sort: (r) => gap(r, m),
           render: (r) => scoreCell(ok(r) ? r.scores?.[m] ?? null : null, r.cnj15?.[m],
             { title: r.cnAfter?.[m] ? `${t("rn.cnAfter")} : ${fmt(r.cnAfter[m])}` : "", below: pubLine(r, m) }),
