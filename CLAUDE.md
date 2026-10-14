@@ -351,6 +351,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
   runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
   of today, the circuit valued with `VALUER` (Top: the Fit of the same mean). The Documentation still compares methods.
+  The runner's « Calcul du CN » tab has one « Historique du CN », the selected method's (owner, 2026-10-14): FFCO's
+  published history read live for the official CN (`runner.drawFfHistory`), the computed window's entries and exits for
+  a Top or Fit (`cn.cnHistory`).
 - **Nothing moves on a change of selection** (owner, 2026-10-12/13): a switch of method, or another runner picked on the
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.

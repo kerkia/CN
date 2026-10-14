@@ -87,7 +87,7 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint">${t("rn.cnHistory.hint")}</div></div>
+      <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
         <span id="hist-seg"></span></div>
       <div id="cnhist"></div>
     </section>
@@ -98,11 +98,6 @@ export async function render(main, { arg, query }) {
           <input type="date" id="calc-date"></label>
       </div>
       <div class="card-body"><div class="calc" id="calc"></div></div>
-    </section>
-    <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("rn.ffHistory")}</h2><div class="hint">${t("rn.ffHistory.hint")}</div></div>
-        </div>
-      <div id="ffhist"></div>
     </section>
     </div>
     <div data-panel="progression">
@@ -259,12 +254,17 @@ export async function render(main, { arg, query }) {
       </tbody></table>`;
   }
 
-  // ---- CN history, event by event -----------------------------------------------
+  // ---- CN history, event by event: the selected method's ---------------------------
+  // One « Historique du CN » (owner, 2026-10-14: two, one of them « officiel », confused): the official CN's as the
+  // FFCO site publishes it, its own entries, exits and figures read live (drawFfHistory); a computed method's from
+  // its own window, entry by entry and exit by exit.
   function drawCnHistory() {
     const methods = store.get().methods;
     if (!methods.includes(histMethod)) histMethod = methods[0];
     $("#hist-seg").innerHTML = methods.length > 1 ? seg("hm", methods.map((m) => [m, methodShort(m)]), histMethod) : "";
     $$('[data-seg="hm"]').forEach((b) => b.addEventListener("click", () => { histMethod = b.dataset.value; drawCnHistory(); }));
+    $("#cnhist-hint").textContent = t(histMethod === "official" ? "rn.ffHistory.hint" : "rn.cnHistory.hint");
+    if (histMethod === "official") { drawFfHistory(); return; }
     const ev = cnHistory(histMethod, races, terrain, meta, data.latestMonth());
     const raceLabel = (r) => {
       const c = data.comp(r[R.course]);
@@ -429,9 +429,9 @@ export async function render(main, { arg, query }) {
     });
   }
 
-  // ---- the CN history as the FFCO site publishes it: entries and exits of races in the calculation base,
-  // with the CN and its variation after each — for every selected method (the official ones are FFCO's own
-  // figures; the others are computed at the same dates)
+  // ---- the official CN's history as the FFCO site publishes it: entries and exits of races in the calculation
+  // base, with the CN and its variation after each (a computed method would be shown at the same dates, were
+  // several methods selected at once; the site shows one)
   let ffPromise = null, ffKey = "";
   function ffRows() {                                                    // fetched once per runner and discipline
     const key = `${lic}|${terrain}`;
@@ -443,11 +443,11 @@ export async function render(main, { arg, query }) {
     return ffPromise;
   }
   async function drawFfHistory() {
-    const box = $("#ffhist");
+    const box = $("#cnhist");
     const methods = store.get().methods;
     box.innerHTML = html`<div class="muted" style="padding:14px 18px">${t("misc.loading")}</div>`;
     const res = await ffRows();
-    if (!$("#ffhist")) return;                                            // the page changed meanwhile
+    if (!$("#cnhist") || histMethod !== "official") return;             // the page or the method changed meanwhile
     if (!res) {
       box.innerHTML = html`<div class="empty">${t("rn.ffHistory.err")}
         <a href="https://cn.ffcorientation.fr/historique/${lic}/?specialite=${terrain}" target="_blank" rel="noopener">${t("rn.ffHistory.open")} ↗</a></div>`;
@@ -719,7 +719,6 @@ export async function render(main, { arg, query }) {
     drawTiles();
     drawChart();
     drawCnHistory();
-    drawFfHistory();
     drawCalc();
     drawProgress();
     drawHistory();
