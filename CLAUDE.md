@@ -331,7 +331,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   The owner's model: a runner of CN c runs k x ref / c on a leg; k makes the best team of all clubs (CNE: the mean of
   the 5 best) total the sum of the reference times. Best team exact: every distinct matching of criteria to legs, then
   the Hungarian algorithm (checked against brute force); clubs that cannot beat the shown teams are skipped by a bound.
-  Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner.
+  Age and sex from the category (a veteran racing H21 counts as 21). The first team can be changed runner by runner, two
+  legs exchange their runners (▲ ▼, or the row's grip ⋮⋮ dropped on another row; owner, 2026-10-14), and a runner of the
+  club can be marked **unavailable** (« indispo » on any team row, or the « Indisponibles » block of the added-runners card:
+  out of the pool and the teams, saved with the added runners — `relay_runners.runners` holds `{ runners, out }` since
+  2026-10-14, a plain list before; `/api/account/relay` reads both). **The format proposed** (owner, 2026-10-14): the link's
+  `?f=`, else the one chosen last time (`localStorage ocn.relay`: format, the custom format's legs, discipline, club) unless
+  the agenda's next national relay changed since, else that relay's (`relay.nextNationalRelay`: CNE → `cneH`, CFC → `cfc1`,
+  Championnat de France de relais → `rcH21`, de relais sprint → `spr`; ligue and regional relays are not national), else
+  `cfc1`; the format card names that relay with a link to the agenda and offers its format.
 - **Jeux** (`#/jeux`, `pages/games.js`, its own menu group « Jeux » in the map's course purple `--course`; 2026-10-13, **administrators only** for now, owner's choice): twelve training games as tabs, after the games catalogued by o-mate.app (Ben Brown's orienteering games and his MIT-licensed Rapid Route, Laby's maze; the video game skipped). **Nothing comes from those sites**: the maps are generated in the browser from a seed (`games/mapgen.js`: a forest map — relief by a height field and marching-squares contours `games/terrain.js`, vegetation, marshes, paths routed by Dijkstra, boulders/knolls/pits/cliffs/trees —, a sprint map — streets, blocks, walls with gaps, parks, olive —, and a maze), the « photos » are drawn by a height-field renderer (`games/scene.js`: one column at a time, trees and bushes scattered by a hash, the map's features and control flags as shapes). `games/path.js`: cost grid (ground cost `COST`, climb) and Dijkstra, straightened in street maps (`stringPull`), `routeCost` of any polyline. `games/quiz.js`: the common engine (puzzles, timer, answer buttons or a puzzle handling its own play, the solution shown, scoring rules `SCORING`, summary, best score in `localStorage ocn.games.best`). One module per game: Tracé rapide (draw the shortest route, sprint or maze), Mémoire de carte (ski-O track network, choose at each junction), Courbes de niveau (which profile), Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Choix de parcours (knockout: 20 s of map, 5 s to choose), Variante la plus rapide (relay forking, decision time + run time), Choix d'itinéraire (fastest of 3-4 routes by `routeCost`), Mémoire photo, Trail'O (flags lettered left to right, Z when none), Labyrinthe (first-person raycaster, the map without one's position). Texts `g.*` in `i18n.js`; styles `.g-*` in `app.css`. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
 - Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
@@ -386,8 +394,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `link.network(lic)` and the old #/reseau/<licence> open it), Club, Comparer, Classement, Comparer des clubs, Clubs, the results panel of Courses
   classées; Statistiques' views (`netmodes.js`: Réseau des meilleurs, Territoires, Participation, Âges)
   and Temps intermédiaires' views use the same tab bar; Statistiques and Clubs switch their views in place under one head
-  (`network.render`, `netmodes.modeHref`; `clubs.render`: Clubs, Ligues, Comparer des clubs, Simulateur de relais — the
-  routes `clubcompare` and `relays` load clubs.js; the address follows by pushState). The tab bar is always right under the
+  (`network.render`, `netmodes.modeHref`; `clubs.render`: Clubs, Ligues, Comparer des clubs, Simulateur de relais, Mon club
+  — the club's page `club.js` as a view, owner 2026-10-14 —, and the open club's name when it is another club's page; the
+  routes `clubcompare`, `relays` and `club` load clubs.js; the address follows by pushState). The tab bar is always right under the
   page's head, above shared filters and tiles (owner, 2026-10-12); a view's own tabs under it are smaller. Do the same for new pages. No count of
   compared runners in the navigation (owner, 2026-10-12).
 - **Analyse** (`#/analyse`, `pages/analysis.js`, menu « Courses » after En direct; **administrators only for now**, owner 2026-10-13:

@@ -52,28 +52,34 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
   : `${t(`cb.desc.${s.base}.${s.measure}`)} ${t("cb.desc.over")} ${
     s.sexe === "*" && s.age === "*" ? t("cb.desc.all") : `${sexLabel(s.sexe).toLowerCase()} · ${ageLabel(s.age).toLowerCase()}`}.`);
 
-// The Clubs page: one head and its tab bar — the clubs, the ligues, the comparison of clubs, the relay simulator —, the view
-// under them switched in place (the address follows), as on Statistiques: #/clubs, #/clubs?onglet=ligues,
-// #/comparer-clubs and #/relais all open it.
+// The Clubs page: one head and its tab bar — the clubs, the ligues, the comparison of clubs, the relay simulator, one's
+// own club (« Mon club », owner 2026-10-14) and, when another club's page is open, that club —, the view under them
+// switched in place (the address follows), as on Statistiques: #/clubs, #/clubs?onglet=ligues, #/comparer-clubs,
+// #/relais and #/club/<code> all open it.
 const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
 async function view(el, v, query) {
   setLede(t("cl.lede"));
   if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });
   if (v === "relays") return (await import("./relays.js")).render(el, { query });
+  if (v.startsWith("club:")) return (await import("./club.js")).render(el, { arg: v.slice(5), query });
   return listView(el, query, v);
 }
-export async function render(main, { route, query }) {
-  const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : query.onglet === "ligues" ? "ligues" : "clubs";
+export async function render(main, { route, arg, query }) {
   const mine = myClub();
+  const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : route === "club" ? `club:${arg}`
+    : query.onglet === "ligues" ? "ligues" : "clubs";
+  // the views: the four, one's own club, and the club whose page is open when it is another one
+  const views = VIEWS.map(([k, href]) => [k, href, t(`cl.view.${k}`)]);
+  if (mine) views.push([`club:${mine}`, link.club(mine), t("cl.myClub")]);
+  if (route === "club" && arg && arg !== mine) views.push([v, link.club(arg), clubName(arg)]);
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede" id="page-lede">${t("cl.lede")}</p></div>
-      ${mine ? html`<div class="row"><a class="btn" href="${link.club(mine)}">${t("cl.myClub")}</a></div>` : ""}</div>
-    <nav class="page-tabs" role="tablist">${VIEWS.map(([k]) => html`<button type="button" role="tab" data-cview="${k}" aria-selected="${k === v}">${t(`cl.view.${k}`)}</button>`)}</nav>
+    <div class="page-head"><div><h1>${t("cl.title")}</h1><p class="lede" id="page-lede">${t("cl.lede")}</p></div></div>
+    <nav class="page-tabs" role="tablist">${views.map(([k, , label]) => html`<button type="button" role="tab" data-cview="${k}" aria-selected="${k === v}">${label}</button>`)}</nav>
     <div id="club-view"></div>`;
   const el = $("#club-view", main);
   let shown = await view(el, v, query);
   $$("[data-cview]", main).forEach((b) => b.addEventListener("click", async () => {
-    const k = b.dataset.cview, href = VIEWS.find(([x]) => x === k)[1];
+    const k = b.dataset.cview, href = views.find(([x]) => x === k)[1];
     $$("[data-cview]", main).forEach((x) => x.setAttribute("aria-selected", String(x === b)));
     shown?.cleanup?.();
     history.pushState(null, "", href);

@@ -16,7 +16,7 @@ const PAGES = {
   runner: () => import("./pages/runner.js"),
   compare: () => import("./pages/compare.js"),
   clubs: () => import("./pages/clubs.js"),
-  club: () => import("./pages/club.js"),
+  club: () => import("./pages/clubs.js"),           // a club's page: a view of the Clubs page (owner, 2026-10-14)
   overview: () => import("./pages/overview.js"),
   methods: () => import("./pages/methods.js"),
   clubcompare: () => import("./pages/clubs.js"),      // a view of the Clubs page
@@ -45,7 +45,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede" };
-const isLean = (r) => ["ranking", "courses", "compare", "clubs", "clubcompare", "relays", "network", "agenda", "analysis", "games"].includes(r.route)
+const isLean = (r) => ["ranking", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "games"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
