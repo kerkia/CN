@@ -87,17 +87,17 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
-        <span id="hist-seg"></span></div>
-      <div id="cnhist"></div>
-    </section>
-    <section class="card" style="margin-bottom:16px">
       <div class="card-head">
         <h2>${t("rn.calc")}</h2>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("f.date")}</span>
           <input type="date" id="calc-date"></label>
       </div>
       <div class="card-body"><div class="calc" id="calc"></div></div>
+    </section>
+    <section class="card" style="margin-bottom:16px">
+      <div class="card-head"><div><h2>${t("rn.cnHistory")}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
+        <span id="hist-seg"></span></div>
+      <div id="cnhist"></div>
     </section>
     </div>
     <div data-panel="progression">
@@ -270,11 +270,12 @@ export async function render(main, { arg, query }) {
       const c = data.comp(r[R.course]);
       return html`<a href="${raceLink(r)}" title="${c?.location || ""}">${c?.title || ""}</a> <span class="dim">${r[R.circuit] || ""}</span>`;
     };
+    // an entry plain with its score, an exit struck through (as FFCO's table shows them)
+    const exit = (r) => html`<div class="struck">${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`;
     const what = (e) => {
-      if (e.kind === "in") return html`${e.races.map((r) => html`<div><span class="tag tag-in">${t("rn.ev.in")}</span> ${raceLabel(r)}
-          <span class="dim num">· ${t("rn.score")} ${fmt(r[SCORE_COL[histMethod]])}</span></div>`)}
-        ${e.also.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
-      if (e.kind === "out") return html`${e.races.map((r) => html`<div><span class="tag">${t("rn.ev.out")}</span> ${raceLabel(r)} <span class="dim">(${fmtDate(r[R.date], "short")})</span></div>`)}`;
+      if (e.kind === "in") return html`${e.races.map((r) => html`<div>${raceLabel(r)}
+          <span class="dim num">· ${t("rn.score")} ${fmt(r[SCORE_COL[histMethod]])}</span></div>`)}${e.also.map(exit)}`;
+      if (e.kind === "out") return html`${e.races.map(exit)}`;
       return "";
     };
     dataTable($("#cnhist"), {
@@ -282,7 +283,7 @@ export async function render(main, { arg, query }) {
       emptyText: t("rn.noRaces"),
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date) },
-        { key: "what", label: t("rn.ev.what"), render: what },
+        { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, render: what },
         { key: "cn", label: "CN", align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
         { key: "delta", label: t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta,
           render: (e) => (e.delta == null ? "" : html`<span class="${e.delta > 0 ? "delta-up" : e.delta < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta)}</span>`) },
