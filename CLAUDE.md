@@ -504,7 +504,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   study of 2026-10-13's aggregate numbers, built by the scratch `study_json.py` from the evaluations under
   `C:\kerkia\cn-data\study`; public, nothing personal) and from the live `evaluation.json`; « Les calculs du site » (clubs,
   coureurs, réseau, résultats et temps intermédiaires, relais, limites). Chapters are a second row of tabs (`?voir=`); the old
-  tab names (`essentiel`, `detail`, `analyses`, `autres`) still open the right tab. The page's texts are in the module (French).
+  tab names (`essentiel`, `detail`, `analyses`, `autres`) still open the right tab. The page's texts are in the module (French), written for orienteers who are not mathematicians (owner, 2026-10-14): plain sentences, both sides of every comparison, each term explained with numbers, one worked circuit of six runners (`RACE6`, F got lost) used on every tab, the dated exploratory tables folded away (`more`).
   The PDF white paper (`site/assets/ocn-methode-top.pdf`, public, linked from the study) is LaTeX: `docs/whitepaper/`
   (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the

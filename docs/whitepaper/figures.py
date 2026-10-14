@@ -64,6 +64,8 @@ fig.savefig(FIG / "fig_trunc.pdf")
 plt.close(fig)
 
 # ---- figure 3: the gain in duels called right (points) by k, per family --------------------------------------------------------------------
+FAMNAME = {"gall": "géométrique, tout le peloton", "g23": "géométrique, deux tiers les plus rapides", "aall": "arithmétique, tout le peloton",
+           "race": "exposant sur le temps, règle FFCO", "pow": "règle FFCO, autre moyenne du CN"}
 COL = {"gall": GREEN, "g23": INK, "aall": GREY, "race": ORANGE, "pow": BLUE}
 DASH = {"g23": (0, (4, 2))}
 fig, axes = plt.subplots(1, 2, figsize=(6.4, 2.8))
@@ -75,7 +77,7 @@ for ax, t in zip(axes, ("For", "Spr")):
         pts.sort()
         off = {"gall": -0.04, "g23": -0.02, "aall": 0, "race": 0.02, "pow": 0.04}[fam["key"]]
         xs = [k + off for k, _ in pts]
-        ax.plot(xs, [a[0] for _, a in pts], color=COL[fam["key"]], lw=1.4, ls=DASH.get(fam["key"], "-"), label=fam["label"], marker="o", ms=3)
+        ax.plot(xs, [a[0] for _, a in pts], color=COL[fam["key"]], lw=1.4, ls=DASH.get(fam["key"], "-"), label=FAMNAME.get(fam["key"], fam["label"]), marker="o", ms=3)
         ax.vlines(xs, [a[1] for _, a in pts], [a[2] for _, a in pts], color=COL[fam["key"]], lw=0.8, alpha=0.8)
         if fam["rec"]:
             kk, a = next((k, a) for k, a in pts if k == fam["rec"])
@@ -83,7 +85,7 @@ for ax, t in zip(axes, ("For", "Spr")):
     ax.axhline(0, color=GREY, lw=0.8)
     ax.set_xticks([1, 1.5, 2, 3, 4])
     ax.set_title(T[t])
-    ax.set_xlabel("k")
+    ax.set_xlabel("puissance de la moyenne qui fait le CN")
 axes[0].set_ylabel("gain, points de duels")
 handles, labels = axes[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.04), fontsize=7.5)
@@ -140,14 +142,18 @@ def star(a):
 
 lines = []
 # table: the variants vs the quadratic Top, forest and sprint (Top-type), holdout
-ROWS = [("Références", None), ("official", "CN officiel de la FFCO"), ("L_t", "Valeur de circuit FFCO, moyenne simple (k = 1)"),
-        ("k appliqué au score, sur la valeur de circuit FFCO, moyenne simple", None), ("k15_t", "k = 1,5"), ("k2_t", "k = 2"), ("k3_t", "k = 3"), ("k2p05_t", "k = 2 sur la valeur du circuit seule"),
-        ("Puissance du CN seul, valeur FFCO", None), ("p3_t", "puissance 3"),
-        ("Autres valeurs de circuit", None), ("g_t", "géométrique, ⅔ les plus rapides, k = 1"), ("gp2_t", "géométrique, ⅔, k = 2"), ("s100_t", "arithmétique, tout le peloton, k = 1"),
-        ("s100p2_t", "arithmétique, tout le peloton, k = 2"), ("A3_t", "arithmétique, tout le peloton, k = 3"), ("E4_t", r"arithmétique, 85 \% les plus rapides, k = 2"),
-        ("V23_t", r"géométrique, 85 \% les plus rapides, k = 3"), ("H1_t", "géométrique robuste (Huber), tout le peloton, k = 2"),
-        ("Moyenne géométrique sur tout le peloton", None), ("G3_t", "k = 1"), ("G1_t", "k = 2"), ("G4_t", "k = 3 (retenu en forêt)"), ("G5_t", "k = 4"),
-        ("Autres idées", None), ("kc_t", "élasticité estimée par circuit"), ("c30_t", "score courbé"), ("Me_t2", "niveau du maximum de vraisemblance")]
+ROWS = [("Références", None), ("official", "CN officiel de la FFCO"), ("L_t", "Top linéaire : règle FFCO pour le circuit, CN en moyenne ordinaire"),
+        ("Exposant sur le temps, règle FFCO pour le circuit", None), ("k15_t", "exposant 1,5"), ("k2_t", "exposant 2"), ("k3_t", "exposant 3"),
+        ("k2p05_t", "exposant 2 pour le circuit seulement"),
+        ("Règle FFCO pour le circuit, autre moyenne pour le CN", None), ("p3_t", "CN en moyenne cubique"),
+        ("Autres mesures du circuit", None), ("g_t", "géométrique, deux tiers, CN en moyenne ordinaire"), ("gp2_t", "géométrique, deux tiers, CN en moyenne quadratique"),
+        ("s100_t", "arithmétique, tout le peloton, CN en moyenne ordinaire"), ("s100p2_t", "arithmétique, tout le peloton, CN en moyenne quadratique"),
+        ("A3_t", "arithmétique, tout le peloton, CN en moyenne cubique"), ("E4_t", r"arithmétique, 85 \% les plus rapides, CN en moyenne quadratique"),
+        ("V23_t", r"géométrique, 85 \% les plus rapides, CN en moyenne cubique"), ("H1_t", "géométrique atténuant les temps aberrants (Huber), quadratique"),
+        ("Moyenne géométrique sur tout le peloton", None), ("G3_t", "CN en moyenne ordinaire"), ("G1_t", "CN en moyenne quadratique"),
+        ("G4_t", "CN en moyenne cubique (retenu en forêt)"), ("G5_t", "CN en moyenne de puissance 4"),
+        ("Autres idées", None), ("kc_t", "règle temps-score propre à chaque circuit"), ("c30_t", "score qui pénalise moins les grosses pertes"),
+        ("Me_t2", "niveau estimé par maximum de vraisemblance")]
 ev_full = json.load(open(Path(r"C:\kerkia\cn-data\study") / "eval_final_n.json", encoding="utf-8"))
 for extra in ("eval_extra_n.json", "eval_extra2_n.json"):
     ex = json.load(open(Path(r"C:\kerkia\cn-data\study") / extra, encoding="utf-8"))
@@ -180,16 +186,16 @@ for terr_code, terr in (("For", "Forêt"), ("Spr", "Sprint")):
         if terr_code == "Spr" and m in ("G3_t", "G4_t", "G5_t", "E4_t", "A3_t"):
             continue
         if terr_code == "Spr" and m == "G1_t":
-            lab = "k = 3, ⅔ les plus rapides (retenu en sprint)"
+            lab = "géométrique, deux tiers, CN en moyenne cubique (retenu en sprint)"
         if terr_code == "Spr" and m == "V23_t":
-            lab = "géométrique, moitié la plus rapide, k = 3"
+            lab = "géométrique, moitié la plus rapide, CN en moyenne cubique"
         lines.append(f"{lab} & {cell(terr, 'all/holdout', 'accn', m)} & {cell(terr, 'nat/holdout', 'accn', m)} & {cell(terr, 'all/tuned', 'accn', m)} & {cell(terr, 'all/holdout', 'r2', m, True)} \\\\")
 lines.append(r"\bottomrule \end{longtable}")
 
 # table: the recalage
-RL = ["Jusqu'au 13 octobre : la moyenne des 13 mois se terminant 2 mois plus tôt", "Droite ajustée sur ces 13 mois, lue le jour où le facteur s'applique",
-      "La même droite, lue 6 mois plus loin", "La moyenne de 13 mois, prolongée de 7 mois par la dérive sur 3 ans",
-      "La moyenne de 13 mois, prolongée de 7 mois par la dérive sur 10 ans (retenue)"]
+RL = ["Jusqu'au 13 octobre : la moyenne des 13 mois qui se terminent 2 mois plus tôt", "Une droite tracée sur ces 13 mois, lue le jour du facteur",
+      "La même droite, lue 6 mois plus loin", "La moyenne des 13 mois, prolongée de 7 mois au rythme de la montée des 3 dernières années",
+      "La moyenne des 13 mois, prolongée de 7 mois au rythme de la montée des 10 dernières années (retenue)"]
 lines.append("\n" + r"\begin{table}[h]\centering\small")
 lines.append(r"\caption{Le recalage en forêt : la moyenne des 20 \% meilleurs CN au 1\textsuperscript{er} octobre 2026 (niveau habituel, CN Top), pour la méthode d'alors et pour la méthode retenue ; cible 5\,600.}\label{tab:recal}")
 lines.append(r"\begin{tabular}{@{}p{7.2cm}rrrr@{}}\toprule & \multicolumn{2}{c}{Méthode d'alors} & \multicolumn{2}{c}{Méthode retenue} \\ Recalage & Niveau & CN Top & Niveau & CN Top \\ \midrule")
