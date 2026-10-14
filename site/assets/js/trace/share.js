@@ -7,9 +7,10 @@
 // - The passes of a trace at the course's controls, in the course's order: each control's closest approach on the first
 //   visit after the previous control; the start's departure (the last moment near the start before control 1) and the
 //   finish's arrival after the last control: the pass that ends the race (`finishArrival`), else, every control
-//   passed, the first moment near the finish; a runner with controls missing and no such pass has no finish.
+//   passed, the first moment near the finish where the runner stops with little left to run (`finishAfterAll`); else
+//   no finish — the race runs to the trace's end.
 
-import { fromPoints, finishArrival } from "./track.js";
+import { fromPoints, finishArrival, finishAfterAll } from "./track.js";
 import { toM } from "./geom.js";
 
 /** The track's points back as latitude and longitude. */
@@ -105,10 +106,7 @@ export function coursePasses(track, fit, controls, tol = 25) {
     if (c.kind === "finish") {                              // the arrival: after the last control, the pass that ends the race
       k = finishArrival(track, d, from, tol);
       if (k < 0) k = finishArrival(track, d, from, 1.6 * tol);
-      if (k < 0 && !controls.some((q, i) => i < j && q.kind === "control" && out[i] == null)) {
-        k = from; while (k < n && d[k] > 1.6 * tol) k++;   // every control passed: the first moment near the finish
-        if (k >= n) k = -1;
-      }
+      if (k < 0 && !controls.some((q, i) => i < j && q.kind === "control" && out[i] == null)) k = finishAfterAll(track, d, from, 1.6 * tol);
     } else if (k < 0) k = visit(d, from, 1.6 * tol);
     if (k >= 0) { out[j] = track.t[k]; from = k; }
   }

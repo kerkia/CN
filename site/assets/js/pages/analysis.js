@@ -607,6 +607,18 @@ export async function render(main, { query = {}, route } = {}) {
         notes.push(t("an.st.probed", { n: added.length }));
       }
     }
+    // the finish not read (its colours lost over water or yellow, a line across it): looked for where the trace ends
+    if (geometry && course?.probeFinish && !iofCourse && !pts.some((p) => p.kind === "finish" && p.pos)) {
+      const k = track.n - 1, [ex, ey] = toPx(geometry, track.x[k], track.y[k]);
+      const sc = geometry.scale || Math.sqrt(Math.abs(geometry.m11 * geometry.m22 - geometry.m12 * geometry.m21));
+      const hit = ex >= 0 && ey >= 0 && ex <= map.width && ey <= map.height ? course.probeFinish(ex, ey, 50 * sc) : null;
+      if (hit) {
+        for (let i = pts.length - 1; i >= 0; i--) if (pts[i].kind === "finish") pts.splice(i, 1);
+        pts.push({ kind: "finish", code: "", pos: [hit.x, hit.y], probed: true });
+        located = pts.filter((p) => p.pos);
+        notes.push(t("an.st.finishFound"));
+      }
+    }
     // the targets: in the course's order (IOF), else in the trace's visiting order
     const saved = savedPositions();
     if (!geometry) {

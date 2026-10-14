@@ -522,6 +522,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   960 × 1280 (overprint line 3 px); a phone's photo at 3000-4000 px read at 1800 px gave 4 px lines and the title's
   letters as rings (21 « circles », the trace laid at 18°). The image is now read at the size that makes the measured line
   width 3 px (`lw > 3`: scaled by 3 / lw): the ×2 and ×3 copies read as the original, the synthetic maps unchanged.
+  **The finish's double circle** (owner, 2026-10-14): ISOM draws it 5 and 7 mm across around 6 mm control circles, so
+  both rings come out near a control's size — the finish is now any two concentric rings 1.25-1.6 times apart (the
+  outer-only rule kept as a fallback). On the owner's photo it is not purple at all (over yellow it comes out brown,
+  over the lake dark blue, a building and a path across it): `course.probeFinish` reads the lightness ray by ray (light,
+  dark ring, light, dark ring, light; 36 rays, half of them and three quarters of the circle), colour-blind — found at
+  2 px, score 0.75. Shape alone is not unique on a forest map (texture, knolls' contours: up to 0.72 elsewhere on the
+  same photo), so it is only looked for within 50 m of where the trace ends (`prepare`, the circuit editor's `auto`).
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
@@ -572,6 +579,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
   as on « Analyse perso » — width (4 steps), « Trace à venir » (masquée by default / estompée: each runner's route to its
   finish, faint), tail, the map's and the traces' opacity, the course overlay — kept in `localStorage ocn.sh.prefs`.
+  **A circuit's start and finish** are what was read on the map, or the organiser's first and last clicks (« Saisir
+  l'ordre »): the editor no longer makes the first and last controls read the start and the finish (`relabel` only in
+  the click mode) — that ended every race at the last control found. A circuit without its finish runs each trace to its
+  end, without its start from the trace's start; a « finish » saved that way earlier only counts where the runner stops
+  with under a quarter of the race left (`track.finishAfterAll`).
   **Maps are kept as long as their analysis** (owner, 2026-10-14: « forever »): the bucket has no expiry rule (only the
   default abort of unfinished multipart uploads), an organiser's account deletion keeps their analyses (owner 0, no
   name; the administrators manage them). **A stored map is never degraded** (owner, 2026-10-14; it was re-encoded as

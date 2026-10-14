@@ -261,12 +261,14 @@ async function editor(box, ctx) {
       const near = all.map((c) => [Math.hypot(c.x - x, c.y - y), c]).sort((a, b) => a[0] - b[0])[0];
       const p = near && near[0] <= 1.3 * st.r ? { x: near[1].x, y: near[1].y } : { x, y };
       st.controls.push({ kind: "control", code: "", ...p });
-      relabel(); side(); mv.draw();
+      relabel(); labels(); side(); mv.draw();
     },
   });
   $("#sh-e-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-e-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
   $("#sh-e-fit").addEventListener("click", () => { mv.fitAll(); mv.draw(); });
+  // the clicks in order: the first is the start, the last the finish (the read course keeps its own kinds: a control is
+  // never made the start or the finish — the races ended at the last control found, owner 2026-10-14)
   const relabel = () => st.controls.forEach((p, i) => { p.kind = i === 0 ? "start" : i === st.controls.length - 1 && st.controls.length > 1 ? "finish" : "control"; });
   function side() {
     const ok = validGeo(st.geo), nCtrl = st.controls.filter((p) => p.kind === "control").length;
@@ -275,7 +277,7 @@ async function editor(box, ctx) {
       <ul class="an-summary">
         <li>${st.image ? t("sh.e.map", { w: st.image.width, h: st.image.height }) : t("sh.e.noMap")}</li>
         <li>${ok ? t("sh.e.geo", { how: st.geoHow }) : t("sh.e.noGeo")}</li>
-        <li>${st.controls.length ? t("sh.e.ctrls", { n: nCtrl }) : t("sh.e.noCtrls")}</li></ul>
+        <li>${st.controls.length ? t("sh.e.ctrls", { n: nCtrl, s: st.controls[0]?.kind === "start" ? t("sh.e.ctrls.s") : t("sh.e.ctrls.noS"), f: st.controls[st.controls.length - 1]?.kind === "finish" ? t("sh.e.ctrls.f") : t("sh.e.ctrls.noF") }) : t("sh.e.noCtrls")}</li></ul>
       ${st.notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}
       <p class="hint">${t(st.clicking ? "sh.e.clicking" : "sh.e.order.hint")}</p>
       <div class="row" style="gap:6px;flex-wrap:wrap">
@@ -284,7 +286,7 @@ async function editor(box, ctx) {
         <button type="button" class="btn btn-sm" id="sh-e-clear">${t("an.cal.clear")}</button></div>
       <ol class="sh-e-list">${st.controls.map((p) => html`<li>${p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : p.label}${p.code ? html` <span class="muted">${p.code}</span>` : ""}</li>`)}</ol>`;
     $("#sh-e-click").addEventListener("click", () => { st.clicking = !st.clicking; if (st.clicking && !confirmClear()) st.clicking = false; side(); });
-    $("#sh-e-undo").addEventListener("click", () => { st.controls.pop(); relabel(); side(); mv.draw(); });
+    $("#sh-e-undo").addEventListener("click", () => { st.controls.pop(); if (st.clicking) relabel(); labels(); side(); mv.draw(); });
     $("#sh-e-clear").addEventListener("click", () => { st.controls = []; side(); mv.draw(); });
   }
   const confirmClear = () => { if (st.controls.length && !confirm(t("sh.e.clear.confirm"))) return false; st.controls = []; mv.draw(); return true; };
@@ -373,6 +375,12 @@ async function editor(box, ctx) {
       else st.notes.push(t("an.st.noAlign"));
     }
     if (!st.geo) st.notes.push(t("sh.e.needGeo"));
+    // the finish not read (its colours lost over water or yellow, a line across it): looked for where the trace ends
+    if (!iofCourse && st.track && validGeo(st.geo) && st.detect?.probeFinish && !pts.some((p) => p.kind === "finish")) {
+      const f = fitFromGeo(st.geo, st.track), k = st.track.n - 1, [ex, ey] = toPx(f, st.track.x[k], st.track.y[k]);
+      const hit = ex >= 0 && ey >= 0 && ex <= W && ey <= H ? st.detect.probeFinish(ex, ey, 50 * f.scale) : null;
+      if (hit) pts.push({ x: hit.x, y: hit.y, kind: "finish" });
+    }
     // the controls in order: the IOF course, else the trace's visiting order, else as read (to be checked)
     st.controls = [];
     if (iofCourse && validGeo(st.geo)) {
@@ -390,7 +398,7 @@ async function editor(box, ctx) {
       st.controls = [...(start ? [{ ...start }] : []), ...vo.order.filter((i) => pts[i].kind === "control").map((i) => ({ ...pts[i] })), ...(finish ? [{ ...finish }] : [])];
       if (!start || !finish) st.notes.push(t("sh.e.checkEnds"));
     } else if (pts.length) { st.controls = pts.map((p) => ({ ...p })); st.notes.push(t("sh.e.checkOrder")); }
-    relabel(); labels();
+    labels();
     $("#sh-e-note").textContent = "";
     side(); mv.draw();
   }
@@ -404,7 +412,7 @@ async function editor(box, ctx) {
   $("#sh-e-cancel").addEventListener("click", () => { mv.destroy(); box.innerHTML = ""; });
   $("#sh-e-save").addEventListener("click", async () => {
     const note = $("#sh-e-note");
-    relabel(); labels();
+    labels();
     if (!st.image) return (note.textContent = t("sh.e.noMap"));
     if (!validGeo(st.geo)) return (note.textContent = t("sh.e.needGeo"));
     if (st.controls.length < 2) return (note.textContent = t("sh.e.noCtrls"));
@@ -499,7 +507,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     const fit = fitFromGeo(course.geo, tr), pxs = new Float32Array(tr.n), pys = new Float32Array(tr.n);
     for (let i = 0; i < tr.n; i++) { const [x, y] = toPx(fit, tr.x[i], tr.y[i]); pxs[i] = x; pys[i] = y; }
     const passes = coursePasses(tr, fit, ctrls, TOL);
-    const start = passes[0] ?? tr.t[0], finish = passes[legsN];
+    // a circuit without its start or its finish: the race from the trace's start, to the trace's end
+    const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
     return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: official(rec), abs0: tr.ms0 / 1000 };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);

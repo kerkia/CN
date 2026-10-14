@@ -21,14 +21,17 @@ const ANGLES = 24, STRIDE = 4;
 
 export async function detectCourse(image, { maxSide = 1800, debug = false } = {}) {
   const W = image.width, H = image.height;
-  let s = Math.min(1, maxSide / Math.max(W, H)), w, h, full, lw;
+  let s = Math.min(1, maxSide / Math.max(W, H)), w, h, full, lw, lum;
   const read = () => {
     w = Math.max(1, Math.round(W * s)); h = Math.max(1, Math.round(H * s));
     const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
     const g = cv.getContext("2d", { willReadFrequently: true });
     g.drawImage(image, 0, 0, w, h);
-    full = purpleMask(g.getImageData(0, 0, w, h).data, w, h);
+    const data = g.getImageData(0, 0, w, h).data;
+    full = purpleMask(data, w, h);
     lw = lineWidth(full, w, h);
+    lum = new Uint8Array(w * h);                                          // the lightness, for the finish's rings
+    for (let i = 0, p = 0; i < lum.length; i++, p += 4) lum[i] = (299 * data[p] + 587 * data[p + 1] + 114 * data[p + 2]) / 1000;
   };
   read();
   // the reading is made for an overprint line about 3 px wide (its tolerances are in pixels): a sharper image — a
@@ -41,8 +44,20 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   let controls = [], finish = null, start = null, startCands = null;
   if (rStar) {
     controls = circles.filter((c) => c.r >= 0.75 * rStar && c.r <= 1.25 * rStar);
-    // the finish: the larger circle concentric with a control-sized one (or alone, if clearly a ring)
-    for (const o of circles.filter((c) => c.r > 1.25 * rStar && c.r <= 1.8 * rStar).sort((a, b) => b.score - a.score)) {
+    // the finish: two concentric rings, the outer 1.25 to 1.6 times the inner — ISOM draws them 5 and 7 mm across
+    // around 6 mm control circles, so both come out near a control's size (2026-10-14); else the larger circle
+    // concentric with a control-sized one, or alone if clearly a ring
+    let pair = null;
+    for (const a of circles) for (const b of circles) {
+      if (b.r <= a.r || b.r > 1.6 * a.r || b.r < 1.25 * a.r || a.r < 0.6 * rStar || b.r > 1.9 * rStar || Math.hypot(a.x - b.x, a.y - b.y) > 0.3 * a.r) continue;
+      const sc = Math.min(a.score, b.score);
+      if (!pair || sc > pair.sc) pair = { a, b, sc };
+    }
+    if (pair) {
+      finish = { x: (pair.a.x + pair.b.x) / 2, y: (pair.a.y + pair.b.y) / 2, r1: pair.a.r, r2: pair.b.r, score: pair.sc };
+      controls = controls.filter((c) => c !== pair.a && c !== pair.b);
+    }
+    for (const o of finish ? [] : circles.filter((c) => c.r > 1.25 * rStar && c.r <= 1.8 * rStar).sort((a, b) => b.score - a.score)) {
       const inner = controls.find((c) => Math.hypot(c.x - o.x, c.y - o.y) < 0.35 * rStar);
       if (inner || (o.score >= 0.8 && o.raw >= 0.5)) {
         finish = { x: inner ? (o.x + inner.x) / 2 : o.x, y: inner ? (o.y + inner.y) / 2 : o.y, r1: inner ? inner.r : null, r2: o.r, score: o.score };
@@ -82,7 +97,53 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
     const c = refineCircle(mask, dil, w, h, best.x, best.y, best.r);
     return c ? { ...back(c) } : null;
   };
-  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe,
+  /**
+   * The finish's double circle near an image point (within `radius` px), read from the lightness, not the colour: the
+   * overprint over yellow comes out brown, over water dark blue, and a black line or a building may cover a part of it
+   * (the owner's photo, 2026-10-14). Along each of 36 rays from a candidate centre the lightness must go light (inside),
+   * dark (inner ring), light (between), dark (outer ring), light (outside); a ray crossed by something dark fails. A
+   * map's texture (concentric contours round a knoll, vegetation) passes rays here and there: the rings must hold on
+   * half the rays and on three quarters of the circle at least (each quarter with 40 % of its rays). The inner ring 0.7
+   * to 1.05 r*, the outer 1.3 to 1.5 times it. Returns { x, y, r1, r2, score }. Meant for a small area — where
+   * the trace ends: elsewhere a map's texture can pass as well.
+   */
+  const probeFinish = (X, Y, radius) => {
+    if (!rStar) return null;
+    const x0 = X * s, y0 = Y * s, R = Math.max(4, radius * s), N = 36, D = 22;
+    const cs = Array.from({ length: N }, (_, k) => Math.cos((2 * Math.PI * k) / N)), sn = cs.map((_, k) => Math.sin((2 * Math.PI * k) / N));
+    const L = (x, y) => lum[Math.round(y) * w + Math.round(x)];
+    const score = (cx, cy, r1, r2) => {
+      const rm = (r1 + r2) / 2, rin = 0.5 * r1, rout = r2 + (r2 - r1) / 2;
+      if (cx - rout - 2 < 0 || cy - rout - 2 < 0 || cx + rout + 2 >= w || cy + rout + 2 >= h) return 0;
+      let ok = 0;
+      const quarter = [0, 0, 0, 0];
+      for (let k = 0; k < N; k++) {
+        const c = cs[k], d = sn[k];
+        const dark = (r) => Math.min(L(cx + c * (r - 1), cy + d * (r - 1)), L(cx + c * r, cy + d * r), L(cx + c * (r + 1), cy + d * (r + 1)));
+        const light = (r) => Math.max(L(cx + c * (r - 1), cy + d * (r - 1)), L(cx + c * r, cy + d * r), L(cx + c * (r + 1), cy + d * (r + 1)));
+        const a = dark(r1), b = light(rm), e = dark(r2);
+        if (b - a >= D && b - e >= D && light(rout) - e >= D && light(rin) - a >= D) { ok++; quarter[(4 * k / N) | 0]++; }
+      }
+      const quarters = quarter.filter((q) => q >= 0.4 * (N / 4)).length;
+      return quarters >= 3 ? ok / N : 0;
+    };
+    let best = null;
+    const radii = [];
+    for (let r1 = Math.max(3, Math.round(0.7 * rStar)); r1 <= Math.round(1.05 * rStar); r1++) for (const q of [1.3, 1.4, 1.5]) radii.push([r1, r1 * q]);
+    // a 2 px grid, then the best spot refined to the pixel
+    for (let cy = Math.round(y0 - R); cy <= y0 + R; cy += 2) for (let cx = Math.round(x0 - R); cx <= x0 + R; cx += 2) {
+      for (const [r1, r2] of radii) { const sc = score(cx, cy, r1, r2); if (!best || sc > best.score) best = { x: cx, y: cy, r1, r2, score: sc }; }
+    }
+    if (!best || best.score < 0.3) return null;
+    const c0 = best;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) for (const [r1, r2] of radii) {
+      if (Math.abs(r1 - c0.r1) > 1) continue;
+      const sc = score(c0.x + dx, c0.y + dy, r1, r2);
+      if (sc > best.score) best = { x: c0.x + dx, y: c0.y + dy, r1, r2, score: sc };
+    }
+    return best.score >= 0.5 ? { x: best.x / s, y: best.y / s, r1: best.r1 / s, r2: best.r2 / s, score: best.score } : null;
+  };
+  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe, probeFinish,
     finish: finish && { ...back(finish), r1: finish.r1 == null ? null : finish.r1 / s, r2: finish.r2 / s },
     start: start && { ...back(start), R: start.R / s }, nCircles: circles.length, lw,
     found: debug ? found.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };

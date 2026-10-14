@@ -211,16 +211,35 @@ export const valueAt = (tr, c, s) => (tr.ch[c] ? tr.ch[c][indexAt(tr, s)] : null
  * d: each trace point's distance to the finish, in metres.
  */
 export function finishArrival(tr, d, k0 = 0, lim = 25, far = 300) {
-  const n = tr.n, T = tr.t;
+  const n = tr.n;
   if (k0 < 0 || k0 >= n) return -1;
   const farAfter = new Float32Array(n);
   for (let k = n - 1, m = 0; k >= 0; k--) { if (d[k] > m) m = d[k]; farAfter[k] = m; }
   const near = [];
   for (let k = k0; k < n; k++) if (d[k] <= lim && (k === k0 || d[k - 1] > lim) && farAfter[k] <= far) near.push(k);
   if (!near.length) return -1;
+  return near.find((k) => stopsAt(tr, k)) ?? near[near.length - 1];
+}
+/**
+ * Every control passed, the runner going on afterwards (the walk back with the watch running): the first entry into the
+ * finish's zone from k0 where the runner stops running and what follows is short beside the race (under a quarter of
+ * its distance); else -1. A « finish » that is in fact a control (a circuit whose end was not read) is passed at a run,
+ * with most of the race still to come.
+ */
+export function finishAfterAll(tr, d, k0 = 0, lim = 25) {
+  const n = tr.n;
+  for (let k = Math.max(0, k0); k < n; k++) {
+    if (d[k] > lim || (k > k0 && d[k - 1] <= lim)) continue;
+    if (tr.cum[n - 1] - tr.cum[k] <= 0.25 * (tr.cum[k] - tr.cum[0]) && stopsAt(tr, k)) return k;
+  }
+  return -1;
+}
+/** The runner stops running at index k: the trace ends within a minute, or the next minute is run at under 60 % of
+ *  the speed of the two minutes before. */
+function stopsAt(tr, k) {
+  const T = tr.t, n = tr.n;
   const speed = (a, b) => (b > a ? (cumAt(tr, b) - cumAt(tr, a)) / (b - a) : 0);
-  const stops = (k) => T[n - 1] - T[k] <= 60 || speed(T[k], T[k] + 60) < 0.6 * speed(T[k] - 120, T[k]);
-  return near.find(stops) ?? near[near.length - 1];
+  return T[n - 1] - T[k] <= 60 || speed(T[k], T[k] + 60) < 0.6 * speed(T[k] - 120, T[k]);
 }
 /** A channel's mean between two trace times, or null. */
 export function meanBetween(tr, c, s0, s1) {
