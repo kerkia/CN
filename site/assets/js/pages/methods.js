@@ -384,9 +384,7 @@ export async function render(main, { query = {} } = {}) {
       official: { cn: offCn, used: offUsed, what: html`moyenne des ${fmt(n - offDrop - offLow)} scores du milieu : sans la meilleure (10 %) ni les
         ${fmt(offLow)} moins bonnes (40 %)` },
       top6w3: { ...aggregate(p6.top_n, 3), what: html`${fmt(p6.top_n)} places remplies par les meilleures courses, chacune selon son poids, en moyenne cubique` },
-      top6w: { ...aggregate(p6.top_n, 1), what: html`les mêmes ${fmt(p6.top_n)} places, en moyenne simple` },
       fair3: { ...aggregate(Infinity, 3), what: html`moyenne cubique pondérée des ${pctOf(pf.eligible_fraction)} meilleures` },
-      fair: { ...aggregate(Infinity, 1), what: html`la même, en moyenne simple` },
     };
     const chips = (m) => html`<div class="mx-scores">${EXAMPLE.map(([s, k], i) => {
       const u = EX[m].used[i];
@@ -482,22 +480,14 @@ export async function render(main, { query = {} } = {}) {
       <h2>Mêmes scores, CN différents</h2>
       <p class="mx-lead">Un coureur a couru ${fmt(n)} courses en 12 mois. Sa meilleure, ${fmt(EXAMPLE[0][0])}, est un championnat de France (★) ;
         ${fmt(EXAMPLE[2][0])} est une nationale. Ce que chaque méthode retient de ces mêmes scores :</p>
-      ${M.map((m) => html`<div class="mx-agg" style="${cvar(m)}">
+      ${M.filter((m) => m !== "top6w" && m !== "fair").map((m) => html`<div class="mx-agg" style="${cvar(m)}">
         <div><b>${methodKey(m)} ${methodShort(m)}</b><div class="what">${EX[m].what}</div></div>
         ${chips(m)}
         <div class="cn">${fmt(EX[m].cn)}</div></div>`)}
       <p class="muted" style="font-size:13px">×2, ×1,5 : le poids de la course, ou les places qui lui restent. Exemple pédagogique : dans la réalité,
         chaque méthode a aussi ses propres valeurs de circuit, donc ses propres scores. Les
         ${EXAMPLE.filter(([, k]) => k !== "other").map(([s, k]) => `${fmt(s)} (${kindName[k]})`).join(" et ")} sont marqués.</p>
-    </section>
-
-    ${tops.includes("top6w") ? html`<section class="mx-slide" style="${cvar("top6w")}">
-      <p class="mx-kicker">${methodKey("top6w")} ${methodLabel("top6w")}${analyst ? html` · ${methodKey("fair")} ${methodLabel("fair")}` : ""} · analyse</p>
-      <h2>La méthode d'origine, calculée pour référence</h2>
-      <p>Les mêmes règles avec la valeur de circuit de la FFCO (la moyenne arithmétique de CN J-15 × temps sur les ⌈2N/3⌉ plus rapides) et la moyenne
-        simple des scores retenus — ${fmt(p6.top_n)} places pour le Top linéaire${analyst ? ", sans plafond pour le Fit linéaire, qui valorise ses circuits" : ""}.
-        Même recalage continu, le niveau fixé sur ses propres CN.</p>
-    </section>` : ""}`;
+    </section>`;
   }
 
   // ======================================================================================================
