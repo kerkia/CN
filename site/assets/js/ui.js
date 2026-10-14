@@ -167,8 +167,9 @@ export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
   }
   const rowHtml = (r, i) => html`<tr class="${rowClass ? rowClass(r) : ""}">
     ${columns.map((c) => html`<td class="${c.align || ""} ${c.cls || ""}">${c.render ? c.render(r, i) : r[c.key]}</td>`)}</tr>`;
+  // under the table: the rows shown so far, or, once the table is long enough to scroll within the page, their number
   const status = () => (shown < all.length
-    ? `${fmt(shown)} / ${fmt(all.length)} — faites défiler pour afficher la suite` : "");
+    ? `${fmt(shown)} / ${fmt(all.length)} — faites défiler pour afficher la suite` : all.length > 15 ? `${fmt(all.length)} lignes` : "");
 
   /** Append the next rows (up to index `upTo` if given). */
   function more(upTo) {

@@ -438,10 +438,13 @@ select { padding-right: 28px; }
   background:
     linear-gradient(to right, var(--surface) 30%, transparent) left / 28px 100% no-repeat local,
     linear-gradient(to left, var(--surface) 30%, transparent) right / 28px 100% no-repeat local,
+    linear-gradient(to top, var(--surface) 30%, transparent) bottom / 100% 36px no-repeat local,
     radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) left / 14px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) right / 14px 100% no-repeat scroll;
+    radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) right / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--ink) 22%, transparent), transparent) bottom / 100% 18px no-repeat scroll;
 }
-/* a long table scrolls within the page's height, its header row frozen at the top (th: position sticky) */
+/* a long table scrolls within the page's height, its header row frozen at the top (th: position sticky); the shadow at
+   the bottom says it goes on (2026-10-14: a club's roster was taken to end at the last row in view) */
 .table-wrap { max-height: var(--table-max, calc(100vh - 110px)); overflow-y: auto; }
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
 /* the results tables (Courses, Récemment, En direct): a score and its gap to the runner's CN, aligned */
