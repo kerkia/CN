@@ -159,9 +159,9 @@ export async function render(main, { query = {}, route } = {}) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     <ol class="dep-steps" id="an-steps"></ol>
+    <div class="an-brief" id="an-brief" hidden></div>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
-    <div class="an-brief" id="an-brief" hidden></div>
     <div id="an-work" hidden>
       <div class="an-layout" id="an-layout">
         <section class="an-graphs" id="an-strip-card" hidden>
@@ -449,10 +449,18 @@ export async function render(main, { query = {}, route } = {}) {
     brief.hidden = on;
     if (on) return;
     const r = runner(), rc = races.find((x) => x.key === key);
-    brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit">← ${t("an.brief.edit")}</button>
+    brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
       <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
       <span class="muted">${[files.map?.name, files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
-    $("#an-brief-edit").addEventListener("click", leavePlayback);
+    // the race's and the files' choices open above the display, which stays; changing one of them starts a new
+    // calibration (its inputs changed) — the display itself has nothing to recalibrate (owner, 2026-10-14)
+    $("#an-brief-edit").addEventListener("click", (e) => {
+      const open = $("#an-files").hidden;
+      $("#an-pick").hidden = perso || !open; $("#an-files").hidden = !open;
+      e.currentTarget.setAttribute("aria-expanded", String(open));
+      e.currentTarget.textContent = `${t("an.brief.edit")} ${open ? "▴" : "▾"}`;
+      fitHeight();
+    });
   }
   const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
@@ -886,10 +894,8 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><input type="checkbox" id="an-marks" ${raw(marks ? "checked" : "")}> ${t("an.marks")}</label>
         </div></details>
-      <div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html` · ${t("an.st.geo")} ${geoHow}` : ""}
-        <button type="button" class="btn btn-sm" id="an-again" style="margin-left:6px">${t("an.cal.again")}</button></div>`;
+      ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
     $("#an-next").addEventListener("click", () => jumpLeg(1));
@@ -899,7 +905,6 @@ export async function render(main, { query = {}, route } = {}) {
     slider.addEventListener("pointerdown", () => { scrubbing = true; });
     slider.addEventListener("pointerup", () => { scrubbing = false; });
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
-    $("#an-marks").addEventListener("change", (e) => { marks = e.target.checked; draw(); });
     $("#an-glayout").addEventListener("change", (e) => { glayout = e.target.value; savePrefs(); applyLayout(); });
     // the trace's colour applies to the plain trace only: hidden while it is coloured by pace
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; $("#an-colour-row").hidden = colour === "speed"; savePrefs(); draw(); });
@@ -911,7 +916,6 @@ export async function render(main, { query = {}, route } = {}) {
     const setColour = (c) => { traceColour = c; savePrefs(); $$(".an-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.colour === c))); $("#an-colour-pick").value = c; draw(); drawChips(); };
     $$(".an-swatch").forEach((b) => b.addEventListener("click", () => setColour(b.dataset.colour)));
     $("#an-colour-pick").addEventListener("input", (e) => setColour(e.target.value));
-    $("#an-again").addEventListener("click", leavePlayback);
     // the curves under the map: the pace and the file's channels, any number of them, one above the other
     const chipsBox = $("#an-chips");
     const drawChips = () => {
@@ -926,11 +930,6 @@ export async function render(main, { query = {}, route } = {}) {
     sizeStrip();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
-  }
-  /** Back from the playback to the calibration and the files. */
-  function leavePlayback() {
-    stop(); calibrated = false; marks = true; mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0;
-    hideResults(); side(); draw();
   }
   /** The view on the race: the whole trace, as large as the box allows (restored: lost in c00a655). */
   function fitTrace() {

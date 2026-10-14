@@ -481,7 +481,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (« Trait »), the map's and the trace's opacity, the curves under the map as toggle chips (pace plus any of the
   file's channels, each on its own scale), « suivre » off by default, all kept in `localStorage ocn.an.prefs`; the
   view opens zoomed on the race's trace (⤢; ▭ = the whole map); during the playback the pickers and the files card
-  give way to one line (« Course et fichiers » brings them back); the clock runs on a timer, not on
+  give way to one line (« Course et fichiers ▾ » opens them above the display, which stays; changing a choice there
+  starts a new calibration). No « Recaler » and no « Postes » box on the display (owner, 2026-10-14): the calibration
+  is finished and approved (« Voir la course ») before it, and the rings are drawn only while calibrating; the clock runs on a timer, not on
   requestAnimationFrame, which a hidden pane pauses. **Memory between visits** (owner, 2026-10-14): the files and the
   work stay in memory while the site is open (`memo`: a visit to another page and back finds them), the files are
   also kept in IndexedDB (`ocn-analyse`) for the tab's session (a tag in `sessionStorage ocn.an.tag`: a reload
@@ -490,10 +492,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   geometry and a `done` flag (v2): it comes back as it was left, hand-placed controls included, straight into the
   playback when finished; « Refaire le calage automatique » starts afresh. **Playback layout** (owner's review,
   2026-10-14): `body.an-theatre` hides the site's menus, the steps and the page head — the top bar keeps the logo, theme
-  and name, one line gives « ← Course et fichiers », the race, runner and files; the map and the side panel take
+  and name, one line gives « Course et fichiers ▾ », the race, runner and files; the map and the side panel take
   `100vh − 252px − var(--an-strip)` so a desktop screen needs no scrollbar; the side panel is a compact list (transport,
   slider, stats as dt/dd, « Affichage » folded: trace colour with swatches and a picker, width, by pace, tail,
-  opacities, marks). Trace colour default dark purple `#3b0764`, width 2.4, the part to come at 0.45 alpha; by pace
+  opacities). Trace colour default dark purple `#3b0764`, width 2.4, the part to come at 0.45 alpha; by pace
   colours the whole race. The curves under the map are stacked rows (56 px each, `--an-strip` follows). The legs
   table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
   course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
