@@ -1206,7 +1206,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .an-chip[aria-pressed="true"]::before { opacity: 1; }
 .an-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; margin: 0 2px 8px; }
 /* the theatre: while the race plays, the site's menus give way to the map, the curves and the controls */
-body.an-theatre .nav, body.an-theatre .subbar, body.an-theatre #footer, body.an-theatre .dep-steps, body.an-theatre .page-head { display: none !important; }
+body.an-theatre .subbar, body.an-theatre #footer, body.an-theatre .dep-steps, body.an-theatre .page-head { display: none !important; }
 body.an-theatre .page { padding-top: 8px; }
 body.an-theatre .an-layout { margin-top: 0; }
 body.an-theatre .an-map, body.an-theatre .an-side { height: calc(100vh - 252px - var(--an-strip, 80px)); max-height: none; min-height: 300px; }

@@ -1166,6 +1166,7 @@ export async function render(main, { query = {} } = {}) {
     restoreFromIdb();
   }
   return { title: t("an.title"), cleanup: () => {
+    document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     stop(); ro.disconnect(); prepToken++;
     if (map || track) memo = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
