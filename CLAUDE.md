@@ -287,20 +287,25 @@ actually ahead, against H21) and rank drift by number of races. Reference result
 forest Fit 82.3 %, Top 82.1 %, official 80.9 %; sprint Fit 84.0 %, Top 83.9 %, official 80.7 %.
 Top linéaire vs Top quadratique (2026-10-07, 2025-07 → 2026-10, same pairs): forest 82.06 → 82.12 % (national races
 82.80 → 82.80), sprint 83.94 → 84.01 % (national 82.18 → 82.11); forest scale p90/p10 2.65 → 2.57.
-That duel share was the tuning yardstick. **The published evaluation** (owner, 2026-10-10: the duel counts were
-statistically naive) is `site_eval.py` -> `evaluation.json`, built by `site_extras` when missing (a migration deletes
-it): per circuit Kendall's tau (each circuit counts once), the share of log-time spread explained with the slope fitted
-on the previous season (out of sample), the Plackett-Luce information per runner (beta from the previous season), and
-the duel share; same runners for every method, circuits of 4+; 95 % intervals by a bootstrap over **competitions**
-(pairs within a race are not independent); every season from 2012, the 2012-2024 hold-out (before any tuning) and the
-tuning period. Results (hold-out, Top − official): forest tau +0.044 [0.041, 0.047], R² +9.5 pt; sprint tau +0.050,
-R² +9.2 pt; national races smaller (forest tau +0.023), not established in 2022, 2026 or the tuning period. Top
-quadratic − linear: tau +0.003 forest (not established in sprint), R² +1.3 pt forest, +2.8 pt sprint. The retained
-Top (`top6w3`) − the quadratic one, same runners, hold-out: forest tau +0.0139 [+0.0125, +0.0154] (14 seasons of 15),
-national +0.0039, R² +2.4 pt; sprint +0.0025 [+0.0014, +0.0035]; VTT unchanged (not computed differently). The Méthodes
-page's « Les analyses » reads it (forest plots by season, pooled periods); the k-grid tables (`K_TESTS`, `K_GRID`, the
-circuit-value variants) stay as dated exploratory measurements, labelled as such. Say « established » only when the
-interval excludes 0.
+That duel share was the tuning yardstick (each duel counted once). **The published evaluation** (owner, 2026-10-10:
+the duel counts were statistically naive; 2026-10-14: weight by runners) is `site_eval.py` -> `evaluation.json`, built by
+`site_extras` when missing (a migration deletes it): **the share of duels called right, each circuit weighing its number
+of runners** (per circuit p = (right + ½ CN ties) / pairs, then the runner-weighted mean = the mean over results of the
+share of a runner's duels called right; Kendall's tau = 2p − 1, also stored, is the same measure on another scale), and
+the share of log-time spread explained (R², pooled over results) with the slope fitted on the previous season (out of
+sample); the Plackett-Luce information per runner is still computed but no longer shown. Same runners for every method,
+circuits of 4+; 95 % intervals by a bootstrap over **competitions** (pairs within a race are not independent); every
+season from 2012, the 2012-2024 hold-out (before any tuning) and the tuning period. Results (hold-out, Top − official,
+points of duels): forest +2.13 [2.03, 2.24] (79.19 → 81.32 %), R² +11.8 pt; sprint +2.41 [2.13, 2.70] (81.16 → 83.57 %),
+R² +9.7 pt; national races +1.27 forest, +1.73 sprint; significant in 15 of 15 forest seasons, 13 of 15 sprint. Top −
+Top linéaire: forest +0.46 [0.42, 0.51], sprint +0.09 [0.02, 0.15]. The retained Top (`top6w3`) − the quadratic one
+(study re-run with the weighting, `*_n.json` in the study folder): forest +0.40 [0.35, 0.44] (14 seasons of 15),
+national +0.12, R² +2.4 pt; sprint +0.12 [0.09, 0.15]; k = 3 − k = 2 forest +0.04 [0.03, 0.05] (national −0.01, not
+significant), k = 4 loses on national races (−0.03 vs k = 2). The Documentation's « L'étude » reads it (forest plots by
+season, pooled periods) and `site/assets/study.json`; the k-grid tables (`K_TESTS`, `K_GRID`, the quadratic circuit
+value) stay as dated exploratory measurements (duels counted once), labelled as such. Say « significatif » (explained on
+the page: the 95 % interval does not contain 0) only when the interval excludes 0. Documentation texts: plain, correct
+French, a physical reason for each mathematical choice (owner, 2026-10-14).
 Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace(spec.params, ...)`.
 
 ## Conventions and gotchas

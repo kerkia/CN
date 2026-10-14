@@ -63,13 +63,13 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_trunc.pdf")
 plt.close(fig)
 
-# ---- figure 3: the gain in tau by k, per family --------------------------------------------------------------------
+# ---- figure 3: the gain in duels called right (points) by k, per family --------------------------------------------------------------------
 COL = {"gall": GREEN, "g23": INK, "aall": GREY, "race": ORANGE, "pow": BLUE}
 DASH = {"g23": (0, (4, 2))}
 fig, axes = plt.subplots(1, 2, figsize=(6.4, 2.8))
 for ax, t in zip(axes, ("For", "Spr")):
     for fam in D["kcurves"][t]:
-        pts = [(p["k"], p["all_holdout"]["tau"]) for p in fam["points"] if p["all_holdout"]["tau"]]
+        pts = [(p["k"], p["all_holdout"]["acc"]) for p in fam["points"] if p["all_holdout"]["acc"]]
         if not pts:
             continue
         pts.sort()
@@ -84,7 +84,7 @@ for ax, t in zip(axes, ("For", "Spr")):
     ax.set_xticks([1, 1.5, 2, 3, 4])
     ax.set_title(T[t])
     ax.set_xlabel("k")
-axes[0].set_ylabel("gain de τ sur le Top quadratique")
+axes[0].set_ylabel("gain, points de duels")
 handles, labels = axes[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.04), fontsize=7.5)
 fig.tight_layout(rect=(0, 0.16, 1, 1))
@@ -96,7 +96,7 @@ fig, axes = plt.subplots(1, 2, figsize=(6.4, 2.4))
 for ax, t in zip(axes, ("For", "Spr")):
     s = D["seasons"][t]
     years = sorted(s)
-    vals = [s[y]["tau"] for y in years]
+    vals = [s[y]["acc"] for y in years]
     cols = [GREEN if a[1] > 0 else "#c62828" if a[2] < 0 else "#bbbbbb" for a in vals]
     x = range(len(years))
     ax.bar(x, [a[0] for a in vals], color=cols, width=0.65)
@@ -104,7 +104,7 @@ for ax, t in zip(axes, ("For", "Spr")):
     ax.axhline(0, color=GREY, lw=0.8)
     ax.set_xticks(list(x), [y[2:] for y in years], fontsize=7)
     ax.set_title(T[t])
-axes[0].set_ylabel("gain de τ sur le Top quadratique")
+axes[0].set_ylabel("gain, points de duels")
 fig.tight_layout()
 fig.savefig(FIG / "fig_seasons.pdf")
 plt.close(fig)
@@ -114,10 +114,10 @@ fig, ax = plt.subplots(figsize=(6.4, 2.3))
 s = D["onecn_seasons"]["For"]
 years = sorted(s)
 for m, lab, col in (("ST6_t", "6 places", "#c62828"), ("ST10_t", "10 places", ORANGE), ("ST16_t", "16 places", GREY)):
-    ax.plot(range(len(years)), [s[y][m][0] for y in years], marker="o", ms=3, lw=1.2, color=col, label=f"le Top à {lab} valorise lui-même les circuits")
+    ax.plot(range(len(years)), [s[y][m][0] for y in years], marker="o", ms=3, lw=1.2, color=col, label=f"un CN Top à {lab} valorise lui-même les circuits")
 ax.axhline(0, color=GREY, lw=0.8)
 ax.set_xticks(range(len(years)), [y[2:] for y in years], fontsize=7)
-ax.set_ylabel("écart de τ à la méthode retenue")
+ax.set_ylabel("écart en points de duels")
 ax.set_title("Forêt")
 ax.legend(frameon=False, loc="lower left")
 fig.tight_layout()
@@ -144,12 +144,12 @@ ROWS = [("Références", None), ("official", "CN officiel de la FFCO"), ("L_t", 
         ("k appliqué au score, sur la valeur de circuit FFCO, moyenne simple", None), ("k15_t", "k = 1,5"), ("k2_t", "k = 2"), ("k3_t", "k = 3"), ("k2p05_t", "k = 2 sur la valeur du circuit seule"),
         ("Puissance du CN seul, valeur FFCO", None), ("p3_t", "puissance 3"),
         ("Autres valeurs de circuit", None), ("g_t", "géométrique, ⅔ les plus rapides, k = 1"), ("gp2_t", "géométrique, ⅔, k = 2"), ("s100_t", "arithmétique, tout le peloton, k = 1"),
-        ("s100p2_t", "arithmétique, tout le peloton, k = 2"), ("A3_t", "arithmétique, tout le peloton, k = 3"), ("E4_t", "arithmétique, 85 \% les plus rapides, k = 2"),
-        ("V23_t", "géométrique, 85 \% les plus rapides, k = 3"), ("H1_t", "géométrique robuste (Huber), tout le peloton, k = 2"),
+        ("s100p2_t", "arithmétique, tout le peloton, k = 2"), ("A3_t", "arithmétique, tout le peloton, k = 3"), ("E4_t", r"arithmétique, 85 \% les plus rapides, k = 2"),
+        ("V23_t", r"géométrique, 85 \% les plus rapides, k = 3"), ("H1_t", "géométrique robuste (Huber), tout le peloton, k = 2"),
         ("Moyenne géométrique sur tout le peloton", None), ("G3_t", "k = 1"), ("G1_t", "k = 2"), ("G4_t", "k = 3 (retenu en forêt)"), ("G5_t", "k = 4"),
         ("Autres idées", None), ("kc_t", "élasticité estimée par circuit"), ("c30_t", "score courbé"), ("Me_t2", "niveau du maximum de vraisemblance")]
-ev_full = json.load(open(Path(r"C:\kerkia\cn-data\study") / "eval_final.json", encoding="utf-8"))
-for extra in ("eval_extra.json", "eval_extra2.json"):
+ev_full = json.load(open(Path(r"C:\kerkia\cn-data\study") / "eval_final_n.json", encoding="utf-8"))
+for extra in ("eval_extra_n.json", "eval_extra2_n.json"):
     ex = json.load(open(Path(r"C:\kerkia\cn-data\study") / extra, encoding="utf-8"))
     for terr, r in ex["res"].items():
         for key, x in r.items():
@@ -164,13 +164,13 @@ def cell(terr, scope, stat, m, pt=False):
     a = x.get(f"d_{stat}", {}).get(m)
     if not a:
         return "—"
-    return sg(a[0], 2 if pt else 4, pt) + star(a)
+    return sg(a[0], 2, True) + star(a)          # duels and R2 both in points
 
 
 lines.append(r"\begin{longtable}{@{}p{6.1cm}rrrr@{}}")
-lines.append(r"\caption{Chaque variante (type Top) contre le Top quadratique, mêmes coureurs : $\tau$ de Kendall, 2012--2024, toutes courses ; $\tau$ sur les courses nationales ; $\tau$ depuis juillet 2025 ; R$^2$ (points). * : intervalle à 95 \% excluant 0.}\label{tab:variants}\\")
-lines.append(r"\toprule Variante & $\tau$ & $\tau$ nat. & $\tau$ 2025-- & R$^2$ \\ \midrule \endfirsthead")
-lines.append(r"\toprule Variante & $\tau$ & $\tau$ nat. & $\tau$ 2025-- & R$^2$ \\ \midrule \endhead")
+lines.append(r"\caption{Chaque variante contre le Top quadratique, sur les mêmes coureurs, en points : la part des duels bien prédits de 2012 à 2024 sur toutes les courses, sur les courses nationales, puis depuis juillet 2025 ; la part des écarts de temps expliquée (R$^2$) de 2012 à 2024. Un astérisque marque un écart significatif : son intervalle à 95 \% ne contient pas 0.}\label{tab:variants}\\")
+lines.append(r"\toprule Variante & Duels & Nationales & Depuis 2025 & R$^2$ \\ \midrule \endfirsthead")
+lines.append(r"\toprule Variante & Duels & Nationales & Depuis 2025 & R$^2$ \\ \midrule \endhead")
 for terr_code, terr in (("For", "Forêt"), ("Spr", "Sprint")):
     lines.append(rf"\multicolumn{{5}}{{@{{}}l}}{{\textsc{{{terr}}}}} \\")
     for m, lab in ROWS:
@@ -183,16 +183,16 @@ for terr_code, terr in (("For", "Forêt"), ("Spr", "Sprint")):
             lab = "k = 3, ⅔ les plus rapides (retenu en sprint)"
         if terr_code == "Spr" and m == "V23_t":
             lab = "géométrique, moitié la plus rapide, k = 3"
-        lines.append(f"{lab} & {cell(terr, 'all/holdout', 'tau', m)} & {cell(terr, 'nat/holdout', 'tau', m)} & {cell(terr, 'all/tuned', 'tau', m)} & {cell(terr, 'all/holdout', 'r2', m, True)} \\\\")
+        lines.append(f"{lab} & {cell(terr, 'all/holdout', 'accn', m)} & {cell(terr, 'nat/holdout', 'accn', m)} & {cell(terr, 'all/tuned', 'accn', m)} & {cell(terr, 'all/holdout', 'r2', m, True)} \\\\")
 lines.append(r"\bottomrule \end{longtable}")
 
 # table: the recalage
-RL = ["Aujourd'hui : moyenne des 13 mois se terminant 2 mois plus tôt", "Droite ajustée sur ces 13 mois, lue le jour où le facteur s'applique",
+RL = ["Jusqu'au 13 octobre : la moyenne des 13 mois se terminant 2 mois plus tôt", "Droite ajustée sur ces 13 mois, lue le jour où le facteur s'applique",
       "La même droite, lue 6 mois plus loin", "La moyenne de 13 mois, prolongée de 7 mois par la dérive sur 3 ans",
       "La moyenne de 13 mois, prolongée de 7 mois par la dérive sur 10 ans (retenue)"]
 lines.append("\n" + r"\begin{table}[h]\centering\small")
-lines.append(r"\caption{Le recalage en forêt : la moyenne des 20 \% meilleurs CN au 1\textsuperscript{er} octobre 2026 (Fit, Top), pour la méthode d'alors et pour la méthode retenue ; cible 5\,600.}\label{tab:recal}")
-lines.append(r"\begin{tabular}{@{}p{7.2cm}rrrr@{}}\toprule & \multicolumn{2}{c}{Méthode d'alors} & \multicolumn{2}{c}{Méthode retenue} \\ Recalage & Fit & Top & Fit & Top \\ \midrule")
+lines.append(r"\caption{Le recalage en forêt : la moyenne des 20 \% meilleurs CN au 1\textsuperscript{er} octobre 2026 (niveau habituel, CN Top), pour la méthode d'alors et pour la méthode retenue ; cible 5\,600.}\label{tab:recal}")
+lines.append(r"\begin{tabular}{@{}p{7.2cm}rrrr@{}}\toprule & \multicolumn{2}{c}{Méthode d'alors} & \multicolumn{2}{c}{Méthode retenue} \\ Recalage & Niveau & CN Top & Niveau & CN Top \\ \midrule")
 for lab, row in zip(RL, D["recal"]["rows"]):
     lines.append(f"{lab} & {row['today']['level'][0]} & {row['today']['level'][1]} & {row['cand']['level'][0]} & {row['cand']['level'][1]} \\\\")
 lines.append(r"\bottomrule\end{tabular}\end{table}")
@@ -200,7 +200,7 @@ lines.append(r"\bottomrule\end{tabular}\end{table}")
 # table: the group calibration
 lines.append("\n" + r"\begin{table}[h]\centering\small")
 lines.append(r"\caption{Jeunes (20 ans et moins) et vétérans (55 ans et plus) face aux H/D\,21 : correction du CN qui mettrait le groupe à sa place (+ : le groupe est sous-évalué), 2012--2026, intervalle à 95 \%.}\label{tab:calib}")
-lines.append(r"\begin{tabular}{@{}llrrr@{}}\toprule & & FFCO & Top quadratique & Méthode retenue \\ \midrule")
+lines.append(r"\begin{tabular}{@{}llrrr@{}}\toprule & & Officiel & Top quadratique & Méthode retenue \\ \midrule")
 for t, name, cand in (("For", "Forêt", "G4_t"), ("Spr", "Sprint", "G1_t")):
     for g, gl in (("young", "jeunes"), ("old", "vétérans")):
         v = D["calib"][t][g]["v"]

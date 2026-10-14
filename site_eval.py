@@ -4,18 +4,20 @@ missing (update.migrate deletes it whenever a method or this measure changes).
 
 The question: on a circuit, does the CN each runner had 15 days before the race (their own published CN, no fallback)
 tell who finishes ahead, and by how much? The runners compared are the same for every method: those who finished
-("ok", a time) and held a CN in all of them. Three measures, from the coarsest to the finest:
+("ok", a time) and held a CN in all of them. The measures:
 
-  tau   Kendall's tau-b between the CN and the finishing order, circuit by circuit, then averaged over the circuits —
-        each circuit counts once (a duel count lets a 150-runner circuit weigh as much as 500 small ones), and the
-        difference between two methods is taken circuit by circuit (paired: same runners, same race).
+  acc   the duels called right: on each circuit, the share of the pairs of runners in which the higher CN finished
+        ahead (a tie in CN counts half), then the mean over the circuits weighted by their runners (owner,
+        2026-10-14: a circuit weighs by its runners — not once each, not by its pairs, which is n squared).
+  tau   the same thing on Kendall's scale: on a circuit tau = 2 x share - 1 (1: the order of the CNs, 0: no better
+        than chance), averaged with the same weights; kept for the page's plots. The differences between two methods
+        are paired: same runners, same race.
   r2    the share of the spread of finishing times (log of the time, measured from the circuit's mean) that the CN
         explains: ln t = a_circuit - b * ln CN, the slope b fitted on the previous season, so every season is predicted
         out of sample. Margins count, not just the order.
   pl    the Plackett-Luce likelihood of the whole finishing order (the winner among all, then the second among the
         rest...), each runner's chance proportional to CN^beta, beta fitted on the previous season: the information
         gained per runner over a random order, in nats (a proper score: being right with confidence earns more).
-  acc   the share of duels called right, as the page used to show (ties in CN count as wrong), for continuity.
 
 Uncertainty: duels and runners of one race are not independent (same day, same terrain, same weather), so the 95 %
 intervals come from a bootstrap that resamples whole competitions (BOOT draws). A difference whose interval holds 0
@@ -81,7 +83,7 @@ def circuit_stats(rows: list) -> dict | None:
         n1 = int(np.sum(dc == 0))
         den = np.sqrt(float(n0 - n1) * float(n0 - n2))
         tau[m] = s / den if den else 0.0
-        right[m] = np.sum((dc * dt)[dt != 0] < 0)
+        right[m] = np.sum((dc * dt)[dt != 0] < 0) + 0.5 * np.sum((dc == 0) & (dt != 0))
     # log-time against log-CN, both from the circuit's mean
     y = np.log(t) - np.log(t).mean()
     xc = x - x.mean(axis=0)
@@ -92,7 +94,8 @@ def circuit_stats(rows: list) -> dict | None:
         suffix = np.logaddexp.accumulate(v[::-1], axis=0)[::-1]
         pl[m] = (v - suffix).sum(axis=0)
     pl0 = -np.sum(np.log(np.arange(n, 0, -1)))
-    return {"n": n, "pairs": n0 - n2, "tau": tau, "right": right, "syy": float(y @ y), "sxy": xc.T @ y,
+    share = right / max(n0 - n2, 1)                       # the circuit's duels called right
+    return {"n": n, "pairs": n0 - n2, "tau": n * (2 * share - 1), "right": n * share, "syy": float(y @ y), "sxy": xc.T @ y,
             "sxx": np.einsum("ij,ij->j", xc, xc), "pl": pl - pl0}
 
 
@@ -146,11 +149,11 @@ def features(items: list, b: np.ndarray, beta: np.ndarray) -> np.ndarray:
 
 
 def stats(F: np.ndarray) -> np.ndarray:
-    """From summed features (... x F): per method tau, acc, r2, pl (... x 4 x methods)."""
+    """From summed features (... x F): per method tau, acc, r2, pl (... x 4 x methods); tau and acc weighted by runners."""
     nc, npairs, nrun, syy = F[..., 0], F[..., 1], F[..., 2], F[..., 3]
     o = 4
-    tau = F[..., o:o + NM] / nc[..., None]
-    acc = F[..., o + NM:o + 2 * NM] / npairs[..., None]
+    tau = F[..., o:o + NM] / nrun[..., None]
+    acc = F[..., o + NM:o + 2 * NM] / nrun[..., None]
     r2 = 1 - F[..., o + 2 * NM:o + 3 * NM] / syy[..., None]
     pl = F[..., o + 3 * NM:o + 4 * NM] / nrun[..., None]
     return np.stack([tau, acc, r2, pl], axis=-2)
