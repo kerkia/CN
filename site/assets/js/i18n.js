@@ -889,8 +889,10 @@ const FR = {
   "ad.up.remove": "Retirer",
   "ad.up.confirm": "Retirer ce dépôt ? Ses résultats disparaîtront du site au prochain passage de la collecte.",
   "ad.up.added": "course ajoutée",
-  // games (« Jeux »): training games on generated maps
-  "nav.g.games": "Jeux", "nav.games": "Jeux",
+  // « Entrainement » (« Jeux » until 2026-10-14): the training games on generated maps, and the VMA page
+  "nav.g.training": "Entrainement", "nav.games": "Jeux", "nav.vma": "VMA",
+  "vma.lede": "Mesurer sa vitesse maximale aérobie : les tests, un calculateur précis pour le demi-Cooper et le Cooper sur piste, vos allures d'entraînement et les applications gratuites pour un test sur piste.",
+  "vma.tab.calc": "Calculateur", "vma.tab.methods": "Méthodes", "vma.tab.apps": "Applications",
   "g.lede": "Des jeux d'entraînement à la lecture de carte, sur des cartes dessinées ici même : chaque partie en invente de nouvelles. Rien n'est envoyé ; vos meilleurs scores restent dans ce navigateur.",
   "g.best": "Meilleur score", "g.start": "Commencer", "g.puzzle": "Énigme", "g.right": "Juste !", "g.wrong": "Faux.",
   "g.answerWas": "La bonne réponse était", "g.points": "{n} pt", "g.next": "Suivant", "g.finish": "Terminer", "g.validate": "Valider",

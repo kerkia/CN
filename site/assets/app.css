@@ -1314,9 +1314,26 @@ tr.drop > td { background: color-mix(in srgb, var(--flag) 16%, transparent); }
 :root { --course: #a516c4; --course-wash: #f3e3f8; }
 :root[data-theme="dark"], :root[data-theme="forest"], :root[data-theme="undergrowth"] { --course: #d47af0; --course-wash: #3a1f44; }
 @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) { --course: #d47af0; --course-wash: #3a1f44; } }
-body[data-group="games"] { --grp: var(--course); --grp-wash: var(--course-wash); }
-.nav-group[data-group="games"] > .nav-top::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--course); flex: none; }
-.nav-group[data-group="games"] > .nav-top[aria-current="true"] { background: var(--course-wash); color: var(--course); }
+body[data-group="training"] { --grp: var(--course); --grp-wash: var(--course-wash); }
+.nav-group[data-group="training"] > .nav-top::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--course); flex: none; }
+.nav-group[data-group="training"] > .nav-top[aria-current="true"] { background: var(--course-wash); color: var(--course); }
+
+/* « VMA »: the calculator's form, its notes, the methods' table, the apps */
+.vma-form .vma-fields { margin: 0 0 10px; padding: 0; border: 0; background: none; }
+.vma-small { font-size: 12.5px; }
+.vma-warn { color: var(--bad); }
+.vma-note { font-size: 13px; margin: 0 2px; }
+.vma-grid .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+/* on a phone the two choices share the width and wrap their text instead of scrolling */
+@media (max-width: 560px) { .vma-form .seg { display: flex; width: 100%; } .vma-form .seg button { flex: 1 1 0; white-space: normal; height: auto; min-height: 28px; line-height: 1.25; } }
+.vma-text ul { margin: 0 0 10px; padding-left: 20px; }
+.vma-text li { margin: 4px 0; }
+.vma-text p { margin: 0 0 10px; }
+table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120px; }
+.vma-apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.vma-app { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.vma-app h3 { margin: 0; font-size: 15px; }
+.vma-app .row { margin-top: 4px; gap: 8px; flex-wrap: wrap; }
 .g-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; margin: 0 0 14px; }
 .g-desc { margin: 0; color: var(--ink-2); flex: 1 1 320px; }
 .g-root .card-body { padding: 16px 18px 20px; }
