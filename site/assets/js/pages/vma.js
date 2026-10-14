@@ -23,6 +23,11 @@ const ZONES = [
   [70, "footing"],
   [65, "récupération"],
 ];
+// the share of VMA a runner holds over the test (owner, 2026-10-14): 6 minutes is about the time one lasts at VMA (4 to 8
+// minutes, often 6), so the demi-Cooper is run at it; 12 minutes is run below it, at about 95 % for a well-trained runner and
+// 90 % for a moderately trained adult (coaching rules of thumb, as the races: a 3 km near 95 %, a 10 km at 85 to 90 %)
+const LEVELS = [["trained", "Bien entraîné", 0.95], ["moderate", "Modérément entraîné", 0.90]];
+const shareOf = (test, level) => (test === "6" ? 1 : LEVELS.find(([k]) => k === level)?.[2] ?? null);
 const read = () => { try { return JSON.parse(localStorage.getItem(MEM) || "{}") || {}; } catch (e) { return {}; } };
 const num = (v, d) => (Number.isFinite(Number(v)) && v !== "" && v != null ? Number(v) : d);
 const pace = (kmh) => (kmh > 0 ? `${fmtTime(Math.round(3600 / kmh))} /km` : "—");
@@ -34,6 +39,7 @@ export async function render(main, { query }) {
   const m = read();
   const st = {
     test: m.test === "12" ? "12" : "6",
+    level: LEVELS.some(([k]) => k === m.level) ? m.level : null,       // asked explicitly before a Cooper's VMA is shown
     mode: m.mode === "dist" ? "dist" : "track",
     track: ["400", "200", "other"].includes(m.track) ? m.track : "400",
     lane: Math.min(8, Math.max(1, Math.round(num(m.lane, 1)))),
@@ -97,6 +103,8 @@ export async function render(main, { query }) {
       <div class="filters vma-fields">
         <div class="field"><span>Test</span>${seg("vma-test", [["6", "Demi-Cooper · 6 min"], ["12", "Cooper · 12 min"]], st.test)}</div>
         <div class="field"><span>Distance</span>${seg("vma-mode", [["track", "Tours de piste"], ["dist", "Distance mesurée"]], st.mode)}</div>
+        ${st.test === "12" ? html`<div class="field"><span>Niveau d'entraînement</span>${seg("vma-level",
+          LEVELS.map(([k, l, p]) => [k, `${l} · ${fmt(p * 100)} %`]), st.level ?? "")}</div>` : ""}
       </div>
       ${st.mode === "track" ? html`<div class="filters vma-fields">
         <label class="field"><span>Piste</span><select id="vma-track">
@@ -117,6 +125,7 @@ export async function render(main, { query }) {
       <div class="muted vma-small">Mesurée à la roue, sur un parcours étalonné… Une montre GPS se trompe facilement de 1 à 3 % sur une piste : préférez compter les tours.</div>`}`;
     $$('[data-seg="vma-test"]').forEach((b) => b.addEventListener("click", () => { st.test = b.dataset.value; changed(true); }));
     $$('[data-seg="vma-mode"]').forEach((b) => b.addEventListener("click", () => { st.mode = b.dataset.value; changed(true); }));
+    $$('[data-seg="vma-level"]').forEach((b) => b.addEventListener("click", () => { st.level = b.dataset.value; changed(true); }));
     $("#vma-track")?.addEventListener("change", (e) => { st.track = e.target.value; changed(true); });
     $("#vma-lane")?.addEventListener("change", (e) => { st.lane = Number(e.target.value); changed(true); });
     const bindNum = (id, key, redraw) => $(id)?.addEventListener("input", (e) => {
@@ -143,20 +152,26 @@ export async function render(main, { query }) {
       $("#vma-zones").innerHTML = html`<div class="empty">—</div>`;
       return;
     }
-    const v = (d * 60) / (T * 1000);                // mean speed (km/h): d/100 over 6 min, d/200 over 12
-    const vma = v;
-    const cooper = T === 12 ? (d - 504.9) / 44.73 : null;
-    const vo2 = T === 12 ? cooper : 3.5 * vma;
+    const share = shareOf(st.test, st.level);
     const L = lapLen();
     const how = st.mode === "track" ? `${fmt(st.laps || 0)} tour${(st.laps || 0) > 1 ? "s" : ""} de ${fmt(L, 2)} m + ${fmt(st.extra || 0)} m` : "distance mesurée";
+    if (!share) {                                   // a Cooper without a level: no VMA until it is chosen
+      $("#vma-tiles").innerHTML = html`${tile("Distance", `${fmt(d, d % 1 ? 1 : 0)} m`, how)}
+        <div class="empty" style="grid-column:1/-1">Choisissez votre niveau d'entraînement : il fixe la part de la VMA tenue pendant 12 minutes.</div>`;
+      $("#vma-note").textContent = "";
+      $("#vma-zones").innerHTML = html`<div class="empty">—</div>`;
+      return;
+    }
+    // the speed held over the test is share × VMA, and that speed is d / T
+    const vma = (d * 60) / (T * 1000) / share;
+    const vo2 = 3.5 * vma;                          // the oxygen cost of running: about 3.5 ml/kg/min per km/h (Léger)
     $("#vma-tiles").innerHTML = html`
       ${tile("Distance", `${fmt(d, d % 1 ? 1 : 0)} m`, how)}
-      ${tile("VMA", `${fmt(vma, 1)} km/h`, `${T === 6 ? "distance ÷ 100" : "distance ÷ 200"} · ${pace(vma)}`)}
-      ${tile("VO2max estimée", vo2 > 0 ? `${fmt(vo2, 1)} ml/kg/min` : "—", T === 12 ? "Cooper (1968) : (d − 504,9) ÷ 44,73" : "≈ 3,5 × VMA")}
-      ${T === 12 && cooper > 0 ? tile("VMA d'après la VO2max", `${fmt(cooper / 3.5, 1)} km/h`, "VO2max de Cooper ÷ 3,5") : ""}`;
+      ${tile("VMA estimée", `${fmt(vma, 1)} km/h`, `${T === 6 ? "6 min tenues à 100 % de la VMA" : `12 min tenues à ${fmt(share * 100)} % de la VMA`} · ${pace(vma)}`)}
+      ${tile("VO2max estimée", `${fmt(vo2, 1)} ml/kg/min`, "≈ 3,5 × VMA")}`;
     $("#vma-note").textContent = T === 6
-      ? "Six minutes, c'est à peu près le temps qu'on tient à sa VMA : la vitesse moyenne du demi-Cooper en est une bonne estimation, si l'allure a été régulière."
-      : "Douze minutes, c'est plus long que le temps qu'on tient à sa VMA (4 à 8 minutes environ) : la vitesse moyenne du Cooper est en général un peu en dessous de la VMA, de quelques pour cent. La VMA tirée de la VO2max de Cooper donne une seconde estimation ; le demi-Cooper est plus direct.";
+      ? "Six minutes, c'est à peu près le temps qu'on tient à sa VMA (4 à 8 minutes selon les coureurs) : le demi-Cooper se court à la VMA, si l'allure a été régulière."
+      : `Douze minutes, c'est plus long que le temps qu'on tient à sa VMA (4 à 8 minutes) : on court le Cooper en dessous, vers 95 % de la VMA bien entraîné, 90 % modérément entraîné. Hypothèse retenue : ${fmt(share * 100)} %. Ces parts sont des repères d'entraîneurs, pas des constantes mesurées : le demi-Cooper donne une VMA plus directe.`;
     $("#vma-zones").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
         <th class="r">% VMA</th><th class="r">Vitesse</th><th class="r">Allure</th><th class="r">200 m</th><th class="r">400 m</th><th class="r">1 000 m</th><th>Usage</th></tr></thead>
       <tbody>${ZONES.map(([p, use]) => {
@@ -202,7 +217,7 @@ function methodsPanel() {
             "VMA ≈ distance (m) ÷ 100. Simple et proche de la VMA ; demande de bien gérer son effort.")}
           ${row("Cooper (12 minutes, 1968)", "Piste",
             "La plus grande distance possible en 12 minutes.",
-            "Vitesse moyenne = distance ÷ 200, un peu sous la VMA ; VO2max ≈ (distance − 504,9) ÷ 44,73.")}
+            "On le court sous la VMA : VMA ≈ distance ÷ 200 ÷ 0,95 (bien entraîné) ou ÷ 0,90 (modérément). La règle « distance ÷ 200 » seule la sous-estime ; la formule de Cooper pour la VO2max, (distance − 504,9) ÷ 44,73, sous-estime les coureurs entraînés.")}
           ${row("Navette de Luc Léger (20 m)", "Gymnase ou terrain, deux lignes à 20 m",
             "Allers-retours, départ à 8,5 km/h, +0,5 km/h chaque minute.",
             "Les demi-tours freinent : la vitesse atteinte est inférieure à la VMA sur piste. Bon pour la VO2max, à convertir pour les allures.")}
