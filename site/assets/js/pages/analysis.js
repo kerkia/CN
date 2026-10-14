@@ -400,17 +400,41 @@ export async function render(main, { query = {} } = {}) {
   }
   function savedPositions() { try { const r = JSON.parse(localStorage.getItem(calKey()) || "null"); return r && r.v === 2 && Array.isArray(r.items) ? r : null; } catch (e) { return null; } }
   /** The offset the results' start time gives: the trace's time at the race start (seconds), if the start is known. */
+  /** A runner's published start (seconds after midnight, Paris), from any list of the race (liveresultat's gives it
+   *  when the organiser's does not), or null. */
+  function startOf(r) {
+    if (!r) return null;
+    if (r.start_s != null) return r.start_s;
+    const key = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+    let startS = null;
+    for (const d of race?.docs || []) for (const k of d.classes || []) for (const x of k.runners) if (x.start_s != null && key(x.name) === key(r.name)) startS = x.start_s;
+    return startS;
+  }
   function guessOffset() {
-    const r = runner();
-    if (!r || !race?.date_iso) return null;
-    let startS = r.start_s;
-    if (startS == null) {                       // another list of the race (liveresultat's) may give the start time
-      const key = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
-      for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners) if (x.start_s != null && key(x.name) === key(r.name)) startS = x.start_s;
-    }
-    if (startS == null) return null;
+    const r = runner(), startS = startOf(r);
+    if (startS == null || !race?.date_iso) return null;
     const startMs = Date.parse(`${race.date_iso}T00:00:00Z`) - parisOffsetMs(race.date_iso) + startS * 1000;
     return (startMs - track.ms0) / 1000;
+  }
+  /** The trace's first point as a Paris time of day (seconds after midnight). */
+  const traceStartS = () => { const p = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(new Date(track.ms0)); const g = (x) => +p.find((q) => q.type === x).value; return g("hour") * 3600 + g("minute") * 60 + g("second"); };
+  const hhmm = (s) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
+  /** Whose trace is this? The selected runner, unless they did not start or their published start does not fit the
+   *  trace's beginning (the watch starts a few minutes before the gun at most): then the classified runner whose
+   *  start fits best, if any — the trace of a relative dropped under one's own name (owner, 2026-10-14). */
+  function whoseTrace() {
+    if (!track || !race) return null;
+    const t0 = traceStartS(), r = runner(), fits = (s) => s != null && s - t0 >= -120 && s - t0 <= 900;
+    const mine = startOf(r);
+    if (r?.status !== "dns" && (mine == null || fits(mine))) return null;
+    let best = null;
+    docs.forEach((d, i) => d.classes.forEach((k, j) => k.runners.forEach((x, n) => {
+      if (x.status !== "ok" || x === r) return;
+      const s = startOf(x);
+      if (!fits(s) || (best && Math.abs(s - t0) >= Math.abs(best.start - t0))) return;
+      best = { name: x.name, di: i, ci: j, ri: n, start: s };
+    })));
+    return { t0, mine, dns: r?.status === "dns", other: best };
   }
   const ptsOf = (gs) => gs.map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind }));
 
@@ -694,10 +718,13 @@ export async function render(main, { query = {} } = {}) {
     else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
     if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
     else if (r) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    const whose = whoseTrace();
+    const whoseNote = !whose ? "" : html`<div class="notice" style="margin-bottom:6px">${t("an.st.whose", { t: hhmm(whose.t0), r: runner()?.name || "", rs: whose.dns ? t("an.st.whose.dns") : whose.mine != null ? t("an.st.whose.start", { s: hhmm(whose.mine) }) : t("an.st.whose.noStart") })}
+      ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}">${t("an.switch")}</button>` : ""}</div>`;
     const need = mode === "manual" ? Math.max(0, (taus ? (guessOffset() != null || geoFit ? 2 : 3) : 3) - placed) : 0;
     $("#an-side").innerHTML = html`<div class="an-side-title">${t(mode === "manual" ? "an.cal.title" : "an.cal.auto")}</div>
       ${summary.length ? html`<ul class="an-summary">${summary.map((s) => html`<li>${s}</li>`)}</ul>` : ""}
-      ${notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}
+      ${whoseNote}${notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}
       ${mode === "manual" ? html`<p class="hint">${t("an.cal.help")}</p>${taus ? "" : html`<p class="hint">${t("an.cal.noSplits")}</p>`}` : ""}
       <div class="an-targets">${targets.map((g) => html`<button type="button" class="an-target${g.i === cur && mode === "manual" ? " now" : ""}${g.pos ? " done" : ""}${g.missed ? " missed" : ""}" data-target="${g.i}" title="${g.missed ? t("an.missed") : ""}">
         <b>${g.label}</b>${g.code ? html`<span class="muted">${g.code}</span>` : html`<span></span>`}<span class="num">${g.tau != null ? clock(g.tau) : timeOf(g) != null ? html`<span class="muted">~${clock(timeOf(g))}</span>` : "—"}</span>
@@ -716,6 +743,7 @@ export async function render(main, { query = {} } = {}) {
         ${mode === "manual" ? html`<button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>` : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>`}</div>
       <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label>`;
     $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); if (mode !== "manual") { mode = "manual"; } side(); draw(); }));
+    $("#an-switch")?.addEventListener("click", (e) => { di = Number(e.target.dataset.di); ci = Number(e.target.dataset.ci); ri = Number(e.target.dataset.ri); pickers(); setup(); });
     $("#an-skip")?.addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });
     $("#an-add")?.addEventListener("click", () => {
       // a new control before the finish (or at the end), then the controls renumbered
