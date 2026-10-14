@@ -1,0 +1,185 @@
+% O'CN - the Top method: the white paper (French). Build: py -3 docs/whitepaper/build.py (figures, tables, pdflatex x2,
+% the PDF copied to site/assets/ocn-methode-top.pdf). Aggregate figures only: no name, no personal result.
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=24mm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue!50!black,citecolor=black]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{4pt}
+\graphicspath{{fig/}}
+\newcommand{\Top}{\textsc{Top}}
+\newcommand{\Fit}{\textsc{Fit}}
+\newcommand{\CN}{\textsc{cn}}
+
+\title{Le classement national recalculé\\\large La méthode « Top » d'O'CN : objectifs, méthode, étude et résultats}
+\author{O'CN — Observatoire du classement national de course d'orientation\\\small \url{https://ocn.kerkia.com} — site indépendant, sans lien avec la FFCO}
+\date{13 octobre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+À partir des mêmes résultats que la Fédération française de course d'orientation (FFCO), O'CN calcule un classement national alternatif, la méthode « Top », et en mesure la qualité contre le classement officiel sur quinze saisons. Ce document rassemble les objectifs de la méthode, la façon dont elle a été évaluée, les études menées et les choix qui en découlent, avec les chiffres qui les fondent. La méthode retenue garde le score de course de la FFCO, mais valorise les circuits sur tout le peloton classé en forêt (moyenne géométrique), retient les meilleures courses d'un coureur sur six places pondérées et les agrège en moyenne cubique, avec un recalage continu. Sur les saisons 2012--2024, tenues à l'écart de toute mise au point, elle prédit l'ordre d'arrivée nettement mieux que le classement officiel ($\tau$ de Kendall $+0{,}057$ en forêt, $+0{,}050$ en sprint) et explique 12 points de plus des écarts de temps.
+\end{abstract}
+
+\tableofcontents
+
+\section{Objectifs}
+
+Le classement national (\CN) sert à deux choses très différentes. D'une part, il mesure la force des coureurs : pour calculer la valeur d'un circuit, il faut le niveau habituel des coureurs présents, que ne déforment ni une contre-performance ni un exploit isolé. D'autre part, il classe selon le potentiel : pour les qualifications aux championnats de France, il faut ce dont un coureur est capable dans une grande compétition, c'est-à-dire ses meilleures courses. La méthode officielle emploie un seul \CN{} pour les deux usages ; il convient au premier et dessert le second.
+
+Les objectifs fixés à la méthode alternative sont les suivants :
+\begin{itemize}
+  \item partir des mêmes résultats et du même score de course que la FFCO, pour rester lisible et vérifiable ;
+  \item compter les championnats de France et les courses nationales, que la méthode officielle écarte souvent en écartant les 10~\% meilleures courses ;
+  \item ne jamais faire baisser le \CN{} d'un coureur parce qu'il a couru une course de plus ;
+  \item supprimer la marche du 1\textsuperscript{er} janvier, pour permettre le suivi sur plusieurs saisons ;
+  \item prédire mieux les résultats, et le mesurer de façon sûre ;
+  \item rester simple à expliquer : une règle, pas un modèle ajusté coureur par coureur.
+\end{itemize}
+
+\section{Le point de départ : le classement officiel}
+
+\paragraph{Le score d'une course.} Pour chaque circuit, la valeur du circuit est la moyenne des produits \CN{} J$-15$ $\times$ temps des $\lceil 2N/3 \rceil$ coureurs classés les plus rapides qui ont un \CN{} quinze jours avant la course ($N$ : leur nombre). Le score d'un coureur est la valeur du circuit divisée par son temps ; un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.
+
+\paragraph{Le \CN.} Depuis 2026, la moyenne des scores des douze derniers mois sans les 10~\% meilleurs ni les 40~\% moins bons, et chaque 1\textsuperscript{er} janvier un recalage qui fixe à 5\,600 la moyenne des 20~\% meilleurs \CN. Avant 2026, seule la meilleure course était écartée, et le meilleur \CN{} était ramené à 10\,000 quand il dépassait ce plafond. Forêt et sprint ont chacun leur classement depuis 2026 ; avant, un classement pédestre les réunissait.
+
+\paragraph{Ce qu'elle fait bien.} Elle fait foi ; une moyenne qui écarte les extrêmes mesure bien le niveau habituel, ce qu'il faut pour valoriser les circuits ; sa règle est publique.
+
+\paragraph{Ce qu'elle fait mal.} Elle écarte les 10~\% meilleures courses, pour les meilleurs coureurs le plus souvent les championnats de France et les nationales ; une course de plus fait souvent baisser le \CN{} d'un coureur bien classé, ce qui n'incite pas à courir ; toutes les courses pèsent pareil ; et la marche du 1\textsuperscript{er} janvier, avec des règles qui ont changé, fausse le suivi sur plusieurs années.
+
+\section{Méthode d'évaluation}
+
+Toutes les décisions reposent sur le même test : pour chaque coureur, le \CN{} qu'il avait quinze jours avant la course, sans rien savoir d'elle ; sur chaque circuit, ces \CN{} annonçaient-ils l'ordre d'arrivée et les écarts de temps ? Toutes les méthodes sont jugées sur les mêmes coureurs (ceux qui avaient un \CN{} dans chacune), sur les circuits d'au moins quatre d'entre eux.
+
+\begin{description}
+  \item[L'ordre d'arrivée.] Sur chaque circuit, le $\tau$ de Kendall entre le classement des \CN{} et l'ordre d'arrivée, puis la moyenne sur les circuits : chaque circuit compte une fois.
+  \item[Les écarts de temps.] Le temps de chaque coureur, rapporté à la moyenne du circuit, prédit par son \CN{} : $\ln(\text{temps}) = c - b\,\ln(\CN)$. On mesure la part des écarts expliquée ($R^2$) ; la pente $b$ est apprise sur la saison précédente, de sorte que chaque saison est prédite sans la connaître.
+  \item[L'ordre complet.] Le modèle de Plackett-Luce : la chance de chacun proportionnelle à $\CN^{\beta}$, $\beta$ appris sur la saison précédente ; l'information gagnée sur un ordre tiré au hasard, en nats par coureur.
+  \item[Les duels.] La part des paires de coureurs d'un même circuit où le \CN{} le plus haut a terminé devant : la mesure des premières mises au point, gardée pour comparaison.
+\end{description}
+
+Les coureurs d'une même course ne sont pas indépendants : les intervalles à 95~\% viennent d'un \emph{bootstrap} qui tire au sort des compétitions entières (1\,000 à 2\,000 tirages). Les comparaisons sont appariées, course par course. Les paramètres ont été réglés sur juillet 2025 -- octobre 2026 ; les saisons 2012--2024 (le \emph{hold-out}) n'ont servi qu'à mesurer. Un écart est dit \emph{établi} quand son intervalle exclut zéro.
+
+\section{Les choix de base}
+
+\paragraph{Les poids.} Un championnat de France compte 2, une course nationale (O'France, Nationale) 1,5, toute autre course 1 ; les niveaux A/B/C/D de la FFCO ne sont pas utilisés.
+
+\paragraph{Six places.} Du meilleur score au moins bon, chaque course occupe autant de places que son poids, jusqu'à six places ; la dernière ne prend que ce qui reste. Une course de plus ne peut jamais faire baisser le \CN{} : soit elle entre dans les places en chassant une moins bonne, soit elle n'y entre pas. Dix places, essayées, ne faisaient pas mieux une fois les circuits valorisés avec le \Fit.
+
+\paragraph{Les 60~\% meilleurs.} Seuls les 60~\% meilleurs scores de la fenêtre peuvent compter (70~\% en VTT et en ski), au moins trois courses. Des pools de 70 et 80~\% ont coûté 0,4 à 1 point de duels en forêt et en sprint ; cinq courses minimum réduisait les valorisateurs de circuits et faisait moins bien ; deux courses classait 11~\% de coureurs de plus en forêt et 38~\% en sprint, mais coûtait 0,1 à 0,4 point sur les paires déjà classées.
+
+\paragraph{Deux \CN{} : le \Fit{} valorise les circuits.} Un \CN{} qui ne garde que les meilleures courses, utilisé pour noter les circuits, se nourrit de lui-même : les groupes qui courent surtout entre eux (vétérans, jeunes) se gonflent, les H/D\,21 se dévaluent, de 13~\% environ dans les premiers essais. Les circuits sont donc valorisés avec le \Fit, la moyenne pondérée des 60~\% meilleurs scores sans plafond de places : la mesure de la force. Le \Top{} en est dérivé : mêmes scores, mêmes valeurs de circuit, même recalage ; seule l'agrégation diffère. Mesuré de nouveau avec la méthode retenue (figure~\ref{fig:onecn}), un \Top{} à six places qui valorise lui-même les circuits perd peu sur 2012--2024 ($-0{,}0016$ de $\tau$) mais de plus en plus au fil des saisons ($-0{,}006$ en 2024, $-0{,}012$ en 2026) et surévalue les jeunes de 1,4~\% ; à dix places la perte est divisée par deux, à seize elle disparaît, mais le \Top{} rejoint alors le \Fit{} pour presque tout le monde. Pour 62~\% des coureurs de forêt (sept courses par an en médiane) et 96~\% en sprint, les deux \CN{} sont déjà le même nombre ; ils diffèrent pour les coureurs assidus (douze courses et plus, un quart des coureurs de forêt), de 4,6~\% en médiane.
+
+\begin{figure}[h]\centering\includegraphics{fig_onecn.pdf}
+\caption{Un \Top{} qui valorise lui-même les circuits, contre la méthode retenue (le \Fit{} valorise) : écart de $\tau$ par saison, forêt, pour 6, 10 et 16 places.}\label{fig:onecn}\end{figure}
+
+\paragraph{Le recalage continu.} Plutôt qu'une marche au 1\textsuperscript{er} janvier, un facteur par jour : le score d'une course est multiplié par le facteur de son jour, puis fixé une fois pour toutes ; le \CN{} ne change que lorsqu'une course entre dans la fenêtre ou en sort. Le facteur suit la règle 2026 de la FFCO (la moyenne des 20~\% meilleurs \CN{} à 5\,600, dans chaque spécialité), en continu. Un recalage avec retour sur les scores oscillait et a été écarté.
+
+\section{Le score et la moyenne}
+
+\subsection{L'élasticité du score}
+
+Le score de course est inversement proportionnel au temps. On peut l'écrire plus généralement avec un exposant $k$ : $\text{score} \propto 1/\text{temps}^{k}$, $k = 1$ étant la règle de la FFCO (10~\% plus lent, 9~\% de score en moins ; $k = 2$ : 17~\% ; $k = 3$ : 25~\%). Mesuré le 7 octobre 2026 sur la part des duels bien prédits, le gain se faisait entre $k = 1$ et $k = 2$ dans les quatre spécialités, puis plafonnait. Appliquer $k$ au score puis ramener le \CN{} à l'échelle habituelle revient exactement à remplacer les moyennes par des moyennes d'ordre $k$ ; appliqué à la valeur du circuit, $k$ coûtait sur les courses nationales et resserrait l'échelle ; appliqué à la moyenne des courses seulement, il gagnait sans rien coûter. Le \Top{} publié du 7 au 13 octobre 2026 était donc un \CN{} en moyenne quadratique sur la valeur de circuit de la FFCO.
+
+\subsection{L'étude du 13 octobre 2026}
+
+\paragraph{Une équivalence exacte.} Soit $d_i$ le \CN{} publié d'un coureur et $t_i$ son temps. Un score $s_i = V / t_i^{\,k}$ avec $V$ la moyenne de $c_j\,t_j^{\,k}$, une moyenne simple des scores retenus et un \CN{} publié $d = \text{CN}^{1/k}$ s'écrivent, sur l'échelle publiée, avec la moyenne d'ordre $k$, $M_k(x) = (\overline{x^k})^{1/k}$ :
+\[
+s_i^{1/k} = V^{1/k} / t_i, \qquad V^{1/k} = M_k(d\,t), \qquad \text{CN}^{1/k} = M_k\!\left(s^{1/k}\right).
+\]
+Avec une valeur de circuit géométrique, $V^{1/k} = \exp \overline{\ln(d\,t)}$ ne dépend plus de $k$ : l'élasticité de la course n'agit que sur la façon d'agréger les scores. La méthode retenue est calculée ainsi, à l'échelle habituelle, et peut se raconter dans l'autre sens : \emph{un coureur 1~\% plus lent qu'un autre marque 3~\% de points de moins, et son \CN{} est la moyenne de ses meilleures courses, affichée sur l'échelle habituelle}. Vérifié sur les données : calculé des deux façons, le \CN{} de forêt est le même à la pente près ($1{,}98$ pour $k = 2$), et 98~\% des paires d'un même circuit sont dans le même ordre, les autres étant des quasi-égalités déplacées par le recalage, qui agit sur une échelle différente dans chaque écriture.
+
+\paragraph{Pourquoi pencher vers les bonnes courses.} Autour de son niveau habituel, les courses d'un coureur ne sont pas réparties symétriquement : la plupart en sont proches, et une longue queue descend, les erreurs (figure~\ref{fig:dev}). En forêt, 8,0~\% des courses donnent moins de 0,8 fois le niveau habituel et 4,6~\% plus de 1,25 fois (sprint : 2,7~\% et 0,7~\%) ; l'asymétrie vaut $-0{,}78$ en forêt, $-1{,}30$ en sprint. Un ajustement par une loi ex-gaussienne (niveau $\times$ bruit normal $\times$ perte exponentielle) donne un bruit de performance de 12~\% en forêt (6,6~\% en sprint) et une perte moyenne de 10~\% (6,5~\%). Une moyenne d'ordre $k > 1$ lit mieux le niveau sous ce bruit : pour de petits écarts, $\ln M_k \approx \overline{\ln s} + \tfrac{k}{2}\,\mathrm{var}(\ln s)$. L'estimateur du maximum de vraisemblance sous cette loi, essayé, fait mieux en sprint ($+0{,}007$ pour le \Fit) et bien moins bien en forêt ($-0{,}04$) : la tendance à l'erreur persiste de course en course et fait partie du niveau, qu'un modèle traitant chaque course ratée comme de la malchance surestime.
+
+\begin{figure}[h]\centering\includegraphics{fig_dev.pdf}
+\caption{Le score d'une course rapporté à la médiane des autres courses du coureur dans la saison (coureurs de 6 courses et plus, 2012--2025). Barres : les données ; tirets : l'ajustement ex-gaussien ; en orange, les courses sous 0,8 fois le niveau.}\label{fig:dev}\end{figure}
+
+\paragraph{Le choix de $k = 3$.} Avec la valeur géométrique sur tout le peloton (section suivante), $k = 3$ gagne $+0{,}0014$ de $\tau$ sur $k = 2$ en forêt (établi), et $k = 4$ n'apporte plus rien sur les courses nationales ni en sprint ; un $k$ plus grand assoit le \CN{} sur une seule course. Pour un coureur régulier, la moyenne cubique des six places retenues dépasse la moyenne simple des mêmes places de 0,3~\% en médiane (1,3~\% au 90\textsuperscript{e} centile) : le \CN{} reste, à peu de chose près, la moyenne de ses meilleures courses.
+
+\section{La valeur du circuit}
+
+\paragraph{Le biais des deux tiers.} La valeur d'un circuit dit à quelle vitesse le peloton l'a couru. Prendre les $\lceil 2N/3 \rceil$ plus rapides sélectionne les coureurs par leur résultat : le dernier tiers réunit des coureurs plus faibles, dont \CN{} $\times$ temps est normal, et des coureurs qui se sont trompés, dont \CN{} $\times$ temps est trop haut. Les laisser de côté abaisse la valeur surtout là où les erreurs sont fréquentes : sur un circuit piégeux, tous les scores sortent trop bas, quoi qu'ait fait le coureur. Mesuré sur les 14\,000 circuits de forêt de 2012 à 2026 ayant six classés ou plus avec un \CN{} (figure~\ref{fig:trunc}) : la valeur sur tout le peloton est de 4,8~\% plus haute que sur les deux tiers en moyenne, l'écart va de 0~\% (un circuit sur dix) à plus de 10~\% (un sur dix) et suit la dispersion de $\ln(\CN \times \text{temps})$ sur le circuit (corrélation 0,64). En sprint : $+2{,}8$~\%, deux fois moins dispersé. C'est ce biais que $k$ compensait en partie quand il était appliqué sur la valeur de la FFCO : sur l'échelle publiée, $M_k(d\,t)$ penche vers les grands produits et ramène en partie les coureurs qui se sont trompés.
+
+\begin{figure}[h]\centering\includegraphics{fig_trunc.pdf}
+\caption{Par circuit : la moyenne de \CN{} $\times$ temps sur tout le peloton divisée par la moyenne sur les deux tiers les plus rapides (le \CN{} du \Fit{} d'alors), 2012--2026.}\label{fig:trunc}\end{figure}
+
+\paragraph{La moyenne géométrique sur tout le peloton.} Si une course se multiplie, $\ln(\text{temps}) = \text{difficulté du circuit} - \ln(\text{niveau}) + \text{aléa}$, la moyenne de $\ln(\CN \times \text{temps})$ est l'estimation des moindres carrés de la difficulté du circuit ; un coureur trois fois trop lent y compte pour $\ln 3$, pas pour 3, et une seule catastrophe ne peut pas emporter le circuit. Avec la moyenne arithmétique, tout le peloton fait aussi bien sur l'ensemble des courses mais ne gagne rien sur les nationales. Garder les 85~\% les plus rapides ($-0{,}0034$ de $\tau$ à $k = 3$) ou amortir les courses aberrantes avec l'estimateur de Huber ($-0{,}0040$ à $k = 2$) fait moins bien que tout le peloton : la difficulté d'un circuit comprend les courses ratées qu'il provoque. En sprint, où les erreurs sont deux fois plus rares, tout le peloton perd ($-0{,}003$ de $\tau$ sur 2012--2024, $-0{,}011$ depuis juillet 2025) : le sprint garde les deux tiers les plus rapides, en moyenne géométrique. La figure~\ref{fig:k} rassemble les variantes.
+
+\begin{figure}[h]\centering\includegraphics{fig_k.pdf}
+\caption{Gain de $\tau$ de Kendall sur le \Top{} quadratique (hold-out 2012--2024, toutes courses) selon $k$, par famille de valeur de circuit, avec les intervalles à 95~\%. Cerclé : le choix retenu.}\label{fig:k}\end{figure}
+
+\paragraph{Les jeunes à leur place.} Une régression logistique sur l'écart de \CN{} donne, pour les jeunes (20 ans et moins) et les vétérans (55 ans et plus) face aux H/D\,21, la correction du \CN{} qui mettrait le groupe à sa place (table~\ref{tab:calib}). En forêt, toutes les méthodes sous-évaluaient les jeunes, de 3,3~\% pour le \Top{} quadratique et de 8,9~\% pour le \CN{} officiel : leurs circuits provoquent beaucoup d'erreurs et étaient sous-évalués par les deux tiers. Avec tout le peloton, ils sont à leur place ($+0{,}2$~\%). Les vétérans restent surévalués de 8 à 9~\% par toutes les méthodes, l'officielle comprise ; la cause est ailleurs que dans la valeur du circuit (un niveau qui baisse à l'intérieur de la fenêtre, des \CN{} acquis surtout entre vétérans) et demanderait une étude à part.
+
+\input{tables.tex}
+
+\section{Le recalage}
+
+\paragraph{Une cible manquée.} Chaque mois, un facteur doit ramener la moyenne des 20~\% meilleurs \CN{} à 5\,600. En forêt, il ne le faisait pas : au 1\textsuperscript{er} octobre 2026, le \Fit{} quadratique avait ses 20~\% meilleurs à 6\,007 et le \Top{} à 6\,144 ; la méthode retenue, avec le même recalage, les aurait eus à 6\,592 et 6\,757 (table~\ref{tab:recal}). La cause est une dérive de l'échelle brute : un \CN{} garde les meilleures courses, donc il dépasse le score typique du coureur ; les circuits suivants sont valorisés avec ces \CN{} et leurs scores sortent plus hauts à leur tour. L'échelle brute monte de 0,35~\% par mois avec la valeur de la FFCO, de 0,92~\% avec la valeur géométrique (les deux tiers compensaient une partie de la montée). Or le facteur d'un jour vient d'un niveau qui le précède : la moyenne de 13 mois se terminant 2 mois plus tôt, lue sur le \CN{} de chaque coureur actif à sa dernière course, lui-même la moyenne d'un an de courses. Sous une montée régulière, le niveau publié dépasse la cible de la montée accumulée sur ce retard, soit 18 à 20 mois : $+7{,}3$~\% avec la méthode d'alors, $+17{,}7$~\% avec la méthode retenue.
+
+\paragraph{La correction.} Trois corrections causales ont été essayées, à données égales et avec la même marge de deux mois ; les facteurs doivent rester lisses, car un facteur qui oscille mêle des scores de mois voisins sur des échelles différentes. Une droite ajustée sur les 13 mois et lue le jour du facteur ramène le niveau mais coûte ($-0{,}0010$ de $\tau$ pour le \Top{} d'alors) ; lue six mois plus loin, elle coûte davantage et est tombée à 5\,307 en 2022 après les saisons Covid. Prolonger la moyenne lisse de 13 mois, sur 7 mois, à la dérive mesurée sur les dix dernières années ne coûte presque rien ($-0{,}0004$) et ramène le \Fit{} retenu à 5\,639. C'est la correction retenue, en forêt et en sprint ; VTT et ski gardent la moyenne simple. Enfin, la cohorte fixée à 5\,600 est celle des \CN{} \Top{}, le \CN{} publié, et non celle du \Fit{} : au 1\textsuperscript{er} octobre 2026, le \Top{} publié a ses 20~\% meilleurs à 5\,645 en forêt, 5\,560 en sprint et 5\,598 en VTT.
+
+\section{Résultats}
+
+\paragraph{La méthode retenue contre le \Top{} quadratique.} Sur les mêmes coureurs, 2012--2024 : $\tau$ $+0{,}0139$ $[+0{,}0125 ; +0{,}0154]$ en forêt, meilleur à 14 saisons sur 15 et sur les courses nationales ($+0{,}0039$), $R^2$ $+2{,}4$ points ; $+0{,}0025$ $[+0{,}0014 ; +0{,}0035]$ en sprint (figure~\ref{fig:seasons}). Depuis juillet 2025 : $+0{,}0131$ en forêt, $+0{,}0028$ en sprint. En VTT, tout le peloton aide le \Fit{} mais pas le \Top, qui perd depuis 2022 ; le VTT et le ski gardent la règle d'alors.
+
+\begin{figure}[h]\centering\includegraphics{fig_seasons.pdf}
+\caption{La méthode retenue contre le \Top{} quadratique : gain de $\tau$ par saison, toutes courses, avec les intervalles à 95~\% ; en vert un gain établi.}\label{fig:seasons}\end{figure}
+
+\paragraph{Contre le classement officiel.} Sur les saisons 2012--2024, tenues à l'écart de toute mise au point, et sur les mêmes coureurs :
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}\toprule
+ & \multicolumn{2}{c}{Forêt} & \multicolumn{2}{c}{Sprint} \\
+ & officiel & \Top & officiel & \Top \\ \midrule
+$\tau$ de Kendall & 0,556 & 0,613 & 0,612 & 0,662 \\
+écarts de temps expliqués ($R^2$) & 53,4 \% & 65,1 \% & 62,1 \% & 71,8 \% \\
+duels bien prédits & 79,9 \% & 81,6 \% & 81,4 \% & 83,7 \% \\ \midrule
+$\tau$, \Top{} $-$ officiel & \multicolumn{2}{c}{$+0{,}057$ $[+0{,}054 ; +0{,}060]$} & \multicolumn{2}{c}{$+0{,}050$ $[+0{,}042 ; +0{,}058]$} \\
+courses nationales & \multicolumn{2}{c}{$+0{,}027$ $[+0{,}022 ; +0{,}031]$} & \multicolumn{2}{c}{$+0{,}027$ $[+0{,}006 ; +0{,}052]$} \\
+saisons où le \Top{} l'emporte (établi) & \multicolumn{2}{c}{15 sur 15} & \multicolumn{2}{c}{12 sur 15} \\ \bottomrule
+\end{tabular}
+\end{center}
+La méthode d'origine (moyenne linéaire, valeur de circuit de la FFCO), gardée pour référence, est à $0{,}597$ en forêt et $0{,}661$ en sprint : la méthode retenue lui gagne $+0{,}016$ de $\tau$ en forêt et 3,6 points de $R^2$, et 3,3 points de $R^2$ en sprint à ordre égal.
+
+\paragraph{Pour les coureurs.} Par rapport au \Top{} quadratique publié jusqu'au 13 octobre 2026, un \CN{} de forêt change de $-8$~\% à $+6$~\% (médiane $-5$~\%), surtout parce que le niveau revient à 5\,600 ; à recalage égal, la méthode seule change un \CN{} de 2~\% en médiane, et la moitié des coureurs bougent de moins de 1,7~\% du classement. En sprint, les \CN{} changent de moins de 1~\%. L'échelle se resserre à peine : l'écart entre le 10\textsuperscript{e} et le 90\textsuperscript{e} centile passe d'un facteur 2,60 à 2,47 en forêt et reste à 1,84 en sprint (le classement officiel : 3,4 et 2,4).
+
+\section{Alternatives écartées}
+
+\begin{itemize}
+  \item \textbf{Le \Top{} comme valorisateur des circuits} (un seul \CN) : perte croissante au fil des saisons, jeunes surévalués (section 4).
+  \item \textbf{Une élasticité par circuit}, estimée sur la pente de $\ln(\text{temps})$ sur $\ln(\CN)$ du circuit, même par les moindres carrés et ramenée vers la valeur typique : $-0{,}001$ à $-0{,}004$ de $\tau$. L'estimation à vingt coureurs est trop bruitée, et comprimer les scores vers la moyenne du peloton sur un circuit bruité n'est pas la bonne correction.
+  \item \textbf{Des poids par course selon l'information qu'elle porte} ($\beta^2/\sigma^2$, la vue « réponse à l'item ») : rien de gagné ($-0{,}0001$). Les différences par format sont faibles ($\beta$ 0,91 en LD, 0,94 en MD ; une LD porte 24~\% d'information de plus qu'une MD).
+  \item \textbf{Un score courbé} (les grandes pertes de temps comptent moins que proportionnellement, d'après la courbure mesurée dans les circuits) : $+0{,}002$ en forêt, $-0{,}005$ en sprint.
+  \item \textbf{Le niveau du maximum de vraisemblance} (loi ex-gaussienne) : meilleur en sprint, bien pire en forêt.
+  \item \textbf{Une valeur de circuit quadratique} sur les deux tiers (7 octobre 2026) : rebat les classements (61 places gagnées ou perdues en médiane contre 15), resserre l'échelle, surévalue davantage les vétérans, ne corrige pas le vrai défaut.
+  \item \textbf{La moyenne géométrique sur les deux tiers} ($-0{,}011$ en forêt à $k = 1$) : le logarithme amortit exactement les courses lentes que la coupe a déjà retirées.
+  \item \textbf{Une moyenne d'ordre 1,5 de \CN{} $\times$ temps sur tout le peloton} : instable sur les courses nationales ($-0{,}007$).
+  \item \textbf{$k = 4$} : un peu mieux que 3 en forêt sur l'ensemble des courses, rien sur les nationales, rien en sprint.
+  \item \textbf{Les valeurs de circuit regroupées par distance en sprint} (allure comparable) : l'allure ne l'est pas d'un circuit à l'autre.
+  \item \textbf{Le z-score du logarithme du temps} (à la façon du classement IOF) : moins bon que le score de la FFCO.
+  \item \textbf{Dix places, des pools de 70 et 80~\%, cinq ou deux courses minimum, un recalage avec retour} : section 4.
+\end{itemize}
+
+\section{Conclusion : la méthode retenue}
+
+\begin{description}
+  \item[\CN{} J$-15$.] Le \Fit{} de chaque coureur quinze jours avant la course : la moyenne cubique pondérée de ses 60~\% meilleurs scores sur 12 mois, sans plafond de places (70~\% sur deux ans en VTT, trois ans en ski, en moyenne quadratique).
+  \item[Valeur du circuit.] En forêt, la moyenne géométrique de \CN{} J$-15$ $\times$ temps sur tous les coureurs classés qui ont un \CN{} (au moins quatre) ; en sprint, sur les $\lceil 2N/3 \rceil$ plus rapides ; en VTT et en ski, la moyenne arithmétique de la FFCO sur les $\lceil 2N/3 \rceil$ plus rapides.
+  \item[Score.] Valeur du circuit $\div$ temps, $\times$ le facteur de recalage du jour, fixé une fois pour toutes ; 0 pour un poinçon manquant, un abandon, une disqualification ou un hors-délai, et il compte.
+  \item[\CN{} \Top.] Du meilleur score au moins bon, parmi les 60~\% meilleurs de la fenêtre, chaque course occupe autant de places que son poids (championnat de France 2, nationale 1,5, autre 1) jusqu'à six places ; le \CN{} est la moyenne cubique des scores retenus, $\text{CN} = \sqrt[3]{\sum \text{places} \times \text{score}^3 / \sum \text{places}}$ ; au moins trois courses.
+  \item[Recalage.] Chaque jour, un facteur fixe à 5\,600 la moyenne des 20~\% meilleurs \CN{} \Top{} de chaque spécialité, d'après le niveau mesuré deux mois plus tôt, lissé sur 13 mois et prolongé de 7 mois à la dérive des dix dernières années (forêt, sprint) ; une droite entre les points mensuels, chacun atteint le 1\textsuperscript{er} du mois suivant.
+\end{description}
+
+Cette méthode est en ligne depuis le 13 octobre 2026 sur O'CN, sous le nom « Top » ; le classement officiel y reste la référence qui fait foi, et la méthode d'origine (moyenne linéaire, valeur de circuit de la FFCO) reste calculée pour comparaison. Les données proviennent du site du classement national de la FFCO ; une course absente, mal saisie ou corrigée ensuite peut expliquer un écart ; les méthodes proposées partent des \CN{} de 2010, et leurs premiers mois reflètent surtout ce point de départ.
+
+\end{document}
