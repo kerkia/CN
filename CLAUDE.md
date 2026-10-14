@@ -98,7 +98,15 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    average in forest, unevenly (sd 5.4 points, following the circuit's mistake rate — the junior circuits most), so a
    runner's score depended on the circuit's trap density; in sprint, where mistakes are half as frequent, the whole field
    loses. VTT and ski keep FFCO's arithmetic two-thirds and the quadratic mean (the whole field hurts the VTT Top since
-   2022; ski cannot be measured). `top6w3` derives from `fair3`. Their recalage (`Normalisation` of `fair3`) **anchors the
+   2022; ski cannot be measured). `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
+   weighted arithmetic average of the race scores; TOP6W_CN_VERSION 5) the Top `top6w3` is the weighted **arithmetic** mean of
+   its 6 places in every discipline (`top3` in `build_methods`, and `Normalisation.anchor_cn_power` 1 so the recalage anchors
+   on that Top); `fair3`, the usual level that values the circuits, keeps the cubic mean (quadratic in VTT and ski): the
+   « 1 % slower, 3 % fewer points » reading above now describes the usual level only. Measured against the cubic Top on the
+   same runners, 2012-2024 (study copy w6, `eval_arith_n.json`, `eval_vtt_arith_n.json`): duels forest −0.01 [−0.02, −0.00]
+   (national 0.00), R² −1.1 pt; sprint −0.10 [−0.14, −0.07], R² −3.4; VTT −0.09 [−0.12, −0.06], R² −1.8; the median CN −0.2 %
+   before recalage, one runner in ten −1 % or more. Best 50 % instead of 60 % did a little better in forest (+0.06) but was
+   picked on the same seasons: not adopted, to confirm on fresh seasons. Their recalage (`Normalisation` of `fair3`) **anchors the
    Top's cohort** (`anchor_top_n` 6: at each CN point, the Top the raw scores would publish — `CnEngine._anchor_rows`) and
    corrects the **drift of the raw scale** (`mode` "monthly_drift": the 13-month mean carried `trend_ahead_months` 7
    past the month fitted for, by the slope of ln(level) over `drift_months` 121; VTT and ski keep "monthly_lag" by
@@ -118,7 +126,10 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
 the method of origin, studied for reference) and the « Fit » methods `fair3`/`fair` are analysis methods, shown only
 to accounts with the `analyst` right (granted on the admin page; `store.available()`, `store.setAnalyst`; display
 only — the data files are the same for every logged-in user). The Méthodes page presents the Top and gives the
-linear method's measured figures to everyone, as the variant studied for reference.
+linear method's measured figures to everyone, as the variant studied for reference. **The documentation (page and PDF)
+never names the Fit** (owner, 2026-10-14: misleading): the circuits are measured from the scores the runners present
+earned in their previous races, their « niveau habituel », a step of the calculation and not a ranking. « A race more never
+lowers the CN » is only said with « once the 6 places are filled » (before, the CN Top is an ordinary mean).
 
 Key design decisions (each was measured — see "Evaluating" below — and agreed with the owner):
 - **Circuits are valued with the Fit CN, never with Top's.** A capped best-of fed its selection back through
@@ -296,9 +307,10 @@ the share of log-time spread explained (R², pooled over results) with the slope
 sample); the Plackett-Luce information per runner is still computed but no longer shown. Same runners for every method,
 circuits of 4+; 95 % intervals by a bootstrap over **competitions** (pairs within a race are not independent); every
 season from 2012, the 2012-2024 hold-out (before any tuning) and the tuning period. Results (hold-out, Top − official,
-points of duels): forest +2.13 [2.03, 2.24] (79.19 → 81.32 %), R² +11.8 pt; sprint +2.41 [2.13, 2.70] (81.16 → 83.57 %),
-R² +9.7 pt; national races +1.27 forest, +1.73 sprint; significant in 15 of 15 forest seasons, 13 of 15 sprint. Top −
-Top linéaire: forest +0.46 [0.42, 0.51], sprint +0.09 [0.02, 0.15]. The retained Top (`top6w3`) − the quadratic one
+points of duels, the arithmetic Top of 2026-10-14): forest +2.13 [2.02, 2.23] (79.19 → 81.31 %), R² +10.7 pt; sprint
++2.32 [2.03, 2.62] (81.16 → 83.48 %), R² +6.3 pt; national races +1.26 forest, +1.72 sprint; significant in 15 of 15 forest
+seasons, 13 of 15 sprint. Top − Top linéaire: forest +0.45, R² +2.6 pt; sprint equal (0.00). The cubic Top of 2026-10-13
+had forest +2.13, sprint +2.41, R² +11.8 / +9.7. The Top of 2026-10-13 (`top6w3`, cubic) − the quadratic one
 (study re-run with the weighting, `*_n.json` in the study folder): forest +0.40 [0.35, 0.44] (14 seasons of 15),
 national +0.12, R² +2.4 pt; sprint +0.12 [0.09, 0.15]; k = 3 − k = 2 forest +0.04 [0.03, 0.05] (national −0.01, not
 significant), k = 4 loses on national races (−0.03 vs k = 2). The Documentation's « L'étude » reads it (forest plots by
@@ -496,7 +508,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
-  for analysts it is the « CN Fit » (it shares the Top's scores; the linear pair has its own « score linéaire »). The results
+  for analysts it is the « CN Fit » (it shares the Top's scores; the linear pair has its own « score linéaire »); the
+  documentation never says « Fit ». The results
   tables' headers, the runner page's tiles and cards (`rn.current`, `rn.best`, `rn.calc`, `rn.cnHistory` take `{cn}`), the
   switch's tooltips and the documentation use these words.
 - **Documentation** (`#/methodes`, `pages/methods.js`; owner, 2026-10-14): four tabs — « CN officiel » and « CN Top », each

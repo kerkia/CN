@@ -4,7 +4,8 @@
 // conclusion — with the figures that support each decision (site/assets/study.json, the study of 13 October 2026, and
 // the live evaluation, site/data/evaluation.json) and the PDF; « Les calculs du site », the other calculations. The
 // study and the site's calculations have chapters as a second row of tabs (?voir=). Only the methods this account sees
-// are named: « Fit » is for analysts.
+// are named; the Fit is never named (owner, 2026-10-14: the circuits are measured from the scores the runners present earned
+// in their previous races, their « niveau habituel », not from another ranking).
 
 import { html, raw, $, $$, fmt, fmtSigned, mean } from "../util.js";
 import { t } from "../i18n.js";
@@ -244,14 +245,15 @@ function figLines(host, rows, series, name) {
 export async function render(main, { query = {} } = {}) {
   const meta = data.meta();
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params, p3 = meta.methods.top6w3.params;
-  const M = available();                 // display order: the Top before the Top linéaire, the Fits for analysts
-  const analyst = M.includes("fair");
+  // the methods the documentation names: the official one and the Top, the Top linéaire for analysts; never the Fits
+  const M = available().filter((m) => m !== "fair" && m !== "fair3");
+  const analyst = available().includes("fair");
   const tops = M.filter((m) => m === "top6w" || m === "top6w3");
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);
   // a discipline's own value: meta files the params under the codes (For, Spr, VTT, Ski); the French name kept as a fallback
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p.by_terrain?.[TNAME[tr]]?.[key] ?? p[key];
-  const force = analyst ? html`le niveau habituel des coureurs (le ${cnLabel("fair3")})` : html`le niveau habituel des coureurs`;
+  const force = html`le niveau habituel des coureurs`;
   const TNAME = { For: "Forêt", Spr: "Sprint", VTT: "VTT", Ski: "Ski" };
 
   // the live evaluation (site_eval.py) and the 2025 duel validation; the study's numbers (a static file, public)
@@ -319,7 +321,7 @@ export async function render(main, { query = {} } = {}) {
   const windows = TERRAINS.map((tr) => [tr, own(p3, tr, "window_days"), own(p3, tr, "eligible_fraction"), own(p3, tr, "cn_power") ?? 1,
     own(p3, tr, "cv_power") ?? 1, own(p3, tr, "sample_fraction") ?? 2 / 3]);
   const years = (d) => (d === 365 ? "12 mois" : `${fmt(Math.round(d / 365))} ans`);
-  const meanName = (q) => (q === 3 ? "cubique" : q === 2 ? "quadratique" : "simple");
+  const meanName = (q) => (q === 3 ? "cubique" : q === 2 ? "quadratique" : "pondérée");
   const cvName = (q, sf) => `${q === 0 ? "géométrique" : "arithmétique"}, ${sf >= 1 ? "tout le peloton classé" : "les ⌈2N/3⌉ plus rapides"}`;
 
   // ---- the worked circuit used throughout the documentation (owner, 2026-10-14: the doc is for humans, not mathematicians):
@@ -423,15 +425,14 @@ export async function render(main, { query = {} } = {}) {
     const EX = {
       official: { cn: offCn, used: offUsed, what: html`la moyenne des ${fmt(n - offDrop - offLow)} scores du milieu, sans le meilleur ni les
         ${fmt(offLow)} moins bons` },
-      top6w3: { ...aggregate(p6.top_n, 3), what: html`${fmt(p6.top_n)} places, remplies par les meilleurs scores selon leur poids, en moyenne cubique` },
-      fair3: { ...aggregate(Infinity, 3), what: html`les ${pctOf(pf.eligible_fraction)} meilleurs scores selon leur poids, sans limite de places, en moyenne cubique` },
+      top6w3: { ...aggregate(p6.top_n, 1), what: html`${fmt(p6.top_n)} places, remplies par les meilleurs scores selon leur poids, en moyenne pondérée` },
     };
     const chips = (m) => html`<div class="mx-scores">${EXAMPLE.map(([s, k], i) => {
       const u = EX[m].used[i];
       const sup = m !== "official" && u ? html`<sup>${u === W[k] && k === "other" ? "" : `×${fmtW(u)}`}</sup>` : "";
       return html`<span class="mx-sc ${u ? "on" : "off"} ${k === "cdf" ? "star" : ""}">${fmt(s)}${sup}</span>`;
     })}</div>`;
-    const exLabel = (m) => (m === "official" ? cnLabel("official") : m === "fair3" ? "Niveau habituel" + (analyst ? ` (${cnLabel("fair3")})` : "") : cnLabel("top6w3"));
+    const exLabel = (m) => (m === "official" ? cnLabel("official") : cnLabel("top6w3"));
 
     return html`
     <section class="mx-slide">
@@ -444,7 +445,8 @@ export async function render(main, { query = {} } = {}) {
           <p>La difficulté du circuit se mesure sur le niveau habituel des coureurs présents. Le score d'un coureur est cette difficulté divisée par son
             temps.</p></div>
         <div class="mx-box" style="--c:var(--s3)"><h3>Le CN Top d'un coureur</h3>
-          <p>Ses meilleurs scores Top des 12 derniers mois remplissent ${fmt(p6.top_n)} places ; le CN Top est leur moyenne cubique.</p></div>
+          <p>Ses meilleurs scores Top des 12 derniers mois remplissent ${fmt(p6.top_n)} places ; le CN Top est leur moyenne, chaque course comptée
+            selon ses places.</p></div>
       </div>
       <p style="margin-top:14px">La méthode Top est en ligne depuis le 13 octobre 2026. Les raisons de chaque choix, avec les mesures qui les justifient,
         sont dans <a href="#/methodes?onglet=etude" data-tab-link="etude">l'étude</a>.</p>
@@ -457,8 +459,8 @@ export async function render(main, { query = {} } = {}) {
         utilise leur <b>niveau habituel</b>, tel qu'il était ${fmt(pf.lag_days)} jours avant la course.</p>
       <p>Le niveau habituel d'un coureur est calculé sur ses scores Top des 12 derniers mois : on garde ses ${pctOf(pf.eligible_fraction)} meilleurs
         scores, chacun compté selon son poids (voir le CN Top plus bas), et on en fait la moyenne cubique. Il dit ce que vaut le coureur d'ordinaire.
-        Le CN Top, lui, ne retient que les meilleures courses : il sert à classer, pas à mesurer les circuits.${analyst ? html` Pour les analystes, le
-        niveau habituel est aussi un classement, le ${cnLabel("fair3")}.` : ""}</p>
+        Ce n'est pas un classement : c'est une étape du calcul, faite des courses que le coureur a déjà courues. Le CN Top, lui, ne retient que les
+        meilleures courses : il sert à classer.</p>
       <ul class="mx-list">
         <li><span>Seuls comptent les coureurs qui ont un niveau habituel dans la spécialité de la course. Il en faut au moins ${fmt(pf.min_ranked)} sur le
           circuit ; sinon le circuit n'a pas de valeur et ne donne pas de score.</span></li>
@@ -506,16 +508,18 @@ export async function render(main, { query = {} } = {}) {
         alors ${fmt(p6.top_n)} places, en commençant par le meilleur score. Chaque course prend autant de places que son poids : ${fmtW(pf.weights.cdf)} places
         pour un championnat de France, ${fmtW(pf.weights.national)} place pour une course nationale (O'France, Nationale), ${fmtW(pf.weights.other)} place pour
         toute autre course, courses de sélection et championnats de ligue compris. La dernière course retenue ne prend que les places qui restent.</p>
-      <p>Le CN Top est la <b>moyenne cubique</b> des scores retenus, chacun compté autant de fois qu'il a de places. La moyenne cubique est la racine
-        cubique de la moyenne des cubes. Elle donne un peu plus de poids aux meilleurs scores : pour trois scores de 6 000, 5 000 et 4 000, la moyenne
-        ordinaire vaut 5 000 et la moyenne cubique 5 130.</p>
-      <div class="mx-eq">CN Top = ∛( Σ (places × score³) ÷ Σ places )
-        <small>au plus ${fmt(p6.top_n)} places ; en VTT et en ski, la moyenne quadratique, racine carrée de la moyenne des carrés</small></div>
+      <p>Le CN Top est la <b>moyenne pondérée</b> des scores retenus : chaque score compte autant de fois qu'il a de places. Prenons un championnat
+        de France à 6 800, qui prend 2 places, et quatre autres courses à 6 500, 6 400, 6 200 et 6 000, qui prennent une place chacune. Le CN Top vaut
+        (2 × 6 800 + 6 500 + 6 400 + 6 200 + 6 000) ÷ 6 = 6 450.</p>
+      <div class="mx-eq">CN Top = Σ (places × score) ÷ Σ places
+        <small>au plus ${fmt(p6.top_n)} places, dans toutes les spécialités</small></div>
       <ul class="mx-list">
         <li><span>Les poids suivent le nom de la compétition. Les niveaux A, B, C et D de la FFCO ne sont pas utilisés.</span></li>
         <li><span>Il faut au moins ${fmt(pf.min_scores)} courses dans les 12 derniers mois pour être classé. Quand il y a moins de ${fmt(p6.top_n)} places
-          remplies, le CN Top est la moyenne cubique de ce qui est là.</span></li>
-        <li><span>Une course de plus ne peut jamais faire baisser le CN Top : soit elle prend la place d'une course moins bonne, soit elle reste dehors.</span></li>
+          remplies, le CN Top est la moyenne pondérée de ce qui est là.</span></li>
+        <li><span>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut pas faire baisser le CN Top : soit elle prend la place d'une
+          course moins bonne, soit elle reste dehors. Il faut pour cela en général 10 courses en 12 mois, moins avec des championnats ou des nationales.
+          Tant que les places ne sont pas remplies, le CN Top est une moyenne ordinaire, et une course moins bonne que les autres le fait baisser.</span></li>
       </ul>
       <div class="table-wrap" style="margin-top:14px"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
         <th class="r">Scores regardés</th><th>Moyenne</th></tr></thead>
@@ -544,7 +548,7 @@ export async function render(main, { query = {} } = {}) {
       <h2>Mêmes scores, CN différents</h2>
       <p class="mx-lead">Un coureur a couru ${fmt(n)} courses en 12 mois. Voici ses scores, du meilleur au moins bon. Le meilleur, ${fmt(EXAMPLE[0][0])}, est
         un championnat de France (★) ; ${fmt(EXAMPLE[2][0])} est une course nationale. Voici ce que chaque calcul retient de ces mêmes scores.</p>
-      ${["official", "top6w3", "fair3"].map((m) => html`<div class="mx-agg" style="${cvar(m)}">
+      ${["official", "top6w3"].map((m) => html`<div class="mx-agg" style="${cvar(m)}">
         <div><b>${methodKey(m)} ${exLabel(m)}</b><div class="what">${EX[m].what}</div></div>
         ${chips(m)}
         <div class="cn">${fmt(EX[m].cn)}</div></div>`)}
@@ -571,10 +575,10 @@ export async function render(main, { query = {} } = {}) {
     const YES = (x) => mark("yes", "oui", x), NO = (x) => mark("no", "non", x), PART = (x) => mark("part", "en partie", x);
     const CRIT = [
       ["Compte les championnats et les nationales", (m) => (m === "official" ? NO("souvent écartés") : YES("ils pèsent plus"))],
-      ["Une course de plus ne fait jamais baisser le CN", (m) => (m === "official" ? NO() : isTop(m) ? YES() : PART("une course moyenne peut le baisser"))],
+      ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("une fois les 6 places remplies"))],
       ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : isTop(m) ? YES("les meilleures courses") : PART("le niveau habituel"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("saut au 1er janvier") : YES("recalage progressif"))],
-      ["Simple à expliquer", (m) => (m === "official" || m === "fair" ? YES() : m === "top6w" ? PART("règle des 6 places") : PART("moyenne cubique, tout le peloton"))],
+      ["Simple à expliquer", (m) => (m === "official" ? YES() : PART("règle des 6 places, circuit mesuré sur tout le peloton"))],
       ["Fait foi pour les sélections", (m) => (m === "official" ? YES("seul classement officiel") : NO("calcul d'analyse"))],
     ];
     const kBest = (vals) => Math.max(...vals.filter((x) => x != null));
@@ -643,7 +647,8 @@ export async function render(main, { query = {} } = {}) {
             <li><span>Partir des <b>mêmes résultats et du même score de course</b> que la FFCO, pour que chacun puisse comprendre et vérifier.</span></li>
             <li><span><b>Compter les championnats de France et les courses nationales</b>, que la méthode officielle écarte souvent, parce qu'elle écarte les
               10 % meilleures courses.</span></li>
-            <li><span><b>Ne jamais faire baisser le CN</b> d'un coureur parce qu'il a couru une course de plus.</span></li>
+            <li><span><b>Ne pas pénaliser le coureur qui court une course de plus</b> : une fois ses meilleures courses en place, une course de plus ne
+              doit pas faire baisser son CN.</span></li>
             <li><span><b>Supprimer le saut du 1<sup>er</sup> janvier</b>, pour pouvoir suivre un coureur sur plusieurs saisons.</span></li>
             <li><span><b>Mieux prédire les résultats</b>, et le prouver par une mesure fiable.</span></li>
             <li><span><b>Rester simple à expliquer</b> : une règle commune, pas un modèle ajusté coureur par coureur.</span></li>
@@ -660,6 +665,10 @@ export async function render(main, { query = {} } = {}) {
               <li><span>Elle écarte les scores extrêmes, dans les deux sens : c'est une bonne mesure du <b>niveau habituel</b>, utile pour mesurer la
                 difficulté des circuits.</span></li>
               <li><span>Sa règle est publique et simple.</span></li>
+              <li><span>Elle donne à chaque coureur une <b>mesure de sa performance par rapport aux autres</b>, course après course.</span></li>
+              <li><span>Elle <b>incite chacun à progresser</b> : chaque course compte, et le classement montre les progrès.</span></li>
+              <li><span>Elle a <b>lancé la collecte des résultats des compétitions</b>, depuis de nombreuses années ; tous ces résultats ont été publics à un
+                moment ou à un autre. Sans ce travail, ni ce site ni cette étude n'existeraient.</span></li>
             </ul></div>
             <div><h3 style="margin-top:4px">Ce qu'elle fait mal</h3><ul class="mx-list bad">
               <li><span><b>Elle écarte les 10 % meilleures courses.</b> Pour les meilleurs coureurs, ce sont le plus souvent les championnats de France et
@@ -689,8 +698,8 @@ export async function render(main, { query = {} } = {}) {
             <div class="s"><b>Les meilleures courses comptent le plus</b>un championnat de France compte double, une nationale une fois et demie ; seules
               les moins bonnes courses sont laissées de côté</div>
             <div class="p"><b>Une course de plus peut faire baisser le CN</b>ce qui dissuade de courir</div><div class="arrow">→</div>
-            <div class="s"><b>Une course de plus ne peut jamais le faire baisser</b>${fmt(p6.top_n)} places, remplies par les meilleures courses : plus on
-              court, plus on a de chances de bien les remplir</div>
+            <div class="s"><b>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut plus le faire baisser</b>les places sont remplies par
+              les meilleures courses : plus on court, plus on a de chances de bien les remplir</div>
             <div class="p"><b>Le circuit mesuré sur les deux tiers les plus rapides</b>les coureurs qui se sont trompés ne comptent pas, et bien s'orienter
               sur un circuit piégeux rapporte moins qu'ailleurs</div><div class="arrow">→</div>
             <div class="s"><b>Le circuit mesuré sur tous les coureurs</b>en forêt : la difficulté d'un circuit comprend les erreurs qu'il provoque, et les
@@ -699,8 +708,8 @@ export async function render(main, { query = {} } = {}) {
             <div class="s"><b>Un recalage progressif, jour après jour</b>le score d'une course est fixé une fois pour toutes, et le CN ne bouge que quand
               une course entre dans les 12 derniers mois ou en sort</div>
             <div class="p"><b>Un seul CN pour deux usages</b>mesurer les circuits et classer les coureurs</div><div class="arrow">→</div>
-            <div class="s"><b>Un calcul pour chaque usage</b>le score Top se mesure sur le niveau habituel des coureurs${analyst
-              ? html` (le ${cnLabel("fair3")})` : ""}, le CN Top retient leurs meilleures courses</div>
+            <div class="s"><b>Un calcul pour chaque usage</b>la valeur d'un circuit se mesure à partir des scores que les coureurs présents ont obtenus
+              dans leurs courses précédentes ; le CN Top retient leurs meilleures courses</div>
           </div>
         </section>`,
 
@@ -788,7 +797,7 @@ export async function render(main, { query = {} } = {}) {
             <li><span><b>Le poids d'une course suit le nom de la compétition.</b> Un championnat de France a un poids de ${fmtW(pf.weights.cdf)} : c'est la
               course la plus relevée, celle que les coureurs préparent, et elle compte comme deux courses. Une course nationale a un poids de
               ${fmtW(pf.weights.national)}, toute autre course un poids de ${fmtW(pf.weights.other)}. Les niveaux A, B, C et D de la FFCO ne sont pas utilisés.</span></li>
-            <li><span><b>${fmt(p6.top_n)} places</b>, remplies du meilleur score au moins bon. Une course de plus ne peut jamais faire baisser le CN : soit elle
+            <li><span><b>${fmt(p6.top_n)} places</b>, remplies du meilleur score au moins bon. Une fois les places remplies, une course de plus ne peut pas faire baisser le CN : soit elle
               prend la place d'une course moins bonne, soit elle reste dehors. Le classement mondial de l'IOF fonctionne de la même façon, avec les cinq
               meilleures courses. Dix places ont été essayées : elles ne faisaient pas mieux.</span></li>
             <li><span><b>Seuls les ${pctOf(pf.eligible_fraction)} meilleurs scores</b> des 12 derniers mois peuvent compter, et il faut au moins
@@ -850,13 +859,14 @@ export async function render(main, { query = {} } = {}) {
             2012–2025). Au centre, les courses courues à son niveau ; à gauche, les courses moins bonnes, en orange celles sous 80 % du niveau. Les tirets
             montrent un modèle simple : la forme du jour varie d'environ 12 % en forêt (6,6 % en sprint), et les erreurs coûtent en moyenne 10 % du temps
             (6,5 %).`)}` : noStudy}
-          <p>Pour retrouver le vrai niveau d'un coureur, il faut donc faire plus confiance à ses bonnes courses qu'aux mauvaises. Le CN Top le fait de deux
-            façons. D'abord, il ne garde que les ${pctOf(pf.eligible_fraction)} meilleurs scores : les courses ratées ne comptent pas. Ensuite, parmi les
-            scores gardés, il prend la <b>moyenne cubique</b>, qui donne un peu plus de poids aux meilleurs.</p>
+          <p>Pour retrouver le vrai niveau d'un coureur, il faut donc faire plus confiance à ses bonnes courses qu'aux mauvaises. Les deux calculs de la
+            méthode le font, chacun à sa façon. Le <b>niveau habituel</b>, qui sert à mesurer les circuits, ne garde que les ${pctOf(pf.eligible_fraction)}
+            meilleurs scores, et en prend la <b>moyenne cubique</b>, qui donne un peu plus de poids aux meilleurs. Le <b>CN Top</b>, qui sert à classer, ne
+            garde que les meilleures courses, sur ${fmt(p6.top_n)} places, et en prend la moyenne pondérée ordinaire.</p>
           <div class="mx-eq">trois scores : 6 000, 5 000 et 4 000
             <small>moyenne ordinaire : (6 000 + 5 000 + 4 000) ÷ 3 = 5 000 · moyenne cubique : ∛((6 000³ + 5 000³ + 4 000³) ÷ 3) = 5 130</small></div>
-          <p>Pour un coureur régulier, l'effet est faible : sur ses ${fmt(p6.top_n)} places, la moyenne cubique dépasse la moyenne ordinaire de 0,3 % en
-            médiane, et de plus de 1,3 % pour un coureur sur dix seulement. Elle compte surtout pour les coureurs irréguliers, dont les courses retenues
+          <p>Pour un coureur régulier, la différence entre les deux moyennes est faible : sur ${fmt(p6.top_n)} places, la moyenne cubique dépasse la
+            moyenne ordinaire de 0,3 % en médiane, et de plus de 1,3 % pour un coureur sur dix seulement. Elle compte surtout pour les coureurs irréguliers, dont les courses retenues
             mêlent de très bonnes courses et des courses avec de petites erreurs.</p>
           ${S ? html`<p>Un calcul plus élaboré a aussi été essayé : un modèle statistique qui sépare, course par course, la forme du jour et les erreurs
             (l'estimation dite du maximum de vraisemblance). Il prédit un peu mieux en sprint (${sg(S.mle_fit.Spr[0], 2)} point de duels) mais nettement
@@ -866,11 +876,11 @@ export async function render(main, { query = {} } = {}) {
 
         <section class="mx-slide" style="${cvar("top6w3")}">
           <p class="mx-kicker">13 octobre 2026</p>
-          <h2>Pourquoi la moyenne cubique, et pas plus</h2>
+          <h2>Pour le niveau habituel : la moyenne cubique, et pas plus</h2>
           <p>On peut pencher plus ou moins vers les meilleures courses. La moyenne quadratique est la racine carrée de la moyenne des carrés ; la moyenne
             cubique, la racine cubique de la moyenne des cubes ; on peut continuer avec les puissances 4, 5… Plus la puissance est grande, plus les meilleures
             courses pèsent ; à l'extrême, il ne reste que la meilleure course. Pour les scores 6 000, 5 000 et 4 000 : moyenne ordinaire 5 000, quadratique
-            5 066, cubique 5 130, puissance 4 : 5 190.</p>
+            5 066, cubique 5 130, puissance 4 : 5 190. Dans ces mesures, le niveau habituel et le CN Top changent de moyenne ensemble.</p>
           ${S ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Comparaison</th><th class="r">Toutes les courses<br>2012–2024</th>
             <th class="r">Courses nationales<br>2012–2024</th><th class="r">Toutes les courses<br>depuis juillet 2025</th></tr></thead><tbody>
             <tr><td>Forêt : cubique contre quadratique</td>${["all_holdout", "nat_holdout", "all_tuned"].map((sc) => html`<td class="r num">${ci(k3("For", sc)?.G4_t)}</td>`)}</tr>
@@ -883,7 +893,42 @@ export async function render(main, { query = {} } = {}) {
           <p>En forêt, la moyenne cubique fait mieux que la quadratique et ne perd rien sur les courses nationales. La puissance 4 gagne encore un peu sur
             l'ensemble des courses, mais perd sur les nationales. En sprint, la puissance 4 gagnerait quelques centièmes de point, sans gain sur les
             nationales. Au-delà de la moyenne cubique, le CN reposerait sur une ou deux courses : une course exceptionnelle, ou un circuit mal mesuré,
-            suffirait à le porter. Le CN Top utilise donc la moyenne cubique, en forêt comme en sprint.</p>
+            suffirait à le porter. Le 13 octobre, le niveau habituel et le CN Top ont donc pris la moyenne cubique, en forêt comme en sprint. Le
+            lendemain, le CN Top est passé à la moyenne pondérée ordinaire, et seul le niveau habituel l'a gardée.</p>
+        </section>
+
+        <section class="mx-slide" style="${cvar("top6w3")}">
+          <p class="mx-kicker">14 octobre 2026</p>
+          <h2>Un classement fait d'une simple moyenne pondérée</h2>
+          <p>Pour que le classement reste la règle la plus simple possible, le CN Top est, depuis le 14 octobre 2026, la moyenne pondérée ordinaire de ses
+            meilleures courses, comme le CN officiel et le classement mondial de l'IOF. Chacun peut le refaire à la main. Le niveau habituel, qui mesure
+            les circuits, garde la moyenne cubique.</p>
+          <p>Le choix a été mesuré avant d'être fait, sur les mêmes coureurs : mêmes scores, mêmes valeurs de circuit, seul le CN Top change de moyenne.</p>
+          ${S?.arith ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Moyenne pondérée contre moyenne du 13 octobre</th>
+            <th class="r">Duels, toutes<br>les courses</th><th class="r">Duels, courses<br>nationales</th><th class="r">Duels, depuis<br>juillet 2025</th>
+            <th class="r">Écarts de temps<br>expliqués</th><th class="r">Saisons<br>moins bonnes</th></tr></thead><tbody>
+            ${[["For", "Forêt (contre la moyenne cubique)"], ["Spr", "Sprint (contre la moyenne cubique)"], ["VTT", "VTT (contre la moyenne quadratique)"]].map(([tr, label]) => {
+              const a = S.arith[tr];
+              return html`<tr><td>${label}</td>${["all_holdout", "nat_holdout", "all_tuned"].map((sc) => html`<td class="r num">${ci(a[sc]?.acc)}</td>`)}
+                <td class="r num">${a.all_holdout?.r2 ? sg(a.all_holdout.r2[0], 1) : "—"}</td><td class="r num">${fmt(a.worse)} sur ${fmt(a.seasons)}</td></tr>`;
+            })}</tbody></table></div>
+          <p class="muted" style="font-size:13px">Écarts en points, avec leur intervalle à 95 %, de 2012 à 2024 sauf mention. « Saisons moins bonnes » : les
+            saisons où la perte en duels est significative ; aucune saison n'est meilleure. Le ski a trop peu de courses pour être mesuré.</p>` : noStudy}
+          <p>En forêt, l'ordre des coureurs ne change presque pas : la moyenne cubique sert surtout à mesurer les circuits, pas à classer. Le CN Top annonce
+            un peu moins bien les écarts de temps entre coureurs (environ 1 point de moins). En sprint et en VTT, la perte est d'environ un dixième de point
+            de duels, et de 3,4 et 1,8 points d'écarts de temps. Le CN Top reste nettement meilleur que le CN officiel : environ 2 points de duels bien
+            prédits de plus en forêt et en sprint.</p>
+          ${S?.arith ? html`<p>Pour les coureurs, le CN Top baisse de ${fmt(Math.abs(S.arith.shift.median), 1)} % en médiane. Un coureur sur dix perd
+            ${fmt(Math.abs(S.arith.shift.p10), 0)} % ou plus, et un sur cent environ ${fmt(Math.abs(S.arith.shift.p1), 0)} % : ce sont des coureurs irréguliers,
+            dont les meilleures courses sont inégales. Le recalage ramène ensuite le niveau général à ${fmt(pf.anchor_target)}.</p>
+          ${more("Deux autres réglages essayés le même jour", html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Moyenne pondérée, et…</th>
+            <th class="r">Forêt, duels</th><th class="r">Forêt, écarts de temps</th><th class="r">Sprint, duels</th><th class="r">Sprint, écarts de temps</th></tr></thead><tbody>
+            ${[["best50", "les 50 % meilleurs scores au lieu de 60 %"], ["places4", "4 places au lieu de 6"]].map(([k, label]) => html`<tr><td>${label}</td>
+              ${["For", "Spr"].map((tr) => html`<td class="r num">${ci(S.arith[k][tr].all_holdout.acc)}</td><td class="r num">${sg(S.arith[k][tr].all_holdout.r2[0], 1)}</td>`)}</tr>`)}
+            </tbody></table></div>
+            <p class="muted" style="font-size:13px">Contre la moyenne cubique, 2012–2024, en points. Garder les 50 % meilleurs scores fait un peu mieux en forêt,
+              mais ce réglage a été choisi en regardant ces mêmes saisons : il demande à être confirmé sur des saisons nouvelles avant d'être adopté.
+              Quatre places font moins bien.</p>`)}` : ""}
         </section>
 
         <section class="mx-slide">
@@ -925,22 +970,6 @@ export async function render(main, { query = {} } = {}) {
             <p class="muted" style="font-size:13px">Part des duels bien prédits (%) par la méthode Top, chaque duel compté une fois, de juillet 2025 à
               octobre 2026 : 771 511 duels en forêt (276 703 sur courses nationales), 113 914 en sprint (21 452). En gras, le meilleur de chaque colonne.
               « Écart des CN » : le CN du coureur plus fort que 90 % des autres, divisé par celui du coureur plus fort que 10 % des autres.</p>`)}
-        </section>
-
-        <section class="mx-slide">
-          <p class="mx-kicker">Une autre façon de dire la même chose</p>
-          <h2>D'où vient la phrase « 1 % de temps en plus, 3 % de points en moins »</h2>
-          <p>Faire la moyenne cubique des scores, c'est élever chaque score au cube, faire la moyenne ordinaire de ces cubes, puis prendre la racine cubique
-            du résultat pour revenir à l'échelle habituelle. Or un score élevé au cube varie trois fois plus vite que le score lui-même : quand le temps
-            augmente de 1 %, le score baisse de 1 %, et son cube d'environ 3 %. On peut donc décrire le CN Top ainsi : sur une échelle de calcul, 1 % de temps
-            en plus coûte 3 % de points, et le CN est la moyenne ordinaire des meilleures courses, ramenée ensuite à l'échelle habituelle.</p>
-          <p><b>Sur l'échelle publiée, rien ne change</b> : le score Top d'une course baisse de 1 % quand le temps augmente de 1 %, comme le score officiel.
-            Les deux descriptions donnent le même CN tant que la difficulté du circuit se mesure par une moyenne géométrique, ce qui est le cas en forêt et
-            en sprint.</p>
-          ${more("La vérification", html`<div class="mx-eq">CN<sup>1/k</sup> avec score = V ÷ temps<sup>k</sup> &nbsp;=&nbsp; moyenne d'ordre k des (V<sup>1/k</sup> ÷ temps)
-            <small>V : la valeur géométrique du circuit, qui ne dépend pas de k. Sur les données, les deux calculs donnent le même CN de forêt à un facteur
-              près (${S ? fmt(S.equiv.For.slope, 2) : "1,98"} pour k = 2), et ${S ? fmt(100 * S.equiv.For.same_order, 1) : "98"} % des paires d'un même circuit
-              sont dans le même ordre. Les autres sont des quasi-égalités, que le recalage déplace.</small></div>`)}
         </section>`,
 
       circuit: () => html`
@@ -991,7 +1020,8 @@ export async function render(main, { query = {} } = {}) {
           </ul>
           <p>Avec la moyenne géométrique, un coureur très perdu compte, mais il ne peut pas emporter à lui seul la valeur du circuit. Dans l'exemple des six
             coureurs, la moyenne arithmétique des six produits donnerait ${n0(r6.arithAll)}, et la moyenne géométrique donne ${n0(r6.topFor)}.</p>
-          <p><b>Ce qu'ont donné les mesures</b> (écarts de la part des duels bien prédits, en points, face au Top quadratique publié jusqu'au 13 octobre) :</p>
+          <p><b>Ce qu'ont donné les mesures</b> (écarts de la part des duels bien prédits, en points, face au Top quadratique publié jusqu'au 13 octobre ;
+            le niveau habituel et le CN Top en moyenne cubique, comme le 13 octobre) :</p>
           <ul class="mx-list">
             <li><span>Avec la moyenne géométrique, tout le peloton gagne ${pts(kpt("For", "gall", 3))} en forêt, et ${pts(kpt("For", "gall", 3, "nat_holdout"))}
               sur les courses nationales.</span></li>
@@ -1004,7 +1034,7 @@ export async function render(main, { query = {} } = {}) {
           </ul>
           ${S ? fig("fig-k", html`<b>Gain en duels bien prédits face au Top quadratique</b>, en points (2012–2024), selon la puissance de la moyenne qui fait le
             CN (1 : ordinaire, 2 : quadratique, 3 : cubique, 4) et selon la façon de mesurer le circuit ; les traits verticaux sont les intervalles à 95 % ;
-            cerclé, le choix retenu.
+            cerclé, le choix du 13 octobre, que garde le niveau habituel.
             <span class="mx-legend" style="display:inline-flex;margin-left:8px"><span><i style="background:var(--forest)"></i>géométrique, tout le peloton</span>
             <span><i style="background:var(--ink);border-top:2px dashed var(--ink);height:0"></i>géométrique, deux tiers</span><span><i style="background:var(--ink-3)"></i>arithmétique, tout le peloton</span>
             <span><i style="background:var(--flag)"></i>exposant sur le temps, règle FFCO</span><span><i style="background:var(--water)"></i>puissance sur le CN seul, règle FFCO</span></span>`) : ""}
@@ -1093,16 +1123,18 @@ export async function render(main, { query = {} } = {}) {
         <section class="mx-slide mx-hero">
           <p class="mx-kicker">Le Top retenu</p>
           <h2>Contre le Top précédent, puis contre le classement officiel</h2>
-          ${S ? html`<p class="mx-lead">Sur les mêmes coureurs, de ${S.holdout[0]} à ${S.holdout[1]}, la méthode retenue prédit bien davantage de duels
-            que le Top quadratique publié jusqu'au 13 octobre : ${pts(kpt("For", "gall", 3))} de plus en forêt, avec un gain significatif à
+          ${S ? html`<p class="mx-lead">Sur les mêmes coureurs, de ${S.holdout[0]} à ${S.holdout[1]}, la méthode du 13 octobre prédisait bien davantage
+            de duels que le Top quadratique publié jusque-là : ${pts(kpt("For", "gall", 3))} de plus en forêt, avec un gain significatif à
             ${fmt(Object.values(S.seasons.For).filter((r) => r.acc[1] > 0).length)} saisons sur ${fmt(Object.keys(S.seasons.For).length)} et sur les courses
-            nationales (${pts(kpt("For", "gall", 3, "nat_holdout"))}) ; ${pts(kpt("Spr", "g23", 3))} de plus en sprint. Depuis juillet 2025, le gain est de
-            ${pts(kpt("For", "gall", 3, "all_tuned"))} en forêt et de ${pts(kpt("Spr", "g23", 3, "all_tuned"))} en sprint.</p>` : ""}
+            nationales (${pts(kpt("For", "gall", 3, "nat_holdout"))}) ; ${pts(kpt("Spr", "g23", 3))} de plus en sprint. Le passage du CN Top à la moyenne
+            pondérée, le 14 octobre, retire ${S.arith ? fmt(Math.abs(S.arith.For.all_holdout.acc[0]), 2) : "0,01"} point en forêt et
+            ${S.arith ? fmt(Math.abs(S.arith.Spr.all_holdout.acc[0]), 2) : "0,10"} en sprint (voir
+            <a href="#/methodes?onglet=etude&voir=score" data-tab-link="etude" data-goto="score">le score et la moyenne</a>).</p>` : ""}
         </section>
         ${S ? html`<section class="mx-slide">
           <p class="mx-kicker">Saison par saison</p>
           <h2>Contre le Top précédent</h2>
-          ${fig("fig-seasons", html`<b>La méthode retenue contre le Top quadratique</b> : gain en points de duels bien prédits, saison par saison, toutes les
+          ${fig("fig-seasons", html`<b>La méthode du 13 octobre contre le Top quadratique</b> : gain en points de duels bien prédits, saison par saison, toutes les
             courses. Le trait vertical est l'intervalle à 95 %. En vert, un gain significatif ; en rouge, une perte significative ; en gris, ni l'un ni l'autre.
             En VTT, prendre tout le peloton faisait perdre le CN Top à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski
             gardent donc la règle précédente.`)}
@@ -1214,14 +1246,15 @@ export async function render(main, { query = {} } = {}) {
           <ul class="mx-list">
             <li><span><b>Niveau habituel</b> : pour chaque coureur, 15 jours avant la course, la moyenne cubique de ses ${pctOf(pf.eligible_fraction)} meilleurs
               scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans, en
-              moyenne quadratique)${analyst ? html`. Pour les analystes, c'est le ${cnLabel("fair3")}` : ""}.</span></li>
+              moyenne quadratique). Ce n'est pas un classement, mais une étape du calcul de la valeur des circuits.</span></li>
             <li><span><b>Valeur du circuit</b> : en forêt, la moyenne géométrique des produits niveau habituel × temps de tous les coureurs classés qui ont un
               niveau (au moins ${fmt(pf.min_ranked)}). En sprint, la même moyenne sur les deux tiers les plus rapides. En VTT et en ski, la règle de la FFCO.</span></li>
             <li><span><b>Score Top</b> : la valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
               Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.</span></li>
             <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
               ${fmt(p6.top_n)} places : ${fmtW(pf.weights.cdf)} pour un championnat de France, ${fmtW(pf.weights.national)} pour une course nationale,
-              ${fmtW(pf.weights.other)} pour une autre course. Le CN Top est la moyenne cubique des scores retenus. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
+              ${fmtW(pf.weights.other)} pour une autre course. Le CN Top est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de
+              places. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
             <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top
               de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 7 mois au rythme de la montée
               des dix dernières années (forêt et sprint).</span></li>
@@ -1235,14 +1268,15 @@ export async function render(main, { query = {} } = {}) {
           <div class="mx-verdict">
             <div class="mx-box" style="${cvar("top6w3")}"><h3>Classer, qualifier, sélectionner</h3>
               <div class="who">${cnLabel("top6w3")}</div>
-              <p>Ce dont le coureur est capable à son meilleur, nourri par les grandes compétitions ; une course de plus ne le fait jamais baisser.</p></div>
-            <div class="mx-box" style="${cvar(analyst ? "fair3" : "top6w3")}"><h3>Prédire qui finira devant</h3>
-              <div class="who">${analyst ? html`Le ${cnLabel("fair3")}, puis le ${cnLabel("top6w3")}` : cnLabel("top6w3")}</div>
-              <p>${analyst ? "À un demi-point de duels près entre eux, et nettement devant la méthode officielle."
-                : "Nettement devant la méthode officielle : 2 points de duels bien prédits de plus, en forêt comme en sprint."}</p></div>
-            <div class="mx-box" style="${cvar(analyst ? "fair3" : "official")}"><h3>Mesurer la difficulté d'un circuit</h3>
-              <div class="who">${analyst ? `Le niveau habituel (${cnLabel("fair3")})` : "Le niveau habituel"}</div>
-              <p>Le niveau habituel des coureurs présents, sur tout le peloton, sans la limite de places qui fausserait la mesure.</p></div>
+              <p>Ce dont le coureur est capable à son meilleur, nourri par les grandes compétitions ; une fois ses 6 places remplies, une course de plus ne
+                le fait pas baisser.</p></div>
+            <div class="mx-box" style="${cvar("top6w3")}"><h3>Prédire qui finira devant</h3>
+              <div class="who">${cnLabel("top6w3")}</div>
+              <p>Nettement devant la méthode officielle : plus de 2 points de duels bien prédits de plus, en forêt comme en sprint.</p></div>
+            <div class="mx-box" style="${cvar("official")}"><h3>Mesurer la difficulté d'un circuit</h3>
+              <div class="who">Les scores déjà courus</div>
+              <p>Le niveau habituel des coureurs présents, tiré de leurs courses précédentes, sur tout le peloton en forêt, sans la limite de places qui
+                fausserait la mesure.</p></div>
             <div class="mx-box" style="${cvar("official")}"><h3>Faire foi</h3>
               <div class="who">${cnLabel("official")}</div>
               <p>Le seul classement officiel, celui des sélections, quelles que soient ses limites.</p></div>
@@ -1423,7 +1457,7 @@ export async function render(main, { query = {} } = {}) {
   // how far the methods agree, per discipline: each visible computed method against the official one.
   // meta.agreement rows: [official, fair, top6w, fair3, top6w3]
   const AGREE_COL = { fair: 1, top6w: 2, fair3: 3, top6w3: 4 };
-  const computed = M.filter((m) => m !== "official");
+  const computed = M.filter((m) => m !== "official");     // never the Fits (M excludes them)
   let agTerrain = "For";
   function drawAgreement() {
     if (!$("#agr-filters", main)) return;
@@ -1446,7 +1480,6 @@ export async function render(main, { query = {} } = {}) {
     const stats = [
       ...series.map((x) => stat(`${x.name} / ${methodShort("official")}`, x.data)),
       ...(computed.includes("top6w") && computed.includes("top6w3") ? [vs("top6w", "top6w3")] : []),
-      ...(computed.includes("fair") && computed.includes("top6w") ? [vs("fair", "top6w")] : []),
     ];
     $("#agr-stats").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th>Méthodes comparées</th><th class="r">Coureurs</th><th class="r">Corrélation</th><th class="r">Écart moyen</th><th class="r">Écart moyen absolu</th></tr></thead>
@@ -1456,7 +1489,7 @@ export async function render(main, { query = {} } = {}) {
   }
   // the evaluation's season-by-season chart: one measure, one comparison, one scope, forest and sprint side by side
   let evMeas = "acc", evPair = "top6w3-official", evScope = "all", evPeriod = "holdout";
-  const EV_PAIRS = () => (analyst ? ev.pairs : ["top6w3-official", "top6w3-top6w"]);
+  const EV_PAIRS = () => (analyst ? ev.pairs.filter((x) => !x.includes("fair")) : ["top6w3-official", "top6w3-top6w"]);
   function drawEval() {
     if (!ev || !$("#ev-seasons", main)) return;
     if (!EV_PAIRS().includes(evPair)) evPair = EV_PAIRS()[0];

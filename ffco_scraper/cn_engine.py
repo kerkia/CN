@@ -195,6 +195,9 @@ class Normalisation:
     # The cohort anchored at the target is that of the method's Top (owner, 2026-10-13): at each CN point, the CN
     # the Top derived from the same raw scores would publish - this many places (None: the method's own CN).
     anchor_top_n: int | None = None
+    # ... and the mean that Top takes of its places, when it is not the method's own (2026-10-14: the Top is a weighted
+    # arithmetic mean, 1, while its Fit stays cubic). None: the method's own `cn_power`.
+    anchor_cn_power: float | None = None
     refresh_month: int = 1
     refresh_day: int = 3
     active_days: int = 365         # a runner counts if they raced this recently
@@ -265,6 +268,11 @@ def build_methods() -> dict[str, MethodSpec]:
     # runners, 2012-2024: forest tau +0.014 [+0.012, +0.015] (14 seasons of 15; national races +0.004), sprint
     # +0.0025 [+0.0014, +0.0035]; juniors no longer rated 3 % too low against H/D21 in forest. The recalage
     # anchors the Top's cohort (the published CN) and corrects the drift of the raw scale, in forest and sprint.
+    # Since 2026-10-14 (owner: a rank built only from a weighted arithmetic average of the race scores) the Top is
+    # the weighted ARITHMETIC mean of its 6 places, in every discipline; the usual level that values the circuits
+    # (fair3) keeps the cubic mean. Measured on the same runners, 2012-2024, against the cubic Top: duels called
+    # right forest -0.01 point [-0.02, -0.00] (national races 0.00), time gaps explained -1.1 point; sprint -0.10
+    # [-0.14, -0.07], -3.4 points. The order in forest is the same: the cubic mean matters for valuing circuits.
     fair3 = dataclasses.replace(fair, by_terrain={
         "Forêt": {"sample_fraction": 1.0, "cv_power": 0.0, "cn_power": 3.0},
         "Sprint": {"cv_power": 0.0, "cn_power": 3.0},
@@ -272,7 +280,10 @@ def build_methods() -> dict[str, MethodSpec]:
         "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cn_power": 2.0},
     })
     norm3 = Normalisation(mode="monthly_drift", mode_by_terrain={"VTT": "monthly_lag", "Ski": "monthly_lag"},
-                          anchor_top_n=6)
+                          anchor_top_n=6, anchor_cn_power=1.0)
+    # the Top: 6 weighted places, their weighted arithmetic mean in every discipline
+    top3 = dataclasses.replace(fair3, top_n=6, cn_power=1.0,
+                               by_terrain={t: {**o, "cn_power": 1.0} for t, o in fair3.by_terrain.items()})
     return {
         "fair": MethodSpec(
             name="fair",
@@ -299,10 +310,10 @@ def build_methods() -> dict[str, MethodSpec]:
         ),
         "top6w3": MethodSpec(
             name="top6w3",
-            params=dataclasses.replace(fair3, top_n=6),
+            params=top3,
             derived_from="fair3",
             normalisation=norm3,
-            description="Top, derived from fair3: the same scores, 6 weighted places, cubic mean",
+            description="Top, derived from fair3: the same scores, 6 weighted places, weighted arithmetic mean",
         ),
     }
 
@@ -853,7 +864,8 @@ class CnEngine:
             if h is None:
                 continue
             if r["terrain"] not in tops:
-                tops[r["terrain"]] = dataclasses.replace(p.for_terrain(r["terrain"]), top_n=cfg.anchor_top_n)
+                q = dataclasses.replace(p.for_terrain(r["terrain"]), top_n=cfg.anchor_top_n)
+                tops[r["terrain"]] = q if cfg.anchor_cn_power is None else dataclasses.replace(q, cn_power=cfg.anchor_cn_power)
             cn, _, kept = h.cn_as_of(date.fromisoformat(r["date_iso"]), tops[r["terrain"]])
             if cn is not None and kept:
                 rows.append({"licence": r["licence"], "terrain": r["terrain"], "date_iso": r["date_iso"],
