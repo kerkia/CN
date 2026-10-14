@@ -821,6 +821,8 @@ const FR = {
   "an.fitTrace": "Toute la trace", "an.fitMap": "Toute la carte", "an.brief.edit": "Course et fichiers",
   "an.mapAlpha": "Opacité de la carte", "an.traceAlpha": "Opacité de la trace", "an.traceColour": "Couleur de la trace", "an.traceColour.any": "une autre couleur",
   "an.display": "Affichage", "an.follow.short": "Suivre",
+  "an.graphs": "Courbes", "an.graphs.open": "Afficher les courbes", "an.graphs.close": "Replier les courbes", "an.graphs.where": "Courbes",
+  "an.graphs.left": "à gauche", "an.graphs.below": "sous la carte", "an.split": "Glisser pour redimensionner ; double-clic : replier les courbes",
   "an.st.whose": "La trace commence à {t} ; {r} ({rs}) ne semble pas l'avoir courue.", "an.st.whose.dns": "non partant", "an.st.whose.start": "départ à {s}", "an.st.whose.noStart": "heure de départ inconnue",
   "an.st.other": "{o}, départ à {os} ?", "an.switch": "Choisir ce coureur", "an.follow.hint": "La carte suit le coureur pendant la lecture", "an.legNear": "Dernier poste", "an.pace.short": "sur 30 s",
   "an.legs": "Les inter-postes", "an.legs.hint": "Temps et rang d'après les temps intermédiaires du circuit ; perdu : l'écart au rythme habituel du coureur (en rouge, une erreur : au moins 20 % de l'inter-poste et 10 s) ; trace : la distance courue d'après le GPS ; direct : d'un poste à l'autre à vol d'oiseau ; détour : l'une rapportée à l'autre. Cliquez une ligne pour voir cet inter-poste.",

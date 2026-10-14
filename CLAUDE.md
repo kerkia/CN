@@ -484,7 +484,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
   course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
   « Suivre » is a toggle button in the transport row. A published start time is ignored for a `dns` runner or when the
-  first control's pass precedes it or comes over 30 min later.
+  first control's pass precedes it or comes over 30 min later. **Layout, second review** (owner, 2026-10-14): the top
+  menu stays during playback (hiding it saved no height) and `an-theatre` is removed in the page's cleanup — it had
+  stayed on every page; the layout is a grid filling the window (`--an-h`, `fitHeight`), the curves on the left
+  (default ≥ 1100 px) or under the map (« Affichage › Courbes »), collapsible (‹ or double-click on the splitter), the
+  splitters resizing the curves and the side panel (`--an-gw`, `--an-gh`, `--an-sw`, kept in `ocn.an.prefs`), drags
+  followed on the window; the map keeps its centre on a resize (`lastBox`); « Affichage » open; the first leg at
+  margin 1.15 + 30 px; `fitTrace` restored (dropped by c00a655: ⤢ threw during playback).
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

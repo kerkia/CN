@@ -169,15 +169,18 @@ export async function render(main, { query = {} } = {}) {
     <section class="card" id="an-files"></section>
     <div class="an-brief" id="an-brief" hidden></div>
     <div id="an-work" hidden>
-      <div class="an-layout">
+      <div class="an-layout" id="an-layout">
+        <section class="an-graphs" id="an-strip-card" hidden>
+          <div class="an-graphs-head"><button type="button" class="btn btn-sm an-collapse" id="an-collapse"></button><span class="an-graphs-title">${t("an.graphs")}</span><div class="an-chips" id="an-chips"></div></div>
+          <canvas id="an-strip"></canvas></section>
+        <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
           <div class="an-hud" id="an-hud"></div></div>
+        <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
       </div>
-      <div class="card an-strip-card" id="an-strip-card" hidden><div class="an-strip-head"><span class="hint">${t("an.strip.hint")}</span><div class="an-chips" id="an-chips"></div></div>
-        <canvas id="an-strip"></canvas></div>
       <section class="card" id="an-legs" hidden></section>
     </div>`;
   if (!races.length) {
@@ -203,13 +206,21 @@ export async function render(main, { query = {} } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) ? prefs.chans : ["pace", "hr"]);        // the curves under the map
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, chans: [...chans], mapAlpha, traceAlpha, traceColour })); } catch (e) { /* not kept */ } };
+  // the playback's layout (owner, 2026-10-14): the curves on the left (or under the map), collapsible; the panels'
+  // sizes set by dragging the splitters
+  const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
+  let glayout = prefs.glayout === "left" || prefs.glayout === "below" ? prefs.glayout : (innerWidth >= 1100 ? "left" : "below");
+  let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22))));
+  let gh = px(prefs.gh, 80, 900, 200), sw = px(prefs.sw, 200, 600, 270), gcol = !!prefs.gcol;
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
   let vLo = 0, vHi = 1;                               // the pace colours' range (10-90 % of the trace's speeds)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
+  const layoutEl = $("#an-layout");
+  let lastBox = null;                                   // the map's box when the view was last set (its centre kept on a resize)
   const strip = $("#an-strip"), sctx = strip.getContext("2d");
 
   const steps = (n) => { $("#an-steps").innerHTML = html`${[t("an.s1"), t("an.s2"), t("an.s3"), t("an.s4")].map((s, i) => html`<li class="${i + 1 < n ? "done" : i + 1 === n ? "now" : ""}"><b>${i + 1}</b> ${s}</li>`)}`; };
@@ -378,7 +389,53 @@ export async function render(main, { query = {} } = {}) {
     fitView();
     prepare();
   }
-  const hideResults = () => { $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-hud").textContent = ""; showPanels(true); document.body.classList.remove("an-theatre"); };
+  const hideResults = () => {
+    $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
+    $("#an-hud").textContent = ""; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
+  };
+  /** The playback's layout as set: where the curves are, collapsed or not, the panels' sizes, the height. */
+  function applyLayout() {
+    layoutEl.dataset.layout = glayout;
+    layoutEl.dataset.graphs = gcol ? "collapsed" : "open";
+    layoutEl.style.setProperty("--an-gw", `${gcol ? 36 : gw}px`);
+    layoutEl.style.setProperty("--an-gh", `${gcol ? 36 : gh}px`);
+    layoutEl.style.setProperty("--an-sw", `${sw}px`);
+    const b = $("#an-collapse");
+    if (b) { b.textContent = glayout === "left" ? (gcol ? "›" : "‹") : (gcol ? "⌃" : "⌄"); b.title = t(gcol ? "an.graphs.open" : "an.graphs.close"); }
+    fitHeight();
+  }
+  /** During the playback the layout fills the window below its top: no scrollbar on a desktop screen. */
+  function fitHeight() {
+    if (!document.body.classList.contains("an-theatre")) { layoutEl.style.removeProperty("--an-h"); return; }
+    const top = layoutEl.getBoundingClientRect().top + window.scrollY;
+    layoutEl.style.setProperty("--an-h", `${Math.max(380, Math.floor(innerHeight - top - 14))}px`);
+  }
+  function bindSplit(el, kind) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      // the drag is followed on the window: a fast move leaves the thin splitter
+      e.preventDefault(); el.classList.add("dragging"); document.body.style.userSelect = "none";
+      const rect = layoutEl.getBoundingClientRect();
+      const move = (ev) => {
+        if (kind === "s") sw = Math.round(Math.min(560, Math.max(220, rect.right - ev.clientX - 5)));
+        else if (glayout === "left") { gw = Math.round(Math.min(rect.width - sw - 260, Math.max(180, ev.clientX - rect.left - 5))); gcol = false; }
+        else { gh = Math.round(Math.min(rect.height - 220, Math.max(90, rect.bottom - ev.clientY - 5))); gcol = false; }
+        applyLayout();
+      };
+      const up = () => {
+        el.classList.remove("dragging"); document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
+        savePrefs();
+      };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
+    });
+  }
+  const toggleGraphs = () => { gcol = !gcol; savePrefs(); applyLayout(); };
+  bindSplit($("#an-split-g"), "g"); bindSplit($("#an-split-s"), "s");
+  $("#an-split-g").addEventListener("dblclick", toggleGraphs);
+  $("#an-collapse").addEventListener("click", toggleGraphs);
+  const onWinResize = () => fitHeight();
+  window.addEventListener("resize", onWinResize);
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
   function showPanels(on) {
     $("#an-pick").hidden = !on; $("#an-files").hidden = !on;
@@ -791,7 +848,8 @@ export async function render(main, { query = {} } = {}) {
     savePositions(true);
     steps(4);
     showPanels(false);
-    document.body.classList.add("an-theatre");           // the site's menus give way to the map (owner, 2026-10-14)
+    document.body.classList.add("an-theatre");           // the second menu row and the page head give way to the map
+    window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     const known = sequenceKnown();
     $("#an-side").innerHTML = html`
@@ -809,8 +867,9 @@ export async function render(main, { query = {} } = {}) {
         <dt>${t("an.dist")}</dt><dd><b id="an-dist">0 m</b> <span class="muted" id="an-dist-sub"></span></dd>
         ${avail.filter((c) => c !== "ele").map((c) => html`<dt>${t(CHANNEL_LABEL[c])}</dt><dd><b id="an-ch-${c}">—</b> <span class="muted">${CHANNEL_UNIT[c]}</span></dd>`)}
       </dl>
-      <details class="an-settings"><summary>${t("an.display")}</summary>
+      <details class="an-settings" open><summary>${t("an.display")}</summary>
         <div class="an-opts">
+          <label><span>${t("an.graphs.where")}</span><select id="an-glayout"><option value="left" ${raw(glayout === "left" ? "selected" : "")}>${t("an.graphs.left")}</option><option value="below" ${raw(glayout === "below" ? "selected" : "")}>${t("an.graphs.below")}</option></select></label>
           <label><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
@@ -831,6 +890,7 @@ export async function render(main, { query = {} } = {}) {
     slider.addEventListener("pointerup", () => { scrubbing = false; });
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
     $("#an-marks").addEventListener("change", (e) => { marks = e.target.checked; draw(); });
+    $("#an-glayout").addEventListener("change", (e) => { glayout = e.target.value; savePrefs(); applyLayout(); });
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; savePrefs(); draw(); });
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
@@ -847,16 +907,29 @@ export async function render(main, { query = {} } = {}) {
       $$("[data-ch]", chipsBox).forEach((b) => b.addEventListener("click", () => { const c = b.dataset.ch; if (chans.has(c)) chans.delete(c); else chans.add(c); savePrefs(); drawChips(); sizeStrip(); drawStrip(); }));
     };
     drawChips();
-    $("#an-strip-card").hidden = false;
+    $("#an-strip-card").hidden = false; $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
+    applyLayout();
     if (known) legsTable(); else { $("#an-legs").hidden = true; $("#an-legs").innerHTML = ""; }
     sizeStrip();
-    if (legs[0]?.t1 != null) zoomTo(legs[0], 2.4); else fitTrace();    // the first leg, with room around it
+    if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
   }
   /** Back from the playback to the calibration and the files. */
   function leavePlayback() {
     stop(); calibrated = false; marks = true; mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0;
     hideResults(); side(); draw();
+  }
+  /** The view on the race: the whole trace, as large as the box allows (restored: lost in c00a655). */
+  function fitTrace() {
+    if (!fit || offset == null || !pxs) return;
+    const a = indexAt(track, offset), b = indexAt(track, offset + total);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
+    const { w, h } = box();
+    if (!w || !h || x1 <= x0) return;
+    const k = Math.min(w / (x1 - x0 + 60), h / (y1 - y0 + 60), 8);
+    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+    lastBox = { w, h };
   }
   function setFollow(on) { follow = on; savePrefs(); const b = $("#an-follow"); if (b) b.setAttribute("aria-pressed", String(on)); }
   const legAt = (s) => { let j = -1; for (let i = 0; i < legs.length; i++) if (legs[i].t0 != null && s >= legs[i].t0) j = i; return j; };
@@ -943,14 +1016,15 @@ export async function render(main, { query = {} } = {}) {
     }));
   }
   /** The view on one leg: its trace, with a margin. */
-  function zoomTo(l, margin = 1.3) {
+  function zoomTo(l, margin = 1.3, pad = 40) {
     if (!fit || l.t1 == null) return;
     const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + l.t1);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
     const { w, h } = box();
-    const k = Math.min(w / Math.max(60, (x1 - x0) * margin + 40), h / Math.max(60, (y1 - y0) * margin + 40), 6);
+    const k = Math.min(w / Math.max(60, (x1 - x0) * margin + pad), h / Math.max(60, (y1 - y0) * margin + pad), 5);
     view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+    lastBox = { w, h };
     setFollow(false);
   }
 
@@ -964,6 +1038,7 @@ export async function render(main, { query = {} } = {}) {
     const { w, h } = box();
     const k = w && h ? Math.min(w / map.width, h / map.height) : 1;       // a hidden box has no size
     view = { k, ox: (w - map.width * k) / 2, oy: (h - map.height * k) / 2 };
+    lastBox = { w, h };
   }
   function zoomBy(f, cx, cy) {
     const { w, h } = box();
@@ -1010,8 +1085,16 @@ export async function render(main, { query = {} } = {}) {
   $("#an-zout").addEventListener("click", () => zoomBy(1 / 1.4));
   $("#an-fit").addEventListener("click", () => { if (!map) return; if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
   $("#an-map").addEventListener("click", () => { if (map) { fitView(); draw(); } });
-  const ro = new ResizeObserver(() => { if (map) { size(); sizeStrip(); draw(); drawStrip(); } });
-  ro.observe(canvas);
+  const ro = new ResizeObserver(() => {
+    if (!map) return;
+    const b = box();
+    if (lastBox && b.w && b.h && (b.w !== lastBox.w || b.h !== lastBox.h)) {
+      view = { ...view, ox: view.ox + (b.w - lastBox.w) / 2, oy: view.oy + (b.h - lastBox.h) / 2 };
+      lastBox = b;
+    }
+    size(); sizeStrip(); draw(); drawStrip();
+  });
+  ro.observe(canvas); ro.observe(strip);
 
   // the pace colours: from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
   const PACE_COLOURS = ["#1c5fd6", "#19a0c9", "#1aa34a", "#8bc34a", "#f2c200", "#f28a00", "#e23a1f", "#8e0f1f"];
@@ -1091,13 +1174,11 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // ---- the curves under the map: one row per curve chosen, the same time axis, the controls' passes when the sequence is known
-  const ROW = 56, TOP = 14;
+  const TOP = 14;
   const stripRows = () => ["pace", ...Object.keys(CHANNEL_COLOUR)].filter((c) => chans.has(c) && (c === "pace" || track.ch[c]));
   function sizeStrip() {
-    const dpr = window.devicePixelRatio || 1, rows = Math.max(1, stripRows().length);
-    strip.style.height = `${TOP + rows * ROW + 4}px`;
+    const dpr = window.devicePixelRatio || 1;
     strip.width = Math.round(strip.clientWidth * dpr); strip.height = Math.round(strip.clientHeight * dpr);
-    document.documentElement.style.setProperty("--an-strip", `${TOP + rows * ROW + 4}px`);
   }
   function drawStrip() {
     if (!calibrated || !total) return;
@@ -1109,7 +1190,7 @@ export async function render(main, { query = {} } = {}) {
     if (!vHi || vHi === 1) paceScale();
     const X = (s) => (s / total) * w, step = Math.max(1, Math.floor(total / w));
     const i0 = indexAt(track, offset), i1 = indexAt(track, offset + total), known = sequenceKnown();
-    const rows = stripRows();
+    const rows = stripRows(), ROW = Math.max(34, (h - TOP - 4) / Math.max(1, rows.length));
     rows.forEach((c, r) => {
       const top = TOP + r * ROW + 2, bottom = top + ROW - 6;
       if (r) { sctx.strokeStyle = grid; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(0, top - 3); sctx.lineTo(w, top - 3); sctx.stroke(); }
@@ -1167,6 +1248,7 @@ export async function render(main, { query = {} } = {}) {
   }
   return { title: t("an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
+    window.removeEventListener("resize", onWinResize);
     stop(); ro.disconnect(); prepToken++;
     if (map || track) memo = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
