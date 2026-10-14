@@ -446,7 +446,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **probed** for faint rings (`course.probe`, `probeTurns`) and the alignment redone; with ≥ 6 controls the fit becomes
   affine (a photographed page is skewed). Result on that photo: 6 rings read + 4 probed of 16, fit 6 m, scale 0.47 px/m,
   the rest placed by hand (clicks snap to a ring found on the spot; « Ajouter un poste » when no split times exist; the
-  trace's visiting order renumbers them); a hand-placed point counts as reached within 30 m. The finish on the lake
+  trace's visiting order renumbers them, two passes within 15 s are one control); a hand-placed point counts as reached
+  within 30 m. Without split times the race clock is the runner's published start time, looked up in every list of
+  the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
+  less the published total. The finish on the lake
   (purple over blue) cannot be read. `window.anDebug()` in the console returns the fit, offset, targets, detection,
   view and `place(x, y)` for support and scripted tests.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score

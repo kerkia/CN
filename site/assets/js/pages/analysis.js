@@ -301,8 +301,14 @@ export async function render(main, { query = {} } = {}) {
   /** The offset the results' start time gives: the trace's time at the race start (seconds), if the start is known. */
   function guessOffset() {
     const r = runner();
-    if (r?.start_s == null || !race?.date_iso) return null;
-    const startMs = Date.parse(`${race.date_iso}T00:00:00Z`) - parisOffsetMs(race.date_iso) + r.start_s * 1000;
+    if (!r || !race?.date_iso) return null;
+    let startS = r.start_s;
+    if (startS == null) {                       // another list of the race (liveresultat's) may give the start time
+      const key = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+      for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners) if (x.start_s != null && key(x.name) === key(r.name)) startS = x.start_s;
+    }
+    if (startS == null) return null;
+    const startMs = Date.parse(`${race.date_iso}T00:00:00Z`) - parisOffsetMs(race.date_iso) + startS * 1000;
     return (startMs - track.ms0) / 1000;
   }
   const ptsOf = (gs) => gs.map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind }));
@@ -495,15 +501,19 @@ export async function render(main, { query = {} } = {}) {
         located.forEach((g, i) => { g.tEst = v.pass.has(i) ? v.pass.get(i) : null; });
         // the controls in the trace's visiting order, the unreached ones after, then renumbered
         const ctrls = targets.filter((g) => g.kind === "control");
-        const reached = ctrls.filter((g) => g.pos && g.tEst != null && !g.missed).sort((a, b) => a.tEst - b.tEst), rest = ctrls.filter((g) => !reached.includes(g));
+        const byTime = ctrls.filter((g) => g.pos && g.tEst != null && !g.missed).sort((a, b) => a.tEst - b.tEst);
+        // two points passed within 15 s are one control (a leg takes longer): the second is set aside
+        const reached = byTime.filter((g, i) => !i || g.tEst - byTime[i - 1].tEst >= 15), rest = ctrls.filter((g) => !reached.includes(g));
         targets = [...targets.filter((g) => g.kind === "start"), ...reached, ...rest, ...targets.filter((g) => g.kind === "finish")];
         let n = 0;
         targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = reached.includes(g) ? String(++n) : g.pos ? "?" : "+"; });
         const tot = totalOfficial();
         const firstPass = located.find((g) => g.kind === "control" && g.tEst != null)?.tEst ?? null;
-        // no start symbol, no published time: the trace's own beginning when the first control comes within 10 minutes
-        // (the watch started at the start), else the first control's pass
-        offset = v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass);
+        // the published start time first (the clock the results keep); else the start symbol's departure; else the
+        // finish's arrival less the published total time; else the trace's own beginning when the first control comes
+        // within 10 minutes (the watch started at the start), else the first control's pass
+        const published = guessOffset();
+        offset = published ?? v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass);
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
