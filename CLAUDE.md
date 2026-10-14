@@ -327,7 +327,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   test, then commit, push and confirm the CI run and the live site.
 - Many files use CRLF line endings: edit them preserving line endings (read/write bytes in Python scripts).
   In Git Bash, heredocs with quotes break easily: write patch scripts to a file, then run them.
-- The login page (`pages/overview.js`, public) shows on wide screens a reel of 15 slides (`reel.js`: drawn views of the
+- The login page (`pages/overview.js`, public) shows on wide screens a reel of 17 slides (« Analyse GPS » and « Jeux »
+  added 2026-10-14, drawn on a made-up orienteering map: `reel.terrain`, `course`) (`reel.js`: drawn views of the
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
   automatic under reduced motion); phones keep the short text (`.home-text`).

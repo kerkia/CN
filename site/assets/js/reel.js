@@ -318,7 +318,91 @@ function vGroups() {
     <text class="rv-lab rv-small rv-on" x="${W - 115}" y="286" text-anchor="middle">${esc(t("reel.gr.pack"))}</text></g>`);
 }
 
-// 15. the invitation
+// ---- a drawn orienteering map, for the GPS analysis and the games (made-up terrain, the same at each visit) --------
+/** A closed wobbly loop around (cx, cy): a contour line or a patch of vegetation. */
+function blob(cx, cy, rx, ry, seed, amp = 0.18, n = 14) {
+  const r = rng(seed), pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 2 * Math.PI, k = 1 + (r() - 0.5) * 2 * amp;
+    pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
+  }
+  return `${smooth([...pts, pts[0], pts[1]]).replace(/ C[^C]*$/, "")}Z`;
+}
+/** The terrain: open land, thickets, a lake, contour lines (an index contour every fifth would be overdoing it here). */
+function terrain(x0 = 0, y0 = 0, w = W, h = H) {
+  return `<rect class="rv-omap" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="10"/>
+    <path class="rv-open" d="${blob(x0 + w * 0.2, y0 + h * 0.22, w * 0.13, h * 0.12, 7)}"/>
+    <path class="rv-open" d="${blob(x0 + w * 0.82, y0 + h * 0.78, w * 0.12, h * 0.14, 9)}"/>
+    <path class="rv-thicket" d="${blob(x0 + w * 0.6, y0 + h * 0.3, w * 0.07, h * 0.1, 21)}"/>
+    <path class="rv-thicket" d="${blob(x0 + w * 0.32, y0 + h * 0.72, w * 0.06, h * 0.08, 23)}"/>
+    <path class="rv-lake" d="${blob(x0 + w * 0.88, y0 + h * 0.2, w * 0.06, h * 0.08, 31, 0.1)}"/>
+    ${[1, 0.7, 0.42].map((s, i) => `<path class="rv-contour" d="${blob(x0 + w * 0.47, y0 + h * 0.52, w * 0.2 * s, h * 0.3 * s, 41 + i, 0.14)}"/>`).join("")}
+    ${[1, 0.6].map((s, i) => `<path class="rv-contour" d="${blob(x0 + w * 0.13, y0 + h * 0.7, w * 0.09 * s, h * 0.18 * s, 51 + i, 0.12)}"/>`).join("")}`;
+}
+/** A course in purple: the start triangle, the controls' circles with their numbers, the finish, the legs between them. */
+function course(pts) {
+  const R = 11, out = [];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+    out.push(`<line class="rv-leg" x1="${(x0 + ux * (R + 3)).toFixed(1)}" y1="${(y0 + uy * (R + 3)).toFixed(1)}" x2="${(x1 - ux * (R + 3)).toFixed(1)}" y2="${(y1 - uy * (R + 3)).toFixed(1)}"/>`);
+  }
+  const [sx, sy] = pts[0];
+  out.push(`<path class="rv-leg" d="M${sx} ${sy - 13} L${sx + 11.3} ${sy + 6.5} L${sx - 11.3} ${sy + 6.5} Z"/>`);
+  pts.slice(1).forEach(([x, y], i) => {
+    out.push(`<circle class="rv-leg" cx="${x}" cy="${y}" r="${R}"/>`);
+    if (i === pts.length - 2) out.push(`<circle class="rv-leg" cx="${x}" cy="${y}" r="${R - 4}"/>`);
+    else out.push(`<text class="rv-ctl" x="${x + 13}" y="${y - 9}">${i + 1}</text>`);
+  });
+  return out.join("");
+}
+
+// 15. the GPS analysis: one's trace and another runner's on the map, the course found on it, the race played back
+function vTrace() {
+  const C = [[70, 236], [146, 92], [296, 62], [430, 148], [344, 246], [498, 250]];
+  const jit = (pts, seed, a) => { const r = rng(seed); return pts.map(([x, y], i) => (i && i < pts.length - 1 ? [x + (r() - 0.5) * a, y + (r() - 0.5) * a] : [x, y])); };
+  // the first runner keeps close to the lines; the second loops round the hill between 2 and 3 and overshoots 4
+  const a = jit([C[0], [104, 170], C[1], [220, 70], C[2], [372, 98], C[3], [392, 204], C[4], [420, 254], C[5]], 61, 10);
+  const b = jit([C[0], [92, 150], [124, 104], C[1], [230, 118], [262, 92], C[2], [330, 40], [420, 70], C[3], [452, 214], [372, 272], C[4], [430, 236], C[5]], 67, 8);
+  const head = (p, cls, k) => `<circle class="rv-pop ${cls}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6.5" ${d(k)}/>`;
+  return svg(`${terrain()}${course(C)}
+    <path class="rv-line rv-draw rv-trace-b" pathLength="1" d="${smooth(b)}" ${d(0.3)}/>
+    <path class="rv-line rv-draw rv-trace-a" pathLength="1" d="${smooth(a)}" ${d(0.1)}/>
+    ${head(a[a.length - 1], "rv-head-a", 1.6)}${head(b[b.length - 1], "rv-head-b", 1.9)}
+    <g class="rv-fade" ${d(0.2)}><rect x="14" y="12" width="150" height="46" rx="10" class="rv-card"/>
+      <circle cx="30" cy="29" r="5" class="rv-head-a"/>${label(42, 33, t("reel.you"), `class="rv-lab rv-strong rv-small"`)}
+      <circle cx="30" cy="47" r="5" class="rv-head-b"/>${blur(42, 51, name(4), `class="rv-blur rv-small"`)}</g>
+    <g class="rv-pop" ${d(1.4)}><rect x="${W - 184}" y="12" width="170" height="24" rx="12" class="rv-pill-on"/>
+      <text class="rv-lab rv-small rv-on" x="${W - 99}" y="28" text-anchor="middle">${esc(t("reel.tr.auto"))}</text></g>`);
+}
+
+// 16. the games: two routes between two controls, which is the quicker? — the answer and the score
+function vGames() {
+  const P = [56, 232], Q = [268, 70];
+  const routeA = smooth([P, [70, 150], [120, 92], [200, 64], Q]);              // round the hill, on the path
+  const routeB = smooth([P, [130, 190], [190, 136], [236, 98], Q]);           // straight over it
+  const tri = `<path class="rv-leg" d="M${P[0]} ${P[1] - 13} L${P[0] + 11.3} ${P[1] + 6.5} L${P[0] - 11.3} ${P[1] + 6.5} Z"/>`;
+  const tag = (x, y, l, cls, k) => `<g class="rv-pop" ${d(k)}><circle cx="${x}" cy="${y}" r="11" class="${cls}"/><text class="rv-badge" x="${x}" y="${y + 4.5}" text-anchor="middle">${l}</text></g>`;
+  const cardX = 334;
+  return svg(`${terrain(12, 12, 300, 276)}${tri}<circle class="rv-leg" cx="${Q[0]}" cy="${Q[1]}" r="11"/>
+    <path class="rv-line rv-draw rv-route-a" pathLength="1" d="${routeA}" ${d(0.2)}/>
+    <path class="rv-line rv-draw rv-route-b" pathLength="1" d="${routeB}" ${d(0.5)}/>
+    ${tag(94, 118, "A", "rv-tag-a", 0.9)}${tag(178, 160, "B", "rv-tag-b", 1.1)}
+    <g class="rv-fade" ${d(0.3)}><rect x="${cardX}" y="12" width="${W - cardX - 14}" height="276" rx="12" class="rv-card"/>
+      ${label(cardX + 18, 46, t("reel.gm.q1"), `class="rv-lab rv-strong"`)}${label(cardX + 18, 66, t("reel.gm.q2"), `class="rv-lab rv-strong"`)}
+      <rect x="${cardX + 18}" y="84" width="${W - cardX - 50}" height="6" rx="3" class="rv-pill"/>
+      <rect x="${cardX + 18}" y="84" width="${W - cardX - 50}" height="6" rx="3" class="rv-timer rv-grow-x rv-from-right" ${d(0.4)}/>
+      <rect x="${cardX + 18}" y="106" width="${(W - cardX - 60) / 2}" height="34" rx="9" class="rv-pill"/>
+      <text class="rv-lab rv-strong" x="${cardX + 18 + (W - cardX - 60) / 4}" y="128" text-anchor="middle">A</text>
+      <g class="rv-pop" ${d(1.6)}><rect x="${cardX + 28 + (W - cardX - 60) / 2}" y="106" width="${(W - cardX - 60) / 2}" height="34" rx="9" class="rv-good"/>
+        <text class="rv-badge" x="${cardX + 28 + (3 * (W - cardX - 60)) / 4}" y="128" text-anchor="middle">B ✓</text></g>
+      <g class="rv-fade" ${d(1.9)}>${label(cardX + 18, 168, t("reel.gm.ok"), `class="rv-lab rv-small"`)}</g>
+      <line class="rv-grid" x1="${cardX + 18}" x2="${W - 32}" y1="192" y2="192"/>
+      ${label(cardX + 18, 222, t("reel.gm.score"), `class="rv-head"`)}
+      <g class="rv-pop" ${d(2.1)}><text class="rv-big rv-num" x="${cardX + 18}" y="252">${fmt(840)}</text></g>
+      ${label(W - 32, 252, t("reel.gm.round"), `text-anchor="end" class="rv-lab rv-small"`)}</g>`);
+}
+
+// 17. the invitation
 function vJoin() {
   return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="118" text-anchor="middle">O'CN</text></g>
     ${["For", "Spr", "VTT", "Ski"].map((x, k) => `<g class="rv-pop" ${d(0.3 + 0.1 * k)}><rect x="${W / 2 - 196 + k * 100}" y="148" width="92" height="28" rx="14" class="rv-ter-${x.toLowerCase()}"/>
@@ -327,7 +411,7 @@ function vJoin() {
 
 const SLIDES = [["methods", vMethods], ["calc", vCalc], ["ranking", vRanking], ["compare", vCompare], ["clubs", vClubs],
   ["pyramid", vPyramid], ["map", vMap], ["seasons", vSeasons], ["network", vNetwork], ["agenda", vAgenda],
-  ["recent", vRecent], ["table", vTable], ["gaps", vGaps], ["groups", vGroups], ["join", vJoin]];
+  ["recent", vRecent], ["table", vTable], ["gaps", vGaps], ["groups", vGroups], ["trace", vTrace], ["games", vGames], ["join", vJoin]];
 
 // ---- the reel ------------------------------------------------------------------------------------------------
 export function reelHtml() {
