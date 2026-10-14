@@ -900,9 +900,12 @@ export async function render(main, { query = {} } = {}) {
         <section class="mx-slide" style="${cvar("top6w3")}">
           <p class="mx-kicker">14 octobre 2026</p>
           <h2>Un classement fait d'une simple moyenne pondérée</h2>
-          <p>Pour que le classement reste la règle la plus simple possible, le CN Top est, depuis le 14 octobre 2026, la moyenne pondérée ordinaire de ses
-            meilleures courses, comme le CN officiel et le classement mondial de l'IOF. Chacun peut le refaire à la main. Le niveau habituel, qui mesure
-            les circuits, garde la moyenne cubique.</p>
+          <p>Les mesures des chapitres précédents désignaient la moyenne cubique comme la plus précise, pour le CN Top comme pour le niveau habituel.
+            Pour le CN Top, elle a pourtant été écartée le 14 octobre 2026, au profit de la <b>moyenne pondérée ordinaire</b> de ses meilleures courses :
+            très légèrement moins précise, celle-ci est bien plus facile à comprendre et à interpréter. Un CN Top de 6 000 veut dire que les meilleures
+            courses du coureur valent en moyenne 6 000 points, chacune comptée selon ses places. Chacun peut le refaire à la main, comme le CN officiel ou
+            le classement mondial de l'IOF. Le niveau habituel, qui ne sert qu'à mesurer les circuits et que personne n'a besoin de recalculer, garde la
+            moyenne cubique.</p>
           <p>Le choix a été mesuré avant d'être fait, sur les mêmes coureurs : mêmes scores, mêmes valeurs de circuit, seul le CN Top change de moyenne.</p>
           ${S?.arith ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Moyenne pondérée contre moyenne du 13 octobre</th>
             <th class="r">Duels, toutes<br>les courses</th><th class="r">Duels, courses<br>nationales</th><th class="r">Duels, depuis<br>juillet 2025</th>
@@ -916,8 +919,8 @@ export async function render(main, { query = {} } = {}) {
             saisons où la perte en duels est significative ; aucune saison n'est meilleure. Le ski a trop peu de courses pour être mesuré.</p>` : noStudy}
           <p>En forêt, l'ordre des coureurs ne change presque pas : la moyenne cubique sert surtout à mesurer les circuits, pas à classer. Le CN Top annonce
             un peu moins bien les écarts de temps entre coureurs (environ 1 point de moins). En sprint et en VTT, la perte est d'environ un dixième de point
-            de duels, et de 3,4 et 1,8 points d'écarts de temps. Le CN Top reste nettement meilleur que le CN officiel : environ 2 points de duels bien
-            prédits de plus en forêt et en sprint.</p>
+            de duels, et de 3,4 et 1,8 points d'écarts de temps. C'est le prix d'un classement que chacun comprend, et il est faible : le CN Top reste
+            nettement meilleur que le CN officiel, avec environ 2 points de duels bien prédits de plus en forêt et en sprint.</p>
           ${S?.arith ? html`<p>Pour les coureurs, le CN Top baisse de ${fmt(Math.abs(S.arith.shift.median), 1)} % en médiane. Un coureur sur dix perd
             ${fmt(Math.abs(S.arith.shift.p10), 0)} % ou plus, et un sur cent environ ${fmt(Math.abs(S.arith.shift.p1), 0)} % : ce sont des coureurs irréguliers,
             dont les meilleures courses sont inégales. Le recalage ramène ensuite le niveau général à ${fmt(pf.anchor_target)}.</p>
@@ -1127,7 +1130,7 @@ export async function render(main, { query = {} } = {}) {
             de duels que le Top quadratique publié jusque-là : ${pts(kpt("For", "gall", 3))} de plus en forêt, avec un gain significatif à
             ${fmt(Object.values(S.seasons.For).filter((r) => r.acc[1] > 0).length)} saisons sur ${fmt(Object.keys(S.seasons.For).length)} et sur les courses
             nationales (${pts(kpt("For", "gall", 3, "nat_holdout"))}) ; ${pts(kpt("Spr", "g23", 3))} de plus en sprint. Le passage du CN Top à la moyenne
-            pondérée, le 14 octobre, retire ${S.arith ? fmt(Math.abs(S.arith.For.all_holdout.acc[0]), 2) : "0,01"} point en forêt et
+            pondérée, le 14 octobre, plus simple à comprendre, retire ${S.arith ? fmt(Math.abs(S.arith.For.all_holdout.acc[0]), 2) : "0,01"} point en forêt et
             ${S.arith ? fmt(Math.abs(S.arith.Spr.all_holdout.acc[0]), 2) : "0,10"} en sprint (voir
             <a href="#/methodes?onglet=etude&voir=score" data-tab-link="etude" data-goto="score">le score et la moyenne</a>).</p>` : ""}
         </section>
@@ -1254,7 +1257,8 @@ export async function render(main, { query = {} } = {}) {
             <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
               ${fmt(p6.top_n)} places : ${fmtW(pf.weights.cdf)} pour un championnat de France, ${fmtW(pf.weights.national)} pour une course nationale,
               ${fmtW(pf.weights.other)} pour une autre course. Le CN Top est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de
-              places. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
+              places : la moyenne cubique, très légèrement plus précise, a été écartée parce qu'elle est bien plus difficile à comprendre et à interpréter.
+              Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
             <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top
               de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 7 mois au rythme de la montée
               des dix dernières années (forêt et sprint).</span></li>
