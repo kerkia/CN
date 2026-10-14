@@ -198,6 +198,9 @@ class Normalisation:
     # ... and the mean that Top takes of its places, when it is not the method's own (2026-10-14: the Top is a weighted
     # arithmetic mean, 1, while its Fit stays cubic). None: the method's own `cn_power`.
     anchor_cn_power: float | None = None
+    # Count the lag, the smoothing and the drift in calendar months (2026-10-14): a month without races keeps the previous
+    # month's level. Off: in months that have CN points, as before (ski's « 13 months » then spanned years).
+    calendar_months: bool = False
     refresh_month: int = 1
     refresh_day: int = 3
     active_days: int = 365         # a runner counts if they raced this recently
@@ -273,14 +276,24 @@ def build_methods() -> dict[str, MethodSpec]:
     # (fair3) keeps the cubic mean. Measured on the same runners, 2012-2024, against the cubic Top: duels called
     # right forest -0.01 point [-0.02, -0.00] (national races 0.00), time gaps explained -1.1 point; sprint -0.10
     # [-0.14, -0.07], -3.4 points. The order in forest is the same: the cubic mean matters for valuing circuits.
+    # Also since 2026-10-14 (owner: identical logic and formulas in every discipline, only parameters differing) VTT and
+    # ski follow sprint's rules - geometric circuit value over the fastest two-thirds, cubic usual level - and every
+    # discipline has the same recalage, counted in calendar months. What still differs: the window and the share of best
+    # scores (VTT and ski have few races), and the share of the field valuing a circuit - the whole field in forest only:
+    # measured with today's Top, the whole field costs sprint -0.21 point [-0.29, -0.15] (9 seasons of 15 worse, none
+    # better) and VTT -0.63 since July 2025 (worse every season since 2022), and gains forest +0.6 (better every season).
+    # The sprint rules cost VTT -0.06 [-0.09, -0.03] against its former rules (arithmetic value, quadratic level).
     fair3 = dataclasses.replace(fair, by_terrain={
         "Forêt": {"sample_fraction": 1.0, "cv_power": 0.0, "cn_power": 3.0},
         "Sprint": {"cv_power": 0.0, "cn_power": 3.0},
-        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cn_power": 2.0},
-        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cn_power": 2.0},
+        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0},
+        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0},
     })
-    norm3 = Normalisation(mode="monthly_drift", mode_by_terrain={"VTT": "monthly_lag", "Ski": "monthly_lag"},
-                          anchor_top_n=6, anchor_cn_power=1.0)
+    # carried 10 calendar months: counted in months with races, the 7 of 2026-10-13 stretched over forest's few race-less
+    # months; in calendar months 7 left the forest level 2.7 % above 5600, 10 keeps the three measurable disciplines within
+    # 2 % at every date checked (2018-2026)
+    norm3 = Normalisation(mode="monthly_drift", anchor_top_n=6, anchor_cn_power=1.0, calendar_months=True,
+                          trend_ahead_months=10.0)
     # the Top: 6 weighted places, their weighted arithmetic mean in every discipline
     top3 = dataclasses.replace(fair3, top_n=6, cn_power=1.0,
                                by_terrain={t: {**o, "cn_power": 1.0} for t, o in fair3.by_terrain.items()})
@@ -925,6 +938,17 @@ class CnEngine:
                          cfg: Normalisation) -> list[tuple[date, float, float]]:
         """Turn monthly reference levels into (effective_from, level, factor)."""
         months = sorted(monthly)
+        if cfg.calendar_months and months:
+            # every calendar month from the first to the last, a month without races keeping the previous level
+            filled: dict[str, float] = {}
+            y, mo = int(months[0][:4]), int(months[0][5:7])
+            last = None
+            while f"{y:04d}-{mo:02d}" <= months[-1]:
+                key = f"{y:04d}-{mo:02d}"
+                last = monthly.get(key, last)
+                filled[key] = last
+                y, mo = (y + 1, 1) if mo == 12 else (y, mo + 1)
+            monthly, months = filled, sorted(filled)
         vals = [monthly[m] for m in months]
         out: list[tuple[date, float, float]] = []
 

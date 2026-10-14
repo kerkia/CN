@@ -58,7 +58,7 @@ const EXAMPLE = [[7200, "cdf"], [6900, "other"], [6800, "national"], [6500, "oth
 // The recalage corrections tried (study of 13 October 2026), in the order of study.json's rows.
 const RECAL_LABELS = ["Jusqu'au 13 octobre : la moyenne des 13 mois qui se terminent 2 mois plus tôt", "Une droite tracée sur ces 13 mois, lue le jour du facteur",
   "La même droite, lue 6 mois plus loin", "La moyenne des 13 mois, prolongée de 7 mois au rythme de la montée des 3 dernières années",
-  "La moyenne des 13 mois, prolongée de 7 mois au rythme de la montée des 10 dernières années (retenue)"];
+  "La moyenne des 13 mois, prolongée de 7 mois au rythme de la montée des 10 dernières années (retenue le 13 octobre)"];
 
 function pearson(xs, ys) {
   const mx = mean(xs), my = mean(ys);
@@ -448,6 +448,12 @@ export async function render(main, { query = {} } = {}) {
           <p>Ses meilleurs scores Top des 12 derniers mois remplissent ${fmt(p6.top_n)} places ; le CN Top est leur moyenne, chaque course comptée
             selon ses places.</p></div>
       </div>
+      <p style="margin-top:14px">Les formules sont les mêmes dans les quatre spécialités. Seuls trois réglages changent : les courses prises en compte et
+        la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et la part du peloton qui mesure le circuit.</p>
+      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
+        <th class="r">Meilleurs scores regardés</th><th>Coureurs qui mesurent le circuit</th></tr></thead>
+        <tbody>${windows.map(([tr, w, f, , , sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
+          <td class="r">les ${pctOf(f)} meilleurs</td><td>${sf >= 1 ? "tout le peloton classé" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
       <p style="margin-top:14px">La méthode Top est en ligne depuis le 13 octobre 2026. Les raisons de chaque choix, avec les mesures qui les justifient,
         sont dans <a href="#/methodes?onglet=etude" data-tab-link="etude">l'étude</a>.</p>
     </section>
@@ -458,7 +464,8 @@ export async function render(main, { query = {} } = {}) {
       <p>Comme pour le CN officiel, la difficulté d'un circuit se mesure sur les coureurs présents. Mais la méthode Top n'utilise pas leur CN : elle
         utilise leur <b>niveau habituel</b>, tel qu'il était ${fmt(pf.lag_days)} jours avant la course.</p>
       <p>Le niveau habituel d'un coureur est calculé sur ses scores Top des 12 derniers mois : on garde ses ${pctOf(pf.eligible_fraction)} meilleurs
-        scores, chacun compté selon son poids (voir le CN Top plus bas), et on en fait la moyenne cubique. Il dit ce que vaut le coureur d'ordinaire.
+        scores (70 % sur deux ans en VTT, sur trois ans en ski), chacun compté selon son poids (voir le CN Top plus bas), et on en fait la moyenne
+        cubique. Il dit ce que vaut le coureur d'ordinaire.
         Ce n'est pas un classement : c'est une étape du calcul, faite des courses que le coureur a déjà courues. Le CN Top, lui, ne retient que les
         meilleures courses : il sert à classer.</p>
       <ul class="mx-list">
@@ -473,13 +480,13 @@ export async function render(main, { query = {} } = {}) {
       <p class="mx-kicker">Le score Top · étape 2</p>
       <h2>La valeur du circuit</h2>
       <p>Pour chaque coureur, on multiplie son niveau habituel par son temps. La valeur du circuit est la <b>moyenne géométrique</b> de ces produits.
-        En forêt, elle porte sur tous les coureurs classés qui ont un niveau habituel. En sprint, elle porte sur les deux tiers les plus rapides, comme
-        pour le CN officiel.</p>
+        En forêt, elle porte sur tous les coureurs classés qui ont un niveau habituel. En sprint, en VTT et en ski, elle porte sur les deux tiers les plus
+        rapides, comme pour le CN officiel.</p>
       <p>La moyenne géométrique de deux nombres est la racine carrée de leur produit ; celle de six nombres, la racine sixième de leur produit. Elle
         convient aux grandeurs qui se comparent en proportion, comme les temps. Prenons deux temps de 30 et de 120 minutes. Leur moyenne géométrique
         vaut √(30 × 120) = 60 minutes : 30 est deux fois moins que 60, et 120 deux fois plus. Leur moyenne ordinaire, dite arithmétique, vaut 75 minutes.</p>
       <div class="mx-eq">valeur du circuit = moyenne géométrique des (niveau habituel × temps)
-        <small>en forêt sur tout le peloton classé ; en sprint sur les deux tiers les plus rapides</small></div>
+        <small>en forêt sur tout le peloton classé ; ailleurs sur les deux tiers les plus rapides</small></div>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Moyenne</th><th>Coureurs comptés</th></tr></thead>
         <tbody>${windows.map(([tr, , , , cv, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${cv === 0 ? "géométrique" : "arithmétique (règle de la FFCO)"}</td>
           <td>${sf >= 1 ? "tous les classés qui ont un niveau habituel" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
@@ -534,9 +541,10 @@ export async function render(main, { query = {} } = {}) {
       <ul class="mx-list">
         <li><span>Le facteur est choisi pour que la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top de chaque spécialité reste à
           ${fmt(pf.anchor_target)}, la règle de la FFCO depuis 2026. Il change un peu chaque jour, au lieu d'une fois par an.</span></li>
-        <li><span>Pour le calculer, on mesure le niveau des CN Top ${fmt(pf.anchor_lag_months)} mois plus tôt, en moyenne sur 13 mois. En forêt et en sprint,
-          on le prolonge ensuite de 7 mois, au rythme auquel il a monté pendant les dix dernières années. Le facteur est calculé pour chaque mois ; entre
-          deux mois, il passe en ligne droite de l'un à l'autre.</span></li>
+        <li><span>Pour le calculer, on mesure le niveau des CN Top ${fmt(pf.anchor_lag_months)} mois plus tôt, en moyenne sur 13 mois, puis on le prolonge
+          de 10 mois, au rythme auquel il a monté pendant les dix dernières années. Les mois se comptent au calendrier : un mois sans course garde le niveau
+          du mois précédent. Le facteur est calculé pour chaque mois ; entre deux mois, il passe en ligne droite de l'un à l'autre. La règle est la même
+          dans les quatre spécialités.</span></li>
         <li><span>Le facteur d'une course est fixé une fois pour toutes. Un CN Top ne change donc que quand une course entre dans les 12 derniers mois ou en
           sort, jamais à cause du recalage.</span></li>
       </ul>
@@ -1043,6 +1051,39 @@ export async function render(main, { query = {} } = {}) {
             <span><i style="background:var(--flag)"></i>exposant sur le temps, règle FFCO</span><span><i style="background:var(--water)"></i>puissance sur le CN seul, règle FFCO</span></span>`) : ""}
           <div class="filters" id="fig-k-scope" style="margin-top:-8px"></div>
         </section>
+        <section class="mx-slide" style="${cvar("top6w3")}">
+          <p class="mx-kicker">14 octobre 2026</p>
+          <h2>Une seule méthode pour les quatre spécialités</h2>
+          <p>Jusqu'au 14 octobre, le VTT et le ski mesuraient leurs circuits avec la règle de la FFCO (la moyenne arithmétique des deux tiers les plus
+            rapides), leur niveau habituel était une moyenne quadratique, et leur recalage n'était pas prolongé. Depuis, les quatre spécialités suivent les
+            mêmes formules. Seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski ont bien
+            moins de courses, et la part du peloton qui mesure le circuit.</p>
+          <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
+          <th class="r">Meilleurs scores regardés</th><th>Coureurs qui mesurent le circuit</th></tr></thead>
+          <tbody>${windows.map(([tr, w, f, , , sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
+            <td class="r">les ${pctOf(f)} meilleurs</td><td>${sf >= 1 ? "tout le peloton classé" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
+          ${S?.unify ? html`<p>Pour le VTT, la règle commune coûte ${pts(S.unify.U1.VTT.all_holdout.acc)} de duels bien prédits face à sa règle précédente
+            (2012–2024) : une perte faible, acceptée pour que la méthode soit la même partout. Le ski a trop peu de courses pour être mesuré.</p>
+          <h3>Pourquoi tout le peloton en forêt seulement ?</h3>
+          <p>Mesurer chaque circuit sur tout le peloton a été essayé dans chaque spécialité, avec le CN Top d'aujourd'hui, face aux deux tiers les plus
+            rapides :</p>
+          <div class="table-wrap"><table class="data compact"><thead><tr><th>Tout le peloton contre les deux tiers</th><th class="r">Duels, 2012–2024</th>
+            <th class="r">Duels, depuis juillet 2025</th><th>Saison par saison</th></tr></thead><tbody>
+            <tr><td>Forêt</td><td class="r num">environ +0,6</td><td class="r num">environ +0,5</td><td>mieux à chaque saison sauf la première</td></tr>
+            <tr><td>Sprint</td><td class="r num">${ci(S.unify.U2.Spr.all_holdout.acc)}</td><td class="r num">${ci(S.unify.U2.Spr.all_tuned.acc)}</td>
+              <td>moins bien à ${fmt(S.unify.U2.Spr.worse)} saisons sur ${fmt(S.unify.U2.Spr.seasons)}, mieux à aucune</td></tr>
+            <tr><td>VTT</td><td class="r num">${ci(S.unify.U2.VTT.all_holdout.acc)}</td><td class="r num">${ci(S.unify.U2.VTT.all_tuned.acc)}</td>
+              <td>mieux jusqu'en 2021, moins bien à chaque saison depuis 2022</td></tr>
+          </tbody></table></div>
+          <p class="muted" style="font-size:13px">Écarts de la part des duels bien prédits, en points, avec leur intervalle à 95 %. En forêt, l'écart vient de
+            l'étude du 13 octobre, à moyennes égales par ailleurs.</p>
+          <p>En forêt, c'est le plus grand gain de toute l'étude, à presque chaque saison. Les erreurs y sont fréquentes, et leur nombre varie beaucoup d'un
+            circuit à l'autre : en tenir compte fait partie de la mesure de la difficulté. En sprint, les erreurs sont deux fois moins fréquentes et varient
+            moins d'un circuit à l'autre ; les coureurs les plus lents ajoutent alors plus d'incertitude qu'ils n'apportent d'information, et tout le peloton
+            fait moins bien à presque chaque saison. En VTT, tout le peloton a fait mieux jusqu'en 2021, puis moins bien à chaque saison depuis 2022, sans que
+            la cause soit établie ; c'est la période récente qui compte pour un classement d'aujourd'hui. La part du peloton reste donc un réglage propre à
+            chaque spécialité.</p>` : ""}
+        </section>
         <section class="mx-slide">
           <p class="mx-kicker">Les jeunes</p>
           <h2>À leur place face aux H/D 21</h2>
@@ -1113,12 +1154,17 @@ export async function render(main, { query = {} } = {}) {
             <li><span>Tracer une droite sur les 13 mois et la lire le jour du facteur ramène le niveau, mais coûte ${pts(vr("For", "Qn_t"))} de duels bien
               prédits. La lire six mois plus loin coûte davantage (${pts(vr("For", "Qm_t"))}), et le niveau est tombé à 5 307 en 2022, après les saisons Covid :
               une pente recalculée chaque mois fait faire des à-coups au facteur.</span></li>
-            <li><span><b>La correction retenue</b> prolonge la moyenne des 13 mois de 7 mois, au rythme moyen de la montée des dix dernières années. Ce rythme
-              change très peu d'un mois à l'autre, le facteur reste régulier, et le coût est minime (${pts(vr("For", "Qe_t"))}). Elle s'applique en forêt et en
-              sprint ; le VTT et le ski gardent la moyenne simple.</span></li>
+            <li><span><b>La correction retenue</b> prolonge la moyenne des 13 mois au rythme moyen de la montée des dix dernières années. Ce rythme change
+              très peu d'un mois à l'autre, le facteur reste régulier, et le coût est minime (${pts(vr("For", "Qe_t"))}, mesuré avec une prolongation de 7
+              mois).</span></li>
+            <li><span><b>Depuis le 14 octobre</b>, elle s'applique dans les quatre spécialités, et les mois se comptent au calendrier : un mois sans course garde
+              le niveau du mois précédent. Avant, seuls les mois avec des courses comptaient, si bien qu'en ski, où les courses tiennent en quelques semaines
+              par an, « 13 mois » couvraient des années. Comptés au calendrier, 7 mois de prolongation laissaient le niveau de forêt 2,7 % au-dessus de la
+              cible ; la prolongation est donc de 10 mois, ce qui garde la forêt, le sprint et le VTT à moins de 2 % de ${fmt(pf.anchor_target)} à toutes
+              les dates vérifiées, de 2018 à 2026. Le ski, avec ses quelques courses par an, ne peut pas être tenu aussi près de la cible.</span></li>
             <li><span><b>Les CN ramenés à 5 600 sont les CN Top</b>, ceux qui sont publiés, et non les niveaux habituels. En haut du classement, le CN Top dépasse
               le niveau habituel d'environ 2,5 %, puisqu'il ne garde que les meilleures courses. Au 1<sup>er</sup> octobre 2026, la moyenne des 20 % meilleurs
-              CN Top vaut 5 645 en forêt, 5 560 en sprint et 5 598 en VTT.</span></li>
+              CN Top vaut 5 599 en forêt, 5 511 en sprint et 5 615 en VTT.</span></li>
           </ul>
         </section>`,
 
@@ -1140,7 +1186,7 @@ export async function render(main, { query = {} } = {}) {
           ${fig("fig-seasons", html`<b>La méthode du 13 octobre contre le Top quadratique</b> : gain en points de duels bien prédits, saison par saison, toutes les
             courses. Le trait vertical est l'intervalle à 95 %. En vert, un gain significatif ; en rouge, une perte significative ; en gris, ni l'un ni l'autre.
             En VTT, prendre tout le peloton faisait perdre le CN Top à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski
-            gardent donc la règle précédente.`)}
+            mesurent donc leurs circuits sur les deux tiers les plus rapides, comme le sprint.`)}
         </section>` : ""}
         ${ev ? html`<section class="mx-slide">
           <p class="mx-kicker">Contre le classement officiel</p>
@@ -1248,10 +1294,10 @@ export async function render(main, { query = {} } = {}) {
           <h2>En ligne depuis le 13 octobre 2026</h2>
           <ul class="mx-list">
             <li><span><b>Niveau habituel</b> : pour chaque coureur, 15 jours avant la course, la moyenne cubique de ses ${pctOf(pf.eligible_fraction)} meilleurs
-              scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans, en
-              moyenne quadratique). Ce n'est pas un classement, mais une étape du calcul de la valeur des circuits.</span></li>
+              scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans). Ce
+              n'est pas un classement, mais une étape du calcul de la valeur des circuits.</span></li>
             <li><span><b>Valeur du circuit</b> : en forêt, la moyenne géométrique des produits niveau habituel × temps de tous les coureurs classés qui ont un
-              niveau (au moins ${fmt(pf.min_ranked)}). En sprint, la même moyenne sur les deux tiers les plus rapides. En VTT et en ski, la règle de la FFCO.</span></li>
+              niveau (au moins ${fmt(pf.min_ranked)}). En sprint, en VTT et en ski, la même moyenne sur les deux tiers les plus rapides.</span></li>
             <li><span><b>Score Top</b> : la valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
               Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.</span></li>
             <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
@@ -1260,8 +1306,8 @@ export async function render(main, { query = {} } = {}) {
               places : la moyenne cubique, très légèrement plus précise, a été écartée parce qu'elle est bien plus difficile à comprendre et à interpréter.
               Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
             <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top
-              de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 7 mois au rythme de la montée
-              des dix dernières années (forêt et sprint).</span></li>
+              de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée
+              des dix dernières années, dans les quatre spécialités ; les mois se comptent au calendrier.</span></li>
           </ul>
           <p>Les règles complètes sont dans l'onglet <a href="#/methodes?onglet=top" data-tab-link="top">CN Top</a>.</p>
           <p><a class="mx-dl" href="${PDF}" download>⬇ Télécharger l'étude en PDF (livre blanc)</a></p>

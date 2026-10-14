@@ -247,6 +247,35 @@ La figure~\ref{fig:k} et la table~\ref{tab:variants} rassemblent toutes les vari
 \begin{figure}[h]\centering\includegraphics{fig_k.pdf}
 \caption{Gain en duels bien prédits face au \Top{} quadratique, en points (2012--2024), selon la puissance de la moyenne qui fait le \CN{} (1 : ordinaire, 2 : quadratique, 3 : cubique, 4) et selon la façon de mesurer le circuit ; les traits verticaux sont les intervalles à 95~\% ; cerclé, le choix du 13 octobre, que garde le niveau habituel.}\label{fig:k}\end{figure}
 
+\subsection{Une seule méthode pour les quatre spécialités}
+
+Jusqu'au 14 octobre, le VTT et le ski mesuraient leurs circuits avec la règle de la FFCO (la moyenne arithmétique des deux tiers les plus rapides), leur niveau habituel était une moyenne quadratique, et leur recalage n'était pas prolongé. Depuis, les quatre spécialités suivent les mêmes formules. Seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et la part du peloton qui mesure le circuit.
+
+\begin{center}\small
+\begin{tabular}{@{}llrl@{}}\toprule
+Spécialité & Courses prises en compte & Meilleurs scores regardés & Coureurs qui mesurent le circuit \\ \midrule
+Forêt & les 12 derniers mois & les 60~\% meilleurs & tout le peloton classé \\
+Sprint & les 12 derniers mois & les 60~\% meilleurs & les deux tiers les plus rapides \\
+VTT & les 2 dernières années & les 70~\% meilleurs & les deux tiers les plus rapides \\
+Ski & les 3 dernières années & les 70~\% meilleurs & les deux tiers les plus rapides \\ \bottomrule
+\end{tabular}
+\end{center}
+
+Pour le VTT, la règle commune coûte $-0{,}06$ $[-0{,}09 ; -0{,}03]$ point de duels bien prédits face à sa règle précédente (2012--2024) : une perte faible, acceptée pour que la méthode soit la même partout. Le ski a trop peu de courses pour être mesuré.
+
+\paragraph{Pourquoi tout le peloton en forêt seulement ?} Mesurer chaque circuit sur tout le peloton a été essayé dans chaque spécialité, avec le \CN{} \Top{} d'aujourd'hui, face aux deux tiers les plus rapides :
+
+\begin{center}\small
+\begin{tabular}{@{}lrrl@{}}\toprule
+Tout le peloton contre les deux tiers & Duels, 2012--2024 & Duels, depuis juillet 2025 & Saison par saison \\ \midrule
+Forêt & environ $+0{,}6$ & environ $+0{,}5$ & mieux à chaque saison sauf la première \\
+Sprint & $-0{,}21$ $[-0{,}29 ; -0{,}15]$ & $-0{,}40$ $[-0{,}56 ; -0{,}26]$ & moins bien à 9 saisons sur 15, mieux à aucune \\
+VTT & $+0{,}15$ $[+0{,}02 ; +0{,}27]$ & $-0{,}63$ $[-1{,}15 ; -0{,}22]$ & mieux jusqu'en 2021, moins bien depuis 2022 \\ \bottomrule
+\end{tabular}
+\end{center}
+
+En forêt, l'écart vient de l'étude du 13 octobre, à moyennes égales par ailleurs : c'est le plus grand gain de toute l'étude, à presque chaque saison. Les erreurs y sont fréquentes, et leur nombre varie beaucoup d'un circuit à l'autre : en tenir compte fait partie de la mesure de la difficulté. En sprint, les erreurs sont deux fois moins fréquentes et varient moins d'un circuit à l'autre ; les coureurs les plus lents ajoutent alors plus d'incertitude qu'ils n'apportent d'information, et tout le peloton fait moins bien à presque chaque saison. En VTT, tout le peloton a fait mieux jusqu'en 2021, puis moins bien à chaque saison depuis 2022, sans que la cause soit établie ; c'est la période récente qui compte pour un classement d'aujourd'hui. La part du peloton reste donc un réglage propre à chaque spécialité.
+
 \subsection{Les jeunes à leur place}
 
 Un \CN{} juste ne doit favoriser aucun groupe. Pour le vérifier, on cherche, pour les jeunes (20 ans et moins) et pour les vétérans (55 ans et plus), de combien il faudrait corriger leur \CN{} pour qu'il prédise au mieux leurs duels contre les H/D\,21 (table~\ref{tab:calib}). Une correction de $+3$~\% veut dire que le groupe gagne ses duels comme si son \CN{} était 3~\% plus haut : il est sous-évalué de 3~\%. Une correction négative veut dire qu'il est surévalué.
@@ -263,13 +292,13 @@ En forêt, toutes les méthodes sous-évaluaient les jeunes : de 8,9~\% pour le 
 
 \paragraph{Pourquoi le recalage arrivait en retard.} Le facteur d'un jour est calculé sur le niveau des \CN{} mesuré avant ce jour : la moyenne des 13 mois qui se terminent 2 mois plus tôt. Et chaque \CN{} résume lui-même un an de courses. Au total, le facteur corrige le niveau tel qu'il était 18 à 20 mois plus tôt. Comme le niveau monte pendant ce temps, le niveau publié dépasse la cible d'autant : de 7,3~\% avec la méthode d'alors, de 17,7~\% avec la méthode retenue.
 
-\paragraph{La correction.} Trois corrections ont été essayées, toutes calculées avec les seules données connues à la date du facteur. Le facteur doit rester régulier : un facteur qui fait des à-coups met les scores de deux mois voisins à des niveaux différents, et le \CN{} prédit moins bien. Tracer une droite sur les 13 mois et la lire le jour du facteur ramène le niveau, mais coûte 0,06 point de duels bien prédits. La lire six mois plus loin coûte davantage (0,13 point), et le niveau est tombé à 5\,307 en 2022, après les saisons Covid : une pente recalculée chaque mois fait faire des à-coups au facteur. La correction retenue prolonge la moyenne des 13 mois de 7 mois, au rythme moyen de la montée des dix dernières années. Ce rythme change très peu d'un mois à l'autre, le facteur reste régulier, et le coût est minime (0,02 point). Elle s'applique en forêt et en sprint ; le VTT et le ski gardent la moyenne simple.
+\paragraph{La correction.} Trois corrections ont été essayées, toutes calculées avec les seules données connues à la date du facteur. Le facteur doit rester régulier : un facteur qui fait des à-coups met les scores de deux mois voisins à des niveaux différents, et le \CN{} prédit moins bien. Tracer une droite sur les 13 mois et la lire le jour du facteur ramène le niveau, mais coûte 0,06 point de duels bien prédits. La lire six mois plus loin coûte davantage (0,13 point), et le niveau est tombé à 5\,307 en 2022, après les saisons Covid : une pente recalculée chaque mois fait faire des à-coups au facteur. La correction retenue prolonge la moyenne des 13 mois au rythme moyen de la montée des dix dernières années. Ce rythme change très peu d'un mois à l'autre, le facteur reste régulier, et le coût est minime (0,02 point, mesuré avec une prolongation de 7 mois). Depuis le 14 octobre, elle s'applique dans les quatre spécialités, et les mois se comptent au calendrier : un mois sans course garde le niveau du mois précédent. Avant, seuls les mois avec des courses comptaient, si bien qu'en ski, où les courses tiennent en quelques semaines par an, « 13 mois » couvraient des années. Comptés au calendrier, 7 mois de prolongation laissaient le niveau de forêt 2,7~\% au-dessus de la cible ; la prolongation est donc de 10 mois, ce qui garde la forêt, le sprint et le VTT à moins de 2~\% de 5\,600 à toutes les dates vérifiées, de 2018 à 2026. Le ski, avec ses quelques courses par an, ne peut pas être tenu aussi près de la cible.
 
-Enfin, les \CN{} ramenés à 5\,600 sont les \CN{} \Top, ceux qui sont publiés, et non les niveaux habituels. En haut du classement, le \CN{} \Top{} dépasse le niveau habituel d'environ 2,5~\%, puisqu'il ne garde que les meilleures courses. Au 1\textsuperscript{er} octobre 2026, la moyenne des 20~\% meilleurs \CN{} \Top{} vaut 5\,645 en forêt, 5\,560 en sprint et 5\,598 en VTT.
+Enfin, les \CN{} ramenés à 5\,600 sont les \CN{} \Top, ceux qui sont publiés, et non les niveaux habituels. En haut du classement, le \CN{} \Top{} dépasse le niveau habituel d'environ 2,5~\%, puisqu'il ne garde que les meilleures courses. Au 1\textsuperscript{er} octobre 2026, la moyenne des 20~\% meilleurs \CN{} \Top{} vaut 5\,599 en forêt, 5\,511 en sprint et 5\,615 en VTT.
 
 \section{Résultats}
 
-\paragraph{Contre le \Top{} précédent.} Sur les mêmes coureurs, de 2012 à 2024, la méthode du 13 octobre prédisait bien davantage de duels que le \Top{} quadratique publié jusque-là : $+0{,}40$ $[+0{,}35 ; +0{,}44]$ point en forêt, avec un gain significatif à 14 saisons sur 15 et sur les courses nationales ($+0{,}12$ $[+0{,}07 ; +0{,}17]$) ; $+0{,}12$ $[+0{,}09 ; +0{,}15]$ point en sprint (figure~\ref{fig:seasons}). Depuis juillet 2025, le gain est de $+0{,}31$ point en forêt et de $+0{,}11$ point en sprint. En VTT, prendre tout le peloton faisait perdre le \CN{} \Top{} à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski gardent donc la règle précédente. Le passage du \CN{} \Top{} à la moyenne pondérée, le 14 octobre, plus simple à comprendre, retire 0,01 point en forêt, 0,10 en sprint et 0,09 en VTT (section~5).
+\paragraph{Contre le \Top{} précédent.} Sur les mêmes coureurs, de 2012 à 2024, la méthode du 13 octobre prédisait bien davantage de duels que le \Top{} quadratique publié jusque-là : $+0{,}40$ $[+0{,}35 ; +0{,}44]$ point en forêt, avec un gain significatif à 14 saisons sur 15 et sur les courses nationales ($+0{,}12$ $[+0{,}07 ; +0{,}17]$) ; $+0{,}12$ $[+0{,}09 ; +0{,}15]$ point en sprint (figure~\ref{fig:seasons}). Depuis juillet 2025, le gain est de $+0{,}31$ point en forêt et de $+0{,}11$ point en sprint. En VTT, prendre tout le peloton faisait perdre le \CN{} \Top{} à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski mesurent donc leurs circuits sur les deux tiers les plus rapides, comme le sprint. Le passage du \CN{} \Top{} à la moyenne pondérée, le 14 octobre, plus simple à comprendre, retire 0,01 point en forêt, 0,10 en sprint et 0,09 en VTT (section~5).
 
 \begin{figure}[h]\centering\includegraphics{fig_seasons.pdf}
 \caption{La méthode du 13 octobre contre le \Top{} quadratique : gain en points de duels bien prédits, saison par saison, toutes les courses, avec l'intervalle à 95~\%. En vert, un gain significatif.}\label{fig:seasons}\end{figure}
@@ -307,7 +336,7 @@ Chaque idée a été calculée depuis 2010 sur une copie de la base de données,
   \item \textbf{Les 85~\% les plus rapides, ou une méthode qui atténue les temps aberrants} (dite de Huber), au lieu de tout le peloton : environ 0,1 point de moins.
   \item \textbf{Les 50~\% meilleurs scores au lieu de 60~\% pour le \CN{} \Top} (14 octobre) : un peu mieux en forêt, un peu moins bien en sprint ; à confirmer sur des saisons nouvelles (section~5).
   \item \textbf{Une moyenne de puissance 4 pour le \CN} : un peu mieux que la moyenne cubique sur l'ensemble des courses de forêt, mais une perte sur les courses nationales (section~5).
-  \item \textbf{Tout le peloton en sprint et en VTT} : une perte en sprint, et en VTT depuis 2022.
+  \item \textbf{Tout le peloton en sprint et en VTT} : une perte en sprint à presque chaque saison, et en VTT depuis 2022 (section~6).
   \item \textbf{Une valeur de circuit commune aux circuits de même longueur en sprint} : l'allure n'est pas comparable d'un circuit à l'autre.
   \item \textbf{Un score fondé sur l'écart au temps moyen du circuit}, à la façon du classement mondial de l'IOF : moins bon que le score de la FFCO.
   \item \textbf{Dix places, 70 ou 80~\% des scores, cinq ou deux courses minimum, un recalage qui réagit à ses propres effets} : section~4.
@@ -316,14 +345,14 @@ Chaque idée a été calculée depuis 2010 sur une copie de la base de données,
 \section{Conclusion : la méthode retenue}
 
 \begin{description}
-  \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne cubique de ses 60~\% meilleurs scores \Top{} des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans, en moyenne quadratique). Ce n'est pas un classement, mais une étape du calcul de la valeur des circuits.
-  \item[Valeur du circuit.] En forêt, la moyenne géométrique des produits niveau habituel $\times$ temps de tous les coureurs classés qui ont un niveau (au moins quatre). En sprint, la même moyenne sur les deux tiers les plus rapides. En VTT et en ski, la règle de la FFCO.
+  \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne cubique de ses 60~\% meilleurs scores \Top{} des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans). Ce n'est pas un classement, mais une étape du calcul de la valeur des circuits.
+  \item[Valeur du circuit.] En forêt, la moyenne géométrique des produits niveau habituel $\times$ temps de tous les coureurs classés qui ont un niveau (au moins quatre). En sprint, en VTT et en ski, la même moyenne sur les deux tiers les plus rapides.
   \item[Score \Top.] La valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes. Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.
   \item[\CN{} \Top.] Les meilleurs scores \Top, parmi les 60~\% meilleurs des douze derniers mois, remplissent six places : 2 pour un championnat de France, 1,5 pour une course nationale, 1 pour une autre course. Le \CN{} \Top{} est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de places :
   \[ \text{\CN{} \Top} = \textstyle\sum (\text{places} \times \text{score}) \big/ \sum \text{places} . \]
   Une fois les six places remplies, une course de plus ne peut pas le faire baisser. La moyenne cubique, très légèrement plus précise, a été écartée parce qu'elle est bien plus difficile à comprendre et à interpréter.
   Il faut au moins trois courses.
-  \item[Recalage.] Chaque jour, un facteur maintient à 5\,600 la moyenne des 20~\% meilleurs \CN{} \Top{} de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 7 mois au rythme de la montée des dix dernières années (forêt et sprint). Entre deux mois, il passe en ligne droite de l'un à l'autre.
+  \item[Recalage.] Chaque jour, un facteur maintient à 5\,600 la moyenne des 20~\% meilleurs \CN{} \Top{} de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée des dix dernières années, dans les quatre spécialités ; les mois se comptent au calendrier. Entre deux mois, il passe en ligne droite de l'un à l'autre.
 \end{description}
 
 Cette méthode est en ligne depuis le 13 octobre 2026 sur O'CN, sous le nom « Top ». Le classement officiel y reste la seule référence qui fait foi, et la méthode d'origine reste calculée pour comparaison. Les données proviennent du site du classement national de la FFCO : une course absente, mal saisie ou corrigée ensuite peut expliquer un écart. Les méthodes calculées par le site partent des \CN{} de 2010, et leurs premiers mois reflètent surtout ce point de départ.

@@ -97,8 +97,12 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    in sprint (geometric). FFCO's two-thirds leave out the runners who made mistakes: the value came out 4.8 % too low on
    average in forest, unevenly (sd 5.4 points, following the circuit's mistake rate — the junior circuits most), so a
    runner's score depended on the circuit's trap density; in sprint, where mistakes are half as frequent, the whole field
-   loses. VTT and ski keep FFCO's arithmetic two-thirds and the quadratic mean (the whole field hurts the VTT Top since
-   2022; ski cannot be measured). `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
+   loses. **One method for the four disciplines since 2026-10-14** (owner; ENGINE 9): VTT and ski follow sprint's rules
+   (geometric value over the fastest two-thirds, cubic usual level; before: FFCO's arithmetic two-thirds and the quadratic
+   mean) - only the window, the share of best scores and the share of the field valuing a circuit differ (the whole
+   field in forest only: measured with the arithmetic Top, it costs sprint -0.21 [-0.29, -0.15], 9 seasons of 15 worse,
+   and VTT -0.63 since July 2025, worse every season since 2022; forest gains about +0.6, every season). The sprint
+   rules cost VTT -0.06 [-0.09, -0.03] (`eval_unify_n.json`, variants U1/U2 on study copies w7/w8). `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
    weighted arithmetic average of the race scores; TOP6W_CN_VERSION 5) the Top `top6w3` is the weighted **arithmetic** mean of
    its 6 places in every discipline (`top3` in `build_methods`, and `Normalisation.anchor_cn_power` 1 so the recalage anchors
    on that Top); `fair3`, the usual level that values the circuits, keeps the cubic mean (quadratic in VTT and ski): the
@@ -109,8 +113,10 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    picked on the same seasons: not adopted, to confirm on fresh seasons. Their recalage (`Normalisation` of `fair3`) **anchors the
    Top's cohort** (`anchor_top_n` 6: at each CN point, the Top the raw scores would publish — `CnEngine._anchor_rows`) and
    corrects the **drift of the raw scale** (`mode` "monthly_drift": the 13-month mean carried `trend_ahead_months` 7
-   past the month fitted for, by the slope of ln(level) over `drift_months` 121; VTT and ski keep "monthly_lag" by
-   `mode_by_terrain`). Why: a CN keeps the best races and the next circuits are valued with those CNs, so the raw scale
+   past the month fitted for, by the slope of ln(level) over `drift_months` 121; in every discipline since 2026-10-14,
+   counted in calendar months, `Normalisation.calendar_months`: a month without races keeps the previous level - before,
+   only months with races counted, and ski's « 13 months » spanned years; carried 10 calendar months, not 7: in calendar
+   months 7 left forest 2.7 % above 5600, 10 keeps forest, sprint and VTT within 2 % at every date checked; ski cannot be). Why: a CN keeps the best races and the next circuits are valued with those CNs, so the raw scale
    climbs (0.35 %/month with FFCO's value, 0.9 % with the geometric one) and the plain mean trails the scores it scales by
    18-20 months — the forest level sat at 6007/6144 (Fit/Top) instead of 5600, and would have sat at 6600. The
    quadratic pair `fair2`/`top6w2` (2026-10-07 to 13; ENGINE 6-7: the CN as a quadratic mean on FFCO's circuit value —
