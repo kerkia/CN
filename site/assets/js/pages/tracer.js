@@ -1,10 +1,11 @@
 // « Organisation › Tracer » (#/orga-tracer): course setting in the browser, as Purple Pen does it (owner, 2026-10-15) —
 // the list of one's events (those one created or whose team one belongs to), a new event (a competition of one's club
 // from the agenda, or a training) with its map (a PDF or an image), a Purple Pen file (.ppen) brought in with its map,
-// and the editor (tracer/editor.js), which opens over the site in a window of its own (✕ closes it) or in a new tab
-// (?fen=1). Courses stay secret: only the event's team opens it (functions/api/tracer).
+// and the editor (tracer/editor.js), drawn in the page under the site's menus as the analyses are: « ← Événements » back to
+// the list, « ⤢ » the whole window (Échap or « ⤡ » back), « ↗ » a tab of its own (?fen=1, whose « ✕ » closes it; fullwin.js).
+// Courses stay secret: only the event's team opens it (functions/api/tracer).
 
-import { html, $, fmtDate } from "../util.js";
+import { html, raw, $, fmtDate } from "../util.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
@@ -16,26 +17,35 @@ import { geoFromWorld } from "../tracer/geo.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
 import { centreOnMap } from "../tracer/calage.js";
 import * as OFF from "../tracer/offline.js";
+import { bindFull, setFull, leaveFull, inOwnTab, buttons as fwButtons } from "../fullwin.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const listHash = () => (inOwnTab() ? "#/orga-tracer?fen=1" : "#/orga-tracer");
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
-let current = null;
+let current = null, pageMain = null, leaving = false;
 
 export async function render(main, r) {
+  pageMain = main; leaving = false;
+  bindFull();
+  if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the Tracer without the site's bar
+  bindPageDrop(main);
+  drawPage(main);
+  if (r.query.id) openEvent(r.query.id);
+  return { title: "Tracer", cleanup: () => { leaving = true; window.__tracer?.close?.(); leaveFull(); } };
+}
+/** The list of one's events (the page as it opens, and after the editor closes). */
+function drawPage(main) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>Tracer</h1><p class="lede">Tracer les circuits d'une course ou d'un entraînement : postes, définitions, PDF à imprimer, fichiers pour le chronométrage. Ouvre et enregistre les fichiers Purple Pen.</p></div>
       <div class="tr-head-btns"><button type="button" class="btn btn-sm" id="tr-import">Importer un fichier Purple Pen…</button>
-      <button type="button" class="btn btn-sm btn-primary" id="tr-new">Nouvel événement</button></div></div>
+      <button type="button" class="btn btn-sm btn-primary" id="tr-new">Nouvel événement</button>${inOwnTab() ? raw(`<span class="fw-btns">${fwButtons()}</span>`) : ""}</div></div>
     <section class="card"><div class="table-wrap" id="tr-list"><div class="empty">Chargement…</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Les circuits restent secrets : seule l'équipe de l'événement l'ouvre (son créateur et les licenciés qu'il ajoute), pas les administrateurs du site.
       Le chiffrement (menu Événement) les rend illisibles même pour le serveur.</p>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0">Astuce : déposez un fichier .ppen et sa carte (PDF ou image) n'importe où sur cette page pour les importer, ou une carte seule pour un nouvel événement.</p>`;
   $("#tr-new").addEventListener("click", () => newEvent(main));
   $("#tr-import").addEventListener("click", () => importPpenEvent(main));
-  bindPageDrop(main);
-  await list();
-  if (r.query.id) openEvent(r.query.id, { fen: r.query.fen === "1" });
-  return { title: "Tracer", cleanup: () => { current?.close?.(); } };
+  list();
 }
 
 async function list() {
@@ -52,7 +62,7 @@ async function list() {
     ${d.events.map((e) => html`<tr><td class="num">${fmtDate(e.date, "short")}</td><td><a href="#/orga-tracer?id=${e.id}" data-open="${e.id}">${e.title}</a>${e.encrypted ? " 🔒" : ""}</td>
       <td>${e.kind === "race" ? "Compétition" : "Entraînement"}${e.offline ? " · hors ligne" : ""}${e.pending ? " · modifications à envoyer" : ""}</td><td>${e.mine ? "vous" : e.ownerName}</td><td class="num">${e.updated ? new Date(e.updated).toLocaleDateString("fr-FR") : ""}</td></tr>`)}</tbody></table>`
     : html`<div class="empty">Aucun événement pour l'instant : « Nouvel événement » pour commencer, ou importez un fichier Purple Pen.</div>`;
-  box.querySelectorAll("[data-open]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", `#/orga-tracer?id=${a.dataset.open}`); openEvent(a.dataset.open); }));
+  box.querySelectorAll("[data-open]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", `#/orga-tracer?id=${a.dataset.open}${inOwnTab() ? "&fen=1" : ""}`); openEvent(a.dataset.open); }));
 }
 
 // ---- a modal outside the editor (same look) -------------------------------------------------------------------------------
@@ -156,7 +166,7 @@ async function newEvent(main, files = null) {
   await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: mapFile.name, type, size: bytes.length } } });
   await S.saveEvent(created.id, ev, null, 0);
   await list();
-  history.replaceState(null, "", `#/orga-tracer?id=${created.id}`);
+  history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);
   openEvent(created.id);
   return created.id;
 }
@@ -227,7 +237,7 @@ async function importPpenEvent(main, files = []) {
   await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: file.name, type, size: bytes.length } } });
   await S.saveEvent(created.id, ev, null, 0);
   await list();
-  history.replaceState(null, "", `#/orga-tracer?id=${created.id}`);
+  history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);
   openEvent(created.id, { align: differs });
 }
 
@@ -248,19 +258,23 @@ async function openLocal(id, onClose) {
   const mapSrc = rec.map?.bytes ? await openMap(rec.map.bytes, rec.map.type || rec.meta.map?.type || "", rec.meta.map?.name || rec.ev.map.file, rec.ev.map.dpi).catch(() => null) : null;
   if (mapSrc && rec.ev.map.kind === "bitmap" && rec.ev.map.dpi) mapSrc.dpi = rec.ev.map.dpi;
   const { openEditor } = await import("../tracer/editor.js");
-  await openEditor({ meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose });
+  if (leaving) return true;
+  pageMain.innerHTML = "";
+  await openEditor({ container: pageMain, meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose });
   return true;
 }
 function alertBox(text) { modal({ title: "Tracer", body: `<p>${escA(text)}</p>`, cancel: null }); }
 
 // ---- opening ----------------------------------------------------------------------------------------------------------------
-async function openEvent(id, { fen = false, align = false } = {}) {
+async function openEvent(id, { align = false } = {}) {
   const loading = document.createElement("div");
-  loading.className = "tr-loading"; loading.innerHTML = '<div class="spinner"></div><p>Ouverture du Tracer…</p>';
+  loading.className = "tr-loading"; loading.innerHTML = '<div class="spinner"></div><p>Ouverture de l\'événement…</p>';
   document.body.appendChild(loading);
+  // closing the editor (« ← Événements »): back to the list, in this tab as in a tab of its own
   const onClose = () => {
-    if (fen) { window.close(); setTimeout(() => { location.hash = "#/orga-tracer"; }, 200); return; }
-    history.replaceState(null, "", "#/orga-tracer"); list();
+    if (leaving) return;
+    history.replaceState(null, "", listHash());
+    drawPage(pageMain);
   };
   let info;
   try { info = await S.api(`/${id}`); }
@@ -269,7 +283,7 @@ async function openEvent(id, { fen = false, align = false } = {}) {
     if (!e.status) { loading.remove(); if (await openLocal(id, onClose)) return; }
     loading.remove();
     alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : !e.status ? "Pas de réseau, et cet événement n'est pas gardé sur cet appareil (Fichier › Travailler hors ligne)." : `Ouverture impossible : ${e.code || e.message}`);
-    history.replaceState(null, "", "#/orga-tracer");
+    history.replaceState(null, "", listHash());
     return;
   }
   try {
@@ -280,7 +294,7 @@ async function openEvent(id, { fen = false, align = false } = {}) {
         loading.remove();
         const v = await modal({ title: "Événement chiffré", ok: "Ouvrir", body: field("Phrase de passe de l'équipe", '<input name="p" type="password" autocomplete="current-password">'),
           validate: async (o) => ((await S.unlock(id, info.event.encrypted, o.p)) ? null : "Phrase de passe incorrecte.") });
-        if (!v) { history.replaceState(null, "", "#/orga-tracer"); return; }
+        if (!v) { history.replaceState(null, "", listHash()); return; }
         key = await S.keyFor(id);
         document.body.appendChild(loading);
       }
@@ -306,11 +320,13 @@ async function openEvent(id, { fen = false, align = false } = {}) {
     if (mapSrc && ev.map.kind === "bitmap" && ev.map.dpi) { mapSrc.dpi = ev.map.dpi; }
     loading.remove();
     const { openEditor } = await import("../tracer/editor.js");
-    await openEditor({ meta: info.event, role: info.role, you: info.you, ev, version: evR?.version || 0, mapSrc, key, readOnly: info.role === "viewer", align, dirty,
+    if (leaving) return;                                  // the user went to another page meanwhile
+    pageMain.innerHTML = "";
+    await openEditor({ container: pageMain, meta: info.event, role: info.role, you: info.you, ev, version: evR?.version || 0, mapSrc, key, readOnly: info.role === "viewer", align, dirty,
       lockHolder: info.lock, onClose });
   } catch (e) {
     loading.remove();
     alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : `Ouverture impossible : ${e.code || e.message}`);
-    history.replaceState(null, "", "#/orga-tracer");
+    history.replaceState(null, "", listHash());
   }
 }

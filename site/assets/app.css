@@ -1495,9 +1495,14 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
    the course tabs, the description sheet and the selected object on the left, the map in the middle, a help line at
    the bottom. */
 .tr-head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-body.tr-open { overflow: hidden; }
-.tr-app { position: fixed; inset: 0; z-index: 200; background: var(--plane); color: var(--ink); display: flex; flex-direction: column;
-  --tr-left: 330px; font-size: 13.5px; }
+/* the editor sits in the page under the site's menus, as the analyses (owner, 2026-10-15); ⤢ (fullwin.js) fills the window */
+body.tr-open .page { max-width: none; padding: 6px 10px 8px; }
+body.tr-open #footer { display: none; }
+.tr-app { position: relative; height: 640px; background: var(--plane); color: var(--ink); display: flex; flex-direction: column;
+  --tr-left: 330px; font-size: 13.5px; border: 1px solid var(--border); }
+body.full-win .tr-app { border: 0; }
+.tr-back { white-space: nowrap; }
+.tr-top .fw-btns { margin-left: 4px; }
 .tr-top { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
 .tr-title { font-weight: 650; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 4px; }
 .tr-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid transparent; border-radius: 7px;

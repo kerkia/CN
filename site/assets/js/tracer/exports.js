@@ -50,7 +50,7 @@ export function iofXmlText(ev, version = 3) {
   const courses = M.courseIds(ev).filter((id) => M.findKind(ev, id, "start") && M.hasFinish(ev, id));
   if (version === 3) {
     out.push('<?xml version="1.0" encoding="utf-8"?>',
-      `<CourseData xmlns="http://www.orienteering.org/datastandard/3.0" iofVersion="3.0" createTime="${nowIso()}" creator="O'CN Tracer">`,
+      `<CourseData xmlns="http://www.orienteering.org/datastandard/3.0" iofVersion="3.0" createTime="${nowIso()}" creator="O'CN">`,
       `  <Event>\n    <Name>${x(ev.title.replace(/\|/g, " "))}</Name>\n  </Event>`, "  <RaceCourseData>",
       `    <Map>\n      <Scale>${ev.map.scale}</Scale>\n      <MapPositionTopLeft x="${r2(bounds[0])}" y="${r2(bounds[3])}" />\n      <MapPositionBottomRight x="${r2(bounds[2])}" y="${r2(bounds[1])}" />\n    </Map>`);
     const TYPE = { normal: "Control", start: "Start", "map-exchange": "Start", finish: "Finish", crossing: "CrossingPoint" };
@@ -171,7 +171,7 @@ export function gpx(E) {
     for (const cv of v.controls) { const c = ev.controls[cv.control], [lat, lon] = toLatLon(ev, c.x, c.y); pts.push(`<trkpt lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}" />`); }
     return `  <trk><name>${x(ev.courses[id].name)}</name><trkseg>${pts.join("")}</trkseg></trk>`;
   });
-  download(`${fileName(ev.title)}.gpx`, `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="O'CN Tracer" xmlns="http://www.topografix.com/GPX/1/1">\n${wpt.join("\n")}\n${trk.join("\n")}\n</gpx>\n`, "application/gpx+xml");
+  download(`${fileName(ev.title)}.gpx`, `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="O'CN" xmlns="http://www.topografix.com/GPX/1/1">\n${wpt.join("\n")}\n${trk.join("\n")}\n</gpx>\n`, "application/gpx+xml");
 }
 export function kml(E) {
   if (!needGeo(E)) return;

@@ -655,8 +655,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Purple Pen; checked `Random(0)` = 1559595546); `reports.js` its five reports (summary, leg lengths, cross-reference, load,
   event audit) plus O'CN's checks (IOF distances per discipline, out-of-bounds areas and boundaries crossed, legs through another
   circle, dog-legs, short legs, codes < 31 or read upside down), shown, printed or as CSV (« ; », UTF-8 BOM). The editor
-  (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is a full-window overlay over the site (`.tr-app`, `body.tr-open`; ✕
-  closes it, ↗ moves the event to a tab of its own, `?fen=1`, closing the editor here), with Purple Pen's tools and insertion rule,
+  (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is drawn in the page under the site's menus, as the analyses are (owner,
+  2026-10-15: the former full-window overlay left no obvious way back to the site): `.tr-app` in `#main` (`ctx.container`), its
+  height fitted to the window (`fitHeight`), `body.tr-open` widens the page and hides the footer; « ← Événements » saves and goes
+  back to the list (in a `?fen=1` tab too, whose list head shows its « ✕ »); the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
+  saves, opens the event alone in a tab and closes it here (`setTabHandler`; one event, one tab), Échap first cancels the
+  editor's own pick, drawing, tool or selection (`setEscapeOwner`), « ✕ » of its own tab saves first (`setBeforeClose`); a
+  change of page closes it (saved). With Purple Pen's tools and insertion rule,
   undo (100), autosave 1.8 s after a change, a version every 30 min of work, an editing lock (`/lock`, 150 s, refreshed every
   minute; same account = no lock). **Who**: a competition's event is created by a member of the race's organising club (an agenda
   race `a<id>` or one of « Résultats »), a training's by anyone; only the **team** opens it (creator + licences added: setter,
@@ -699,10 +704,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   re-encrypted with the event's key; saves wait in IndexedDB « pending » and go when online, a conflict asks; the worker
   and cache go when nothing is kept; logout drops copies without pending changes). « Envoyer les circuits à Résultats »
   (from the race day; upload kind « courses », see Uploads). Review after the race: routes taken from the published
-  analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le Tracer ».
+  analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le tracé ».
+  **French wording** (owner, 2026-10-15): « le tracé » (des circuits), never « le Tracer » — « Tracer » is the menu's verb, as
+  « Déposer »; « la page « Tracer » » when the page is meant.
   « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.
-- **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus): the analyses' playback (« Analyse
-  solo » transport row, « Analyse multi » right panel) has « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout
+- **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus; one way for the analyses and the
+  Tracer, the analyses'): the analyses' playback (« Analyse solo » transport row, « Analyse multi » right panel) and the
+  Tracer's top bar have « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout
   refits on the resize event; Échap or « ⤡ » back) and « ↗ » (the same page alone in a new tab, `?fen=1`, kept by
   `app.replaceQuery`; opened by script without noopener, so « Analyse solo » finds its session's files; its « ✕ » closes the tab).
 - **Analyse solo / multi** (owner, 2026-10-14; « Analyse multi » = the former « Analyse club » and « Analyse compétition »,

@@ -289,7 +289,7 @@ export async function coursesDialog(E) {
     if (!designators.length) { E.toast("Aucun circuit choisi."); return; }
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
-      doc.setTitle(`${ev.title} — circuits`); doc.setCreator("O'CN Tracer"); doc.setProducer("O'CN Tracer (pdf-lib)");
+      doc.setTitle(`${ev.title} — circuits`); doc.setCreator("O'CN"); doc.setProducer("O'CN (pdf-lib)");
       const fonts = await makeFonts(doc, L);
       const images = new Map();
       for (const d of list) await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg });
@@ -324,7 +324,7 @@ export async function descriptionsDialog(E) {
   if (!v) return;
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
-  doc.setTitle(`${ev.title} — définitions`); doc.setCreator("O'CN Tracer");
+  doc.setTitle(`${ev.title} — définitions`); doc.setCreator("O'CN");
   const fonts = await makeFonts(doc, L);
   const [PW, PH] = PAGES[v.paper], margin = 10, gap = 4, cell = num(v.cell);
   const sheets = [];

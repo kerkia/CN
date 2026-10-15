@@ -15,7 +15,7 @@ import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
 
-const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le Tracer"]];
+const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
 const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"], ["choix", "Les choix de base"],
   ["score", "Le score et la moyenne"], ["circuit", "La valeur du circuit"], ["recalage", "Le recalage"], ["resultats", "Les résultats"],
   ["ecartes", "Les alternatives écartées"], ["conclusion", "Conclusion"]];
@@ -268,7 +268,7 @@ export async function render(main, { query = {} } = {}) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
-      <p class="lede">Les règles du classement officiel et du Top, l'étude qui a conduit au Top, les autres calculs du site, et le Tracer.</p></div></div>
+      <p class="lede">Les règles du classement officiel et du Top, l'étude qui a conduit au Top, les autres calculs du site, et le tracé des circuits.</p></div></div>
     <nav class="mx-tabs" role="tablist">${TABS.map(([k, label], i) => html`<button type="button" role="tab" data-tab="${k}"
       aria-selected="false"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
     ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}
@@ -1398,7 +1398,7 @@ export async function render(main, { query = {} } = {}) {
     const CH = {
       principe: () => html`
         <section class="mx-slide" id="tr-principe">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>Tracer les circuits dans le navigateur</h2>
           <p>« Organisation › Tracer » fait ce que fait Purple Pen, le logiciel de traçage gratuit que beaucoup de clubs utilisent : placer les postes,
             composer les circuits, remplir les définitions, imprimer les cartes et les définitions, préparer les fichiers du chronométrage. Il lit et écrit
@@ -1416,7 +1416,7 @@ export async function render(main, { query = {} } = {}) {
         </section>`,
       carte: () => html`
         <section class="mx-slide" id="tr-carte">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>La carte : un PDF ou une image</h2>
           <p>La carte est un <b>PDF</b> (exporté d'OCAD ou d'OpenOrienteering Mapper : il reste net à l'impression, car il est repris tel quel dans les PDF des
             circuits) ou une <b>image</b> : JPG, PNG, GIF, BMP, WebP, TIFF. Un scan ou une photo prise bien à plat conviennent. Les fichiers d'OCAD et de Mapper
@@ -1425,17 +1425,17 @@ export async function render(main, { query = {} } = {}) {
             est lue dans le fichier quand il la donne ; sinon elle est demandée, et le calage la corrige.</p>
           <h3>Le calage en deux clics</h3>
           <p>Quand un fichier .ppen a été fait sur une autre carte que celle donnée (souvent une carte OCAD, ici remplacée par son PDF ou une photo), ses postes
-            ne tombent pas au bon endroit. On clique un poste, puis l'endroit où il est sur la carte, et cela deux fois, loin l'un de l'autre : le Tracer en
+            ne tombent pas au bon endroit. On clique un poste, puis l'endroit où il est sur la carte, et cela deux fois, loin l'un de l'autre : O'CN en
             déduit le décalage, la rotation et l'échelle. Comme un .ppen garde les vraies distances de la carte, l'écart d'échelle trouvé vient de la carte
             donnée : c'est elle qui est corrigée (la résolution de l'image, ou l'échelle du PDF), pas le circuit — les longueurs restent justes.</p>
           <h3>Le géoréférencement</h3>
-          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, le Tracer doit savoir où est la carte sur la Terre : deux points cliqués avec leur
+          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre : deux points cliqués avec leur
             latitude et leur longitude (ou plus, pour une photo déformée), un fichier de calage (.jgw, .pgw… avec son .prj), un KMZ de la même image, ou un TIFF
             géoréférencé (GeoTIFF), lu tout seul.</p>
         </section>`,
       circuits: () => html`
         <section class="mx-slide" id="tr-circuits">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>Tracer : les gestes de Purple Pen</h2>
           <p>Les outils sont ceux de Purple Pen : départ, poste, arrivée, passage obligatoire, remise et échange de carte, coude, coupure, définitions sur la carte,
             objets spéciaux (zone interdite, ravitaillement, texte, image…). Un nouveau poste se place après le poste choisi, dans l'interposte choisi, ou dans
@@ -1443,11 +1443,11 @@ export async function render(main, { query = {} } = {}) {
           <p>Les <b>définitions</b> se remplissent en cliquant une case, ou au clavier : ↑ ↓ changent de ligne, ← → de case, une lettre ouvre les symboles déjà
             filtrés (« rav » donne « Ravine »), Suppr vide la case. Les normes IOF 2004 et 2018/2024, en symboles ou en texte, dans 23 langues.</p>
           <p>Les <b>variantes</b> (fourches, boucles) et les <b>relais</b> se préparent comme dans Purple Pen, avec la même répartition des variantes entre
-            équipes : Purple Pen la tire au hasard, mais avec un hasard « à graine » ; le Tracer reproduit le même tirage, donc les mêmes équipes.</p>
+            équipes : Purple Pen la tire au hasard, mais avec un hasard « à graine » ; O'CN reproduit le même tirage, donc les mêmes équipes.</p>
         </section>`,
       sorties: () => html`
         <section class="mx-slide" id="tr-sorties">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>Imprimer et exporter</h2>
           <ul class="mx-list">
             <li><b>PDF des circuits</b> : un circuit par page, par partie, par variante, ou par équipe et relayeur ; carte et circuit, ou circuit seul pour une
@@ -1465,8 +1465,8 @@ export async function render(main, { query = {} } = {}) {
         </section>`,
       outils: () => html`
         <section class="mx-slide" id="tr-outils">
-          <p class="mx-kicker">Le Tracer</p>
-          <h2>Ce que le Tracer ajoute à Purple Pen</h2>
+          <p class="mx-kicker">Le tracé</p>
+          <h2>Ce que le tracé sur O'CN ajoute à Purple Pen</h2>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Dénivelée</h3><p>Calculée sur le modèle de terrain de l'IGN, le long des interpostes, ou de
               l'itinéraire que le traceur dessine (outil Itinéraire).</p></div>
@@ -1486,7 +1486,7 @@ export async function render(main, { query = {} } = {}) {
         </section>`,
       apres: () => html`
         <section class="mx-slide" id="tr-apres">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>Après la course</h2>
           <p>Le jour de la course ou après (jamais avant : les circuits restent secrets), le traceur peut :</p>
           <ul class="mx-list">
@@ -1500,7 +1500,7 @@ export async function render(main, { query = {} } = {}) {
         </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
-          <p class="mx-kicker">Le Tracer</p>
+          <p class="mx-kicker">Le tracé</p>
           <h2>Ses calculs, expliqués</h2>
           <h3>La dénivelée</h3>
           <p>L'altitude est lue tous les 10 m le long de chaque interposte sur le modèle de terrain de l'IGN (RGE ALTI, précis au mètre en France), puis

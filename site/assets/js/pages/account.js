@@ -241,7 +241,7 @@ async function privacy(main) {
       <h2 style="font-size:16px">Cookies et stockage local</h2>
       <p>Le site dépose un seul cookie, strictement nécessaire à son fonctionnement : il maintient votre connexion, pendant 30 jours
         au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (thème, discipline et méthode
-        choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le Tracer, ses réglages d'affichage, la clé
+        choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le tracé des circuits, ses réglages d'affichage, la clé
         d'un événement chiffré, tirée de sa phrase de passe (le temps de l'onglet), les états du mode terrain en attente de réseau et, si vous
         gardez un événement pour travailler hors ligne, sa copie (circuits et carte, chiffrés s'il l'est) et les fichiers du site, effacés à la déconnexion. Le site n'utilise aucun traceur publicitaire ni
         aucun outil tiers de mesure d'audience ; aucun consentement n'est donc requis.</p>

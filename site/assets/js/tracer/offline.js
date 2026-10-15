@@ -87,11 +87,11 @@ export async function offlineDialog(E) {
   const { modal } = await import("./dialogs.js");
   const kept = isKept(E.meta.id);
   const v = await modal(E, { title: "Travailler hors ligne", ok: kept ? "Ne plus garder" : "Garder sur cet appareil", body: kept
-    ? `<p>Cet événement est gardé sur cet appareil : il s'ouvre sans réseau (le Tracer et sa carte), et ce que vous y changez part au serveur dès que le réseau revient.</p>
+    ? `<p>Cet événement est gardé sur cet appareil : il s'ouvre sans réseau (le tracé et sa carte), et ce que vous y changez part au serveur dès que le réseau revient.</p>
       <p class="tr-hint">Ne plus le garder efface la copie de cet appareil (pas l'événement).</p>`
-    : `<p>Gardez cet événement sur cet appareil pour l'ouvrir sans réseau, sur le terrain ou à l'aréna : le Tracer, la carte et les circuits restent dans le navigateur ;
+    : `<p>Gardez cet événement sur cet appareil pour l'ouvrir sans réseau, sur le terrain ou à l'aréna : la page de tracé, la carte et les circuits restent dans le navigateur ;
       vos modifications y attendent le réseau et partent ensuite au serveur (si quelqu'un a modifié l'événement entre-temps, vous choisirez la version à garder).</p>
-      <p class="tr-hint">Ouvrez ensuite la page du Tracer une fois sans réseau pour vérifier. La copie est effacée quand vous ne la gardez plus, et à la déconnexion sauf s'il reste des modifications à envoyer.${E.key ? " L'événement reste chiffré sur l'appareil." : ""}</p>` });
+      <p class="tr-hint">Ouvrez ensuite la page « Tracer » une fois sans réseau pour vérifier. La copie est effacée quand vous ne la gardez plus, et à la déconnexion sauf s'il reste des modifications à envoyer.${E.key ? " L'événement reste chiffré sur l'appareil." : ""}</p>` });
   if (!v) return;
   if (kept) {
     try { localStorage.removeItem(FLAG(E.meta.id)); } catch (e) { /* not kept */ }

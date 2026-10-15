@@ -12,6 +12,7 @@ import * as S from "./store.js";
 import { loadSymbols } from "./symbols.js";
 import { loadFonts } from "./fonts.js";
 import * as OFF from "./offline.js";
+import * as FW from "../fullwin.js";
 import { descPane } from "./panes.js";
 import * as A from "./actions.js";
 import * as D from "./dialogs.js";
@@ -67,8 +68,11 @@ export async function openEditor(ctx) {
   root.className = "tr-app";
   root.setAttribute("role", "application");
   root.innerHTML = shell(E);
-  document.body.appendChild(root);
+  // in the page under the site's menus, as the analyses (owner, 2026-10-15): ⤢ fills the window, ↗ moves it to a tab
+  (ctx.container || document.body).appendChild(root);
   document.body.classList.add("tr-open");
+  FW.bindFull();
+  if (FW.inOwnTab()) FW.setFull(true);
   E.root = root;
   const $ = (s) => root.querySelector(s), $$ = (s) => [...root.querySelectorAll(s)];
   E.$ = $; E.$$ = $$;
@@ -179,7 +183,13 @@ export async function openEditor(ctx) {
   // ---- the map view ------------------------------------------------------------------------------------------------
   const dpr = () => window.devicePixelRatio || 1;
   let sharp = null, sharpTimer = null, sharpCtl = null;            // a PDF rendered sharp for the current view
+  function fitHeight() {
+    const top = root.getBoundingClientRect().top + window.scrollY;
+    root.style.height = `${Math.max(420, Math.floor(window.innerHeight - top - 8))}px`;
+  }
+  E.fitHeight = fitHeight;
   function size() {
+    fitHeight();
     const r = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.round(r.width * dpr())); canvas.height = Math.max(1, Math.round(r.height * dpr()));
     if ((E.needFit || !(E.view.k > 0)) && r.width > 70 && r.height > 70) { fitCourse(); return; }
@@ -400,7 +410,13 @@ export async function openEditor(ctx) {
     else if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); save(true); }
     else if (e.key === "Enter" && E.pending) { e.preventDefault(); A.finishPending(E); }
     else if (e.key === "Delete" || e.key === "Backspace") { if (E.sel) { e.preventDefault(); A.deleteSelection(E); } }
-    else if (e.key === "Escape") { if (E.pickOnce) { E.pickOnce = null; const c = E.pickCancel; E.pickCancel = null; c?.(); E.help(); } else if (E.tool !== "select") E.setTool("select"); else E.select(null); }
+    else if (e.key === "Escape") {
+      if (E.pickOnce) { E.pickOnce = null; const c = E.pickCancel; E.pickCancel = null; c?.(); E.help(); }
+      else if (E.pending) { E.pending = null; E.ghost = null; E.help(); draw(); }
+      else if (E.tool !== "select") E.setTool("select");
+      else if (E.sel) E.select(null);
+      else if (FW.isFull() && !FW.inOwnTab()) FW.setFull(false);
+    }
     else if (e.key.startsWith("Arrow")) {
       e.preventDefault();
       const step = 60, dx = e.key === "ArrowLeft" ? step : e.key === "ArrowRight" ? -step : 0, dy = e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0;
@@ -468,15 +484,18 @@ export async function openEditor(ctx) {
   $("#tr-undo").addEventListener("click", () => E.undoStep());
   $("#tr-redo").addEventListener("click", () => E.redoStep());
   $("#tr-close").addEventListener("click", () => close());
-  // the event moves to a tab of its own: the tab opened at once (a later open would be taken for a pop-up), the work saved,
-  // the tab sent to the event, and the editor here closed — one event is not edited from two tabs
-  $("#tr-newtab")?.addEventListener("click", async () => {
+  // « ↗ »: the event moves to a tab of its own — the tab opened at once (a later open would be taken for a pop-up), the work
+  // saved, the tab sent to the event, and the editor here closed: one event is not edited from two tabs
+  FW.setTabHandler(async () => {
     const w = window.open("", "_blank");
     if (!w) { E.toast("Le navigateur a bloqué le nouvel onglet."); return; }
     await save(false);
     w.location.href = `${location.origin}${location.pathname}#/orga-tracer?id=${E.meta.id}&fen=1`;
     close();
   });
+  // Échap: the editor's own uses first (a pick, a tool, a selection), then out of full window
+  FW.setEscapeOwner(() => document.body.contains(root) && !!(E.pickOnce || E.pending || E.tool !== "select" || E.sel || root.querySelector(".tr-modal")));
+  FW.setBeforeClose(() => save(false));                  // « ✕ » of a tab of its own: the work saved first
   $("#tr-fit").addEventListener("click", () => fitCourse());
   $("#tr-zin").addEventListener("click", () => zoomAt(1.4));
   $("#tr-zout").addEventListener("click", () => zoomAt(1 / 1.4));
@@ -571,6 +590,7 @@ export async function openEditor(ctx) {
       window.removeEventListener("beforeunload", beforeUnload);
       ro.disconnect();
       root.remove(); document.body.classList.remove("tr-open");
+      if (!FW.inOwnTab()) FW.leaveFull(); else { FW.setTabHandler(null); FW.setEscapeOwner(null); FW.setBeforeClose(null); }
       if (window.__tracer === E) delete window.__tracer;
       ctx.onClose?.();
     });
@@ -627,7 +647,7 @@ function shell(E) {
     it === "-" ? '<hr>' : `<button type="button" role="menuitem" data-act="${it[0]}">${esc(it[1])}</button>`).join("")}</div></div>`;
   return `
   <header class="tr-top">
-    <button type="button" class="tr-icon" id="tr-close" title="Fermer le Tracer" aria-label="Fermer">${svg("close")}</button>
+    <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Enregistrer et revenir à la liste des événements">← Événements</button>
     <span class="tr-title"></span>
     <nav class="tr-menus">
       ${menu("Fichier", [["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
@@ -655,7 +675,7 @@ function shell(E) {
       <button type="button" class="tr-tool" data-tool="special" title="Objets spéciaux" aria-label="Objets spéciaux">${svg("special")}</button>
     </div>
     <span class="tr-status" id="tr-status"></span>
-    ${E.meta?.id ? `<button type="button" class="tr-icon" id="tr-newtab" title="Ouvrir dans un nouvel onglet" aria-label="Nouvel onglet">${svg("newtab")}</button>` : ""}
+    <span class="fw-btns">${FW.buttons()}</span>
   </header>
   <div class="tr-banner" id="tr-banner" hidden></div>
   <div class="tr-tabbar"><div class="tr-tabs" id="tr-tabs" role="tablist"></div><div class="tr-parts" id="tr-parts" hidden></div><div class="tr-vars" id="tr-vars" hidden></div></div>
