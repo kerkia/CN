@@ -47,13 +47,14 @@ async function list(main, query) {
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [];
   try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
-  // the races organisers feed from their timing software (« Organisation › Direct »): administrators only for now
-  if (session()?.admin) {
+  // the races organisers feed from their timing software (« Organisation › Direct »), of the last 3 days: those that sent
+  // something, and one's own before their first send (every one to administrators)
+  {
     try {
       const own = ((await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || [])
-        .filter((b) => b.date >= new Date(Date.now() - 3 * 86400e3).toLocaleDateString("sv-SE"));
+        .filter((b) => b.date >= new Date(Date.now() - 3 * 86400e3).toLocaleDateString("sv-SE") && (b.last || b.mine || session()?.admin));
       if (own.length) $("#lv-org").innerHTML = html`<section class="card"><div class="card-head"><div><h2>Diffusées par leur organisateur</h2>
-        <div class="hint">Depuis le logiciel de chronométrage, par « Organisation › Direct » (administrateurs)</div></div></div>
+        <div class="hint">Depuis leur logiciel de chronométrage, par « Organisation › Direct »</div></div></div>
         <div class="table-wrap"><table class="data compact"><tbody>${own.map((b) => html`<tr><td>${fmtDate(b.date)}</td>
           <td><a href="#/direct/${b.id}">${b.name}</a></td><td class="muted">${b.organizer || ""}</td>
           <td class="muted">${b.last ? `dernier envoi ${new Date(b.last).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "pas encore d'envoi"}</td></tr>`)}</tbody></table></div></section>`;

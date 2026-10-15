@@ -1,4 +1,4 @@
-// « Organisation › Direct » (#/orga-direct; administrators only for now, owner 2026-10-15): an organiser feeds « En direct »
+// « Organisation › Direct » (#/orga-direct; every account since 2026-10-15, owner): an organiser feeds « En direct »
 // from their timing software, without liveresultat. The software exports its result list to a file every few seconds;
 // this page, open on the arena PC in Chrome or Edge (the File System Access API keeps the file: it is chosen once), re-reads
 // it, reads it here — IOF XML 3.0 with its own reader below, which keeps the runners still out and their split times; the
@@ -6,7 +6,8 @@
 // race's object on the live server, ocap/worker, which pushes them to the pages watching). Nothing is declared beforehand:
 // the classes, their controls and runners come from the file, and a class that appears is added. A timer in a small
 // Worker paces the reads (a hidden tab's own timers are slowed to once a minute); the file's handle is kept in IndexedDB,
-// so a reload asks one click to read it again.
+// so a reload asks one click to read it again. A broadcast is fed by the account that opened it (or an administrator):
+// the page lists one's own broadcasts only (all of them to administrators).
 
 import { html, raw, $, fmtDate } from "../util.js";
 import * as auth from "../auth.js";
@@ -157,6 +158,8 @@ const STEPS = html`
   <ol class="od-steps" start="3">
     <li>Sur l'ordinateur de l'arène, relié à internet, ouvrez cette page dans <b>Chrome ou Edge</b>. Firefox et Safari ne permettent
       pas à une page de relire un fichier toute seule.</li>
+    <li>Connectez-vous à O'CN avec le compte qui crée la diffusion : seul ce compte peut ensuite l'alimenter. Vous pouvez la
+      créer la veille, d'ici ou d'un autre ordinateur.</li>
     <li>Choisissez la course ci-dessous, ou créez-la : son nom, sa date et l'organisateur suffisent.</li>
     <li>Choisissez le fichier exporté, <b>une seule fois</b>. Le navigateur demande l'autorisation de le lire.</li>
     <li>Cliquez sur « Démarrer ». La page relit le fichier toute seule, toutes les 15 secondes par défaut, et n'envoie que ce qui a
@@ -178,11 +181,6 @@ export { iofLive, toLive };
 
 export async function render(main) {
   const me = auth.session();
-  if (!me?.admin) {
-    main.innerHTML = html`<div class="page-head"><div><h1>Diffuser en direct</h1></div></div>
-      <section class="card"><div class="empty">Cette page est réservée aux administrateurs pour l'instant.</div></section>`;
-    return { title: "Direct" };
-  }
   const canPick = typeof window.showOpenFilePicker === "function";
   const today = new Date().toLocaleDateString("sv-SE");
   const st = { id: pref.get().id || null, every: pref.get().every || 15, handle: null, running: false, sent: new Map(), order: "",
@@ -210,6 +208,7 @@ export async function render(main) {
   let list = [];
   async function loadList() {
     try { list = (await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || []; } catch (e) { list = []; }
+    list = list.filter((b) => b.mine || me?.admin);
   }
   let agenda = [];
   try {

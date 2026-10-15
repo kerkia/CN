@@ -39,7 +39,7 @@ const PAGES = {
   orgRace: () => import("./pages/shared.js"),
   orgTraining: () => import("./pages/shared.js"),
   orgResults: () => import("./pages/orgresults.js"),
-  orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software (administrators only for now)
+  orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps (administrators only for now)
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
@@ -297,7 +297,7 @@ function renderHeader(r) {
     // the results of their competitions; « Direct » (live results from the timing software's export) for the administrators
     // only for now (owner, 2026-10-15), greyed for the others; « Tracer » to come
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
-      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", me.admin ? "#/orga-direct" : null, t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
+      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
