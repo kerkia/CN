@@ -336,6 +336,7 @@ const FR = {
   "rk.lede": "Les coureurs classés à la date choisie, leur répartition et les plus fortes progressions.",
   "rk.col.rank": "#", "rk.col.overall": "Général", "rk.col.name": "Coureur", "rk.col.licence": "Licence",
   "rk.col.cat": "Cat.", "rk.col.club": "Club", "rk.col.delta": "Δ 1 an", "rk.col.races": "Courses 12 m.",
+  "rk.col.pct": "Centile cat.", "rk.pct.tip": "CN plus élevé que celui de {p} % des {cat} classés en France",
   "rk.dist": "Distribution des CN", "rk.dist.hint": "Coureurs classés correspondant aux filtres",
   "rk.gdist": "Distribution globale des CN", "rk.gdist.hint": "Tous les coureurs classés à cette date, sans filtre",
   "rk.cdf": "Distribution cumulée", "rk.cdf.hint": "Un point par coureur : part des classés ayant ce CN ou moins. Cliquez pour ouvrir sa fiche",
@@ -350,7 +351,7 @@ const FR = {
 
   "rn.back": "Retour au classement", "rn.licence": "Licence", "rn.since": "Depuis", "rn.races": "courses",
   "rn.current": "{cn} actuel", "rn.best": "Meilleur {cn}", "rn.rankAll": "au général", "rk.pick.absent": "ne figure pas dans la liste affichée (filtres en cours, ou non classé(e) à cette date).", "rk.pick.open": "Ouvrir la page du coureur", "rn.rank": "Classement", "rn.rankOf": "sur", "rn.unranked": "non classé(e)", "rn.rankCat": "en",
-  "rn.last12": "Courses sur 12 mois", "rn.podiums": "Podiums", "rn.win": "victoire", "rn.wins": "victoires",
+  "rn.last12": "Courses sur 12 mois", "rn.pm12": "PM sur 12 mois", "rn.pm12.sub": "{pm} PM sur {n} courses", "rn.podiums": "Podiums", "rn.win": "victoire", "rn.wins": "victoires",
   "rn.evolution": "Évolution du CN", "rn.evolution.hint": "Cliquez sur un point pour détailler le calcul à cette date",
   "rn.showScores": "Afficher les scores de course", "rn.calc": "Détail du calcul du {cn}",
   "rn.calc.at": "au", "rn.calc.window": "Fenêtre : 12 mois jusqu'au",
@@ -513,7 +514,7 @@ const FR = {
   "cl.nLigues": "Ligues représentées", "cl.biggest": "Plus grand effectif classé", "cl.strongest": "Meilleure médiane",
   "cl.min10": "10 classés min.", "cl.everMembers": "coureurs licenciés au club lors de leur dernière course",
   "cl.rankBySize": "Rang par effectif", "cl.rankBySum": "Rang par somme des CN", "cl.roster.hint": "Coureurs classés à la dernière date disponible",
-  "cl.showAll": "Inclure les coureurs non classés", "cl.lastRace": "Dernière course", "cl.inRanking": "Voir au classement",
+  "cl.showAll": "Inclure les coureurs non classés", "cl.col.pm12": "PM 12 mois", "cl.pm12.tip": "{pm} PM sur {n} courses des 12 derniers mois", "cl.lastRace": "Dernière course", "cl.inRanking": "Voir au classement",
 
   "ov.title": "Accueil", "ov.lede": "La course d’orientation pédestre française en un coup d’œil.",
   "ov.participation": "Participation par saison", "ov.levels": "Niveau du classement dans le temps",

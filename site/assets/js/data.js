@@ -168,6 +168,14 @@ export async function runnerRaces(lic) {
   return (b && b[n]) || [];
 }
 export const course = (id) => getJson(`c/${id}.json`);
+/** A runner's races of the 12 months to `month` in a discipline, and how many were mispunched (« pm »): { n, pm }. */
+export function pmRate(races, terrain, month) {
+  const from = new Date(Date.parse(month) - 365 * 86400e3).toISOString().slice(0, 10);
+  const rs = races.filter((r) => r[R.terrain] === terrain && r[R.date] > from && r[R.date] <= month);
+  return { n: rs.length, pm: rs.filter((r) => r[R.status] === "pm").length };
+}
+/** A percentile (0-100, 100 = the best) as shown: whole numbers, the top only for the best. */
+export const fmtPct = (p) => (p == null ? "—" : String(p >= 100 ? 100 : Math.floor(p)));
 /** Competitions (course ids) a club took part in. */
 export const clubCourses = async (code) => (await getJson(`club_courses/${code}.json`)) || [];
 export const clubSeries = (code) => getJson(`club/${code}.json`);

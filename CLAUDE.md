@@ -630,6 +630,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   The tables carry what the site publishes (anonymised runners included; the official CN and the CN Top only, not the
   analysis methods); nothing is stored. Before opening it to every account: a line on the privacy page (the questions go
   to Cloudflare's Workers AI, already the site's host).
+- **Category percentile and PM rate** (owner, 2026-10-15): `ranking.loadRanking` gives each row `pct[m]`, its percentile in
+  its category over all of France at that month (percent_rank: the share of the category's ranked runners with a lower CN;
+  100 = the best; `data.fmtPct` shows whole numbers), before any filter; « Classement » shows it as « Centile cat. » and the
+  club page's « Membres » too, both sortable. The PM rate (`data.pmRate`: the share of « pm » among a runner's races of the
+  discipline in the 12 months to the latest data) is the members' « PM 12 mois » column (read from their race files once the
+  table is shown, filled in place) and the runner page's « PM sur 12 mois » tile (beside « Courses sur 12 mois »).
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

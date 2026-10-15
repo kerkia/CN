@@ -58,8 +58,19 @@ export async function loadRanking(methods, terrain, month) {
       lic, nom: r?.nom || lic, name: displayName(r?.nom || lic), key: normalise(r?.nom),
       cat: a[0] || "", sexe: (a[0] || "")[0] || r?.sexe || "", age: (a[0] || "").slice(1),
       club, clubCode: parts.code, dept: parts.dept, ligue: parts.ligue,
-      nRaces: r?.nBy[terrain], cn, delta, rank,
+      nRaces: r?.nBy[terrain], cn, delta, rank, pct: {},
     });
+  }
+  // each runner's percentile in their category (owner, 2026-10-15): the share of the category's ranked runners of all of
+  // France whose CN is lower (percent_rank; 100 = the category's best, equal CNs share their value), before any filter
+  for (const m of methods) {
+    const byCat = new Map();
+    for (const r of rows) if (r.cn[m] != null && r.cat) { if (!byCat.has(r.cat)) byCat.set(r.cat, []); byCat.get(r.cat).push(r); }
+    for (const list of byCat.values()) {
+      list.sort((a, b) => a.cn[m] - b.cn[m]);
+      let below = 0;
+      list.forEach((r, i) => { if (i && list[i - 1].cn[m] < r.cn[m]) below = i; r.pct[m] = list.length > 1 ? (100 * below) / (list.length - 1) : 100; });
+    }
   }
   return { rows, attrs, prevMonth };
 }
@@ -325,6 +336,9 @@ export async function render(main, { query }) {
         render: (r) => { const d = r.delta[sortMethod]; return d == null ? html`<span class="dim">—</span>` : html`<span class="${d > 0 ? "delta-up" : d < 0 ? "delta-down" : ""}">${fmtSigned(d)}</span>`; } },
       { key: "lic", label: t("rk.col.licence"), cls: "num dim", sort: (r) => Number(r.lic) || 0, defaultDir: 1, render: (r) => r.lic },
       { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
+      { key: "pct", label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct[sortMethod],
+        render: (r) => (r.pct[sortMethod] == null ? html`<span class="dim">—</span>`
+          : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[sortMethod]), cat: r.cat })}">${data.fmtPct(r.pct[sortMethod])}</span>`) },
       { key: "club", label: t("rk.col.club"), cls: "num", sort: (r) => r.clubCode, defaultDir: 1,
         render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "" },
     ];

@@ -193,11 +193,13 @@ export async function render(main, { arg, query }) {
       return tile(t("rn.best", { cn: cnLabel(m) }), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
     });
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
+    const pm = recent.filter((r) => r[R.status] === "pm").length;       // mispunches in those races (owner, 2026-10-15)
     const podiums = mineT.filter((r) => r[R.place] && r[R.place] <= 3).length;
     const wins = mineT.filter((r) => r[R.place] === 1).length;
     if (!$("#tiles")) return;                           // the page was left while the ranking loaded
     $("#tiles").innerHTML = html`${tiles}${rankTiles}${bestTiles}
       ${tile(t("rn.last12"), fmt(recent.length), `${t(`terrain.${terrain}`)}`)}
+      ${tile(t("rn.pm12"), recent.length ? `${fmt((100 * pm) / recent.length)} %` : "—", recent.length ? t("rn.pm12.sub", { pm, n: recent.length }) : t(`terrain.${terrain}`))}
       ${tile(t("rn.podiums"), fmt(podiums), plural(wins, t("rn.win"), t("rn.wins")))}`;
   }
 

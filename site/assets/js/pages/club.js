@@ -197,7 +197,14 @@ export async function render(main, { arg: code, query }) {
             render: (r) => (r.cn[m] != null ? html`<b>${fmt(r.cn[m])}</b>` : html`<span class="dim">—</span>`) },
           { key: `rk_${m}`, label: t("rk.col.overall"), align: "r", cls: "num dim", sort: (r) => r.rank[m], defaultDir: 1,
             render: (r) => fmt(r.rank[m]) },
+          { key: `pct_${m}`, label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct?.[m],
+            render: (r) => (r.pct?.[m] == null ? html`<span class="dim">—</span>`
+              : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[m]), cat: r.cat })}">${data.fmtPct(r.pct[m])}</span>`) },
         ]),
+        // the share of mispunches in the discipline's races of the last 12 months (owner, 2026-10-15), read from each
+        // member's races once the table is shown (filled in place, sortable once read)
+        { key: "pm", label: t("cl.col.pm12"), align: "r", cls: "num", sort: (r) => pmShare(r.lic, terrain),
+          render: (r) => html`<span data-pm="${r.lic}">${pmCell(r.lic, terrain)}</span>` },
         { key: "last", label: t("cl.lastRace"), align: "r", cls: "num", sort: (r) => data.runner(r.lic)?.last,
           render: (r) => fmtDate(data.runner(r.lic)?.last) },
         { key: "sel", label: t("nav.compare"), cls: "c", render: (r) => html`<input type="checkbox" data-sel="${r.lic}" ${raw(store.inCompare(r.lic) ? "checked" : "")} aria-label="${r.name}">` },
@@ -208,6 +215,25 @@ export async function render(main, { arg: code, query }) {
         }));
       },
     });
+    loadPm(list, terrain).then(() => {
+      for (const el of $$("[data-pm]", $("#roster"))) el.innerHTML = pmCell(el.dataset.pm, terrain);
+    });
+  }
+  // the members' PM rates: lic|terrain -> { n, pm }, from their race files (shared by the runners' pages)
+  const pmCache = new Map();
+  const pmShare = (lic, terrain) => { const v = pmCache.get(`${lic}|${terrain}`); return v?.n ? v.pm / v.n : null; };
+  const pmCell = (lic, terrain) => {
+    const v = pmCache.get(`${lic}|${terrain}`);
+    if (!v) return html`<span class="dim">…</span>`;
+    if (!v.n) return html`<span class="dim">—</span>`;
+    return html`<span title="${t("cl.pm12.tip", { pm: v.pm, n: v.n })}">${fmt((100 * v.pm) / v.n)} %</span>`;
+  };
+  async function loadPm(list, terrain) {
+    const month = data.latestMonth();
+    await Promise.all(list.filter((r) => !pmCache.has(`${r.lic}|${terrain}`)).map(async (r) => {
+      const races = await data.runnerRaces(r.lic).catch(() => []);
+      pmCache.set(`${r.lic}|${terrain}`, data.pmRate(races, terrain, month));
+    }));
   }
 
   async function drawElite() {
