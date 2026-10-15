@@ -15,7 +15,7 @@ import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
 
-const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"]];
+const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le Tracer"]];
 const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"], ["choix", "Les choix de base"],
   ["score", "Le score et la moyenne"], ["circuit", "La valeur du circuit"], ["recalage", "Le recalage"], ["resultats", "Les résultats"],
   ["ecartes", "Les alternatives écartées"], ["conclusion", "Conclusion"]];
@@ -268,7 +268,7 @@ export async function render(main, { query = {} } = {}) {
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
-      <p class="lede">Les règles du classement officiel et du Top, l'étude qui a conduit au Top, et les autres calculs du site.</p></div></div>
+      <p class="lede">Les règles du classement officiel et du Top, l'étude qui a conduit au Top, les autres calculs du site, et le Tracer.</p></div></div>
     <nav class="mx-tabs" role="tablist">${TABS.map(([k, label], i) => html`<button type="button" role="tab" data-tab="${k}"
       aria-selected="false"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
     ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}
@@ -1389,6 +1389,149 @@ export async function render(main, { query = {} } = {}) {
     return buildChapters(STUDY_CHAPTERS, CH, "objectifs");
   }
 
+  // ======================================================================================================
+  // 5. Le Tracer (Organisation › Tracer): how it works, what it adds to Purple Pen, and its calculations, in plain words
+  // ======================================================================================================
+  function tracerDoc() {
+    const CHAPTERS = [["principe", "Le principe"], ["carte", "La carte"], ["circuits", "Tracer"], ["sorties", "Imprimer et exporter"],
+      ["outils", "Ce qu'il ajoute"], ["apres", "Après la course"], ["calculs", "Ses calculs"]];
+    const CH = {
+      principe: () => html`
+        <section class="mx-slide" id="tr-principe">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Tracer les circuits dans le navigateur</h2>
+          <p>« Organisation › Tracer » fait ce que fait Purple Pen, le logiciel de traçage gratuit que beaucoup de clubs utilisent : placer les postes,
+            composer les circuits, remplir les définitions, imprimer les cartes et les définitions, préparer les fichiers du chronométrage. Il lit et écrit
+            les fichiers de Purple Pen (.ppen) : un événement passe de l'un à l'autre dans les deux sens.</p>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>Qui crée un événement</h3><p>Une compétition : un membre du club organisateur (le club de sa dernière course).
+              Un entraînement : n'importe quel compte.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute (traceur, contrôleur,
+              lecteur). Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe, l'événement est chiffré dans le navigateur :
+              le serveur ne garde que des données illisibles. Perdue, la phrase de passe ne se retrouve pas : exportez d'abord un .ppen.</p></div>
+          </div>
+          <p>Chaque modification est enregistrée quelques secondes après, une version est gardée toutes les 30 minutes de travail, et un seul membre de
+            l'équipe modifie à la fois (les autres lisent, et peuvent « prendre la main »). L'éditeur s'ouvre en plein écran ; « ↗ » le met dans un onglet à lui.</p>
+        </section>`,
+      carte: () => html`
+        <section class="mx-slide" id="tr-carte">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>La carte : un PDF ou une image</h2>
+          <p>La carte est un <b>PDF</b> (exporté d'OCAD ou d'OpenOrienteering Mapper : il reste net à l'impression, car il est repris tel quel dans les PDF des
+            circuits) ou une <b>image</b> : JPG, PNG, GIF, BMP, WebP, TIFF. Un scan ou une photo prise bien à plat conviennent. Les fichiers d'OCAD et de Mapper
+            eux-mêmes ne se lisent pas ici : il faut un PDF ou une image de la carte.</p>
+          <p>Une image mesure ses distances par sa <b>résolution</b> (les points par pouce) : 300 points par pouce, c'est 1 mm de carte pour 11,8 points. La résolution
+            est lue dans le fichier quand il la donne ; sinon elle est demandée, et le calage la corrige.</p>
+          <h3>Le calage en deux clics</h3>
+          <p>Quand un fichier .ppen a été fait sur une autre carte que celle donnée (souvent une carte OCAD, ici remplacée par son PDF ou une photo), ses postes
+            ne tombent pas au bon endroit. On clique un poste, puis l'endroit où il est sur la carte, et cela deux fois, loin l'un de l'autre : le Tracer en
+            déduit le décalage, la rotation et l'échelle. Comme un .ppen garde les vraies distances de la carte, l'écart d'échelle trouvé vient de la carte
+            donnée : c'est elle qui est corrigée (la résolution de l'image, ou l'échelle du PDF), pas le circuit — les longueurs restent justes.</p>
+          <h3>Le géoréférencement</h3>
+          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, le Tracer doit savoir où est la carte sur la Terre : deux points cliqués avec leur
+            latitude et leur longitude (ou plus, pour une photo déformée), un fichier de calage (.jgw, .pgw… avec son .prj), un KMZ de la même image, ou un TIFF
+            géoréférencé (GeoTIFF), lu tout seul.</p>
+        </section>`,
+      circuits: () => html`
+        <section class="mx-slide" id="tr-circuits">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Tracer : les gestes de Purple Pen</h2>
+          <p>Les outils sont ceux de Purple Pen : départ, poste, arrivée, passage obligatoire, remise et échange de carte, coude, coupure, définitions sur la carte,
+            objets spéciaux (zone interdite, ravitaillement, texte, image…). Un nouveau poste se place après le poste choisi, dans l'interposte choisi, ou dans
+            l'interposte le plus proche. Un clic choisit, glisser déplace, la molette zoome, Ctrl+Z annule (100 étapes).</p>
+          <p>Les <b>définitions</b> se remplissent en cliquant une case, ou au clavier : ↑ ↓ changent de ligne, ← → de case, une lettre ouvre les symboles déjà
+            filtrés (« rav » donne « Ravine »), Suppr vide la case. Les normes IOF 2004 et 2018/2024, en symboles ou en texte, dans 23 langues.</p>
+          <p>Les <b>variantes</b> (fourches, boucles) et les <b>relais</b> se préparent comme dans Purple Pen, avec la même répartition des variantes entre
+            équipes : Purple Pen la tire au hasard, mais avec un hasard « à graine » ; le Tracer reproduit le même tirage, donc les mêmes équipes.</p>
+        </section>`,
+      sorties: () => html`
+        <section class="mx-slide" id="tr-sorties">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Imprimer et exporter</h2>
+          <ul class="mx-list">
+            <li><b>PDF des circuits</b> : un circuit par page, par partie, par variante, ou par équipe et relayeur ; carte et circuit, ou circuit seul pour une
+              surimpression ; violet en CMJN. Une zone d'impression plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou
+              se réduit à son centre.</li>
+            <li><b>Définitions</b> et <b>cartons de contrôle</b> en PDF, avec les polices de Purple Pen (Roboto et Roboto Condensed).</li>
+            <li><b>IOF XML</b> 3.0 et 2.0.3 pour le chronométrage (avec les équipes de relais), <b>GPX</b> des postes et <b>KML</b> des circuits (carte
+              géoréférencée), <b>images</b> des circuits avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
+            <li>Plusieurs fichiers d'un coup s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un .zip.</li>
+          </ul>
+          <p>Les rapports de Purple Pen y sont tous : résumé, longueurs des interpostes, références croisées, charge, contrôle de l'événement — ce dernier avec
+            des vérifications en plus : postes trop proches selon la discipline (règles IOF : 30 m au moins entre deux postes, 15 m en sprint ; à moins de 60 m,
+            30 m en sprint, des objets clairement différents), poste ou interposte dans une zone interdite ou à travers une limite infranchissable, interposte
+            qui passe dans le cercle d'un autre poste, aller-retour à un poste, codes lisibles à l'envers.</p>
+        </section>`,
+      outils: () => html`
+        <section class="mx-slide" id="tr-outils">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Ce que le Tracer ajoute à Purple Pen</h2>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>Dénivelée</h3><p>Calculée sur le modèle de terrain de l'IGN, le long des interpostes, ou de
+              l'itinéraire que le traceur dessine (outil Itinéraire).</p></div>
+            <div class="mx-box" style="--c:var(--s2)"><h3>Temps du vainqueur</h3><p>Estimé à partir des résultats des deux dernières saisons, selon le CN du
+              vainqueur attendu, la longueur et la dénivelée ; et la longueur qui donne un temps visé.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>Charges et catégories</h3><p>Le nombre d'inscrits par circuit et leurs catégories, repris de la page
+              d'inscription de la FFCO.</p></div>
+            <div class="mx-box" style="--c:var(--s4)"><h3>Sur le terrain</h3><p>Sur le téléphone, la carte avec sa position GPS, le poste le plus proche, et
+              chaque poste noté posé, vérifié, ramassé ou à problème, avec photo ; sans réseau aussi.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>En équipe</h3><p>Commentaires épinglés sur la carte, versions et leurs différences
+              (« poste 34 déplacé de 40 m »).</p></div>
+            <div class="mx-box" style="--c:var(--s6)"><h3>Hors ligne</h3><p>Un événement gardé sur l'appareil s'ouvre sans réseau ; ses modifications
+              partent quand le réseau revient.</p></div>
+          </div>
+          <p>Aussi : le plan de ramassage des postes, la lecture d'un circuit imprimé sur une carte (un PDF ou une photo d'une course passée), et un
+            changement de carte qui garde la position des postes sur le terrain quand les deux cartes sont géoréférencées.</p>
+        </section>`,
+      apres: () => html`
+        <section class="mx-slide" id="tr-apres">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Après la course</h2>
+          <p>Le jour de la course ou après (jamais avant : les circuits restent secrets), le traceur peut :</p>
+          <ul class="mx-list">
+            <li><b>publier les circuits vers l'analyse multi</b> : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
+              leur trace GPS ;</li>
+            <li><b>envoyer les circuits à « Résultats »</b> : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
+              quand les fichiers des organisateurs ne les donnent pas ;</li>
+            <li>lire le <b>bilan</b> : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont trompés, les postes
+              manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse multi.</li>
+          </ul>
+        </section>`,
+      calculs: () => html`
+        <section class="mx-slide" id="tr-calculs">
+          <p class="mx-kicker">Le Tracer</p>
+          <h2>Ses calculs, expliqués</h2>
+          <h3>La dénivelée</h3>
+          <p>L'altitude est lue tous les 10 m le long de chaque interposte sur le modèle de terrain de l'IGN (RGE ALTI, précis au mètre en France), puis
+            lissée sur trois points : le modèle a de petites irrégularités qui, additionnées, gonfleraient la montée. La dénivelée est la somme des montées,
+            arrondie à 5 m. En ligne droite, un interposte qui contourne une colline compte la colline : c'est pourquoi l'outil Itinéraire permet de dessiner le
+            chemin prévu, qui sert alors au calcul.</p>
+          <h3>Le temps du vainqueur</h3>
+          <p>Sur les résultats FFCO des deux dernières saisons (environ une centaine de courses du même format), on relève pour chaque circuit l'allure du
+            vainqueur, en minutes par kilomètre, et son CN officiel 15 jours avant. Plus le CN est haut, plus l'allure est rapide : la relation est ajustée une
+            fois pour toutes, et donne l'allure d'un vainqueur de CN donné. Par exemple, sur un même circuit, un vainqueur de CN 6 500 court à peu près 1,3 fois
+            plus vite qu'un vainqueur de CN 3 000.</p>
+          <p>La FFCO ne publie pas la dénivelée des circuits ; les fichiers des organisateurs la donnent souvent (« Résultats »). Sur ces circuits, on compare le
+            temps du vainqueur à celui que son CN laisse attendre, selon la dénivelée par kilomètre : plus le circuit monte, plus le vainqueur met de temps.
+            Pour ne pas se fier à quelques circuits, la mesure est rapprochée de la règle du kilomètre-effort (100 m de montée valent 1 km de plat, soit
+            +10 % de temps pour 10 m de plus par kilomètre), d'autant plus qu'elle est imprécise. En longue distance, la mesure redonne cette règle ; en sprint,
+            où l'on court vite et où chaque montée coûte davantage, elle est plus forte.</p>
+          <p>Chaque estimation donne une fourchette : la moitié des courses de référence ont un temps de vainqueur dans cette fourchette, car le terrain,
+            la végétation et la difficulté technique, qui comptent beaucoup, ne sont pas dans le calcul.</p>
+          <h3>Les erreurs et les itinéraires</h3>
+          <p>Une erreur, comme dans « Temps intermédiaires » : au moins 20 % et 10 secondes perdus sur l'interposte par rapport à l'allure du coureur sur
+            l'ensemble de sa course. Deux itinéraires sont le même quand les deux traces restent à moins d'une quinzaine de pour cent de la longueur de
+            l'interposte (25 m au moins) l'une de l'autre tout du long ; le côté (« par la gauche », « tout droit ») se lit par rapport à la ligne droite.</p>
+          <h3>Le plan de ramassage</h3>
+          <p>Un poste peut être ramassé quand le dernier coureur de chaque circuit qui y passe l'a passé : son heure de départ, plus la distance jusqu'au poste
+            à l'allure d'un coureur lent (15 min/km en forêt, 9 en sprint, en ligne droite), plus une marge. Les postes sont partagés entre les ramasseurs par
+            secteur, et chacun les prend dans l'ordre où il peut les atteindre.</p>
+        </section>`,
+    };
+    return buildChapters(CHAPTERS, CH, "principe");
+  }
+
   /** A panel with chapters: the sub-tab bar, then every chapter's content in its own panel (the others hidden). */
   function buildChapters(chapters, CH, first) {
     return raw(subTabs(chapters, first).s.replace(/<div data-subpanel="([a-z]+)"( hidden)?><\/div>/g, (m0, k, hid) =>
@@ -1659,7 +1802,7 @@ export async function render(main, { query = {} } = {}) {
   }
   const DRAW = { top: drawNorm, etude: () => {} };
   const DRAW_CHAPTER = { resultats: () => { drawAgreement(); drawEval(); } };
-  const BUILD = { officiel, top, etude, calculs };
+  const BUILD = { officiel, top, etude, calculs, tracer: tracerDoc };
 
   // ---- tabs and chapters ------------------------------------------------------------------------------------
   const built = new Set();

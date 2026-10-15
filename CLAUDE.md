@@ -679,6 +679,28 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   ocn.tr.field.<id>` when offline); version differences; other courses shown faint. Account deletion hands an event to the first
   setter (else controller) of its team who has an account, else deletes it; the privacy page says so. Local tests: Purple Pen's
   samples in the git-ignored `site/data/_trtest/` (their .ppen were made for OCAD maps: controls can lie off the JPEG).
+  **Second pass (owner, 2026-10-15: « complete phases 1-3 »).** Import: one dialog, the .ppen and its map dropped together or
+  one after the other (`dialogs.dropZone`), each file confirmed as read; files dropped on the Tracer page, « Nouvel événement »,
+  « Changer de carte » or the editor are taken too; any PDF or image of the map (never assume OCAD is at hand). A map that is
+  not the .ppen's own file is aligned by two clicks (`calage.js`: least-squares similarity; a .ppen keeps true map mm, so the
+  scale found corrects the image's dpi or the PDF's scale, not the course), also Événement › Caler les postes sur la carte.
+  TIFF read by `tiff.js` (strips/tiles, none/LZW/Deflate/PackBits, predictor, 1-16 bits, palette, planar; a GeoTIFF's
+  tie point/scale/matrix + EPSG 2154/326xx/4326 georeferences the event; checked pixel for pixel against Pillow on 13
+  variants); large images drawn from reduced copies (`mapsrc.withLevels`). Fonts as Purple Pen (`fonts.js`): Roboto and
+  Roboto Condensed from fontsource on jsdelivr + fontkit, their widths for layout and description sheets
+  (`DescriptionAppearance` sizes), embedded in the PDFs; Arial numbers = Helvetica (same widths); offline fallback to
+  Helvetica and Purple Pen's « no Arial Narrow » sizes. PDFs: print areas larger than the paper tiled over pages (Purple
+  Pen's layout), a drawn print area, even-odd fills (raw `f*`: pdf-lib has no helper). Description sheet by keyboard.
+  Several files into a chosen folder (File System Access) or a zip (`dialogs.saveFiles`). Route tool (`ev.legs[].route`,
+  not in .ppen, not printed) used by the IGN climb. Winning times: climb effect fitted on « Résultats »' circuits with
+  climb (winner time vs the CN model, by m/km), shrunk toward the km-effort rule (+10 % per 10 m/km) by its precision.
+  Field mode: photos (`/photo/<pid>`, 1600 px JPEG, queued in IndexedDB `ocn-tracer` offline), a warning when marking a
+  control far from the map's spot. Offline (`offline.js`, `/sw.js` network-first, opt-in per event; the event and map
+  re-encrypted with the event's key; saves wait in IndexedDB « pending » and go when online, a conflict asks; the worker
+  and cache go when nothing is kept; logout drops copies without pending changes). « Envoyer les circuits à Résultats »
+  (from the race day; upload kind « courses », see Uploads). Review after the race: routes taken from the published
+  analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le Tracer ».
+  « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.
 - **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus): the analyses' playback (« Analyse
   solo » transport row, « Analyse multi » right panel) has « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout
   refits on the resize event; Échap or « ⤡ » back) and « ↗ » (the same page alone in a new tab, `?fen=1`, kept by
