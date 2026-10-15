@@ -91,5 +91,7 @@ export async function logout() {
   try { await (await import("./tracer/offline.js")).dropCopies(); } catch (e) { /* none */ }
   // the keys of the Tracer's encrypted events (tracer/store.js), kept for the tab
   try { for (const k of Object.keys(sessionStorage)) if (k.startsWith("ocn.tr.key.")) sessionStorage.removeItem(k); } catch (e) { /* nothing kept */ }
+  // the API key « IA » may use (askbyok.js), even one remembered on this device
+  for (const s of ["sessionStorage", "localStorage"]) { try { window[s].removeItem("ocn.ia.byok"); } catch (e) { /* nothing kept */ } }
   try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
 }

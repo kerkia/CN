@@ -2,25 +2,28 @@
 // DuckDB query and how to show it out. The language model runs on Workers AI (binding AI, the account's free daily
 // allowance of 10 000 neurons; past it the calls fail until the next day, nothing is billed on the free plan). The browser
 // runs the query on the published files (site_ask.py), so the model never sees the data. Nothing is stored.
-// Body: { question, method, previous?: { question, sql }, failed?: { sql, error }, model? (administrators: a test) }.
+// Body: { question, method, terrain, previous?: { question, sql }, failed?: { sql, error }, model? (administrators: a test),
+// promptOnly? }. With promptOnly the model is not called: the answer is the messages themselves, for the browser to send to a
+// model of the user's own choosing, with their own key (pages/ask.js, askbyok.js; owner, 2026-10-15) - the key never comes here.
 import { allow, isAdmin, json, readBody, withUser } from "../_lib/api.js";
 import { DEFAULT_MODEL, MODELS, NEURONS_PER_DOLLAR, parseAnswer, systemPrompt, userPrompt } from "../_lib/ask.js";
 
 const PER_HOUR = 40, PER_HOUR_ADMIN = 200;      // questions an hour per account: a runaway loop cannot eat the day's quota
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
-  if (!env.AI) return json({ error: "ai not bound" }, 500);
   const admin = isAdmin(env, user);
-  if (!(await allow(env, `ask:${user.id}`, admin ? PER_HOUR_ADMIN : PER_HOUR, 3600))) return json({ error: "Trop de questions cette heure-ci." }, 429);
   const b = await readBody(request);
   const question = String(b?.question || "").trim().slice(0, 1000);
   if (!question) return json({ error: "question required" }, 400);
-  const model = b.model && MODELS[b.model] && admin ? b.model : DEFAULT_MODEL;
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
   const messages = [
     { role: "system", content: systemPrompt({ licence: /^\d+$/.test(String(user.licence || "")) ? Number(user.licence) : null, today, method: b.method, terrain: b.terrain }) },
     { role: "user", content: userPrompt({ question, previous: b.previous, failed: b.failed }) },
   ];
+  if (b.promptOnly) return json({ messages });            // the user's own model: no call here, no quota used
+  if (!env.AI) return json({ error: "ai not bound" }, 500);
+  if (!(await allow(env, `ask:${user.id}`, admin ? PER_HOUR_ADMIN : PER_HOUR, 3600))) return json({ error: "Trop de questions cette heure-ci." }, 429);
+  const model = b.model && MODELS[b.model] && admin ? b.model : DEFAULT_MODEL;
   const t0 = Date.now();
   let out;
   try {

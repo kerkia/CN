@@ -10,6 +10,8 @@ import * as auth from "../auth.js";
 import * as store from "../store.js";
 import { timeChart, columnChart, slotColor } from "../charts.js";
 import { dataTable } from "../ui.js";
+import { parseAnswer } from "../askparse.js";
+import { PROVIDERS, ProviderError, loadChoice, saveChoice, forgetChoice, suggest } from "../askbyok.js";
 
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm";
 const TABLES = ["runners", "clubs", "races", "results", "cn"];
@@ -21,8 +23,8 @@ const EXAMPLES = [
   "Combien de coureurs ont un CN Top en forêt aujourd'hui, par ligue ?",
   "Mon taux de PM par saison",
 ];
-// the pilot's models (administrators), the default first
-const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
+// O'CN's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
+const MODELS = [["@cf/openai/gpt-oss-120b", "O'CN, gratuit (gpt-oss-120b)"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
   ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"], ["@cf/qwen/qwen3-30b-a3b-fp8", "Qwen3 30B"]];
 
 // what survives a visit to another page: the answers, the database once loaded
@@ -187,12 +189,37 @@ export async function render(main) {
           <textarea id="ia-q" rows="4" maxlength="1000" placeholder="Par exemple : mon CN Top en forêt mois par mois depuis 2024"></textarea>
           <div class="ia-row">
             <div id="ia-follow"></div>
-            <select id="ia-model" title="Modèle (pilote)">${MODELS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
+            <select id="ia-model" title="Le modèle qui écrit la requête">${MODELS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
             <button type="submit" class="btn btn-primary" id="ia-go">Demander</button>
           </div>
         </form>
         <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site. L'IA ne voit pas les données : elle
           écrit une requête, que votre navigateur exécute. Elle peut se tromper : l'interprétation retenue et la requête sont affichées sous chaque réponse.</p>
+        <details class="ia-byok" id="by">
+          <summary>Votre propre clé d'API : Claude, ChatGPT, Gemini ou OpenRouter</summary>
+          <div class="ia-byok-body">
+            <p class="ia-note" style="margin-top:0">Un modèle plus puissant, à vos frais : votre navigateur l'appelle directement avec votre clé.</p>
+            <div class="ia-byok-grid">
+              <label class="field"><span>Fournisseur</span><select id="by-prov">${Object.entries(PROVIDERS).map(([k, v]) => html`<option value="${k}">${v.label}</option>`)}</select></label>
+              <label class="field"><span>Clé d'API</span><input id="by-key" type="password" autocomplete="off" spellcheck="false"></label>
+              <label class="field"><span>Modèle</span><input id="by-model" type="text" list="by-models" autocomplete="off" spellcheck="false" placeholder="chargés avec la clé">
+                <datalist id="by-models"></datalist></label>
+            </div>
+            <div class="ia-row ia-byok-actions">
+              <label class="checkline"><input type="checkbox" id="by-remember"> Se souvenir de la clé sur cet appareil</label>
+              <span style="flex:1"></span>
+              <button type="button" class="btn btn-sm" id="by-load">Charger les modèles</button>
+              <button type="button" class="btn btn-sm btn-primary" id="by-save">Utiliser</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="by-forget">Oublier la clé</button>
+            </div>
+            <div class="ia-status" id="by-status"></div>
+            <p class="muted ia-note" id="by-note"></p>
+            <p class="muted ia-note">La clé reste dans ce navigateur : elle n'est jamais envoyée à O'CN (sans « Se souvenir », elle s'efface à la
+              fermeture de l'onglet ; elle s'efface aussi à la déconnexion). Le fournisseur reçoit la question, la description des tables et votre
+              numéro de licence — jamais les données —, selon ses conditions, et vous facture à ses tarifs (une question coûte de moins d'un
+              centime à environ un centime). Créez une clé réservée à cet usage, avec une limite de dépenses : un script de la page pourrait la lire.</p>
+          </div>
+        </details>
       </div>
       <aside class="ia-examples" aria-label="Exemples de questions"><div class="ia-ex-head">Exemples</div>
         ${EXAMPLES.map((e) => html`<button type="button" class="chip" data-ex="${e}">${e}</button>`)}</aside>
@@ -223,6 +250,13 @@ export async function render(main) {
       .ia-foot details { flex-basis: 100% }
       .ia-more { margin-top: 10px }
       .ia-status { color: var(--ink-3) }
+      .ia-byok { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px }
+      .ia-byok summary { cursor: pointer; font-size: 13.5px; font-weight: 600 }
+      .ia-byok-body { margin-top: 10px }
+      .ia-byok-grid { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(160px, 1.3fr) minmax(180px, 1.6fr); gap: 10px }
+      .ia-byok-grid .field input, .ia-byok-grid .field select { width: 100%; box-sizing: border-box }
+      @media (max-width: 760px) { .ia-byok-grid { grid-template-columns: minmax(0, 1fr) } }
+      .ia-byok-actions { flex-wrap: wrap }
       .ia-follow-chip { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
     </style>`;
 
@@ -247,8 +281,8 @@ export async function render(main) {
     $(".ia-foot", el).innerHTML = html`
       ${entry.result ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="csv">Télécharger (CSV)</button>` : ""}
       ${entry.answer?.sql ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="follow">Préciser cette réponse</button>` : ""}
-      ${u ? html`<span class="muted">${String(u.model).split("/").pop()} · ${fmt(u.tokensIn)} + ${fmt(u.tokensOut)} jetons · ~${fmt(u.neurons)} neurones ·
-        ${fmt(u.ms / 1000, 1)} s${entry.retried ? " · requête corrigée une fois" : ""}</span>` : ""}
+      ${u ? html`<span class="muted">${u.provider ? `${u.provider} · ${u.model}` : String(u.model).split("/").pop()} · ${fmt(u.tokensIn)} + ${fmt(u.tokensOut)} jetons${
+        u.neurons != null ? ` · ~${fmt(u.neurons)} neurones` : ""}${u.dollars != null ? ` · ${fmt(u.dollars, 4)} $` : ""} · ${fmt(u.ms / 1000, 1)} s${entry.retried ? " · requête corrigée une fois" : ""}</span>` : ""}
       ${entry.answer?.sql ? html`<details><summary>La requête</summary><pre>${entry.answer.sql}</pre></details>` : ""}`;
     $("[data-act=csv]", el)?.addEventListener("click", () => {
       const { columns, rows } = entry.result;
@@ -266,18 +300,30 @@ export async function render(main) {
     const el = card(entry);
     answersEl.prepend(el);
     const say = (s) => { entry.status = s; const st = $(".ia-status", el); if (st) st.textContent = s; };
+    const own = $("#ia-model").value === "byok" ? loadChoice() : null;
     const post = async (extra) => {
       const r = await fetch("/api/ask", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, method: store.get().method, terrain: store.get().terrain, model: $("#ia-model").value,
-          previous: entry.previous || undefined, ...extra }) });
+          previous: entry.previous || undefined, promptOnly: own ? true : undefined, ...extra }) });
       const d = await r.json().catch(() => ({}));
+      if (own) {
+        // the user's own model: the instructions from O'CN, the call from this browser to their provider, with their key
+        if (!r.ok || !d.messages) throw new Error(d.error || `Erreur ${r.status}`);
+        const t0 = Date.now(), out = await PROVIDERS[own.provider].chat(own.key, own.model, d.messages);
+        entry.usage = { provider: PROVIDERS[own.provider].label, model: own.model, ms: Date.now() - t0, tokensIn: out.tokensIn, tokensOut: out.tokensOut,
+          dollars: out.dollars ?? null };
+        const answer = parseAnswer(out.text);
+        if (!answer) throw new Error("La réponse du modèle n'a pas pu être lue.");
+        return answer;
+      }
       if (!r.ok || !d.answer) throw new Error(d.error || `Erreur ${r.status}`);
       entry.usage = d.usage;
       return d.answer;
     };
+    if ($("#ia-model").value === "byok" && !own) { say("Choisissez d'abord votre fournisseur, votre clé et le modèle, puis « Utiliser »."); return; }
     $("#ia-go").disabled = true;
     try {
-      say("L'IA écrit la requête…");
+      say(own ? `${PROVIDERS[own.provider].label} écrit la requête…` : "L'IA écrit la requête…");
       duck().catch(() => {});                                   // the engine loads meanwhile
       entry.answer = await post({});
       el.replaceWith(card(entry)); const cur = answersEl.firstElementChild;
@@ -312,6 +358,65 @@ export async function render(main) {
     } finally {
       $("#ia-go").disabled = false;
     }
+  }
+
+  // ---- the user's own key -------------------------------------------------------------------------------------------
+  let models = [];
+  const byStatus = (s, bad = false) => { const el = $("#by-status"); el.textContent = s; el.style.color = bad ? "var(--bad, #c62828)" : ""; };
+  const ownOption = (c) => {
+    $("#ia-model option[value=byok]")?.remove();
+    if (!c) return;
+    const o = document.createElement("option");
+    o.value = "byok"; o.textContent = `Votre clé : ${PROVIDERS[c.provider].label} · ${c.model}`;
+    $("#ia-model").prepend(o);
+  };
+  const showProvider = () => {
+    const pv = PROVIDERS[$("#by-prov").value];
+    $("#by-key").placeholder = pv.hint;
+    $("#by-note").innerHTML = html`${pv.note} <a href="${pv.keys}" target="_blank" rel="noopener noreferrer">Créer une clé</a>`;
+  };
+  async function loadModels() {
+    const prov = $("#by-prov").value, key = $("#by-key").value.trim();
+    if (!key && prov !== "openrouter") { byStatus("Collez d'abord votre clé."); return false; }
+    byStatus("Chargement des modèles…");
+    try {
+      models = await PROVIDERS[prov].models(key);
+    } catch (e) { byStatus(e instanceof ProviderError ? e.message : String(e.message || e), true); return false; }
+    $("#by-models").innerHTML = models.map((m) => html`<option value="${m.id}">${m.name}${m.price && Number.isFinite(m.price[0])
+      ? ` — ${fmt(m.price[0], 2)} $ / ${fmt(m.price[1], 2)} $ le million de jetons` : ""}</option>`).join("");
+    const cur = $("#by-model").value.trim();
+    if (!cur || !models.some((m) => m.id === cur)) $("#by-model").value = suggest(prov, models);
+    byStatus(`${fmt(models.length)} modèles disponibles${prov === "openrouter" && !key ? " (la clé sera vérifiée à la première question)" : ""}.`);
+    return true;
+  }
+  $("#by-prov").addEventListener("change", () => {
+    models = []; $("#by-models").innerHTML = ""; $("#by-model").value = ""; byStatus(""); showProvider();
+    if ($("#by-prov").value === "openrouter" || $("#by-key").value.trim()) loadModels();
+  });
+  $("#by-load").addEventListener("click", loadModels);
+  $("#by-key").addEventListener("change", () => { if ($("#by-key").value.trim()) loadModels(); });
+  $("#by-save").addEventListener("click", async () => {
+    const provider = $("#by-prov").value, key = $("#by-key").value.trim();
+    if (!key) { byStatus("Collez votre clé d'API.", true); return; }
+    if (!models.length && !(await loadModels())) return;
+    const model = $("#by-model").value.trim();
+    if (!model) { byStatus("Choisissez un modèle.", true); return; }
+    const c = { provider, key, model, remember: $("#by-remember").checked };
+    saveChoice(c); ownOption(c); $("#ia-model").value = "byok";
+    byStatus(`Prêt : les questions iront à ${PROVIDERS[provider].label} (${model}).`);
+  });
+  $("#by-forget").addEventListener("click", () => {
+    forgetChoice(); ownOption(null); $("#by-key").value = ""; $("#by-remember").checked = false; $("#ia-model").selectedIndex = 0;
+    byStatus("Clé oubliée : les questions vont au modèle gratuit d'O'CN.");
+  });
+  {
+    const c = loadChoice();
+    if (c && PROVIDERS[c.provider]) {
+      $("#by-prov").value = c.provider; $("#by-key").value = c.key; $("#by-model").value = c.model; $("#by-remember").checked = !!c.remember;
+      ownOption(c); $("#ia-model").value = "byok";
+      byStatus(`Clé enregistrée${c.remember ? " sur cet appareil" : " pour cet onglet"} : ${PROVIDERS[c.provider].label} (${c.model}).`);
+    }
+    showProvider();
   }
 
   $("#ia-form").addEventListener("submit", (e) => {

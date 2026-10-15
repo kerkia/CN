@@ -199,6 +199,14 @@ async function privacy(main) {
         celui-ci supprime son compte, il passe au premier traceur (à défaut, contrôleur) de l'équipe qui a un compte, sinon il est
         supprimé. Le calcul de la dénivelée envoie au service d'altitude de l'IGN (Géoplateforme, France) les seules coordonnées des
         postes et des coudes des circuits, sans nom ni code.</p>
+      <h2 style="font-size:16px">Questions à l'IA</h2>
+      <p>Sur la page « IA », votre question est envoyée au modèle de langage qui écrit la requête, avec la description des tables du
+        site, la date du jour, votre numéro de licence et la méthode et la discipline choisies : par défaut le modèle d'O'CN, exécuté
+        par Cloudflare (Workers AI) ; ni le site ni Cloudflare ne conservent les questions. La requête s'exécute ensuite dans votre
+        navigateur, sur les données que le site publie : elles ne sont transmises à aucun modèle. Si vous utilisez votre propre clé
+        d'API (Anthropic, OpenAI, Google ou OpenRouter), votre navigateur envoie ces mêmes éléments directement à ce fournisseur, sous
+        votre compte et selon ses conditions (avec une clé gratuite, Google peut se servir des questions pour améliorer ses
+        produits) ; la clé reste dans votre navigateur et n'est jamais transmise à O'CN.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Données conservées :</b> l'adresse e-mail ; les prénom, nom et numéro de licence saisis, vérifiés lors de l'inscription
@@ -229,7 +237,8 @@ async function privacy(main) {
       <h2 style="font-size:16px">Prestataires et transferts hors de l'Union européenne</h2>
       <p>Les prestataires suivants traitent des données pour le compte de l'éditeur :</p>
       <ul>
-        <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son espace de stockage de fichiers. Les
+        <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son espace de stockage de fichiers, et exécute
+          le modèle de langage de la page « IA ». Les
           transferts vers les États-Unis reposent sur le cadre de protection des données UE-États-Unis (Data Privacy Framework),
           auquel Cloudflare a adhéré.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., États-Unis) assure l'envoi des e-mails du site, ce qui implique l'adresse du
@@ -243,7 +252,9 @@ async function privacy(main) {
         au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (thème, discipline et méthode
         choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le tracé des circuits, ses réglages d'affichage, la clé
         d'un événement chiffré, tirée de sa phrase de passe (le temps de l'onglet), les états du mode terrain en attente de réseau et, si vous
-        gardez un événement pour travailler hors ligne, sa copie (circuits et carte, chiffrés s'il l'est) et les fichiers du site, effacés à la déconnexion. Le site n'utilise aucun traceur publicitaire ni
+        gardez un événement pour travailler hors ligne, sa copie (circuits et carte, chiffrés s'il l'est) et les fichiers du site, effacés à la déconnexion ;
+        si vous utilisez votre propre clé d'API sur la page « IA », cette clé (le temps de l'onglet, ou sur l'appareil si vous le demandez ;
+        effacée à la déconnexion). Le site n'utilise aucun traceur publicitaire ni
         aucun outil tiers de mesure d'audience ; aucun consentement n'est donc requis.</p>
       <h2 style="font-size:16px">Vos droits</h2>
       <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données, d'un

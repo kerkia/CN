@@ -630,6 +630,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   The tables carry what the site publishes (anonymised runners included; the official CN and the CN Top only, not the
   analysis methods); nothing is stored. Before opening it to every account: a line on the privacy page (the questions go
   to Cloudflare's Workers AI, already the site's host).
+  **Own API key** (owner, 2026-10-15): « Votre propre clé d'API » lets a user pick OpenRouter, Anthropic, OpenAI or Google and a
+  model, with their key (`site/assets/js/askbyok.js`: each provider's model list — OpenRouter's is public, 463 models on
+  2026-10-15 with 18 free; the newest of the preferred family suggested — and its call; errors in plain French). The browser
+  calls the provider itself (all four accept it: checked with a dummy key, each answers a readable refusal); O'CN's server
+  only gives the instructions (`/api/ask` with `promptOnly`: the messages, no model call, no quota), so the key never reaches
+  O'CN. Kept in `sessionStorage ocn.ia.byok`, or `localStorage` with « Se souvenir », dropped by « Oublier la clé » and at logout
+  (`auth.logout`); requests to the providers omit cookies and the referrer. The answer is read by `askparse.js`, shared with the
+  server. The privacy page says where the questions go (« Questions à l'IA »). Tested with each provider's replies simulated
+  (request shape, parsing, cost from OpenRouter's `usage.cost`); a real key is to be tried by its owner.
 - **Category percentile and PM rate** (owner, 2026-10-15): `ranking.loadRanking` gives each row `pct[m]`, its percentile in
   its category over all of France at that month (percent_rank: the share of the category's ranked runners with a lower CN;
   100 = the best; `data.fmtPct` shows whole numbers), before any filter; « Classement » shows it as « Centile cat. » and the
