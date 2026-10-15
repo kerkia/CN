@@ -117,6 +117,7 @@ export async function action(E, act, btn, at = {}) {
     case "export-csv": (await lazy.rep()).csvAll(E); break;
     case "publish": (await lazy.more()).publish(E); break;
     case "send-results": (await lazy.more()).sendCourses(E); break;
+    case "offline": (await import("./offline.js")).offlineDialog(E); break;
     case "map-change": if (!ro()) (await lazy.more()).changeMap(E); break;
     case "event-props": if (!ro()) eventProps(E); break;
     case "appearance": if (!ro()) appearance(E); break;

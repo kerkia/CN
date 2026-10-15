@@ -367,15 +367,13 @@ export async function pickup(E) {
 export async function afterRace(E) {
   const ev = E.ev;
   const info = await raceInfo(E).catch(() => ({}));
-  if (!info.provKey) { E.toast("Pas de résultats pour cet événement dans « Résultats » (il doit être lié à la course)."); return; }
-  E.status("Temps intermédiaires…", "busy");
-  const race = await getData(`prov/${info.provKey}.json`);
-  E.status("Prêt", "ok");
+  E.status("Temps intermédiaires et traces…", "busy");
+  const race = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const docs = (race?.docs || []).filter((d) => (d.classes || []).some((k) => k.controls?.length && (k.runners || []).some((r) => r.splits)));
-  if (!docs.length) { E.toast("Aucun temps intermédiaire publié pour cette course pour l'instant."); return; }
-  const doc = docs[0];
-  const classes = (doc.by === "category" && doc.circuits?.length ? doc.circuits : doc.classes).filter((k) => k.controls?.length);
-  const sections = [], intro = [`Source : ${doc.title || doc.source} (« Résultats »). Une erreur : au moins 20 % et 10 s perdus sur l'interposte par rapport à l'allure du coureur sur sa course.`];
+  const doc = docs[0] || null;
+  const classes = doc ? (doc.by === "category" && doc.circuits?.length ? doc.circuits : doc.classes).filter((k) => k.controls?.length) : [];
+  const sections = [], intro = [];
+  if (doc) intro.push(`Temps intermédiaires : ${doc.title || doc.source} (« Résultats »). Une erreur : au moins 20 % et 10 s perdus sur l'interposte par rapport à l'allure du coureur sur sa course.`);
   for (const k of classes) {
     // the course: same codes in the same order, else the name
     const codes = k.controls.map(String);
@@ -403,17 +401,36 @@ export async function afterRace(E) {
     sections.push({ title: `${k.name}${id ? ` → ${ev.courses[id].name}` : " (pas de circuit correspondant dans l'événement)"} : ${runners.length} coureurs`,
       head: ["Interposte", "Postes", "Longueur", "Meilleur", "Médian", "min/km (meilleur)", "Erreurs", "Perte médiane", "Postes manquants"], align: "rlrrrrrrr", rows });
   }
-  if (!sections.length) { E.toast("Trop peu de coureurs avec leurs temps intermédiaires."); return; }
+  // the routes taken, from the GPS traces shared on the analysis published from this event (routes.js)
+  try {
+    const R = await import("./routes.js"), routes = await R.routesByLeg(E);
+    if (routes?.length) {
+      const { rows, meta } = R.routeRows(routes);
+      if (rows.length) {
+        sections.push({ title: "Itinéraires (traces GPS de l'analyse multi)", head: ["Circuit", "Interposte", "Traces", "Itinéraires", "Groupes (temps médian ; ★ le plus rapide)"], align: "llrrl", rows,
+          rowAction: { label: "Voir", fn: (i) => R.showLeg(E, routes, meta[i].course, meta[i].leg) } });
+        intro.push("Itinéraires : les traces partagées sur l'analyse multi, coupées aux passages des postes et groupées quand elles restent à quelques dizaines de mètres l'une de l'autre. « Voir » les dessine sur la carte.");
+      }
+    }
+  } catch (err) { console.error(err); }
+  E.status("Prêt", "ok");
+  if (!sections.length) {
+    E.toast(info.provKey || E.meta?.published ? "Pas encore de temps intermédiaires publiés ni de traces partagées pour cette course." : "Pas de résultats pour cet événement dans « Résultats » (il doit être lié à la course), ni d'analyse multi publiée.", 7000);
+    return;
+  }
   intro.push("À lire avec le terrain : un interposte où beaucoup se trompent peut signaler un poste ambigu, une erreur de carte, ou simplement un choix difficile voulu ; des postes manquants nombreux au même poste, un boîtier ou une balise à vérifier.");
   await showRep(E, { title: "Bilan après la course", intro: intro.join("\n"), sections }, "bilan");
 }
 
 async function showRep(E, rep, slug) {
-  const html = `${rep.intro ? rep.intro.split("\n").map((t) => `<p class="tr-hint">${esc(t)}</p>`).join("") : ""}${rep.sections.map((s) => `<h3>${esc(s.title)}</h3>
+  const html = `${rep.intro ? rep.intro.split("\n").map((t) => `<p class="tr-hint">${esc(t)}</p>`).join("") : ""}${rep.sections.map((s, si) => `<h3>${esc(s.title)}</h3>
     <div class="table-wrap"><table class="tr-table"><thead><tr>${s.head.map((h, i) => `<th class="${s.align[i] === "r" ? "r" : ""}">${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${s.rows.map((r) => `<tr>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`).join("")}`;
+    <tbody>${s.rows.map((r, ri) => `<tr>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}${s.rowAction ? `<td><button type="button" class="btn btn-sm" data-row="${si}:${ri}">${esc(s.rowAction.label)}</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`).join("")}`;
   await modal(E, { title: rep.title, wide: true, ok: null, cancel: "Fermer", body: `<div class="tr-report">${html}</div>`, extra: '<button type="button" class="btn" data-csv>CSV</button>',
-    onOpen: (f) => f.querySelector("[data-csv]").addEventListener("click", () => download(`${fileName(E.ev.title)} - ${slug}.csv`, csv(rep), "text/csv;charset=utf-8")) });
+    onOpen: (f, done) => {
+      f.querySelector("[data-csv]").addEventListener("click", () => download(`${fileName(E.ev.title)} - ${slug}.csv`, csv(rep), "text/csv;charset=utf-8"));
+      f.querySelectorAll("[data-row]").forEach((b) => b.addEventListener("click", () => { const [si, ri] = b.dataset.row.split(":").map(Number); done(null); rep.sections[si].rowAction.fn(ri); }));
+    } });
 }
 
 // ---- the courses to « Résultats » ---------------------------------------------------------------------------------------------
@@ -508,6 +525,8 @@ export async function publish(E) {
       courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: Math.round(r * 10) / 10, map: { w: canvas.width, h: canvas.height, type: "image/png", v: Date.now() }, geo, controls });
     }
     await call(`/${aid}`, { method: "PUT", body: { courses: courses.sort((a, b) => a.n - b.n) } });
+    // the event's card remembers its analysis: « Bilan après la course » reads its shared traces
+    try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
     E.status("Prêt", "ok");
     const link = isRace ? `#/orga-competitions?id=${aid}` : `#/orga-entrainements?id=${aid}`;
     await modal(E, { title: "Publié", ok: null, cancel: "Fermer", body: `<p>${pick.length} circuit(s) publiés${created.existing ? " dans l'analyse déjà ouverte pour cette course" : ""}.</p><p><a href="${link}" target="_blank" rel="noopener">Ouvrir l'analyse multi</a></p>` });

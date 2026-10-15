@@ -15,6 +15,7 @@ import { openMap, isMapFile, mimeOf, imageDpi, isPdf } from "../tracer/mapsrc.js
 import { geoFromWorld } from "../tracer/geo.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
 import { centreOnMap } from "../tracer/calage.js";
+import * as OFF from "../tracer/offline.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
@@ -40,11 +41,16 @@ export async function render(main, r) {
 async function list() {
   const box = $("#tr-list");
   let d;
-  try { d = await S.api(""); } catch (e) { box.innerHTML = html`<div class="empty">Liste indisponible (${e.code || e.message}).</div>`; return; }
+  try { d = await S.api(""); } catch (e) {
+    // no network: the events kept on this device
+    const kept = e.status ? [] : await OFF.keptEvents().catch(() => []);
+    if (!kept.length) { box.innerHTML = html`<div class="empty">Liste indisponible (${e.code || e.message}).</div>`; return; }
+    d = { events: kept.map((x) => ({ ...x, mine: false, offline: true })), club: current?.club };
+  }
   current = { club: d.club };
   box.innerHTML = d.events.length ? html`<table class="data compact"><thead><tr><th>Date</th><th>Événement</th><th>Type</th><th>Créé par</th><th>Modifié</th></tr></thead><tbody>
     ${d.events.map((e) => html`<tr><td class="num">${fmtDate(e.date, "short")}</td><td><a href="#/orga-tracer?id=${e.id}" data-open="${e.id}">${e.title}</a>${e.encrypted ? " 🔒" : ""}</td>
-      <td>${e.kind === "race" ? "Compétition" : "Entraînement"}</td><td>${e.mine ? "vous" : e.ownerName}</td><td class="num">${e.updated ? new Date(e.updated).toLocaleDateString("fr-FR") : ""}</td></tr>`)}</tbody></table>`
+      <td>${e.kind === "race" ? "Compétition" : "Entraînement"}${e.offline ? " · hors ligne" : ""}${e.pending ? " · modifications à envoyer" : ""}</td><td>${e.mine ? "vous" : e.ownerName}</td><td class="num">${e.updated ? new Date(e.updated).toLocaleDateString("fr-FR") : ""}</td></tr>`)}</tbody></table>`
     : html`<div class="empty">Aucun événement pour l'instant : « Nouvel événement » pour commencer, ou importez un fichier Purple Pen.</div>`;
   box.querySelectorAll("[data-open]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", `#/orga-tracer?id=${a.dataset.open}`); openEvent(a.dataset.open); }));
 }
@@ -226,6 +232,25 @@ async function importPpenEvent(main, files = []) {
 }
 
 const mapError = (e) => (e?.message && e.message !== "map" ? `La carte n'a pas pu être lue : ${e.message}` : "La carte n'a pas pu être lue.");
+/** The event as kept on this device, opened without the network (offline.js); false when there is none. */
+async function openLocal(id, onClose) {
+  const card = (await OFF.keptEvents().catch(() => [])).find((x) => x.id === id);
+  if (!card) return false;
+  let key = card.encrypted ? await S.keyFor(id) : null;
+  if (card.encrypted && !key) {
+    const v = await modal({ title: "Événement chiffré", ok: "Ouvrir", body: field("Phrase de passe de l'équipe", '<input name="p" type="password" autocomplete="current-password">'),
+      validate: async (o) => ((await S.unlock(id, card.encrypted, o.p)) ? null : "Phrase de passe incorrecte.") });
+    if (!v) return true;
+    key = await S.keyFor(id);
+  }
+  const rec = await OFF.localEvent(id, key);
+  if (!rec || rec.locked) return false;
+  const mapSrc = rec.map?.bytes ? await openMap(rec.map.bytes, rec.map.type || rec.meta.map?.type || "", rec.meta.map?.name || rec.ev.map.file, rec.ev.map.dpi).catch(() => null) : null;
+  if (mapSrc && rec.ev.map.kind === "bitmap" && rec.ev.map.dpi) mapSrc.dpi = rec.ev.map.dpi;
+  const { openEditor } = await import("../tracer/editor.js");
+  await openEditor({ meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose });
+  return true;
+}
 function alertBox(text) { modal({ title: "Tracer", body: `<p>${escA(text)}</p>`, cancel: null }); }
 
 // ---- opening ----------------------------------------------------------------------------------------------------------------
@@ -233,8 +258,21 @@ async function openEvent(id, { fen = false, align = false } = {}) {
   const loading = document.createElement("div");
   loading.className = "tr-loading"; loading.innerHTML = '<div class="spinner"></div><p>Ouverture du Tracer…</p>';
   document.body.appendChild(loading);
+  const onClose = () => {
+    if (fen) { window.close(); setTimeout(() => { location.hash = "#/orga-tracer"; }, 200); return; }
+    history.replaceState(null, "", "#/orga-tracer"); list();
+  };
+  let info;
+  try { info = await S.api(`/${id}`); }
+  catch (e) {
+    // no network: the copy kept on this device, if any (offline.js)
+    if (!e.status) { loading.remove(); if (await openLocal(id, onClose)) return; }
+    loading.remove();
+    alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : !e.status ? "Pas de réseau, et cet événement n'est pas gardé sur cet appareil (Fichier › Travailler hors ligne)." : `Ouverture impossible : ${e.code || e.message}`);
+    history.replaceState(null, "", "#/orga-tracer");
+    return;
+  }
   try {
-    const info = await S.api(`/${id}`);
     let key = null;
     if (info.event.encrypted) {
       key = await S.keyFor(id);
@@ -248,17 +286,28 @@ async function openEvent(id, { fen = false, align = false } = {}) {
       }
     }
     const [evR, mapR] = await Promise.all([S.loadJson(id, "event", key), S.loadMap(id, key)]);
-    const ev = evR?.data || M.newEvent({ title: info.event.title });
+    let ev = evR?.data || M.newEvent({ title: info.event.title }), dirty = false;
+    // changes made offline and not sent yet: sent now — or, if the team saved meanwhile, the user chooses
+    const pend = await OFF.pendingOf(id, key).catch(() => null);
+    if (pend) {
+      if (pend.baseVersion === (evR?.version || 0)) { ev = pend.ev; dirty = true; }
+      else {
+        loading.remove();
+        const v = await modal({ title: "Modifications faites hors ligne", ok: "Continuer", body: `<p>Des modifications faites sur cet appareil sans réseau (${new Date(pend.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}) n'ont pas été envoyées, et l'équipe a enregistré l'événement depuis.</p>
+          <label class="tr-check"><input type="radio" name="w" value="mine" checked> Garder mes modifications (la version de l'équipe est gardée dans les versions)</label>
+          <label class="tr-check"><input type="radio" name="w" value="team"> Prendre la version de l'équipe (mes modifications hors ligne sont abandonnées)</label>`, cancel: null });
+        document.body.appendChild(loading);
+        if (v?.w === "team") await OFF.clearPending(id);
+        else { await S.saveVersion(id, ev, key, "Version de l'équipe, remplacée par des modifications faites hors ligne", "").catch(() => {}); ev = pend.ev; dirty = true; }
+      }
+    }
     const mapType = info.event.map?.type || mapR?.type || "";
     const mapSrc = mapR ? await openMap(mapR.bytes, mapType, info.event.map?.name || ev.map.file, ev.map.dpi).catch(() => null) : null;
     if (mapSrc && ev.map.kind === "bitmap" && ev.map.dpi) { mapSrc.dpi = ev.map.dpi; }
     loading.remove();
     const { openEditor } = await import("../tracer/editor.js");
-    await openEditor({ meta: info.event, role: info.role, you: info.you, ev, version: evR?.version || 0, mapSrc, key, readOnly: info.role === "viewer", align,
-      lockHolder: info.lock, onClose: () => {
-        if (fen) { window.close(); setTimeout(() => { location.hash = "#/orga-tracer"; }, 200); return; }
-        history.replaceState(null, "", "#/orga-tracer"); list();
-      } });
+    await openEditor({ meta: info.event, role: info.role, you: info.you, ev, version: evR?.version || 0, mapSrc, key, readOnly: info.role === "viewer", align, dirty,
+      lockHolder: info.lock, onClose });
   } catch (e) {
     loading.remove();
     alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : `Ouverture impossible : ${e.code || e.message}`);

@@ -11,6 +11,7 @@ import { itemsFor, drawItems, tracePath, SCREEN, cmykToRgb } from "./draw.js";
 import * as S from "./store.js";
 import { loadSymbols } from "./symbols.js";
 import { loadFonts } from "./fonts.js";
+import * as OFF from "./offline.js";
 import { descPane } from "./panes.js";
 import * as A from "./actions.js";
 import * as D from "./dialogs.js";
@@ -55,7 +56,7 @@ export async function openEditor(ctx) {
   const fontsIn = await Promise.all([loadSymbols(), loadFonts(5000)]).then(([, ok]) => ok);
   const E = {
     meta: ctx.meta, role: ctx.role, you: ctx.you, ev: ctx.ev, version: ctx.version || 0, key: ctx.key || null, map: ctx.mapSrc,
-    readOnly: !!ctx.readOnly, lockHolder: ctx.lockHolder || null,
+    readOnly: !!ctx.readOnly, lockHolder: ctx.lockHolder || null, offline: !!ctx.offline,
     cd: M.cdAll(), variation: null, sel: null, tool: "select", undo: [], redo: [], dirty: false, saving: false, lastSaved: null,
     opts: { intensity: loadPref("intensity", 1), allControls: loadPref("allControls", false), others: [], printArea: false },
     layout: null, items: [], view: { k: 1, ox: 0, oy: 0 }, pending: null,
@@ -506,12 +507,21 @@ export async function openEditor(ctx) {
       E.version = r.version; E.dirty = JSON.stringify(E.ev) !== JSON.stringify(snapshot);
       E.lastSaved = new Date(); E.status(`Enregistré à ${E.lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`, "ok");
       backup(null);
+      if (E.offline) { E.offline = false; banner(); }
+      OFF.clearPending(E.meta.id).catch(() => {});
+      if (OFF.isKept(E.meta.id)) OFF.keepEvent(E).catch(() => {});       // the copy on this device follows
       if (Date.now() - lastVersionAt > 30 * 60e3) { lastVersionAt = Date.now(); S.saveVersion(E.meta.id, snapshot, E.key, "Version automatique", A.summaryOf(E.ev)).catch(() => {}); }
       return true;
     } catch (err) {
       if (err.status === 409) {
         E.status("Conflit", "bad");
         D.conflict(E, err.data);
+      } else if (!err.status && OFF.isKept(E.meta.id)) {
+        // no network: the change waits on this device and goes when the network returns
+        await OFF.savePending(E, snapshot, E.version).catch(() => {});
+        if (!E.offline) { E.offline = true; banner(); }
+        E.status("Hors ligne — enregistré sur cet appareil", "dirty");
+        saveTimer = setTimeout(() => save(false), 30000);
       } else {
         backup(snapshot);
         E.status("Non enregistré — gardé sur cet appareil, nouvel essai bientôt", "bad");
@@ -533,7 +543,7 @@ export async function openEditor(ctx) {
       if (!r.ok) { E.readOnly = true; E.lockHolder = r.holder; banner(); return; }
       E.readOnly = false; E.lockHolder = null; banner();
       clearInterval(lockTimer);
-      for (const f of E.closeHooks) { try { f(); } catch (err) { /* closing anyway */ } } lockTimer = setInterval(() => S.api(`/${E.meta.id}/lock`, { method: "POST", body: {} }).then((x) => {
+      lockTimer = setInterval(() => S.api(`/${E.meta.id}/lock`, { method: "POST", body: {} }).then((x) => {
         if (!x.ok) { E.readOnly = true; E.lockHolder = x.holder; banner(); refresh(); }
       }).catch(() => {}), 60e3);
     } catch (err) { /* offline: edit anyway, the version check guards the save */ }
@@ -541,7 +551,10 @@ export async function openEditor(ctx) {
   E.takeLock = async () => { await takeLock(true); refresh(); };
   function banner() {
     const b = $("#tr-banner");
-    if (E.readOnly && E.lockHolder) {
+    if (E.offline) {
+      b.hidden = false;
+      b.innerHTML = "<span>Hors ligne : vos modifications sont gardées sur cet appareil et partiront au serveur dès que le réseau reviendra.</span>";
+    } else if (E.readOnly && E.lockHolder) {
       b.hidden = false;
       b.innerHTML = `<span>${esc(E.lockHolder.name || "Un membre de l'équipe")} modifie l'événement en ce moment : lecture seule.</span> <button type="button" class="btn btn-sm" data-act="take-lock">Prendre la main</button>`;
     } else if (E.readOnly) { b.hidden = false; b.innerHTML = "<span>Lecture seule (rôle « lecteur »).</span>"; }
@@ -595,6 +608,11 @@ export async function openEditor(ctx) {
     else if (map) (await import("./extras.js")).changeMap(E, map);
     else E.toast("Déposez un fichier .ppen ou une carte (PDF ou image).");
   });
+  // back online: what waited on this device is sent
+  const onOnline = () => { if (E.dirty || E.offline) { E.dirty = true; save(true); } };
+  window.addEventListener("online", onOnline);
+  E.closeHooks.push(() => window.removeEventListener("online", onOnline));
+  if (ctx.dirty && !E.readOnly) { E.dirty = true; scheduleSave(); }              // changes made offline, to send now
   // a .ppen opened on another map than its own: the controls are aligned on this one first (calage.js)
   if (ctx.align && !E.readOnly) (await import("./calage.js")).calage(E, { fromPpen: true });
   return E;
@@ -617,7 +635,7 @@ function shell(E) {
         ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
         ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
         ["export-images", "Images des circuits (PNG, JPEG)…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
-        ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"]])}
+        ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"], "-", ["offline", "Travailler hors ligne…"]])}
       ${menu("Événement", [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
         ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],
         ["custom-text", "Textes des définitions…"], ["punch", "Poinçons…"], ["load", "Charge des concurrents…"], ["georef", "Géoréférencer la carte…"], "-", ["team", "Équipe et partage…"], ["encryption", "Chiffrement…"]])}
