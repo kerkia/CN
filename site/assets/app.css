@@ -1598,6 +1598,21 @@ body.tr-open { overflow: hidden; }
 .tr-readonly .tr-tools .tr-tool:not([data-tool="select"]) { opacity: .4; pointer-events: none; }
 .tr-report { max-height: 60vh; overflow: auto; }
 .tr-report h3 { font-size: 14px; margin: 14px 0 4px; }
+.tr-drop { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 84px; padding: 14px; border: 2px dashed var(--border-strong);
+  border-radius: 10px; background: var(--surface-2); color: var(--ink-2); text-align: center; cursor: pointer; font-size: 14px; }
+.tr-drop:hover, .tr-drop:focus-visible { border-color: var(--focus); color: var(--ink); outline: none; }
+.tr-drop.over { border-color: #a7179b; background: color-mix(in srgb, #a7179b 8%, var(--surface)); color: var(--ink); }
+.tr-drop-ico { font-size: 24px; line-height: 1; }
+.tr-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.tr-files li { padding: 5px 8px; border-radius: 6px; background: var(--surface-2); }
+.tr-files li.ok { color: var(--good); }
+.tr-files li.todo { color: var(--ink-2); }
+.tr-files li.warn { color: var(--warn-ink); background: var(--warn-bg); }
+.tr-files li.bad, .tr-hint.tr-bad { color: var(--bad); }
+.tr-calage { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); z-index: 45; width: min(460px, calc(100% - 16px)); background: var(--surface);
+  border: 2px solid var(--focus); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 10px 14px; font-size: 13.5px; }
+.tr-calage p { margin: 6px 0; }
+#main.tr-page-over { outline: 3px dashed #a7179b; outline-offset: 4px; border-radius: 8px; }
 .tr-table tr.tr-rule td { border-bottom: 2px solid var(--border-strong); }
 .tr-table tr.tr-sum td { font-weight: 600; border-top: 2px solid var(--border-strong); }
 .tr-punches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 14px; max-height: 46vh; overflow: auto; }

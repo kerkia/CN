@@ -1,7 +1,9 @@
 // The Tracer's base map, read in the browser from the file as it came: an image (its resolution read from the file when
-// it says it — PNG pHYs, JPEG JFIF or EXIF —, else asked) or a PDF page (shown with pdf.js, kept as it is for the course
+// it says it — PNG pHYs, JPEG JFIF or EXIF, TIFF —, else asked; TIFF read by tiff.js) or a PDF page (shown with pdf.js, kept as it is for the course
 // PDFs, where it is embedded unchanged). Map millimetres follow Purple Pen: the sheet's bottom-left corner is the
 // origin, y up; an image measures pixels × 25.4 / dpi, a PDF its page in points × 25.4 / 72.
+
+import { isTiff, decodeTiff, tiffDpi } from "./tiff.js";
 
 const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
@@ -20,6 +22,7 @@ export const mimeOf = (name, type) => type && type !== "application/octet-stream
 /** The dots per inch an image file declares, or 0. */
 export function imageDpi(bytes) {
   const a = new Uint8Array(bytes), v = new DataView(a.buffer, a.byteOffset, a.byteLength);
+  if (isTiff(a)) return tiffDpi(a);
   // PNG: the pHYs chunk (pixels per metre)
   if (a[0] === 0x89 && a[1] === 0x50) {
     for (let p = 8; p + 12 < a.length;) {
@@ -89,10 +92,32 @@ export async function openMap(bytes, type, name = "", dpiHint = 0) {
       },
     };
   }
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (isTiff(u8)) {
+    // browsers do not open TIFF: read here (tiff.js), with a GeoTIFF's georeferencing when it has one
+    const t = await decodeTiff(u8);
+    const dpi = t.dpi || dpiHint || 0, d = dpi || 254;
+    return withLevels({ kind: "bitmap", w: (t.width * 25.4) / d, h: (t.height * 25.4) / d, pxW: t.width, pxH: t.height, dpi, image: t.canvas, world: t.world });
+  }
   let blob = new Blob([bytes], { type: type || mimeOf(name) });
   let image;
   try { image = await createImageBitmap(blob); } catch (e) { throw new Error("map"); }
   const dpi = imageDpi(bytes) || dpiHint || 0;
   const d = dpi || 254;                                        // unknown: 10 px per mm until the user says
-  return { kind: "bitmap", w: (image.width * 25.4) / d, h: (image.height * 25.4) / d, pxW: image.width, pxH: image.height, dpi, image };
+  return withLevels({ kind: "bitmap", w: (image.width * 25.4) / d, h: (image.height * 25.4) / d, pxW: image.width, pxH: image.height, dpi, image });
+}
+/** Reduced copies of a large image (½, ¼, ⅛…), made in the background: drawn instead of the full image when zoomed out,
+ *  a large scan stays smooth to move. levels: [{ k (copy px per image px), image }], the finest first. */
+function withLevels(src) {
+  src.levels = [];
+  if (src.pxW * src.pxH < 6e6 || typeof createImageBitmap !== "function") return src;
+  (async () => {
+    let w = src.pxW, h = src.pxH, from = src.image;
+    while (w * h > 1.5e6) {
+      w = Math.round(w / 2); h = Math.round(h / 2);
+      try { from = await createImageBitmap(from, { resizeWidth: w, resizeHeight: h, resizeQuality: "high" }); } catch (e) { return; }
+      src.levels.push({ k: w / src.pxW, image: from });
+    }
+  })();
+  return src;
 }

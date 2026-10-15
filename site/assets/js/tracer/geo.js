@@ -50,10 +50,11 @@ function solve3(A, b) {
   }
   return [m[0][3] / m[0][0], m[1][3] / m[1][1], m[2][3] / m[2][2]];
 }
-/** From a world file (six numbers) and a .prj text (or null) on an image map: pixel corners -> ground -> geo. */
-export function geoFromWorld(ev, wf, prj, pxW, pxH) {
+/** From a world file (six numbers) and a .prj text (or null; or the system itself, as a GeoTIFF gives it) on an image map:
+ *  pixel corners -> ground -> geo. */
+export function geoFromWorld(ev, wf, prj, pxW, pxH, crsGiven = null) {
   const [A, D, B, E, C, F] = wf;
-  const crs = (prj && crsFromWkt(prj)) || guessCrs(C, F, 2);
+  const crs = crsGiven || (prj && crsFromWkt(prj)) || guessCrs(C, F, 2);
   if (!crs) return null;
   const inv = projector(crs), pts = [];
   for (const [px, py] of [[0, 0], [pxW, 0], [pxW, pxH], [0, pxH]]) {

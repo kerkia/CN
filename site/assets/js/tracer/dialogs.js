@@ -51,6 +51,19 @@ export function modal(E, { title, body, ok = "OK", cancel = "Annuler", wide = fa
     (form.querySelector("input:not([type=hidden]), select, textarea") || form.querySelector("button[type=submit]"))?.focus();
   });
 }
+/** A drop zone: files dropped on it, anywhere on its dialog, or picked by a click on it go to onFiles (a list of File). */
+export const dropHtml = (id, text, accept = "", multiple = true) => `<div class="tr-drop" id="${id}" tabindex="0" role="button" aria-label="${esc(text)}">
+  <input type="file" ${multiple ? "multiple" : ""} ${accept ? `accept="${accept}"` : ""} hidden><span class="tr-drop-ico" aria-hidden="true">⇩</span><span>${esc(text)}</span></div>`;
+export function dropZone(zone, onFiles) {
+  const input = zone.querySelector("input[type=file]"), host = zone.closest(".tr-modal") || zone;
+  const take = (files) => { if (files?.length) onFiles([...files]); };
+  zone.addEventListener("click", (e) => { if (e.target !== input) input.click(); });
+  zone.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => { take(input.files); input.value = ""; });
+  host.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); zone.classList.add("over"); } });
+  host.addEventListener("dragleave", (e) => { if (e.target === host || e.target === zone) zone.classList.remove("over"); });
+  host.addEventListener("drop", (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); zone.classList.remove("over"); take(e.dataTransfer.files); });
+}
 export const confirm = (E, text, okLabel, then) => modal(E, { title: "Confirmer", body: `<p>${esc(text)}</p>`, ok: okLabel }).then((v) => { if (v) then(); });
 const field = (label, input, hint = "") => `<label class="tr-field"><span>${esc(label)}</span>${input}${hint ? `<small>${esc(hint)}</small>` : ""}</label>`;
 const sel = (name, opts, cur) => `<select name="${name}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
@@ -112,6 +125,7 @@ export async function action(E, act, btn, at = {}) {
     case "renumber": if (!ro()) confirm(E, "Renuméroter tous les postes à partir du premier code de l'événement ?", "Renuméroter", () => E.change((x) => M.autoRenumber(x), "Renumérotation")); break;
     case "remove-unused": if (!ro()) { const n = M.unusedControls(ev).length; if (!n) E.toast("Aucun poste inutilisé."); else confirm(E, `Supprimer ${n} poste(s) qui ne servent dans aucun circuit ?`, "Supprimer", () => E.change((x) => { M.removeUnused(x); }, "Postes inutilisés supprimés")); } break;
     case "move-all": if (!ro()) moveAll(E); break;
+    case "calage": if (!ro()) (await import("./calage.js")).calage(E, { fromPpen: false }); break;
     case "custom-text": if (!ro()) customText(E); break;
     case "punch": if (!ro()) (await lazy.more()).punchPatterns(E); break;
     case "georef": (await lazy.more()).georef(E); break;
@@ -509,14 +523,21 @@ function exportPpen(E) {
   download(`${fileName(E.ev.title)}.ppen`, writePpen(E.ev), "application/xml");
   E.toast(`Fichier .ppen enregistré : à mettre dans le même dossier que la carte « ${E.ev.map.file || "(carte)"} » pour l'ouvrir dans Purple Pen.`, 7000);
 }
-async function importPpen(E) {
-  const v = await modal(E, { title: "Importer un fichier Purple Pen", body: `${field("Fichier .ppen", '<input type="file" name="f" accept=".ppen,.xml">')}
-    <label class="tr-check"><input type="radio" name="mode" value="replace" checked> Remplacer les circuits de cet événement</label>
-    <p class="tr-hint">La carte reste celle de l'événement ; les positions du fichier doivent correspondre à la même carte (même PDF ou même image, même résolution).</p>`,
-  validate: (o) => (!o.f?.length ? "Choisissez un fichier." : null) });
+export async function importPpen(E, preset = null) {
+  let file = preset;
+  const v = await modal(E, { title: "Importer un fichier Purple Pen", body: `${dropHtml("tr-ip-drop", "Déposez ici le fichier .ppen, ou cliquez pour le choisir", ".ppen,.xml", false)}
+    <p class="tr-hint" id="tr-ip-file">${file ? `✓ « ${esc(file.name)} »` : "Aucun fichier choisi."}</p>
+    <p>Les circuits de cet événement sont remplacés par ceux du fichier ; la carte reste celle de l'événement.</p>
+    <label class="tr-check"><input type="checkbox" name="calage"> Ce .ppen a été fait sur un autre fichier de carte (OCAD, autre PDF ou image) : caler ensuite les postes sur cette carte</label>`,
+  onOpen: (f) => dropZone(f.querySelector("#tr-ip-drop"), (list) => {
+    const p = list.find((x) => /\.(ppen|xml)$/i.test(x.name));
+    f.querySelector("#tr-ip-file").textContent = p ? `✓ « ${p.name} »` : `« ${list[0].name} » n'est pas un fichier .ppen.`;
+    if (p) file = p;
+  }),
+  validate: () => (!file ? "Déposez ou choisissez le fichier .ppen." : null), ok: "Importer" });
   if (!v) return;
   try {
-    const imported = readPpen(await v.f[0].text());
+    const imported = readPpen(await file.text());
     E.change((x) => {
       const keep = { map: x.map, title: x.title };
       for (const k of Object.keys(x)) delete x[k];
@@ -527,6 +548,7 @@ async function importPpen(E) {
     }, "Import .ppen");
     E.setCourse(M.courseIds(E.ev)[0] || 0); E.fitCourse();
     E.toast(`${Object.keys(E.ev.courses).length} circuit(s), ${Object.keys(E.ev.controls).length} poste(s) importés.`);
+    if (v.calage) (await import("./calage.js")).calage(E, { fromPpen: true });
   } catch (err) { E.toast("Ce fichier n'est pas un événement Purple Pen lisible."); }
 }
 

@@ -190,7 +190,10 @@ export async function openEditor(ctx) {
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
       const s = v.k / mapPxPerMm();
       g.globalAlpha = 1;
-      g.drawImage(E.map.image, v.ox, v.oy - E.ev.map.h * v.k, E.map.pxW * s, E.map.pxH * s);
+      // zoomed out, a reduced copy of a large image (mapsrc.withLevels): the coarsest still as fine as the screen
+      let img = E.map.image;
+      for (const l of E.map.levels || []) if (l.k >= s * dpr()) img = l.image;
+      g.drawImage(img, v.ox, v.oy - E.ev.map.h * v.k, E.map.pxW * s, E.map.pxH * s);
       if (sharp && sharp.k === v.k) {
         const [x, y] = E.toScreen(sharp.box[0], sharp.box[3]);
         g.drawImage(sharp.canvas, x, y, sharp.canvas.width / dpr(), sharp.canvas.height / dpr());
@@ -374,7 +377,7 @@ export async function openEditor(ctx) {
     else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); E.redoStep(); }
     else if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); save(true); }
     else if (e.key === "Delete" || e.key === "Backspace") { if (E.sel) { e.preventDefault(); A.deleteSelection(E); } }
-    else if (e.key === "Escape") { if (E.pickOnce) { E.pickOnce = null; E.help(); } else if (E.tool !== "select") E.setTool("select"); else E.select(null); }
+    else if (e.key === "Escape") { if (E.pickOnce) { E.pickOnce = null; const c = E.pickCancel; E.pickCancel = null; c?.(); E.help(); } else if (E.tool !== "select") E.setTool("select"); else E.select(null); }
     else if (e.key.startsWith("Arrow")) {
       e.preventDefault();
       const step = 60, dx = e.key === "ArrowLeft" ? step : e.key === "ArrowRight" ? -step : 0, dy = e.key === "ArrowUp" ? step : e.key === "ArrowDown" ? -step : 0;
@@ -557,6 +560,20 @@ export async function openEditor(ctx) {
   if (!E.readOnly) await takeLock(false);
   refresh();
   E.status(E.readOnly ? "Lecture seule" : "Prêt", "ok");
+  // files dropped on the editor: a .ppen is imported, a map replaces the event's
+  root.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !root.querySelector(".tr-modal")) e.preventDefault(); });
+  root.addEventListener("drop", async (e) => {
+    const files = [...(e.dataTransfer?.files || [])];
+    if (!files.length || root.querySelector(".tr-modal")) return;
+    e.preventDefault();
+    if (E.readOnly) { E.toast("Lecture seule."); return; }
+    const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find((f) => /\.(pdf|png|jpe?g|gif|bmp|webp|tiff?)$/i.test(f.name) || /^image\//.test(f.type));
+    if (ppen) D.importPpen(E, ppen);
+    else if (map) (await import("./extras.js")).changeMap(E, map);
+    else E.toast("Déposez un fichier .ppen ou une carte (PDF ou image).");
+  });
+  // a .ppen opened on another map than its own: the controls are aligned on this one first (calage.js)
+  if (ctx.align && !E.readOnly) (await import("./calage.js")).calage(E, { fromPpen: true });
   return E;
 }
 const toolHelp = (t) => (TOOLS.find(([k]) => k === t.split(":")[0])?.[2]) || (t.startsWith("special:") ? "Cliquer (ou glisser) sur la carte pour placer l'objet ; double-cliquer pour finir une ligne ou une zone" : "");
@@ -579,7 +596,7 @@ function shell(E) {
         ["export-images", "Images des circuits (PNG, JPEG)…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
         ["publish", "Publier vers l'analyse multi…"], ["map-change", "Changer de carte…"]])}
       ${menu("Événement", [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
-        ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["move-all", "Déplacer tous les postes…"],
+        ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],
         ["custom-text", "Textes des définitions…"], ["punch", "Poinçons…"], ["load", "Charge des concurrents…"], ["georef", "Géoréférencer la carte…"], "-", ["team", "Équipe et partage…"], ["encryption", "Chiffrement…"]])}
       ${menu("Circuit", [["course-new", "Nouveau circuit…"], ["course-props", "Propriétés du circuit…"], ["course-dup", "Dupliquer le circuit…"], ["course-delete", "Supprimer le circuit"],
         ["course-order", "Ordre des circuits…"], "-", ["var-fork", "Ajouter une fourche…"], ["var-loop", "Ajouter des boucles…"], ["var-delete", "Supprimer la variante"], ["relay", "Variantes de relais…"], "-",
