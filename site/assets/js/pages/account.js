@@ -144,9 +144,12 @@ async function reset(main, query) {
 
 // ---- privacy policy -----------------------------------------------------------------------------
 async function privacy(main) {
+  // the GDPR's information (articles 13 and 14) and the legal notices (LCEN, article 6): reviewed 2026-10-15 — keep the date
+  // below up to date when what the site keeps changes
   main.innerHTML = html`<section class="card account-card" style="max-width:760px"><div class="card-head"><h1 style="font-size:20px;margin:0">${t("pv.title")}</h1></div>
     <div class="card-body prose">
-      <p>${SITE} est un site indépendant, sans lien avec la FFCO. Il est exploité à titre personnel et non commercial. Contact : <b>ocn@kerkia.com</b>.</p>
+      <p>${SITE} est un site indépendant, sans lien avec la FFCO, publié à titre personnel et non commercial par <b>Yann Le Helloco</b>,
+        responsable du traitement des données décrites ici. Contact : <b>ocn@kerkia.com</b>.</p>
       <h2 style="font-size:16px">Utilisation équitable</h2>
       <p>${SITE} fonctionne sur des ressources gratuites et limitées, partagées par tous ses utilisateurs. Il est fait pour être
         consulté personnellement par les licenciés, dans un navigateur. Sans notre accord préalable, sont donc exclus : la collecte
@@ -155,9 +158,18 @@ async function privacy(main) {
         respecte pas ces règles peut être suspendu.</p>
       <p>Vous avez un besoin particulier — une étude, les besoins d'un club ou d'une ligue, des données pour un autre outil ?
         Écrivez-nous (« Nous écrire », ou ocn@kerkia.com) : nous l'étudierons volontiers.</p>
-      <h2 style="font-size:16px">Données des résultats</h2>
-      <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr (nom, club, catégorie, numéro de licence, temps, place). Pour faire retirer ou rectifier une donnée vous concernant, écrivez-nous : nous en examinerons la demande, sachant que la source reste le site de la FFCO.</p>
-      <p>La page « Résultats » montre aussi, pour les courses des 60 derniers jours, les résultats que les organisateurs publient eux-mêmes (sur leur site, liveresultat, WinSplits, Helga…) ou déposent sur ${SITE}.</p>
+      <h2 style="font-size:16px">Données des résultats, y compris des licenciés sans compte</h2>
+      <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr :
+        nom, club, catégorie, numéro de licence, temps et place de chaque licencié classé, qu'il ait ou non un compte sur ${SITE},
+        jeunes licenciés compris. ${SITE} en tire des CN recalculés, des classements, des comparaisons et des statistiques (clubs,
+        territoires, pyramide des âges, coureurs croisés en course). La page « Résultats » montre aussi, pour les courses des 60
+        derniers jours, les résultats que les organisateurs publient eux-mêmes (sur leur site, liveresultat, WinSplits, Helga…) ou
+        déposent sur ${SITE}, rapprochés des licences par le nom et le club.</p>
+      <p>Base légale : notre intérêt légitime à informer les licenciés et à analyser le classement national, à partir de résultats
+        déjà publiés. Sur ${SITE}, ces données ne sont visibles que des comptes connectés, réservés aux licenciés. Vous pouvez vous
+        opposer à leur affichage, ou en demander la rectification, en écrivant à ocn@kerkia.com : nous cessons de les afficher sauf
+        motif légitime impérieux, sachant que la source reste le site de la FFCO. Un parent peut exercer ces droits pour un enfant
+        mineur.</p>
       <h2 style="font-size:16px">Dépôts de résultats</h2>
       <p>Quand vous déposez un fichier de résultats, nous enregistrons votre compte, la course, le nom et la taille du fichier et la date du dépôt. Le fichier est conservé 60 jours dans le stockage du site (Cloudflare), puis effacé ; les résultats qu'il contient restent affichés. L'administrateur voit qui a déposé quoi et peut retirer un dépôt.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
@@ -172,19 +184,54 @@ async function privacy(main) {
         navigateur sur cet appareil : il n'est pas envoyé, et personne d'autre ne les voit.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
-        <li><b>Ce que nous conservons :</b> adresse e-mail, prénom, nom et numéro de licence que vous avez saisis, mot de passe (sous forme chiffrée irréversible), date d'inscription et de dernière connexion, votre réglage de notification et la liste des courses déjà annoncées par e-mail, et, pour le simulateur de relais, les coureurs que vous ajoutez (nom, catégorie, CN estimé) et ceux que vous marquez indisponibles, que vous seul voyez.</li>
-        <li><b>Pourquoi :</b> réserver l'accès aux licenciés de la FFCO, confirmer votre adresse, réinitialiser votre mot de passe, détecter plusieurs comptes pour une même licence et, si vous le demandez, vous prévenir de la mise en ligne de vos courses.</li>
-        <li><b>Combien de temps :</b> jusqu'à la suppression du compte, que vous pouvez faire à tout moment dans Réglages.</li>
-        <li><b>Qui y a accès :</b> l'administrateur du site, et les prestataires techniques qui hébergent le site et envoient les e-mails (Cloudflare et Resend). Aucune donnée n'est vendue ni utilisée à des fins publicitaires.</li>
+        <li><b>Ce que nous conservons :</b> adresse e-mail, prénom, nom et numéro de licence que vous avez saisis (vérifiés à l'inscription
+          d'après les résultats publiés par la FFCO), mot de passe (sous forme chiffrée irréversible), date d'inscription et de
+          dernière connexion, vos réglages d'alertes (régions choisies) et la liste des courses déjà annoncées par e-mail, et, pour le
+          simulateur de relais, les coureurs que vous ajoutez (nom, catégorie, CN estimé) et ceux que vous marquez indisponibles, que vous
+          seul voyez. N'y ajoutez que des personnes d'accord.</li>
+        <li><b>Pourquoi, et sur quelle base :</b> fournir le service que vous demandez en créant un compte — réserver l'accès aux licenciés de
+          la FFCO, confirmer votre adresse, réinitialiser votre mot de passe ; notre intérêt légitime à détecter plusieurs comptes pour
+          une même licence ; votre choix pour les alertes par e-mail, que vous pouvez couper à tout moment dans Réglages.</li>
+        <li><b>Combien de temps :</b> jusqu'à la suppression du compte, que vous pouvez faire à tout moment dans Réglages. Un e-mail en
+          attente d'envoi est effacé dès qu'il part.</li>
+        <li><b>Qui y a accès :</b> l'administrateur du site, et les prestataires techniques indiqués plus bas. Aucune donnée n'est vendue
+          ni utilisée à des fins publicitaires.</li>
       </ul>
+      <p>Un message envoyé par « Nous écrire » nous parvient par e-mail, avec votre adresse, votre nom et le navigateur utilisé ; il est
+        gardé dans notre messagerie le temps de vous répondre et de suivre la demande.</p>
       <h2 style="font-size:16px">Statistiques d'utilisation</h2>
-      <p>Pour savoir comment le site est utilisé et l'améliorer, il compte, pour chaque compte, le nombre de pages vues par jour et par
-        rubrique (Classement, Coureur, Réseau…) et le nombre de visites. Rien d'autre n'est enregistré (ni ce que vous cherchez, ni l'adresse IP).
-        Ces chiffres ne sont visibles que de l'administrateur, conservés 13 mois, et supprimés avec le compte.</p>
-      <h2 style="font-size:16px">Cookies</h2>
-      <p>Un seul cookie, strictement nécessaire, maintient votre connexion. Le navigateur garde aussi vos préférences d'affichage (thème, discipline choisie). Aucun traceur publicitaire ni outil de mesure d'audience tiers.</p>
+      <p>Pour savoir comment le site est utilisé et l'améliorer (notre intérêt légitime), il compte, pour chaque compte, le nombre de
+        pages vues par jour et par rubrique (Classement, Coureur, Réseau…) et le nombre de visites. Rien d'autre n'est enregistré (ni ce
+        que vous cherchez, ni l'adresse IP). Ces chiffres ne sont visibles que de l'administrateur, conservés 13 mois, et supprimés avec le
+        compte.</p>
+      <h2 style="font-size:16px">Sécurité</h2>
+      <p>Pour limiter les tentatives répétées (connexion, inscription, mot de passe oublié), le site compte les essais par adresse IP et
+        par adresse e-mail ; ces compteurs sont effacés au bout d'un jour environ. Comme tout site, l'hébergeur peut aussi traiter
+        l'adresse IP pour acheminer les pages et protéger le site contre les attaques.</p>
+      <h2 style="font-size:16px">Prestataires et transferts hors de l'Union européenne</h2>
+      <ul>
+        <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son stockage de fichiers. Les transferts vers les
+          États-Unis reposent sur le cadre de protection des données UE-États-Unis (Data Privacy Framework), auquel Cloudflare est
+          certifié.</li>
+        <li><b>Resend</b> (Plus Five Five, Inc., États-Unis) envoie les e-mails du site : votre adresse et le contenu du message.
+          Transferts encadrés par les clauses contractuelles types de la Commission européenne.</li>
+        <li><b>GitHub, Inc.</b> (États-Unis) exécute les mises à jour automatiques du site : les résultats et les fichiers déposés y sont
+          traités, jamais les comptes. Transferts encadrés par les clauses contractuelles types.</li>
+      </ul>
+      <h2 style="font-size:16px">Cookies et stockage du navigateur</h2>
+      <p>Un seul cookie, strictement nécessaire, maintient votre connexion (30 jours au plus). Le navigateur garde aussi vos préférences
+        d'affichage (thème, discipline, méthode choisies, saisies du calculateur VMA ou du simulateur de relais) : elles restent sur votre
+        appareil. Aucun traceur publicitaire ni outil de mesure d'audience tiers ; aucun consentement n'est donc demandé.</p>
       <h2 style="font-size:16px">Vos droits</h2>
-      <p>Vous pouvez supprimer votre compte vous-même (Réglages), ou demander l'accès, la rectification ou l'effacement de vos données en écrivant à ocn@kerkia.com. Vous pouvez aussi saisir la CNIL.</p>
+      <p>Vous pouvez supprimer votre compte vous-même (Réglages). Vous pouvez aussi demander l'accès à vos données, leur rectification,
+        leur effacement, la limitation de leur traitement ou leur portabilité, et vous opposer à un traitement fondé sur notre intérêt
+        légitime, en écrivant à ocn@kerkia.com : nous répondons dans un délai d'un mois. Si vous estimez que vos droits ne sont pas
+        respectés, vous pouvez adresser une réclamation à la CNIL
+        (<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>).</p>
+      <h2 style="font-size:16px">Mentions légales</h2>
+      <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication non professionnelle — ocn@kerkia.com.<br>
+        <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis — +1 888 993 5273.</p>
+      <p class="muted">Dernière mise à jour : 15 octobre 2026.</p>
       <p><a href="#/">← ${t("ac.toLogin")}</a></p>
     </div></section>`.toString();
   return { title: t("pv.title") };

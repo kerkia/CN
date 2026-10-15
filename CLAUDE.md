@@ -675,6 +675,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   pages too: re-reading them needs a fresh `FFCO_SESSIONID` (the `sessionid` cookie of a logged-in member) in
   the environment; normal runs never need it. The workflow's `backfill` mode (manual) fetches every season's
   competitions not stored yet, with the repo secret `FFCO_SESSIONID` (the owner sets it, then deletes it).
+- **Privacy and legal notices** (`#/compte/confidentialite`, `pages/account.js` `privacy`, public; reviewed 2026-10-15): the
+  GDPR's information (controller Yann Le Helloco, legal bases, licensees without an account and their right to object,
+  processors Cloudflare / Resend / GitHub and their transfer safeguards, the IP-keyed rate limits, every right, the CNIL)
+  and the legal notices (publisher, host). When the site starts keeping new data, say so there and update its date.
 - Accounts: e-mail + password with confirmation; registration checks name + licence against the licensee index
   (`site/auth`, never served); several accounts on one licence are allowed but flagged to the admin.
   Rights per account, set on the admin page (D1 `users.analyst`, `users.alerts_allowed`; they apply to admins too,
