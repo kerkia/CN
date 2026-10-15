@@ -101,6 +101,9 @@ export async function render(main, { arg, query }) {
     </section>
     </div>
     <div data-panel="progression">
+    ${store.get().method === "official" ? html`<div class="notice warn" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="flex:1 1 320px">${t("rn.pg.offWarn")}</span>
+      <button type="button" class="btn btn-sm" id="pg-to-top">${t("rn.pg.toTop")}</button></div>` : ""}
     <div style="margin-bottom:16px">${chartCard({
       id: "evo", title: t("rn.evolution"), hint: t("rn.evolution.hint"), tall: true,
       tools: html`<label class="checkline"><input type="checkbox" id="show-scores" ${raw(showScores ? "checked" : "")}>${t("rn.showScores")}</label>`,
@@ -127,6 +130,12 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="reseau"><div id="rn-net"></div></div>`;
   ["evo", "path", "pct", "curve", "rmap"].forEach((id) => bindChartCard(main, id));
+  // the official CN over several seasons (owner, 2026-10-15): the warning's button picks the Top as the header's switch does
+  $("#pg-to-top")?.addEventListener("click", () => {
+    const sel = document.querySelector("#method-pick");                   // analysts: a list of every method
+    if (sel) { sel.value = "top6w3"; sel.dispatchEvent(new Event("change")); return; }
+    document.querySelector('[data-method-pick="top6w3"]')?.click();
+  });
 
   const cmpBtn = $("#cmp-btn");
   const drawCmp = () => {
