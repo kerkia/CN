@@ -625,7 +625,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
   fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
 - **Every page for every account** (owner, 2026-10-15): « Entrainement » (Jeux, VMA, the analyses), « En direct », the
-  analyses under « Courses » and « Organisation » were for the administrators (or the `users.live` right) until then;
+  analyses under « Courses » and « Organisation » (« Tracer » included, confirmed by the owner the same evening: what an
+  event shows still depends on its team, not on the account's rights) were for the administrators (or the `users.live` right) until then;
   the gates are gone from `app.js` (the right stays in D1, unused). The admin page alone stays the administrators'.
 - **Organisation** (menu group `orga`, the control flag's orange; owner, 2026-10-15): the organisers' pages —
   « Compétitions » (`#/orga-competitions`, route `orgRace`: the competitions of the last 60 days organised by one's

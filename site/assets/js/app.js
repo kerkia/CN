@@ -31,7 +31,7 @@ const PAGES = {
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
-  analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's (administrators only for now)
+  analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's
   analysisPerso: () => import("./pages/analysis.js"),   // « Analyse solo » (Entrainement): the same page, no race
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
@@ -42,7 +42,7 @@ const PAGES = {
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
-  games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps (administrators only for now)
+  games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
 };
 
@@ -296,8 +296,8 @@ function renderHeader(r) {
     ["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]],
     // « Organisation » (owner, 2026-10-15): the organisers' pages — a competition's multi analysis, a training event's,
-    // the results of their competitions; « Direct » (live results from the timing software's export) for the administrators
-    // only for now (owner, 2026-10-15), greyed for the others; « Tracer » (2026-10-15): course setting, Purple Pen's way
+    // the results of their competitions, « Direct » (live results from the timing software's export) and « Tracer » (course
+    // setting, Purple Pen's way), every one for every account (owner, 2026-10-15)
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
