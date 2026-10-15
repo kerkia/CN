@@ -110,7 +110,7 @@ const FR = {
   "nav.analysisRace.long": "Analyse multi (Courses)", "nav.analysisClub.long": "Analyse multi (Entrainement)",
   "nav.g.orga": "Organisation", "nav.orgRace": "Compétitions", "nav.orgTraining": "Entraînements", "nav.orgResults": "Résultats",
   "nav.orgDirect": "Direct", "nav.orgTracer": "Tracer", "nav.soon": "Bientôt", "nav.analysisPerso": "Analyse solo", "nav.analysisClub": "Analyse multi",
-  "nav.g.cn": "Classement national", "nav.g.races": "Courses", "nav.coursesCn": "Courses classées", "nav.docs": "Documentation",
+  "nav.g.cn": "Classement", "nav.g.races": "Courses", "nav.coursesCn": "Courses classées", "nav.docs": "Documentation",
   "auth.menu": "Mon compte",
   "cl.myClub": "Mon club",
   "rk.noProgress": "Aucune progression mesurable pour cette sélection.",

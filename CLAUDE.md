@@ -392,7 +392,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
-- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15): the bar shows the groups as tabs — « Classement national » (Coureur, Classement, Courses
+- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15): the bar shows the groups as tabs — « Classement » (« Classement national » until 2026-10-15; Coureur, Classement, Courses
   classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
   Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
   (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages. The runner search sits at the right
@@ -418,7 +418,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the moon button (`app.js` `THEMES`, `themeMenu`: a swatch of each theme's ground and one colour of its own; `localStorage
   cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
-  `--contour`): « Classement national » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
+  `--contour`): « Classement » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button
   (`.btn-primary`) in control-flag orange, contour lines behind the header's second row (`app.drawContours`, 2026-10-13: a
   relief of a few hills drawn on a canvas by marching squares in the map's brown, an index contour every fifth line, as on
