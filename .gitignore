@@ -11,6 +11,7 @@ cache/
 # generated site data and the login index
 site/data/
 site/auth/
+site/assets/build.txt
 
 # reports, exports, local data files
 exports/

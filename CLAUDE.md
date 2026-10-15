@@ -42,6 +42,10 @@ commit results, personal data, secrets or credentials.
 - `site/_routes.json` keeps the public files (`/`, `/assets/*`, `robots.txt`, `meta.json`…) out of the Functions:
   served free and unmetered, without the login gate (which only passed them through); the data and the API stay
   behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN, O'Cap and `ocap-live`.
+- **Open tabs follow a deploy** (2026-10-15): the pages' modules stay in memory for the whole visit, so a tab left
+  open kept running old code after a fix. `update.deploy` writes `site/assets/build.txt` (`write_build_stamp`: a hash
+  of site/ without data/ and auth/, unchanged by data-only deploys; git-ignored); `app.codeChanged` reads it at a change
+  of page, at most once a minute, and reloads the page when it differs. No file on the local server: nothing happens.
 - A push only triggers a run when it touches `site/**` or `functions/**`. A Python-only change is picked up by
   the next hourly run (it checks out `main`), or trigger it with `workflow_dispatch`.
 - `gh` is not installed on the PC; read run status with the public API, e.g.
@@ -517,6 +521,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   time, else the finish's arrival, else the trace's end — never the last control found (it cut Nadejda's race at
   56:31 of 1:01:39 when the finish, over the lake, was not read). The trace still to run is hidden by default
   (« Trace à venir : masquée / estompée »); the trace colour shows only for the plain trace, under that choice.
+  **A trace cut short** (owner, 2026-10-15: « the trace stops before control 5 », three times — the file the page had
+  ended at 26:16 of the 1:01:39 race; reproduced exactly with the FIT cut there): nothing can show what the file lacks,
+  so the page says it — the one line of the playback gives the trace's own length beside its name, and the calibration
+  and the playback say « le fichier de trace semble incomplet » when the trace ends a minute or more before the published
+  time, or over 200 m from the finish placed (`traceShortNote`). A cut trace can also be laid wrongly (24° on the cut
+  Fougères FIT: the RANSAC fits all the rings to the first half of the race).
   **The finish's arrival** (owner, 2026-10-14: the race stopped at 25:01 near control 8, far from the finish): with only
   the first controls found, a finish read (or placed) where the course runs past it gave a mid-race « arrival ».
   `track.finishArrival` (used by `visitOrder` and `coursePasses`) takes a pass by the finish as the arrival only if the

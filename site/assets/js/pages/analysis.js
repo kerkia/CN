@@ -451,7 +451,7 @@ export async function render(main, { query = {}, route } = {}) {
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
       <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
-      <span class="muted">${[files.map?.name, files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
+      <span class="muted">${[files.map?.name, files.trace?.name && track ? `${files.trace.name} (${clock(track.dur)})` : files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
     // the race's and the files' choices open above the display, which stays; changing one of them starts a new
     // calibration (its inputs changed) — the display itself has nothing to recalibrate (owner, 2026-10-14)
     $("#an-brief-edit").addEventListener("click", (e) => {
@@ -805,6 +805,8 @@ export async function render(main, { query = {}, route } = {}) {
     else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
     if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
     else if (r && !perso) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    const short = traceShortNote();
+    if (short) summary.push(short);
     const whose = whoseTrace();
     const whoseNote = !whose ? "" : html`<div class="notice" style="margin-bottom:6px">${t("an.st.whose", { t: hhmm(whose.t0), r: runner()?.name || "", rs: whose.dns ? t("an.st.whose.dns") : whose.mine != null ? t("an.st.whose.start", { s: hhmm(whose.mine) }) : t("an.st.whose.noStart") })}
       ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}">${t("an.switch")}</button>` : ""}</div>`;
@@ -882,7 +884,9 @@ export async function render(main, { query = {}, route } = {}) {
     window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     const known = sequenceKnown();
+    const short = traceShortNote();
     $("#an-side").innerHTML = html`
+      ${short ? html`<div class="notice" style="margin-bottom:6px">${short}</div>` : ""}
       <div class="an-transport">
         <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
         <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
@@ -943,6 +947,17 @@ export async function render(main, { query = {}, route } = {}) {
     sizeStrip();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
+  }
+  /** A trace that ends before the race does — before the published time, or far from the finish placed on the map —
+   *  was cut short (a file synced before the end, a watch stopped early): said plainly, nothing can show the rest. */
+  function traceShortNote() {
+    if (!track || !fit || offset == null) return "";
+    const end = track.dur - offset, tot = totalOfficial();
+    if (tot && end < tot - 60) return t("an.st.short", { t: clock(Math.max(0, end)), T: clock(tot) });
+    const fin = targets.find((g) => g.kind === "finish" && g.pos);
+    if (!fin) return "";
+    const [fx, fy] = toM(fit, fin.pos[0], fin.pos[1]), d = Math.hypot(track.x[track.n - 1] - fx, track.y[track.n - 1] - fy);
+    return d > 200 ? t("an.st.shortFar", { t: clock(Math.max(0, end)), d: fmt(Math.round(d / 10) * 10) }) : "";
   }
   /** The view on the race: the whole trace, as large as the box allows (restored: lost in c00a655). */
   function fitTrace() {

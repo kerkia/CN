@@ -502,12 +502,31 @@ function renderFooter() {
   </div>`;
 }
 
+// ---- a new version of the site ----------------------------------------------
+// The pages' modules stay in memory for the whole visit: a tab left open keeps the old code after a deploy (owner,
+// 2026-10-15: a fixed analysis still showed the old result). The deploy publishes a fingerprint of the code
+// (assets/build.txt, update.write_build_stamp); at a change of page, at most once a minute, a different one reloads
+// the page — never in the middle of a page's work.
+let build = null, buildAt = 0;
+async function codeChanged() {
+  if (Date.now() - buildAt < 60e3) return false;
+  buildAt = Date.now();
+  try {
+    const r = await fetch("/assets/build.txt", { cache: "no-store" });
+    const v = r.ok ? (await r.text()).trim() : "";
+    if (!/^[0-9a-f]{8,40}$/.test(v)) return false;                 // none (local server) or not the file
+    if (build == null) { build = v; return false; }
+    return v !== build;
+  } catch (e) { return false; }
+}
+
 // ---- routing ---------------------------------------------------------------
 let current = null;
 let lastRoute = null;
 let token = 0;
 async function route_() {
   if (silent) return;
+  if (await codeChanged()) { location.reload(); return; }
   let r = parseHash();
   // a page that follows its own address (the Agenda: list <-> details) is not rebuilt for a change of query
   if (current?.onQuery && lastRoute === r.route) { current.onQuery(r.query); return; }
@@ -649,6 +668,7 @@ async function start() {
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   await data.bootPublic();
   renderFooter();
+  codeChanged();                                   // the version this visit runs
   window.addEventListener("hashchange", route_);
   route_();
 }

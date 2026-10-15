@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -150,12 +151,31 @@ def _set_versions(db: Path) -> None:
     con.close()
 
 
+def write_build_stamp() -> str:
+    """A fingerprint of the site's code (site/ without its data), published as assets/build.txt. A page's code is
+    loaded once per visit (the modules stay in memory), so an open tab would keep running the old code after a deploy:
+    the app compares this file at its changes of page and reloads when it changed (2026-10-15). Data-only deploys
+    leave it unchanged."""
+    site = ROOT / "site"
+    h = hashlib.sha1()
+    for p in sorted(site.rglob("*")):
+        rel = p.relative_to(site).as_posix()
+        if not p.is_file() or rel.startswith(("data/", "auth/")) or rel == "assets/build.txt":
+            continue
+        h.update(rel.encode("utf-8"))
+        h.update(p.read_bytes())
+    stamp = h.hexdigest()[:16]
+    (site / "assets" / "build.txt").write_text(stamp, encoding="utf-8")
+    return stamp
+
+
 def deploy() -> bool:
     """Publish site/ with the Pages Functions in functions/. True on success."""
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
         print("4. deploy: npx not found (install Node.js)")
         return False
+    write_build_stamp()
     t0 = time.monotonic()
     cmd = [npx, "--yes", "wrangler", "pages", "deploy", "site", "--project-name", PAGES_PROJECT,
            "--branch", "main", "--commit-dirty=true"]
