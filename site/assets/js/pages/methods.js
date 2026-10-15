@@ -704,6 +704,8 @@ export async function render(main, { query = {} } = {}) {
             <div><h3 style="margin-top:4px">Ce qu'elle fait moins bien</h3><ul class="mx-list bad">
               <li><span><b>Elle écarte les 10 % meilleures courses.</b> Pour les meilleurs coureurs, ce sont le plus souvent les championnats de France et
                 les nationales : les courses qu'ils préparent, et les plus relevées.</span></li>
+              <li><span><b>Elle évalue la performance habituelle plutôt que la performance potentielle</b>, plus pertinente pour les
+                qualifications.</span></li>
               <li><span><b>Elle n'incite pas à courir.</b> Pour un coureur bien classé, une course de plus fait souvent baisser le CN. Certains s'arrêtent
                 dès qu'ils ont le CN qui les qualifie pour un championnat de France ; d'autres ne courent que les courses qu'ils jugent « rentables ».</span></li>
               <li><span><b>Un saut chaque 1<sup>er</sup> janvier</b>, et des règles qui ont changé au fil des saisons : on ne peut pas comparer les CN d'une
