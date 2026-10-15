@@ -661,7 +661,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   CN predicts (« Attendu »). `localStorage["ocn.liveBase"]` points it at a local O'Cap for tests.
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
-  account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so.
+  account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so. The
+  « Inscrits » tab (2026-10-15, `/api/admin/members`: sign-up times, status, admin flag and the days seen, no names or
+  e-mails) counts the registered accounts (confirmed, not disabled) and the active ones (a page view in the last 21 Paris
+  days), today and day by day; visits are counted since 2026-10-07 (the window complete from 2026-10-27); a deleted
+  account leaves no trace.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.

@@ -1,5 +1,6 @@
-// Administration (the administrator only), in two tabs. « Comptes »: every account, duplicates by licence
+// Administration (the administrator only), in tabs. « Comptes »: every account, duplicates by licence
 // flagged, rights, disable / re-enable / delete, and the administrator's own e-mail at each new account.
+// « Inscrits » (2026-10-15): the registered and active accounts (a visit in the last 21 days), today and day by day.
 // « Utilisation »: how much the site is used over any period — visits, page views, active days, per account
 // and per page. The server enforces the role; this page only reads and acts.
 
@@ -7,12 +8,14 @@ import { html, raw, $, $$, normalise, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { tile, seg, chartCard, bindChartCard, legend } from "../ui.js";
-import { columnChart, css } from "../charts.js";
+import { columnChart, timeChart, css } from "../charts.js";
 import { link, replaceQuery } from "../app.js";
 
 const PRESETS = ["7", "30", "90", "365", "all"];
 const isoDay = (d) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });     // YYYY-MM-DD, Paris
 const addDays = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const ACTIVE_DAYS = 21;         // « active »: used the site at least once in the last 21 days (owner, 2026-10-15)
+const parisDay = (iso) => isoDay(new Date(iso));
 const spanDays = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86400e3) + 1;
 
 /** The label of a page counted by api/track. */
@@ -37,7 +40,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { utilisation: "usage", depots: "uploads", sites: "sites" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
@@ -51,6 +54,13 @@ export async function render(main, { query = {} } = {}) {
           ${raw(me?.signupAlert ? "checked" : "")}><span>${t("ad.signupAlert")}</span></label>
       </div>
       <section class="card"><div class="table-wrap" id="ad-table"></div></section>
+    </div>
+    <div data-panel="members" hidden>
+      <div class="filters"><label class="check" style="height:34px;align-items:center"><input type="checkbox" id="m-noadmins" checked>
+        <span>${t("ad.u.noAdmins")}</span></label></div>
+      <div class="tiles" id="m-tiles" style="margin-bottom:16px"></div>
+      ${chartCard({ id: "m-chart", title: t("ad.m.chart"), hint: t("ad.m.chart.hint", { n: ACTIVE_DAYS }) })}
+      <p class="muted" id="m-note" style="font-size:12.5px;margin:10px 2px 0"></p>
     </div>
     <div data-panel="usage" hidden>
       <div class="filters" id="u-filters"></div>
@@ -73,12 +83,13 @@ export async function render(main, { query = {} } = {}) {
     </div>`;
 
   function showTab() {
-    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
+    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
       ["sites", t("ad.tab.sites")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
-    if (tab === "usage") saveUsage(); else replaceQuery({ uploads: { onglet: "depots" }, sites: { onglet: "sites" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
+    if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
     if (tab === "sites") drawSites();
   }
@@ -137,6 +148,72 @@ export async function render(main, { query = {} } = {}) {
     }));
   }
   let usageStarted = false;
+
+  // « Inscrits »: registered accounts (confirmed, not disabled, by sign-up day) and active ones (seen on at least one day
+  // of the last 21) from api/admin/members, day by day since the first account. An account deleted leaves no trace.
+  let members = null, mNoAdmins = true;
+  bindChartCard(main, "m-chart");
+  $("#m-noadmins").addEventListener("change", (e) => { mNoAdmins = e.target.checked; drawMembers(); });
+  async function drawMembers() {
+    if (!members) {
+      const r = await fetch("api/admin/members", { credentials: "same-origin", cache: "no-store" });
+      members = r.ok ? await r.json() : { error: true };
+    }
+    if (members.error) { $("#m-tiles").innerHTML = html`<div class="notice">${t("ad.u.error")}</div>`; return; }
+    const keep = members.users.filter((u) => !(mNoAdmins && u.admin));
+    const ids = new Set(keep.map((u) => u.id));
+    const today = isoDay(new Date());
+    const counted = keep.filter((u) => u.verified && u.status !== "disabled");
+    const start = counted.length ? counted.map((u) => parisDay(u.created)).sort()[0] : today;
+    const n = spanDays(start, today), idx = (d) => spanDays(start, d) - 1;
+    const days = Array.from({ length: n }, (_, i) => addDays(start, i));
+    // registered: confirmed accounts by the day they signed up
+    const fresh = new Array(n).fill(0);
+    for (const u of counted) fresh[Math.max(0, idx(parisDay(u.created)))]++;
+    const reg = [];
+    fresh.reduce((s, x, i) => (reg[i] = s + x), 0);
+    // active: an account counts from each day it was seen to 20 days later; its spans merged, then summed day by day
+    const delta = new Array(n + 1).fill(0), byUser = new Map();
+    for (const [uid, d] of members.seen) if (ids.has(uid)) { if (!byUser.has(uid)) byUser.set(uid, []); byUser.get(uid).push(idx(d)); }
+    for (const list of byUser.values()) {
+      let a = null, b = null;
+      for (const i of list.sort((x, y) => x - y)) {
+        if (a != null && i <= b + 1) { b = Math.max(b, i + ACTIVE_DAYS - 1); continue; }
+        if (a != null) { delta[Math.max(0, a)]++; delta[Math.min(n, b + 1)]--; }
+        a = i; b = i + ACTIVE_DAYS - 1;
+      }
+      if (a != null) { delta[Math.max(0, a)]++; delta[Math.min(n, b + 1)]--; }
+    }
+    const act = [];
+    delta.slice(0, n).reduce((s, x, i) => (act[i] = s + x), 0);
+    const tracked = members.first || today;                  // visits are counted since this day
+    const fullFrom = addDays(tracked, ACTIVE_DAYS - 1);       // the first day whose window is wholly tracked
+    const activeAt = (i) => (days[i] < tracked ? null : act[i]);
+    const last = n - 1, since = addDays(today, -(ACTIVE_DAYS - 1));
+    const newRecent = counted.filter((u) => parisDay(u.created) >= since).length;
+    const pending = keep.filter((u) => !u.verified).length, disabled = keep.filter((u) => u.verified && u.status === "disabled").length;
+    const pct = reg[last] ? Math.round((100 * act[last]) / reg[last]) : null;
+    $("#m-tiles").innerHTML = html`
+      ${tile(t("ad.m.registered"), fmt(reg[last] || 0), [pending ? t("ad.m.pending", { n: fmt(pending) }) : "", disabled ? t("ad.m.disabled", { n: fmt(disabled) }) : ""].filter(Boolean).join(" · "))}
+      ${tile(t("ad.m.active", { n: ACTIVE_DAYS }), fmt(act[last] || 0), pct != null ? t("ad.m.share", { p: fmt(pct) }) : "")}
+      ${tile(t("ad.m.new", { n: ACTIVE_DAYS }), fmt(newRecent), t("ad.m.since", { d: fmtDate(since, "short") }))}`;
+    $("#m-note").textContent = today < fullFrom
+      ? t("ad.m.partial", { d: fmtDate(tracked), full: fmtDate(fullFrom), n: ACTIVE_DAYS })
+      : t("ad.m.def", { n: ACTIVE_DAYS });
+    const cReg = css("--s1"), cAct = css("--s2");
+    $("#m-chart-legend").innerHTML = legend([{ color: cReg, label: t("ad.m.registered") }, { color: cAct, label: t("ad.m.active", { n: ACTIVE_DAYS }) }]);
+    timeChart($("#m-chart"), {
+      yName: t("ad.m.accounts"), yMin: 0, zoom: n > 120 ? undefined : false,
+      series: [
+        { name: t("ad.m.registered"), color: cReg, step: true, data: days.map((d, i) => [d, reg[i]]) },
+        { name: t("ad.m.active", { n: ACTIVE_DAYS }), color: cAct, data: days.map((d, i) => [d, activeAt(i)]).filter((p) => p[1] != null) },
+      ],
+    });
+    $("#m-chart-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th class="r">${t("ad.m.registered")}</th>
+      <th class="r">${t("ad.m.newDay")}</th><th class="r">${t("ad.m.active", { n: ACTIVE_DAYS })}</th></tr></thead>
+      <tbody>${days.map((d, i) => i).reverse().map((i) => html`<tr><td class="num">${fmtDate(days[i])}</td><td class="r num">${fmt(reg[i])}</td>
+        <td class="r num">${fresh[i] ? fmt(fresh[i]) : ""}</td><td class="r num">${activeAt(i) == null ? "—" : fmt(activeAt(i))}</td></tr>`)}</tbody></table>`;
+  }
 
   // ======================================================================================================
   // Comptes
