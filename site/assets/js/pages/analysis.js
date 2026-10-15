@@ -29,7 +29,7 @@ import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCur
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
-import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
+import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -138,6 +138,11 @@ export async function render(main, { query = {}, route } = {}) {
   const me = auth.session();
   bindFull();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
+  // « ↗ » during the playback: the new tab gets this tab's files (their key in IndexedDB, as the address says, whether or
+  // not the browser copied this tab's session) and goes on with the playback instead of stopping on the files
+  if (query.tag && /^[a-z0-9]{6,40}$/.test(query.tag)) { try { sessionStorage.setItem("ocn.an.tag", query.tag); } catch (e) { /* this visit */ } }
+  let autoPlay = query.play === "1";
+  setTabParams(() => ({ tag: sessionTag(), play: document.body.classList.contains("an-theatre") ? "1" : null }));
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
@@ -633,7 +638,9 @@ export async function render(main, { query = {}, route } = {}) {
       cur = nextTarget(0);
       side(); draw();
       // ready, not played: the page opens on the files and the calibration (« Voir la course » plays it), so that new
-      // files can be dropped — it went straight to the playback, and the files could no longer be changed (owner, 2026-10-15)
+      // files can be dropped — it went straight to the playback, and the files could no longer be changed (owner, 2026-10-15);
+      // except in a tab opened by « ↗ » during the playback, which goes on with it
+      if (autoPlay && fit && offset != null) { autoPlay = false; finish(); }
       return;
     }
     // the course's points

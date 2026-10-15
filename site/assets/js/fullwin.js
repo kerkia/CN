@@ -20,11 +20,17 @@ export function setFull(on) {
   window.dispatchEvent(new Event("resize"));             // the pages fit their height to the window on resize
 }
 /** Leaving the page: the site's bar comes back. */
-export function leaveFull() { if (isFull()) setFull(false); }
+export function leaveFull() { tabParams = null; if (isFull()) setFull(false); }
+/** What a page adds to the address of the tab « ↗ » opens (e.g. « Analyse solo »: its files' key and « play »), or null. */
+let tabParams = null;
+export function setTabParams(fn) { tabParams = fn; }
 export function newTab() {
   const h = location.hash || "#/";
-  const url = `${location.href.replace(/#.*$/, "")}${/[?&]fen=1/.test(h) ? h : `${h}${h.includes("?") ? "&" : "?"}fen=1`}`;
-  window.open(url, "_blank");
+  const extra = { fen: "1", ...(tabParams?.() || {}) };
+  const [path, query = ""] = h.split("?");
+  const q = new URLSearchParams(query);
+  for (const [k, v] of Object.entries(extra)) if (v != null && v !== "") q.set(k, String(v)); else q.delete(k);
+  window.open(`${location.href.replace(/#.*$/, "")}${path}?${q}`, "_blank");
 }
 /** The two buttons, as HTML (pages pass it through raw()). */
 export const buttons = () => { const l = look(); return `<button type="button" class="btn btn-sm fw-btn" data-fw="toggle" aria-pressed="${l.on}" title="${l.title}">${l.text}</button>${inOwnTab() ? "" : '<button type="button" class="btn btn-sm fw-btn" data-fw="tab" title="Ouvrir dans un nouvel onglet">↗</button>'}`; };
