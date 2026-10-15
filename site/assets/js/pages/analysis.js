@@ -227,8 +227,29 @@ export async function render(main, { query = {}, route } = {}) {
   const stage = () => (!map || !track ? 2 : calibrated ? 4 : 3);
   const runner = () => docs[di]?.classes[ci]?.runners[ri], klass = () => docs[di]?.classes[ci];
   /** The runner's official sequence of race times: start, the controls, the finish (null where unknown), or null. */
-  const officialTaus = () => { const r = runner(); if (!r?.splits) return null; return [0, ...r.splits, r.status === "ok" && r.time_s != null ? r.time_s : null]; };
-  const totalOfficial = () => { const r = runner(); return r && r.status === "ok" && r.time_s != null ? r.time_s : null; };
+  const officialTaus = () => { const r = runner(); if (!r?.splits || !timesApply()) return null; return [0, ...r.splits, r.status === "ok" && r.time_s != null ? r.time_s : null]; };
+  const totalOfficial = () => { const r = runner(); return r && r.status === "ok" && r.time_s != null && timesApply() ? r.time_s : null; };
+  /**
+   * The selected runner's published times are this trace's: the trace is of the race's day, and their start, when
+   * published, falls within the trace. Else they are another race's or another runner's — the account's sprint of the
+   * next day (25:01) ended Nadejda's night race at 25:01, then started it at control 7 (owner, 2026-10-15) — and the
+   * page reads the race on the trace alone.
+   */
+  function timesApply() {
+    if (perso) return false;
+    const r = docs[di]?.classes[ci]?.runners[ri];
+    if (!r || !track || !race?.date_iso) return !!r;
+    if (parisDay(track.ms0) !== race.date_iso) return false;
+    const s = startOf(r), t0 = traceStartS();
+    return s == null || (s >= t0 - 300 && s <= t0 + track.dur);
+  }
+  /** Why the selected runner's times are not used, said on the calibration and on the display. */
+  function timesNote() {
+    if (perso || !track || !race?.date_iso || timesApply()) return "";
+    const day = parisDay(track.ms0);
+    return day !== race.date_iso ? t("an.st.otherDay", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }) : t("an.st.otherRunner", { r: runner()?.name || "" });
+  }
+  let matchedNote = "";
 
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
@@ -258,10 +279,11 @@ export async function render(main, { query = {}, route } = {}) {
       ${docs.length ? html`<label class="field"><span>${t("prov.circuit")}</span><select id="an-c">${docs[di].classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("prov.runner")}</span><select id="an-r" style="max-width:300px">${k.runners.map((r, i) => html`<option value="${i}" ${raw(i === ri ? "selected" : "")}>${r.place ? `${r.place}. ` : ""}${r.name}${r.club ? ` (${r.club})` : ""}${r.splits ? "" : ` — ${t("an.noSplitsShort")}`}</option>`)}</select></label>`
       : html`<div class="field"><span></span><span class="muted">${t("an.noList")}</span></div>`}`;
-    $("#an-race").addEventListener("change", async (e) => { key = e.target.value; query = {}; await loadRace(); pickers(); setup(); });
-    $("#an-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; ri = 0; pickers(); setup(); });
-    $("#an-c")?.addEventListener("change", (e) => { ci = Number(e.target.value); ri = 0; pickers(); setup(); });
-    $("#an-r")?.addEventListener("change", (e) => { ri = Number(e.target.value); pickers(); setup(); });
+    // a choice by hand: the race found from the trace is no longer the one shown
+    $("#an-race").addEventListener("change", async (e) => { key = e.target.value; query = {}; matchedNote = ""; await loadRace(); pickers(); setup(); });
+    $("#an-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; ri = 0; matchedNote = ""; pickers(); setup(); });
+    $("#an-c")?.addEventListener("change", (e) => { ci = Number(e.target.value); ri = 0; matchedNote = ""; pickers(); setup(); });
+    $("#an-r")?.addEventListener("change", (e) => { ri = Number(e.target.value); matchedNote = ""; pickers(); setup(); });
     replaceQuery({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null });
     try { sessionStorage.setItem(selKey, JSON.stringify({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null })); } catch (e) { /* not kept */ }
   }
@@ -298,11 +320,13 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
   }
   async function take(list, { remember = true } = {}) {
+    let newTrace = false;
     for (const f of list) {
       const name = f.name, low = name.toLowerCase();
       for (const role of Object.keys(files)) if (files[role]?.file === f) files[role] = null;
       try {
         if (isTraceName(name)) {
+          newTrace = true;
           files.trace = { name, note: "" };
           filesCard();
           track = parseTrace(name, await f.arrayBuffer());
@@ -353,8 +377,43 @@ export async function render(main, { query = {}, route } = {}) {
       for (const role of Object.keys(files)) { const rec = files[role]; if (rec && !rec.file && (rec.name === name || rec.name?.startsWith(`${name} › `))) rec.file = f; }
     }
     if (remember) rememberFiles();
+    if (newTrace && track) {
+      matchedNote = "";
+      if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
+    }
     filesCard();
     setup();
+  }
+  /**
+   * The race of the trace's day and its runner, when the race chosen is not the trace's (another day, or a runner whose
+   * published start is not in the trace — the page opens on the account's latest race): the runner whose published
+   * start falls at the trace's beginning, else the account's own run that day, else that day's race with the account.
+   */
+  async function matchRace() {
+    if (perso || !track || timesApply()) return false;
+    const day = parisDay(track.ms0), t0 = traceStartS(), sameDay = races.filter((r) => r.date_iso === day);
+    let best = null;
+    for (const rc of sameDay) {
+      let data = null;
+      try { data = await getProv(`${encodeURIComponent(rc.key)}.json`); } catch (e) { continue; }
+      // a runner's start from any list of the race (liveresultat's gives it when the organiser's does not)
+      const starts = new Map();
+      const nk = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+      for (const d of data?.docs || []) for (const k of d.classes || []) for (const x of k.runners || []) if (x.start_s != null) starts.set(nk(x.name), x.start_s);
+      for (const d of data?.docs || []) for (const k of d.classes || []) for (const x of k.runners || []) {
+        if (x.status === "dns") continue;
+        const s = x.start_s ?? starts.get(nk(x.name)) ?? null;
+        let score = runFit(s, x);
+        if (score == null && me?.lic && x.lic === me.lic && s == null) score = 20000;              // one's own run that day
+        if (score != null && (!best || score < best.score)) best = { key: rc.key, name: x.name, score, race: rc.name };
+      }
+    }
+    if (!best && sameDay.length) { const rc = sameDay.find((r) => (r.lics || []).includes(me?.lic)) || sameDay[0]; best = { key: rc.key, name: null, race: rc.name }; }
+    if (!best) return false;
+    key = best.key; query = best.name ? { r: best.name } : {};
+    await loadRace(); pickers();
+    matchedNote = t("an.st.matched", { race: best.race, r: runner()?.name || "" });
+    return true;
   }
   /** The files kept for the tab's session, in IndexedDB (never sent). */
   function rememberFiles() {
@@ -490,7 +549,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   function guessOffset() {
     const r = runner(), startS = startOf(r);
-    if (startS == null || !race?.date_iso) return null;
+    if (startS == null || !race?.date_iso || !timesApply()) return null;
     const startMs = Date.parse(`${race.date_iso}T00:00:00Z`) - parisOffsetMs(race.date_iso) + startS * 1000;
     return (startMs - track.ms0) / 1000;
   }
@@ -508,11 +567,25 @@ export async function render(main, { query = {}, route } = {}) {
     let best = null;
     docs.forEach((d, i) => d.classes.forEach((k, j) => k.runners.forEach((x, n) => {
       if (x.status !== "ok" || x === r) return;
-      const s = startOf(x);
-      if (!fits(s) || (best && Math.abs(s - t0) >= Math.abs(best.start - t0))) return;
-      best = { name: x.name, di: i, ci: j, ri: n, start: s };
+      const s = startOf(x), sc = runFit(s, x);
+      if (sc == null || (best && sc >= best.score)) return;
+      best = { name: x.name, di: i, ci: j, ri: n, start: s, score: sc };
     })));
     return { t0, mine, dns: r?.status === "dns", other: best };
+  }
+  /**
+   * How well a published run fits the trace — the seconds of slack at both ends (the watch started before the start,
+   * stopped after the finish) — or null when it cannot be this trace's: the trace covers the start (started 5 min late
+   * at most) and the finish (2 min). Runners start a minute apart: the start alone took Romane for Nadejda, whose
+   * finish falls 2 s before the trace ends where Romane's falls 50 min after it (2026-10-15).
+   */
+  function runFit(s, x) {
+    if (s == null || !track) return null;
+    const t0 = traceStartS(), end = t0 + track.dur;
+    if (s < t0 - 300 || s > end) return null;
+    if (x.status !== "ok" || x.time_s == null) return 3600 + Math.max(0, s - t0);         // no finish to check: weaker
+    const f = s + x.time_s;
+    return f > end + 120 ? null : Math.max(0, s - t0) + Math.max(0, end - f);
   }
   const ptsOf = (gs) => gs.map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind }));
 
@@ -812,9 +885,12 @@ export async function render(main, { query = {}, route } = {}) {
     if (geoHow) summary.push(`${t("an.st.geo")} ${geoHow}`);
     else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
     if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
-    else if (r && !perso) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    else if (r && !perso && !timesNote()) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
     const short = traceShortNote();
     if (short) summary.push(short);
+    if (matchedNote) summary.push(matchedNote);
+    const tn = timesNote();
+    if (tn) summary.push(tn);
     const whose = whoseTrace();
     const whoseNote = !whose ? "" : html`<div class="notice" style="margin-bottom:6px">${t("an.st.whose", { t: hhmm(whose.t0), r: runner()?.name || "", rs: whose.dns ? t("an.st.whose.dns") : whose.mine != null ? t("an.st.whose.start", { s: hhmm(whose.mine) }) : t("an.st.whose.noStart") })}
       ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}">${t("an.switch")}</button>` : ""}</div>`;
@@ -892,9 +968,9 @@ export async function render(main, { query = {}, route } = {}) {
     window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     const known = sequenceKnown();
-    const short = traceShortNote();
+    const short = [traceShortNote(), timesNote()].filter(Boolean);
     $("#an-side").innerHTML = html`
-      ${short ? html`<div class="notice" style="margin-bottom:6px">${short}</div>` : ""}
+      ${short.map((s) => html`<div class="notice" style="margin-bottom:6px">${s}</div>`)}
       <div class="an-transport">
         <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
         <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
@@ -974,9 +1050,12 @@ export async function render(main, { query = {}, route } = {}) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
     const { w, h } = box();
-    if (!w || !h || x1 <= x0) return;
-    const k = Math.min(w / (x1 - x0 + 60), h / (y1 - y0 + 60), 8);
-    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+    if (!w || !h) { pendingFit = fitTrace; return; }
+    if (x1 <= x0) return;
+    pendingFit = null;
+    const top = topReserved(), hh = Math.max(60, h - top);
+    const k = Math.min(w / (x1 - x0 + 60), hh / (y1 - y0 + 60), 8);
+    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: top + hh / 2 - ((y0 + y1) / 2) * k };
     lastBox = { w, h };
   }
   function setFollow(on) { follow = on; savePrefs(); const b = $("#an-follow"); if (b) b.setAttribute("aria-pressed", String(on)); }
@@ -1070,14 +1149,21 @@ export async function render(main, { query = {}, route } = {}) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
     const { w, h } = box();
-    const k = Math.min(w / Math.max(60, (x1 - x0) * margin + pad), h / Math.max(60, (y1 - y0) * margin + pad), 5);
-    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+    // a map without a size yet (being laid out) would give a zoom of 0, which no zooming could undo: done once it has one
+    if (!w || !h || !(x1 >= x0)) { pendingFit = () => zoomTo(l, margin, pad); return; }
+    pendingFit = null;
+    const top = topReserved(), hh = Math.max(60, h - top);
+    const k = Math.min(w / Math.max(60, (x1 - x0) * margin + pad), hh / Math.max(60, (y1 - y0) * margin + pad), 5);
+    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: top + hh / 2 - ((y0 + y1) / 2) * k };
     lastBox = { w, h };
     setFollow(false);
   }
 
   // ---- the map canvas: pan, zoom, click
   const box = () => ({ w: canvas.clientWidth, h: canvas.clientHeight });
+  let pendingFit = null;                                // the view to set once the map has a size
+  /** The map's top band the race's line covers during the playback: the views fitted keep the trace below it. */
+  const topReserved = () => { const b = $("#an-brief"); return b && !b.hidden && b.closest(".an-map") ? b.offsetHeight + 8 : 0; };
   function size() {
     const dpr = window.devicePixelRatio || 1, { w, h } = box();
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
@@ -1090,6 +1176,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   function zoomBy(f, cx, cy) {
     const { w, h } = box();
+    if (!(view.k > 0) || !Number.isFinite(view.k)) { if (calibrated) fitTrace(); else fitView(); if (!(view.k > 0)) return; }
     if (cx == null) { cx = w / 2; cy = h / 2; }
     const k = Math.max(0.02, Math.min(12, view.k * f));
     view = { k, ox: cx - ((cx - view.ox) / view.k) * k, oy: cy - ((cy - view.oy) / view.k) * k };
@@ -1116,7 +1203,7 @@ export async function render(main, { query = {}, route } = {}) {
     } else if (drag) {
       const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
       if (Math.hypot(dx, dy) > 4) drag.moved = true;
-      if (drag.moved) { view = { ...view, ox: drag.ox + dx, oy: drag.oy + dy }; if (follow && playing) setFollow(false); draw(); }
+      if (drag.moved) { view = { ...view, ox: drag.ox + dx, oy: drag.oy + dy }; if (follow) setFollow(false); draw(); }
     }
   });
   const up = (e) => {
@@ -1136,6 +1223,7 @@ export async function render(main, { query = {}, route } = {}) {
   const ro = new ResizeObserver(() => {
     if (!map) return;
     const b = box();
+    if (pendingFit && b.w && b.h) pendingFit();
     if (lastBox && b.w && b.h && (b.w !== lastBox.w || b.h !== lastBox.h)) {
       view = { ...view, ox: view.ox + (b.w - lastBox.w) / 2, oy: view.oy + (b.h - lastBox.h) / 2 };
       lastBox = b;

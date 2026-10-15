@@ -516,8 +516,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   colours the whole race. The curves under the map are stacked rows (56 px each, `--an-strip` follows). The legs
   table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
   course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
-  « Suivre » is a toggle button in the transport row. A published start time is ignored for a `dns` runner or when the
-  first control's pass precedes it or comes over 30 min later. **Layout, second review** (owner, 2026-10-14): the top
+  « Suivre » is a toggle button in the transport row; moving the map by hand turns it off, paused too (it snapped back to
+  the runner). A published start time is ignored for a `dns` runner or when the
+  first control's pass precedes it or comes over 30 min later. **The race of the trace** (owner, 2026-10-15: « stops at
+  25:01 », then « nothing until control 7 » — the page opens on the account's latest race, a sprint of the next day where
+  the owner ran 25:01, and Nadejda's night trace took that time as the race's length, then its start from the finish less
+  25:01): a runner's published times apply only when the trace is of the race's day and their published start falls in
+  the trace (`timesApply`; else the race is read on the trace alone and the page says why, `timesNote`). A trace dropped
+  for another race switches to the race of its day and the runner whose run fits it at both ends (`runFit`: the trace
+  covers the published start and start + time, the least slack wins — the start alone took Romane, one minute apart,
+  for Nadejda), else the account's run that day (`matchRace`, « Course choisie d'après la trace »). The views fitted on
+  the trace (⤢, the first leg) keep it below the race's line in the map's corner (`topReserved`), and wait for the map
+  to have a size (`pendingFit`: a zoom of 0 could not be undone). **Layout, second review** (owner, 2026-10-14): the top
   menu stays during playback (hiding it saved no height) and `an-theatre` is removed in the page's cleanup — it had
   stayed on every page; the layout is a grid filling the window (`--an-h`, `fitHeight`), the curves on the left
   (default ≥ 1100 px) or under the map (« Affichage › Courbes »), collapsible (‹ or double-click on the splitter), the
