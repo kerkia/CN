@@ -187,6 +187,17 @@ async function privacy(main) {
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
         sans son nom. Dans une « Analyse multi », vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
+      <h2 style="font-size:16px">Tracé des circuits</h2>
+      <p>Un événement de la page « Tracer » (ses circuits, sa carte, ses versions, les commentaires de l'équipe et les états des
+        postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :
+        son créateur et les licenciés qu'il y ajoute, dont le nom et le numéro de licence sont enregistrés avec leur rôle. Les
+        versions, les commentaires et les états des postes portent le nom de leur auteur. En mode terrain, l'état noté sur un poste
+        enregistre aussi la position du téléphone à cet instant (pour la comparer à la carte), visible de l'équipe ; la position
+        n'est lue que pendant ce mode, avec l'autorisation du navigateur. Si l'équipe chiffre l'événement, ces données sont chiffrées
+        dans le navigateur et illisibles pour le site. L'événement est conservé jusqu'à sa suppression par son créateur ; si
+        celui-ci supprime son compte, il passe au premier traceur (à défaut, contrôleur) de l'équipe qui a un compte, sinon il est
+        supprimé. Le calcul de la dénivelée envoie au service d'altitude de l'IGN (Géoplateforme, France) les seules coordonnées des
+        postes et des coudes des circuits, sans nom ni code.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Données conservées :</b> l'adresse e-mail ; les prénom, nom et numéro de licence saisis, vérifiés lors de l'inscription
@@ -229,7 +240,8 @@ async function privacy(main) {
       <h2 style="font-size:16px">Cookies et stockage local</h2>
       <p>Le site dépose un seul cookie, strictement nécessaire à son fonctionnement : il maintient votre connexion, pendant 30 jours
         au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (thème, discipline et méthode
-        choisies) et vos saisies dans le calculateur VMA ou le simulateur de relais. Le site n'utilise aucun traceur publicitaire ni
+        choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le Tracer, ses réglages d'affichage, la clé
+        d'un événement chiffré, tirée de sa phrase de passe (le temps de l'onglet) et les états du mode terrain en attente de réseau. Le site n'utilise aucun traceur publicitaire ni
         aucun outil tiers de mesure d'audience ; aucun consentement n'est donc requis.</p>
       <h2 style="font-size:16px">Vos droits</h2>
       <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données, d'un

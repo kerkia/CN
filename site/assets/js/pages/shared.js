@@ -25,6 +25,7 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
+import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 
 const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -73,6 +74,8 @@ async function api(path, { method = "GET", body, type, key } = {}) {
 const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.err.${e.code}`) : `${t("sh.err.other")} (${e?.code || e?.message || ""})`;
 
 export async function render(main, r) {
+  bindFull();
+  if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   const org = r.route === "orgRace" || r.route === "orgTraining";
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
   if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
@@ -241,7 +244,7 @@ async function eventPage(main, kind, id, org = false) {
   }
   drawTabs();
   await openViewer();
-  return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); } };
+  return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); } };
 }
 
 function unlockPage(main, kind, id) {
@@ -812,7 +815,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
         <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
         <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
         <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
-        <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select></div>
+        <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
+        <span class="fw-btns">${raw(fwButtons())}</span></div>
       <input type="range" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" style="width:100%;margin:6px 0">
       <div class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></div>
       <div class="an-opts" style="margin-top:8px">

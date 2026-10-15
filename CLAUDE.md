@@ -15,7 +15,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
-| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2) |
+| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2), `api/tracer/[[path]].js` (the Tracer's course-setting events, in R2) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
@@ -625,7 +625,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   club, one multi analysis each, « Ouvrir l'analyse multi » then its circuits), « Entraînements » (`#/orga-entrainements`,
   `orgTraining`: one's training events, « Nouvel entraînement »), « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
   the club's races with what « Résultats » shows of them, « Déposer les résultats » = `#/deposer?course=…&orga=1`), and
-  « Direct » (below), and « Tracer » greyed (no page yet: an item without address, `.nav-off`). **An organiser** is a member of the
+  « Direct » and « Tracer » (below). **An organiser** is a member of the
   race's organising club — the club of the account's latest race in the site's data against the race's `org` number
   (`functions/_lib/club.js`: `clubOf`, `orgCode`, `raceOf`) — or an administrator; any account may create a training
   event. A competition's analysis is created by its organisers only, once (a second ask returns the first, `existing`),
@@ -633,6 +633,49 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`X-Upload` `organiser: true`, checked the same way, 403 « not organiser » otherwise) is noted « déposé par
   l'organisateur », and its race is no longer looked for on the club's site or the platforms (`prov_meta` `org_races`,
   kept by `sources/upload.apply`, skipped in `run.run`'s loop): the organiser's file is used as it is.
+- **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
+  after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
+  does it (phases 1-3 of the study: maps in **PDF or image only**, OCAD/OOM not read), in the browser. **No AGPL code**: Purple
+  Pen's own code is BSD (attribution `site/assets/tracer/LICENSE-PurplePen.txt`), its symbols and texts converted by
+  `docs/tracer/symbols.py` into `site/assets/tracer/symbols.json` (fr/en) and `symbol-texts.json` (23 languages). The model
+  (`model.js`) mirrors Purple Pen's EventDB, QueryEvent, CourseView and ChangeEvent (controls, courses as linked course controls,
+  forks and loops, map exchanges, legs with bends, gaps and flagging, specials, print areas, all in map mm, y up); `ppen.js` reads
+  and writes **.ppen** (round trip checked on 15 sample events); `layout.js` = CourseFormatter (number placement, automatic
+  cuts), `draw.js` the canvas and PDF items, `descr.js` + `textify.js` the description sheets (symbols and text, any language),
+  `pdf.js` the PDFs (pdf-lib, the PDF map embedded as a vector page; courses, per part, per variation or relay team and leg;
+  descriptions; punch cards; print areas), `exports.js` IOF XML 3/2 (relay team assignments), GPX, KML, images with world file,
+  RouteGadget; `relay.js` Purple Pen's relay variations with .NET's seeded random generator (seed 8713527: the same teams as
+  Purple Pen; checked `Random(0)` = 1559595546); `reports.js` its five reports (summary, leg lengths, cross-reference, load,
+  event audit) plus O'CN's checks (IOF distances per discipline, out-of-bounds areas and boundaries crossed, legs through another
+  circle, dog-legs, short legs, codes < 31 or read upside down), shown, printed or as CSV (« ; », UTF-8 BOM). The editor
+  (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is a full-window overlay over the site (`.tr-app`, `body.tr-open`; ✕
+  closes it, ↗ moves the event to a tab of its own, `?fen=1`, closing the editor here), with Purple Pen's tools and insertion rule,
+  undo (100), autosave 1.8 s after a change, a version every 30 min of work, an editing lock (`/lock`, 150 s, refreshed every
+  minute; same account = no lock). **Who**: a competition's event is created by a member of the race's organising club (an agenda
+  race `a<id>` or one of « Résultats »), a training's by anyone; only the **team** opens it (creator + licences added: setter,
+  controller edit, viewer reads and comments) — **not the administrators**: the courses are secret. Optional **end-to-end
+  encryption** (AES-GCM, PBKDF2 250 000 from the team's passphrase; header "OCN1"; the key in `sessionStorage ocn.tr.key.<id>`,
+  cleared at logout): event, map, comments and versions unreadable by the server. Storage R2 only (`functions/api/tracer/[[path]].js`:
+  `tracer-meta/<id>.json`, `tracer/<id>/event|map|v/<n>|comments|field|lock`), optimistic versions (409 → keep mine / reload).
+  **Beyond Purple Pen** (`extras.js`, `race.js`, `team.js`): georeferencing (points clicked + lat/lon, world file + .prj, KMZ/KML;
+  `ev.geo` affine (lon, lat) → mm, `ev.georefPts`); climb along the legs from IGN's elevations (`data.geopf.fr` elevationLine,
+  RGE ALTI, every 10 m, light smoothing; CORS open; only coordinates are sent); winning times (the winners' pace on the last two
+  seasons' races of the format, `competitions.json` + `c/*.json`, ln pace on ln official CN J-15, the categories' median winner CN
+  as default, the length for a target time; climb not modelled — the reference files have none); loads and categories from FFCO's
+  registration counts (`agenda.reg.circuits`); a pick-up plan (last starts from the published start lists, a slow pace, k-means
+  sectors per collector); a review after the race from « Résultats »'s split times (per leg: best, median, share of mistakes as
+  « Temps intermédiaires » counts them, missing punches); publication to « Analyse multi » (after the race date only for a
+  competition; one circuit per course or variation, 12 at most, the map PNG with the course printed, controls in px, `geo`
+  composed — checked to 0.1 px); a course read from a printed map (`trace/course.js` at full size, order by nearest neighbour to
+  be checked); team comments pinned on the map; the **field mode** (phone GPS on the georeferenced map, nearest control with
+  distance and bearing, states set/checked/collected/problem with the phone's position, queued in `localStorage
+  ocn.tr.field.<id>` when offline); version differences; other courses shown faint. Account deletion hands an event to the first
+  setter (else controller) of its team who has an account, else deletes it; the privacy page says so. Local tests: Purple Pen's
+  samples in the git-ignored `site/data/_trtest/` (their .ppen were made for OCAD maps: controls can lie off the JPEG).
+- **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus): the analyses' playback (« Analyse
+  solo » transport row, « Analyse multi » right panel) has « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout
+  refits on the resize event; Échap or « ⤡ » back) and « ↗ » (the same page alone in a new tab, `?fen=1`, kept by
+  `app.replaceQuery`; opened by script without noopener, so « Analyse solo » finds its session's files; its « ✕ » closes the tab).
 - **Analyse solo / multi** (owner, 2026-10-14; « Analyse multi » = the former « Analyse club » and « Analyse compétition »,
   2026-10-15): « Analyse
   solo » (« Analyse perso » until 2026-10-15) exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »

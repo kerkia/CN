@@ -29,6 +29,7 @@ import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCur
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
+import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -135,6 +136,8 @@ function sessionTag() {
 // ---- the page -------------------------------------------------------------------------------------------------------
 export async function render(main, { query = {}, route } = {}) {
   const me = auth.session();
+  bindFull();
+  if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
@@ -976,7 +979,8 @@ export async function render(main, { query = {}, route } = {}) {
         <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
         <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
         <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
-        <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button></div>
+        <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button>
+        <span class="fw-btns">${raw(fwButtons())}</span></div>
       <input type="range" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" style="width:100%;margin:6px 0 4px">
       <dl class="an-stats">
         <dt>${t("an.time")}</dt><dd><b id="an-t">0:00</b> <span class="muted" id="an-t-sub"></span></dd>
@@ -1377,6 +1381,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   return { title: t(perso ? "an.perso.title" : "an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
+    leaveFull();
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     themeWatch.disconnect();

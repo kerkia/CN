@@ -1,0 +1,266 @@
+// The Tracer's files for other programs: IOF XML CourseData 3.0 and 2.0.3 as Purple Pen writes them (ExportXml.cs; BSD
+// licence, assets/tracer/LICENSE-PurplePen.txt) for timing software (MeOS, OE, SportIdent…), GPX of the controls and
+// courses, KML of the courses, images of the courses with a world file, and RouteGadget's map and course files.
+
+import * as M from "./model.js";
+import { layoutCourse } from "./layout.js";
+import { itemsFor, drawItems, cmykToRgb, SCREEN } from "./draw.js";
+import { modal, download, fileName, field, sel, num } from "./dialogs.js";
+import { hasGeo, toLatLon } from "./geo.js";
+import { relayAssignments } from "./relay.js";
+import { zip, printBox } from "./pdf.js";
+
+const x = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const r2 = (v) => Math.round(v * 100) / 100;
+const nowIso = () => new Date().toISOString();
+
+/** Codes for every control (starts, exchanges, finishes and crossing points get STA1, XCHG1, FIN1, CROSS1…). */
+function codeMap(ev) {
+  const map = new Map();
+  for (const [kind, prefix] of [["start", "STA"], ["map-exchange", "XCHG"], ["normal", "CTL"], ["finish", "FIN"], ["crossing", "CROSS"]]) {
+    let n = 1;
+    for (const id of Object.keys(ev.controls).map(Number).sort((a, b) => a - b)) {
+      const c = ev.controls[id];
+      if (c.kind === kind) map.set(id, c.code || `${prefix}${n++}`);
+    }
+  }
+  return map;
+}
+const classNames = (c) => String(c.secondary || "").split(/[,|]/).map((s) => s.trim()).filter(Boolean);
+/** A course (or variation) as Purple Pen walks it for IOF XML: [{ kind, control, ordinal, leg (m since the last), points }]. */
+function courseSequence(ev, cd) {
+  const v = M.view(ev, cd, { specials: false, descriptions: false });
+  const out = [];
+  let dist = 0, i = 0;
+  const score = v.kind === "score";
+  while (i >= 0 && i < v.controls.length) {
+    const cv = v.controls[i], c = ev.controls[cv.control];
+    out.push({ kind: c.kind, control: cv.control, ordinal: cv.ordinal, leg: dist, points: cv.ccs[0] ? ev.courseControls[cv.ccs[0]]?.points || 0 : 0, symbol: c.symbols[0] });
+    if (c.kind !== "start") dist = 0;
+    if (cv.legLen?.length) dist += cv.legLen[0];
+    i = score ? i + 1 : M.nextIndex(v, i);
+  }
+  return { seq: out, view: v };
+}
+
+export function iofXmlText(ev, version = 3) {
+  const codes = codeMap(ev), geo = hasGeo(ev);
+  const bounds = [0, 0, ev.map.w || 0, ev.map.h || 0];
+  const out = [];
+  const courses = M.courseIds(ev).filter((id) => M.findKind(ev, id, "start") && M.hasFinish(ev, id));
+  if (version === 3) {
+    out.push('<?xml version="1.0" encoding="utf-8"?>',
+      `<CourseData xmlns="http://www.orienteering.org/datastandard/3.0" iofVersion="3.0" createTime="${nowIso()}" creator="O'CN Tracer">`,
+      `  <Event>\n    <Name>${x(ev.title.replace(/\|/g, " "))}</Name>\n  </Event>`, "  <RaceCourseData>",
+      `    <Map>\n      <Scale>${ev.map.scale}</Scale>\n      <MapPositionTopLeft x="${r2(bounds[0])}" y="${r2(bounds[3])}" />\n      <MapPositionBottomRight x="${r2(bounds[2])}" y="${r2(bounds[1])}" />\n    </Map>`);
+    const TYPE = { normal: "Control", start: "Start", "map-exchange": "Start", finish: "Finish", crossing: "CrossingPoint" };
+    for (const kind of ["start", "map-exchange", "normal", "finish", "crossing"]) for (const id of Object.keys(ev.controls).map(Number).sort((a, b) => a - b)) {
+      const c = ev.controls[id];
+      if (c.kind !== kind) continue;
+      out.push(`    <Control type="${TYPE[kind]}">`, `      <Id>${x(codes.get(id))}</Id>`);
+      if (geo) { const [lat, lon] = toLatLon(ev, c.x, c.y); out.push(`      <Position lng="${lon.toFixed(7)}" lat="${lat.toFixed(7)}" />`); }
+      out.push(`      <MapPosition x="${r2(c.x)}" y="${r2(c.y)}" />`, "    </Control>");
+    }
+    const assignments = [];
+    for (const id of courses) {
+      const c = ev.courses[id], score = c.kind === "score";
+      const vars = M.hasVariations(ev, id) ? M.allVariations(ev, id) : [null];
+      for (const vr of vars) {
+        const cd = M.cdCourse(id, -1, vr?.path || null), { seq, view } = courseSequence(ev, cd);
+        const name = vr ? `${c.name} ${vr.code}` : c.name;
+        out.push("    <Course>", `      <Name>${x(name)}</Name>`);
+        if (vr) out.push(`      <CourseFamily>${x(c.name)}</CourseFamily>`);
+        if (!score) {
+          out.push(`      <Length>${Math.round(view.totalMax / 100) * 100}</Length>`);
+          if (c.climb > 0) out.push(`      <Climb>${Math.round(c.climb / 5) * 5}</Climb>`);
+        }
+        for (const cn of classNames(c)) assignments.push({ cls: cn, course: name, family: vr ? c.name : null });
+        for (const s of seq) {
+          if (s.kind === "map-issue") continue;
+          let attrs = "";
+          if (s.kind === "start" || s.kind === "map-exchange") attrs = ' type="Start"';
+          else if (s.kind === "finish") attrs = ` type="Finish"${s.symbol === "14.1" ? ' specialInstruction="TapedRoute"' : s.symbol === "14.2" ? ' specialInstruction="FunnelTapedRoute"' : ""}`;
+          else if (s.kind === "normal") attrs = ` type="Control"${score ? ' randomOrder="true"' : ""}`;
+          else if (s.kind === "crossing") attrs = ` type="CrossingPoint" specialInstruction="${s.symbol === "13.4" ? "MandatoryOutOfBoundsAreaPassage" : "MandatoryCrossingPoint"}"`;
+          out.push(`      <CourseControl${attrs}>`, `        <Control>${x(codes.get(s.control))}</Control>`);
+          if (!score && s.ordinal > 0) out.push(`        <MapText>${s.ordinal}</MapText>`);
+          if (!score && s.kind !== "start") out.push(`        <LegLength>${Math.round(s.leg)}</LegLength>`);
+          if (score && s.kind === "normal" && s.points > 0) out.push(`        <Score>${s.points}</Score>`);
+          out.push("      </CourseControl>");
+        }
+        out.push("    </Course>");
+      }
+    }
+    for (const a of assignments) out.push("    <ClassCourseAssignment>", `      <ClassName>${x(a.cls)}</ClassName>`, `      <CourseName>${x(a.course)}</CourseName>`, ...(a.family ? [`      <CourseFamily>${x(a.family)}</CourseFamily>`] : []), "    </ClassCourseAssignment>");
+    // relay teams (ExportRelayVariations3)
+    for (const id of courses) {
+      const c = ev.courses[id];
+      if (!M.hasVariations(ev, id) || !(c.relay?.teams > 0)) continue;
+      for (const t of relayAssignments(ev, id)) {
+        out.push("    <TeamCourseAssignment>", `      <BibNumber>${t.team}</BibNumber>`, `      <TeamName>${t.team}</TeamName>`);
+        t.legs.forEach((code, i) => out.push("      <TeamMemberCourseAssignment>", `        <Leg>${i + 1}</Leg>`, `        <CourseName>${x(`${c.name} ${code}`)}</CourseName>`, `        <CourseFamily>${x(c.name)}</CourseFamily>`, "      </TeamMemberCourseAssignment>"));
+        out.push("    </TeamCourseAssignment>");
+      }
+    }
+    out.push("  </RaceCourseData>", "</CourseData>");
+    return out.join("\n") + "\n";
+  }
+  // IOF XML 2.0.3
+  const d = new Date();
+  out.push('<?xml version="1.0" encoding="utf-8"?>', '<!DOCTYPE CourseData SYSTEM "IOFdata.dtd">', "<CourseData>", '  <IOFVersion version="2.0.3" />',
+    `  <ModifyDate>\n    <Date>${d.toISOString().slice(0, 10)}</Date>\n    <Clock>${d.toTimeString().slice(0, 8)}</Clock>\n  </ModifyDate>`,
+    `  <Map>\n    <Scale>${ev.map.scale}</Scale>\n    <MapPosition x="${r2(bounds[0])}" y="${r2(bounds[1])}" />\n  </Map>`);
+  const EL = { start: "StartPoint", "map-exchange": "StartPoint", normal: "Control", finish: "FinishPoint" };
+  for (const kind of ["start", "map-exchange", "normal", "finish"]) for (const id of Object.keys(ev.controls).map(Number).sort((a, b) => a - b)) {
+    const c = ev.controls[id];
+    if (c.kind !== kind) continue;
+    const el = EL[kind];
+    out.push(`  <${el}>`, `    <${el}Code>${x(codes.get(id))}</${el}Code>`, `    <MapPosition x="${r2(c.x)}" y="${r2(c.y)}" />`, `  </${el}>`);
+  }
+  courses.forEach((id, n) => {
+    const c = ev.courses[id], score = c.kind === "score";
+    out.push("  <Course>", `    <CourseName>${x(c.name)}</CourseName>`, `    <CourseId>${n}</CourseId>`);
+    for (const cn of classNames(c)) out.push(`    <ClassShortName>${x(cn)}</ClassShortName>`);
+    const vars = M.hasVariations(ev, id) ? M.allVariations(ev, id) : [null];
+    vars.forEach((vr, vn) => {
+      const { seq, view } = courseSequence(ev, M.cdCourse(id, -1, vr?.path || null));
+      out.push("    <CourseVariation>", `      <CourseVariationId>${vn}</CourseVariationId>`);
+      if (vr) out.push(`      <Name>${x(vr.code)}</Name>`);
+      if (!score) { out.push(`      <CourseLength>${Math.round(view.totalMax / 100) * 100}</CourseLength>`); if (c.climb > 0) out.push(`      <CourseClimb>${Math.round(c.climb / 5) * 5}</CourseClimb>`); }
+      let k = 1;
+      for (const s of seq) {
+        if (s.kind === "start") out.push(`      <StartPointCode>${x(codes.get(s.control))}</StartPointCode>`);
+        else if (s.kind === "finish") { out.push(`      <FinishPointCode>${x(codes.get(s.control))}</FinishPointCode>`, `      <DistanceToFinish>${Math.round(s.leg)}</DistanceToFinish>`); }
+        else if (s.kind === "normal") {
+          out.push("      <CourseControl>", `        <Sequence>${k++}</Sequence>`, `        <ControlCode>${x(codes.get(s.control))}</ControlCode>`);
+          if (!score) out.push(`        <LegLength>${Math.round(s.leg)}</LegLength>`);
+          if (score && s.points > 0) out.push(`        <ScoreOPoints>${s.points}</ScoreOPoints>`);
+          out.push("      </CourseControl>");
+        }
+      }
+      out.push("    </CourseVariation>");
+    });
+    out.push("  </Course>");
+  });
+  out.push("</CourseData>");
+  return out.join("\n") + "\n";
+}
+export function iofXml(E, version) {
+  const ev = E.ev;
+  const missing = M.courseIds(ev).filter((id) => !(M.findKind(ev, id, "start") && M.hasFinish(ev, id))).map((id) => ev.courses[id].name);
+  download(`${fileName(ev.title)} - IOF XML ${version === 3 ? "3.0" : "2.0.3"}.xml`, iofXmlText(ev, version), "application/xml");
+  if (missing.length) E.toast(`Sans départ ou sans arrivée, non exportés : ${missing.join(", ")}.`, 6000);
+}
+
+// ---- GPX and KML (need the map's georeference) -----------------------------------------------------------------------------------
+function needGeo(E) {
+  if (hasGeo(E.ev)) return true;
+  E.toast("La carte n'est pas géoréférencée : Événement › Propriétés… puis « Géoréférencer la carte ».", 6000);
+  return false;
+}
+export function gpx(E) {
+  if (!needGeo(E)) return;
+  const ev = E.ev, codes = codeMap(ev);
+  const wpt = Object.keys(ev.controls).map(Number).map((id) => {
+    const c = ev.controls[id], [lat, lon] = toLatLon(ev, c.x, c.y);
+    return `  <wpt lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}"><name>${x(codes.get(id))}</name><sym>Flag</sym></wpt>`;
+  });
+  const trk = M.courseIds(ev).map((id) => {
+    const v = M.view(ev, M.cdCourse(id), { specials: false, descriptions: false });
+    const pts = [];
+    for (const cv of v.controls) { const c = ev.controls[cv.control], [lat, lon] = toLatLon(ev, c.x, c.y); pts.push(`<trkpt lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}" />`); }
+    return `  <trk><name>${x(ev.courses[id].name)}</name><trkseg>${pts.join("")}</trkseg></trk>`;
+  });
+  download(`${fileName(ev.title)}.gpx`, `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="O'CN Tracer" xmlns="http://www.topografix.com/GPX/1/1">\n${wpt.join("\n")}\n${trk.join("\n")}\n</gpx>\n`, "application/gpx+xml");
+}
+export function kml(E) {
+  if (!needGeo(E)) return;
+  const ev = E.ev, codes = codeMap(ev);
+  const ll = (c) => { const [lat, lon] = toLatLon(ev, c.x, c.y); return `${lon.toFixed(7)},${lat.toFixed(7)},0`; };
+  const folders = M.courseIds(ev).map((id) => {
+    const v = M.view(ev, M.cdCourse(id), { specials: false, descriptions: false });
+    const marks = v.controls.map((cv) => { const c = ev.controls[cv.control]; return `<Placemark><name>${x(cv.ordinal > 0 ? `${cv.ordinal}-${codes.get(cv.control)}` : codes.get(cv.control))}</name><styleUrl>#c</styleUrl><Point><coordinates>${ll(c)}</coordinates></Point></Placemark>`; });
+    const line = `<Placemark><name>${x(ev.courses[id].name)}</name><styleUrl>#l</styleUrl><LineString><coordinates>${v.controls.map((cv) => ll(ev.controls[cv.control])).join(" ")}</coordinates></LineString></Placemark>`;
+    return `<Folder><name>${x(ev.courses[id].name)}</name>${line}${marks.join("")}</Folder>`;
+  });
+  download(`${fileName(ev.title)}.kml`, `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x(ev.title)}</name>
+<Style id="c"><IconStyle><color>ff9b17a7</color><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle></Style>
+<Style id="l"><LineStyle><color>ff9b17a7</color><width>3</width></LineStyle></Style>
+${folders.join("\n")}</Document></kml>\n`, "application/vnd.google-earth.kml+xml");
+}
+
+// ---- images of the courses ---------------------------------------------------------------------------------------------------------
+/** A course drawn over the map into a canvas at dpi (paper), its print area; returns { canvas, box (map mm), pxPerMm }. */
+export async function courseImage(E, cd, dpi, { withMap = true } = {}) {
+  const ev = E.ev, layout = layoutCourse(ev, cd), items = itemsFor(ev, layout);
+  const { box, k } = printBox(E, cd, layout);
+  const pxPerMm = (dpi / 25.4) * k;                            // image px per map mm
+  const W = Math.round((box[2] - box[0]) * pxPerMm), H = Math.round((box[3] - box[1]) * pxPerMm);
+  if (W * H > 120e6) throw new Error("image trop grande : baissez la résolution");
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  if (withMap && E.map) {
+    if (E.map.kind === "pdf") g.drawImage(await E.map.renderRegion(box, pxPerMm), 0, 0, W, H);
+    else {
+      const s = E.map.pxW / ev.map.w;
+      g.drawImage(E.map.image, box[0] * s, (ev.map.h - box[3]) * s, (box[2] - box[0]) * s, (box[3] - box[1]) * s, 0, 0, W, H);
+    }
+  }
+  const T = (xx, yy) => [(xx - box[0]) * pxPerMm, (box[3] - yy) * pxPerMm];
+  drawItems(g, items, T, pxPerMm, { blend: ev.appearance.blend, purple: ev.appearance.purple ? cmykToRgb(ev.appearance.purple) : SCREEN.upper });
+  return { canvas: c, box, pxPerMm };
+}
+/** A world file for an image of box at pxPerMm: when georeferenced, in degrees (EPSG:4326, approximated by an affine). */
+function worldFile(ev, box, pxPerMm) {
+  if (!hasGeo(ev)) return null;
+  const [lat0, lon0] = toLatLon(ev, box[0] + 0.5 / pxPerMm, box[3] - 0.5 / pxPerMm);
+  const [lat1, lon1] = toLatLon(ev, box[0] + 1.5 / pxPerMm, box[3] - 0.5 / pxPerMm);
+  const [lat2, lon2] = toLatLon(ev, box[0] + 0.5 / pxPerMm, box[3] - 1.5 / pxPerMm);
+  return [lon1 - lon0, lat1 - lat0, lon2 - lon0, lat2 - lat0, lon0, lat0].map((v) => v.toFixed(12)).join("\n") + "\n";
+}
+export async function imagesDialog(E) {
+  const ev = E.ev, ids = M.courseIds(ev);
+  const v = await modal(E, { title: "Images des circuits", wide: true, ok: "Créer", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? x(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
+    <div class="tr-grid2">${field("Format", sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"]], "png"))}${field("Résolution (ppp)", '<input name="dpi" value="200" inputmode="numeric">')}
+    ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul"]], "map"))}</div>
+    <p class="tr-hint">${hasGeo(ev) ? "Un fichier de géoréférencement (world file, en degrés WGS 84) accompagne chaque image." : "La carte n'est pas géoréférencée : pas de world file."}</p>`,
+  validate: (o) => (!(num(o.dpi) >= 50 && num(o.dpi) <= 1200) ? "Une résolution de 50 à 1200 ppp." : null) });
+  if (!v) return;
+  E.status("Création des images…", "busy");
+  const files = {};
+  for (const id of [0, ...ids]) {
+    if (!v[`c${id}`]) continue;
+    const cd = id ? M.cdCourse(id) : M.cdAll(), name = fileName(id ? ev.courses[id].name : "Tous les postes");
+    const { canvas, box, pxPerMm } = await courseImage(E, cd, num(v.dpi), { withMap: v.content === "map" });
+    const blob = await new Promise((r) => canvas.toBlob(r, `image/${v.fmt}`, 0.92));
+    files[`${name}.${v.fmt === "png" ? "png" : "jpg"}`] = new Uint8Array(await blob.arrayBuffer());
+    const wf = worldFile(ev, box, pxPerMm);
+    if (wf) files[`${name}.${v.fmt === "png" ? "pgw" : "jgw"}`] = new TextEncoder().encode(wf);
+  }
+  if (Object.keys(files).length === 1) { const [n, b] = Object.entries(files)[0]; download(n, new Blob([b])); }
+  else download(`${fileName(ev.title)} - images.zip`, await zip(files), "application/zip");
+  E.status("Images créées", "ok");
+}
+
+// ---- RouteGadget --------------------------------------------------------------------------------------------------------------------
+export async function routeGadget(E) {
+  const ev = E.ev;
+  // the map image enclosing every print area, at a resolution RouteGadget handles, and the courses in IOF XML 3.0
+  const dpi = Math.min(150, (5000 * 25.4) / Math.max(ev.map.w, ev.map.h));
+  const pxPerMm = dpi / 25.4, W = Math.round(ev.map.w * pxPerMm), H = Math.round(ev.map.h * pxPerMm);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  if (E.map?.kind === "pdf") g.drawImage(await E.map.renderRegion([0, 0, ev.map.w, ev.map.h], pxPerMm), 0, 0, W, H);
+  else if (E.map) g.drawImage(E.map.image, 0, 0, W, H);
+  const files = { [`${fileName(ev.title)}.jpg`]: new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9))).arrayBuffer()) };
+  const wf = worldFile(ev, [0, 0, ev.map.w, ev.map.h], pxPerMm);
+  if (wf) files[`${fileName(ev.title)}.jgw`] = new TextEncoder().encode(wf);
+  // RouteGadget reads the controls' map positions: here in pixels of the image (MapPosition unit="px" is not IOF; the
+  // positions stay in mm and the map's corners in the Map element let it scale them)
+  files[`${fileName(ev.title)}.xml`] = new TextEncoder().encode(iofXmlText(ev, 3));
+  download(`${fileName(ev.title)} - RouteGadget.zip`, await zip(files), "application/zip");
+  E.toast("Fichiers RouteGadget créés (carte et circuits). Les temps intermédiaires viennent ensuite du logiciel de chronométrage. Dans O'CN, « Publier vers l'analyse multi » fait mieux sans fichier.", 8000);
+}

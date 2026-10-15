@@ -109,7 +109,7 @@ const FR = {
   "nav.agenda": "Agenda", "nav.recent": "Résultats", "nav.live": "En direct", "nav.analysis": "Analyse solo", "nav.analysisRace": "Analyse multi", "nav.analysis.long": "Analyse solo (Courses)", "nav.analysisPerso.long": "Analyse solo (Entrainement)",
   "nav.analysisRace.long": "Analyse multi (Courses)", "nav.analysisClub.long": "Analyse multi (Entrainement)",
   "nav.g.orga": "Organisation", "nav.orgRace": "Compétitions", "nav.orgTraining": "Entraînements", "nav.orgResults": "Résultats",
-  "nav.orgDirect": "Direct", "nav.orgTracer": "Tracer", "nav.soon": "Bientôt", "nav.analysisPerso": "Analyse solo", "nav.analysisClub": "Analyse multi",
+  "nav.orgDirect": "Direct", "nav.orgTracer": "Tracer", "nav.orgTracer.hint": "Tracer les circuits d'une course ou d'un entraînement, comme avec Purple Pen", "nav.soon": "Bientôt", "nav.analysisPerso": "Analyse solo", "nav.analysisClub": "Analyse multi",
   "nav.g.cn": "Classement", "nav.g.races": "Courses", "nav.coursesCn": "Courses classées", "nav.docs": "Documentation",
   "auth.menu": "Mon compte",
   "cl.myClub": "Mon club",
