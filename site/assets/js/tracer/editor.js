@@ -25,6 +25,7 @@ const ICON = {
   exchange: '<circle cx="12" cy="12" r="8"/><path d="M12 6l5 9H7z"/>',
   bend: '<path d="M4 18l8-12 8 12"/><circle cx="12" cy="6" r="2"/>',
   gap: '<path d="M3 12h6M15 12h6"/>',
+  route: '<path d="M4 19c3-1 3-6 7-7s4-6 9-8" stroke-dasharray="3 2.5"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="4" r="1.6"/>',
   descr: '<rect x="4" y="4" width="16" height="16"/><path d="M4 9h16M4 14h16M9 9v11"/>',
   special: '<path d="M4 20l8-16 8 16z"/><path d="M8 14h8"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
@@ -45,6 +46,7 @@ const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser
   ["exchange", "Échange de carte", "Cliquer un poste du circuit pour y échanger la carte, ou ailleurs pour un échange au bout d'un trajet balisé"],
   ["bend", "Coude", "Cliquer un interposte pour y ajouter un coude ; cliquer un coude pour le retirer"],
   ["gap", "Coupure", "Glisser le long d'un interposte ou d'un cercle pour le couper ; cliquer une coupure pour la refermer"],
+  ["route", "Itinéraire", "Cliquer un interposte, puis les points du chemin que prendront les coureurs (pour la dénivelée) ; double-cliquer pour finir"],
   ["descr", "Définitions sur la carte", "Glisser pour placer les définitions du circuit sur la carte (la largeur donne leur taille)"]];
 
 /** Open the editor over the page. ctx: { meta, role, you, ev, version, mapSrc, key, readOnly, lockHolder, onClose, newTab }. */
@@ -179,6 +181,7 @@ export async function openEditor(ctx) {
   function size() {
     const r = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.round(r.width * dpr())); canvas.height = Math.max(1, Math.round(r.height * dpr()));
+    if ((E.needFit || !(E.view.k > 0)) && r.width > 70 && r.height > 70) { fitCourse(); return; }
     draw();
   }
   const mapPxPerMm = () => (E.map ? E.map.pxW / E.ev.map.w : 1);
@@ -211,11 +214,25 @@ export async function openEditor(ctx) {
     if (E.others?.length) drawItems(g, E.others, T, v.k, { blend: E.ev.appearance.blend, purple: "#d9a6d4", alpha: 0.9 });
     drawItems(g, E.items, T, v.k, { blend: E.ev.appearance.blend, purple });
     if (E.opts.printArea) drawPrintArea(T);
+    drawRoutes(T);
     for (const f of E.overlays) { try { f(g, T, v.k); } catch (err) { console.error(err); } }
     drawHandles(T);
     if (E.ghost) drawGhost(T);
     if (E.dragRect) { g.strokeStyle = "#0a84ff"; g.setLineDash([5, 4]); const [x1, y1] = T(...E.dragRect[0]), [x2, y2] = T(...E.dragRect[1]); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.setLineDash([]); }
     scheduleSharp();
+  }
+  /** The routes drawn for the climb (Itinéraire), on the screen only: dashed, in the map's brown. */
+  function drawRoutes(T) {
+    const legs = (E.layout?.objs || []).filter((o) => o.t === "leg");
+    g.save(); g.strokeStyle = "#8b5a2b"; g.lineWidth = 1.6; g.setLineDash([6, 4]);
+    for (const o of legs) {
+      const r = E.ev.legs[M.findLeg(E.ev, o.control, o.control2)]?.route;
+      if (!r?.length) continue;
+      g.beginPath();
+      M.legRoutePoints(E.ev, o.control, o.control2).forEach((p, i) => { const [x, y] = T(...p); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+      g.stroke();
+    }
+    g.restore();
   }
   function drawPrintArea(T) {
     const pa = M.printAreaOf(E.ev, E.cdDraw || E.cd);
@@ -269,7 +286,8 @@ export async function openEditor(ctx) {
   }
   function fitBox([l, b, r, t], pad = 30) {
     const W = canvas.width / dpr(), H = canvas.height / dpr();
-    if (!W || !H) return;
+    if (W < 2 * pad + 10 || H < 2 * pad + 10) { E.needFit = true; return; }      // no room yet (a hidden tab): fitted on the next size()
+    E.needFit = false;
     const k = Math.min((W - 2 * pad) / Math.max(5, r - l), (H - 2 * pad) / Math.max(5, t - b));
     E.view = { k, ox: W / 2 - ((l + r) / 2) * k, oy: H / 2 + ((b + t) / 2) * k };
   }
@@ -379,6 +397,7 @@ export async function openEditor(ctx) {
     if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); E.undoStep(); }
     else if (mod && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))) { e.preventDefault(); E.redoStep(); }
     else if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); save(true); }
+    else if (e.key === "Enter" && E.pending) { e.preventDefault(); A.finishPending(E); }
     else if (e.key === "Delete" || e.key === "Backspace") { if (E.sel) { e.preventDefault(); A.deleteSelection(E); } }
     else if (e.key === "Escape") { if (E.pickOnce) { E.pickOnce = null; const c = E.pickCancel; E.pickCancel = null; c?.(); E.help(); } else if (E.tool !== "select") E.setTool("select"); else E.select(null); }
     else if (e.key.startsWith("Arrow")) {
@@ -598,7 +617,7 @@ function shell(E) {
         ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
         ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
         ["export-images", "Images des circuits (PNG, JPEG)…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
-        ["publish", "Publier vers l'analyse multi…"], ["map-change", "Changer de carte…"]])}
+        ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"]])}
       ${menu("Événement", [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
         ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],
         ["custom-text", "Textes des définitions…"], ["punch", "Poinçons…"], ["load", "Charge des concurrents…"], ["georef", "Géoréférencer la carte…"], "-", ["team", "Équipe et partage…"], ["encryption", "Chiffrement…"]])}

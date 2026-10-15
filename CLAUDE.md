@@ -283,7 +283,14 @@ the administrators, deletes files older than 60 days, and, when the Pages secret
 fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
 every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources/upload.py` turns each upload into
 a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
-is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed"). pages « Résultats » (`#/resultats`, « Récemment » until 2026-10-12, in the
+is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed").
+**Course data** (2026-10-15): X-Upload `kind: "courses"` (default "results") is a setter's IOF XML CourseData
+(« Organisation › Tracer », Purple Pen; `.xml`, 5 MB, organisers only; a race of the list or a coming one of the agenda,
+`a<agenda id>`), a document of kind "coursedata" (`parsers/coursedata.py`, 3.0 and 2.0.3) — no results list: not counted
+or scored, no `org_races`, an account's newer courses replace its older ones (results apart). `run.fill_courses` gives
+the race's lists the length, climb and controls they lack (« #3 » placeholders too) by course name (« Circuit A » = « A »),
+circuit, class assignment or identical codes (a name so identified holds in the other lists; a category view takes its
+circuit's values); nothing of it is used before the race's day, its courses listed from the day after. pages « Résultats » (`#/resultats`, « Récemment » until 2026-10-12, in the
 menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still work) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
 « Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps

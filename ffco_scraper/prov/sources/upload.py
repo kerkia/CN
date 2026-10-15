@@ -13,6 +13,12 @@ prov_meta 'uploads' (id -> [file size, status]); a new parser version reads them
 An organiser's upload (« Organisation › Résultats », meta "organiser": true, checked by the Function: a member of the
 race's organising club or an administrator; 2026-10-15) says so in its note, and its race is no longer looked for on
 the club's site or the platforms: prov_meta 'org_races' lists those races, the run skips them (run.run).
+
+A course setter's courses (« Organisation › Tracer », meta "kind": "courses", the same check; 2026-10-15): an IOF XML
+CourseData file, read by parsers.coursedata only, becomes a document of kind "coursedata" — each circuit's length, climb
+and controls for the race's results lists that lack them (run.fill_courses). It is no results list: its race is still
+looked for everywhere, and a newer one by the same account replaces it (results and courses apart). Sent before the
+race, often weeks before: a race not in prov_races yet is tried again at the next run.
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ import zipfile
 from pathlib import Path
 
 from .. import races, store
+from ..parsers import coursedata
 
 log = logging.getLogger(__name__)
 READABLE = (".xml", ".html", ".htm", ".pdf", ".csv", ".txt")
@@ -80,19 +87,25 @@ def race_for(con, m: dict) -> str | None:
     return key
 
 
+def kind_of(m: dict) -> str:
+    """What an upload is: "results" (results or split times), or "courses" (a course setter's IOF XML CourseData)."""
+    return "courses" if m.get("kind") == "courses" else "results"
+
+
 def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
     """Turns the new uploads into documents; the number of documents added, changed or removed."""
     done = store.meta_get(con, "uploads", {}) or {}
     ups = uploads(folder)
     changed = 0
-    # the latest upload of an account for a race replaces its earlier ones
+    # the latest upload of an account for a race replaces its earlier ones (of the same kind)
     latest: dict = {}
     for m in ups:
         if m.get("status") == "active" and m.get("race"):
-            latest[(m.get("user"), m["race"])] = m["id"]
+            latest[(m.get("user"), m["race"], kind_of(m))] = m["id"]
     for m in ups:
         uid, state = str(m.get("id")), [m.get("size"), m.get("status")]
-        superseded = m.get("race") and latest.get((m.get("user"), m["race"])) not in (None, m["id"])
+        courses = kind_of(m) == "courses"
+        superseded = m.get("race") and latest.get((m.get("user"), m["race"], kind_of(m))) not in (None, m["id"])
         if done.get(uid) == state + [bool(superseded)] and not reread:
             continue
         prefix = f"upload:{uid}/"
@@ -106,19 +119,24 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
                         con.execute("DELETE FROM prov_races WHERE key = ?", (key,))
             elif m.get("path"):
                 key = race_for(con, m)
+                if key is None and courses:
+                    log.info("upload %s: courses of a race not known yet (%s), tried again next time", uid, m.get("race"))
+                    continue                               # (not marked as read)
                 if key is None:
                     log.warning("upload %s: unknown race %s", uid, m.get("race"))
                 else:
                     when = str(m.get("created") or "")[:10]
-                    who = "par l'organisateur " if m.get("organiser") else ""
-                    note = f"déposé {who}sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"déposé {who}sur O'CN"
+                    who = "par l'organisateur " if m.get("organiser") and not courses else ""
+                    what = "circuits du traceur, déposés" if courses else f"déposé {who}".strip()
+                    note = f"{what} sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"{what} sur O'CN"
                     for name, content in files_in(m.get("filename") or m["path"].name, m["path"].read_bytes()):
-                        d = parse_any(content, name)
+                        d = coursedata.parse(content, name) if courses else parse_any(content, name)
                         if d is not None:
                             d["title"] = d.get("title") or name
                         changed += save(con, key, prefix + name, "upload", d, kind=None if d else "unparsed", note=note)
                     # the race is looked at again soon (its scores, the platforms): the upload may be its first news
-                    con.execute("UPDATE prov_races SET done = 0, next_check = NULL WHERE key = ?", (key,))
+                    if not courses:
+                        con.execute("UPDATE prov_races SET done = 0, next_check = NULL WHERE key = ?", (key,))
             else:
                 continue                                   # the file is gone (after 60 days): its documents stay
         except Exception:                                  # one odd file must not stop the run
@@ -126,6 +144,7 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
         done[uid] = state + [bool(superseded)]
     store.meta_set(con, "uploads", done)
     # the races an organiser gave results for: not looked for elsewhere any more
-    store.meta_set(con, "org_races", sorted({m["race"] for m in ups if m.get("organiser") and m.get("status") == "active" and m.get("race")}))
+    store.meta_set(con, "org_races", sorted({m["race"] for m in ups if m.get("organiser") and kind_of(m) == "results"
+                                             and m.get("status") == "active" and m.get("race")}))
     con.commit()
     return changed

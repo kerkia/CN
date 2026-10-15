@@ -32,7 +32,7 @@ from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
 from .sources import upload
 from .sources.liveresultat import API as LR_API, LiveResultat
-from .parsers import VERSION as PARSER_VERSION
+from .parsers import VERSION as PARSER_VERSION, coursedata
 from .sources.winsplits import BASE as WS_BASE, WinSplits
 
 log = logging.getLogger(__name__)
@@ -92,10 +92,11 @@ def _now() -> str:
 
 # ---- reading any document ----------------------------------------------------------------------------------
 def parse_any(content: bytes, url: str, ctype: str = "") -> dict | None:
-    """The first parser that reads it: PDFs, IOF XML, then HTML exports (OE, MeOS), then any HTML table."""
+    """The first parser that reads it: PDFs, IOF XML (a result list, else a course setter's CourseData), then HTML
+    exports (OE, MeOS), then any HTML table."""
     head = content[:400].lstrip().lower()
     order = (["pdf"] if content[:5] == b"%PDF-" else
-             ["iofxml"] if head.startswith(b"<?xml") or b"<resultlist" in head else
+             ["iofxml", "coursedata"] if head.startswith(b"<?xml") or b"<resultlist" in head or b"<coursedata" in head else
              ["oe_html", "meos_html", "html_generic"])
     for name in order:
         try:
@@ -525,6 +526,97 @@ def share_starts(parsed_docs: list[dict]) -> None:
                     r["start_s"] = starts.get(_name_key(r["name"]))
 
 
+def course_index(cds: list[tuple[str, dict]], lists: list[dict]) -> dict | None:
+    """The race's course data (documents of kind "coursedata": « Organisation › Tracer », a setter's IOF XML), the first
+    one given winning: its courses by name and by control sequence, the classes' courses ({"src": its address}), and the
+    names the race's lists give the courses their codes identify (« Violet court » ran the codes of « P2 »: the same
+    class of a list without codes is that course too)."""
+    if not cds:
+        return None
+    idx: dict = {"name": {}, "seq": {}, "assign": {}, "alias": {}}
+    for url, d in cds:
+        mine: dict[tuple, list] = defaultdict(list)
+        for c in d["classes"]:
+            c = {**c, "src": url}
+            if coursedata.course_key(c["name"]):
+                idx["name"].setdefault(coursedata.course_key(c["name"]), c)
+            if c.get("controls"):
+                mine[coursedata.seq_key(c["controls"])].append(c)
+        for s, cs in mine.items():
+            idx["seq"].setdefault(s, cs)
+        for cls, course in (d.get("assign") or {}).items():
+            idx["assign"].setdefault(coursedata.course_key(cls), coursedata.course_key(course))
+    alias, mixed = {}, set()
+    for d in lists:
+        for k in d.get("classes") or []:
+            c, key = _by_codes(idx, k), coursedata.course_key(k["name"])
+            if c and key and key not in idx["name"]:
+                if alias.get(key, c) is not c:
+                    mixed.add(key)
+                alias[key] = c
+    idx["alias"] = {key: c for key, c in alias.items() if key not in mixed}
+    return idx
+
+
+def _by_codes(idx: dict, k: dict) -> dict | None:
+    """The course whose controls are the class's (the same codes in the same order), when one length and climb fit."""
+    cs = idx["seq"].get(coursedata.seq_key(k["controls"])) if k.get("controls") else None
+    return cs[0] if cs and len({(c["length_m"], c["climb_m"]) for c in cs}) == 1 else None
+
+
+def course_for(idx: dict, k: dict) -> dict | None:
+    """The course a results class ran: by its name (« Circuit A » = « A », or the name another list gave that course's
+    codes), its circuit's (a list by category), its category's assignment in the course data, else by its controls."""
+    names = idx["name"]
+    for n in (k.get("name"), k.get("circuit")):
+        key = coursedata.course_key(n) if n else ""
+        c = (names.get(key) or idx["alias"].get(key)) if key else None
+        if c:
+            return c
+    a = idx["assign"].get(coursedata.course_key(k.get("name")))
+    if a and names.get(a):
+        return names[a]
+    return _by_codes(idx, k)
+
+
+def fill_class(k: dict, c: dict) -> bool:
+    """A class's missing length, climb and controls from its course (what the file gives is kept); the controls only
+    when the runners' splits count as many, and in place of a split list's numbers (« #3 », a PDF printing no codes)
+    when the codes it does print agree. True when something was added."""
+    added = False
+    for f in ("length_m", "climb_m"):
+        if k.get(f) is None and c.get(f):
+            k[f], added = c[f], True
+    mine, theirs = k.get("controls"), c.get("controls")
+    if theirs and not mine:
+        n = {len(r["splits"]) for r in k.get("runners") or [] if r.get("splits")}
+        if not n or n == {len(theirs)}:
+            k["controls"], added = list(theirs), True
+    elif theirs and len(mine) == len(theirs):
+        numbered = [a == f"#{i + 1}" for i, a in enumerate(mine)]
+        if any(numbered) and all(x or coursedata.seq_key([a]) == coursedata.seq_key([b])
+                                 for x, a, b in zip(numbered, mine, theirs)):
+            k["controls"], added = [b if x else a for x, a, b in zip(numbered, mine, theirs)], True
+    return added
+
+
+def fill_courses(entry: dict, parsed: dict, idx: dict | None) -> None:
+    """A results document's classes, and its views by circuit and by category, given the length, climb and controls
+    the file lacks: a category from its circuit's class, any class from the race's course data (the document then
+    names that course data: « coursedata »)."""
+    own = {k["name"]: k for k in parsed["classes"]}
+    used = set()
+    for group in (parsed["classes"], entry.get("circuits") or [], entry.get("catview") or []):
+        for k in group:
+            if k.get("circuit") in own and own[k["circuit"]] is not k:
+                fill_class(k, own[k["circuit"]])
+            c = course_for(idx, k) if idx else None
+            if c and fill_class(k, c):
+                used.add(c["src"])
+    if used:
+        entry["coursedata"] = sorted(used)
+
+
 def start_lists(con, f: Fetcher, lr: LiveResultat, today: date) -> int:
     """The coming races' start lists, from the liveresultat competition assigned to each (races.assign): a document
     of kind "startlist", replaced by the results once the race has run (same address)."""
@@ -656,11 +748,26 @@ def build(con, out: Path, today: date) -> int:
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
-        share_starts([p for p in all_parsed if p])
-        circuits = category_circuits([p for p in all_parsed if p])
+        # the course setter's data (« Organisation › Tracer »): no list of results; the uploads first, the newest first.
+        # Courses are secret until the race (the setters' own pages): used from the race's day (results come after the
+        # runners' finish), its courses listed from the day after
+        cds = sorted(((doc, p) for doc, p in zip(docs, all_parsed) if p and p.get("kind") == coursedata.KIND),
+                     key=lambda x: x[0]["changed_at"] or "", reverse=True)
+        cds.sort(key=lambda x: x[0]["source"] != "upload")
+        lists = [p for p in all_parsed if p and p.get("kind") != coursedata.KIND]
+        courses = course_index([(doc["url"], p) for doc, p in cds], lists) if race["date_iso"] <= today.isoformat() else None
+        share_starts(lists)
+        circuits = category_circuits(lists)
         for doc, parsed in zip(docs, all_parsed):
             entry = {"url": doc["url"], "source": doc["source"], "kind": doc["kind"], "title": doc["title"],
                      "found": doc["found_at"], "changed": doc["changed_at"], "note": doc["note"]}
+            if parsed and parsed.get("kind") == coursedata.KIND:
+                if race["date_iso"] > today.isoformat():
+                    continue
+                if race["date_iso"] < today.isoformat():
+                    entry["courses"] = [{f: c.get(f) for f in ("name", "length_m", "climb_m", "controls")} for c in parsed["classes"]]
+                out_docs.append(entry)
+                continue
             if parsed:
                 # a list whose classes are mostly categories is one by category, whatever an older reading said
                 names = [k["name"] for k in parsed["classes"]]
@@ -689,6 +796,8 @@ def build(con, out: Path, today: date) -> int:
                     entry["catview"] = category_view(parsed)
                     for k in parsed["classes"]:          # each circuit's categories, for its heading
                         k["categories"] = sorted({r.get("category") or r.get("catCn") for r in k["runners"]} - {None})
+                if parsed.get("kind") not in START_KINDS:
+                    fill_courses(entry, parsed, courses)
                 entry["classes"] = parsed["classes"]
                 runners = [r for k in parsed["classes"] for r in k["runners"]]
                 n_run = max(n_run, len(runners))

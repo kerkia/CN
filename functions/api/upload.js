@@ -7,6 +7,11 @@
 // an e-mail, can remove it on the admin page, and D1 keeps who uploaded what. When the GH_DISPATCH_TOKEN secret is
 // set, a provisional-results run starts at once (GitHub workflow_dispatch); otherwise the next hourly run reads it.
 // Files older than 60 days are deleted from R2 after an upload (their results stay on the site).
+// { kind: "courses" } (2026-10-15; default "results"): a course setter's IOF XML CourseData (« Organisation › Tracer »,
+// Purple Pen's « Export IOF XML ») for a race of the list or a competition of the agenda ({ race: "a<agenda id>" }:
+// courses are set before the race), by its organisers only (checked as for { organiser: true }, which need not be
+// sent), a .xml file of COURSES_MAX at most; the results lists then get each circuit's length, climb and controls when
+// their files lack them. Not the organiser's results: the race is still looked for on the club's site and the platforms.
 
 import { adminEmails, allow, isAdmin, json, nowIso, withUser } from "../_lib/api.js";
 import { clubOf, orgCode } from "../_lib/club.js";
@@ -14,6 +19,7 @@ import { sendOrQueue } from "../_lib/mail.js";
 import { uploadMail } from "../_lib/templates.js";
 
 export const MAX_BYTES = 30 * 1024 * 1024;
+export const COURSES_MAX = 5 * 1024 * 1024;
 const EXT = /\.(xml|html?|pdf|zip|gz|csv|txt)$/i;
 const KEEP_DAYS = 60;
 const TERRAINS = ["Forêt", "Sprint", "VTT", "Ski"];
@@ -29,24 +35,34 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   try { meta = JSON.parse(decodeURIComponent(request.headers.get("X-Upload") || "")); } catch (e) { meta = null; }
   if (!meta || typeof meta !== "object") return json({ error: "bad request" }, 400);
   if (meta.consent !== true) return json({ error: "consent" }, 400);
+  const kind = meta.kind == null ? "results" : meta.kind;
+  if (kind !== "results" && kind !== "courses") return json({ error: "kind" }, 400);
+  const courses = kind === "courses", max = courses ? COURSES_MAX : MAX_BYTES;
   const filename = clean(meta.filename, 120).replace(/[\\/]/g, "_");
-  if (!EXT.test(filename)) return json({ error: "type" }, 415);
+  if (!(courses ? /\.xml$/i : EXT).test(filename)) return json({ error: "type" }, 415);
   const size = Number(request.headers.get("Content-Length") || 0);
   if (!size) return json({ error: "empty" }, 400);
-  if (size > MAX_BYTES) return json({ error: "too big", max: MAX_BYTES }, 413);
-  if (!(await allow(env, `upload:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
+  if (size > max) return json({ error: "too big", max }, 413);
+  if (courses && !meta.race) return json({ error: "race" }, 400);
+  if (!(await allow(env, `${courses ? "courses" : "upload"}:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
 
-  // the race: one of the list, or a new one (the last 60 days, as on the page)
-  let raceKey = null, label, newRace = null, organiser = false;
+  // the race: one of the list, or a new one (the last 60 days, as on the page); courses: a coming one of the agenda too
+  let raceKey = null, label, newRace = null, organiser = false, raceDay = null;
   if (meta.race) {
     raceKey = clean(meta.race, 40);
     const res = await env.ASSETS.fetch(new URL("/data/prov/index.json", request.url));
-    const race = res.ok ? (await res.json()).races?.find((r) => r.key === raceKey) : null;
+    const race = (res.ok ? (await res.json()).races?.find((r) => r.key === raceKey) : null)
+      || (courses ? await agendaRace(env, request, raceKey) : null);
     if (!race) return json({ error: "unknown race" }, 400);
     label = `${race.name} (${race.date_iso})`;
-    // the organiser's own results (« Organisation › Résultats », 2026-10-15): a member of the organising club or an
-    // administrator; the race is then no longer looked for elsewhere (ffco_scraper/prov/sources/upload.py)
-    if (meta.organiser === true) {
+    raceDay = race.date_iso;
+    if (courses) {                    // its setters: a member of the organising club, or an administrator
+      const code = orgCode(race.org);
+      if (!isAdmin(env, user) && (!code || (await clubOf(env, request, user.licence)) !== code)) return json({ error: "not organiser" }, 403);
+      label += " — circuits du traceur";
+    } else if (meta.organiser === true) {
+      // the organiser's own results (« Organisation › Résultats », 2026-10-15): a member of the organising club or an
+      // administrator; the race is then no longer looked for elsewhere (ffco_scraper/prov/sources/upload.py)
       const code = orgCode(race.org);
       if (!isAdmin(env, user) && (!code || (await clubOf(env, request, user.licence)) !== code)) return json({ error: "not organiser" }, 403);
       organiser = true;
@@ -83,14 +99,26 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
     await env.DB.prepare("DELETE FROM uploads WHERE id = ?").bind(id).run();
     return json({ error: "storage" }, 502);
   }
-  const m = { id, created, user: user.id, race: raceKey, new_race: newRace, filename, stored, size, status: "active", organiser };
+  const m = { id, created, user: user.id, race: raceKey, new_race: newRace, filename, stored, size, status: "active", organiser, kind };
   await env.BUCKET.put(`uploads/${id}/meta.json`, JSON.stringify(m), { httpMetadata: { contentType: "application/json" } });
   await env.DB.prepare("UPDATE uploads SET r2_key = ? WHERE id = ?").bind(r2Key, id).run();
 
-  const soon = await startRun(env);
-  waitUntil(Promise.all([alertAdmins(env, user, { race: label, filename, size }), cleanUp(env)]).catch(() => {}));
+  // a run at once, but not for the courses of a race still to come: nothing of them is shown before the race
+  const soon = courses && raceDay > isoDay(new Date()) ? false : await startRun(env);
+  waitUntil(Promise.all([alertAdmins(env, user, { race: label, filename, size, kind }), cleanUp(env)]).catch(() => {}));
   return json({ ok: true, id, soon });
 });
+
+/** A competition of the agenda (site/data/agenda.json) by its race key « a<id> », shaped as a race of the list; or null. */
+async function agendaRace(env, request, key) {
+  const m = /^a(\d+)$/.exec(key);
+  if (!m) return null;
+  try {
+    const res = await env.ASSETS.fetch(new URL("/data/agenda.json", request.url));
+    const e = res.ok ? (await res.json()).events?.find((x) => x.kind === "c" && String(x.id) === m[1] && !x.cancelled) : null;
+    return e ? { key, name: e.name, date_iso: e.date, org: e.org } : null;
+  } catch (e) { return null; }
+}
 
 /** A provisional-results run now (GitHub workflow_dispatch), at most once every 3 minutes; false without the token. */
 export async function startRun(env) {

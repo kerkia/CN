@@ -648,7 +648,7 @@ export function moveControl(ev, controlId, pt) {
     setLegGaps(ev, l.c1, l.c2, moveGaps(l.gaps, oldPath, legPoints(ev, l.c1, l.c2)));
   }
 }
-function vacuous(l) { return (!l.flagging || l.flagging === "none") && !l.bends?.length && !l.gaps?.length; }
+function vacuous(l) { return (!l.flagging || l.flagging === "none") && !l.bends?.length && !l.gaps?.length && !l.route?.length; }
 function legFor(ev, c1, c2) {
   const id = findLeg(ev, c1, c2);
   return id ? [id, ev.legs[id]] : [0, { c1, c2, flagging: "none" }];
@@ -656,6 +656,19 @@ function legFor(ev, c1, c2) {
 function putLeg(ev, id, leg) {
   if (vacuous(leg)) { if (id) delete ev.legs[id]; return; }
   if (id) ev.legs[id] = leg; else addObj(ev, "leg", leg);
+}
+/** The route the setter expects on a leg (O'CN's, not in .ppen): the points between the two controls, or null. */
+export function setLegRoute(ev, c1, c2, pts) {
+  const [id, leg] = legFor(ev, c1, c2);
+  if (pts?.length) leg.route = pts.map((p) => p.slice()); else delete leg.route;
+  putLeg(ev, id, leg);
+}
+/** The leg as run: the drawn route when there is one, else the leg itself (with its bends). */
+export function legRoutePoints(ev, c1, c2) {
+  const leg = ev.legs[findLeg(ev, c1, c2)];
+  if (!leg?.route?.length) return legPoints(ev, c1, c2);
+  const a = ev.controls[c1], b = ev.controls[c2];
+  return [[a.x, a.y], ...leg.route, [b.x, b.y]];
 }
 export function setLegGaps(ev, c1, c2, gaps) {
   const [id, leg] = legFor(ev, c1, c2);
@@ -911,6 +924,7 @@ export function transformAll(ev, m) {
   }
   for (const l of Object.values(ev.legs)) {
     if (l.bends) l.bends = l.bends.map(T);
+    if (l.route) l.route = l.route.map(T);
     if (l.flag) l.flag = T(l.flag);
     if (l.gaps) l.gaps = l.gaps.map(([s, len]) => [s * scale, len * scale]);
   }

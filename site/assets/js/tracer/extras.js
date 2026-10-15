@@ -22,6 +22,7 @@ export const winningTimes = async (E) => (await race()).winningTimes(E);
 export const pickup = async (E) => (await race()).pickup(E);
 export const afterRace = async (E) => (await race()).afterRace(E);
 export const publish = async (E) => (await race()).publish(E);
+export const sendCourses = async (E) => (await race()).sendCourses(E);
 export const registrationLoads = async (E) => (await race()).registrationLoads(E);
 export const comments = async (E) => (await team()).comments(E);
 export const fieldMode = async (E) => (await team()).fieldMode(E);

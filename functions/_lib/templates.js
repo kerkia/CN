@@ -55,17 +55,23 @@ Administration (pour désactiver cette alerte) : ${url}`,
   };
 }
 
-/** To the administrators: an organiser uploaded a results file on « Récemment ». */
+/** To the administrators: an organiser uploaded a results file on « Récemment » (or, kind "courses", the course setter's
+ *  circuits from « Organisation › Tracer »). */
 export function uploadMail(env, user, up) {
   const url = `${siteUrl(env)}/#/admin?onglet=depots`;
+  const courses = up.kind === "courses";
   const lines = [`Course : ${up.race}`, `Fichier : ${up.filename} (${Math.max(1, Math.round(up.size / 1024))} Ko)`,
     `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
+  const head = courses ? "Circuits déposés" : "Résultats déposés";
+  const intro = courses ? "Les circuits d'une course (fichier IOF XML du traceur) viennent d'être déposés sur « Résultats »."
+    : "Un fichier de résultats vient d'être déposé sur « Résultats ».";
+  const when = courses ? "Ils complètent les listes de résultats de la course (longueur, dénivelé, postes), une fois la course passée."
+    : "Il est publié au prochain passage de la collecte.";
   return {
-    subject: `Résultats déposés : ${up.race} — O'CN`,
-    html: wrap(env, "Résultats déposés", `<p>Un fichier de résultats vient d'être déposé sur « Résultats ». Il est publié
-au prochain passage de la collecte.</p>
+    subject: `${head} : ${up.race} — O'CN`,
+    html: wrap(env, head, `<p>${intro} ${when}</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Voir les dépôts")}`),
-    text: `Un fichier de résultats vient d'être déposé sur « Résultats ».
+    text: `${intro}
 ${lines.join("\n")}
 
 Les dépôts (pour en retirer un) : ${url}`,

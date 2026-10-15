@@ -91,7 +91,7 @@ function coursePolyline(ev, cd) {
   const ids = M.ccIds(ev, cd), pts = [];
   for (let i = 0; i + 1 < ids.length; i++) {
     const a = ev.courseControls[ids[i]].control, b = ev.courseControls[ids[i + 1]].control;
-    const leg = M.legPoints(ev, a, b);
+    const leg = M.legRoutePoints(ev, a, b);             // the drawn route when there is one
     pts.push(...(pts.length ? leg.slice(1) : leg));
   }
   return pts;
@@ -132,8 +132,8 @@ export async function climb(E) {
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.2" points="${r.z.map((z, i) => `${((i / (n - 1)) * W).toFixed(1)},${(H - 2 - ((z - lo) / (hi - lo)) * (H - 4)).toFixed(1)}`).join(" ")}"/></svg>`;
   };
   const v = await modal(E, { title: "Dénivelée des circuits (IGN)", wide: true, ok: "Reporter dans les circuits", body: `
-    <p>Les altitudes du modèle numérique de terrain de l'IGN (RGE ALTI, au mètre en France), tous les 10 m le long des interpostes <b>en ligne droite</b> (et de leurs coudes).
-    Le règlement compte la dénivelée de l'itinéraire le plus raisonnable : un contournement en économise, un chemin en ajoute. Corrigez si besoin ; arrondi à 5 m.</p>
+    <p>Les altitudes du modèle numérique de terrain de l'IGN (RGE ALTI, au mètre en France), tous les 10 m le long des interpostes : <b>l'itinéraire tracé</b> quand il y en a un
+    (outil Itinéraire), sinon la ligne droite et ses coudes. Le règlement compte la dénivelée de l'itinéraire le plus raisonnable : tracez-le sur les interpostes où il s'écarte de la ligne droite. Arrondi à 5 m.</p>
     <div class="table-wrap"><table class="tr-table"><thead><tr><th></th><th>Circuit</th><th class="r">Longueur</th><th class="r">Montée</th><th class="r">Descente</th><th class="r">m/km</th><th>Profil</th><th class="r">Actuelle</th><th class="r">À reporter</th></tr></thead><tbody>
     ${rows.map((r) => `<tr><td><input type="checkbox" name="u${r.id}" checked aria-label="Reporter"></td><td>${esc(ev.courses[r.id].name)}${r.code ? ` <small>(variante ${esc(r.code)}, la plus montante)</small>` : ""}</td>
       <td class="r">${nf(r.len / 1000, 1)} km</td><td class="r">${Math.round(r.up)} m</td><td class="r">${Math.round(r.down)} m</td><td class="r">${nf(r.up / (r.len / 1000))}</td><td>${spark(r)}</td>
@@ -183,6 +183,45 @@ function paceModel(data) {
   const catCn = new Map([...byCat].filter(([, v]) => v.length >= 3).map(([k, v]) => { v.sort((x, y) => x - y); return [k, v[Math.floor(v.length / 2)]]; }));
   return { pace: (cn) => Math.exp(a + b * Math.log(cn)), spread, n, catCn };
 }
+/**
+ * The climb's effect on the winners' time: FFCO's results give no climb, the organisers' files often do (« Résultats »). On
+ * those circuits, the winner's time against the pace the CN model expects for their level, regressed on the climb per km:
+ * ln(time / expected) = a + b (m/km − mean). b is applied to a course's own climb; without 20 such circuits, nothing.
+ */
+async function climbEffect(format, model) {
+  const idx = await getData("prov/index.json");
+  if (!idx || !model.n) return { n: 0 };
+  const forest = (r) => r.terrain === "Forêt" || r.terrain === "For";
+  const pick = (strict) => (idx.races || []).filter((r) => r.docs && !r.soon && (format === "Sprint" ? r.terrain === "Sprint" || r.terrain === "Spr" : forest(r) && (!strict || (r.epreuve || "") === format)));
+  let races = pick(true);
+  if (races.length < 15 && format !== "Sprint") races = pick(false);
+  const pts = new Map();
+  for (let i = 0; i < Math.min(races.length, 90); i += 10) {
+    const files = await Promise.all(races.slice(i, i + 10).map((r) => getData(`prov/${r.key}.json`)));
+    files.forEach((f, j) => {
+      for (const doc of f?.docs || []) for (const k of doc.classes || []) {
+        if (!(k.length_m > 500) || !(k.climb_m >= 0)) continue;
+        const w = (k.runners || []).find((x) => x.place === 1 && x.status === "ok" && x.time_s > 0), cn = w?.cnj15?.official;
+        if (!(cn > 500)) continue;
+        const L = k.length_m / 1000, h = k.climb_m / L;
+        if (h > 150) continue;
+        pts.set(`${races[i + j].key}|${k.length_m}|${k.climb_m}|${w.time_s}`, { h, r: Math.log(w.time_s / (model.pace(cn) * L)) });
+      }
+    });
+  }
+  const v = [...pts.values()];
+  if (v.length < 20) return { n: v.length };
+  const hm = v.reduce((a, x) => a + x.h, 0) / v.length, rm = v.reduce((a, x) => a + x.r, 0) / v.length;
+  let sxy = 0, sxx = 0;
+  for (const x of v) { sxy += (x.h - hm) * (x.r - rm); sxx += (x.h - hm) ** 2; }
+  const raw = sxx ? sxy / sxx : 0;
+  const se = sxx ? Math.sqrt(v.reduce((a, x) => a + (x.r - rm - raw * (x.h - hm)) ** 2, 0) / Math.max(1, v.length - 2) / sxx) : Infinity;
+  // shrunk toward the km-effort rule (100 m of climb = 1 km: 10 m/km more = +10 %), each by its precision: a noisy fit
+  // (few circuits, climbs alike) stays near the rule, a sharp one moves away from it
+  const b0 = Math.log(1.1) / 10, s0 = 0.004;
+  const b = Math.max(0, (raw / se ** 2 + b0 / s0 ** 2) / (1 / se ** 2 + 1 / s0 ** 2));
+  return { n: v.length, b, hm, raw, se };
+}
 export async function winningTimes(E) {
   const ev = E.ev, ids = courseList(ev);
   if (!ids.length) { E.toast("Aucun circuit en ligne."); return; }
@@ -191,7 +230,11 @@ export async function winningTimes(E) {
   if (!FORMATS.some((f) => f[0] === format)) format = "MD";
   E.status("Résultats des courses récentes…", "busy");
   let model = paceModel(await winners(format));
+  let climbFit = await climbEffect(format, model).catch(() => ({ n: 0 }));
   E.status("Prêt", "ok");
+  // a course's time: the pace for the CN over its length, corrected by its climb per km against the reference circuits'
+  const climbK = (id, L) => { const H = ev.courses[id].climb; return climbFit.b && H >= 0 && L > 0 ? Math.exp(climbFit.b * (H / L - climbFit.hm)) : 1; };
+  const lengthFor = (id, t, p) => { let L = t / p; for (let i = 0; i < 20; i++) L = t / (p * climbK(id, L)); return L; };
   const guessCn = (c) => {
     const cats = String(c.secondary || c.name || "").toUpperCase().match(/[HD]\s?\d{2}[A-Z]?/g) || [];
     const vals = cats.map((x) => model.catCn.get(x.replace(/\s/g, "")) || model.catCn.get(x.replace(/\s/g, "").slice(0, 3))).filter(Boolean);
@@ -210,19 +253,22 @@ export async function winningTimes(E) {
     <div class="table-wrap"><table class="tr-table"><thead><tr><th>Circuit</th><th class="r">Longueur</th><th class="r">Dénivelée</th><th>CN du vainqueur attendu</th><th class="r">Temps estimé</th><th>Temps visé</th><th class="r">Longueur pour ce temps</th></tr></thead>
     <tbody>${ids.map(row).join("")}</tbody></table></div>
     <p class="tr-hint">L'allure des vainqueurs des circuits ${format === "Sprint" ? "de sprint" : "en forêt"} des deux dernières saisons (résultats FFCO, une centaine de courses de 40 coureurs ou plus), selon leur CN officiel 15 jours avant.
-    La dénivelée et la difficulté propre au terrain n'y entrent pas : la fourchette donne la moitié des courses de référence. Le CN proposé est le CN médian des vainqueurs des catégories du circuit (ses « classes » dans les propriétés du circuit).</p>`,
+    La dénivelée vient en plus, mesurée sur les circuits dont les organisateurs l'ont publiée (« Résultats ») ; la difficulté propre au terrain n'entre pas dans le calcul : la fourchette donne la moitié des courses de référence.
+    Le CN proposé est le CN médian des vainqueurs des catégories du circuit (ses « classes » dans les propriétés du circuit).</p>`,
   onOpen: (f) => {
     const upd = () => {
-      f.querySelector("#tr-wt-info").textContent = model.n ? `${model.n} vainqueurs de référence.` : "Pas de course de référence pour ce format.";
+      f.querySelector("#tr-wt-info").textContent = !model.n ? "Pas de course de référence pour ce format."
+        : `${model.n} vainqueurs de référence. ${climbFit.b ? `Dénivelée : chaque 10 m par km au-dessus de la moyenne (${nf(climbFit.hm)} m/km) ajoute ${nf((Math.exp(climbFit.b * 10) - 1) * 100, 1)} % au temps — la règle du kilomètre-effort (100 m de montée = 1 km, +10 %) ajustée sur ${climbFit.n} circuits dont la dénivelée est publiée (seuls : ${nf((Math.exp(climbFit.raw * 10) - 1) * 100, 1)} %).`
+          : `Dénivelée non prise en compte (${climbFit.n} circuit${climbFit.n > 1 ? "s" : ""} avec dénivelée publiée : trop peu).`}`;
       for (const tr of f.querySelectorAll("tr[data-id]")) {
         const id = Number(tr.dataset.id), cn = num(f.elements[`cn${id}`].value), t = num(f.elements[`t${id}`].value), L = len(id);
-        const p = cn > 500 && model.n ? model.pace(cn) : null;
-        tr.querySelector("[data-est]").textContent = p ? `${mmss(p * L)} (${mmss(p * L * model.spread[0])} à ${mmss(p * L * model.spread[1])})` : "";
-        tr.querySelector("[data-len]").textContent = p && t > 0 ? `${nf((t * 60) / p, 1)} km` : "";
+        const p = cn > 500 && model.n ? model.pace(cn) : null, est = p ? p * L * climbK(id, L) : null;
+        tr.querySelector("[data-est]").textContent = est ? `${mmss(est)} (${mmss(est * model.spread[0])} à ${mmss(est * model.spread[1])})` : "";
+        tr.querySelector("[data-len]").textContent = p && t > 0 ? `${nf(lengthFor(id, t * 60, p), 1)} km` : "";
       }
     };
     f.addEventListener("input", upd);
-    f.elements.fmt.addEventListener("change", async () => { E.status("Résultats des courses récentes…", "busy"); model = paceModel(await winners(f.elements.fmt.value)); E.status("Prêt", "ok"); upd(); });
+    f.elements.fmt.addEventListener("change", async () => { E.status("Résultats des courses récentes…", "busy"); model = paceModel(await winners(f.elements.fmt.value)); climbFit = await climbEffect(f.elements.fmt.value, model).catch(() => ({ n: 0 })); E.status("Prêt", "ok"); upd(); });
     upd();
   } });
 }
@@ -368,6 +414,40 @@ async function showRep(E, rep, slug) {
     <tbody>${s.rows.map((r) => `<tr>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`).join("")}`;
   await modal(E, { title: rep.title, wide: true, ok: null, cancel: "Fermer", body: `<div class="tr-report">${html}</div>`, extra: '<button type="button" class="btn" data-csv>CSV</button>',
     onOpen: (f) => f.querySelector("[data-csv]").addEventListener("click", () => download(`${fileName(E.ev.title)} - ${slug}.csv`, csv(rep), "text/csv;charset=utf-8")) });
+}
+
+// ---- the courses to « Résultats » ---------------------------------------------------------------------------------------------
+/** The courses (IOF XML CourseData) sent to « Résultats » as an organisers' upload of kind « courses » (functions/api/upload.js,
+ *  prov/parsers/coursedata.py): the race's results lists get each circuit's length, climb and controls when the organisers'
+ *  files lack them. From the race day only (the courses are secret before), by the organising club. */
+export async function sendCourses(E) {
+  const ev = E.ev, today = new Date().toISOString().slice(0, 10);
+  if (E.meta.kind !== "race" || !E.meta.race) { E.toast("Cet événement n'est pas lié à une compétition : rien à envoyer à « Résultats »."); return; }
+  if (E.meta.date && E.meta.date > today) { E.toast(`Les circuits restent secrets jusqu'à la course (${E.meta.date}) : envoyez-les le jour même ou après.`, 6000); return; }
+  const ids = courseList(ev);
+  const v = await modal(E, { title: "Envoyer les circuits à « Résultats »", wide: true, ok: "Envoyer", body: `
+    <p>Les circuits (au format IOF XML) complètent les résultats publiés de la course : la longueur, la dénivelée et les postes de chaque circuit
+    quand les fichiers de résultats ne les donnent pas. Ils sont rapprochés des circuits des résultats par leur nom, ou par leurs postes.</p>
+    <p class="tr-hint">${ids.length} circuit(s) : ${ids.map((id) => esc(ev.courses[id].name)).join(", ")}. Un nouvel envoi remplace le précédent.</p>
+    <label class="tr-check"><input type="checkbox" name="consent"> Je suis de l'organisation et j'accepte que ces circuits soient publiés avec les résultats</label>`,
+  validate: (o) => (o.consent ? null : "Cochez l'accord de publication.") });
+  if (!v) return;
+  const { iofXmlText } = await import("./exports.js");
+  const xml = iofXmlText(ev, 3), name = `${fileName(ev.title)} - circuits.xml`;
+  E.status("Envoi…", "busy");
+  try {
+    const r = await fetch("api/upload", { method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/xml", "X-Upload": encodeURIComponent(JSON.stringify({ kind: "courses", race: E.meta.race, filename: name, consent: true })) },
+      body: new Blob([xml], { type: "application/xml" }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(j.error || `http ${r.status}`), { code: j.error });
+    E.status("Prêt", "ok");
+    E.toast(j.soon === false ? "Circuits envoyés : ils seront pris en compte au prochain passage de la collecte des résultats." : "Circuits envoyés : « Résultats » les prend en compte dans quelques minutes.", 7000);
+  } catch (err) {
+    E.status("Échec", "err");
+    const why = { "not organiser": "seuls les membres du club organisateur envoient les circuits", race: "course inconnue", "unknown race": "course inconnue", "too big": "fichier trop gros", consent: "accord manquant" }[err.code] || err.message;
+    E.toast(`Envoi impossible : ${why}.`, 7000);
+  }
 }
 
 // ---- publication to « Analyse multi » ---------------------------------------------------------------------------------------------

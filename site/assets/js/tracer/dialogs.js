@@ -116,6 +116,7 @@ export async function action(E, act, btn, at = {}) {
     case "export-routegadget": (await lazy.out()).routeGadget(E); break;
     case "export-csv": (await lazy.rep()).csvAll(E); break;
     case "publish": (await lazy.more()).publish(E); break;
+    case "send-results": (await lazy.more()).sendCourses(E); break;
     case "map-change": if (!ro()) (await lazy.more()).changeMap(E); break;
     case "event-props": if (!ro()) eventProps(E); break;
     case "appearance": if (!ro()) appearance(E); break;
@@ -177,6 +178,7 @@ export async function action(E, act, btn, at = {}) {
     case "bend-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "bend") E.change((x) => M.removeBend(x, h.c1, h.c2, h.pt), "Coude retiré"); break; }
     case "gap-add-leg": if (!ro() && s?.kind === "leg" && at.p) { const pts = M.legPoints(ev, s.c1, s.c2), n = M.nearest(pts, at.p), w = 1.2 * (E.layout?.ratio || 1); E.change((x) => M.addLegGap(x, s.c1, s.c2, M.pointAt(pts, n.len - w), M.pointAt(pts, n.len + w)), "Coupure"); } break;
     case "gap-remove-leg": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.removeLegGap(x, s.c1, s.c2, at.p), "Coupure refermée"); break;
+    case "route-clear": if (!ro() && s?.kind === "leg") E.change((x) => M.setLegRoute(x, s.c1, s.c2, null), "Itinéraire effacé"); break;
     case "flag-none": case "flag-all": case "flag-begin": case "flag-end": if (!ro() && s?.kind === "leg") E.change((x) => M.setFlagging(x, s.c1, s.c2, act.slice(5)), "Balisage"); break;
     case "special-props": if (!ro() && s?.kind === "special") specialProps(E, s.id); break;
     case "corner-add": if (!ro() && s?.kind === "special" && at.p) E.change((x) => M.addSpecialCorner(x, s.id, at.p), "Sommet ajouté"); break;

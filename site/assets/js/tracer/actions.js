@@ -103,6 +103,20 @@ export function click(E, p, sx, sy, e) {
     }
     return;
   }
+  if (t === "route") {
+    // the route expected on a leg (for the climb): the leg first, then its points, a double-click ends it
+    if (!E.pending) {
+      const hit = E.hitAt(sx, sy);
+      if (hit?.kind !== "leg") { E.toast("Cliquez d'abord un interposte."); return; }
+      const a = E.ev.controls[hit.c1];
+      E.pending = { kind: "route", c1: hit.c1, c2: hit.c2, pts: [[a.x, a.y]] };
+      E.select(hit);
+    } else E.pending.pts.push(p);
+    E.ghost = { pts: E.pending.pts.slice() };
+    E.help(`Itinéraire : ${E.pending.pts.length - 1} point(s) — cliquer le long du chemin prévu, double-cliquer (ou Entrée) pour finir`);
+    E.redraw();
+    return;
+  }
   if (t === "gap") {
     const hit = E.hitAt(sx, sy);
     if (hit?.kind === "leg") E.change((ev) => M.removeLegGap(ev, hit.c1, hit.c2, p), "Coupure refermée");
@@ -128,7 +142,7 @@ export function click(E, p, sx, sy, e) {
   }
 }
 export function doubleClick(E, p) {
-  if (E.pending && E.tool.startsWith("special:")) { finishPending(E); return true; }
+  if (E.pending && (E.tool.startsWith("special:") || E.pending.kind === "route")) { finishPending(E); return true; }
   if (E.tool === "select" && E.sel?.kind === "special") {
     const sp = E.ev.specials[E.sel.id];
     if (sp?.kind === "text" || sp?.kind === "descriptions") { D.specialProps(E, E.sel.id); return true; }
@@ -142,6 +156,13 @@ export function finishPending(E) {
   if (!pend) return;
   // the double-click's second click added a point at the same place
   const pts = pend.pts.filter((q, i) => i === 0 || M.dist(q, pend.pts[i - 1]) > 0.05);
+  if (pend.kind === "route") {
+    E.pending = null; E.ghost = null;
+    const inner = pts.slice(1);
+    E.change((ev) => M.setLegRoute(ev, pend.c1, pend.c2, inner), inner.length ? "Itinéraire tracé" : "Itinéraire effacé");
+    E.setTool("select");
+    return;
+  }
   const min = M.AREA_SPECIALS.includes(pend.kind) ? 3 : 2;
   E.pending = null; E.ghost = null;
   if (pts.length < min) { E.toast(`Il faut au moins ${min} points.`); E.redraw(); return; }
@@ -459,7 +480,9 @@ export function describeSelection(E) {
       <dt>Circuits</dt><dd>${esc(used.join(", ") || "—")}</dd>${load >= 0 ? `<dt>Charge</dt><dd>${load} concurrents</dd>` : ""}
       <dt>Balisage</dt><dd><select id="tr-flag" ${E.readOnly ? "disabled" : ""}>${[["none", "aucun"], ["all", "tout l'interposte"], ["begin", "le début"], ["end", "la fin"]].map(([k, l]) =>
         `<option value="${k}" ${flag === k ? "selected" : ""}>${l}</option>`).join("")}${flag === "issue-middle" ? '<option selected value="issue-middle">remise de carte</option>' : ""}</select></dd></dl>
-      <p class="tr-hint">Outil Coude : cliquer l'interposte. Outil Coupure : glisser le long de l'interposte.</p>`;
+      ${(() => { const r = ev.legs[M.findLeg(ev, s.c1, s.c2)]?.route; return r?.length ? `<p class="tr-hint">Itinéraire prévu : ${m0(M.mmToM(ev, M.pathLength(M.legRoutePoints(ev, s.c1, s.c2))))} (sert à la dénivelée).</p>
+        <div class="tr-btns"><button type="button" class="btn btn-sm" data-act="route-clear">Effacer l'itinéraire</button></div>` : ""; })()}
+      <p class="tr-hint">Outil Coude : cliquer l'interposte. Outil Coupure : glisser le long de l'interposte. Outil Itinéraire : le chemin prévu, pour la dénivelée.</p>`;
   }
   if (s.kind === "special") {
     const sp = ev.specials[s.id];
