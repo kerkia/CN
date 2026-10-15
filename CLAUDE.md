@@ -518,7 +518,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (the former default, pace + heart rate, counts as unset), each with its scale (owner, 2026-10-15: unusable without):
   the name and unit, round ticks on a value axis (pace at round min/km, its slow end capped at 20 min/km; labels never
   overlap), the value at the cursor, and a shared race-time axis; altitude green, power orange, temperature gold;
-  cadence « /min » (watches record strides or pedal turns, not steps). The legs
+  cadence explicit (owner, 2026-10-15): watches record one foot's strides or a bike's pedal turns, so on foot it is
+  doubled to « pas/min », on a bike kept in « tr/min » — the activity the file names (FIT session/sport/lap `sport`,
+  TCX `Sport`, GPX `trk/type`: `track.activity`), else foot unless the race is a VTT one (`cadence`, once per track,
+  after the race is matched). The legs
   table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
   course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
   « Suivre » is a toggle button in the transport row; moving the map by hand turns it off, paused too (it snapped back to

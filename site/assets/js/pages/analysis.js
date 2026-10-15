@@ -385,6 +385,7 @@ export async function render(main, { query = {}, route } = {}) {
       matchedNote = "";
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
+    if (newTrace && track) cadence(track);             // once the race is known (a VTT race: pedal turns)
     filesCard();
     setup();
   }
@@ -419,6 +420,18 @@ export async function render(main, { query = {}, route } = {}) {
     matchedNote = t("an.st.matched", { race: best.race, r: runner()?.name || "" });
     return true;
   }
+  /**
+   * The cadence as runners read it (owner, 2026-10-15): watches record one foot's strides a minute, or a bike's pedal
+   * turns. On foot it is doubled to steps a minute (« pas/min », 160-190 running); on a bike it stays in « tr/min ». The
+   * activity the file names decides; a file naming none is on foot unless the race chosen is a VTT one. Once per track.
+   */
+  function cadence(tr) {
+    if (!tr.ch.cad || tr.cadUnit) return;
+    const bike = tr.activity === "bike" || (!tr.activity && /\bvtt\b|v[ée]lo|mtb/i.test(race?.name || ""));
+    if (!bike) for (let i = 0; i < tr.ch.cad.length; i++) tr.ch.cad[i] *= 2;
+    tr.cadUnit = t(bike ? "an.unit.rpm" : "an.unit.spm");
+  }
+  const unitOf = (c) => (c === "cad" ? track?.cadUnit || t("an.unit.spm") : CHANNEL_UNIT[c]);
   /** The files kept for the tab's session, in IndexedDB (never sent). */
   function rememberFiles() {
     const tag = sessionTag();
@@ -987,7 +1000,7 @@ export async function render(main, { query = {}, route } = {}) {
         <dt>${t(known ? "an.leg" : "an.legNear")}</dt><dd><b id="an-leg">—</b> <span class="muted" id="an-leg-sub"></span></dd>
         <dt>${t("an.pace")}</dt><dd><b id="an-pace">—</b> <span class="muted">${t("an.pace.short")}</span></dd>
         <dt>${t("an.dist")}</dt><dd><b id="an-dist">0 m</b> <span class="muted" id="an-dist-sub"></span></dd>
-        ${avail.filter((c) => c !== "ele").map((c) => html`<dt>${t(CHANNEL_LABEL[c])}</dt><dd><b id="an-ch-${c}">—</b> <span class="muted">${CHANNEL_UNIT[c]}</span></dd>`)}
+        ${avail.filter((c) => c !== "ele").map((c) => html`<dt>${t(CHANNEL_LABEL[c])}</dt><dd><b id="an-ch-${c}">—</b> <span class="muted">${unitOf(c)}</span></dd>`)}
       </dl>
       <details class="an-settings" open><summary>${t("an.display")}</summary>
         <div class="an-opts">
@@ -1124,7 +1137,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-legs").innerHTML = html`<div class="card-head"><div><h2>${t("an.legs")}</h2><div class="hint">${t(est ? "an.legs.hint.est" : "an.legs.hint")}</div></div></div>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
         <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th>`}<th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th>
-        ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r">${t("an.col.cad")}</th>` : ""}</tr></thead>
+        ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r" title="${unitOf("cad")}">${t("an.col.cad")} <span class="muted">${unitOf("cad")}</span></th>` : ""}</tr></thead>
       <tbody>${legs.map((l, i) => html`<tr data-leg="${i}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">
         <td>${l.label}${l.code ? html` <span class="muted">${l.code}</span>` : ""}</td>
         <td class="r num">${l.time != null ? clock(l.time) : "—"}</td>${est ? "" : html`<td class="r num">${l.best != null ? clock(l.best) : "—"}</td>
@@ -1377,7 +1390,7 @@ export async function render(main, { query = {}, route } = {}) {
         if (!(hi > lo)) { lo = (lo === Infinity ? 0 : lo) - 1; hi = lo + 2; }
         const dec = c === "temp" ? 1 : 0, s = niceStep(hi - lo, 3, NUM);
         for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) ticks.push(v);
-        fmtV = (v) => fmt(v, s < 1 ? 1 : dec); unit = CHANNEL_UNIT[c] || t("an.unit.cad");
+        fmtV = (v) => fmt(v, s < 1 ? 1 : dec); unit = unitOf(c);
         const v = valueAt(track, c, offset + tNow); now = v == null || Number.isNaN(v) ? "—" : fmt(v, dec);
       }
       const Y = (v) => bottom - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1)) * (bottom - top);

@@ -31,8 +31,18 @@ const text = (el, name) => child(el, name)?.textContent;
 /** The first descendant with this local name (namespaces ignored), or null. */
 function find(el, name) { for (const c of el.getElementsByTagName("*")) if (c.localName === name) return c; return null; }
 
+/** The activity a file names — "foot" (running, walking, hiking, orienteering) or "bike" — or null. */
+const FIT_SPORT = { 1: "foot", 11: "foot", 17: "foot", 2: "bike" };
+function activityOf(v) {
+  if (v == null) return null;
+  if (typeof v === "number") return FIT_SPORT[v] || null;
+  if (/bik|cycl|vtt|mtb|ride|v[ée]lo/i.test(v)) return "bike";
+  if (/run|walk|hik|orient|foot|trail|course|marche/i.test(v)) return "foot";
+  return null;
+}
 function parseGpx(doc) {
   const pts = [];
+  pts.activity = activityOf(find(doc.documentElement, "trk") && text(find(doc.documentElement, "trk"), "type"));
   for (const p of doc.getElementsByTagName("trkpt")) {
     const time = text(p, "time");
     const r = { lat: num(p.getAttribute("lat")), lon: num(p.getAttribute("lon")), ms: time ? Date.parse(time) : NaN, ele: num(text(p, "ele")) };
@@ -44,6 +54,7 @@ function parseGpx(doc) {
 }
 function parseTcx(doc) {
   const pts = [];
+  pts.activity = activityOf(find(doc.documentElement, "Activity")?.getAttribute("Sport"));
   for (const p of doc.getElementsByTagName("Trackpoint")) {
     const pos = child(p, "Position");
     const r = { lat: num(pos && text(pos, "LatitudeDegrees")), lon: num(pos && text(pos, "LongitudeDegrees")), ms: Date.parse(text(p, "Time") || ""), ele: num(text(p, "AltitudeMeters")) };
@@ -79,6 +90,7 @@ function readField(dv, q, f, le) {
 }
 export function parseFit(buf) {
   const dv = new DataView(buf), len = buf.byteLength, pts = [];
+  let sport = null;                                // the session's sport, else the sport message's, else a lap's
   let pos = 0;
   while (pos + 12 <= len) {
     const hdr = dv.getUint8(pos), dataSize = dv.getUint32(pos + 4, true);
@@ -120,13 +132,21 @@ export function parseFit(buf) {
             case 78: r.ele = v / 5 - 500; break;
             case 3: r.hr = v; break;
             case 4: r.cad = v; break;
+            case 53: r.cadF = v / 128; break;          // fractional cadence
             case 13: r.temp = v; break;
             case 7: r.pw = v; break;
             default: break;
           }
         }
+        if (r.cad != null && r.cadF != null) r.cad += r.cadF;
         if (ts != null) r.ms = (ts + FIT_EPOCH) * 1000;
         if (r.lat != null && r.lon != null && r.ms != null) pts.push(r);
+      } else if (def.gmn === 18 || def.gmn === 12 || def.gmn === 19) {     // session, sport, lap: the activity
+        const f = def.fields.find((x) => x.num === (def.gmn === 12 ? 0 : def.gmn === 18 ? 5 : 25));
+        const v = f && readField(dv, p + f.off, f, def.le);
+        if (v != null && (def.gmn === 18 || sport == null)) sport = v;
+        const tf = ts == null && def.fields.find((x) => x.num === 253), tv = tf && readField(dv, p + tf.off, tf, def.le);
+        if (tv != null) lastTs = tv;
       } else if (ts == null) {                       // another message's timestamp keeps the clock for compressed headers
         const f = def.fields.find((x) => x.num === 253);
         const v = f && readField(dv, p + f.off, f, def.le);
@@ -136,6 +156,7 @@ export function parseFit(buf) {
     }
     pos = end + 2;                                   // the file's CRC
   }
+  pts.activity = activityOf(sport);
   return pts;
 }
 
@@ -154,7 +175,7 @@ function build(P0, source) {
     x[i] = (P[i].lon - lon0) * kx;
     y[i] = -(P[i].lat - lat0) * ky;
   }
-  const tr = { ms0: P[0].ms, t: tt, x, y, cum, v, n, lat0, lon0, kx, ky, dur: tt[n - 1], ch: {}, source };
+  const tr = { ms0: P[0].ms, t: tt, x, y, cum, v, n, lat0, lon0, kx, ky, dur: tt[n - 1], ch: {}, source, activity: P0.activity || null };
   // the distance run: along the track smoothed over ± 3 s — the jitter of a 1 Hz trace adds metres at every step
   // (the trace is drawn raw); the pace: that distance over a window of ± 5 s
   let sx = x[0], sy = y[0];

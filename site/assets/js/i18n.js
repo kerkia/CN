@@ -895,7 +895,7 @@ const FR = {
   "an.time": "Temps de course", "an.of": "sur", "an.leg": "Inter-poste", "an.rankShort": "rang", "an.pace": "Allure", "an.pace.hint": "sur les 30 dernières secondes",
   "an.dist": "Distance parcourue", "an.course.len": "circuit :",
   "an.ch.hr": "Fréquence cardiaque", "an.ch.cad": "Cadence", "an.ch.ele": "Altitude", "an.ch.temp": "Température", "an.ch.pw": "Puissance", "an.ch.none": "aucune",
-  "an.strip.channel": "Courbes :", "an.ch.pace": "Allure", "an.unit.pace": "min/km", "an.unit.cad": "/min",
+  "an.strip.channel": "Courbes :", "an.ch.pace": "Allure", "an.unit.pace": "min/km", "an.unit.spm": "pas/min", "an.unit.rpm": "tr/min",
   "an.legend.pace": "Allure (min/km)", "an.legend.fast": "rapide", "an.legend.slow": "lent",
   "an.width": "Trait", "an.width.thin": "fin", "an.width.normal": "normal", "an.width.thick": "épais", "an.width.thicker": "très épais",
   "an.fitTrace": "Toute la trace", "an.fitMap": "Toute la carte", "an.brief.edit": "Course et fichiers",
