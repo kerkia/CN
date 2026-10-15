@@ -286,8 +286,9 @@ function renderHeader(r) {
       ["compare", "#/comparer", t("nav.compare")],
       ["clubs", "#/clubs", t("nav.clubs")],
       ["network", "#/reseau", t("nav.network")],
-      // « IA » (2026-10-15): questions on the data in plain French; administrators only while it is a pilot
-      ...(me.admin ? [["ask", "#/ia", t("nav.ask")]] : []),
+      // « IA » (2026-10-15): questions on the data in plain French; administrators only while it is a pilot, greyed for
+      // the others (owner, 2026-10-15)
+      ["ask", me.admin ? "#/ia" : null, t("nav.ask")],
     ]],
     ["races", t("nav.g.races"), [
       ["agenda", "#/agenda", t("nav.agenda")],

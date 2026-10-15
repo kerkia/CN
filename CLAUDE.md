@@ -607,7 +607,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`ocap/worker`) is deployed by hand. Local test: launch configs `ocap-live-dev` (8787), `ocap-dev` (8791) and
   `pages-dev-games` (8790), `localStorage["ocn.liveBase"]="http://localhost:8791"`; `iofLive` / `toLive` are exported for checks.
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; **administrators only while it is a
-  pilot**): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**
+  pilot**, the menu item greyed for the others, `.nav-off`): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**
   (`functions/api/ask.js`, binding `AI` in `wrangler.toml`; the account's free allowance, 10 000 neurons a day shared by the
   whole account — past it the calls fail until the next day, nothing billed on the free plan) turns the question into ONE
   DuckDB query and says how to show it (`functions/_lib/ask.js`: `TABLES`, the tables described for the model — keep them in
