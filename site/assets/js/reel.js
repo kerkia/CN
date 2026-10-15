@@ -402,7 +402,21 @@ function vGames() {
       ${label(W - 32, 252, t("reel.gm.round"), `text-anchor="end" class="rv-lab rv-small"`)}</g>`);
 }
 
-// 17. the invitation
+// 17. course setting (« Organisation › Tracer »): a screenshot of the editor on a made-up map (the games' forest map,
+// seed 20261015, an invented course: nothing real on this public page), and what it produces
+function vTracer() {
+  // inset so that the reel's slow zoom (x1.035 about 55 % / 45 %) eats margin, not the description sheet's first column
+  const iw = 538, ih = iw * 750 / 1400, ix = 11, iy = (H - ih) / 2;
+  const pills = [t("reel.tracer.ppen"), t("reel.tracer.iof"), t("reel.tracer.pdf")].map((s, k) => {
+    const w = 18 + s.length * 6.4, y = 214 + k * 26;
+    return `<g class="rv-pop" ${d(1 + 0.25 * k)}><rect x="${ix + 6}" y="${y}" width="${w.toFixed(1)}" height="22" rx="11" class="rv-pill-on"/>
+      <text class="rv-lab rv-small rv-on" x="${(ix + 6 + w / 2).toFixed(1)}" y="${y + 15}" text-anchor="middle">${esc(s)}</text></g>`;
+  }).join("");
+  return svg(`<image href="assets/reel-tracer.webp" x="${ix}" y="${iy.toFixed(1)}" width="${iw}" height="${ih.toFixed(1)}"/>
+    <rect x="${ix}" y="${iy.toFixed(1)}" width="${iw}" height="${ih.toFixed(1)}" rx="4" fill="none" class="rv-edge"/>${pills}`);
+}
+
+// 18. the invitation
 function vJoin() {
   return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="118" text-anchor="middle">O'CN</text></g>
     ${["For", "Spr", "VTT", "Ski"].map((x, k) => `<g class="rv-pop" ${d(0.3 + 0.1 * k)}><rect x="${W / 2 - 196 + k * 100}" y="148" width="92" height="28" rx="14" class="rv-ter-${x.toLowerCase()}"/>
@@ -411,7 +425,7 @@ function vJoin() {
 
 const SLIDES = [["methods", vMethods], ["calc", vCalc], ["ranking", vRanking], ["compare", vCompare], ["clubs", vClubs],
   ["pyramid", vPyramid], ["map", vMap], ["seasons", vSeasons], ["network", vNetwork], ["agenda", vAgenda],
-  ["recent", vRecent], ["table", vTable], ["gaps", vGaps], ["groups", vGroups], ["trace", vTrace], ["games", vGames], ["join", vJoin]];
+  ["recent", vRecent], ["table", vTable], ["gaps", vGaps], ["groups", vGroups], ["trace", vTrace], ["games", vGames], ["tracer", vTracer], ["join", vJoin]];
 
 // ---- the reel ------------------------------------------------------------------------------------------------
 export function reelHtml() {
