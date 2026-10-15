@@ -15,6 +15,15 @@ const RECHECK_MS = 90000;                        // a watched class is re-read a
 const MAX_READS = 30;                            // liveresultat reads per wake-up, at most (subrequest limit: 50)
 
 const api = (env) => env.LR_API || "https://liveresultat.orientering.se/api.php";
+
+// Races fed by their organiser through O'CN (« Organisation › Direct », 2026-10-15): numbers from 900 000 000 (liveresultat's
+// are far below), never read from liveresultat. Their object keeps what the organiser's page sends — the classes that
+// changed since its last read of the timing software's export — and pushes the changes to the pages watching, as for a
+// liveresultat race. The push is internal: only O'CN reaches it, through its Durable Object binding (path /push, which
+// no public route forwards: the Worker and O'Cap's Function pass on /ws/<number> WebSocket requests only).
+const PUSHED_FROM = 900000000;
+const isPushed = (comp) => Number(comp) >= PUSHED_FROM;
+const MAX_PUT = 100;                             // keys per storage.put (the limit is 128)
 async function lr(env, params) {
   const r = await fetch(`${api(env)}?${new URLSearchParams(params)}`, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`liveresultat ${r.status}`);
@@ -46,6 +55,7 @@ export class LiveRace extends DurableObject {
     const s = await this.ctx.storage.get(["head", "data"]);
     this.m = s.get("head") || { comp: null, info: null, classes: [], classesHash: "", passHash: "", hashes: {}, read: {}, lastChange: 0, classesAt: 0 };
     this.m.data = s.get("data") || {};
+    if (this.m.pushed) for (const [k, v] of await this.ctx.storage.list({ prefix: "c:" })) this.m.data[k.slice(2)] = v;
     return this.m;
   }
 
@@ -59,11 +69,21 @@ export class LiveRace extends DurableObject {
   }
 
   async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === "/push" && request.method === "POST") return this.push(request, url.searchParams.get("comp") || "");
     if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket expected", { status: 426 });
-    const comp = new URL(request.url).pathname.split("/").filter(Boolean).pop();
+    const comp = url.pathname.split("/").filter(Boolean).pop();
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
     const m = await this.load();
     m.comp = comp;
+    if (isPushed(comp)) {
+      // an organiser's race: what they sent so far (perhaps nothing yet), no liveresultat, no alarm
+      const [client, server] = Object.values(new WebSocketPair());
+      this.ctx.acceptWebSocket(server);
+      this.send(server, { t: "hello", info: m.info || { name: "Diffusion en attente", timezone: "Europe/Paris" }, classes: m.classes,
+        at: m.lastChange, pass: m.pass || null });
+      return new Response(null, { status: 101, webSocket: client });
+    }
     if (!m.info) {
       try {
         m.info = await lr(this.env, { method: "getcompetitioninfo", comp });
@@ -94,7 +114,7 @@ export class LiveRace extends DurableObject {
     ws.serializeAttachment({ sub: q.sub });
     const m = await this.load();
     if (!m.classes.includes(q.sub)) return this.send(ws, { t: "class", c: q.sub, missing: true });
-    if (!m.data[q.sub]) {
+    if (!m.data[q.sub] && !m.pushed) {
       try { if (await this.readClass(m, q.sub)) await this.save(true); } catch (e) { /* sent at the next wake-up */ }
     }
     if (m.data[q.sub]) this.send(ws, { t: "class", c: q.sub, ...m.data[q.sub] });
@@ -102,6 +122,65 @@ export class LiveRace extends DurableObject {
 
   async webSocketClose(ws, code) {
     try { ws.close(code, "bye"); } catch (e) { /* already closed */ }
+  }
+
+  /** An organiser's push (internal, from O'CN): { info, order: [class names, in the file's order], classes: { name:
+   *  { controls, rows } } } — the classes that changed, in liveresultat's compact form; answers what it did. */
+  async push(request, comp) {
+    if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return new Response("Not an organiser's race", { status: 400 });
+    let p;
+    try { p = await request.json(); } catch (e) { return new Response("Bad JSON", { status: 400 }); }
+    const m = await this.load();
+    const first = !m.pushed;
+    m.comp = comp;
+    m.pushed = true;
+    const now = Date.now();
+    let infoChanged = false;
+    if (p.info && typeof p.info === "object") {
+      const info = { name: String(p.info.name || "").slice(0, 160), organizer: String(p.info.organizer || "").slice(0, 160),
+        date: /^\d{4}-\d\d-\d\d$/.test(p.info.date || "") ? p.info.date : null, timezone: "Europe/Paris", timediff: 0 };
+      if (JSON.stringify(info) !== JSON.stringify(m.info)) { m.info = info; infoChanged = true; }
+    }
+    const changed = [], arrivals = [];
+    for (const [name, k] of Object.entries(p.classes && typeof p.classes === "object" ? p.classes : {})) {
+      if (!name || name.length > 200 || !k || !Array.isArray(k.rows) || k.rows.length > 5000) continue;
+      const next = { controls: Array.isArray(k.controls) ? k.controls.slice(0, 200) : [], rows: k.rows };
+      const prev = m.data[name];
+      if (prev && JSON.stringify({ controls: prev.controls, rows: prev.rows }) === JSON.stringify(next)) continue;
+      // the runners who finished since the last push, for the ticker of arrivals
+      const before = new Set((prev?.rows || []).filter((r) => r[4] === 0 && r[3] != null).map((r) => `${r[1]}|${r[2]}`));
+      for (const r of next.rows) if (r[4] === 0 && r[3] != null && !before.has(`${r[1]}|${r[2]}`)) arrivals.push([r[1], name, r[3]]);
+      m.data[name] = { ...next, at: now };
+      changed.push(name);
+    }
+    const order = Array.isArray(p.order) ? p.order.filter((c) => typeof c === "string" && m.data[c]) : null;
+    const classes = order && order.length ? order : [...new Set([...m.classes, ...changed])];
+    const classesChanged = JSON.stringify(classes) !== JSON.stringify(m.classes);
+    m.classes = classes;
+    // the first push is no news (the file may already hold hours of results): no arrivals then
+    if (arrivals.length && !first) {
+      const clock = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hourCycle: "h23" }).format(new Date(now));
+      // the time written out, as liveresultat sends it in its passings (« 41:40 », « 1:05:12 »)
+      const out = (h) => { const x = Math.floor(h / 100), mm = String(Math.floor(x / 60) % 60).padStart(2, "0"), ss = String(x % 60).padStart(2, "0");
+        return x >= 3600 ? `${Math.floor(x / 3600)}:${mm}:${ss}` : `${Math.floor(x / 60)}:${ss}`; };
+      m.pass = [...arrivals.slice(-10).reverse().map(([n, k, t]) => [clock, n, k, 1000, "Arrivée", out(t)]), ...(m.pass || [])].slice(0, 10);
+      m.lastChange = now;
+    }
+    const sockets = this.ctx.getWebSockets();
+    if (infoChanged || first) for (const ws of sockets) this.send(ws, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null });
+    else if (classesChanged) for (const ws of sockets) this.send(ws, { t: "classes", classes: m.classes });
+    if (arrivals.length && !first) for (const ws of sockets) this.send(ws, { t: "pass", items: m.pass, at: m.lastChange });
+    for (const ws of sockets) {
+      const sub = ws.deserializeAttachment()?.sub;
+      if (sub != null && changed.includes(sub)) this.send(ws, { t: "class", c: sub, ...m.data[sub] });
+    }
+    // each changed class under its own key, the head apart
+    const { data, ...head } = m;
+    const puts = [["head", head], ...changed.map((c) => [`c:${c}`, m.data[c]])];
+    for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
+    return new Response(JSON.stringify({ ok: true, classes: m.classes.length, changed: changed.length, arrivals: first ? 0 : arrivals.length,
+      viewers: sockets.length }), { headers: { "Content-Type": "application/json" } });
   }
 
   async readClasses(m) {
@@ -137,6 +216,7 @@ export class LiveRace extends DurableObject {
     const sockets = this.ctx.getWebSockets();
     if (!sockets.length) return;                 // nobody watching: no more reads until someone comes back
     const m = await this.load();
+    if (m.pushed) return;                        // an organiser's race: nothing to read, its pushes carry the news
     const watched = new Map();                   // class -> its sockets
     const everyone = [];
     for (const ws of sockets) {
@@ -217,7 +297,8 @@ const MAX_INFO = 40;                    // races looked up per call (subrequest 
 /** The races of the last 3 and next 7 days with their country: liveresultat's whole list (~1 MB, read with a regular
  *  expression: some names hold unescaped quotes that break it as JSON), each new race's time zone read once and kept. */
 export class Directory extends DurableObject {
-  async fetch() {
+  async fetch(request) {
+    if (new URL(request.url).pathname === "/broadcasts") return this.broadcasts(request);
     // liveresultat's list, read at most every LIST_MS; an answer without it (overloaded: « Connect failed: Too many
     // connections », sent with a 200) changes nothing — the last good list is served meanwhile, never an empty one
     const now = Date.now();
@@ -273,5 +354,28 @@ export class Directory extends DurableObject {
     return new Response(JSON.stringify({ at: last?.at || now, comps: last?.comps || [] }), {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${pending || !last ? 30 : 120}` },
     });
+  }
+
+  /** The organisers' broadcasts (internal, from O'CN): GET lists them, the newest first; POST { op: "new", name, date,
+   *  organizer, key, by } opens one and answers its number; POST { op: "touch", id } records a push. */
+  async broadcasts(request) {
+    const all = (await this.ctx.storage.get("broadcasts")) || [];
+    const out = (body) => new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
+    if (request.method !== "POST") return out({ broadcasts: all });
+    let b;
+    try { b = await request.json(); } catch (e) { return new Response("Bad JSON", { status: 400 }); }
+    if (b.op === "new") {
+      const id = (await this.ctx.storage.get("bnext")) || PUSHED_FROM;
+      all.unshift({ id, name: String(b.name || "").slice(0, 160), date: b.date || null, organizer: String(b.organizer || "").slice(0, 160),
+        key: b.key ? String(b.key).slice(0, 40) : null, by: b.by ?? null, created: Date.now(), last: null });
+      await this.ctx.storage.put({ bnext: id + 1, broadcasts: all.slice(0, 200) });
+      return out({ id });
+    }
+    if (b.op === "touch") {
+      const x = all.find((y) => y.id === Number(b.id));
+      if (x) { x.last = Date.now(); await this.ctx.storage.put("broadcasts", all); }
+      return out({ ok: !!x });
+    }
+    return new Response("Bad operation", { status: 400 });
   }
 }

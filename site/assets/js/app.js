@@ -39,6 +39,7 @@ const PAGES = {
   orgRace: () => import("./pages/shared.js"),
   orgTraining: () => import("./pages/shared.js"),
   orgResults: () => import("./pages/orgresults.js"),
+  orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software (administrators only for now)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps (administrators only for now)
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
@@ -97,7 +98,7 @@ function parseHash() {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
-    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults"
+    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-direct" ? "orgDirect"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -293,9 +294,10 @@ function renderHeader(r) {
     ["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]],
     // « Organisation » (owner, 2026-10-15): the organisers' pages — a competition's multi analysis, a training event's,
-    // the results of their competitions; « Direct » and « Tracer » to come (greyed, no page yet)
+    // the results of their competitions; « Direct » (live results from the timing software's export) for the administrators
+    // only for now (owner, 2026-10-15), greyed for the others; « Tracer » to come
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
-      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", null, t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
+      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", me.admin ? "#/orga-direct" : null, t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
@@ -348,7 +350,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults"].includes(route) ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgDirect"].includes(route) ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));

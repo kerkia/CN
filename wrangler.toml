@@ -20,6 +20,18 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "cn-state"
 
+# the live server (ocap/worker, Worker « ocap-live »): its race objects and directory, for the races an organiser feeds live
+# (« Organisation › Direct », functions/api/live/*); the pushes reach them at internal paths no public route forwards
+[[durable_objects.bindings]]
+name = "LIVE_RACE"
+class_name = "LiveRace"
+script_name = "ocap-live"
+
+[[durable_objects.bindings]]
+name = "LIVE_DIR"
+class_name = "Directory"
+script_name = "ocap-live"
+
 [vars]
 SITE_URL = "https://ocn.kerkia.com"
 MAIL_FROM = "ocn@kerkia.com"

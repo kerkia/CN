@@ -579,6 +579,21 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   dark ring, light, dark ring, light; 36 rays, half of them and three quarters of the circle), colour-blind — found at
   2 px, score 0.75. Shape alone is not unique on a forest map (texture, knolls' contours: up to 0.72 elsewhere on the
   same photo), so it is only looked for within 50 m of where the trace ends (`prepare`, the circuit editor's `auto`).
+- **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; administrators only for now, owner 2026-10-15; the tab stays
+  greyed for others): an organiser feeds « En direct » from their timing software without liveresultat. The software exports
+  its result list to a file every few seconds; the page, open on the arena PC in Chrome or Edge (File System Access API: the
+  file is chosen once, its handle kept in IndexedDB `ocn-direct`, a reload asks one click), re-reads it on a timer run in a
+  small Worker (hidden tabs slow their own timers), reads it in the browser (IOF XML 3.0 by its own reader `iofLive`, which
+  keeps the runners still out and their splits; OE / MeOS HTML by `localparse.parseBytes`), turns it into liveresultat's
+  compact class form (`toLive`) and posts only the classes that changed to `/api/live/push?id=` (admin). Nothing is declared
+  beforehand: classes, controls and runners come from the file. A broadcast is opened by name, date and organiser
+  (`/api/live/broadcasts`) and numbered from 900 000 000 (liveresultat's ids are far below), registered by the live server's
+  `Directory` object; each race is a `LiveRace` object that, for such numbers, never reads liveresultat and keeps what is
+  pushed (one storage key per class), pushing changes to the pages watching as for a liveresultat race. O'CN reaches both
+  objects through Durable Object bindings to `ocap-live` (`wrangler.toml` LIVE_RACE, LIVE_DIR) at internal paths (`/push`,
+  `/broadcasts`) that no public route forwards. « En direct » lists the broadcasts for administrators. The live server
+  (`ocap/worker`) is deployed by hand. Local test: launch configs `ocap-live-dev` (8787), `ocap-dev` (8791) and
+  `pages-dev-games` (8790), `localStorage["ocn.liveBase"]="http://localhost:8791"`; `iofLive` / `toLive` are exported for checks.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

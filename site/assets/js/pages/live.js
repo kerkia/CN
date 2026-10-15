@@ -7,7 +7,7 @@ import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
-import { nameKey } from "../auth.js";
+import { nameKey, session } from "../auth.js";
 import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
@@ -42,10 +42,23 @@ async function list(main, query) {
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
     <div class="filters"><label class="field"><span>${t("lv.country")}</span><select id="lv-country"></select></label>
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [];
   try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
+  // the races organisers feed from their timing software (« Organisation › Direct »): administrators only for now
+  if (session()?.admin) {
+    try {
+      const own = ((await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || [])
+        .filter((b) => b.date >= new Date(Date.now() - 3 * 86400e3).toLocaleDateString("sv-SE"));
+      if (own.length) $("#lv-org").innerHTML = html`<section class="card"><div class="card-head"><div><h2>Diffusées par leur organisateur</h2>
+        <div class="hint">Depuis le logiciel de chronométrage, par « Organisation › Direct » (administrateurs)</div></div></div>
+        <div class="table-wrap"><table class="data compact"><tbody>${own.map((b) => html`<tr><td>${fmtDate(b.date)}</td>
+          <td><a href="#/direct/${b.id}">${b.name}</a></td><td class="muted">${b.organizer || ""}</td>
+          <td class="muted">${b.last ? `dernier envoi ${new Date(b.last).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "pas encore d'envoi"}</td></tr>`)}</tbody></table></div></section>`;
+    } catch (e) { /* none shown */ }
+  }
   const today = new Date().toLocaleDateString("sv-SE");
   // the countries of the list, the most races first (France first)
   const counts = new Map();
