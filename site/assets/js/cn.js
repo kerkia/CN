@@ -25,10 +25,19 @@ function windowStart(iso, days) {
 /** A circuit's value from its ranked CN holders' [CN J-15, time in seconds], mirroring cn.circuit_value: the
  *  fastest ⌈sample_fraction × N⌉ (all of them at min_ranked), the arithmetic mean of CN × time (cv_power 1, FFCO's
  *  rule) or the geometric mean (cv_power 0); null below min_ranked runners. Only the live page estimates one. */
-export function circuitValue(pairs, { sample_fraction = 2 / 3, min_ranked = 4, cv_power = 1 } = {}) {
+export function circuitValue(pairs, { sample_fraction = 2 / 3, min_ranked = 4, cv_power = 1, tail_k = null, tail_mean = 0 } = {}) {
   const n = pairs.length;
   if (n < min_ranked) return null;
   const ordered = pairs.slice().sort((a, b) => a[1] - b[1]);
+  if (cv_power === 0 && tail_k != null) {
+    // the dial (cn.py circuit_value): the fastest two-thirds, times the discipline's usual tail effect, corrected by the
+    // circuit's own slow tail with the weight n / (n + tail_k) - k = 0: the whole field; a large k: the two-thirds
+    const m = Math.max(1, Math.ceil((2 * n) / 3));
+    const lnAll = ordered.reduce((s, [c, t]) => s + Math.log(c * t), 0) / n;
+    const lnSub = ordered.slice(0, m).reduce((s, [c, t]) => s + Math.log(c * t), 0) / m;
+    const w = n / (n + tail_k);
+    return dround(Math.exp(lnSub + tail_mean + w * (lnAll - lnSub - tail_mean)));
+  }
   const k = n === min_ranked ? n : Math.max(1, Math.ceil(sample_fraction * n - 1e-9));
   const sub = ordered.slice(0, k);
   if (cv_power === 0) return dround(Math.exp(sub.reduce((s, [c, t]) => s + Math.log(c * t), 0) / k));

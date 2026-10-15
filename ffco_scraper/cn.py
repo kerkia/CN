@@ -136,6 +136,12 @@ class CnParams:
     # the mean of CN x time over the sample: 1 = FFCO's arithmetic mean, 0 = the geometric mean (the same study:
     # the natural estimate of a circuit's difficulty when a run is multiplicative, one disaster cannot carry it).
     cv_power: float = 1.0
+    # The dial (owner, 2026-10-15; geometric mean only): the circuit value blends A, the fastest two-thirds times the
+    # discipline's usual tail effect `tail_mean` (ln), and B, the whole field: V = A^(1-w) B^w, w = n / (n + tail_k) - the
+    # whole field weighs more on a large circuit. tail_k 0: the whole field; a large tail_k: the two-thirds (always
+    # ceil(2n/3), FFCO's « all four when only four » exception dropped). None: off (sample_fraction applies).
+    tail_k: float | None = None
+    tail_mean: float = 0.0
     cn_power: float = 1.0
     # A discipline's own values over the ones above, e.g. {"VTT": {"window_days": 730}}:
     # VTT and ski have far fewer competitions than forest and sprint.
@@ -244,6 +250,16 @@ def circuit_value(
         n = max(1, _apply_rounding(params.sample_fraction * n_total, params.sample_rounding))
     subset = ordered[:n]
     q = params.cv_power
+    if q == 0 and params.tail_k is not None:
+        # the two-thirds by the usual rule whatever the size (no « all three » exception: the tail is weighed instead)
+        n = max(1, math.ceil(2 * n_total / 3))
+        subset = ordered[:n]
+        ln_all = sum(math.log(cn * t) for cn, t in ordered) / n_total
+        ln_sub = sum(math.log(cn * t) for cn, t in subset) / n
+        w = n_total / (n_total + params.tail_k)
+        mean_value = math.exp(ln_sub + params.tail_mean + w * ((ln_all - ln_sub) - params.tail_mean))
+        coeff = params.k_over_1000 if k is None else k
+        return Decimal_round(mean_value * coeff), n_total
     if q == 1:
         mean_value = sum(cn * t for cn, t in subset) / len(subset)
     elif q == 0:                         # the geometric mean: exp of the mean of ln(CN x time)

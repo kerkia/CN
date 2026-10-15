@@ -106,7 +106,15 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    mean) - only the window, the share of best scores and the share of the field valuing a circuit differ (the whole
    field in forest only: measured with the arithmetic Top, it costs sprint -0.21 [-0.29, -0.15], 9 seasons of 15 worse,
    and VTT -0.63 since July 2025, worse every season since 2022; forest gains about +0.6, every season). The sprint
-   rules cost VTT -0.06 [-0.09, -0.03] (`eval_unify_n.json`, variants U1/U2 on study copies w7/w8). `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
+   rules cost VTT -0.06 [-0.09, -0.03] (`eval_unify_n.json`, variants U1/U2 on study copies w7/w8). **Since 2026-10-15** (owner:
+   no binary « all or two-thirds »; ENGINE 10) the share of the field is a **dial**, `CnParams.tail_k` (`cn.circuit_value`, mirrored
+   by `cn.js circuitValue`): V = A^(1-w) x B^w, A = the fastest ceil(2n/3) (always: FFCO's « all four when only four » dropped)
+   times the discipline's usual tail effect `tail_mean`, B = the whole field, w = n / (n + k). k chosen by one criterion - the
+   best duels on 2012-2024 without a significant loss since July 2025 (`eval_tail*_n.json`, against the rules of 2026-10-14):
+   forest 0 (whole field; k = 3 already -0.05), sprint 400 (+0.11; flat from 200 to 1000, the gain is the four-runner exception
+   dropped), VTT 50 (+0.12; smaller k win on 2012-2024 but lose since 2025), ski 50 as VTT (unmeasurable). No physical reason is
+   known for forest wanting the whole field and sprint almost none: a split-half test showed the slow tail as reliable in sprint
+   as in forest at equal size, and one k for all loses forest every season. `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
    weighted arithmetic average of the race scores; TOP6W_CN_VERSION 5) the Top `top6w3` is the weighted **arithmetic** mean of
    its 6 places in every discipline (`top3` in `build_methods`, and `Normalisation.anchor_cn_power` 1 so the recalage anchors
    on that Top); `fair3`, the usual level that values the circuits, keeps the cubic mean (quadratic in VTT and ski): the

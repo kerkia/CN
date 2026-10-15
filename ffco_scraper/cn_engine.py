@@ -283,11 +283,17 @@ def build_methods() -> dict[str, MethodSpec]:
     # measured with today's Top, the whole field costs sprint -0.21 point [-0.29, -0.15] (9 seasons of 15 worse, none
     # better) and VTT -0.63 since July 2025 (worse every season since 2022), and gains forest +0.6 (better every season).
     # The sprint rules cost VTT -0.06 [-0.09, -0.03] against its former rules (arithmetic value, quadratic level).
+    # Since 2026-10-15 (owner: no binary « all or two-thirds ») the share of the field is a dial, `tail_k` (cn.circuit_value):
+    # the whole field weighs n / (n + k). k per discipline by one criterion - the best duels called right on 2012-2024
+    # without a significant loss since July 2025 (study copies, eval_tail*_n.json; against the rules of 2026-10-14): forest
+    # 0 (the whole field; k = 3 already -0.05), sprint 400 (+0.11 [+0.06, +0.15]; flat from 200 to 1000: the gain is the
+    # four-runner exception dropped), VTT 50 (+0.12 [+0.05, +0.19]; smaller k gain more on 2012-2024 but lose since 2025),
+    # ski 50 as VTT (not measurable). `tail_mean`: the mean tail effect of the discipline's circuits, 2011-2026.
     fair3 = dataclasses.replace(fair, by_terrain={
-        "Forêt": {"sample_fraction": 1.0, "cv_power": 0.0, "cn_power": 3.0},
-        "Sprint": {"cv_power": 0.0, "cn_power": 3.0},
-        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0},
-        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0},
+        "Forêt": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 0.0, "tail_mean": 0.0397},
+        "Sprint": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 400.0, "tail_mean": 0.0239},
+        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0, "tail_k": 50.0, "tail_mean": 0.0247},
+        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0, "tail_k": 50.0, "tail_mean": 0.0235},
     })
     # carried 10 calendar months: counted in months with races, the 7 of 2026-10-13 stretched over forest's few race-less
     # months; in calendar months 7 left the forest level 2.7 % above 5600, 10 keeps the three measurable disciplines within

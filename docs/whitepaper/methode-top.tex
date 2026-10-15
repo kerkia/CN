@@ -240,7 +240,7 @@ Les mesures, en points de duels bien prédits face au \Top{} quadratique publié
   \item Avec la moyenne géométrique, tout le peloton gagne $+0{,}40$ $[+0{,}35 ; +0{,}44]$ point en forêt, et $+0{,}12$ $[+0{,}07 ; +0{,}17]$ sur les courses nationales.
   \item Avec la moyenne arithmétique, tout le peloton gagne aussi sur l'ensemble des courses, mais rien sur les courses nationales ($-0{,}04$ $[-0{,}11 ; +0{,}03]$, contre $+0{,}13$ $[+0{,}08 ; +0{,}17]$ avec la moyenne géométrique, au même réglage).
   \item N'écarter que les 15~\% les plus lents, ou atténuer le poids des temps aberrants par une autre méthode statistique (dite de Huber), fait moins bien que tout le peloton, d'environ 0,1 point. Les erreurs font partie du circuit.
-  \item En sprint, où les erreurs sont deux fois moins fréquentes, tout le peloton fait moins bien ($-0{,}12$ $[-0{,}21 ; -0{,}05]$) que les deux tiers les plus rapides en moyenne géométrique ($+0{,}12$ $[+0{,}09 ; +0{,}15]$). Le sprint garde donc les deux tiers, en moyenne géométrique.
+  \item En sprint, tout le peloton fait moins bien ($-0{,}12$ $[-0{,}21 ; -0{,}05]$) que les deux tiers les plus rapides en moyenne géométrique ($+0{,}12$ $[+0{,}09 ; +0{,}15]$). Depuis le 15 octobre, la part des plus lents est un réglage par spécialité (section~\ref{sec:dial}).
 \end{itemize}
 La figure~\ref{fig:k} et la table~\ref{tab:variants} rassemblent toutes les variantes.
 
@@ -249,32 +249,54 @@ La figure~\ref{fig:k} et la table~\ref{tab:variants} rassemblent toutes les vari
 
 \subsection{Une seule méthode pour les quatre spécialités}
 
-Jusqu'au 14 octobre, le VTT et le ski mesuraient leurs circuits avec la règle de la FFCO (la moyenne arithmétique des deux tiers les plus rapides), leur niveau habituel était une moyenne quadratique, et leur recalage n'était pas prolongé. Depuis, les quatre spécialités suivent les mêmes formules. Seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et la part du peloton qui mesure le circuit.
+Jusqu'au 14 octobre, le VTT et le ski mesuraient leurs circuits avec la règle de la FFCO (la moyenne arithmétique des deux tiers les plus rapides), leur niveau habituel était une moyenne quadratique, et leur recalage n'était pas prolongé. Depuis, les quatre spécialités suivent les mêmes formules. Seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et le réglage $k$, qui dose le poids des coureurs les plus lents dans la valeur du circuit.
 
 \begin{center}\small
 \begin{tabular}{@{}llrl@{}}\toprule
-Spécialité & Courses prises en compte & Meilleurs scores regardés & Coureurs qui mesurent le circuit \\ \midrule
-Forêt & les 12 derniers mois & les 60~\% meilleurs & tout le peloton classé \\
-Sprint & les 12 derniers mois & les 60~\% meilleurs & les deux tiers les plus rapides \\
-VTT & les 2 dernières années & les 70~\% meilleurs & les deux tiers les plus rapides \\
-Ski & les 3 dernières années & les 70~\% meilleurs & les deux tiers les plus rapides \\ \bottomrule
+Spécialité & Courses prises en compte & Meilleurs scores regardés & Réglage $k$ \\ \midrule
+Forêt & les 12 derniers mois & les 60~\% meilleurs & 0 (tout le peloton) \\
+Sprint & les 12 derniers mois & les 60~\% meilleurs & 400 \\
+VTT & les 2 dernières années & les 70~\% meilleurs & 50 \\
+Ski & les 3 dernières années & les 70~\% meilleurs & 50 \\ \bottomrule
 \end{tabular}
 \end{center}
 
 Pour le VTT, la règle commune coûte $-0{,}06$ $[-0{,}09 ; -0{,}03]$ point de duels bien prédits face à sa règle précédente (2012--2024) : une perte faible, acceptée pour que la méthode soit la même partout. Le ski a trop peu de courses pour être mesuré.
 
-\paragraph{Pourquoi tout le peloton en forêt seulement ?} Mesurer chaque circuit sur tout le peloton a été essayé dans chaque spécialité, avec le \CN{} \Top{} d'aujourd'hui, face aux deux tiers les plus rapides :
+\paragraph{Le poids des plus lents : un réglage par spécialité.}\label{sec:dial} Mesurer un circuit sur tout le peloton ou sur les deux tiers les plus rapides, c'est choisir entre deux extrêmes. Le 14 octobre, la forêt prenait tout le peloton et les autres spécialités les deux tiers, sans raison de principe : c'était simplement ce qui prédisait le mieux. Depuis le 15 octobre, un réglage $k$ permet tous les intermédiaires. La valeur du circuit mêle deux mesures : $A$, la moyenne géométrique des deux tiers les plus rapides, augmentée de l'effet habituel des plus lents dans la spécialité (de combien, en moyenne, ils font monter la valeur d'un circuit : 4,0~\% en forêt, 2,4~\% en sprint, 2,5~\% en VTT, 2,4~\% en ski) ; $B$, la moyenne géométrique de tout le peloton. Pour un circuit de $n$ coureurs qui ont un niveau habituel,
+\[
+\text{valeur du circuit} = A^{1-w} \times B^{w}, \qquad w = \frac{n}{n + k}.
+\]
+C'est une moyenne géométrique de $A$ et de $B$, où $B$ compte pour $w$. Plus le circuit compte de coureurs, plus tout le peloton pèse. Avec $k = 0$, c'est tout le peloton ; avec un très grand $k$, les deux tiers. Le même critère choisit $k$ dans chaque spécialité : le réglage qui prédit le mieux les duels sur les saisons 2012 à 2024, sans perte significative depuis juillet 2025.
 
 \begin{center}\small
-\begin{tabular}{@{}lrrl@{}}\toprule
-Tout le peloton contre les deux tiers & Duels, 2012--2024 & Duels, depuis juillet 2025 & Saison par saison \\ \midrule
-Forêt & environ $+0{,}6$ & environ $+0{,}5$ & mieux à chaque saison sauf la première \\
-Sprint & $-0{,}21$ $[-0{,}29 ; -0{,}15]$ & $-0{,}40$ $[-0{,}56 ; -0{,}26]$ & moins bien à 9 saisons sur 15, mieux à aucune \\
-VTT & $+0{,}15$ $[+0{,}02 ; +0{,}27]$ & $-0{,}63$ $[-1{,}15 ; -0{,}22]$ & mieux jusqu'en 2021, moins bien depuis 2022 \\ \bottomrule
+\begin{tabular}{@{}rrrrrrr@{}}\toprule
+ & \multicolumn{2}{c}{Forêt} & \multicolumn{2}{c}{Sprint} & \multicolumn{2}{c}{VTT} \\
+$k$ & 2012--2024 & depuis 2025 & 2012--2024 & depuis 2025 & 2012--2024 & depuis 2025 \\ \midrule
+0 & \textbf{0,00} & \textbf{0,00} & $-0{,}21$* & $-0{,}40$* & $+0{,}20$* & $-0{,}55$* \\
+3 & $-0{,}05$* & $-0{,}07$* & & & & \\
+10 & $-0{,}12$* & $-0{,}17$* & $-0{,}02$ & $-0{,}24$* & $+0{,}19$* & $-0{,}42$* \\
+25 & $-0{,}22$* & $-0{,}28$* & $+0{,}04$ & $-0{,}12$* & $+0{,}18$* & $-0{,}34$* \\
+50 & $-0{,}29$* & $-0{,}38$* & $+0{,}07$* & $-0{,}05$ & $\mathbf{+0{,}12}$* & $\mathbf{-0{,}17}$ \\
+75 & & & $+0{,}07$* & $-0{,}05$ & $+0{,}10$* & $-0{,}19$ \\
+100 & & & $+0{,}07$* & $-0{,}03$ & $+0{,}09$* & $-0{,}14$ \\
+200 & & & $+0{,}10$* & $+0{,}01$ & $+0{,}04$ & $-0{,}11$ \\
+400 & & & $\mathbf{+0{,}11}$* & $\mathbf{+0{,}02}$ & $-0{,}01$ & $-0{,}04$ \\
+1\,000 & & & $+0{,}11$* & $+0{,}03$ & $-0{,}04$ & $-0{,}08$ \\
+deux tiers & $\approx -0{,}6$ & $\approx -0{,}5$ & 0,00 & 0,00 & 0,00 & 0,00 \\ \bottomrule
 \end{tabular}
 \end{center}
 
-En forêt, l'écart vient de l'étude du 13 octobre, à moyennes égales par ailleurs : c'est le plus grand gain de toute l'étude, à presque chaque saison. Les erreurs y sont fréquentes, et leur nombre varie beaucoup d'un circuit à l'autre : en tenir compte fait partie de la mesure de la difficulté. En sprint, les erreurs sont deux fois moins fréquentes et varient moins d'un circuit à l'autre ; les coureurs les plus lents ajoutent alors plus d'incertitude qu'ils n'apportent d'information, et tout le peloton fait moins bien à presque chaque saison. En VTT, tout le peloton a fait mieux jusqu'en 2021, puis moins bien à chaque saison depuis 2022, sans que la cause soit établie ; c'est la période récente qui compte pour un classement d'aujourd'hui. La part du peloton reste donc un réglage propre à chaque spécialité.
+Écart de la part des duels bien prédits, en points, face à la règle du 14 octobre (tout le peloton en forêt, les deux tiers ailleurs). Un astérisque marque un écart significatif ; en gras, le réglage retenu. En forêt, la ligne « deux tiers » vient de l'étude du 13 octobre.
+
+\begin{itemize}
+  \item \textbf{Forêt : $k = 0$}, tout le peloton. Le moindre poids retiré aux plus lents fait perdre : déjà $-0{,}05$ point avec $k = 3$, et la perte grandit avec $k$.
+  \item \textbf{Sprint : $k = 400$}, ce qui revient presque aux deux tiers : sur un circuit de 10 coureurs, tout le peloton ne pèse que 2~\%. Les résultats sont les mêmes de $k = 200$ à $k = 1\,000$. Le gain sur la règle du 14 octobre ($+0{,}11$ $[+0{,}06 ; +0{,}15]$) vient d'un détail : la règle de la FFCO compte les quatre coureurs quand un circuit n'en a que quatre qui ont un niveau ; le réglage prend toujours les trois plus rapides. C'est le cas de 8,3~\% des circuits de sprint.
+  \item \textbf{VTT : $k = 50$}. Un $k$ plus petit gagne davantage sur 2012--2024, mais perd nettement depuis juillet 2025 ; $k = 50$ est le plus petit qui ne perd pas de façon significative sur la période récente, et il gagne $+0{,}12$ $[+0{,}05 ; +0{,}19]$ point sur 2012--2024.
+  \item \textbf{Ski : $k = 50$}, comme le VTT : le ski a trop peu de courses pour être mesuré.
+\end{itemize}
+
+Pourquoi la forêt veut-elle tout le peloton et le sprint presque rien ? On ne sait pas le dire. La taille des circuits n'en est pas la cause : à nombre de coureurs égal, les plus lents renseignent autant sur le circuit en sprint qu'en forêt (mesuré en coupant chaque circuit en deux moitiés tirées au sort, qui s'accordent autant dans les deux spécialités), et un même $k$ pour toutes les spécialités fait perdre la forêt à presque chaque saison. Le réglage n'est donc pas déduit d'une théorie : il est mesuré, de la même façon dans chaque spécialité.
 
 \subsection{Les jeunes à leur place}
 
@@ -298,7 +320,7 @@ Enfin, les \CN{} ramenés à 5\,600 sont les \CN{} \Top, ceux qui sont publiés,
 
 \section{Résultats}
 
-\paragraph{Contre le \Top{} précédent.} Sur les mêmes coureurs, de 2012 à 2024, la méthode du 13 octobre prédisait bien davantage de duels que le \Top{} quadratique publié jusque-là : $+0{,}40$ $[+0{,}35 ; +0{,}44]$ point en forêt, avec un gain significatif à 14 saisons sur 15 et sur les courses nationales ($+0{,}12$ $[+0{,}07 ; +0{,}17]$) ; $+0{,}12$ $[+0{,}09 ; +0{,}15]$ point en sprint (figure~\ref{fig:seasons}). Depuis juillet 2025, le gain est de $+0{,}31$ point en forêt et de $+0{,}11$ point en sprint. En VTT, prendre tout le peloton faisait perdre le \CN{} \Top{} à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski mesurent donc leurs circuits sur les deux tiers les plus rapides, comme le sprint. Le passage du \CN{} \Top{} à la moyenne pondérée, le 14 octobre, plus simple à comprendre, retire 0,01 point en forêt, 0,10 en sprint et 0,09 en VTT (section~5).
+\paragraph{Contre le \Top{} précédent.} Sur les mêmes coureurs, de 2012 à 2024, la méthode du 13 octobre prédisait bien davantage de duels que le \Top{} quadratique publié jusque-là : $+0{,}40$ $[+0{,}35 ; +0{,}44]$ point en forêt, avec un gain significatif à 14 saisons sur 15 et sur les courses nationales ($+0{,}12$ $[+0{,}07 ; +0{,}17]$) ; $+0{,}12$ $[+0{,}09 ; +0{,}15]$ point en sprint (figure~\ref{fig:seasons}). Depuis juillet 2025, le gain est de $+0{,}31$ point en forêt et de $+0{,}11$ point en sprint. En VTT, prendre tout le peloton faisait perdre le \CN{} \Top{} à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le poids des plus lents y est réglé en conséquence (section~6). Le passage du \CN{} \Top{} à la moyenne pondérée, le 14 octobre, plus simple à comprendre, retire 0,01 point en forêt, 0,10 en sprint et 0,09 en VTT (section~5).
 
 \begin{figure}[h]\centering\includegraphics{fig_seasons.pdf}
 \caption{La méthode du 13 octobre contre le \Top{} quadratique : gain en points de duels bien prédits, saison par saison, toutes les courses, avec l'intervalle à 95~\%. En vert, un gain significatif.}\label{fig:seasons}\end{figure}
@@ -346,7 +368,7 @@ Chaque idée a été calculée depuis 2010 sur une copie de la base de données,
 
 \begin{description}
   \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne cubique de ses 60~\% meilleurs scores \Top{} des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans). Ce n'est pas un classement, mais une étape du calcul de la valeur des circuits.
-  \item[Valeur du circuit.] En forêt, la moyenne géométrique des produits niveau habituel $\times$ temps de tous les coureurs classés qui ont un niveau (au moins quatre). En sprint, en VTT et en ski, la même moyenne sur les deux tiers les plus rapides.
+  \item[Valeur du circuit.] La moyenne géométrique des deux tiers les plus rapides des produits niveau habituel $\times$ temps, augmentée de l'effet habituel des plus lents dans la spécialité, mêlée à la moyenne géométrique de tout le peloton, qui pèse $n/(n+k)$ pour un circuit de $n$ coureurs qui ont un niveau (au moins quatre). $k = 0$ en forêt (tout le peloton), 400 en sprint, 50 en VTT et en ski.
   \item[Score \Top.] La valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes. Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.
   \item[\CN{} \Top.] Les meilleurs scores \Top, parmi les 60~\% meilleurs des douze derniers mois, remplissent six places : 2 pour un championnat de France, 1,5 pour une course nationale, 1 pour une autre course. Le \CN{} \Top{} est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de places :
   \[ \text{\CN{} \Top} = \textstyle\sum (\text{places} \times \text{score}) \big/ \sum \text{places} . \]

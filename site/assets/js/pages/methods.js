@@ -319,7 +319,10 @@ export async function render(main, { query = {} } = {}) {
     data-subtab="${k}" aria-selected="${String(k === current)}"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
     ${chapters.map(([k]) => html`<div data-subpanel="${k}"${k === current ? "" : " hidden"}></div>`)}`;
   const windows = TERRAINS.map((tr) => [tr, own(p3, tr, "window_days"), own(p3, tr, "eligible_fraction"), own(p3, tr, "cn_power") ?? 1,
-    own(p3, tr, "cv_power") ?? 1, own(p3, tr, "sample_fraction") ?? 2 / 3]);
+    own(p3, tr, "cv_power") ?? 1, own(p3, tr, "sample_fraction") ?? 2 / 3, own(p3, tr, "tail_k"), own(p3, tr, "tail_mean") ?? 0]);
+  // the dial: the weight of the whole field on a circuit of n runners, and its words
+  const dialW = (k, n) => (k == null ? 0 : n / (n + k));
+  const kName = (k) => (k == null ? "—" : k === 0 ? "0 (tout le peloton)" : fmt(k));
   const years = (d) => (d === 365 ? "12 mois" : `${fmt(Math.round(d / 365))} ans`);
   const meanName = (q) => (q === 3 ? "cubique" : q === 2 ? "quadratique" : "pondérée");
   const cvName = (q, sf) => `${q === 0 ? "géométrique" : "arithmétique"}, ${sf >= 1 ? "tout le peloton classé" : "les ⌈2N/3⌉ plus rapides"}`;
@@ -332,7 +335,14 @@ export async function render(main, { query = {} } = {}) {
     const keep = Math.ceil((2 * RACE6.length) / 3);
     const amean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const gmean = (xs) => Math.exp(amean(xs.map(Math.log)));
-    return { prod, keep, off: amean(prod.slice(0, keep)), topFor: gmean(prod), topSpr: gmean(prod.slice(0, keep)), arithAll: amean(prod) };
+    // the dial (cn.circuitValue): the fastest two-thirds x e^m, and the whole field, weighed n / (n + k)
+    const dial = (k, m) => {
+      const a = Math.log(gmean(prod.slice(0, keep))) + m, b = Math.log(gmean(prod)), w = k == null ? 0 : prod.length / (prod.length + k);
+      return Math.exp((1 - w) * a + w * b);
+    };
+    const kOf = (tr) => own(p3, tr, "tail_k"), mOf = (tr) => own(p3, tr, "tail_mean") ?? 0;
+    return { prod, keep, off: amean(prod.slice(0, keep)), topFor: dial(kOf("For"), mOf("For")), topSpr: dial(kOf("Spr"), mOf("Spr")),
+      arithAll: amean(prod), all: gmean(prod), fast: gmean(prod.slice(0, keep)), kSpr: kOf("Spr"), mSpr: mOf("Spr") };
   })();
   const n0 = (x) => fmt(Math.round(x));
   const r6Table = (level, extra) => html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Coureur</th><th class="r">${level}</th>
@@ -449,11 +459,12 @@ export async function render(main, { query = {} } = {}) {
             selon ses places.</p></div>
       </div>
       <p style="margin-top:14px">Les formules sont les mêmes dans les quatre spécialités. Seuls trois réglages changent : les courses prises en compte et
-        la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et la part du peloton qui mesure le circuit.</p>
+        la part des meilleurs scores, parce que le VTT et le ski ont bien moins de courses, et le réglage k, qui dose le poids des coureurs les plus lents
+        dans la valeur du circuit (étape 2 ci-dessous).</p>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
-        <th class="r">Meilleurs scores regardés</th><th>Coureurs qui mesurent le circuit</th></tr></thead>
-        <tbody>${windows.map(([tr, w, f, , , sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
-          <td class="r">les ${pctOf(f)} meilleurs</td><td>${sf >= 1 ? "tout le peloton classé" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
+        <th class="r">Meilleurs scores regardés</th><th class="r">Réglage k du poids des plus lents</th></tr></thead>
+        <tbody>${windows.map(([tr, w, f, , , , tk]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
+          <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${kName(tk)}</td></tr>`)}</tbody></table></div>
       <p style="margin-top:14px">La méthode Top est en ligne depuis le 13 octobre 2026. Les raisons de chaque choix, avec les mesures qui les justifient,
         sont dans <a href="#/methodes?onglet=etude" data-tab-link="etude">l'étude</a>.</p>
     </section>
@@ -479,17 +490,27 @@ export async function render(main, { query = {} } = {}) {
     <section class="mx-slide" style="--c:var(--s1)">
       <p class="mx-kicker">Le score Top · étape 2</p>
       <h2>La valeur du circuit</h2>
-      <p>Pour chaque coureur, on multiplie son niveau habituel par son temps. La valeur du circuit est la <b>moyenne géométrique</b> de ces produits.
-        En forêt, elle porte sur tous les coureurs classés qui ont un niveau habituel. En sprint, en VTT et en ski, elle porte sur les deux tiers les plus
-        rapides, comme pour le CN officiel.</p>
+      <p>Pour chaque coureur, on multiplie son niveau habituel par son temps. La valeur du circuit est une <b>moyenne géométrique</b> de ces produits.</p>
       <p>La moyenne géométrique de deux nombres est la racine carrée de leur produit ; celle de six nombres, la racine sixième de leur produit. Elle
         convient aux grandeurs qui se comparent en proportion, comme les temps. Prenons deux temps de 30 et de 120 minutes. Leur moyenne géométrique
         vaut √(30 × 120) = 60 minutes : 30 est deux fois moins que 60, et 120 deux fois plus. Leur moyenne ordinaire, dite arithmétique, vaut 75 minutes.</p>
-      <div class="mx-eq">valeur du circuit = moyenne géométrique des (niveau habituel × temps)
-        <small>en forêt sur tout le peloton classé ; ailleurs sur les deux tiers les plus rapides</small></div>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Moyenne</th><th>Coureurs comptés</th></tr></thead>
-        <tbody>${windows.map(([tr, , , , cv, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${cv === 0 ? "géométrique" : "arithmétique (règle de la FFCO)"}</td>
-          <td>${sf >= 1 ? "tous les classés qui ont un niveau habituel" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
+      <p><b>Le poids des coureurs les plus lents.</b> Les plus lents d'un circuit disent à quel point il était piégeux. Mais sur un petit circuit, ce
+        renseignement repose sur deux ou trois coureurs et reste incertain. La valeur du circuit combine donc deux mesures :</p>
+      <ul class="mx-list">
+        <li><span><b>A</b> : la moyenne géométrique des deux tiers les plus rapides, augmentée de l'effet habituel des plus lents dans la spécialité,
+          c'est-à-dire de combien, en moyenne, ils font monter la valeur d'un circuit.</span></li>
+        <li><span><b>B</b> : la moyenne géométrique de tous les coureurs classés qui ont un niveau habituel.</span></li>
+      </ul>
+      <div class="mx-eq">valeur du circuit = A<sup>1 − w</sup> × B<sup>w</sup>, avec w = n ÷ (n + k)
+        <small>n : le nombre de coureurs classés qui ont un niveau habituel ; k : un réglage propre à chaque spécialité. C'est une moyenne géométrique de A et
+          de B, où B compte pour w et A pour le reste.</small></div>
+      <p>Plus le circuit compte de coureurs, plus la mesure sur tout le peloton pèse. Avec k = 0, elle pèse tout, quel que soit le nombre de coureurs ; plus k
+        est grand, plus la valeur se rapproche de celle des deux tiers les plus rapides. Dans chaque spécialité, k est le réglage qui prédit le mieux les
+        résultats ; l'étude détaille ce choix.</p>
+      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th class="r">k</th><th class="r">Effet habituel des plus lents</th>
+        <th class="r">Poids de tout le peloton<br>pour 10 coureurs</th><th class="r">pour 30 coureurs</th><th class="r">pour 100 coureurs</th></tr></thead>
+        <tbody>${windows.map(([tr, , , , , , tk, tm]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td class="r num">${kName(tk)}</td>
+          <td class="r num">+${fmt(100 * (Math.exp(tm) - 1), 1)} %</td>${[10, 30, 100].map((n) => html`<td class="r num">${fmt(Math.round(100 * dialW(tk, n)))} %</td>`)}</tr>`)}</tbody></table></div>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
@@ -503,9 +524,11 @@ export async function render(main, { query = {} } = {}) {
       </ul>
       <h3>Exemple : le même circuit de six coureurs</h3>
       ${r6Table("Niveau", [["Score Top en forêt", (i, tm) => n0(r6.topFor / tm)], ["Score Top en sprint", (i, tm) => n0(r6.topSpr / tm)]])}
-      <p>On suppose ici que le niveau habituel de chaque coureur est égal à son CN, et on ne tient pas compte du recalage. En forêt, la valeur du circuit
-        est la moyenne géométrique des six produits, soit ${n0(r6.topFor)}. En sprint, c'est celle des quatre plus rapides, soit ${n0(r6.topSpr)}. Le
-        circuit vaut plus en forêt parce que la longue course de F y compte : l'étude explique pourquoi.</p>
+      <p>On suppose ici que le niveau habituel de chaque coureur est égal à son CN, et on ne tient pas compte du recalage. En forêt, k = 0 : la valeur du
+        circuit est la moyenne géométrique des six produits, soit ${n0(r6.topFor)}. En sprint, k = ${fmt(r6.kSpr ?? 0)} : avec six coureurs, tout le peloton
+        ne pèse que ${fmt(Math.round(100 * dialW(r6.kSpr, 6)))} %. La valeur vient presque entièrement des quatre plus rapides (${n0(r6.fast)}), augmentée de
+        l'effet habituel des plus lents en sprint (+${fmt(100 * (Math.exp(r6.mSpr) - 1), 1)} %), soit ${n0(r6.topSpr)}. Le circuit vaut plus en forêt parce que
+        la longue course de F y compte entièrement : l'étude explique pourquoi.</p>
     </section>
 
     <section class="mx-slide" style="${cvar("top6w3")}">
@@ -710,8 +733,8 @@ export async function render(main, { query = {} } = {}) {
               les meilleures courses : plus on court, plus on a de chances de bien les remplir</div>
             <div class="p"><b>Le circuit mesuré sur les deux tiers les plus rapides</b>les coureurs qui se sont trompés ne comptent pas, et bien s'orienter
               sur un circuit piégeux rapporte moins qu'ailleurs</div><div class="arrow">→</div>
-            <div class="s"><b>Le circuit mesuré sur tous les coureurs</b>en forêt : la difficulté d'un circuit comprend les erreurs qu'il provoque, et les
-              éviter rapporte</div>
+            <div class="s"><b>Les plus lents comptent, selon un réglage par spécialité</b>en forêt, tout le peloton : la difficulté d'un circuit comprend
+              les erreurs qu'il provoque, et les éviter rapporte</div>
             <div class="p"><b>Un saut au 1<sup>er</sup> janvier</b>tout le classement change d'un coup</div><div class="arrow">→</div>
             <div class="s"><b>Un recalage progressif, jour après jour</b>le score d'une course est fixé une fois pour toutes, et le CN ne bouge que quand
               une course entre dans les 12 derniers mois ou en sort</div>
@@ -1040,8 +1063,8 @@ export async function render(main, { query = {} } = {}) {
               (${pts(kpt("For", "aall", 2, "nat_holdout"))}, contre ${pts(kpt("For", "gall", 2, "nat_holdout"))} avec la moyenne géométrique, au même réglage).</span></li>
             <li><span>N'écarter que les 15 % les plus lents, ou atténuer le poids des temps aberrants par une autre méthode statistique (dite de Huber), fait
               moins bien que tout le peloton, d'environ 0,1 point. Les erreurs font partie du circuit.</span></li>
-            <li><span>En sprint, où les erreurs sont deux fois moins fréquentes, tout le peloton fait moins bien (${pts(kpt("Spr", "gall", 3))}) que les deux
-              tiers les plus rapides en moyenne géométrique (${pts(kpt("Spr", "g23", 3))}). Le sprint garde donc les deux tiers, en moyenne géométrique.</span></li>
+            <li><span>En sprint, tout le peloton fait moins bien (${pts(kpt("Spr", "gall", 3))}) que les deux tiers les plus rapides en moyenne géométrique
+              (${pts(kpt("Spr", "g23", 3))}). Depuis le 15 octobre, la part des plus lents est un réglage par spécialité (section suivante).</span></li>
           </ul>
           ${S ? fig("fig-k", html`<b>Gain en duels bien prédits face au Top quadratique</b>, en points (2012–2024), selon la puissance de la moyenne qui fait le
             CN (1 : ordinaire, 2 : quadratique, 3 : cubique, 4) et selon la façon de mesurer le circuit ; les traits verticaux sont les intervalles à 95 % ;
@@ -1052,37 +1075,60 @@ export async function render(main, { query = {} } = {}) {
           <div class="filters" id="fig-k-scope" style="margin-top:-8px"></div>
         </section>
         <section class="mx-slide" style="${cvar("top6w3")}">
-          <p class="mx-kicker">14 octobre 2026</p>
+          <p class="mx-kicker">14 et 15 octobre 2026</p>
           <h2>Une seule méthode pour les quatre spécialités</h2>
           <p>Jusqu'au 14 octobre, le VTT et le ski mesuraient leurs circuits avec la règle de la FFCO (la moyenne arithmétique des deux tiers les plus
             rapides), leur niveau habituel était une moyenne quadratique, et leur recalage n'était pas prolongé. Depuis, les quatre spécialités suivent les
             mêmes formules. Seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski ont bien
-            moins de courses, et la part du peloton qui mesure le circuit.</p>
+            moins de courses, et le réglage k, qui dose le poids des coureurs les plus lents dans la valeur du circuit.</p>
           <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
-          <th class="r">Meilleurs scores regardés</th><th>Coureurs qui mesurent le circuit</th></tr></thead>
-          <tbody>${windows.map(([tr, w, f, , , sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
-            <td class="r">les ${pctOf(f)} meilleurs</td><td>${sf >= 1 ? "tout le peloton classé" : "les deux tiers les plus rapides"}</td></tr>`)}</tbody></table></div>
+          <th class="r">Meilleurs scores regardés</th><th class="r">Réglage k du poids des plus lents</th></tr></thead>
+          <tbody>${windows.map(([tr, w, f, , , , tk]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
+            <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${kName(tk)}</td></tr>`)}</tbody></table></div>
           ${S?.unify ? html`<p>Pour le VTT, la règle commune coûte ${pts(S.unify.U1.VTT.all_holdout.acc)} de duels bien prédits face à sa règle précédente
             (2012–2024) : une perte faible, acceptée pour que la méthode soit la même partout. Le ski a trop peu de courses pour être mesuré.</p>
-          <h3>Pourquoi tout le peloton en forêt seulement ?</h3>
-          <p>Mesurer chaque circuit sur tout le peloton a été essayé dans chaque spécialité, avec le CN Top d'aujourd'hui, face aux deux tiers les plus
-            rapides :</p>
-          <div class="table-wrap"><table class="data compact"><thead><tr><th>Tout le peloton contre les deux tiers</th><th class="r">Duels, 2012–2024</th>
-            <th class="r">Duels, depuis juillet 2025</th><th>Saison par saison</th></tr></thead><tbody>
-            <tr><td>Forêt</td><td class="r num">environ +0,6</td><td class="r num">environ +0,5</td><td>mieux à chaque saison sauf la première</td></tr>
-            <tr><td>Sprint</td><td class="r num">${ci(S.unify.U2.Spr.all_holdout.acc)}</td><td class="r num">${ci(S.unify.U2.Spr.all_tuned.acc)}</td>
-              <td>moins bien à ${fmt(S.unify.U2.Spr.worse)} saisons sur ${fmt(S.unify.U2.Spr.seasons)}, mieux à aucune</td></tr>
-            <tr><td>VTT</td><td class="r num">${ci(S.unify.U2.VTT.all_holdout.acc)}</td><td class="r num">${ci(S.unify.U2.VTT.all_tuned.acc)}</td>
-              <td>mieux jusqu'en 2021, moins bien à chaque saison depuis 2022</td></tr>
-          </tbody></table></div>
-          <p class="muted" style="font-size:13px">Écarts de la part des duels bien prédits, en points, avec leur intervalle à 95 %. En forêt, l'écart vient de
-            l'étude du 13 octobre, à moyennes égales par ailleurs.</p>
-          <p>En forêt, c'est le plus grand gain de toute l'étude, à presque chaque saison. Les erreurs y sont fréquentes, et leur nombre varie beaucoup d'un
-            circuit à l'autre : en tenir compte fait partie de la mesure de la difficulté. En sprint, les erreurs sont deux fois moins fréquentes et varient
-            moins d'un circuit à l'autre ; les coureurs les plus lents ajoutent alors plus d'incertitude qu'ils n'apportent d'information, et tout le peloton
-            fait moins bien à presque chaque saison. En VTT, tout le peloton a fait mieux jusqu'en 2021, puis moins bien à chaque saison depuis 2022, sans que
-            la cause soit établie ; c'est la période récente qui compte pour un classement d'aujourd'hui. La part du peloton reste donc un réglage propre à
-            chaque spécialité.</p>` : ""}
+          <h3>Le poids des plus lents : un réglage par spécialité</h3>
+          <p>Mesurer un circuit sur tout le peloton ou sur les deux tiers les plus rapides, c'est choisir entre deux extrêmes. Le 14 octobre, la forêt prenait
+            tout le peloton et les autres spécialités les deux tiers, sans raison de principe : c'était simplement ce qui prédisait le mieux. Depuis le 15
+            octobre, un réglage k permet tous les intermédiaires. La valeur du circuit mêle la mesure sur les deux tiers les plus rapides, augmentée de l'effet
+            habituel des plus lents, et la mesure sur tout le peloton, qui pèse n ÷ (n + k) pour un circuit de n coureurs (voir l'onglet
+            <a href="#/methodes?onglet=top" data-tab-link="top">CN Top</a>). Avec k = 0, c'est tout le peloton ; avec un très grand k, les deux tiers.</p>
+          <p>Le même critère choisit k dans chaque spécialité : le réglage qui prédit le mieux les duels sur les saisons 2012 à 2024, sans perte significative
+            depuis juillet 2025.</p>
+          ${S.dial ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th class="r">k</th>
+            ${[["For", "Forêt"], ["Spr", "Sprint"], ["VTT", "VTT"]].map(([, name]) => html`<th class="r">${name}<br>2012–2024</th><th class="r">${name}<br>depuis 2025</th>`)}</tr></thead>
+            <tbody>${[...new Set(Object.values(S.dial.grid).flatMap((rows) => rows.map((r) => r.k)))].sort((a, b) => a - b).map((k) => html`<tr>
+              <td class="r num">${k === 0 ? "0 (tout le peloton)" : fmt(k)}</td>
+              ${["For", "Spr", "VTT"].map((tr) => {
+                const r = S.dial.grid[tr].find((x) => x.k === k);
+                const on = S.dial.chosen[tr] === k;
+                const cell = (a) => (a ? html`${sg(a[0], 2)}${est(a) ? "*" : ""}` : "—");
+                return r ? html`<td class="r num">${on ? html`<b>${cell(r.all_holdout)}</b>` : cell(r.all_holdout)}</td>
+                  <td class="r num">${on ? html`<b>${cell(r.all_tuned)}</b>` : cell(r.all_tuned)}</td>` : html`<td class="r num">—</td><td class="r num">—</td>`;
+              })}</tr>`)}
+              <tr><td class="r">très grand (les deux tiers)</td><td class="r num">≈ −0,6</td><td class="r num">≈ −0,5</td>
+                <td class="r num">${sg(0, 2)}</td><td class="r num">${sg(0, 2)}</td><td class="r num">${sg(0, 2)}</td><td class="r num">${sg(0, 2)}</td></tr>
+            </tbody></table></div>
+          <p class="muted" style="font-size:13px">Écart de la part des duels bien prédits, en points, face à la règle du 14 octobre (tout le peloton en forêt, les
+            deux tiers ailleurs). Un astérisque marque un écart significatif. En gras, le réglage retenu. En forêt, la ligne « très grand » vient de l'étude du 13
+            octobre.</p>
+          <ul class="mx-list">
+            <li><span><b>Forêt : k = 0</b>, tout le peloton. Le moindre poids retiré aux plus lents fait perdre : déjà ${pts(S.dial.grid.For.find((r) => r.k === 3).all_holdout)}
+              avec k = 3, et la perte grandit avec k.</span></li>
+            <li><span><b>Sprint : k = ${fmt(S.dial.chosen.Spr)}</b>, ce qui revient presque aux deux tiers : sur un circuit de 10 coureurs, tout le peloton ne pèse que
+              ${fmt(Math.round(100 * dialW(S.dial.chosen.Spr, 10)))} %. Les résultats sont les mêmes de k = 200 à k = 1 000. Le gain sur la règle du 14 octobre
+              (${pts(S.dial.grid.Spr.find((r) => r.k === S.dial.chosen.Spr).all_holdout)}) vient d'un détail : la règle de la FFCO compte les quatre coureurs quand
+              un circuit n'en a que quatre qui ont un niveau, le réglage prend toujours les trois plus rapides. C'est le cas de
+              ${fmt(S.dial.four.Spr, 1).replace(".", ",")} % des circuits de sprint.</span></li>
+            <li><span><b>VTT : k = ${fmt(S.dial.chosen.VTT)}</b>. Un k plus petit gagne davantage sur 2012–2024, mais perd nettement depuis juillet 2025 ; k =
+              ${fmt(S.dial.chosen.VTT)} est le plus petit qui ne perd pas de façon significative sur la période récente, et il gagne
+              ${pts(S.dial.grid.VTT.find((r) => r.k === S.dial.chosen.VTT).all_holdout)} sur 2012–2024.</span></li>
+            <li><span><b>Ski : k = ${fmt(S.dial.chosen.Ski)}</b>, comme le VTT : le ski a trop peu de courses pour être mesuré.</span></li>
+          </ul>
+          <p>Pourquoi la forêt veut-elle tout le peloton et le sprint presque rien ? On ne sait pas le dire. La taille des circuits n'en est pas la cause : à
+            nombre de coureurs égal, les plus lents renseignent autant sur le circuit en sprint qu'en forêt (mesuré en coupant chaque circuit en deux moitiés tirées
+            au sort, qui s'accordent autant dans les deux spécialités), et un même k pour toutes les spécialités fait perdre la forêt à presque chaque saison. Le
+            réglage n'est donc pas déduit d'une théorie : il est mesuré, de la même façon dans chaque spécialité.</p>` : ""}` : ""}
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Les jeunes</p>
@@ -1185,8 +1231,8 @@ export async function render(main, { query = {} } = {}) {
           <h2>Contre le Top précédent</h2>
           ${fig("fig-seasons", html`<b>La méthode du 13 octobre contre le Top quadratique</b> : gain en points de duels bien prédits, saison par saison, toutes les
             courses. Le trait vertical est l'intervalle à 95 %. En vert, un gain significatif ; en rouge, une perte significative ; en gris, ni l'un ni l'autre.
-            En VTT, prendre tout le peloton faisait perdre le CN Top à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le VTT et le ski
-            mesurent donc leurs circuits sur les deux tiers les plus rapides, comme le sprint.`)}
+            En VTT, prendre tout le peloton faisait perdre le CN Top à chaque saison depuis 2022, de façon significative de 2023 à 2026 : le poids des plus
+            lents y est réglé en conséquence (chapitre « La valeur du circuit »).`)}
         </section>` : ""}
         ${ev ? html`<section class="mx-slide">
           <p class="mx-kicker">Contre le classement officiel</p>
@@ -1297,7 +1343,9 @@ export async function render(main, { query = {} } = {}) {
               scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans). Ce
               n'est pas un classement, mais une étape du calcul de la valeur des circuits.</span></li>
             <li><span><b>Valeur du circuit</b> : en forêt, la moyenne géométrique des produits niveau habituel × temps de tous les coureurs classés qui ont un
-              niveau (au moins ${fmt(pf.min_ranked)}). En sprint, en VTT et en ski, la même moyenne sur les deux tiers les plus rapides.</span></li>
+              niveau (au moins ${fmt(pf.min_ranked)}). Ailleurs, la moyenne géométrique des deux tiers les plus rapides, augmentée de l'effet habituel des
+              plus lents, mêlée à celle de tout le peloton, qui pèse n ÷ (n + k) : k = ${fmt(own(p3, "Spr", "tail_k") ?? 0)} en sprint,
+              ${fmt(own(p3, "VTT", "tail_k") ?? 0)} en VTT et en ski (en forêt, k = 0).</span></li>
             <li><span><b>Score Top</b> : la valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
               Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.</span></li>
             <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
