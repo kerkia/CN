@@ -701,11 +701,11 @@ export async function render(main, { query = {} } = {}) {
               <li><span>Elle a <b>lancé la collecte des résultats des compétitions</b>, depuis de nombreuses années ; tous ces résultats ont été publics à un
                 moment ou à un autre. Sans ce travail, ni ce site ni cette étude n'existeraient.</span></li>
             </ul></div>
-            <div><h3 style="margin-top:4px">Ce qu'elle fait mal</h3><ul class="mx-list bad">
+            <div><h3 style="margin-top:4px">Ce qu'elle fait moins bien</h3><ul class="mx-list bad">
               <li><span><b>Elle écarte les 10 % meilleures courses.</b> Pour les meilleurs coureurs, ce sont le plus souvent les championnats de France et
                 les nationales : les courses qu'ils préparent, et les plus relevées.</span></li>
               <li><span><b>Elle n'incite pas à courir.</b> Pour un coureur bien classé, une course de plus fait souvent baisser le CN. Certains s'arrêtent
-                dès qu'ils ont le CN qui les qualifie ; d'autres ne courent que les courses qu'ils jugent « rentables ».</span></li>
+                dès qu'ils ont le CN qui les qualifie pour un championnat de France ; d'autres ne courent que les courses qu'ils jugent « rentables ».</span></li>
               <li><span><b>Un saut chaque 1<sup>er</sup> janvier</b>, et des règles qui ont changé au fil des saisons : on ne peut pas comparer les CN d'une
                 année à l'autre.</span></li>
               <li><span><b>Toutes les courses pèsent pareil</b>, d'un championnat de France à une régionale.</span></li>
