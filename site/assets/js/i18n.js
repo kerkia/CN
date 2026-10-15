@@ -706,7 +706,6 @@ const FR = {
   "ad.u.def": "Une visite commence à la première page ouverte dans un onglet du navigateur ; chaque page ouverte compte une vue (les onglets d'une page, comme ceux de Méthodes, ne comptent pas à part). Jours en heure de Paris ; données conservées 13 mois, visibles des seuls administrateurs.",
 
   // results uploaded by organisers (« Récemment »)
-  "up.open": "Déposer des résultats",
   "lv.title": "En direct",
   "lv.lede": "Les courses en cours ou toutes proches publiées en direct sur liveresultat (en France par défaut ; les autres pays au choix). Pour chaque coureur reconnu : son CN et la place qu'il laisse attendre.",
   "lv.loading": "Chargement…",
@@ -789,7 +788,7 @@ const FR = {
   "or.title": "Résultats de vos compétitions",
   "or.lede": "Déposez les résultats et, si vous les avez, les temps intermédiaires des compétitions de votre club : ils paraissent dans « Résultats » en quelques minutes, et la course n'est plus cherchée ailleurs (site du club, plateformes).",
   "or.col.now": "Dans « Résultats »", "or.now": "{n} coureurs", "or.splits": "temps intermédiaires", "or.nothing": "rien encore", "or.deposit": "Déposer les résultats",
-  "or.none": "Aucune compétition de votre club ({club}) dans les 60 derniers jours.",
+  "or.none": "Aucune compétition de votre club ({club}) dans les 60 derniers jours.", "or.notMine": "Cette course n'est pas organisée par votre club : seuls ses organisateurs peuvent en déposer les résultats.",
   "or.hint": "Le mieux : un export IOF XML 3.0 « ResultList » avec les temps intermédiaires (OE, MeOS, OS…) ; sinon les pages HTML d'OE ou de MeOS, ou un PDF. Le fichier est d'abord lu dans votre navigateur pour que vous le vérifiiez, puis envoyé.",
   "dep.org.note": "Déposé en tant qu'organisateur : ce fichier fera foi pour cette course, qui ne sera plus cherchée ailleurs.",
   "up.err.org": "Seuls les membres du club organisateur de cette course peuvent déposer en tant qu'organisateur.",
@@ -935,7 +934,6 @@ const FR = {
   "an.col.leg": "Poste", "an.col.time": "Temps", "an.col.est": "d'après la trace", "an.col.best": "Meilleur", "an.col.rank": "Rang", "an.col.lost": "Perdu", "an.col.trace": "Trace", "an.col.straight": "Direct", "an.col.detour": "Détour", "an.col.pace": "Allure",
   "an.col.hr": "FC moy.", "an.col.cad": "Cad. moy.",
   "an.total": "Course", "an.strip.hint": "L'allure au fil de la course, les postes, les erreurs en rouge ; cliquez pour vous y rendre.",
-  "up.invite": "Un fichier de résultats, de votre course ou d'une autre ? Analysez-le ici, puis publiez-le sur O'CN si vous le souhaitez :",
   "up.race": "Course",
   "up.race.pick": "Choisir la course…",
   "up.race.mine": "Courses de votre club",

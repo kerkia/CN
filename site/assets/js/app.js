@@ -298,8 +298,8 @@ function renderHeader(r) {
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", null, t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
-    : route === "deposit" && r.query?.orga === "1" ? "orgResults"
-    : route === "splits" || route === "deposit" ? "provisional" : route;
+    : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
+    : route === "splits" ? "provisional" : route;
   const group = groups.find(([, , items]) => items.some(([k]) => k === current));
   // a group's tab leads back to the page last seen in it
   const lastIn = (g, items) => { try { return localStorage.getItem(`ocn.nav.${g}`) || items[0][1]; } catch (e) { return items[0][1]; } };
@@ -554,6 +554,11 @@ async function route_() {
   store.setAnalyst(!!who?.analyst);
   // a link may carry the method (?m=official|top6w3…): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
+  // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there
+  if (r.route === "deposit") {
+    history.replaceState(null, "", `#/orga-resultats${r.query.course ? `?course=${encodeURIComponent(r.query.course)}` : ""}`);
+    r = parseHash();
+  }
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch

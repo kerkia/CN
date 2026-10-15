@@ -267,7 +267,9 @@ categories of unknown circuit stay unscored. Such a list also gets a view by cir
 places recomputed; the race page's « par circuit / par catégorie »); « by category » is decided at build time from the
 classes (an older reading may say otherwise). The results pass keeps announcements too (races already run). A liveresultat read with a class answering badly (« Too many connections ») is dropped whole. State in the main DB (`prov_*` tables); output `site/data/prov/` (index + one file per race),
 served to every logged-in user (an admin-only pilot until 2026-10-08). **Uploads** (2026-10-08; three steps since
-2026-10-09): « Déposer » (`#/deposer`, `pages/deposit.js`, from « Résultats ») — 1. the file (IOF XML best, OE/MeOS
+2026-10-09; the organisers' alone since 2026-10-15, under « Organisation › Résultats »: `#/orga-resultats?course=…`,
+the old `#/deposer` leads there and « Courses › Résultats » — the runners' — offers no deposit): « Déposer »
+(`pages/deposit.js`, opened by `pages/orgresults.js` for a race of one's club, the race fixed) — 1. the file (IOF XML best, OE/MeOS
 HTML, PDF, .zip/.gz; 30 MB), with what to export; 2. it is **read in the browser** (`localparse.js`, a port of the
 server's iofxml / oe_html / meos_html parsers giving the same documents — keep them in step; checked identical on
 real files) and shown: summary, results by circuit, and every « Temps intermédiaires » tab on it

@@ -29,6 +29,10 @@ import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
 
+// a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
+// Résultats » — the organisers' alone (2026-10-15)
+const depositLink = () => { let c = ""; try { c = sessionStorage.getItem("ocn.dep.course") || ""; } catch (e) { /* none */ } return c ? `#/orga-resultats?course=${encodeURIComponent(c)}` : "#/orga-resultats"; };
+
 const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
@@ -58,7 +62,7 @@ export async function render(main, { query = {} } = {}) {
     <div id="sp-body"></div>`;
   if (!withSplits.length) {
     $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${query.course === local.LOCAL
-      ? html`${t("dep.gone")} <a href="#/deposer">${t("dep.title")}</a>` : t("spl.none")}</div></div>`;
+      ? html`${t("dep.gone")} <a href="${depositLink()}">${t("dep.title")}</a>` : t("spl.none")}</div></div>`;
     return { title: t("spl.title") };
   }
   let key = withSplits.some((r) => r.key === query.course) ? query.course : withSplits[0].key;
@@ -81,7 +85,7 @@ export async function render(main, { query = {} } = {}) {
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
     $("#sp-crumbs").innerHTML = key === local.LOCAL
-      ? html`<a href="#/resultats">${t("prov.title")}</a><span>›</span><a href="#/deposer">${t("dep.title")}</a><span>›</span>
+      ? html`<a href="#/orga-resultats">${t("or.title")}</a><span>›</span><a href="${depositLink()}">${t("dep.title")}</a><span>›</span>
         <span>${r?.name || ""}</span><span>›</span><span>${t("spl.title")}</span>`
       : html`<a href="#/resultats">${t("prov.title")}</a><span>›</span>
       <a href="#/resultats?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;

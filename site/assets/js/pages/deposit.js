@@ -1,4 +1,6 @@
-// « Déposer » (#/deposer, from « Récemment »): an organiser's results file, in three steps.
+// « Déposer » — a race's results file deposited by its organiser, in three steps, under « Organisation › Résultats »
+// (#/orga-resultats?course=…, pages/orgresults.js; owner, 2026-10-15: depositing is the organisers' alone — « Courses ›
+// Résultats » is the runners', the old #/deposer leads here).
 // 1. The file, with what to export: dropped here, it is read in the browser (localparse.js) — nothing is sent.
 // 2. What it holds: the circuits, runners, split and start times, the results circuit by circuit, and every analysis
 //    of « Temps intermédiaires » on it (#/temps-inter?course=fichier) — to look at a race privately, before or
@@ -18,14 +20,15 @@ const MAX = 30 * 1024 * 1024;
 const EXT = /\.(xml|html?|pdf|zip|gz|txt)$/i;
 const KINDS = { iofxml: "IOF XML", oe_html: "OE / OS (HTML)", meos_html: "MeOS (HTML)" };
 
-export async function render(main, { query = {} } = {}) {
+export async function render(main, { query = {}, organiser = null } = {}) {
   const idx = await getProv("index.json");
   const races = idx?.races || [];
   const preset = races.some((r) => r.key === query.course) ? query.course : "";
+  try { sessionStorage.setItem("ocn.dep.course", preset); } catch (e) { /* this page only */ }
   let di = 0, ci = 0, publishing = query.publier === "1", sessionNote = "";
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/resultats">${t("prov.title")}</a><span>›</span><span>${t("dep.title")}</span></div>
+    <div class="crumbs"><a href="#/orga-resultats">${t("or.title")}</a><span>›</span><span>${organiser?.name || t("dep.title")}</span></div>
     <div class="page-head"><div><h1>${t("dep.title")}</h1><p class="lede">${t("dep.lede")}</p></div></div>
     <ol class="dep-steps" id="dep-steps"></ol>
     <div id="dep-body"></div>
@@ -150,7 +153,7 @@ export async function render(main, { query = {} } = {}) {
     if (box) box.hidden = true;
     replaceQuery({ course: preset || null, publier: "1" });
     // from « Organisation › Résultats » (?orga=1): sent as the race's organiser (the server checks the club)
-    publishCard($("#dep-pub"), { races, preset, organiser: query.orga === "1" && !!preset, onDone: () => { $$("#dep-steps li").forEach((li) => li.classList.add("done")); } });
+    publishCard($("#dep-pub"), { races, preset, organiser: !!organiser && !!preset, onDone: () => { $$("#dep-steps li").forEach((li) => li.classList.add("done")); } });
   }
 
   draw();

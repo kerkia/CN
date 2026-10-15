@@ -37,12 +37,12 @@ export function publishCard(container, { races, preset = "", organiser = false, 
     <div class="card-head"><div><h2>${t("dep.pub.title")}</h2><div class="hint">${t("dep.pub.lede")}</div></div></div>
     ${organiser ? html`<div class="notice" style="margin:0 16px">${t("dep.org.note")}</div>` : ""}
     <div class="card-body upload-form" style="max-width:640px">
-      <label class="field"><span>${t("up.race")}</span><select id="up-race" required>
-        <option value="">${t("up.race.pick")}</option>
+      <label class="field"><span>${t("up.race")}</span><select id="up-race" required ${raw(organiser ? "disabled" : "")}>
+        ${organiser ? sorted.filter((r) => r.key === preset).map(opt) : html`<option value="">${t("up.race.pick")}</option>
         ${sameDay.length ? html`<optgroup label="${t("dep.pub.sameDay")} ${fmtDate(fileDate)}">${sameDay.map(opt)}</optgroup>` : ""}
         ${mine.length ? html`<optgroup label="${t("up.race.mine")}">${mine.map(opt)}</optgroup>` : ""}
         <optgroup label="${t("up.race.all")}">${rest.map(opt)}</optgroup>
-        <option value="__new">${t("up.race.new")}</option></select></label>
+        <option value="__new">${t("up.race.new")}</option>`}</select></label>
       <div id="up-new" class="upload-new" hidden>
         <label class="field"><span>${t("up.new.name")}</span><input id="up-name" maxlength="120" value="${fileTitle.slice(0, 120)}" placeholder="${t("up.new.name.ph")}"></label>
         <div class="row" style="gap:10px;flex-wrap:wrap">
@@ -110,7 +110,7 @@ export function publishCard(container, { races, preset = "", organiser = false, 
       try { r = JSON.parse(x.responseText); } catch (e) { /* not JSON */ }
       if (x.status === 200 && r.ok) {
         msg.className = "notice ok";
-        msg.innerHTML = html`${r.soon ? t("up.done.soon") : t("up.done.later")} <a href="#/resultats">${t("prov.title")} →</a>`;
+        msg.innerHTML = html`${r.soon ? t("up.done.soon") : t("up.done.later")} ${organiser ? html`<a href="#/orga-resultats">${t("or.title")} →</a>` : html`<a href="#/resultats">${t("prov.title")} →</a>`}`;
         onDone(body);
         return;
       }
