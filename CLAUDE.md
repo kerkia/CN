@@ -15,7 +15,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
-| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2) |
+| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
@@ -368,8 +368,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the agenda's next national relay changed since, else that relay's (`relay.nextNationalRelay`: CNE → `cneH`, CFC → `cfc1`,
   Championnat de France de relais → `rcH21`, de relais sprint → `spr`; ligue and regional relays are not national), else
   `cfc1`; the format card names that relay with a link to the agenda and offers its format.
-- **Jeux** (`#/jeux`, `pages/games.js`, in the menu group « Entrainement » — « Jeux » until 2026-10-14; group key `training` — in the map's course purple `--course`; 2026-10-13, **administrators only** for now, owner's choice, the whole group): twelve training games as tabs, after the games catalogued by o-mate.app (Ben Brown's orienteering games and his MIT-licensed Rapid Route, Laby's maze; the video game skipped). **Nothing comes from those sites**: the maps are generated in the browser from a seed (`games/mapgen.js`: a forest map — relief by a height field and marching-squares contours `games/terrain.js`, vegetation, marshes, paths routed by Dijkstra, boulders/knolls/pits/cliffs/trees —, a sprint map — streets, blocks, walls with gaps, parks, olive —, and a maze), the « photos » are drawn by a height-field renderer (`games/scene.js`: one column at a time, trees and bushes scattered by a hash, the map's features and control flags as shapes). `games/path.js`: cost grid (ground cost `COST`, climb) and Dijkstra, straightened in street maps (`stringPull`), `routeCost` of any polyline. `games/quiz.js`: the common engine (puzzles, timer, answer buttons or a puzzle handling its own play, the solution shown, scoring rules `SCORING`, summary, best score in `localStorage ocn.games.best`). One module per game: Tracé rapide (draw the shortest route, sprint or maze), Mémoire de carte (ski-O track network, choose at each junction), Courbes de niveau (which profile), Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Choix de parcours (knockout: 20 s of map, 5 s to choose), Variante la plus rapide (relay forking, decision time + run time), Choix d'itinéraire (fastest of 3-4 routes by `routeCost`), Mémoire photo, Trail'O (flags lettered left to right, Z when none), Labyrinthe (first-person raycaster, the map without one's position). Texts `g.*` in `i18n.js`; styles `.g-*` in `app.css`. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
-- **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14, administrators only with the group): three tabs —
+- **Jeux** (`#/jeux`, `pages/games.js`, in the menu group « Entrainement » — « Jeux » until 2026-10-14; group key `training` — in the map's course purple `--course`; 2026-10-13, administrators only until 2026-10-15, every account since (owner)): twelve training games as tabs, after the games catalogued by o-mate.app (Ben Brown's orienteering games and his MIT-licensed Rapid Route, Laby's maze; the video game skipped). **Nothing comes from those sites**: the maps are generated in the browser from a seed (`games/mapgen.js`: a forest map — relief by a height field and marching-squares contours `games/terrain.js`, vegetation, marshes, paths routed by Dijkstra, boulders/knolls/pits/cliffs/trees —, a sprint map — streets, blocks, walls with gaps, parks, olive —, and a maze), the « photos » are drawn by a height-field renderer (`games/scene.js`: one column at a time, trees and bushes scattered by a hash, the map's features and control flags as shapes). `games/path.js`: cost grid (ground cost `COST`, climb) and Dijkstra, straightened in street maps (`stringPull`), `routeCost` of any polyline. `games/quiz.js`: the common engine (puzzles, timer, answer buttons or a puzzle handling its own play, the solution shown, scoring rules `SCORING`, summary, best score in `localStorage ocn.games.best`). One module per game: Tracé rapide (draw the shortest route, sprint or maze), Mémoire de carte (ski-O track network, choose at each junction), Courbes de niveau (which profile), Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Choix de parcours (knockout: 20 s of map, 5 s to choose), Variante la plus rapide (relay forking, decision time + run time), Choix d'itinéraire (fastest of 3-4 routes by `routeCost`), Mémoire photo, Trail'O (flags lettered left to right, Z when none), Labyrinthe (first-person raycaster, the map without one's position). Texts `g.*` in `i18n.js`; styles `.g-*` in `app.css`. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
+- **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from
   the kerb, lane n + 2π(1.22(n−1) − 0.10) m —, a 200 m indoor track or any loop, plus the last lap's metres, or a measured
   distance; VMA = mean speed ÷ the share of VMA held — 100 % over 6 min, over 12 min 95 % « bien entraîné » or 90 %
@@ -382,7 +382,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
-- Navigation (owner, 2026-10-12): the bar shows two groups as tabs — « Classement national » (Coureur, Classement, Courses
+- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15): the bar shows the groups as tabs — « Classement national » (Coureur, Classement, Courses
   classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
   Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
   (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages. The runner search sits at the right
@@ -436,7 +436,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   routes `clubcompare`, `relays` and `club` load clubs.js; the address follows by pushState). The tab bar is always right under the
   page's head, above shared filters and tiles (owner, 2026-10-12); a view's own tabs under it are smaller. Do the same for new pages. No count of
   compared runners in the navigation (owner, 2026-10-12).
-- **Analyse** (`#/analyse`, `pages/analysis.js`, menu « Courses » after En direct; **administrators only for now**, owner 2026-10-13:
+- **Analyse** (`#/analyse`, `pages/analysis.js`, menu « Courses » after En direct; administrators only from 2026-10-13, every account since 2026-10-15:
   the nav entry and the route gate check `me.admin`): a runner's GPS trace on their own map for a race of « Résultats »,
   played back as Livelox does. Everything is read in the browser (`trace/`), nothing sent; only the controls' positions
   are kept (`localStorage ocn.an.cal.<race>.<doc>.<circuit>.<runner>.<WxH>`). Files, dropped together: the map (image,
@@ -588,12 +588,37 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
   fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
-- **Analyse solo / club / compétition** (owner, 2026-10-14; administrators only for now, like their groups): « Analyse
+- **Every page for every account** (owner, 2026-10-15): « Entrainement » (Jeux, VMA, the analyses), « En direct », the
+  analyses under « Courses » and « Organisation » were for the administrators (or the `users.live` right) until then;
+  the gates are gone from `app.js` (the right stays in D1, unused). The admin page alone stays the administrators'.
+- **Organisation** (menu group `orga`, the control flag's orange; owner, 2026-10-15): the organisers' pages —
+  « Compétitions » (`#/orga-competitions`, route `orgRace`: the competitions of the last 60 days organised by one's
+  club, one multi analysis each, « Ouvrir l'analyse multi » then its circuits), « Entraînements » (`#/orga-entrainements`,
+  `orgTraining`: one's training events, « Nouvel entraînement »), « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
+  the club's races with what « Résultats » shows of them, « Déposer les résultats » = `#/deposer?course=…&orga=1`), and
+  « Direct », « Tracer » greyed (no page yet: an item without address, `.nav-off`). **An organiser** is a member of the
+  race's organising club — the club of the account's latest race in the site's data against the race's `org` number
+  (`functions/_lib/club.js`: `clubOf`, `orgCode`, `raceOf`) — or an administrator; any account may create a training
+  event. A competition's analysis is created by its organisers only, once (a second ask returns the first, `existing`),
+  and every member of the organising club manages it (`meta.orgClub`, `isOrganiser`). An organiser's results deposit
+  (`X-Upload` `organiser: true`, checked the same way, 403 « not organiser » otherwise) is noted « déposé par
+  l'organisateur », and its race is no longer looked for on the club's site or the platforms (`prov_meta` `org_races`,
+  kept by `sources/upload.apply`, skipped in `run.run`'s loop): the organiser's file is used as it is.
+- **Analyse solo / multi** (owner, 2026-10-14; « Analyse multi » = the former « Analyse club » and « Analyse compétition »,
+  2026-10-15): « Analyse
   solo » (« Analyse perso » until 2026-10-15) exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »
   (`#/analyse-solo`, the old `#/analyse-perso` still opens it; route `analysisPerso`: the same `analysis.js` with no race — one pseudo-runner, three steps, its own
-  memory `memos.perso` and IndexedDB key `files:perso`). « Analyse club » (`#/analyse-club`, Entrainement) and « Analyse
-  compétition » (`#/analyse-competition`, Courses; tied to a race of `prov/index.json`, its circuits offered, the runners'
-  published results beside their traces) are `pages/shared.js` on `/api/analyses` (`functions/api/analyses/[[path]].js`):
+  memory `memos.perso` and IndexedDB key `files:perso`). « Analyse multi » under « Entrainement » (`#/analyse-club`,
+  route `analysisClub`: training events) and under « Courses » (`#/analyse-competition`, `analysisRace`: competitions,
+  tied to a race of `prov/index.json`, its circuits offered, the runners' published results beside their traces) lists
+  the events their organisers have made ready (a circuit at least): the runner picks one and adds their trace — nothing
+  to create there; the organisers manage them from « Organisation » (the same `pages/shared.js` in its organiser mode,
+  `ORG_ROUTE`: the settings and circuits open, the replay below as the runners will see it, « Voir comme les coureurs »).
+  **One's own curves** (owner, 2026-10-15: as in « Analyse solo », for oneself only): a column on the far left, folded by
+  default (« Mes courbes › », kept in `ocn.sh.prefs`), the curves of `trace/curves.js` (shared with « Analyse solo »)
+  over one's own race, from one's own file kept in this browser (IndexedDB `ocn-analyse`, key `own:<id>:<n>`, saved when
+  one's trace is sent, dropped with it; else « Déposez votre fichier ») — the server keeps positions and times only, and
+  the others never see them; the file must overlap one's shared trace in time. Both are `pages/shared.js` on `/api/analyses` (`functions/api/analyses/[[path]].js`):
   **no D1 table** — R2 (`cn-state`, binding `BUCKET`) holds `analyses-meta/<id>.json` (the analysis; its summary in the
   object's custom metadata, so the list is one R2 list), `analyses/<id>/map-<n>` (images) and
   `analyses/<id>/trace-<n>-<uid>.json` (one per account and circuit). CI never touches these prefixes (it copies only
@@ -652,9 +677,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   --remote` (owner's go-ahead) before deploying code that needs them.
   New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
-  « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) only for accounts with the
-  `users.live` right (migration 0007, admin page checkbox; granted at first to the administrator and one tester by a
-  one-off remote UPDATE — names never go into the public repo): liveresultat's races from O'Cap's live server
+  « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) for every account since
+  2026-10-15 (the `users.live` right before: migration 0007, admin page checkbox): liveresultat's races from O'Cap's live server
   (`LIVE` = https://ocap.pages.dev: its `/api/live/list`, open to other sites, and `/ws/<race>`), so live traffic
   never goes through O'CN's gate; each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top

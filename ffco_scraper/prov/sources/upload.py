@@ -9,6 +9,10 @@ or .gz is opened first. A new upload by the same account for the same race repla
 takes its documents (and the race it added, if nothing else came of it) away. Uploads already read are remembered in
 prov_meta 'uploads' (id -> [file size, status]); a new parser version reads them all again. R2 drops the files after
 60 days (the Function's clean-up); their documents stay.
+
+An organiser's upload (« Organisation › Résultats », meta "organiser": true, checked by the Function: a member of the
+race's organising club or an administrator; 2026-10-15) says so in its note, and its race is no longer looked for on
+the club's site or the platforms: prov_meta 'org_races' lists those races, the run skips them (run.run).
 """
 
 from __future__ import annotations
@@ -106,7 +110,8 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
                     log.warning("upload %s: unknown race %s", uid, m.get("race"))
                 else:
                     when = str(m.get("created") or "")[:10]
-                    note = f"déposé sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else "déposé sur O'CN"
+                    who = "par l'organisateur " if m.get("organiser") else ""
+                    note = f"déposé {who}sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"déposé {who}sur O'CN"
                     for name, content in files_in(m.get("filename") or m["path"].name, m["path"].read_bytes()):
                         d = parse_any(content, name)
                         if d is not None:
@@ -120,5 +125,7 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
             log.exception("upload %s failed", uid)
         done[uid] = state + [bool(superseded)]
     store.meta_set(con, "uploads", done)
+    # the races an organiser gave results for: not looked for elsewhere any more
+    store.meta_set(con, "org_races", sorted({m["race"] for m in ups if m.get("organiser") and m.get("status") == "active" and m.get("race")}))
     con.commit()
     return changed

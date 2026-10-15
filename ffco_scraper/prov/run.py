@@ -794,11 +794,17 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         changed += start_lists(con, f, lr, today)
         changed += site_start_lists(con, f, cs, today)
         due = races.due(con, today, _now())
+        # a race its organiser gave results for (sources.upload): those are used as they are, nothing looked for elsewhere
+        org_races = set(store.meta_get(con, "org_races", []) or [])
         cut = False
         for race in due:
             if f.out_of_time():
                 cut = True
                 break
+            if race["key"] in org_races:
+                races.schedule(con, race, today)
+                con.commit()
+                continue
             f.race = race["key"]
             try:
                 links = {"liveresultat": lr_map.get(race["key"]), "winsplits": ws_map.get(race["key"]), "heyries": hy_map.get(race["key"]),

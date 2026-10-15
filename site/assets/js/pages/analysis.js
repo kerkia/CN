@@ -25,6 +25,7 @@ import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
 import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
+import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
@@ -36,28 +37,9 @@ const TOL = 20;                                        // metres: a control is "
 const CAL_KEY = "ocn.an.cal";                          // localStorage: the positions, per race / circuit / runner / image
 const TRACE = "#3b0764";                               // the trace's default colour: a dark purple (owner, 2026-10-14)
 const TRACE_PRESETS = ["#3b0764", "#c8102e", "#0b3d91", "#111111", "#ff6a00"];
-const CHANNEL_LABEL = { hr: "an.ch.hr", cad: "an.ch.cad", ele: "an.ch.ele", temp: "an.ch.temp", pw: "an.ch.pw" };
-const CHANNEL_UNIT = { hr: "bpm", cad: "", ele: "m", temp: "°C", pw: "W" };
-const CHANNEL_COLOUR = { hr: "#d6336c", cad: "#1c80bb", ele: "#2f9e44", temp: "#e0a800", pw: "#e8590c" };   // the curves' order
-// the curves' colours, readable on the light themes and on the dark ones (owner, 2026-10-14: the pace in the trace's
-// dark purple vanished on Sous-bois)
-// altitude in green, apart from the power's orange (owner, 2026-10-15: they looked alike); temperature in gold
-const CURVE_LIGHT = { pace: "#6d28d9", hr: "#d6336c", cad: "#1c7ed6", ele: "#2f9e44", temp: "#c99700", pw: "#e8590c" };
-const CURVE_DARK = { pace: "#b197fc", hr: "#ff6b9a", cad: "#4dabf7", ele: "#69db7c", temp: "#ffd43b", pw: "#ffa94d" };
-/** Whether the current theme is dark: the luminance of its surface colour. */
-function isDark() {
-  const v = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
-  let r, g, b;
-  const m = /^#([0-9a-f]{6})$/i.exec(v);
-  if (m) { const n = parseInt(m[1], 16); r = n >> 16; g = (n >> 8) & 255; b = n & 255; }
-  else { const q = /rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(v); if (!q) return false; [r, g, b] = q.slice(1).map(Number); }
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 110;
-}
-const curveColour = (c) => (isDark() ? CURVE_DARK : CURVE_LIGHT)[c] || "#888888";
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × the trace's base widths
 const PREFS_KEY = "ocn.an.prefs";                      // the playback's settings, kept on the device
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch (e) { return {}; } }
-const pace = (v) => { if (!(v > 0.05)) return "—"; const s = Math.round(1000 / v); return `${Math.floor(s / 60)}'${String(s % 60).padStart(2, "0")}`; };   // min/km from m/s
 const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${fmt(Math.abs(p))} %`; };
 const tick = () => new Promise((r) => setTimeout(r, 30));
@@ -221,7 +203,7 @@ export async function render(main, { query = {}, route } = {}) {
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
   const layoutEl = $("#an-layout");
   let lastBox = null;                                   // the map's box when the view was last set (its centre kept on a resize)
-  const strip = $("#an-strip"), sctx = strip.getContext("2d");
+  const strip = $("#an-strip");
 
   const steps = (n) => {
     const labels = perso ? [t("an.s2"), t("an.s3"), t("an.s4")] : [t("an.s1"), t("an.s2"), t("an.s3"), t("an.s4")];
@@ -1345,7 +1327,6 @@ export async function render(main, { query = {}, route } = {}) {
   }
 
   // ---- the curves under the map: one row per curve chosen, the same time axis, the controls' passes when the sequence is known
-  const TOP = 14, LEFT = 40, BOTTOM = 18;               // the curves' margins: control numbers, the value axis, the time axis
   const stripRows = () => ["pace", ...Object.keys(CHANNEL_COLOUR)].filter((c) => chans.has(c) && (c === "pace" || track.ch[c]));
   function sizeStrip() {
     const dpr = window.devicePixelRatio || 1;
@@ -1353,75 +1334,13 @@ export async function render(main, { query = {}, route } = {}) {
   }
   function drawStrip() {
     if (!calibrated || !total) return;
-    const dpr = window.devicePixelRatio || 1, w = strip.clientWidth, h = strip.clientHeight;
-    const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink-3").trim() || "#888";
-    const grid = getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#ddd";
-    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    sctx.clearRect(0, 0, w, h);
     if (!vHi || vHi === 1) paceScale();
-    const plotW = Math.max(40, w - LEFT - 6), X = (s) => LEFT + (s / total) * plotW, step = Math.max(1, Math.floor(total / plotW));
-    const known = sequenceKnown(), bottomAxis = h - BOTTOM;
-    const rows = stripRows(), ROW = Math.max(26, (bottomAxis - TOP) / Math.max(1, rows.length));
-    // a round step giving about n ticks over a span, from a list of steps
-    const niceStep = (span, n, steps) => steps.find((s) => span / s <= n) ?? steps[steps.length - 1];
-    const NUM = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
-    const label = (txt, x, y, align, colr, bold) => { sctx.font = `${bold ? "600 " : ""}10px system-ui, sans-serif`; sctx.textAlign = align; sctx.fillStyle = colr; sctx.fillText(txt, x, y); };
-    rows.forEach((c, r) => {
-      const top = TOP + r * ROW + 14, bottom = TOP + (r + 1) * ROW - 4;            // 14 px for the row's title
-      if (r) { sctx.strokeStyle = grid; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(0, TOP + r * ROW); sctx.lineTo(w, TOP + r * ROW); sctx.stroke(); }
-      if (known) for (const l of legs) if (l.mistake && l.t1 != null) { sctx.fillStyle = "rgba(198,40,40,0.12)"; sctx.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
-      // each point is the mean over the time a pixel spans (a point sample aliased into spikes), at least 6 s
-      const colr = curveColour(c), win = Math.max(step, c === "pace" ? 15 : 6), vals = [];       // the pace over 15 s at least
-      let lo, hi, ticks = [], fmtV, unit, now;
-      if (c === "pace") {
-        for (let q = 0; q <= total; q += step) vals.push((cumAt(track, offset + q + win / 2) - cumAt(track, offset + q - win / 2)) / win);
-        const sorted = [...vals].sort((p, q) => p - q);
-        // the slow end stops at 20 min/km: a stop (map reading at a control) would flatten everything else
-        lo = Math.max(1000 / 1200, sorted[Math.floor(sorted.length * 0.02)] || 0); hi = Math.max(lo + 0.1, sorted[Math.floor(sorted.length * 0.98)] || 1);
-        // the ticks at round paces (min/km), drawn where those speeds fall
-        const pFast = 1000 / hi, pSlow = 1000 / lo, ps = niceStep(pSlow - pFast, 3, [15, 30, 60, 120, 180, 300, 600]);
-        for (let p = Math.ceil(pFast / ps) * ps; p <= pSlow; p += ps) ticks.push(1000 / p);
-        fmtV = pace; unit = t("an.unit.pace");
-        const win30 = Math.min(30, tNow); now = win30 >= 5 ? pace((cumAt(track, offset + tNow) - cumAt(track, offset + tNow - win30)) / win30) : "—";
-      } else {
-        for (let q = 0; q <= total; q += step) vals.push(meanBetween(track, c, offset + q - win / 2, offset + q + win / 2));
-        lo = Infinity; hi = -Infinity;
-        for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
-        if (!(hi > lo)) { lo = (lo === Infinity ? 0 : lo) - 1; hi = lo + 2; }
-        const dec = c === "temp" ? 1 : 0, s = niceStep(hi - lo, 3, NUM);
-        for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) ticks.push(v);
-        fmtV = (v) => fmt(v, s < 1 ? 1 : dec); unit = unitOf(c);
-        const v = valueAt(track, c, offset + tNow); now = v == null || Number.isNaN(v) ? "—" : fmt(v, dec);
-      }
-      const Y = (v) => bottom - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1)) * (bottom - top);
-      // the value axis: round ticks, faint lines across
-      sctx.lineWidth = 1;
-      let lastY = -Infinity;
-      for (const v of [...ticks].sort((a, b) => Y(b) - Y(a))) {                 // from the bottom up; labels never overlap
-        const y = Y(v);
-        if (Math.abs(y - lastY) < 11) continue;
-        lastY = y;
-        sctx.strokeStyle = grid; sctx.globalAlpha = 0.7; sctx.beginPath(); sctx.moveTo(LEFT, y); sctx.lineTo(LEFT + plotW, y); sctx.stroke(); sctx.globalAlpha = 1;
-        label(fmtV(v), LEFT - 4, y + 3, "right", ink, false);
-      }
-      sctx.beginPath();
-      vals.forEach((v, k) => { const x = X(k * step), y = Y(v); if (k) sctx.lineTo(x, y); else sctx.moveTo(x, y); });
-      sctx.strokeStyle = colr; sctx.lineWidth = 1.6; sctx.stroke();
-      if (c === "pace") { sctx.lineTo(X((vals.length - 1) * step), bottom); sctx.lineTo(LEFT, bottom); sctx.closePath(); sctx.fillStyle = colr; sctx.globalAlpha = 0.18; sctx.fill(); sctx.globalAlpha = 1; }
-      // the row's title — name and unit — and the value at the cursor
-      label(`${t(c === "pace" ? "an.ch.pace" : CHANNEL_LABEL[c])} (${unit})`, LEFT, TOP + r * ROW + 11, "left", colr, true);
-      label(now, LEFT + plotW, TOP + r * ROW + 11, "right", colr, true);
-    });
-    // the time axis: race time, a round step
-    const ts = niceStep(total, Math.max(2, Math.floor(plotW / 60)), [60, 120, 300, 600, 900, 1200, 1800, 3600]);
-    sctx.strokeStyle = grid; sctx.lineWidth = 1; sctx.beginPath(); sctx.moveTo(LEFT, bottomAxis); sctx.lineTo(LEFT + plotW, bottomAxis); sctx.stroke();
-    for (let s = 0; s <= total; s += ts) { const x = X(s); sctx.beginPath(); sctx.moveTo(x, bottomAxis); sctx.lineTo(x, bottomAxis + 3); sctx.stroke(); label(clock(s), x, bottomAxis + 12, s ? "center" : "left", ink, false); }
-    // the controls' passes, numbered when the sequence is known
-    sctx.font = "10px system-ui, sans-serif"; sctx.textAlign = "center"; sctx.fillStyle = ink; sctx.strokeStyle = ink; sctx.lineWidth = 1;
-    targets.forEach((g, i) => { const tt = timeOf(g); if (tt == null || !i) return; const x = X(tt); sctx.globalAlpha = 0.45; sctx.beginPath(); sctx.moveTo(x, TOP); sctx.lineTo(x, bottomAxis); sctx.stroke(); sctx.globalAlpha = 1; if (known) sctx.fillText(g.label, x, 9); });
-    sctx.strokeStyle = "#e8641c"; sctx.lineWidth = 2; sctx.beginPath(); sctx.moveTo(X(tNow), 0); sctx.lineTo(X(tNow), bottomAxis); sctx.stroke();
+    const known = sequenceKnown();
+    drawCurves(strip, { track, t0: offset, total, rows: stripRows(), cursor: tNow, units: { cad: unitOf("cad") },
+      marks: targets.map((g, i) => { const tt = timeOf(g); return tt == null || !i ? null : { t: tt, label: known ? g.label : "" }; }).filter(Boolean),
+      shade: known ? legs.filter((l) => l.mistake && l.t1 != null).map((l) => ({ t0: l.t0, t1: l.t1 })) : [] });
   }
-  const scrub = (e) => { if (!calibrated) return; stop(); const plotW = Math.max(40, strip.clientWidth - LEFT - 6); seek(Math.max(0, Math.min(1, (e.offsetX - LEFT) / plotW)) * total); };
+  const scrub = (e) => { if (!calibrated) return; stop(); seek(curveTimeAt(strip, e.offsetX, total)); };
   strip.addEventListener("pointerdown", (e) => { scrub(e); strip.setPointerCapture(e.pointerId); strip.dataset.down = "1"; });
   strip.addEventListener("pointermove", (e) => { if (strip.dataset.down) scrub(e); });
   const stripUp = () => { delete strip.dataset.down; };

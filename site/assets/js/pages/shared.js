@@ -1,5 +1,9 @@
-// « Analyse club » (#/analyse-club, menu « Entrainement ») and « Analyse compétition » (#/analyse-competition, menu
-// « Courses »): an organiser sets up one or more circuits — the map, its georeference (a KMZ/KML, a world file, an IOF
+// « Analyse multi » (owner, 2026-10-15; « Analyse club » / « Analyse compétition » before): for the runners, under
+// « Entrainement » (#/analyse-club: training events) and « Courses » (#/analyse-competition: competitions), the events
+// their organisers have set up — pick one, add one's trace, compare; one's own curves (heart rate, cadence…) beside the
+// map, from one's own file kept on this device, never sent and never shown to others. For the organisers, under
+// « Organisation » (#/orga-competitions: the competitions of their club, one analysis each; #/orga-entrainements: their
+// training events), the same pages manage them. An organiser sets up one or more circuits — the map, its georeference (a KMZ/KML, a world file, an IOF
 // XML with coordinates, or the organiser's own GPS trace laid over the controls read on the map), the controls in
 // order — and chooses who may open the analysis (every logged-in account, the members of the organiser's club, or a
 // password). Each runner then adds their own trace (positions and times only, cropped to the map's area), and the
@@ -20,8 +24,24 @@ import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFrom
 import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
+import { drawCurves, curveRows } from "../trace/curves.js";
 
-const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };
+const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
+const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
+/** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), as the server's _lib/club.js. */
+const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
+// one's own file, kept on this device for one's own curves (the same IndexedDB as « Analyse solo »)
+const IDB = "ocn-analyse", STORE = "files";
+const idb = (mode, fn) => new Promise((res, rej) => {
+  const q = indexedDB.open(IDB, 1);
+  q.onupgradeneeded = () => q.result.createObjectStore(STORE);
+  q.onerror = () => rej(q.error);
+  q.onsuccess = () => { const db = q.result, tx = db.transaction(STORE, mode), r = fn(tx.objectStore(STORE)); tx.oncomplete = () => { db.close(); res(r?.result); }; tx.onerror = () => { db.close(); rej(tx.error); }; };
+});
+const ownKey = (id, n) => `own:${id}:${n}`;
+const ownGet = (k) => idb("readonly", (s) => s.get(k)).catch(() => null);
+const ownPut = (k, v) => idb("readwrite", (s) => s.put(v, k)).catch(() => null);
+const ownDel = (k) => idb("readwrite", (s) => s.delete(k)).catch(() => null);
 const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b", "#d62728", "#bcbd22", "#0b3d91", "#f032e6", "#008080", "#7f7f7f"];
 const SPEEDS = [1, 2, 5, 10, 20, 60];
 const TAILS = [30, 60, 120, 300, 0];
@@ -53,45 +73,94 @@ async function api(path, { method = "GET", body, type, key } = {}) {
 const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.err.${e.code}`) : `${t("sh.err.other")} (${e?.code || e?.message || ""})`;
 
 export async function render(main, r) {
-  const kind = r.route === "analysisRace" ? "race" : "club";
-  return r.query.id ? eventPage(main, kind, r.query.id) : listPage(main, kind);
+  const org = r.route === "orgRace" || r.route === "orgTraining";
+  const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
+  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
+  return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind);
 }
 
 // ---- the list ----------------------------------------------------------------------------------------------------
 async function listPage(main, kind) {
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(`sh.${kind}.title`)}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div>
-      <button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.new")}</button></div>
-    <section class="card sh-create" id="sh-create" hidden></section>
+    <div class="page-head"><div><h1>${t(`sh.${kind}.title`)}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
+    <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} <a href="${ORG_ROUTE[kind]}">${t("nav.g.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")} →</a></p>`;
   let data;
   try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.${kind}.title`) }; }
   const races = kind === "race" ? ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso)) : [];
   const raceName = (k) => races.find((x) => x.key === k)?.name || "";
-  const rows = data.analyses;
+  const rows = data.analyses.filter((a) => a.courses > 0);          // ready: the organiser has set its maps and circuits
   $("#sh-list").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th>
       ${kind === "race" ? html`<th>${t("prov.race")}</th>` : ""}<th>${t("sh.col.owner")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th></tr></thead>
     <tbody>${rows.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td>
-      <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.mine ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
+      <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.organiser ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
       ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName || "—"}</td>
       <td>${t(`sh.vis.${a.vis}`)}${a.access === "locked" ? " 🔒" : ""}</td><td class="r num">${a.courses}</td></tr>`)}</tbody></table>`
     : html`<div class="empty">${t(`sh.${kind}.none`)}</div>`;
-  if (auth.session()?.admin) {
-    const mb = (b) => (b >= 1e9 ? `${fmt(b / 1e9, 2)} Go` : `${fmt(b / 1e6, 1)} Mo`);
-    api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
-  }
-  $("#sh-new").addEventListener("click", () => {
-    const box = $("#sh-create");
-    box.hidden = !box.hidden;
-    if (!box.hidden) createForm(box, kind, races, data.club);
-  });
   return { title: t(`sh.${kind}.title`) };
 }
 
+// ---- the organisers' list: their club's competitions (one analysis each), or their training events ----------------
+async function orgListPage(main, kind) {
+  const me = auth.session();
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t(`sh.org.${kind}.title`)}</h1><p class="lede">${t(`sh.org.${kind}.lede`)}</p></div>
+      ${kind === "club" ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.org.new")}</button>` : ""}</div>
+    <section class="card sh-create" id="sh-create" hidden></section>
+    ${kind === "race" && me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
+    <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
+    <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
+  let data;
+  try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.org.${kind}.title`) }; }
+  const club = data.club;
+  if (kind === "race") {
+    // the competitions of the last 60 days organised by one's club (all of them for an administrator)
+    const today = new Date().toISOString().slice(0, 10);
+    const all = ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon && x.date_iso <= today)
+      .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name, "fr"));
+    const mine = me?.admin ? all : all.filter((x) => club && orgCode(x.org) === club);
+    const byRace = new Map(data.analyses.map((a) => [a.race, a]));
+    const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const draw = (q = "") => {
+      const list = q ? mine.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""}`).includes(norm(q))) : mine;
+      $("#sh-list").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
+        <tbody>${list.map((x) => { const a = byRace.get(x.key);
+          return html`<tr><td class="num">${fmtDate(x.date_iso, "short")}</td><td>${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
+            <td class="muted">${x.org || "—"}</td>
+            <td>${a ? t("sh.org.status.n", { n: a.courses }) : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
+            <td class="r">${a ? html`<a class="btn btn-sm" href="${ORG_ROUTE.race}?id=${a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`; })}</tbody></table>`
+        : html`<div class="empty">${club || me?.admin ? t("sh.org.race.none", { club: club || "—" }) : t("sh.org.noclub")}</div>`;
+      $$("[data-activate]").forEach((b) => b.addEventListener("click", async () => {
+        const x = mine.find((r) => r.key === b.dataset.activate);
+        b.disabled = true;
+        try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date_iso, vis: "public" } }); location.hash = `${ORG_ROUTE.race}?id=${r.id}`; }
+        catch (e) { b.disabled = false; alert(errText(e)); }
+      }));
+    };
+    draw();
+    $("#sh-filter")?.addEventListener("input", (e) => draw(e.target.value));
+  } else {
+    const mine = data.analyses.filter((a) => a.organiser);
+    $("#sh-list").innerHTML = mine.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th><th></th></tr></thead>
+      <tbody>${mine.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td><td>${a.title}</td><td>${t(`sh.vis.${a.vis}`)}</td><td class="r num">${a.courses}</td>
+        <td class="r"><a class="btn btn-sm" href="${ORG_ROUTE.club}?id=${a.id}">${t("sh.org.manage")}</a></td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("sh.org.club.none")}</div>`;
+    $("#sh-new").addEventListener("click", () => {
+      const box = $("#sh-create");
+      box.hidden = !box.hidden;
+      if (!box.hidden) createForm(box, "club", [], club);
+    });
+  }
+  if (me?.admin) {
+    const mb = (b) => (b >= 1e9 ? `${fmt(b / 1e9, 2)} Go` : `${fmt(b / 1e6, 1)} Mo`);
+    api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
+  }
+  return { title: t(`sh.org.${kind}.title`) };
+}
+
 function createForm(box, kind, races, club) {
-  box.innerHTML = html`<div class="card-body"><h2 style="font-size:16px;margin:0 0 10px">${t("sh.new")}</h2>
+  box.innerHTML = html`<div class="card-body"><h2 style="font-size:16px;margin:0 0 10px">${t(kind === "club" ? "sh.org.new" : "sh.new")}</h2>
     <div class="filters" style="align-items:flex-end">
       ${kind === "race" ? html`<label class="field"><span>${t("prov.race")}</span><select id="sh-race" style="max-width:420px">${races.map((x) => html`<option value="${x.key}" data-date="${x.date_iso}" data-name="${x.name}">${fmtDate(x.date_iso, "short")} · ${x.name}</option>`)}</select></label>` : ""}
       <label class="field"><span>${t("sh.col.title")}</span><input id="sh-title" style="width:280px" maxlength="120"></label>
@@ -106,32 +175,39 @@ function createForm(box, kind, races, club) {
   $("#sh-create-go").addEventListener("click", async () => {
     const vis = $("input[name=sh-vis]:checked").value;
     const body = { kind, title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value, race: $("#sh-race")?.value };
-    try { const r = await api("", { method: "POST", body }); if (vis === "password") setKey(r.id, ""); location.hash = `${ROUTE[kind]}?id=${r.id}`; }
+    try { const r = await api("", { method: "POST", body }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE[kind]}?id=${r.id}`; }
     catch (e) { $("#sh-create-note").textContent = errText(e); }
   });
 }
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
-async function eventPage(main, kind, id) {
+async function eventPage(main, kind, id, org = false) {
+  const home = org ? ORG_ROUTE[kind] : ROUTE[kind], homeTitle = t(org ? `sh.org.${kind}.title` : `sh.${kind}.title`);
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
   catch (e) {
     if (e.code === "locked") return unlockPage(main, kind, id);
-    main.innerHTML = html`<div class="crumbs"><a href="${ROUTE[kind]}">${t(`sh.${kind}.title`)}</a></div><div class="card"><div class="empty">${errText(e)}</div></div>`;
-    return { title: t(`sh.${kind}.title`) };
+    main.innerHTML = html`<div class="crumbs"><a href="${home}">${homeTitle}</a></div><div class="card"><div class="empty">${errText(e)}</div></div>`;
+    return { title: homeTitle };
   }
   const A = data.analysis, organiser = data.you.organiser;
+  if (org && !organiser) {
+    main.innerHTML = html`<div class="crumbs"><a href="${home}">${homeTitle}</a></div>
+      <div class="card"><div class="empty">${t("sh.org.notOrg")} <a href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")} →</a></div></div>`;
+    return { title: homeTitle };
+  }
   let race = null;
   if (kind === "race" && A.race) race = await getProv(`${encodeURIComponent(A.race)}.json`);
   let courseN = A.courses[0]?.n ?? null, viewer = null;
   main.innerHTML = html`
     <div class="sh-top">
-      <a class="btn btn-sm" href="${ROUTE[kind]}">← ${t(`sh.${kind}.title`)}</a>
+      <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
       <b class="sh-title">${A.title}</b><span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       ${race ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(A.race)}">${t("sh.results")}</a>` : ""}
       <span class="sh-tabs" id="sh-tabs"></span>
-      ${organiser ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button>` : ""}</div>
+      ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button> <a class="btn btn-sm" href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")}</a>`
+        : organiser ? html`<a class="btn btn-sm" href="${ORG_ROUTE[kind]}?id=${id}">${t("sh.manage")}</a>` : ""}</div>
     <section class="card sh-setup" id="sh-setup" hidden></section>
     <div id="sh-viewer"></div>`;
   const drawTabs = () => {
@@ -144,7 +220,7 @@ async function eventPage(main, kind, id) {
     const c = A.courses.find((x) => x.n === courseN);
     if (!c) {
       document.body.classList.remove("an-theatre");
-      $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(organiser ? "sh.noCourse.org" : "sh.noCourse")}</div></div>`;
+      $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(org ? "sh.noCourse.org" : "sh.notReady")}</div></div>`;
       return;
     }
     viewer = await replay($("#sh-viewer"), { A, id, course: c, race, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
@@ -158,9 +234,10 @@ async function eventPage(main, kind, id) {
     $(".sh-title").textContent = A.title;
     drawTabs(); openViewer();
   };
-  if (organiser) {
+  if (org) {
+    // the organisers' page opens on the settings and the circuits; the replay below shows what the runners will see
     $("#sh-manage").addEventListener("click", () => { const s = $("#sh-setup"); s.hidden = !s.hidden; if (!s.hidden) setup(s, { A, id, kind, race, onChange: reloadAll }); });
-    if (!A.courses.length) { $("#sh-setup").hidden = false; setup($("#sh-setup"), { A, id, kind, race, onChange: reloadAll }); }
+    $("#sh-setup").hidden = false; setup($("#sh-setup"), { A, id, kind, race, onChange: reloadAll });
   }
   drawTabs();
   await openViewer();
@@ -210,7 +287,7 @@ function setup(box, ctx) {
   });
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
-    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ROUTE[ctx.kind]; } catch (e) { alert(errText(e)); }
+    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE[ctx.kind]; } catch (e) { alert(errText(e)); }
   });
   $$("[data-del]", box).forEach((b) => b.addEventListener("click", async () => {
     if (!confirm(t("sh.course.remove.confirm"))) return;
@@ -474,12 +551,14 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
   const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;
+  let curvesOpen = prefs.curvesOpen === true;              // one's own curves: folded to the left by default (owner, 2026-10-15)
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen })); } catch (e) { /* not kept */ } };
   let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null, ref = null;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
+      <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
       <aside class="sh-panel" id="sh-left"></aside>
       <div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
@@ -591,7 +670,68 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     if (x1 - x0 > (w - 160) / k || y1 - y0 > (h - 160) / k) mv.fitBox(x0, y0, x1, y1, 80, 4);
     else mv.centerOn((x0 + x1) / 2, (y0 + y1) / 2);
   }
-  function frame() { followView(); mv.draw(); hud(); }
+  function frame() { followView(); mv.draw(); hud(); drawOwn(); }
+
+  // ---- one's own curves: from one's own file, kept on this device (the server keeps positions and times only, and
+  // the others never see them); the panel folded to the left by default, a tab to open it
+  const me = runners.find((r) => r.mine);
+  let own = null;
+  const prepOwn = (tr) => {
+    // the cadence as runners read it: one foot's strides doubled on foot (« pas/min »), a bike's pedal turns kept
+    if (tr.ch.cad && !tr.cadUnit) {
+      const bike = tr.activity === "bike" || (!tr.activity && /\bvtt\b|v[ée]lo|mtb/i.test(`${race?.name || ""} ${A.title}`));
+      if (!bike) for (let i = 0; i < tr.ch.cad.length; i++) tr.ch.cad[i] *= 2;
+      tr.cadUnit = t(bike ? "an.unit.rpm" : "an.unit.spm");
+    }
+    return tr;
+  };
+  // the own file is the same run: it overlaps one's shared trace in time
+  const overlaps = (tr) => me && tr.ms0 <= me.tr.ms0 + me.tr.dur * 1000 && tr.ms0 + tr.dur * 1000 >= me.tr.ms0;
+  function drawOwn() {
+    const cv = $("#sh-own-cv");
+    if (!me || !own || !cv || !curvesOpen) return;
+    const delta = (me.tr.ms0 - own.ms0) / 1000, end = me.finish ?? me.tr.dur, s = sAt(me, T);
+    drawCurves(cv, { track: own, t0: me.start + delta, total: Math.max(1, end - me.start), rows: curveRows(own), cursor: s == null ? null : s - me.start,
+      units: { cad: own.cadUnit }, marks: me.passes.map((p, j) => (p == null || !j ? null : { t: p - me.start, label: ctrls[j].kind === "control" ? ctrlLabel(j) : "" })).filter(Boolean) });
+  }
+  function curvesPanel() {
+    const el = $("#sh-curves"), lay = $("#sh-layout");
+    if (!el || !lay) return;
+    el.hidden = !me;
+    lay.classList.toggle("with-curves", !!me);
+    if (!me) return;
+    lay.style.setProperty("--sh-cw", curvesOpen ? "330px" : "36px");
+    el.classList.toggle("open", curvesOpen);
+    if (!curvesOpen) {
+      el.innerHTML = html`<button type="button" class="sh-curves-tab" id="sh-curves-open" title="${t("sh.own.open")}">${t("sh.own.title")} ›</button>`;
+      $("#sh-curves-open").addEventListener("click", () => { curvesOpen = true; savePrefs(); curvesPanel(); });
+      return;
+    }
+    el.innerHTML = html`<div class="sh-curves-head"><b>${t("sh.own.title")}</b><button type="button" class="btn btn-sm" id="sh-curves-close" title="${t("sh.own.close")}">‹</button></div>
+      ${own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
+        : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept=".gpx,.tcx,.fit" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
+          <p class="notice" id="sh-own-note" hidden></p>`}`;
+    $("#sh-curves-close").addEventListener("click", () => { curvesOpen = false; savePrefs(); curvesPanel(); });
+    $("#sh-own-file")?.addEventListener("change", async (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      let tr = null;
+      try { tr = parseTrace(f.name, await f.arrayBuffer()); } catch (err) { tr = null; }
+      const note = $("#sh-own-note");
+      if (!tr || !overlaps(tr)) { note.hidden = false; note.textContent = t(tr ? "sh.own.mismatch" : "an.err.gpx"); return; }
+      await ownPut(ownKey(id, course.n), f);
+      own = prepOwn(tr); curvesPanel();
+    });
+    drawOwn();
+  }
+  if (me) {
+    ownGet(ownKey(id, course.n)).then(async (f) => {
+      if (f && !own) { try { const tr = parseTrace(f.name || "trace.fit", await f.arrayBuffer()); if (overlaps(tr)) own = prepOwn(tr); } catch (e) { /* unreadable: dropped again */ } }
+      curvesPanel();
+    });
+  }
+  const ownRo = new ResizeObserver(() => drawOwn());
+  ownRo.observe($("#sh-curves"));
 
   // ---- the panels
   function left() {
@@ -644,7 +784,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
     $("#sh-add").addEventListener("click", () => $("#sh-file").click());
     $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
-    $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); reload(); } catch (e) { alert(errText(e)); } });
+    $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
   }
   async function upload(file) {
     const boxU = $("#sh-upload");
@@ -659,7 +799,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     $("#sh-cancel").addEventListener("click", () => { boxU.innerHTML = ""; });
     $("#sh-send").addEventListener("click", async () => {
       if (!$("#sh-consent").checked) return;
-      try { await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: enc }, key: keyOf(id) }); reload(); }
+      try { await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: enc }, key: keyOf(id) }); await ownPut(ownKey(id, course.n), file); reload(); }
       catch (e) { boxU.innerHTML = html`<div class="notice">${errText(e)}</div>`; }
     });
   }
@@ -774,5 +914,6 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   fitRoutes();
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
-  return { destroy() { stop(); mv.destroy(); window.removeEventListener("resize", fit); } };
+  curvesPanel();
+  return { destroy() { stop(); mv.destroy(); ownRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

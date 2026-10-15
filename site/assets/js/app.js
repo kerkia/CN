@@ -34,7 +34,11 @@ const PAGES = {
   analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's (administrators only for now)
   analysisPerso: () => import("./pages/analysis.js"),   // « Analyse solo » (Entrainement): the same page, no race
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
-  analysisRace: () => import("./pages/shared.js"),      // « Analyse compétition » (Courses): the same for a race of « Résultats »
+  analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
+  // « Organisation » (2026-10-15): the organisers' pages — a competition's multi analysis, a training event's, the results
+  orgRace: () => import("./pages/shared.js"),
+  orgTraining: () => import("./pages/shared.js"),
+  orgResults: () => import("./pages/orgresults.js"),
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps (administrators only for now)
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
@@ -49,9 +53,11 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
-  analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede" };
+  analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
+  orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede" };
 const isLean = (r) => ["ranking", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
-  || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id);
+  || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
+  || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults";
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -91,6 +97,7 @@ function parseHash() {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
+    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -278,16 +285,20 @@ function renderHeader(r) {
     ["races", t("nav.g.races"), [
       ["agenda", "#/agenda", t("nav.agenda")],
       ["provisional", "#/resultats", t("nav.recent")],
-      ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
-      // « Analyse solo » (a race's) and « Analyse compétition »: administrators only for now (owner, 2026-10-13/14)
-      ...(me.admin ? [["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")]] : []),
+      ["live", "#/direct", t("nav.live")],
+      ["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")],
     ]],
-    // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, and the VMA page;
-    // administrators only for now (owner, 2026-10-13)
-    ...(me.admin ? [["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
-      ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]]] : []),
+    // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, the VMA page, the
+    // analyses of one's training; every page for every account since 2026-10-15 (owner)
+    ["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
+      ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]],
+    // « Organisation » (owner, 2026-10-15): the organisers' pages — a competition's multi analysis, a training event's,
+    // the results of their competitions; « Direct » and « Tracer » to come (greyed, no page yet)
+    ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
+      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", null, t("nav.orgDirect")], ["orgTracer", null, t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
+    : route === "deposit" && r.query?.orga === "1" ? "orgResults"
     : route === "splits" || route === "deposit" ? "provisional" : route;
   const group = groups.find(([, , items]) => items.some(([k]) => k === current));
   // a group's tab leads back to the page last seen in it
@@ -311,7 +322,8 @@ function renderHeader(r) {
     <nav class="nav" id="nav" aria-label="Navigation">
       ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
         <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}</a>
-        <div class="nav-menu">${items.map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`)}</div>
+        <div class="nav-menu">${items.map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`
+          : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</div>
       </div>`)}
     </nav>
     <div class="topbar-tools">
@@ -334,8 +346,9 @@ function renderHeader(r) {
     </div>
   </div>
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
-      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`)}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace"].includes(route) ? "" : methodSwitch()}
+      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`
+        : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults"].includes(route) ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
@@ -541,26 +554,8 @@ async function route_() {
   store.setAnalyst(!!who?.analyst);
   // a link may carry the method (?m=official|top6w3…): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
-  // « En direct » only for the accounts allowed to see it
-  if (r.route === "live" && !who?.live) {
-    history.replaceState(null, "", "#/resultats");
-    r = parseHash();
-  }
-  // « Entrainement » (Jeux, VMA) only for administrators for now
-  if ((r.route === "games" || r.route === "vma") && !who?.admin) {
-    history.replaceState(null, "", link.runner(who?.lic));
-    r = parseHash();
-  }
-  // « Entrainement »'s analyses too
-  if ((r.route === "analysisPerso" || r.route === "analysisClub") && !who?.admin) {
-    history.replaceState(null, "", link.runner(who?.lic));
-    r = parseHash();
-  }
-  // « Analyse solo » and « Analyse compétition » (Courses) only for administrators for now
-  if ((r.route === "analysis" || r.route === "analysisRace") && !who?.admin) {
-    history.replaceState(null, "", "#/resultats");
-    r = parseHash();
-  }
+  // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
+  // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
   if (store.TERRAINS.includes(r.query.t) && r.query.t !== store.get().terrain) store.set({ terrain: r.query.t });
   renderHeader(r);

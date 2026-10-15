@@ -162,12 +162,14 @@ async function privacy(main) {
       <p>Quand vous déposez un fichier de résultats, nous enregistrons votre compte, la course, le nom et la taille du fichier et la date du dépôt. Le fichier est conservé 60 jours dans le stockage du site (Cloudflare), puis effacé ; les résultats qu'il contient restent affichés. L'administrateur voit qui a déposé quoi et peut retirer un dépôt.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit votre carte et votre trace GPS dans votre navigateur : rien n'est envoyé ; elles y restent le temps de votre visite.
-        Dans une « Analyse club » ou une « Analyse compétition », l'organisateur dépose les cartes et les parcours, et chaque participant peut ajouter
+        Dans une « Analyse multi » (un entraînement ou une compétition), l'organisateur dépose les cartes et les parcours, et chaque participant peut ajouter
         sa propre trace : elle est alors envoyée et conservée dans le stockage du site (Cloudflare), avec votre nom et votre numéro de licence,
         réduite aux positions et aux heures sur la zone de la carte (ni fréquence cardiaque, ni cadence, ni le trajet hors de la carte). Elle est visible
         des personnes qui peuvent ouvrir l'analyse — tous les licenciés connectés, les membres du club de l'organisateur ou ceux qui ont son mot de
         passe, selon son choix. Vous pouvez la retirer à tout moment ; elle est effacée avec l'analyse et avec votre compte. Les cartes
-        d'une analyse sont conservées tant qu'elle existe ; si son organisateur supprime son compte, l'analyse reste, sans son nom.</p>
+        d'une analyse sont conservées tant qu'elle existe ; si son organisateur supprime son compte, l'analyse reste, sans son nom.
+        Vos propres courbes (allure, fréquence cardiaque, cadence…) dans une « Analyse multi » viennent de votre fichier, gardé dans votre
+        navigateur sur cet appareil : il n'est pas envoyé, et personne d'autre ne les voit.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Ce que nous conservons :</b> adresse e-mail, prénom, nom et numéro de licence que vous avez saisis, mot de passe (sous forme chiffrée irréversible), date d'inscription et de dernière connexion, votre réglage de notification et la liste des courses déjà annoncées par e-mail, et, pour le simulateur de relais, les coureurs que vous ajoutez (nom, catégorie, CN estimé) et ceux que vous marquez indisponibles, que vous seul voyez.</li>

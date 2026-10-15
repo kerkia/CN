@@ -8,7 +8,8 @@
 // set, a provisional-results run starts at once (GitHub workflow_dispatch); otherwise the next hourly run reads it.
 // Files older than 60 days are deleted from R2 after an upload (their results stay on the site).
 
-import { adminEmails, allow, json, nowIso, withUser } from "../_lib/api.js";
+import { adminEmails, allow, isAdmin, json, nowIso, withUser } from "../_lib/api.js";
+import { clubOf, orgCode } from "../_lib/club.js";
 import { sendOrQueue } from "../_lib/mail.js";
 import { uploadMail } from "../_lib/templates.js";
 
@@ -36,13 +37,21 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   if (!(await allow(env, `upload:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
 
   // the race: one of the list, or a new one (the last 60 days, as on the page)
-  let raceKey = null, label, newRace = null;
+  let raceKey = null, label, newRace = null, organiser = false;
   if (meta.race) {
     raceKey = clean(meta.race, 40);
     const res = await env.ASSETS.fetch(new URL("/data/prov/index.json", request.url));
     const race = res.ok ? (await res.json()).races?.find((r) => r.key === raceKey) : null;
     if (!race) return json({ error: "unknown race" }, 400);
     label = `${race.name} (${race.date_iso})`;
+    // the organiser's own results (« Organisation › Résultats », 2026-10-15): a member of the organising club or an
+    // administrator; the race is then no longer looked for elsewhere (ffco_scraper/prov/sources/upload.py)
+    if (meta.organiser === true) {
+      const code = orgCode(race.org);
+      if (!isAdmin(env, user) && (!code || (await clubOf(env, request, user.licence)) !== code)) return json({ error: "not organiser" }, 403);
+      organiser = true;
+      label += " — par l'organisateur";
+    }
   } else {
     const r = meta.new_race || {};
     const today = new Date(), from = new Date(Date.now() - 60 * 86400e3);
@@ -74,7 +83,7 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
     await env.DB.prepare("DELETE FROM uploads WHERE id = ?").bind(id).run();
     return json({ error: "storage" }, 502);
   }
-  const m = { id, created, user: user.id, race: raceKey, new_race: newRace, filename, stored, size, status: "active" };
+  const m = { id, created, user: user.id, race: raceKey, new_race: newRace, filename, stored, size, status: "active", organiser };
   await env.BUCKET.put(`uploads/${id}/meta.json`, JSON.stringify(m), { httpMetadata: { contentType: "application/json" } });
   await env.DB.prepare("UPDATE uploads SET r2_key = ? WHERE id = ?").bind(r2Key, id).run();
 

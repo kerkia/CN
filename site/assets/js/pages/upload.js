@@ -15,8 +15,9 @@ const FORMATS = ["Sprint", "MD", "LD", "Nuit", "Autre"];
 const day = (d) => d.toISOString().slice(0, 10);
 export const mb = (n) => `${fmt(n / 1024 / 1024, 1)} Mo`;
 
-/** The form, in `container`. races: the list's races (index.json); preset: a race's key to choose first. */
-export function publishCard(container, { races, preset = "", onDone = () => {} }) {
+/** The form, in `container`. races: the list's races (index.json); preset: a race's key to choose first; organiser: sent
+ *  as the preset race's organiser (« Organisation › Résultats »: the race is then no longer looked for elsewhere). */
+export function publishCard(container, { races, preset = "", organiser = false, onDone = () => {} }) {
   const rec = local.get();
   if (!rec) { container.innerHTML = ""; return; }
   const fileDate = rec.docs?.map((d) => d.date).find(Boolean) || null;
@@ -34,6 +35,7 @@ export function publishCard(container, { races, preset = "", onDone = () => {} }
 
   container.innerHTML = html`<section class="card" style="margin-top:16px">
     <div class="card-head"><div><h2>${t("dep.pub.title")}</h2><div class="hint">${t("dep.pub.lede")}</div></div></div>
+    ${organiser ? html`<div class="notice" style="margin:0 16px">${t("dep.org.note")}</div>` : ""}
     <div class="card-body upload-form" style="max-width:640px">
       <label class="field"><span>${t("up.race")}</span><select id="up-race" required>
         <option value="">${t("up.race.pick")}</option>
@@ -91,7 +93,7 @@ export function publishCard(container, { races, preset = "", onDone = () => {} }
     if (raceSel.value === "__new") {
       body.new_race = { name: $c("#up-name").value.trim(), date: $c("#up-date").value, place: $c("#up-place").value.trim(),
         org_code: $c("#up-club").value, terrain: $c("#up-terrain").value, epreuve: $c("#up-format").value, cn: $c("#up-cn").checked };
-    } else body.race = raceSel.value;
+    } else { body.race = raceSel.value; if (organiser && raceSel.value === preset) body.organiser = true; }
     const msg = $c("#up-msg"), bar = $c("#up-progress"), btn = $c("#up-send");
     btn.disabled = true;
     bar.hidden = false;
@@ -113,7 +115,7 @@ export function publishCard(container, { races, preset = "", onDone = () => {} }
         return;
       }
       msg.className = "notice";
-      msg.textContent = t({ 413: "up.err.big", 415: "up.err.type", 429: "up.err.many", 401: "up.err.login" }[x.status]
+      msg.textContent = t({ 413: "up.err.big", 415: "up.err.type", 429: "up.err.many", 401: "up.err.login", 403: "up.err.org" }[x.status]
         || (r.error === "race" || r.error === "unknown race" ? "up.err.race" : "up.err.other"));
       ready();
     };

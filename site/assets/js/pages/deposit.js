@@ -149,7 +149,8 @@ export async function render(main, { query = {} } = {}) {
     const box = $(".dep-publish");
     if (box) box.hidden = true;
     replaceQuery({ course: preset || null, publier: "1" });
-    publishCard($("#dep-pub"), { races, preset, onDone: () => { $$("#dep-steps li").forEach((li) => li.classList.add("done")); } });
+    // from « Organisation › Résultats » (?orga=1): sent as the race's organiser (the server checks the club)
+    publishCard($("#dep-pub"), { races, preset, organiser: query.orga === "1" && !!preset, onDone: () => { $$("#dep-steps li").forEach((li) => li.classList.add("done")); } });
   }
 
   draw();
