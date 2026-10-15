@@ -168,7 +168,7 @@ async function privacy(main) {
         ou déposés sur ${SITE}, rapprochés des licences d'après le nom et le club.</p>
       <p>Ce traitement repose sur l'intérêt légitime de l'éditeur à informer les licenciés et à analyser le classement national à
         partir de résultats déjà publiés. Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés, réservés aux
-        licenciés. Toute personne concernée peut en demander la rectification ou demander qu'elles ne soient plus affichées (voir
+        licenciés. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
         « Vos droits ») ; la source demeure le site de la FFCO.</p>
       <h2 style="font-size:16px">Dépôts de résultats</h2>
       <p>Lors du dépôt d'un fichier de résultats, sont enregistrés le compte de l'auteur du dépôt, la course, le nom et la taille du
@@ -235,10 +235,13 @@ async function privacy(main) {
       <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données, d'un
         droit à la limitation de leur traitement et d'un droit d'opposition aux traitements fondés sur l'intérêt légitime de
         l'éditeur.</p>
-      <p>Vous pouvez en particulier demander que vos résultats, et toute autre donnée vous concernant, ne soient plus affichés sur
-        ${SITE}, sans pour autant les faire supprimer : leur affichage est alors suspendu, sauf motif légitime et impérieux. Les données
-        d'un licencié mineur (ses résultats sur ${SITE} et, le cas échéant, son compte) sont masquées ou supprimées sur simple demande
-        de son représentant légal, qui exerce ces droits en son nom.</p>
+      <p>Vous pouvez en particulier demander à ne plus être identifié sur ${SITE}, sauf motif légitime et impérieux : votre nom et
+        votre numéro de licence y sont alors remplacés, sur l'ensemble du site, par une mention anonyme (« Coureur anonyme »). Vos
+        temps et vos places restent pris en compte, sans votre nom ni votre numéro de licence, afin que les classements des autres
+        licenciés ne soient pas modifiés ; la mesure est réversible à votre demande. Une demande d'effacement des données de résultats
+        est satisfaite de la même manière ; un compte, en revanche, est supprimé intégralement. Les données d'un licencié mineur sont
+        anonymisées, et son compte supprimé s'il en a un, sur simple demande de son représentant légal, qui exerce ces droits en son
+        nom.</p>
       <p>Vous pouvez supprimer vous-même votre compte, dans Réglages. Les autres demandes sont à adresser à ocn@kerkia.com ; il y est
         répondu dans un délai d'un mois. En cas de doute raisonnable sur l'identité du demandeur, un justificatif peut être demandé.
         Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une réclamation auprès de la CNIL

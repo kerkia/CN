@@ -60,7 +60,7 @@ export async function render(main, { arg, query }) {
   main.innerHTML = html`
     <div class="page-head">
       <div>
-        <h1>${name} <span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span></h1>
+        <h1>${name} ${data.isAnon(lic) ? "" : html`<span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span>`}</h1>
         <div class="lede meta">
           <span>${last?.[R.cat] || person.cat || ""}</span>
           ${cp.code ? html`<span><a href="${link.club(cp.code)}">${data.clubName(club)}</a></span>` : ""}
@@ -373,6 +373,7 @@ export async function render(main, { arg, query }) {
   function ffCnAt(iso) {
     const spe = data.snapTerrain("official", terrain, iso.slice(0, 4));
     const key = `${lic}|${spe}|${iso}`;
+    if (data.isAnon(lic)) return Promise.resolve(null);            // an anonymised runner: no licence to look up
     if (!ffCn.has(key)) {
       ffCn.set(key, fetch(`api/ffco-cn?lic=${encodeURIComponent(lic)}&spe=${spe}&d=${iso}`, { credentials: "same-origin" })
         .then((r) => (r.ok ? r.json() : null)).catch(() => null)
@@ -440,6 +441,7 @@ export async function render(main, { arg, query }) {
   let ffPromise = null, ffKey = "";
   function ffRows() {                                                    // fetched once per runner and discipline
     const key = `${lic}|${terrain}`;
+    if (data.isAnon(lic)) return Promise.resolve(null);            // an anonymised runner: no licence to look up
     if (ffKey !== key) {
       ffKey = key;
       ffPromise = fetch(`api/ffco-history?lic=${encodeURIComponent(lic)}&spe=${terrain}`, { credentials: "same-origin" })

@@ -49,6 +49,7 @@ from lxml import html as lhtml
 
 from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted
 from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
+import privacy
 import site_extras
 from site_io import WRITES, dump, prune
 
@@ -143,11 +144,12 @@ def name_key(name: str | None) -> str:
     return " ".join(sorted(re.sub(r"[^a-z0-9]+", " ", s).split()))
 
 
-def write_auth_index(runners: list) -> None:
+def write_auth_index(runners: list, real: list | None = None) -> None:
     """Credentials index for the server-side login (never served publicly):
-    auth/{licence // 100}.json -> {licence: [sha256(name key), name]}."""
+    auth/{licence // 100}.json -> {licence: [sha256(name key), name]}. An anonymised runner is in it under their real
+    licence and name (`real`: [(licence, name)]), never under their pseudonym: they can still sign up."""
     buckets = defaultdict(dict)
-    for lic, nom, *_ in runners:
+    for lic, nom, *_ in [*(r for r in runners if not privacy.is_pseudo(r[0])), *(real or [])]:
         lic = str(lic)
         if not nom:
             continue
@@ -184,6 +186,8 @@ def main(argv: list[str] | None = None) -> None:
                          "earlier seasons' snapshots are kept as they are.")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default site/data)")
     ap.add_argument("--db", type=Path, default=None)
+    ap.add_argument("--anon", type=Path, default=None,
+                    help="the anonymised runners' list (default: privacy.FILE, copied from R2 by the workflow)")
     args = ap.parse_args(argv)
     if args.out:
         OUT = args.out
@@ -215,6 +219,11 @@ def main(argv: list[str] | None = None) -> None:
     pf: CnParams = PARAMS["fair"]
     norm_cfg = methods["fair"].normalisation       # every Top shares its Fair's scores and recalage
 
+    # the anonymised runners (privacy.py): every licence read below goes through anon.lic, so that their pseudonym,
+    # never their licence, is in the files; their names are replaced in runners.json, the only file that has names
+    anon = privacy.load(args.anon)
+    if anon:
+        print(f"anonymised runners: {len(anon.by_lic)}")
     names = reference_names(conn)
     print(f"names: {len(names['clubs'])} clubs, {len(names['ligues'])} ligues, "
           f"{len(names['depts'])} depts")
@@ -268,7 +277,7 @@ def main(argv: list[str] | None = None) -> None:
         (min_season,),
     ):
         if r["circuit_id"] in circuits:
-            by_method[r["method"]][(r["licence"], r["circuit_id"])] = r
+            by_method[r["method"]][(anon.lic(r["licence"]), r["circuit_id"])] = r
     cn_after = defaultdict(dict)    # method -> (licence, date, terrain) -> cn
     cn_hist = defaultdict(lambda: defaultdict(lambda: ([], [])))   # method -> (licence, terrain) -> dates, cns
     for r in conn.execute(
@@ -276,8 +285,8 @@ def main(argv: list[str] | None = None) -> None:
         f"WHERE method IN ({','.join('?' * len(COMPUTED))}) ORDER BY date_iso", COMPUTED
     ):
         if r["cn"] is not None:
-            cn_after[r["method"]][(r["licence"], r["date_iso"], r["terrain"])] = r["cn"]
-        h = cn_hist[r["method"]][(r["licence"], r["terrain"])]
+            cn_after[r["method"]][(anon.lic(r["licence"]), r["date_iso"], r["terrain"])] = r["cn"]
+        h = cn_hist[r["method"]][(anon.lic(r["licence"]), r["terrain"])]
         h[0].append(r["date_iso"])
         h[1].append(r["cn"])
 
@@ -292,11 +301,14 @@ def main(argv: list[str] | None = None) -> None:
             return None
         return h[1][i]
     raw_res = {}
+    real_names = {}                  # pseudonym -> (licence, name): the anonymised, for the auth index only
     for r in conn.execute(
         "SELECT circuit_id, licence, nom, place, temps, nouveau_cn, points, cn_j15 FROM results"
     ):
         if r["circuit_id"] in circuits:
-            raw_res[(r["licence"], r["circuit_id"])] = r
+            raw_res[(anon.lic(r["licence"]), r["circuit_id"])] = r
+            if anon.has(r["licence"]) and r["nom"]:
+                real_names[anon.lic(r["licence"])] = (r["licence"], r["nom"])
     # "nc" (non classé): no points, not part of the race for the CN. Such a row is
     # dropped from every method, so it is in no runner's results and no statistic;
     # the race's own page still lists it, as FFCO does.
@@ -323,7 +335,7 @@ def main(argv: list[str] | None = None) -> None:
     per_runner = defaultdict(list)   # licence -> list of (date, circuit)
     for (lic, cid), r in by_method["official"].items():
         per_runner[lic].append((r["date_iso"], cid))
-    names_by_lic = {lic: r["nom"] for (lic, cid), r in raw_res.items()}
+    names_by_lic = {lic: privacy.label(lic) if privacy.is_pseudo(lic) else r["nom"] for (lic, cid), r in raw_res.items()}
 
     runners = []
     attrs_timeline = {}              # licence -> [(date, cat, club)]
@@ -341,7 +353,7 @@ def main(argv: list[str] | None = None) -> None:
         runners.append([lic, names_by_lic.get(lic, ""), sexe, lst[0][0], lst[-1][0],
                         len(lst), *per_t.values(), last[1], last[2]])
     runners.sort(key=lambda x: x[1])
-    write_auth_index(runners)
+    write_auth_index(runners, list(real_names.values()))
     dump(OUT / "runners.json", {
         "cols": ["licence", "nom", "sexe", "first", "last", "n", *(f"n{t}" for t in TERRAIN_CODES), "cat", "club"],
         "rows": runners,

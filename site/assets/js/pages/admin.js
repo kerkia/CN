@@ -7,6 +7,7 @@
 import { html, raw, $, $$, normalise, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
+import * as data from "../data.js";
 import { tile, seg, chartCard, bindChartCard, legend } from "../ui.js";
 import { columnChart, timeChart, css } from "../charts.js";
 import { link, replaceQuery } from "../app.js";
@@ -41,7 +42,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites", anonymises: "anon" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
@@ -78,6 +79,19 @@ export async function render(main, { query = {} } = {}) {
       <p class="muted" style="margin:0 2px 12px">${t("ad.st.lede")}</p>
       <section class="card"><div class="table-wrap" id="st-list"></div></section>
     </div>
+    <div data-panel="anon" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.an.lede")}</p>
+      <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("ad.an.add")}</h2></div>
+        <div class="card-body">
+          <div class="filters" style="margin:0 0 10px;padding:0;border:0;background:none">
+            <label class="field"><span>${t("ad.an.search")}</span><input type="search" id="an-q" style="width:260px" autocomplete="off"></label>
+            <label class="field"><span>${t("ad.an.note")}</span><input type="text" id="an-note" maxlength="200" style="width:300px"></label>
+          </div>
+          <div id="an-found"></div>
+          <p class="muted" id="an-msg" style="font-size:12.5px;margin:8px 0 0"></p>
+        </div></section>
+      <section class="card"><div class="card-head"><h2 id="an-title">${t("ad.an.list")}</h2></div><div class="table-wrap" id="an-list"></div></section>
+    </div>
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
@@ -85,14 +99,15 @@ export async function render(main, { query = {} } = {}) {
 
   function showTab() {
     $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
-      ["sites", t("ad.tab.sites")]], tab);
+      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
-    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
     if (tab === "sites") drawSites();
+    if (tab === "anon") drawAnon();
   }
 
   // « Sites »: the organisers' sites to follow up with — robots.txt forbids what the collection reads all the same, or
@@ -149,6 +164,80 @@ export async function render(main, { query = {} } = {}) {
     }));
   }
   let usageStarted = false;
+
+  // « Anonymisés »: the licensees whose name and licence the published site replaces by a pseudonym (on request: not to be
+  // shown, a minor's representative, erasure of results data), from api/admin/anonymized (R2, privacy/anonymized.json);
+  // the next run of the update rebuilds the site with the list (privacy.py). Reversible: « Rétablir ».
+  let anonList = null;
+  const anonAs = (p) => `${t("ad.an.label")} ${Number(p.pseudo) - 90000000}`;
+  async function anonCall(method, body) {
+    const r = await fetch("api/admin/anonymized", { method, credentials: "same-origin", cache: "no-store",
+      ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
+    let j = null;
+    try { j = await r.json(); } catch (e) { /* none */ }
+    return { ok: r.ok, status: r.status, data: j };
+  }
+  async function drawAnon() {
+    if (!anonList) {
+      const r = await anonCall("GET");
+      anonList = r.ok ? r.data : null;
+    }
+    const people = anonList?.people || [];
+    $("#an-title").textContent = people.length ? t("ad.an.count", { n: fmt(people.length) }) : t("ad.an.list");
+    $("#an-list").innerHTML = !anonList ? html`<div class="empty">${t("ad.an.error")}</div>`
+      : people.length ? html`<table class="data compact"><thead><tr><th>${t("ad.an.col.name")}</th><th>${t("ad.an.col.lic")}</th>
+          <th>${t("ad.an.col.as")}</th><th>${t("ad.an.col.since")}</th><th>${t("ad.an.col.note")}</th><th></th></tr></thead>
+        <tbody>${[...people].reverse().map((p) => html`<tr><td>${p.name}</td><td class="num">${p.lic}</td><td>${anonAs(p)}</td>
+          <td class="num">${fmtDate(p.since, "short")}</td><td style="white-space:normal;max-width:300px">${p.note || ""}</td>
+          <td class="r"><button type="button" class="btn btn-sm" data-an-restore="${p.lic}">${t("ad.an.restore")}</button></td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("ad.an.none")}</div>`;
+    $$("[data-an-restore]").forEach((b) => b.addEventListener("click", async () => {
+      const p = people.find((x) => String(x.lic) === b.dataset.anRestore);
+      if (!p || !confirm(t("ad.an.restoreConfirm", { name: p.name }))) return;
+      b.disabled = true;
+      const r = await anonCall("DELETE", { lic: p.lic });
+      if (r.ok) anonList = r.data;
+      $("#an-msg").textContent = r.ok ? t("ad.an.pending") : t("ad.an.error");
+      drawAnon();
+    }));
+    drawAnonFound();
+  }
+  // the runners matching the search (name or licence), each with its button; a licence absent from the data can be typed
+  function drawAnonFound() {
+    const q = normalise($("#an-q").value.trim()), box = $("#an-found");
+    if (!q || q.length < 2) { box.innerHTML = ""; return; }
+    const listed = new Set((anonList?.people || []).map((p) => String(p.lic)));
+    const found = data.runners().list.filter((r) => !data.isAnon(r.lic) && (String(r.lic) === q || normalise(r.nom).includes(q))).slice(0, 8);
+    const digits = /^\d{1,7}$/.test(q);
+    box.innerHTML = html`${found.length ? html`<div class="table-wrap"><table class="data compact"><tbody>${found.map((r) => html`<tr>
+        <td>${r.nom}</td><td class="num">${r.lic}</td><td>${data.clubName(r.club)}</td><td class="num">${fmtDate(r.last, "short")}</td>
+        <td class="r">${listed.has(String(r.lic)) ? html`<span class="tag">${t("ad.an.already")}</span>`
+          : html`<button type="button" class="btn btn-sm btn-primary" data-an-add="${r.lic}">${t("ad.an.do")}</button>`}</td></tr>`)}</tbody></table></div>`
+      : html`<div class="muted" style="font-size:13px">${t("ad.an.noMatch")}</div>`}
+      <div class="filters" style="margin:10px 0 0;padding:0;border:0;background:none">
+        <span class="muted" style="font-size:12.5px;align-self:center">${t("ad.an.manual")}</span>
+        <label class="field"><span>${t("ad.an.col.lic")}</span><input type="text" id="an-lic" inputmode="numeric" maxlength="7" style="width:100px" value="${digits ? q : ""}"></label>
+        <label class="field"><span>${t("ad.an.col.name")}</span><input type="text" id="an-name" maxlength="80" style="width:220px"></label>
+        <button type="button" class="btn btn-sm" id="an-manual" style="align-self:flex-end">${t("ad.an.do")}</button>
+      </div>`;
+    const add = async (lic, name) => {
+      if (!confirm(t("ad.an.confirm", { name }))) return;
+      const r = await anonCall("POST", { lic, name, note: $("#an-note").value });
+      if (r.ok) { anonList = r.data; $("#an-q").value = ""; $("#an-note").value = ""; }
+      $("#an-msg").textContent = r.ok ? t("ad.an.pending") : r.status === 409 ? t("ad.an.already") : t("ad.an.error");
+      drawAnon();
+    };
+    $$("[data-an-add]", box).forEach((b) => b.addEventListener("click", () => {
+      const r = data.runner(b.dataset.anAdd);
+      if (r) add(String(r.lic), r.nom);
+    }));
+    $("#an-manual").addEventListener("click", () => {
+      const lic = $("#an-lic").value.trim(), name = $("#an-name").value.trim();
+      if (!/^\d{1,7}$/.test(lic) || !name) { $("#an-msg").textContent = t("ad.an.manualHelp"); return; }
+      add(lic, name);
+    });
+  }
+  $("#an-q").addEventListener("input", drawAnonFound);
 
   // « Inscrits »: registered accounts (confirmed, not disabled, by sign-up day) and active ones (seen on at least one day
   // of the last 21) from api/admin/members, day by day since the first account. An account deleted leaves no trace.

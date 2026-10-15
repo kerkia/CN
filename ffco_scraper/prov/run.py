@@ -20,6 +20,7 @@ from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import privacy
 from ..agenda import LIGUES, OUTRE_MER, REGIONS
 from . import model, races, store
 from .compute import Scorer
@@ -641,6 +642,7 @@ def build(con, out: Path, today: date) -> int:
     d.mkdir(parents=True, exist_ok=True)
     lo = (today - timedelta(days=SHOW_DAYS)).isoformat()
     matcher, scorer = Matcher(con, today), Scorer(con)
+    anon = privacy.load()                # the anonymised runners: their rows by licence, the unmatched ones by name
     index, written = [], 0
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
@@ -672,6 +674,7 @@ def build(con, out: Path, today: date) -> int:
                             r["catCn"] = matcher.info[r["lic"]]["cat"]
                         if r["lic"] and r["lic"] in ffco:
                             r["ffco"] = ffco[r["lic"]]
+                        privacy.anonymise_row(anon, r)
                     if parsed.get("by") != "category" and parsed.get("kind") != "startlist":
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):

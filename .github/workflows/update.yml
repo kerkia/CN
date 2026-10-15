@@ -113,6 +113,9 @@ jobs:
           python ci/state.py unpack "$STATE"
           # the files organisers uploaded on « Récemment » (functions/api/upload.js), read by the provisional results
           aws s3 sync "$BUCKET/uploads/" "$CN_DATA_DIR/uploads/" --endpoint-url "$R2" --only-show-errors || echo "no uploads"
+          # the anonymised runners (admin page « Anonymisés », functions/api/admin/anonymized.js; privacy.py): missing, the last list
+          # known (kept in the database by update.sync_privacy) is used
+          aws s3 cp "$BUCKET/privacy/anonymized.json" "$CN_DATA_DIR/privacy/anonymized.json" --endpoint-url "$R2" --only-show-errors || echo "no anonymised runners list"
           echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
           echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
           echo "AGENDA_BEFORE=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"

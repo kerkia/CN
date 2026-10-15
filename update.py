@@ -285,7 +285,9 @@ def main() -> None:
         sys.exit(0)
     try:
         if not args.dry_run:
+            sync_privacy(args.db)                               # before any build: the anonymised runners' list
             migrate(args.db, args.out)                          # no-op once done
+            apply_privacy(args.db, args.out)                    # no-op unless the anonymised runners changed
         if args.deploy_only:
             import ffco_scraper.agenda as agenda
             try:
@@ -330,6 +332,57 @@ def main() -> None:
             notify.run(args.db)
     finally:
         lock.unlink(missing_ok=True)
+
+
+def sync_privacy(db: Path) -> None:
+    """The anonymised runners' list (privacy.FILE, copied from R2 by the workflow) is kept in the database too: when the
+    copy is missing (a failed download, a run on the PC), the last one known is used — an empty list would publish
+    the names again."""
+    import privacy
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
+    if privacy.FILE.exists():
+        text = privacy.FILE.read_text(encoding="utf-8")
+        if privacy.load().people or '"people"' in text:      # a list the admin page wrote (possibly empty)
+            con.execute("INSERT OR REPLACE INTO engine_meta (key, value) VALUES ('anonymized_list', ?)", (text,))
+            con.commit()
+    else:
+        row = con.execute("SELECT value FROM engine_meta WHERE key = 'anonymized_list'").fetchone()
+        if row:
+            privacy.FILE.parent.mkdir(parents=True, exist_ok=True)
+            privacy.FILE.write_text(row[0], encoding="utf-8")
+            print("privacy: the list was not downloaded — the last one known is used")
+    con.close()
+
+
+def apply_privacy(db: Path, out: Path) -> bool:
+    """The anonymised runners (privacy.py) changed since the site data was built: rebuild all of it once — the earlier
+    seasons' snapshots too, which an incremental build keeps — and the provisional results' files, then publish."""
+    import privacy
+    anon = privacy.load()
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
+    row = con.execute("SELECT value FROM engine_meta WHERE key = 'anonymized'").fetchone()
+    con.close()
+    applied = row[0] if row else privacy.Anon([]).fingerprint      # never set: built without anyone anonymised
+    if applied == anon.fingerprint:
+        return False
+    t0 = time.monotonic()
+    print(f"privacy: the anonymised runners changed ({len(anon.by_lic)} now) — the site data rebuilt in full")
+    import build_site
+    build_site.main(["--out", str(out), "--db", str(db)])
+    try:
+        import ffco_scraper.prov.run as prov
+        prov.main(["--db", str(db), "--out", str(out), "--build-only"])
+    except Exception as e:                       # the pilot must never stop the update; its next run rebuilds the files
+        print(f"privacy: provisional results not rebuilt — {type(e).__name__}: {e}")
+    con = sqlite3.connect(db)
+    con.execute("INSERT OR REPLACE INTO engine_meta (key, value) VALUES ('anonymized', ?)", (anon.fingerprint,))
+    con.commit()
+    con.close()
+    DEPLOY_PENDING.touch()
+    print(f"privacy: done in {time.monotonic() - t0:.0f}s")
+    return True
 
 
 def _provisional(args) -> None:

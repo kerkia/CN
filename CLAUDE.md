@@ -677,6 +677,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   pages too: re-reading them needs a fresh `FFCO_SESSIONID` (the `sessionid` cookie of a logged-in member) in
   the environment; normal runs never need it. The workflow's `backfill` mode (manual) fetches every season's
   competitions not stored yet, with the repo secret `FFCO_SESSIONID` (the owner sets it, then deletes it).
+- **Anonymised runners** (owner, 2026-10-15; `privacy.py`): on request (not to be shown, a minor's representative, erasure of
+  results data) a licensee's name and licence are replaced all over the published site by a pseudonym — « Coureur anonyme N »,
+  licence 9000000N (8 digits; real licences have at most 7; `data.isAnon` hides the licence and skips FFCO's lookups). Nothing
+  is deleted: the database and every computation keep the real licence, so the others' places, circuit values and CNs are
+  unchanged. The admin page's « Anonymisés » tab keeps the list in R2 (`privacy/anonymized.json`, `/api/admin/anonymized`);
+  the workflow copies it to `CN_DATA_DIR/privacy/`; `update.sync_privacy` keeps the last list in `engine_meta`
+  (`anonymized_list`) and restores it when the copy is missing (an empty list would publish the names again), and
+  `update.apply_privacy` rebuilds the whole site data and the provisional results once when the list's fingerprint changes
+  (`engine_meta` `anonymized`; an incremental build keeps old seasons). `build_site` maps every licence read from the database
+  (`Anon.lic`), names come only from `runners.json`; the auth index keeps their real licence and name (they can still sign
+  up). Provisional results: rows matched to their licence, unmatched rows by name (`privacy.anonymise_row`, birth year and
+  bib dropped); O'Cap follows (exported from them). Not covered: « En direct » (liveresultat relayed live).
 - **Privacy and legal notices** (`#/compte/confidentialite`, `pages/account.js` `privacy`, public; reviewed 2026-10-15): the
   GDPR's information (controller Yann Le Helloco, legal bases, licensees without an account and their right to object,
   processors Cloudflare / Resend / GitHub and their transfer safeguards, the IP-keyed rate limits, every right, the CNIL)

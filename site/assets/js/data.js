@@ -91,6 +91,9 @@ export function dropPrivate() {
 export const meta = () => META;
 export const runners = () => RUNNERS;
 export const runner = (lic) => RUNNERS.byLic.get(String(lic));
+/** An anonymised runner's pseudonym (privacy.py: 8 digits from 90000001; real licences have at most 7): its name is
+ *  « Coureur anonyme N », and no licence is shown nor looked up on FFCO's site. */
+export const isAnon = (lic) => /^9\d{7}$/.test(String(lic ?? ""));
 export const comp = (id) => COMPS.get(String(id));
 export const comps = () => COMPS;
 
