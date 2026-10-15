@@ -162,6 +162,7 @@ export async function render(main, { query = {}, route } = {}) {
     <div class="an-brief" id="an-brief" hidden></div>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
+    <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
     <div id="an-work" hidden>
       <div class="an-layout" id="an-layout">
         <section class="an-graphs" id="an-strip-card" hidden>
@@ -447,7 +448,10 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-pick").hidden = perso || !on; $("#an-files").hidden = !on;
     const brief = $("#an-brief");
     brief.hidden = on;
-    if (on) return;
+    // during the playback the race's line sits in the map's top left corner, so that the site's menus can stay as on
+    // every page (owner, 2026-10-15: the second row hidden and a tab turned into a menu confused); back above after
+    if (on) { $("#an-pick").before(brief); return; }
+    $(".an-map").prepend(brief);
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
       <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
@@ -464,8 +468,11 @@ export async function render(main, { query = {}, route } = {}) {
   }
   const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
+  // the trace a calibration was made with: its geometry is in that trace's own metres, and another trace (the complete
+  // file after a cut one, 2026-10-15) has other passes — it starts afresh
+  const traceSig = () => (track ? `${Math.round(track.ms0 / 1000)}:${track.n}` : null);
   function savePositions(done = calibrated) {
-    const rec = { v: 2, done, items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
+    const rec = { v: 2, done, trace: traceSig(), items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
       fit: fit && !geoFit ? { kind: fit.kind, m11: fit.m11, m12: fit.m12, m21: fit.m21, m22: fit.m22, tx: fit.tx, ty: fit.ty, scale: fit.scale, rotation: fit.rotation } : null };
     try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ }
   }
@@ -540,7 +547,7 @@ export async function render(main, { query = {}, route } = {}) {
     }
     // a calibration kept from an earlier visit: back as it was left, the controls placed by hand included
     const kept = fresh ? null : savedPositions();
-    if (kept && kept.items.some((s) => s.pos)) {
+    if (kept && kept.items.some((s) => s.pos) && kept.trace === traceSig()) {
       const taus = officialTaus();
       if (taus) { targets = officialTargets(null); if (kept.items.length === targets.length) kept.items.forEach((s, i) => { targets[i].pos = s.pos; }); }
       else targets = kept.items.map((s, i) => ({ i, kind: s.kind, code: s.code || "", pos: s.pos, tau: null, tEst: null, label: s.kind === "start" ? t("an.start") : s.kind === "finish" ? t("an.finish") : "" }));
@@ -549,7 +556,8 @@ export async function render(main, { query = {}, route } = {}) {
       recompute({ geometry });
       cur = nextTarget(0);
       side(); draw();
-      if (kept.done && fit && offset != null) finish();
+      // ready, not played: the page opens on the files and the calibration (« Voir la course » plays it), so that new
+      // files can be dropped — it went straight to the playback, and the files could no longer be changed (owner, 2026-10-15)
       return;
     }
     // the course's points
@@ -880,7 +888,7 @@ export async function render(main, { query = {}, route } = {}) {
     savePositions(true);
     steps(4);
     showPanels(false);
-    document.body.classList.add("an-theatre");           // the second menu row and the page head give way to the map
+    document.body.classList.add("an-theatre");           // the page head and the steps give way to the map; the menus stay
     window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     const known = sequenceKnown();
@@ -1278,6 +1286,20 @@ export async function render(main, { query = {}, route } = {}) {
   const stripUp = () => { delete strip.dataset.down; };
   strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
 
+  // files dropped anywhere on the page — on the map during the playback too — replace the current ones
+  const dropAll = $("#an-dropall");
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+  const onDragOver = (e) => { if (!hasFiles(e)) return; e.preventDefault(); dropAll.hidden = false; };
+  const onDragLeave = (e) => { if (!e.relatedTarget) dropAll.hidden = true; };
+  const onDrop = (e) => {
+    dropAll.hidden = true;
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    if (e.target.closest?.("#an-drop")) return;                     // the drop zone takes its own
+    take([...e.dataTransfer.files]);
+  };
+  window.addEventListener("dragover", onDragOver); window.addEventListener("dragleave", onDragLeave); window.addEventListener("drop", onDrop);
+
   // ---- go
   steps(1);
   await loadRace();
@@ -1295,6 +1317,7 @@ export async function render(main, { query = {}, route } = {}) {
   return { title: t(perso ? "an.perso.title" : "an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     window.removeEventListener("resize", onWinResize);
+    window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++;
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };

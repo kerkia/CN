@@ -879,6 +879,7 @@ const FR = {
   "an.missed": "Cercle lu sur la carte que la trace n'atteint pas",
   "an.cal.add": "Ajouter un poste", "an.st.probed": "{n} poste(s) de plus trouvés sur la carte là où la trace tourne.",
   "an.cal.skip": "Passer", "an.cal.undo": "Annuler le dernier", "an.cal.clear": "Tout effacer", "an.cal.done": "Voir la course", "an.st.finishFound": "Arrivée trouvée sur la carte là où la trace s'arrête.",
+  "an.dropAll": "Déposez vos fichiers : ils remplacent ceux de l'analyse en cours.",
   "an.st.short": "La trace s'arrête à {t} de course, avant la fin ({T} au classement) : le fichier de trace semble incomplet.",
   "an.st.shortFar": "La trace s'arrête à {t} de course, à {d} m de l'arrivée : le fichier de trace semble incomplet.",
   "an.cal.fit": "Écart de calage", "an.cal.fit.hint": "l'écart moyen entre la trace et les postes, en mètres (le GPS en forêt : 5 à 15 m)",

@@ -500,10 +500,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   also kept in IndexedDB (`ocn-analyse`) for the tab's session (a tag in `sessionStorage ocn.an.tag`: a reload
   recovers them, a new tab does not; « Oublier les fichiers » drops them), the race/circuit/runner in
   `sessionStorage ocn.an.sel` (the menu's link carries no query), and a calibration is saved in localStorage with its
-  geometry and a `done` flag (v2): it comes back as it was left, hand-placed controls included, straight into the
-  playback when finished; « Refaire le calage automatique » starts afresh. **Playback layout** (owner's review,
-  2026-10-14): `body.an-theatre` hides the site's menus, the steps and the page head — the top bar keeps the logo, theme
-  and name, one line gives « Course et fichiers ▾ », the race, runner and files; the map and the side panel take
+  geometry and a `done` flag (v2): it comes back as it was left, hand-placed controls included — **ready, not played**
+  (owner, 2026-10-15: going straight into the playback hid the files, which could no longer be replaced): the page opens
+  on the files and the calibration, « Voir la course » plays it. A calibration belongs to its trace (`traceSig`: start
+  time and points; a cut trace's fit was reused for the complete file): another trace starts afresh. Files dropped
+  anywhere on the page, on the map during the playback too, replace the current ones (an overlay says so).
+  « Refaire le calage automatique » starts afresh. **Playback layout** (owner's review,
+  2026-10-14): `body.an-theatre` hides the steps, the page head and the footer — the site's menus stay as on every page
+  (owner, 2026-10-15: the second row hidden and the group's tab turned into a menu confused users), and the race's line
+  (« Course et fichiers ▾ », the race, runner and files with the trace's length) sits in the map's top left corner
+  (`showPanels` moves `#an-brief` into `.an-map`); the map and the side panel take
   `100vh − 252px − var(--an-strip)` so a desktop screen needs no scrollbar; the side panel is a compact list (transport,
   slider, stats as dt/dd, « Affichage » folded: trace colour with swatches and a picker, width, by pace, tail,
   opacities). Trace colour default dark purple `#3b0764`, width 2.4, the part to come at 0.45 alpha; by pace

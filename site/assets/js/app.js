@@ -335,7 +335,7 @@ function renderHeader(r) {
   </div>
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`)}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysisPerso", "analysisClub"].includes(route) ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace"].includes(route) ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
@@ -359,18 +359,6 @@ function renderHeader(r) {
     closeMenus(g);
     g.classList.toggle("open", open);
     b.setAttribute("aria-expanded", String(open));
-    if (open) $(".nav-menu a", g)?.focus({ preventScroll: true });
-  }));
-  // in an analysis's theatre mode (body.an-theatre) the row of the group's pages gives way to the map, and the group's tab
-  // would lead back to this very page: it opens the group's pages instead (2026-10-14: no way back to Agenda, Résultats…)
-  $$(".nav > .nav-group > a.nav-top").forEach((a) => a.addEventListener("click", (e) => {
-    if (!document.body.classList.contains("an-theatre") || a.getAttribute("aria-current") !== "true") return;
-    if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    const g = a.parentElement, open = !g.classList.contains("open");
-    closeMenus(g);
-    g.classList.toggle("open", open);
-    a.setAttribute("aria-expanded", String(open));
     if (open) $(".nav-menu a", g)?.focus({ preventScroll: true });
   }));
   $$(".nav-menu a").forEach((a) => a.addEventListener("click", () => { closeMenus(); $("#nav")?.classList.remove("open"); }));

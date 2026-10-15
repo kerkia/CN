@@ -1204,6 +1204,9 @@ table.data tbody tr.found .name { font-weight: 700; }
 .dep-steps li.done b { background: var(--accent-wash); border-color: var(--focus); color: var(--ink); }
 /* « Analyse »: a GPS trace on one's map */
 .an-drop { min-height: 84px; justify-content: center; margin-bottom: 10px; }
+.an-dropall { position: fixed; inset: 12px; z-index: 50; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  border: 3px dashed var(--flag); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 82%, transparent); font-size: 18px; font-weight: 600; color: var(--ink); }
+.an-dropall[hidden] { display: none; }
 .an-filelist th { width: 150px; text-align: left; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
 .an-filelist td { font-size: 13.5px; }
 .an-formats { margin-top: 10px; font-size: 13px; color: var(--ink-2); }
@@ -1219,15 +1222,16 @@ table.data tbody tr.found .name { font-weight: 700; }
 .an-chip[aria-pressed="true"] { color: var(--ink); border-color: var(--chip); background: color-mix(in srgb, var(--chip) 12%, var(--surface)); }
 .an-chip[aria-pressed="true"]::before { opacity: 1; }
 .an-brief { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13.5px; margin: 0 2px 8px; }
-/* the theatre: while the race plays, the menu's second row and the page head give way to the map, the curves and the
-   controls; the top menu stays (owner, 2026-10-14). The layout fills the window (--an-h, set by the page); the curves sit
-   on the left or under the map, collapsible; the splitters resize the panels (--an-gw, --an-gh, --an-sw). */
-/* theatre mode: the current group's tab opens its pages (app.js), a caret says so */
-body.an-theatre .nav > .nav-group > a.nav-top[aria-current="true"]::after { content: ""; width: 0; height: 0;
-  border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; margin-left: 0; }
-body.an-theatre .subbar, body.an-theatre #footer, body.an-theatre .dep-steps, body.an-theatre .page-head { display: none !important; }
+/* the theatre: while the race plays, the page head, the steps and the footer give way to the map, the curves and the
+   controls; the site's menus stay as on every page (owner, 2026-10-15: hiding the second row confused) and the race's
+   line sits in the map's top left corner. The layout fills the window (--an-h, set by the page); the curves sit on the
+   left or under the map, collapsible; the splitters resize the panels (--an-gw, --an-gh, --an-sw). */
+body.an-theatre #footer, body.an-theatre .dep-steps, body.an-theatre .page-head { display: none !important; }
 body.an-theatre .page { max-width: none; padding: 6px 12px 12px; }
 body.an-theatre .an-brief { margin: 0 0 6px; font-size: 13px; }
+body.an-theatre .an-map > .an-brief { position: absolute; top: 8px; left: 8px; z-index: 3; max-width: min(62%, calc(100% - 64px)); margin: 0;
+  padding: 4px 8px; gap: 2px 10px; font-size: 12.5px; line-height: 1.35; background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--border); border-radius: 8px; }
 body.an-theatre .an-layout { margin-top: 0; gap: 0; height: var(--an-h, 75vh); align-items: stretch; }
 body.an-theatre .an-layout[data-layout="left"] { grid-template-columns: var(--an-gw, 320px) 10px minmax(0, 1fr) 10px var(--an-sw, 270px);
   grid-template-rows: minmax(0, 1fr); grid-template-areas: "graphs spg map sps side"; }
