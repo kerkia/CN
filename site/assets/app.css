@@ -1275,6 +1275,15 @@ body.an-theatre .an-side { grid-area: side; height: auto; max-height: none; min-
 .an-tools .btn { min-width: 32px; padding: 4px 8px; background: var(--surface); }
 .an-hud { position: absolute; left: 8px; bottom: 8px; font-size: 13px; font-weight: 650; padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink); pointer-events: none; font-variant-numeric: tabular-nums; }
 .an-hud:empty { display: none; }
+/* the legend of the trace coloured by pace, in the map's bottom right corner */
+.an-legend { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 5px 8px 4px; border-radius: 8px; font-size: 11px; line-height: 1.25;
+  background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid var(--border); color: var(--ink); pointer-events: none; width: 168px; }
+.an-legend[hidden] { display: none; }
+.an-legend-title { font-weight: 650; margin-bottom: 3px; }
+.an-legend-bar { display: flex; height: 9px; border-radius: 3px; overflow: hidden; }
+.an-legend-bar span { flex: 1; }
+.an-legend-ticks, .an-legend-ends { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.an-legend-ends { font-size: 10px; margin-top: 0; }
 .an-side { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: min(76vh, 780px); overflow-y: auto; font-size: 13.5px; }
 .an-side .hint { font-size: 12.5px; color: var(--ink-3); margin: 0 0 8px; }
 .an-side-title { font-size: 12px; font-weight: 650; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }

@@ -513,7 +513,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `100vh − 252px − var(--an-strip)` so a desktop screen needs no scrollbar; the side panel is a compact list (transport,
   slider, stats as dt/dd, « Affichage » folded: trace colour with swatches and a picker, width, by pace, tail,
   opacities). Trace colour default dark purple `#3b0764`, width 2.4, the part to come at 0.45 alpha; by pace
-  colours the whole race. The curves under the map are stacked rows (56 px each, `--an-strip` follows). The legs
+  colours the whole race, with its legend in the map's bottom right corner (`paceLegend`: the 8 colours, the paces
+  where they start, rapide → lent; owner, 2026-10-15). The curves are stacked rows, all of the file's open by default
+  (the former default, pace + heart rate, counts as unset), each with its scale (owner, 2026-10-15: unusable without):
+  the name and unit, round ticks on a value axis (pace at round min/km, its slow end capped at 20 min/km; labels never
+  overlap), the value at the cursor, and a shared race-time axis; altitude green, power orange, temperature gold;
+  cadence « /min » (watches record strides or pedal turns, not steps). The legs
   table and the numbered ticks only when the sequence is known complete (`sequenceKnown`: published splits or an IOF
   course) — numbering the controls found would mislead. The view opens on the first leg (`zoomTo(legs[0], 2.4)`);
   « Suivre » is a toggle button in the transport row; moving the map by hand turns it off, paused too (it snapped back to
