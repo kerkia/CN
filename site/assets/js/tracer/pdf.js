@@ -8,7 +8,7 @@ import * as M from "./model.js";
 import { layoutCourse } from "./layout.js";
 import { itemsFor } from "./draw.js";
 import { describe, sheetItems, sheetSize, widthInCells } from "./descr.js";
-import { modal, download, fileName, field, sel, num } from "./dialogs.js";
+import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs.js";
 import * as S from "./store.js";
 import { isPdf } from "./mapsrc.js";
 
@@ -62,6 +62,26 @@ export function printBox(E, cd, layout) {
   return { box: [cx - W / 2, cy - H / 2, cx + W / 2, cy + H / 2], page: pg, k };
 }
 
+/**
+ * The pages of a course designator: one box per page (map mm). A print area larger than the paper is tiled over as many
+ * pages as it needs, left to right then top to bottom, the overlap spread evenly (Purple Pen's CoursePageLayout), unless it
+ * is kept to one page (« restrict »: its middle).
+ */
+export function printTiles(E, cd, layout) {
+  const pb = printBox(E, cd, layout), pa = M.printAreaOf(E.ev, cd);
+  if (!pa || pa.auto || !pa.rect || pa.restrict) return [pb];
+  const [l, b, r, t] = pa.rect, W = (pb.page.w - 2 * pb.page.margin) / pb.k, H = (pb.page.h - 2 * pb.page.margin) / pb.k;
+  const nx = Math.max(1, Math.ceil((r - l) / W - 1e-6)), ny = Math.max(1, Math.ceil((t - b) / H - 1e-6));
+  if (nx === 1 && ny === 1) return [pb];
+  const sx = nx > 1 ? (r - l - W) / (nx - 1) : 0, sy = ny > 1 ? (t - b - H) / (ny - 1) : 0;
+  const cx = (l + r) / 2, cy = (b + t) / 2, tiles = [];
+  for (let j = 0; j < ny; j++) {
+    const y0 = ny > 1 ? t - H - j * sy : cy - H / 2;
+    for (let i = 0; i < nx; i++) { const x0 = nx > 1 ? l + i * sx : cx - W / 2; tiles.push({ ...pb, box: [x0, y0, x0 + W, y0 + H], tile: [i + 1, j + 1, nx, ny] }); }
+  }
+  return tiles;
+}
+
 // ---- drawing items with PDF operators ----------------------------------------------------------------------------------------
 function cmykOf(ev, role, rgb) {
   const P = ev.appearance.purple || M.PURPLE;
@@ -96,7 +116,7 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       pathOps(L, ops, it.d, T);
       const col = cmykOf(ev, it.color, rgb);
       if (it.fill && it.stroke) { setColor(L, ops, col, true); setColor(L, ops, col, false); ops.push(L.setLineWidth(it.stroke * s), L.fillAndStroke()); }
-      else if (it.fill) { setColor(L, ops, col, true); ops.push(L.fillEvenOdd()); }
+      else if (it.fill) { setColor(L, ops, col, true); ops.push(L.PDFOperator.of("f*")); }        // even-odd fill (pdf-lib has no helper for it)
       else if (it.stroke) {
         setColor(L, ops, col, false);
         ops.push(L.setLineWidth(it.stroke * s), L.setLineCap(CAP[it.cap] ?? 0), L.setLineJoin(JOIN[it.join] ?? 0), L.stroke());
@@ -183,7 +203,11 @@ async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, i
   const ev = E.ev;
   const layout = layoutCourse(ev, cd, { variationName, team, leg });
   const items = itemsFor(ev, layout);
-  const { box, page: pg, k } = printBox(E, cd, layout);
+  let last = null;
+  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images });
+  return last;
+}
+async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images }) {
   const page = doc.addPage([pg.w * PT, pg.h * PT]);
   const s = k * PT;                                          // points per map mm
   const m = pg.margin * PT;
@@ -202,6 +226,8 @@ async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, i
   }
   await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images });
   page.pushOperators(L.popGraphicsState());
+  // a tiled page says which: « 2/3 – 1/2 » (across, down) in the margin
+  if (tile && fonts?.reg) page.drawText(`${tile[0]}/${tile[2]} – ${tile[1]}/${tile[3]}`, { x: m, y: Math.max(2, m / 2 - 3), size: 7, font: fonts.reg, color: L.rgb(0.4, 0.4, 0.4) });
   return page;
 }
 
@@ -256,7 +282,7 @@ export async function coursesDialog(E) {
       const files = {};
       for (const [name, list] of groups) files[`${fileName(name)}.pdf`] = await build(list);
       if (Object.keys(files).length === 1) download(Object.keys(files)[0], Object.values(files)[0], "application/pdf");
-      else download(`${base} - circuits.zip`, await zip(files), "application/zip");
+      else await saveFiles(E, files, `${base} - circuits.zip`);
     }
     E.status("PDF créés", "ok");
   } catch (err) { console.error(err); E.status("PDF impossibles", "bad"); E.toast(`Création des PDF impossible : ${err.message}`); }
@@ -358,7 +384,8 @@ export async function printAreaDialog(E) {
     <div class="tr-grid2">${field("Papier", sel("paper", Object.keys(PAGES).map((k) => [k, k]), paperName))}
     ${field("Orientation", sel("orient", [["auto", "Selon le circuit"], ["portrait", "Portrait"], ["landscape", "Paysage"]], pa.auto && !pa.restrictOrientation ? "auto" : pa.landscape ? "landscape" : "portrait"))}
     ${field("Marges (mm)", `<input name="margin" value="${Math.round(page.margin)}" inputmode="numeric">`)}
-    ${field("Zone", sel("where", [["auto", "Centrée sur le circuit"], ["view", "La partie de la carte visible à l'écran"], ["keep", "Garder la zone actuelle"]], pa.auto ? "auto" : "keep"))}</div>
+    ${field("Zone", sel("where", [["auto", "Centrée sur le circuit"], ["draw", "Un rectangle à tracer sur la carte (deux coins)"], ["view", "La partie de la carte visible à l'écran"], ["keep", "Garder la zone actuelle"]], pa.auto ? "auto" : "keep"))}
+    ${field("Si la zone dépasse la page", sel("over", [["tile", "La découper sur plusieurs pages"], ["crop", "En garder le centre, sur une page"]], pa.restrict ? "crop" : "tile"))}</div>
     <label class="tr-check"><input type="checkbox" name="all"> Pour tous les circuits</label>
     <p class="tr-hint">Affichage › Afficher la zone d'impression la montre sur la carte.</p>` });
   if (!v) return;
@@ -370,10 +397,21 @@ export async function printAreaDialog(E) {
     if (v.where === "auto") { out.auto = true; out.rect = null; }
     if (v.where === "view") {
       const W = E.canvas.clientWidth, H = E.canvas.clientHeight, [l, t] = E.toMap(0, 0), [r, b] = E.toMap(W, H);
-      out.auto = false; out.restrict = true; out.rect = [l, b, r, t];
+      out.auto = false; out.rect = [l, b, r, t];
     }
+    if (v.where === "draw" && drawn) { out.auto = false; out.rect = drawn; }
+    if (!out.auto) out.restrict = v.over === "crop";
     return out;
   };
+  let drawn = null;
+  if (v.where === "draw") {
+    // two corners clicked on the map
+    const corner = (n) => new Promise((res) => { E.help(`Zone d'impression : cliquez le ${n} coin sur la carte (Échap pour annuler).`); E.pickOnce = res; E.pickCancel = () => res(null); });
+    const a = await corner("premier"), b2 = a ? await corner("second") : null;
+    E.help();
+    if (!a || !b2) return;
+    drawn = [Math.min(a[0], b2[0]), Math.min(a[1], b2[1]), Math.max(a[0], b2[0]), Math.max(a[1], b2[1])];
+  }
   E.change((x) => {
     if (v.all) { x.printArea = make(x.printArea); for (const c of Object.values(x.courses)) c.printArea = make(c.printArea); }
     else if (cd.course) { const c = x.courses[cd.course]; if (cd.part >= 0) c.partAreas = { ...(c.partAreas || {}), [cd.part]: make(c.partAreas?.[cd.part] || c.printArea) }; else c.printArea = make(c.printArea); }

@@ -157,6 +157,9 @@ export async function action(E, act, btn, at = {}) {
     case "view-map": E.fitMap(); break;
     case "view-all": E.opts.allControls = !E.opts.allControls; E.refresh(); E.toast(E.opts.allControls ? "Tous les postes affichés en pâle." : "Postes des autres circuits masqués."); break;
     case "view-printarea": E.opts.printArea = !E.opts.printArea; E.redraw(); break;
+    case "save-to": { const v = await modal(E, { title: "Plusieurs fichiers", body: `<label class="tr-check"><input type="radio" name="how" value="folder"> Les écrire dans un dossier de mon choix (Chrome, Edge)</label>
+      <label class="tr-check"><input type="radio" name="how" value="zip"> Les télécharger en un .zip</label><label class="tr-check"><input type="radio" name="how" value="" checked> Me demander à chaque fois</label>` });
+      if (v) { try { const o = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); o.saveTo = v.how || null; localStorage.setItem("ocn.tr.prefs", JSON.stringify(o)); } catch (e) { /* not kept */ } } break; }
     case "view-others": (await lazy.more()).otherCourses(E); break;
     case "import-course": if (!ro()) (await lazy.more()).readCourseFromMap(E); break;
     case "take-lock": await E.takeLock(); break;
@@ -517,6 +520,48 @@ export function download(name, data, type) {
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+/**
+ * Several files at once: written into a folder the user picks (Chrome, Edge: the File System Access API), or one zip. The
+ * choice is asked once and kept (Affichage's preferences, « ocn.tr.prefs » saveTo). files: { name: Uint8Array | string }.
+ */
+export async function saveFiles(E, files, zipName) {
+  const names = Object.keys(files);
+  if (!names.length) return;
+  if (names.length === 1) { download(names[0], files[names[0]], "application/octet-stream"); return; }
+  let how = "zip";
+  if (typeof window.showDirectoryPicker === "function") {
+    let pref = null;
+    try { pref = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}").saveTo || null; } catch (e) { /* none */ }
+    if (!pref) {
+      const v = await modal(E, { title: `${names.length} fichiers`, ok: "Enregistrer", body: `
+        <label class="tr-check"><input type="radio" name="how" value="folder" checked> Les écrire dans un dossier de mon choix</label>
+        <label class="tr-check"><input type="radio" name="how" value="zip"> Les télécharger en un seul fichier .zip</label>
+        <label class="tr-check"><input type="checkbox" name="keep" checked> Ne plus me demander (modifiable dans Affichage)</label>` });
+      if (!v) return;
+      pref = v.how;
+      if (v.keep) { try { const o = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); o.saveTo = pref; localStorage.setItem("ocn.tr.prefs", JSON.stringify(o)); } catch (e) { /* this time only */ } }
+    }
+    how = pref;
+  }
+  if (how === "folder") {
+    try {
+      const dir = await window.showDirectoryPicker({ id: "ocn-tracer", mode: "readwrite" });
+      for (const n of names) {
+        const fh = await dir.getFileHandle(n, { create: true }), w = await fh.createWritable();
+        await w.write(files[n]); await w.close();
+      }
+      E.toast(`${names.length} fichiers écrits dans « ${dir.name} ».`, 5000);
+      return;
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      E.toast("Le dossier n'a pas pu être écrit : téléchargement en .zip.");
+    }
+  }
+  const { zip } = await import("./pdf.js");
+  const enc = new TextEncoder(), bin = {};
+  for (const n of names) bin[n] = typeof files[n] === "string" ? enc.encode(files[n]) : files[n];
+  download(zipName, new Blob([await zip(bin)], { type: "application/zip" }));
 }
 export const fileName = (s) => String(s || "evenement").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
 function exportPpen(E) {

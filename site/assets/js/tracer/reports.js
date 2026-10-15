@@ -7,7 +7,7 @@
 
 import * as M from "./model.js";
 import { inPoly } from "./layout.js";
-import { modal, download, fileName } from "./dialogs.js";
+import { modal, download, fileName, saveFiles } from "./dialogs.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -339,5 +339,5 @@ export async function csvAll(E) {
   const files = { "resume.csv": courseSummary(ev), "interpostes.csv": legLengths(ev), "references-croisees.csv": crossRef(ev), "charge.csv": loadReport(ev), "controle.csv": audit(ev) };
   const out = {};
   for (const [n, rep] of Object.entries(files)) out[n] = enc.encode(csv(rep));
-  download(`${fileName(ev.title)} - rapports.zip`, new Blob([await zip(out)], { type: "application/zip" }));
+  await saveFiles(E, out, `${fileName(ev.title)} - rapports.zip`);
 }

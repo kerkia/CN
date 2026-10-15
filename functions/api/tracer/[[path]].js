@@ -6,6 +6,7 @@
 //   tracer/<id>/v/<n>            saved versions (each with its author, time and note in the object's metadata)
 //   tracer/<id>/comments         the team's comments (JSON or ciphertext)
 //   tracer/<id>/field            the field statuses of the controls (set, checked, collected)
+//   tracer/<id>/photo/<pid>      the field mode's photos of the controls
 //   tracer/<id>/lock             who is editing (refreshed every minute; others open the event read-only)
 // Courses are secret until the race (owner, 2026-10-15): only the event's team opens it — its creator and the licences
 // the creator adds (« setter » edits, « controller » edits and comments, « viewer » reads and comments); not the
@@ -23,6 +24,7 @@
 //   GET    /api/tracer/<id>/versions         the list;  GET …/versions/<n> one;  POST …/versions (body, X-Note);
 //                                            DELETE …/versions?below=<n> (the owner, after encrypting)
 //   GET|PUT /api/tracer/<id>/comments, …/field
+//   GET|PUT|DELETE /api/tracer/<id>/photo/<pid>   a control's photo (field mode; editors put and delete)
 //   POST|DELETE /api/tracer/<id>/lock        take (or refresh) / release the editing lock
 //   GET    /api/tracer/<id>/member?lic=…     the licensee's name, before adding them to the team
 
@@ -31,7 +33,7 @@ import { randomBytes } from "../../_lib/crypto.js";
 import { clubOf, orgCode, raceOf } from "../../_lib/club.js";
 
 const META = "tracer-meta/", DATA = "tracer/";
-const MAX_MAP = 80 * 1024 * 1024, MAX_EVENT = 12 * 1024 * 1024, MAX_SMALL = 4 * 1024 * 1024, MAX_VERSIONS = 120;
+const MAX_MAP = 80 * 1024 * 1024, MAX_EVENT = 12 * 1024 * 1024, MAX_SMALL = 4 * 1024 * 1024, MAX_PHOTO = 4 * 1024 * 1024, MAX_VERSIONS = 120;
 const ROLES = ["setter", "controller", "viewer"];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -282,6 +284,24 @@ export const onRequest = withUser(async (ctx, user) => {
       const err = await putRaw(env, request, `${base}${sub}`, MAX_SMALL, { updated: nowIso(), by: user.display_name || "" });
       return err || json({ ok: true });
     }
+    return json({ error: "method" }, 405);
+  }
+
+  if (sub === "photo") {
+    // the field mode's photos of a control (JPEG, or ciphertext when the event is encrypted): tracer/<id>/photo/<pid>
+    const pid = String(parts[2] || "");
+    if (!/^[a-z0-9-]{6,48}$/.test(pid)) return json({ error: "photo" }, 400);
+    if (method === "GET") {
+      const o = await env.BUCKET.get(`${base}photo/${pid}`);
+      return o ? rawResponse(o, "image/jpeg") : json({ error: "not found" }, 404);
+    }
+    if (!canEdit(role)) return json({ error: "forbidden" }, 403);
+    if (method === "PUT") {
+      if (!(await allow(env, `trphoto:${user.id}`, 400, 86400))) return json({ error: "too many" }, 429);
+      const err = await putRaw(env, request, `${base}photo/${pid}`, MAX_PHOTO, { updated: nowIso(), by: user.display_name || "" });
+      return err || json({ ok: true });
+    }
+    if (method === "DELETE") { await env.BUCKET.delete(`${base}photo/${pid}`); return json({ ok: true }); }
     return json({ error: "method" }, 405);
   }
 

@@ -22,10 +22,13 @@ export function descPane(E) {
   const size = sheetSize(lines, descKind, cell);
   let canvas = box.querySelector("canvas");
   if (!canvas) {
-    box.innerHTML = '<canvas aria-label="Définitions des postes"></canvas><p class="tr-desc-hint">Cliquer une ligne pour choisir le poste, puis une case pour la remplir.</p>';
+    box.innerHTML = '<canvas tabindex="0" data-own-keys aria-label="Définitions des postes"></canvas><p class="tr-desc-hint">Cliquer une ligne pour choisir le poste, puis une case pour la remplir. Au clavier : ↑ ↓ les lignes, ← → les cases, Entrée ou une lettre pour choisir le symbole, Suppr pour vider.</p>';
     canvas = box.querySelector("canvas");
-    canvas.addEventListener("click", (e) => onClick(E, e));
+    canvas.addEventListener("click", (e) => { onClick(E, e); });
     canvas.addEventListener("dblclick", (e) => onClick(E, e, true));
+    canvas.addEventListener("keydown", (e) => onKey(E, e));
+    canvas.addEventListener("focus", () => descPane(E));
+    canvas.addEventListener("blur", () => descPane(E));
   }
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.ceil(size.w * dpr) + 2; canvas.height = Math.ceil(size.h * dpr) + 2;
@@ -35,16 +38,22 @@ export function descPane(E) {
   g.clearRect(0, 0, size.w + 2, size.h + 2);
   // selection highlight (yellow, as in Purple Pen)
   const selCtl = E.sel?.kind === "control" || E.sel?.kind === "number" ? E.sel : null;
+  let selLine = -1;
   lines.forEach((l, i) => {
     const hit = selCtl && l.control === selCtl.control && (!selCtl.cc || !l.cc || l.cc === selCtl.cc) && (l.kind === "normal" || l.kind === "directive" && !l.isLeg);
     const legHit = E.sel?.kind === "leg" && l.isLeg && l.cc === E.sel.cc1;
-    if (hit || legHit) { g.fillStyle = "#fff59d"; g.fillRect(0.5, 0.5 + i * cell, size.w, cell); }
+    if (hit || legHit) { g.fillStyle = "#fff59d"; g.fillRect(0.5, 0.5 + i * cell, size.w, cell); if (selLine < 0) selLine = i; }
   });
   // the sheet, in pixels (y down): its own coordinates are already y down from the top-left corner
   const items = sheetItems(lines, descKind, cell, { white: false, x0: 0.5, y0: 0.5 });
   const T = (x, y) => [x, y];
   drawItems(g, items.map((it) => ({ ...it, color: "black" })), T, 1, { blend: "none" });
-  E.descState = { lines, descKind, cell };
+  E.descState = { lines, descKind, cell, selLine };
+  // the box the keyboard is on, while the sheet has the focus
+  if (document.activeElement === canvas && selLine >= 0 && descKind !== "text" && lines[selLine].kind === "normal") {
+    const b = E.descBox ?? 3;
+    g.strokeStyle = "#0a84ff"; g.lineWidth = 2.5; g.strokeRect(0.5 + b * cell + 1.5, 0.5 + selLine * cell + 1.5, cell - 3, cell - 3);
+  }
 }
 
 function onClick(E, e, dbl = false) {
@@ -72,6 +81,44 @@ function onClick(E, e, dbl = false) {
   if (hit.kind === "directive" && (c.kind === "finish" || c.kind === "crossing" || c.kind === "map-issue")) { directivePicker(E, line.control, e.clientX, e.clientY); return; }
   if (hit.kind === "normalText") D.customText(E, line.control);
 }
+/** The keyboard on the sheet: lines up and down, boxes left and right (B code, C to H), Enter or a letter opens the symbols. */
+function onKey(E, e) {
+  const st = E.descState;
+  if (!st) return;
+  const lines = st.lines, selectable = (l) => l.isLeg || (l.control && (l.kind === "normal" || l.kind === "directive"));
+  const box = E.descBox ?? 3, canvas = e.currentTarget;
+  const go = (i) => {
+    const l = lines[i];
+    if (l.isLeg) E.select({ kind: "leg", c1: E.ev.courseControls[l.cc]?.control, c2: E.ev.courseControls[l.cc2]?.control, cc1: l.cc, cc2: l.cc2 });
+    else { E.select({ kind: "control", control: l.control, cc: l.cc || 0 }); centerOn(E, l.control); }
+  };
+  const cur = st.selLine;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const dir = e.key === "ArrowDown" ? 1 : -1;
+    for (let i = (cur < 0 ? (dir > 0 ? -1 : lines.length) : cur) + dir; i >= 0 && i < lines.length; i += dir) if (selectable(lines[i])) { go(i); break; }
+    canvas.focus(); return;
+  }
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); E.descBox = Math.max(1, Math.min(7, box + (e.key === "ArrowRight" ? 1 : -1))); descPane(E); return; }
+  if (cur < 0 || E.readOnly) return;
+  const line = lines[cur], c = line.control ? E.ev.controls[line.control] : null;
+  if (!c) return;
+  const r = canvas.getBoundingClientRect(), at = [r.left + (box + 1) * st.cell, r.top + (cur + 1) * st.cell];
+  const symbolic = st.descKind !== "text" && (c.kind === "normal" || c.kind === "start" || c.kind === "map-exchange");
+  if (e.key === "Enter" || e.key === "F2" || (e.key.length === 1 && /[\p{L}\d]/u.test(e.key) && !e.ctrlKey && !e.metaKey)) {
+    e.preventDefault();
+    if (line.kind === "directive" || c.kind === "finish" || c.kind === "crossing" || c.kind === "map-issue") { directivePicker(E, line.control, at[0], at[1]); return; }
+    if (st.descKind === "text") { D.customText(E, line.control); return; }
+    if (box === 1 && c.kind === "normal") { D.codeEdit(E, line.control); return; }
+    if (symbolic && COLUMN[box]) symbolPicker(E, line.control, box, at[0], at[1], e.key.length === 1 ? e.key : "");
+    return;
+  }
+  if ((e.key === "Delete" || e.key === "Backspace") && symbolic && COLUMN[box]) {
+    e.preventDefault();
+    E.change((ev) => { ev.controls[line.control].symbols[box - 2] = null; if (box === 5) ev.controls[line.control].colF = null; }, `Définition : colonne ${COLUMN[box]} vidée`);
+    canvas.focus();
+  }
+}
 function centerOn(E, controlId) {
   const c = E.ev.controls[controlId];
   if (!c) return;
@@ -80,7 +127,7 @@ function centerOn(E, controlId) {
 }
 
 /** A grid of a column's symbols (Purple Pen's SymbolPopup), with names; column F adds the size field. */
-function symbolPicker(E, controlId, box, cx, cy) {
+function symbolPicker(E, controlId, box, cx, cy, typed = "") {
   const std = E.ev.descStandard || "2018", col = COLUMN[box];
   let list = symbolsFor(col, std);
   if (col === "E") list = [...list, ...symbolsFor("D", std)];
@@ -109,10 +156,40 @@ function symbolPicker(E, controlId, box, cx, cy) {
   });
   const search = pop.querySelector(".tr-symsearch");
   search.focus();
-  search.addEventListener("input", () => {
-    const q = search.value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    pop.querySelectorAll(".tr-sym").forEach((b) => { b.hidden = q && !b.title.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(q); });
+  const fold = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const filter = () => {
+    // the names containing what is typed, those with a word starting with it first; the empty box only without a search
+    const q = fold(search.value.trim());
+    pop.querySelectorAll(".tr-sym").forEach((b, i) => {
+      const t = fold(b.title), empty = i === 0;
+      b.hidden = !!q && (empty || !t.includes(q));
+      const wordStart = [" ", "(", "-", "'", "’"].some((c) => ` ${t}`.includes(`${c}${q}`));
+      b.style.order = !q ? "" : t.startsWith(q) ? "-2" : wordStart ? "-1" : "0";
+    });
+  };
+  search.addEventListener("input", filter);
+  // Enter takes the first symbol shown; the arrows move between them; Escape closes
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const first = [...pop.querySelectorAll(".tr-sym:not([hidden])")].sort((x, y) => (Number(x.style.order) || 0) - (Number(y.style.order) || 0))[0];
+      first?.click(); E.$("#tr-desc canvas")?.focus();
+    }
+    if (e.key === "ArrowDown") { e.preventDefault(); pop.querySelector(".tr-sym:not([hidden])")?.focus(); }
+    if (e.key === "Escape") { e.preventDefault(); pop.remove(); E.$("#tr-desc canvas")?.focus(); }
   });
+  pop.addEventListener("keydown", (e) => {
+    if (e.target === search) return;
+    const shown = [...pop.querySelectorAll(".tr-sym:not([hidden])")], i = shown.indexOf(document.activeElement);
+    if (e.key === "Escape") { pop.remove(); E.$("#tr-desc canvas")?.focus(); }
+    else if (i >= 0 && ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) {
+      e.preventDefault();
+      const perRow = Math.max(1, Math.round(pop.querySelector(".tr-symgrid").clientWidth / (shown[0].offsetWidth + 4)));
+      const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: perRow, ArrowUp: -perRow }[e.key];
+      shown[Math.max(0, Math.min(shown.length - 1, i + step))].focus();
+    }
+  });
+  if (typed) { search.value = typed; filter(); }
   const dim = pop.querySelector(".tr-dimin");
   dim?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;

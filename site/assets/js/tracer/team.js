@@ -9,6 +9,7 @@ import * as S from "./store.js";
 import * as G from "./geo.js";
 import { modal, field } from "./dialogs.js";
 import { ctrlName } from "./reports.js";
+import * as IDB from "./idb.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const when = (t) => new Date(t).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -129,10 +130,16 @@ async function sync(E) {
   if (!q.length || E.fieldSyncing) return;
   E.fieldSyncing = true;
   try {
+    // the photos taken offline go first (kept in this browser until sent)
+    for (const u of q) if (u.photo) {
+      const bytes = await IDB.get("photos", u.photo);
+      if (bytes) { await S.savePhoto(E.meta.id, u.photo, bytes, E.key); await IDB.del("photos", u.photo); }
+    }
     const cur = await loadField(E);
     for (const u of q) {
-      const old = cur.controls[u.control];
-      if (!old || (old.at || 0) <= u.at) cur.controls[u.control] = { state: u.state, at: u.at, by: u.by, note: u.note || "", gps: u.gps || null };
+      const old = cur.controls[u.control] || {};
+      if (u.photo) { if (!(old.photos || []).some((x) => x.pid === u.photo)) cur.controls[u.control] = { ...old, photos: [...(old.photos || []), { pid: u.photo, at: u.at, by: u.by }] }; }
+      else if (!old.at || old.at <= u.at) cur.controls[u.control] = { ...old, state: u.state, at: u.at, by: u.by, note: u.note || "", gps: u.gps || null };
       cur.log.push(u);
     }
     cur.log = cur.log.slice(-2000);
@@ -146,7 +153,7 @@ function mark(E, controlId, state, note = "") {
   const u = { uid: uid(), control: controlId, state, at: Date.now(), by: me(E), note, gps };
   writeQueue(E, [...readQueue(E), u]);
   E.fieldData ||= { controls: {}, log: [] };
-  E.fieldData.controls[controlId] = { state, at: u.at, by: u.by, note, gps };
+  E.fieldData.controls[controlId] = { ...(E.fieldData.controls[controlId] || {}), state, at: u.at, by: u.by, note, gps };
   renderField(E); E.redraw();
   sync(E);
 }
@@ -207,11 +214,13 @@ function renderField(E) {
       <button type="button" class="tr-icon" data-f="close" title="Quitter le mode terrain" aria-label="Quitter">✕</button></div>
     ${t ? `<div class="tr-field-target"><span class="tr-field-code">${esc(ctrlName(E.ev, t.id))}</span>
       ${t.d != null ? `<span>${Math.round(t.d)} m · ${Math.round(bearing(E, t.id))}°</span>` : ""}${t.chosen ? " <small>(choisi sur la carte)</small>" : " <small>(le plus proche)</small>"}
-      ${st ? `<small>${esc(stateOf(st.state)?.[1] || "")} par ${esc(st.by)}, ${when(st.at)}${st.note ? ` — ${esc(st.note)}` : ""}</small>` : "<small>Pas encore d'état.</small>"}</div>
+      ${st?.state ? `<small>${esc(stateOf(st.state)?.[1] || "")} par ${esc(st.by)}, ${when(st.at)}${st.note ? ` — ${esc(st.note)}` : ""}</small>` : "<small>Pas encore d'état.</small>"}
+      ${st?.photos?.length ? `<small>${st.photos.length} photo${st.photos.length > 1 ? "s" : ""}</small>` : ""}</div>
       <div class="tr-field-btns">${STATES.map(([k, label, col]) => `<button type="button" class="btn" data-f="${k}" style="border-color:${col}">${label}</button>`).join("")}</div>`
     : '<p class="tr-hint">Touchez un poste sur la carte.</p>'}
     <div class="tr-field-foot"><small>${STATES.map(([k, label]) => `${label} ${counts[k]}`).join(" · ")} sur ${total} postes${q ? ` · ${q} en attente de réseau` : ""}</small>
       ${G.hasGeo(E.ev) && E.gps ? '<button type="button" class="btn btn-sm" data-f="me">Centrer sur moi</button>' : ""}
+      ${t ? '<button type="button" class="btn btn-sm" data-f="photo">Photo</button>' : ""}
       <button type="button" class="btn btn-sm" data-f="list">Liste</button></div>`;
 }
 export async function fieldMode(E) {
@@ -219,7 +228,10 @@ export async function fieldMode(E) {
   fieldOverlay(E);
   E.fieldOn = true;
   try { E.fieldData = await loadField(E); } catch (err) { E.fieldData = E.fieldData || { controls: {}, log: [] }; }
-  for (const u of readQueue(E)) E.fieldData.controls[u.control] = { state: u.state, at: u.at, by: u.by, note: u.note || "", gps: u.gps };
+  for (const u of readQueue(E)) {
+    const old = E.fieldData.controls[u.control] || {};
+    E.fieldData.controls[u.control] = u.photo ? { ...old, photos: [...(old.photos || []), { pid: u.photo, at: u.at, by: u.by }] } : { ...old, state: u.state, at: u.at, by: u.by, note: u.note || "", gps: u.gps };
+  }
   const box = document.createElement("div");
   box.className = "tr-field";
   E.root.appendChild(box);
@@ -231,8 +243,21 @@ export async function fieldMode(E) {
     if (f === "close") { stopField(E); return; }
     if (f === "me" && E.gps) { const [mx, my] = G.toMm(E.ev, E.gps.lat, E.gps.lon), W = E.canvas.clientWidth, H = E.canvas.clientHeight, k = Math.max(E.view.k, 5); E.view = { k, ox: W / 2 - mx * k, oy: H / 2 + my * k }; E.redraw(); return; }
     if (f === "list") { fieldList(E); return; }
+    if (f === "photo") { takePhoto(E); return; }
     const t = target(E); if (!t) return;
     let note = "";
+    // set or checked far from where the map puts the control: said before it is noted (a wrong control, or the map)
+    if ((f === "set" || f === "checked") && E.gps && G.hasGeo(E.ev)) {
+      const d = distTo(E, t.id), sprint = E.ev.appearance.mapStandard === "Spr2019" || E.ev.map.scale <= 5000;
+      const lim = Math.max(sprint ? 12 : 25, 1.5 * E.gps.acc);
+      if (d > lim) {
+        const v = await modal(E, { title: `Poste ${ctrlName(E.ev, t.id)} : ${Math.round(d)} m de la carte`, ok: f === "set" ? "Noter « posé » quand même" : "Noter « vérifié » quand même",
+          body: `<p>Le téléphone est à <b>${Math.round(d)} m</b> de l'emplacement du poste sur la carte (GPS ± ${Math.round(E.gps.acc)} m).</p>
+          <p>Vérifiez que c'est le bon poste et le bon objet ; sous les arbres, le GPS peut aussi s'écarter.</p>${field("Note (facultatif)", '<input name="n" maxlength="300">')}` });
+        if (!v) return;
+        note = [`à ${Math.round(d)} m de la carte`, v.n.trim()].filter(Boolean).join(" ; ");
+      }
+    }
     if (f === "problem") { const v = await modal(E, { title: `Problème au poste ${ctrlName(E.ev, t.id)}`, body: field("Ce qui ne va pas", '<input name="n" maxlength="300" placeholder="Boîtier manquant, balise abîmée…">') }); if (!v) return; note = v.n.trim(); }
     mark(E, t.id, f, note);
     E.toast(`${ctrlName(E.ev, t.id)} : ${stateOf(f)[1].toLowerCase()}${readQueue(E).length ? " (envoi dès que le réseau revient)" : ""}.`);
@@ -273,7 +298,56 @@ async function fieldList(E) {
     const [mx, my] = G.toMm(E.ev, st.gps[0], st.gps[1]), c = E.ev.controls[id];
     return `${Math.round(M.mmToM(E.ev, Math.hypot(c.x - mx, c.y - my)))} m`;
   };
-  await modal(E, { title: "États des postes", wide: true, ok: null, cancel: "Fermer", body: `<div class="table-wrap"><table class="tr-table"><thead><tr><th>Poste</th><th>État</th><th>Par</th><th>Quand</th><th>Note</th><th class="r">GPS / carte</th></tr></thead><tbody>
-    ${ids.map((id) => { const st = fd[id], s = st ? stateOf(st.state) : null; return `<tr><td>${esc(ctrlName(E.ev, id))}</td><td>${s ? `<span style="color:${s[2]}">●</span> ${s[1]}` : "—"}</td><td>${esc(st?.by || "")}</td><td>${st ? when(st.at) : ""}</td><td>${esc(st?.note || "")}</td><td class="r">${gpsOff(id)}</td></tr>`; }).join("")}
-    </tbody></table></div><p class="tr-hint">« GPS / carte » : l'écart entre la position du téléphone quand l'état a été noté et le poste sur la carte (un grand écart peut signaler un poste mal placé, ou un GPS imprécis sous les arbres).</p>` });
+  await modal(E, { title: "États des postes", wide: true, ok: null, cancel: "Fermer", body: `<div class="table-wrap"><table class="tr-table"><thead><tr><th>Poste</th><th>État</th><th>Par</th><th>Quand</th><th>Note</th><th class="r">GPS / carte</th><th>Photos</th></tr></thead><tbody>
+    ${ids.map((id) => { const st = fd[id], s = st?.state ? stateOf(st.state) : null; return `<tr><td>${esc(ctrlName(E.ev, id))}</td><td>${s ? `<span style="color:${s[2]}">●</span> ${s[1]}` : "—"}</td><td>${esc(st?.by || "")}</td><td>${st?.at ? when(st.at) : ""}</td><td>${esc(st?.note || "")}</td><td class="r">${gpsOff(id)}</td>
+      <td>${(st?.photos || []).map((ph) => `<button type="button" class="tr-thumb" data-pid="${esc(ph.pid)}" title="${esc(ph.by)}, ${when(ph.at)}"><img alt="Photo du poste ${esc(ctrlName(E.ev, id))}"></button>`).join("")}</td></tr>`; }).join("")}
+    </tbody></table></div><p class="tr-hint">« GPS / carte » : l'écart entre la position du téléphone quand l'état a été noté et le poste sur la carte (un grand écart peut signaler un poste mal placé, ou un GPS imprécis sous les arbres).</p>`,
+  onOpen: (f) => {
+    for (const b of f.querySelectorAll(".tr-thumb")) {
+      photoUrl(E, b.dataset.pid).then((u) => { if (u) b.querySelector("img").src = u; });
+      b.addEventListener("click", async () => { const u = await photoUrl(E, b.dataset.pid); if (u) window.open(u, "_blank"); });
+    }
+  } });
+}
+
+// ---- photos ------------------------------------------------------------------------------------------------------------------
+const PHOTO_URLS = new Map();
+/** A photo's address in this page: from this browser when still waiting for the network, else from the server. */
+async function photoUrl(E, pid) {
+  if (PHOTO_URLS.has(pid)) return PHOTO_URLS.get(pid);
+  let blob = null;
+  const local = await IDB.get("photos", pid);
+  if (local) blob = new Blob([local], { type: "image/jpeg" });
+  else blob = await S.loadPhoto(E.meta.id, pid, E.key).catch(() => null);
+  const u = blob ? URL.createObjectURL(blob) : null;
+  if (u) PHOTO_URLS.set(pid, u);
+  return u;
+}
+/** The phone's camera (or a file): the photo shrunk to 1600 px, kept here, then sent with the control's next sync. */
+function takePhoto(E) {
+  const t = target(E);
+  if (!t) { E.toast("Touchez d'abord un poste."); return; }
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = "image/*"; input.capture = "environment";
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const img = await createImageBitmap(file);
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const bytes = new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/jpeg", 0.82))).arrayBuffer());
+      const pid = `${String(t.id).replace(/[^a-z0-9]/gi, "").toLowerCase()}-${uid()}`;
+      await IDB.put("photos", pid, bytes);
+      const u = { uid: uid(), control: t.id, photo: pid, at: Date.now(), by: me(E) };
+      writeQueue(E, [...readQueue(E), u]);
+      const old = E.fieldData.controls[t.id] || {};
+      E.fieldData.controls[t.id] = { ...old, photos: [...(old.photos || []), { pid, at: u.at, by: u.by }] };
+      renderField(E);
+      E.toast(`Photo du poste ${ctrlName(E.ev, t.id)} gardée${navigator.onLine ? "" : " (envoi dès que le réseau revient)"}.`);
+      sync(E);
+    } catch (err) { E.toast("Cette photo n'a pas pu être lue."); }
+  });
+  input.click();
 }

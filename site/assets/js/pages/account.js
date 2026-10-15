@@ -192,7 +192,8 @@ async function privacy(main) {
         postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :
         son créateur et les licenciés qu'il y ajoute, dont le nom et le numéro de licence sont enregistrés avec leur rôle. Les
         versions, les commentaires et les états des postes portent le nom de leur auteur. En mode terrain, l'état noté sur un poste
-        enregistre aussi la position du téléphone à cet instant (pour la comparer à la carte), visible de l'équipe ; la position
+        enregistre aussi la position du téléphone à cet instant (pour la comparer à la carte), visible de l'équipe, et l'équipe
+        peut y joindre des photos des postes (elles peuvent montrer des personnes : évitez-le), effacées avec l'événement ; la position
         n'est lue que pendant ce mode, avec l'autorisation du navigateur. Si l'équipe chiffre l'événement, ces données sont chiffrées
         dans le navigateur et illisibles pour le site. L'événement est conservé jusqu'à sa suppression par son créateur ; si
         celui-ci supprime son compte, il passe au premier traceur (à défaut, contrôleur) de l'équipe qui a un compte, sinon il est

@@ -1613,6 +1613,9 @@ body.tr-open { overflow: hidden; }
   border: 2px solid var(--focus); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 10px 14px; font-size: 13.5px; }
 .tr-calage p { margin: 6px 0; }
 #main.tr-page-over { outline: 3px dashed #a7179b; outline-offset: 4px; border-radius: 8px; }
+.tr-thumb { width: 44px; height: 44px; padding: 0; margin: 0 4px 4px 0; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; background: var(--surface-2); cursor: zoom-in; }
+.tr-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tr-desc canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .tr-table tr.tr-rule td { border-bottom: 2px solid var(--border-strong); }
 .tr-table tr.tr-sum td { font-weight: 600; border-top: 2px solid var(--border-strong); }
 .tr-punches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 14px; max-height: 46vh; overflow: auto; }

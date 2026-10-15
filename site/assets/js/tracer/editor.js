@@ -371,6 +371,7 @@ export async function openEditor(ctx) {
   function onKey(e) {
     if (!document.body.contains(root)) return;
     if (e.target.closest?.("input, textarea, select, [contenteditable]")) return;
+    if (e.target.closest?.("[data-own-keys]") && !e.ctrlKey && !e.metaKey) return;      // the description sheet's own keys (panes.js)
     if (root.querySelector(".tr-modal")) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); E.undoStep(); }
@@ -604,7 +605,7 @@ function shell(E) {
       ${menu("Rapports", [["rep-summary", "Résumé des circuits"], ["rep-legs", "Longueurs des interpostes"], ["rep-cross", "Références croisées"], ["rep-load", "Charge des postes et interpostes"],
         ["rep-audit", "Contrôle de l'événement"], "-", ["rep-climb", "Dénivelée (IGN)…"], ["rep-times", "Temps estimés du vainqueur…"], ["rep-pickup", "Plan de ramassage…"], ["rep-after", "Bilan après la course…"], "-", ["comments", "Commentaires de l'équipe…"], ["field", "Mode terrain…"]])}
       ${menu("Affichage", [["view-course", "Tout le circuit"], ["view-map", "Toute la carte"], ["view-all", "Afficher tous les postes"], ["view-printarea", "Afficher la zone d'impression"],
-        ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"]])}
+        ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"], ["save-to", "Plusieurs fichiers : dossier ou .zip…"]])}
     </nav>
     <div class="tr-tools" role="toolbar" aria-label="Outils">
       <button type="button" class="tr-icon" id="tr-undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">${svg("undo")}</button>

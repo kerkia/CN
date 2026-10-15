@@ -5,7 +5,7 @@
 import * as M from "./model.js";
 import { layoutCourse } from "./layout.js";
 import { itemsFor, drawItems, cmykToRgb, SCREEN } from "./draw.js";
-import { modal, download, fileName, field, sel, num } from "./dialogs.js";
+import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs.js";
 import { hasGeo, toLatLon } from "./geo.js";
 import { relayAssignments } from "./relay.js";
 import { zip, printBox } from "./pdf.js";
@@ -240,7 +240,7 @@ export async function imagesDialog(E) {
     if (wf) files[`${name}.${v.fmt === "png" ? "pgw" : "jgw"}`] = new TextEncoder().encode(wf);
   }
   if (Object.keys(files).length === 1) { const [n, b] = Object.entries(files)[0]; download(n, new Blob([b])); }
-  else download(`${fileName(ev.title)} - images.zip`, await zip(files), "application/zip");
+  else await saveFiles(E, files, `${fileName(ev.title)} - images.zip`);
   E.status("Images créées", "ok");
 }
 
@@ -261,6 +261,6 @@ export async function routeGadget(E) {
   // RouteGadget reads the controls' map positions: here in pixels of the image (MapPosition unit="px" is not IOF; the
   // positions stay in mm and the map's corners in the Map element let it scale them)
   files[`${fileName(ev.title)}.xml`] = new TextEncoder().encode(iofXmlText(ev, 3));
-  download(`${fileName(ev.title)} - RouteGadget.zip`, await zip(files), "application/zip");
+  await saveFiles(E, files, `${fileName(ev.title)} - RouteGadget.zip`);
   E.toast("Fichiers RouteGadget créés (carte et circuits). Les temps intermédiaires viennent ensuite du logiciel de chronométrage. Dans O'CN, « Publier vers l'analyse multi » fait mieux sans fichier.", 8000);
 }
