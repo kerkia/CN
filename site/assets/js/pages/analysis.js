@@ -283,6 +283,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-files").innerHTML = html`<div class="card-body">
       <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${ACCEPT}">
         <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
+      <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}
       </tbody></table>

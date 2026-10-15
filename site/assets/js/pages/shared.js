@@ -710,6 +710,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     el.innerHTML = html`<div class="sh-curves-head"><b>${t("sh.own.title")}</b><button type="button" class="btn btn-sm" id="sh-curves-close" title="${t("sh.own.close")}">‹</button></div>
       ${own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
         : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept=".gpx,.tcx,.fit" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
+          <p class="hint" style="margin:6px 0 0">${t("an.fitTip")}</p>
           <p class="notice" id="sh-own-note" hidden></p>`}`;
     $("#sh-curves-close").addEventListener("click", () => { curvesOpen = false; savePrefs(); curvesPanel(); });
     $("#sh-own-file")?.addEventListener("change", async (e) => {
@@ -755,7 +756,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       <div class="sh-mine">${runners.some((r) => r.mine)
         ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
-        <input type="file" id="sh-file" accept=".gpx,.tcx,.fit" hidden></div>
+        <input type="file" id="sh-file" accept=".gpx,.tcx,.fit" hidden>
+        <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
       <div id="sh-upload"></div>`;
     const shownChanged = () => {
       saveVis();
