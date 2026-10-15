@@ -1,16 +1,18 @@
 // Full window for the pages built around a map — the analyses' playback (« Analyse solo », « Analyse multi ») and the
 // Tracer's editor, the same two buttons on each (owner, 2026-10-15: the room for the map, without the site's menus stacked
 // above it; one way for all, the analyses' — the Tracer's overlay had no obvious way back to the site). « ⤢ » hides the site's
-// bar and footer and lets the page fill the window (Échap or « ⤡ » brings them back); « ↗ » opens the same page alone in a
-// new tab (?fen=1), whose « ✕ » closes that tab. The tab is opened by script, without « noopener », so it starts with a copy
-// of this tab's session storage: « Analyse solo » finds its files there as after a reload.
+// bar and footer and lets the page fill the window (Échap or « ⤡ » « Revenir au menu » brings them back); « ↗ » opens the
+// same page alone in a new tab (?fen=1), in full window, where « ⤡ » brings the menus back too (owner, 2026-10-15: its former
+// « ✕ Fermer cet onglet » did not close it - a browser refuses to close a tab that was reloaded or not opened by script). The
+// tab is opened by script, without « noopener », so it starts with a copy of this tab's session storage: « Analyse solo »
+// finds its files there as after a reload.
 
 const CLS = "full-win";
 export const inOwnTab = () => /[?&]fen=1(?:&|$)/.test(location.hash);
 export const isFull = () => document.body.classList.contains(CLS);
 
-const look = () => { const own = inOwnTab(), on = isFull(); return { on, text: own && on ? "✕" : on ? "⤡" : "⤢",
-  title: own && on ? "Fermer cet onglet" : on ? "Quitter le plein écran (Échap)" : "Plein écran : la carte occupe toute la fenêtre" }; };
+const look = () => { const on = isFull(); return { on, text: on ? "⤡" : "⤢",
+  title: on ? "Revenir au menu (Échap)" : "Plein écran : la carte occupe toute la fenêtre" }; };
 function label() {
   const l = look();
   for (const b of document.querySelectorAll('[data-fw="toggle"]')) { b.setAttribute("aria-pressed", String(l.on)); b.textContent = l.text; b.title = l.title; }
@@ -29,7 +31,7 @@ export function setTabParams(fn) { tabParams = fn; }
 export function setTabHandler(fn) { tabHandler = fn; }
 /** A page that handles Échap itself (the Tracer's editor cancels a tool or a selection first, then leaves full window). */
 export function setEscapeOwner(fn) { escapeOwner = fn; }
-/** What a page does before « ✕ » closes its own tab (the Tracer saves). */
+/** What a page does before its own tab closes (the Tracer saves); kept for the pages that set it. */
 export function setBeforeClose(fn) { beforeClose = fn; }
 export function newTab() {
   const h = location.hash || "#/";
@@ -52,14 +54,10 @@ export function bindFull() {
     const b = e.target.closest?.("[data-fw]");
     if (!b) return;
     if (b.dataset.fw === "tab") { if (tabHandler) tabHandler(); else newTab(); return; }
-    if (isFull() && inOwnTab()) {                         // a tab not opened by script stays: the site's bar comes back
-      Promise.resolve(beforeClose?.()).catch(() => {}).finally(() => { window.close(); setTimeout(() => setFull(false), 300); });
-      return;
-    }
     setFull(!isFull());
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape" || !isFull() || inOwnTab() || escapeOwner?.()) return;
+    if (e.key !== "Escape" || !isFull() || escapeOwner?.()) return;
     if (e.target.closest?.("input, textarea, select, [contenteditable], .modal, dialog")) return;
     setFull(false);
   });

@@ -44,7 +44,7 @@ const ownGet = (k) => idb("readonly", (s) => s.get(k)).catch(() => null);
 const ownPut = (k, v) => idb("readwrite", (s) => s.put(v, k)).catch(() => null);
 const ownDel = (k) => idb("readwrite", (s) => s.delete(k)).catch(() => null);
 const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b", "#d62728", "#bcbd22", "#0b3d91", "#f032e6", "#008080", "#7f7f7f"];
-const SPEEDS = [1, 2, 5, 10, 20, 60];
+const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
 const TOL = 25;                                           // metres: a control reached

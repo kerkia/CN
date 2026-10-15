@@ -31,7 +31,7 @@ import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFrom
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 
-const SPEEDS = [1, 2, 5, 10, 20, 60];
+const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
 const ERR = { pct: 20, s: 10 };                        // the split-times page's mistake rule
 const TOL = 20;                                        // metres: a control is "reached" within this of the trace

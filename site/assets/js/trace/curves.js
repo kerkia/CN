@@ -52,7 +52,7 @@ export function drawCurves(canvas, { track, t0, total, rows, cursor = null, unit
   const bottomAxis = h - BOTTOM, ROW = Math.max(26, (bottomAxis - TOP) / Math.max(1, rows.length));
   // a round step giving about n ticks over a span, from a list of steps
   const niceStep = (span, n, steps) => steps.find((s) => span / s <= n) ?? steps[steps.length - 1];
-  const NUM = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+  const NUM = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000];
   const label = (txt, x, y, align, colr, bold) => { g.font = `${bold ? "600 " : ""}10px system-ui, sans-serif`; g.textAlign = align; g.fillStyle = colr; g.fillText(txt, x, y); };
   const tNow = cursor == null ? null : Math.max(0, Math.min(total, cursor));
   rows.forEach((c, r) => {
@@ -61,23 +61,37 @@ export function drawCurves(canvas, { track, t0, total, rows, cursor = null, unit
     for (const l of shade) { g.fillStyle = "rgba(198,40,40,0.12)"; g.fillRect(X(l.t0), top, X(l.t1) - X(l.t0), bottom - top); }
     // each point is the mean over the time a pixel spans (a point sample aliased into spikes), at least 6 s
     const colr = curveColour(c), win = Math.max(step, c === "pace" ? 15 : 6), vals = [];       // the pace over 15 s at least
+    // as many round values as the row has room for: one every ~16 px, 3 at least (owner, 2026-10-15: « 0 and 100 » was too few)
+    const nTicks = Math.max(3, Math.floor((bottom - top) / 16));
+    // the values a scale is made from: for the pace, the cadence and the power, the moments in motion only (above 40 % of
+    // the median) - a stop at a control (speed and cadence 0) would otherwise stretch the scale down to it
+    const scaleOf = (arr) => {
+      const v = arr.filter((x) => x != null && !Number.isNaN(x)).sort((p, q) => p - q);
+      const med = v[Math.floor(v.length / 2)] || 0;
+      return c === "pace" || c === "cad" || c === "pw" ? v.filter((x) => x >= 0.4 * med) : v;
+    };
     let lo, hi, ticks = [], fmtV, unit, now = "—";
     if (c === "pace") {
       for (let q = 0; q <= total; q += step) vals.push((cumAt(track, t0 + q + win / 2) - cumAt(track, t0 + q - win / 2)) / win);
-      const sorted = [...vals].sort((p, q) => p - q);
+      const sorted = scaleOf(vals);
       // the slow end stops at 20 min/km: a stop (map reading at a control) would flatten everything else
       lo = Math.max(1000 / 1200, sorted[Math.floor(sorted.length * 0.02)] || 0); hi = Math.max(lo + 0.1, sorted[Math.floor(sorted.length * 0.98)] || 1);
-      // the ticks at round paces (min/km), drawn where those speeds fall
-      const pFast = 1000 / hi, pSlow = 1000 / lo, ps = niceStep(pSlow - pFast, 3, [15, 30, 60, 120, 180, 300, 600]);
-      for (let p = Math.ceil(pFast / ps) * ps; p <= pSlow; p += ps) ticks.push(1000 / p);
+      // the ticks at round paces (min/km), drawn where those speeds fall: the scale reaches the round paces around the
+      // race's, and every round pace between is offered (a speed scale crowds the slow ones: the rule below thins them)
+      const PACES = [150, 180, 210, 240, 270, 300, 330, 360, 420, 480, 540, 600, 720, 900, 1200];
+      const pFast = [...PACES].reverse().find((p) => p <= 1000 / hi) ?? PACES[0], pSlow = PACES.find((p) => p >= 1000 / lo) ?? 1200;
+      hi = 1000 / pFast; lo = 1000 / pSlow;
+      for (const p of PACES) if (p >= pFast && p <= pSlow) ticks.push(1000 / p);
       fmtV = pace; unit = t("an.unit.pace");
       if (tNow != null) { const win30 = Math.min(30, tNow); if (win30 >= 5) now = pace((cumAt(track, t0 + tNow) - cumAt(track, t0 + tNow - win30)) / win30); }
     } else {
       for (let q = 0; q <= total; q += step) vals.push(meanBetween(track, c, t0 + q - win / 2, t0 + q + win / 2));
-      lo = Infinity; hi = -Infinity;
-      for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
-      if (!(hi > lo)) { lo = (lo === Infinity ? 0 : lo) - 1; hi = lo + 2; }
-      const dec = c === "temp" ? 1 : 0, s = niceStep(hi - lo, 3, NUM);
+      // the range without the extremes (a stop's zero cadence, a spike): the 2nd to the 98th percentile, then to round ticks
+      const ok = scaleOf(vals);
+      lo = ok.length ? ok[Math.floor(ok.length * 0.02)] : 0; hi = ok.length ? ok[Math.min(ok.length - 1, Math.floor(ok.length * 0.98))] : 1;
+      if (!(hi > lo)) { lo -= 1; hi = lo + 2; }
+      const dec = c === "temp" ? 1 : 0, s = niceStep(hi - lo, nTicks, NUM);
+      lo = Math.floor(lo / s) * s; hi = Math.ceil(hi / s) * s;
       for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) ticks.push(v);
       fmtV = (v) => fmt(v, s < 1 ? 1 : dec); unit = (c === "cad" && units.cad) || CHANNEL_UNIT[c] || "/min";
       if (tNow != null) { const v = valueAt(track, c, t0 + tNow); if (v != null && !Number.isNaN(v)) now = fmt(v, dec); }
@@ -88,7 +102,7 @@ export function drawCurves(canvas, { track, t0, total, rows, cursor = null, unit
     let lastY = -Infinity;
     for (const v of [...ticks].sort((a, b) => Y(b) - Y(a))) {
       const y = Y(v);
-      if (Math.abs(y - lastY) < 11) continue;
+      if (Math.abs(y - lastY) < 12) continue;
       lastY = y;
       g.strokeStyle = grid; g.globalAlpha = 0.7; g.beginPath(); g.moveTo(LEFT, y); g.lineTo(LEFT + plotW, y); g.stroke(); g.globalAlpha = 1;
       label(fmtV(v), LEFT - 4, y + 3, "right", ink, false);

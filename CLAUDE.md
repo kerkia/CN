@@ -538,7 +538,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   where they start, rapide → lent; owner, 2026-10-15). The curves are stacked rows, all of the file's open by default
   (the former default, pace + heart rate, counts as unset), each with its scale (owner, 2026-10-15: unusable without):
   the name and unit, round ticks on a value axis (pace at round min/km, its slow end capped at 20 min/km; labels never
-  overlap), the value at the cursor, and a shared race-time axis; altitude green, power orange, temperature gold;
+  overlap; owner, 2026-10-15, « cadence: only 0 and 100 »: a tick every ~16 px of a row, the range from the 2nd to the 98th
+  percentile rounded to the ticks, and for pace, cadence and power from the moments in motion only - above 40 % of the
+  median - so that a stop at a control touches the floor instead of stretching the scale), the value at the cursor, and a shared race-time axis; altitude green, power orange, temperature gold;
   cadence explicit (owner, 2026-10-15): watches record one foot's strides or a bike's pedal turns, so on foot it is
   doubled to « pas/min », on a bike kept in « tr/min » — the activity the file names (FIT session/sport/lap `sport`,
   TCX `Sport`, GPX `trk/type`: `track.activity`), else foot unless the race is a VTT one (`cadence`, once per track,
@@ -682,9 +684,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is drawn in the page under the site's menus, as the analyses are (owner,
   2026-10-15: the former full-window overlay left no obvious way back to the site): `.tr-app` in `#main` (`ctx.container`), its
   height fitted to the window (`fitHeight`), `body.tr-open` widens the page and hides the footer; « ← Événements » saves and goes
-  back to the list (in a `?fen=1` tab too, whose list head shows its « ✕ »); the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
+  back to the list (in a `?fen=1` tab too); the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
   saves, opens the event alone in a tab and closes it here (`setTabHandler`; one event, one tab), Échap first cancels the
-  editor's own pick, drawing, tool or selection (`setEscapeOwner`), « ✕ » of its own tab saves first (`setBeforeClose`); a
+  editor's own pick, drawing, tool or selection (`setEscapeOwner`); a
   change of page closes it (saved). With Purple Pen's tools and insertion rule,
   undo (100), autosave 1.8 s after a change, a version every 30 min of work, an editing lock (`/lock`, 150 s, refreshed every
   minute; same account = no lock). **Who**: a competition's event is created by a member of the race's organising club (an agenda
@@ -743,7 +745,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Tracer, the analyses'): the analyses' playback (« Analyse solo » transport row, « Analyse multi » right panel) and the
   Tracer's top bar have « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout
   refits on the resize event; Échap or « ⤡ » back) and « ↗ » (the same page alone in a new tab, `?fen=1`, kept by
-  `app.replaceQuery`; opened by script without noopener, so « Analyse solo » finds its session's files; its « ✕ » closes the tab).
+  `app.replaceQuery`; opened by script without noopener, so « Analyse solo » finds its session's files). In full window the
+  button is « ⤡ » « Revenir au menu (Échap) » everywhere, a `?fen=1` tab included (owner, 2026-10-15: its former « ✕ Fermer
+  cet onglet » did not close it - a browser refuses to close a tab reloaded or not opened by script). Playback speeds × 1, 2,
+  5, 10, 20, then every × 20 up to × 100 (owner, 2026-10-15; `SPEEDS` in `analysis.js` and `shared.js`).
 - **Analyse solo / multi** (owner, 2026-10-14; « Analyse multi » = the former « Analyse club » and « Analyse compétition »,
   2026-10-15): « Analyse
   solo » (« Analyse perso » until 2026-10-15) exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »
