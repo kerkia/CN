@@ -1016,7 +1016,7 @@ const FR = {
   "ad.up.confirm": "Retirer ce dépôt ? Ses résultats disparaîtront du site au prochain passage de la collecte.",
   "ad.up.added": "course ajoutée",
   // « Entrainement » (« Jeux » until 2026-10-14): the training games on generated maps, and the VMA page
-  "nav.g.training": "Entrainement", "nav.games": "Jeux", "nav.vma": "VMA",
+  "nav.g.training": "Entrainement", "nav.games": "Jeux", "nav.vma": "VMA", "nav.ask": "IA",
   "vma.lede": "Mesurer sa vitesse maximale aérobie : les tests, un calculateur précis pour le demi-Cooper et le Cooper sur piste, vos allures d'entraînement et les applications gratuites pour un test sur piste.",
   "vma.tab.calc": "Calculateur", "vma.tab.methods": "Méthodes", "vma.tab.apps": "Applications",
   "g.lede": "Des jeux d'entraînement à la lecture de carte, sur des cartes dessinées ici même : chaque partie en invente de nouvelles. Rien n'est envoyé ; vos meilleurs scores restent dans ce navigateur.",

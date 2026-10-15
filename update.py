@@ -87,7 +87,8 @@ ENGINE_VERSION = 10
 #   4 (2026-10-10): evaluation.json, the methods measured per circuit, out of sample, with intervals (site_eval.py)
 #   5 (2026-10-10): cfc.json, the Coupe de France des clubs recomputed (FFCO's 2026 rule), for Comparer des clubs
 #   6 (2026-10-14): evaluation.json, the duels called right weighted by each circuit's runners (not once per circuit)
-EXTRAS_VERSION = 6
+#   7 (2026-10-15): ask/*.parquet, the tables « IA » queries in the browser (site_ask.py)
+EXTRAS_VERSION = 7
 COMPUTED = ("fair", "top6w", "fair3", "top6w3")   # in this order: each Top is derived from its Fit
 
 

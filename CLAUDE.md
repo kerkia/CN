@@ -12,6 +12,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/` | Scraper (`fetcher`, `crawler`, `parser`, `store`, `updater`), agenda scraper (`agenda.py`), and the CN engine (`cn.py` = formulas, `cn_engine.py` = methods and computation, `cn_schema.sql`) |
 | `update.py` | The one entry point for updates: fetch → recompute → rebuild site data → deploy → mail digests. Also holds the one-off **migrations** |
 | `build_site.py`, `site_extras.py`, `site_io.py` | Turn the database into the static JSON under `site/data/` (runner buckets `r/`, races `c/`, month-end snapshots `snap/`, clubs, network, `meta.json`) |
+| `site_ask.py` | The Parquet tables « IA » queries in the browser (`site/data/ask/`: runners, clubs, races, results, cn), rebuilt by every build from the published data |
 | `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
@@ -605,6 +606,25 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `pages-dev-user` (8792, ADMIN_EMAILS overridden). The live server
   (`ocap/worker`) is deployed by hand. Local test: launch configs `ocap-live-dev` (8787), `ocap-dev` (8791) and
   `pages-dev-games` (8790), `localStorage["ocn.liveBase"]="http://localhost:8791"`; `iofLive` / `toLive` are exported for checks.
+- **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; **administrators only while it is a
+  pilot**): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**
+  (`functions/api/ask.js`, binding `AI` in `wrangler.toml`; the account's free allowance, 10 000 neurons a day shared by the
+  whole account — past it the calls fail until the next day, nothing billed on the free plan) turns the question into ONE
+  DuckDB query and says how to show it (`functions/_lib/ask.js`: `TABLES`, the tables described for the model — keep them in
+  step with `site_ask.py` —, `systemPrompt` with its rules and one worked example, `parseAnswer` tolerant of the models' JSON
+  slips). The browser runs the query with **DuckDB-WASM** (1.32.0 from jsdelivr) on `site/data/ask/*.parquet`, loading only
+  the tables the query names (`cn` 2.7 MB and `runners` 0.4 MB for most questions; `results` 8.8 MB): **the model never sees
+  the data**, only the question, the tables' description, the asker's licence, today's date and the site's method and
+  discipline. `checkSql` lets only one read run (no other statement, no file, no address); a query that fails goes back
+  to the model once with its error. « Préciser cette réponse » sends the previous question and query with the next one.
+  Model: `@cf/openai/gpt-oss-120b` at low reasoning effort (tested 2026-10-15 on 20 questions, scratch `ask_eval.py`: 19/20
+  ran, about 105 neurons and 10-20 s a question, so roughly 90 questions a day for the whole site); Qwen3-30B was cheaper
+  (57) but ignored the rules, and DeepSeek V4, Kimi and GLM 5.3 are not on the free plan. The models' mistakes found and
+  answered in the prompt: columns that do not exist (cn has no category or season), disciplines mixed in one value,
+  percentiles computed within the club instead of over France. 40 questions an hour per account (200 for administrators).
+  The tables carry what the site publishes (anonymised runners included; the official CN and the CN Top only, not the
+  analysis methods); nothing is stored. Before opening it to every account: a line on the privacy page (the questions go
+  to Cloudflare's Workers AI, already the site's host).
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

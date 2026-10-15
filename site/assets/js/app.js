@@ -44,6 +44,7 @@ const PAGES = {
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
+  ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs (pilot, administrators)
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
@@ -105,6 +106,7 @@ function parseHash() {
     : head === "relais" ? "relays"
     : head === "jeux" ? "games"
     : head === "vma" ? "vma"
+    : head === "ia" ? "ask"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -284,6 +286,8 @@ function renderHeader(r) {
       ["compare", "#/comparer", t("nav.compare")],
       ["clubs", "#/clubs", t("nav.clubs")],
       ["network", "#/reseau", t("nav.network")],
+      // « IA » (2026-10-15): questions on the data in plain French; administrators only while it is a pilot
+      ...(me.admin ? [["ask", "#/ia", t("nav.ask")]] : []),
     ]],
     ["races", t("nav.g.races"), [
       ["agenda", "#/agenda", t("nav.agenda")],

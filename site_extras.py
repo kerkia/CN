@@ -21,6 +21,7 @@ Outputs (all under site/data/):
                             built once - delete it to rebuild, as a method change does)
     evaluation.json         the same question measured soundly, every season (site_eval.py; built once too)
     cfc.json                the Coupe de France des clubs recomputed with FFCO's 2026 rule, every season
+    ask/*.parquet           the tables « IA » queries in the browser (site_ask.py, every build)
 """
 
 from __future__ import annotations
@@ -521,6 +522,11 @@ def main(out: Path | None = None) -> None:
     cfc(comps)
     import site_eval
     site_eval.evaluation(comps)
+    import site_ask
+    try:                                        # « IA »'s tables: never a reason for the site's update to fail
+        site_ask.build(OUT)
+    except Exception as e:
+        print(f"  ask: not built ({e})")
     print(f"extras done in {time.monotonic() - t0:.0f}s")
 
 

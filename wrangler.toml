@@ -32,6 +32,11 @@ name = "LIVE_DIR"
 class_name = "Directory"
 script_name = "ocap-live"
 
+# Workers AI (« IA », functions/api/ask.js): the language model that writes a query for a question; free plan, 10 000
+# neurons a day for the whole account, the calls fail past it (nothing billed)
+[ai]
+binding = "AI"
+
 [vars]
 SITE_URL = "https://ocn.kerkia.com"
 MAIL_FROM = "ocn@kerkia.com"
