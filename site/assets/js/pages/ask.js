@@ -181,18 +181,21 @@ export async function render(main) {
     <div class="page-head"><div><h1>${t("nav.ask")}</h1>
       <p class="lede">Posez une question sur les classements, les résultats, les clubs : une IA écrit la requête, votre navigateur l'exécute sur
         les données du site et en fait un tableau ou un graphique.</p></div></div>
-    <section class="card"><div class="card-body">
-      <form id="ia-form" class="ia-form">
-        <textarea id="ia-q" rows="2" maxlength="1000" placeholder="Par exemple : mon CN Top en forêt mois par mois depuis 2024"></textarea>
-        <div class="ia-row">
-          <div id="ia-follow"></div>
-          <select id="ia-model" title="Modèle (pilote)">${MODELS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
-          <button type="submit" class="btn btn-primary" id="ia-go">Demander</button>
-        </div>
-      </form>
-      <div class="ia-examples">${EXAMPLES.map((e) => html`<button type="button" class="chip" data-ex="${e}">${e}</button>`)}</div>
-      <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site. L'IA ne voit pas les données : elle
-        écrit une requête, que votre navigateur exécute. Elle peut se tromper : l'interprétation retenue et la requête sont affichées sous chaque réponse.</p>
+    <section class="card"><div class="card-body ia-top">
+      <div>
+        <form id="ia-form" class="ia-form">
+          <textarea id="ia-q" rows="4" maxlength="1000" placeholder="Par exemple : mon CN Top en forêt mois par mois depuis 2024"></textarea>
+          <div class="ia-row">
+            <div id="ia-follow"></div>
+            <select id="ia-model" title="Modèle (pilote)">${MODELS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
+            <button type="submit" class="btn btn-primary" id="ia-go">Demander</button>
+          </div>
+        </form>
+        <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site. L'IA ne voit pas les données : elle
+          écrit une requête, que votre navigateur exécute. Elle peut se tromper : l'interprétation retenue et la requête sont affichées sous chaque réponse.</p>
+      </div>
+      <aside class="ia-examples" aria-label="Exemples de questions"><div class="ia-ex-head">Exemples</div>
+        ${EXAMPLES.map((e) => html`<button type="button" class="chip" data-ex="${e}">${e}</button>`)}</aside>
     </div></section>
     <div id="ia-answers"></div>
     <style>
@@ -200,8 +203,13 @@ export async function render(main) {
         border-radius: 8px; background: var(--surface); color: var(--ink); resize: vertical }
       .ia-row { display: flex; gap: 10px; align-items: center; margin-top: 8px }
       .ia-row #ia-follow { flex: 1; min-width: 0 }
-      .ia-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px }
-      .ia-examples .chip { font-size: 12.5px; text-align: left; height: auto; min-height: 30px; padding-top: 5px; padding-bottom: 5px; line-height: 1.35 }
+      /* the question on the left, the example questions on its right (owner, 2026-10-15); one under the other on a phone */
+      .ia-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 36%); gap: 18px; align-items: start }
+      @media (max-width: 760px) { .ia-top { grid-template-columns: minmax(0, 1fr) } }
+      .ia-examples { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 }
+      .ia-ex-head { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3) }
+      .ia-examples .chip { font-size: 12.5px; text-align: left; justify-content: flex-start; height: auto; min-height: 30px; padding-top: 5px;
+        padding-bottom: 5px; line-height: 1.35; white-space: normal }
       .ia-note { font-size: 12.5px; margin: 12px 0 0 }
       .ia-answer .card-head h2 { font-size: 16px }
       .ia-expl { margin: 0 0 10px; color: var(--ink-2) }
