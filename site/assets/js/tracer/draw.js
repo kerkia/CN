@@ -266,7 +266,7 @@ function textSpecial(o, push) {
   if (o.font.height > 0) size = o.font.height / CAP_HEIGHT;
   else {
     // automatic: the largest size whose lines fill the box
-    const wmax = Math.max(...lines.map((x) => textWidth(x, bold, fam))) || 1;
+    const wmax = Math.max(...lines.map((x) => textWidth(x, bold, fam, !!o.font.italic))) || 1;
     size = Math.min((r - l) / wmax, (t - b) / (lines.length * 1.15));
   }
   const lh = size * 1.15;

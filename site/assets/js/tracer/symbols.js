@@ -30,6 +30,12 @@ export async function loadAllTexts() {
   return ALL_TEXTS;
 }
 export const symbolsLoaded = () => !!DB;
+/** Every text of a language in the symbol file (names and description texts): what its sheets may print. */
+export function languageStrings(lang) {
+  const out = [DB?.languages?.[lang]?.name || ""];
+  for (const s of DB?.all || []) { if (s.n?.[lang]) out.push(s.n[lang]); for (const x of s.t?.[lang] || []) out.push(x.t); }
+  return out;
+}
 export const languages = () => DB?.languages || {};
 
 /** The symbol with this id in a standard ("2004" or "2018"), or null. */

@@ -1453,9 +1453,12 @@ export async function render(main, { query = {} } = {}) {
             <li><b>PDF des circuits</b> : un circuit par page, par partie, par variante, ou par équipe et relayeur ; carte et circuit, ou circuit seul pour une
               surimpression ; violet en CMJN. Une zone d'impression plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou
               se réduit à son centre.</li>
-            <li><b>Définitions</b> et <b>cartons de contrôle</b> en PDF, avec les polices de Purple Pen (Roboto et Roboto Condensed).</li>
+            <li><b>Définitions</b> et <b>cartons de contrôle</b> en PDF, avec les polices de Purple Pen (Roboto et Roboto Condensed), dans toutes les
+              langues de son fichier de symboles : les caractères tchèques, hongrois ou bulgares, et le chinois et le japonais (en Noto Sans), se chargent
+              quand un texte en a besoin. Les textes posés sur la carte s'impriment dans la police qu'ils nomment : Roboto, Helvetica pour Arial, Times,
+              Courier, avec gras et italique.</li>
             <li><b>IOF XML</b> 3.0 et 2.0.3 pour le chronométrage (avec les équipes de relais), <b>GPX</b> des postes et <b>KML</b> des circuits (carte
-              géoréférencée), <b>images</b> des circuits avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
+              géoréférencée), <b>images</b> des circuits (PNG, JPEG ou GIF) avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
             <li>Plusieurs fichiers d'un coup s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un .zip.</li>
           </ul>
           <p>Les rapports de Purple Pen y sont tous : résumé, longueurs des interpostes, références croisées, charge, contrôle de l'événement — ce dernier avec

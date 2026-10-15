@@ -695,7 +695,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   variants); large images drawn from reduced copies (`mapsrc.withLevels`). Fonts as Purple Pen (`fonts.js`): Roboto and
   Roboto Condensed from fontsource on jsdelivr + fontkit, their widths for layout and description sheets
   (`DescriptionAppearance` sizes), embedded in the PDFs; Arial numbers = Helvetica (same widths); offline fallback to
-  Helvetica and Purple Pen's « no Arial Narrow » sizes. PDFs: print areas larger than the paper tiled over pages (Purple
+  Helvetica and Purple Pen's « no Arial Narrow » sizes. **Every language** (2026-10-15): fontsource's subsets read from each
+  face's CSS (unicode ranges), the basic Latin ones with the editor, the others (latin-ext, cyrillic, greek…) when a text needs
+  them (`ensureText`, the editor's `fontCheck` over the event's strings and its language's symbol texts; « tr-fonts » lays out
+  again), Chinese and Japanese from Noto Sans JP/TC/HK by the event's language (`setLanguage`); texts measured, drawn and
+  printed run by run (`textRuns`), each subset embedded on its own. The language menu lists the symbol file's 23 languages.
+  Text objects print in the font they name (`family`): Roboto, Roboto Condensed, sans serif faces in Helvetica, serif ones in
+  Times, fixed-width ones in Courier (the PDF standard fonts, their widths in `STDW`), bold and italic (Roboto's italic faces
+  loaded). Course images also in GIF (`gif.js`: exact palette up to 256 colours, else median cut; LZW; world file .gfw). PDFs: print areas larger than the paper tiled over pages (Purple
   Pen's layout), a drawn print area, even-odd fills (raw `f*`: pdf-lib has no helper). Description sheet by keyboard.
   Several files into a chosen folder (File System Access) or a zip (`dialogs.saveFiles`). Route tool (`ev.legs[].route`,
   not in .ppen, not printed) used by the IGN climb. Winning times: climb effect fitted on « Résultats »' circuits with

@@ -223,7 +223,7 @@ export async function imagesDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
   const v = await modal(E, { title: "Images des circuits", wide: true, ok: "Créer", body: `
     <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? x(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Format", sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"]], "png"))}${field("Résolution (ppp)", '<input name="dpi" value="200" inputmode="numeric">')}
+    <div class="tr-grid2">${field("Format", sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"], ["gif", "GIF (256 couleurs)"]], "png"))}${field("Résolution (ppp)", '<input name="dpi" value="200" inputmode="numeric">')}
     ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul"]], "map"))}</div>
     <p class="tr-hint">${hasGeo(ev) ? "Un fichier de géoréférencement (world file, en degrés WGS 84) accompagne chaque image." : "La carte n'est pas géoréférencée : pas de world file."}</p>`,
   validate: (o) => (!(num(o.dpi) >= 50 && num(o.dpi) <= 1200) ? "Une résolution de 50 à 1200 ppp." : null) });
@@ -234,10 +234,16 @@ export async function imagesDialog(E) {
     if (!v[`c${id}`]) continue;
     const cd = id ? M.cdCourse(id) : M.cdAll(), name = fileName(id ? ev.courses[id].name : "Tous les postes");
     const { canvas, box, pxPerMm } = await courseImage(E, cd, num(v.dpi), { withMap: v.content === "map" });
-    const blob = await new Promise((r) => canvas.toBlob(r, `image/${v.fmt}`, 0.92));
-    files[`${name}.${v.fmt === "png" ? "png" : "jpg"}`] = new Uint8Array(await blob.arrayBuffer());
+    const ext = { png: ["png", "pgw"], jpeg: ["jpg", "jgw"], gif: ["gif", "gfw"] }[v.fmt];
+    if (v.fmt === "gif") {
+      const { encodeGif } = await import("./gif.js");
+      files[`${name}.gif`] = encodeGif(canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+    } else {
+      const blob = await new Promise((r) => canvas.toBlob(r, `image/${v.fmt}`, 0.92));
+      files[`${name}.${ext[0]}`] = new Uint8Array(await blob.arrayBuffer());
+    }
     const wf = worldFile(ev, box, pxPerMm);
-    if (wf) files[`${name}.${v.fmt === "png" ? "pgw" : "jgw"}`] = new TextEncoder().encode(wf);
+    if (wf) files[`${name}.${ext[1]}`] = new TextEncoder().encode(wf);
   }
   if (Object.keys(files).length === 1) { const [n, b] = Object.entries(files)[0]; download(n, new Blob([b])); }
   else await saveFiles(E, files, `${fileName(ev.title)} - images.zip`);

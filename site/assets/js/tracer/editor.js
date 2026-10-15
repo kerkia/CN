@@ -9,8 +9,8 @@ import * as M from "./model.js";
 import { layoutCourse, distFrom } from "./layout.js";
 import { itemsFor, drawItems, tracePath, SCREEN, cmykToRgb } from "./draw.js";
 import * as S from "./store.js";
-import { loadSymbols } from "./symbols.js";
-import { loadFonts } from "./fonts.js";
+import { loadSymbols, loadAllTexts, languageStrings } from "./symbols.js";
+import { loadFonts, ensureText, setLanguage } from "./fonts.js";
 import * as OFF from "./offline.js";
 import * as FW from "../fullwin.js";
 import { descPane } from "./panes.js";
@@ -136,7 +136,32 @@ export async function openEditor(ctx) {
     E.dirty = true;
     renderTabs(); refresh();
     scheduleSave();
+    fontCheck();
   }
+  // every language's characters (fonts.js): the font subsets the event's texts and its description language need, loaded as
+  // they appear; the sheet and the map are laid out again when they come in
+  let fontTimer = null;
+  function fontCheck() {
+    clearTimeout(fontTimer);
+    fontTimer = setTimeout(async () => {
+      const lang = E.ev.lang || "fr";
+      setLanguage(lang);
+      if (!["fr", "en"].includes(lang)) await loadAllTexts().catch(() => null);
+      const strings = [];
+      const walk = (v, k) => {
+        if (typeof v === "string") { if (k !== "data" && v.length < 4000) strings.push(v); }
+        else if (Array.isArray(v)) for (const x of v) walk(x);
+        else if (v && typeof v === "object") for (const [kk, x] of Object.entries(v)) walk(x, kk);
+      };
+      walk(E.ev);
+      const italic = Object.values(E.ev.specials || {}).some((sp) => sp.font?.italic);
+      const fresh = await ensureText([...strings, ...languageStrings(lang)], { italic }).catch(() => false);
+      if (fresh && document.body.contains(root)) refresh();
+    }, 300);
+  }
+  const onFonts = () => { if (document.body.contains(root)) refresh(); };
+  window.addEventListener("tr-fonts", onFonts);
+  E.closeHooks.push(() => { window.removeEventListener("tr-fonts", onFonts); clearTimeout(fontTimer); });
   function fixSelection() {
     if (E.cd.course && !E.ev.courses[E.cd.course]) { E.cd = M.cdAll(); E.variation = null; }   // a course undone or deleted
     if (E.variation && !(E.cd.course && M.hasVariations(E.ev, E.cd.course))) E.variation = null;
@@ -616,6 +641,7 @@ export async function openEditor(ctx) {
   refresh();
   E.status(E.readOnly ? "Lecture seule" : "Prêt", "ok");
   if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
+  fontCheck();
   // files dropped on the editor: a .ppen is imported, a map replaces the event's
   root.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !root.querySelector(".tr-modal")) e.preventDefault(); });
   root.addEventListener("drop", async (e) => {

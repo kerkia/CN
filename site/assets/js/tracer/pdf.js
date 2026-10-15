@@ -11,7 +11,7 @@ import { describe, sheetItems, sheetSize, widthInCells } from "./descr.js";
 import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs.js";
 import * as S from "./store.js";
 import { isPdf } from "./mapsrc.js";
-import { loadFonts, fontsReady, fontBytes } from "./fonts.js";
+import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
 
 const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
 const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
@@ -139,20 +139,28 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       ops.push(L.stroke(), L.popGraphicsState());
     } else if (it.t === "text") {
       flush();
-      const { font, std } = await fonts.get(it.family || (it.condensed ? "Roboto Condensed" : "Roboto"), it.bold);
+      // run by run: each in the face that holds its characters (fonts.js), side by side
+      const runs = await fonts.runs(it.text, it.family || (it.condensed ? "Roboto Condensed" : "Roboto"), it.bold, it.italic);
       const size = it.size * s;
-      const text = std ? winAnsi(it.text) : it.text;
-      const w = font.widthOfTextAtSize(text, size);
+      const ws = runs.map((r) => r.font.widthOfTextAtSize(r.text, size)), w = ws.reduce((a, b) => a + b, 0);
       const [x, y] = T(it.x, it.y);
       const x0 = it.align === "center" ? x - w / 2 : x;
       const col = cmykOf(ev, it.color, rgb);
       const colorObj = col.rgb ? L.rgb(...col.rgb) : L.cmyk(...col.cmyk);
       if (it.outline > 0) {
-        page.pushOperators(L.pushGraphicsState(), L.beginText(), L.setFontAndSize(page.node.newFontDictionary(font.name, font.ref), size),
-          L.setTextRenderingMode(L.TextRenderingMode.Outline), L.setLineWidth(it.outline * s * 2), L.setStrokingCmykColor(0, 0, 0, 0), L.setLineJoin(1),
-          L.moveText(x0, y), L.showText(font.encodeText(text)), L.endText(), L.popGraphicsState());
+        let xo = x0;
+        runs.forEach((r, i) => {
+          page.pushOperators(L.pushGraphicsState(), L.beginText(), L.setFontAndSize(page.node.newFontDictionary(r.font.name, r.font.ref), size),
+            L.setTextRenderingMode(L.TextRenderingMode.Outline), L.setLineWidth(it.outline * s * 2), L.setStrokingCmykColor(0, 0, 0, 0), L.setLineJoin(1),
+            L.moveText(xo, y), L.showText(r.font.encodeText(r.text)), L.endText(), L.popGraphicsState());
+          xo += ws[i];
+        });
       }
-      page.drawText(text, { x: x0, y, size, font, color: colorObj, ...(purple && multiply && !it.outline ? { blendMode: L.BlendMode.Multiply } : {}) });
+      let xr = x0;
+      runs.forEach((r, i) => {
+        page.drawText(r.text, { x: xr, y, size, font: r.font, color: colorObj, ...(purple && multiply && !it.outline ? { blendMode: L.BlendMode.Multiply } : {}) });
+        xr += ws[i];
+      });
     } else if (it.t === "image" && it.image?.data) {
       flush();
       const key = it.image.data.slice(0, 64) + it.image.data.length;
@@ -170,22 +178,30 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
 /** Characters Helvetica (WinAnsi) can print: others become their closest. */
 const winAnsi = (s) => String(s).replace(/[  ]/g, " ").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[^\u0000-ÿ€–—…œŒ•]/g, "?");
 
-// ---- fonts: Roboto, Roboto Condensed, Arimo embedded (fonts.js); Helvetica without the network -------------------------------
+// ---- fonts: Roboto, Roboto Condensed and the CJK faces embedded by subset (fonts.js); the standard fonts for Arial, Times,
+// Courier; Helvetica for what cannot be read without the network ------------------------------------------------------------
 export async function makeFonts(doc, L) {
   await loadFonts();
-  const std = { reg: await doc.embedFont(L.StandardFonts.Helvetica), bold: await doc.embedFont(L.StandardFonts.HelveticaBold) };
-  const cache = new Map();
-  if (window.fontkit && fontsReady()) doc.registerFontkit(window.fontkit);
+  if (window.fontkit) doc.registerFontkit(window.fontkit);
+  const std = new Map(), emb = new Map();
+  const stdFont = async (name) => { if (!std.has(name)) std.set(name, await doc.embedFont(L.StandardFonts[name])); return std.get(name); };
+  const subset = async (file) => {
+    if (!emb.has(file.url)) { let f = null; try { f = await doc.embedFont(file.bytes, { subset: true }); } catch (e) { f = null; } emb.set(file.url, f); }
+    return emb.get(file.url);
+  };
   return {
-    ...std,
-    async get(fam, bold) {
-      const key = `${fam}|${!!bold}`;
-      if (cache.has(key)) return cache.get(key);
-      const bytes = window.fontkit && fontsReady() ? fontBytes(fam, bold) : null;
-      let f = null;
-      if (bytes) { try { f = await doc.embedFont(bytes, { subset: true }); } catch (e) { f = null; } }
-      const out = f ? { font: f, std: false } : { font: bold ? std.bold : std.reg, std: true };
-      cache.set(key, out);
+    reg: await stdFont("Helvetica"), bold: await stdFont("HelveticaBold"),
+    /** The runs of a text with their PDF fonts: [{ font, text }]. */
+    async runs(text, fam, bold, italic) {
+      await ensureText([text], { italic: !!italic, families: [fam === "Roboto Condensed" ? fam : "Roboto"] }).catch(() => false);
+      const out = [];
+      for (const r of textRuns(text, bold, fam, italic)) {
+        const file = r.key ? chunkFile(r.key, r.chunk) : null;
+        let font = r.std ? await stdFont(r.std) : file ? await subset(file) : null, t = r.text;
+        if (!font || r.missing) { font = await stdFont(bold ? "HelveticaBold" : "Helvetica"); t = winAnsi(t); }
+        const last = out[out.length - 1];
+        if (last && last.font === font) last.text += t; else out.push({ font, text: t });
+      }
       return out;
     },
   };

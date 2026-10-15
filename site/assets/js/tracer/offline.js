@@ -7,18 +7,20 @@
 
 import * as IDB from "./idb.js";
 import * as S from "./store.js";
+import { FONT_CSS } from "./fonts.js";
 
 const CACHE = "ocn-offline-v1";
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FLAG = (id) => `ocn.tr.offline.${id}`;
 export const isKept = (id) => { try { return localStorage.getItem(FLAG(id)) === "1"; } catch (e) { return false; } };
-const TRACER = ["actions", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "idb", "layout", "mapsrc", "model", "offline",
+const TRACER = ["actions", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "idb", "layout", "mapsrc", "model", "offline",
   "panes", "pdf", "ppen", "race", "relay", "reports", "store", "symbols", "team", "textify", "tiff"].map((m) => `/assets/js/tracer/${m}.js`);
 const CDN = "https://cdn.jsdelivr.net/npm";
 const LIBS = [`${CDN}/pdf-lib@1.17.1/dist/pdf-lib.min.js`, `${CDN}/fflate@0.8.2/umd/index.js`, `${CDN}/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js`,
   `${CDN}/pdfjs-dist@4.10.38/build/pdf.min.mjs`, `${CDN}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`,
   `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-400-normal.woff`, `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-700-normal.woff`,
-  `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-400-normal.woff`, `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-700-normal.woff`];
+  `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-400-normal.woff`, `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-700-normal.woff`,
+  ...FONT_CSS];
 const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/data/agenda.json", "/data/prov/index.json"];
 
 /** The service worker and the page's files, for opening the Tracer without the network. */

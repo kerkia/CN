@@ -5,7 +5,8 @@
 
 import * as M from "./model.js";
 import * as S from "./store.js";
-import { symbol, symbolName } from "./symbols.js";
+import { symbol, symbolName, loadSymbols, languages } from "./symbols.js";
+import { family, FAMILY_LABEL } from "./fonts.js";
 import { readPpen, writePpen } from "./ppen.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
@@ -195,14 +196,28 @@ export async function eventTitle(E) {
   const v = await modal(E, { title: "Titre de l'événement", body: field("Titre (une barre | sépare deux lignes)", `<input name="t" value="${esc(E.ev.title)}" required>`) });
   if (v) E.change((x) => { x.title = v.t.trim(); }, "Titre");
 }
+/** The languages of Purple Pen's symbol file, by their own names (the event's, if another, kept). */
+function langChoices(cur) {
+  const L = languages(), up = (s, k) => { try { return s.charAt(0).toLocaleUpperCase(k) + s.slice(1); } catch (e) { return s; } };
+  const list = Object.entries(L).map(([k, v]) => [k, up(v.name || k, k)]).sort((a, b) => a[1].localeCompare(b[1], "fr"));
+  if (cur && !L[cur]) list.unshift([cur, `${cur} (pas dans le fichier de symboles : textes en anglais)`]);
+  return list;
+}
+/** The fonts a text object offers, with the one it already names (a .ppen may name any). */
+function fontChoices(cur) {
+  const list = [["Arial", "Arial"], ["Roboto", "Roboto"], ["Roboto Condensed", "Roboto Condensed"], ["Times New Roman", "Times New Roman"], ["Courier New", "Courier New"]];
+  if (cur && !list.some(([v]) => v === cur)) list.push([cur, `${cur} (imprimée en ${FAMILY_LABEL[family(cur)]})`]);
+  return list;
+}
 async function eventProps(E) {
   const ev = E.ev;
+  await loadSymbols();
   const v = await modal(E, { title: "Propriétés de l'événement", body: `
     ${field("Titre (une barre | sépare deux lignes sur les définitions)", `<input name="title" value="${esc(ev.title)}" required>`)}
     ${field("Échelle de la carte (1:…)", `<input name="scale" value="${ev.map.scale}" inputmode="numeric" required>`, "L'échelle de la carte elle-même ; chaque circuit a son échelle d'impression.")}
     ${ev.map.kind === "bitmap" ? field("Résolution de l'image (points par pouce)", `<input name="dpi" value="${ev.map.dpi}" inputmode="numeric">`, "Sert à mesurer les distances : vérifiez une distance connue.") : ""}
     ${field("Échelle d'impression de « Tous les postes »", `<input name="acScale" value="${ev.allControls.printScale}" inputmode="numeric">`)}
-    ${field("Langue des définitions en texte", sel("lang", [["fr", "Français"], ["en", "English"], ["de", "Deutsch"], ["it", "Italiano"], ["es", "Español"], ["ca", "Català"], ["nl", "Nederlands"], ["sv", "Svenska"], ["fi", "Suomi"], ["cs", "Čeština"], ["pl", "Polski"], ["ja", "日本語"]], ev.lang))}
+    ${field("Langue des définitions en texte", sel("lang", langChoices(ev.lang), ev.lang), "Les langues du fichier de symboles de Purple Pen")}
     ${field("Notes", `<textarea name="notes" rows="3">${esc(ev.notes || "")}</textarea>`)}`,
   validate: (o) => (!(num(o.scale) > 100) ? "Échelle de carte invalide." : ev.map.kind === "bitmap" && !(num(o.dpi) > 10) ? "Résolution invalide." : null) });
   if (!v) return;
@@ -433,7 +448,7 @@ export async function textProps(E, id, then) {
   const col = Array.isArray(sp.color) ? "custom" : sp.color;
   const v = await modal(E, { title: "Texte", body: `
     ${field("Texte", `<textarea name="text" rows="3">${esc(sp.text)}</textarea>`, "Champs : $(EventTitle) $(CourseName) $(CourseLength) $(CourseClimb) $(ClassList) $(PrintScale) $(CoursePart) $(Variation) $(RelayTeam) $(RelayLeg)")}
-    <div class="tr-grid2">${field("Police", sel("font", [["Arial", "Arial"], ["Roboto", "Roboto"], ["Times New Roman", "Times"], ["Courier New", "Courier"]], sp.font?.name || "Arial"))}
+    <div class="tr-grid2">${field("Police", sel("font", fontChoices(sp.font?.name || "Arial"), sp.font?.name || "Arial"), "Imprimée en Roboto, Helvetica (Arial), Times ou Courier, avec son gras et son italique")}
     ${field("Hauteur des capitales (mm, vide = remplir le cadre)", `<input name="h" value="${sp.font?.height > 0 ? sp.font.height : ""}">`)}
     <label class="tr-check"><input type="checkbox" name="bold" ${sp.font?.bold ? "checked" : ""}> Gras</label><label class="tr-check"><input type="checkbox" name="italic" ${sp.font?.italic ? "checked" : ""}> Italique</label>
     ${field("Couleur", sel("color", COLOR_OPTS, col))}${field("CMJN (%)", `<input name="cmyk" value="${Array.isArray(sp.color) ? sp.color.map((x) => Math.round(x * 100)).join(" ") : "0 0 0 100"}">`)}</div>` });
