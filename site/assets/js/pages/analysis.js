@@ -153,7 +153,7 @@ function sessionTag() {
 // ---- the page -------------------------------------------------------------------------------------------------------
 export async function render(main, { query = {}, route } = {}) {
   const me = auth.session();
-  // « Analyse perso » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
+  // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));

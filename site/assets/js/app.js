@@ -31,8 +31,8 @@ const PAGES = {
   splits: () => import("./pages/splits.js"),
   live: () => import("./pages/live.js"),           // « En direct »: live results (accounts with the « live » right)
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
-  analysis: () => import("./pages/analysis.js"),   // « Analyse perso » (Courses): a GPS trace on one's map, a race's (administrators only for now)
-  analysisPerso: () => import("./pages/analysis.js"),   // « Analyse perso » (Entrainement): the same page, no race
+  analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's (administrators only for now)
+  analysisPerso: () => import("./pages/analysis.js"),   // « Analyse solo » (Entrainement): the same page, no race
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse compétition » (Courses): the same for a race of « Résultats »
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
@@ -90,7 +90,7 @@ function parseHash() {
     : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
-    : head === "analyse-perso" ? "analysisPerso"
+    : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -279,13 +279,13 @@ function renderHeader(r) {
       ["agenda", "#/agenda", t("nav.agenda")],
       ["provisional", "#/resultats", t("nav.recent")],
       ...(me.live ? [["live", "#/direct", t("nav.live")]] : []),
-      // « Analyse perso » (a race's) and « Analyse compétition »: administrators only for now (owner, 2026-10-13/14)
+      // « Analyse solo » (a race's) and « Analyse compétition »: administrators only for now (owner, 2026-10-13/14)
       ...(me.admin ? [["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")]] : []),
     ]],
     // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, and the VMA page;
     // administrators only for now (owner, 2026-10-13)
     ...(me.admin ? [["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
-      ["analysisPerso", "#/analyse-perso", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]]] : []),
+      ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]]] : []),
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" || route === "deposit" ? "provisional" : route;
@@ -556,7 +556,7 @@ async function route_() {
     history.replaceState(null, "", link.runner(who?.lic));
     r = parseHash();
   }
-  // « Analyse perso » and « Analyse compétition » (Courses) only for administrators for now
+  // « Analyse solo » and « Analyse compétition » (Courses) only for administrators for now
   if ((r.route === "analysis" || r.route === "analysisRace") && !who?.admin) {
     history.replaceState(null, "", "#/resultats");
     r = parseHash();

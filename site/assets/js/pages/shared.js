@@ -471,7 +471,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   const ctrls = course.controls, legsN = ctrls.length - 1;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
   const ctrlLabel = (i) => { const p = ctrls[i]; if (p.kind === "start") return t("an.start"); if (p.kind === "finish") return t("an.finish"); return String(ctrls.slice(0, i + 1).filter((q) => q.kind === "control").length); };
-  // the display as on « Analyse perso » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
+  // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
   const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;

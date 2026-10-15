@@ -588,9 +588,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
   fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
-- **Analyse perso / club / compétition** (owner, 2026-10-14; administrators only for now, like their groups): « Analyse
-  perso » exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »
-  (`#/analyse-perso`, route `analysisPerso`: the same `analysis.js` with no race — one pseudo-runner, three steps, its own
+- **Analyse solo / club / compétition** (owner, 2026-10-14; administrators only for now, like their groups): « Analyse
+  solo » (« Analyse perso » until 2026-10-15) exists twice — in « Courses » (`#/analyse`, route `analysis`, a race of « Résultats » chosen) and in « Entrainement »
+  (`#/analyse-solo`, the old `#/analyse-perso` still opens it; route `analysisPerso`: the same `analysis.js` with no race — one pseudo-runner, three steps, its own
   memory `memos.perso` and IndexedDB key `files:perso`). « Analyse club » (`#/analyse-club`, Entrainement) and « Analyse
   compétition » (`#/analyse-competition`, Courses; tied to a race of `prov/index.json`, its circuits offered, the runners'
   published results beside their traces) are `pages/shared.js` on `/api/analyses` (`functions/api/analyses/[[path]].js`):
@@ -617,7 +617,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
   mienne »), ⌖ follows one runner; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
   **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
-  as on « Analyse perso » — width (4 steps), « Trace à venir » (masquée by default / estompée: each runner's route to its
+  as on « Analyse solo » — width (4 steps), « Trace à venir » (masquée by default / estompée: each runner's route to its
   finish, faint), tail, the map's and the traces' opacity, the course overlay — kept in `localStorage ocn.sh.prefs`.
   **A circuit's start and finish** are what was read on the map, or the organiser's first and last clicks (« Saisir
   l'ordre »): the editor no longer makes the first and last controls read the start and the finish (`relabel` only in

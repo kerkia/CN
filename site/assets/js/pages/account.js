@@ -161,7 +161,7 @@ async function privacy(main) {
       <h2 style="font-size:16px">Dépôts de résultats</h2>
       <p>Quand vous déposez un fichier de résultats, nous enregistrons votre compte, la course, le nom et la taille du fichier et la date du dépôt. Le fichier est conservé 60 jours dans le stockage du site (Cloudflare), puis effacé ; les résultats qu'il contient restent affichés. L'administrateur voit qui a déposé quoi et peut retirer un dépôt.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
-      <p>La page « Analyse perso » lit votre carte et votre trace GPS dans votre navigateur : rien n'est envoyé ; elles y restent le temps de votre visite.
+      <p>La page « Analyse solo » lit votre carte et votre trace GPS dans votre navigateur : rien n'est envoyé ; elles y restent le temps de votre visite.
         Dans une « Analyse club » ou une « Analyse compétition », l'organisateur dépose les cartes et les parcours, et chaque participant peut ajouter
         sa propre trace : elle est alors envoyée et conservée dans le stockage du site (Cloudflare), avec votre nom et votre numéro de licence,
         réduite aux positions et aux heures sur la zone de la carte (ni fréquence cardiaque, ni cadence, ni le trajet hors de la carte). Elle est visible
