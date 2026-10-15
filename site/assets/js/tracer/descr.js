@@ -7,7 +7,7 @@
 import * as M from "./model.js";
 import { symbol, symbolPaths, symbolText } from "./symbols.js";
 import { textifier } from "./textify.js";
-import { textWidth, wrapText, CAP_HEIGHT } from "./fonts.js";
+import { textWidth, wrapText, CAP_HEIGHT, fontsReady } from "./fonts.js";
 
 const km = (m) => `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 const lengthText = (min, max) => (Math.abs(max - min) < 50 ? km(min) : `${(min / 1000).toFixed(1).replace(".", ",")}–${km(max)}`);
@@ -124,9 +124,12 @@ function directiveLine(ev, tx, S, kind, v, i) {
 
 // ---- drawing -------------------------------------------------------------------------------------------------------------
 const THICK = 5, THIN = 2.5;                                    // per 100 units of a cell
-// fonts: em height per 100 units of a cell (Purple Pen's DescriptionAppearance), bold
-const F = { title: [63, true], colA: [63, true], colB: [63, false], colF: [50, false], colF2: [45, false], directive: [63, true],
-  text: [43, false], key: [52, false], textLine: [56, true] };
+// fonts (Purple Pen's DescriptionAppearance): em height per 100 units of a cell, bold, family, and the height Purple Pen
+// uses when Roboto Condensed is missing and Arial stands in (here: without the network)
+const RC = "Roboto Condensed", RO = "Roboto";
+const F = { title: [63, true, RC, 56], colA: [63, true, RO], colB: [63, false, RC, 56], colF: [50, false, RO], colF2: [45, false, RC, 42],
+  directive: [63, true, RC, 56], text: [43, false, RC, 40], key: [52, false, RO], textLine: [56, true, RC, 50] };
+const fontOf = (name) => { const [em, bold, fam, emNo] = F[name]; return [fam === RC && !fontsReady() ? emNo : em, bold, fontsReady() ? fam : RO]; };
 export const widthInCells = (descKind) => (descKind === "symbols-and-text" ? 13 : 8);
 const noBoundary = (a, b) => a.kind === b.kind && (a.kind === "title" || a.kind === "secondary" || (a.kind === "text" && a.textKind === b.textKind));
 function columnAndRow(n, columns, line) {
@@ -171,27 +174,27 @@ export function sheetItems(lines, descKind, cell, { columns = 1, columnHScore = 
     if (descKind === "symbols-and-text") seg(1300, top, 1300, bot, THICK);
     const text1 = (font, s, l, t, r, b, align = "center") => {
       if (s == null || s === "") return;
-      const [em, bold] = F[font];
+      const [em, bold, fam] = fontOf(font);
       let size = em * k;
-      const width = textWidth(s, bold) * size, room = (r - l) * k;
+      const width = textWidth(s, bold, fam) * size, room = (r - l) * k;
       if (width > room) size *= (room / width) * 0.95;
       const cy = Y((t + b) / 2) + (CAP_HEIGHT * size) / 2;
       const x = align === "center" ? X((l + r) / 2) : X(l);
-      items.push({ t: "text", text: s, x, y: cy, size, bold, align });
+      items.push({ t: "text", text: s, x, y: cy, size, bold, align, family: fam });
     };
     const wrapped = (font, s, l, t, r, b) => {
       if (!s) return;
-      const [em, bold] = F[font];
+      const [em, bold, fam] = fontOf(font);
       let size = em * k;
       const room = (r - l) * k, height = (b - t) * k;
       let ls;
       for (let n = 0; n < 40; n++) {
-        ls = wrapText(s, size, room, bold);
-        if (ls.length * size * 1.05 <= height && ls.every((x) => textWidth(x, bold) * size <= room)) break;
+        ls = wrapText(s, size, room, bold, fam);
+        if (ls.length * size * 1.05 <= height && ls.every((x) => textWidth(x, bold, fam) * size <= room)) break;
         size *= 0.95;
       }
       const lh = size * 1.05, top0 = Y((t + b) / 2) - (ls.length * lh) / 2;
-      ls.forEach((x, n) => items.push({ t: "text", text: x, x: X(l), y: top0 + n * lh + lh * 0.5 + (CAP_HEIGHT * size) / 2, size, bold, align: "left" }));
+      ls.forEach((x, n) => items.push({ t: "text", text: x, x: X(l), y: top0 + n * lh + lh * 0.5 + (CAP_HEIGHT * size) / 2, size, bold, align: "left", family: fam }));
     };
     const sym = (s, l, t, r, b) => {
       if (!s || typeof s !== "object") return;

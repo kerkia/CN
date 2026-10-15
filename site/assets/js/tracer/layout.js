@@ -6,7 +6,7 @@
 // belongs to (control, course control, leg, special) for selection in the editor.
 
 import * as M from "./model.js";
-import { textWidth, CAP_HEIGHT } from "./fonts.js";
+import { textWidth, CAP_HEIGHT, family } from "./fonts.js";
 
 const DEG = Math.PI / 180;
 const rot = (p, deg) => { const a = deg * DEG, c = Math.cos(a), s = Math.sin(a); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
@@ -212,10 +212,10 @@ function numberObj(ev, v, cv, kind, ratio, objs) {
   if (cc?.number) ctr = [c.x + cc.number[0], c.y + cc.number[1]];
   else {
     const dist = ((M.sizes(ev).control * ap.controlCircleSize) / 2 + M.NUMBER_DISTANCE * ap.controlCircleSize) * ratio;
-    ctr = textLocation([c.x, c.y], dist, text, em, bold, objs);
+    ctr = textLocation([c.x, c.y], dist, text, em, bold, objs, family(ap.numberFont));
   }
   return { t: "number", control: cv.control, cc: cv.ccs[0] || 0, text, ctr, em, bold, font: ap.numberFont, outline: ap.numberOutline * ratio,
-    upper: ap.mapStandard === "Spr2019" || ap.numberOutline > 0, ...textBox(text, em, bold, ctr) };
+    upper: ap.mapStandard === "Spr2019" || ap.numberOutline > 0, ...textBox(text, em, bold, ctr, family(ap.numberFont)) };
 }
 function codeObj(ev, cv, ratio, objs) {
   const c = ev.controls[cv.control];
@@ -223,14 +223,15 @@ function codeObj(ev, cv, ratio, objs) {
   const ap = ev.appearance, text = c.code ?? "", em = (M.CODE_HEIGHT / CAP_HEIGHT) * ratio * ap.numberHeight;
   const dist = ((M.sizes(ev).control * ap.controlCircleSize) / 2 + M.CODE_DISTANCE * ap.controlCircleSize) * ratio;
   let ctr;
-  if (c.codeAngle != null) ctr = rectCenter([c.x, c.y], dist, c.codeAngle * DEG, textSize(text, em, true));
-  else ctr = textLocation([c.x, c.y], dist, text, em, true, objs);
-  return { t: "code", control: cv.control, cc: 0, text, ctr, em, bold: true, condensed: true, outline: ap.numberOutline * ratio, ...textBox(text, em, true, ctr) };
+  const RC = "Roboto Condensed";
+  if (c.codeAngle != null) ctr = rectCenter([c.x, c.y], dist, c.codeAngle * DEG, textSize(text, em, true, RC));
+  else ctr = textLocation([c.x, c.y], dist, text, em, true, objs, RC);
+  return { t: "code", control: cv.control, cc: 0, text, ctr, em, bold: true, condensed: true, outline: ap.numberOutline * ratio, ...textBox(text, em, true, ctr, RC) };
 }
-const textSize = (text, em, bold) => [textWidth(text, bold) * em, CAP_HEIGHT * em];
-function textBox(text, em, bold, ctr) { const [w, h] = textSize(text, em, bold); return { w, h, box: [ctr[0] - w / 2, ctr[1] - h / 2, ctr[0] + w / 2, ctr[1] + h / 2] }; }
-function textLocation(ctr, dist, text, em, bold, objs) {
-  const size = textSize(text, em, bold);
+const textSize = (text, em, bold, fam) => [textWidth(text, bold, fam) * em, CAP_HEIGHT * em];
+function textBox(text, em, bold, ctr, fam) { const [w, h] = textSize(text, em, bold, fam); return { w, h, box: [ctr[0] - w / 2, ctr[1] - h / 2, ctr[0] + w / 2, ctr[1] + h / 2] }; }
+function textLocation(ctr, dist, text, em, bold, objs, fam) {
+  const size = textSize(text, em, bold, fam);
   const near = objs.filter((o) => !(o.t === "control" && M.samePt(o.ctr, ctr)) && distFrom(o, ctr) <= dist * 4);
   let best = null, bestD = -1;
   for (let a = Math.PI / 6; a < Math.PI / 6 + 2 * Math.PI - 1e-9; a += Math.PI / 16) {

@@ -5,7 +5,7 @@
 
 import * as M from "./model.js";
 import { sheetItems, describe, widthInCells } from "./descr.js";
-import { textWidth, CAP_HEIGHT, wrapText } from "./fonts.js";
+import { textWidth, CAP_HEIGHT, wrapText, family, cssFamily } from "./fonts.js";
 
 const DEG = Math.PI / 180;
 const K = 0.5522847498;
@@ -119,7 +119,7 @@ export function itemsFor(ev, layout, { selected = null, descLines = null } = {})
       }
       case "number": case "code":
         push({ t: "text", text: o.text, x: o.ctr[0], y: o.ctr[1] - (CAP_HEIGHT * o.em) / 2, size: o.em, bold: o.bold, align: "center",
-          color: o.upper || o.t === "code" ? "upper" : "lower", outline: o.outline, condensed: !!o.condensed });
+          color: o.upper || o.t === "code" ? "upper" : "lower", outline: o.outline, condensed: !!o.condensed, family: o.condensed ? "Roboto Condensed" : family(o.font) });
         break;
       case "point": pointSpecial(o, push, ap); break;
       case "line": lineSpecial(o, push); break;
@@ -260,18 +260,18 @@ function rectSpecial(o, push) {
   strokeKind([[l, b], [r, b], [r, t], [l, t]], true, o, push);
 }
 function textSpecial(o, push) {
-  const [l, b, r, t] = o.box, bold = !!o.font.bold;
+  const [l, b, r, t] = o.box, bold = !!o.font.bold, fam = family(o.font.name);
   const lines = String(o.text).split(/\r?\n|\|/);
   let size;
   if (o.font.height > 0) size = o.font.height / CAP_HEIGHT;
   else {
     // automatic: the largest size whose lines fill the box
-    const wmax = Math.max(...lines.map((x) => textWidth(x, bold))) || 1;
+    const wmax = Math.max(...lines.map((x) => textWidth(x, bold, fam))) || 1;
     size = Math.min((r - l) / wmax, (t - b) / (lines.length * 1.15));
   }
   const lh = size * 1.15;
   lines.forEach((line, i) => push({ t: "text", text: line, x: (l + r) / 2, y: t - lh * i - size * 0.95, size, bold, italic: !!o.font.italic, align: "center",
-    color: specialColor(o.color), font: o.font.name }));
+    color: specialColor(o.color), font: o.font.name, family: fam }));
 }
 
 // ---- the screen ---------------------------------------------------------------------------------------------------------
@@ -323,7 +323,7 @@ export function drawItems(ctx, items, T, px, { blend = "blend", purple = null, a
     } else if (it.t === "text") {
       const [x, y] = T(it.x, it.y), size = it.size * px;
       if (size < 1.5) continue;
-      ctx.font = `${it.italic ? "italic " : ""}${it.bold ? "700" : "400"} ${size}px ${it.condensed ? '"Arial Narrow", "Roboto Condensed", Arial, sans-serif' : 'Arial, Helvetica, "Roboto", sans-serif'}`;
+      ctx.font = `${it.italic ? "italic " : ""}${it.bold ? "700" : "400"} ${size}px ${cssFamily(it.family || (it.condensed ? "Roboto Condensed" : "Roboto"))}`;
       ctx.textAlign = it.align === "center" ? "center" : "left"; ctx.textBaseline = "alphabetic";
       if (it.outline > 0) { ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = "#fff"; ctx.lineWidth = it.outline * px * 2; ctx.lineJoin = "round"; ctx.strokeText(it.text, x, y); }
       ctx.fillStyle = col; ctx.fillText(it.text, x, y);

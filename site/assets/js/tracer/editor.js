@@ -10,6 +10,7 @@ import { layoutCourse, distFrom } from "./layout.js";
 import { itemsFor, drawItems, tracePath, SCREEN, cmykToRgb } from "./draw.js";
 import * as S from "./store.js";
 import { loadSymbols } from "./symbols.js";
+import { loadFonts } from "./fonts.js";
 import { descPane } from "./panes.js";
 import * as A from "./actions.js";
 import * as D from "./dialogs.js";
@@ -48,7 +49,8 @@ const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser
 
 /** Open the editor over the page. ctx: { meta, role, you, ev, version, mapSrc, key, readOnly, lockHolder, onClose, newTab }. */
 export async function openEditor(ctx) {
-  await loadSymbols();
+  // the symbols, and the fonts the labels are measured with (Helvetica's widths stand in when they are slow to come)
+  const fontsIn = await Promise.all([loadSymbols(), loadFonts(5000)]).then(([, ok]) => ok);
   const E = {
     meta: ctx.meta, role: ctx.role, you: ctx.you, ev: ctx.ev, version: ctx.version || 0, key: ctx.key || null, map: ctx.mapSrc,
     readOnly: !!ctx.readOnly, lockHolder: ctx.lockHolder || null,
@@ -561,6 +563,7 @@ export async function openEditor(ctx) {
   if (!E.readOnly) await takeLock(false);
   refresh();
   E.status(E.readOnly ? "Lecture seule" : "Prêt", "ok");
+  if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
   // files dropped on the editor: a .ppen is imported, a map replaces the event's
   root.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !root.querySelector(".tr-modal")) e.preventDefault(); });
   root.addEventListener("drop", async (e) => {

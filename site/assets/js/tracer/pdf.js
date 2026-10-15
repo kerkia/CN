@@ -11,6 +11,7 @@ import { describe, sheetItems, sheetSize, widthInCells } from "./descr.js";
 import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs.js";
 import * as S from "./store.js";
 import { isPdf } from "./mapsrc.js";
+import { loadFonts, fontsReady, fontBytes } from "./fonts.js";
 
 const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
 const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
@@ -138,9 +139,9 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       ops.push(L.stroke(), L.popGraphicsState());
     } else if (it.t === "text") {
       flush();
-      const font = it.bold ? fonts.bold : fonts.reg;
+      const { font, std } = await fonts.get(it.family || (it.condensed ? "Roboto Condensed" : "Roboto"), it.bold);
       const size = it.size * s;
-      const text = winAnsi(it.text);
+      const text = std ? winAnsi(it.text) : it.text;
       const w = font.widthOfTextAtSize(text, size);
       const [x, y] = T(it.x, it.y);
       const x0 = it.align === "center" ? x - w / 2 : x;
@@ -168,6 +169,27 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
 }
 /** Characters Helvetica (WinAnsi) can print: others become their closest. */
 const winAnsi = (s) => String(s).replace(/[  ]/g, " ").replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[^\u0000-ÿ€–—…œŒ•]/g, "?");
+
+// ---- fonts: Roboto, Roboto Condensed, Arimo embedded (fonts.js); Helvetica without the network -------------------------------
+export async function makeFonts(doc, L) {
+  await loadFonts();
+  const std = { reg: await doc.embedFont(L.StandardFonts.Helvetica), bold: await doc.embedFont(L.StandardFonts.HelveticaBold) };
+  const cache = new Map();
+  if (window.fontkit && fontsReady()) doc.registerFontkit(window.fontkit);
+  return {
+    ...std,
+    async get(fam, bold) {
+      const key = `${fam}|${!!bold}`;
+      if (cache.has(key)) return cache.get(key);
+      const bytes = window.fontkit && fontsReady() ? fontBytes(fam, bold) : null;
+      let f = null;
+      if (bytes) { try { f = await doc.embedFont(bytes, { subset: true }); } catch (e) { f = null; } }
+      const out = f ? { font: f, std: false } : { font: bold ? std.bold : std.reg, std: true };
+      cache.set(key, out);
+      return out;
+    },
+  };
+}
 
 // ---- the map, embedded -----------------------------------------------------------------------------------------------------
 async function mapEmbed(E, doc, L) {
@@ -268,7 +290,7 @@ export async function coursesDialog(E) {
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
       doc.setTitle(`${ev.title} — circuits`); doc.setCreator("O'CN Tracer"); doc.setProducer("O'CN Tracer (pdf-lib)");
-      const fonts = { reg: await doc.embedFont(L.StandardFonts.Helvetica), bold: await doc.embedFont(L.StandardFonts.HelveticaBold) };
+      const fonts = await makeFonts(doc, L);
       const images = new Map();
       for (const d of list) await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg });
       E._mapEmbed = null;
@@ -303,7 +325,7 @@ export async function descriptionsDialog(E) {
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
   doc.setTitle(`${ev.title} — définitions`); doc.setCreator("O'CN Tracer");
-  const fonts = { reg: await doc.embedFont(L.StandardFonts.Helvetica), bold: await doc.embedFont(L.StandardFonts.HelveticaBold) };
+  const fonts = await makeFonts(doc, L);
   const [PW, PH] = PAGES[v.paper], margin = 10, gap = 4, cell = num(v.cell);
   const sheets = [];
   for (const id of [0, ...ids]) {
