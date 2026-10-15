@@ -5,7 +5,7 @@
 //
 // A small XML reader and writer of their own (no DOM): the same code runs in the browser and in node for tests.
 
-import { newEvent, sanitize } from "./model.js";
+import { newEvent, sanitize, fileOffset, shiftToFile } from "./model.js";
 
 // ---- XML ---------------------------------------------------------------------------------------------------------------
 const ENT = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" };
@@ -337,6 +337,7 @@ const ids = (o) => Object.keys(o).map(Number).sort((a, z) => a - z);
 
 /** The event as a .ppen text. mapPath: the absolute path to write (Purple Pen falls back to it). */
 export function writePpen(ev, { mapPath = "" } = {}) {
+  if (fileOffset(ev).some(Boolean)) ev = shiftToFile(JSON.parse(JSON.stringify(ev)));     // an OCAD or Mapper map: its own mm
   const w = new Writer(), ap = ev.appearance;
   w.el("course-scribe-event", {}, () => {
     w.el("event", { id: "1" }, () => {

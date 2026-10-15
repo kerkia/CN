@@ -1417,21 +1417,31 @@ export async function render(main, { query = {} } = {}) {
       carte: () => html`
         <section class="mx-slide" id="tr-carte">
           <p class="mx-kicker">Le tracé</p>
-          <h2>La carte : un PDF ou une image</h2>
-          <p>La carte est un <b>PDF</b> (exporté d'OCAD ou d'OpenOrienteering Mapper : il reste net à l'impression, car il est repris tel quel dans les PDF des
-            circuits) ou une <b>image</b> : JPG, PNG, GIF, BMP, WebP, TIFF. Un scan ou une photo prise bien à plat conviennent. Les fichiers d'OCAD et de Mapper
-            eux-mêmes ne se lisent pas ici : il faut un PDF ou une image de la carte.</p>
+          <h2>La carte : OCAD, Mapper, un PDF ou une image</h2>
+          <p>La carte est le fichier <b>OCAD</b> (versions 6 à 12 et 2018) ou <b>OpenOrienteering Mapper</b> (.omap, .xmap) lui-même, un <b>PDF</b> (exporté
+            d'OCAD ou de Mapper : il reste net à l'impression, car il est repris tel quel dans les PDF des circuits) ou une <b>image</b> : JPG, PNG, GIF, BMP,
+            WebP, TIFF. Un scan ou une photo prise bien à plat conviennent.</p>
+          <p>Un fichier OCAD ou Mapper est dessiné par O'CN, symbole par symbole, comme le fait Purple Pen : la carte reste nette à tous les zooms et s'imprime en
+            vecteurs dans les PDF. Ses millimètres sont exacts (pas de résolution à régler), son échelle et son géoréférencement sont repris, et son violet sert
+            au circuit. Les modèles (les images de fond que la carte appelle, dans d'autres fichiers) ne sont pas dessinés.</p>
+          <h3>Le violet et les couches</h3>
+          <p>Sur une carte OCAD ou Mapper, le violet du circuit est par défaut celui de la carte. Trois façons de le poser (Événement › Apparence) : <b>par-dessus</b>,
+            <b>mélangé</b> (le noir de la carte reste visible à travers le violet), ou <b>en couches</b>, comme Purple Pen : les cercles, les traits et les zones
+            interdites passent sous les couleurs de la carte au-dessus d'une couleur choisie (sous le noir des chemins et des rochers, d'ordinaire), les numéros
+            restent dessus. Les « effets de surimpression » montrent les couleurs de la carte marquées « surimpression » fondues, comme à l'impression.</p>
           <p>Une image mesure ses distances par sa <b>résolution</b> (les points par pouce) : 300 points par pouce, c'est 1 mm de carte pour 11,8 points. La résolution
             est lue dans le fichier quand il la donne ; sinon elle est demandée, et le calage la corrige.</p>
           <h3>Le calage en deux clics</h3>
+          <p>Un fichier .ppen fait sur une carte OCAD garde les millimètres de ce fichier : importé avec la même carte OCAD (ou une autre version d'elle), ses
+            postes tombent juste, sans calage, et le .ppen exporté les rend tels quels à Purple Pen.</p>
           <p>Quand un fichier .ppen a été fait sur une autre carte que celle donnée (souvent une carte OCAD, ici remplacée par son PDF ou une photo), ses postes
             ne tombent pas au bon endroit. On clique un poste, puis l'endroit où il est sur la carte, et cela deux fois, loin l'un de l'autre : O'CN en
             déduit le décalage, la rotation et l'échelle. Comme un .ppen garde les vraies distances de la carte, l'écart d'échelle trouvé vient de la carte
             donnée : c'est elle qui est corrigée (la résolution de l'image, ou l'échelle du PDF), pas le circuit — les longueurs restent justes.</p>
           <h3>Le géoréférencement</h3>
           <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre : deux points cliqués avec leur
-            latitude et leur longitude (ou plus, pour une photo déformée), un fichier de calage (.jgw, .pgw… avec son .prj), un KMZ de la même image, ou un TIFF
-            géoréférencé (GeoTIFF), lu tout seul.</p>
+            latitude et leur longitude (ou plus, pour une photo déformée), un fichier de calage (.jgw, .pgw… avec son .prj), un KMZ de la même image, un TIFF
+            géoréférencé (GeoTIFF) ou une carte OCAD ou Mapper géoréférencée (Lambert 93, UTM, les systèmes d'OCAD et les codes EPSG usuels), lus tout seuls.</p>
         </section>`,
       circuits: () => html`
         <section class="mx-slide" id="tr-circuits">
@@ -1459,6 +1469,9 @@ export async function render(main, { query = {} } = {}) {
               Courier, avec gras et italique.</li>
             <li><b>IOF XML</b> 3.0 et 2.0.3 pour le chronométrage (avec les équipes de relais), <b>GPX</b> des postes et <b>KML</b> des circuits (carte
               géoréférencée), <b>images</b> des circuits (PNG, JPEG ou GIF) avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
+            <li><b>Fichiers OCAD ou Mapper des circuits</b> (OCAD 9 à 12 et 2018, OpenOrienteering Mapper), comme ceux de Purple Pen : chaque circuit devient une
+              carte qui ne contient que lui — postes, traits, numéros, objets spéciaux et définitions, en symboles 7xx et dans les couleurs du circuit —, avec la
+              carte de l'événement en modèle, pour le finir ou l'imprimer dans OCAD ou Mapper.</li>
             <li>Plusieurs fichiers d'un coup s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un .zip.</li>
           </ul>
           <p>Les rapports de Purple Pen y sont tous : résumé, longueurs des interpostes, références croisées, charge, contrôle de l'événement — ce dernier avec

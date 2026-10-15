@@ -13,15 +13,16 @@ const CACHE = "ocn-offline-v1";
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FLAG = (id) => `ocn.tr.offline.${id}`;
 export const isKept = (id) => { try { return localStorage.getItem(FLAG(id)) === "1"; } catch (e) { return false; } };
-const TRACER = ["actions", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "idb", "layout", "mapsrc", "model", "offline",
-  "panes", "pdf", "ppen", "race", "relay", "reports", "store", "symbols", "team", "textify", "tiff"].map((m) => `/assets/js/tracer/${m}.js`);
+const TRACER = ["actions", "appear", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "idb", "layout", "mapsrc", "model", "offline",
+  "panes", "pdf", "ppen", "race", "relay", "reports", "store", "symbols", "team", "textify", "tiff",
+  "vmap/geom", "vmap/georef", "vmap/map", "vmap/ocad", "vmap/ocadwrite", "vmap/oom", "vmap/oomwrite", "vmap/symdefs", "vmap/sympath", "vmap/target", "coursefiles"].map((m) => `/assets/js/tracer/${m}.js`);
 const CDN = "https://cdn.jsdelivr.net/npm";
 const LIBS = [`${CDN}/pdf-lib@1.17.1/dist/pdf-lib.min.js`, `${CDN}/fflate@0.8.2/umd/index.js`, `${CDN}/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js`,
-  `${CDN}/pdfjs-dist@4.10.38/build/pdf.min.mjs`, `${CDN}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`,
+  `${CDN}/pdfjs-dist@4.10.38/build/pdf.min.mjs`, `${CDN}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`, `${CDN}/proj4@2.12.1/dist/proj4.js`,
   `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-400-normal.woff`, `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-700-normal.woff`,
   `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-400-normal.woff`, `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-700-normal.woff`,
   ...FONT_CSS];
-const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/data/agenda.json", "/data/prov/index.json"];
+const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json", "/data/prov/index.json"];
 
 /** The service worker and the page's files, for opening the Tracer without the network. */
 async function prepareSite() {

@@ -16,6 +16,8 @@ import * as FW from "../fullwin.js";
 import { descPane } from "./panes.js";
 import * as A from "./actions.js";
 import * as D from "./dialogs.js";
+import { syncMap, splitItems, itemBlend, purpleOverride } from "./appear.js";
+import { isMapFile } from "./mapsrc.js";
 
 const ICON = {
   select: '<path d="M5 3l14 8-6 2-3 6z"/>',
@@ -137,7 +139,17 @@ export async function openEditor(ctx) {
     renderTabs(); refresh();
     scheduleSave();
     fontCheck();
+    syncVector();
   }
+  // an OCAD or Mapper map drawn as the event says: cut at the lower purple's layer, its overprint colours blended (appear.js)
+  let syncing = Promise.resolve();
+  function syncVector() {
+    if (E.map?.kind !== "vector") return syncing;
+    const map = E.map;
+    syncing = syncing.then(() => syncMap(E.ev, map)).then((changed) => { if (changed && E.map === map) { sharp = null; draw(); } }).catch((err) => console.error(err));
+    return syncing;
+  }
+  E.syncMap = syncVector;
   // every language's characters (fonts.js): the font subsets the event's texts and its description language need, loaded as
   // they appear; the sheet and the map are laid out again when they come in
   let fontTimer = null;
@@ -207,7 +219,7 @@ export async function openEditor(ctx) {
 
   // ---- the map view ------------------------------------------------------------------------------------------------
   const dpr = () => window.devicePixelRatio || 1;
-  let sharp = null, sharpTimer = null, sharpCtl = null;            // a PDF rendered sharp for the current view
+  let sharp = null, sharpTimer = null, sharpCtl = null;            // a PDF or vector map rendered sharp for the current view
   function fitHeight() {
     const top = root.getBoundingClientRect().top + window.scrollY;
     root.style.height = `${Math.max(420, Math.floor(window.innerHeight - top - 8))}px`;
@@ -226,29 +238,22 @@ export async function openEditor(ctx) {
     g.setTransform(dpr(), 0, 0, dpr(), 0, 0);
     g.fillStyle = "#f4f3ee"; g.fillRect(0, 0, W, H);
     const v = E.view;
-    if (E.map) {
-      g.save();
-      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
-      const s = v.k / mapPxPerMm();
-      g.globalAlpha = 1;
-      // zoomed out, a reduced copy of a large image (mapsrc.withLevels): the coarsest still as fine as the screen
-      let img = E.map.image;
-      for (const l of E.map.levels || []) if (l.k >= s * dpr()) img = l.image;
-      g.drawImage(img, v.ox, v.oy - E.ev.map.h * v.k, E.map.pxW * s, E.map.pxH * s);
-      if (sharp && sharp.k === v.k) {
-        const [x, y] = E.toScreen(sharp.box[0], sharp.box[3]);
-        g.drawImage(sharp.canvas, x, y, sharp.canvas.width / dpr(), sharp.canvas.height / dpr());
-      }
-      if (E.opts.intensity < 1) { g.fillStyle = `rgba(255,255,255,${1 - E.opts.intensity})`; g.fillRect(v.ox, v.oy - E.ev.map.h * v.k, E.ev.map.w * v.k, E.ev.map.h * v.k); }
-      g.restore();
-    } else {
-      g.strokeStyle = "#c9c6bb"; g.strokeRect(v.ox, v.oy - (E.ev.map.h || 297) * v.k, (E.ev.map.w || 210) * v.k, (E.ev.map.h || 297) * v.k);
-    }
     const T = (x, y) => [v.ox + x * v.k, v.oy - y * v.k];
-    const purple = E.ev.appearance.purple ? cmykToRgb(E.ev.appearance.purple) : SCREEN.upper;
-    if (E.otherCourseItems?.length) drawItems(g, E.otherCourseItems, T, v.k, { blend: E.ev.appearance.blend, purple: "#7b8fb3", alpha: 0.55 });
-    if (E.others?.length) drawItems(g, E.others, T, v.k, { blend: E.ev.appearance.blend, purple: "#d9a6d4", alpha: 0.9 });
-    drawItems(g, E.items, T, v.k, { blend: E.ev.appearance.blend, purple });
+    const pc = purpleOverride(E.ev, E.map), purple = pc ? cmykToRgb(pc) : SCREEN.upper, blend = itemBlend(E.ev, E.map);
+    // « layer » mode (Purple Pen): the map up to the lower purple's colour, the lower purple, the rest of the map, the rest
+    const layered = E.map?.kind === "vector" && E.map.layer != null && !!E.map.images;
+    if (E.map) drawMap(v, layered ? "below" : "all");
+    else { g.strokeStyle = "#c9c6bb"; g.strokeRect(v.ox, v.oy - (E.ev.map.h || 297) * v.k, (E.ev.map.w || 210) * v.k, (E.ev.map.h || 297) * v.k); }
+    let items = E.items;
+    if (layered) {
+      const [lower, rest] = splitItems(items);
+      drawItems(g, lower, T, v.k, { blend, purple });
+      drawMap(v, "above");
+      items = rest;
+    }
+    if (E.otherCourseItems?.length) drawItems(g, E.otherCourseItems, T, v.k, { blend, purple: "#7b8fb3", alpha: 0.55 });
+    if (E.others?.length) drawItems(g, E.others, T, v.k, { blend, purple: "#d9a6d4", alpha: 0.9 });
+    drawItems(g, items, T, v.k, { blend, purple });
     if (E.opts.printArea) drawPrintArea(T);
     drawRoutes(T);
     for (const f of E.overlays) { try { f(g, T, v.k); } catch (err) { console.error(err); } }
@@ -256,6 +261,25 @@ export async function openEditor(ctx) {
     if (E.ghost) drawGhost(T);
     if (E.dragRect) { g.strokeStyle = "#0a84ff"; g.setLineDash([5, 4]); const [x1, y1] = T(...E.dragRect[0]), [x2, y2] = T(...E.dragRect[1]); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.setLineDash([]); }
     scheduleSharp();
+  }
+  /** The map, or a part of a vector map's colours ("below", "above": transparent where the part draws nothing). */
+  function drawMap(v, part) {
+    const W = canvas.width / dpr(), H = canvas.height / dpr(), s = v.k / mapPxPerMm();
+    const vec = part !== "all";
+    g.save();
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+    if (part === "above") g.globalAlpha = E.opts.intensity;          // the upper colours fade toward what lies under them
+    // zoomed out, a reduced copy of a large image (mapsrc.withLevels): the coarsest still as fine as the screen
+    let img = vec ? E.map.images[part] : E.map.image;
+    for (const l of (vec ? E.map.images.levels?.[part] : E.map.levels) || []) if (l.k >= s * dpr()) img = l.image;
+    const sc = sharp && sharp.map === E.map && sharp.k === v.k && sharp.layer === (E.map.layer ?? null) && sharp.over === !!E.map.overprint ? sharp.parts[part] : null;
+    const [sx, sy] = sc ? E.toScreen(sharp.box[0], sharp.box[3]) : [0, 0], sw = sc ? sc.width / dpr() : 0, sh = sc ? sc.height / dpr() : 0;
+    if (sc && part === "above") { g.save(); g.beginPath(); g.rect(0, 0, W, H); g.rect(sx, sy, sw, sh); g.clip("evenodd"); }
+    g.drawImage(img, v.ox, v.oy - E.ev.map.h * v.k, E.map.pxW * s, E.map.pxH * s);
+    if (sc && part === "above") g.restore();
+    if (sc) g.drawImage(sc, sx, sy, sw, sh);
+    if (part !== "above" && E.opts.intensity < 1) { g.globalAlpha = 1; g.fillStyle = `rgba(255,255,255,${1 - E.opts.intensity})`; g.fillRect(v.ox, v.oy - E.ev.map.h * v.k, E.ev.map.w * v.k, E.ev.map.h * v.k); }
+    g.restore();
   }
   /** The routes drawn for the climb (Itinéraire), on the screen only: dashed, in the map's brown. */
   function drawRoutes(T) {
@@ -300,23 +324,26 @@ export async function openEditor(ctx) {
     }
     g.restore();
   }
-  // a PDF map drawn sharp at high zoom: the visible part rendered at the screen's resolution after the view settles
+  // a PDF or vector map drawn sharp at high zoom: the visible part rendered at the screen's resolution after the view settles
   function scheduleSharp() {
-    if (E.map?.kind !== "pdf") return;
+    if (!E.map?.renderRegion) return;
     clearTimeout(sharpTimer);
     const need = E.view.k * dpr() > mapPxPerMm() * 1.15;
     if (!need) { sharp = null; return; }
-    if (sharp && sharp.k === E.view.k && sharp.ox === E.view.ox && sharp.oy === E.view.oy) return;
+    const layer = E.map.kind === "vector" ? E.map.layer ?? null : null, over = !!E.map.overprint;
+    if (sharp && sharp.map === E.map && sharp.k === E.view.k && sharp.ox === E.view.ox && sharp.oy === E.view.oy && sharp.layer === layer && sharp.over === over) return;
     sharpTimer = setTimeout(async () => {
       sharpCtl?.abort(); sharpCtl = new AbortController();
       const W = canvas.width / dpr(), H = canvas.height / dpr();
       const [l, t] = E.toMap(0, 0), [r, b] = E.toMap(W, H);
       const box = [Math.max(0, l), Math.max(0, b), Math.min(E.ev.map.w, r), Math.min(E.ev.map.h, t)];
       if (box[2] <= box[0] || box[3] <= box[1]) return;
-      const k = E.view.k, v0 = { ...E.view };
+      const k = E.view.k, v0 = { ...E.view }, map = E.map, sig = sharpCtl.signal;
       try {
-        const c = await E.map.renderRegion(box, k * dpr(), sharpCtl.signal);
-        if (E.view.k === v0.k && E.view.ox === v0.ox && E.view.oy === v0.oy) { sharp = { canvas: c, box, k, ox: v0.ox, oy: v0.oy }; draw(); }
+        const parts = layer != null && map.images
+          ? { below: await map.renderRegion(box, k * dpr(), sig, "below"), above: await map.renderRegion(box, k * dpr(), sig, "above") }
+          : { all: await map.renderRegion(box, k * dpr(), sig) };
+        if (map === E.map && !sig.aborted && E.view.k === v0.k && E.view.ox === v0.ox && E.view.oy === v0.oy) { sharp = { parts, box, k, ox: v0.ox, oy: v0.oy, layer, over, map }; draw(); }
       } catch (err) { /* cancelled */ }
     }, 260);
   }
@@ -627,6 +654,8 @@ export async function openEditor(ctx) {
   ro.observe(canvas);
 
   // ---- start -------------------------------------------------------------------------------------------------------
+  // a vector map is opened in the event's frame (its origin): its size is what the file draws, kept with the event
+  if (E.map?.kind === "vector" && E.ev.map.kind === "ocad") { E.ev.map.w = E.map.w; E.ev.map.h = E.map.h; }
   renderTabs();
   size();
   refresh();
@@ -642,6 +671,7 @@ export async function openEditor(ctx) {
   E.status(E.readOnly ? "Lecture seule" : "Prêt", "ok");
   if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
   fontCheck();
+  syncVector();
   // files dropped on the editor: a .ppen is imported, a map replaces the event's
   root.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !root.querySelector(".tr-modal")) e.preventDefault(); });
   root.addEventListener("drop", async (e) => {
@@ -649,7 +679,7 @@ export async function openEditor(ctx) {
     if (!files.length || root.querySelector(".tr-modal")) return;
     e.preventDefault();
     if (E.readOnly) { E.toast("Lecture seule."); return; }
-    const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find((f) => /\.(pdf|png|jpe?g|gif|bmp|webp|tiff?)$/i.test(f.name) || /^image\//.test(f.type));
+    const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find(isMapFile);
     if (ppen) D.importPpen(E, ppen);
     else if (map) (await import("./extras.js")).changeMap(E, map);
     else E.toast("Déposez un fichier .ppen ou une carte (PDF ou image).");
@@ -680,7 +710,7 @@ function shell(E) {
         ["import-ppen", "Importer un fichier Purple Pen (.ppen)…"], ["export-ppen", "Exporter en .ppen"], "-",
         ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
         ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
-        ["export-images", "Images des circuits (PNG, JPEG)…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
+        ["export-images", "Images des circuits (PNG, JPEG, GIF)…"], ["export-ocad", "Fichiers OCAD ou Mapper des circuits…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
         ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"], "-", ["offline", "Travailler hors ligne…"]])}
       ${menu("Événement", [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
         ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],

@@ -1,7 +1,9 @@
 // The Tracer's base map, read in the browser from the file as it came: an image (its resolution read from the file when
-// it says it — PNG pHYs, JPEG JFIF or EXIF, TIFF —, else asked; TIFF read by tiff.js) or a PDF page (shown with pdf.js, kept as it is for the course
-// PDFs, where it is embedded unchanged). Map millimetres follow Purple Pen: the sheet's bottom-left corner is the
-// origin, y up; an image measures pixels × 25.4 / dpi, a PDF its page in points × 25.4 / 72.
+// it says it — PNG pHYs, JPEG JFIF or EXIF, TIFF —, else asked; TIFF read by tiff.js), a PDF page (shown with pdf.js, kept as it is for the course
+// PDFs, where it is embedded unchanged), or an OCAD (6 to 12, 2018) or OpenOrienteering Mapper map, drawn by the Tracer's own
+// vector engine (vmap/, a port of Purple Pen's). Map millimetres follow Purple Pen: the sheet's bottom-left corner is the
+// origin, y up; an image measures pixels × 25.4 / dpi, a PDF its page in points × 25.4 / 72, a vector map its own mm moved so
+// that the bottom-left corner of what it draws is the origin (ox, oy: that corner in the file's coordinates).
 
 import { isTiff, decodeTiff, tiffDpi } from "./tiff.js";
 
@@ -15,9 +17,13 @@ async function pdfjs() {
   return pdfjsLib;
 }
 export const isPdf = (name, type) => /\.pdf$/i.test(name || "") || type === "application/pdf";
-export const isMapFile = (f) => /\.(png|jpe?g|gif|bmp|webp|tiff?|pdf)$/i.test(f.name) || /^image\//.test(f.type) || f.type === "application/pdf";
+export const isMapFile = (f) => /\.(png|jpe?g|gif|bmp|webp|tiff?|pdf|ocd|omap|xmap)$/i.test(f.name) || /^image\//.test(f.type) || f.type === "application/pdf";
+/** An OCAD or OpenOrienteering Mapper file (by its name, or its first bytes). */
+export const isVectorMap = (name, bytes) => /\.(ocd|omap|xmap)$/i.test(name || "") || (!!bytes && bytes.length > 4 && ((bytes[0] === 0xad && bytes[1] === 0x0c) || /<map[\s>][\s\S]*openorienteering|openorienteering[\s\S]*<map[\s>]/i.test(new TextDecoder().decode(bytes.subarray(0, 400)))));
+/** What a map file chooser accepts. */
+export const MAP_ACCEPT = ".pdf,image/*,.tif,.tiff,.ocd,.omap,.xmap";
 export const mimeOf = (name, type) => type && type !== "application/octet-stream" ? type
-  : ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", bmp: "image/bmp", webp: "image/webp", pdf: "application/pdf", tif: "image/tiff", tiff: "image/tiff" })[(String(name).split(".").pop() || "").toLowerCase()] || "application/octet-stream";
+  : ({ png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", bmp: "image/bmp", webp: "image/webp", pdf: "application/pdf", tif: "image/tiff", tiff: "image/tiff", ocd: "application/x-ocad", omap: "application/x-openorienteering-mapper", xmap: "application/x-openorienteering-mapper" })[(String(name).split(".").pop() || "").toLowerCase()] || "application/octet-stream";
 
 /** The dots per inch an image file declares, or 0. */
 export function imageDpi(bytes) {
@@ -61,10 +67,13 @@ export function imageDpi(bytes) {
 }
 
 /**
- * Open a map from its bytes: { kind: "bitmap"|"pdf", w, h (mm of the sheet at dpi), pxW, pxH, dpi, image (bitmap), page, draw }.
- * For a PDF, `dpi` is the resolution of the first rendering; renderRegion() renders any part at any resolution.
+ * Open a map from its bytes: { kind: "bitmap"|"pdf"|"vector", w, h (mm of the sheet at dpi), pxW, pxH, dpi, image (bitmap), page, draw }.
+ * For a PDF, `dpi` is the resolution of the first rendering; renderRegion() renders any part at any resolution. origin: a vector
+ * map's { ox, oy } as the event keeps them (the frame its course was set in), else the corner of what the map draws.
  */
-export async function openMap(bytes, type, name = "", dpiHint = 0) {
+export async function openMap(bytes, type, name = "", dpiHint = 0, origin = null) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (isVectorMap(name, u8)) return openVector(u8, name, origin);
   if (isPdf(name, type)) {
     const lib = await pdfjs();
     const doc = await lib.getDocument({ data: new Uint8Array(bytes).slice() }).promise;
@@ -92,7 +101,6 @@ export async function openMap(bytes, type, name = "", dpiHint = 0) {
       },
     };
   }
-  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   if (isTiff(u8)) {
     // browsers do not open TIFF: read here (tiff.js), with a GeoTIFF's georeferencing when it has one
     const t = await decodeTiff(u8);
@@ -109,15 +117,78 @@ export async function openMap(bytes, type, name = "", dpiHint = 0) {
 /** Reduced copies of a large image (½, ¼, ⅛…), made in the background: drawn instead of the full image when zoomed out,
  *  a large scan stays smooth to move. levels: [{ k (copy px per image px), image }], the finest first. */
 function withLevels(src) {
-  src.levels = [];
-  if (src.pxW * src.pxH < 6e6 || typeof createImageBitmap !== "function") return src;
+  src.levels = makeLevels(src.image, src.pxW, src.pxH);
+  return src;
+}
+function makeLevels(image, pxW, pxH) {
+  const levels = [];
+  if (pxW * pxH < 6e6 || typeof createImageBitmap !== "function") return levels;
   (async () => {
-    let w = src.pxW, h = src.pxH, from = src.image;
+    let w = pxW, h = pxH, from = image;
     while (w * h > 1.5e6) {
       w = Math.round(w / 2); h = Math.round(h / 2);
       try { from = await createImageBitmap(from, { resizeWidth: w, resizeHeight: h, resizeQuality: "high" }); } catch (e) { return; }
-      src.levels.push({ k: w / src.pxW, image: from });
+      levels.push({ k: w / pxW, image: from });
     }
   })();
+  return levels;
+}
+
+// ---- OCAD and OpenOrienteering Mapper maps (vmap/) -------------------------------------------------------------------------------
+/**
+ * Open a vector map: { kind: "vector", format ("ocad"|"oom"), version, vmap, w, h, ox, oy, scale, pxW, pxH, image, levels,
+ * renderRegion(box, pxPerMm, signal, part), setLayer(colourId | null), drawPdf(target, box, part) }. part: "all", "below" (the
+ * colours up to the course's lower purple layer) or "above" (the rest, on a transparent ground).
+ */
+async function openVector(u8, name, origin = null) {
+  const oom = !(u8[0] === 0xad && u8[1] === 0x0c);
+  const mod = oom ? await import("./vmap/oom.js") : await import("./vmap/ocad.js");
+  const { map, version } = oom ? mod.readOom(u8) : mod.readOcad(u8);
+  const { CanvasTarget } = await import("./vmap/target.js");
+  const { Matrix } = await import("./vmap/geom.js");
+  // the frame: 2 mm around what the map draws, rounded to the mm, or the event's own origin (its course stays where it was set)
+  const b = map.bounds(), M = 2;
+  const ox = Number.isFinite(origin?.ox) ? origin.ox : Math.floor(b[0] - M), oy = Number.isFinite(origin?.oy) ? origin.oy : Math.floor(b[1] - M);
+  const w = Math.max(10, Math.ceil(b[2] + M - ox)), h = Math.max(10, Math.ceil(b[3] + M - oy));
+  const k = Math.min(12, 6000 / Math.max(w, h));                // the base image: at most 12 px per mm and 6000 px a side
+  const src = { kind: "vector", format: oom ? "oom" : "ocad", version, vmap: map, w, h, ox, oy, scale: map.scale, dpi: k * 25.4,
+    pxW: Math.round(w * k), pxH: Math.round(h * k), layer: null, overprint: false, levels: [] };
+  const range = (part) => (part === "below" ? { end: src.layer } : part === "above" ? { begin: src.layer } : {});
+  /** Draw the box [l, b, r, t] (Tracer mm) of the map into a canvas at pxPerMm. */
+  src.renderRegion = async ([l, bb, r, t], pxPerMm, signal, part = "all") => {
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round((r - l) * pxPerMm)); out.height = Math.max(1, Math.round((t - bb) * pxPerMm));
+    const g = out.getContext("2d");
+    if (part !== "above") { g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height); }
+    const base = new Matrix(pxPerMm, 0, 0, -pxPerMm, -(ox + l) * pxPerMm, (oy + t) * pxPerMm);
+    map.draw(new CanvasTarget(g, base), [ox + l, oy + bb, ox + r, oy + t], { minRes: 1 / pxPerMm, overprint: src.overprint, ...range(part) });
+    return out;
+  };
+  /** Draw the map on a PDF target (vmap/target.js) whose frame is Tracer mm. */
+  src.drawPdf = (target, [l, bb, r, t], part = "all") => {
+    target.push(new Matrix(1, 0, 0, 1, -ox, -oy));
+    map.draw(target, [ox + l, oy + bb, ox + r, oy + t], { minRes: 0.01, overprint: src.overprint, ...range(part) });
+    target.pop();
+  };
+  const baseImage = (part) => src.renderRegion([0, 0, w, h], k, null, part);
+  const parts = async () => {
+    const below = await baseImage("below"), above = await baseImage("above");
+    return { below, above, levels: { below: makeLevels(below, src.pxW, src.pxH), above: makeLevels(above, src.pxW, src.pxH) } };
+  };
+  src.image = await baseImage("all");
+  src.levels = makeLevels(src.image, src.pxW, src.pxH);
+  /** The course's purple goes above this colour (Purple Pen's « layer » mode), or null: the map drawn whole. */
+  src.setLayer = async (id) => {
+    if (id === src.layer && (id == null || src.images)) return;
+    src.layer = id;
+    src.images = id == null ? null : await parts();
+  };
+  src.setOverprint = async (on) => {
+    if (!!on === src.overprint) return;
+    src.overprint = !!on;
+    src.image = await baseImage("all");
+    src.levels = makeLevels(src.image, src.pxW, src.pxH);
+    if (src.layer != null) src.images = await parts();
+  };
   return src;
 }

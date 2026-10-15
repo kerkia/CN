@@ -7,7 +7,7 @@
 import * as M from "./model.js";
 import * as S from "./store.js";
 import * as G from "./geo.js";
-import { openMap, isMapFile, mimeOf, imageDpi, isPdf } from "./mapsrc.js";
+import { openMap, isMapFile, mimeOf, imageDpi, isPdf, MAP_ACCEPT } from "./mapsrc.js";
 import { modal, field, sel, num, dropHtml, dropZone } from "./dialogs.js";
 import { symbol, symbolText, symbolName, symbolsFor, loadAllTexts } from "./symbols.js";
 import { ctrlName } from "./reports.js";
@@ -28,19 +28,21 @@ export const comments = async (E) => (await team()).comments(E);
 export const fieldMode = async (E) => (await team()).fieldMode(E);
 
 // ---- a new map -------------------------------------------------------------------------------------------------------------
-/** Replace the event's map (a corrected version, a better scan, the PDF instead of an image): the controls keep their place on
- *  the sheet, or follow a change of size when the new map covers the same ground. */
+/** Replace the event's map (a corrected version, a better scan, the PDF instead of an image, the OCAD file itself): the controls
+ *  keep their place on the sheet, their map coordinates (a new version of the same OCAD or Mapper file), or their place on the
+ *  ground, or follow a change of size when the new map covers the same ground. */
 export async function changeMap(E, preset = null) {
   const ev = E.ev, hadGeo = G.hasGeo(ev);
   let src = null, bytes = null, type = "", name = "", geoFiles = [];
   const v = await modal(E, { title: "Changer de carte", wide: true, ok: "Changer", body: `
-    <p>Une nouvelle version de la carte (corrigée, mieux numérisée, un PDF au lieu d'une image, un scan…) : un PDF ou une image (JPG, PNG, GIF, TIFF, BMP).</p>
-    ${dropHtml("tr-cm-drop", "Déposez ici la nouvelle carte, ou cliquez pour la choisir", ".pdf,image/*,.tif,.tiff", false)}
+    <p>Une nouvelle version de la carte (corrigée, mieux numérisée, un PDF au lieu d'une image, le fichier OCAD lui-même…) : une carte OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image (JPG, PNG, GIF, TIFF, BMP).</p>
+    ${dropHtml("tr-cm-drop", "Déposez ici la nouvelle carte, ou cliquez pour la choisir", MAP_ACCEPT, false)}
     <p class="tr-hint" id="tr-cm-info">Aucune carte choisie.</p>
     <div class="tr-grid2">${field("Échelle de la carte (1:…)", `<input name="scale" value="${ev.map.scale}" inputmode="numeric">`)}
     ${field("Résolution de l'image (points par pouce)", `<input name="dpi" value="${ev.map.dpi || ""}" inputmode="numeric">`, "Pour une image ; lue dans le fichier quand il la donne.")}</div>
     ${field("Calage de la nouvelle carte (facultatif : .jgw/.pgw/.wld avec son .prj, ou .kmz/.kml)", '<input type="file" name="geo" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
     <h3>Les postes sur la nouvelle carte</h3>
+    <label class="tr-check" id="tr-cm-file" ${ev.map.kind === "ocad" ? "" : "hidden"}><input type="radio" name="fit" value="file"> Garder leurs coordonnées sur la carte (une nouvelle version du même fichier OCAD ou Mapper)</label>
     <label class="tr-check"><input type="radio" name="fit" value="keep" checked> Garder leur place sur la feuille (même mise en page)</label>
     <label class="tr-check"><input type="radio" name="fit" value="scale"> Les mettre à l'échelle de la nouvelle feuille (même cadrage, autre taille)</label>
     <label class="tr-check"><input type="radio" name="fit" value="ground" ${hadGeo ? "" : "disabled"}> Garder leur position au sol${hadGeo ? " (la nouvelle carte doit être calée : GeoTIFF ou fichier ci-dessus)" : " (il faut que les deux cartes soient géoréférencées)"}</label>
@@ -49,30 +51,42 @@ export async function changeMap(E, preset = null) {
     const info = f.querySelector("#tr-cm-info");
     const take = async (list) => {
       const file = list.find(isMapFile);
-      if (!file) { info.textContent = /\.(ocd|omap|xmap)$/i.test(list[0]?.name || "") ? "Un fichier OCAD ou Mapper ne se lit pas ici : déposez un PDF ou une image de la carte." : "Ce n'est pas une carte (PDF ou image)."; return; }
+      if (!file) { info.textContent = "Ce n'est pas une carte (OCAD, Mapper, PDF ou image)."; return; }
       bytes = new Uint8Array(await file.arrayBuffer()); type = mimeOf(file.name, file.type); name = file.name;
       if (!isPdf(name, type)) { const d = imageDpi(bytes); if (d) f.elements.dpi.value = d; }
       let err = null;
+      info.textContent = `Lecture de « ${name} »…`;
       src = await openMap(bytes, type, name, Number(f.elements.dpi.value) || 0).catch((e) => { err = e; return null; });
+      if (src?.kind === "vector") {
+        f.elements.scale.value = String(src.scale);
+        src.geoInfo = await (await import("./vmap/georef.js")).geoFromVector(src.vmap, src).catch(() => null);
+      }
       info.textContent = !src ? `Ce fichier ne s'ouvre pas${err?.message && err.message !== "map" ? ` : ${err.message}` : "."}` : src.kind === "pdf"
         ? `✓ « ${name} » : PDF de ${nf(src.w)} × ${nf(src.h)} mm (carte actuelle ${nf(ev.map.w)} × ${nf(ev.map.h)} mm).`
+        : src.kind === "vector" ? `✓ « ${name} » : carte ${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`} au 1:${nf(src.scale)}, ${nf(src.w)} × ${nf(src.h)} mm${src.geoInfo ? `, géoréférencée (${src.geoInfo.name})` : ""}.`
         : `✓ « ${name} » : image de ${src.pxW} × ${src.pxH} px${src.world ? ", géoréférencée (GeoTIFF)" : ""}.`;
-      if (src?.world && hadGeo) f.querySelector('input[value="ground"]').checked = true;
+      const both = src?.kind === "vector" && ev.map.kind === "ocad";
+      f.querySelector("#tr-cm-file").hidden = !both;
+      if (both) f.querySelector('input[value="file"]').checked = true;
+      else if ((src?.world || src?.geoInfo) && hadGeo) f.querySelector('input[value="ground"]').checked = true;
+      else if (f.elements.fit.value === "file") f.querySelector('input[value="keep"]').checked = true;
     };
     dropZone(f.querySelector("#tr-cm-drop"), take);
     f.elements.geo.addEventListener("change", () => { geoFiles = [...f.elements.geo.files]; });
     if (preset) take([preset]);
   },
   validate: (o) => (!src ? "Déposez ou choisissez une carte lisible." : !(num(o.scale) > 100) ? "Échelle invalide." : src.kind === "bitmap" && !(num(o.dpi) > 10) ? "La résolution de l'image."
-    : o.fit === "ground" && !src.world && !geoFiles.length ? "Pour garder la position au sol, il faut le calage de la nouvelle carte (GeoTIFF, ou fichier de calage)." : null) });
+    : o.fit === "ground" && !src.world && !src.geoInfo && !geoFiles.length ? "Pour garder la position au sol, il faut le calage de la nouvelle carte (GeoTIFF, carte OCAD ou Mapper géoréférencée, ou fichier de calage)." : null) });
   if (!v || !src) return;
+  const vector = src.kind === "vector", kind = vector ? "ocad" : src.kind;
   const dpi = src.kind === "bitmap" ? num(v.dpi) : 0;
   const w = src.kind === "bitmap" ? (src.pxW * 25.4) / dpi : src.w, h = src.kind === "bitmap" ? (src.pxH * 25.4) / dpi : src.h;
-  // the new map's georeference: its GeoTIFF, or the files given
-  const shape = { map: { ...ev.map, kind: src.kind, w, h } };
+  // the new map's georeference: its GeoTIFF, an OCAD or Mapper file's own, or the files given
+  const shape = { map: { ...ev.map, kind, w, h } };
   let newGeo = null;
   try {
     if (geoFiles.length) newGeo = (await geoFromFiles({ ev: shape, map: src }, geoFiles)).geo;
+    else if (src.geoInfo) newGeo = src.geoInfo.geo;
     else if (src.world) newGeo = G.geoFromWorld(shape, src.world.wf, null, src.pxW, src.pxH, src.world.crs);
   } catch (err) { E.toast(err.message || "Fichier de calage illisible."); return; }
   E.status("Envoi de la carte…", "busy");
@@ -85,7 +99,12 @@ export async function changeMap(E, preset = null) {
   E.map = src;
   E.change((x) => {
     const old = { ...x };
-    if (v.fit === "scale") {
+    if (v.fit === "file" && vector && x.map.kind === "ocad") {
+      // the same map file's coordinates: the Tracer's frame moves from the old origin to the new one
+      const [ox, oy] = M.fileOffset(x);
+      M.transformAll(x, [1, 0, 0, 1, ox - src.ox, oy - src.oy]);
+      if (x.geo && !newGeo) { const g = x.geo, dx = ox - src.ox, dy = oy - src.oy; x.geo = { ...g, c: g.c + dx, f: g.f + dy }; }
+    } else if (v.fit === "scale") {
       const k = w / x.map.w, ky = h / x.map.h;
       M.transformAll(x, [k, 0, 0, ky, 0, 0]);
       if (x.geo) { const g = x.geo; x.geo = { a: g.a * k, b: g.b * k, c: g.c * k, d: g.d * ky, e: g.e * ky, f: g.f * ky }; }
@@ -97,7 +116,8 @@ export async function changeMap(E, preset = null) {
       const b = (q2[0] - q0[0]) / (p2[1] - p0[1]), d = (q2[1] - q0[1]) / (p2[1] - p0[1]);
       M.transformAll(x, [a, b, c, d, q0[0] - a * p0[0] - b * p0[1], q0[1] - c * p0[0] - d * p0[1]]);
     }
-    x.map = { ...x.map, kind: src.kind, file: name, scale: num(v.scale), dpi, w, h };
+    x.map = { ...x.map, kind, file: name, scale: num(v.scale), dpi, w, h };
+    if (vector) Object.assign(x.map, { ox: src.ox, oy: src.oy }); else { delete x.map.ox; delete x.map.oy; }
     if (newGeo) x.geo = newGeo;
     else if (v.fit === "calage") delete x.geo;                  // the old calibration no longer fits once the course moves
   }, "Nouvelle carte");
@@ -204,6 +224,7 @@ export async function georef(E, state = null) {
     <h3>Ou un fichier</h3>
     ${field("Fichier de calage (.jgw, .pgw, .tfw, .wld avec son .prj ; ou .kmz / .kml de la même image)", '<input type="file" name="files" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
     ${ev.map.kind === "pdf" ? '<p class="tr-hint">Un fichier de calage (world file) suppose une image ; pour un PDF, utilisez les points ou un KMZ de la carte exportée en image à la même taille.</p>' : ""}
+    ${E.map?.kind === "vector" ? `<label class="tr-check"><input type="checkbox" name="fromFile" ${E.map.vmap.realWorld ? "" : "disabled"}> Prendre le géoréférencement du fichier de la carte (${E.map.format === "oom" ? "Mapper" : "OCAD"})${E.map.vmap.realWorld ? "" : " : ce fichier n'en a pas"}</label>` : ""}
     ${has ? '<label class="tr-check"><input type="checkbox" name="remove"> Retirer le géoréférencement</label>' : ""}`,
   onOpen: (f, done) => {
     f.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { st.pts.splice(Number(b.dataset.rm), 1); done({ again: true }); }));
@@ -223,7 +244,11 @@ export async function georef(E, state = null) {
   }
   if (v.remove) { E.change((x) => { delete x.geo; delete x.georefPts; }, "Géoréférencement retiré"); return; }
   let geo = null, how = "";
-  if (v.files?.length) {
+  if (v.fromFile) {
+    const r = await (await import("./vmap/georef.js")).geoFromVector(E.map.vmap, E.map).catch(() => null);
+    if (!r) { E.toast("Les coordonnées du fichier de la carte ne se placent pas sur le globe (système inconnu) : utilisez des points."); return; }
+    geo = r.geo; how = `fichier de la carte, ${r.name}`;
+  } else if (v.files?.length) {
     try { ({ geo, how } = await geoFromFiles(E, [...v.files])); } catch (err) { E.toast(err.message || "Fichier de calage illisible."); return; }
   } else if (st.pts.length >= 2) { geo = G.geoFromPoints(st.pts); how = `${st.pts.length} points`; }
   if (!geo) { if (st.pts.length === 1) E.toast("Un deuxième point au moins."); return; }
@@ -289,7 +314,7 @@ export async function readCourseFromMap(E) {
   const pxPerMm = Math.min(8, 6000 / Math.max(E.ev.map.w, E.ev.map.h));
   const W = Math.round(E.ev.map.w * pxPerMm), H = Math.round(E.ev.map.h * pxPerMm);
   let canvas;
-  if (E.map.kind === "pdf") canvas = await E.map.renderRegion([0, 0, E.ev.map.w, E.ev.map.h], pxPerMm);
+  if (E.map.renderRegion) canvas = await E.map.renderRegion([0, 0, E.ev.map.w, E.ev.map.h], pxPerMm);
   else { canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H; canvas.getContext("2d").drawImage(E.map.image, 0, 0, W, H); }
   let det;
   try { det = await C.detectCourse(canvas, { maxSide: Math.min(4000, Math.max(canvas.width, canvas.height)) }); } catch (err) { console.error(err); det = null; }

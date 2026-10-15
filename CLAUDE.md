@@ -683,7 +683,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   kept by `sources/upload.apply`, skipped in `run.run`'s loop): the organiser's file is used as it is.
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
-  does it (phases 1-3 of the study: maps in **PDF or image only**, OCAD/OOM not read), in the browser. **No AGPL code**: Purple
+  does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple
   Pen's own code is BSD (attribution `site/assets/tracer/LICENSE-PurplePen.txt`), its symbols and texts converted by
   `docs/tracer/symbols.py` into `site/assets/tracer/symbols.json` (fr/en) and `symbol-texts.json` (23 languages). The model
   (`model.js`) mirrors Purple Pen's EventDB, QueryEvent, CourseView and ChangeEvent (controls, courses as linked course controls,
@@ -727,7 +727,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   samples in the git-ignored `site/data/_trtest/` (their .ppen were made for OCAD maps: controls can lie off the JPEG).
   **Second pass (owner, 2026-10-15: « complete phases 1-3 »).** Import: one dialog, the .ppen and its map dropped together or
   one after the other (`dialogs.dropZone`), each file confirmed as read; files dropped on the Tracer page, « Nouvel événement »,
-  « Changer de carte » or the editor are taken too; any PDF or image of the map (never assume OCAD is at hand). A map that is
+  « Changer de carte » or the editor are taken too; the OCAD or Mapper file, or any PDF or image of the map (never assume OCAD is at hand). A map that is
   not the .ppen's own file is aligned by two clicks (`calage.js`: least-squares similarity; a .ppen keeps true map mm, so the
   scale found corrects the image's dpi or the PDF's scale, not the course), also Événement › Caler les postes sur la carte.
   TIFF read by `tiff.js` (strips/tiles, none/LZW/Deflate/PackBits, predictor, 1-16 bits, palette, planar; a GeoTIFF's
@@ -756,6 +756,27 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **French wording** (owner, 2026-10-15): « le tracé » (des circuits), never « le Tracer » — « Tracer » is the menu's verb, as
   « Déposer »; « la page « Tracer » » when the page is meant.
   « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.
+  **Third pass (owner, 2026-10-15: « fix the small gaps, then the big ones »): OCAD and Mapper.** `tracer/vmap/` ports Purple
+  Pen's MapModel (BSD): `ocad.js` reads OCAD 6-12 and 2018, `oom.js` OpenOrienteering Mapper (.omap/.xmap), into `map.js` (colours
+  bottom to top, drawn one colour at a time; `draw(g, rect, { begin, end, overprint })` draws part of the colour table), `symdefs.js`
+  (point/line/area/text/rectangle symbols, OCAD's « Bizzarro » dash metric, Mapper's Euclidean one), `sympath.js`, `geom.js`
+  (.NET matrices, prepend order), `target.js` (canvas: strokes batched per colour, pattern tiles, 1 px minimum lines; PDF: vector
+  operators, text through `pdf.makeFonts`). Checked against Purple Pen's reference renderings (scratch harness
+  `site/data/_trtest/vmaptest.js`, git-ignored, with Purple Pen's test maps in `_trtest/ocad/`): most symbol tests ≤ 2 % of
+  pixels, real maps 3-14 % (anti-aliased against GDI's aliasing), templates (other files a map refers to) not drawn. `mapsrc.openVector`:
+  kind "vector", the frame 2 mm around what the map draws (`ox`, `oy` its corner in the file's mm, kept in `ev.map` with kind "ocad":
+  the event reopens in the same frame), a base image ≤ 12 px/mm, sharp renders when zoomed (`renderRegion` with parts). `appear.js`:
+  Purple Pen's course appearance against the map — the purple is the event's, else the map's (`FindPurple`), « layer » mode
+  (`blend` "layer", `lowerPurpleLayer`, default `FindBestLowerPurpleLayer`: the lower purple — circles, legs, out-of-bounds — between the
+  map's colours, the rest over the whole map, opaque) on screen, images and PDFs, `ocadOverprint` (colours flagged overprint drawn
+  darkened). .ppen and IOF XML keep the OCAD file's own mm (`M.fileOffset`, `shiftToFile`; import with the OCAD map: no calage; round
+  trip exact). Georeferencing from the file (`vmap/georef.js`): OCAD's grid ids → proj4 from Purple Pen's MapProjection table,
+  Mapper's EPSG/UTM/PROJ.4, common EPSG codes (`site/assets/tracer/crs.json`, built by the scratch `gen_crs.py`), proj4js 2.12.1
+  from jsdelivr; numbers that can only be Lambert 93 without a grid. « Fichiers OCAD ou Mapper des circuits » (`coursefiles.js`,
+  `vmap/ocadwrite.js` OCAD 9-12/2018, `vmap/oomwrite.js`; Purple Pen's Create OCAD Files): each course's drawing items as 7xx
+  symbols (line, area with hatching, text with its white frame) in the course colours (Purple 11, Lower purple 12, 50 % 13, Black
+  0, White 44), the map as template (the OCAD/Mapper file at offset 0, the image, a PDF as a PNG), the map's real-world
+  coordinates; checked by reading back with our readers (all versions, every object; drawings equal to 1 px).
 - **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus; one way for the analyses and the
   Tracer, the analyses'): the analyses' playback (« Analyse solo » transport row, « Analyse multi » right panel) and the
   Tracer's top bar have « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout

@@ -12,6 +12,7 @@ import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs
 import * as S from "./store.js";
 import { isPdf } from "./mapsrc.js";
 import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
+import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
 
 const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
 const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
@@ -84,8 +85,7 @@ export function printTiles(E, cd, layout) {
 }
 
 // ---- drawing items with PDF operators ----------------------------------------------------------------------------------------
-function cmykOf(ev, role, rgb) {
-  const P = ev.appearance.purple || M.PURPLE;
+function cmykOf(P, role, rgb) {
   const c = Array.isArray(role) ? role : role === "upper" || role === "lower" ? P : role === "purple50" ? P.map((x) => x / 2) : role === "white" ? [0, 0, 0, 0] : [0, 0, 0, 1];
   return rgb ? { rgb: [(1 - c[0]) * (1 - c[3]), (1 - c[1]) * (1 - c[3]), (1 - c[2]) * (1 - c[3])] } : { cmyk: c };
 }
@@ -106,7 +106,7 @@ function pathOps(L, ops, d, T) {
  * Draw items (map mm, y up) on a PDF page: T(x, y) gives points, s the points per map mm. multiply: the ExtGState name
  * for the Multiply blend (purple), or null. fonts: { reg, bold }. images: a cache of embedded images.
  */
-async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map() }) {
+async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map(), purple: P = ev.appearance.purple || M.PURPLE }) {
   const ops = [];
   const flush = () => { if (ops.length) { page.pushOperators(...ops); ops.length = 0; } };
   for (const it of items) {
@@ -115,7 +115,7 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       ops.push(L.pushGraphicsState());
       if (purple && multiply) ops.push(L.setGraphicsState(multiply));
       pathOps(L, ops, it.d, T);
-      const col = cmykOf(ev, it.color, rgb);
+      const col = cmykOf(P, it.color, rgb);
       if (it.fill && it.stroke) { setColor(L, ops, col, true); setColor(L, ops, col, false); ops.push(L.setLineWidth(it.stroke * s), L.fillAndStroke()); }
       else if (it.fill) { setColor(L, ops, col, true); ops.push(L.PDFOperator.of("f*")); }        // even-odd fill (pdf-lib has no helper for it)
       else if (it.stroke) {
@@ -127,7 +127,7 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       ops.push(L.pushGraphicsState());
       if (purple && multiply) ops.push(L.setGraphicsState(multiply));
       pathOps(L, ops, it.d, T); ops.push(L.clip(), L.endPath());
-      setColor(L, ops, cmykOf(ev, it.color, rgb), false);
+      setColor(L, ops, cmykOf(P, it.color, rgb), false);
       ops.push(L.setLineWidth(it.width * s));
       const xs = [], ys = [];
       for (const c of it.d) for (let i = 1; i < c.length; i += 2) { xs.push(c[i]); ys.push(c[i + 1]); }
@@ -145,7 +145,7 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       const ws = runs.map((r) => r.font.widthOfTextAtSize(r.text, size)), w = ws.reduce((a, b) => a + b, 0);
       const [x, y] = T(it.x, it.y);
       const x0 = it.align === "center" ? x - w / 2 : x;
-      const col = cmykOf(ev, it.color, rgb);
+      const col = cmykOf(P, it.color, rgb);
       const colorObj = col.rgb ? L.rgb(...col.rgb) : L.cmyk(...col.cmyk);
       if (it.outline > 0) {
         let xo = x0;
@@ -236,6 +236,17 @@ async function mapEmbed(E, doc, L) {
   return E._mapEmbed;
 }
 
+/** An OCAD or Mapper map drawn as vectors on a page (vmap/target.js): the box (map mm) at s points per mm, all or a part. */
+async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part) {
+  const [{ PdfTarget }, { Matrix }] = await Promise.all([import("./vmap/target.js"), import("./vmap/geom.js")]);
+  let darken = null;
+  if (E.map.overprint) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Darken" })));
+  const [x0, y0] = T(0, 0);
+  const t = new PdfTarget(L, page, new Matrix(s, 0, 0, s, x0, y0), { rgb, fonts, darken, minRes: 0.01 });
+  E.map.drawPdf(t, box, part);
+  await t.finish();
+}
+
 /** One course designator on a page of the document. */
 async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null }) {
   const ev = E.ev;
@@ -252,17 +263,27 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
   const T = (x, y) => [m + (x - box[0]) * s, m + (y - box[1]) * s];
   const clip = [L.pushGraphicsState(), L.moveTo(m, m), L.lineTo(pg.w * PT - m, m), L.lineTo(pg.w * PT - m, pg.h * PT - m), L.lineTo(m, pg.h * PT - m), L.closePath(), L.clip(), L.endPath()];
   page.pushOperators(...clip);
-  if (withMap) {
+  const vector = withMap && E.map?.kind === "vector";
+  if (vector) await syncMap(ev, E.map);
+  const layer = vector ? layerOf(ev, E.map) : null, purple = coursePurple(ev, E.map);
+  if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below");
+  else if (withMap) {
     const me = await mapEmbed(E, doc, L);
     if (me?.kind === "pdf") page.drawPage(me.emb, { x: T(0, 0)[0], y: T(0, 0)[1], xScale: k, yScale: k });
     else if (me?.kind === "bitmap") { const [x0, y0] = T(0, 0); page.drawImage(me.img, { x: x0, y: y0, width: ev.map.w * s, height: ev.map.h * s }); }
   }
   let multiply = null;
-  if (ev.appearance.blend !== "none") {
+  if (ev.appearance.blend !== "none" && layer == null) {
     const gs = doc.context.obj({ Type: "ExtGState", BM: "Multiply" });
     multiply = page.node.newExtGState("GSmul", doc.context.register(gs));
   }
-  await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images });
+  if (layer != null) {
+    // « layer » mode (Purple Pen): the lower purple between the map's colours, opaque; the rest over the whole map
+    const [lower, rest] = splitItems(items);
+    await drawItemsPdf(L, doc, page, ev, lower, T, s, { fonts, rgb, images, purple });
+    await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, "above");
+    await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple });
+  } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple });
   page.pushOperators(L.popGraphicsState());
   // a tiled page says which: « 2/3 – 1/2 » (across, down) in the margin
   if (tile && fonts?.reg) page.drawText(`${tile[0]}/${tile[2]} – ${tile[1]}/${tile[3]}`, { x: m, y: Math.max(2, m / 2 - 3), size: 7, font: fonts.reg, color: L.rgb(0.4, 0.4, 0.4) });

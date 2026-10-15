@@ -85,11 +85,12 @@ export const DEFAULT_APPEARANCE = {
 };
 export const DEFAULT_PRINT_AREA = () => ({ auto: true, restrict: true, rect: null, pageW: 827, pageH: 1169, margins: 0, landscape: false });
 
-/** A new event. map: { kind: "bitmap"|"pdf"|"none", file, scale, dpi (bitmap), w, h (mm of the sheet) }. */
+/** A new event. map: { kind: "bitmap"|"pdf"|"ocad"|"none", file, scale, dpi (bitmap), w, h (mm of the sheet), ox, oy (ocad) }. */
 export function newEvent({ title = "", map = { kind: "none", scale: 10000 }, standard = "2017", descStandard = "2018", lang = "fr", firstCode = 31 } = {}) {
   return {
     v: VERSION, title, notes: "",
-    map: { kind: map.kind || "none", file: map.file || "", scale: map.scale || 10000, dpi: map.dpi || 0, w: map.w || 0, h: map.h || 0 },
+    map: { kind: map.kind || "none", file: map.file || "", scale: map.scale || 10000, dpi: map.dpi || 0, w: map.w || 0, h: map.h || 0,
+      ...(map.kind === "ocad" ? { ox: map.ox || 0, oy: map.oy || 0 } : {}) },
     descStandard, lang, allControls: { printScale: map.scale || 10000, descKind: "symbols" }, printArea: DEFAULT_PRINT_AREA(),
     numbering: { start: firstCode, noInvertible: true }, punchCard: { rows: 3, cols: 8, ltr: true, ttb: false },
     appearance: { ...DEFAULT_APPEARANCE, mapStandard: standard }, customText: {}, customKey: {}, livelox: null,
@@ -913,6 +914,16 @@ export function autoRenumber(ev) {
   toChange.forEach((id, i) => { ev.controls[id].code = toAssign[i]; });
 }
 export function removeUnused(ev) { const u = unusedControls(ev); for (const id of u) removeControl(ev, id); return u.length; }
+
+/** An OCAD or Mapper map's own millimetres are the Tracer's moved by the map's origin (ev.map.ox, oy: mapsrc.openVector);
+ *  .ppen and IOF XML files keep the map's own, as Purple Pen does. */
+export const fileOffset = (ev) => (ev.map?.kind === "ocad" ? [Number(ev.map.ox) || 0, Number(ev.map.oy) || 0] : [0, 0]);
+/** The event moved into (sign 1) or out of (sign -1) the map file's frame. */
+export function shiftToFile(ev, sign = 1) {
+  const [ox, oy] = fileOffset(ev);
+  if (ox || oy) transformAll(ev, [1, 0, 0, 1, sign * ox, sign * oy]);
+  return ev;
+}
 
 // ---- move every object (Event › Move All Controls): an affine [a, b, c, d, e, f], x' = a x + b y + e, y' = c x + d y + f ----
 export function transformAll(ev, m) {

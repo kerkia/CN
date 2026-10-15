@@ -10,6 +10,7 @@ import { family, FAMILY_LABEL } from "./fonts.js";
 import { readPpen, writePpen } from "./ppen.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
+import { mapPurple, mapColors, defaultLayer } from "./appear.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v) => new Intl.NumberFormat("fr-FR").format(v);
@@ -114,6 +115,7 @@ export async function action(E, act, btn, at = {}) {
     case "export-gpx": (await lazy.out()).gpx(E); break;
     case "export-kml": (await lazy.out()).kml(E); break;
     case "export-images": (await lazy.out()).imagesDialog(E); break;
+    case "export-ocad": (await import("./coursefiles.js")).courseFilesDialog(E); break;
     case "export-routegadget": (await lazy.out()).routeGadget(E); break;
     case "export-csv": (await lazy.rep()).csvAll(E); break;
     case "publish": (await lazy.more()).publish(E); break;
@@ -231,7 +233,11 @@ async function eventProps(E) {
 }
 async function appearance(E) {
   const a = E.ev.appearance;
-  const purple = a.purple || M.PURPLE;
+  // the default purple is the map's own when an OCAD or Mapper map has one (Purple Pen), else the IOF's
+  const mp = mapPurple(E.map), dflt = mp || M.PURPLE, purple = a.purple || dflt, pct = (c) => c.map((x) => Math.round(x * 100)).join(" ");
+  const cols = mapColors(E.map), vector = cols.length > 0;
+  const layerId = cols.some(([id]) => id === a.lowerPurpleLayer) ? a.lowerPurpleLayer : defaultLayer(E.map);
+  const blends = [["none", "Aucun"], ["blend", "Mélange (le noir reste visible)"], ...(vector ? [["layer", "Couches (le violet sous les couleurs de la carte choisies)"]] : [])];
   const v = await modal(E, { title: "Apparence des circuits", wide: true, body: `
     <div class="tr-grid2">
     ${field("Taille des cercles (× norme)", `<input name="cs" value="${a.controlCircleSize}">`)}
@@ -243,19 +249,32 @@ async function appearance(E) {
     ${field("Contour blanc des numéros (mm)", `<input name="outline" value="${a.numberOutline}">`)}
     ${field("Coupure automatique des interpostes (mm)", `<input name="gap" value="${a.autoLegGap}">`, "0 : pas de coupure aux croisements")}
     ${field("Taille selon l'échelle d'impression", sel("scaling", [["None", "Ne pas agrandir"], ["RelativeToMap", "Relative à l'échelle de la carte"], ["RelativeTo15000", "Relative au 1:15 000 (ISOM 2017)"]], a.itemScaling))}
-    ${field("Mélange du violet avec la carte", sel("blend", [["none", "Aucun"], ["blend", "Mélange (le noir reste visible)"]], a.blend === "layer" ? "blend" : a.blend), "La mise en couche sous les objets noirs demande une carte OCAD.")}
-    ${field("Violet CMJN (%)", `<input name="cmyk" value="${purple.map((x) => Math.round(x * 100)).join(" ")}">`, "4 nombres : cyan magenta jaune noir")}
+    ${field("Mélange du violet avec la carte", sel("blend", blends, a.blend === "layer" && !vector ? "blend" : a.blend), vector ? "" : "La mise en couches demande une carte OCAD ou OpenOrienteering Mapper.")}
+    ${vector ? field("Violet inférieur sous la couleur", sel("layer", cols.map(([id, n]) => [id, n]), layerId), "Mode « Couches » : les cercles et les traits passent sous les couleurs de la carte au-dessus de celle-ci ; les numéros restent dessus.") : ""}
+    <label class="tr-check"><input type="checkbox" name="dpurple" ${a.purple ? "" : "checked"}> Violet par défaut : ${esc(mp ? `celui de la carte (${pct(mp)})` : `IOF (${pct(M.PURPLE)})`)}</label>
+    ${field("Violet CMJN (%)", `<input name="cmyk" value="${pct(purple)}">`, "4 nombres : cyan magenta jaune noir")}
+    ${vector ? `<label class="tr-check"><input type="checkbox" name="over" ${a.ocadOverprint ? "checked" : ""}> Effets de surimpression de la carte (couleurs « surimpression » fondues, comme à l'impression)</label>` : ""}
     <label class="tr-check"><input type="checkbox" name="descPurple" ${a.descriptionsPurple ? "checked" : ""}> Définitions sur la carte en violet</label>
     </div>`,
-  validate: (o) => ([o.cs, o.lw, o.nh].some((x) => !(num(x) > 0)) ? "Les tailles doivent être positives." : o.cmyk.trim().split(/[\s,;]+/).length !== 4 ? "Quatre nombres pour le violet." : null) });
+  onOpen: (f) => {
+    const sync = () => {
+      f.elements.cmyk.disabled = f.elements.dpurple.checked;
+      if (f.elements.dpurple.checked) f.elements.cmyk.value = pct(dflt);
+      if (f.elements.layer) f.elements.layer.disabled = f.elements.blend.value !== "layer";
+    };
+    f.elements.dpurple.addEventListener("change", sync); f.elements.blend.addEventListener("change", sync); sync();
+  },
+  validate: (o) => ([o.cs, o.lw, o.nh].some((x) => !(num(x) > 0)) ? "Les tailles doivent être positives." : !o.dpurple && o.cmyk.trim().split(/[\s,;]+/).length !== 4 ? "Quatre nombres pour le violet." : null) });
   if (!v) return;
   E.change((x) => {
     const ap = x.appearance;
     ap.controlCircleSize = num(v.cs); ap.lineWidth = num(v.lw); ap.numberHeight = num(v.nh); ap.centerDot = Math.max(0, num(v.dot) || 0);
     ap.numberFont = v.font; ap.numberBold = v.bold; ap.numberOutline = Math.max(0, num(v.outline) || 0); ap.autoLegGap = Math.max(0, num(v.gap) || 0);
     ap.itemScaling = v.scaling; ap.blend = v.blend; ap.descriptionsPurple = v.descPurple;
-    const cm = v.cmyk.trim().split(/[\s,;]+/).map((y) => Math.min(100, Math.max(0, num(y))) / 100);
-    ap.purple = cm.every((y, i) => Math.abs(y - M.PURPLE[i]) < 0.005) ? null : cm;
+    if (vector && v.blend === "layer" && v.layer != null) ap.lowerPurpleLayer = Number(v.layer);
+    if (vector) ap.ocadOverprint = !!v.over;
+    const cm = v.dpurple ? null : v.cmyk.trim().split(/[\s,;]+/).map((y) => Math.min(100, Math.max(0, num(y))) / 100);
+    ap.purple = !cm || cm.every((y, i) => Math.abs(y - dflt[i]) < 0.005) ? null : cm;
   }, "Apparence");
 }
 async function standards(E) {
@@ -591,7 +610,7 @@ export async function importPpen(E, preset = null) {
   const v = await modal(E, { title: "Importer un fichier Purple Pen", body: `${dropHtml("tr-ip-drop", "Déposez ici le fichier .ppen, ou cliquez pour le choisir", ".ppen,.xml", false)}
     <p class="tr-hint" id="tr-ip-file">${file ? `✓ « ${esc(file.name)} »` : "Aucun fichier choisi."}</p>
     <p>Les circuits de cet événement sont remplacés par ceux du fichier ; la carte reste celle de l'événement.</p>
-    <label class="tr-check"><input type="checkbox" name="calage"> Ce .ppen a été fait sur un autre fichier de carte (OCAD, autre PDF ou image) : caler ensuite les postes sur cette carte</label>`,
+    <label class="tr-check"><input type="checkbox" name="calage"> Ce .ppen a été fait sur un autre fichier de carte (autre PDF, image, ou une carte OCAD quand celle de l'événement n'en est pas une) : caler ensuite les postes sur cette carte</label>`,
   onOpen: (f) => dropZone(f.querySelector("#tr-ip-drop"), (list) => {
     const p = list.find((x) => /\.(ppen|xml)$/i.test(x.name));
     f.querySelector("#tr-ip-file").textContent = p ? `✓ « ${p.name} »` : `« ${list[0].name} » n'est pas un fichier .ppen.`;
@@ -601,6 +620,8 @@ export async function importPpen(E, preset = null) {
   if (!v) return;
   try {
     const imported = readPpen(await file.text());
+    // both on an OCAD or Mapper map: the .ppen's positions are the map file's own mm (Purple Pen), the Tracer's are moved
+    if (E.ev.map.kind === "ocad" && imported.map.kind === "ocad") M.shiftToFile({ ...imported, map: E.ev.map }, -1);
     E.change((x) => {
       const keep = { map: x.map, title: x.title };
       for (const k of Object.keys(x)) delete x[k];

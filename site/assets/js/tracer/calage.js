@@ -93,11 +93,12 @@ export function calage(E, { fromPpen = false } = {}) {
   async function apply() {
     const fit = similarity(pairs);
     if (!fit) { E.toast("Deux points distincts au moins."); return; }
-    const off = Math.abs(fit.k - 1) > 0.01, bitmap = E.ev.map.kind === "bitmap";
+    // an OCAD or Mapper map's millimetres are exact: the course is scaled by default, not the map
+    const off = Math.abs(fit.k - 1) > 0.01, bitmap = E.ev.map.kind === "bitmap", mapFirst = fromPpen && E.ev.map.kind !== "ocad";
     const v = await modal(E, { title: "Calage", body: `
       <p>Déplacement, rotation de ${nf(fit.deg, 1)}°, échelle × ${nf(fit.k, 3)}${pairs.length > 2 ? ` ; écart moyen aux points ${nf(M.mmToM(E.ev, fit.rms), 1)} m` : ""}.</p>
-      ${off ? `<label class="tr-check"><input type="radio" name="how" value="map" ${fromPpen ? "checked" : ""}> Les distances des postes sont justes (fichier .ppen) : corriger ${bitmap ? `la résolution de l'image (${nf(E.ev.map.dpi, 1)} → ${nf(E.ev.map.dpi * fit.k, 1)} ppp)` : `l'échelle de la carte (1:${nf(E.ev.map.scale)} → 1:${nf(Math.round(E.ev.map.scale / fit.k))})`}</label>
-        <label class="tr-check"><input type="radio" name="how" value="course" ${fromPpen ? "" : "checked"}> La carte est juste : mettre aussi les postes à l'échelle</label>` : '<p class="tr-hint">L\'échelle est la même : seuls la position et l\'angle changent.</p>'}`, ok: "Appliquer" });
+      ${off ? `<label class="tr-check"><input type="radio" name="how" value="map" ${mapFirst ? "checked" : ""}> Les distances des postes sont justes (fichier .ppen) : corriger ${bitmap ? `la résolution de l'image (${nf(E.ev.map.dpi, 1)} → ${nf(E.ev.map.dpi * fit.k, 1)} ppp)` : `l'échelle de la carte (1:${nf(E.ev.map.scale)} → 1:${nf(Math.round(E.ev.map.scale / fit.k))})`}</label>
+        <label class="tr-check"><input type="radio" name="how" value="course" ${mapFirst ? "" : "checked"}> La carte est juste : mettre aussi les postes à l'échelle</label>` : '<p class="tr-hint">L\'échelle est la même : seuls la position et l\'angle changent.</p>'}`, ok: "Appliquer" });
     if (!v) return;
     const toMap = off && v.how === "map", k = fit.k;
     E.change((x) => {

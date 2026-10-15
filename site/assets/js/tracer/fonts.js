@@ -146,6 +146,7 @@ function loadChunk(k, i) {
 const WANT = new Set(), FAILED = new Map();             // a face whose CSS could not be read is not asked again for a minute
 let wantTimer = null;
 function want(k, i) {
+  if (typeof document === "undefined") return;                // outside a browser (tests): the static widths only
   WANT.add(`${k}#${i}`);
   if (wantTimer) return;
   wantTimer = setTimeout(async () => {
@@ -157,7 +158,7 @@ function want(k, i) {
       try { await face(kk); } catch (e) { FAILED.set(kk, Date.now()); throw e; }
       if (+ii >= 0) await loadChunk(kk, +ii);
     }));
-    if (res.some((r) => r.status === "fulfilled")) window.dispatchEvent(new Event("tr-fonts"));
+    if (res.some((r) => r.status === "fulfilled") && typeof window !== "undefined") window.dispatchEvent(new Event("tr-fonts"));
   }, 0);
 }
 /** A character's width (1/1000 em) in a face: a number, null when the face lacks it, undefined when not known yet. */

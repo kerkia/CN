@@ -9,6 +9,7 @@ import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs
 import { hasGeo, toLatLon } from "./geo.js";
 import { relayAssignments } from "./relay.js";
 import { zip, printBox } from "./pdf.js";
+import { paintCourse, paintMap, purpleOverride, syncMap } from "./appear.js";
 
 const x = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -45,7 +46,8 @@ function courseSequence(ev, cd) {
 
 export function iofXmlText(ev, version = 3) {
   const codes = codeMap(ev), geo = hasGeo(ev);
-  const bounds = [0, 0, ev.map.w || 0, ev.map.h || 0];
+  const [fx, fy] = M.fileOffset(ev);                         // an OCAD or Mapper map: the positions in its own mm, as Purple Pen
+  const bounds = [fx, fy, fx + (ev.map.w || 0), fy + (ev.map.h || 0)];
   const out = [];
   const courses = M.courseIds(ev).filter((id) => M.findKind(ev, id, "start") && M.hasFinish(ev, id));
   if (version === 3) {
@@ -59,7 +61,7 @@ export function iofXmlText(ev, version = 3) {
       if (c.kind !== kind) continue;
       out.push(`    <Control type="${TYPE[kind]}">`, `      <Id>${x(codes.get(id))}</Id>`);
       if (geo) { const [lat, lon] = toLatLon(ev, c.x, c.y); out.push(`      <Position lng="${lon.toFixed(7)}" lat="${lat.toFixed(7)}" />`); }
-      out.push(`      <MapPosition x="${r2(c.x)}" y="${r2(c.y)}" />`, "    </Control>");
+      out.push(`      <MapPosition x="${r2(c.x + fx)}" y="${r2(c.y + fy)}" />`, "    </Control>");
     }
     const assignments = [];
     for (const id of courses) {
@@ -115,7 +117,7 @@ export function iofXmlText(ev, version = 3) {
     const c = ev.controls[id];
     if (c.kind !== kind) continue;
     const el = EL[kind];
-    out.push(`  <${el}>`, `    <${el}Code>${x(codes.get(id))}</${el}Code>`, `    <MapPosition x="${r2(c.x)}" y="${r2(c.y)}" />`, `  </${el}>`);
+    out.push(`  <${el}>`, `    <${el}Code>${x(codes.get(id))}</${el}Code>`, `    <MapPosition x="${r2(c.x + fx)}" y="${r2(c.y + fy)}" />`, `  </${el}>`);
   }
   courses.forEach((id, n) => {
     const c = ev.courses[id], score = c.kind === "score";
@@ -200,15 +202,9 @@ export async function courseImage(E, cd, dpi, { withMap = true } = {}) {
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
-  if (withMap && E.map) {
-    if (E.map.kind === "pdf") g.drawImage(await E.map.renderRegion(box, pxPerMm), 0, 0, W, H);
-    else {
-      const s = E.map.pxW / ev.map.w;
-      g.drawImage(E.map.image, box[0] * s, (ev.map.h - box[3]) * s, (box[2] - box[0]) * s, (box[3] - box[1]) * s, 0, 0, W, H);
-    }
-  }
   const T = (xx, yy) => [(xx - box[0]) * pxPerMm, (box[3] - yy) * pxPerMm];
-  drawItems(g, items, T, pxPerMm, { blend: ev.appearance.blend, purple: ev.appearance.purple ? cmykToRgb(ev.appearance.purple) : SCREEN.upper });
+  const pc = purpleOverride(ev, E.map), purple = pc ? cmykToRgb(pc) : SCREEN.upper;
+  await paintCourse(g, ev, E.map, box, pxPerMm, W, H, items, (list, blend) => drawItems(g, list, T, pxPerMm, { blend, purple }), { withMap: withMap && !!E.map });
   return { canvas: c, box, pxPerMm };
 }
 /** A world file for an image of box at pxPerMm: when georeferenced, in degrees (EPSG:4326, approximated by an affine). */
@@ -259,8 +255,7 @@ export async function routeGadget(E) {
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
-  if (E.map?.kind === "pdf") g.drawImage(await E.map.renderRegion([0, 0, ev.map.w, ev.map.h], pxPerMm), 0, 0, W, H);
-  else if (E.map) g.drawImage(E.map.image, 0, 0, W, H);
+  if (E.map) { await syncMap(ev, E.map); await paintMap(g, ev, E.map, [0, 0, ev.map.w, ev.map.h], pxPerMm, W, H); }
   const files = { [`${fileName(ev.title)}.jpg`]: new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9))).arrayBuffer()) };
   const wf = worldFile(ev, [0, 0, ev.map.w, ev.map.h], pxPerMm);
   if (wf) files[`${fileName(ev.title)}.jgw`] = new TextEncoder().encode(wf);
