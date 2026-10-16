@@ -438,7 +438,7 @@ export async function render(main, { query = {} } = {}) {
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Le point de départ</p>
-          <h2>Le CN sert à deux choses très différentes</h2>
+          <h2>Le CN sert à deux choses différentes</h2>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Mesurer la difficulté des circuits</h3>
               <p>Pour savoir si un circuit était dur, il faut connaître le <b>niveau habituel</b> des coureurs présents, sans qu'une contre-performance ou un
