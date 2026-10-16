@@ -1471,7 +1471,9 @@ export async function render(main, { query = {} } = {}) {
               géoréférencée), <b>images</b> des circuits (PNG, JPEG ou GIF) avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
             <li><b>Fichiers OCAD ou Mapper des circuits</b> (OCAD 9 à 12 et 2018, OpenOrienteering Mapper), comme ceux de Purple Pen : chaque circuit devient une
               carte qui ne contient que lui — postes, traits, numéros, objets spéciaux et définitions, en symboles 7xx et dans les couleurs du circuit —, avec la
-              carte de l'événement en modèle, pour le finir ou l'imprimer dans OCAD ou Mapper.</li>
+              carte de l'événement en modèle, pour le finir ou l'imprimer dans OCAD ou Mapper. Les cercles des postes, le départ, l'arrivée et les points de
+              passage y sont des symboles ponctuels, comme dans Purple Pen (les coupures d'un cercle gardées dans l'objet ; Mapper, qui n'en a pas, reçoit
+              les arcs) ; les images posées sur la carte sont gardées dans le fichier en OCAD 11 et après, et jointes en modèles à part sinon.</li>
             <li>Plusieurs fichiers d'un coup s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un .zip.</li>
           </ul>
           <p>Les rapports de Purple Pen y sont tous : résumé, longueurs des interpostes, références croisées, charge, contrôle de l'événement — ce dernier avec

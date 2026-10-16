@@ -779,7 +779,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `vmap/ocadwrite.js` OCAD 9-12/2018, `vmap/oomwrite.js`; Purple Pen's Create OCAD Files): each course's drawing items as 7xx
   symbols (line, area with hatching, text with its white frame) in the course colours (Purple 11, Lower purple 12, 50 % 13, Black
   0, White 44), the map as template (the OCAD/Mapper file at offset 0, the image, a PDF as a PNG), the map's real-world
-  coordinates; checked by reading back with our readers (all versions, every object; drawings equal to 1 px).
+  coordinates; checked by reading back with our readers (all versions, every object; drawings equal to 1 px). Controls, finish,
+  start, crossing points, the map issue point and point specials are **point symbols** (`coursefiles.pointOf`: circles and dot
+  for controls and the finish, a map exchange's triangle turning the symbol; the others' drawing turned back by their
+  orientation), a circle's gaps in the object (OCAD: angle pairs after the point, unshifted, 0.1°; Mapper has none: a line
+  symbol « code.1 » and the arcs, as Purple Pen). Images placed on the map: OCAD 11+ layout images kept in the file (parameter
+  27 with « F » = base 64), else files beside the course files as templates (OCAD 9-10: a PNG made a GIF; Mapper: in front of
+  the map).
 - **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus; one way for the analyses and the
   Tracer, the analyses'): the analyses' playback (« Analyse solo » transport row, « Analyse multi » right panel) and the
   Tracer's top bar have « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout

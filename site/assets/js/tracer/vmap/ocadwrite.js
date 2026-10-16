@@ -4,8 +4,12 @@
 // coordinates and background templates as parameter strings. The input is a plain course model (tracer/coursefiles.js):
 //   { scale, printScale, printArea: [l, b, r, t] | null, notes, realWorld: { x, y, angle, grid, paperGrid, zone, on } | null,
 //     colors: [{ id, name, cmyk: [c, m, y, k] (0..1), overprint }] from the bottom of the colour table to its top,
-//     symbols: [{ code: "702.0", name, kind: "line" | "area" | "text", … }], objects: [{ sym, kind, paths | text, x, y }],
-//     templates: [{ file, x, y (its centre, mm), mmPerPx (0 for a vector map), angle }] }
+//     symbols: [{ code: "702.0", name, kind: "line" | "area" | "text" | "point", … }], objects: [{ sym, kind, paths | text, x, y }],
+//     templates: [{ file, x, y (its centre, mm), mmPerPx, mmPerPxY (0 for a vector map), angle, front }],
+//     layoutImages: [{ file, data (bytes), x, y (top-left, mm), u, v (mm per pixel) }] (OCAD 11 and later: kept in the file) }
+// A point symbol is a glyph: parts { type: "circle", x, y, r (to the line's middle), width, color } | { type: "dot", x, y, d,
+// color } | { type: "line", path, width, cap, join, color } | { type: "area", paths, color }, in mm around the point; a point
+// object has its angle and, for circles, its gaps ([start, end, …] degrees, as Purple Pen's cut control circles).
 // Paths are lists of commands in map mm, y up: ["M", x, y], ["L", x, y], ["C", x1, y1, x2, y2, x, y], ["Z"].
 
 const CP1252 = { 0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a,
@@ -89,7 +93,7 @@ export function writeOcad(model, version = 12) {
   if (![9, 10, 11, 12, 2018].includes(version)) throw new Error(`OCAD ${version} : seules les versions 9 à 12 et 2018 s'écrivent.`);
   const v = version, w = new Writer(), hdrSize = v >= 12 ? 60 : 48;
   w.zeros(hdrSize);
-  const colorsUsed = (s) => [...new Set([s.color, s.fill, s.hatch?.color, s.frame?.color].filter((c) => c != null))];
+  const colorsUsed = (s) => [...new Set([s.color, s.fill, s.hatch?.color, s.frame?.color, ...(s.parts || []).map((q) => q.color)].filter((c) => c != null))];
 
   // ---- symbols: each one, then a block of 256 positions (OcadExport.WriteSymbols) ----
   let firstSymBlk = 0, prevBlk = 0;
@@ -125,9 +129,17 @@ export function writeOcad(model, version = 12) {
   for (const o of model.objects) {
     const s = symList[o.sym];
     let coords, otp, text = null, angle = 0, extra = 0;
+    let box = null;
     if (o.kind === "text") {
       otp = 4; text = String(o.text ?? "").replace(/\r?\n/g, "\r\n"); angle = o.angle || 0;
       coords = textCoords(o, s);
+    } else if (o.kind === "point") {
+      // the point, then each gap as a pair of angles (not coordinates: unshifted, in 0.1°)
+      otp = 1; angle = o.angle || 0;
+      coords = [{ x: oc(o.x) << 8, y: oc(o.y) << 8 }];
+      const g = o.gaps || [];
+      for (let i = 0; i + 1 < g.length; i += 2) coords.push({ x: ang(g[i]), y: ang(g[i + 1]) });
+      box = boxOf(coords.slice(0, 1), glyphRadius(s));
     } else if (o.kind === "area") { otp = 3; coords = coordsOf(o.paths, true); }
     else { otp = 2; coords = coordsOf(o.paths, false); extra = (s.width || 0) / 2; }
     if (!coords.length) continue;
@@ -144,7 +156,7 @@ export function writeOcad(model, version = 12) {
     for (const c of coords) { w.i32(c.x); w.i32(c.y); }
     if (text != null) for (let i = 0; i < nText * 4; i++) w.u16(i < text.length ? text.charCodeAt(i) : 0);
     const used = colorsUsed(s);
-    block.push({ box: boxOf(o.kind === "text" ? coords.slice(1) : coords, extra), pos, len: (v >= 12 ? 56 : 40) + 8 * (coords.length + nText),
+    block.push({ box: box || boxOf(o.kind === "text" ? coords.slice(1) : coords, extra), pos, len: (v >= 12 ? 56 : 40) + 8 * (coords.length + nText),
       sym: symNumber(s.code), otp, color: used.length === 1 ? used[0] : -1 });
     if (block.length === 256) flushIndex();
   }
@@ -164,7 +176,9 @@ export function writeOcad(model, version = 12) {
   params.push([1026, `\ta${num(model.printScale || model.scale)}` + (pa ? `\tr1\tL${num(pa[0])}\tB${num(pa[1])}\tR${num(pa[2])}\tT${num(pa[3])}` : "\tr0")]);
   params.push([1030, "\td0\tl0" + (v >= 11 ? "\tp1" : "")]);
   for (const line of String(model.notes || "").split(/\r?\n/).filter(Boolean)) params.push([11, line]);
-  for (const t of model.templates || []) params.push([8, `${t.file}\tr1\ts1\tx${num(t.x)}\ty${num(t.y)}\ta${num(t.angle || 0)}\tu${num(t.mmPerPx || 0)}\tv${num(t.mmPerPx || 0)}`]);
+  for (const t of model.templates || []) params.push([8, `${t.file}\tr1\ts1\tx${num(t.x)}\ty${num(t.y)}\ta${num(t.angle || 0)}\tu${num(t.mmPerPx || 0)}\tv${num(t.mmPerPxY ?? t.mmPerPx ?? 0)}`]);
+  // images of the layout layer (OCAD 11 and later), the file kept in the parameter (« F »: base 64), as OCAD itself does
+  if (v >= 11) for (const im of model.layoutImages || []) params.push([27, `${im.file}\tr1\ts1\tx${num(im.x)}\ty${num(im.y)}\tu${num(im.u)}\tv${num(im.v)}\tF${base64(im.data)}`]);
   let firstStBlk = 0; prevBlk = 0;
   const table = [];
   for (let i = 0; i < params.length; i++) {
@@ -190,8 +204,8 @@ export function writeOcad(model, version = 12) {
 }
 
 /** The common head of a symbol (OcadSymbol.Write, version 9 and later); the size is set once the symbol is written. */
-function symbolHead(w, v, s, otp, extent, colors, start) {
-  w.i32(0); w.i32(symNumber(s.code)); w.u8(otp); w.u8(0); w.u8(0); w.u8(0);
+function symbolHead(w, v, s, otp, extent, colors, start, flags = 0) {
+  w.i32(0); w.i32(symNumber(s.code)); w.u8(otp); w.u8(flags); w.u8(0); w.u8(0);
   w.u8(0); w.u8(0); w.u8(0); w.u8(0); w.i32(Math.round(extent)); w.i32(start);
   w.i16(0); w.i16(colors.length); for (let i = 0; i < 14; i++) w.i16(i < colors.length ? colors[i] : 0);
   if (v <= 10) w.pstr(s.name, 31); else w.wstr(s.name, 64);
@@ -209,6 +223,20 @@ function writeSymbol(w, v, s, colors) {
     if (v >= 12) { w.u8(1); w.u8(0); } else w.i16(0);
     w.i16(0); w.i16(0); w.i16(0);                             // framing line: none
     w.zeros(2 * 5); w.u8(0); w.u8(0);                         // no glyphs
+  } else if (s.kind === "point") {
+    // OcadExport.WritePointSymDef: the glyph's parts as symbol elements; flag 1 = the symbol turns with its object
+    symbolHead(w, v, s, 1, oc(glyphRadius(s)), colors, start, s.rotatable ? 1 : 0);
+    const elts = s.parts.map((q) => {
+      if (q.type === "circle") return { type: 3, flags: 0, color: q.color, width: oc(q.width), diam: oc(2 * q.r), coords: [{ x: oc(q.x) << 8, y: oc(q.y) << 8 }] };
+      if (q.type === "dot") return { type: 4, flags: 0, color: q.color, width: 0, diam: oc(q.d), coords: [{ x: oc(q.x) << 8, y: oc(q.y) << 8 }] };
+      if (q.type === "line") return { type: 1, flags: lineEnds(q.cap, q.join), color: q.color, width: oc(q.width), diam: 0, coords: coordsOf([q.path], false) };
+      return { type: 2, flags: 0, color: q.color, width: 0, diam: 0, coords: coordsOf(q.paths, true) };
+    }).filter((e) => e.coords.length);
+    w.i16(elts.reduce((n, e) => n + 2 + e.coords.length, 0)); w.i16(0);
+    for (const e of elts) {
+      w.i16(e.type); w.u16(e.flags); w.i16(e.color); w.i16(e.width); w.i16(e.diam); w.i16(e.coords.length); w.i16(0); w.i16(0);
+      for (const c of e.coords) { w.i32(c.x); w.i32(c.y); }
+    }
   } else if (s.kind === "area") {
     symbolHead(w, v, s, 3, 0, colors, start);
     const h = s.hatch;
@@ -235,6 +263,23 @@ function writeSymbol(w, v, s, colors) {
   }
   const end = w.pos;
   w.seek(start); w.i32(end - start); w.seek(end);
+}
+/** How far a point symbol reaches from its point (mm). */
+export function glyphRadius(s) {
+  let r = 0;
+  const far = (cmds, w) => { for (const c of cmds) for (let i = 1; i + 1 < c.length; i += 2) r = Math.max(r, Math.hypot(c[i], c[i + 1]) + w / 2); };
+  for (const q of s.parts || []) {
+    if (q.type === "circle") r = Math.max(r, Math.hypot(q.x, q.y) + q.r + q.width / 2);
+    else if (q.type === "dot") r = Math.max(r, Math.hypot(q.x, q.y) + q.d / 2);
+    else if (q.type === "line") far(q.path, q.width);
+    else for (const pth of q.paths) far(pth, 0);
+  }
+  return r;
+}
+function base64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
 }
 /**
  * An unformatted text's five coordinates (OcadExport.GetAnyTextObjectCoords): the anchor on the baseline (left, centre or right

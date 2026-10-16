@@ -1,7 +1,9 @@
 // « Fichier › Fichiers OCAD ou Mapper des circuits » (Purple Pen's Create OCAD Files, OcadCreation; BSD licence, see
 // /assets/tracer/LICENSE-PurplePen.txt): each course (or part, variation) becomes a map file that holds only the course —
-// circles, lines, numbers, special objects and the description sheet as objects of course symbols in the course colours
-// (purple, lower purple, 50 % purple, black, white) — with the event's map as its background template, to be finished or
+// control circles, start, finish and crossing points as point symbols (a circle's gaps kept in its object, as Purple Pen and
+// OCAD do), lines, numbers, special objects and the description sheet as objects of course symbols in the course colours
+// (purple, lower purple, 50 % purple, black, white), images placed on the map as layout images (OCAD 11 and later, kept in
+// the file) or as templates beside it — with the event's map as its background template, to be finished or
 // printed in OCAD (9 to 12, 2018) or OpenOrienteering Mapper. On an OCAD or Mapper map the course is written in the map
 // file's own millimetres (it lies on the map exactly, the template needs no adjusting); on an image or a PDF in the sheet's,
 // the image placed under it (a PDF given as a PNG of the page, as Purple Pen does).
@@ -24,8 +26,48 @@ const KIND = {
   crossing: ["708", "Point de passage"], "optional-crossing-point": ["708", "Point de passage"], "out-of-bounds": ["709", "Zone interdite"], "dangerous-area": ["710", "Zone dangereuse"],
   "forbidden-route": ["711", "Passage interdit"], "first-aid": ["712", "Poste de secours"], water: ["713", "Ravitaillement"], "registration-mark": ["714", "Repère de calage"],
   issue: ["715", "Point de remise des cartes"], "temporary-construction": ["716", "Construction temporaire"], line: ["720", "Trait"], rect: ["721", "Cadre"], text: ["722", "Texte"],
-  descriptions: ["790", "Définitions"], "white-out": ["890", "Masque blanc"], other: ["799", "Objet du circuit"],
+  descriptions: ["790", "Définitions"], "white-out": ["890", "Masque blanc"], exchange: ["702", "Poste avec échange de carte"], other: ["799", "Objet du circuit"],
 };
+const DEG = Math.PI / 180;
+const POINT_T = new Set(["control", "finish", "start", "crossing", "issue", "point"]);
+const deg360 = (a) => ((a % 360) + 360) % 360;
+/**
+ * A course object drawn as a point symbol, as Purple Pen's course objects are: { kind, parts (the glyph, mm around the point,
+ * unturned), angle, gaps, rotatable }, or null for one drawn otherwise. Controls and the finish are circles (their gaps go in
+ * the object); the start, crossing points and point specials take their drawing, turned back by their orientation.
+ */
+function pointOf(o, its, colorOf) {
+  if (!POINT_T.has(o.t) || !o.ctr || !its.length || its.some((it) => it.t !== "path")) return null;
+  if (o.t === "control" || o.t === "finish") {
+    const lower = colorOf("lower"), angle = o.t === "control" && o.exchangeTriangle != null ? o.exchangeTriangle : 0;
+    const parts = (o.t === "control" ? [o.r] : [o.rIn, o.rOut]).map((r) => ({ type: "circle", x: 0, y: 0, r: r3(r), width: r3(o.lw), color: lower }));
+    if (o.t === "control" && o.dot) parts.push({ type: "dot", x: 0, y: 0, d: r3(o.dot), color: colorOf("upper") });
+    if (o.t === "control" && o.exchangeTriangle != null) {
+      const pts = [0, 120, 240].map((a) => [-o.r * Math.sin(a * DEG), o.r * Math.cos(a * DEG)].map(r3));
+      parts.push({ type: "line", path: [["M", ...pts[0]], ["L", ...pts[1]], ["L", ...pts[2]], ["Z"]], width: r3(o.lw), cap: "butt", join: "round", color: lower });
+    }
+    const gaps = o.gaps?.length ? o.gaps.flatMap(([a, b]) => [deg360(a - angle), deg360(b - angle)]).map(r3) : null;
+    return { kind: o.t === "finish" ? "finish" : o.exchangeTriangle != null ? "exchange" : "control", parts, angle, gaps, rotatable: o.exchangeTriangle != null };
+  }
+  const angle = o.orientation || 0, c = Math.cos(-angle * DEG), sn = Math.sin(-angle * DEG), [cx, cy] = o.ctr;
+  const local = (d) => d.map((q) => (q[0] === "Z" ? q : [q[0], ...pairs(q.slice(1)).flatMap(([x, y]) => [r3((x - cx) * c - (y - cy) * sn), r3((x - cx) * sn + (y - cy) * c)])]));
+  const parts = [];
+  for (const it of its) {
+    const color = colorOf(it.color), d = local(it.d);
+    if (it.fill) parts.push({ type: "area", paths: subpaths(d), color });
+    if (it.stroke) for (const pth of subpaths(d)) parts.push({ type: "line", path: pth, width: r3(it.stroke), cap: it.cap || "butt", join: it.join || "miter", color });
+  }
+  if (!parts.length) return null;
+  const kind = o.t === "point" ? (KIND[o.kind] ? o.kind : "other") : o.t;
+  return { kind, parts, angle, gaps: null, rotatable: "orientation" in o };
+}
+const pairs = (a) => { const out = []; for (let i = 0; i + 1 < a.length; i += 2) out.push([a[i], a[i + 1]]); return out; };
+/** An image's bytes from the event's base 64, and its type by its first bytes. */
+function imageBytes(img) {
+  const bytes = Uint8Array.from(atob(img.data), (ch) => ch.charCodeAt(0));
+  const type = bytes[0] === 0x89 ? "png" : bytes[0] === 0xff ? "jpg" : bytes[0] === 0x47 ? "gif" : bytes[0] === 0x42 ? "bmp" : String(img.format || "png").toLowerCase().replace("jpeg", "jpg");
+  return { bytes, type };
+}
 const OCAD_FONT = { Arial: "Arial", Times: "Times New Roman", Courier: "Courier New", Roboto: "Roboto", "Roboto Condensed": "Roboto Condensed" };
 
 /** What a drawing item is, for its symbol: a key of KIND. */
@@ -80,8 +122,19 @@ export function courseModel(E, cd, { overprint = true, variationName = "", team 
     symKey.set(key, symbols.length - 1);
     return symbols.length - 1;
   };
+  // controls, start, finish, crossing points and point specials as point symbols; everything else item by item
+  const byObj = new Map(), asPoint = new Set();
+  for (const it of items) if (it.obj) (byObj.get(it.obj) || byObj.set(it.obj, []).get(it.obj)).push(it);
+  for (const [o, its] of byObj) {
+    const pt = pointOf(o, its, colorOf);
+    if (!pt) continue;
+    asPoint.add(o);
+    objects.push({ sym: symbolFor(pt.kind, { kind: "point", parts: pt.parts, rotatable: pt.rotatable }), kind: "point", x: o.ctr[0] + fx, y: o.ctr[1] + fy, angle: pt.angle, gaps: pt.gaps });
+  }
   let skipped = 0;
+  const images = [];
   for (const it of items) {
+    if (asPoint.has(it.obj)) continue;
     const kind = kindOf(it);
     if (it.t === "path") {
       const d = shift(it.d, fx, fy), color = colorOf(it.color === "white" ? "white" : it.color);
@@ -99,6 +152,9 @@ export function courseModel(E, cd, { overprint = true, variationName = "", team 
       const frame = it.outline > 0 ? { color: colorOf("white"), width: r3(it.outline) } : null;
       const sym = symbolFor(kind, { kind: "text", color: colorOf(it.color), font, align: it.align === "center" ? "center" : "left", frame });
       objects.push({ sym, kind: "text", text: it.text, x: it.x + fx, y: it.y + fy, width: textWidth(it.text, !!it.bold, fam, !!it.italic) * it.size });
+    } else if (it.t === "image" && it.image?.data) {
+      const { bytes, type } = imageBytes(it.image), b = it.box;
+      images.push({ name: String(it.obj?.name || "").split(/[\\/]/).pop(), bytes, type, box: [b[0] + fx, b[1] + fy, b[2] + fx, b[3] + fy] });
     } else skipped++;
   }
   // the colour table: Purple Pen's order, from the bottom up
@@ -107,7 +163,30 @@ export function courseModel(E, cd, { overprint = true, variationName = "", team 
   const { box } = printBox(E, cd, layout);
   const ps = cd.course ? ev.courses[cd.course].printScale : ev.allControls.printScale;
   return { scale: ev.map.scale, printScale: ps || ev.map.scale, printArea: [box[0] + fx, box[1] + fy, box[2] + fx, box[3] + fy],
-    notes: `${title || ev.title} — créé par O'CN (ocn.kerkia.com)`, colors, symbols, objects, skipped, realWorld: null, templates: [] };
+    notes: `${title || ev.title} — créé par O'CN (ocn.kerkia.com)`, colors, symbols, objects, skipped, images, realWorld: null, templates: [], layoutImages: [] };
+}
+
+/**
+ * The images placed on the map, for a format (Purple Pen's BitmapsToWrite): each one's file — a PNG becomes a GIF for OCAD 9
+ * and 10, which do not read PNG — and its size in pixels, once per image whatever the number of courses.
+ */
+async function prepareImages(models, fmt, ver) {
+  const done = new Map();
+  let n = 0;
+  for (const m of models) for (const im of m.images) {
+    const key = `${im.name}|${im.bytes.length}|${im.bytes[100] ?? 0}`;
+    if (done.has(key)) { im.file = done.get(key); continue; }
+    const bmp = await createImageBitmap(new Blob([im.bytes], { type: `image/${im.type === "jpg" ? "jpeg" : im.type}` }));
+    let bytes = im.bytes, ext = im.type;
+    if (fmt === "ocad" && ver <= 10 && ext !== "jpg" && ext !== "bmp" && ext !== "gif") {
+      const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+      const g = c.getContext("2d"); g.drawImage(bmp, 0, 0);
+      bytes = (await import("./gif.js")).encodeGif(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height); ext = "gif";
+    }
+    const base = fileName((im.name || `image ${++n}`).replace(/\.[^.]+$/, "")) || `image ${++n}`;
+    const file = { name: `${base}.${ext}`, bytes, w: bmp.width, h: bmp.height };
+    done.set(key, file); im.file = file;
+  }
 }
 
 /** The map under the course: the map file itself (OCAD, Mapper, image), or a PNG of a PDF page (made once, added to the files). */
@@ -176,16 +255,24 @@ export async function courseFilesDialog(E) {
     const rw = await realWorldFor(E, fmt);
     const W = fmt === "ocad" ? await import("./vmap/ocadwrite.js") : await import("./vmap/oomwrite.js");
     let skipped = 0;
-    for (const d of designators) {
-      const model = courseModel(E, d.cd, { overprint: v.over, variationName: d.variation || "", title: `${ev.title} — ${d.name}` });
+    const models = designators.map((d) => ({ d, model: courseModel(E, d.cd, { overprint: v.over, variationName: d.variation || "", title: `${ev.title} — ${d.name}` }) }));
+    await prepareImages(models.map((x) => x.model), fmt, ver);
+    for (const { d, model } of models) {
       model.realWorld = rw; model.templates = template ? [template] : [];
       skipped += model.skipped;
+      // the images: in OCAD 11 and later in the layout layer, kept in the file; else templates in front of the map, beside it
+      for (const im of model.images) {
+        const f = im.file, [l, b, r, t] = im.box, u = (r - l) / f.w, vv = (t - b) / f.h;
+        if (fmt === "ocad" && ver >= 11) model.layoutImages.push({ file: f.name, data: f.bytes, x: l, y: t, u, v: vv });
+        else { model.templates.push({ file: f.name, x: (l + r) / 2, y: (b + t) / 2, mmPerPx: u, mmPerPxY: vv, front: true }); files[f.name] = f.bytes; }
+      }
       const base = fileName(`${v.prefix || ""}${d.name}`);
       if (fmt === "ocad") files[`${base}.ocd`] = W.writeOcad(model, ver);
       else files[`${base}.${fmt}`] = new TextEncoder().encode(W.writeOom(model, { xmap: fmt === "xmap" }));
     }
     await saveFiles(E, files, `${fileName(ev.title)} - ${fmt === "ocad" ? "OCAD" : "Mapper"}.zip`);
     E.status("Fichiers créés", "ok");
-    if (skipped) E.toast("Les images placées sur la carte (objet « image ») ne sont pas reprises dans ces fichiers.", 6000);
+    if (skipped) E.toast(`${skipped} objet(s) du circuit n'ont pas pu être repris dans ces fichiers.`, 6000);
+    else if (fmt !== "ocad" || ver <= 10) { if (models.some((x) => x.model.images.length)) E.toast("Les images placées sur la carte sont des modèles à part : gardez leurs fichiers à côté des cartes créées.", 6000); }
   } catch (err) { console.error(err); E.status("Fichiers impossibles", "bad"); E.toast(`Création impossible : ${err.message}`); }
 }
