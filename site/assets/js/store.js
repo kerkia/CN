@@ -1,11 +1,12 @@
 // Global, persisted UI state shared by every page.
 
-// Every method, in display order: the retained pair (fair3 / top6w3, 2026-10-13: cubic mean, geometric circuit value)
-// before the linear ones, studied for reference. Everyone sees the official method and the Top; the others are analysis
-// methods, shown only to the accounts with the "Analyse" right (admin page, administrators included): the linear Top
-// and the « Fit » methods.
-export const METHODS = ["official", "top6w3", "top6w", "fair3", "fair"];
-const ANALYSIS = ["top6w", "fair3", "fair"];
+// Every method, in display order: the published pair (fair / top6w: plain means, arithmetic circuit value over the
+// fastest share of the field — the Top everyone sees since 2026-10-16, owner: a method everyone can follow), then the
+// geometric pair (fair3 / top6w3, the Top from 2026-10-13 to 16, slightly better in sprint), kept for reference. Everyone
+// sees the official method and the Top; the others are analysis methods, shown only to the accounts with the "Analyse"
+// right (admin page, administrators included): the geometric Top and the « Fit » methods.
+export const METHODS = ["official", "top6w", "top6w3", "fair", "fair3"];
+const ANALYSIS = ["top6w3", "fair", "fair3"];
 const RENAMED = { top6w2: "top6w3", fair2: "fair3" };     // the quadratic pair, replaced on 2026-10-13
 let analyst = false;
 /** The methods this visitor may see and pick. */

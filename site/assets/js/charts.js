@@ -9,14 +9,15 @@ const registry = new Set();
 export const css = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-export const METHOD_SLOT = { official: 1, fair: 2, top6w: 3, fair3: 5, top6w3: 4 };
+// the Top keeps its colour and dash whichever pair publishes it (2026-10-16: top6w, the linear Top, is the Top)
+export const METHOD_SLOT = { official: 1, fair: 2, top6w: 4, fair3: 5, top6w3: 3 };
 export const methodColor = (m) => css(`--s${METHOD_SLOT[m]}`);
 export const slotColor = (i) => css(`--s${(i % 8) + 1}`);
 // One colour per discipline wherever disciplines are compared.
 const TERRAIN_SLOT = { For: "--s6", Spr: "--s7", VTT: "--s4", Ski: "--s1" };
 export const terrainColor = (tr) => css(TERRAIN_SLOT[tr]);
 // Secondary encoding for method when colour is spent on runners.
-export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [2, 4], fair3: [12, 3, 3, 3], top6w3: [6, 3] };
+export const METHOD_DASH = { official: "solid", fair: [8, 5], top6w: [6, 3], fair3: [12, 3, 3, 3], top6w3: [2, 4] };
 
 function theme() {
   return {

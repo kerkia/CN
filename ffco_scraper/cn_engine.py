@@ -1,18 +1,26 @@
-"""Compute the three CN rankings held side by side in the database.
+"""Compute the CN rankings held side by side in the database.
 
   method 1  'official'  The values published on the site, copied verbatim.
                         Nothing is recomputed: this is the reference.
 
-  method 2  'fair'      "Fit": the weighted mean of the best 60 % of
+  method 2  'fair'      "Fit", the usual level: the weighted mean of the best 60 % of
                         the scores in the window (championnat de France 2,
                         national race 1.5, other 1), with NO annual step: the
-                        level is held by a monthly recalage applied to each
+                        level is held by a daily recalage applied to each
                         race once. Only runners with a CN of their own value
-                        a circuit.
+                        a circuit, by the arithmetic mean of CN x time over the
+                        fastest share of them (forest 90 %, sprint 2/3, VTT and
+                        ski 75 %; since 2026-10-16).
 
-  method 3  'top6w'     "Top": the same race scores as 'fair' (derived from
-                        it, not recomputed), but the CN keeps only the best
-                        races filling 6 weight places - it rewards racing.
+  method 3  'top6w'     "Top", the method published (since 2026-10-16): the same race
+                        scores as 'fair' (derived from it, not recomputed), but the CN
+                        keeps only the best races filling 6 weight places - it rewards racing.
+
+  methods 'fair3' and 'top6w3'  the geometric pair (study of 2026-10-13, published as the
+                        Top from 2026-10-13 to 2026-10-16, an analysis method since): the
+                        circuit valued by a geometric mean with the tail dial, the usual level
+                        a cubic mean. Slightly better in sprint (+0.12 point of duels), level in
+                        forest; kept for the analysts as the reference the simple method is held to.
 
 For both computed methods forest, sprint, VTT and ski are independent
 rankings in every season — the federation only split forest and sprint in
@@ -230,6 +238,15 @@ class MethodSpec:
 
 
 def build_methods() -> dict[str, MethodSpec]:
+    # The method published since 2026-10-16 (owner: a method everyone can follow, at a cost of a few hundredths of a point):
+    # FFCO's score with the ARITHMETIC mean of CN J-15 x time over the fastest share of the ranked CN holders, the usual
+    # level (fair) and the Top (top6w) both plain weighted means. The share of the field per discipline was chosen by one
+    # criterion - the best duels called right on 2012-2024 without a significant loss since July 2025 (study of 2026-10-15/16
+    # on copies, eval_frac*_n.json): forest 90 % (+0.42 point over the two-thirds, +0.08 [+0.05, +0.10] over the whole
+    # field, level with the geometric Top), sprint the two-thirds (FFCO's rule; 50-60 % win since 2025 but lose over the
+    # fifteen seasons, 100 % -0.34), VTT 75 % (+0.15; 85 % is best on 2012-2024 but -0.49 since 2025), ski 75 % as VTT
+    # (unmeasurable). The usual level's share of best scores was tested too (50-100 %, eval_elig_n.json): 60 % stays
+    # (50 % -0.03, 70 % -0.11, 100 % -0.62 in forest; flat in sprint). Its recalage is the geometric pair's (below).
     fair = CnParams(
         sample_rounding="ceil",
         k_over_1000=1.0,
@@ -257,8 +274,9 @@ def build_methods() -> dict[str, MethodSpec]:
         # VTT (~30 competitions a season) and ski (2-4, on one or two weekends):
         # a longer window and a larger share of the scores, so enough runners
         # hold a CN to value the circuits from one season to the next.
-        by_terrain={"VTT": {"window_days": 730, "eligible_fraction": 0.70},
-                    "Ski": {"window_days": 1095, "eligible_fraction": 0.70}},
+        by_terrain={"Forêt": {"sample_fraction": 0.90},
+                    "VTT": {"window_days": 730, "eligible_fraction": 0.70, "sample_fraction": 0.75},
+                    "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "sample_fraction": 0.75}},
     )
     # The method retained (study of 2026-10-13, owner's go-ahead): the CN as the weighted cubic mean of the kept
     # scores - k = 3: computed at race level, a runner 1 % slower than another gets 3 % fewer points and the CN
@@ -308,17 +326,17 @@ def build_methods() -> dict[str, MethodSpec]:
             name="fair",
             params=fair,
             rescale=None,  # no annual step at all
-            normalisation=Normalisation(),
-            description="weighted mean of the best 60 %, monthly recalage",
+            normalisation=norm3,     # since 2026-10-16: anchored on the Top, the drift corrected (+0.08 point in forest)
+            description="the usual level: weighted mean of the best 60 %; arithmetic circuit value over the fastest share (forest 90 %, sprint 2/3, VTT and ski 75 %)",
         ),
         "top6w": MethodSpec(
             name="top6w",
-            # Fair's race scores, but the CN keeps only the best races filling 6
-            # weight places: racing more can only raise it. Measured on 2025-26,
-            # it predicts head-to-heads as well as Fair (82 % forest, 84 % sprint).
+            # the published Top (since 2026-10-16): fair's race scores, the CN keeps only the best races filling 6
+            # weight places, in a weighted arithmetic mean: racing more can only raise it.
             params=dataclasses.replace(fair, top_n=6),
             derived_from="fair",
-            description="Fair's scores, best 6 weighted places",
+            normalisation=norm3,
+            description="Top: fair's scores, best 6 weighted places, weighted arithmetic mean",
         ),
         "fair3": MethodSpec(
             name="fair3",

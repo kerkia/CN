@@ -133,8 +133,8 @@ export async function render(main, { arg, query }) {
   // the official CN over several seasons (owner, 2026-10-15): the warning's button picks the Top as the header's switch does
   $("#pg-to-top")?.addEventListener("click", () => {
     const sel = document.querySelector("#method-pick");                   // analysts: a list of every method
-    if (sel) { sel.value = "top6w3"; sel.dispatchEvent(new Event("change")); return; }
-    document.querySelector('[data-method-pick="top6w3"]')?.click();
+    if (sel) { sel.value = "top6w"; sel.dispatchEvent(new Event("change")); return; }
+    document.querySelector('[data-method-pick="top6w"]')?.click();
   });
 
   const cmpBtn = $("#cmp-btn");

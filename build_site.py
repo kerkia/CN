@@ -262,7 +262,7 @@ def main(argv: list[str] | None = None) -> None:
         ):
             norm[TERRAINS[r["terrain"]]].append((r["date_iso"], r["factor"], r["top_mean_raw"]))
         knots_of[base] = {t: daily_knots([(date.fromisoformat(d), f) for d, f, _ in v]) for t, v in norm.items()}
-    knots = knots_of["fair3"]                    # meta.normalisation: the retained method's factors (the Top's)
+    knots = knots_of["fair"]                     # meta.normalisation: the published method's factors (the Top's, since 2026-10-16)
 
     def factor_at(t: str, d: date, base: str = "fair") -> float:
         return factor_on(knots_of[base].get(t, []), d)
@@ -609,7 +609,7 @@ def main(argv: list[str] | None = None) -> None:
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}
 
-    COLOR = {"fair": 2, "top6w": 3, "fair3": 5, "top6w3": 4}      # palette slots, as in the browser
+    COLOR = {"fair": 2, "top6w": 4, "fair3": 5, "top6w3": 3}      # palette slots, as in the browser (charts.METHOD_SLOT)
     methods_meta = {"official": {"color": 1},
                     **{n: {"color": COLOR[n], "params": params_meta(PARAMS[n])} for n in COMPUTED}}
     meta = {

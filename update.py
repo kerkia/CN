@@ -79,7 +79,10 @@ TOP6W_CN_VERSION = 5
 #   9 (2026-10-14): one method for the four disciplines: VTT and ski take sprint's rules (geometric circuit value over the
 #                   fastest two-thirds, cubic usual level); the same recalage everywhere, in calendar months
 #  10 (2026-10-15): the share of the field valuing a circuit becomes a dial (tail_k): forest 0, sprint 400, VTT and ski 50
-ENGINE_VERSION = 10
+#  11 (2026-10-16): the linear pair becomes the method published: "fair" values circuits by the arithmetic mean over the
+#                   fastest 90 % in forest, two-thirds in sprint, 75 % in VTT and ski, with the drift-corrected recalage
+#                   anchored on the Top; "top6w" is the Top everyone sees, "top6w3"/"fair3" the geometric analysis pair
+ENGINE_VERSION = 11
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page

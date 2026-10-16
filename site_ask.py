@@ -145,7 +145,8 @@ def build(out: Path = OUT) -> None:
                 res["finishers"].append(int(r[11]) if r[11] else None)
                 res["time_s"].append(int(r[12]) if r[12] else None)
                 res["status"].append(r[13] or None)
-                for k, i in (("cn_j15_official", 15), ("score_official", 14), ("cn_j15_top", 33), ("score_top", 32)):
+                # the Top's columns are the linear pair's (t6*, data.js R) since 2026-10-16
+                for k, i in (("cn_j15_official", 15), ("score_official", 14), ("cn_j15_top", 23), ("score_top", 22)):
                     v = r[i] if i < len(r) else None
                     res[k].append(int(round(v)) if isinstance(v, (int, float)) else None)
     # by race, circuit and place: the race's columns repeat and compress to almost nothing (by runner 14 MB, by race 9;
@@ -163,7 +164,7 @@ def build(out: Path = OUT) -> None:
     # ---- monthly CN (the month-end snapshots, official and Top) ----------------------------------------------------
     cn = {"licence": [], "month": [], "discipline": [], "method": [], "cn": []}
     for f in sorted((out / "snap").glob("*.json")):
-        m = re.match(r"^(official|top6w3)_(For|Spr|VTT|Ski|Ped)_\d{4}\.json$", f.name)
+        m = re.match(r"^(official|top6w)_(For|Spr|VTT|Ski|Ped)_\d{4}\.json$", f.name)
         if not m:
             continue
         method = "official" if m.group(1) == "official" else "top"

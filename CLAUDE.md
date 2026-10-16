@@ -69,9 +69,10 @@ commit results, personal data, secrets or credentials.
 ## The CN methods
 
 All methods share the race score: circuit value = mean of (CN J-15 × time) over a sample of the ranked runners holding
-a CN (FFCO and the linear methods: the arithmetic mean over the fastest ⌈2N/3⌉; the retained methods: the geometric
-mean, over every ranked CN holder in forest and the fastest ⌈2N/3⌉ in sprint — `CnParams.sample_fraction`, `cv_power`
-0 = geometric, per terrain); score = circuit value ÷ time; PM / abandon / disqualified / over time score 0 and count.
+a CN (FFCO: the arithmetic mean over the fastest ⌈2N/3⌉; the published Top since 2026-10-16: the arithmetic mean over the
+fastest 90 % in forest, ⌈2N/3⌉ in sprint, 75 % in VTT and ski — `CnParams.sample_fraction` per terrain; the geometric
+analysis pair: a geometric mean with the tail dial, `cv_power` 0, `tail_k`); score = circuit value ÷ time; PM / abandon /
+disqualified / over time score 0 and count.
 12-month window. Four specialités, each ranked separately: forest (`For`: LD/MD/Nuit), sprint (`Spr`), VTT
 (`VTT`, all formats together) and ski (`Ski`, all formats together) — FFCO's own split (`specialite=` on its
 CN pages). In the DB `competitions.terrain` is "Forêt", "Sprint", "VTT" or "Ski"; the site uses the codes.
@@ -85,70 +86,58 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    `data.inSeries`; VTT and ski always had their own). The runner page's official calculation card reads FFCO's own
    CN page live (`/api/ffco-cn`): FFCO re-evaluates past-season races under **new circuit ids** that only that
    page links, so its points can differ from the race's results page.
-2. **`fair`, « Méthode CN « Fit »** (« Juste » until 2026-10-12) — estimates each runner's **strength** (usual level); it also values the
-   circuits. CN = weighted mean of the best 60 % of the window's scores (`top6_weighted` with an unlimited
-   number of places). Weights by competition **name** (`cn.title_weight`): "Championnat de France" 2,
-   "O'France" or "Nationale" 1.5, anything else 1 (Sélection races and Championnats de Ligue included, FFCO's
-   A/B/C/D level not used). ≥ 3 races for a CN, a circuit needs ≥ 4 ranked CN holders.
-3. **`top6w`, « Méthode CN « Top »** — ranks runners by **potential at their best** (suited to qualifications).
-   **Derived from `fair`** (`CnEngine.derive`): same race scores, circuit values and recalage factors; only the
-   CN differs — the best 60 % scores fill **6 weight places** from the best down, the last race only for the
-   places left. Racing more can only raise it (monotonic).
-4. **`fair3` and `top6w3`, the methods retained** (study of 2026-10-13, owner's go-ahead; ENGINE 8) — the same two
-   methods with the CN as the **weighted cubic mean** of the kept scores (`cn_power` 3: computed at race level, a runner
-   1 % slower than another gets 3 % fewer points and the CN is the plain mean of those scores, shown on the usual scale —
-   the two are exactly equivalent once the circuit value is geometric) and the circuit valued by the **geometric mean of
-   CN J-15 × time over every ranked CN holder in forest** (`sample_fraction` 1.0, `cv_power` 0), over the fastest ⌈2N/3⌉
-   in sprint (geometric). FFCO's two-thirds leave out the runners who made mistakes: the value came out 4.8 % too low on
-   average in forest, unevenly (sd 5.4 points, following the circuit's mistake rate — the junior circuits most), so a
-   runner's score depended on the circuit's trap density; in sprint, where mistakes are half as frequent, the whole field
-   loses. **One method for the four disciplines since 2026-10-14** (owner; ENGINE 9): VTT and ski follow sprint's rules
-   (geometric value over the fastest two-thirds, cubic usual level; before: FFCO's arithmetic two-thirds and the quadratic
-   mean) - only the window, the share of best scores and the share of the field valuing a circuit differ (the whole
-   field in forest only: measured with the arithmetic Top, it costs sprint -0.21 [-0.29, -0.15], 9 seasons of 15 worse,
-   and VTT -0.63 since July 2025, worse every season since 2022; forest gains about +0.6, every season). The sprint
-   rules cost VTT -0.06 [-0.09, -0.03] (`eval_unify_n.json`, variants U1/U2 on study copies w7/w8). **Since 2026-10-15** (owner:
-   no binary « all or two-thirds »; ENGINE 10) the share of the field is a **dial**, `CnParams.tail_k` (`cn.circuit_value`, mirrored
-   by `cn.js circuitValue`): V = A^(1-w) x B^w, A = the fastest ceil(2n/3) (always: FFCO's « all four when only four » dropped)
-   times the discipline's usual tail effect `tail_mean`, B = the whole field, w = n / (n + k). k chosen by one criterion - the
-   best duels on 2012-2024 without a significant loss since July 2025 (`eval_tail*_n.json`, against the rules of 2026-10-14):
-   forest 0 (whole field; k = 3 already -0.05), sprint 400 (+0.11; flat from 200 to 1000, the gain is the four-runner exception
-   dropped), VTT 50 (+0.12; smaller k win on 2012-2024 but lose since 2025), ski 50 as VTT (unmeasurable). No physical reason is
-   known for forest wanting the whole field and sprint almost none: a split-half test showed the slow tail as reliable in sprint
-   as in forest at equal size, and one k for all loses forest every season. `top6w3` derives from `fair3`. **Since 2026-10-14** (owner: the rank built only from a
-   weighted arithmetic average of the race scores; TOP6W_CN_VERSION 5) the Top `top6w3` is the weighted **arithmetic** mean of
-   its 6 places in every discipline (`top3` in `build_methods`, and `Normalisation.anchor_cn_power` 1 so the recalage anchors
-   on that Top); `fair3`, the usual level that values the circuits, keeps the cubic mean (quadratic in VTT and ski): the
-   « 1 % slower, 3 % fewer points » reading above now describes the usual level only. Measured against the cubic Top on the
-   same runners, 2012-2024 (study copy w6, `eval_arith_n.json`, `eval_vtt_arith_n.json`): duels forest −0.01 [−0.02, −0.00]
-   (national 0.00), R² −1.1 pt; sprint −0.10 [−0.14, −0.07], R² −3.4; VTT −0.09 [−0.12, −0.06], R² −1.8; the median CN −0.2 %
-   before recalage, one runner in ten −1 % or more. Best 50 % instead of 60 % did a little better in forest (+0.06) but was
-   picked on the same seasons: not adopted, to confirm on fresh seasons. Their recalage (`Normalisation` of `fair3`) **anchors the
-   Top's cohort** (`anchor_top_n` 6: at each CN point, the Top the raw scores would publish — `CnEngine._anchor_rows`) and
-   corrects the **drift of the raw scale** (`mode` "monthly_drift": the 13-month mean carried `trend_ahead_months` 7
-   past the month fitted for, by the slope of ln(level) over `drift_months` 121; in every discipline since 2026-10-14,
-   counted in calendar months, `Normalisation.calendar_months`: a month without races keeps the previous level - before,
-   only months with races counted, and ski's « 13 months » spanned years; carried 10 calendar months, not 7: in calendar
-   months 7 left forest 2.7 % above 5600, 10 keeps forest, sprint and VTT within 2 % at every date checked; ski cannot be). Why: a CN keeps the best races and the next circuits are valued with those CNs, so the raw scale
-   climbs (0.35 %/month with FFCO's value, 0.9 % with the geometric one) and the plain mean trails the scores it scales by
-   18-20 months — the forest level sat at 6007/6144 (Fit/Top) instead of 5600, and would have sat at 6600. The
-   quadratic pair `fair2`/`top6w2` (2026-10-07 to 13; ENGINE 6-7: the CN as a quadratic mean on FFCO's circuit value —
-   a k from 1 to 3 on the circuit value cost on national races, so only the CN had it) was dropped: the study's full
-   report is the private artifact https://claude.ai/artifact/1JSufP7jr3c9peCdSUwBuC. Also measured there and rejected:
-   the Top as its own circuit valuer (the loss grows over the seasons: −0.001 in τ in 2015, −0.012 in 2026; Top-10
-   halves it, Top-16 equals the Fit for nearly everyone — Top = Fit already for 62 % of forest runners), an
-   elasticity per circuit (even the least-squares one), per-race information weights, a bent score, the
-   maximum-likelihood level, Huber's circuit value, the fastest 85 %, the arithmetic whole field (no national gain),
-   k = 4 (no national/sprint gain); the study's engine options are kept in git history (commit 9244b54).
+2. **`fair`, « Méthode CN « Fit »** — the **usual level** (analysis method; it values the circuits). CN = weighted mean of
+   the best 60 % of the window's scores (`top6_weighted` with an unlimited number of places). Weights by competition **name**
+   (`cn.title_weight`): "Championnat de France" 2, "O'France" or "Nationale" 1.5, anything else 1 (Sélection races and
+   Championnats de Ligue included, FFCO's A/B/C/D level not used). ≥ 3 races for a CN, a circuit needs ≥ 4 ranked CN holders.
+3. **`top6w`, « Méthode CN « Top »** — **the method published since 2026-10-16** (owner: a method everyone can follow by
+   hand, at a cost of a few hundredths of a point; ENGINE 11). **Derived from `fair`** (`CnEngine.derive`): same race scores,
+   circuit values and recalage factors; the best 60 % scores fill **6 weight places** from the best down, the last race only
+   for the places left, in a weighted **arithmetic** mean. Racing more can only raise it once the places are filled. Circuits:
+   FFCO's arithmetic mean of usual level × time over the fastest **90 % in forest, ⌈2N/3⌉ in sprint, 75 % in VTT and ski**
+   (all four when only four, FFCO's exception kept; `build_methods` `fair.by_terrain`). Recalage: the geometric pair's
+   (`norm3`: anchored on the Top's cohort, the drift corrected, calendar months, carried 10 months). **Study of 2026-10-15/16**
+   (copies of the migrated DB of 2026-10-15, `C:\kerkia\cn-data\study`: variants F50…F100, F90, E50…E100 by the scratch
+   `run_variant.py`/`worker*.sh`, evaluations `eval_frac*_n.json`, `eval_elig_n.json`, `eval_switch_n.json`; the public numbers
+   in `site/assets/study.json` key `lineaire`, built by the scratch `switch_json.py`): one criterion per discipline — the best
+   duels on 2012-2024 without a significant loss since July 2025. Against the two-thirds (written 0.6666667 in the variants: one
+   runner more on circuits whose size divides by 3; production uses the exact 2/3): forest 75 % +0.10, 85 % +0.33, 100 % +0.34,
+   and **90 % +0.08 [+0.05, +0.10] over 100 %** (national +0.12, 8 seasons better, 1 worse; the owner's suggestion); sprint
+   nothing beats the two-thirds (50-60 % win since 2025 but lose on 2012-2024, 100 % −0.34); VTT 75 % +0.15 (85 % +0.20 on
+   2012-2024 but −0.49 since 2025); ski as VTT. The usual level's share of best scores (the owner's question): 60 % stays (forest
+   50 % −0.03, 70 % −0.11, 80 % −0.16, 100 % −0.62; sprint 50-80 % equal). Against the geometric Top, same runners, 2012-2024:
+   forest +0.02 [+0.01, +0.03] (national 0.00, since 2025 −0.02 ns), sprint −0.12 [−0.18, −0.07], VTT +0.10 [+0.03, +0.16].
+   The production run (migration on a copy, `evaluation.json` of 2026-10-16): Top − official forest +2.17 [2.06, 2.27]
+   (79.19 → 81.35 %), sprint +2.27 [1.98, 2.56] (81.16 → 83.43 %); geometric − Top forest −0.02, sprint +0.15 [0.10, 0.20].
+   Published level (best 20 % of CN Top, snapshots of March and September 2018-2026): mean distance to 5600 2.0 % forest,
+   3.4 % sprint, 1.0 % VTT (peaks 6-9 % after the Covid seasons; the geometric pair alike: 1.9, 2.8, 0.9 %) — « within 2 % at
+   every date » said of the geometric pair held only at the dates first checked.
+4. **`fair3` and `top6w3`, the geometric pair** — the Top published **from 2026-10-13 to 2026-10-16**, an analysis method since
+   (labels « Fit géométrique » / « Top géométrique »): the circuit valued by a **geometric mean** with a dial on the slow tail
+   (`CnParams.tail_k`, `cn.circuit_value`, mirrored by `cn.js circuitValue`: V = A^(1-w) x B^w, A = the fastest ceil(2n/3)
+   times the discipline's usual tail effect `tail_mean`, B = the whole field, w = n / (n + k); forest 0, sprint 400, VTT and
+   ski 50), the usual level `fair3` a **cubic mean** (`cn_power` 3), the Top `top6w3` the weighted arithmetic mean of its 6
+   places. Its study (2026-10-13, private artifact https://claude.ai/artifact/1JSufP7jr3c9peCdSUwBuC) found what still holds:
+   FFCO's two-thirds leave out the runners who made mistakes (the value 4.8 % too low on average in forest, unevenly: sd 5.4
+   points, the junior circuits most), so the share of the field is what separates the methods; the geometric mean itself adds
+   nothing in forest and a tenth of a point in sprint. Also measured there and rejected: the Top as its own circuit valuer (the
+   loss grows over the seasons), an elasticity per circuit, per-race information weights, a bent score, the maximum-likelihood
+   level, Huber's circuit value, k = 4; the study's engine options are kept in git history (commit 9244b54).
+   History: `fair2`/`top6w2`, the quadratic pair (2026-10-07 to 13), dropped; `top6w3` cubic on 2026-10-13, arithmetic from
+   2026-10-14; the four disciplines on one rule from 2026-10-14; the dial from 2026-10-15.
 
-**Who sees what**: everyone sees `official` and `top6w3` (« Top », the method retained); `top6w` (« Top linéaire »,
-the method of origin, studied for reference) and the « Fit » methods `fair3`/`fair` are analysis methods, shown only
-to accounts with the `analyst` right (granted on the admin page; `store.available()`, `store.setAnalyst`; display
-only — the data files are the same for every logged-in user). The Méthodes page presents the Top and gives the
-linear method's measured figures to everyone, as the variant studied for reference. **The documentation (page and PDF)
-never names the Fit** (owner, 2026-10-14: misleading): the circuits are measured from the scores the runners present
-earned in their previous races, their « niveau habituel », a step of the calculation and not a ranking. « A race more never
-lowers the CN » is only said with « once the 6 places are filled » (before, the CN Top is an ordinary mean).
+**Who sees what**: everyone sees `official` and `top6w` (« Top », the method published); `top6w3` (« Top géométrique »)
+and the « Fit » methods `fair`/`fair3` are analysis methods, shown only to accounts with the `analyst` right (granted on the
+admin page; `store.available()`, `store.setAnalyst`; display only — the data files are the same for every logged-in user).
+The Top keeps its colour and dash whichever pair publishes it (`charts.METHOD_SLOT`, `build_site` `COLOR`). **The
+documentation (page and PDF) never names the Fit** (owner, 2026-10-14: misleading): the circuits are measured from the scores
+the runners present earned in their previous races, their « niveau habituel », a step of the calculation and not a ranking.
+« A race more never lowers the CN » is only said with « once the 6 places are filled » (before, the CN Top is an ordinary mean).
+**The documentation was shortened on 2026-10-16** (owner): the study tab has six chapters (Objectifs, Le point de départ,
+La mesure, Les choix et les variantes, Les résultats, La méthode retenue), the alternatives in a few lines each, the
+conclusion on simplicity and accuracy; old `?voir=score|circuit|recalage|ecartes` links open « choix »; the white paper
+(`docs/whitepaper/methode-top.tex`, `figures.py` → `fig_trunc.pdf`, `fig_share.pdf` and `numbers.tex`, the numbers from
+`study.json` and the live `site/data/evaluation.json`) follows the same plan.
 
 Key design decisions (each was measured — see "Evaluating" below — and agreed with the owner):
 - **Circuits are valued with the Fit CN, never with Top's.** A capped best-of fed its selection back through
@@ -159,8 +148,8 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
 - **"nc" (non classé) result rows** take no part in anything (`cn.is_nc`): not in circuit values, not in the
   runner's results or statistics; the race page lists them as "NC". (PM/abandon *without* "nc" score 0 and count.)
 - **Recalage**: no annual step. Each month a factor brings the mean of the best 20 % of CNs to **5600** (FFCO's
-  2026 rule), per terrain, from the level 2 months earlier (13-month smoothing; for `fair3`/`top6w3` the Top's CNs,
-  carried forward by the ten-year drift — see method 4). The factor of a race is that of
+  2026 rule), per terrain, from the level 2 months earlier (13-month smoothing; the Top's CNs, carried forward by the
+  ten-year drift — `norm3`, shared by both pairs since 2026-10-16; see method 4). The factor of a race is that of
   its **day**: straight line between monthly knots, each monthly factor reached on the 1st of the following month
   (`cn_engine.daily_knots` / `factor_on`). A race's published score = raw score × factor of its day, **fixed once,
   never revised**; the CN is the aggregate of those published scores (no factor at CN level), so a CN only moves
@@ -337,7 +326,8 @@ circuits of 4+; 95 % intervals by a bootstrap over **competitions** (pairs withi
 season from 2012, the 2012-2024 hold-out (before any tuning) and the tuning period. Results (hold-out, Top − official,
 points of duels, the arithmetic Top of 2026-10-14): forest +2.13 [2.02, 2.23] (79.19 → 81.31 %), R² +10.7 pt; sprint
 +2.32 [2.03, 2.62] (81.16 → 83.48 %), R² +6.3 pt; national races +1.26 forest, +1.72 sprint; significant in 15 of 15 forest
-seasons, 13 of 15 sprint. Top − Top linéaire: forest +0.45, R² +2.6 pt; sprint equal (0.00). The cubic Top of 2026-10-13
+seasons, 13 of 15 sprint (the geometric Top, then published). The linear Top published since 2026-10-16: see method 3 and
+the live `evaluation.json` (pair `top6w-official`). The cubic Top of 2026-10-13
 had forest +2.13, sprint +2.41, R² +11.8 / +9.7. The Top of 2026-10-13 (`top6w3`, cubic) − the quadratic one
 (study re-run with the weighting, `*_n.json` in the study folder): forest +0.40 [0.35, 0.44] (14 seasons of 15),
 national +0.12, R² +2.4 pt; sprint +0.12 [0.09, 0.15]; k = 3 − k = 2 forest +0.04 [0.03, 0.05] (national −0.01, not
@@ -852,11 +842,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   editor; Cloudflare takes 100 MB a request). R2's free 10 GB (420 MB used on 2026-10-14: the database and the site
   state) hold some 2000 phone photos of 5 MB; the administrators see the bucket's use on the list pages
   (`/api/analyses?stats=1`).
-- UI text lives in `i18n.js` (French). Method keys: `official`, `top6w3`, `top6w`, `fair3`, `fair` (labels « Top » /
-  « Fit », the linear ones « Top linéaire » / « Fit linéaire »). Old saved selections or links naming the removed
+- UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w3`, `fair`, `fair3` (labels « Top » /
+  « Fit » for the published pair, « Top géométrique » / « Fit géométrique » for the geometric one, since 2026-10-16). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).
-- Runner race rows (`R`) and race result rows (`C`) carry each method's columns, the retained pair (`f3*`, `t3*`)
-  appended after the linear ones (`data.js`: `SCORE_COL`, `CNAFTER_COL`, `CNJ15_COL`, `COUNTS_COL`, `WEIGHT_COL`,
+- Runner race rows (`R`) and race result rows (`C`) carry each method's columns, the geometric pair (`f3*`, `t3*`)
+  appended after the published linear ones (`f*`, `t6*`; `site_ask` reads the Top from `t6*`) (`data.js`: `SCORE_COL`, `CNAFTER_COL`, `CNJ15_COL`, `COUNTS_COL`, `WEIGHT_COL`,
   `C_SCORE`, `C_CNJ15`).
 - The archived seasons (before 2024) are members-only on the FFCO site — listings and, since 2026, the race
   pages too: re-reading them needs a fresh `FFCO_SESSIONID` (the `sessionid` cookie of a logged-in member) in
