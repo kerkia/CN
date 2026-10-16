@@ -18,28 +18,8 @@ import * as A from "./actions.js";
 import * as D from "./dialogs.js";
 import { syncMap, splitItems, itemBlend, purpleOverride } from "./appear.js";
 import { isMapFile } from "./mapsrc.js";
+import { svg, actIcon, MENUS } from "./icons.js";
 
-const ICON = {
-  select: '<path d="M5 3l14 8-6 2-3 6z"/>',
-  control: '<circle cx="12" cy="12" r="7"/>',
-  start: '<path d="M12 4l8 14H4z"/>',
-  finish: '<circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="9"/>',
-  crossing: '<path d="M8 4c3 4 3 12 0 16M16 4c-3 4-3 12 0 16"/>',
-  issue: '<path d="M7 12h10M12 12v6"/>',
-  exchange: '<circle cx="12" cy="12" r="8"/><path d="M12 6l5 9H7z"/>',
-  bend: '<path d="M4 18l8-12 8 12"/><circle cx="12" cy="6" r="2"/>',
-  gap: '<path d="M3 12h6M15 12h6"/>',
-  route: '<path d="M4 19c3-1 3-6 7-7s4-6 9-8" stroke-dasharray="3 2.5"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="4" r="1.6"/>',
-  descr: '<rect x="4" y="4" width="16" height="16"/><path d="M4 9h16M4 14h16M9 9v11"/>',
-  special: '<path d="M4 20l8-16 8 16z"/><path d="M8 14h8"/>',
-  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
-  redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/>',
-  close: '<path d="M6 6l12 12M18 6L6 18"/>',
-  newtab: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>',
-  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>',
-};
-const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour se déplacer"],
   ["start", "Départ", "Cliquer pour placer le départ (ou cliquer un départ existant)"],
@@ -699,29 +679,15 @@ const savePref = (k, v) => { try { const o = JSON.parse(localStorage.getItem("oc
 
 function shell(E) {
   const tool = ([k, label]) => `<button type="button" class="tr-tool" data-tool="${k}" title="${esc(label)}" aria-label="${esc(label)}" aria-pressed="false">${svg(k)}</button>`;
-  const menu = (label, items) => `<div class="tr-menu"><button type="button" aria-haspopup="menu" aria-expanded="false">${label}</button><div class="tr-menu-list" role="menu">${items.map((it) =>
-    it === "-" ? '<hr>' : `<button type="button" role="menuitem" data-act="${it[0]}">${esc(it[1])}</button>`).join("")}</div></div>`;
+  // the menus with their icons (icons.js: the guide shows the same)
+  const menu = ({ label, icon, items }) => `<div class="tr-menu"><button type="button" aria-haspopup="menu" aria-expanded="false">${svg(icon, 16)}<span>${label}</span></button><div class="tr-menu-list" role="menu">${items.map((it) =>
+    it === "-" ? '<hr>' : `<button type="button" role="menuitem" data-act="${it[0]}">${actIcon(it[0])}<span>${esc(it[1])}</span></button>`).join("")}</div></div>`;
   return `
   <header class="tr-top">
     <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Enregistrer et revenir à la liste des événements">← Événements</button>
     <span class="tr-title"></span>
     <nav class="tr-menus">
-      ${menu("Fichier", [["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
-        ["import-ppen", "Importer un fichier Purple Pen (.ppen)…"], ["export-ppen", "Exporter en .ppen"], "-",
-        ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
-        ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
-        ["export-images", "Images des circuits (PNG, JPEG, GIF)…"], ["export-ocad", "Fichiers OCAD ou Mapper des circuits…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
-        ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"], "-", ["offline", "Travailler hors ligne…"]])}
-      ${menu("Événement", [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
-        ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],
-        ["custom-text", "Textes des définitions…"], ["punch", "Poinçons…"], ["load", "Charge des concurrents…"], ["georef", "Géoréférencer la carte…"], "-", ["team", "Équipe et partage…"], ["encryption", "Chiffrement…"]])}
-      ${menu("Circuit", [["course-new", "Nouveau circuit…"], ["course-props", "Propriétés du circuit…"], ["course-dup", "Dupliquer le circuit…"], ["course-delete", "Supprimer le circuit"],
-        ["course-order", "Ordre des circuits…"], "-", ["var-fork", "Ajouter une fourche…"], ["var-loop", "Ajouter des boucles…"], ["var-delete", "Supprimer la variante"], ["relay", "Variantes de relais…"], "-",
-        ["print-area", "Zone d'impression…"], ["part-options", "Options de la partie…"]])}
-      ${menu("Rapports", [["rep-summary", "Résumé des circuits"], ["rep-legs", "Longueurs des interpostes"], ["rep-cross", "Références croisées"], ["rep-load", "Charge des postes et interpostes"],
-        ["rep-audit", "Contrôle de l'événement"], "-", ["rep-climb", "Dénivelée (IGN)…"], ["rep-times", "Temps estimés du vainqueur…"], ["rep-pickup", "Plan de ramassage…"], ["rep-after", "Bilan après la course…"], "-", ["comments", "Commentaires de l'équipe…"], ["field", "Mode terrain…"]])}
-      ${menu("Affichage", [["view-course", "Tout le circuit"], ["view-map", "Toute la carte"], ["view-all", "Afficher tous les postes"], ["view-printarea", "Afficher la zone d'impression"],
-        ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"], ["save-to", "Plusieurs fichiers : dossier ou .zip…"]])}
+      ${MENUS.map(menu).join("")}
     </nav>
     <div class="tr-tools" role="toolbar" aria-label="Outils">
       <button type="button" class="tr-icon" id="tr-undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">${svg("undo")}</button>

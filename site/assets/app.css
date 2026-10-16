@@ -1175,6 +1175,17 @@ table.data tbody tr.found .name { font-weight: 700; }
 .mx-bar .fill { height: 100%; background: var(--c); border-radius: 5px; }
 .mx-bar .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .mx-ktab td.k2, .mx-ktab th.k2 { background: color-mix(in srgb, var(--s4) 13%, transparent); }
+/* the Tracer's guide (« Le tracé »): its tools with their icons, the menus one by one */
+.tr-doc-tools .tr-doc-ico { width: 30px; color: #a7179b; }
+.tr-doc-tools td:last-child { white-space: normal; min-width: 260px; line-height: 1.45; }
+.tr-doc-tools .tr-doc-ico svg { display: block; }
+.tr-doc-mh { display: flex; align-items: center; gap: 8px; }
+.tr-doc-mh svg { color: #a7179b; }
+.tr-doc-menu { display: grid; grid-template-columns: minmax(200px, max-content) 1fr; gap: 6px 18px; margin: 0 0 8px; }
+.tr-doc-menu dt { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; }
+.tr-doc-menu dt svg, .tr-doc-menu dt .tr-mi-none { flex: none; margin-top: 2px; color: var(--ink-3); }
+.tr-doc-menu dd { margin: 0; color: var(--ink-2); line-height: 1.45; }
+@media (max-width: 640px) { .tr-doc-menu { grid-template-columns: 1fr; } .tr-doc-menu dd { margin: -2px 0 6px 24px; } }
 .mx-callout { border-radius: var(--radius-sm); padding: 14px 16px; background: var(--accent-wash); line-height: 1.5; margin: 14px 0; }
 .mx-slide details { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 10px; }
 .mx-slide details > summary { cursor: pointer; font-weight: 600; color: var(--link); }
@@ -1511,13 +1522,18 @@ body.full-win .tr-app { border: 0; }
 .tr-icon:disabled { opacity: .35; cursor: default; }
 .tr-menus { display: flex; gap: 2px; }
 .tr-menu { position: relative; }
-.tr-menu > button { border: 0; background: transparent; padding: 6px 9px; border-radius: 6px; color: var(--ink); cursor: pointer; font: inherit; }
+.tr-menu > button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 6px 9px; border-radius: 6px; color: var(--ink); cursor: pointer; font: inherit; }
+.tr-menu > button svg { color: var(--ink-3); }
+.tr-menu > button:hover svg, .tr-menu.open > button svg { color: #a7179b; }
 .tr-menu > button:hover, .tr-menu.open > button { background: var(--surface-2); }
-.tr-menu-list { display: none; position: absolute; top: 100%; left: 0; min-width: 250px; z-index: 30; background: var(--surface); border: 1px solid var(--border-strong);
+.tr-menu-list { display: none; position: absolute; top: 100%; left: 0; min-width: 320px; z-index: 30; background: var(--surface); border: 1px solid var(--border-strong);
   border-radius: 8px; box-shadow: var(--shadow-pop); padding: 4px; max-height: 75vh; overflow: auto; }
 .tr-menu.open .tr-menu-list { display: block; }
-.tr-menu-list button, .tr-ctx button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 10px; border-radius: 5px; color: var(--ink); cursor: pointer; font: inherit; }
+.tr-menu-list button, .tr-ctx button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 10px; border-radius: 5px; color: var(--ink); cursor: pointer; font: inherit; }
+.tr-menu-list button svg, .tr-ctx button svg { flex: none; color: var(--ink-3); }
+.tr-mi-none { flex: none; display: inline-block; }
 .tr-menu-list button:hover, .tr-ctx button:hover { background: var(--accent-wash); }
+.tr-menu-list button:hover svg, .tr-ctx button:hover svg { color: #a7179b; }
 .tr-menu-list hr, .tr-ctx hr { border: 0; border-top: 1px solid var(--border); margin: 4px 2px; }
 .tr-tools { display: flex; align-items: center; gap: 2px; margin-left: 6px; flex-wrap: wrap; }
 .tr-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }

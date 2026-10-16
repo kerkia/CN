@@ -13,7 +13,7 @@ const CACHE = "ocn-offline-v1";
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FLAG = (id) => `ocn.tr.offline.${id}`;
 export const isKept = (id) => { try { return localStorage.getItem(FLAG(id)) === "1"; } catch (e) { return false; } };
-const TRACER = ["actions", "appear", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "idb", "layout", "mapsrc", "model", "offline",
+const TRACER = ["actions", "appear", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "icons", "idb", "layout", "mapsrc", "model", "offline",
   "panes", "pdf", "ppen", "race", "relay", "reports", "store", "symbols", "team", "textify", "tiff",
   "vmap/geom", "vmap/georef", "vmap/map", "vmap/ocad", "vmap/ocadwrite", "vmap/oom", "vmap/oomwrite", "vmap/symdefs", "vmap/sympath", "vmap/target", "coursefiles"].map((m) => `/assets/js/tracer/${m}.js`);
 const CDN = "https://cdn.jsdelivr.net/npm";

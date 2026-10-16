@@ -11,6 +11,7 @@ import { readPpen, writePpen } from "./ppen.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
+import { actIcon } from "./icons.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v) => new Intl.NumberFormat("fr-FR").format(v);
@@ -71,11 +72,11 @@ const field = (label, input, hint = "") => `<label class="tr-field"><span>${esc(
 const sel = (name, opts, cur) => `<select name="${name}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
 const num = (v) => { const x = Number(String(v).replace(",", ".")); return Number.isFinite(x) ? x : NaN; };
 
-/** A small menu at a screen point: items [action, label] or "-". */
+/** A small menu at a screen point: items [action, label] or "-", each with its icon (icons.js). */
 export function popupMenu(E, cx, cy, items, onPick) {
   const pop = document.createElement("div");
   pop.className = "tr-pop tr-ctx";
-  pop.innerHTML = items.map((it) => (it === "-" ? "<hr>" : `<button type="button" data-a="${it[0]}">${esc(it[1])}</button>`)).join("");
+  pop.innerHTML = items.map((it) => (it === "-" ? "<hr>" : `<button type="button" data-a="${it[0]}">${actIcon(it[0])}<span>${esc(it[1])}</span></button>`)).join("");
   E.root.appendChild(pop);
   const W = window.innerWidth, H = window.innerHeight;
   pop.style.left = `${Math.min(cx, W - pop.offsetWidth - 8)}px`; pop.style.top = `${Math.min(cy, H - pop.offsetHeight - 8)}px`;

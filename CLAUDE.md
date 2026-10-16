@@ -779,7 +779,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `vmap/ocadwrite.js` OCAD 9-12/2018, `vmap/oomwrite.js`; Purple Pen's Create OCAD Files): each course's drawing items as 7xx
   symbols (line, area with hatching, text with its white frame) in the course colours (Purple 11, Lower purple 12, 50 % 13, Black
   0, White 44), the map as template (the OCAD/Mapper file at offset 0, the image, a PDF as a PNG), the map's real-world
-  coordinates; checked by reading back with our readers (all versions, every object; drawings equal to 1 px). Controls, finish,
+  coordinates; checked by reading back with our readers (all versions, every object; drawings equal to 1 px). **Icons and guide**
+  (owner, 2026-10-16: the guide leaned on Purple Pen, as if one had to know it first): `tracer/icons.js` holds every icon (24 × 24
+  line drawings) and the menus' structure (`MENUS`, `ACT_ICON`), used by the editor's menus, its right-click and special-objects
+  menus, and by the Documentation's « Le tracé », now a guide of its own (13 chapters: starting, the map, the screen — a drawn,
+  numbered diagram —, tools and controls, courses, descriptions, special objects, printing, checks, teamwork and the field, after
+  the race, every menu entry, the calculations); Purple Pen is credited once, and named only for its .ppen files. Controls, finish,
   start, crossing points, the map issue point and point specials are **point symbols** (`coursefiles.pointOf`: circles and dot
   for controls and the finish, a map exchange's triangle turning the symbol; the others' drawing turned back by their
   orientation), a circle's gaps in the object (OCAD: angle pairs after the point, unshifted, 0.1°; Mapper has none: a line

@@ -14,6 +14,7 @@ import { timeChart, scatterChart, methodColor, terrainColor, METHOD_SLOT, css } 
 import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
+import * as TR from "../tracer/icons.js";
 
 const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
 const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"], ["choix", "Les choix de base"],
@@ -1390,131 +1391,454 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // ======================================================================================================
-  // 5. Le Tracer (Organisation › Tracer): how it works, what it adds to Purple Pen, and its calculations, in plain words
+  // 5. Le tracé (Organisation › Tracer): a guide that needs nothing else — starting, the map, the screen, the tools, courses,
+  //    descriptions, specials, printing, checks, teamwork, after the race, every menu entry — and its calculations, in plain words
   // ======================================================================================================
   function tracerDoc() {
-    const CHAPTERS = [["principe", "Le principe"], ["carte", "La carte"], ["circuits", "Tracer"], ["sorties", "Imprimer et exporter"],
-      ["outils", "Ce qu'il ajoute"], ["apres", "Après la course"], ["calculs", "Ses calculs"]];
+    const CHAPTERS = [["principe", "Pour commencer"], ["carte", "La carte"], ["ecran", "L'écran"], ["postes", "Les postes"], ["circuits", "Les circuits"],
+      ["definitions", "Les définitions"], ["speciaux", "Objets spéciaux"], ["sorties", "Imprimer et exporter"], ["verifier", "Vérifier"],
+      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["menus", "Les menus"], ["calculs", "Ses calculs"]];
+    const ic = (k, s = 18) => raw(TR.svg(k, s));
+    const K = "Le tracé";
+    // the tools of the editor's bar, with the letter that picks them
+    const TOOLS = [
+      ["select", "Sélection", "S", "Cliquer un objet pour le choisir ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour déplacer la carte. Double-cliquer un poste ouvre sa définition."],
+      ["start", "Départ", "D", "Cliquer à l'endroit du départ. Dans un circuit, cliquer un départ déjà posé le reprend."],
+      ["control", "Poste", "P", "Cliquer pour poser un poste ; l'outil reste actif pour poser les suivants. Cliquer un poste pâle, celui d'un autre circuit, l'ajoute au circuit."],
+      ["finish", "Arrivée", "A", "Cliquer à l'endroit de l'arrivée."],
+      ["crossing", "Passage obligatoire", "O", "Un point de passage obligé (une brèche dans une clôture, un pont) : cliquer sur l'interposte."],
+      ["issue", "Remise de carte", "", "Là où le coureur reçoit sa carte avant le départ ; un trajet balisé mène ensuite au départ."],
+      ["exchange", "Échange de carte", "", "Cliquer un poste du circuit : le coureur y change de carte, et le circuit se partage en parties."],
+      ["bend", "Coude", "C", "Cliquer un interposte pour le plier (pour contourner une zone interdite) ; un coude se glisse ; cliquer un coude pour le retirer."],
+      ["gap", "Coupure", "X", "Glisser le long d'un interposte ou d'un cercle pour le couper, et laisser lisible un détail de la carte ; cliquer une coupure pour la refermer."],
+      ["route", "Itinéraire", "", "Le chemin prévu pour les coureurs, qui sert à la dénivelée : cliquer l'interposte, puis les points du chemin ; double-cliquer pour finir. Il ne s'imprime pas."],
+      ["descr", "Définitions sur la carte", "", "Glisser un cadre sur la carte : les définitions du circuit s'y placent, et leur largeur fixe leur taille."],
+      ["special", "Objets spéciaux", "", "Ouvre la liste des objets : point d'eau, poste de secours, zone interdite, texte, image… (chapitre « Objets spéciaux »)."],
+    ];
+    const KEYS = [
+      ["Ctrl + Z, Ctrl + Y", "Annuler, rétablir (100 étapes)"], ["Ctrl + S", "Enregistrer tout de suite"],
+      ["Suppr", "Supprimer l'objet choisi ; dans un circuit, retirer le poste du circuit seulement"],
+      ["Échap", "Abandonner le tracé en cours, revenir à la Sélection, puis désélectionner"],
+      ["Entrée", "Finir une ligne, une zone ou un itinéraire (comme un double-clic)"],
+      ["S, D, P, A, O, C, X", "Choisir un outil (Sélection, Départ, Poste, Arrivée, passage Obligatoire, Coude, coupure)"],
+      ["Maj + clic", "Garder l'outil après avoir posé un départ, une arrivée ou un objet"],
+      ["Maj en glissant un poste", "Le poser exactement sur un poste voisin"],
+      ["Molette, + et −", "Zoomer"], ["Flèches, clic droit glissé", "Déplacer la carte"], ["Clic droit", "Le menu de l'objet sous la souris"],
+    ];
+    // what each menu entry does (the menus come from tracer/icons.js, as in the editor)
+    const MENU_HELP = {
+      save: "Enregistre tout de suite ; l'enregistrement se fait aussi tout seul, quelques secondes après chaque changement.",
+      "version-save": "Garde l'état actuel sous un nom, pour y revenir plus tard.",
+      versions: "La liste des versions (une version est aussi gardée toutes les 30 minutes de travail) : voir ce qui a changé, en rouvrir une.",
+      "import-ppen": "Remplace les circuits de l'événement par ceux d'un fichier Purple Pen ; la carte reste celle de l'événement.",
+      "export-ppen": "Le fichier de l'événement pour Purple Pen.",
+      "pdf-courses": "Les cartes des circuits à imprimer.", "pdf-descriptions": "Les définitions seules, plusieurs par page.",
+      "pdf-punch": "Les cartons de contrôle, avec une case par poste.",
+      "export-iof3": "Les circuits pour les logiciels de chronométrage : postes, ordre, longueurs, et les équipes des relais.",
+      "export-iof2": "La même chose pour les logiciels plus anciens.", "export-gpx": "Les postes en points GPS (carte géoréférencée).",
+      "export-kml": "Les circuits pour Google Earth ou une carte en ligne (carte géoréférencée).",
+      "export-images": "Une image par circuit, avec son fichier de calage quand la carte est géoréférencée.",
+      "export-ocad": "Chaque circuit en carte OCAD ou OpenOrienteering Mapper, pour le finir ou l'imprimer avec ces logiciels.",
+      "export-routegadget": "La carte en image et les circuits, à déposer sur RouteGadget.", "export-csv": "Les tableaux des rapports, pour un tableur.",
+      publish: "Après la course : les circuits dans « Analyse multi », où les coureurs déposent leurs traces GPS.",
+      "send-results": "À partir du jour de la course : longueurs, dénivelées et postes de chaque circuit envoyés aux résultats du site.",
+      "map-change": "Une autre carte (une version corrigée, un meilleur scan, le fichier OCAD) : les postes gardent leur place.",
+      offline: "Garder l'événement sur cet appareil pour l'ouvrir sans réseau.",
+      "event-props": "Le titre, l'échelle de la carte (et la résolution d'une image), l'échelle d'impression de « Tous les postes », la langue des définitions en texte, des notes.",
+      appearance: "La taille des cercles, l'épaisseur des traits, la police et la taille des numéros, le violet et sa façon de se poser sur la carte.",
+      standards: "La norme des définitions (IOF 2004 ou 2018/2024) et celle de la carte (ISOM 2017, ISSprOM 2019, ISOM 2000), qui fixe la taille des symboles.",
+      numbering: "Le premier code donné aux nouveaux postes, et si l'on évite les codes qui se lisent aussi à l'envers (66, 99…).",
+      codes: "Changer les codes de plusieurs postes d'un coup.", renumber: "Redonner un code à chaque poste, à partir du premier code.",
+      "remove-unused": "Supprimer les postes qu'aucun circuit n'utilise.", calage: "Recaler tous les postes sur la carte, en deux clics (chapitre « La carte »).",
+      "move-all": "Déplacer, tourner ou mettre à l'échelle tous les postes à la fois.",
+      "custom-text": "Changer le texte que les définitions en texte donnent à un symbole.", punch: "Le dessin de la pince de chaque poste, pour vérifier les cartons.",
+      load: "Le nombre de concurrents de chaque circuit (repris des inscriptions de la FFCO quand il y en a), pour la charge des postes.",
+      georef: "Situer la carte sur la Terre : des points cliqués, un fichier de calage, un KMZ.", team: "Les membres de l'équipe et leur rôle.",
+      encryption: "Chiffrer l'événement avec une phrase de passe de l'équipe.",
+      "course-new": "Un nouveau circuit (aussi : le « + » au bout des onglets).",
+      "course-props": "Le nom, le type (normal ou au score), les catégories, la dénivelée, la longueur, l'échelle d'impression, les définitions, la numérotation, les concurrents attendus.",
+      "course-dup": "Une copie du circuit, pour en dériver un autre.", "course-delete": "Supprimer le circuit ; ses postes restent dans « Tous les postes ».",
+      "course-order": "L'ordre des onglets et des listes.", "var-fork": "Une fourche à partir du poste choisi : des branches qui se rejoignent plus loin.",
+      "var-loop": "Des boucles à partir du poste choisi (un « papillon »).", "var-delete": "Supprimer la fourche ou les boucles qui partent du poste choisi.",
+      relay: "Pour un relais : quelle variante court chaque relayeur de chaque équipe.", "print-area": "La partie de la carte imprimée, le format et l'orientation de la feuille.",
+      "part-options": "Pour un circuit en plusieurs parties : montrer ou non l'arrivée sur la partie choisie.",
+      "rep-summary": "Pour chaque circuit : la longueur, la dénivelée, le nombre de postes.", "rep-legs": "La longueur de chaque interposte de chaque circuit.",
+      "rep-cross": "Quels circuits passent à quel poste.", "rep-load": "Le nombre de concurrents attendus à chaque poste et sur chaque interposte.",
+      "rep-audit": "Les vérifications : postes trop proches, définitions incomplètes, codes, interpostes qui traversent une zone interdite… (chapitre « Vérifier »).",
+      "rep-climb": "La dénivelée de chaque circuit, sur le modèle de terrain de l'IGN.", "rep-times": "Le temps attendu du vainqueur de chaque circuit, et la longueur pour un temps visé.",
+      "rep-pickup": "Quand et dans quel ordre ramasser les postes.", "rep-after": "Après la course : temps, erreurs et itinéraires pris sur chaque interposte.",
+      comments: "Les commentaires de l'équipe, épinglés sur la carte.", field: "Sur le téléphone : la carte avec sa position GPS, pour poser et vérifier les postes.",
+      "view-course": "Cadrer tout le circuit.", "view-map": "Cadrer toute la carte.", "view-all": "Montrer en pâle les postes des autres circuits, pour les reprendre.",
+      "view-printarea": "Montrer le cadre de la zone d'impression.", "view-others": "Montrer d'autres circuits en bleu pâle sous celui en cours.",
+      "import-course": "Lire les cercles, le départ et l'arrivée imprimés sur une carte (un PDF, une photo) et en faire des postes.",
+      "save-to": "Quand une commande crée plusieurs fichiers : les écrire dans un dossier choisi, ou en un seul .zip.",
+    };
+    // the editor's screen, drawn: its zones numbered as in the list under it
+    const screenFig = () => {
+      const P = "#a7179b", ink2 = "var(--ink-2)", line = "var(--border-strong)";
+      const mark = (n, x, y) => `<g><circle cx="${x}" cy="${y}" r="11" fill="${P}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:#fff">${n}</text></g>`;
+      const icon = (k, x, y, s = 0.72) => `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="${ink2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TR.ICON[k]}</g>`;
+      let mx = 238;
+      const menus = TR.MENUS.map((m) => { const w = 26 + m.label.length * 7.1; const s = `${icon(m.icon, mx, 9, 0.62)}<text x="${mx + 19}" y="23" font-size="12.5" style="fill:var(--ink)">${m.label}</text>`; mx += w + 8; return s; }).join("");
+      const tools = ["select", "start", "control", "finish", "crossing", "issue", "exchange", "bend", "gap", "route", "descr", "special"]
+        .map((k, i) => (i === 0 ? `<rect x="${73 + i * 28}" y="40" width="24" height="22" rx="5" fill="color-mix(in srgb, ${P} 14%, transparent)" stroke="${P}"/>` : "") + icon(k, 76 + i * 28, 42)).join("");
+      const ctl = [[300, 330, "start"], [372, 250, 1], [470, 300, 2], [560, 205, 3], [655, 275, 4], [702, 352, "finish"]];
+      let legs = "";
+      for (let i = 1; i < ctl.length; i++) {
+        const [x1, y1] = ctl[i - 1], [x2, y2] = ctl[i], d = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / d, uy = (y2 - y1) / d, a = i === 1 ? 10 : 12, b = i === ctl.length - 1 ? 15 : 12;
+        legs += `<line x1="${x1 + ux * a}" y1="${y1 + uy * a}" x2="${x2 - ux * b}" y2="${y2 - uy * b}"/>`;
+      }
+      const marks = ctl.map(([x, y, k]) => (k === "start" ? `<path d="M${x} ${y - 11}l10 17h-20z"/>` : k === "finish" ? `<circle cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="14"/>`
+        : `<circle cx="${x}" cy="${y}" r="12"/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${P}">${k}</text>`)).join("");
+      const rows = [["", "", "Départ : sommet"], ["1", "31", "Rocher, côté nord"], ["2", "45", "Dépression"], ["3", "52", "Chemin, croisement"], ["4", "38", "Clairière"]];
+      const sheet = rows.map(([n, c, t], i) => `<text x="22" y="${142 + i * 20}" font-size="11" font-weight="700" style="fill:var(--ink)">${n}</text><text x="38" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink)">${c}</text><text x="64" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink-2)">${t}</text><line x1="12" y1="${148 + i * 20}" x2="222" y2="${148 + i * 20}" stroke="${line}"/>`).join("");
+      return `<svg viewBox="0 0 760 432" role="img" aria-label="L'écran du tracé, ses zones numérotées">
+        <rect x="0.5" y="0.5" width="759" height="431" rx="9" fill="var(--surface)" stroke="${line}"/>
+        <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="18" y="22" font-size="11.5" style="fill:var(--ink)">← Événements</text>
+        <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>${menus}
+        <text x="700" y="23" font-size="11.5" style="fill:var(--good)">Enregistré</text>
+        <line x1="0" y1="35" x2="760" y2="35" stroke="${line}"/>
+        ${icon("undo", 10, 42)}${icon("redo", 36, 42)}<line x1="64" y1="42" x2="64" y2="60" stroke="${line}"/>${tools}
+        <line x1="0" y1="66" x2="760" y2="66" stroke="${line}"/>
+        <text x="12" y="84" font-size="12" style="fill:var(--ink-2)">Tous les postes</text><text x="118" y="84" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
+        <line x1="114" y1="91" x2="176" y2="91" stroke="${P}" stroke-width="2.5"/><text x="190" y="84" font-size="12" style="fill:var(--ink-2)">Circuit B</text>${icon("plus", 252, 72, 0.55)}
+        <line x1="0" y1="93" x2="760" y2="93" stroke="${line}"/>
+        <rect x="12" y="102" width="210" height="146" fill="var(--surface)" stroke="var(--ink)"/>
+        <text x="117" y="118" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
+        <line x1="12" y1="125" x2="222" y2="125" stroke="var(--ink)"/>${sheet}<path d="M20 135.5l9 5-9 5z" fill="none" stroke="var(--ink)" stroke-width="1.3"/>
+        <text x="14" y="276" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
+        <text x="14" y="294" font-size="11" style="fill:var(--ink-2)">Longueur 3,2 km · Dénivelée 85 m</text><text x="14" y="310" font-size="11" style="fill:var(--ink-2)">4 postes · 1:10 000</text>
+        <rect x="14" y="320" width="120" height="20" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="22" y="334" font-size="10.5" style="fill:var(--ink)">Propriétés du circuit…</text>
+        <rect x="233" y="94" width="527" height="306" fill="var(--surface-2)"/>
+        <path d="M250 150c60-30 120 10 170-20s110-40 150 10M260 200c70-20 120 30 200 0s120-30 180 20M300 390c40-60 120-50 170-20" fill="none" stroke="#c8865a" stroke-opacity=".55" stroke-width="1.4"/>
+        <ellipse cx="520" cy="350" rx="60" ry="26" fill="#f6c46a" fill-opacity=".45"/>
+        <g fill="none" stroke="${P}" stroke-width="2.2">${legs}${marks}</g>
+        <line x1="232" y1="93" x2="232" y2="400" stroke="${line}" stroke-width="2"/>
+        <g>${[0, 1, 2].map((i) => `<rect x="724" y="${104 + i * 26}" width="24" height="22" rx="5" fill="var(--surface)" stroke="${line}"/>`).join("")}${icon("plus", 727, 106, 0.6)}${icon("minus", 727, 132, 0.6)}${icon("fit", 727, 158, 0.6)}
+          <line x1="736" y1="186" x2="736" y2="240" stroke="${P}" stroke-width="3" stroke-linecap="round"/><circle cx="736" cy="196" r="5" fill="${P}"/></g>
+        <line x1="0" y1="400" x2="760" y2="400" stroke="${line}"/>
+        <text x="12" y="420" font-size="11" style="fill:var(--ink-3)">Cliquer pour poser un poste — il vient après le poste choisi…</text><text x="748" y="420" text-anchor="end" font-size="11" style="fill:var(--ink-3)">1:10 000 · 140 %</text>
+        ${mark(1, 226, 18)}${mark(2, 424, 51)}${mark(3, 292, 80)}${mark(4, 222, 112)}${mark(5, 214, 266)}${mark(6, 420, 165)}${mark(7, 708, 116)}${mark(8, 446, 416)}
+      </svg>`;
+    };
     const CH = {
       principe: () => html`
         <section class="mx-slide" id="tr-principe">
-          <p class="mx-kicker">Le tracé</p>
+          <p class="mx-kicker">${K}</p>
           <h2>Tracer les circuits dans le navigateur</h2>
-          <p>« Organisation › Tracer » fait ce que fait Purple Pen, le logiciel de traçage gratuit que beaucoup de clubs utilisent : placer les postes,
-            composer les circuits, remplir les définitions, imprimer les cartes et les définitions, préparer les fichiers du chronométrage. Il lit et écrit
-            les fichiers de Purple Pen (.ppen) : un événement passe de l'un à l'autre dans les deux sens.</p>
-          <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>Qui crée un événement</h3><p>Une compétition : un membre du club organisateur (le club de sa dernière course).
-              Un entraînement : n'importe quel compte.</p></div>
-            <div class="mx-box" style="--c:var(--s3)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute (traceur, contrôleur,
-              lecteur). Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe, l'événement est chiffré dans le navigateur :
-              le serveur ne garde que des données illisibles. Perdue, la phrase de passe ne se retrouve pas : exportez d'abord un .ppen.</p></div>
+          <p class="mx-lead">« Organisation › Tracer » sert à préparer les circuits d'une course ou d'un entraînement, de la carte vierge aux cartes imprimées :
+            placer les postes, composer les circuits, remplir les définitions, vérifier, imprimer, préparer les fichiers du chronométrage. Rien à installer :
+            tout se passe dans le navigateur, et l'événement est enregistré sur le site.</p>
+          <p>Il reprend les règles de traçage et le format de fichier de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
+            le logiciel libre de traçage de Peter Golde, que beaucoup de clubs connaissent : un événement passe de l'un à l'autre, dans les deux sens. On n'a
+            pas besoin de connaître Purple Pen pour s'en servir : ce guide explique tout.</p>
+          <h3>Les étapes</h3>
+          <div class="mx-steps" style="--c:#a7179b">
+            <div class="mx-step"><b>Créer l'événement</b>« Nouvel événement » sur la page « Tracer » : une compétition de son club ou un entraînement, et sa carte.</div>
+            <div class="mx-step"><b>Poser les postes</b>Avec l'outil Poste, sur l'onglet « Tous les postes » ou directement dans un circuit.</div>
+            <div class="mx-step"><b>Composer les circuits</b>Un onglet par circuit : départ, postes dans l'ordre, arrivée.</div>
+            <div class="mx-step"><b>Remplir les définitions</b>Dans le panneau de gauche, case par case, symboles ou texte.</div>
+            <div class="mx-step"><b>Vérifier</b>Longueurs, dénivelée, postes trop proches, définitions oubliées : le menu Rapports.</div>
+            <div class="mx-step"><b>Imprimer et exporter</b>Les PDF des cartes et des définitions, les fichiers pour le chronométrage.</div>
           </div>
-          <p>Chaque modification est enregistrée quelques secondes après, une version est gardée toutes les 30 minutes de travail, et un seul membre de
-            l'équipe modifie à la fois (les autres lisent, et peuvent « prendre la main »). L'éditeur s'ouvre en plein écran ; « ↗ » le met dans un onglet à lui.</p>
+          <h3>Créer un événement</h3>
+          <p>Sur la page « Tracer », « Nouvel événement » demande :</p>
+          <ul class="mx-list">
+            <li><b>Une compétition ou un entraînement.</b> Une compétition se choisit dans la liste des courses à venir et des 60 derniers jours organisées par votre
+              club (le club de votre dernière course) : seuls ses membres la créent. Un entraînement, n'importe qui le crée, avec un titre et une date.</li>
+            <li><b>La carte</b>, déposée ou choisie : le fichier OCAD ou Mapper, un PDF ou une image (chapitre « La carte »).</li>
+            <li><b>L'échelle de la carte</b> (lue dans le fichier OCAD ou Mapper) et sa <b>norme</b> : forêt (ISOM 2017) ou sprint (ISSprOM 2019), qui fixe la taille
+              des cercles et des numéros.</li>
+          </ul>
+          <p>Un fichier Purple Pen (.ppen) se reprend aussi : « Importer un fichier Purple Pen » sur la page « Tracer » (ou un .ppen déposé sur la page), avec sa carte.
+            Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute, comme traceur,
+              contrôleur ou lecteur. Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>Enregistré tout seul</h3><p>Quelques secondes après chaque changement ; une version est gardée toutes les
+              30 minutes de travail, et on peut en garder une sous un nom (Fichier › Enregistrer une version).</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe (Événement › Chiffrement), le serveur ne
+              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un .ppen.</p></div>
+          </div>
         </section>`,
       carte: () => html`
         <section class="mx-slide" id="tr-carte">
-          <p class="mx-kicker">Le tracé</p>
-          <h2>La carte : OCAD, Mapper, un PDF ou une image</h2>
-          <p>La carte est le fichier <b>OCAD</b> (versions 6 à 12 et 2018) ou <b>OpenOrienteering Mapper</b> (.omap, .xmap) lui-même, un <b>PDF</b> (exporté
-            d'OCAD ou de Mapper : il reste net à l'impression, car il est repris tel quel dans les PDF des circuits) ou une <b>image</b> : JPG, PNG, GIF, BMP,
-            WebP, TIFF. Un scan ou une photo prise bien à plat conviennent.</p>
-          <p>Un fichier OCAD ou Mapper est dessiné par O'CN, symbole par symbole, comme le fait Purple Pen : la carte reste nette à tous les zooms et s'imprime en
-            vecteurs dans les PDF. Ses millimètres sont exacts (pas de résolution à régler), son échelle et son géoréférencement sont repris, et son violet sert
-            au circuit. Les modèles (les images de fond que la carte appelle, dans d'autres fichiers) ne sont pas dessinés.</p>
-          <h3>Le violet et les couches</h3>
-          <p>Sur une carte OCAD ou Mapper, le violet du circuit est par défaut celui de la carte. Trois façons de le poser (Événement › Apparence) : <b>par-dessus</b>,
-            <b>mélangé</b> (le noir de la carte reste visible à travers le violet), ou <b>en couches</b>, comme Purple Pen : les cercles, les traits et les zones
-            interdites passent sous les couleurs de la carte au-dessus d'une couleur choisie (sous le noir des chemins et des rochers, d'ordinaire), les numéros
-            restent dessus. Les « effets de surimpression » montrent les couleurs de la carte marquées « surimpression » fondues, comme à l'impression.</p>
-          <p>Une image mesure ses distances par sa <b>résolution</b> (les points par pouce) : 300 points par pouce, c'est 1 mm de carte pour 11,8 points. La résolution
-            est lue dans le fichier quand il la donne ; sinon elle est demandée, et le calage la corrige.</p>
-          <h3>Le calage en deux clics</h3>
-          <p>Un fichier .ppen fait sur une carte OCAD garde les millimètres de ce fichier : importé avec la même carte OCAD (ou une autre version d'elle), ses
-            postes tombent juste, sans calage, et le .ppen exporté les rend tels quels à Purple Pen.</p>
-          <p>Quand un fichier .ppen a été fait sur une autre carte que celle donnée (souvent une carte OCAD, ici remplacée par son PDF ou une photo), ses postes
-            ne tombent pas au bon endroit. On clique un poste, puis l'endroit où il est sur la carte, et cela deux fois, loin l'un de l'autre : O'CN en
-            déduit le décalage, la rotation et l'échelle. Comme un .ppen garde les vraies distances de la carte, l'écart d'échelle trouvé vient de la carte
-            donnée : c'est elle qui est corrigée (la résolution de l'image, ou l'échelle du PDF), pas le circuit — les longueurs restent justes.</p>
+          <p class="mx-kicker">${K}</p>
+          <h2>La carte</h2>
+          <h3>Quel fichier donner</h3>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>OCAD ou Mapper</h3><p>Le meilleur choix : le fichier .ocd (OCAD 6 à 12 et 2018) ou .omap / .xmap
+              (OpenOrienteering Mapper). La carte est dessinée symbole par symbole : nette à tous les zooms, imprimée en vecteurs, aux bonnes dimensions sans
+              réglage ; son échelle, son géoréférencement et son violet sont repris.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>PDF</h3><p>Exporté d'OCAD ou de Mapper, il reste net à l'impression : il est repris tel quel dans les PDF des
+              circuits. Ses dimensions sont celles de la page.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>Image</h3><p>JPG, PNG, GIF, BMP, WebP ou TIFF, même un scan ou une photo prise bien à plat. Ses
+              distances viennent de sa <b>résolution</b> : à 300 points par pouce, 1 mm de carte fait 11,8 points.</p></div>
+          </div>
+          <p>La résolution d'une image est lue dans le fichier quand il la donne ; sinon elle est demandée. Pour la vérifier, mesurez une distance connue
+            (Rapports › Longueurs des interpostes) ; Événement › Propriétés la corrige. Une carte OCAD peut appeler d'autres fichiers en fond (des
+            « modèles », une photo aérienne) : ils ne sont pas dessinés.</p>
+          <p>Le curseur sous les boutons de zoom pâlit la carte, pour mieux voir le circuit. Fichier › Changer de carte en met une autre (une version corrigée,
+            un meilleur scan, le fichier OCAD au lieu d'une image) : les postes gardent leur place sur la feuille, leurs coordonnées (une nouvelle version du même
+            fichier OCAD), leur place sur le terrain (deux cartes géoréférencées), ou se calent ensuite en deux clics.</p>
+          <h3>Le violet du circuit</h3>
+          <p>Événement › Apparence des circuits règle la façon dont le circuit se pose sur la carte :</p>
+          <ul class="mx-list">
+            <li><b>Par-dessus</b> : le violet couvre la carte.</li>
+            <li><b>Mélangé</b> : le noir de la carte reste visible à travers le violet, comme à l'impression en surimpression.</li>
+            <li><b>En couches</b> (carte OCAD ou Mapper) : les cercles, les traits et les zones interdites passent sous les couleurs de la carte au-dessus d'une couleur
+              choisie, d'ordinaire sous le noir des chemins et des rochers ; les numéros restent dessus.</li>
+          </ul>
+          <p>Sur une carte OCAD ou Mapper, le violet est par défaut celui de la carte ; on peut en donner un autre en CMJN. Les « effets de surimpression » montrent
+            les couleurs que la carte marque « surimpression » fondues, comme elles s'impriment.</p>
+          <h3>Caler les postes en deux clics</h3>
+          <p>Quand les postes ne tombent pas au bon endroit — un fichier .ppen fait sur une autre carte, un scan un peu tourné — Événement › Caler les postes sur la
+            carte les replace : on clique un poste, puis l'endroit où il devrait être, et cela deux fois, avec deux postes éloignés l'un de l'autre. Le tracé en
+            déduit le décalage, la rotation et l'échelle. Si l'échelle change, il propose de corriger la carte (la résolution de l'image ou l'échelle du PDF),
+            les longueurs du circuit restant justes, ou les postes. Un .ppen fait sur une carte OCAD, importé avec la même carte OCAD, n'a pas besoin de calage.</p>
           <h3>Le géoréférencement</h3>
-          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre : deux points cliqués avec leur
-            latitude et leur longitude (ou plus, pour une photo déformée), un fichier de calage (.jgw, .pgw… avec son .prj), un KMZ de la même image, un TIFF
-            géoréférencé (GeoTIFF) ou une carte OCAD ou Mapper géoréférencée (Lambert 93, UTM, les systèmes d'OCAD et les codes EPSG usuels), lus tout seuls.</p>
+          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
+            (Lambert 93, UTM, les systèmes d'OCAD) et un TIFF géoréférencé le sont tout seuls. Sinon, Événement › Géoréférencer la carte : deux points de la
+            carte (un carrefour, un angle de bâtiment) cliqués avec leur latitude et leur longitude — un clic droit sur Géoportail ou une carte en ligne les
+            donne —, ou trois et plus pour une photo déformée ; ou un fichier de calage (.jgw, .pgw… avec son .prj) ; ou un KMZ de la même image. La fenêtre
+            vérifie l'échelle obtenue contre celle de la carte.</p>
+        </section>`,
+      ecran: () => html`
+        <section class="mx-slide" id="tr-ecran">
+          <p class="mx-kicker">${K}</p>
+          <h2>L'écran</h2>
+          <figure class="mx-fig">${raw(screenFig())}</figure>
+          <div class="mx-steps" style="--c:#a7179b">
+            <div class="mx-step"><b>La barre du haut</b>« ← Événements » revient à la liste ; puis le titre et les menus. À droite, l'état de l'enregistrement,
+              et ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
+            <div class="mx-step"><b>Les outils</b>Annuler, rétablir, puis un outil par objet à poser (chapitre « Les postes »).</div>
+            <div class="mx-step"><b>Les onglets</b>« Tous les postes », puis un onglet par circuit, et « + » pour en créer un.</div>
+            <div class="mx-step"><b>Les définitions</b>Celles du circuit en cours, à remplir en cliquant (chapitre « Les définitions »).</div>
+            <div class="mx-step"><b>L'objet choisi</b>Ce qu'on sait de lui (longueur, circuits, charge…) et ses boutons. Sans rien de choisi : le circuit.</div>
+            <div class="mx-step"><b>La carte</b>Où l'on pose et déplace les objets. Glisser la séparation à gauche élargit le panneau.</div>
+            <div class="mx-step"><b>Le zoom</b>Zoom avant, arrière, tout le circuit, et le curseur qui pâlit la carte.</div>
+            <div class="mx-step"><b>La ligne d'aide</b>Ce que fait l'outil en cours ; à droite, l'échelle et le zoom.</div>
+          </div>
+          <h3>Se déplacer sur la carte</h3>
+          <p>La molette zoome autour de la souris ; glisser là où il n'y a rien (ou clic droit glissé) déplace la carte ; les flèches aussi. Affichage › Tout le
+            circuit et Toute la carte recadrent. Zoomer loin sur une carte OCAD, Mapper ou PDF la redessine nette.</p>
+          <h3>Choisir, déplacer, supprimer</h3>
+          <p>Avec l'outil Sélection, un clic choisit un poste, un interposte, un numéro ou un objet ; il se surligne en bleu, sa ligne de définitions en jaune.
+            Glisser un objet choisi le déplace. Un objet choisi montre ses <b>poignées</b> : les coudes d'un interposte, les bords de ses coupures, les sommets d'une
+            zone, le coin des définitions ; elles se glissent. Suppr supprime l'objet ; dans un circuit, un poste est seulement retiré du circuit et reste dans
+            « Tous les postes ».</p>
+          <h3>Le clic droit</h3>
+          <p>Le clic droit ouvre le menu de l'objet sous la souris : pour un poste, sa définition, une fourche ou des boucles à partir de lui, un échange de carte, une
+            ligne de texte avant ou après lui dans les définitions, couper son cercle, le retirer ; pour un interposte, un coude, une coupure, le balisage ; pour un
+            objet, son apparence, ses sommets, les circuits où il apparaît.</p>
+          <h3>Le clavier</h3>
+          <div class="table-wrap"><table class="data compact tr-doc-tools"><thead><tr><th>Touche</th><th>Effet</th></tr></thead><tbody>
+            ${KEYS.map(([k, v]) => html`<tr><td style="white-space:nowrap"><b>${k}</b></td><td>${v}</td></tr>`)}</tbody></table></div>
+          <p>Un seul membre de l'équipe modifie à la fois : les autres voient l'événement en lecture seule, avec un bouton « Prendre la main ».</p>
+        </section>`,
+      postes: () => html`
+        <section class="mx-slide" id="tr-postes">
+          <p class="mx-kicker">${K}</p>
+          <h2>Les outils et les postes</h2>
+          <div class="table-wrap"><table class="data compact tr-doc-tools"><thead><tr><th></th><th>Outil</th><th>Touche</th><th>Ce qu'il fait</th></tr></thead><tbody>
+            ${TOOLS.map(([k, n, key, v]) => html`<tr><td class="tr-doc-ico">${ic(k, 20)}</td><td style="white-space:nowrap"><b>${n}</b></td><td>${key}</td><td>${v}</td></tr>`)}
+          </tbody></table></div>
+          <h3>« Tous les postes » et les circuits</h3>
+          <p>L'onglet <b>Tous les postes</b> rassemble tous les postes de l'événement, avec leurs codes. Un poste posé là n'appartient encore à aucun circuit. Un
+            poste posé dans un circuit y entre aussi. Un même poste sert à plusieurs circuits : dans un circuit, les postes des autres circuits s'affichent en pâle
+            quand l'outil Poste est actif (ou toujours, avec Affichage › Afficher tous les postes) ; un clic sur l'un d'eux l'ajoute au circuit.</p>
+          <h3>Où va un nouveau poste</h3>
+          <p>Dans un circuit, un poste posé va :</p>
+          <ul class="mx-list">
+            <li>juste <b>après le poste choisi</b>, s'il y en a un ;</li>
+            <li>dans l'<b>interposte choisi</b>, s'il y en a un ;</li>
+            <li>sinon dans l'<b>interposte le plus proche</b> de l'endroit cliqué.</li>
+          </ul>
+          <p>Pour ajouter un poste en fin de circuit, choisissez le dernier poste, puis posez le nouveau. Pour en insérer un entre 3 et 4, choisissez
+            l'interposte 3–4, ou cliquez simplement près de lui. Le départ et l'arrivée vont toujours au début et à la fin.</p>
+          <h3>Codes et numéros</h3>
+          <p>Chaque poste reçoit un <b>code</b> (31, 32…, réglé par Événement › Numérotation automatique, qui évite par défaut les codes lisibles à l'envers) ; le
+            panneau de l'objet choisi le change. Dans un circuit, le <b>numéro d'ordre</b> se place tout seul près du cercle, sans gêner les traits ; glissez-le pour
+            le mettre ailleurs, et posez-le sur son cercle pour qu'il se replace tout seul. Les propriétés du circuit montrent à la place le code, ou les deux.</p>
+          <h3>Déplacer un poste</h3>
+          <p>Glissez-le avec l'outil Sélection : ses interpostes suivent dans tous les circuits. Un poste commun à d'autres circuits, déplacé de plus de 75 m, fait
+            demander s'il faut le déplacer partout ou en créer un nouveau pour ce circuit. Maj en glissant le pose exactement sur un poste voisin.</p>
         </section>`,
       circuits: () => html`
         <section class="mx-slide" id="tr-circuits">
-          <p class="mx-kicker">Le tracé</p>
-          <h2>Tracer : les gestes de Purple Pen</h2>
-          <p>Les outils sont ceux de Purple Pen : départ, poste, arrivée, passage obligatoire, remise et échange de carte, coude, coupure, définitions sur la carte,
-            objets spéciaux (zone interdite, ravitaillement, texte, image…). Un nouveau poste se place après le poste choisi, dans l'interposte choisi, ou dans
-            l'interposte le plus proche. Un clic choisit, glisser déplace, la molette zoome, Ctrl+Z annule (100 étapes).</p>
-          <p>Les <b>définitions</b> se remplissent en cliquant une case, ou au clavier : ↑ ↓ changent de ligne, ← → de case, une lettre ouvre les symboles déjà
-            filtrés (« rav » donne « Ravine »), Suppr vide la case. Les normes IOF 2004 et 2018/2024, en symboles ou en texte, dans 23 langues.</p>
-          <p>Les <b>variantes</b> (fourches, boucles) et les <b>relais</b> se préparent comme dans Purple Pen, avec la même répartition des variantes entre
-            équipes : Purple Pen la tire au hasard, mais avec un hasard « à graine » ; O'CN reproduit le même tirage, donc les mêmes équipes.</p>
+          <p class="mx-kicker">${K}</p>
+          <h2>Les circuits</h2>
+          <p>Le « + » au bout des onglets (ou Circuit › Nouveau circuit) crée un circuit. Ses <b>propriétés</b> (Circuit › Propriétés du circuit, ou un clic sur
+            l'en-tête des définitions) :</p>
+          <ul class="mx-list">
+            <li><b>Nom</b> et <b>catégories</b>, qui s'impriment en tête des définitions ;</li>
+            <li><b>type</b> : normal (les postes dans l'ordre) ou <b>au score</b> (les postes dans n'importe quel ordre, chacun avec ses points) ;</li>
+            <li><b>dénivelée</b> et <b>longueur</b> : la longueur est calculée (le long des coudes), la dénivelée vient de Rapports › Dénivelée ou se tape ;</li>
+            <li><b>échelle d'impression</b> : une carte au 1:10 000 peut s'imprimer au 1:7 500 pour les jeunes ; cercles et numéros y prennent la taille que la norme prévoit (Événement › Apparence) ;</li>
+            <li><b>définitions</b> en symboles, en texte ou les deux, et l'<b>étiquette</b> des postes : numéro d'ordre, code, ou les deux ;</li>
+            <li>les <b>concurrents attendus</b>, pour la charge des postes.</li>
+          </ul>
+          <p>Circuit › Dupliquer copie un circuit pour en dériver un autre ; Ordre des circuits range les onglets. Supprimer un circuit laisse ses postes dans
+            « Tous les postes » (Événement › Supprimer les postes inutilisés les enlève).</p>
+          <h3>Les interpostes</h3>
+          <ul class="mx-list">
+            <li>Un <b>coude</b> (outil Coude) plie un interposte pour contourner une zone interdite ; la longueur suit le trait.</li>
+            <li>Une <b>coupure</b> (outil Coupure, en glissant) interrompt un trait ou un cercle pour laisser lisible un détail de la carte. Le tracé coupe aussi
+              tout seul un trait là où il croise un autre interposte du circuit (Événement › Apparence règle cette coupure).</li>
+            <li>Le <b>balisage</b> (clic droit sur l'interposte, ou le panneau de l'interposte choisi) : tout l'interposte, son début ou sa fin balisés, dessinés en
+              tirets.</li>
+            <li>Un <b>passage obligatoire</b> (outil Passage obligatoire) marque une brèche ou un pont où le coureur doit passer.</li>
+          </ul>
+          <h3>Les variantes : fourches et boucles</h3>
+          <p>Pour un relais ou une course en masse, les coureurs d'un même circuit ne font pas tous les mêmes postes. Choisissez le poste d'où partent les variantes,
+            puis Circuit › Ajouter une fourche (des branches qui se rejoignent plus loin) ou Ajouter des boucles (des boucles qui reviennent au même poste), avec
+            le nombre de branches. Un sélecteur apparaît au-dessus de la carte : choisissez une branche, et posez ses postes comme d'habitude. La longueur du
+            circuit s'affiche alors de la variante la plus courte à la plus longue. Circuit › Variantes de relais répartit les variantes entre les équipes et leurs
+            relayeurs, de façon que chaque équipe coure, sur l'ensemble de ses relayeurs, toutes les branches ; les PDF s'impriment par équipe et par relayeur.</p>
+          <h3>Plusieurs parties</h3>
+          <p>Un <b>échange de carte</b> (outil Échange de carte sur un poste du circuit) partage le circuit en parties : un sélecteur de partie apparaît, et chaque
+            partie a sa zone d'impression et s'imprime sur sa propre feuille. Circuit › Options de la partie montre ou non l'arrivée sur une partie.</p>
+          <h3>La zone d'impression</h3>
+          <p>Circuit › Zone d'impression choisit le papier (A4, A3…), l'orientation, les marges, et la partie de la carte à imprimer : automatique, centrée sur le
+            circuit, ou un cadre tiré sur la carte. Une zone plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou se réduit à son
+            centre. Affichage › Afficher la zone d'impression la montre en pointillés.</p>
+        </section>`,
+      definitions: () => html`
+        <section class="mx-slide" id="tr-definitions">
+          <p class="mx-kicker">${K}</p>
+          <h2>Les définitions</h2>
+          <p>Le panneau de gauche montre les définitions du circuit en cours, telles qu'elles s'imprimeront. Elles suivent la norme IOF (2018/2024 par défaut, 2004
+            possible : Événement › Normes IOF) : une ligne par poste, avec ses colonnes C à H — quel détail, lequel, sa nature, sa taille, l'emplacement du poste.</p>
+          <ul class="mx-list">
+            <li>Un <b>clic sur une ligne</b> choisit le poste, et la carte se centre dessus.</li>
+            <li>Un <b>second clic sur une case</b> ouvre les symboles de cette colonne ; tapez quelques lettres pour filtrer (« rav » donne « Ravine »). La colonne F
+              accepte aussi la taille du détail (« 2 m », « 3 × 4 »).</li>
+            <li><b>Au clavier</b>, la feuille choisie : ↑ ↓ changent de ligne, ← → de case, Entrée ou une lettre ouvre les symboles, Suppr vide la case.</li>
+            <li>Un clic sur la case du <b>code</b> le change ; sur le <b>titre</b>, change le titre de l'événement ; sur l'<b>en-tête</b> (longueur, dénivelée),
+              ouvre les propriétés du circuit.</li>
+            <li>La ligne de l'<b>arrivée</b> (et celles des passages obligatoires et de la remise de carte) donne le balisage jusqu'à l'arrivée : un clic choisit sa forme.</li>
+            <li>Une <b>ligne de texte</b> avant ou après un poste (clic droit sur le poste) ajoute une consigne (« Passage dans le village »).</li>
+          </ul>
+          <p>Les définitions s'impriment en symboles, en texte, ou les deux (les propriétés du circuit). Le texte se compose dans la langue choisie (Événement ›
+            Propriétés), parmi 23 langues ; Événement › Textes des définitions change le texte d'un symbole. Pour les mettre sur la carte, l'outil Définitions sur la
+            carte : glissez un cadre, sa largeur fixe la taille ; le coin en bas à droite redimensionne, un clic droit répartit sur plusieurs colonnes.
+            Fichier › PDF des définitions les imprime seules, plusieurs par page, à découper pour les porte-définitions.</p>
+        </section>`,
+      speciaux: () => html`
+        <section class="mx-slide" id="tr-speciaux">
+          <p class="mx-kicker">${K}</p>
+          <h2>Les objets spéciaux</h2>
+          <p>L'outil Objets spéciaux ${ic("special", 16)} ouvre leur liste. Chacun se pose à sa façon :</p>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("water", 18)} Points</h3><p>Point d'eau, poste de secours, point de passage facultatif,
+              itinéraire interdit, repère de calage : un clic à l'endroit voulu.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>${ic("oob", 18)} Lignes et zones</h3><p>Limite infranchissable, ligne, zone interdite, zone
+              dangereuse, construction temporaire, masque blanc : un clic par sommet, puis un double-clic (ou Entrée) pour finir. Une zone se ferme toute seule.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("text", 18)} Cadres</h3><p>Texte, image, rectangle, ellipse : glisser un cadre sur la carte, puis
+              donner le texte (police, taille, couleur), choisir l'image, ou l'apparence du trait.</p></div>
+          </div>
+          <p>Un objet s'affiche sur tous les circuits, ou seulement sur ceux choisis (son panneau, ou clic droit › Circuits où il apparaît). Ses sommets se
+            glissent ; un clic droit sur une ligne ou une zone ajoute ou retire un sommet. Le <b>masque blanc</b> efface un morceau de carte sous le circuit (une
+            légende obsolète, un détail à cacher). Une zone interdite traversée par un interposte est signalée par le contrôle de l'événement.</p>
         </section>`,
       sorties: () => html`
         <section class="mx-slide" id="tr-sorties">
-          <p class="mx-kicker">Le tracé</p>
+          <p class="mx-kicker">${K}</p>
           <h2>Imprimer et exporter</h2>
+          <h3>Les cartes des circuits</h3>
+          <p>Fichier › PDF des circuits : cochez les circuits (et « Tous les postes », pour le contrôleur), puis choisissez :</p>
           <ul class="mx-list">
-            <li><b>PDF des circuits</b> : un circuit par page, par partie, par variante, ou par équipe et relayeur ; carte et circuit, ou circuit seul pour une
-              surimpression ; violet en CMJN. Une zone d'impression plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou
-              se réduit à son centre.</li>
-            <li><b>Définitions</b> et <b>cartons de contrôle</b> en PDF, avec les polices de Purple Pen (Roboto et Roboto Condensed), dans toutes les
-              langues de son fichier de symboles : les caractères tchèques, hongrois ou bulgares, et le chinois et le japonais (en Noto Sans), se chargent
-              quand un texte en a besoin. Les textes posés sur la carte s'impriment dans la police qu'ils nomment : Roboto, Helvetica pour Arial, Times,
-              Courier, avec gras et italique.</li>
-            <li><b>IOF XML</b> 3.0 et 2.0.3 pour le chronométrage (avec les équipes de relais), <b>GPX</b> des postes et <b>KML</b> des circuits (carte
-              géoréférencée), <b>images</b> des circuits (PNG, JPEG ou GIF) avec leur fichier de calage, fichiers <b>RouteGadget</b>, et le <b>.ppen</b> pour Purple Pen.</li>
-            <li><b>Fichiers OCAD ou Mapper des circuits</b> (OCAD 9 à 12 et 2018, OpenOrienteering Mapper), comme ceux de Purple Pen : chaque circuit devient une
-              carte qui ne contient que lui — postes, traits, numéros, objets spéciaux et définitions, en symboles 7xx et dans les couleurs du circuit —, avec la
-              carte de l'événement en modèle, pour le finir ou l'imprimer dans OCAD ou Mapper. Les cercles des postes, le départ, l'arrivée et les points de
-              passage y sont des symboles ponctuels, comme dans Purple Pen (les coupures d'un cercle gardées dans l'objet ; Mapper, qui n'en a pas, reçoit
-              les arcs) ; les images posées sur la carte sont gardées dans le fichier en OCAD 11 et après, et jointes en modèles à part sinon.</li>
-            <li>Plusieurs fichiers d'un coup s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un .zip.</li>
+            <li>un seul PDF d'une page par circuit, ou un PDF par circuit, ou par partie ;</li>
+            <li>pour les variantes, chacune à part, toutes ensemble, ou par équipe et relayeur ;</li>
+            <li>la carte et le circuit, ou le <b>circuit seul</b>, pour une surimpression sur des cartes déjà imprimées ;</li>
+            <li>les couleurs en CMJN (pour un imprimeur) ou en RVB.</li>
           </ul>
-          <p>Les rapports de Purple Pen y sont tous : résumé, longueurs des interpostes, références croisées, charge, contrôle de l'événement — ce dernier avec
-            des vérifications en plus : postes trop proches selon la discipline (règles IOF : 30 m au moins entre deux postes, 15 m en sprint ; à moins de 60 m,
-            30 m en sprint, des objets clairement différents), poste ou interposte dans une zone interdite ou à travers une limite infranchissable, interposte
-            qui passe dans le cercle d'un autre poste, aller-retour à un poste, codes lisibles à l'envers.</p>
+          <p>Chaque circuit s'imprime à son échelle d'impression, sur sa zone d'impression. <b>Imprimez le PDF en taille réelle</b> (sans « ajuster à la page »),
+            sinon l'échelle est fausse : mesurez une longueur connue sur la première feuille.</p>
+          <h3>Les autres fichiers</h3>
+          <div class="mx-grid">
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("stopwatch", 18)} Chronométrage</h3><p>IOF XML 3.0 (ou 2.0.3 pour les logiciels anciens) : les
+              circuits, l'ordre des postes, les longueurs, les équipes des relais. À importer dans le logiciel de chronométrage avant la course.</p></div>
+            <div class="mx-box" style="--c:var(--s2)"><h3>${ic("descr", 18)} Définitions, cartons</h3><p>Le PDF des définitions seules, et les cartons de
+              contrôle avec une case par poste (Événement › Poinçons dessine la pince de chaque poste).</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>${ic("globe", 18)} GPS et cartes en ligne</h3><p>GPX des postes, KML des circuits, images des
+              circuits (PNG, JPEG, GIF) avec leur fichier de calage, fichiers RouteGadget : il faut une carte géoréférencée.</p></div>
+            <div class="mx-box" style="--c:var(--s4)"><h3>${ic("layers", 18)} OCAD et Mapper</h3><p>Chaque circuit en carte OCAD (9 à 12, 2018) ou Mapper, en
+              symboles de circuit, avec la carte de l'événement en fond : pour finir ou imprimer le circuit avec ces logiciels.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("export", 18)} Purple Pen</h3><p>Le .ppen de l'événement, à ouvrir dans Purple Pen à côté de
+              la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
+            <div class="mx-box" style="--c:var(--s6)"><h3>${ic("table", 18)} Tableaux</h3><p>Les rapports en CSV (séparateur « ; »), pour un tableur.</p></div>
+          </div>
+          <p>Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; Affichage › Plusieurs fichiers
+            change ce choix.</p>
+          <h3>L'apparence</h3>
+          <p>Événement › Apparence des circuits règle la taille des cercles et l'épaisseur des traits (en proportion de la norme), la police, la taille et le gras des
+            numéros, leur contour blanc, la coupure automatique des traits qui se croisent, la taille selon l'échelle d'impression, et le violet. Les textes posés sur
+            la carte s'impriment dans la police qu'ils nomment, avec gras et italique, et dans toutes les langues.</p>
+        </section>`,
+      verifier: () => html`
+        <section class="mx-slide" id="tr-verifier">
+          <p class="mx-kicker">${K}</p>
+          <h2>Vérifier</h2>
+          <p>Le menu Rapports donne, pour l'événement entier :</p>
+          <ul class="mx-list">
+            <li><b>Résumé des circuits</b> : longueur, dénivelée, nombre de postes ;</li>
+            <li><b>Longueurs des interpostes</b>, circuit par circuit ;</li>
+            <li><b>Références croisées</b> : quels circuits passent à quel poste ;</li>
+            <li><b>Charge des postes et des interpostes</b> : le nombre de concurrents attendus à chaque poste, pour placer plusieurs boîtiers là où il le faut ;</li>
+            <li><b>Contrôle de l'événement</b> : postes inutilisés, définitions incomplètes, codes inférieurs à 31 ou lisibles à l'envers, postes trop près les uns des
+              autres (au moins 30 m entre deux postes en forêt, 15 m en sprint, et des détails nettement différents à moins de 60 m, 30 m en sprint), interpostes qui
+              traversent une zone interdite ou une limite infranchissable, qui passent dans le cercle d'un autre poste, allers-retours, interpostes trop courts.</li>
+          </ul>
+          <h3>Dénivelée et temps du vainqueur</h3>
+          <p>Rapports › Dénivelée calcule la montée de chaque circuit sur le modèle de terrain de l'IGN (carte géoréférencée, en France) ; cochez les circuits pour reprendre
+            la valeur dans leurs propriétés. Dessinez avec l'outil Itinéraire le chemin prévu là où la ligne droite passe sur une colline que les coureurs
+            contourneront. Rapports › Temps estimés du vainqueur donne, pour chaque circuit, le temps attendu du vainqueur, d'après les résultats des deux dernières
+            saisons, et la longueur qui donne un temps visé (chapitre « Ses calculs »).</p>
+          <p>La charge vient du nombre de concurrents de chaque circuit : Événement › Charge des concurrents le reprend des inscriptions de la FFCO quand la course y est.</p>
         </section>`,
       outils: () => html`
         <section class="mx-slide" id="tr-outils">
-          <p class="mx-kicker">Le tracé</p>
-          <h2>Ce que le tracé sur O'CN ajoute à Purple Pen</h2>
+          <p class="mx-kicker">${K}</p>
+          <h2>En équipe et sur le terrain</h2>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>Dénivelée</h3><p>Calculée sur le modèle de terrain de l'IGN, le long des interpostes, ou de
-              l'itinéraire que le traceur dessine (outil Itinéraire).</p></div>
-            <div class="mx-box" style="--c:var(--s2)"><h3>Temps du vainqueur</h3><p>Estimé à partir des résultats des deux dernières saisons, selon le CN du
-              vainqueur attendu, la longueur et la dénivelée ; et la longueur qui donne un temps visé.</p></div>
-            <div class="mx-box" style="--c:var(--s3)"><h3>Charges et catégories</h3><p>Le nombre d'inscrits par circuit et leurs catégories, repris de la page
-              d'inscription de la FFCO.</p></div>
-            <div class="mx-box" style="--c:var(--s4)"><h3>Sur le terrain</h3><p>Sur le téléphone, la carte avec sa position GPS, le poste le plus proche, et
-              chaque poste noté posé, vérifié, ramassé ou à problème, avec photo ; sans réseau aussi.</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>En équipe</h3><p>Commentaires épinglés sur la carte, versions et leurs différences
-              (« poste 34 déplacé de 40 m »).</p></div>
-            <div class="mx-box" style="--c:var(--s6)"><h3>Hors ligne</h3><p>Un événement gardé sur l'appareil s'ouvre sans réseau ; ses modifications
-              partent quand le réseau revient.</p></div>
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} L'équipe</h3><p>Événement › Équipe et partage : ajoutez des licenciés par leur numéro.
+              Le traceur et le contrôleur modifient, le lecteur lit et commente. Un seul modifie à la fois ; les autres peuvent « prendre la main ».</p></div>
+            <div class="mx-box" style="--c:var(--s2)"><h3>${ic("comment", 18)} Commentaires</h3><p>Rapports › Commentaires de l'équipe : un commentaire épinglé à un
+              endroit de la carte, des réponses, et « Fait » quand c'est réglé.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>${ic("history", 18)} Versions</h3><p>Fichier › Versions : chaque version, ce qui a changé depuis
+              (« poste 34 déplacé de 40 m »), et la rouvrir.</p></div>
+            <div class="mx-box" style="--c:var(--s4)"><h3>${ic("phone", 18)} Mode terrain</h3><p>Sur le téléphone, la carte géoréférencée avec sa position GPS, le
+              poste le plus proche, sa distance et sa direction ; chaque poste noté posé, vérifié, ramassé ou à problème, avec une photo.</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("offline", 18)} Hors ligne</h3><p>Fichier › Travailler hors ligne garde l'événement sur l'appareil :
+              il s'ouvre sans réseau, et les modifications partent quand le réseau revient.</p></div>
+            <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Ramassage</h3><p>Rapports › Plan de ramassage : à quelle heure chaque poste peut être
+              ramassé, et l'ordre de ramassage de chaque ramasseur.</p></div>
           </div>
-          <p>Aussi : le plan de ramassage des postes, la lecture d'un circuit imprimé sur une carte (un PDF ou une photo d'une course passée), et un
-            changement de carte qui garde la position des postes sur le terrain quand les deux cartes sont géoréférencées.</p>
+          <p>Aussi : Affichage › Lire un circuit sur la carte reprend les postes d'un circuit imprimé (un PDF ou une photo d'une course passée), à vérifier ensuite ;
+            Affichage › Autres circuits montre d'autres circuits en pâle, pour éviter les croisements et les postes trop proches.</p>
         </section>`,
       apres: () => html`
         <section class="mx-slide" id="tr-apres">
-          <p class="mx-kicker">Le tracé</p>
+          <p class="mx-kicker">${K}</p>
           <h2>Après la course</h2>
           <p>Le jour de la course ou après (jamais avant : les circuits restent secrets), le traceur peut :</p>
           <ul class="mx-list">
-            <li><b>publier les circuits vers l'analyse multi</b> : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
+            <li><b>publier les circuits vers l'analyse multi</b> (Fichier) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS ;</li>
-            <li><b>envoyer les circuits à « Résultats »</b> : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
+            <li><b>envoyer les circuits à « Résultats »</b> (Fichier) : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
               quand les fichiers des organisateurs ne les donnent pas ;</li>
-            <li>lire le <b>bilan</b> : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont trompés, les postes
-              manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse multi.</li>
+            <li>lire le <b>bilan</b> (Rapports › Bilan après la course) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
+              trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse multi.</li>
           </ul>
+        </section>`,
+      menus: () => html`
+        <section class="mx-slide" id="tr-menus">
+          <p class="mx-kicker">${K}</p>
+          <h2>Les menus, un par un</h2>
+          <p>Chaque commande des cinq menus, avec l'icône qu'elle porte dans le tracé.</p>
+          ${TR.MENUS.map((m) => html`<h3 class="tr-doc-mh">${ic(m.icon, 20)}<span>${m.label}</span></h3>
+            <dl class="tr-doc-menu">${m.items.filter((it) => it !== "-").map(([a, label]) => html`<dt>${raw(TR.actIcon(a, 16))}<span>${label}</span></dt><dd>${MENU_HELP[a] || ""}</dd>`)}</dl>`)}
         </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
