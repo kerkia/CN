@@ -1005,6 +1005,9 @@ export async function render(main, { query = {} } = {}) {
           <p>Il reprend les règles de traçage et le format de fichier de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
             le logiciel libre de traçage de Peter Golde, que beaucoup de clubs connaissent : un événement passe de l'un à l'autre, dans les deux sens. On n'a
             pas besoin de connaître Purple Pen pour s'en servir : ce guide explique tout.</p>
+          <div class="mx-callout"><b>Version bêta.</b> Le tracé vient d'être réalisé et n'a encore été que peu testé : essayez-le, et signalez-nous ce qui ne va
+            pas par la page « Nous écrire » (le menu de votre nom). Il n'est pas encore conseillé pour préparer une vraie compétition ; il convient très bien aux cartes
+            d'entraînement.</div>
           <h3>Les étapes</h3>
           <div class="mx-steps" style="--c:#a7179b">
             <div class="mx-step"><b>Créer l'événement</b>« Nouvel événement » sur la page « Tracer » : une compétition de son club ou un entraînement, et sa carte.</div>

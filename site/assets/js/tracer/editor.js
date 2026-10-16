@@ -685,7 +685,7 @@ function shell(E) {
   return `
   <header class="tr-top">
     <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Enregistrer et revenir à la liste des événements">← Événements</button>
-    <span class="tr-title"></span>
+    <span class="tr-title"></span><span class="beta-tag" title="Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)">Bêta</span>
     <nav class="tr-menus">
       ${MENUS.map(menu).join("")}
     </nav>

@@ -37,6 +37,7 @@ const dataBytes = (dataUrl) => Math.floor((dataUrl.length - dataUrl.indexOf(",")
 export async function render(main, { query }) {
   const me = auth.session();
   let category = CATEGORIES.includes(query.type) ? query.type : "bug";
+  const subject0 = String(query.sujet || "").slice(0, 150);       // a subject given by the link (the Tracer's « Nous écrire »)
   const files = [];                          // [{ name, size, data (base64) }]
 
   main.innerHTML = html`
@@ -45,7 +46,7 @@ export async function render(main, { query }) {
       <section class="card"><div class="card-body stack" style="gap:14px">
         <div class="field"><span>${t("ct.type")}</span><div id="ct-cat"></div></div>
         <label class="field"><span>${t("ct.subject")}</span>
-          <input id="ct-subject" type="text" maxlength="150" placeholder="${t("ct.subject.ph")}"></label>
+          <input id="ct-subject" type="text" maxlength="150" placeholder="${t("ct.subject.ph")}" value="${subject0}"></label>
         <div class="field"><span>${t("ct.message")}</span>
           <div class="rte">
             <div class="rte-bar" role="toolbar" aria-label="${t("ct.toolbar")}">

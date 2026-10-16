@@ -746,6 +746,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   and cache go when nothing is kept; logout drops copies without pending changes). « Envoyer les circuits à Résultats »
   (from the race day; upload kind « courses », see Uploads). Review after the race: routes taken from the published
   analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le tracé ».
+  **Beta** (owner, 2026-10-16): the page « Tracer » opens with a notice to acknowledge (`pages/tracer.betaNotice`: just made, little
+  tested, a beta to try and report on; not yet advised for real competitions, fine for training maps), once per browser
+  (`localStorage ocn.tr.beta`; bump `BETA` to show it again), its links to « Nous écrire » (`FEEDBACK`: type bug, subject « Tracé : »,
+  read by `contact.js` from `?sujet=`) and to the guide counting as acknowledged; a « Bêta » label on the page title and in the
+  editor's top bar, a note above the list, a callout in the guide.
   **French wording** (owner, 2026-10-15): « le tracé » (des circuits), never « le Tracer » — « Tracer » is the menu's verb, as
   « Déposer »; « la page « Tracer » » when the page is meant.
   « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.

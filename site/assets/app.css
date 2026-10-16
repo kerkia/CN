@@ -1175,6 +1175,13 @@ table.data tbody tr.found .name { font-weight: 700; }
 .mx-bar .fill { height: 100%; background: var(--c); border-radius: 5px; }
 .mx-bar .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .mx-ktab td.k2, .mx-ktab th.k2 { background: color-mix(in srgb, var(--s4) 13%, transparent); }
+/* the Tracer's beta label and note (owner, 2026-10-16) */
+.beta-tag { display: inline-block; vertical-align: middle; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 1;
+  padding: 4px 7px; border-radius: 999px; color: var(--flag-ink, #fff); background: var(--flag, #e8590c); margin-left: 6px; }
+h1 .beta-tag { font-size: 12px; position: relative; top: -2px; }
+.tr-top .beta-tag { margin: 0 6px 0 -2px; }
+.beta-note { font-size: 13px; color: var(--ink-2); background: color-mix(in srgb, var(--flag, #e8590c) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--flag, #e8590c) 35%, transparent);
+  border-radius: var(--radius-sm); padding: 9px 12px; margin: 0 0 12px; line-height: 1.5; }
 /* the Tracer's guide (« Le tracé »): its tools with their icons, the menus one by one */
 .tr-doc-tools .tr-doc-ico { width: 30px; color: #a7179b; }
 .tr-doc-tools td:last-child { white-space: normal; min-width: 260px; line-height: 1.45; }
