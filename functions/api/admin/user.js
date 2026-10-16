@@ -1,9 +1,9 @@
 // POST /api/admin/user { id, action: "disable" | "enable" | "delete" }
-//                      { id, action: "right", right: "analyst" | "alerts" | "live", on: bool }
+//                      { id, action: "right", right: "analyst" | "alerts", on: bool }
 // A disabled account is refused at its next hourly check at the latest (see _middleware.js).
-// Rights: "analyst" shows the analysis methods (Fit); "alerts" allows the agenda e-mail alerts; "live" shows
-// « En direct ».
-const RIGHTS = { analyst: "analyst", alerts: "alerts_allowed", live: "live" };
+// Rights: "analyst" shows the analysis methods (Fit); "alerts" allows the agenda e-mail alerts. (« En direct » had its
+// own right until 2026-10-15; every account has it since, and the D1 column users.live is no longer read.)
+const RIGHTS = { analyst: "analyst", alerts: "alerts_allowed" };
 import { json, readBody, withUser } from "../../_lib/api.js";
 
 export const onRequestPost = withUser(async ({ request, env }, admin) => {

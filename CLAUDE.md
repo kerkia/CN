@@ -884,7 +884,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
   « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) for every account since
-  2026-10-15 (the `users.live` right before: migration 0007, admin page checkbox): liveresultat's races from O'Cap's live server
+  2026-10-15 (the `users.live` right before: migration 0007; its admin page checkbox removed 2026-10-16, the column kept
+  unread): liveresultat's races from O'Cap's live server
   (`LIVE` = https://ocap.pages.dev: its `/api/live/list`, open to other sites, and `/ws/<race>`), so live traffic
   never goes through O'CN's gate; each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top

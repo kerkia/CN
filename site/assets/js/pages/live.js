@@ -1,4 +1,4 @@
-// « En direct » (#/direct[/<race>[/<class>]], for the accounts with the « live » right): the races liveresultat shows,
+// « En direct » (#/direct[/<race>[/<class>]], every account): the races liveresultat shows,
 // then one race live, from O'Cap's live server (ocap/worker: one reader per race, changes pushed over a WebSocket) —
 // so the live traffic never goes through this site's login gate. What only this site adds: each runner recognised
 // (name + club) and linked to their page, their CN (Top and official) in the race's discipline, and the place their

@@ -325,7 +325,7 @@ export async function render(main, { query = {} } = {}) {
     $("#ad-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("ad.col.email")}</th><th>${t("ad.col.name")}</th><th>${t("ad.col.lic")}</th><th>${t("ad.col.status")}</th>
       <th>${t("ad.col.created")}</th><th>${t("ad.col.login")}</th><th>${t("ad.col.notify")}</th>
-      <th title="${t("ad.col.analyst.hint")}">${t("ad.col.analyst")}</th><th title="${t("ad.col.live.hint")}">${t("ad.col.live")}</th>
+      <th title="${t("ad.col.analyst.hint")}">${t("ad.col.analyst")}</th>
       <th title="${t("ad.col.alerts.hint")}">${t("ad.col.alerts")}</th>
       <th>${t("ad.col.actions")}</th></tr></thead>
       <tbody>${rows.map((u) => html`<tr>
@@ -337,7 +337,6 @@ export async function render(main, { query = {} } = {}) {
         <td class="num">${u.last_login ? fmtDate(u.last_login.slice(0, 10), "short") : "—"}</td>
         <td>${u.notify ? "✓" : ""}</td>
         <td class="c"><input type="checkbox" data-right="analyst" data-id="${u.id}" ${u.analyst ? "checked" : ""} aria-label="${t("ad.col.analyst")}"></td>
-        <td class="c"><input type="checkbox" data-right="live" data-id="${u.id}" ${u.live ? "checked" : ""} aria-label="${t("ad.col.live")}"></td>
         <td class="c"><input type="checkbox" data-right="alerts" data-id="${u.id}" ${u.alerts_allowed ? "checked" : ""} aria-label="${t("ad.col.alerts")}">
           ${u.agenda_alert || u.deadline_alert ? html`<div class="muted" style="font-size:11.5px">${[u.agenda_alert ? t("ad.alert.new") : "", u.deadline_alert ? t("ad.alert.deadline") : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
         <td><div class="row" style="gap:6px;flex-wrap:nowrap">
@@ -360,7 +359,7 @@ export async function render(main, { query = {} } = {}) {
       box.disabled = false;
       if (!res.ok) { box.checked = !box.checked; return; }
       const u = users.find((x) => x.id === Number(box.dataset.id));
-      if (u) u[{ analyst: "analyst", live: "live" }[box.dataset.right] || "alerts_allowed"] = box.checked ? 1 : 0;
+      if (u) u[box.dataset.right === "analyst" ? "analyst" : "alerts_allowed"] = box.checked ? 1 : 0;
     }));
   }
   $("#ad-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
