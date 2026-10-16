@@ -273,9 +273,11 @@ export async function render(main, { query = {} } = {}) {
         <th class="r">Meilleurs scores regardés</th><th class="r">Coureurs qui mesurent le circuit</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
           <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026. Une première version, aux moyennes géométrique et cubique, l'a
-        précédée du 13 au 16 octobre : à peine plus précise, elle était bien plus difficile à expliquer. Les raisons de chaque choix, avec les mesures
-        qui les justifient, sont dans <a href="#/methodes?onglet=etude" data-tab-link="etude">l'étude</a>.</p>
+      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026. Du 13 au 16 octobre, le site a publié une autre version, le
+        <b>Top géométrique</b> : une méthode empirique, réglée sur quinze saisons de résultats pour prédire au mieux, qui mesure les circuits par une
+        moyenne géométrique et le niveau habituel par une moyenne cubique. À peine plus précise en sprint, elle était bien plus difficile à expliquer ;
+        elle reste calculée pour comparaison. Elle est présentée, avec les raisons de chaque choix et les mesures qui les justifient, dans
+        <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>.</p>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
@@ -680,12 +682,29 @@ export async function render(main, { query = {} } = {}) {
         </section>
         <section class="mx-slide" style="${cvar("top6w3")}">
           <p class="mx-kicker">La variante géométrique</p>
-          <h2>Un peu plus précise en sprint, bien plus difficile à expliquer</h2>
-          <p>L'étude du 13 octobre 2026 avait abouti à une autre version de la méthode Top, en ligne du 13 au 16 octobre : la valeur du circuit en
-            <b>moyenne géométrique</b> des produits niveau × temps (la racine n-ième de leur produit, qui convient aux grandeurs qui se comparent en
-            proportion, comme les temps), mesurée en forêt sur tout le peloton, et le niveau habituel en <b>moyenne cubique</b> de ses meilleurs scores (la
-            racine cubique de la moyenne des cubes, qui penche vers les bonnes courses). Les premières mesures, le 7 octobre, étaient parties d'une autre
-            idée, rendre le retard plus cher en élevant le temps à une puissance ; elle revenait exactement à changer ces deux moyennes.</p>
+          <h2>Une méthode empirique, étudiée pour ses performances</h2>
+          <p>Le <b>Top géométrique</b> est une autre façon de calculer le score Top, étudiée du 7 au 16 octobre 2026 et publiée sur le site du 13 au 16
+            octobre. Il garde tout le reste de la méthode Top : les six places, les poids des courses, le recalage. Il change deux calculs.</p>
+          <ul class="mx-list">
+            <li><span><b>La valeur du circuit, en moyenne géométrique.</b> Au lieu d'additionner les produits niveau habituel × temps puis de diviser par
+              leur nombre, on les multiplie entre eux et on prend la racine : la racine carrée pour deux produits, la racine sixième pour six. Prenons deux
+              coureurs du même niveau, sur un circuit où ce niveau met d'ordinaire 60 minutes : l'un court en 30 minutes, l'autre en 120. La moyenne
+              ordinaire de leurs temps vaut (30 + 120) ÷ 2 = 75 minutes ; leur moyenne géométrique vaut √(30 × 120) = 60 minutes. Le coureur deux fois
+              trop lent et le coureur deux fois trop rapide s'annulent : un coureur très perdu compte, mais ne pèse pas plus qu'un coureur très rapide. À
+              cela s'ajoute un réglage du poids des plus lents, propre à chaque spécialité : tout le peloton en forêt, presque seulement les deux tiers les
+              plus rapides en sprint, un intermédiaire en VTT et en ski.</span></li>
+            <li><span><b>Le niveau habituel, en moyenne cubique.</b> On élève chaque score au cube, on fait la moyenne de ces cubes, puis on en prend la
+              racine cubique. Pour trois scores de 6 000, 5 000 et 4 000, la moyenne ordinaire vaut 5 000 et la moyenne cubique 5 130 : elle penche vers les
+              bonnes courses, sans écarter les autres.</span></li>
+          </ul>
+          <p><b>Une méthode déduite des données.</b> Ces choix n'ont pas été posés à l'avance. Seule la moyenne géométrique a une raison simple : les temps
+            se comparent en proportion. Le reste a été trouvé dans les résultats : la puissance de la moyenne, la part du peloton, le réglage de chaque
+            spécialité ont été recalculés sur quinze saisons, plusieurs dizaines de variantes au total, et chaque fois gardés parce qu'ils prédisaient
+            mieux les duels. Le réglage du poids des plus lents, par exemple, vaut 0 en forêt et 400 en sprint sans qu'on sache dire pourquoi : c'est
+            ce que les résultats désignaient. C'est ce qui faisait son intérêt, puisqu'elle a été étudiée pour ses performances, et sa limite : une
+            règle qu'on ne peut ni justifier simplement, ni refaire à la main.</p>
+          <p>Les premières mesures, le 7 octobre, étaient parties d'une autre idée, rendre le retard plus cher en élevant le temps à une puissance ; elle
+            revenait exactement à changer ces deux moyennes.</p>
           ${L?.vs_geo ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Méthode Top retenue contre la variante géométrique</th>
             ${SCH.map((h) => html`<th class="r">${raw(h)}</th>`)}<th class="r">Écarts de temps<br>expliqués</th></tr></thead><tbody>
             ${[["For", "Forêt"], ["Spr", "Sprint"], ["VTT", "VTT"]].map(([tr, name]) => html`<tr><td>${name}</td>${SC.map((sc) => html`<td class="r num">${ci(L.vs_geo[tr]?.[sc])}</td>`)}
@@ -838,7 +857,8 @@ export async function render(main, { query = {} } = {}) {
             centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue
             garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places,
             une part du peloton réglée par spécialité pour mesurer les circuits, et un recalage continu. Elle gagne plus de deux points de duels sur le CN
-            officiel en forêt comme en sprint ; elle fait jeu égal en forêt avec la variante géométrique qui l'a précédée, et ne lui cède que 0,15 point en sprint.</p>
+            officiel en forêt comme en sprint ; elle fait jeu égal en forêt avec la variante géométrique qui l'a précédée, une méthode empirique réglée
+            sur les données pour ses performances, et ne lui cède que 0,15 point en sprint.</p>
           <div class="mx-verdict">
             <div class="mx-box" style="${cvar("top6w")}"><h3>Classer, qualifier, sélectionner</h3>
               <div class="who">${cnLabel("top6w")}</div>
