@@ -349,7 +349,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   added 2026-10-14, drawn on a made-up orienteering map: `reel.terrain`, `course`; « Tracé » added 2026-10-15, a screenshot,
   `site/assets/reel-tracer.webp`, of the Tracer's editor on the games' forest map — `forestMap(20261015, {w: 900, h: 600,
   features: 1.4, relief: 28})` drawn at 3 px a unit, 300 ppp, 1:10 000 — with an invented course, taken by headless Edge over
-  the DevTools protocol at 2x on a local training event and cropped to the editor: no name, no site header) (`reel.js`: drawn views of the
+  the DevTools protocol at 2x on a local training event and cropped to the editor: no name, no site header; « Analyse GPS »
+  since 2026-10-16 a screenshot too, `site/assets/reel-trace.webp`: « Analyse solo » in full window playing an invented runner
+  on the games' forest map, seed 20261016, 900 x 600 m at 2.4 px/m, an invented course drawn in purple, the routes by the
+  games' path finder, a GPX with heart rate and cadence and a KMZ placing the map — scratch `reelgps/` gen_map.js, gen.mjs,
+  make_files.py, shot.mjs; nothing real. The « Tracé » slide no longer names Purple Pen (owner, 2026-10-16)) (`reel.js`: drawn views of the
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
   automatic under reduced motion); phones keep the short text (`.home-text`).

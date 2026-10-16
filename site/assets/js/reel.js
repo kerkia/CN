@@ -339,40 +339,18 @@ function terrain(x0 = 0, y0 = 0, w = W, h = H) {
     ${[1, 0.7, 0.42].map((s, i) => `<path class="rv-contour" d="${blob(x0 + w * 0.47, y0 + h * 0.52, w * 0.2 * s, h * 0.3 * s, 41 + i, 0.14)}"/>`).join("")}
     ${[1, 0.6].map((s, i) => `<path class="rv-contour" d="${blob(x0 + w * 0.13, y0 + h * 0.7, w * 0.09 * s, h * 0.18 * s, 51 + i, 0.12)}"/>`).join("")}`;
 }
-/** A course in purple: the start triangle, the controls' circles with their numbers, the finish, the legs between them. */
-function course(pts) {
-  const R = 11, out = [];
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0) / L, uy = (y1 - y0) / L;
-    out.push(`<line class="rv-leg" x1="${(x0 + ux * (R + 3)).toFixed(1)}" y1="${(y0 + uy * (R + 3)).toFixed(1)}" x2="${(x1 - ux * (R + 3)).toFixed(1)}" y2="${(y1 - uy * (R + 3)).toFixed(1)}"/>`);
-  }
-  const [sx, sy] = pts[0];
-  out.push(`<path class="rv-leg" d="M${sx} ${sy - 13} L${sx + 11.3} ${sy + 6.5} L${sx - 11.3} ${sy + 6.5} Z"/>`);
-  pts.slice(1).forEach(([x, y], i) => {
-    out.push(`<circle class="rv-leg" cx="${x}" cy="${y}" r="${R}"/>`);
-    if (i === pts.length - 2) out.push(`<circle class="rv-leg" cx="${x}" cy="${y}" r="${R - 4}"/>`);
-    else out.push(`<text class="rv-ctl" x="${x + 13}" y="${y - 9}">${i + 1}</text>`);
-  });
-  return out.join("");
-}
-
-// 15. the GPS analysis: one's trace and another runner's on the map, the course found on it, the race played back
+// 15. the GPS analysis (« Analyse solo »): a screenshot of the playback on a made-up map (the games' forest map, seed
+// 20261016, an invented course and an invented runner's trace, its curves under the map: nothing real on this public page)
 function vTrace() {
-  const C = [[70, 236], [146, 92], [296, 62], [430, 148], [344, 246], [498, 250]];
-  const jit = (pts, seed, a) => { const r = rng(seed); return pts.map(([x, y], i) => (i && i < pts.length - 1 ? [x + (r() - 0.5) * a, y + (r() - 0.5) * a] : [x, y])); };
-  // the first runner keeps close to the lines; the second loops round the hill between 2 and 3 and overshoots 4
-  const a = jit([C[0], [104, 170], C[1], [220, 70], C[2], [372, 98], C[3], [392, 204], C[4], [420, 254], C[5]], 61, 10);
-  const b = jit([C[0], [92, 150], [124, 104], C[1], [230, 118], [262, 92], C[2], [330, 40], [420, 70], C[3], [452, 214], [372, 272], C[4], [430, 236], C[5]], 67, 8);
-  const head = (p, cls, k) => `<circle class="rv-pop ${cls}" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="6.5" ${d(k)}/>`;
-  return svg(`${terrain()}${course(C)}
-    <path class="rv-line rv-draw rv-trace-b" pathLength="1" d="${smooth(b)}" ${d(0.3)}/>
-    <path class="rv-line rv-draw rv-trace-a" pathLength="1" d="${smooth(a)}" ${d(0.1)}/>
-    ${head(a[a.length - 1], "rv-head-a", 1.6)}${head(b[b.length - 1], "rv-head-b", 1.9)}
-    <g class="rv-fade" ${d(0.2)}><rect x="14" y="12" width="150" height="46" rx="10" class="rv-card"/>
-      <circle cx="30" cy="29" r="5" class="rv-head-a"/>${label(42, 33, t("reel.you"), `class="rv-lab rv-strong rv-small"`)}
-      <circle cx="30" cy="47" r="5" class="rv-head-b"/>${blur(42, 51, name(4), `class="rv-blur rv-small"`)}</g>
-    <g class="rv-pop" ${d(1.4)}><rect x="${W - 184}" y="12" width="170" height="24" rx="12" class="rv-pill-on"/>
-      <text class="rv-lab rv-small rv-on" x="${W - 99}" y="28" text-anchor="middle">${esc(t("reel.tr.auto"))}</text></g>`);
+  // inset as the Tracer's slide, so that the reel's slow zoom eats margin
+  const iw = 538, ih = iw * 750 / 1400, ix = 11, iy = (H - ih) / 2;
+  const pills = [t("reel.trace.formats"), t("reel.tr.auto")].map((s, k) => {
+    const w = 18 + s.length * 6.4, y = 222 + k * 26, x = ix + iw - 8 - w;
+    return `<g class="rv-pop" ${d(1 + 0.25 * k)}><rect x="${x.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="22" rx="11" class="rv-pill-on"/>
+      <text class="rv-lab rv-small rv-on" x="${(x + w / 2).toFixed(1)}" y="${y + 15}" text-anchor="middle">${esc(s)}</text></g>`;
+  }).join("");
+  return svg(`<image href="assets/reel-trace.webp" x="${ix}" y="${iy.toFixed(1)}" width="${iw}" height="${ih.toFixed(1)}"/>
+    <rect x="${ix}" y="${iy.toFixed(1)}" width="${iw}" height="${ih.toFixed(1)}" rx="4" fill="none" class="rv-edge"/>${pills}`);
 }
 
 // 16. the games: two routes between two controls, which is the quicker? — the answer and the score
@@ -407,7 +385,7 @@ function vGames() {
 function vTracer() {
   // inset so that the reel's slow zoom (x1.035 about 55 % / 45 %) eats margin, not the description sheet's first column
   const iw = 538, ih = iw * 750 / 1400, ix = 11, iy = (H - ih) / 2;
-  const pills = [t("reel.tracer.ppen"), t("reel.tracer.iof"), t("reel.tracer.pdf")].map((s, k) => {
+  const pills = [t("reel.tracer.maps"), t("reel.tracer.iof"), t("reel.tracer.pdf")].map((s, k) => {
     const w = 18 + s.length * 6.4, y = 214 + k * 26;
     return `<g class="rv-pop" ${d(1 + 0.25 * k)}><rect x="${ix + 6}" y="${y}" width="${w.toFixed(1)}" height="22" rx="11" class="rv-pill-on"/>
       <text class="rv-lab rv-small rv-on" x="${(ix + 6 + w / 2).toFixed(1)}" y="${y + 15}" text-anchor="middle">${esc(s)}</text></g>`;
