@@ -1,4 +1,4 @@
-// POST /api/ask — « IA » (pages/ask.js; administrators only while it is a pilot, owner 2026-10-15): a question in, one
+// POST /api/ask — « IA » (pages/ask.js; owner 2026-10-15, every account since 2026-10-16): a question in, one
 // DuckDB query and how to show it out. The language model runs on Workers AI (binding AI, the account's free daily
 // allowance of 10 000 neurons; past it the calls fail until the next day, nothing is billed on the free plan). The browser
 // runs the query on the published files (site_ask.py), so the model never sees the data. Nothing is stored.
@@ -9,6 +9,9 @@ import { allow, isAdmin, json, readBody, withUser } from "../_lib/api.js";
 import { DEFAULT_MODEL, MODELS, NEURONS_PER_DOLLAR, parseAnswer, systemPrompt, userPrompt } from "../_lib/ask.js";
 
 const PER_HOUR = 40, PER_HOUR_ADMIN = 200;      // questions an hour per account: a runaway loop cannot eat the day's quota
+// and a day (UTC) per account on the free model, so that a few accounts cannot use up the whole site's allowance (~90 a
+// day); administrators apart, and nothing counted for a model of one's own (promptOnly)
+const PER_DAY = 15;
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const admin = isAdmin(env, user);
@@ -23,6 +26,9 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (b.promptOnly) return json({ messages });            // the user's own model: no call here, no quota used
   if (!env.AI) return json({ error: "ai not bound" }, 500);
   if (!(await allow(env, `ask:${user.id}`, admin ? PER_HOUR_ADMIN : PER_HOUR, 3600))) return json({ error: "Trop de questions cette heure-ci." }, 429);
+  if (!admin && !(await allow(env, `askday:${user.id}`, PER_DAY, 86400))) {
+    return json({ error: `Vous avez posé ${PER_DAY} questions aujourd'hui au modèle gratuit d'O'CN : réessayez demain, ou utilisez votre propre clé d'API.` }, 429);
+  }
   const model = b.model && MODELS[b.model] && admin ? b.model : DEFAULT_MODEL;
   const t0 = Date.now();
   let out;
@@ -44,4 +50,4 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
     neurons: Math.round(dollars * NEURONS_PER_DOLLAR) };
   if (!answer) return json({ error: "La réponse du modèle n'a pas pu être lue.", raw: String(text).slice(0, 2000), usage }, 502);
   return json({ answer, usage });
-}, { admin: true });
+});

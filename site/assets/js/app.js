@@ -44,7 +44,7 @@ const PAGES = {
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
-  ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs (pilot, administrators)
+  ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
 };
 
 // Pages without the runner search of the header: it leads away from what they show.
@@ -286,9 +286,8 @@ function renderHeader(r) {
       ["compare", "#/comparer", t("nav.compare")],
       ["clubs", "#/clubs", t("nav.clubs")],
       ["network", "#/reseau", t("nav.network")],
-      // « IA » (2026-10-15): questions on the data in plain French; administrators only while it is a pilot, greyed for
-      // the others (owner, 2026-10-15)
-      ["ask", me.admin ? "#/ia" : null, t("nav.ask")],
+      // « IA » (2026-10-15): questions on the data in plain French; every account since 2026-10-16 (owner)
+      ["ask", "#/ia", t("nav.ask")],
     ]],
     ["races", t("nav.g.races"), [
       ["agenda", "#/agenda", t("nav.agenda")],

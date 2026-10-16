@@ -1,10 +1,10 @@
-// « IA » (#/ia; administrators only while it is a pilot, owner 2026-10-15): a question in plain French, answered with a
+// « IA » (#/ia; owner 2026-10-15, every account since 2026-10-16): a question in plain French, answered with a
 // table, a chart or a few figures. A language model (functions/api/ask.js, Workers AI) turns the question into one
 // DuckDB query over the site's published data (site/data/ask/*.parquet, built by site_ask.py) and says how to show
 // the result; the query runs here, in the browser, with DuckDB-WASM — the model never sees the data. A query that
 // fails goes back to the model once, with its error. Only one SELECT is ever run, on the five tables.
 
-import { html, raw, $, fmt, fmtDate, fmtTime, downloadCsv } from "../util.js";
+import { html, raw, $, fmt, fmtDate, fmtTime, downloadCsv, normalise, plural } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as store from "../store.js";
@@ -173,11 +173,6 @@ function table(el, a, { columns, rows }) {
 // ---- the page ---------------------------------------------------------------------------------------------------------
 export async function render(main) {
   const me = auth.session();
-  if (!me?.admin) {
-    main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.ask")}</h1></div></div>
-      <section class="card"><div class="empty">Cette page est réservée aux administrateurs pour l'instant.</div></section>`;
-    return { title: t("nav.ask") };
-  }
   let followUp = null;
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.ask")}</h1>
@@ -189,11 +184,12 @@ export async function render(main) {
           <textarea id="ia-q" rows="4" maxlength="1000" placeholder="Par exemple : mon CN Top en forêt mois par mois depuis 2024"></textarea>
           <div class="ia-row">
             <div id="ia-follow"></div>
-            <select id="ia-model" title="Le modèle qui écrit la requête">${MODELS.map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
+            <select id="ia-model" title="Le modèle qui écrit la requête">${(me?.admin ? MODELS : MODELS.slice(0, 1)).map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
             <button type="submit" class="btn btn-primary" id="ia-go">Demander</button>
           </div>
         </form>
-        <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site. L'IA ne voit pas les données : elle
+        <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site (15 par personne et par jour ; sans
+          limite avec votre propre clé, ci-dessous). L'IA ne voit pas les données : elle
           écrit une requête, que votre navigateur exécute. Elle peut se tromper : l'interprétation retenue et la requête sont affichées sous chaque réponse.</p>
         <details class="ia-byok" id="by">
           <summary>Votre propre clé d'API : Claude, ChatGPT, Gemini ou OpenRouter</summary>
@@ -202,8 +198,9 @@ export async function render(main) {
             <div class="ia-byok-grid">
               <label class="field"><span>Fournisseur</span><select id="by-prov">${Object.entries(PROVIDERS).map(([k, v]) => html`<option value="${k}">${v.label}</option>`)}</select></label>
               <label class="field"><span>Clé d'API</span><input id="by-key" type="password" autocomplete="off" spellcheck="false"></label>
-              <label class="field"><span>Modèle</span><input id="by-model" type="text" list="by-models" autocomplete="off" spellcheck="false" placeholder="chargés avec la clé">
-                <datalist id="by-models"></datalist></label>
+              <div class="field ia-byok-model"><span>Modèle</span>
+                <input id="by-filter" type="search" autocomplete="off" spellcheck="false" placeholder="Filtrer : claude, gpt, gemini, gratuit…" aria-label="Filtrer les modèles">
+                <select id="by-model" aria-label="Modèle"><option value="" disabled selected>— chargez la liste —</option></select></div>
             </div>
             <div class="ia-row ia-byok-actions">
               <label class="checkline"><input type="checkbox" id="by-remember"> Se souvenir de la clé sur cet appareil</label>
@@ -257,6 +254,8 @@ export async function render(main) {
       .ia-byok-grid .field input, .ia-byok-grid .field select { width: 100%; box-sizing: border-box }
       @media (max-width: 760px) { .ia-byok-grid { grid-template-columns: minmax(0, 1fr) } }
       .ia-byok-actions { flex-wrap: wrap }
+      .ia-byok-model { display: grid; gap: 6px; align-content: start }
+      .ia-byok-model input, .ia-byok-model select { width: 100%; box-sizing: border-box }
       .ia-follow-chip { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis }
     </style>`;
 
@@ -375,31 +374,66 @@ export async function render(main) {
     $("#by-key").placeholder = pv.hint;
     $("#by-note").innerHTML = html`${pv.note} <a href="${pv.keys}" target="_blank" rel="noopener noreferrer">Créer une clé</a>`;
   };
+  // the models as a menu: OpenRouter's free ones first, then one group per maker (its own name, the price per million
+  // tokens); the filter keeps the entries whose name or id contains its words (« gratuit » finds the free ones)
+  const VENDORS = { anthropic: "Anthropic", openai: "OpenAI", google: "Google", mistralai: "Mistral", "meta-llama": "Meta", deepseek: "DeepSeek",
+    qwen: "Qwen", "x-ai": "xAI", cohere: "Cohere", microsoft: "Microsoft", amazon: "Amazon", nvidia: "NVIDIA", "z-ai": "Z.ai",
+    moonshotai: "Moonshot", perplexity: "Perplexity", minimax: "MiniMax", nousresearch: "Nous Research" };
+  const ORDER = Object.keys(VENDORS);
+  const isFree = (m) => /:free$/.test(m.id) || (m.price && m.price[0] === 0 && m.price[1] === 0);
+  const priceOf = (m) => (isFree(m) ? " — gratuit" : m.price && Number.isFinite(m.price[0])
+    ? ` — ${fmt(m.price[0], 2)} $ / ${fmt(m.price[1], 2)} $ le million de jetons (entrée / sortie)` : "");
+  const vendorOf = (id) => id.split("/")[0];
+  let picked = null;                                   // the model chosen (or suggested): a filter that hides it does not lose it
+  function drawModels(keep) {
+    const sel = $("#by-model"), prov = $("#by-prov").value, q = normalise($("#by-filter").value || "").split(/\s+/).filter(Boolean);
+    if (!models.length) {
+      sel.innerHTML = keep ? html`<option value="${keep}" selected>${keep}</option>` : html`<option value="" disabled selected>— chargez la liste —</option>`;
+      return;
+    }
+    const shown = models.filter((m) => { const t = normalise(`${m.id} ${m.name} ${isFree(m) ? "gratuit free" : ""}`); return q.every((w) => t.includes(w)); });
+    const groups = new Map();
+    const add = (g, m) => { if (!groups.has(g)) groups.set(g, []); groups.get(g).push(m); };
+    for (const m of shown) {
+      if (prov !== "openrouter") add("", m);
+      else if (isFree(m)) add("Gratuits", m);
+      else add(vendorOf(m.id), m);
+    }
+    const rank = (g) => (g === "Gratuits" ? -1 : ORDER.includes(g) ? ORDER.indexOf(g) : ORDER.length);
+    const keys = [...groups.keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    for (const list of groups.values()) list.sort((a, b) => (b.created || 0) - (a.created || 0) || a.name.localeCompare(b.name));   // newest first
+    const label = (m, g) => `${g && g !== "Gratuits" ? m.name.replace(/^[^:]+:\s*/, "") : m.name}${priceOf(m)}`;
+    const opt = (m, g) => html`<option value="${m.id}" title="${m.id}" ${raw(m.id === keep ? "selected" : "")}>${label(m, g)}</option>`;
+    sel.innerHTML = shown.length ? keys.map((g) => (g ? html`<optgroup label="${g === "Gratuits" ? g : VENDORS[g] || g}">${groups.get(g).map((m) => opt(m, g))}</optgroup>`
+      : groups.get(g).map((m) => opt(m, g)).join(""))).join("") : html`<option value="" disabled selected>Aucun modèle ne correspond</option>`;
+    if (shown.length && !shown.some((m) => m.id === keep)) sel.selectedIndex = 0;
+    byStatus(q.length ? `${plural(shown.length, "modèle", "modèles")} sur ${fmt(models.length)}.`
+      : `${plural(models.length, "modèle disponible", "modèles disponibles")}${prov === "openrouter" && !$("#by-key").value.trim() ? " (la clé sera vérifiée à la première question)" : ""}.`);
+  }
   async function loadModels() {
-    const prov = $("#by-prov").value, key = $("#by-key").value.trim();
+    const prov = $("#by-prov").value, key = $("#by-key").value.trim(), keep = $("#by-model").value;
     if (!key && prov !== "openrouter") { byStatus("Collez d'abord votre clé."); return false; }
     byStatus("Chargement des modèles…");
     try {
       models = await PROVIDERS[prov].models(key);
     } catch (e) { byStatus(e instanceof ProviderError ? e.message : String(e.message || e), true); return false; }
-    $("#by-models").innerHTML = models.map((m) => html`<option value="${m.id}">${m.name}${m.price && Number.isFinite(m.price[0])
-      ? ` — ${fmt(m.price[0], 2)} $ / ${fmt(m.price[1], 2)} $ le million de jetons` : ""}</option>`).join("");
-    const cur = $("#by-model").value.trim();
-    if (!cur || !models.some((m) => m.id === cur)) $("#by-model").value = suggest(prov, models);
-    byStatus(`${fmt(models.length)} modèles disponibles${prov === "openrouter" && !key ? " (la clé sera vérifiée à la première question)" : ""}.`);
+    picked = keep && models.some((m) => m.id === keep) ? keep : suggest(prov, models);
+    drawModels(picked);
     return true;
   }
   $("#by-prov").addEventListener("change", () => {
-    models = []; $("#by-models").innerHTML = ""; $("#by-model").value = ""; byStatus(""); showProvider();
+    models = []; picked = null; $("#by-filter").value = ""; drawModels(null); byStatus(""); showProvider();
     if ($("#by-prov").value === "openrouter" || $("#by-key").value.trim()) loadModels();
   });
+  $("#by-filter").addEventListener("input", () => { if (models.length) drawModels(picked); });
+  $("#by-model").addEventListener("change", (e) => { picked = e.target.value; });
   $("#by-load").addEventListener("click", loadModels);
   $("#by-key").addEventListener("change", () => { if ($("#by-key").value.trim()) loadModels(); });
   $("#by-save").addEventListener("click", async () => {
     const provider = $("#by-prov").value, key = $("#by-key").value.trim();
     if (!key) { byStatus("Collez votre clé d'API.", true); return; }
     if (!models.length && !(await loadModels())) return;
-    const model = $("#by-model").value.trim();
+    const model = $("#by-model").value;
     if (!model) { byStatus("Choisissez un modèle.", true); return; }
     const c = { provider, key, model, remember: $("#by-remember").checked };
     saveChoice(c); ownOption(c); $("#ia-model").value = "byok";
@@ -412,10 +446,11 @@ export async function render(main) {
   {
     const c = loadChoice();
     if (c && PROVIDERS[c.provider]) {
-      $("#by-prov").value = c.provider; $("#by-key").value = c.key; $("#by-model").value = c.model; $("#by-remember").checked = !!c.remember;
+      $("#by-prov").value = c.provider; $("#by-key").value = c.key; $("#by-remember").checked = !!c.remember;
+      picked = c.model; drawModels(c.model);             // the model kept; the whole list with « Charger les modèles »
       ownOption(c); $("#ia-model").value = "byok";
       byStatus(`Clé enregistrée${c.remember ? " sur cet appareil" : " pour cet onglet"} : ${PROVIDERS[c.provider].label} (${c.model}).`);
-    }
+    } else if ($("#by-prov").value === "openrouter") loadModels();     // a public list: no key sent
     showProvider();
   }
 
