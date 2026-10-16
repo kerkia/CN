@@ -12,7 +12,10 @@ const LLM_OUT = 8000;                     // tokens a model may write: reasoning
 export const PROVIDERS = {
   openrouter: {
     label: "OpenRouter", hint: "sk-or-…", keys: "https://openrouter.ai/settings/keys",
-    note: "Une seule clé pour la plupart des modèles (Claude, GPT, Gemini, Llama…), un plafond de dépenses par clé, et quelques modèles gratuits.",
+    // free models (2026-10-16, OpenRouter's documentation): 20 requests a minute, 50 a day (1 000 once 10 credits were bought)
+    note: "Une seule clé pour la plupart des modèles (Claude, GPT, Gemini, Llama…), un plafond de dépenses par clé. Les modèles gratuits sont limités "
+      + "à 50 requêtes par jour (1 000 après un achat de 10 crédits) et 20 par minute — une question en fait une, deux si la requête est corrigée — ; "
+      + "certains de leurs fournisseurs peuvent se servir des questions : voyez les réglages de confidentialité de votre compte OpenRouter.",
     prefer: [/^anthropic\/claude-sonnet/, /^anthropic\/claude/, /^openai\/gpt-5/, /^google\/gemini.*flash/],
     async models() {
       const d = await getJson("https://openrouter.ai/api/v1/models", {});

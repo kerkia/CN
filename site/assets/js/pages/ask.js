@@ -24,7 +24,7 @@ const EXAMPLES = [
   "Mon taux de PM par saison",
 ];
 // O'CN's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
-const MODELS = [["@cf/openai/gpt-oss-120b", "O'CN, gratuit (gpt-oss-120b)"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
+const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
   ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"], ["@cf/qwen/qwen3-30b-a3b-fp8", "Qwen3 30B"]];
 
 // what survives a visit to another page: the answers, the database once loaded
@@ -441,7 +441,7 @@ export async function render(main) {
   });
   $("#by-forget").addEventListener("click", () => {
     forgetChoice(); ownOption(null); $("#by-key").value = ""; $("#by-remember").checked = false; $("#ia-model").selectedIndex = 0;
-    byStatus("Clé oubliée : les questions vont au modèle gratuit d'O'CN.");
+    byStatus("Clé oubliée : les questions vont au modèle gratuit, gpt-oss-120b.");
   });
   {
     const c = loadChoice();
