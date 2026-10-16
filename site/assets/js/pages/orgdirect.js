@@ -13,6 +13,7 @@ import { html, raw, $, fmtDate } from "../util.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { parseBytes } from "../localparse.js";
+import { betaNotice, betaTag, betaNote } from "../beta.js";
 
 const PREF = "ocn.direct";                        // the broadcast chosen and the interval, on this computer
 const LIVE_STATUS = { ok: 0, finished: 0, missingpunch: 3, mispunch: 3, disqualified: 4, didnotfinish: 2, sportingwithdrawal: 2,
@@ -187,9 +188,10 @@ export async function render(main) {
     seen: null, reads: 0, pushes: 0, last: null, lastPush: null, error: null, stats: null, info: null, viewers: null, busy: false };
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>Diffuser en direct</h1>
+    <div class="page-head"><div><h1>Diffuser en direct ${raw(betaTag())}</h1>
       <p class="lede">Depuis le logiciel de chronométrage, sans liveresultat : le fichier de résultats exporté pendant la course est relu
         ici et diffusé dans « En direct ».</p></div></div>
+    ${raw(betaNote("direct"))}
     <section class="card"><div class="card-head"><h2>Comment ça marche</h2></div><div class="card-body">${STEPS}</div></section>
     <section class="card"><div class="card-head"><div><h2>1. La course</h2><div class="hint">Une diffusion par course ; on peut la reprendre plus tard.</div></div></div>
       <div class="card-body" id="od-race"><div class="empty">Chargement…</div></div></section>
@@ -203,6 +205,7 @@ export async function render(main) {
       .od-grid b { display: block; font-size: 18px }
       .od-log { font-size: 12.5px; margin-top: 10px }
     </style>`;
+  betaNotice("direct");                                  // beta.js (owner, 2026-10-16): little tested yet
 
   // ---- 1. the race --------------------------------------------------------------------------------------------------
   let list = [];

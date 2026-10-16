@@ -18,12 +18,9 @@ import { dropHtml, dropZone } from "../tracer/dialogs.js";
 import { centreOnMap } from "../tracer/calage.js";
 import * as OFF from "../tracer/offline.js";
 import { bindFull, setFull, leaveFull, inOwnTab, buttons as fwButtons } from "../fullwin.js";
+import { betaNotice, betaTag, betaNote } from "../beta.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
-// the beta notice (owner, 2026-10-16): shown when the tool is first opened, until it is acknowledged on this browser;
-// a new BETA value shows it again
-const BETA = "1", BETA_KEY = "ocn.tr.beta";
-export const FEEDBACK = `#/contact?${new URLSearchParams({ type: "bug", sujet: "Tracé : ", from: "#/orga-tracer" })}`;
 const listHash = () => (inOwnTab() ? "#/orga-tracer?fen=1" : "#/orga-tracer");
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 let current = null, pageMain = null, leaving = false;
@@ -34,30 +31,17 @@ export async function render(main, r) {
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the Tracer without the site's bar
   bindPageDrop(main);
   drawPage(main);
-  betaNotice().then(() => { if (r.query.id && !leaving) openEvent(r.query.id); });
+  // the beta notice first (beta.js; owner, 2026-10-16), then the event a link names
+  betaNotice("tracer").then(() => { if (r.query.id && !leaving) openEvent(r.query.id); });
   return { title: "Tracer", cleanup: () => { leaving = true; window.__tracer?.close?.(); leaveFull(); } };
-}
-/** The beta notice, until acknowledged (« J'ai compris », or one of its links followed). */
-async function betaNotice() {
-  try { if (localStorage.getItem(BETA_KEY) === BETA) return; } catch (e) { /* no storage: shown each time */ }
-  const ack = () => { try { localStorage.setItem(BETA_KEY, BETA); } catch (e) { /* this visit only */ } };
-  const v = await modal({ title: "Le tracé, en version bêta", ok: "J'ai compris", cancel: null, body: `
-    <p>Le tracé vient d'être réalisé et n'a encore été que peu testé. C'est une <b>version bêta</b> : essayez-le librement, et dites-nous ce que vous
-      en pensez — chaque remarque et chaque bug signalé nous aident à l'améliorer.</p>
-    <p>Pour l'instant, nous ne le conseillons pas encore pour préparer une vraie compétition, mais nous espérons qu'il le sera bientôt. En attendant, il
-      convient très bien aux <b>cartes d'entraînement</b>.</p>
-    <p>Un bug, une remarque ? <a href="${FEEDBACK}" data-beta-link>Nous écrire</a>. Pour apprendre à s'en servir : <a href="#/methodes?onglet=tracer" data-beta-link>le guide du tracé</a>.</p>`,
-  onOpen: (f, done) => f.querySelectorAll("[data-beta-link]").forEach((a) => a.addEventListener("click", () => { ack(); done(true); })) });
-  if (v) ack();
 }
 /** The list of one's events (the page as it opens, and after the editor closes). */
 function drawPage(main) {
   main.innerHTML = html`
-    <div class="page-head"><div><h1>Tracer <span class="beta-tag" title="Version bêta : peu testée encore">Bêta</span></h1><p class="lede">Tracer les circuits d'une course ou d'un entraînement : postes, définitions, PDF à imprimer, fichiers pour le chronométrage. Ouvre et enregistre les fichiers Purple Pen.</p></div>
+    <div class="page-head"><div><h1>Tracer ${raw(betaTag())}</h1><p class="lede">Tracer les circuits d'une course ou d'un entraînement : postes, définitions, PDF à imprimer, fichiers pour le chronométrage. Ouvre et enregistre les fichiers Purple Pen.</p></div>
       <div class="tr-head-btns"><button type="button" class="btn btn-sm" id="tr-import">Importer un fichier Purple Pen…</button>
       <button type="button" class="btn btn-sm btn-primary" id="tr-new">Nouvel événement</button>${inOwnTab() ? raw(`<span class="fw-btns">${fwButtons()}</span>`) : ""}</div></div>
-    <p class="beta-note">Version bêta, encore peu testée : idéale pour les cartes d'entraînement, pas encore conseillée pour une compétition.
-      Un bug, une remarque ? <a href="${FEEDBACK}">Nous écrire</a> · <a href="#/methodes?onglet=tracer">Le guide du tracé</a></p>
+    ${raw(betaNote("tracer"))}
     <section class="card"><div class="table-wrap" id="tr-list"><div class="empty">Chargement…</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Les circuits restent secrets : seule l'équipe de l'événement l'ouvre (son créateur et les licenciés qu'il ajoute), pas les administrateurs du site.
       Le chiffrement (menu Événement) les rend illisibles même pour le serveur.</p>

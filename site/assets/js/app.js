@@ -58,6 +58,9 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede"
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgTracer: "nav.orgTracer.hint" };
+// the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
+const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
+const betaMark = (k) => (BETA_ROUTES.has(k) ? raw('<sup class="nav-beta" title="Version bêta : encore peu testée">bêta</sup>') : "");
 const isLean = (r) => ["ranking", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults";
@@ -330,7 +333,7 @@ function renderHeader(r) {
     <nav class="nav" id="nav" aria-label="Navigation">
       ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
         <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}</a>
-        <div class="nav-menu">${items.map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}</a>`
+        <div class="nav-menu">${items.map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${betaMark(k)}</a>`
           : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</div>
       </div>`)}
     </nav>
@@ -354,7 +357,7 @@ function renderHeader(r) {
     </div>
   </div>
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
-      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}</a>`
+      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
       ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgDirect", "orgTracer"].includes(route) ? "" : methodSwitch()}
 

@@ -1180,6 +1180,7 @@ table.data tbody tr.found .name { font-weight: 700; }
   padding: 4px 7px; border-radius: 999px; color: var(--flag-ink, #fff); background: var(--flag, #e8590c); margin-left: 6px; }
 h1 .beta-tag { font-size: 12px; position: relative; top: -2px; }
 .tr-top .beta-tag { margin: 0 6px 0 -2px; }
+.nav-beta { font-size: 9.5px; font-weight: 700; letter-spacing: .03em; color: var(--flag, #e8590c); margin-left: 3px; vertical-align: super; line-height: 0; }
 .beta-note { font-size: 13px; color: var(--ink-2); background: color-mix(in srgb, var(--flag, #e8590c) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--flag, #e8590c) 35%, transparent);
   border-radius: var(--radius-sm); padding: 9px 12px; margin: 0 0 12px; line-height: 1.5; }
 /* the Tracer's guide (« Le tracé »): its tools with their icons, the menus one by one */

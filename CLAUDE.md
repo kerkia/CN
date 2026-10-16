@@ -746,11 +746,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   and cache go when nothing is kept; logout drops copies without pending changes). « Envoyer les circuits à Résultats »
   (from the race day; upload kind « courses », see Uploads). Review after the race: routes taken from the published
   analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le tracé ».
-  **Beta** (owner, 2026-10-16): the page « Tracer » opens with a notice to acknowledge (`pages/tracer.betaNotice`: just made, little
-  tested, a beta to try and report on; not yet advised for real competitions, fine for training maps), once per browser
-  (`localStorage ocn.tr.beta`; bump `BETA` to show it again), its links to « Nous écrire » (`FEEDBACK`: type bug, subject « Tracé : »,
-  read by `contact.js` from `?sujet=`) and to the guide counting as acknowledged; a « Bêta » label on the page title and in the
-  editor's top bar, a note above the list, a callout in the guide.
+  **Beta** (owner, 2026-10-16): see « Beta notices » below; the Tracer's notice says it is not yet advised for real competitions,
+  fine for training maps.
   **French wording** (owner, 2026-10-15): « le tracé » (des circuits), never « le Tracer » — « Tracer » is the menu's verb, as
   « Déposer »; « la page « Tracer » » when the page is meant.
   « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.
@@ -786,6 +783,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   symbol « code.1 » and the arcs, as Purple Pen). Images placed on the map: OCAD 11+ layout images kept in the file (parameter
   27 with « F » = base 64), else files beside the course files as templates (OCAD 9-10: a PNG made a GIF; Mapper: in front of
   the map).
+- **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
+  and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
+  just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse
+  multi: errors may remain in calibrations, traces and times; Direct: not yet alone for a competition's live results, try it at a
+  training or beside the usual live), once per browser and tool (`localStorage` `ocn.tr.beta`, `ocn.beta.multi`, `ocn.beta.direct`;
+  bump a notice's `v` to show it again; Escape closes it unacknowledged), its links to « Nous écrire » (a bug report, subject
+  « Tracé : », « Analyse multi : »… read by `contact.js` from `?sujet=`) and to the guide counting as acknowledged. A « Bêta » label
+  (`betaTag`) on the page titles and the editors' top bars, a note under the head (`betaNote`), a small « bêta » after their names
+  in the menus (`app.BETA_ROUTES`: lean pages have no title), and a callout in the Tracer's guide.
 - **Full window** (`fullwin.js`; owner, 2026-10-15: room for the map, no stacked menus; one way for the analyses and the
   Tracer, the analyses'): the analyses' playback (« Analyse solo » transport row, « Analyse multi » right panel) and the
   Tracer's top bar have « ⤢ » (`body.full-win`: the site's bar and footer hidden, the layout

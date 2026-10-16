@@ -26,6 +26,7 @@ import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, v
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
+import { betaNotice, betaTag, betaNote } from "../beta.js";
 
 const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -78,6 +79,7 @@ export async function render(main, r) {
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   const org = r.route === "orgRace" || r.route === "orgTraining";
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
+  betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
   if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
   return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind);
 }
@@ -85,7 +87,8 @@ export async function render(main, r) {
 // ---- the list ----------------------------------------------------------------------------------------------------
 async function listPage(main, kind) {
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(`sh.${kind}.title`)}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
+    <div class="page-head"><div><h1>${t(`sh.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
+    ${raw(betaNote("multi"))}
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} <a href="${ORG_ROUTE[kind]}">${t("nav.g.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")} →</a></p>`;
@@ -108,8 +111,9 @@ async function listPage(main, kind) {
 async function orgListPage(main, kind) {
   const me = auth.session();
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(`sh.org.${kind}.title`)}</h1><p class="lede">${t(`sh.org.${kind}.lede`)}</p></div>
+    <div class="page-head"><div><h1>${t(`sh.org.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.org.${kind}.lede`)}</p></div>
       ${kind === "club" ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.org.new")}</button>` : ""}</div>
+    ${raw(betaNote("multi"))}
     <section class="card sh-create" id="sh-create" hidden></section>
     ${kind === "race" && me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
@@ -206,7 +210,7 @@ async function eventPage(main, kind, id, org = false) {
   main.innerHTML = html`
     <div class="sh-top">
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
-      <b class="sh-title">${A.title}</b><span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
+      <b class="sh-title">${A.title}</b>${raw(betaTag("Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)"))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       ${race ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(A.race)}">${t("sh.results")}</a>` : ""}
       <span class="sh-tabs" id="sh-tabs"></span>
       ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button> <a class="btn btn-sm" href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")}</a>`
