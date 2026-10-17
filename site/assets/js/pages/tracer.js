@@ -1,24 +1,27 @@
-// « Organisation › Tracer » (#/orga-tracer): course setting in the browser, as Purple Pen does it (owner, 2026-10-15) —
-// the list of one's events (those one created or whose team one belongs to), a new event (a competition of one's club
-// from the agenda, or a training) with its map (an OCAD or Mapper file, a PDF or an image), a Purple Pen file (.ppen) brought in with its map,
-// and the editor (tracer/editor.js), drawn in the page under the site's menus as the analyses are: « ← Événements » back to
-// the list, « ⤢ » the whole window (Échap or « ⤡ » back), « ↗ » a tab of its own (?fen=1, whose « ✕ » closes it; fullwin.js).
+// « Organisation › Tracer » (#/orga-tracer): course setting in the browser, as Purple Pen does it (owner, 2026-10-15). The
+// editor (tracer/editor.js) opens at once, empty, drawn in the page under the site's menus as the analyses are, and a start
+// screen over it offers the three ways in (owner, 2026-10-17): a new event (a competition of one's club from the agenda, or a
+// training) with its map (an OCAD or Mapper file, a PDF or an image); an event imported from an O'CN file (.ocnt, which holds
+// its map) or a Purple Pen file (.ppen) with its map; or one of one's events (those one created or whose team one belongs
+// to). « Événements » in the editor, and the Fichier menu, bring the start screen back. « ⤢ » the whole window (Échap or « ⤡ »
+// back), « ↗ » a tab of its own (?fen=1; fullwin.js). A link naming an event (?id=) opens it straight away.
 // Courses stay secret: only the event's team opens it (functions/api/tracer).
 
-import { html, raw, $, fmtDate } from "../util.js";
+import { html, raw, fmtDate } from "../util.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
 import * as S from "../tracer/store.js";
 import * as M from "../tracer/model.js";
 import { readPpen } from "../tracer/ppen.js";
+import { readOcn, isOcnFile } from "../tracer/ocnfile.js";
 import { openMap, isMapFile, mimeOf, imageDpi, isPdf, isVectorMap, MAP_ACCEPT } from "../tracer/mapsrc.js";
 import { geoFromWorld } from "../tracer/geo.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
 import { centreOnMap } from "../tracer/calage.js";
 import * as OFF from "../tracer/offline.js";
-import { bindFull, setFull, leaveFull, inOwnTab, buttons as fwButtons } from "../fullwin.js";
-import { betaNotice, betaTag, betaNote } from "../beta.js";
+import { bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
+import { betaNotice } from "../beta.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const listHash = () => (inOwnTab() ? "#/orga-tracer?fen=1" : "#/orga-tracer");
@@ -29,43 +32,136 @@ export async function render(main, r) {
   pageMain = main; leaving = false;
   bindFull();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the Tracer without the site's bar
-  bindPageDrop(main);
-  drawPage(main);
-  // the beta notice first (beta.js; owner, 2026-10-16), then the event a link names
-  betaNotice("tracer").then(() => { if (r.query.id && !leaving) openEvent(r.query.id); });
-  return { title: "Tracer", cleanup: () => { leaving = true; window.__tracer?.close?.(); leaveFull(); } };
-}
-/** The list of one's events (the page as it opens, and after the editor closes). */
-function drawPage(main) {
-  main.innerHTML = html`
-    <div class="page-head"><div><h1>Tracer ${raw(betaTag())}</h1><p class="lede">Tracer les circuits d'une course ou d'un entraînement : postes, définitions, PDF à imprimer, fichiers pour le chronométrage. Ouvre et enregistre les fichiers Purple Pen.</p></div>
-      <div class="tr-head-btns"><button type="button" class="btn btn-sm" id="tr-import">Importer un fichier Purple Pen…</button>
-      <button type="button" class="btn btn-sm btn-primary" id="tr-new">Nouvel événement</button>${inOwnTab() ? raw(`<span class="fw-btns">${fwButtons()}</span>`) : ""}</div></div>
-    ${raw(betaNote("tracer"))}
-    <section class="card"><div class="table-wrap" id="tr-list"><div class="empty">Chargement…</div></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Les circuits restent secrets : seule l'équipe de l'événement l'ouvre (son créateur et les licenciés qu'il ajoute), pas les administrateurs du site.
-      Le chiffrement (menu Événement) les rend illisibles même pour le serveur.</p>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px 0">Astuce : déposez un fichier .ppen et sa carte (PDF ou image) n'importe où sur cette page pour les importer, ou une carte seule pour un nouvel événement.</p>`;
-  $("#tr-new").addEventListener("click", () => newEvent(main));
-  $("#tr-import").addEventListener("click", () => importPpenEvent(main));
-  list();
+  // the editor at once, empty; the beta notice over it (beta.js; owner, 2026-10-16); then the event a link names, else the start screen
+  const notice = betaNotice("tracer");
+  await openBlank();
+  notice.then(() => { if (leaving) return; if (r.query.id) openEvent(r.query.id); else startScreen(); });
+  return { title: "Tracer", cleanup: () => { leaving = true; document.querySelector(".tr-start")?.remove(); window.__tracer?.close?.(); leaveFull(); } };
 }
 
-async function list() {
-  const box = $("#tr-list");
-  let d;
-  try { d = await S.api(""); } catch (e) {
-    // no network: the events kept on this device
+// ---- the editor: empty, or an event; switching closes the open one first (saved, its lock released) ---------------------------
+let switching = false;
+async function closeEditor() {
+  const E = window.__tracer;
+  if (!E) return;
+  switching = true;
+  try { await E.close(); } finally { switching = false; }
+}
+/** The editor closed by itself (« ↗ » moved the event to a tab of its own): the empty editor and the start screen here. */
+function onClose() {
+  if (leaving || switching) return;
+  history.replaceState(null, "", listHash());
+  openBlank().then(() => startScreen());
+}
+/** The start screen's choices, from the editor (« Événements », the Fichier menu, files dropped on an empty editor). */
+function onStart(kind = "", files = null) {
+  if (files?.length && (kind === "new" || kind === "import")) { choose(kind, files); return; }
+  startScreen(kind);
+}
+async function openBlank() {
+  const { openEditor } = await import("../tracer/editor.js");
+  if (leaving) return;
+  await closeEditor();
+  if (leaving) return;
+  pageMain.innerHTML = "";
+  await openEditor({ container: pageMain, blank: true, meta: { id: null, title: "" }, role: "viewer", you: null, ev: M.newEvent({}), version: 0,
+    mapSrc: null, onStart, onClose });
+}
+/** After a dialog given up: the start screen again when no event is open. */
+const backToStart = () => { if (!leaving && window.__tracer?.blank && !document.querySelector(".tr-modal")) startScreen(); };
+async function choose(kind, files = null) {
+  closeStart();
+  const id = kind === "new" ? await newEvent(pageMain, files) : await importEvent(pageMain, files || []);
+  if (!id) backToStart();
+}
+
+/** One's events (those one created or whose team one belongs to); without network, those kept on this device. */
+async function loadEvents() {
+  try { const d = await S.api(""); current = { club: d.club }; return d.events; }
+  catch (e) {
     const kept = e.status ? [] : await OFF.keptEvents().catch(() => []);
-    if (!kept.length) { box.innerHTML = html`<div class="empty">Liste indisponible (${e.code || e.message}).</div>`; return; }
-    d = { events: kept.map((x) => ({ ...x, mine: false, offline: true })), club: current?.club };
+    if (!kept.length) throw e;
+    return kept.map((x) => ({ ...x, mine: false, offline: true }));
   }
-  current = { club: d.club };
-  box.innerHTML = d.events.length ? html`<table class="data compact"><thead><tr><th>Date</th><th>Événement</th><th>Type</th><th>Créé par</th><th>Modifié</th></tr></thead><tbody>
-    ${d.events.map((e) => html`<tr><td class="num">${fmtDate(e.date, "short")}</td><td><a href="#/orga-tracer?id=${e.id}" data-open="${e.id}">${e.title}</a>${e.encrypted ? " 🔒" : ""}</td>
-      <td>${e.kind === "race" ? "Compétition" : "Entraînement"}${e.offline ? " · hors ligne" : ""}${e.pending ? " · modifications à envoyer" : ""}</td><td>${e.mine ? "vous" : e.ownerName}</td><td class="num">${e.updated ? new Date(e.updated).toLocaleDateString("fr-FR") : ""}</td></tr>`)}</tbody></table>`
-    : html`<div class="empty">Aucun événement pour l'instant : « Nouvel événement » pour commencer, ou importez un fichier Purple Pen.</div>`;
-  box.querySelectorAll("[data-open]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", `#/orga-tracer?id=${a.dataset.open}${inOwnTab() ? "&fen=1" : ""}`); openEvent(a.dataset.open); }));
+}
+
+// ---- the start screen: over the editor, the three ways in, each saying what it does and what it needs ------------------------------
+function closeStart() {
+  const el = document.querySelector(".tr-start");
+  if (el) { el._off?.(); el.remove(); }
+}
+function startScreen(focus = "") {
+  const E = window.__tracer;
+  if (!E || leaving) return;
+  closeStart();
+  const el = document.createElement("div");
+  el.className = "tr-start";
+  el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "tr-start-h");
+  const ico = (k) => `<span class="tr-start-ico" aria-hidden="true">${{ new: "＋", import: "⇩", open: "▤" }[k]}</span>`;
+  el.innerHTML = html`<div class="tr-start-box">
+    <div class="tr-start-head"><h2 id="tr-start-h">Que voulez-vous faire ?</h2>
+      <button type="button" class="tr-start-x" data-start-close title="Fermer (Échap)" aria-label="Fermer">×</button></div>
+    <div class="tr-start-cards">
+      <section class="tr-start-card" data-k="new">
+        <h3>${raw(ico("new"))}Nouvel événement</h3>
+        <p>Tracer les circuits d'une compétition de votre club ou d'un entraînement, sur votre carte.</p>
+        <p class="tr-start-need"><b>Il vous faut</b> la carte : un fichier OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap) de préférence, sinon un PDF ou une image (JPG, PNG, TIFF…).</p>
+        <button type="button" class="btn btn-primary" data-start="new">Créer un événement…</button>
+      </section>
+      <section class="tr-start-card" data-k="import">
+        <h3>${raw(ico("import"))}Importer un événement</h3>
+        <p>Reprendre un événement préparé ailleurs : sur un autre compte, un autre club, ou dans Purple Pen.</p>
+        <p class="tr-start-need"><b>Il vous faut</b> un fichier O'CN (.ocnt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</p>
+        <button type="button" class="btn" data-start="import">Importer…</button>
+      </section>
+      <section class="tr-start-card tr-start-open" data-k="open">
+        <h3>${raw(ico("open"))}Ouvrir un événement</h3>
+        <p>Reprendre un de vos événements : ceux que vous avez créés et ceux dont l'équipe vous compte.</p>
+        <div class="tr-start-list" id="tr-start-list"><div class="muted">Chargement…</div></div>
+      </section>
+    </div>
+    <p class="tr-start-foot">Vous pouvez aussi déposer vos fichiers sur cette fenêtre : une carte seule pour un nouvel événement, un fichier .ocnt, ou un .ppen avec sa carte, pour un import.
+      Les circuits restent secrets : seule l'équipe de l'événement l'ouvre (son créateur et les licenciés qu'il ajoute), pas les administrateurs du site.</p>
+  </div>`;
+  E.root.appendChild(el);
+  el.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => choose(b.dataset.start)));
+  el.querySelector("[data-start-close]").addEventListener("click", closeStart);
+  el.addEventListener("pointerdown", (e) => { if (e.target === el) closeStart(); });
+  const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".tr-modal")) { e.stopPropagation(); e.preventDefault(); closeStart(); } };
+  document.addEventListener("keydown", onKey, true);
+  el._off = () => document.removeEventListener("keydown", onKey, true);
+  // files dropped on it: a map alone, a new event; a .ocnt, or a .ppen with or without its map, an import
+  el.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); e.stopPropagation(); el.classList.add("over"); } });
+  el.addEventListener("dragleave", (e) => { if (e.target === el) el.classList.remove("over"); });
+  el.addEventListener("drop", (e) => {
+    const files = [...(e.dataTransfer?.files || [])];
+    el.classList.remove("over");
+    if (!files.length) return;
+    e.preventDefault(); e.stopPropagation();
+    choose(files.some((f) => isPpenFile(f) || isOcnFile(f)) ? "import" : "new", files);
+  });
+  if (focus) el.querySelector(`[data-k="${focus}"]`)?.classList.add("focus");
+  (el.querySelector(`[data-k="${focus}"] button`) || el.querySelector("[data-start='new']"))?.focus({ preventScroll: true });
+  fillOpenList(el);
+}
+async function fillOpenList(el) {
+  const box = el.querySelector("#tr-start-list");
+  let events;
+  try { events = await loadEvents(); }
+  catch (e) { box.innerHTML = html`<div class="tr-err">Liste indisponible (${e.code || e.message}).</div>`; return; }
+  if (!document.contains(box)) return;
+  const openId = window.__tracer?.blank ? null : window.__tracer?.meta?.id;
+  box.innerHTML = events.length ? html`<ul>${events.map((e) => html`<li><button type="button" data-open="${e.id}" ${raw(e.id === openId ? 'aria-current="true"' : "")}>
+      <span class="tr-start-t">${e.title}${e.encrypted ? " 🔒" : ""}</span>
+      <span class="tr-start-m">${fmtDate(e.date, "short")} · ${e.kind === "race" ? "Compétition" : "Entraînement"}${e.mine ? "" : ` · ${e.ownerName || "équipe"}`}${e.offline ? " · hors ligne" : ""}${e.pending ? " · à envoyer" : ""}${e.id === openId ? " · ouvert" : ""}</span>
+    </button></li>`)}</ul>`
+    : html`<div class="muted">Aucun événement pour l'instant : créez-en un, ou importez un fichier.</div>`;
+  box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+    closeStart();
+    if (b.dataset.open === openId) return;
+    history.replaceState(null, "", `#/orga-tracer?id=${b.dataset.open}${inOwnTab() ? "&fen=1" : ""}`);
+    openEvent(b.dataset.open);
+  }));
 }
 
 // ---- a modal outside the editor (same look) -------------------------------------------------------------------------------
@@ -75,6 +171,7 @@ const escA = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
 
 /** The competitions one's club organises: the agenda's coming ones and « Résultats »' recent ones. */
 async function clubRaces() {
+  if (!current) await loadEvents().catch(() => {});
   const me = auth.session(), club = current?.club;
   const out = [];
   try {
@@ -124,23 +221,10 @@ async function openVectorFile(file) {
 const vectorLabel = (src) => `${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`}, 1:${fmtN(src.scale)}, ${fmtN(src.w)} × ${fmtN(src.h)} mm${src.geoInfo ? `, géoréférencée (${src.geoInfo.name})` : ""}`;
 const baseName = (n) => String(n || "").split(/[\\/]/).pop().replace(/\.[^.]+$/, "").toLowerCase();
 
-/** Files dropped anywhere on the list page: a .ppen (with or without its map) opens the import, a map alone a new event. */
-function bindPageDrop(main) {
-  main.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); main.classList.add("tr-page-over"); } });
-  main.addEventListener("dragleave", (e) => { if (e.target === main) main.classList.remove("tr-page-over"); });
-  main.addEventListener("drop", (e) => {
-    const files = [...(e.dataTransfer?.files || [])];
-    main.classList.remove("tr-page-over");
-    if (!files.length || document.querySelector(".tr-modal, .tr-app")) return;
-    e.preventDefault();
-    if (files.some(isPpenFile)) importPpenEvent(main, files); else newEvent(main, files);
-  });
-}
-
 // ---- a new event: its map, dropped or chosen ----------------------------------------------------------------------------------
 async function newEvent(main, files = null) {
   const races = await clubRaces();
-  let mapFile = null, vec = null;
+  let mapFile = null, vec = null, handed = false;
   const v = await modal({ title: "Nouvel événement", wide: true, ok: "Créer", body: `
     ${kindFields(races)}
     ${dropHtml("tr-new-drop", "Déposez ici la carte — OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image (JPG, PNG, GIF, TIFF, BMP) —, ou cliquez pour la choisir", MAP_ACCEPT, false)}
@@ -152,7 +236,7 @@ async function newEvent(main, files = null) {
     bindKind(f, races);
     const show = (html, bad = false) => { const p = f.querySelector("#tr-new-map"); p.innerHTML = html; p.classList.toggle("tr-bad", bad); };
     const take = async (list) => {
-      if (list.some(isPpenFile)) { done(null); importPpenEvent(main, list); return; }        // a Purple Pen file: the import
+      if (list.some((x) => isPpenFile(x) || isOcnFile(x))) { handed = true; done(null); importEvent(main, list).then((id) => { if (!id) backToStart(); }); return; }   // the import
       const file = list.find(isMapFile);
       if (!file) { show(`« ${escA(list[0].name)} » n'est pas une carte (OCAD, Mapper, PDF ou image).`, true); return; }
       mapFile = file; vec = null;
@@ -174,7 +258,7 @@ async function newEvent(main, files = null) {
   },
   validate: (o) => kindProblem(o) || (!mapFile ? "Déposez ou choisissez la carte." : isVectorMap(mapFile.name) && !vec ? "La carte est en cours de lecture." : !(Number(o.scale) > 100) ? "L'échelle de la carte."
     : !isPdf(mapFile.name, mapFile.type) && !vec && o.dpi && !(Number(o.dpi) > 10) ? "La résolution de l'image." : null) });
-  if (!v) return null;
+  if (!v) return handed ? "import" : null;               // a .ppen or .ocnt dropped here went on to the import
   const bytes = vec?.bytes || new Uint8Array(await mapFile.arrayBuffer()), type = mimeOf(mapFile.name, mapFile.type);
   let err = null;
   const src = vec || await openMap(bytes, type, mapFile.name, Number(v.dpi) || 0).catch((e) => { err = e; return null; });
@@ -190,21 +274,21 @@ async function newEvent(main, files = null) {
   await S.saveMap(created.id, bytes, type, null);
   await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: mapFile.name, type, size: bytes.length } } });
   await S.saveEvent(created.id, ev, null, 0);
-  await list();
   history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);
   openEvent(created.id);
   return created.id;
 }
 
-// ---- a Purple Pen event: the .ppen and its map, dropped together or one after the other ----------------------------------------
-async function importPpenEvent(main, files = []) {
+// ---- an imported event: an O'CN file (.ocnt, which holds its map), or a Purple Pen file (.ppen) and its map, dropped together or one after the other
+async function importEvent(main, files = []) {
   const races = await clubRaces();
-  const st = { ppen: null, ev: null, map: null, notes: [] };
-  const v = await modal({ title: "Importer un fichier Purple Pen", wide: true, ok: "Importer", body: `
-    <p>Le fichier <b>.ppen</b> et <b>sa carte</b> : déposez-les ensemble ici, l'un après l'autre, ou cliquez pour les choisir.
-    La carte peut être un fichier OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image (JPG, PNG, GIF, TIFF, BMP) : le fichier que nomme le .ppen,
-    ou à défaut n'importe quel PDF ou image de la même carte (un scan ou une photo prise bien à plat conviennent) — vous calerez alors les postes sur la carte en deux clics.</p>
-    ${dropHtml("tr-imp-drop", "Déposez ici le .ppen et la carte (OCAD, Mapper, PDF ou image), ou cliquez pour les choisir", `.ppen,.xml,${MAP_ACCEPT}`)}
+  const st = { ppen: null, ocn: null, ev: null, map: null, mapFromOcn: false, notes: [] };
+  const v = await modal({ title: "Importer un événement", wide: true, ok: "Importer", body: `
+    <p>Un fichier <b>O'CN (.ocnt)</b>, qui contient tout l'événement et sa carte ; ou un fichier <b>Purple Pen (.ppen)</b> et <b>sa carte</b> : déposez-les ensemble ici,
+    l'un après l'autre, ou cliquez pour les choisir. La carte d'un .ppen peut être un fichier OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image
+    (JPG, PNG, GIF, TIFF, BMP) : le fichier que nomme le .ppen, ou à défaut n'importe quel PDF ou image de la même carte (un scan ou une photo prise bien à plat
+    conviennent) — vous calerez alors les postes sur la carte en deux clics.</p>
+    ${dropHtml("tr-imp-drop", "Déposez ici le fichier .ocnt, ou le .ppen et sa carte (OCAD, Mapper, PDF ou image), ou cliquez pour les choisir", `.ocnt,.ppen,.xml,${MAP_ACCEPT}`)}
     <ul class="tr-files" id="tr-imp-files"></ul>
     <h3>L'événement</h3>
     ${kindFields(races)}`,
@@ -213,11 +297,14 @@ async function importPpenEvent(main, files = []) {
     const render = () => {
       const ev = st.ev, expected = ev?.map?.file || "", ocad = /\.(ocd|omap|xmap)$/i.test(expected) || ev?.map?.kind === "ocad";
       const lines = [];
-      if (st.ppen && ev) {
+      if (st.ocn && ev) {
+        const nCtl = Object.values(ev.controls).filter((c) => c.kind === "normal").length;
+        lines.push(`<li class="ok">✓ Fichier O'CN « ${escA(st.ocn.name)} » : ${escA(ev.title || "sans titre")}, ${Object.keys(ev.courses).length} circuit(s), ${nCtl} poste(s)${expected ? ` ; sa carte : « ${escA(expected)} » au 1:${ev.map.scale}` : ""}${st.mapFromOcn ? ", comprise dans le fichier" : ""}.</li>`);
+      } else if (st.ppen && ev) {
         const nCtl = Object.values(ev.controls).filter((c) => c.kind === "normal").length;
         lines.push(`<li class="ok">✓ Fichier Purple Pen « ${escA(st.ppen.name)} » : ${escA(ev.title || "sans titre")}, ${Object.keys(ev.courses).length} circuit(s), ${nCtl} poste(s)${expected ? ` ; sa carte : « ${escA(expected)} » au 1:${ev.map.scale}` : ""}.</li>`);
-      } else lines.push('<li class="todo">… Le fichier .ppen : pas encore choisi.</li>');
-      if (st.map) {
+      } else lines.push('<li class="todo">… Le fichier .ocnt ou .ppen : pas encore choisi.</li>');
+      if (st.map && st.mapFromOcn) { /* the .ocnt's own map: said on its line */ } else if (st.map) {
         const vec = isVectorMap(st.map.name), same = !expected || baseName(expected) === baseName(st.map.name);
         lines.push(`<li class="ok">✓ Carte « ${escA(st.map.name)} » (${vec ? "OCAD ou Mapper" : isPdf(st.map.name, st.map.type) ? "PDF" : "image"}, ${(st.map.size / 1e6).toFixed(1).replace(".", ",")} Mo).</li>`);
         if (vec && ocad && !same) lines.push(`<li class="ok">Une autre version de la carte OCAD ou Mapper du .ppen (« ${escA(expected)} ») : les postes gardent leurs coordonnées sur la carte.</li>`);
@@ -229,11 +316,18 @@ async function importPpenEvent(main, files = []) {
     const take = async (list) => {
       st.notes = [];
       for (const file of list) {
-        if (isPpenFile(file)) {
-          try { st.ev = readPpen(await file.text()); st.ppen = file; if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
+        if (isOcnFile(file)) {
+          try {
+            const r = await readOcn(await file.arrayBuffer());
+            st.ev = r.ev; st.ocn = file; st.ppen = null;
+            if (r.map) { st.map = new File([r.map.bytes], r.map.name, { type: r.map.type || mimeOf(r.map.name, "") }); st.mapFromOcn = true; }
+            if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || "";
+          } catch (e) { st.notes.push(`« ${escA(file.name)} » : ${escA(e.message)}.`); }
+        } else if (isPpenFile(file)) {
+          try { st.ev = readPpen(await file.text()); st.ppen = file; st.ocn = null; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
           catch (e) { st.notes.push(`« ${escA(file.name)} » n'est pas un fichier Purple Pen lisible.`); }
-        } else if (isMapFile(file)) st.map = file;
-        else st.notes.push(`« ${escA(file.name)} » n'est ni un .ppen ni une carte (OCAD, Mapper, PDF ou image).`);
+        } else if (isMapFile(file)) { st.map = file; st.mapFromOcn = false; }
+        else st.notes.push(`« ${escA(file.name)} » n'est ni un fichier .ocnt ou .ppen, ni une carte (OCAD, Mapper, PDF ou image).`);
       }
       render();
     };
@@ -241,18 +335,36 @@ async function importPpenEvent(main, files = []) {
     render();
     if (files?.length) take(files);
   },
-  validate: (o) => (!st.ev ? "Il manque le fichier .ppen." : !st.map ? "Il manque la carte (OCAD, Mapper, PDF ou image)." : kindProblem(o)) });
-  if (!v) return;
+  validate: (o) => (!st.ev ? "Il manque le fichier .ocnt ou .ppen." : !st.map ? "Il manque la carte (OCAD, Mapper, PDF ou image)." : kindProblem(o)) });
+  if (!v) return null;
   const ev = st.ev, file = st.map, bytes = new Uint8Array(await file.arrayBuffer()), type = mimeOf(file.name, file.type);
+  // an O'CN file on its own map (inside it, or the same file): the event as it was, in its own frame — nothing to align
+  if (st.ocn && (st.mapFromOcn || baseName(file.name) === baseName(ev.map.file))) {
+    let err0 = null;
+    const src = await openMap(bytes, type, file.name, ev.map.dpi || 0, ev.map.kind === "ocad" ? ev.map : null).catch((e) => { err0 = e; return null; });
+    if (!src) { alertBox(mapError(err0)); return null; }
+    const created = await createEvent(v, races);
+    if (!created) return null;
+    ev.map.file = file.name;
+    if (src.kind === "vector" && ev.map.kind === "ocad") { ev.map.w = src.w; ev.map.h = src.h; }
+    if (!ev.title) ev.title = created.title;
+    await S.saveMap(created.id, bytes, type, null);
+    await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: file.name, type, size: bytes.length } } });
+    await S.saveEvent(created.id, ev, null, 0);
+    history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);
+    openEvent(created.id);
+    return created.id;
+  }
   // another file than the .ppen's own (an OCAD map's PDF or image, a scan): the controls are aligned on it once opened; an OCAD or
   // Mapper map for a .ppen made on one keeps the controls' coordinates (Purple Pen keeps the map file's own millimetres)
   const vector = isVectorMap(file.name, bytes), ppenOcad = ev.map.kind === "ocad" || /\.(ocd|omap|xmap)$/i.test(ev.map.file || "");
-  const differs = vector ? !ppenOcad : ppenOcad || (!!ev.map.file && baseName(ev.map.file) !== baseName(file.name));
+  // an O'CN file on another map than its own: aligned like a .ppen on another map (its coordinates are its own frame's)
+  const differs = st.ocn ? true : vector ? !ppenOcad : ppenOcad || (!!ev.map.file && baseName(ev.map.file) !== baseName(file.name));
   let err = null;
   const src = await openMap(bytes, type, file.name, ev.map.dpi || 0).catch((e) => { err = e; return null; });
-  if (!src) { alertBox(mapError(err)); return; }
+  if (!src) { alertBox(mapError(err)); return null; }
   const created = await createEvent(v, races);
-  if (!created) return;
+  if (!created) return null;
   if (src.kind === "bitmap") {
     const dpi = ev.map.kind === "bitmap" && ev.map.dpi ? ev.map.dpi : src.dpi || 300;
     Object.assign(ev.map, { kind: "bitmap", file: file.name, dpi, w: (src.pxW * 25.4) / dpi, h: (src.pxH * 25.4) / dpi });
@@ -267,9 +379,9 @@ async function importPpenEvent(main, files = []) {
   await S.saveMap(created.id, bytes, type, null);
   await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: file.name, type, size: bytes.length } } });
   await S.saveEvent(created.id, ev, null, 0);
-  await list();
   history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);
   openEvent(created.id, { align: differs });
+  return created.id;
 }
 
 const mapError = (e) => (e?.message && e.message !== "map" ? `La carte n'a pas pu être lue : ${e.message}` : "La carte n'a pas pu être lue.");
@@ -290,31 +402,27 @@ async function openLocal(id, onClose) {
   if (mapSrc && rec.ev.map.kind === "bitmap" && rec.ev.map.dpi) mapSrc.dpi = rec.ev.map.dpi;
   const { openEditor } = await import("../tracer/editor.js");
   if (leaving) return true;
+  await closeEditor();
   pageMain.innerHTML = "";
-  await openEditor({ container: pageMain, meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose });
+  await openEditor({ container: pageMain, meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose, onStart });
   return true;
 }
-function alertBox(text) { modal({ title: "Tracer", body: `<p>${escA(text)}</p>`, cancel: null }); }
+function alertBox(text) { return modal({ title: "Tracer", body: `<p>${escA(text)}</p>`, cancel: null }); }
 
 // ---- opening ----------------------------------------------------------------------------------------------------------------
 async function openEvent(id, { align = false } = {}) {
   const loading = document.createElement("div");
   loading.className = "tr-loading"; loading.innerHTML = '<div class="spinner"></div><p>Ouverture de l\'événement…</p>';
   document.body.appendChild(loading);
-  // closing the editor (« ← Événements »): back to the list, in this tab as in a tab of its own
-  const onClose = () => {
-    if (leaving) return;
-    history.replaceState(null, "", listHash());
-    drawPage(pageMain);
-  };
   let info;
   try { info = await S.api(`/${id}`); }
   catch (e) {
     // no network: the copy kept on this device, if any (offline.js)
     if (!e.status) { loading.remove(); if (await openLocal(id, onClose)) return; }
     loading.remove();
-    alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : !e.status ? "Pas de réseau, et cet événement n'est pas gardé sur cet appareil (Fichier › Travailler hors ligne)." : `Ouverture impossible : ${e.code || e.message}`);
     history.replaceState(null, "", listHash());
+    await alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : !e.status ? "Pas de réseau, et cet événement n'est pas gardé sur cet appareil (Fichier › Travailler hors ligne)." : `Ouverture impossible : ${e.code || e.message}`);
+    backToStart();
     return;
   }
   try {
@@ -325,7 +433,7 @@ async function openEvent(id, { align = false } = {}) {
         loading.remove();
         const v = await modal({ title: "Événement chiffré", ok: "Ouvrir", body: field("Phrase de passe de l'équipe", '<input name="p" type="password" autocomplete="current-password">'),
           validate: async (o) => ((await S.unlock(id, info.event.encrypted, o.p)) ? null : "Phrase de passe incorrecte.") });
-        if (!v) { history.replaceState(null, "", listHash()); return; }
+        if (!v) { history.replaceState(null, "", listHash()); backToStart(); return; }
         key = await S.keyFor(id);
         document.body.appendChild(loading);
       }
@@ -352,12 +460,15 @@ async function openEvent(id, { align = false } = {}) {
     loading.remove();
     const { openEditor } = await import("../tracer/editor.js");
     if (leaving) return;                                  // the user went to another page meanwhile
+    await closeEditor();
+    if (leaving) return;
     pageMain.innerHTML = "";
     await openEditor({ container: pageMain, meta: info.event, role: info.role, you: info.you, ev, version: evR?.version || 0, mapSrc, key, readOnly: info.role === "viewer", align, dirty,
-      lockHolder: info.lock, onClose });
+      lockHolder: info.lock, onClose, onStart });
   } catch (e) {
     loading.remove();
-    alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : `Ouverture impossible : ${e.code || e.message}`);
     history.replaceState(null, "", listHash());
+    await alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : `Ouverture impossible : ${e.code || e.message}`);
+    backToStart();
   }
 }

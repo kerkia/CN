@@ -1510,10 +1510,8 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .g-target { font-weight: 600; color: var(--ink-2); min-height: 20px; }
 
 /* ---------------------------------------------------------------- Tracer (Organisation › Tracer, 2026-10-15)
-   The editor opens over the site in a window of its own (.tr-app, fixed, full window): menus and tools along the top,
-   the course tabs, the description sheet and the selected object on the left, the map in the middle, a help line at
-   the bottom. */
-.tr-head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+   The editor (.tr-app): menus and tools along the top, the course tabs, the description sheet and the selected object on
+   the left, the map in the middle, a help line at the bottom; empty at first, under the start screen (.tr-start). */
 /* the editor sits in the page under the site's menus, as the analyses (owner, 2026-10-15); ⤢ (fullwin.js) fills the window */
 body.tr-open .page { max-width: none; padding: 6px 10px 8px; }
 body.tr-open #footer { display: none; }
@@ -1673,6 +1671,41 @@ body.full-win .tr-app { border: 0; }
 .tr-field-foot small { flex: 1; color: var(--ink-3); }
 .tr-fieldmode .tr-left { display: none; }
 .tr-fieldmode .tr-body { grid-template-columns: 0 0 minmax(0, 1fr); }
+/* the start screen over the empty editor (pages/tracer.js; owner, 2026-10-17): the three ways in, side by side */
+.tr-start { position: absolute; inset: 0; z-index: 60; background: color-mix(in srgb, var(--plane) 62%, transparent); backdrop-filter: blur(2px);
+  display: grid; place-items: center; padding: 16px; overflow: auto; }
+.tr-start.over .tr-start-box { outline: 3px dashed #a7179b; outline-offset: 4px; }
+.tr-start-box { background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop);
+  width: min(1040px, 100%); padding: 18px 20px 14px; }
+.tr-start-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.tr-start-head h2 { font-size: 18px; margin: 0; }
+.tr-start-x { border: 0; background: transparent; color: var(--ink-2); font-size: 24px; line-height: 1; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; }
+.tr-start-x:hover { background: var(--surface-2); color: var(--ink); }
+.tr-start-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tr-start-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); min-width: 0; }
+.tr-start-card.focus { border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 30%, transparent); }
+.tr-start-card h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0; }
+.tr-start-card p { margin: 0; font-size: 13px; color: var(--ink-2); }
+.tr-start-card .tr-start-need { color: var(--ink); }
+.tr-start-card > .btn { margin-top: auto; align-self: flex-start; }
+.tr-start-ico { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: color-mix(in srgb, #a7179b 14%, var(--surface));
+  color: color-mix(in srgb, #a7179b 78%, var(--ink)); font-size: 15px; font-weight: 700; flex: none; }
+.tr-start-list { max-height: 228px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 13px; }
+.tr-start-list > .muted, .tr-start-list > .tr-err { padding: 10px; }
+.tr-start-list ul { list-style: none; margin: 0; padding: 0; }
+.tr-start-list li + li { border-top: 1px solid var(--border); }
+.tr-start-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 7px 10px; border: 0; background: transparent;
+  color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.tr-start-list button:hover, .tr-start-list button:focus-visible { background: var(--surface-2); outline: none; }
+.tr-start-list button[aria-current] { background: color-mix(in srgb, var(--focus) 10%, var(--surface)); }
+.tr-start-t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.tr-start-m { color: var(--ink-3); font-size: 12px; }
+.tr-start-foot { margin: 12px 0 0; font-size: 12px; color: var(--ink-3); }
+@media (max-width: 860px) {
+  .tr-start { place-items: start center; padding: 10px; }
+  .tr-start-cards { grid-template-columns: minmax(0, 1fr); }
+  .tr-start-list { max-height: 40vh; }
+}
 @media (max-width: 760px) {
   .tr-app { --tr-left: 100%; }
   .tr-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }

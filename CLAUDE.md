@@ -686,7 +686,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `docs/tracer/symbols.py` into `site/assets/tracer/symbols.json` (fr/en) and `symbol-texts.json` (23 languages). The model
   (`model.js`) mirrors Purple Pen's EventDB, QueryEvent, CourseView and ChangeEvent (controls, courses as linked course controls,
   forks and loops, map exchanges, legs with bends, gaps and flagging, specials, print areas, all in map mm, y up); `ppen.js` reads
-  and writes **.ppen** (round trip checked on 15 sample events); `layout.js` = CourseFormatter (number placement, automatic
+  and writes **.ppen** (round trip checked on 15 sample events; « Purple Pen » is named as the file format the Tracer supports);
+  **the O'CN file** (`ocnfile.js`, owner, 2026-10-17: ours to evolve) is a `.ocnt` zip — `event.json` `{ format: "ocn-trace",
+  version, app, saved, title, map: { file, type, size } | null, event }`, `event` being the model's own event (all a .ppen holds plus
+  O'CN's additions: georeferencing, routes, publication links…, in the event's frame), and `map/<name>` the map file itself when
+  included (Fichier › Exporter au format O'CN, the stored map's name from the event's meta; checked byte for byte and event for event
+  on a round trip); a file of a newer `version` or model `v` is refused with a plain message; not encrypted, which the export says
+  for an encrypted event; `layout.js` = CourseFormatter (number placement, automatic
   cuts), `draw.js` the canvas and PDF items, `descr.js` + `textify.js` the description sheets (symbols and text, any language),
   `pdf.js` the PDFs (pdf-lib, the PDF map embedded as a vector page; courses, per part, per variation or relay team and leg;
   descriptions; punch cards; print areas), `exports.js` IOF XML 3/2 (relay team assignments), GPX, KML, images with world file,
@@ -696,8 +702,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   circle, dog-legs, short legs, codes < 31 or read upside down), shown, printed or as CSV (« ; », UTF-8 BOM). The editor
   (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is drawn in the page under the site's menus, as the analyses are (owner,
   2026-10-15: the former full-window overlay left no obvious way back to the site): `.tr-app` in `#main` (`ctx.container`), its
-  height fitted to the window (`fitHeight`), `body.tr-open` widens the page and hides the footer; « ← Événements » saves and goes
-  back to the list (in a `?fen=1` tab too); the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
+  height fitted to the window (`fitHeight`), `body.tr-open` widens the page and hides the footer. **The page opens the editor at
+  once** (owner, 2026-10-17), empty (`ctx.blank`: read-only, no lock, no save, « Aucun événement ouvert »; a change, a drop or any
+  menu but the views leads to the start screen), and over it **the start screen** (`pages/tracer.js` `startScreen`, `.tr-start` in
+  the editor's root): Nouvel événement (a competition of one's club or a training; the map), Importer un événement (a .ocnt, its
+  map inside, or a .ppen and its map), Ouvrir un événement (one's events, listed inside); each card says what it needs; files dropped
+  on it choose (a map alone: new; a .ocnt or .ppen: import); Échap or « × » closes it; « Événements » (the top bar's first button)
+  and Fichier › Nouvel / Ouvrir / Importer bring it back (`ctx.onStart`), over the open event; a link with `?id=` opens the event
+  directly; a dialog given up with no event open goes back to it. Switching events closes the open one first (`closeEditor`:
+  saved, lock released); the editor closing by itself (↗) leaves the empty editor and the start screen; the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
   saves, opens the event alone in a tab and closes it here (`setTabHandler`; one event, one tab), Échap first cancels the
   editor's own pick, drawing, tool or selection (`setEscapeOwner`); a
   change of page closes it (saved). With Purple Pen's tools and insertion rule,
@@ -723,9 +736,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   ocn.tr.field.<id>` when offline); version differences; other courses shown faint. Account deletion hands an event to the first
   setter (else controller) of its team who has an account, else deletes it; the privacy page says so. Local tests: Purple Pen's
   samples in the git-ignored `site/data/_trtest/` (their .ppen were made for OCAD maps: controls can lie off the JPEG).
-  **Second pass (owner, 2026-10-15: « complete phases 1-3 »).** Import: one dialog, the .ppen and its map dropped together or
-  one after the other (`dialogs.dropZone`), each file confirmed as read; files dropped on the Tracer page, « Nouvel événement »,
-  « Changer de carte » or the editor are taken too; the OCAD or Mapper file, or any PDF or image of the map (never assume OCAD is at hand). A map that is
+  **Second pass (owner, 2026-10-15: « complete phases 1-3 »).** Import: one dialog (`importEvent`), the .ppen and its map dropped
+  together or one after the other (`dialogs.dropZone`), each file confirmed as read, or a .ocnt alone (opened as saved, in its own
+  frame, when its map is inside or the same file is given; another map goes through the calage); files dropped on the start screen,
+  « Nouvel événement », « Changer de carte » or the editor are taken too; the OCAD or Mapper file, or any PDF or image of the map (never assume OCAD is at hand). A map that is
   not the .ppen's own file is aligned by two clicks (`calage.js`: least-squares similarity; a .ppen keeps true map mm, so the
   scale found corrects the image's dpi or the PDF's scale, not the course), also Événement › Caler les postes sur la carte.
   TIFF read by `tiff.js` (strips/tiles, none/LZW/Deflate/PackBits, predictor, 1-16 bits, palette, planar; a GeoTIFF's

@@ -8,6 +8,7 @@ import * as S from "./store.js";
 import { symbol, symbolName, loadSymbols, languages } from "./symbols.js";
 import { family, FAMILY_LABEL } from "./fonts.js";
 import { readPpen, writePpen } from "./ppen.js";
+import { writeOcn } from "./ocnfile.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
@@ -102,8 +103,13 @@ const needSel = (E, kind) => { if (E.sel?.kind !== kind && !(kind === "control" 
 export async function action(E, act, btn, at = {}) {
   const ev = E.ev, s = E.sel;
   const ro = () => { if (E.readOnly) { E.toast("Lecture seule."); return true; } return false; };
+  // the start screen's three choices (pages/tracer.js), from the Fichier menu too
+  if (act.startsWith("start-")) { E.onStart?.(act.slice(6)); return; }
+  // no event open yet: only the start screen leads somewhere
+  if (E.blank && !["view-map", "view-course", "save-to"].includes(act)) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return; }
   switch (act) {
     case "save": await E.saveNow(true); break;
+    case "export-ocn": exportOcn(E); break;
     case "version-save": versionSave(E); break;
     case "versions": versions(E); break;
     case "import-ppen": if (!ro()) importPpen(E); break;
@@ -602,6 +608,26 @@ export async function saveFiles(E, files, zipName) {
   download(zipName, new Blob([await zip(bin)], { type: "application/zip" }));
 }
 export const fileName = (s) => String(s || "evenement").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
+/** The event as an O'CN file (.ocnt, ocnfile.js): the whole event in one file, the map in it by default. */
+async function exportOcn(E) {
+  // the stored map's own name (a .ppen's map name can be another file's: an OCAD map replaced by its PDF), with an extension
+  const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/tiff": ".tif", "image/bmp": ".bmp", "application/pdf": ".pdf" };
+  const mapName = (type) => { const n = String(E.meta.map?.name || E.ev.map.file || "carte").split(/[\\/]/).pop(); return /\.[a-z0-9]{2,5}$/i.test(n) ? n : n + (ext[type] || ""); };
+  const v = await modal(E, { title: "Exporter au format O'CN", ok: "Exporter", body: `<p>Un seul fichier <b>.ocnt</b> qui contient tout l'événement — postes, circuits,
+    définitions, apparence, zones d'impression, géoréférencement — et, si vous le cochez, la carte elle-même. Il se rouvre sur O'CN par
+    « Importer un événement », pour une copie, un autre club ou une archive.</p>
+    <label class="tr-check"><input type="checkbox" name="withMap" checked> Inclure la carte (« ${esc(mapName(E.meta.map?.type))} »)</label>
+    ${E.key ? `<p class="tr-hint">L'événement est chiffré sur O'CN, mais ce fichier ne l'est pas : gardez-le pour l'équipe.</p>` : ""}` });
+  if (!v) return;
+  let map = null;
+  if (v.withMap) {
+    const r = await S.loadMap(E.meta.id, E.key).catch(() => null);
+    if (r?.bytes) map = { name: mapName(r.type || E.meta.map?.type), type: r.type || E.meta.map?.type || "", bytes: r.bytes };
+    else E.toast("La carte n'a pas pu être lue : le fichier est exporté sans elle.", 6000);
+  }
+  download(`${fileName(E.ev.title)}.ocnt`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
+  E.toast(map ? "Fichier O'CN exporté, avec sa carte." : "Fichier O'CN exporté.");
+}
 function exportPpen(E) {
   download(`${fileName(E.ev.title)}.ppen`, writePpen(E.ev), "application/xml");
   E.toast(`Fichier .ppen enregistré : à mettre dans le même dossier que la carte « ${E.ev.map.file || "(carte)"} » pour l'ouvrir dans Purple Pen.`, 7000);

@@ -33,13 +33,15 @@ const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser
   ["route", "Itinéraire", "Cliquer un interposte, puis les points du chemin que prendront les coureurs (pour la dénivelée) ; double-cliquer pour finir"],
   ["descr", "Définitions sur la carte", "Glisser pour placer les définitions du circuit sur la carte (la largeur donne leur taille)"]];
 
-/** Open the editor over the page. ctx: { meta, role, you, ev, version, mapSrc, key, readOnly, lockHolder, onClose, newTab }. */
+/** Open the editor over the page. ctx: { meta, role, you, ev, version, mapSrc, key, readOnly, lockHolder, onClose, newTab, blank, onStart }.
+ *  blank: no event yet (the page opens the editor at once, its start screen over it — owner, 2026-10-17): nothing saved, no
+ *  lock, every change and most menus lead to the start screen. onStart(kind, files): the start screen (pages/tracer.js). */
 export async function openEditor(ctx) {
   // the symbols, and the fonts the labels are measured with (Helvetica's widths stand in when they are slow to come)
   const fontsIn = await Promise.all([loadSymbols(), loadFonts(5000)]).then(([, ok]) => ok);
   const E = {
     meta: ctx.meta, role: ctx.role, you: ctx.you, ev: ctx.ev, version: ctx.version || 0, key: ctx.key || null, map: ctx.mapSrc,
-    readOnly: !!ctx.readOnly, lockHolder: ctx.lockHolder || null, offline: !!ctx.offline,
+    readOnly: !!ctx.readOnly || !!ctx.blank, lockHolder: ctx.lockHolder || null, offline: !!ctx.offline, blank: !!ctx.blank, onStart: ctx.onStart || null,
     cd: M.cdAll(), variation: null, sel: null, tool: "select", undo: [], redo: [], dirty: false, saving: false, lastSaved: null,
     opts: { intensity: loadPref("intensity", 1), allControls: loadPref("allControls", false), others: [], printArea: false },
     layout: null, items: [], view: { k: 1, ox: 0, oy: 0 }, pending: null,
@@ -71,6 +73,7 @@ export async function openEditor(ctx) {
   E.course = () => (E.cd.course ? E.ev.courses[E.cd.course] : null);
   /** Apply a change: snapshot for undo, then fn(ev); a refused change (fn returns false) is not kept. */
   E.change = (fn, label = "") => {
+    if (E.blank) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return false; }
     if (E.readOnly) { E.toast("Lecture seule : un autre membre de l'équipe modifie l'événement."); return false; }
     const snap = JSON.stringify(E.ev);
     let ok;
@@ -475,7 +478,7 @@ export async function openEditor(ctx) {
     if (parts >= 2) pbox.innerHTML = [`<button type="button" data-part="-1" aria-pressed="${E.cd.part < 0}">Toutes les parties</button>`,
       ...Array.from({ length: parts }, (_, i) => `<button type="button" data-part="${i}" aria-pressed="${E.cd.part === i}">Partie ${i + 1}</button>`)].join("");
     $$("#tr-parts [data-part]").forEach((b) => b.addEventListener("click", () => { E.cd = { ...E.cd, part: Number(b.dataset.part) }; renderTabs(); refresh(); }));
-    root.querySelector(".tr-title").textContent = E.ev.title || E.meta.title;
+    root.querySelector(".tr-title").textContent = E.blank ? "Aucun événement ouvert" : E.ev.title || E.meta.title;
   }
   const courseTip = (id) => {
     const v = M.view(E.ev, M.cdCourse(id), { specials: false, descriptions: false });
@@ -515,7 +518,8 @@ export async function openEditor(ctx) {
   root.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tr-menu")) closeMenus(); });
   $("#tr-undo").addEventListener("click", () => E.undoStep());
   $("#tr-redo").addEventListener("click", () => E.redoStep());
-  $("#tr-close").addEventListener("click", () => close());
+  // « Événements »: the start screen (open, create, import); without one (an older caller), back to the list
+  $("#tr-close").addEventListener("click", () => (E.onStart ? E.onStart() : close()));
   // « ↗ »: the event moves to a tab of its own — the tab opened at once (a later open would be taken for a pop-up), the work
   // saved, the tab sent to the event, and the editor here closed: one event is not edited from two tabs
   FW.setTabHandler(async () => {
@@ -602,6 +606,8 @@ export async function openEditor(ctx) {
   E.takeLock = async () => { await takeLock(true); refresh(); };
   function banner() {
     const b = $("#tr-banner");
+    root.classList.toggle("tr-blank", E.blank);
+    if (E.blank) { b.hidden = true; root.classList.add("tr-readonly"); return; }
     if (E.offline) {
       b.hidden = false;
       b.innerHTML = "<span>Hors ligne : vos modifications sont gardées sur cet appareil et partiront au serveur dès que le réseau reviendra.</span>";
@@ -613,7 +619,7 @@ export async function openEditor(ctx) {
     root.classList.toggle("tr-readonly", E.readOnly);
   }
   function close() {
-    save(false).finally(() => {
+    return save(false).finally(() => {
       clearInterval(lockTimer);
       for (const f of E.closeHooks) { try { f(); } catch (err) { /* closing anyway */ } }
       if (!E.readOnly) S.api(`/${E.meta.id}/lock`, { method: "DELETE" }).catch(() => {});
@@ -648,7 +654,7 @@ export async function openEditor(ctx) {
   banner();
   if (!E.readOnly) await takeLock(false);
   refresh();
-  E.status(E.readOnly ? "Lecture seule" : "Prêt", "ok");
+  E.status(E.blank ? "Aucun événement" : E.readOnly ? "Lecture seule" : "Prêt", "ok");
   if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
   fontCheck();
   syncVector();
@@ -658,6 +664,9 @@ export async function openEditor(ctx) {
     const files = [...(e.dataTransfer?.files || [])];
     if (!files.length || root.querySelector(".tr-modal")) return;
     e.preventDefault();
+    // no event yet, or an O'CN file: a new event, through the start screen (a map alone: created; a .ocnt or .ppen: imported)
+    const ocn = files.some((f) => /\.ocnt$/i.test(f.name));
+    if ((E.blank || ocn) && E.onStart) { E.onStart(ocn || files.some((f) => /\.(ppen|xml)$/i.test(f.name)) ? "import" : "new", files); return; }
     if (E.readOnly) { E.toast("Lecture seule."); return; }
     const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find(isMapFile);
     if (ppen) D.importPpen(E, ppen);
@@ -684,7 +693,7 @@ function shell(E) {
     it === "-" ? '<hr>' : `<button type="button" role="menuitem" data-act="${it[0]}">${actIcon(it[0])}<span>${esc(it[1])}</span></button>`).join("")}</div></div>`;
   return `
   <header class="tr-top">
-    <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Enregistrer et revenir à la liste des événements">← Événements</button>
+    <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Ouvrir un autre événement, en créer un ou en importer un">${svg("folder", 15)}<span>Événements</span></button>
     <span class="tr-title"></span><span class="beta-tag" title="Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)">Bêta</span>
     <nav class="tr-menus">
       ${MENUS.map(menu).join("")}

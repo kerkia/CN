@@ -103,7 +103,8 @@ export const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 
 
 /** Each action's icon: the menus, the right-click menu, the special objects. */
 export const ACT_ICON = {
-  save: "save", "version-save": "bookmark", versions: "history", "import-ppen": "import", "export-ppen": "export",
+  "start-new": "file", "start-open": "folder", "start-import": "import", "export-ocn": "export",
+  save: "save", "version-save": "bookmark", versions: "history", "import-ppen": "swap", "export-ppen": "export",
   "pdf-courses": "printer", "pdf-descriptions": "descr", "pdf-punch": "punch", "export-iof3": "stopwatch", "export-iof2": "stopwatch",
   "export-gpx": "pin", "export-kml": "globe", "export-images": "image", "export-ocad": "layers", "export-routegadget": "route", "export-csv": "table",
   publish: "share", "send-results": "send", "map-change": "swap", offline: "offline",
@@ -130,8 +131,9 @@ export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) :
 
 /** The editor's menus: { label, icon, items: [action, label] or "-" }. */
 export const MENUS = [
-  { label: "Fichier", icon: "file", items: [["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
-    ["import-ppen", "Importer un fichier Purple Pen (.ppen)…"], ["export-ppen", "Exporter en .ppen"], "-",
+  { label: "Fichier", icon: "file", items: [["start-new", "Nouvel événement…"], ["start-open", "Ouvrir un événement…"], ["start-import", "Importer un événement (O'CN .ocnt, Purple Pen .ppen)…"], "-",
+    ["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
+    ["export-ocn", "Exporter au format O'CN (.ocnt), avec la carte…"], ["export-ppen", "Exporter au format Purple Pen (.ppen)"], ["import-ppen", "Remplacer les circuits par ceux d'un fichier .ppen…"], "-",
     ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
     ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
     ["export-images", "Images des circuits (PNG, JPEG, GIF)…"], ["export-ocad", "Fichiers OCAD ou Mapper des circuits…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",

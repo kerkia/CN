@@ -920,11 +920,15 @@ export async function render(main, { query = {} } = {}) {
     ];
     // what each menu entry does (the menus come from tracer/icons.js, as in the editor)
     const MENU_HELP = {
+      "start-new": "Créer un autre événement, sur sa carte (le premier des trois choix qu'offre la page à son ouverture).",
+      "start-open": "Ouvrir un autre de vos événements (ceux que vous avez créés et ceux dont l'équipe vous compte).",
+      "start-import": "Un événement pris dans un fichier O'CN (.ocnt, qui contient sa carte) ou Purple Pen (.ppen, avec sa carte) : un nouvel événement, à côté de celui-ci.",
       save: "Enregistre tout de suite ; l'enregistrement se fait aussi tout seul, quelques secondes après chaque changement.",
       "version-save": "Garde l'état actuel sous un nom, pour y revenir plus tard.",
       versions: "La liste des versions (une version est aussi gardée toutes les 30 minutes de travail) : voir ce qui a changé, en rouvrir une.",
+      "export-ocn": "Tout l'événement en un seul fichier O'CN (.ocnt), sa carte comprise si on le veut : une copie, une archive, ou l'événement pour un autre club ; il se rouvre par « Importer un événement ».",
+      "export-ppen": "Le fichier de l'événement pour Purple Pen, à mettre à côté de la carte.",
       "import-ppen": "Remplace les circuits de l'événement par ceux d'un fichier Purple Pen ; la carte reste celle de l'événement.",
-      "export-ppen": "Le fichier de l'événement pour Purple Pen.",
       "pdf-courses": "Les cartes des circuits à imprimer.", "pdf-descriptions": "Les définitions seules, plusieurs par page.",
       "pdf-punch": "Les cartons de contrôle, avec une case par poste.",
       "export-iof3": "Les circuits pour les logiciels de chronométrage : postes, ordre, longueurs, et les équipes des relais.",
@@ -987,7 +991,7 @@ export async function render(main, { query = {} } = {}) {
       const sheet = rows.map(([n, c, t], i) => `<text x="22" y="${142 + i * 20}" font-size="11" font-weight="700" style="fill:var(--ink)">${n}</text><text x="38" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink)">${c}</text><text x="64" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink-2)">${t}</text><line x1="12" y1="${148 + i * 20}" x2="222" y2="${148 + i * 20}" stroke="${line}"/>`).join("");
       return `<svg viewBox="0 0 760 432" role="img" aria-label="L'écran du tracé, ses zones numérotées">
         <rect x="0.5" y="0.5" width="759" height="431" rx="9" fill="var(--surface)" stroke="${line}"/>
-        <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="18" y="22" font-size="11.5" style="fill:var(--ink)">← Événements</text>
+        <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="18" y="22" font-size="11.5" style="fill:var(--ink)">▤ Événements</text>
         <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>${menus}
         <text x="700" y="23" font-size="11.5" style="fill:var(--good)">Enregistré</text>
         <line x1="0" y1="35" x2="760" y2="35" stroke="${line}"/>
@@ -1023,22 +1027,34 @@ export async function render(main, { query = {} } = {}) {
             placer les postes, composer les circuits, remplir les définitions, vérifier, imprimer, préparer les fichiers du chronométrage. Rien à installer :
             tout se passe dans le navigateur, et l'événement est enregistré sur le site.</p>
           <p>Il reprend les règles de traçage et le format de fichier de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
-            le logiciel libre de traçage de Peter Golde, que beaucoup de clubs connaissent : un événement passe de l'un à l'autre, dans les deux sens. On n'a
-            pas besoin de connaître Purple Pen pour s'en servir : ce guide explique tout.</p>
+            le logiciel libre de traçage de Peter Golde, que beaucoup de clubs connaissent : un événement passe de l'un à l'autre, dans les deux sens. Il a aussi son
+            propre fichier, le fichier O'CN (.ocnt), qui garde tout l'événement et sa carte en un seul fichier. On n'a pas besoin de connaître Purple Pen pour s'en
+            servir : ce guide explique tout.</p>
           <div class="mx-callout"><b>Version bêta.</b> Le tracé vient d'être réalisé et n'a encore été que peu testé : essayez-le, et signalez-nous ce qui ne va
             pas par la page « Nous écrire » (le menu de votre nom). Il n'est pas encore conseillé pour préparer une vraie compétition ; il convient très bien aux cartes
             d'entraînement.</div>
           <h3>Les étapes</h3>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>Créer l'événement</b>« Nouvel événement » sur la page « Tracer » : une compétition de son club ou un entraînement, et sa carte.</div>
+            <div class="mx-step"><b>Créer l'événement</b>La page « Tracer » s'ouvre sur trois choix ; « Nouvel événement » : une compétition de son club ou un entraînement, et sa carte.</div>
             <div class="mx-step"><b>Poser les postes</b>Avec l'outil Poste, sur l'onglet « Tous les postes » ou directement dans un circuit.</div>
             <div class="mx-step"><b>Composer les circuits</b>Un onglet par circuit : départ, postes dans l'ordre, arrivée.</div>
             <div class="mx-step"><b>Remplir les définitions</b>Dans le panneau de gauche, case par case, symboles ou texte.</div>
             <div class="mx-step"><b>Vérifier</b>Longueurs, dénivelée, postes trop proches, définitions oubliées : le menu Rapports.</div>
             <div class="mx-step"><b>Imprimer et exporter</b>Les PDF des cartes et des définitions, les fichiers pour le chronométrage.</div>
           </div>
+          <h3>Les trois choix</h3>
+          <p>La page « Tracer » ouvre tout de suite l'écran du tracé, vide, et par-dessus trois choix :</p>
+          <ul class="mx-list">
+            <li><b>Nouvel événement</b> : tracer les circuits d'une compétition de votre club ou d'un entraînement. Il faut la carte.</li>
+            <li><b>Importer un événement</b> : reprendre un événement préparé ailleurs, sur un autre compte, dans un autre club ou dans Purple Pen. Il faut un fichier
+              O'CN (.ocnt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</li>
+            <li><b>Ouvrir un événement</b> : un de ceux que vous avez créés ou dont l'équipe vous compte, dans la liste.</li>
+          </ul>
+          <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ocnt ou un .ppen un import. Le bouton
+            « Événements », en haut à gauche, et le menu Fichier ramènent ces trois choix à tout moment ; Échap les ferme. Un lien qui nomme un événement l'ouvre
+            directement.</p>
           <h3>Créer un événement</h3>
-          <p>Sur la page « Tracer », « Nouvel événement » demande :</p>
+          <p>« Nouvel événement » demande :</p>
           <ul class="mx-list">
             <li><b>Une compétition ou un entraînement.</b> Une compétition se choisit dans la liste des courses à venir et des 60 derniers jours organisées par votre
               club (le club de votre dernière course) : seuls ses membres la créent. Un entraînement, n'importe qui le crée, avec un titre et une date.</li>
@@ -1046,15 +1062,17 @@ export async function render(main, { query = {} } = {}) {
             <li><b>L'échelle de la carte</b> (lue dans le fichier OCAD ou Mapper) et sa <b>norme</b> : forêt (ISOM 2017) ou sprint (ISSprOM 2019), qui fixe la taille
               des cercles et des numéros.</li>
           </ul>
-          <p>Un fichier Purple Pen (.ppen) se reprend aussi : « Importer un fichier Purple Pen » sur la page « Tracer » (ou un .ppen déposé sur la page), avec sa carte.
-            Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
+          <p>« Importer un événement » demande les mêmes renseignements (compétition ou entraînement) et le fichier : un fichier O'CN (.ocnt) se rouvre tel qu'il a
+            été enregistré, avec sa carte ; un fichier Purple Pen (.ppen) avec sa carte. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
+            OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute, comme traceur,
               contrôleur ou lecteur. Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Enregistré tout seul</h3><p>Quelques secondes après chaque changement ; une version est gardée toutes les
               30 minutes de travail, et on peut en garder une sous un nom (Fichier › Enregistrer une version).</p></div>
             <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe (Événement › Chiffrement), le serveur ne
-              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un .ppen.</p></div>
+              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un fichier O'CN (Fichier › Exporter au format O'CN), qui, lui,
+              n'est pas chiffré.</p></div>
           </div>
         </section>`,
       carte: () => html`
@@ -1105,7 +1123,8 @@ export async function render(main, { query = {} } = {}) {
           <h2>L'écran</h2>
           <figure class="mx-fig">${raw(screenFig())}</figure>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>La barre du haut</b>« ← Événements » revient à la liste ; puis le titre et les menus. À droite, l'état de l'enregistrement,
+            <div class="mx-step"><b>La barre du haut</b>« Événements » ramène les trois choix (ouvrir un autre événement, en créer ou en importer un) ; puis le
+              titre et les menus. À droite, l'état de l'enregistrement,
               et ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
             <div class="mx-step"><b>Les outils</b>Annuler, rétablir, puis un outil par objet à poser (chapitre « Les postes »).</div>
             <div class="mx-step"><b>Les onglets</b>« Tous les postes », puis un onglet par circuit, et « + » pour en créer un.</div>
@@ -1261,8 +1280,9 @@ export async function render(main, { query = {} } = {}) {
               circuits (PNG, JPEG, GIF) avec leur fichier de calage, fichiers RouteGadget : il faut une carte géoréférencée.</p></div>
             <div class="mx-box" style="--c:var(--s4)"><h3>${ic("layers", 18)} OCAD et Mapper</h3><p>Chaque circuit en carte OCAD (9 à 12, 2018) ou Mapper, en
               symboles de circuit, avec la carte de l'événement en fond : pour finir ou imprimer le circuit avec ces logiciels.</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("export", 18)} Purple Pen</h3><p>Le .ppen de l'événement, à ouvrir dans Purple Pen à côté de
-              la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("export", 18)} O'CN et Purple Pen</h3><p>Le fichier O'CN (.ocnt) garde tout l'événement, et sa
+              carte si on le veut, en un seul fichier : une copie, une archive, l'événement pour un autre club ; il se rouvre par « Importer un événement ». Le
+              .ppen s'ouvre dans Purple Pen à côté de la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("table", 18)} Tableaux</h3><p>Les rapports en CSV (séparateur « ; »), pour un tableur.</p></div>
           </div>
           <p>Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; Affichage › Plusieurs fichiers
