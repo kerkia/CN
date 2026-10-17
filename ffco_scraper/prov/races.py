@@ -46,6 +46,11 @@ GENERIC = {"de", "la", "le", "du", "des", "et", "en", "a", "au", "aux", "d", "l"
            "cdl", "ligue", "sprint", "md", "ld", "moyenne", "longue", "distance", "nuit", "nocturne", "night", "challenge", "urbain",
            "sans", "qualif", "open", "trophee", "etape", "manche", "mass", "start", "vtt", "ski", "pied", "relais", "wre", "o",
            "sport", "sports", "association", "ass", "union", "sportive", "team", "amicale", "laique", "ville"}
+# words of a place that do not tell it apart on their own (2026-10-17: « Seillon Nord » took Helga's « NORD#3 - Erpent »,
+# a Belgian race of the same day, on « nord » alone): evidence only beside a real place or race word
+QUALIFIERS = {"nord", "sud", "est", "ouest", "centre", "haut", "haute", "bas", "basse", "grand", "grande", "petit", "petite",
+              "saint", "sainte", "st", "ste", "sur", "sous", "les", "mont", "val", "bois", "foret", "parc", "lac", "pont",
+              "vieux", "vieille", "nouveau", "nouvelle", "plateau", "vallee", "col", "chateau", "port", "plage", "camp"}
 # abbreviations in file names and titles: « CL_Sprint », « CDL MD », « CF LD »
 ABBREV = {"cl": ("championnat", "ligue"), "cdl": ("championnat", "ligue"), "cf": ("championnat", "france"),
           "cdf": ("championnat", "france"), "chpt": ("championnat",), "champ": ("championnat",),
@@ -77,9 +82,11 @@ def match_score(race, name: str, organiser: str) -> float:
         if cw & others and not cw & set(TYPE_WORDS[t]):
             return 0.0
     distinct = {w for w in _words(f"{race['name']} {race['place'] or ''}") if w not in GENERIC and not w.isdigit() and len(w) >= 3}
+    qual = distinct & QUALIFIERS
+    distinct -= QUALIFIERS
     weak = {w for w in _words(race["name"]) if re.fullmatch(r"[a-z]+\d+|\d+[a-z]+", w)}       # md1, e3, j2…
     org_words = {w for w in _words(re.sub(r"^\s*\d+\s*-\s*", "", race["org"] or "")) if w not in GENERIC and len(w) >= 4}
-    s = min(2, len(distinct & cw)) * 1.0 + min(1, len(org_words & cw)) * 0.6 + 0.4 * len(weak & cw)
+    s = min(2, len(distinct & cw)) * 1.0 + min(1, len(org_words & cw)) * 0.6 + 0.4 * len(weak & cw) + 0.4 * min(2, len(qual & cw))
     # generic words in common only break ties between two races of one organiser that day ("Championnat…" vs
     # "Challenge…"): too weak to make a match alone
     s += 0.15 * len((set(_words(race["name"])) & GENERIC - {"de", "la", "le", "du", "des", "et", "d", "l", "o"}) & cw)

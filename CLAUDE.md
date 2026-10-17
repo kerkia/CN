@@ -191,7 +191,8 @@ need not name the race) only when its title lines say results and give the race'
 for another day is never the race's, nor one printing another season in its title or a date before the race (up to
 2 days after is fine: exports printed the next evening); an organiser's races of one weekend share its files out by
 their own words, the title printed inside included (`races.owners`: « KO », « Challenge », « CL », « Chpt ligue »).
-FFCO's f-race and the agenda's x-race of the same day and organiser are merged (`races.merge_duplicates`, name words
+A place's compass point or qualifier (« Nord », « Saint », `races.QUALIFIERS`) is weak evidence when matching a
+platform's competition (2026-10-17: « Seillon Nord » took Helga's Belgian « NORD#3 - Erpent »). FFCO's f-race and the agenda's x-race of the same day and organiser are merged (`races.merge_duplicates`, name words
 ≥ 80 % shared). Unreadable files a full look no longer finds are dropped. A post published in the 4 weeks before
 the race (its address `/2026/09/24/…`: the announcement, often updated with the results) is visited, and its date is
 not « another day »; on a page about the race's weekend, « MD »/« LD » in a link read as « moyenne/longue distance ».
@@ -237,7 +238,11 @@ the names are members-only and not read. O'Cap's export skips the coming races. 
 `ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
 races of today to +7 days, 8 sites a run, each every 6 h): read by `parsers/startlist.py` (IOF XML StartList, HTML tables,
 OE12 and MeOS PDFs by column positions and section lines; never by the results parsers: a start time is not a race
-time) into kind "startlist", else linked (kind "startfile"); a weekend's files go by the days they print and their
+time) into kind "startlist", else linked (kind "startfile"); a sheet laid out as a grid — one time column, or one per
+circuit, then a « name, club » pair per circuit, the circuits' names above (organisers' Google Sheets, 2026-10-17:
+O'Bugey, SpOC) — is read one circuit per column pair (`startlist._grid`; merged cells expanded by `_cells`, « Hour » and
+« N° Club » headings, a club number's lost zero restored), and its title lines are the file's `head`; a start list naming
+another format or weekday is not the race's (`run.not_this_race`, as for results) and one kept earlier is removed; a weekend's files go by the days they print and their
 first lines (`races.owners`, « SPRINT1 » split). The result pass leaves start lists alone; they rank after results. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
 Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and

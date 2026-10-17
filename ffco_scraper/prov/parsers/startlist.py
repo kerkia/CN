@@ -27,9 +27,9 @@ from .iofxml import _child, _children, _clock, _date, _ln, _txt
 KIND = "startlist"
 _CLOCK = re.compile(r"^\s*([01]?\d|2[0-3])[:hH]([0-5]\d)(?::([0-5]\d))?\s*$")
 _HEAD = {
-    "time": ("heure", "depart", "start", "h dep", "hdep", "horaire"),
+    "time": ("heure", "depart", "start", "h dep", "hdep", "horaire", "hour", "time"),
     "name": ("nom", "name", "coureur", "prenom", "concurrent"),
-    "club": ("club", "equipe", "organisation", "ligue"),
+    "club": ("club", "equipe", "organisation", "ligue", "n club", "no club", "num club", "numero club", "numero de club", "code club"),
     "cat": ("cat", "categorie", "class", "circuit"),
 }
 
@@ -108,8 +108,39 @@ def _xml(content: bytes) -> dict | None:
 
 # ---- HTML ---------------------------------------------------------------------------------------------------------------
 def _cells(tr: str) -> list[str]:
-    return [re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"(?s)<[^>]+>", " ", c))).strip()
-            for c in re.findall(r"(?is)<t[hd][^>]*>(.*?)</t[hd]>", tr)]
+    """A row's cells; a cell merged over several columns (colspan) holds its text in the first and blanks in the others,
+    so that the columns of every row line up (a spreadsheet's circuit title over its name and club columns)."""
+    out = []
+    for attrs, c in re.findall(r"(?is)<t[hd]([^>]*)>(.*?)</t[hd]>", tr):
+        out.append(re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"(?s)<[^>]+>", " ", c))).strip())
+        span = re.search(r"(?i)colspan\s*=\s*[\"']?(\d+)", attrs)
+        out += [""] * (min(int(span.group(1)), 50) - 1 if span else 0)
+    return out
+
+
+def _grid(head: list[str], above: list[list[str]]) -> dict | None:
+    """A start list laid out as a grid (2026-10-17, organisers' Google Sheets): a « name, club » pair per circuit, with one
+    time column for all (O'Bugey) or a time column of its own before each pair (SpOC); the circuits' names in a row above,
+    over each circuit's own columns. -> {"groups": [(time col, name col, club col | None, label)]}."""
+    plain = [model.plain(h).strip(" .:") for h in head]
+    is_ = lambda p, key: bool(p) and any(p == w or p.startswith(w) for w in _HEAD[key])
+    names = [i for i, p in enumerate(plain) if is_(p, "name")]
+    times = [i for i, p in enumerate(plain) if is_(p, "time")]
+    if len(names) < 2 or not times or times[0] > names[0]:
+        return None
+    # the circuits' row: the last row above with several word cells (row numbers and blanks aside)
+    labels = next((r for r in reversed(above) if len([x for x in r if x and _wordy(x)]) >= 2), [])
+    groups, starts = [], []
+    for k, ni in enumerate(names):
+        ti = max(t for t in times if t < ni)
+        starts.append(ti if k == 0 or ti > names[k - 1] else ni)     # a time column of its own opens the circuit
+    for k, ni in enumerate(names):
+        ti = max(t for t in times if t < ni)
+        ci = ni + 1 if ni + 1 < len(plain) and is_(plain[ni + 1], "club") else None
+        stop = starts[k + 1] if k + 1 < len(starts) else len(head)
+        label = next((labels[j] for j in range(starts[k], min(stop, len(labels))) if labels[j] and _wordy(labels[j])), "")
+        groups.append((ti, ni, ci, label or f"Circuit {k + 1}"))
+    return {"groups": groups}
 
 
 def _columns(head: list[str]) -> dict:
@@ -132,6 +163,7 @@ def _html(page: str) -> dict | None:
     title = re.search(r"(?is)<title[^>]*>(.*?)</title>", page)
     title = re.sub(r"\s+", " ", htmllib.unescape(title.group(1))).strip() if title else None
     classes: list[dict] = []
+    lead: list[str] = []          # the text above the first list's header (a sheet's title: race, format, day)
     # every table, with the title just before it (a class's name: « H21 », « Circuit A (12) »)
     pos = 0
     for m in re.finditer(r"(?is)<table[^>]*>(.*?)</table>", page):
@@ -141,15 +173,35 @@ def _html(page: str) -> dict | None:
         label = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"(?s)<[^>]+>", " ", heads[-1]))).strip() if heads else ""
         label = re.sub(r"\s*\(\d+\)\s*$", "", label)
         cur = model.klass(label or "?")
-        cols = {}
+        cols, grid, above, by_label = {}, None, [], {}
         for tr in re.findall(r"(?is)<tr[^>]*>(.*?)</tr>", m.group(1)):
             c = _cells(tr)
             if not c:
                 continue
-            if not cols and not any(clock(x) for x in c):
+            if not cols and not grid and not any(clock(x) for x in c):
+                grid = _grid(c, above)
+                if grid:
+                    by_label = {lab: model.klass(lab) for *_, lab in grid["groups"]}     # the sheet's column order
+                    continue
                 cols = _columns(c) or cols
                 if cols:
                     continue
+                above.append(c)
+                if len(lead) < 6:
+                    lead += [x for x in c if x and _wordy(x)][:3]
+            if grid:
+                # a grid: each row a start time, and a runner (or none) in each circuit's columns
+                for ti, ni, ci, lab in grid["groups"]:
+                    start = clock(c[ti]) if ti < len(c) else None
+                    name = c[ni] if ni < len(c) else ""
+                    if start is None or not name or not _wordy(name) or len(name) > 60:
+                        continue
+                    club = c[ci] if ci is not None and ci < len(c) else None
+                    if club and re.fullmatch(r"\d{3}", club):          # « 703 », « 111 »: the FFCO number lost its zero
+                        club = club.zfill(4)
+                    k = by_label.setdefault(lab, model.klass(lab))
+                    k["runners"].append(model.runner(name, club=club or None, status="start", start_s=start))
+                continue
             if len([x for x in c if x]) == 1 and _wordy(next(x for x in c if x)):
                 # a row of one cell: the next class
                 if cur["runners"]:
@@ -181,6 +233,7 @@ def _html(page: str) -> dict | None:
                                                status="start", start_s=start))
         if cur["runners"]:
             classes.append(cur)
+        classes += [k for k in by_label.values() if k["runners"]]
     # a page of many little tables without titles: one class per distinct label
     merged: dict[str, dict] = {}
     for k in classes:
@@ -188,7 +241,10 @@ def _html(page: str) -> dict | None:
             merged[k["name"]]["runners"] += k["runners"]
         else:
             merged[k["name"]] = k
-    return _finish(list(merged.values()), title, None)
+    d = _finish(list(merged.values()), title, None)
+    if d:
+        d["head"] = " ".join([title or "", *lead])[:300].strip()     # what race and day it is about (run.site_start_lists)
+    return d
 
 
 # ---- PDF ----------------------------------------------------------------------------------------------------------------

@@ -370,7 +370,9 @@ INDEX_VERSION = 3
 # 2 (2026-10-09): robots.txt no longer obeyed, the crawl best-first, sibling WordPress sites, a weekend's files told
 #   apart by the title they print.
 # 3 (2026-10-09): a file about another race of the fortnight goes to that race (the CF week's site posting Luxeuil's).
-COLLECT_VERSION = 3
+# 4 (2026-10-17): a place's compass point or qualifier alone no longer matches a platform's competition (« Seillon
+#   Nord » took Helga's Belgian « NORD#3 »): the races of the window looked at again, such a match dropped.
+COLLECT_VERSION = 4
 _BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
 
 
@@ -709,7 +711,10 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             # the days it prints: this race's makes it ours; only a sister race's (« CL-Nuit-10-Oct-26 » for Sunday's
             # race), or a later one, makes it theirs; an earlier lone date is when it was printed
             days = startlist.all_dates(f"{url} {text} {head}")
-            if race["date_iso"] not in days and (days & {r["date_iso"] for r in rivals} or any(x > race["date_iso"] for x in days)):
+            # (2026-10-17: O'Bugey's night list, « samedi 17 octobre », went to Sunday's race too: the sheet's own title
+            # lines now count, and another format or weekday rules a file out, as for results; one already kept goes)
+            if race["date_iso"] not in days and (days & {r["date_iso"] for r in rivals} or any(x > race["date_iso"] for x in days))                     or not_this_race(race, f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {head}"):
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
                 continue
             # the weekend's other races: a file goes to the race it is about, by its name, link and first lines
             # (« SPRINT1 » read as « SPRINT 1 »; the page numbers and clock times of the header left out)
@@ -717,6 +722,7 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             label = re.sub(r"(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ",
                            f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {head}")
             if rivals and race["key"] not in races.owners([race, *rivals], label, False):
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
                 continue
             changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=a.sha,
                             note=SITE_STARTLIST if d else f"{SITE_STARTLIST} · {text}".strip(" ·"))
@@ -882,6 +888,8 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
         recollect = store.meta_get(con, "collect_version", None) != COLLECT_VERSION
+        if reread:                          # the coming races' start lists too, at once (site_start_lists)
+            store.meta_set(con, "startsites", {})
         if reread or recollect:             # including the races already finished with, of the period shown
             con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE date_iso >= ?",
                         (_now(), (today - timedelta(days=KEEP_DAYS)).isoformat()))
