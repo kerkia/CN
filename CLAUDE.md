@@ -394,6 +394,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   per 200/400/1000 m by % VMA; entries kept in `localStorage ocn.vma`), Méthodes (lab, VAMEVAL, Léger-Boucher, demi-Cooper,
   Cooper, Luc Léger shuttle, 45-15), Applications (free, checked 2026-10-14: EZ BIPsVMA web app for VAMEVAL, EPS Test VMA
   for Léger-Boucher on Android and iOS; 20 m shuttle apps apart). Text inline in the module, as on Documentation.
+- **« Courses classées » by link** (`#/courses?id=`, the e-mail digest's link; owner, 2026-10-17): a race named in the address
+  brings its discipline (the site-wide one switches, so the list beside it holds it, opened and marked) and, without `circ=`,
+  opens on the circuit the signed-in user ran (in runner mode the runner's), else the busiest.
 - Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its

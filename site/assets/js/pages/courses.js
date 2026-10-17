@@ -31,6 +31,10 @@ function categories(circuit) {
 export async function render(main, { arg, query }) {
   if (arg && !query.id) query = { ...query, id: arg };      // old #/course/<id> links
   const me = auth.session();
+  // a race asked for by id (the e-mail digest's link, a runner's race) brings its own discipline, so that the list beside it is
+  // that discipline's and holds it (owner, 2026-10-17: a sprint's link opened beside the forest list, the race not in it)
+  const asked = query.id ? data.comp(query.id) : null;
+  if (asked && store.TERRAINS.includes(asked.terrain) && asked.terrain !== store.get().terrain) store.set({ terrain: asked.terrain });
   const terrain = store.get().terrain;
   const meta = data.meta();
   const seasons = [...meta.seasons].map(String).reverse();
@@ -337,10 +341,13 @@ export async function render(main, { arg, query }) {
   async function refresh() {
     await scope();
     if (st.course && !st.circuit) {
+      // a race without a circuit: the runner's circuit in runner mode, else the one the signed-in user ran (the digest's link
+      // is about one's own new result), else the busiest
       const f = await loadCourse(st.course);
-      const mine = st.mode === "runner" ? runnerRaces.get(String(st.course))?.[0] : null;
+      const who = st.mode === "runner" ? st.runner : me?.lic;
+      const ran = who ? f?.circuits.find((c) => c.rows.some((r) => r[C.lic] === who)) : null;
       const busiest = f?.circuits.reduce((b, c) => (!b || c.rows.length > b.rows.length ? c : b), null);
-      st.circuit = mine ? String(mine[R.cid]) : busiest ? String(busiest.id) : null;
+      st.circuit = ran ? String(ran.id) : busiest ? String(busiest.id) : null;
     }
     // in runner mode, open the competitions of the runner's latest race right away
     if (st.mode === "runner" && !open.size) {
