@@ -120,8 +120,8 @@ export function dateControls(month) {
   const ms = months.filter((m) => m.startsWith(y));
   return html`<label class="field"><span>${t("f.date")}</span>
     <div class="row" style="gap:6px">
-      <select id="f-year" aria-label="Année">${years.map((yy) => html`<option value="${yy}" ${raw(yy === y ? "selected" : "")}>${yy}</option>`)}</select>
-      <select id="f-month" aria-label="Mois">${ms.map((m) => html`<option value="${m}" ${raw(m === month ? "selected" : "")}>${fmtDate(m, "month").replace(/\s\d{4}$/, "")}</option>`)}</select>
+      <select id="f-year" aria-label="${t("f.year")}">${years.map((yy) => html`<option value="${yy}" ${raw(yy === y ? "selected" : "")}>${yy}</option>`)}</select>
+      <select id="f-month" aria-label="${t("f.month")}">${ms.map((m) => html`<option value="${m}" ${raw(m === month ? "selected" : "")}>${fmtDate(m, "month").replace(/\s\d{4}$/, "")}</option>`)}</select>
     </div></label>`;
 }
 export function bindDateControls(root, onChange) {

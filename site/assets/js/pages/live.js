@@ -17,7 +17,7 @@ import { link, replaceQuery } from "../app.js";
 const devBase = (() => { try { return localStorage.getItem("ocn.liveBase"); } catch (e) { return null; } })();
 export const LIVE = devBase || "https://ocap.pages.dev";
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
-const ST_LABEL = { dns: "Non partant", dnf: "Abandon", mp: "PM", dsq: "Disq.", ot: "Hors délai", nc: "NC" };
+const ST_LABEL = { dns: t("status.dns"), dnf: t("status.abandon"), mp: t("status.pm"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), nc: t("status.nc") };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
 const VALUER = { official: "official", top6w: "fair", top6w3: "fair3", fair: "fair", fair3: "fair3" };
 const JUST_IN_MS = 90000;

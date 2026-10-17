@@ -70,7 +70,10 @@ export const t = (key, vars) => {
   let s = EN && EN[key] != null ? EN[key] : FR[key];
   if (s == null) return key;
   if (UI === "xx") s = pseudo(s);
-  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m)) : s;
+  if (!vars) return s;
+  const out = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+  // an English text that opens on a placeholder (« {cn} history ») opens with a capital (« Official CN history »)
+  return UI === "en" && s[0] === "{" ? out.charAt(0).toUpperCase() + out.slice(1) : out;
 };
 
 const plurals = new Intl.PluralRules(locale());

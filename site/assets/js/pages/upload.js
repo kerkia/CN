@@ -10,7 +10,7 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as local from "../local.js";
 
-const TERRAINS = [["Forêt", "terrain.For"], ["Sprint", "terrain.Spr"], ["VTT", "terrain.VTT"], ["Ski", "terrain.Ski"]];
+const TERRAINS = [["Forêt", "terrain.For"], ["Sprint", "terrain.Spr"], ["VTT", "terrain.VTT"], ["Ski", "terrain.Ski"]];     // the values sent (i18n-ignore)
 const FORMATS = ["Sprint", "MD", "LD", "Nuit", "Autre"];
 const day = (d) => d.toISOString().slice(0, 10);
 export const mb = (n) => `${fmt(n / 1024 / 1024, 1)} Mo`;
@@ -52,7 +52,7 @@ export function publishCard(container, { races, preset = "", organiser = false, 
           ${clubs.map(([c, n]) => html`<option value="${c}" ${raw(c === myClub ? "selected" : "")}>${n} (${c})</option>`)}</select></label>
         <div class="row" style="gap:10px;flex-wrap:wrap">
           <label class="field"><span>${t("f.terrain")}</span><select id="up-terrain">${TERRAINS.map(([v, k]) => html`<option value="${v}">${t(k)}</option>`)}</select></label>
-          <label class="field"><span>${t("up.new.format")}</span><select id="up-format">${FORMATS.map((f) => html`<option value="${f}">${f === "Autre" ? t("up.new.other") : f}</option>`)}</select></label>
+          <label class="field"><span>${t("up.new.format")}</span><select id="up-format">${FORMATS.map((f) => html`<option value="${f}">${f === "Autre" ? t("up.new.other") : f === "Nuit" ? t("format.Nuit") : f}</option>`)}</select></label>
           <label class="check" style="align-self:flex-end;margin-bottom:8px"><input type="checkbox" id="up-cn"> ${t("up.new.cn")}</label></div>
       </div>
       <div id="up-date-warn" class="notice" hidden></div>

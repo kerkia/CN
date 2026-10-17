@@ -4,25 +4,24 @@
 // The data (site/data/prov/) is served to every logged-in user, like the rest of site/data.
 
 import { html, raw, $, $$, fmt, fmtDate, normalise, displayName } from "../util.js";
-import { t } from "../i18n.js";
+import { t, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available, get as storeGet } from "../store.js";
 import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 
-const SOURCE = { ffco: "FFCO", upload: "déposé sur O'CN", liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: "site du club", livelox: "Livelox",
+const SOURCE = { ffco: "FFCO", upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
-const KIND = { empty: "rapproché, vide", refused: "refusé aux robots", platform: "lien seulement", unparsed: "format non lu",
-  startlist: "liste de départ", startfile: "liste de départ (lien)", registration: "circuits et catégories", announcement: "annonce : circuits et catégories",
-  coursedata: "circuits du traceur (IOF XML)" };
-export const STATUS = { ok: "", mp: "PM", dnf: "Abandon", dsq: "Disq.", ot: "Hors délai", dns: "Non partant", nc: "NC", start: "" };
+const KIND = Object.fromEntries(["empty", "refused", "platform", "unparsed", "startlist", "startfile", "registration", "announcement", "coursedata"]
+  .map((k) => [k, t(`kind.${k}`)]));
+export const STATUS = { ok: "", mp: t("status.pm"), dnf: t("status.abandon"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), dns: t("status.dns"), nc: t("status.nc"), start: "" };
 /** A results source as readers see it: who published it, and what it gives (« avec temps intermédiaires »). */
 const sourceName = (d) => {
-  const who = { site: "Site de l'organisateur", upload: "Fichier déposé sur O'CN", liveresultat: "liveresultat (en direct)", winsplits: "WinSplits",
+  const who = { site: t("src.siteLong"), upload: t("src.uploadLong"), liveresultat: t("src.liveLong"), winsplits: "WinSplits",
     heyries: "Orientation Data", helga: "Helga" }[d.source] || SOURCE[d.source] || d.source;
-  const what = d.kind === "startlist" ? "liste de départ" : d.classes?.some((k) => k.runners.some((r) => r.splits)) ? "avec temps intermédiaires"
-    : d.by === "category" ? "par catégorie" : "par circuit";
+  const what = d.kind === "startlist" ? t("kind.startlist") : d.classes?.some((k) => k.runners.some((r) => r.splits)) ? t("kind.splits")
+    : d.by === "category" ? t("kind.byCategory") : t("kind.byCircuit");
   return `${who} · ${what}`;
 };
 /** A runner's club: the file's, else — a file without clubs — that of the runner recognised, from the CN data. */
@@ -31,7 +30,7 @@ const clubOf = (r) => {
   const own = r.lic ? data.runner(r.lic)?.club : null, code = own ? data.clubParts(own).code : null;
   return code ? { code, name: data.clubName(own) } : { code: null, name: r.club || "" };
 };
-const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };
+const TERRAIN_CODE = { "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" };     // the data's names (i18n-ignore)
 /** A start time (seconds after midnight) as 10:42 or 10:42:30. */
 const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${
   Math.round(s % 60) ? `:${String(Math.round(s % 60)).padStart(2, "0")}` : ""}`);
@@ -50,10 +49,10 @@ export const clock = (s) => {
 const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
 // the specialité: the CN terrain, or for a race outside the CN its format
 const SPECS = ["For", "Spr", "VTT", "Ski"];
-const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]
+const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]     // i18n-ignore
   || (r.epreuve === "Sprint" ? "Spr" : ["MD", "LD", "Nuit"].includes(r.epreuve) ? "For" : null);
 const runLine = (x) => `${when(x.at)}, ${x.looked} ${t("prov.run.of")} ${x.due}${x.cut ? ` (${t("prov.run.cut")})` : ""}`;
-const when = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
+const when = (iso) => (iso ? new Date(iso).toLocaleString(locale(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 export async function render(main, { query = {} } = {}) {
   const idx = await getProv("index.json");

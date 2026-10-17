@@ -3,7 +3,7 @@
 // tooltip with the value leading, one y-axis only.
 
 import { esc, fmt, fmtDate } from "./util.js";
-import { lang } from "./i18n.js";
+import { lang, t } from "./i18n.js";
 
 const registry = new Set();
 
@@ -160,8 +160,8 @@ function zoomable(th, { y = false } = {}) {
       right: 6, top: 0, itemSize: 14,
       iconStyle: { borderColor: th.ink3 }, emphasis: { iconStyle: { borderColor: th.ink } },
       feature: {
-        dataZoom: { yAxisIndex: y ? 0 : "none", title: { zoom: "Zoomer sur une zone", back: "Zoom précédent" } },
-        restore: { title: "Réinitialiser" },
+        dataZoom: { yAxisIndex: y ? 0 : "none", title: { zoom: t("chart.zoom"), back: t("chart.zoomBack") } },
+        restore: { title: t("chart.reset") },
       },
     },
   };
@@ -315,7 +315,7 @@ export function cdfChart(el, { series, onClick }) {
         const [cn, pct, , label] = p.value;
         const s = series[p.seriesIndex];
         return `<b style="font-size:14px">${fmt(cn)}</b> <span style="color:${th.ink2}">${esc(label || "")}</span><br>` +
-          `<span style="color:${th.ink3}">${esc(s.name)} · ${fmt(pct, 1)} % des classés à ce CN ou moins</span>`;
+          `<span style="color:${th.ink3}">${esc(s.name)} · ${t("chart.cdf.tip", { pct: fmt(pct, 1) })}</span>`;
       },
     }),
     xAxis: { type: "value", name: "CN", nameLocation: "middle", nameGap: 28, nameTextStyle: { color: th.ink3 },
@@ -565,7 +565,7 @@ export function regressionChart(el, { series, xName, yName }) {
         itemStyle: { color: s.color, opacity: 0.6 }, emphasis: { scale: 1.6 },
       })),
       ...lines.map((l, i) => (l ? {
-        name: `${series[i].name} — régression`, type: "line", data: l, symbol: "none", silent: true, z: 4,
+        name: t("chart.regression", { name: series[i].name }), type: "line", data: l, symbol: "none", silent: true, z: 4,
         lineStyle: { width: 2.5, color: series[i].color, type: [8, 5] }, tooltip: { show: false },
       } : null)).filter(Boolean),
     ],

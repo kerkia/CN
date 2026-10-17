@@ -298,7 +298,7 @@ export async function render(main, { arg, query }) {
       emptyText: t("rn.noRaces"),
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date) },
-        { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, render: what },
+        { key: "what", label: raw(t("rn.hist.what")), render: what },
         { key: "cn", label: "CN", align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
         { key: "delta", label: t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta,
           render: (e) => (e.delta == null ? "" : html`<span class="${e.delta > 0 ? "delta-up" : e.delta < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta)}</span>`) },
@@ -495,7 +495,7 @@ export async function render(main, { arg, query }) {
       rows, sortKey: "date", sortDir: -1, compact: true, emptyText: t("rn.noRaces"),
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date, "short") },
-        { key: "what", label: html`Entrées et <s>sorties</s> des courses dans la base de calcul`, defaultDir: 1,
+        { key: "what", label: raw(t("rn.hist.what")), defaultDir: 1,
           sort: (e) => e.races[0]?.text || "",
           render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x, e)}</div>`)}` },
         ...methods.flatMap((m) => [

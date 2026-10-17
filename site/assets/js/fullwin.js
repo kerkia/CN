@@ -7,12 +7,14 @@
 // tab is opened by script, without « noopener », so it starts with a copy of this tab's session storage: « Analyse solo »
 // finds its files there as after a reload.
 
+import { t } from "./i18n.js";
+
 const CLS = "full-win";
 export const inOwnTab = () => /[?&]fen=1(?:&|$)/.test(location.hash);
 export const isFull = () => document.body.classList.contains(CLS);
 
 const look = () => { const on = isFull(); return { on, text: on ? "⤡" : "⤢",
-  title: on ? "Revenir au menu (Échap)" : "Plein écran : la carte occupe toute la fenêtre" }; };
+  title: on ? t("fw.back") : t("fw.full") }; };
 function label() {
   const l = look();
   for (const b of document.querySelectorAll('[data-fw="toggle"]:not(#fw-guard)')) { b.setAttribute("aria-pressed", String(l.on)); b.textContent = l.text; b.title = l.title; }
@@ -34,7 +36,7 @@ function guard(on) {
   if (!b) {
     b = document.createElement("button");
     b.type = "button"; b.id = "fw-guard"; b.className = "btn btn-sm fw-btn"; b.dataset.fw = "toggle";
-    b.textContent = "⤡ Revenir au menu"; b.title = "Revenir au menu (Échap)";
+    b.textContent = `⤡ ${t("fw.backShort")}`; b.title = t("fw.back");
     b.style.cssText = "position:fixed;top:8px;right:8px;z-index:400;box-shadow:var(--shadow-pop)";
     document.body.appendChild(b);
   }
@@ -65,7 +67,7 @@ export function newTab() {
   window.open(`${location.href.replace(/#.*$/, "")}${path}?${q}`, "_blank");
 }
 /** The two buttons, as HTML (pages pass it through raw()). */
-export const buttons = () => { const l = look(); return `<button type="button" class="btn btn-sm fw-btn" data-fw="toggle" aria-pressed="${l.on}" title="${l.title}">${l.text}</button>${inOwnTab() ? "" : '<button type="button" class="btn btn-sm fw-btn" data-fw="tab" title="Ouvrir dans un nouvel onglet">↗</button>'}`; };
+export const buttons = () => { const l = look(); return `<button type="button" class="btn btn-sm fw-btn" data-fw="toggle" aria-pressed="${l.on}" title="${l.title}">${l.text}</button>${inOwnTab() ? "" : '<button type="button" class="btn btn-sm fw-btn" data-fw="tab" title="${t("fw.tab")}">↗</button>'}`; };
 
 let bound = false;
 /** Once per visit: the buttons' clicks (wherever a page draws them) and Échap. */

@@ -13,7 +13,7 @@ import { getProv } from "./provisional.js";
 
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-const SOURCE = { upload: "dépôt", site: "site du club", winsplits: "WinSplits", heyries: "Orientation Data", helga: "Helga", liveresultat: "liveresultat" };
+const SOURCE = { upload: t("src.uploadShort"), site: t("src.site"), winsplits: "WinSplits", heyries: "Orientation Data", helga: "Helga", liveresultat: "liveresultat" };
 
 export async function render(main, { query = {} } = {}) {
   const me = auth.session(), club = auth.myClub();

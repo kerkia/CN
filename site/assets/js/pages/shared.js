@@ -210,7 +210,7 @@ async function eventPage(main, kind, id, org = false) {
   main.innerHTML = html`
     <div class="sh-top">
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
-      <b class="sh-title">${A.title}</b>${raw(betaTag("Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)"))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
+      <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       ${race ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(A.race)}">${t("sh.results")}</a>` : ""}
       <span class="sh-tabs" id="sh-tabs"></span>
       ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button> <a class="btn btn-sm" href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")}</a>`

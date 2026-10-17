@@ -16,11 +16,11 @@ import { PRESETS, TARGETS, catParts, fits, bestTeam, clubTeams, checkTeam, terra
 const TOP = 20;                 // teams in the predicted ranking
 const MAX_TEAMS = 4;            // the club's teams, made automatically
 const clone = (f) => ({ ...f, slots: f.slots.map((s) => ({ ...s })), legs: f.legs.map((l) => ({ ...l })) });
-const custom = () => ({ label: "Format personnalisé", target: "winner", custom: true,
-  slots: [{ label: "D/H16 et +", min: 16 }, { label: "D/H16 et +", min: 16 }, { label: "D/H16 et +", min: 16 }],
+const custom = () => ({ label: t("rl.custom"), target: "winner", custom: true,
+  slots: [{ label: t("rl.slot.16plus"), min: 16 }, { label: t("rl.slot.16plus"), min: 16 }, { label: t("rl.slot.16plus"), min: 16 }],
   legs: [{ ref: 40 }, { ref: 40 }, { ref: 40 }] });
-const consLabel = (c) => [c.sex === "H" ? "hommes" : c.sex === "D" ? "dames" : "", c.min != null && c.min > 0 ? `${c.min} et +` : "",
-  c.max != null ? `jusqu'à ${c.max}` : ""].filter(Boolean).join(" · ");
+const consLabel = (c) => [c.sex === "H" ? t("rl.cons.men") : c.sex === "D" ? t("rl.cons.women") : "", c.min != null && c.min > 0 ? t("rl.cons.min", { n: c.min }) : "",
+  c.max != null ? t("rl.cons.max", { n: c.max }) : ""].filter(Boolean).join(" · ");
 // the age groups offered for an added runner (its category: sex + age, as H21 or D45)
 const AGES = [10, 12, 14, 16, 18, 20, 21, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
 const mmss = (min) => (min == null || !isFinite(min) ? "—" : fmtTime(Math.round(min * 60)));

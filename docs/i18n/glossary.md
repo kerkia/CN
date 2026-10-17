@@ -57,6 +57,12 @@ clubs, places, ligues, départements, FFCO's own page titles); the source data f
 | choix d'itinéraire | route choice | |
 | erreur, temps perdu | mistake, time lost | |
 | allure (min/km) | pace (min/km) | |
+| trace (GPS) | track (GPS track) | « déposez votre trace » = drop your track |
+| calage (d'une carte, d'une trace) | calibration; align (the verb) | « carte calée » = map georeferenced (Analyse multi) / calibrated |
+| courbes (allure, fréquence cardiaque…) | graphs | |
+| entraînement (un) | training session | « Nouvel entraînement » = New training session |
+| variante (relais, Purple Pen) | variation (fork in the games) | |
+| pédestre | foot (foot orienteering) | « CN pédestre » before 2026 |
 | dénivelée | climb | |
 | VMA | MAS (maximal aerobic speed) | « VMA » page = MAS; demi-Cooper = half Cooper test |
 
@@ -132,4 +138,5 @@ clubs, places, ligues, départements, FFCO's own page titles); the source data f
 - Sentence case for titles and buttons (« Load models », not « Load Models »).
 - Numbers: « 1,234.5 » and « 12 % » become « 1,234.5 » and « 12% » through the locale (en-GB); dates « 17 Oct 2026 ».
 - Quotes: French « » become “ ” in English; no space before : ; ? !
+- « e-mail » = email; « courriel » too.
 - « vous » = you; keep the tone direct and friendly, as the French.
