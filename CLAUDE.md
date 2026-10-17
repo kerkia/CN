@@ -99,7 +99,8 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    (`norm3`: anchored on the Top's cohort, the drift corrected, calendar months, carried 10 months). **Study of 2026-10-15/16**
    (copies of the migrated DB of 2026-10-15, `C:\kerkia\cn-data\study`: variants F50…F100, F90, E50…E100 by the scratch
    `run_variant.py`/`worker*.sh`, evaluations `eval_frac*_n.json`, `eval_elig_n.json`, `eval_switch_n.json`; the public numbers
-   in `site/assets/study.json` key `lineaire`, built by the scratch `switch_json.py`): one criterion per discipline — the best
+   in `site/assets/study.json` key `lineaire`, built by the scratch `switch_json.py`; the database copies and variant exports
+   of every CN study were deleted on 2026-10-17, the evaluations — `eval_*.json` and the logs — kept in the study folder): one criterion per discipline — the best
    duels on 2012-2024 without a significant loss since July 2025. Against the two-thirds (written 0.6666667 in the variants: one
    runner more on circuits whose size divides by 3; production uses the exact 2/3): forest 75 % +0.10, 85 % +0.33, 100 % +0.34,
    and **90 % +0.08 [+0.05, +0.10] over 100 %** (national +0.12, 8 seasons better, 1 worse; the owner's suggestion); sprint
