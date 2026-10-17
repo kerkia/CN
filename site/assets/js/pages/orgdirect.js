@@ -10,6 +10,7 @@
 // the page lists one's own broadcasts only (all of them to administrators).
 
 import { html, raw, $, fmtDate } from "../util.js";
+import { t, lang, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { parseBytes } from "../localparse.js";
@@ -140,43 +141,6 @@ function toLive(classes) {
 }
 
 // ---- the page --------------------------------------------------------------------------------------------------------
-const STEPS = html`
-  <h3 style="margin:0 0 6px">Avant la course</h3>
-  <ol class="od-steps">
-    <li>Dans votre logiciel de chronométrage, programmez un <b>export automatique de la liste des résultats</b> vers un fichier,
-      toutes les 15 à 30 secondes, toujours au même endroit et sous le même nom.
-      <ul>
-        <li>Le format conseillé est l'<b>IOF XML 3.0</b> (liste de résultats) : il contient les heures de départ, les temps
-          intermédiaires et les coureurs encore en course.</li>
-        <li>Les listes de résultats HTML de MeOS et d'OE (SportSoftware) sont aussi lues, mais elles ne montrent que les coureurs
-          arrivés ou sortis de course.</li>
-        <li>Si votre logiciel ne sait pas exporter à intervalle régulier, exportez le fichier à la main de temps en temps, sous le même
-          nom : la page reprend chaque nouvelle version.</li>
-      </ul></li>
-    <li>Faites un essai la veille, avec le fichier d'une course passée ou de la course en préparation.</li>
-  </ol>
-  <h3 style="margin:14px 0 6px">Le jour de la course</h3>
-  <ol class="od-steps" start="3">
-    <li>Sur l'ordinateur de l'arène, relié à internet, ouvrez cette page dans <b>Chrome ou Edge</b>. Firefox et Safari ne permettent
-      pas à une page de relire un fichier toute seule.</li>
-    <li>Connectez-vous à O'CN avec le compte qui crée la diffusion : seul ce compte peut ensuite l'alimenter. Vous pouvez la
-      créer la veille, d'ici ou d'un autre ordinateur.</li>
-    <li>Choisissez la course ci-dessous, ou créez-la : son nom, sa date et l'organisateur suffisent.</li>
-    <li>Choisissez le fichier exporté, <b>une seule fois</b>. Le navigateur demande l'autorisation de le lire.</li>
-    <li>Cliquez sur « Démarrer ». La page relit le fichier toute seule, toutes les 15 secondes par défaut, et n'envoie que ce qui a
-      changé.</li>
-    <li>Laissez la page ouverte, de préférence dans sa propre fenêtre, et l'ordinateur allumé, sans mise en veille. Si la page est
-      rechargée, un clic sur « Reprendre » suffit.</li>
-  </ol>
-  <h3 style="margin:14px 0 6px">Ce qu'il n'y a pas à faire</h3>
-  <ul class="od-steps">
-    <li>Les circuits, les catégories, les postes et les coureurs n'ont pas à être déclarés : ils viennent du fichier, et un circuit qui
-      apparaît en cours de course est ajouté.</li>
-    <li>Les coureurs sont reconnus par leur nom et leur club, et reliés à leur page sur O'CN.</li>
-  </ul>
-  <p style="margin:12px 0 0">Les spectateurs suivent la course dans <b>Courses › En direct</b> : le lien apparaît plus bas une fois la
-    course choisie.</p>`;
-
 // (exported for checks in the browser's console)
 export { iofLive, toLive };
 
@@ -184,18 +148,18 @@ export async function render(main) {
   const me = auth.session();
   const canPick = typeof window.showOpenFilePicker === "function";
   const today = new Date().toLocaleDateString("sv-SE");
+  const { steps } = await import(`../content/orgdirect.${lang()}.js`);
   const st = { id: pref.get().id || null, every: pref.get().every || 15, handle: null, running: false, sent: new Map(), order: "",
     seen: null, reads: 0, pushes: 0, last: null, lastPush: null, error: null, stats: null, info: null, viewers: null, busy: false };
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>Diffuser en direct ${raw(betaTag())}</h1>
-      <p class="lede">Depuis le logiciel de chronométrage, sans liveresultat : le fichier de résultats exporté pendant la course est relu
-        ici et diffusé dans « En direct ».</p></div></div>
+    <div class="page-head"><div><h1>${t("od.title")} ${raw(betaTag())}</h1>
+      <p class="lede">${t("od.lede")}</p></div></div>
     ${raw(betaNote("direct"))}
-    <section class="card"><div class="card-head"><h2>Comment ça marche</h2></div><div class="card-body">${STEPS}</div></section>
-    <section class="card"><div class="card-head"><div><h2>1. La course</h2><div class="hint">Une diffusion par course ; on peut la reprendre plus tard.</div></div></div>
-      <div class="card-body" id="od-race"><div class="empty">Chargement…</div></div></section>
-    <section class="card"><div class="card-head"><div><h2>2. Le fichier exporté</h2><div class="hint">Choisi une fois, relu tout seul.</div></div></div>
+    <section class="card"><div class="card-head"><h2>${t("od.how")}</h2></div><div class="card-body">${raw(steps)}</div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("od.race")}</h2><div class="hint">${t("od.race.hint")}</div></div></div>
+      <div class="card-body" id="od-race"><div class="empty">${t("misc.loading")}</div></div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("od.file")}</h2><div class="hint">${t("od.file.hint")}</div></div></div>
       <div class="card-body" id="od-file"></div></section>
     <style>
       .od-steps { margin: 0; padding-left: 22px; line-height: 1.55 }
@@ -223,19 +187,19 @@ export async function render(main) {
   function drawRace() {
     const b = current();
     $("#od-race").innerHTML = html`
-      ${list.length ? html`<label class="field" style="max-width:520px"><span>Diffusions existantes</span>
-        <select id="od-pick"><option value="">— nouvelle course —</option>
+      ${list.length ? html`<label class="field" style="max-width:520px"><span>${t("od.existing")}</span>
+        <select id="od-pick"><option value="">${t("od.newRace")}</option>
           ${list.map((x) => html`<option value="${x.id}" ${raw(x.id === st.id ? "selected" : "")}>${x.name} · ${fmtDate(x.date)}${x.organizer ? ` · ${x.organizer}` : ""}</option>`)}
         </select></label>` : ""}
       ${b ? html`<p style="margin:10px 0 0"><b>${b.name}</b> · ${fmtDate(b.date)}${b.organizer ? ` · ${b.organizer}` : ""}<br>
-          <span class="muted">Dernier envoi : ${b.last ? new Date(b.last).toLocaleString("fr-FR") : "aucun"}.</span>
-          Les spectateurs la suivent ici : <a href="#/direct/${b.id}">En direct › ${b.name}</a>.</p>`
+          <span class="muted">${t("od.lastSent", { t: b.last ? new Date(b.last).toLocaleString(locale()) : t("od.never") })}</span>
+          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>`
       : html`<div class="filters" style="margin-top:10px">
-          <label class="field"><span>Nom de la course</span><input id="od-name" list="od-agenda" style="width:300px" placeholder="Régionale de …"></label>
+          <label class="field"><span>${t("od.name")}</span><input id="od-name" list="od-agenda" style="width:300px" placeholder="${t("od.namePh")}"></label>
           <datalist id="od-agenda">${agenda.map((e) => html`<option value="${e.name}">${fmtDate(e.date)} · ${e.org || ""}</option>`)}</datalist>
-          <label class="field"><span>Date</span><input id="od-date" type="date" value="${today}"></label>
-          <label class="field"><span>Organisateur</span><input id="od-org" style="width:220px" placeholder="Club"></label>
-          <button type="button" class="btn btn-primary" id="od-create">Créer la diffusion</button>
+          <label class="field"><span>${t("od.date")}</span><input id="od-date" type="date" value="${today}"></label>
+          <label class="field"><span>${t("od.org")}</span><input id="od-org" style="width:220px" placeholder="Club"></label>
+          <button type="button" class="btn btn-primary" id="od-create">${t("od.create")}</button>
         </div><div class="muted" id="od-race-msg" style="font-size:12.5px"></div>`}`;
     $("#od-pick")?.addEventListener("change", (e) => { stop(); st.id = e.target.value ? Number(e.target.value) : null; st.sent.clear(); st.order = "";
       st.handle = null; pref.set({ id: st.id }); drawRace(); restoreHandle(); });
@@ -245,11 +209,11 @@ export async function render(main) {
     });
     $("#od-create")?.addEventListener("click", async () => {
       const name = $("#od-name").value.trim(), date = $("#od-date").value, organizer = $("#od-org").value.trim();
-      if (!name || !date) { $("#od-race-msg").textContent = "Le nom et la date sont nécessaires."; return; }
+      if (!name || !date) { $("#od-race-msg").textContent = t("od.needName"); return; }
       const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, date, organizer }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.id) { $("#od-race-msg").textContent = `La diffusion n'a pas pu être créée (${d.error || r.status}).`; return; }
+      if (!r.ok || !d.id) { $("#od-race-msg").textContent = t("od.createFailed", { e: d.error || r.status }); return; }
       st.id = d.id; pref.set({ id: st.id });
       await loadList(); drawRace(); drawFile();
     });
@@ -265,7 +229,7 @@ export async function render(main) {
     if (!st.handle || !st.id) return;
     try {
       if ((await st.handle.queryPermission?.({ mode: "read" })) !== "granted" && (await st.handle.requestPermission?.({ mode: "read" })) !== "granted") {
-        st.error = "Le navigateur n'a pas donné l'autorisation de lire le fichier."; drawFile(); return;
+        st.error = t("od.noPermission"); drawFile(); return;
       }
     } catch (e) { /* older browsers: the read below says */ }
     st.running = true; st.error = null;
@@ -292,10 +256,10 @@ export async function render(main) {
       if (head.includes("<resultlist")) doc = iofLive(new TextDecoder("utf-8").decode(bytes));
       else { const d = parseBytes(bytes, file.name); if (d) doc = fromLocal(d); }
       // unreadable: perhaps caught while the software writes it — read again at the next tick
-      if (!doc || !doc.classes.length) { st.error = "Le fichier n'a pas pu être lu cette fois (en cours d'écriture ?) : nouvel essai au prochain tour."; st.busy = false; drawStatus(); return; }
+      if (!doc || !doc.classes.length) { st.error = t("od.unreadable"); st.busy = false; drawStatus(); return; }
       const live = toLive(doc.classes);
       const b = current();
-      const info = { name: b?.name || doc.title || "Course", organizer: b?.organizer || "", date: b?.date || doc.date || today };
+      const info = { name: b?.name || doc.title || t("od.raceFallback"), organizer: b?.organizer || "", date: b?.date || doc.date || today };
       const changed = {};
       for (const n of live.order) { const s = JSON.stringify(live.classes[n]); if (st.sent.get(n) !== s) changed[n] = live.classes[n]; }
       const order = JSON.stringify(live.order);
@@ -310,34 +274,34 @@ export async function render(main) {
         const r = await fetch(`/api/live/push?id=${st.id}`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ info, order: live.order, classes: changed }) });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(d.error || `envoi refusé (${r.status})`);
+        if (!r.ok) throw new Error(d.error || t("od.refused", { status: r.status }));
         for (const n of Object.keys(changed)) st.sent.set(n, JSON.stringify(changed[n]));
         st.order = order; st.pushes++; st.lastPush = Date.now(); st.viewers = d.viewers ?? null; st.lastChanged = Object.keys(changed).length;
       }
       st.seen = sig; st.error = null;
     } catch (e) {
-      st.error = `Erreur : ${e.message || e}. Nouvel essai au prochain tour.`;
+      st.error = t("od.error", { e: e.message || e });
     }
     st.busy = false;
     drawStatus();
   }
   function drawFile() {
     const el = $("#od-file");
-    if (!st.id) { el.innerHTML = html`<div class="muted">Choisissez ou créez d'abord la course.</div>`; return; }
+    if (!st.id) { el.innerHTML = html`<div class="muted">${t("od.pickRace")}</div>`; return; }
     if (!canPick) {
-      el.innerHTML = html`<div class="empty">Ce navigateur ne permet pas de relire un fichier tout seul. Ouvrez cette page dans Chrome ou Edge.</div>`;
+      el.innerHTML = html`<div class="empty">${t("od.noApi")}</div>`;
       return;
     }
     el.innerHTML = html`<div class="filters">
-        <button type="button" class="btn" id="od-choose">${st.handle ? "Choisir un autre fichier" : "Choisir le fichier exporté"}</button>
-        <label class="field"><span>Relire toutes les</span><select id="od-every">${INTERVALS.map((s) => html`<option value="${s}" ${raw(s === st.every ? "selected" : "")}>${s} secondes</option>`)}</select></label>
-        ${st.running ? html`<button type="button" class="btn" id="od-stop">Arrêter</button>`
-          : html`<button type="button" class="btn btn-primary" id="od-start" ${raw(st.handle ? "" : "disabled")}>${st.reads ? "Reprendre" : st.handle && !st.pushes ? "Démarrer" : "Démarrer"}</button>`}
+        <button type="button" class="btn" id="od-choose">${st.handle ? t("od.chooseOther") : t("od.choose")}</button>
+        <label class="field"><span>${t("od.every")}</span><select id="od-every">${INTERVALS.map((s) => html`<option value="${s}" ${raw(s === st.every ? "selected" : "")}>${t("od.seconds", { n: s })}</option>`)}</select></label>
+        ${st.running ? html`<button type="button" class="btn" id="od-stop">${t("od.stop")}</button>`
+          : html`<button type="button" class="btn btn-primary" id="od-start" ${raw(st.handle ? "" : "disabled")}>${st.reads ? t("od.resume") : t("od.start")}</button>`}
       </div>
       <div id="od-status"></div>`;
     $("#od-choose").addEventListener("click", async () => {
       try {
-        const [h] = await window.showOpenFilePicker({ multiple: false, types: [{ description: "Résultats (IOF XML, HTML)",
+        const [h] = await window.showOpenFilePicker({ multiple: false, types: [{ description: t("od.fileType"),
           accept: { "text/xml": [".xml"], "text/html": [".html", ".htm"] } }], excludeAcceptAllOption: false });
         stop(); st.handle = h; st.seen = null; st.sent.clear(); st.order = "";
         await handles.set(`h:${st.id}`, h);
@@ -354,19 +318,18 @@ export async function render(main) {
     if (!el) return;
     const s = st.stats, ago = (t) => (t ? `${Math.round((Date.now() - t) / 1000)} s` : "—");
     el.innerHTML = html`
-      ${st.handle ? html`<p style="margin:10px 0 0">Fichier : <b>${st.handle.name}</b>${st.running ? html` · <span style="color:var(--good)">● diffusion en cours</span>`
-        : html` · <span class="muted">arrêtée</span>`}</p>` : ""}
+      ${st.handle ? html`<p style="margin:10px 0 0">${t("od.fileLine")} <b>${st.handle.name}</b>${st.running ? html` · <span style="color:var(--good)">${t("od.running")}</span>`
+        : html` · <span class="muted">${t("od.stopped")}</span>`}</p>` : ""}
       ${s ? html`<div class="od-grid">
-        <div><span class="muted">Circuits</span><b>${s.classes}</b></div>
-        <div><span class="muted">Coureurs</span><b>${s.runners}</b></div>
-        <div><span class="muted">Arrivés</span><b>${s.finished}</b></div>
-        <div><span class="muted">En course ou pas encore partis</span><b>${s.iof ? s.out : "—"}</b></div>
-        <div><span class="muted">Dernière lecture</span><b>${ago(st.last)}</b></div>
-        <div><span class="muted">Dernier envoi</span><b>${ago(st.lastPush)}</b></div>
-        <div><span class="muted">Spectateurs connectés</span><b>${st.viewers ?? "—"}</b></div>
+        <div><span class="muted">${t("od.s.classes")}</span><b>${s.classes}</b></div>
+        <div><span class="muted">${t("od.s.runners")}</span><b>${s.runners}</b></div>
+        <div><span class="muted">${t("od.s.finished")}</span><b>${s.finished}</b></div>
+        <div><span class="muted">${t("od.s.out")}</span><b>${s.iof ? s.out : "—"}</b></div>
+        <div><span class="muted">${t("od.s.lastRead")}</span><b>${ago(st.last)}</b></div>
+        <div><span class="muted">${t("od.s.lastSent")}</span><b>${ago(st.lastPush)}</b></div>
+        <div><span class="muted">${t("od.s.viewers")}</span><b>${st.viewers ?? "—"}</b></div>
       </div>
-      ${!s.iof ? html`<p class="muted od-log">Liste HTML : seuls les coureurs arrivés ou sortis de course apparaissent. L'IOF XML 3.0 montre aussi ceux qui
-        sont en course.</p>` : ""}` : ""}
+      ${!s.iof ? html`<p class="muted od-log">${t("od.htmlNote")}</p>` : ""}` : ""}
       ${st.error ? html`<p class="od-log" style="color:var(--bad)">${st.error}</p>` : ""}`;
   }
 
@@ -375,5 +338,5 @@ export async function render(main) {
   drawRace();
   await restoreHandle();
   const tick = setInterval(() => { if (!main.isConnected) { clearInterval(tick); stop(); ticker.terminate(); } else if (st.running) drawStatus(); }, 5000);
-  return { title: "Direct" };
+  return { title: t("nav.orgDirect") };
 }
