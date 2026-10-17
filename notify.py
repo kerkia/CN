@@ -7,6 +7,12 @@ competitions each of them ran in the local database, and posts one item per
 licence; the site mails one digest per account and sends what fits in the day's
 quota, the rest waiting for a later run (an empty post just drains that backlog).
 
+The first results count wherever they appear (owner, 2026-10-17): an organiser's list
+read by the provisional results (« Résultats »: the club's site, liveresultat, WinSplits…)
+or FFCO's. The races of the last PROV_DAYS days with a list of results naming a
+subscribed runner are posted at every run; one race travels with every id it is known by
+(FFCO's competition id, its key on « Résultats »: `alias`), and the site mails it once.
+
 The shared secret NOTIFY_SECRET comes from the environment or from
 <data dir>/notify.secret; it must equal the Pages project's NOTIFY_SECRET.
 Failures never break an update: the pending list is kept and retried next run.
@@ -27,6 +33,7 @@ import paths
 PENDING = paths.DATA_DIR / "notify.pending.json"        # competitions not yet announced
 SITE = os.environ.get("CN_SITE_URL", "https://ocn.kerkia.com").rstrip("/")
 RECENT_DAYS = 60            # a revised result for an old race must not mail anyone
+PROV_DAYS = 4               # the organisers' results of the last days only (a new subscriber is not told about old races)
 CHUNK = 50                  # licences per request (the Functions have a small budget per call)
 
 
@@ -56,7 +63,38 @@ def remember(changes) -> None:
     PENDING.write_text(json.dumps(sorted(old | ids)))
 
 
-def _races_by_licence(db: Path, ids: list[int], licences: set[str]) -> dict[str, list[dict]]:
+def _norm(lic) -> str:
+    return str(lic).strip().lstrip("0") or "0"
+
+
+def _prov_races(out: Path | None) -> list[dict]:
+    """The provisional results' index (site/data/prov/index.json), [] when there is none."""
+    try:
+        return json.loads((out / "prov" / "index.json").read_text(encoding="utf-8")).get("races", []) if out else []
+    except (OSError, ValueError):
+        return []
+
+
+def _prov_by_licence(races: list[dict], licences: set[str]) -> dict[str, list[dict]]:
+    """The races of the last PROV_DAYS days whose organiser's list of results names a subscribed runner. A race FFCO has
+    published goes by its competition id (the same as FFCO's digest), its key as an alias; the link opens « Résultats »."""
+    today = date.today()
+    first = (today - timedelta(days=PROV_DAYS)).isoformat()
+    out: dict[str, list[dict]] = {}
+    for r in races:
+        if not r.get("results") or r.get("soon") or not first <= (r.get("date_iso") or "") <= today.isoformat():
+            continue
+        fid = r.get("ffco_id")
+        item = {"id": str(fid) if fid else r["key"], "alias": [r["key"]] if fid else [], "prov": r["key"],
+                "title": r.get("name") or "", "date": r["date_iso"], "location": r.get("place") or ""}
+        for lic in (r["rlics"] if r.get("rlics") is not None else r.get("lics")) or []:   # rlics only when they differ
+            k = _norm(lic)
+            if k in licences:
+                out.setdefault(k, []).append(item)
+    return out
+
+
+def _races_by_licence(db: Path, ids: list[int], licences: set[str], alias: dict[str, str] | None = None) -> dict[str, list[dict]]:
     con = sqlite3.connect(db)
     try:
         marks = ",".join("?" * len(ids))
@@ -69,9 +107,10 @@ def _races_by_licence(db: Path, ids: list[int], licences: set[str]) -> dict[str,
         con.close()
     out: dict[str, list[dict]] = {}
     for lic, cid, title, d, loc in rows:
-        key = str(lic).strip().lstrip("0") or "0"
+        key = _norm(lic)
         if key in licences:
-            out.setdefault(key, []).append({"id": cid, "title": title, "date": d, "location": loc})
+            a = (alias or {}).get(str(cid))
+            out.setdefault(key, []).append({"id": str(cid), "alias": [a] if a else [], "title": title, "date": d, "location": loc})
     return out
 
 
@@ -95,8 +134,8 @@ def _catch_up(db: Path) -> None:
     PENDING.write_text(json.dumps(sorted(old | {int(i) for i in ids})))
 
 
-def run(db: Path) -> None:
-    """Announce the pending competitions, then drain the mail queue. Never raises."""
+def run(db: Path, out: Path | None = None) -> None:
+    """Announce the pending competitions and the organisers' new results, then drain the mail queue. Never raises."""
     if not _secret():
         print("5. notify: no NOTIFY_SECRET — skipped")
         return
@@ -104,10 +143,24 @@ def run(db: Path) -> None:
         _catch_up(db)
         ids = sorted(json.loads(PENDING.read_text())) if PENDING.exists() else []
         items: list[dict] = []
-        if ids:
-            licences = {str(x) for x in _call("GET")["licences"]}
-            races = _races_by_licence(db, ids, licences) if licences else {}
-            items = [{"lic": lic, "races": r[:30]} for lic, r in races.items()]
+        prov = _prov_races(out)
+        first = (date.today() - timedelta(days=PROV_DAYS)).isoformat()
+        recent = [r for r in prov if r.get("results") and not r.get("soon") and (r.get("date_iso") or "") >= first]
+        n_prov = 0
+        if ids or recent:
+            got = _call("GET")
+            licences = {_norm(x) for x in got["licences"]}
+            if got.get("v", 1) < 2:            # a site that does not know `alias` and `prov` yet: FFCO's competitions only
+                recent = []
+            alias = {str(r["ffco_id"]): r["key"] for r in prov if r.get("ffco_id")}
+            races = _races_by_licence(db, ids, licences, alias) if licences and ids else {}
+            # FFCO's first, then the organisers' races it does not already give (the same id: FFCO's link wins)
+            for lic, rs in (_prov_by_licence(recent, licences) if licences else {}).items():
+                have = {r["id"] for r in races.get(lic, [])}
+                extra = [r for r in rs if r["id"] not in have]
+                n_prov += len(extra)
+                races.setdefault(lic, []).extend(extra)
+            items = [{"lic": lic, "races": r[:30]} for lic, r in races.items() if r]
         queued = sent = 0
         batches = [items[i:i + CHUNK] for i in range(0, len(items), CHUNK)] or [[]]
         for batch in batches:
@@ -119,9 +172,9 @@ def run(db: Path) -> None:
             sent += res["sent"]
         PENDING.unlink(missing_ok=True)
         CATCHUP.write_text(date.today().isoformat())
-        if ids or sent or res["remaining"]:
-            print(f"5. notify: {len(ids)} competitions, {len(items)} subscribed runners, {queued} digests queued, "
-                  f"{sent} e-mails sent, {res['remaining']} waiting")
+        if ids or queued or sent or res["remaining"]:
+            print(f"5. notify: {len(ids)} competitions, {n_prov} organisers' results, {len(items)} subscribed runners, "
+                  f"{queued} digests queued, {sent} e-mails sent, {res['remaining']} waiting")
     except urllib.error.HTTPError as e:
         print(f"5. notify: the site refused ({e.code}{' — NOTIFY_SECRET differs from the Pages one' if e.code == 403 else ''}) — will retry at the next run")
     except (urllib.error.URLError, OSError, KeyError, ValueError) as e:

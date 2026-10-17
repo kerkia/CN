@@ -320,6 +320,8 @@ def main() -> None:
             _provisional(args)
             if args.deploy and DEPLOY_PENDING.exists() and deploy():
                 DEPLOY_PENDING.unlink(missing_ok=True)
+            if args.deploy and not args.dry_run and not DEPLOY_PENDING.exists():
+                notify.run(args.db, args.out)               # the organisers' results just published (owner, 2026-10-17)
             print(f"provisional run done in {time.monotonic() - t0:.0f}s")
             sys.exit(0)
         rebuilt = _run(args, since, t0)
@@ -333,7 +335,7 @@ def main() -> None:
             DEPLOY_PENDING.unlink(missing_ok=True)
         # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue
         if args.deploy and not args.dry_run and not DEPLOY_PENDING.exists():
-            notify.run(args.db)
+            notify.run(args.db, args.out)
     finally:
         lock.unlink(missing_ok=True)
 

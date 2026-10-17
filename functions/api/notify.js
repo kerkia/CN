@@ -1,9 +1,12 @@
 // Called by update.py (Authorization: Bearer NOTIFY_SECRET), never by the browser.
 //
 //   GET  /api/notify            -> { licences: [...] } licences with at least one subscribed account
-//   POST /api/notify { items: [{ lic, races: [{ id, title, date, location }] }] }
+//   POST /api/notify { items: [{ lic, races: [{ id, alias?, prov?, title, date, location }] }] }
 //        queues one digest e-mail per subscribed account (races it was not told about yet),
 //        then sends what fits in today's quota. { items: [] } just drains the backlog.
+//        A race comes with every id it is known by (FFCO's competition id, its key on « Résultats »: `alias`):
+//        it is announced once, by whichever source published first (owner, 2026-10-17); `prov` = the race's key
+//        on « Résultats » when the results are an organiser's (the e-mail links there).
 //   -> { queued, sent, remaining, budget }
 //
 // update.py computes who ran which new competition (it has the database); this side only
@@ -32,7 +35,8 @@ const SUBSCRIBED = "notify = 1 AND email_verified = 1 AND status = 'active'";
 export async function onRequestGet({ request, env }) {
   if (!(await authorised(request, env))) return json({ error: "forbidden" }, 403);
   const { results } = await env.DB.prepare(`SELECT DISTINCT licence FROM users WHERE ${SUBSCRIBED}`).all();
-  return json({ licences: results.map((r) => r.licence) });
+  // v 2 (2026-10-17): races with `alias` and `prov` understood — update.py sends the organisers' results only then
+  return json({ licences: results.map((r) => r.licence), v: 2 });
 }
 
 /**
@@ -127,19 +131,33 @@ export async function onRequestPost({ request, env }) {
   const items = Array.isArray(b?.items) ? b.items.slice(0, 100) : [];
   let queued = 0;
   if (items.length) {
-    const byLic = new Map(items.map((i) => [String(i.lic), (i.races || []).slice(0, 30)]));
+    const ID = /^[A-Za-z0-9_-]{1,40}$/;
+    const race = (r) => ({
+      id: String(r?.id ?? ""), alias: (Array.isArray(r?.alias) ? r.alias : []).map(String).filter((x) => ID.test(x)).slice(0, 3),
+      prov: ID.test(String(r?.prov || "")) ? String(r.prov) : "", title: String(r?.title || "").slice(0, 200),
+      date: String(r?.date || "").slice(0, 10), location: String(r?.location || "").slice(0, 120),
+    });
+    const byLic = new Map(items.map((i) => [String(i.lic), (i.races || []).slice(0, 30).map(race).filter((r) => ID.test(r.id))]));
     const lics = [...byLic.keys()];
     const { results: users } = await env.DB.prepare(
       `SELECT * FROM users WHERE ${SUBSCRIBED} AND licence IN (${lics.map(() => "?").join(",")})`).bind(...lics).all();
-    // announce each (account, competition) once: INSERT OR IGNORE tells which ones are new
-    const pairs = users.flatMap((u) => byLic.get(u.licence).map((r) => [u, r]));
-    if (pairs.length) {
-      const res = await env.DB.batch(pairs.map(([u, r]) =>
-        env.DB.prepare("INSERT OR IGNORE INTO notified (user_id, course_id) VALUES (?, ?)").bind(u.id, String(r.id))));
-      const fresh = new Map();
-      pairs.forEach(([u, r], i) => { if (res[i].meta.changes) fresh.set(u, [...(fresh.get(u) || []), r]); });
-      const stmts = [...fresh].map(([u, races]) => queueStatement(env,
-        { to: u.email, ...digestMail(env, u, races), kind: "digest", priority: 0 }));
+    // announce each (account, race) once, whatever id it comes with: the ids already told, then those of the new races
+    const todo = users.map((u) => [u, byLic.get(u.licence) || []]).filter(([, rs]) => rs.length);
+    if (todo.length) {
+      const told = await env.DB.batch(todo.map(([u, rs]) => {
+        const ids = [...new Set(rs.flatMap((r) => [r.id, ...r.alias]))];
+        return env.DB.prepare(`SELECT course_id FROM notified WHERE user_id = ? AND course_id IN (${ids.map(() => "?").join(",")})`).bind(u.id, ...ids);
+      }));
+      const marks = [], stmts = [];
+      todo.forEach(([u, rs], i) => {
+        const seen = new Set((told[i].results || []).map((x) => String(x.course_id)));
+        const fresh = rs.filter((r) => ![r.id, ...r.alias].some((x) => seen.has(x)));
+        for (const r of fresh) for (const x of [r.id, ...r.alias]) {
+          marks.push(env.DB.prepare("INSERT OR IGNORE INTO notified (user_id, course_id) VALUES (?, ?)").bind(u.id, x));
+        }
+        if (fresh.length) stmts.push(queueStatement(env, { to: u.email, ...digestMail(env, u, fresh), kind: "digest", priority: 0 }));
+      });
+      for (let i = 0; i < marks.length; i += 80) await env.DB.batch(marks.slice(i, i + 80));
       if (stmts.length) await env.DB.batch(stmts);
       queued = stmts.length;
     }

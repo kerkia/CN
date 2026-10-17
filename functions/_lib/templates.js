@@ -90,18 +90,20 @@ export function duplicateAlert(env, licence, accounts) {
   };
 }
 
-/** races: [{ id, title, date, location }] — one digest per runner and update. */
+/** races: [{ id, prov?, title, date, location }] — one digest per runner and update; `prov`: an organiser's results,
+ *  on « Résultats » (before FFCO's), else FFCO's on « Courses classées ». */
 export function digestMail(env, user, races) {
   const base = siteUrl(env);
   const n = races.length;
-  const rows = races.map((r) => ({ ...r, url: `${base}/#/courses?id=${encodeURIComponent(r.id)}` }));
+  const rows = races.map((r) => ({ ...r, url: r.prov ? `${base}/#/resultats?course=${encodeURIComponent(r.prov)}`
+    : `${base}/#/courses?id=${encodeURIComponent(r.id)}`, note: r.prov ? "résultats de l'organisateur" : "" }));
   const settings = `${base}/#/reglages`;
   return {
     subject: n === 1 ? `Nouvelle course en ligne : ${races[0].title} — O'CN` : `${n} nouvelles courses en ligne — O'CN`,
     html: wrap(env, n === 1 ? "Une de vos courses est en ligne" : `${n} de vos courses sont en ligne`, `<p>Bonjour ${esc(user.first_name)},</p>
-<ul style="padding-left:18px">${rows.map((r) => `<li style="margin:6px 0"><a href="${esc(r.url)}">${esc(r.title)}</a>${r.location ? ` — ${esc(r.location)}` : ""}${r.date ? ` (${esc(r.date)})` : ""}</li>`).join("")}</ul>
+<ul style="padding-left:18px">${rows.map((r) => `<li style="margin:6px 0"><a href="${esc(r.url)}">${esc(r.title)}</a>${r.location ? ` — ${esc(r.location)}` : ""}${r.date ? ` (${esc(r.date)})` : ""}${r.note ? ` <span style="color:#5b6675">· ${esc(r.note)}</span>` : ""}</li>`).join("")}</ul>
 <p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez activé les notifications. <a href="${esc(settings)}">Modifier mes réglages</a>.</p>`),
-    text: `Bonjour ${user.first_name},\n\n${rows.map((r) => `- ${r.title}${r.location ? ` (${r.location})` : ""}${r.date ? ` ${r.date}` : ""}\n  ${r.url}`).join("\n")}\n\nPour ne plus recevoir ces messages : ${settings}`,
+    text: `Bonjour ${user.first_name},\n\n${rows.map((r) => `- ${r.title}${r.location ? ` (${r.location})` : ""}${r.date ? ` ${r.date}` : ""}${r.note ? ` · ${r.note}` : ""}\n  ${r.url}`).join("\n")}\n\nPour ne plus recevoir ces messages : ${settings}`,
   };
 }
 

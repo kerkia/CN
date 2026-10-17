@@ -94,6 +94,18 @@ function list(main, idx, query) {
         <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
   // the races run so far (today's too): a coming race's start list is reached from « Bientôt »
   const R = idx.races.filter((r) => !r.soon);
+  // a runner's races published by FFCO (their results are « Courses classées »'s): one's own races are those where one is
+  // recognised in an organiser's list or in FFCO's (owner, 2026-10-17: the race of the day FFCO had published, with no
+  // organiser's list read yet, was missing from one's own races)
+  const ffcoOf = new Map();
+  const ffcoSet = (lic) => {
+    if (ffcoOf.has(lic)) return ffcoOf.get(lic);
+    ffcoOf.set(lic, null);
+    data.runnerRaces(lic).then((rows) => { ffcoOf.set(lic, new Set(rows.map((x) => String(x[data.R.course])))); },
+      () => { ffcoOf.set(lic, new Set()); }).then(() => { if (document.contains(table)) draw(); });
+    return null;
+  };
+  const has = (r) => r.docs || r.ffco_id;              // results, an organiser's or FFCO's
   // the tiles: the races the filters keep — the runner, the specialité, the region, the search; not « Afficher »,
   // which would make « avec résultats » 100 %
   const drawTiles = (T) => {
@@ -113,8 +125,10 @@ function list(main, idx, query) {
     $$('[data-seg="pvwho"]').forEach((b) => b.addEventListener("click", () => { who = b.dataset.value; drawWho(); draw(); }));
     if (who === "runner") bindRunnerSearch($("#pv-runner"), { onPick: (l) => { runner = l; drawWho(); draw(); } });
   }
+  const table = $("#pv-table");
   function draw() {
     const one = who === "runner" && runner;
+    const ffcoMine = one ? ffcoSet(runner) : null;
     replaceQuery({ f: filter === "all" ? null : filter, t: spec === "all" ? null : spec, reg: reg || null,
       who: who === "all" ? "all" : null, r: one && runner !== me ? runner : null, q: q || null });
     $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")], ["pending", t("prov.f.pending")]], filter);
@@ -123,21 +137,23 @@ function list(main, idx, query) {
     $$('[data-seg="pvt"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
     const qn = normalise(q);
     const kept = R.filter((r) => (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
-      && (!one || (r.lics || []).includes(runner))
+      && (!one || (r.lics || []).includes(runner) || (ffcoMine && r.ffco_id && ffcoMine.has(String(r.ffco_id))))
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
     drawTiles(kept.filter((r) => !r.soon));         // a coming race's start list is not a result
-    const rows = kept.filter((r) => filter === "all" || (filter === "found" ? r.docs : filter === "missing" ? !r.docs : !r.ffco_id));
+    const rows = kept.filter((r) => filter === "all" || (filter === "found" ? has(r) : filter === "missing" ? !has(r) : !r.ffco_id));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
       <th class="r">${t("prov.runners")}</th><th class="r">${t("prov.matchedShort")}</th><th class="c pv-wrap">${t("prov.splits")}</th>
       <th>FFCO</th></tr></thead>
-      <tbody>${rows.map((r) => html`<tr${raw(r.docs ? "" : ' class="pv-none"')}>
+      <tbody>${rows.map((r) => html`<tr${raw(has(r) ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>` : html`<span>${r.name}</span>`}
+        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>`
+          : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
-        <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `) : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
+        <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
+          : r.ffco_id ? html`<span class="tag" title="${t("prov.ffcoResults")}">FFCO</span>` : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
           ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>

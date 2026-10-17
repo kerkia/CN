@@ -399,6 +399,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   per 200/400/1000 m by % VMA; entries kept in `localStorage ocn.vma`), Méthodes (lab, VAMEVAL, Léger-Boucher, demi-Cooper,
   Cooper, Luc Léger shuttle, 45-15), Applications (free, checked 2026-10-14: EZ BIPsVMA web app for VAMEVAL, EPS Test VMA
   for Léger-Boucher on Android and iOS; 20 m shuttle apps apart). Text inline in the module, as on Documentation.
+- **The « mise en ligne » alert** (owner, 2026-10-17: from the first results, wherever they appear — the club's site, a results
+  platform or FFCO): `notify.run(db, out)` posts FFCO's new competitions (as before) and the races of the last `PROV_DAYS` (4) days
+  with an organiser's list of results naming a subscribed runner (the provisional index's `results` flag and `rlics`, the licences
+  of the lists of results when they differ from `lics`, which counts start lists too), after every deploy, the weekend's
+  `--prov-only` runs included. Each race travels with every id it is known by (FFCO's competition id, its key on « Résultats »:
+  `alias`); `/api/notify` mails a race once (it looks up all its ids in `notified`, then records them), FFCO's link when both
+  exist, else « Résultats » (`prov`, « résultats de l'organisateur » in the mail). **« Résultats » counts FFCO's results** too: a
+  runner's own races are those they are recognised in by an organiser's list or by FFCO's (`data.runnerRaces`), « Avec résultats »
+  includes FFCO's, and a race without an organiser's list links to « Courses classées » (tag « FFCO »); the tile « Avec résultats
+  trouvés » still measures the organisers' lists found.
 - **« Courses classées » by link** (`#/courses?id=`, the e-mail digest's link; owner, 2026-10-17): a race named in the address
   brings its discipline (the site-wide one switches, so the list beside it holds it, opened and marked) and, without `circ=`,
   opens on the circuit the signed-in user ran (in runner mode the runner's), else the busiest.

@@ -753,6 +753,7 @@ def build(con, out: Path, today: date) -> int:
         docs = [x for x in docs if not x["parsed"] or not x["sha"] or not (x["sha"] in seen_sha or seen_sha.add(x["sha"]))]
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
+        rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
         # the course setter's data (« Organisation › Tracer »): no list of results; the uploads first, the newest first.
         # Courses are secret until the race (the setters' own pages): used from the race's day (results come after the
@@ -809,6 +810,9 @@ def build(con, out: Path, today: date) -> int:
                 n_run = max(n_run, len(runners))
                 n_lic = max(n_lic, sum(1 for r in runners if r["lic"]))
                 lics.update(r["lic"] for r in runners if r["lic"])
+                if parsed.get("kind") not in ("startlist", "registration", "announcement") and runners:
+                    results = True
+                    rlics.update(r["lic"] for r in runners if r["lic"])
             out_docs.append(entry)
         most = max((sum(len(k["runners"]) for k in e.get("classes") or []) for e in out_docs), default=0)
         for e in out_docs:
@@ -827,6 +831,8 @@ def build(con, out: Path, today: date) -> int:
                       "agenda_id": race["agenda_id"] or None, "soon": race["date_iso"] > today.isoformat() or None,
                       "startlist": any(x["kind"] in START_KINDS for x in out_docs) or None,
                       "lics": sorted(lics),
+                      # a list of results among them (notify.py: « mise en ligne »), and its runners when they differ from lics
+                      "results": results or None, "rlics": sorted(rlics) if results and rlics != lics else None,
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})})
     names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}
     blocked = [{"host": b["host"], "kind": b["kind"], "example": b["example"], "first": b["first_seen"], "last": b["last_seen"],
