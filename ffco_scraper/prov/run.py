@@ -724,7 +724,9 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             if rivals and race["key"] not in races.owners([race, *rivals], label, False):
                 con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (race["key"], url))
                 continue
-            changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=a.sha,
+            # the file's hash with the reader's version: a better reader replaces an unchanged file's old reading (2026-10-17:
+            # O'Bugey's sheet, read anew, was kept as first read because its content had not changed)
+            changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=f"{a.sha}|p{PARSER_VERSION}" if a.sha else None,
                             note=SITE_STARTLIST if d else f"{SITE_STARTLIST} · {text}".strip(" ·"))
         # the announcement on the organiser's site: its circuits' table, when it has one
         changed += save_announcements(con, race, found, f, rivals)
@@ -894,8 +896,12 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
         recollect = store.meta_get(con, "collect_version", None) != COLLECT_VERSION
-        if reread:                          # the coming races' start lists too, at once (site_start_lists)
+        # the coming races' start lists, read again at once for a new reader version (site_start_lists): its own marker,
+        # set at once — « parser_version » is only stored by a run the budget did not cut, so `reread` may hold run after
+        # run, and clearing the start lists' memory each time left the week's later races unsearched (2026-10-17)
+        if store.meta_get(con, "startlist_version", None) != PARSER_VERSION:
             store.meta_set(con, "startsites", {})
+            store.meta_set(con, "startlist_version", PARSER_VERSION)
         if reread or recollect:             # including the races already finished with, of the period shown
             con.execute("UPDATE prov_races SET done = 0, next_check = ? WHERE date_iso >= ?",
                         (_now(), (today - timedelta(days=KEEP_DAYS)).isoformat()))
