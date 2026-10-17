@@ -7,6 +7,7 @@ import { layoutCourse } from "./layout.js";
 import { itemsFor } from "./draw.js";
 import { widthInCells } from "./descr.js";
 import * as D from "./dialogs.js";
+import { menuItems } from "./context.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const m0 = (v) => `${Math.round(v)} m`;
@@ -399,43 +400,9 @@ export function deleteSelection(E) {
 export function contextMenu(E, sx, sy, cx, cy) {
   const hit = E.hitAt(sx, sy) || (handleAt(E, sx, sy) ? E.sel : null);
   if (hit && !hit.other) E.select(hit);
-  const s = E.sel, items = [];
   const p = E.toMap(sx, sy);
-  if (s?.kind === "control" || s?.kind === "number") {
-    const c = E.ev.controls[s.control];
-    if (c.kind === "normal" || c.kind === "start") items.push(["control-props", "Définition et propriétés…"]);
-    if (c.kind === "crossing") items.push(["rotate", "Faire pivoter…"], ["stretch", "Étirer…"]);
-    if (E.cd.course && s.cc) {
-      if (c.kind === "normal") items.push(["toggle-exchange", E.ev.courseControls[s.cc]?.exchange ? "Retirer l'échange de carte" : "Échange de carte à ce poste"]);
-      items.push(["var-fork", "Fourche à partir d'ici…"], ["var-loop", "Boucles à partir d'ici…"]);
-      if (E.ev.courseControls[s.cc]?.split) items.push(["var-delete", "Supprimer la variante"]);
-      if (c.kind === "normal" && M.isScore(E.ev, E.cd.course)) items.push(["points", "Points…"]);
-      items.push(["text-before", "Ligne de texte avant…"], ["text-after", "Ligne de texte après…"]);
-    }
-    if (c.kind === "normal" || c.kind === "finish") items.push(["gap-add-circle", "Couper le cercle ici"]);
-    if (s.kind === "number" || (s.cc && E.ev.courseControls[s.cc]?.number)) items.push(["number-auto", "Numéro placé automatiquement"]);
-    items.push(["delete", E.cd.course && s.cc ? "Retirer du circuit" : "Supprimer le poste"]);
-  } else if (s?.kind === "leg") {
-    items.push(["bend-add", "Ajouter un coude ici"]);
-    const h = handleAt(E, sx, sy);
-    if (h?.type === "bend") items.push(["bend-remove", "Retirer ce coude"]);
-    items.push(["gap-add-leg", "Couper l'interposte ici"]);
-    if (E.ev.legs[M.findLeg(E.ev, s.c1, s.c2)]?.gaps?.length) items.push(["gap-remove-leg", "Refermer la coupure ici"]);
-    items.push("-", ["flag-none", "Interposte non balisé"], ["flag-all", "Interposte entièrement balisé"], ["flag-begin", "Début balisé"], ["flag-end", "Fin balisée"]);
-  } else if (s?.kind === "special") {
-    const sp = E.ev.specials[s.id];
-    if (["text"].includes(sp.kind)) items.push(["special-props", "Texte…"]);
-    if (["line", "rectangle", "ellipse"].includes(sp.kind)) items.push(["special-props", "Apparence…"]);
-    if (sp.kind === "descriptions") items.push(["special-props", "Colonnes…"]);
-    if (sp.kind === "optional-crossing-point") items.push(["rotate", "Faire pivoter…"], ["stretch", "Étirer…"]);
-    if (!M.POINT_SPECIALS.includes(sp.kind) && !["text", "image", "rectangle", "ellipse", "descriptions"].includes(sp.kind)) {
-      items.push(["corner-add", "Ajouter un sommet ici"]);
-      if (handleAt(E, sx, sy)?.type === "corner") items.push(["corner-remove", "Retirer ce sommet"]);
-    }
-    items.push(["displayed-courses", "Circuits où il apparaît…"], ["delete", "Supprimer"]);
-  } else {
-    items.push(["view-course", "Tout le circuit"], ["view-map", "Toute la carte"]);
-  }
+  // the commands of the selection's tab in the ribbon (context.js), worded for the spot clicked
+  const items = menuItems(E, { p, sx, sy, handle: handleAt(E, sx, sy) });
   D.popupMenu(E, cx, cy, items, (act) => D.action(E, act, null, { p, sx, sy }));
 }
 

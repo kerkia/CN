@@ -19,8 +19,14 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const nf = (v) => new Intl.NumberFormat("fr-FR").format(v);
 
 // ---- the modal box ---------------------------------------------------------------------------------------------------------
+// remember: a dialog that comes back with the choices made last time on this browser (the exports' format, resolution,
+// copies…; owner, 2026-10-17), kept in ocn.tr.prefs « dialogs ». The courses ticked (c<id>), files and passwords are not kept.
+const PREFS = "ocn.tr.prefs";
+const recall = (k) => { try { return JSON.parse(localStorage.getItem(PREFS) || "{}").dialogs?.[k] || null; } catch (e) { return null; } };
+const keepChoices = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PREFS) || "{}"); o.dialogs = { ...(o.dialogs || {}), [k]: v }; localStorage.setItem(PREFS, JSON.stringify(o)); } catch (e) { /* this visit */ } };
+const kept = (el) => el.name && !/^c\d+$/.test(el.name) && !["file", "password", "hidden", "submit", "button"].includes(el.type);
 /** A modal form: returns a promise of the form's values (an object by input name) or null when cancelled. */
-export function modal(E, { title, body, ok = "OK", cancel = "Annuler", wide = false, onOpen = null, validate = null, extra = "" }) {
+export function modal(E, { title, body, ok = "OK", cancel = "Annuler", wide = false, onOpen = null, validate = null, extra = "", remember = null }) {
   return new Promise((resolve) => {
     const m = document.createElement("div");
     m.className = "tr-modal";
@@ -52,6 +58,21 @@ export function modal(E, { title, body, ok = "OK", cancel = "Annuler", wide = fa
     m.querySelector('[data-x="cancel"]')?.addEventListener("click", () => done(null));
     m.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); done(null); } });
     m.addEventListener("pointerdown", (e) => { if (e.target === m) done(null); });
+    // the last choices, put back before onOpen sees the form (a choice the form no longer offers is left as it is)
+    const last = remember ? recall(remember) : null;
+    if (last) for (const el of form.elements) {
+      if (!kept(el) || !(el.name in last)) continue;
+      const v = last[el.name];
+      if (el.type === "checkbox") el.checked = !!v;
+      else if (el.type === "radio") el.checked = el.value === v;
+      else if (el.tagName === "SELECT") { if ([...el.options].some((o) => o.value === v)) el.value = v; }
+      else if (typeof v === "string") el.value = v;
+    }
+    if (remember) form.addEventListener("submit", () => {
+      const v = values(), o = {};
+      for (const el of form.elements) if (kept(el) && el.name in v) o[el.name] = v[el.name];
+      setTimeout(() => { if (!m.isConnected) keepChoices(remember, o); }, 0);       // kept once the dialog is accepted
+    });
     onOpen?.(form, done);
     (form.querySelector("input:not([type=hidden]), select, textarea") || form.querySelector("button[type=submit]"))?.focus();
   });
@@ -179,6 +200,11 @@ export async function action(E, act, btn, at = {}) {
     case "view-others": (await lazy.more()).otherCourses(E); break;
     case "import-course": if (!ro()) (await lazy.more()).readCourseFromMap(E); break;
     case "take-lock": await E.takeLock(); break;
+    case "route-draw": if (!ro() && s?.kind === "leg") { E.setTool("route"); const a = ev.controls[s.c1]; E.pending = { kind: "route", c1: s.c1, c2: s.c2, pts: [[a.x, a.y]] };
+      E.ghost = { pts: E.pending.pts.slice() }; E.help("Itinéraire : cliquer le long du chemin prévu, double-cliquer (ou Entrée) pour finir."); E.redraw(); } break;
+    case "finish-draw": A.finishPending(E); break;
+    case "cancel-draw": E.cancelPending?.(); break;
+    case "overprint": if (!ro()) E.change((x) => { x.appearance.ocadOverprint = !x.appearance.ocadOverprint; }, "Effets de surimpression"); break;
     // right-click and pane buttons
     case "delete": A.deleteSelection(E); break;
     case "control-props": if (s?.control) controlProps(E, s.control); break;
@@ -621,7 +647,7 @@ async function exportOcn(E) {
   // the stored map's own name (a .ppen's map name can be another file's: an OCAD map replaced by its PDF), with an extension
   const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/tiff": ".tif", "image/bmp": ".bmp", "application/pdf": ".pdf" };
   const mapName = (type) => { const n = String(E.meta.map?.name || E.ev.map.file || "carte").split(/[\\/]/).pop(); return /\.[a-z0-9]{2,5}$/i.test(n) ? n : n + (ext[type] || ""); };
-  const v = await modal(E, { title: "Exporter au format O'CN", ok: "Exporter", body: `<p>Un seul fichier <b>.ocnt</b> qui contient tout l'événement — postes, circuits,
+  const v = await modal(E, { title: "Exporter au format O'CN", ok: "Exporter", remember: "exportOcn", body: `<p>Un seul fichier <b>.ocnt</b> qui contient tout l'événement — postes, circuits,
     définitions, apparence, zones d'impression, géoréférencement — et, si vous le cochez, la carte elle-même. Il se rouvre sur O'CN par
     « Importer un événement », pour une copie, un autre club ou une archive.</p>
     <label class="tr-check"><input type="checkbox" name="withMap" checked> Inclure la carte (« ${esc(mapName(E.meta.map?.type))} »)</label>

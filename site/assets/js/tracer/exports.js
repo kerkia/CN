@@ -218,7 +218,7 @@ function worldFile(ev, box, pxPerMm) {
 }
 export async function imagesDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
-  const v = await modal(E, { title: "Images des circuits", wide: true, ok: "Créer", body: `
+  const v = await modal(E, { title: "Images des circuits", wide: true, ok: "Créer", remember: "images", body: `
     <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? x(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
     <div class="tr-grid2">${field("Format", sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"], ["gif", "GIF (256 couleurs)"]], "png"))}${field("Résolution (ppp)", '<input name="dpi" value="200" inputmode="numeric">')}
     ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul"]], "map"))}</div>

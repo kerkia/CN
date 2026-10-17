@@ -44,15 +44,15 @@ export const TABS = [
       stack(S("course-dup", "Dupliquer", "copy", { need: "course", tip: "Une copie du circuit, pour en dériver un autre." }),
         S("course-order", "Ordre des circuits", "sort", { need: "edit", tip: "L'ordre des onglets et des listes." }),
         S("course-delete", "Supprimer", "trash", { need: "course", tip: "Supprimer le circuit ; ses postes restent dans « Tous les postes »." }))] },
-    { id: "variations", title: "Variantes", items: [
+    { id: "variations", title: "Variantes et parties", items: [
       B("var-fork", "Fourche", "fork", { need: "course", tip: "Une fourche à partir du poste choisi : des branches qui se rejoignent plus loin." }),
       B("var-loop", "Boucles", "loop", { need: "course", tip: "Des boucles à partir du poste choisi, qui y reviennent (un « papillon »)." }),
       stack(S("relay", "Relais…", "relay", { need: "course", tip: "Quelle variante court chaque relayeur de chaque équipe." }),
-        S("var-delete", "Supprimer la variante", "removecircle", { need: "course", tip: "Supprimer la fourche ou les boucles qui partent du poste choisi." }))] },
+        S("var-delete", "Supprimer la variante", "removecircle", { need: "course", tip: "Supprimer la fourche ou les boucles qui partent du poste choisi." }),
+        S("part-options", "Options de la partie", "parts", { need: "course", tip: "Pour un circuit en plusieurs parties (échange de carte) : montrer ou non l'arrivée sur la partie choisie." }))] },
     { id: "print", title: "Impression", guide: "sorties", launcher: "print-area", items: [
       B("print-area", "Zone d'impression", "frame", { tip: "La partie de la carte imprimée, le format et l'orientation de la feuille, les marges." }),
-      stack({ t: "field", id: "printScale" }, S("view-printarea", "Montrer la zone", "frame", { toggle: "printArea", tip: "Montrer en pointillés la zone d'impression du circuit." }),
-        S("part-options", "Options de la partie", "parts", { need: "course", tip: "Pour un circuit en plusieurs parties (échange de carte) : montrer ou non l'arrivée sur la partie choisie." }))] },
+      stack({ t: "field", id: "printScale" }, { t: "field", id: "paper" }, S("view-printarea", "Montrer la zone", "frame", { toggle: "printArea", tip: "Montrer en pointillés la zone d'impression du circuit." }))] },
     { id: "numbers", title: "Numérotation", items: [
       stack(S("numbering", "Premier code…", "hash", { need: "edit", tip: "Le premier code des nouveaux postes, et si l'on évite les codes lisibles à l'envers." }),
         S("codes", "Changer les codes…", "tag", { need: "edit", tip: "Changer les codes de plusieurs postes d'un coup." }),
@@ -141,6 +141,7 @@ export const INFO = {
     lang: ["Langue", "La langue des définitions en texte (23 langues)."],
     mapStandard: ["Carte", "La norme de la carte, qui fixe la taille des cercles et des numéros : ISOM 2017 (forêt), ISSprOM 2019 (sprint), ISOM 2000."],
     printScale: ["Échelle", "L'échelle d'impression du circuit en cours (de « Tous les postes » quand aucun circuit n'est choisi)."],
+    paper: ["Papier", "Le format et l'orientation de la feuille du circuit en cours (ou de sa partie) ; « selon le circuit » tourne la feuille dans le sens du circuit."],
     circle: ["Cercles", "La taille des cercles, en proportion de la norme."],
     line: ["Traits", "L'épaisseur des traits, en proportion de la norme."],
     number: ["Numéros", "La hauteur des numéros, en proportion de la norme."],
@@ -161,6 +162,13 @@ export const INFO = {
   gallery: "Les objets spéciaux les plus courants — point d'eau, poste de secours, zone interdite, limite infranchissable, zone dangereuse, itinéraire interdit, texte, image — et ▾ pour tous.",
 };
 
+/** The quick-access bar (the title bar, the O'CN mode): what a setter is likely to use most, whatever the tab — undo and redo, the
+ *  PDF of the course in hand to print a proof, the event audit, the course's properties (name, climb, scale) —; each user changes it
+ *  (its ▾, or a right-click on any button of the ribbon), kept in ocn.tr.prefs « qat ». QAT_CHOICES: offered in its ▾ menu. */
+export const QAT_DEFAULT = ["undo", "redo", "pdf-course", "rep-audit", "course-props"];
+export const QAT_CHOICES = ["undo", "redo", "save", "pdf-course", "pdf-courses", "rep-audit", "course-props", "course-new", "print-area", "view-course",
+  "export-iof3", "versions", "comments", "field"];
+
 /** The contextual tabs, by the selection's kind (ribbon.js fills in titles and figures). */
 export const CONTEXT = {
   control: { label: "Poste", head: "Outils du poste", guide: "postes", groups: [
@@ -173,8 +181,9 @@ export const CONTEXT = {
     { id: "lines", title: "Définitions", items: [stack(S("text-before", "Texte avant…", "text", { need: "edit", tip: "Une ligne de texte dans les définitions, juste avant ce poste (« Passage dans le village »)." }),
       S("text-after", "Texte après…", "text", { need: "edit", tip: "Une ligne de texte dans les définitions, juste après ce poste." }))] },
     { id: "drawing", title: "Dessin", items: [stack(S("gap-add-circle", "Couper le cercle", "gap", { need: "edit", tip: "Puis cliquer sur le cercle là où le couper, pour laisser lisible un détail de la carte." }),
-      S("number-auto", "Numéro à sa place", "number", { need: "edit", tip: "Remettre le numéro à la place que le tracé lui choisit." }),
-      S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole du passage obligatoire." }))] },
+      S("number-auto", "Numéro à sa place", "number", { need: "edit", tip: "Remettre le numéro à la place que le tracé lui choisit." })),
+      stack(S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole du passage obligatoire." }),
+        S("stretch", "Étirer…", "stretch", { need: "edit", tip: "Allonger le symbole du passage obligatoire." }))] },
     { id: "where", title: "Dans les circuits", items: [{ t: "chip", id: "control" }] },
     { id: "remove", title: "", items: [B("delete", "Retirer", "trash", { need: "edit", key: "Suppr", tip: "Dans un circuit : retirer le poste du circuit, il reste dans « Tous les postes ». Dans « Tous les postes » : le supprimer." })] },
   ] },
@@ -182,8 +191,9 @@ export const CONTEXT = {
     { id: "shape", title: "Forme", items: [B("bend-add", "Ajouter un coude", "bend", { need: "edit", tip: "Puis cliquer sur l'interposte, là où le plier. Un coude se glisse ensuite." }),
       B("gap-add-leg", "Couper", "gap", { need: "edit", tip: "Puis cliquer sur l'interposte, là où le couper." }),
       stack(S("bend-remove", "Retirer un coude", "bend", { need: "edit", tip: "Puis cliquer le coude à retirer." }),
-        S("gap-remove-leg", "Refermer une coupure", "gap", { need: "edit", tip: "Puis cliquer la coupure à refermer." }),
-        S("route-draw", "Itinéraire prévu", "route", { need: "edit", tip: "Dessiner le chemin prévu des coureurs, pour la dénivelée ; il ne s'imprime pas." }))] },
+        S("gap-remove-leg", "Refermer une coupure", "gap", { need: "edit", tip: "Puis cliquer la coupure à refermer." })),
+      stack(S("route-draw", "Itinéraire prévu", "route", { need: "edit", tip: "Dessiner le chemin prévu des coureurs, pour la dénivelée ; il ne s'imprime pas." }),
+        S("route-clear", "Effacer l'itinéraire", "trash", { need: "edit", tip: "Effacer le chemin prévu : la dénivelée se calcule de nouveau sur la ligne droite." }))] },
     { id: "flagging", title: "Balisage", items: [{ t: "modes", id: "flag" }] },
     { id: "where", title: "Interposte", items: [{ t: "chip", id: "leg" }] },
   ] },
@@ -191,8 +201,8 @@ export const CONTEXT = {
     { id: "obj", title: "Objet", items: [B("special-props", "Modifier…", "pencil", { need: "edit", tip: "Le texte, l'apparence du trait, ou les colonnes des définitions." }),
       B("displayed-courses", "Circuits…", "layers", { need: "edit", tip: "Les circuits sur lesquels l'objet s'affiche et s'imprime." }),
       stack(S("corner-add", "Ajouter un sommet", "vertex", { need: "edit", tip: "Puis cliquer sur la ligne ou le bord de la zone." }),
-        S("corner-remove", "Retirer un sommet", "vertex", { need: "edit", tip: "Puis cliquer le sommet à retirer." }),
-        S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole." }))] },
+        S("corner-remove", "Retirer un sommet", "vertex", { need: "edit", tip: "Puis cliquer le sommet à retirer." })),
+      stack(S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole." }), S("stretch", "Étirer…", "stretch", { need: "edit", tip: "Allonger le symbole." }))] },
     { id: "where", title: "", items: [{ t: "chip", id: "special" }] },
     { id: "remove", title: "", items: [B("delete", "Supprimer", "trash", { need: "edit", key: "Suppr", tip: "Supprimer l'objet." })] },
   ] },

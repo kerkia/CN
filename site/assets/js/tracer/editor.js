@@ -730,7 +730,8 @@ function shell(E) {
     <span class="tr-qat" role="toolbar" aria-label="Accès rapide">
       <button type="button" class="tr-icon" id="tr-undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">${svg("undo")}</button>
       <button type="button" class="tr-icon" id="tr-redo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">${svg("redo")}</button>
-      <button type="button" class="tr-icon tr-ocn" data-act="pdf-course" title="Le PDF du circuit en cours, avec les derniers réglages" aria-label="PDF de ce circuit">${svg("printer")}</button>
+      <span class="tr-qatx tr-ocn" id="tr-qatx"></span>
+      <button type="button" class="tr-icon tr-ocn tr-qatmore" id="tr-qatmore" title="Personnaliser la barre d'accès rapide" aria-label="Personnaliser la barre d'accès rapide" aria-haspopup="menu">▾</button>
     </span>
     <div class="tr-tools tr-pp" role="toolbar" aria-label="Outils">
       <span class="tr-sep"></span>

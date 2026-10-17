@@ -223,7 +223,7 @@ export async function courseFilesDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
   const anyVars = ids.some((id) => M.hasVariations(ev, id));
   const kindLabel = { ocad: "OCAD", bitmap: "image", pdf: "PDF", none: "" }[ev.map.kind] || "";
-  const v = await modal(E, { title: "Fichiers OCAD ou Mapper des circuits", wide: true, ok: "Créer", body: `
+  const v = await modal(E, { title: "Fichiers OCAD ou Mapper des circuits", wide: true, ok: "Créer", remember: "courseFiles", body: `
     <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
     <div class="tr-grid2">${field("Format", sel("fmt", [["ocad2018", "OCAD 2018 et suivants"], ["ocad12", "OCAD 12"], ["ocad11", "OCAD 11"], ["ocad10", "OCAD 10"], ["ocad9", "OCAD 9"],
       ["omap", "OpenOrienteering Mapper (.omap)"], ["xmap", "OpenOrienteering Mapper (.xmap)"]], "ocad2018"))}

@@ -921,6 +921,7 @@ export async function render(main, { query = {} } = {}) {
       ["Maj en glissant un poste", "Le poser exactement sur un poste voisin"],
       ["Molette, + et −", "Zoomer"], ["Flèches, clic droit glissé", "Déplacer la carte"], ["Clic droit", "Le menu de l'objet sous la souris"],
       ["Alt", "Les raccourcis du ruban : une lettre sur chaque onglet, puis sur chaque bouton de l'onglet choisi"], ["Alt + Q", "Rechercher une commande"],
+      ["← → ↑ ↓, Début, Fin (dans le ruban)", "D'un onglet à l'autre (il s'affiche), d'un bouton à l'autre ; ↓ d'un onglet entre dans son ruban, ↑ y revient ; Tab passe des onglets au ruban"],
       ["Ctrl + F1", "Replier le ruban à ses onglets, ou le déplier"], ["F1", "Le guide, au chapitre de la commande sous la souris"],
     ];
     // what each menu entry does (the menus come from tracer/icons.js, as in the editor)
@@ -1008,7 +1009,7 @@ export async function render(main, { query = {} } = {}) {
         <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/>${icon("folder", 13, 11, 0.55)}${txt(32, 22, "Événements", 'style="fill:var(--ink)"')}
         <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
         <rect x="196" y="11" width="34" height="15" rx="7.5" fill="var(--flag)"/><text x="213" y="22" text-anchor="middle" font-size="8.5" font-weight="700" style="fill:#fff">BÊTA</text>
-        <line x1="240" y1="10" x2="240" y2="27" stroke="${line}"/>${icon("undo", 248, 9, 0.62)}${icon("redo", 270, 9, 0.62)}${icon("printer", 292, 9, 0.62)}
+        <line x1="240" y1="10" x2="240" y2="27" stroke="${line}"/>${icon("undo", 248, 9, 0.62)}${icon("redo", 270, 9, 0.62)}${icon("printer", 292, 9, 0.62)}${icon("shield", 314, 9, 0.62)}${icon("pencil", 336, 9, 0.62)}<text x="358" y="22" font-size="8" style="fill:var(--ink-3)">▾</text>
         <rect x="470" y="7" width="176" height="22" rx="6" fill="var(--surface-2)" stroke="${line}"/>${icon("search", 476, 11, 0.55)}${txt(494, 22, "Rechercher une commande", 'style="fill:var(--ink-3)"')}
         ${txt(656, 22, "Enregistré", 'style="fill:var(--good)"')}${icon("ribbon", 712, 9, 0.62)}${icon("fit", 734, 9, 0.62)}
         <line x1="0" y1="35" x2="760" y2="35" stroke="${line}"/>
@@ -1041,7 +1042,7 @@ export async function render(main, { query = {} } = {}) {
           <line x1="736" y1="266" x2="736" y2="320" stroke="${P}" stroke-width="3" stroke-linecap="round"/><circle cx="736" cy="276" r="5" fill="${P}"/></g>
         <line x1="0" y1="460" x2="760" y2="460" stroke="${line}"/>
         <text x="12" y="477" font-size="11" style="fill:var(--ink-3)">Cliquer pour choisir un objet ; glisser un objet choisi pour le déplacer…</text><text x="748" y="477" text-anchor="end" font-size="11" style="fill:var(--ink-3)">1:10 000 · 140 %</text>
-        ${mark(1, 352, 18)}${mark(2, 540, 50)}${mark(3, 346, 136)}${mark(4, 700, 50)}${mark(5, 292, 162)}${mark(6, 222, 186)}${mark(7, 420, 240)}${mark(8, 708, 196)}
+        ${mark(1, 384, 18)}${mark(2, 540, 50)}${mark(3, 346, 136)}${mark(4, 700, 50)}${mark(5, 292, 162)}${mark(6, 222, 186)}${mark(7, 420, 240)}${mark(8, 708, 196)}
       </svg>`;
     };
     const CH = {
@@ -1149,7 +1150,7 @@ export async function render(main, { query = {} } = {}) {
           <figure class="mx-fig">${raw(screenFig())}</figure>
           <div class="mx-steps" style="--c:#a7179b">
             <div class="mx-step"><b>La barre du haut</b>« Événements » ramène les trois choix (ouvrir un autre événement, en créer ou en importer un) ; le titre ;
-              l'accès rapide : annuler, rétablir, et le PDF du circuit en cours. À droite, la recherche d'une commande, l'état de l'enregistrement, ▭ (l'affichage du
+              la barre d'accès rapide : annuler, rétablir, le PDF du circuit en cours, le contrôle de l'événement, les propriétés du circuit. À droite, la recherche d'une commande, l'état de l'enregistrement, ▭ (l'affichage du
               ruban, le mode Purple Pen), ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
             <div class="mx-step"><b>Les onglets du ruban</b>Fichier, puis un onglet par étape du travail : Tracer, Circuits, Carte, Vérifier, Imprimer, Équipe et
               course. Un chiffre sur Vérifier : les problèmes trouvés ; sur Équipe et course : les commentaires encore ouverts.</div>
@@ -1181,14 +1182,21 @@ export async function render(main, { query = {} } = {}) {
             en train d'être dessinée l'onglet <b>Tracé en cours</b>, avec « Terminer » et « Annuler ». Choisi depuis l'onglet Tracer, l'objet ouvre son onglet tout
             seul ; depuis un autre onglet, son onglet apparaît et clignote, sans prendre la place de celui où l'on travaille. Les commandes qui demandent un endroit
             (« Ajouter un coude », « Couper le cercle ») demandent ensuite un clic sur la carte ; Échap y renonce.</p>
+          <h3>La barre d'accès rapide</h3>
+          <p>À côté du titre, elle garde à portée de clic, quel que soit l'onglet, les commandes qui servent le plus souvent : annuler, rétablir, le PDF du
+            circuit en cours (pour imprimer une épreuve, avec les derniers réglages), le contrôle de l'événement et les propriétés du circuit. Son ▾ en ajoute
+            ou en retire d'autres (enregistrer, le PDF de tous les circuits, la zone d'impression, l'IOF XML, les versions, les commentaires, le mode
+            terrain…) ; un clic droit sur n'importe quel bouton du ruban l'y ajoute, un clic droit dans la barre l'en retire. Elle est gardée sur ce navigateur.</p>
           <h3>Trouver une commande</h3>
           <p>La <b>recherche</b>, en haut (Alt + Q), trouve une commande par un mot de son nom ou de ce qu'elle fait (« fourche », « gpx », « caler », « échelle »), et
             dit où elle est ; Entrée la lance et fait clignoter son bouton, pour la retrouver la fois suivante. <b>Alt</b> seul fait paraître une lettre sur chaque
             onglet, puis, l'onglet choisi, sur chaque bouton : deux touches lancent n'importe quelle commande sans la souris.</p>
           <h3>Plus de place pour la carte</h3>
           <p>Le bouton ▭, en haut à droite, met le ruban sur <b>une seule ligne</b> de petits boutons, ou n'en garde que <b>les onglets</b> (Ctrl + F1) : il s'ouvre
-            alors sur la carte au clic d'un onglet et se referme après la commande. Quand la fenêtre est étroite, les groupes se replient d'eux-mêmes, en commençant par
-            la droite, chacun en un bouton qui l'ouvre.</p>
+            alors sur la carte au clic d'un onglet et se referme après la commande. Sans choix de votre part, il est <b>automatique</b> : complet, sur une seule ligne
+            quand la fenêtre a moins de 800 points de haut (un écran d'ordinateur portable), et réduit à ses onglets en plein écran (⤢), où la carte prend toute la
+            place ; Fichier › Options règle les deux cas. Quand la fenêtre est étroite, les groupes se replient d'eux-mêmes, en commençant par la droite, chacun en un
+            bouton qui l'ouvre.</p>
           <h3>Le mode Purple Pen</h3>
           <p>Ceux qui connaissent Purple Pen peuvent garder ses menus : Fichier › Options, ou le bouton ▭ › Mode Purple Pen, remplace le ruban par les menus Fichier,
             Événement, Circuit, Rapports, Affichage et la barre d'outils. Affichage › Mode O'CN, ou le bouton « Ruban » en haut à droite, ramène le ruban. Les
@@ -1203,9 +1211,10 @@ export async function render(main, { query = {} } = {}) {
             zone, le coin des définitions ; elles se glissent. Suppr supprime l'objet ; dans un circuit, un poste est seulement retiré du circuit et reste dans
             « Tous les postes ».</p>
           <h3>Le clic droit</h3>
-          <p>Le clic droit ouvre aussi le menu de l'objet sous la souris, avec les commandes de son onglet : pour un poste, sa définition, une fourche ou des
-            boucles, un échange de carte, une ligne de texte, couper son cercle, le retirer ; pour un interposte, un coude, une coupure, le balisage ; pour un objet,
-            son apparence, ses sommets, les circuits où il apparaît.</p>
+          <p>Le clic droit sur la carte ouvre le menu de l'objet sous la souris, avec exactement les commandes de son onglet, groupe par groupe, dites pour
+            l'endroit cliqué : pour un poste, sa définition, une fourche ou des boucles, un échange de carte, une ligne de texte, couper son cercle ici, le retirer ;
+            pour un interposte, un coude ou une coupure ici, retirer ce coude, l'itinéraire, le balisage ; pour un objet, son apparence, un sommet ici ou ce
+            sommet, les circuits où il apparaît. Sur un bouton du ruban, le clic droit l'ajoute à la barre d'accès rapide.</p>
           <h3>Le clavier</h3>
           <div class="table-wrap"><table class="data compact tr-doc-tools"><thead><tr><th>Touche</th><th>Effet</th></tr></thead><tbody>
             ${KEYS.map(([k, v]) => html`<tr><td style="white-space:nowrap"><b>${k}</b></td><td>${v}</td></tr>`)}</tbody></table></div>
@@ -1274,8 +1283,9 @@ export async function render(main, { query = {} } = {}) {
           <p>Un <b>échange de carte</b> (outil Échange de carte sur un poste du circuit) partage le circuit en parties : un sélecteur de partie apparaît, et chaque
             partie a sa zone d'impression et s'imprime sur sa propre feuille. ${W("part-options")} montre ou non l'arrivée sur une partie.</p>
           <h3>La zone d'impression</h3>
-          <p>${W("print-area")} choisit le papier (A4, A3…), l'orientation, les marges, et la partie de la carte à imprimer : automatique, centrée sur le
-            circuit, ou un cadre tiré sur la carte. Une zone plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou se réduit à son
+          <p>${W("print-area")} choisit le papier (A4, A3…), l'orientation, les marges, et la partie de la carte à imprimer ; le papier et l'orientation se changent aussi
+            d'un clic dans Circuits › Impression › Papier (« selon le circuit » tourne la feuille dans le sens du circuit). La zone se place toute seule, centrée sur le
+            circuit, ou suit un cadre tiré sur la carte. Une zone plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou se réduit à son
             centre. ${W("view-printarea")} la montre en pointillés.</p>
         </section>`,
       definitions: () => html`
@@ -1345,7 +1355,8 @@ export async function render(main, { query = {} } = {}) {
               .ppen s'ouvre dans Purple Pen à côté de la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("table", 18)} Tableaux</h3><p>Les rapports en CSV (séparateur « ; »), pour un tableur.</p></div>
           </div>
-          <p>Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; ${W("save-to")}
+          <p>Chaque fenêtre d'export revient avec les choix faits la dernière fois sur ce navigateur — le format, la résolution, le nombre d'exemplaires, la
+            taille des cases, les couleurs… — ; seuls les circuits à cocher sont à refaire. Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; ${W("save-to")}
             change ce choix.</p>
           <h3>L'apparence</h3>
           <p>Carte › Symboles règle la taille des cercles, l'épaisseur des traits et la hauteur des numéros (en proportion de la norme) ; Carte › Violet › Apparence, la police et le gras des

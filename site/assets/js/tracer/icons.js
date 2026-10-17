@@ -123,7 +123,7 @@ export const ACT_ICON = {
   "rep-times": "stopwatch", "rep-pickup": "box", "rep-after": "chart", comments: "comment", field: "phone",
   "view-course": "fit", "view-map": "map", "view-all": "view", "view-printarea": "frame", "view-others": "layers", "import-course": "scan", "save-to": "folder",
   "ui-ribbon": "ribbon", "ui-classic": "menu", "pdf-course": "printer", "special-more": "special", "finish-draw": "check", "cancel-draw": "close",
-  "route-draw": "route", "route-clear": "route", overprint: "layers", "ribbon-full": "ribbon", "ribbon-line": "minus", "ribbon-folded": "fit", keytips: "hash", guide: "list",
+  "route-draw": "route", "route-clear": "trash", undo: "undo", redo: "redo", overprint: "layers", "ribbon-full": "ribbon", "ribbon-line": "minus", "ribbon-folded": "fit", keytips: "hash", guide: "list",
   // the right-click menu
   "control-props": "descr", "toggle-exchange": "exchange", points: "hash", "text-before": "text", "text-after": "text", "gap-add-circle": "gap",
   "number-auto": "number", delete: "trash", "bend-add": "bend", "bend-remove": "bend", "gap-add-leg": "gap", "gap-remove-leg": "gap",

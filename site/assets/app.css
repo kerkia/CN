@@ -1712,6 +1712,11 @@ body.full-win .tr-app { border: 0; }
    Pen mode », the menus and the tool bar; the title bar is shared, each mode's parts marked .tr-ocn / .tr-pp */
 .tr-ui-ocn .tr-pp, .tr-ui-pp .tr-ocn { display: none !important; }
 .tr-qat { display: inline-flex; align-items: center; gap: 2px; }
+.tr-qatx { display: inline-flex; align-items: center; gap: 2px; }
+.tr-ui-ocn .tr-qhide { display: none; }
+.tr-qatmore { width: 18px; font-size: 10px; color: var(--ink-3); }
+.tr-qatx .tr-icon[aria-disabled="true"] { opacity: .35; cursor: default; }
+.tr-rbody button:focus-visible, .tr-rtabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; }
 .tr-ui-ocn .tr-top { flex-wrap: nowrap; }
 .tr-ui-ocn .tr-qat { margin-left: 2px; padding-left: 6px; border-left: 1px solid var(--border); }
 .tr-ui-ocn .tr-status { margin-left: 8px; }

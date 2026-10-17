@@ -814,8 +814,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   messages naming a command use), drawn by `tracer/ribbon.js` (`mountRibbon`; `E.ribbon.update()` after each refresh, tool change and
   drawing step). Every button runs the editor's own action (`dialogs.action`) or tool; the ribbon's own acts: `pdf-course` (the PDF of
   the course in hand with the last choices, `pdf.coursesDialog({ only })`; also the quick-access printer), `special-more`, `route-draw`,
-  `finish-draw` / `cancel-draw` (`E.cancelPending`), `overprint`, `ribbon-full|line|folded`, `ui-classic`, and the commands that need a
-  point (`PICK`: « Ajouter un coude », « Couper le cercle »…, `E.pickOnce`, which the canvas now gives every click). A greyed button says
+  `finish-draw` / `cancel-draw` (`E.cancelPending`), `route-draw`, `overprint` — these in `dialogs.action` too —, `ribbon-full|line|folded|auto`,
+  `ui-classic`, and the commands that need a point (`PICK`: « Ajouter un coude », « Couper le cercle »…, `E.pickOnce`, which the canvas now
+  gives every click). **What applies to the selection** is one module, `tracer/context.js` (`ctxKind`, `applies`, `menuItems`): the
+  contextual tabs and the **right-click menu** (`actions.contextMenu`) are both drawn from `CONTEXT`, the menu group by group and worded for
+  the spot clicked (« Ajouter un coude ici », « Retirer ce coude » only over a bend's handle). A greyed button says
   why (`why()`: no event, read-only, no course, not a vector map, before the race day for the after-race ones); contextual commands that do
   not apply to the selection are left out (`applies()`). A contextual tab opens by itself when the object is chosen with Sélection from
   « Tracer » (not when just placed by a tool), else it waits and pulses; it goes when the selection does. In place: fields (description
@@ -825,8 +828,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   and lists the first three; « Équipe et course » counts open comments (`E.commentsData`, read once at opening). Tooltips: what it does,
   its key, why it is greyed, its place in the Purple Pen mode, F1 for the guide's chapter. Search (Alt+Q) over every command, the
   « Fichier » page and the old menu names: Entrée runs it and flashes its button. Key hints (Alt alone: tab letters, then button letters).
-  Display (`ocn.tr.prefs` `ribbon`): full, one line (labels dropped when too long), tabs only (Ctrl+F1, opens over the map); groups fold
-  from the right into one button when the width is short; one line on a phone. In the O'CN mode the left pane's object details give way to
+  Display (`ocn.tr.prefs` `ribbon` in the page, `ribbonFw` in full window; unset = automatic: tabs only in full window, one line under
+  800 px of window height, else full): full, one line (labels dropped when too long), tabs only (Ctrl+F1, opens over the map); groups fold
+  from the right into one button when the width is short; one line on a phone. **Keyboard**: one Tab stop for the tabs and one for the
+  ribbon (roving `tabIndex`), ← → through tabs (each shown) and buttons, ↓ from a tab into its ribbon, ↑ within a pile or back to the
+  tabs, Début / Fin. **Quick-access bar** (`QAT_DEFAULT`, owner 2026-10-17: « guess which buttons are used most »: undo, redo, the PDF of
+  the course in hand, the event audit, the course's properties; `ocn.tr.prefs` `qat`, keys an action, `tool:<tool>`, `undo`, `redo`): its
+  ▾ ticks `QAT_CHOICES`, a right-click on any ribbon button adds it, one in the bar removes it, Fichier › Options resets it. **Dialogs
+  remember** their last choices (`dialogs.modal` `remember`: the exports — course and description PDFs, images, OCAD/Mapper files, the
+  O'CN file —; `ocn.tr.prefs` `dialogs`, the courses ticked `c<id>`, files and passwords not kept). « Papier » in Circuits › Impression
+  (paper × portrait / landscape / « selon le circuit », on the course's or part's print area). In the O'CN mode the left pane's object details give way to
   the contextual tab (`#tr-info` hidden while something is chosen). The guide (« Le tracé »): « L'écran » drawn with the ribbon, « Le
   ruban » (every tab, group and command from the data), « Le mode Purple Pen » (the menus, each command's place in the ribbon), and every
   « Menu › Commande » of its text as the ribbon's place (`W(act)` = `ribbonAt`). The home page's « Tracé » slide was taken again with the
