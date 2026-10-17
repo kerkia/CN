@@ -11,10 +11,11 @@ import { modal, field } from "./dialogs.js";
 import { ctrlName } from "./reports.js";
 import * as IDB from "./idb.js";
 import { where } from "./ribbon-data.js";
+import { t, tn, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const when = (t) => new Date(t).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
-const me = (E) => E.you?.name || "Moi";
+const when = (at) => new Date(at).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
+const me = (E) => E.you?.name || t("trc.team.me");
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 // ---- comments ----------------------------------------------------------------------------------------------------------------
@@ -52,29 +53,29 @@ function commentsOverlay(E) {
 export async function comments(E, focus = null) {
   commentsOverlay(E);
   E.opts.showComments = true;
-  E.status("Commentaires…", "busy");
+  E.status(t("trc.team.cmtBusy"), "busy");
   let data;
-  try { data = await loadComments(E); } catch (err) { E.status("Prêt", "ok"); E.toast("Commentaires indisponibles."); return; }
-  E.commentsData = data; E.redraw(); E.status("Prêt", "ok");
+  try { data = await loadComments(E); } catch (err) { E.status(t("trc.team.ready"), "ok"); E.toast(t("trc.team.cmtUnavailable")); return; }
+  E.commentsData = data; E.redraw(); E.status(t("trc.team.ready"), "ok");
   const sel = E.sel?.control ? E.sel.control : null;
   const open = data.items.filter((c) => !c.done).length;
   const item = (c, i) => `<li class="tr-cmt ${c.done ? "done" : ""}" data-id="${c.id}">
-    <div><b>${i + 1}.</b> ${c.control ? `<span class="tr-tag">poste ${esc(ctrlName(E.ev, c.control))}</span> ` : ""}${c.course && E.ev.courses[c.course] ? `<span class="tr-tag">${esc(E.ev.courses[c.course].name)}</span> ` : ""}
+    <div><b>${i + 1}.</b> ${c.control ? `<span class="tr-tag">${t("trc.team.cmtControl", { code: esc(ctrlName(E.ev, c.control)) })}</span> ` : ""}${c.course && E.ev.courses[c.course] ? `<span class="tr-tag">${esc(E.ev.courses[c.course].name)}</span> ` : ""}
     <small>${esc(c.by)}, ${when(c.at)}</small></div><p>${esc(c.text)}</p>
     ${(c.replies || []).map((r) => `<p class="tr-reply"><small>${esc(r.by)}, ${when(r.at)}</small><br>${esc(r.text)}</p>`).join("")}
-    <div class="tr-cmt-btns">${c.pt || c.control ? '<button type="button" class="btn btn-sm" data-go>Voir</button>' : ""}
-    <button type="button" class="btn btn-sm" data-reply>Répondre</button>
-    <button type="button" class="btn btn-sm" data-done>${c.done ? "Rouvrir" : "Fait"}</button></div></li>`;
-  const v = await modal(E, { title: `Commentaires de l'équipe (${open} ouvert${open > 1 ? "s" : ""})`, wide: true, ok: "Ajouter", cancel: "Fermer", body: `
-    <ol class="tr-cmts">${data.items.map(item).join("") || "<li><small>Aucun commentaire pour l'instant.</small></li>"}</ol>
-    <h3>Nouveau commentaire</h3>
-    ${field("Texte", '<textarea name="text" rows="3" maxlength="2000"></textarea>')}
-    <label class="tr-check"><input type="radio" name="where" value="none" ${sel ? "" : "checked"}> Sans lieu</label>
-    ${sel ? `<label class="tr-check"><input type="radio" name="where" value="control" checked> Sur le poste choisi (${esc(ctrlName(E.ev, sel))})</label>` : ""}
-    <label class="tr-check"><input type="radio" name="where" value="pin"> Épingler à un endroit de la carte (cliquer ensuite)</label>
-    ${E.cd.course ? `<label class="tr-check"><input type="checkbox" name="course" checked> Seulement pour le circuit ${esc(E.course().name)}</label>` : ""}
-    <label class="tr-check"><input type="checkbox" name="show" ${E.opts.showComments ? "checked" : ""}> Montrer les commentaires ouverts sur la carte</label>`,
-  validate: (o) => (o.text.trim() ? null : "Le texte du commentaire."),
+    <div class="tr-cmt-btns">${c.pt || c.control ? `<button type="button" class="btn btn-sm" data-go>${t("trc.team.view")}</button>` : ""}
+    <button type="button" class="btn btn-sm" data-reply>${t("trc.team.reply")}</button>
+    <button type="button" class="btn btn-sm" data-done>${c.done ? t("trc.team.reopen") : t("trc.team.done")}</button></div></li>`;
+  const v = await modal(E, { title: tn("trc.team.cmtTitle", open), wide: true, ok: t("trc.team.add"), cancel: t("trc.team.close"), body: `
+    <ol class="tr-cmts">${data.items.map(item).join("") || `<li><small>${t("trc.team.cmtNone")}</small></li>`}</ol>
+    <h3>${t("trc.team.cmtNew")}</h3>
+    ${field(t("trc.team.text"), '<textarea name="text" rows="3" maxlength="2000"></textarea>')}
+    <label class="tr-check"><input type="radio" name="where" value="none" ${sel ? "" : "checked"}> ${t("trc.team.noPlace")}</label>
+    ${sel ? `<label class="tr-check"><input type="radio" name="where" value="control" checked> ${t("trc.team.onControl", { code: esc(ctrlName(E.ev, sel)) })}</label>` : ""}
+    <label class="tr-check"><input type="radio" name="where" value="pin"> ${t("trc.team.pin")}</label>
+    ${E.cd.course ? `<label class="tr-check"><input type="checkbox" name="course" checked> ${t("trc.team.onlyCourse", { course: esc(E.course().name) })}</label>` : ""}
+    <label class="tr-check"><input type="checkbox" name="show" ${E.opts.showComments ? "checked" : ""}> ${t("trc.team.showOnMap")}</label>`,
+  validate: (o) => (o.text.trim() ? null : t("trc.team.needText")),
   onOpen: (f, done) => {
     f.elements.show.addEventListener("change", () => { E.opts.showComments = f.elements.show.checked; E.redraw(); });
     f.querySelectorAll(".tr-cmt").forEach((li) => {
@@ -89,8 +90,8 @@ export async function comments(E, focus = null) {
       });
       li.querySelector("[data-reply]").addEventListener("click", async () => {
         done(null);
-        const r = await modal(E, { title: `Répondre au commentaire ${data.items.indexOf(c) + 1}`, body: `<p><small>${esc(c.by)}</small> : ${esc(c.text)}</p>${field("Réponse", '<textarea name="t" rows="3" maxlength="2000"></textarea>')}`,
-          validate: (o) => (o.t.trim() ? null : "Le texte de la réponse.") });
+        const r = await modal(E, { title: t("trc.team.replyTitle", { n: data.items.indexOf(c) + 1 }), body: `<p>${t("trc.team.replyQuote", { by: esc(c.by), text: esc(c.text) })}</p>${field(t("trc.team.answer"), '<textarea name="t" rows="3" maxlength="2000"></textarea>')}`,
+          validate: (o) => (o.t.trim() ? null : t("trc.team.needAnswer")) });
         if (r) await saveComments(E, (d) => { const x = d.items.find((y) => y.id === id); if (x) (x.replies ||= []).push({ at: Date.now(), by: me(E), text: r.t.trim() }); });
         comments(E);
       });
@@ -106,16 +107,16 @@ export async function comments(E, focus = null) {
   if (v.course && E.cd.course) c.course = E.cd.course;
   if (v.where === "control" && sel) c.control = sel;
   if (v.where === "pin") {
-    E.help("Cliquez sur la carte l'endroit du commentaire (Échap pour annuler).");
-    E.pickOnce = async (p) => { c.pt = [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100]; await saveComments(E, (d) => d.items.push(c)); E.toast("Commentaire épinglé."); };
+    E.help(t("trc.team.pinHelp"));
+    E.pickOnce = async (p) => { c.pt = [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100]; await saveComments(E, (d) => d.items.push(c)); E.toast(t("trc.team.pinned")); };
     return;
   }
   await saveComments(E, (d) => d.items.push(c));
-  E.toast("Commentaire ajouté.");
+  E.toast(t("trc.team.added"));
 }
 
 // ---- field mode ----------------------------------------------------------------------------------------------------------------
-const STATES = [["set", "Posé", "#2563eb"], ["checked", "Vérifié", "#16a34a"], ["collected", "Ramassé", "#6b7280"], ["problem", "Problème", "#dc2626"]];
+const STATES = [["set", t("trc.team.stSet"), "#2563eb"], ["checked", t("trc.team.stChecked"), "#16a34a"], ["collected", t("trc.team.stCollected"), "#6b7280"], ["problem", t("trc.team.stProblem"), "#dc2626"]];
 const stateOf = (k) => STATES.find((s) => s[0] === k);
 const queueKey = (E) => `ocn.tr.field.${E.meta.id}`;
 const readQueue = (E) => { try { return JSON.parse(localStorage.getItem(queueKey(E)) || "[]"); } catch (e) { return []; } };
@@ -204,25 +205,25 @@ function bearing(E, id) {
 function renderField(E) {
   const box = E.fieldBox;
   if (!box) return;
-  const t = target(E), q = readQueue(E).length;
+  const tg = target(E), q = readQueue(E).length;
   const counts = Object.fromEntries(STATES.map(([k]) => [k, 0]));
   for (const st of Object.values(E.fieldData?.controls || {})) if (counts[st.state] != null) counts[st.state]++;
   const total = Object.values(E.ev.controls).filter((c) => c.kind === "normal").length;
-  const st = t ? E.fieldData?.controls?.[t.id] : null;
-  const gpsLine = !G.hasGeo(E.ev) ? `Carte non géoréférencée : pas de position GPS (${where("georef")}).`
-    : !E.gps ? (E.gpsError || "Recherche de la position…") : `Position à ± ${Math.round(E.gps.acc)} m.`;
-  box.innerHTML = `<div class="tr-field-head"><b>Mode terrain</b> <small>${esc(gpsLine)}</small>
-      <button type="button" class="tr-icon" data-f="close" title="Quitter le mode terrain" aria-label="Quitter">✕</button></div>
-    ${t ? `<div class="tr-field-target"><span class="tr-field-code">${esc(ctrlName(E.ev, t.id))}</span>
-      ${t.d != null ? `<span>${Math.round(t.d)} m · ${Math.round(bearing(E, t.id))}°</span>` : ""}${t.chosen ? " <small>(choisi sur la carte)</small>" : " <small>(le plus proche)</small>"}
-      ${st?.state ? `<small>${esc(stateOf(st.state)?.[1] || "")} par ${esc(st.by)}, ${when(st.at)}${st.note ? ` — ${esc(st.note)}` : ""}</small>` : "<small>Pas encore d'état.</small>"}
-      ${st?.photos?.length ? `<small>${st.photos.length} photo${st.photos.length > 1 ? "s" : ""}</small>` : ""}</div>
+  const st = tg ? E.fieldData?.controls?.[tg.id] : null;
+  const gpsLine = !G.hasGeo(E.ev) ? t("trc.team.noGeo", { where: where("georef") })
+    : !E.gps ? (E.gpsError || t("trc.team.locating")) : t("trc.team.accuracy", { acc: Math.round(E.gps.acc) });
+  box.innerHTML = `<div class="tr-field-head"><b>${t("trc.team.fieldMode")}</b> <small>${esc(gpsLine)}</small>
+      <button type="button" class="tr-icon" data-f="close" title="${esc(t("trc.team.quitField"))}" aria-label="${esc(t("trc.team.quit"))}">✕</button></div>
+    ${tg ? `<div class="tr-field-target"><span class="tr-field-code">${esc(ctrlName(E.ev, tg.id))}</span>
+      ${tg.d != null ? `<span>${Math.round(tg.d)} m · ${Math.round(bearing(E, tg.id))}°</span>` : ""} <small>${t(tg.chosen ? "trc.team.chosen" : "trc.team.nearest")}</small>
+      ${st?.state ? `<small>${t("trc.team.stateBy", { state: esc(stateOf(st.state)?.[1] || ""), by: esc(st.by), when: when(st.at) })}${st.note ? ` — ${esc(st.note)}` : ""}</small>` : `<small>${t("trc.team.noState")}</small>`}
+      ${st?.photos?.length ? `<small>${tn("trc.team.photos", st.photos.length)}</small>` : ""}</div>
       <div class="tr-field-btns">${STATES.map(([k, label, col]) => `<button type="button" class="btn" data-f="${k}" style="border-color:${col}">${label}</button>`).join("")}</div>`
-    : '<p class="tr-hint">Touchez un poste sur la carte.</p>'}
-    <div class="tr-field-foot"><small>${STATES.map(([k, label]) => `${label} ${counts[k]}`).join(" · ")} sur ${total} postes${q ? ` · ${q} en attente de réseau` : ""}</small>
-      ${G.hasGeo(E.ev) && E.gps ? '<button type="button" class="btn btn-sm" data-f="me">Centrer sur moi</button>' : ""}
-      ${t ? '<button type="button" class="btn btn-sm" data-f="photo">Photo</button>' : ""}
-      <button type="button" class="btn btn-sm" data-f="list">Liste</button></div>`;
+    : `<p class="tr-hint">${t("trc.team.tapControl")}</p>`}
+    <div class="tr-field-foot"><small>${t("trc.team.counts", { list: STATES.map(([k, label]) => `${label} ${counts[k]}`).join(" · "), total })}${q ? ` · ${t("trc.team.waiting", { n: q })}` : ""}</small>
+      ${G.hasGeo(E.ev) && E.gps ? `<button type="button" class="btn btn-sm" data-f="me">${t("trc.team.centre")}</button>` : ""}
+      ${tg ? `<button type="button" class="btn btn-sm" data-f="photo">${t("trc.team.photo")}</button>` : ""}
+      <button type="button" class="btn btn-sm" data-f="list">${t("trc.team.list")}</button></div>`;
 }
 export async function fieldMode(E) {
   if (E.fieldOn) { stopField(E); return; }
@@ -245,29 +246,29 @@ export async function fieldMode(E) {
     if (f === "me" && E.gps) { const [mx, my] = G.toMm(E.ev, E.gps.lat, E.gps.lon), W = E.canvas.clientWidth, H = E.canvas.clientHeight, k = Math.max(E.view.k, 5); E.view = { k, ox: W / 2 - mx * k, oy: H / 2 + my * k }; E.redraw(); return; }
     if (f === "list") { fieldList(E); return; }
     if (f === "photo") { takePhoto(E); return; }
-    const t = target(E); if (!t) return;
+    const tg = target(E); if (!tg) return;
     let note = "";
     // set or checked far from where the map puts the control: said before it is noted (a wrong control, or the map)
     if ((f === "set" || f === "checked") && E.gps && G.hasGeo(E.ev)) {
-      const d = distTo(E, t.id), sprint = E.ev.appearance.mapStandard === "Spr2019" || E.ev.map.scale <= 5000;
+      const d = distTo(E, tg.id), sprint = E.ev.appearance.mapStandard === "Spr2019" || E.ev.map.scale <= 5000;
       const lim = Math.max(sprint ? 12 : 25, 1.5 * E.gps.acc);
       if (d > lim) {
-        const v = await modal(E, { title: `Poste ${ctrlName(E.ev, t.id)} : ${Math.round(d)} m de la carte`, ok: f === "set" ? "Noter « posé » quand même" : "Noter « vérifié » quand même",
-          body: `<p>Le téléphone est à <b>${Math.round(d)} m</b> de l'emplacement du poste sur la carte (GPS ± ${Math.round(E.gps.acc)} m).</p>
-          <p>Vérifiez que c'est le bon poste et le bon objet ; sous les arbres, le GPS peut aussi s'écarter.</p>${field("Note (facultatif)", '<input name="n" maxlength="300">')}` });
+        const v = await modal(E, { title: t("trc.team.farTitle", { code: ctrlName(E.ev, tg.id), d: Math.round(d) }), ok: f === "set" ? t("trc.team.farOkSet") : t("trc.team.farOkChecked"),
+          body: `<p>${t("trc.team.farBody", { d: Math.round(d), acc: Math.round(E.gps.acc) })}</p>
+          <p>${t("trc.team.farCheck")}</p>${field(t("trc.team.noteOpt"), '<input name="n" maxlength="300">')}` });
         if (!v) return;
-        note = [`à ${Math.round(d)} m de la carte`, v.n.trim()].filter(Boolean).join(" ; ");
+        note = [t("trc.team.farNote", { d: Math.round(d) }), v.n.trim()].filter(Boolean).join(" ; ");
       }
     }
-    if (f === "problem") { const v = await modal(E, { title: `Problème au poste ${ctrlName(E.ev, t.id)}`, body: field("Ce qui ne va pas", '<input name="n" maxlength="300" placeholder="Boîtier manquant, balise abîmée…">') }); if (!v) return; note = v.n.trim(); }
-    mark(E, t.id, f, note);
-    E.toast(`${ctrlName(E.ev, t.id)} : ${stateOf(f)[1].toLowerCase()}${readQueue(E).length ? " (envoi dès que le réseau revient)" : ""}.`);
+    if (f === "problem") { const v = await modal(E, { title: t("trc.team.problemTitle", { code: ctrlName(E.ev, tg.id) }), body: field(t("trc.team.problemWhat"), `<input name="n" maxlength="300" placeholder="${esc(t("trc.team.problemPh"))}">`) }); if (!v) return; note = v.n.trim(); }
+    mark(E, tg.id, f, note);
+    E.toast(t(readQueue(E).length ? "trc.team.markedQueued" : "trc.team.marked", { code: ctrlName(E.ev, tg.id), state: stateOf(f)[1].toLowerCase() }));
   });
   if (G.hasGeo(E.ev) && navigator.geolocation) {
     E.gpsWatch = navigator.geolocation.watchPosition((p) => {
       E.gps = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, heading: p.coords.heading, at: p.timestamp };
       E.gpsError = null; renderField(E); E.redraw();
-    }, (err) => { E.gpsError = err.code === 1 ? "Position refusée : autorisez la localisation pour ce site." : "Position indisponible."; renderField(E); },
+    }, (err) => { E.gpsError = err.code === 1 ? t("trc.team.gpsDenied") : t("trc.team.gpsUnavailable"); renderField(E); },
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
   }
   E.onlineSync = () => sync(E);
@@ -299,10 +300,10 @@ async function fieldList(E) {
     const [mx, my] = G.toMm(E.ev, st.gps[0], st.gps[1]), c = E.ev.controls[id];
     return `${Math.round(M.mmToM(E.ev, Math.hypot(c.x - mx, c.y - my)))} m`;
   };
-  await modal(E, { title: "États des postes", wide: true, ok: null, cancel: "Fermer", body: `<div class="table-wrap"><table class="tr-table"><thead><tr><th>Poste</th><th>État</th><th>Par</th><th>Quand</th><th>Note</th><th class="r">GPS / carte</th><th>Photos</th></tr></thead><tbody>
+  await modal(E, { title: t("trc.team.statesTitle"), wide: true, ok: null, cancel: t("trc.team.close"), body: `<div class="table-wrap"><table class="tr-table"><thead><tr><th>${t("trc.team.thControl")}</th><th>${t("trc.team.thState")}</th><th>${t("trc.team.thBy")}</th><th>${t("trc.team.thWhen")}</th><th>${t("trc.team.thNote")}</th><th class="r">${t("trc.team.thGpsMap")}</th><th>${t("trc.team.thPhotos")}</th></tr></thead><tbody>
     ${ids.map((id) => { const st = fd[id], s = st?.state ? stateOf(st.state) : null; return `<tr><td>${esc(ctrlName(E.ev, id))}</td><td>${s ? `<span style="color:${s[2]}">●</span> ${s[1]}` : "—"}</td><td>${esc(st?.by || "")}</td><td>${st?.at ? when(st.at) : ""}</td><td>${esc(st?.note || "")}</td><td class="r">${gpsOff(id)}</td>
-      <td>${(st?.photos || []).map((ph) => `<button type="button" class="tr-thumb" data-pid="${esc(ph.pid)}" title="${esc(ph.by)}, ${when(ph.at)}"><img alt="Photo du poste ${esc(ctrlName(E.ev, id))}"></button>`).join("")}</td></tr>`; }).join("")}
-    </tbody></table></div><p class="tr-hint">« GPS / carte » : l'écart entre la position du téléphone quand l'état a été noté et le poste sur la carte (un grand écart peut signaler un poste mal placé, ou un GPS imprécis sous les arbres).</p>`,
+      <td>${(st?.photos || []).map((ph) => `<button type="button" class="tr-thumb" data-pid="${esc(ph.pid)}" title="${esc(ph.by)}, ${when(ph.at)}"><img alt="${esc(t("trc.team.photoAlt", { code: ctrlName(E.ev, id) }))}"></button>`).join("")}</td></tr>`; }).join("")}
+    </tbody></table></div><p class="tr-hint">${t("trc.team.gpsMapHint")}</p>`,
   onOpen: (f) => {
     for (const b of f.querySelectorAll(".tr-thumb")) {
       photoUrl(E, b.dataset.pid).then((u) => { if (u) b.querySelector("img").src = u; });
@@ -326,8 +327,8 @@ async function photoUrl(E, pid) {
 }
 /** The phone's camera (or a file): the photo shrunk to 1600 px, kept here, then sent with the control's next sync. */
 function takePhoto(E) {
-  const t = target(E);
-  if (!t) { E.toast("Touchez d'abord un poste."); return; }
+  const tg = target(E);
+  if (!tg) { E.toast(t("trc.team.tapFirst")); return; }
   const input = document.createElement("input");
   input.type = "file"; input.accept = "image/*"; input.capture = "environment";
   input.addEventListener("change", async () => {
@@ -339,16 +340,16 @@ function takePhoto(E) {
       c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       const bytes = new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/jpeg", 0.82))).arrayBuffer());
-      const pid = `${String(t.id).replace(/[^a-z0-9]/gi, "").toLowerCase()}-${uid()}`;
+      const pid = `${String(tg.id).replace(/[^a-z0-9]/gi, "").toLowerCase()}-${uid()}`;
       await IDB.put("photos", pid, bytes);
-      const u = { uid: uid(), control: t.id, photo: pid, at: Date.now(), by: me(E) };
+      const u = { uid: uid(), control: tg.id, photo: pid, at: Date.now(), by: me(E) };
       writeQueue(E, [...readQueue(E), u]);
-      const old = E.fieldData.controls[t.id] || {};
-      E.fieldData.controls[t.id] = { ...old, photos: [...(old.photos || []), { pid, at: u.at, by: u.by }] };
+      const old = E.fieldData.controls[tg.id] || {};
+      E.fieldData.controls[tg.id] = { ...old, photos: [...(old.photos || []), { pid, at: u.at, by: u.by }] };
       renderField(E);
-      E.toast(`Photo du poste ${ctrlName(E.ev, t.id)} gardée${navigator.onLine ? "" : " (envoi dès que le réseau revient)"}.`);
+      E.toast(t(navigator.onLine ? "trc.team.photoKept" : "trc.team.photoKeptQueued", { code: ctrlName(E.ev, tg.id) }));
       sync(E);
-    } catch (err) { E.toast("Cette photo n'a pas pu être lue."); }
+    } catch (err) { E.toast(t("trc.team.photoUnreadable")); }
   });
   input.click();
 }

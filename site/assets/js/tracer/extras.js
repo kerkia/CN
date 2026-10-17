@@ -12,9 +12,10 @@ import { modal, field, sel, num, dropHtml, dropZone } from "./dialogs.js";
 import { symbol, symbolText, symbolName, symbolsFor, loadAllTexts } from "./symbols.js";
 import { ctrlName } from "./reports.js";
 import { where } from "./ribbon-data.js";
+import { t, tn, lang as uiLang, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 
 // ---- the other modules, loaded when asked for ------------------------------------------------------------------------------
 const race = () => import("./race.js"), team = () => import("./team.js");
@@ -35,37 +36,39 @@ export const fieldMode = async (E) => (await team()).fieldMode(E);
 export async function changeMap(E, preset = null) {
   const ev = E.ev, hadGeo = G.hasGeo(ev);
   let src = null, bytes = null, type = "", name = "", geoFiles = [];
-  const v = await modal(E, { title: "Changer de carte", wide: true, ok: "Changer", body: `
-    <p>Une nouvelle version de la carte (corrigée, mieux numérisée, un PDF au lieu d'une image, le fichier OCAD lui-même…) : une carte OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image (JPG, PNG, GIF, TIFF, BMP).</p>
-    ${dropHtml("tr-cm-drop", "Déposez ici la nouvelle carte, ou cliquez pour la choisir", MAP_ACCEPT, false)}
-    <p class="tr-hint" id="tr-cm-info">Aucune carte choisie.</p>
-    <div class="tr-grid2">${field("Échelle de la carte (1:…)", `<input name="scale" value="${ev.map.scale}" inputmode="numeric">`)}
-    ${field("Résolution de l'image (points par pouce)", `<input name="dpi" value="${ev.map.dpi || ""}" inputmode="numeric">`, "Pour une image ; lue dans le fichier quand il la donne.")}</div>
-    ${field("Calage de la nouvelle carte (facultatif : .jgw/.pgw/.wld avec son .prj, ou .kmz/.kml)", '<input type="file" name="geo" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
-    <h3>Les postes sur la nouvelle carte</h3>
-    <label class="tr-check" id="tr-cm-file" ${ev.map.kind === "ocad" ? "" : "hidden"}><input type="radio" name="fit" value="file"> Garder leurs coordonnées sur la carte (une nouvelle version du même fichier OCAD ou Mapper)</label>
-    <label class="tr-check"><input type="radio" name="fit" value="keep" checked> Garder leur place sur la feuille (même mise en page)</label>
-    <label class="tr-check"><input type="radio" name="fit" value="scale"> Les mettre à l'échelle de la nouvelle feuille (même cadrage, autre taille)</label>
-    <label class="tr-check"><input type="radio" name="fit" value="ground" ${hadGeo ? "" : "disabled"}> Garder leur position au sol${hadGeo ? " (la nouvelle carte doit être calée : GeoTIFF ou fichier ci-dessus)" : " (il faut que les deux cartes soient géoréférencées)"}</label>
-    <label class="tr-check"><input type="radio" name="fit" value="calage"> Les caler ensuite en deux clics (un poste, puis sa place sur la nouvelle carte)</label>`,
+  const v = await modal(E, { title: t("trc.ext.cmTitle"), wide: true, ok: t("trc.ext.cmOk"), body: `
+    <p>${t("trc.ext.cmIntro")}</p>
+    ${dropHtml("tr-cm-drop", t("trc.ext.cmDrop"), MAP_ACCEPT, false)}
+    <p class="tr-hint" id="tr-cm-info">${t("trc.ext.cmNone")}</p>
+    <div class="tr-grid2">${field(t("trc.ext.scale"), `<input name="scale" value="${ev.map.scale}" inputmode="numeric">`)}
+    ${field(t("trc.ext.dpi"), `<input name="dpi" value="${ev.map.dpi || ""}" inputmode="numeric">`, t("trc.ext.dpiHint"))}</div>
+    ${field(t("trc.ext.cmGeo"), '<input type="file" name="geo" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
+    <h3>${t("trc.ext.cmControls")}</h3>
+    <label class="tr-check" id="tr-cm-file" ${ev.map.kind === "ocad" ? "" : "hidden"}><input type="radio" name="fit" value="file"> ${t("trc.ext.cmFitFile")}</label>
+    <label class="tr-check"><input type="radio" name="fit" value="keep" checked> ${t("trc.ext.cmFitKeep")}</label>
+    <label class="tr-check"><input type="radio" name="fit" value="scale"> ${t("trc.ext.cmFitScale")}</label>
+    <label class="tr-check"><input type="radio" name="fit" value="ground" ${hadGeo ? "" : "disabled"}> ${t(hadGeo ? "trc.ext.cmFitGround" : "trc.ext.cmFitGroundNo")}</label>
+    <label class="tr-check"><input type="radio" name="fit" value="calage"> ${t("trc.ext.cmFitCalage")}</label>`,
   onOpen: (f) => {
     const info = f.querySelector("#tr-cm-info");
     const take = async (list) => {
       const file = list.find(isMapFile);
-      if (!file) { info.textContent = "Ce n'est pas une carte (OCAD, Mapper, PDF ou image)."; return; }
+      if (!file) { info.textContent = t("trc.ext.notMap"); return; }
       bytes = new Uint8Array(await file.arrayBuffer()); type = mimeOf(file.name, file.type); name = file.name;
       if (!isPdf(name, type)) { const d = imageDpi(bytes); if (d) f.elements.dpi.value = d; }
       let err = null;
-      info.textContent = `Lecture de « ${name} »…`;
+      info.textContent = t("trc.ext.reading", { name });
       src = await openMap(bytes, type, name, Number(f.elements.dpi.value) || 0).catch((e) => { err = e; return null; });
       if (src?.kind === "vector") {
         f.elements.scale.value = String(src.scale);
         src.geoInfo = await (await import("./vmap/georef.js")).geoFromVector(src.vmap, src).catch(() => null);
       }
-      info.textContent = !src ? `Ce fichier ne s'ouvre pas${err?.message && err.message !== "map" ? ` : ${err.message}` : "."}` : src.kind === "pdf"
-        ? `✓ « ${name} » : PDF de ${nf(src.w)} × ${nf(src.h)} mm (carte actuelle ${nf(ev.map.w)} × ${nf(ev.map.h)} mm).`
-        : src.kind === "vector" ? `✓ « ${name} » : carte ${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`} au 1:${nf(src.scale)}, ${nf(src.w)} × ${nf(src.h)} mm${src.geoInfo ? `, géoréférencée (${src.geoInfo.name})` : ""}.`
-        : `✓ « ${name} » : image de ${src.pxW} × ${src.pxH} px${src.world ? ", géoréférencée (GeoTIFF)" : ""}.`;
+      const vfmt = src?.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src?.version}`;
+      info.textContent = !src ? (err?.message && err.message !== "map" ? t("trc.ext.openFailWhy", { why: err.message }) : t("trc.ext.openFail")) : src.kind === "pdf"
+        ? t("trc.ext.readPdf", { name, w: nf(src.w), h: nf(src.h), cw: nf(ev.map.w), ch: nf(ev.map.h) })
+        : src.kind === "vector" ? (src.geoInfo ? t("trc.ext.readVectorGeo", { name, format: vfmt, scale: nf(src.scale), w: nf(src.w), h: nf(src.h), crs: src.geoInfo.name })
+          : t("trc.ext.readVector", { name, format: vfmt, scale: nf(src.scale), w: nf(src.w), h: nf(src.h) }))
+        : t(src.world ? "trc.ext.readImageGeo" : "trc.ext.readImage", { name, w: src.pxW, h: src.pxH });
       const both = src?.kind === "vector" && ev.map.kind === "ocad";
       f.querySelector("#tr-cm-file").hidden = !both;
       if (both) f.querySelector('input[value="file"]').checked = true;
@@ -76,8 +79,8 @@ export async function changeMap(E, preset = null) {
     f.elements.geo.addEventListener("change", () => { geoFiles = [...f.elements.geo.files]; });
     if (preset) take([preset]);
   },
-  validate: (o) => (!src ? "Déposez ou choisissez une carte lisible." : !(num(o.scale) > 100) ? "Échelle invalide." : src.kind === "bitmap" && !(num(o.dpi) > 10) ? "La résolution de l'image."
-    : o.fit === "ground" && !src.world && !src.geoInfo && !geoFiles.length ? "Pour garder la position au sol, il faut le calage de la nouvelle carte (GeoTIFF, carte OCAD ou Mapper géoréférencée, ou fichier de calage)." : null) });
+  validate: (o) => (!src ? t("trc.ext.vMap") : !(num(o.scale) > 100) ? t("trc.ext.vScale") : src.kind === "bitmap" && !(num(o.dpi) > 10) ? t("trc.ext.vDpi")
+    : o.fit === "ground" && !src.world && !src.geoInfo && !geoFiles.length ? t("trc.ext.vGround") : null) });
   if (!v || !src) return;
   const vector = src.kind === "vector", kind = vector ? "ocad" : src.kind;
   const dpi = src.kind === "bitmap" ? num(v.dpi) : 0;
@@ -89,13 +92,13 @@ export async function changeMap(E, preset = null) {
     if (geoFiles.length) newGeo = (await geoFromFiles({ ev: shape, map: src }, geoFiles)).geo;
     else if (src.geoInfo) newGeo = src.geoInfo.geo;
     else if (src.world) newGeo = G.geoFromWorld(shape, src.world.wf, null, src.pxW, src.pxH, src.world.crs);
-  } catch (err) { E.toast(err.message || "Fichier de calage illisible."); return; }
-  E.status("Envoi de la carte…", "busy");
+  } catch (err) { E.toast(err.message || t("trc.ext.geoUnreadable")); return; }
+  E.status(t("trc.ext.sendingMap"), "busy");
   try {
     await S.saveMap(E.meta.id, bytes, type, E.key);
     const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { map: { name, type, size: bytes.length } } });
     E.meta = r.event;
-  } catch (err) { E.status("Échec de l'envoi", "err"); E.toast("La carte n'a pas pu être envoyée."); return; }
+  } catch (err) { E.status(t("trc.ext.sendFailed"), "err"); E.toast(t("trc.ext.mapNotSent")); return; }
   if (src.kind === "bitmap") src.dpi = dpi;
   E.map = src;
   E.change((x) => {
@@ -121,10 +124,10 @@ export async function changeMap(E, preset = null) {
     if (vector) Object.assign(x.map, { ox: src.ox, oy: src.oy }); else { delete x.map.ox; delete x.map.oy; }
     if (newGeo) x.geo = newGeo;
     else if (v.fit === "calage") delete x.geo;                  // the old calibration no longer fits once the course moves
-  }, "Nouvelle carte");
+  }, t("trc.ext.undoMap"));
   E.fitCourse();
-  if (v.fit === "calage") { E.toast(hadGeo && !newGeo ? `Carte changée ; son ancien géoréférencement a été retiré (${where("georef")}).` : "Carte changée.", 6000); (await import("./calage.js")).calage(E, { fromPpen: false }); }
-  else E.toast(newGeo ? "Carte changée et géoréférencée." : "Carte changée.");
+  if (v.fit === "calage") { E.toast(hadGeo && !newGeo ? t("trc.ext.mapChangedGeoOff", { where: where("georef") }) : t("trc.ext.mapChanged"), 6000); (await import("./calage.js")).calage(E, { fromPpen: false }); }
+  else E.toast(newGeo ? t("trc.ext.mapChangedGeo") : t("trc.ext.mapChanged"));
 }
 
 // ---- punch patterns ------------------------------------------------------------------------------------------------------------
@@ -133,15 +136,15 @@ export async function punchPatterns(E) {
   const ev = E.ev;
   const ids = Object.keys(ev.controls).map(Number).filter((id) => ev.controls[id].kind === "normal").sort((a, b) => M.compareControls(ev, a, b));
   const pats = new Map(ids.map((id) => { const p = ev.controls[id].punch; const n = p?.size || 3; return [id, { n, dots: (p?.dots || "").padEnd(n * n, "0").slice(0, n * n) }]; }));
-  const grid = (id) => { const p = pats.get(id); return `<span class="tr-punch" style="--n:${p.n}">${[...p.dots].map((d, i) => `<button type="button" data-c="${id}" data-i="${i}" class="${d === "1" ? "on" : ""}" aria-label="Case ${i + 1}"></button>`).join("")}</span>`; };
-  const v = await modal(E, { title: "Poinçons", wide: true, body: `
-    <p>Le motif de la pince de chaque poste (cartons de contrôle papier). Un clic marque ou efface une pointe.</p>
+  const grid = (id) => { const p = pats.get(id); return `<span class="tr-punch" style="--n:${p.n}">${[...p.dots].map((d, i) => `<button type="button" data-c="${id}" data-i="${i}" class="${d === "1" ? "on" : ""}" aria-label="${esc(t("trc.ext.punchCell", { n: i + 1 }))}"></button>`).join("")}</span>`; };
+  const v = await modal(E, { title: t("trc.ext.punchTitle"), wide: true, body: `
+    <p>${t("trc.ext.punchIntro")}</p>
     <div class="tr-punches">${ids.map((id) => `<div class="tr-punch-row"><b>${esc(ev.controls[id].code)}</b> ${grid(id)}
-      <select data-size="${id}" aria-label="Taille de la grille">${[3, 4, 5, 6, 7].map((n) => `<option ${n === pats.get(id).n ? "selected" : ""}>${n}</option>`).join("")}</select></div>`).join("")}</div>
-    <p class="tr-hint">Le PDF des cartons de contrôle (${where("pdf-punch")}) dispose les cases selon ce carton : ${ev.punchCard.rows} × ${ev.punchCard.cols}.</p>
-    <div class="tr-grid2">${field("Lignes du carton", `<input name="rows" value="${ev.punchCard.rows}" inputmode="numeric">`)}${field("Colonnes du carton", `<input name="cols" value="${ev.punchCard.cols}" inputmode="numeric">`)}</div>
-    <label class="tr-check"><input type="checkbox" name="ltr" ${ev.punchCard.ltr ? "checked" : ""}> Numéroter de gauche à droite</label>
-    <label class="tr-check"><input type="checkbox" name="ttb" ${ev.punchCard.ttb ? "checked" : ""}> Numéroter de haut en bas d'abord</label>`,
+      <select data-size="${id}" aria-label="${esc(t("trc.ext.punchSize"))}">${[3, 4, 5, 6, 7].map((n) => `<option ${n === pats.get(id).n ? "selected" : ""}>${n}</option>`).join("")}</select></div>`).join("")}</div>
+    <p class="tr-hint">${t("trc.ext.punchHint", { where: where("pdf-punch"), rows: ev.punchCard.rows, cols: ev.punchCard.cols })}</p>
+    <div class="tr-grid2">${field(t("trc.ext.punchRows"), `<input name="rows" value="${ev.punchCard.rows}" inputmode="numeric">`)}${field(t("trc.ext.punchCols"), `<input name="cols" value="${ev.punchCard.cols}" inputmode="numeric">`)}</div>
+    <label class="tr-check"><input type="checkbox" name="ltr" ${ev.punchCard.ltr ? "checked" : ""}> ${t("trc.ext.punchLtr")}</label>
+    <label class="tr-check"><input type="checkbox" name="ttb" ${ev.punchCard.ttb ? "checked" : ""}> ${t("trc.ext.punchTtb")}</label>`,
   onOpen: (f) => {
     f.addEventListener("click", (e) => {
       const b = e.target.closest("[data-c]"); if (!b) return;
@@ -159,7 +162,7 @@ export async function punchPatterns(E) {
   E.change((x) => {
     for (const [id, p] of pats) { if (/1/.test(p.dots)) x.controls[id].punch = { size: p.n, dots: p.dots }; else delete x.controls[id].punch; }
     x.punchCard = { rows: Math.max(1, Math.round(num(v.rows)) || 3), cols: Math.max(1, Math.round(num(v.cols)) || 8), ltr: v.ltr, ttb: v.ttb };
-  }, "Poinçons");
+  }, t("trc.ext.punchTitle"));
 }
 
 // ---- custom symbol texts ---------------------------------------------------------------------------------------------------------
@@ -170,21 +173,23 @@ export async function customSymbolText(E) {
   if (!["fr", "en"].includes(lang)) await loadAllTexts();
   const kinds = ["C", "D", "E", "F", "G", "H"];
   const all = kinds.flatMap((k) => symbolsFor(k, std)).filter((s, i, a) => a.findIndex((x) => x.id === s.id) === i);
-  const opt = (s) => `<option value="${esc(s.id)}">${esc(s.id)} — ${esc(symbolName(s, "fr"))}${ev.customText?.[s.id] ? " ✎" : ""}</option>`;
-  const v = await modal(E, { title: "Textes des définitions", wide: true, body: `
-    <p>Le texte d'un symbole dans les définitions en texte (langue de l'événement : ${esc(lang)}), si celui de la norme ne convient pas.</p>
-    ${field("Symbole", `<select name="id">${all.map(opt).join("")}</select>`)}
-    <div class="tr-grid2">${field("Texte (singulier)", '<input name="t1">')}${field("Texte (pluriel)", '<input name="t2">', "Vide : comme le singulier")}</div>
-    <label class="tr-check"><input type="checkbox" name="key"> Expliquer ce symbole dans la légende des définitions en symboles</label>
+  const opt = (s) => `<option value="${esc(s.id)}">${esc(s.id)} — ${esc(symbolName(s, uiLang()))}${ev.customText?.[s.id] ? " ✎" : ""}</option>`;
+  const v = await modal(E, { title: t("trc.ext.ctTitle"), wide: true, body: `
+    <p>${t("trc.ext.ctIntro", { lang: esc(lang) })}</p>
+    ${field(t("trc.ext.ctSymbol"), `<select name="id">${all.map(opt).join("")}</select>`)}
+    <div class="tr-grid2">${field(t("trc.ext.ctT1"), '<input name="t1">')}${field(t("trc.ext.ctT2"), '<input name="t2">', t("trc.ext.ctT2Hint"))}</div>
+    <label class="tr-check"><input type="checkbox" name="key"> ${t("trc.ext.ctKey")}</label>
     <p class="tr-hint" id="tr-ct-def"></p>`,
-  ok: "Enregistrer",
+  ok: t("trc.ext.save"),
   onOpen: (f) => {
     const load = () => {
       const s = symbol(f.elements.id.value, std), cur = ev.customText?.[s.id] || [];
       const one = cur.find((x) => x.lang === lang && !x.plural), many = cur.find((x) => x.lang === lang && x.plural);
       f.elements.t1.value = one?.text || ""; f.elements.t2.value = many?.text || "";
       f.elements.key.checked = !!ev.customKey?.[s.id];
-      f.querySelector("#tr-ct-def").textContent = `Texte de la norme : « ${symbolText(s, lang) || "—"} »${symbolText(s, lang, { plural: true }) && symbolText(s, lang, { plural: true }) !== symbolText(s, lang) ? `, pluriel « ${symbolText(s, lang, { plural: true })} »` : ""}. Vide : le texte de la norme.`;
+      f.querySelector("#tr-ct-def").textContent = symbolText(s, lang, { plural: true }) && symbolText(s, lang, { plural: true }) !== symbolText(s, lang)
+        ? t("trc.ext.ctStdPl", { text: symbolText(s, lang) || "—", plural: symbolText(s, lang, { plural: true }) })
+        : t("trc.ext.ctStd", { text: symbolText(s, lang) || "—" });
     };
     f.elements.id.addEventListener("change", load); load();
   } });
@@ -197,7 +202,7 @@ export async function customSymbolText(E) {
     if (v.t2.trim()) mine.push({ text: v.t2.trim(), plural: true, gender: "", case: "", modCase: "", lang });
     if (others.length || mine.length) x.customText[v.id] = [...others, ...mine]; else delete x.customText[v.id];
     if (v.key && x.customText[v.id]) x.customKey[v.id] = true; else delete x.customKey[v.id];
-  }, "Texte d'un symbole");
+  }, t("trc.ext.undoSymText"));
 }
 
 // ---- the map's georeference ------------------------------------------------------------------------------------------------------
@@ -210,23 +215,23 @@ export async function georef(E, state = null) {
   let check = "";
   if (has) {
     const [sx, sy] = G.groundScale(ev), measured = ((sx + sy) / 2) * 1000;
-    check = `Géoréférencée : 1 mm de carte = ${nf(sx, 1)} m au sol en x, ${nf(sy, 1)} m en y, soit 1:${nf(Math.round(measured / 10) * 10)} (échelle déclarée 1:${nf(ev.map.scale)}).`;
-    if (Math.abs(measured / ev.map.scale - 1) > 0.03) check += " L'écart dépasse 3 % : vérifiez les points, la résolution de l'image ou l'échelle.";
+    check = t("trc.ext.geoCheck", { sx: nf(sx, 1), sy: nf(sy, 1), measured: nf(Math.round(measured / 10) * 10), scale: nf(ev.map.scale) });
+    if (Math.abs(measured / ev.map.scale - 1) > 0.03) check += ` ${t("trc.ext.geoCheckOff")}`;
   }
   const resid = st.pts.length >= 3 ? (() => { const g = G.geoFromPoints(st.pts); if (!g) return null; return st.pts.map((p) => { const [x, y] = G.toMm({ geo: g }, p.lat, p.lon); return M.mmToM(ev, Math.hypot(x - p.mm[0], y - p.mm[1])); }); })() : null;
-  const v = await modal(E, { title: "Géoréférencer la carte", wide: true, ok: "Enregistrer", body: `
-    <p>${has ? esc(check) : "La carte n'est pas encore géoréférencée."}</p>
-    <h3>Points de calage</h3>
-    <p class="tr-hint">Cliquez un point net de la carte (un carrefour, un angle de bâtiment), puis donnez sa latitude et sa longitude (un clic droit sur Géoportail ou une carte en ligne les donne). Deux points suffisent, trois ou plus corrigent une carte déformée (une photo).</p>
-    <table class="tr-table"><thead><tr><th>Point</th><th>Carte (mm)</th><th>Latitude, longitude</th><th class="r">Écart</th><th></th></tr></thead><tbody>
+  const v = await modal(E, { title: t("trc.ext.geoTitle"), wide: true, ok: t("trc.ext.save"), body: `
+    <p>${has ? esc(check) : t("trc.ext.geoNone")}</p>
+    <h3>${t("trc.ext.geoPoints")}</h3>
+    <p class="tr-hint">${t("trc.ext.geoHint")}</p>
+    <table class="tr-table"><thead><tr><th>${t("trc.ext.thPoint")}</th><th>${t("trc.ext.thMap")}</th><th>${t("trc.ext.thLatLon")}</th><th class="r">${t("trc.ext.thResid")}</th><th></th></tr></thead><tbody>
     ${st.pts.map((p, i) => `<tr><td>${i + 1}</td><td>${nf(p.mm[0], 1)}, ${nf(p.mm[1], 1)}</td><td>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</td><td class="r">${resid ? `${nf(resid[i], 1)} m` : ""}</td>
-      <td><button type="button" class="btn btn-sm" data-rm="${i}">Retirer</button></td></tr>`).join("") || '<tr><td colspan="5"><small>Aucun point.</small></td></tr>'}</tbody></table>
-    <p><button type="button" class="btn btn-sm" data-pick>Ajouter un point sur la carte</button></p>
-    <h3>Ou un fichier</h3>
-    ${field("Fichier de calage (.jgw, .pgw, .tfw, .wld avec son .prj ; ou .kmz / .kml de la même image)", '<input type="file" name="files" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
-    ${ev.map.kind === "pdf" ? '<p class="tr-hint">Un fichier de calage (world file) suppose une image ; pour un PDF, utilisez les points ou un KMZ de la carte exportée en image à la même taille.</p>' : ""}
-    ${E.map?.kind === "vector" ? `<label class="tr-check"><input type="checkbox" name="fromFile" ${E.map.vmap.realWorld ? "" : "disabled"}> Prendre le géoréférencement du fichier de la carte (${E.map.format === "oom" ? "Mapper" : "OCAD"})${E.map.vmap.realWorld ? "" : " : ce fichier n'en a pas"}</label>` : ""}
-    ${has ? '<label class="tr-check"><input type="checkbox" name="remove"> Retirer le géoréférencement</label>' : ""}`,
+      <td><button type="button" class="btn btn-sm" data-rm="${i}">${t("trc.ext.remove")}</button></td></tr>`).join("") || `<tr><td colspan="5"><small>${t("trc.ext.noPoint")}</small></td></tr>`}</tbody></table>
+    <p><button type="button" class="btn btn-sm" data-pick>${t("trc.ext.addPoint")}</button></p>
+    <h3>${t("trc.ext.orFile")}</h3>
+    ${field(t("trc.ext.geoFile"), '<input type="file" name="files" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
+    ${ev.map.kind === "pdf" ? `<p class="tr-hint">${t("trc.ext.geoPdfHint")}</p>` : ""}
+    ${E.map?.kind === "vector" ? `<label class="tr-check"><input type="checkbox" name="fromFile" ${E.map.vmap.realWorld ? "" : "disabled"}> ${t(E.map.vmap.realWorld ? "trc.ext.geoFromFile" : "trc.ext.geoFromFileNone", { format: E.map.format === "oom" ? "Mapper" : "OCAD" })}</label>` : ""}
+    ${has ? `<label class="tr-check"><input type="checkbox" name="remove"> ${t("trc.ext.geoRemove")}</label>` : ""}`,
   onOpen: (f, done) => {
     f.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { st.pts.splice(Number(b.dataset.rm), 1); done({ again: true }); }));
     f.querySelector("[data-pick]").addEventListener("click", () => done({ pick: true }));
@@ -234,28 +239,28 @@ export async function georef(E, state = null) {
   if (!v) return;
   if (v.again) { georef(E, st); return; }
   if (v.pick) {
-    E.help("Cliquez le point sur la carte (Échap pour annuler).");
+    E.help(t("trc.ext.geoPickHelp"));
     E.pickOnce = async (p) => {
-      const w = await modal(E, { title: "Coordonnées du point", body: field("Latitude, longitude (degrés décimaux, ex. 48.3521, -1.1987)", '<input name="ll" required>'),
-        validate: (o) => (parseLatLon(o.ll) ? null : "Deux nombres : latitude, longitude.") });
+      const w = await modal(E, { title: t("trc.ext.geoPtTitle"), body: field(t("trc.ext.geoPtField"), '<input name="ll" required>'),
+        validate: (o) => (parseLatLon(o.ll) ? null : t("trc.ext.geoPtInvalid")) });
       if (w) { const [lat, lon] = parseLatLon(w.ll); st.pts.push({ mm: p, lat, lon }); }
       georef(E, st);
     };
     return;
   }
-  if (v.remove) { E.change((x) => { delete x.geo; delete x.georefPts; }, "Géoréférencement retiré"); return; }
+  if (v.remove) { E.change((x) => { delete x.geo; delete x.georefPts; }, t("trc.ext.undoGeoOff")); return; }
   let geo = null, how = "";
   if (v.fromFile) {
     const r = await (await import("./vmap/georef.js")).geoFromVector(E.map.vmap, E.map).catch(() => null);
-    if (!r) { E.toast("Les coordonnées du fichier de la carte ne se placent pas sur le globe (système inconnu) : utilisez des points."); return; }
-    geo = r.geo; how = `fichier de la carte, ${r.name}`;
+    if (!r) { E.toast(t("trc.ext.geoFileUnknown")); return; }
+    geo = r.geo; how = t("trc.ext.howMapFile", { crs: r.name });
   } else if (v.files?.length) {
-    try { ({ geo, how } = await geoFromFiles(E, [...v.files])); } catch (err) { E.toast(err.message || "Fichier de calage illisible."); return; }
-  } else if (st.pts.length >= 2) { geo = G.geoFromPoints(st.pts); how = `${st.pts.length} points`; }
-  if (!geo) { if (st.pts.length === 1) E.toast("Un deuxième point au moins."); return; }
-  E.change((x) => { x.geo = geo; if (st.pts.length) x.georefPts = st.pts; else delete x.georefPts; }, "Géoréférencement");
+    try { ({ geo, how } = await geoFromFiles(E, [...v.files])); } catch (err) { E.toast(err.message || t("trc.ext.geoUnreadable")); return; }
+  } else if (st.pts.length >= 2) { geo = G.geoFromPoints(st.pts); how = tn("trc.ext.howPoints", st.pts.length); }
+  if (!geo) { if (st.pts.length === 1) E.toast(t("trc.ext.secondPoint")); return; }
+  E.change((x) => { x.geo = geo; if (st.pts.length) x.georefPts = st.pts; else delete x.georefPts; }, t("trc.ext.undoGeo"));
   const [sx, sy] = G.groundScale(E.ev);
-  E.toast(`Carte géoréférencée (${how}) : 1:${nf(Math.round(((sx + sy) / 2) * 100) * 10)} mesuré.`, 6000);
+  E.toast(t("trc.ext.geoDone", { how, scale: nf(Math.round(((sx + sy) / 2) * 100) * 10) }), 6000);
 }
 function parseLatLon(s) {
   const m = String(s).trim().replace(/[°NnEe]/g, "").match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/);
@@ -269,28 +274,28 @@ async function geoFromFiles(E, files) {
   const kml = files.find((f) => /\.km[lz]$/i.test(f.name));
   if (kml) {
     let text;
-    if (/\.kmz$/i.test(kml.name)) { const z = await T.readZip(await kml.arrayBuffer()); const k = z.find((x) => /\.kml$/i.test(x.name)); if (!k) throw new Error("Ce KMZ ne contient pas de KML."); text = new TextDecoder().decode(k.data); }
+    if (/\.kmz$/i.test(kml.name)) { const z = await T.readZip(await kml.arrayBuffer()); const k = z.find((x) => /\.kml$/i.test(x.name)); if (!k) throw new Error(t("trc.ext.kmzNoKml")); text = new TextDecoder().decode(k.data); }
     else text = await kml.text();
     const ov = T.parseKml(text)[0];
-    if (!ov) throw new Error("Ce KML ne contient pas d'image calée (GroundOverlay).");
+    if (!ov) throw new Error(t("trc.ext.kmlNoOverlay"));
     return { geo: G.geoFromOverlay(ev, ov), how: "KML" };
   }
   const wf = files.find((f) => T.isWorldFileName(f.name));
-  if (!wf) throw new Error("Choisissez un fichier de calage (.jgw, .pgw…) ou un KMZ/KML.");
-  if (ev.map.kind !== "bitmap" || !E.map) throw new Error("Un fichier de calage va avec une image.");
+  if (!wf) throw new Error(t("trc.ext.chooseGeoFile"));
+  if (ev.map.kind !== "bitmap" || !E.map) throw new Error(t("trc.ext.worldNeedsImage"));
   const six = T.parseWorldFile(await wf.text());
-  if (!six) throw new Error("Fichier de calage illisible.");
+  if (!six) throw new Error(t("trc.ext.geoUnreadable"));
   const prj = files.find((f) => /\.prj$/i.test(f.name));
   const geo = G.geoFromWorld(ev, six, prj ? await prj.text() : null, E.map.pxW, E.map.pxH);
-  if (!geo) throw new Error("Système de coordonnées inconnu : ajoutez le .prj.");
-  return { geo, how: prj ? "fichier de calage et .prj" : "fichier de calage" };
+  if (!geo) throw new Error(t("trc.ext.unknownCrs"));
+  return { geo, how: t(prj ? "trc.ext.howWorldPrj" : "trc.ext.howWorld") };
 }
 
 // ---- other courses, faint ----------------------------------------------------------------------------------------------------
 export async function otherCourses(E) {
   const ev = E.ev, ids = M.courseIds(ev);
   const cur = new Set(E.opts.others || []);
-  const v = await modal(E, { title: "Autres circuits", body: `<p>Les circuits cochés s'affichent en bleu pâle sous le circuit en cours (pour éviter les croisements et les postes trop proches).</p>
+  const v = await modal(E, { title: t("trc.ext.othersTitle"), body: `<p>${t("trc.ext.othersIntro")}</p>
     ${ids.map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${cur.has(id) ? "checked" : ""} ${id === E.cd.course ? "disabled" : ""}> ${esc(ev.courses[id].name)}</label>`).join("")}` });
   if (!v) return;
   E.opts.others = ids.filter((id) => v[`c${id}`]);
@@ -302,14 +307,14 @@ export async function otherCourses(E) {
  *  « Analyse solo » (trace/course.js), they become controls of « Tous les postes », or a new course whose order (the
  *  detection gives none) goes from each control to the nearest one left, to be checked. */
 export async function readCourseFromMap(E) {
-  if (!E.map) { E.toast("La carte n'est pas chargée."); return; }
-  const v = await modal(E, { title: "Lire un circuit sur la carte", body: `
-    <p>Les cercles, le départ et l'arrivée imprimés en violet sur la carte (un circuit tracé avec un autre logiciel, la carte d'une course passée) deviennent des postes.</p>
-    <label class="tr-check"><input type="radio" name="to" value="course" checked> Dans un nouveau circuit (ordre provisoire : de proche en proche depuis le départ, à vérifier)</label>
-    <label class="tr-check"><input type="radio" name="to" value="all"> Seulement dans « Tous les postes »</label>
-    ${field("Nom du nouveau circuit", '<input name="name" value="Circuit lu sur la carte">')}`, ok: "Lire" });
+  if (!E.map) { E.toast(t("trc.ext.mapNotLoaded")); return; }
+  const v = await modal(E, { title: t("trc.ext.readTitle"), body: `
+    <p>${t("trc.ext.readIntro")}</p>
+    <label class="tr-check"><input type="radio" name="to" value="course" checked> ${t("trc.ext.readToCourse")}</label>
+    <label class="tr-check"><input type="radio" name="to" value="all"> ${t("trc.ext.readToAll")}</label>
+    ${field(t("trc.ext.readName"), `<input name="name" value="${esc(t("trc.ext.readDefault"))}">`)}`, ok: t("trc.ext.readOk") });
   if (!v) return;
-  E.status("Lecture de la carte…", "busy");
+  E.status(t("trc.ext.readingMap"), "busy");
   const C = await import("../trace/course.js");
   // the map at about 8 px per mm, the scale course.js was tuned at (3 px lines)
   const pxPerMm = Math.min(8, 6000 / Math.max(E.ev.map.w, E.ev.map.h));
@@ -321,7 +326,7 @@ export async function readCourseFromMap(E) {
   try { det = await C.detectCourse(canvas, { maxSide: Math.min(4000, Math.max(canvas.width, canvas.height)) }); } catch (err) { console.error(err); det = null; }
   const toMm = ([x, y]) => [x / pxPerMm, E.ev.map.h - y / pxPerMm];
   const circles = det?.controls || [];
-  if (!circles.length && !det?.start && !det?.finish) { E.status("Prêt", "ok"); E.toast("Aucun cercle violet trouvé sur la carte."); return; }
+  if (!circles.length && !det?.start && !det?.finish) { E.status(t("trc.ext.ready"), "ok"); E.toast(t("trc.ext.noCircle")); return; }
   let added = 0, courseId = 0;
   E.change((x) => {
     const ids = [];
@@ -336,14 +341,15 @@ export async function readCourseFromMap(E) {
     const finish = det.finish ? put(toMm([det.finish.x, det.finish.y]), "finish") : 0;
     ids.push(...(start ? [start] : []), ...ctrls, ...(finish ? [finish] : []));
     if (v.to === "course") {
-      courseId = M.createCourse(x, { name: v.name.trim() || "Circuit lu sur la carte", addStartFinish: false });
+      courseId = M.createCourse(x, { name: v.name.trim() || t("trc.ext.readDefault"), addStartFinish: false });
       let last = 0;
       for (const id of ids) last = M.addCourseControl(x, id, courseId, last, 0);
     }
-  }, "Circuit lu sur la carte");
+  }, t("trc.ext.readDefault"));
   if (courseId) E.setCourse(courseId);
-  E.status("Prêt", "ok");
-  E.toast(`${circles.length} cercle(s)${det.start ? ", le départ" : ""}${det.finish ? ", l'arrivée" : ""} lus ; ${added} poste(s) ajouté(s). Vérifiez ${courseId ? "l'ordre, " : ""}les codes et les définitions.`, 7000);
+  E.status(t("trc.ext.ready"), "ok");
+  const found = [tn("trc.ext.nCircles", circles.length), det.start ? t("trc.ext.theStart") : "", det.finish ? t("trc.ext.theFinish") : ""].filter(Boolean).join(", ");
+  E.toast(t(courseId ? "trc.ext.readDoneOrder" : "trc.ext.readDone", { found, added: tn("trc.ext.nAdded", added) }), 7000);
 }
 
 // ---- differences between two versions ------------------------------------------------------------------------------------------
@@ -352,14 +358,14 @@ export function diff(a, b) {
   if (!a || !b) return [];
   const out = [];
   const mm = (ev, d) => Math.round(M.mmToM(ev, d));
-  if ((a.title || "") !== (b.title || "")) out.push(`Titre : « ${a.title} » → « ${b.title} »`);
-  if (a.map?.file !== b.map?.file || a.map?.scale !== b.map?.scale) out.push(`Carte : ${a.map?.file} 1:${a.map?.scale} → ${b.map?.file} 1:${b.map?.scale}`);
+  if ((a.title || "") !== (b.title || "")) out.push(t("trc.ext.dTitle", { a: a.title, b: b.title }));
+  if (a.map?.file !== b.map?.file || a.map?.scale !== b.map?.scale) out.push(t("trc.ext.dMap", { a: a.map?.file, as: a.map?.scale, b: b.map?.file, bs: b.map?.scale }));
   // controls, matched by id (a code changes, the control stays)
   const ca = a.controls || {}, cb = b.controls || {};
   const nameIn = (ev, id) => ctrlName(ev, Number(id));
   const added = Object.keys(cb).filter((id) => !ca[id]), removed = Object.keys(ca).filter((id) => !cb[id]);
-  if (added.length) out.push(`Postes ajoutés : ${added.map((id) => nameIn(b, id)).join(", ")}`);
-  if (removed.length) out.push(`Postes supprimés : ${removed.map((id) => nameIn(a, id)).join(", ")}`);
+  if (added.length) out.push(t("trc.ext.dAdded", { list: added.map((id) => nameIn(b, id)).join(", ") }));
+  if (removed.length) out.push(t("trc.ext.dRemoved", { list: removed.map((id) => nameIn(a, id)).join(", ") }));
   const moved = [], recoded = [], redesc = [];
   for (const id of Object.keys(ca)) {
     const x = ca[id], y = cb[id];
@@ -369,27 +375,27 @@ export function diff(a, b) {
     if (x.code !== y.code && x.kind === "normal") recoded.push(`${x.code} → ${y.code}`);
     if (JSON.stringify(x.symbols) !== JSON.stringify(y.symbols) || (x.descText || "") !== (y.descText || "")) redesc.push(nameIn(b, id));
   }
-  if (moved.length) out.push(`Postes déplacés : ${moved.join(", ")}`);
-  if (recoded.length) out.push(`Codes changés : ${recoded.join(", ")}`);
-  if (redesc.length) out.push(`Définitions changées : ${redesc.join(", ")}`);
+  if (moved.length) out.push(t("trc.ext.dMoved", { list: moved.join(", ") }));
+  if (recoded.length) out.push(t("trc.ext.dRecoded", { list: recoded.join(", ") }));
+  if (redesc.length) out.push(t("trc.ext.dRedesc", { list: redesc.join(", ") }));
   // courses, matched by id
   const ka = a.courses || {}, kb = b.courses || {};
-  for (const id of Object.keys(kb)) if (!ka[id]) out.push(`Circuit ajouté : ${kb[id].name}`);
-  for (const id of Object.keys(ka)) if (!kb[id]) out.push(`Circuit supprimé : ${ka[id].name}`);
+  for (const id of Object.keys(kb)) if (!ka[id]) out.push(t("trc.ext.dCourseAdded", { name: kb[id].name }));
+  for (const id of Object.keys(ka)) if (!kb[id]) out.push(t("trc.ext.dCourseRemoved", { name: ka[id].name }));
   for (const id of Object.keys(ka)) {
     if (!kb[id]) continue;
     const n = Number(id), x = ka[id], y = kb[id], tag = y.name;
-    if (x.name !== y.name) out.push(`Circuit renommé : ${x.name} → ${y.name}`);
+    if (x.name !== y.name) out.push(t("trc.ext.dCourseRenamed", { a: x.name, b: y.name }));
     // compared by control (a code renamed is listed above), shown with each version's codes
     const ctl = (ev) => { try { return M.ccIds(ev, M.cdCourse(n)).map((cc) => ev.courseControls[cc].control); } catch (e) { return []; } };
     const ia = ctl(a), ib = ctl(b);
-    if (ia.join() !== ib.join()) out.push(`${tag} : ${ia.map((c) => nameIn(a, c)).join("-") || "(vide)"} → ${ib.map((c) => nameIn(b, c)).join("-") || "(vide)"}`);
+    if (ia.join() !== ib.join()) out.push(t("trc.ext.dCourseSeq", { course: tag, a: ia.map((c) => nameIn(a, c)).join("-") || t("trc.ext.dEmpty"), b: ib.map((c) => nameIn(b, c)).join("-") || t("trc.ext.dEmpty") }));
     try {
       const va = M.view(a, M.cdCourse(n), { specials: false, descriptions: false }), vb = M.view(b, M.cdCourse(n), { specials: false, descriptions: false });
-      if (Math.abs(va.maxLength - vb.maxLength) >= 10) out.push(`${tag} : longueur ${nf(va.maxLength / 1000, 2)} → ${nf(vb.maxLength / 1000, 2)} km`);
+      if (Math.abs(va.maxLength - vb.maxLength) >= 10) out.push(t("trc.ext.dLength", { course: tag, a: nf(va.maxLength / 1000, 2), b: nf(vb.maxLength / 1000, 2) }));
     } catch (e) { /* a broken older version */ }
-    if ((x.climb ?? -1) !== (y.climb ?? -1)) out.push(`${tag} : dénivelée ${x.climb >= 0 ? `${x.climb} m` : "—"} → ${y.climb >= 0 ? `${y.climb} m` : "—"}`);
-    if ((x.printScale || 0) !== (y.printScale || 0)) out.push(`${tag} : échelle d'impression 1:${x.printScale} → 1:${y.printScale}`);
+    if ((x.climb ?? -1) !== (y.climb ?? -1)) out.push(t("trc.ext.dClimb", { course: tag, a: x.climb >= 0 ? `${x.climb} m` : "—", b: y.climb >= 0 ? `${y.climb} m` : "—" }));
+    if ((x.printScale || 0) !== (y.printScale || 0)) out.push(t("trc.ext.dPrintScale", { course: tag, a: x.printScale, b: y.printScale }));
   }
   const la = a.legs || {}, lb = b.legs || {};
   const legKey = (l) => `${l.c1}:${l.c2}`;
@@ -397,12 +403,12 @@ export function diff(a, b) {
   let legsChanged = 0;
   for (const [k, l] of legsB) if (JSON.stringify(legsA.get(k) || null) !== JSON.stringify(l)) legsChanged++;
   for (const k of legsA.keys()) if (!legsB.has(k)) legsChanged++;
-  if (legsChanged) out.push(`Interpostes modifiés (coudes, coupures, balisage) : ${legsChanged}`);
+  if (legsChanged) out.push(t("trc.ext.dLegs", { n: legsChanged }));
   const sa = Object.keys(a.specials || {}).length, sb = Object.keys(b.specials || {}).length;
-  if (sa !== sb) out.push(`Objets spéciaux : ${sa} → ${sb}`);
-  else if (JSON.stringify(a.specials) !== JSON.stringify(b.specials)) out.push("Objets spéciaux modifiés");
-  if (JSON.stringify(a.appearance) !== JSON.stringify(b.appearance)) out.push("Apparence des circuits modifiée");
-  if (JSON.stringify(a.geo || null) !== JSON.stringify(b.geo || null)) out.push("Géoréférencement modifié");
+  if (sa !== sb) out.push(t("trc.ext.dSpecials", { a: sa, b: sb }));
+  else if (JSON.stringify(a.specials) !== JSON.stringify(b.specials)) out.push(t("trc.ext.dSpecialsChanged"));
+  if (JSON.stringify(a.appearance) !== JSON.stringify(b.appearance)) out.push(t("trc.ext.dAppearance"));
+  if (JSON.stringify(a.geo || null) !== JSON.stringify(b.geo || null)) out.push(t("trc.ext.dGeo"));
   return out;
 }
 export { sel };

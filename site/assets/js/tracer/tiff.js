@@ -5,8 +5,13 @@
 // are refused with a message (export the map as PNG, or as an uncompressed or LZW TIFF).
 
 import { LAMBERT93 } from "../trace/georef.js";
+import { t } from "./lang.js";
 
 export const isTiff = (bytes) => { const a = bytes; return (a[0] === 0x49 && a[1] === 0x49 && a[2] === 42 && a[3] === 0) || (a[0] === 0x4d && a[1] === 0x4d && a[2] === 0 && a[3] === 42); };
+
+// the messages (decodeTiff names its tags t)
+const ERR = { big: () => t("trc.tif.bigTiff"), unreadable: () => t("trc.tif.unreadable"), size: () => t("trc.tif.tooBig"), jpeg: () => t("trc.tif.jpeg"),
+  comp: (c) => t("trc.tif.compression", { c }), float: () => t("trc.tif.float") };
 
 const TYPE_SIZE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8 };
 
@@ -112,19 +117,19 @@ export async function decodeTiff(bytes) {
   const a = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const v = new DataView(a.buffer, a.byteOffset, a.byteLength);
   const le = a[0] === 0x49;
-  if (v.getUint16(2, le) === 43) throw new Error("Les TIFF « BigTIFF » ne sont pas lus : exportez la carte en PNG.");
+  if (v.getUint16(2, le) === 43) throw new Error(ERR.big());
   const { tags: t } = readIfd(v, v.getUint32(4, le), le);
   const W = t[256]?.[0], H = t[257]?.[0];
-  if (!W || !H) throw new Error("TIFF illisible.");
-  if (W * H > 160e6) throw new Error("Image trop grande (plus de 160 millions de points) : exportez-la à une résolution plus basse.");
+  if (!W || !H) throw new Error(ERR.unreadable());
+  if (W * H > 160e6) throw new Error(ERR.size());
   const comp = t[259]?.[0] || 1, photo = t[262]?.[0] ?? 1, spp = t[277]?.[0] || 1, bps = t[258]?.[0] || 1;
   const planar = t[284]?.[0] || 1, pred = t[317]?.[0] || 1, fmt = t[339]?.[0] || 1;
-  if (![1, 5, 8, 32946, 32773].includes(comp)) throw new Error(comp === 7 || comp === 6 ? "TIFF compressé en JPEG : exportez la carte en PNG, ou en TIFF sans compression ou LZW." : `Compression TIFF ${comp} non lue : exportez la carte en PNG.`);
-  if (fmt === 3) throw new Error("TIFF en nombres décimaux (un modèle de terrain ?) : ce n'est pas une carte.");
+  if (![1, 5, 8, 32946, 32773].includes(comp)) throw new Error(comp === 7 || comp === 6 ? ERR.jpeg() : ERR.comp(comp));
+  if (fmt === 3) throw new Error(ERR.float());
   const tiled = !!t[322];
   const tw = tiled ? t[322][0] : W, th = tiled ? t[323][0] : (t[278]?.[0] || H);
   const offs = tiled ? t[324] : t[273], counts = tiled ? t[325] : t[279];
-  if (!offs?.length) throw new Error("TIFF illisible.");
+  if (!offs?.length) throw new Error(ERR.unreadable());
   const perPlane = planar === 2 ? 1 : spp;
   const rowBytes = Math.ceil((tw * perPlane * bps) / 8), chunkBytes = rowBytes * th;
   const across = Math.ceil(W / tw), down = Math.ceil(H / th), chunksPerPlane = across * down;

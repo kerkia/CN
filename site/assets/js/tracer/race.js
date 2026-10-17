@@ -16,9 +16,10 @@ import * as G from "./geo.js";
 import { modal, field, num, download, fileName } from "./dialogs.js";
 import { ctrlName, csv } from "./reports.js";
 import { where } from "./ribbon-data.js";
+import { t, tn, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 const mmss = (s) => { if (!Number.isFinite(s)) return ""; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
 const hhmm = (s) => { if (!Number.isFinite(s)) return ""; const m = Math.round(s / 60); return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(circuit|parcours)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -53,7 +54,7 @@ function matchCourse(ev, name, ids = courseList(ev)) {
 export async function registrationLoads(E) {
   const r = await raceInfo(E);
   const circuits = r.agenda?.reg?.circuits;
-  if (!circuits?.length) { E.toast(r.agenda ? "FFCO ne donne pas encore d'inscrits par circuit pour cette course (lus dans les trois semaines avant)." : "Cet événement n'est pas lié à une course de l'agenda."); return null; }
+  if (!circuits?.length) { E.toast(r.agenda ? t("trc.race.noRegYet") : t("trc.race.notInAgenda")); return null; }
   const out = {}, missed = [], classes = {};
   for (const [name, n, cats] of circuits) {
     const id = matchCourse(E.ev, name, M.courseIds(E.ev));
@@ -62,8 +63,10 @@ export async function registrationLoads(E) {
     // the registration's categories (« D20/35, H40/45 ») become the course's classes when it has none yet
     if (cats && !E.ev.courses[id].secondary) classes[id] = String(cats).replace(/\s+/g, " ").trim().slice(0, 200);
   }
-  if (Object.keys(classes).length) E.change((x) => { for (const [id, t] of Object.entries(classes)) if (x.courses[id] && !x.courses[id].secondary) x.courses[id].secondary = t; }, "Catégories d'après l'inscription FFCO");
-  E.toast(`${Object.keys(out).length} circuit(s) remplis d'après ${circuits.length} circuit(s) de l'inscription FFCO${Object.keys(classes).length ? `, catégories reportées sur ${Object.keys(classes).length}` : ""}${missed.length ? ` ; sans circuit correspondant : ${missed.join(", ")}` : ""}.`, 8000);
+  if (Object.keys(classes).length) E.change((x) => { for (const [id, t] of Object.entries(classes)) if (x.courses[id] && !x.courses[id].secondary) x.courses[id].secondary = t; }, t("trc.race.undoClasses"));
+  E.toast(tn("trc.race.loadsFilled", Object.keys(out).length, { reg: tn("trc.race.nRegCourses", circuits.length),
+    classes: Object.keys(classes).length ? t("trc.race.loadsClasses", { n: Object.keys(classes).length }) : "",
+    missed: missed.length ? t("trc.race.loadsMissed", { list: missed.join(", ") }) : "" }), 8000);
   return out;
 }
 
@@ -99,11 +102,11 @@ function coursePolyline(ev, cd) {
 }
 export async function climb(E) {
   const ev = E.ev;
-  if (!G.hasGeo(ev)) { E.toast(`Géoréférencez d'abord la carte (${where("georef")}) : il faut savoir où est le terrain.`); return; }
+  if (!G.hasGeo(ev)) { E.toast(t("trc.race.climbNeedsGeo", { where: where("georef") })); return; }
   const ids = courseList(ev);
-  if (!ids.length) { E.toast("Aucun circuit en ligne."); return; }
+  if (!ids.length) { E.toast(t("trc.race.noLineCourse")); return; }
   const rows = [], profiles = [];
-  E.status("Altitudes de l'IGN…", "busy");
+  E.status(t("trc.race.ignBusy"), "busy");
   try {
     for (const id of ids) {
       const des = M.hasVariations(ev, id) ? M.allVariations(ev, id).map((x) => ({ cd: M.cdCourse(id, -1, x.path), code: x.code })) : [{ cd: M.cdCourse(id), code: "" }];
@@ -122,30 +125,29 @@ export async function climb(E) {
       profiles.push({ id, ...best });
     }
   } catch (err) {
-    E.status("Prêt", "ok");
-    E.toast(`Le service d'altitude de l'IGN ne répond pas (${err.message}). Réessayez plus tard.`, 7000);
+    E.status(t("trc.race.ready"), "ok");
+    E.toast(t("trc.race.ignDown", { why: err.message }), 7000);
     return;
   }
-  E.status("Prêt", "ok");
-  if (!rows.length) { E.toast("Aucun circuit à mesurer (il faut au moins deux postes)."); return; }
+  E.status(t("trc.race.ready"), "ok");
+  if (!rows.length) { E.toast(t("trc.race.nothingToMeasure")); return; }
   const spark = (r) => {
     const W = 220, H = 40, n = r.z.length, lo = r.min, hi = Math.max(r.max, lo + 1);
     return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.2" points="${r.z.map((z, i) => `${((i / (n - 1)) * W).toFixed(1)},${(H - 2 - ((z - lo) / (hi - lo)) * (H - 4)).toFixed(1)}`).join(" ")}"/></svg>`;
   };
-  const v = await modal(E, { title: "Dénivelée des circuits (IGN)", wide: true, ok: "Reporter dans les circuits", body: `
-    <p>Les altitudes du modèle numérique de terrain de l'IGN (RGE ALTI, au mètre en France), tous les 10 m le long des interpostes : <b>l'itinéraire tracé</b> quand il y en a un
-    (outil Itinéraire), sinon la ligne droite et ses coudes. Le règlement compte la dénivelée de l'itinéraire le plus raisonnable : tracez-le sur les interpostes où il s'écarte de la ligne droite. Arrondi à 5 m.</p>
-    <div class="table-wrap"><table class="tr-table"><thead><tr><th></th><th>Circuit</th><th class="r">Longueur</th><th class="r">Montée</th><th class="r">Descente</th><th class="r">m/km</th><th>Profil</th><th class="r">Actuelle</th><th class="r">À reporter</th></tr></thead><tbody>
-    ${rows.map((r) => `<tr><td><input type="checkbox" name="u${r.id}" checked aria-label="Reporter"></td><td>${esc(ev.courses[r.id].name)}${r.code ? ` <small>(variante ${esc(r.code)}, la plus montante)</small>` : ""}</td>
+  const v = await modal(E, { title: t("trc.race.climbTitle"), wide: true, ok: t("trc.race.climbOk"), body: `
+    <p>${t("trc.race.climbIntro")}</p>
+    <div class="table-wrap"><table class="tr-table"><thead><tr><th></th><th>${t("trc.race.thCourse")}</th><th class="r">${t("trc.race.thLength")}</th><th class="r">${t("trc.race.thUp")}</th><th class="r">${t("trc.race.thDown")}</th><th class="r">m/km</th><th>${t("trc.race.thProfile")}</th><th class="r">${t("trc.race.thCurrent")}</th><th class="r">${t("trc.race.thToCopy")}</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td><input type="checkbox" name="u${r.id}" checked aria-label="${esc(t("trc.race.copy"))}"></td><td>${esc(ev.courses[r.id].name)}${r.code ? ` <small>${t("trc.race.steepestVar", { code: esc(r.code) })}</small>` : ""}</td>
       <td class="r">${nf(r.len / 1000, 1)} km</td><td class="r">${Math.round(r.up)} m</td><td class="r">${Math.round(r.down)} m</td><td class="r">${nf(r.up / (r.len / 1000))}</td><td>${spark(r)}</td>
       <td class="r">${ev.courses[r.id].climb >= 0 ? `${ev.courses[r.id].climb} m` : "—"}</td><td class="r"><input name="c${r.id}" value="${Math.round(r.up / 5) * 5}" size="5" inputmode="numeric"> m</td></tr>`).join("")}</tbody></table></div>
-    <p class="tr-hint">Altitudes : IGN, Géoplateforme (data.geopf.fr) ; seuls les points des circuits sont envoyés, sans nom ni code.</p>` });
+    <p class="tr-hint">${t("trc.race.ignCredit")}</p>` });
   if (!v) return;
-  E.change((x) => { for (const r of rows) if (v[`u${r.id}`]) { const c = Math.round(num(v[`c${r.id}`])); if (c >= 0) x.courses[r.id].climb = c; } }, "Dénivelée (IGN)");
+  E.change((x) => { for (const r of rows) if (v[`u${r.id}`]) { const c = Math.round(num(v[`c${r.id}`])); if (c >= 0) x.courses[r.id].climb = c; } }, t("trc.race.undoClimb"));
 }
 
 // ---- winning times -----------------------------------------------------------------------------------------------------------
-const FORMATS = [["LD", "Longue distance"], ["MD", "Moyenne distance"], ["Sprint", "Sprint"], ["Nuit", "Nuit"]];
+const FORMATS = [["LD", t("trc.race.fmtLD")], ["MD", t("trc.race.fmtMD")], ["Sprint", t("trc.race.fmtSprint")], ["Nuit", t("trc.race.fmtNight")]];
 const CACHE = new Map();
 /** The winners of recent circuits of a discipline and format: [{ km, s (seconds), cn (official CN J-15), cat }]. */
 async function winners(format) {
@@ -192,7 +194,7 @@ function paceModel(data) {
 async function climbEffect(format, model) {
   const idx = await getData("prov/index.json");
   if (!idx || !model.n) return { n: 0 };
-  const forest = (r) => r.terrain === "Forêt" || r.terrain === "For";
+  const forest = (r) => r.terrain === "Forêt" || r.terrain === "For";     // i18n-ignore
   const pick = (strict) => (idx.races || []).filter((r) => r.docs && !r.soon && (format === "Sprint" ? r.terrain === "Sprint" || r.terrain === "Spr" : forest(r) && (!strict || (r.epreuve || "") === format)));
   let races = pick(true);
   if (races.length < 15 && format !== "Sprint") races = pick(false);
@@ -225,14 +227,14 @@ async function climbEffect(format, model) {
 }
 export async function winningTimes(E) {
   const ev = E.ev, ids = courseList(ev);
-  if (!ids.length) { E.toast("Aucun circuit en ligne."); return; }
+  if (!ids.length) { E.toast(t("trc.race.noLineCourse")); return; }
   const info = await raceInfo(E).catch(() => ({}));
   let format = info.agenda?.epr || info.prov?.epreuve || (ev.appearance.mapStandard === "Spr2019" ? "Sprint" : "MD");
   if (!FORMATS.some((f) => f[0] === format)) format = "MD";
-  E.status("Résultats des courses récentes…", "busy");
+  E.status(t("trc.race.recentBusy"), "busy");
   let model = paceModel(await winners(format));
   let climbFit = await climbEffect(format, model).catch(() => ({ n: 0 }));
-  E.status("Prêt", "ok");
+  E.status(t("trc.race.ready"), "ok");
   // a course's time: the pace for the CN over its length, corrected by its climb per km against the reference circuits'
   const climbK = (id, L) => { const H = ev.courses[id].climb; return climbFit.b && H >= 0 && L > 0 ? Math.exp(climbFit.b * (H / L - climbFit.hm)) : 1; };
   const lengthFor = (id, t, p) => { let L = t / p; for (let i = 0; i < 20; i++) L = t / (p * climbK(id, L)); return L; };
@@ -248,28 +250,27 @@ export async function winningTimes(E) {
       <td><input name="cn${id}" value="${cn ? Math.round(cn / 50) * 50 : ""}" size="5" inputmode="numeric" placeholder="CN"></td><td class="r" data-est></td>
       <td><input name="t${id}" size="4" inputmode="numeric" placeholder="min"></td><td class="r" data-len></td></tr>`;
   };
-  await modal(E, { title: "Temps estimés du vainqueur", wide: true, ok: null, cancel: "Fermer", body: `
-    <div class="tr-row">${field("Format", `<select name="fmt">${FORMATS.map(([k, l]) => `<option value="${k}" ${k === format ? "selected" : ""}>${l}</option>`).join("")}</select>`)}</div>
+  await modal(E, { title: t("trc.race.wtTitle"), wide: true, ok: null, cancel: t("trc.race.close"), body: `
+    <div class="tr-row">${field(t("trc.race.format"), `<select name="fmt">${FORMATS.map(([k, l]) => `<option value="${k}" ${k === format ? "selected" : ""}>${l}</option>`).join("")}</select>`)}</div>
     <p class="tr-hint" id="tr-wt-info"></p>
-    <div class="table-wrap"><table class="tr-table"><thead><tr><th>Circuit</th><th class="r">Longueur</th><th class="r">Dénivelée</th><th>CN du vainqueur attendu</th><th class="r">Temps estimé</th><th>Temps visé</th><th class="r">Longueur pour ce temps</th></tr></thead>
+    <div class="table-wrap"><table class="tr-table"><thead><tr><th>${t("trc.race.thCourse")}</th><th class="r">${t("trc.race.thLength")}</th><th class="r">${t("trc.race.thClimb")}</th><th>${t("trc.race.thWinnerCn")}</th><th class="r">${t("trc.race.thEstTime")}</th><th>${t("trc.race.thTarget")}</th><th class="r">${t("trc.race.thLenFor")}</th></tr></thead>
     <tbody>${ids.map(row).join("")}</tbody></table></div>
-    <p class="tr-hint">L'allure des vainqueurs des circuits ${format === "Sprint" ? "de sprint" : "en forêt"} des deux dernières saisons (résultats FFCO, une centaine de courses de 40 coureurs ou plus), selon leur CN officiel 15 jours avant.
-    La dénivelée vient en plus, mesurée sur les circuits dont les organisateurs l'ont publiée (« Résultats ») ; la difficulté propre au terrain n'entre pas dans le calcul : la fourchette donne la moitié des courses de référence.
-    Le CN proposé est le CN médian des vainqueurs des catégories du circuit (ses « classes » dans les propriétés du circuit).</p>`,
+    <p class="tr-hint">${t(format === "Sprint" ? "trc.race.wtRefSprint" : "trc.race.wtRefForest")}
+    ${t("trc.race.wtHint")}</p>`,
   onOpen: (f) => {
     const upd = () => {
-      f.querySelector("#tr-wt-info").textContent = !model.n ? "Pas de course de référence pour ce format."
-        : `${model.n} vainqueurs de référence. ${climbFit.b ? `Dénivelée : chaque 10 m par km au-dessus de la moyenne (${nf(climbFit.hm)} m/km) ajoute ${nf((Math.exp(climbFit.b * 10) - 1) * 100, 1)} % au temps — la règle du kilomètre-effort (100 m de montée = 1 km, +10 %) ajustée sur ${climbFit.n} circuits dont la dénivelée est publiée (seuls : ${nf((Math.exp(climbFit.raw * 10) - 1) * 100, 1)} %).`
-          : `Dénivelée non prise en compte (${climbFit.n} circuit${climbFit.n > 1 ? "s" : ""} avec dénivelée publiée : trop peu).`}`;
+      f.querySelector("#tr-wt-info").textContent = !model.n ? t("trc.race.wtNoRef")
+        : `${tn("trc.race.wtRefN", model.n)} ${climbFit.b ? t("trc.race.wtClimb", { hm: nf(climbFit.hm), pct: nf((Math.exp(climbFit.b * 10) - 1) * 100, 1), n: nf(climbFit.n), raw: nf((Math.exp(climbFit.raw * 10) - 1) * 100, 1) })
+          : tn("trc.race.wtNoClimb", climbFit.n)}`;
       for (const tr of f.querySelectorAll("tr[data-id]")) {
-        const id = Number(tr.dataset.id), cn = num(f.elements[`cn${id}`].value), t = num(f.elements[`t${id}`].value), L = len(id);
+        const id = Number(tr.dataset.id), cn = num(f.elements[`cn${id}`].value), tm = num(f.elements[`t${id}`].value), L = len(id);
         const p = cn > 500 && model.n ? model.pace(cn) : null, est = p ? p * L * climbK(id, L) : null;
-        tr.querySelector("[data-est]").textContent = est ? `${mmss(est)} (${mmss(est * model.spread[0])} à ${mmss(est * model.spread[1])})` : "";
-        tr.querySelector("[data-len]").textContent = p && t > 0 ? `${nf(lengthFor(id, t * 60, p), 1)} km` : "";
+        tr.querySelector("[data-est]").textContent = est ? t("trc.race.wtRange", { est: mmss(est), lo: mmss(est * model.spread[0]), hi: mmss(est * model.spread[1]) }) : "";
+        tr.querySelector("[data-len]").textContent = p && tm > 0 ? `${nf(lengthFor(id, tm * 60, p), 1)} km` : "";
       }
     };
     f.addEventListener("input", upd);
-    f.elements.fmt.addEventListener("change", async () => { E.status("Résultats des courses récentes…", "busy"); model = paceModel(await winners(f.elements.fmt.value)); climbFit = await climbEffect(f.elements.fmt.value, model).catch(() => ({ n: 0 })); E.status("Prêt", "ok"); upd(); });
+    f.elements.fmt.addEventListener("change", async () => { E.status(t("trc.race.recentBusy"), "busy"); model = paceModel(await winners(f.elements.fmt.value)); climbFit = await climbEffect(f.elements.fmt.value, model).catch(() => ({ n: 0 })); E.status(t("trc.race.ready"), "ok"); upd(); });
     upd();
   } });
 }
@@ -294,25 +295,25 @@ async function lastStarts(E) {
 }
 export async function pickup(E) {
   const ev = E.ev, ids = courseList(ev);
-  if (!ids.length) { E.toast("Aucun circuit en ligne."); return; }
+  if (!ids.length) { E.toast(t("trc.race.noLineCourse")); return; }
   const starts = await lastStarts(E);
   const sprint = ev.appearance.mapStandard === "Spr2019" || ev.map.scale <= 5000;
-  const v = await modal(E, { title: "Plan de ramassage", wide: true, ok: "Calculer", body: `
-    <p>Un poste peut être ramassé quand le dernier coureur de chaque circuit qui y passe l'a passé : son départ, plus la distance jusqu'au poste à l'allure d'un coureur lent.</p>
-    <table class="tr-table"><thead><tr><th>Circuit</th><th>Dernier départ</th></tr></thead><tbody>
+  const v = await modal(E, { title: t("trc.race.puTitle"), wide: true, ok: t("trc.race.compute"), body: `
+    <p>${t("trc.race.puIntro")}</p>
+    <table class="tr-table"><thead><tr><th>${t("trc.race.thCourse")}</th><th>${t("trc.race.thLastStart")}</th></tr></thead><tbody>
     ${ids.map((id) => `<tr><td>${esc(ev.courses[id].name)}</td><td><input name="s${id}" value="${starts[id] ? hhmm(starts[id]) : ""}" size="6" placeholder="hh:mm"></td></tr>`).join("")}</tbody></table>
-    ${Object.keys(starts).length ? '<p class="tr-hint">Derniers départs lus dans la liste de départ publiée (« Résultats »).</p>' : ""}
-    <div class="tr-grid2">${field("Allure d'un coureur lent (min/km, en ligne droite)", `<input name="pace" value="${sprint ? 9 : 15}" inputmode="decimal">`)}
-    ${field("Marge (minutes)", '<input name="margin" value="15" inputmode="numeric">')}
-    ${field("Ramasser au plus tôt à (heure de fermeture, facultatif)", '<input name="close" placeholder="hh:mm">')}
-    ${field("Nombre de ramasseurs", '<input name="n" value="2" inputmode="numeric">')}</div>`,
-  validate: (o) => (ids.every((id) => !/^\d{1,2}[:h]\d{2}$/.test(o[`s${id}`].trim())) ? "Le dernier départ d'un circuit au moins (hh:mm)." : !(num(o.pace) > 0) ? "Une allure." : null) });
+    ${Object.keys(starts).length ? `<p class="tr-hint">${t("trc.race.puStartsRead")}</p>` : ""}
+    <div class="tr-grid2">${field(t("trc.race.puPace"), `<input name="pace" value="${sprint ? 9 : 15}" inputmode="decimal">`)}
+    ${field(t("trc.race.puMargin"), '<input name="margin" value="15" inputmode="numeric">')}
+    ${field(t("trc.race.puClose"), '<input name="close" placeholder="hh:mm">')}
+    ${field(t("trc.race.puCollectors"), '<input name="n" value="2" inputmode="numeric">')}</div>`,
+  validate: (o) => (ids.every((id) => !/^\d{1,2}[:h]\d{2}$/.test(o[`s${id}`].trim())) ? t("trc.race.puNeedStart") : !(num(o.pace) > 0) ? t("trc.race.puNeedPace") : null) });
   if (!v) return;
-  const t = (s) => { const m = /^(\d{1,2})[:h](\d{2})$/.exec(String(s).trim()); return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 : null; };
-  const pace = num(v.pace) * 60, margin = (num(v.margin) || 0) * 60, close = t(v.close);
+  const hms = (s) => { const m = /^(\d{1,2})[:h](\d{2})$/.exec(String(s).trim()); return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 : null; };
+  const pace = num(v.pace) * 60, margin = (num(v.margin) || 0) * 60, close = hms(v.close);
   const when = new Map(), courses = new Map();
   for (const id of ids) {
-    const s0 = t(v[`s${id}`]);
+    const s0 = hms(v[`s${id}`]);
     if (s0 == null) continue;
     const des = M.hasVariations(ev, id) ? M.allVariations(ev, id).map((x) => M.cdCourse(id, -1, x.path)) : [M.cdCourse(id)];
     for (const cd of des) {
@@ -329,7 +330,7 @@ export async function pickup(E) {
       }
     }
   }
-  if (!when.size) { E.toast("Aucun poste à ramasser."); return; }
+  if (!when.size) { E.toast(t("trc.race.puNothing")); return; }
   // sectors: the controls split among the collectors by place (k-means from the farthest controls), then in each sector
   // the next control is the one reached earliest (walking from the last, or waiting until it may be collected)
   const n = Math.max(1, Math.min(when.size, Math.round(num(v.n)) || 1));
@@ -358,23 +359,24 @@ export async function pickup(E) {
     if (finish && at) t0 += (M.mmToM(ev, M.dist(at, [finish.x, finish.y])) / 1000) * walk;
     route.push(r); free.push(t0);
   }
-  const rep = { title: "Plan de ramassage", intro: `Allure des derniers coureurs ${nf(num(v.pace), 1)} min/km, marge ${nf(margin / 60)} min ; ramasseurs à ${sprint ? 10 : 6} km/h en ligne droite depuis l'arrivée.`,
-    sections: route.map((r, k) => ({ title: `Ramasseur ${k + 1} (${r.length} postes, retour vers ${hhmm(free[k])})`, head: ["Ordre", "Poste", "Ramassable à", "Arrivée prévue", "Depuis le précédent", "Circuits"], align: "rlrrrl",
+  const rep = { title: t("trc.race.puTitle"), intro: t("trc.race.puRepIntro", { pace: nf(num(v.pace), 1), margin: nf(margin / 60), speed: sprint ? 10 : 6 }),
+    sections: route.map((r, k) => ({ title: tn("trc.race.puCollector", r.length, { k: k + 1, back: hhmm(free[k]) }),
+      head: [t("trc.race.thOrder"), t("trc.race.thControl"), t("trc.race.thCollectable"), t("trc.race.thArrival"), t("trc.race.thFromPrev"), t("trc.race.thCourses")], align: "rlrrrl",
       rows: r.map((x, i) => [String(i + 1), ctrlName(ev, x.c), hhmm(when.get(x.c)), hhmm(x.arrive), `${Math.round(x.d)} m`, [...courses.get(x.c)].join(", ")]) })) };
-  await showRep(E, rep, "ramassage");
+  await showRep(E, rep, t("trc.race.slugPickup"));
 }
 
 // ---- after the race --------------------------------------------------------------------------------------------------------------
 export async function afterRace(E) {
   const ev = E.ev;
   const info = await raceInfo(E).catch(() => ({}));
-  E.status("Temps intermédiaires et traces…", "busy");
+  E.status(t("trc.race.arBusy"), "busy");
   const race = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const docs = (race?.docs || []).filter((d) => (d.classes || []).some((k) => k.controls?.length && (k.runners || []).some((r) => r.splits)));
   const doc = docs[0] || null;
   const classes = doc ? (doc.by === "category" && doc.circuits?.length ? doc.circuits : doc.classes).filter((k) => k.controls?.length) : [];
   const sections = [], intro = [];
-  if (doc) intro.push(`Temps intermédiaires : ${doc.title || doc.source} (« Résultats »). Une erreur : au moins 20 % et 10 s perdus sur l'interposte par rapport à l'allure du coureur sur sa course.`);
+  if (doc) intro.push(t("trc.race.arSplits", { doc: doc.title || doc.source }));
   for (const k of classes) {
     // the course: same codes in the same order, else the name
     const codes = k.controls.map(String);
@@ -392,15 +394,15 @@ export async function afterRace(E) {
       let mist = 0, cnt = 0, lost = [];
       legs.forEach((l, i) => { if (!(l[j] > 0) || !perf[i]) return; cnt++; const exp = best[j] * perf[i], loss = l[j] - exp; if (loss >= 10 && loss >= 0.2 * exp) { mist++; lost.push(loss); } });
       const missing = runners.filter((r) => j < codes.length && r.splits[j] == null).length;
-      const from = j ? codes[j - 1] : "Départ", to = j < codes.length ? codes[j] : "Arrivée";
+      const from = j ? codes[j - 1] : t("trc.race.start"), to = j < codes.length ? codes[j] : t("trc.race.finish");
       const c1 = j ? M.findCode(ev, from) : Object.keys(ev.controls).map(Number).find((x) => ev.controls[x].kind === "start");
       const c2 = j < codes.length ? M.findCode(ev, to) : Object.keys(ev.controls).map(Number).find((x) => ev.controls[x].kind === "finish");
       const L = c1 && c2 ? M.legLengthM(ev, c1, c2) : null;
       rows.push([`${j + 1}`, `${from}–${to}`, L ? `${Math.round(L)} m` : "", mmss(best[j]), mmss(ts[Math.floor(ts.length / 2)]), L && best[j] > 0 ? `${nf(best[j] / 60 / (L / 1000), 1)}` : "",
-        cnt ? `${Math.round((100 * mist) / cnt)} %` : "", lost.length ? mmss(lost.sort((a, b) => a - b)[Math.floor(lost.length / 2)]) : "", missing ? String(missing) : ""]);
+        cnt ? t("trc.race.pct", { n: Math.round((100 * mist) / cnt) }) : "", lost.length ? mmss(lost.sort((a, b) => a - b)[Math.floor(lost.length / 2)]) : "", missing ? String(missing) : ""]);
     }
-    sections.push({ title: `${k.name}${id ? ` → ${ev.courses[id].name}` : " (pas de circuit correspondant dans l'événement)"} : ${runners.length} coureurs`,
-      head: ["Interposte", "Postes", "Longueur", "Meilleur", "Médian", "min/km (meilleur)", "Erreurs", "Perte médiane", "Postes manquants"], align: "rlrrrrrrr", rows });
+    sections.push({ title: id ? tn("trc.race.arSection", runners.length, { name: k.name, course: ev.courses[id].name }) : tn("trc.race.arSectionNone", runners.length, { name: k.name }),
+      head: [t("trc.race.thLeg"), t("trc.race.thControls"), t("trc.race.thLength"), t("trc.race.thBest"), t("trc.race.thMedian"), t("trc.race.thPaceBest"), t("trc.race.thMistakes"), t("trc.race.thMedianLoss"), t("trc.race.thMissing")], align: "rlrrrrrrr", rows });
   }
   // the routes taken, from the GPS traces shared on the analysis published from this event (routes.js)
   try {
@@ -408,26 +410,26 @@ export async function afterRace(E) {
     if (routes?.length) {
       const { rows, meta } = R.routeRows(routes);
       if (rows.length) {
-        sections.push({ title: "Itinéraires (traces GPS de l'analyse multi)", head: ["Circuit", "Interposte", "Traces", "Itinéraires", "Groupes (temps médian ; ★ le plus rapide)"], align: "llrrl", rows,
-          rowAction: { label: "Voir", fn: (i) => R.showLeg(E, routes, meta[i].course, meta[i].leg) } });
-        intro.push("Itinéraires : les traces partagées sur l'analyse multi, coupées aux passages des postes et groupées quand elles restent à quelques dizaines de mètres l'une de l'autre. « Voir » les dessine sur la carte.");
+        sections.push({ title: t("trc.race.rtTitle"), head: [t("trc.race.thCourse"), t("trc.race.thLeg"), t("trc.race.thTracks"), t("trc.race.thRoutes"), t("trc.race.thGroups")], align: "llrrl", rows,
+          rowAction: { label: t("trc.race.view"), fn: (i) => R.showLeg(E, routes, meta[i].course, meta[i].leg) } });
+        intro.push(t("trc.race.rtIntro"));
       }
     }
   } catch (err) { console.error(err); }
-  E.status("Prêt", "ok");
+  E.status(t("trc.race.ready"), "ok");
   if (!sections.length) {
-    E.toast(info.provKey || E.meta?.published ? "Pas encore de temps intermédiaires publiés ni de traces partagées pour cette course." : "Pas de résultats pour cet événement dans « Résultats » (il doit être lié à la course), ni d'analyse multi publiée.", 7000);
+    E.toast(info.provKey || E.meta?.published ? t("trc.race.arNothingYet") : t("trc.race.arNoResults"), 7000);
     return;
   }
-  intro.push("À lire avec le terrain : un interposte où beaucoup se trompent peut signaler un poste ambigu, une erreur de carte, ou simplement un choix difficile voulu ; des postes manquants nombreux au même poste, un boîtier ou une balise à vérifier.");
-  await showRep(E, { title: "Bilan après la course", intro: intro.join("\n"), sections }, "bilan");
+  intro.push(t("trc.race.arReadNote"));
+  await showRep(E, { title: t("trc.race.arTitle"), intro: intro.join("\n"), sections }, t("trc.race.slugReview"));
 }
 
 async function showRep(E, rep, slug) {
   const html = `${rep.intro ? rep.intro.split("\n").map((t) => `<p class="tr-hint">${esc(t)}</p>`).join("") : ""}${rep.sections.map((s, si) => `<h3>${esc(s.title)}</h3>
     <div class="table-wrap"><table class="tr-table"><thead><tr>${s.head.map((h, i) => `<th class="${s.align[i] === "r" ? "r" : ""}">${esc(h)}</th>`).join("")}</tr></thead>
     <tbody>${s.rows.map((r, ri) => `<tr>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}${s.rowAction ? `<td><button type="button" class="btn btn-sm" data-row="${si}:${ri}">${esc(s.rowAction.label)}</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`).join("")}`;
-  await modal(E, { title: rep.title, wide: true, ok: null, cancel: "Fermer", body: `<div class="tr-report">${html}</div>`, extra: '<button type="button" class="btn" data-csv>CSV</button>',
+  await modal(E, { title: rep.title, wide: true, ok: null, cancel: t("trc.race.close"), body: `<div class="tr-report">${html}</div>`, extra: '<button type="button" class="btn" data-csv>CSV</button>',
     onOpen: (f, done) => {
       f.querySelector("[data-csv]").addEventListener("click", () => download(`${fileName(E.ev.title)} - ${slug}.csv`, csv(rep), "text/csv;charset=utf-8"));
       f.querySelectorAll("[data-row]").forEach((b) => b.addEventListener("click", () => { const [si, ri] = b.dataset.row.split(":").map(Number); done(null); rep.sections[si].rowAction.fn(ri); }));
@@ -440,31 +442,30 @@ async function showRep(E, rep, slug) {
  *  files lack them. From the race day only (the courses are secret before), by the organising club. */
 export async function sendCourses(E) {
   const ev = E.ev, today = new Date().toISOString().slice(0, 10);
-  if (E.meta.kind !== "race" || !E.meta.race) { E.toast("Cet événement n'est pas lié à une compétition : rien à envoyer à « Résultats »."); return; }
-  if (E.meta.date && E.meta.date > today) { E.toast(`Les circuits restent secrets jusqu'à la course (${E.meta.date}) : envoyez-les le jour même ou après.`, 6000); return; }
+  if (E.meta.kind !== "race" || !E.meta.race) { E.toast(t("trc.race.scNotRace")); return; }
+  if (E.meta.date && E.meta.date > today) { E.toast(t("trc.race.scSecret", { date: E.meta.date }), 6000); return; }
   const ids = courseList(ev);
-  const v = await modal(E, { title: "Envoyer les circuits à « Résultats »", wide: true, ok: "Envoyer", body: `
-    <p>Les circuits (au format IOF XML) complètent les résultats publiés de la course : la longueur, la dénivelée et les postes de chaque circuit
-    quand les fichiers de résultats ne les donnent pas. Ils sont rapprochés des circuits des résultats par leur nom, ou par leurs postes.</p>
-    <p class="tr-hint">${ids.length} circuit(s) : ${ids.map((id) => esc(ev.courses[id].name)).join(", ")}. Un nouvel envoi remplace le précédent.</p>
-    <label class="tr-check"><input type="checkbox" name="consent"> Je suis de l'organisation et j'accepte que ces circuits soient publiés avec les résultats</label>`,
-  validate: (o) => (o.consent ? null : "Cochez l'accord de publication.") });
+  const v = await modal(E, { title: t("trc.race.scTitle"), wide: true, ok: t("trc.race.send"), body: `
+    <p>${t("trc.race.scIntro")}</p>
+    <p class="tr-hint">${tn("trc.race.scList", ids.length, { list: ids.map((id) => esc(ev.courses[id].name)).join(", ") })}</p>
+    <label class="tr-check"><input type="checkbox" name="consent"> ${t("trc.race.scConsent")}</label>`,
+  validate: (o) => (o.consent ? null : t("trc.race.scNeedConsent")) });
   if (!v) return;
   const { iofXmlText } = await import("./exports.js");
   const xml = iofXmlText(ev, 3), name = `${fileName(ev.title)} - circuits.xml`;
-  E.status("Envoi…", "busy");
+  E.status(t("trc.race.sending"), "busy");
   try {
     const r = await fetch("api/upload", { method: "POST", credentials: "same-origin",
       headers: { "Content-Type": "application/xml", "X-Upload": encodeURIComponent(JSON.stringify({ kind: "courses", race: E.meta.race, filename: name, consent: true })) },
       body: new Blob([xml], { type: "application/xml" }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(j.error || `http ${r.status}`), { code: j.error });
-    E.status("Prêt", "ok");
-    E.toast(j.soon === false ? "Circuits envoyés : ils seront pris en compte au prochain passage de la collecte des résultats." : "Circuits envoyés : « Résultats » les prend en compte dans quelques minutes.", 7000);
+    E.status(t("trc.race.ready"), "ok");
+    E.toast(j.soon === false ? t("trc.race.scSentLater") : t("trc.race.scSentSoon"), 7000);
   } catch (err) {
-    E.status("Échec", "err");
-    const why = { "not organiser": "seuls les membres du club organisateur envoient les circuits", race: "course inconnue", "unknown race": "course inconnue", "too big": "fichier trop gros", consent: "accord manquant" }[err.code] || err.message;
-    E.toast(`Envoi impossible : ${why}.`, 7000);
+    E.status(t("trc.race.failed"), "err");
+    const why = { "not organiser": t("trc.race.scWhyNotOrg"), race: t("trc.race.whyUnknownRace"), "unknown race": t("trc.race.whyUnknownRace"), "too big": t("trc.race.whyTooBig"), consent: t("trc.race.whyConsent") }[err.code] || err.message;
+    E.toast(t("trc.race.scFail", { why }), 7000);
   }
 }
 
@@ -473,11 +474,11 @@ export async function sendCourses(E) {
  *  printed on it, the controls' positions on that image, the georeference — after the race only. */
 export async function publish(E) {
   const ev = E.ev;
-  if (!G.hasGeo(ev)) { E.toast(`Géoréférencez d'abord la carte (${where("georef")}) : l'analyse pose les traces GPS sur la carte.`); return; }
+  if (!G.hasGeo(ev)) { E.toast(t("trc.race.pubNeedsGeo", { where: where("georef") })); return; }
   const today = new Date().toISOString().slice(0, 10), isRace = E.meta.kind === "race";
-  if (isRace && E.meta.date && E.meta.date > today) { E.toast(`Les circuits restent secrets jusqu'à la course (${E.meta.date}) : publiez-les après.`, 6000); return; }
+  if (isRace && E.meta.date && E.meta.date > today) { E.toast(t("trc.race.pubSecret", { date: E.meta.date }), 6000); return; }
   const info = isRace ? await raceInfo(E).catch(() => ({})) : {};
-  if (isRace && !info.provKey) { E.toast("La course n'apparaît pas encore dans « Résultats » : la publication sera possible quand elle y sera."); return; }
+  if (isRace && !info.provKey) { E.toast(t("trc.race.pubNotInResults")); return; }
   const des = [];
   for (const id of M.courseIds(ev, false)) {
     if (M.hasVariations(ev, id)) for (const x of M.allVariations(ev, id)) des.push({ cd: M.cdCourse(id, -1, x.path), name: `${ev.courses[id].name} ${x.code}`, id });
@@ -485,14 +486,14 @@ export async function publish(E) {
   }
   const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
-  const v = await modal(E, { title: "Publier vers l'analyse multi", wide: true, ok: "Publier", body: `
-    <p>Chaque circuit coché devient un circuit de l'${isRace ? "analyse de la compétition" : "analyse d'entraînement"} : sa carte avec le circuit imprimé, ses postes, son calage. Les coureurs y déposent ensuite leur trace GPS.</p>
-    <table class="tr-table"><thead><tr><th></th><th>Circuit</th>${circuitNames.length ? "<th>Circuit des résultats</th>" : ""}</tr></thead><tbody>
+  const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t("trc.race.publish"), body: `
+    <p>${t(isRace ? "trc.race.pubIntroRace" : "trc.race.pubIntroTraining")}</p>
+    <table class="tr-table"><thead><tr><th></th><th>${t("trc.race.thCourse")}</th>${circuitNames.length ? `<th>${t("trc.race.thResultsCourse")}</th>` : ""}</tr></thead><tbody>
     ${des.map((d, i) => `<tr><td><input type="checkbox" name="p${i}" ${i < 12 ? "checked" : ""}></td><td>${esc(d.name)}</td>
       ${circuitNames.length ? `<td><select name="k${i}"><option value="">—</option>${circuitNames.map((n) => `<option ${norm(n) === norm(d.name) || norm(n).split(" ")[0] === norm(d.name).split(" ")[0] ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>` : ""}</tr>`).join("")}</tbody></table>
-    ${isRace ? "" : `${field("Qui la voit", '<select name="vis"><option value="club">Mon club</option><option value="public">Tous les comptes</option><option value="password">Avec un mot de passe</option></select>')}${field("Mot de passe (si choisi)", '<input name="pw" type="password" autocomplete="new-password">')}`}
-    ${field("Résolution de l'image (points par pouce sur le papier)", '<input name="dpi" value="150" inputmode="numeric">', "150 suffit à l'écran ; 12 circuits au plus.")}`,
-  validate: (o) => { const n = des.filter((_, i) => o[`p${i}`]).length; return !n ? "Cochez un circuit." : n > 12 ? "12 circuits au plus." : o.vis === "password" && (o.pw || "").length < 4 ? "Un mot de passe de 4 caractères au moins." : null; } });
+    ${isRace ? "" : `${field(t("trc.race.pubWho"), `<select name="vis"><option value="club">${t("trc.race.visClub")}</option><option value="public">${t("trc.race.visPublic")}</option><option value="password">${t("trc.race.visPassword")}</option></select>`)}${field(t("trc.race.pubPw"), '<input name="pw" type="password" autocomplete="new-password">')}`}
+    ${field(t("trc.race.pubDpi"), '<input name="dpi" value="150" inputmode="numeric">', t("trc.race.pubDpiHint"))}`,
+  validate: (o) => { const n = des.filter((_, i) => o[`p${i}`]).length; return !n ? t("trc.race.pubNeedOne") : n > 12 ? t("trc.race.pubMax") : o.vis === "password" && (o.pw || "").length < 4 ? t("trc.race.pubPwShort") : null; } });
   if (!v) return;
   const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]);
   const call = async (path, opts = {}) => {
@@ -505,7 +506,7 @@ export async function publish(E) {
     return j;
   };
   try {
-    E.status("Création de l'analyse…", "busy");
+    E.status(t("trc.race.pubCreating"), "busy");
     const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: E.meta.title, date: E.meta.date || today, vis: "public" }
       : { kind: "club", title: E.meta.title, date: E.meta.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined } });
     const aid = created.id;
@@ -515,7 +516,7 @@ export async function publish(E) {
     const dpi = Math.max(72, Math.min(300, Math.round(num(v.dpi)) || 150));
     for (let j = 0; j < pick.length; j++) {
       const d = pick[j];
-      E.status(`Circuit ${j + 1}/${pick.length} : ${d.name}…`, "busy");
+      E.status(t("trc.race.pubCourseBusy", { i: j + 1, n: pick.length, name: d.name }), "busy");
       const { canvas, box, pxPerMm: k } = await courseImage(E, d.cd, dpi, { withMap: true });
       const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
       await call(`/${aid}/map/${j}`, { method: "PUT", body: blob, headers: { "Content-Type": "image/png" } });
@@ -528,12 +529,12 @@ export async function publish(E) {
     await call(`/${aid}`, { method: "PUT", body: { courses: courses.sort((a, b) => a.n - b.n) } });
     // the event's card remembers its analysis: « Bilan après la course » reads its shared traces
     try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
-    E.status("Prêt", "ok");
+    E.status(t("trc.race.ready"), "ok");
     const link = isRace ? `#/orga-competitions?id=${aid}` : `#/orga-entrainements?id=${aid}`;
-    await modal(E, { title: "Publié", ok: null, cancel: "Fermer", body: `<p>${pick.length} circuit(s) publiés${created.existing ? " dans l'analyse déjà ouverte pour cette course" : ""}.</p><p><a href="${link}" target="_blank" rel="noopener">Ouvrir l'analyse multi</a></p>` });
+    await modal(E, { title: t("trc.race.published"), ok: null, cancel: t("trc.race.close"), body: `<p>${tn(created.existing ? "trc.race.pubDoneExisting" : "trc.race.pubDone", pick.length)}</p><p><a href="${link}" target="_blank" rel="noopener">${t("trc.race.pubOpen")}</a></p>` });
   } catch (err) {
-    E.status("Échec", "err");
-    const why = { "not organiser": "seuls les membres du club organisateur publient l'analyse d'une compétition", race: "la course n'est pas dans « Résultats »", courses: "un circuit n'a pas pu être enregistré", rate: "trop d'envois aujourd'hui" }[err.code] || err.message;
-    E.toast(`Publication impossible : ${why}.`, 7000);
+    E.status(t("trc.race.failed"), "err");
+    const why = { "not organiser": t("trc.race.pubWhyNotOrg"), race: t("trc.race.pubWhyRace"), courses: t("trc.race.pubWhyCourses"), rate: t("trc.race.pubWhyRate") }[err.code] || err.message;
+    E.toast(t("trc.race.pubFail", { why }), 7000);
   }
 }

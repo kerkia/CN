@@ -4,6 +4,7 @@
 
 import * as M from "./model.js";
 import { CONTEXT } from "./ribbon-data.js";
+import { t } from "./lang.js";
 
 /** The kind of the selection's tab: "drawing" (a line, an area or a route under way), "control", "leg", "special", or null. */
 export function ctxKind(E) {
@@ -46,36 +47,36 @@ export function applies(E, act, kind, at = {}) {
   }
 }
 
-const FLAG_MENU = [["flag-none", "Interposte non balisé"], ["flag-all", "Interposte entièrement balisé"], ["flag-begin", "Début balisé"], ["flag-end", "Fin balisée"]];
+const FLAG_MENU = [["flag-none", t("trc.ctx.flagNone")], ["flag-all", t("trc.ctx.flagAll")], ["flag-begin", t("trc.ctx.flagBegin")], ["flag-end", t("trc.ctx.flagEnd")]];
 /** A command's words in the right-click menu (the ribbon's are shorter). */
 function menuLabel(E, act, kind, label) {
   const cc = E.sel?.cc ? E.ev.courseControls[E.sel.cc] : null, sp = E.sel?.kind === "special" ? E.ev.specials[E.sel.id] : null;
   switch (act) {
-    case "control-props": return "Définition et propriétés…";
-    case "toggle-exchange": return cc?.exchange ? "Retirer l'échange de carte" : "Échange de carte à ce poste";
-    case "var-fork": return "Fourche à partir d'ici…";
-    case "var-loop": return "Boucles à partir d'ici…";
-    case "text-before": return "Ligne de texte avant…";
-    case "text-after": return "Ligne de texte après…";
-    case "gap-add-circle": return "Couper le cercle ici";
-    case "number-auto": return "Numéro placé automatiquement";
-    case "bend-add": return "Ajouter un coude ici";
-    case "bend-remove": return "Retirer ce coude";
-    case "gap-add-leg": return "Couper l'interposte ici";
-    case "gap-remove-leg": return "Refermer la coupure ici";
-    case "route-draw": return "Tracer l'itinéraire prévu…";
-    case "corner-add": return "Ajouter un sommet ici";
-    case "corner-remove": return "Retirer ce sommet";
-    case "displayed-courses": return "Circuits où il apparaît…";
-    case "special-props": return sp?.kind === "text" ? "Texte…" : sp?.kind === "descriptions" ? "Colonnes…" : "Apparence…";
-    case "delete": return kind === "control" ? (E.cd.course && E.sel?.cc ? "Retirer du circuit" : "Supprimer le poste") : "Supprimer";
+    case "control-props": return t("trc.ctx.controlProps");
+    case "toggle-exchange": return cc?.exchange ? t("trc.ctx.exchangeRemove") : t("trc.ctx.exchangeAdd");
+    case "var-fork": return t("trc.ctx.fork");
+    case "var-loop": return t("trc.ctx.loop");
+    case "text-before": return t("trc.ctx.textBefore");
+    case "text-after": return t("trc.ctx.textAfter");
+    case "gap-add-circle": return t("trc.ctx.gapCircle");
+    case "number-auto": return t("trc.ctx.numberAuto");
+    case "bend-add": return t("trc.ctx.bendAdd");
+    case "bend-remove": return t("trc.ctx.bendRemove");
+    case "gap-add-leg": return t("trc.ctx.gapLeg");
+    case "gap-remove-leg": return t("trc.ctx.gapRemove");
+    case "route-draw": return t("trc.ctx.routeDraw");
+    case "corner-add": return t("trc.ctx.cornerAdd");
+    case "corner-remove": return t("trc.ctx.cornerRemove");
+    case "displayed-courses": return t("trc.ctx.displayedCourses");
+    case "special-props": return sp?.kind === "text" ? t("trc.ctx.text") : sp?.kind === "descriptions" ? t("trc.ctx.columns") : t("trc.ctx.appearance");
+    case "delete": return kind === "control" ? (E.cd.course && E.sel?.cc ? t("trc.ctx.removeFromCourse") : t("trc.ctx.deleteControl")) : t("trc.ctx.delete");
     default: return label;
   }
 }
 /** The right-click menu for the selection: its tab's commands, group by group, then « Tout le circuit » when nothing is chosen. */
 export function menuItems(E, at = {}) {
   const kind = ctxKind(E);
-  if (!kind) return [["view-course", "Tout le circuit"], ["view-map", "Toute la carte"]];
+  if (!kind) return [["view-course", t("trc.ctx.wholeCourse")], ["view-map", t("trc.ctx.wholeMap")]];
   const out = [];
   for (const g of CONTEXT[kind].groups) {
     const here = [];

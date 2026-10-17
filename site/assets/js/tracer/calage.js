@@ -7,9 +7,10 @@
 
 import * as M from "./model.js";
 import { modal } from "./dialogs.js";
+import { t, tn, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 
 /** Least-squares similarity from pairs [[src, dst]]: { m: [a, b, c, d, e, f] (x' = a x + b y + e, y' = c x + d y + f), k, deg, rms }. */
 export function similarity(pairs) {
@@ -44,7 +45,7 @@ export function centreOnMap(ev) {
 
 /** The interactive alignment. fromPpen: the controls' distances are known right (default: correct the map, not the course). */
 export function calage(E, { fromPpen = false } = {}) {
-  if (E.readOnly) { E.toast("Lecture seule."); return; }
+  if (E.readOnly) { E.toast(t("trc.cal.readOnly")); return; }
   const pairs = [];
   let pending = null;                                         // a control chosen, its place not yet clicked
   const box = document.createElement("div");
@@ -65,14 +66,14 @@ export function calage(E, { fromPpen = false } = {}) {
   const end = () => { E.pickOnce = null; E.pickCancel = null; box.remove(); E.overlays.splice(E.overlays.indexOf(overlay), 1); E.help(); E.redraw(); };
   const render = () => {
     const n = pairs.length;
-    box.innerHTML = `<b>Caler les postes sur la carte</b>
-      <p>${pending ? `Cliquez maintenant, sur la carte, l'endroit où se trouve le poste <b>${esc(pending.name)}</b> (zoomez au besoin ; glisser déplace la carte).`
-        : `Point ${n + 1} : cliquez un poste (son cercle violet), puis l'endroit où il se trouve sur la carte. ${n < 2 ? "Deux points suffisent, choisis loin l'un de l'autre." : "Un point de plus affine le calage."}`}</p>
-      <p class="tr-hint">${n} point(s) placé(s).</p>
-      <div class="tr-btns"><button type="button" class="btn btn-sm" data-c="cancel">Annuler</button>${n >= 2 ? '<button type="button" class="btn btn-sm btn-primary" data-c="apply">Appliquer</button>' : ""}</div>`;
+    box.innerHTML = `<b>${esc(t("trc.cal.title"))}</b>
+      <p>${pending ? t("trc.cal.clickPlace", { name: esc(pending.name) })
+        : esc(`${t("trc.cal.pointN", { n: n + 1 })} ${n < 2 ? t("trc.cal.twoEnough") : t("trc.cal.onePlus")}`)}</p>
+      <p class="tr-hint">${esc(tn("trc.cal.placed", n))}</p>
+      <div class="tr-btns"><button type="button" class="btn btn-sm" data-c="cancel">${esc(t("trc.cal.cancel"))}</button>${n >= 2 ? `<button type="button" class="btn btn-sm btn-primary" data-c="apply">${esc(t("trc.cal.apply"))}</button>` : ""}</div>`;
     box.querySelector('[data-c="cancel"]').addEventListener("click", end);
     box.querySelector('[data-c="apply"]')?.addEventListener("click", apply);
-    E.help(pending ? `Cliquez l'emplacement du poste ${pending.name} sur la carte.` : "Cliquez un poste du circuit (Échap pour annuler).");
+    E.help(pending ? t("trc.cal.helpPlace", { name: pending.name }) : t("trc.cal.helpPick"));
     E.redraw();
     arm();
   };
@@ -83,22 +84,22 @@ export function calage(E, { fromPpen = false } = {}) {
         // the control nearest the click, within a few millimetres
         let best = null;
         for (const [id, c] of Object.entries(E.ev.controls)) { const d = M.dist([c.x, c.y], p); if (!best || d < best.d) best = { id: Number(id), d, pt: [c.x, c.y] }; }
-        if (!best || best.d > Math.max(6, 25 / E.view.k)) { E.toast("Cliquez sur le cercle d'un poste."); arm(); return; }
+        if (!best || best.d > Math.max(6, 25 / E.view.k)) { E.toast(t("trc.cal.clickCircle")); arm(); return; }
         const c = E.ev.controls[best.id];
-        pending = { pt: best.pt, name: c.kind === "normal" ? c.code : { start: "départ", finish: "arrivée" }[c.kind] || "point" };
+        pending = { pt: best.pt, name: c.kind === "normal" ? c.code : { start: t("trc.cal.start"), finish: t("trc.cal.finish") }[c.kind] || t("trc.cal.point") };
       } else { pairs.push([pending.pt, p]); pending = null; }
       render();
     };
   };
   async function apply() {
     const fit = similarity(pairs);
-    if (!fit) { E.toast("Deux points distincts au moins."); return; }
+    if (!fit) { E.toast(t("trc.cal.twoDistinct")); return; }
     // an OCAD or Mapper map's millimetres are exact: the course is scaled by default, not the map
     const off = Math.abs(fit.k - 1) > 0.01, bitmap = E.ev.map.kind === "bitmap", mapFirst = fromPpen && E.ev.map.kind !== "ocad";
-    const v = await modal(E, { title: "Calage", body: `
-      <p>Déplacement, rotation de ${nf(fit.deg, 1)}°, échelle × ${nf(fit.k, 3)}${pairs.length > 2 ? ` ; écart moyen aux points ${nf(M.mmToM(E.ev, fit.rms), 1)} m` : ""}.</p>
-      ${off ? `<label class="tr-check"><input type="radio" name="how" value="map" ${mapFirst ? "checked" : ""}> Les distances des postes sont justes (fichier .ppen) : corriger ${bitmap ? `la résolution de l'image (${nf(E.ev.map.dpi, 1)} → ${nf(E.ev.map.dpi * fit.k, 1)} ppp)` : `l'échelle de la carte (1:${nf(E.ev.map.scale)} → 1:${nf(Math.round(E.ev.map.scale / fit.k))})`}</label>
-        <label class="tr-check"><input type="radio" name="how" value="course" ${mapFirst ? "" : "checked"}> La carte est juste : mettre aussi les postes à l'échelle</label>` : '<p class="tr-hint">L\'échelle est la même : seuls la position et l\'angle changent.</p>'}`, ok: "Appliquer" });
+    const v = await modal(E, { title: t("trc.cal.modalTitle"), body: `
+      <p>${esc(t("trc.cal.fit", { deg: nf(fit.deg, 1), k: nf(fit.k, 3), rms: pairs.length > 2 ? t("trc.cal.rms", { m: nf(M.mmToM(E.ev, fit.rms), 1) }) : "" }))}</p>
+      ${off ? `<label class="tr-check"><input type="radio" name="how" value="map" ${mapFirst ? "checked" : ""}> ${esc(bitmap ? t("trc.cal.fixDpi", { a: nf(E.ev.map.dpi, 1), b: nf(E.ev.map.dpi * fit.k, 1) }) : t("trc.cal.fixScale", { a: nf(E.ev.map.scale), b: nf(Math.round(E.ev.map.scale / fit.k)) }))}</label>
+        <label class="tr-check"><input type="radio" name="how" value="course" ${mapFirst ? "" : "checked"}> ${esc(t("trc.cal.mapRight"))}</label>` : `<p class="tr-hint">${esc(t("trc.cal.sameScale"))}</p>`}`, ok: t("trc.cal.apply") });
     if (!v) return;
     const toMap = off && v.how === "map", k = fit.k;
     E.change((x) => {
@@ -113,11 +114,11 @@ export function calage(E, { fromPpen = false } = {}) {
           x.map.scale = Math.round(x.map.scale / k);
         }
       } else M.transformAll(x, fit.m);
-    }, "Calage sur la carte");
+    }, t("trc.cal.undoLabel"));
     if (toMap && E.map && E.ev.map.kind === "bitmap") E.map.dpi = E.ev.map.dpi;
     end();
     E.fitCourse();
-    E.toast(toMap ? "Postes calés ; la carte a été corrigée (Ctrl+Z pour revenir)." : "Postes calés (Ctrl+Z pour revenir).", 6000);
+    E.toast(toMap ? t("trc.cal.doneMap") : t("trc.cal.done"), 6000);
   }
   render();
 }

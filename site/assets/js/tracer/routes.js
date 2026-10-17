@@ -6,6 +6,7 @@
 
 import * as M from "./model.js";
 import * as G from "./geo.js";
+import { t } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#be185d", "#4d7c0f"];
@@ -83,7 +84,7 @@ export async function routesByLeg(E) {
         if (a && b && straight > 0) {
           const ux = (b[0] - a[0]) / straight, uy = (b[1] - a[1]) / straight;
           const off = g.ref.reduce((s, p) => s + ((p[0] - a[0]) * -uy + (p[1] - a[1]) * ux), 0) / g.ref.length;
-          side = Math.abs(off) < lim * 0.6 ? "tout droit" : off > 0 ? "par la gauche" : "par la droite";
+          side = Math.abs(off) < lim * 0.6 ? t("trc.route.straight") : off > 0 ? t("trc.route.left") : t("trc.route.right");
         }
         return { n: g.runs.length, median: times[Math.floor(times.length / 2)], best: times[0], side, color: COLORS[i % COLORS.length], paths: g.runs.map((r) => r.pts), names: g.runs.map((r) => r.name) };
       });
@@ -98,7 +99,7 @@ export function routeRows(data) {
   const rows = [], meta = [];
   for (const c of data) for (const leg of c.legs) {
     if (leg.runners < 2) continue;
-    const label = (p) => (p.kind === "start" ? "Départ" : p.kind === "finish" ? "Arrivée" : p.code || "?");
+    const label = (p) => (p.kind === "start" ? t("trc.route.start") : p.kind === "finish" ? t("trc.route.finish") : p.code || "?");
     const best = leg.groups.length > 1 ? leg.groups.reduce((x, y) => (y.median < x.median ? y : x)) : null;
     rows.push([c.name, `${label(leg.from)}–${label(leg.to)}`, String(leg.runners), String(leg.groups.length),
       leg.groups.map((g) => `${g.n} ${g.side || ""} (${mmss(g.median)})${best && g === best ? " ★" : ""}`.replace(/\s+/g, " ")).join(" ; ")]);
@@ -127,7 +128,7 @@ export function showLeg(E, data, courseName, legIndex) {
     if (W > 50 && H > 50) E.view = { k, ox: W / 2 - cx * k, oy: H / 2 + cy * k };
   }
   E.redraw();
-  E.toast(`${leg.groups.map((g) => `${g.n} ${g.side}`).join(" · ")} — Échap ou un nouveau choix les masque.`, 6000);
+  E.toast(t("trc.route.legToast", { groups: leg.groups.map((g) => `${g.n} ${g.side}`).join(" · ") }), 6000);
   const off = (e) => { if (e.key === "Escape") { E.overlays.splice(E.overlays.indexOf(draw), 1); E.routesOverlay = null; E.redraw(); document.removeEventListener("keydown", off); } };
   document.addEventListener("keydown", off);
 }

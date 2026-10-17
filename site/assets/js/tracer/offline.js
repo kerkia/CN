@@ -8,6 +8,7 @@
 import * as IDB from "./idb.js";
 import * as S from "./store.js";
 import { FONT_CSS } from "./fonts.js";
+import { t, tn } from "./lang.js";
 
 const CACHE = "ocn-offline-v1";
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -15,18 +16,19 @@ const FLAG = (id) => `ocn.tr.offline.${id}`;
 export const isKept = (id) => { try { return localStorage.getItem(FLAG(id)) === "1"; } catch (e) { return false; } };
 const TRACER = ["actions", "appear", "calage", "descr", "dialogs", "draw", "editor", "exports", "extras", "fonts", "geo", "gif", "icons", "idb", "layout", "mapsrc", "model", "offline", "ribbon", "ribbon-data",
   "panes", "pdf", "ppen", "race", "relay", "reports", "store", "symbols", "team", "textify", "tiff",
-  "vmap/geom", "vmap/georef", "vmap/map", "vmap/ocad", "vmap/ocadwrite", "vmap/oom", "vmap/oomwrite", "vmap/symdefs", "vmap/sympath", "vmap/target", "coursefiles", "ocnfile", "context"].map((m) => `/assets/js/tracer/${m}.js`);
+  "vmap/geom", "vmap/georef", "vmap/map", "vmap/ocad", "vmap/ocadwrite", "vmap/oom", "vmap/oomwrite", "vmap/symdefs", "vmap/sympath", "vmap/target", "coursefiles", "ocnfile", "context", "lang"].map((m) => `/assets/js/tracer/${m}.js`);
 const CDN = "https://cdn.jsdelivr.net/npm";
 const LIBS = [`${CDN}/pdf-lib@1.17.1/dist/pdf-lib.min.js`, `${CDN}/fflate@0.8.2/umd/index.js`, `${CDN}/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js`,
   `${CDN}/pdfjs-dist@4.10.38/build/pdf.min.mjs`, `${CDN}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`, `${CDN}/proj4@2.12.1/dist/proj4.js`,
   `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-400-normal.woff`, `${CDN}/@fontsource/roboto@5.0.8/files/roboto-latin-700-normal.woff`,
   `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-400-normal.woff`, `${CDN}/@fontsource/roboto-condensed@5.0.8/files/roboto-condensed-latin-700-normal.woff`,
   ...FONT_CSS];
-const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json", "/data/prov/index.json"];
+const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/js/i18n/fr.js", "/assets/js/i18n/en.js", "/assets/js/i18n/tracer.fr.js",
+  "/assets/js/i18n/tracer.en.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json", "/data/prov/index.json"];
 
 /** The service worker and the page's files, for opening the Tracer without the network. */
 async function prepareSite() {
-  if (!("serviceWorker" in navigator) || !window.caches) throw new Error("Ce navigateur ne permet pas le travail hors ligne.");
+  if (!("serviceWorker" in navigator) || !window.caches) throw new Error(t("trc.off.noSupport"));
   await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   await navigator.serviceWorker.ready;
   // what this visit loaded (the site's own modules, the data it opened with), the Tracer's modules and libraries
@@ -89,30 +91,29 @@ export const clearPending = (id) => IDB.del("pending", id);
 export async function offlineDialog(E) {
   const { modal } = await import("./dialogs.js");
   const kept = isKept(E.meta.id);
-  const v = await modal(E, { title: "Travailler hors ligne", ok: kept ? "Ne plus garder" : "Garder sur cet appareil", body: kept
-    ? `<p>Cet événement est gardé sur cet appareil : il s'ouvre sans réseau (le tracé et sa carte), et ce que vous y changez part au serveur dès que le réseau revient.</p>
-      <p class="tr-hint">Ne plus le garder efface la copie de cet appareil (pas l'événement).</p>`
-    : `<p>Gardez cet événement sur cet appareil pour l'ouvrir sans réseau, sur le terrain ou à l'aréna : la page de tracé, la carte et les circuits restent dans le navigateur ;
-      vos modifications y attendent le réseau et partent ensuite au serveur (si quelqu'un a modifié l'événement entre-temps, vous choisirez la version à garder).</p>
-      <p class="tr-hint">Ouvrez ensuite la page « Tracer » une fois sans réseau pour vérifier. La copie est effacée quand vous ne la gardez plus, et à la déconnexion sauf s'il reste des modifications à envoyer.${E.key ? " L'événement reste chiffré sur l'appareil." : ""}</p>` });
+  const v = await modal(E, { title: t("trc.off.title"), ok: kept ? t("trc.off.stopKeeping") : t("trc.off.keep"), body: kept
+    ? `<p>${t("trc.off.keptBody")}</p>
+      <p class="tr-hint">${t("trc.off.keptHint")}</p>`
+    : `<p>${t("trc.off.keepBody")}</p>
+      <p class="tr-hint">${t("trc.off.keepHint")}${E.key ? ` ${t("trc.off.encrypted")}` : ""}</p>` });
   if (!v) return;
   if (kept) {
     try { localStorage.removeItem(FLAG(E.meta.id)); } catch (e) { /* not kept */ }
     await IDB.del("events", E.meta.id); await IDB.del("maps", E.meta.id);
     await dropSiteIfUnused();
-    E.toast("Copie hors ligne effacée de cet appareil.");
+    E.toast(t("trc.off.dropped"));
     return;
   }
-  E.status("Préparation hors ligne…", "busy");
+  E.status(t("trc.off.preparing"), "busy");
   try {
     const site = await prepareSite();
     await keepEvent(E);
     try { localStorage.setItem(FLAG(E.meta.id), "1"); } catch (e) { /* the copy stays, the flag not */ }
-    E.status("Prêt", "ok");
-    E.toast(`Événement gardé sur cet appareil (${site.ok} fichiers du site gardés). Il s'ouvre maintenant sans réseau.`, 7000);
+    E.status(t("trc.off.ready"), "ok");
+    E.toast(tn("trc.off.kept", site.ok), 7000);
   } catch (err) {
-    E.status("Prêt", "ok");
-    E.toast(`Travail hors ligne impossible : ${err.message}`, 7000);
+    E.status(t("trc.off.ready"), "ok");
+    E.toast(t("trc.off.failed", { err: err.message }), 7000);
   }
 }
 /** No event kept any more: the service worker and its copy of the site go too. */

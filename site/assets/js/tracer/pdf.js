@@ -14,7 +14,7 @@ import { isPdf } from "./mapsrc.js";
 import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
 import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
 import { where } from "./ribbon-data.js";
-
+import { t } from "./lang.js";
 
 const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
 const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
@@ -297,21 +297,21 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
 export async function coursesDialog(E, { only = null } = {}) {
   const ev = E.ev, ids = M.courseIds(ev);
   const anyParts = ids.some((id) => M.countParts(ev, M.cdCourse(id)) > 1), anyVars = ids.some((id) => M.hasVariations(ev, id));
-  const v = await modal(E, { title: only ? `PDF du circuit ${esc(ev.courses[only]?.name || "")}` : "PDF des circuits", wide: true, ok: "Créer", remember: "pdfCourses", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${only ? (id === only ? "checked" : "") : id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Fichiers", sel("files", [["one", "Un seul PDF, une page par circuit"], ["course", "Un PDF par circuit"], ...(anyParts ? [["part", "Un PDF par partie"]] : [])], "one"))}
-    ${anyVars ? field("Variantes", sel("vars", [["all", "Chaque variante à part"], ["combined", "Toutes ensemble"], ["teams", "Par équipe et relayeur (variantes de relais)"]], "all")) : ""}
-    ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul (surimpression)"]], "map"))}
-    ${field("Couleurs", sel("color", [["cmyk", "CMJN (imprimeur)"], ["rgb", "RVB"]], "cmyk"))}</div>
-    <p class="tr-hint">Chaque circuit s'imprime à son échelle d'impression, sur la zone d'impression choisie (${where("print-area")}) ou centré sur le circuit. Imprimez le PDF sans mise à l'échelle (taille réelle).</p>` });
+  const v = await modal(E, { title: only ? t("trc.pdf.courseTitle", { name: esc(ev.courses[only]?.name || "") }) : t("trc.pdf.coursesTitle"), wide: true, ok: t("trc.pdf.create"), remember: "pdfCourses", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${only ? (id === only ? "checked" : "") : id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : esc(t("trc.pdf.allControls"))}</label>`).join("")}</div>
+    <div class="tr-grid2">${field(t("trc.pdf.files"), sel("files", [["one", t("trc.pdf.filesOne")], ["course", t("trc.pdf.filesCourse")], ...(anyParts ? [["part", t("trc.pdf.filesPart")]] : [])], "one"))}
+    ${anyVars ? field(t("trc.pdf.variations"), sel("vars", [["all", t("trc.pdf.varsAll")], ["combined", t("trc.pdf.varsCombined")], ["teams", t("trc.pdf.varsTeams")]], "all")) : ""}
+    ${field(t("trc.pdf.content"), sel("content", [["map", t("trc.pdf.contentMap")], ["course", t("trc.pdf.contentCourse")]], "map"))}
+    ${field(t("trc.pdf.colours"), sel("color", [["cmyk", t("trc.pdf.cmyk")], ["rgb", t("trc.pdf.rgb")]], "cmyk"))}</div>
+    <p class="tr-hint">${t("trc.pdf.coursesHint", { where: where("print-area") })}</p>` });
   if (!v) return;
-  E.status("Création des PDF…", "busy");
+  E.status(t("trc.pdf.busy"), "busy");
   try {
     const L = await pdfLib();
     const designators = [];
     for (const id of [0, ...ids]) {
       if (!v[`c${id}`]) continue;
-      if (!id) { designators.push({ cd: M.cdAll(), name: "Tous les postes" }); continue; }
+      if (!id) { designators.push({ cd: M.cdAll(), name: t("trc.pdf.allControls") }); continue; }
       const c = ev.courses[id];
       let list = [{ cd: M.cdCourse(id), name: c.name }];
       if (M.hasVariations(ev, id) && v.vars !== "combined") {
@@ -326,10 +326,10 @@ export async function coursesDialog(E, { only = null } = {}) {
         else designators.push(d);
       }
     }
-    if (!designators.length) { E.toast("Aucun circuit choisi."); return; }
+    if (!designators.length) { E.toast(t("trc.pdf.noCourse")); return; }
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
-      doc.setTitle(`${ev.title} — circuits`); doc.setCreator("O'CN"); doc.setProducer("O'CN (pdf-lib)");
+      doc.setTitle(t("trc.pdf.docCourses", { title: ev.title })); doc.setCreator("O'CN"); doc.setProducer("O'CN (pdf-lib)");
       const fonts = await makeFonts(doc, L);
       const images = new Map();
       for (const d of list) await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg });
@@ -337,34 +337,34 @@ export async function coursesDialog(E, { only = null } = {}) {
       return doc.save();
     };
     const base = fileName(ev.title);
-    if (v.files === "one") download(`${base} - circuits.pdf`, await build(designators), "application/pdf");
+    if (v.files === "one") download(`${t("trc.pdf.fileCourses", { name: base })}.pdf`, await build(designators), "application/pdf");
     else {
       const groups = new Map();
       for (const d of designators) { const key = v.files === "part" ? d.name : d.base || d.name; (groups.get(key) || groups.set(key, []).get(key)).push(d); }
       const files = {};
       for (const [name, list] of groups) files[`${fileName(name)}.pdf`] = await build(list);
       if (Object.keys(files).length === 1) download(Object.keys(files)[0], Object.values(files)[0], "application/pdf");
-      else await saveFiles(E, files, `${base} - circuits.zip`);
+      else await saveFiles(E, files, `${t("trc.pdf.fileCourses", { name: base })}.zip`);
     }
-    E.status("PDF créés", "ok");
-  } catch (err) { console.error(err); E.status("PDF impossibles", "bad"); E.toast(`Création des PDF impossible : ${err.message}`); }
+    E.status(t("trc.pdf.done"), "ok");
+  } catch (err) { console.error(err); E.status(t("trc.pdf.failed"), "bad"); E.toast(t("trc.pdf.failedToast", { err: err.message })); }
 }
 
 // ---- description sheets ----------------------------------------------------------------------------------------------------------
 export async function descriptionsDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
-  const v = await modal(E, { title: "PDF des définitions", wide: true, ok: "Créer", remember: "pdfDescriptions", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Exemplaires", sel("copies", [["one", "Un de chaque, groupés"], ["page", "Une page de chaque"], ["n", "Un nombre de chaque"]], "page"))}
-    ${field("Nombre (si « un nombre »)", '<input name="n" value="50" inputmode="numeric">')}
-    ${field("Taille des cases (mm)", '<input name="cell" value="6" inputmode="decimal">', "L'IOF recommande 5 à 7 mm")}
-    ${field("Définitions", sel("kind", [["course", "Selon le circuit"], ["symbols", "Symboles"], ["text", "Texte"], ["symbols-and-text", "Symboles et texte"]], "course"))}
-    ${field("Papier", sel("paper", Object.keys(PAGES).map((k) => [k, k]), "A4"))}</div>` ,
-  validate: (o) => (!(num(o.cell) >= 3 && num(o.cell) <= 10) ? "Des cases de 3 à 10 mm." : null) });
+  const v = await modal(E, { title: t("trc.pdf.descTitle"), wide: true, ok: t("trc.pdf.create"), remember: "pdfDescriptions", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : esc(t("trc.pdf.allControls"))}</label>`).join("")}</div>
+    <div class="tr-grid2">${field(t("trc.pdf.copies"), sel("copies", [["one", t("trc.pdf.copiesOne")], ["page", t("trc.pdf.copiesPage")], ["n", t("trc.pdf.copiesN")]], "page"))}
+    ${field(t("trc.pdf.count"), '<input name="n" value="50" inputmode="numeric">')}
+    ${field(t("trc.pdf.cell"), '<input name="cell" value="6" inputmode="decimal">', t("trc.pdf.cellHint"))}
+    ${field(t("trc.pdf.descriptions"), sel("kind", [["course", t("trc.pdf.kindCourse")], ["symbols", t("trc.pdf.kindSymbols")], ["text", t("trc.pdf.kindText")], ["symbols-and-text", t("trc.pdf.kindSymbolsText")]], "course"))}
+    ${field(t("trc.pdf.paper"), sel("paper", Object.keys(PAGES).map((k) => [k, k]), "A4"))}</div>` ,
+  validate: (o) => (!(num(o.cell) >= 3 && num(o.cell) <= 10) ? t("trc.pdf.cellErr") : null) });
   if (!v) return;
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
-  doc.setTitle(`${ev.title} — définitions`); doc.setCreator("O'CN");
+  doc.setTitle(t("trc.pdf.docDescriptions", { title: ev.title })); doc.setCreator("O'CN");
   const fonts = await makeFonts(doc, L);
   const [PW, PH] = PAGES[v.paper], margin = 10, gap = 4, cell = num(v.cell);
   const sheets = [];
@@ -397,7 +397,7 @@ export async function descriptionsDialog(E) {
       page = null;
     }
   }
-  download(`${fileName(ev.title)} - définitions.pdf`, await doc.save(), "application/pdf");
+  download(`${t("trc.pdf.fileDescriptions", { name: fileName(ev.title) })}.pdf`, await doc.save(), "application/pdf");
 }
 
 // ---- punch cards ---------------------------------------------------------------------------------------------------------------
@@ -432,8 +432,8 @@ export async function punchDialog(E) {
       }
     });
   }
-  if (!any) { E.toast("Aucun circuit avec des postes."); return; }
-  download(`${fileName(ev.title)} - cartons.pdf`, await doc.save(), "application/pdf");
+  if (!any) { E.toast(t("trc.pdf.noControls")); return; }
+  download(`${t("trc.pdf.filePunch", { name: fileName(ev.title) })}.pdf`, await doc.save(), "application/pdf");
 }
 
 // ---- print area (File › Set Print Area) ------------------------------------------------------------------------------------------
@@ -442,14 +442,14 @@ export async function printAreaDialog(E) {
   const pa = M.printAreaOf(ev, cd) || M.DEFAULT_PRINT_AREA();
   const page = pageOf(pa);
   const paperName = Object.entries(PAGES).find(([, [w, h]]) => (Math.abs(w - Math.min(page.w, page.h)) < 1 && Math.abs(h - Math.max(page.w, page.h)) < 1))?.[0] || "A4";
-  const v = await modal(E, { title: `Zone d'impression — ${cd.course ? ev.courses[cd.course].name : "Tous les postes"}`, wide: true, body: `
-    <div class="tr-grid2">${field("Papier", sel("paper", Object.keys(PAGES).map((k) => [k, k]), paperName))}
-    ${field("Orientation", sel("orient", [["auto", "Selon le circuit"], ["portrait", "Portrait"], ["landscape", "Paysage"]], pa.auto && !pa.restrictOrientation ? "auto" : pa.landscape ? "landscape" : "portrait"))}
-    ${field("Marges (mm)", `<input name="margin" value="${Math.round(page.margin)}" inputmode="numeric">`)}
-    ${field("Zone", sel("where", [["auto", "Centrée sur le circuit"], ["draw", "Un rectangle à tracer sur la carte (deux coins)"], ["view", "La partie de la carte visible à l'écran"], ["keep", "Garder la zone actuelle"]], pa.auto ? "auto" : "keep"))}
-    ${field("Si la zone dépasse la page", sel("over", [["tile", "La découper sur plusieurs pages"], ["crop", "En garder le centre, sur une page"]], pa.restrict ? "crop" : "tile"))}</div>
-    <label class="tr-check"><input type="checkbox" name="all"> Pour tous les circuits</label>
-    <p class="tr-hint">${where("view-printarea")} la montre sur la carte.</p>` });
+  const v = await modal(E, { title: t("trc.pdf.areaTitle", { name: cd.course ? ev.courses[cd.course].name : t("trc.pdf.allControls") }), wide: true, body: `
+    <div class="tr-grid2">${field(t("trc.pdf.paper"), sel("paper", Object.keys(PAGES).map((k) => [k, k]), paperName))}
+    ${field(t("trc.pdf.orientation"), sel("orient", [["auto", t("trc.pdf.orientAuto")], ["portrait", t("trc.pdf.portrait")], ["landscape", t("trc.pdf.landscape")]], pa.auto && !pa.restrictOrientation ? "auto" : pa.landscape ? "landscape" : "portrait"))}
+    ${field(t("trc.pdf.margins"), `<input name="margin" value="${Math.round(page.margin)}" inputmode="numeric">`)}
+    ${field(t("trc.pdf.area"), sel("where", [["auto", t("trc.pdf.whereAuto")], ["draw", t("trc.pdf.whereDraw")], ["view", t("trc.pdf.whereView")], ["keep", t("trc.pdf.whereKeep")]], pa.auto ? "auto" : "keep"))}
+    ${field(t("trc.pdf.over"), sel("over", [["tile", t("trc.pdf.overTile")], ["crop", t("trc.pdf.overCrop")]], pa.restrict ? "crop" : "tile"))}</div>
+    <label class="tr-check"><input type="checkbox" name="all"> ${esc(t("trc.pdf.allCourses"))}</label>
+    <p class="tr-hint">${t("trc.pdf.areaShow", { where: where("view-printarea") })}</p>` });
   if (!v) return;
   const [w, h] = PAGES[v.paper];
   const land = v.orient === "landscape";
@@ -468,8 +468,8 @@ export async function printAreaDialog(E) {
   let drawn = null;
   if (v.where === "draw") {
     // two corners clicked on the map
-    const corner = (n) => new Promise((res) => { E.help(`Zone d'impression : cliquez le ${n} coin sur la carte (Échap pour annuler).`); E.pickOnce = res; E.pickCancel = () => res(null); });
-    const a = await corner("premier"), b2 = a ? await corner("second") : null;
+    const corner = (msg) => new Promise((res) => { E.help(msg); E.pickOnce = res; E.pickCancel = () => res(null); });
+    const a = await corner(t("trc.pdf.cornerFirst")), b2 = a ? await corner(t("trc.pdf.cornerSecond")) : null;
     E.help();
     if (!a || !b2) return;
     drawn = [Math.min(a[0], b2[0]), Math.min(a[1], b2[1]), Math.max(a[0], b2[0]), Math.max(a[1], b2[1])];
@@ -478,7 +478,7 @@ export async function printAreaDialog(E) {
     if (v.all) { x.printArea = make(x.printArea); for (const c of Object.values(x.courses)) c.printArea = make(c.printArea); }
     else if (cd.course) { const c = x.courses[cd.course]; if (cd.part >= 0) c.partAreas = { ...(c.partAreas || {}), [cd.part]: make(c.partAreas?.[cd.part] || c.printArea) }; else c.printArea = make(c.printArea); }
     else x.printArea = make(x.printArea);
-  }, "Zone d'impression");
+  }, t("trc.pdf.areaUndo"));
   E.opts.printArea = true; E.redraw();
 }
 void widthInCells;

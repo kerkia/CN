@@ -24,19 +24,20 @@ import { isMapFile } from "./mapsrc.js";
 import { svg, actIcon, MENUS } from "./icons.js";
 import { mountRibbon } from "./ribbon.js";
 import { uiMode, setUiMode } from "./ribbon-data.js";
+import { t, tn, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour se déplacer"],
-  ["start", "Départ", "Cliquer pour placer le départ (ou cliquer un départ existant)"],
-  ["control", "Poste", "Cliquer pour placer un poste (ou cliquer un poste existant, en pâle) — il vient après le poste choisi, dans l'interposte choisi, ou dans l'interposte le plus proche"],
-  ["finish", "Arrivée", "Cliquer pour placer l'arrivée"],
-  ["crossing", "Passage obligatoire", "Cliquer pour placer un point de passage obligatoire"],
-  ["issue", "Remise de carte", "Cliquer pour placer le point de remise de carte (début du balisage vers le départ)"],
-  ["exchange", "Échange de carte", "Cliquer un poste du circuit pour y échanger la carte, ou ailleurs pour un échange au bout d'un trajet balisé"],
-  ["bend", "Coude", "Cliquer un interposte pour y ajouter un coude ; cliquer un coude pour le retirer"],
-  ["gap", "Coupure", "Glisser le long d'un interposte ou d'un cercle pour le couper ; cliquer une coupure pour la refermer"],
-  ["route", "Itinéraire", "Cliquer un interposte, puis les points du chemin que prendront les coureurs (pour la dénivelée) ; double-cliquer pour finir"],
-  ["descr", "Définitions sur la carte", "Glisser pour placer les définitions du circuit sur la carte (la largeur donne leur taille)"]];
+const TOOLS = [["select", t("trc.ed.toolSelect"), t("trc.ed.helpSelect")],
+  ["start", t("trc.ed.toolStart"), t("trc.ed.helpStart")],
+  ["control", t("trc.ed.toolControl"), t("trc.ed.helpControl")],
+  ["finish", t("trc.ed.toolFinish"), t("trc.ed.helpFinish")],
+  ["crossing", t("trc.ed.toolCrossing"), t("trc.ed.helpCrossing")],
+  ["issue", t("trc.ed.toolIssue"), t("trc.ed.helpIssue")],
+  ["exchange", t("trc.ed.toolExchange"), t("trc.ed.helpExchange")],
+  ["bend", t("trc.ed.toolBend"), t("trc.ed.helpBend")],
+  ["gap", t("trc.ed.toolGap"), t("trc.ed.helpGap")],
+  ["route", t("trc.ed.toolRoute"), t("trc.ed.helpRoute")],
+  ["descr", t("trc.ed.toolDescr"), t("trc.ed.helpDescr")]];
 
 /** Open the editor over the page. ctx: { meta, role, you, ev, version, mapSrc, key, readOnly, lockHolder, onClose, newTab, blank, onStart }.
  *  blank: no event yet (the page opens the editor at once, its start screen over it — owner, 2026-10-17): nothing saved, no
@@ -72,17 +73,17 @@ export async function openEditor(ctx) {
   E.status = (msg, kind = "") => { const s = $("#tr-status"); s.textContent = msg; s.dataset.kind = kind; };
   E.help = (msg) => { $("#tr-help").textContent = msg || toolHelp(E.tool); };
   E.toast = (msg, ms = 3500) => {
-    const t = document.createElement("div"); t.className = "tr-toast"; t.textContent = msg; root.appendChild(t);
-    setTimeout(() => t.remove(), ms);
+    const el = document.createElement("div"); el.className = "tr-toast"; el.textContent = msg; root.appendChild(el);
+    setTimeout(() => el.remove(), ms);
   };
   E.course = () => (E.cd.course ? E.ev.courses[E.cd.course] : null);
   /** Apply a change: snapshot for undo, then fn(ev); a refused change (fn returns false) is not kept. */
   E.change = (fn, label = "") => {
-    if (E.blank) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return false; }
-    if (E.readOnly) { E.toast("Lecture seule : un autre membre de l'équipe modifie l'événement."); return false; }
+    if (E.blank) { E.toast(t("trc.ed.needEvent")); E.onStart?.(); return false; }
+    if (E.readOnly) { E.toast(t("trc.ed.readOnlyOther")); return false; }
     const snap = JSON.stringify(E.ev);
     let ok;
-    try { ok = fn(E.ev); } catch (err) { console.error(err); E.ev = JSON.parse(snap); E.toast(`Modification impossible : ${err.message}`); return false; }
+    try { ok = fn(E.ev); } catch (err) { console.error(err); E.ev = JSON.parse(snap); E.toast(t("trc.ed.changeErr", { err: err.message })); return false; }
     if (ok === false) { E.ev = JSON.parse(snap); return false; }
     E.undo.push({ snap, label }); if (E.undo.length > 100) E.undo.shift();
     E.redo = [];
@@ -93,13 +94,13 @@ export async function openEditor(ctx) {
     const u = E.undo.pop(); if (!u) return;
     E.redo.push({ snap: JSON.stringify(E.ev), label: u.label });
     E.ev = JSON.parse(u.snap); fixSelection(); afterChange();
-    E.help(`Annulé${u.label ? ` : ${u.label}` : ""}`);
+    E.help(u.label ? t("trc.ed.undoneWhat", { what: u.label }) : t("trc.ed.undone"));
   };
   E.redoStep = () => {
     const r = E.redo.pop(); if (!r) return;
     E.undo.push({ snap: JSON.stringify(E.ev), label: r.label });
     E.ev = JSON.parse(r.snap); fixSelection(); afterChange();
-    E.help(`Rétabli${r.label ? ` : ${r.label}` : ""}`);
+    E.help(r.label ? t("trc.ed.redoneWhat", { what: r.label }) : t("trc.ed.redone"));
   };
   E.select = (sel) => { E.sel = sel; refresh(); };
   E.setTool = (t) => {
@@ -121,8 +122,7 @@ export async function openEditor(ctx) {
     E.ribbon?.closePops?.(); E.ribbon?.closeBackstage?.();
     if (m === "ocn" && !E.ribbon) mountRibbon(E);
     refresh(); size();
-    E.toast(m === "ocn" ? "Mode O'CN : le ruban. Les menus de Purple Pen se retrouvent par le bouton ▭, en haut à droite, ou Fichier › Options."
-      : "Mode Purple Pen : les menus. Le ruban revient par Affichage › Mode O'CN, ou le bouton « Ruban » en haut à droite.", 7000);
+    E.toast(m === "ocn" ? t("trc.ed.modeOcn") : t("trc.ed.modePp"), 7000);
   };
   E.setCourse = (courseId, part = -1, path = null) => {
     E.cd = courseId ? M.cdCourse(courseId, part, path) : M.cdAll();
@@ -375,7 +375,7 @@ export async function openEditor(ctx) {
     const [x, y] = E.toMap(sx, sy);
     const k = Math.max(0.05, Math.min(400, E.view.k * f));
     E.view = { k, ox: sx - x * k, oy: sy + y * k };
-    $("#tr-zoom").textContent = `${Math.round((k / (96 / 25.4)) * 100)} %`;
+    $("#tr-zoom").textContent = t("trc.ed.zoomPct", { n: Math.round((k / (96 / 25.4)) * 100) });
     draw();
   }
   E.zoomAt = zoomAt;
@@ -495,21 +495,21 @@ export async function openEditor(ctx) {
   // ---- tabs, toolbar, menus ----------------------------------------------------------------------------------------
   function renderTabs() {
     const ids = M.courseIds(E.ev);
-    $("#tr-tabs").innerHTML = [`<button type="button" role="tab" data-course="0" aria-selected="${!E.cd.course}">Tous les postes</button>`,
-      ...ids.map((id) => `<button type="button" role="tab" data-course="${id}" aria-selected="${E.cd.course === id}" title="${esc(courseTip(id))}">${esc(E.ev.courses[id].name || "Circuit")}</button>`),
-      E.readOnly ? "" : `<button type="button" class="tr-tab-add" data-act="course-new" title="Nouveau circuit">${svg("plus", 15)}</button>`].join("");
+    $("#tr-tabs").innerHTML = [`<button type="button" role="tab" data-course="0" aria-selected="${!E.cd.course}">${esc(t("trc.ed.allControls"))}</button>`,
+      ...ids.map((id) => `<button type="button" role="tab" data-course="${id}" aria-selected="${E.cd.course === id}" title="${esc(courseTip(id))}">${esc(E.ev.courses[id].name || t("trc.ed.course"))}</button>`),
+      E.readOnly ? "" : `<button type="button" class="tr-tab-add" data-act="course-new" title="${esc(t("trc.ed.newCourse"))}">${svg("plus", 15)}</button>`].join("");
     $$("#tr-tabs [data-course]").forEach((b) => b.addEventListener("click", () => E.setCourse(Number(b.dataset.course))));
     const parts = E.cd.course ? M.countParts(E.ev, { ...E.cd, part: -1, path: E.variation?.path || null }) : 1;
     const pbox = $("#tr-parts");
     pbox.hidden = parts < 2;
-    if (parts >= 2) pbox.innerHTML = [`<button type="button" data-part="-1" aria-pressed="${E.cd.part < 0}">Toutes les parties</button>`,
-      ...Array.from({ length: parts }, (_, i) => `<button type="button" data-part="${i}" aria-pressed="${E.cd.part === i}">Partie ${i + 1}</button>`)].join("");
+    if (parts >= 2) pbox.innerHTML = [`<button type="button" data-part="-1" aria-pressed="${E.cd.part < 0}">${esc(t("trc.ed.allParts"))}</button>`,
+      ...Array.from({ length: parts }, (_, i) => `<button type="button" data-part="${i}" aria-pressed="${E.cd.part === i}">${esc(t("trc.ed.partN", { n: i + 1 }))}</button>`)].join("");
     $$("#tr-parts [data-part]").forEach((b) => b.addEventListener("click", () => { E.cd = { ...E.cd, part: Number(b.dataset.part) }; renderTabs(); refresh(); }));
-    root.querySelector(".tr-title").textContent = E.blank ? "Aucun événement ouvert" : E.ev.title || E.meta.title;
+    root.querySelector(".tr-title").textContent = E.blank ? t("trc.ed.noEventOpen") : E.ev.title || E.meta.title;
   }
   const courseTip = (id) => {
     const v = M.view(E.ev, M.cdCourse(id), { specials: false, descriptions: false });
-    return `${(v.totalMin / 1000).toFixed(1).replace(".", ",")} km · ${v.minNormal} postes`;
+    return tn("trc.ed.courseTip", v.minNormal, { km: new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v.totalMin / 1000) });
   };
   function renderVariations() {
     const box = $("#tr-vars");
@@ -517,7 +517,7 @@ export async function openEditor(ctx) {
     box.hidden = !has;
     if (!has) return;
     const vars = M.allVariations(E.ev, E.cd.course);
-    box.innerHTML = `<label>Variante <select id="tr-var"><option value="">Toutes</option>${vars.map((v) => `<option value="${esc(v.code)}" ${E.variation?.code === v.code ? "selected" : ""}>${esc(v.code)}</option>`).join("")}</select></label>`;
+    box.innerHTML = `<label>${esc(t("trc.ed.variation"))} <select id="tr-var"><option value="">${esc(t("trc.ed.allVariations"))}</option>${vars.map((v) => `<option value="${esc(v.code)}" ${E.variation?.code === v.code ? "selected" : ""}>${esc(v.code)}</option>`).join("")}</select></label>`;
     box.querySelector("#tr-var").addEventListener("change", (ev) => {
       E.variation = vars.find((v) => v.code === ev.target.value) || null;
       E.sel = null; refresh();
@@ -552,7 +552,7 @@ export async function openEditor(ctx) {
   // saved, the tab sent to the event, and the editor here closed: one event is not edited from two tabs
   FW.setTabHandler(async () => {
     const w = window.open("", "_blank");
-    if (!w) { E.toast("Le navigateur a bloqué le nouvel onglet."); return; }
+    if (!w) { E.toast(t("trc.ed.tabBlocked")); return; }
     await save(false);
     w.location.href = `${location.origin}${location.pathname}#/orga-tracer?id=${E.meta.id}&fen=1`;
     close();
@@ -578,36 +578,36 @@ export async function openEditor(ctx) {
 
   // ---- saving ------------------------------------------------------------------------------------------------------
   let saveTimer = null, lastVersionAt = Date.now();
-  function scheduleSave() { clearTimeout(saveTimer); E.status("Modifié", "dirty"); saveTimer = setTimeout(() => save(false), 1800); }
+  function scheduleSave() { clearTimeout(saveTimer); E.status(t("trc.ed.stModified"), "dirty"); saveTimer = setTimeout(() => save(false), 1800); }
   async function save(explicit) {
     clearTimeout(saveTimer);
-    if (E.readOnly || !E.dirty) { if (explicit) E.status("Enregistré", "ok"); return true; }
+    if (E.readOnly || !E.dirty) { if (explicit) E.status(t("trc.ed.stSaved"), "ok"); return true; }
     if (E.saving) { saveTimer = setTimeout(() => save(explicit), 600); return false; }
-    E.saving = true; E.status("Enregistrement…", "busy");
+    E.saving = true; E.status(t("trc.ed.stSaving"), "busy");
     const snapshot = JSON.parse(JSON.stringify(E.ev));
     try {
       const r = await S.saveEvent(E.meta.id, snapshot, E.key, E.version);
       E.version = r.version; E.dirty = JSON.stringify(E.ev) !== JSON.stringify(snapshot);
-      E.lastSaved = new Date(); E.status(`Enregistré à ${E.lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`, "ok");
+      E.lastSaved = new Date(); E.status(t("trc.ed.stSavedAt", { time: E.lastSaved.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }), "ok");
       backup(null);
       if (E.offline) { E.offline = false; banner(); }
       OFF.clearPending(E.meta.id).catch(() => {});
       if (OFF.isKept(E.meta.id)) OFF.keepEvent(E).catch(() => {});       // the copy on this device follows
-      if (Date.now() - lastVersionAt > 30 * 60e3) { lastVersionAt = Date.now(); S.saveVersion(E.meta.id, snapshot, E.key, "Version automatique", A.summaryOf(E.ev)).catch(() => {}); }
+      if (Date.now() - lastVersionAt > 30 * 60e3) { lastVersionAt = Date.now(); S.saveVersion(E.meta.id, snapshot, E.key, t("trc.ed.autoVersion"), A.summaryOf(E.ev)).catch(() => {}); }
       return true;
     } catch (err) {
       if (err.status === 409) {
-        E.status("Conflit", "bad");
+        E.status(t("trc.ed.stConflict"), "bad");
         D.conflict(E, err.data);
       } else if (!err.status && OFF.isKept(E.meta.id)) {
         // no network: the change waits on this device and goes when the network returns
         await OFF.savePending(E, snapshot, E.version).catch(() => {});
         if (!E.offline) { E.offline = true; banner(); }
-        E.status("Hors ligne — enregistré sur cet appareil", "dirty");
+        E.status(t("trc.ed.stOffline"), "dirty");
         saveTimer = setTimeout(() => save(false), 30000);
       } else {
         backup(snapshot);
-        E.status("Non enregistré — gardé sur cet appareil, nouvel essai bientôt", "bad");
+        E.status(t("trc.ed.stNotSaved"), "bad");
         saveTimer = setTimeout(() => save(false), 15000);
       }
       return false;
@@ -638,11 +638,11 @@ export async function openEditor(ctx) {
     if (E.blank) { b.hidden = true; root.classList.add("tr-readonly"); return; }
     if (E.offline) {
       b.hidden = false;
-      b.innerHTML = "<span>Hors ligne : vos modifications sont gardées sur cet appareil et partiront au serveur dès que le réseau reviendra.</span>";
+      b.innerHTML = `<span>${esc(t("trc.ed.bannerOffline"))}</span>`;
     } else if (E.readOnly && E.lockHolder) {
       b.hidden = false;
-      b.innerHTML = `<span>${esc(E.lockHolder.name || "Un membre de l'équipe")} modifie l'événement en ce moment : lecture seule.</span> <button type="button" class="btn btn-sm" data-act="take-lock">Prendre la main</button>`;
-    } else if (E.readOnly) { b.hidden = false; b.innerHTML = "<span>Lecture seule (rôle « lecteur »).</span>"; }
+      b.innerHTML = `<span>${esc(t("trc.ed.lockedBy", { name: E.lockHolder.name || t("trc.ed.aMember") }))}</span> <button type="button" class="btn btn-sm" data-act="take-lock">${esc(t("trc.ed.takeOver"))}</button>`;
+    } else if (E.readOnly) { b.hidden = false; b.innerHTML = `<span>${esc(t("trc.ed.readOnlyViewer"))}</span>`; }
     else b.hidden = true;
     root.classList.toggle("tr-readonly", E.readOnly);
   }
@@ -683,7 +683,7 @@ export async function openEditor(ctx) {
   banner();
   if (!E.readOnly) await takeLock(false);
   refresh();
-  E.status(E.blank ? "Aucun événement" : E.readOnly ? "Lecture seule" : "Prêt", "ok");
+  E.status(E.blank ? t("trc.ed.stNoEvent") : E.readOnly ? t("trc.ed.stReadOnly") : t("trc.ed.stReady"), "ok");
   if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
   fontCheck();
   syncVector();
@@ -696,11 +696,11 @@ export async function openEditor(ctx) {
     // no event yet, or an O'CN file: a new event, through the start screen (a map alone: created; a .ocnt or .ppen: imported)
     const ocn = files.some((f) => /\.ocnt$/i.test(f.name));
     if ((E.blank || ocn) && E.onStart) { E.onStart(ocn || files.some((f) => /\.(ppen|xml)$/i.test(f.name)) ? "import" : "new", files); return; }
-    if (E.readOnly) { E.toast("Lecture seule."); return; }
+    if (E.readOnly) { E.toast(t("trc.ed.readOnlyDot")); return; }
     const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find(isMapFile);
     if (ppen) D.importPpen(E, ppen);
     else if (map) (await import("./extras.js")).changeMap(E, map);
-    else E.toast("Déposez un fichier .ppen ou une carte (PDF ou image).");
+    else E.toast(t("trc.ed.dropWhat"));
   });
   // back online: what waited on this device is sent
   const onOnline = () => { if (E.dirty || E.offline) { E.dirty = true; save(true); } };
@@ -711,7 +711,7 @@ export async function openEditor(ctx) {
   if (ctx.align && !E.readOnly) (await import("./calage.js")).calage(E, { fromPpen: true });
   return E;
 }
-const toolHelp = (t) => (TOOLS.find(([k]) => k === t.split(":")[0])?.[2]) || (t.startsWith("special:") ? "Cliquer (ou glisser) sur la carte pour placer l'objet ; double-cliquer pour finir une ligne ou une zone" : "");
+const toolHelp = (tool) => (TOOLS.find(([k]) => k === tool.split(":")[0])?.[2]) || (tool.startsWith("special:") ? t("trc.ed.helpSpecial") : "");
 const loadPref = (k, d) => { try { const v = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}")[k]; return v ?? d; } catch (e) { return d; } };
 const savePref = (k, v) => { try { const o = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); o[k] = v; localStorage.setItem("ocn.tr.prefs", JSON.stringify(o)); } catch (e) { /* this visit */ } };
 
@@ -722,27 +722,27 @@ function shell(E) {
     it === "-" ? '<hr>' : `<button type="button" role="menuitem" data-act="${it[0]}">${actIcon(it[0])}<span>${esc(it[1])}</span></button>`).join("")}</div></div>`;
   return `
   <header class="tr-top">
-    <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Ouvrir un autre événement, en créer un ou en importer un">${svg("folder", 15)}<span>Événements</span></button>
-    <span class="tr-title"></span><span class="beta-tag" title="Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)">Bêta</span>
+    <button type="button" class="btn btn-sm tr-back" id="tr-close" title="${esc(t("trc.ed.eventsTip"))}">${svg("folder", 15)}<span>${esc(t("trc.ed.events"))}</span></button>
+    <span class="tr-title"></span><span class="beta-tag" title="${esc(t("trc.ed.betaTip"))}">${esc(t("trc.ed.beta"))}</span>
     <nav class="tr-menus tr-pp">
       ${MENUS.map(menu).join("")}
     </nav>
-    <span class="tr-qat" role="toolbar" aria-label="Accès rapide">
-      <button type="button" class="tr-icon" id="tr-undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">${svg("undo")}</button>
-      <button type="button" class="tr-icon" id="tr-redo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">${svg("redo")}</button>
+    <span class="tr-qat" role="toolbar" aria-label="${esc(t("trc.ed.qat"))}">
+      <button type="button" class="tr-icon" id="tr-undo" title="${esc(t("trc.ed.undoTip"))}" aria-label="${esc(t("trc.ed.undo"))}">${svg("undo")}</button>
+      <button type="button" class="tr-icon" id="tr-redo" title="${esc(t("trc.ed.redoTip"))}" aria-label="${esc(t("trc.ed.redo"))}">${svg("redo")}</button>
       <span class="tr-qatx tr-ocn" id="tr-qatx"></span>
-      <button type="button" class="tr-icon tr-ocn tr-qatmore" id="tr-qatmore" title="Personnaliser la barre d'accès rapide" aria-label="Personnaliser la barre d'accès rapide" aria-haspopup="menu">▾</button>
+      <button type="button" class="tr-icon tr-ocn tr-qatmore" id="tr-qatmore" title="${esc(t("trc.ed.qatCustom"))}" aria-label="${esc(t("trc.ed.qatCustom"))}" aria-haspopup="menu">▾</button>
     </span>
-    <div class="tr-tools tr-pp" role="toolbar" aria-label="Outils">
+    <div class="tr-tools tr-pp" role="toolbar" aria-label="${esc(t("trc.ed.tools"))}">
       <span class="tr-sep"></span>
       ${TOOLS.map(tool).join("")}
-      <button type="button" class="tr-tool" data-tool="special" title="Objets spéciaux" aria-label="Objets spéciaux">${svg("special")}</button>
+      <button type="button" class="tr-tool" data-tool="special" title="${esc(t("trc.ed.specials"))}" aria-label="${esc(t("trc.ed.specials"))}">${svg("special")}</button>
     </div>
-    <span class="tr-search tr-ocn">${svg("search", 15)}<input id="tr-rsearch" type="search" placeholder="Rechercher une commande (Alt+Q)" autocomplete="off" spellcheck="false" aria-label="Rechercher une commande">
+    <span class="tr-search tr-ocn">${svg("search", 15)}<input id="tr-rsearch" type="search" placeholder="${esc(t("trc.ed.searchPh"))}" autocomplete="off" spellcheck="false" aria-label="${esc(t("trc.ed.search"))}">
       <div class="tr-rsearch-res" id="tr-rsearch-res" role="listbox" hidden></div></span>
     <span class="tr-status" id="tr-status"></span>
-    <button type="button" class="tr-icon tr-ocn" id="tr-rdisplay" title="Affichage du ruban, mode Purple Pen" aria-label="Affichage du ruban" aria-haspopup="menu">${svg("ribbon")}</button>
-    <button type="button" class="btn btn-sm tr-pp tr-ui-btn" data-act="ui-ribbon" title="Revenir au ruban (mode O'CN)">${svg("ribbon", 15)}<span>Ruban</span></button>
+    <button type="button" class="tr-icon tr-ocn" id="tr-rdisplay" title="${esc(t("trc.ed.ribbonDisplayTip"))}" aria-label="${esc(t("trc.ed.ribbonDisplay"))}" aria-haspopup="menu">${svg("ribbon")}</button>
+    <button type="button" class="btn btn-sm tr-pp tr-ui-btn" data-act="ui-ribbon" title="${esc(t("trc.ed.backToRibbon"))}">${svg("ribbon", 15)}<span>${esc(t("trc.ed.ribbon"))}</span></button>
     <span class="fw-btns">${FW.buttons()}</span>
   </header>
   <div class="tr-ribbon tr-ocn" id="tr-ribbon"></div>
@@ -753,14 +753,14 @@ function shell(E) {
       <div class="tr-desc" id="tr-desc"></div>
       <div class="tr-info" id="tr-info"></div>
     </aside>
-    <div class="tr-split" id="tr-split" role="separator" aria-orientation="vertical" title="Glisser pour élargir"></div>
+    <div class="tr-split" id="tr-split" role="separator" aria-orientation="vertical" title="${esc(t("trc.ed.splitTip"))}"></div>
     <main class="tr-mapwrap">
-      <canvas id="tr-map" tabindex="0" aria-label="Carte et circuit"></canvas>
+      <canvas id="tr-map" tabindex="0" aria-label="${esc(t("trc.ed.mapAria"))}"></canvas>
       <div class="tr-zoombox">
-        <button type="button" class="tr-icon" id="tr-zin" title="Zoom avant">${svg("plus", 16)}</button>
-        <button type="button" class="tr-icon" id="tr-zout" title="Zoom arrière">${svg("minus", 16)}</button>
-        <button type="button" class="tr-icon" id="tr-fit" title="Tout le circuit">${svg("fit", 16)}</button>
-        <label class="tr-intensity" title="Intensité de la carte"><input type="range" id="tr-intensity" min="0.2" max="1" step="0.05"></label>
+        <button type="button" class="tr-icon" id="tr-zin" title="${esc(t("trc.ed.zoomIn"))}">${svg("plus", 16)}</button>
+        <button type="button" class="tr-icon" id="tr-zout" title="${esc(t("trc.ed.zoomOut"))}">${svg("minus", 16)}</button>
+        <button type="button" class="tr-icon" id="tr-fit" title="${esc(t("trc.ed.fitCourse"))}">${svg("fit", 16)}</button>
+        <label class="tr-intensity" title="${esc(t("trc.ed.intensity"))}"><input type="range" id="tr-intensity" min="0.2" max="1" step="0.05"></label>
       </div>
     </main>
   </div>

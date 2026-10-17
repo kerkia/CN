@@ -4,6 +4,7 @@
 // the same settings give Purple Pen's own teams.
 
 import * as M from "./model.js";
+import { t, tn } from "./lang.js";
 
 /** .NET's seeded System.Random (Knuth's subtractive generator), as Purple Pen draws with it. */
 class DotNetRandom {
@@ -44,7 +45,7 @@ export function relayPlan(ev, courseId, settings = null) {
     while (id && id !== join && guard++ < 10000) {
       const cc = ev.courseControls[id];
       if (cc.split) {
-        const f = { loop: !!cc.loop, code: ev.controls[cc.control]?.code || { start: "de départ", "map-exchange": "d'échange de carte", "map-issue": "de remise de carte" }[ev.controls[cc.control]?.kind] || "", numBranches: cc.loop ? cc.splitCCs.length - 1 : cc.splitCCs.length, codes: [], subForks: [], next: null,
+        const f = { loop: !!cc.loop, code: ev.controls[cc.control]?.code || "", kind: ev.controls[cc.control]?.kind || "", numBranches: cc.loop ? cc.splitCCs.length - 1 : cc.splitCCs.length, codes: [], subForks: [], next: null,
           numLegsHere: 0, numNonFixed: 0, fixedLegs: null, fixedBranches: null };
         if (!firstFork) firstFork = last = f; else { last.next = f; last = f; }
         allForks.push(f);
@@ -86,7 +87,7 @@ export function relayPlan(ev, courseId, settings = null) {
     });
     let more = 0, per = 0;
     if (f.numNonFixed) { more = unfixedLegs % f.numNonFixed; per = Math.floor(unfixedLegs / f.numNonFixed); }
-    if (more) warnings.push({ control: f.code, more: nonFixedCodes.slice(0, more), less: nonFixedCodes.slice(more), nMore: per + 1, nLess: per });
+    if (more) warnings.push({ control: f.code, kind: f.kind, more: nonFixedCodes.slice(0, more), less: nonFixedCodes.slice(more), nMore: per + 1, nLess: per });
     let ways = 0;
     f.codes.forEach((code, i) => {
       let legs;
@@ -246,26 +247,28 @@ export const relayAssignments = (ev, courseId) => relayPlan(ev, courseId).teams;
 export async function relayDialog(E) {
   const { modal, field, num, download, fileName } = await import("./dialogs.js");
   const ev = E.ev, id = E.cd.course, c = ev.courses[id];
-  if (!M.hasVariations(ev, id)) { E.toast("Ce circuit n'a pas de variante : ajoutez une fourche ou des boucles (menu Circuit)."); return; }
+  if (!M.hasVariations(ev, id)) { E.toast(t("trc.rel.noVariation")); return; }
   const st = { first: 1, teams: 0, legs: 1, branches: {}, ...(c.relay || {}) };
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  const at = (w) => (w.control ? t("trc.rel.atControl", { code: esc(w.control) }) : w.kind === "start" ? t("trc.rel.atStart") : w.kind === "map-exchange" ? t("trc.rel.atExchange")
+    : w.kind === "map-issue" ? t("trc.rel.atIssue") : t("trc.rel.atControl", { code: "" }));
   const render = (box, s) => {
     const plan = relayPlan(ev, id, s);
-    box.innerHTML = `${plan.warnings.map((w) => `<p class="tr-hint">Au poste ${esc(w.control)}, les branches ${w.more.join(", ")} sont courues ${w.nMore} fois et ${w.less.join(", ")} ${w.nLess} fois par équipe.</p>`).join("")}
-      <p class="tr-hint">${plan.totalPaths} parcours possibles.</p>
-      <div class="tr-report"><table class="tr-table"><thead><tr><th>Équipe</th>${Array.from({ length: s.legs }, (_, i) => `<th>Relais ${i + 1}</th>`).join("")}</tr></thead>
+    box.innerHTML = `${plan.warnings.map((w) => `<p class="tr-hint">${t("trc.rel.branchWarn", { where: at(w), more: w.more.join(", "), nMore: w.nMore, less: w.less.join(", "), nLess: w.nLess })}</p>`).join("")}
+      <p class="tr-hint">${tn("trc.rel.paths", plan.totalPaths)}</p>
+      <div class="tr-report"><table class="tr-table"><thead><tr><th>${esc(t("trc.rel.team"))}</th>${Array.from({ length: s.legs }, (_, i) => `<th>${esc(t("trc.rel.legN", { n: i + 1 }))}</th>`).join("")}</tr></thead>
       <tbody>${plan.teams.map((t) => `<tr><td class="r">${t.team}</td>${t.legs.map((l) => `<td>${esc(l)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
     return plan;
   };
   let plan;
-  const v = await modal(E, { title: `Variantes de relais — ${c.name}`, wide: true, ok: E.readOnly ? null : "Enregistrer", cancel: "Fermer", body: `
-    <div class="tr-grid2">${field("Nombre d'équipes", `<input name="teams" value="${st.teams}" inputmode="numeric">`)}${field("Relayeurs par équipe", `<input name="legs" value="${st.legs}" inputmode="numeric">`)}
-    ${field("Numéro de la première équipe", `<input name="first" value="${st.first}" inputmode="numeric">`)}
-    ${field("Branches fixées (ex. A:1 B:2)", `<input name="fixed" value="${esc(Object.entries(st.branches).flatMap(([b, legs]) => legs.map((l) => `${b}:${l + 1}`)).join(" "))}">`, "Une branche toujours courue par ce relayeur")}</div>
-    <label class="tr-check"><input type="checkbox" name="hide" ${c.hideVariations ? "checked" : ""}> Ne pas imprimer le code de variante sur les définitions de la carte</label>
-    <p><button type="button" class="btn btn-sm" id="tr-relay-go">Répartir</button> <button type="button" class="btn btn-sm" id="tr-relay-csv">CSV</button>
-    <button type="button" class="btn btn-sm" id="tr-relay-xml">IOF XML (équipes)</button></p><div id="tr-relay"></div>
-    <p class="tr-hint">Le PDF des circuits imprime « par équipe et relayeur » ; les textes $(RelayTeam) et $(RelayLeg) y donnent l'équipe et le relais.</p>`,
+  const v = await modal(E, { title: t("trc.rel.title", { name: c.name }), wide: true, ok: E.readOnly ? null : t("trc.rel.save"), cancel: t("trc.rel.close"), body: `
+    <div class="tr-grid2">${field(t("trc.rel.teams"), `<input name="teams" value="${st.teams}" inputmode="numeric">`)}${field(t("trc.rel.legs"), `<input name="legs" value="${st.legs}" inputmode="numeric">`)}
+    ${field(t("trc.rel.first"), `<input name="first" value="${st.first}" inputmode="numeric">`)}
+    ${field(t("trc.rel.fixed"), `<input name="fixed" value="${esc(Object.entries(st.branches).flatMap(([b, legs]) => legs.map((l) => `${b}:${l + 1}`)).join(" "))}">`, t("trc.rel.fixedHint"))}</div>
+    <label class="tr-check"><input type="checkbox" name="hide" ${c.hideVariations ? "checked" : ""}> ${esc(t("trc.rel.hide"))}</label>
+    <p><button type="button" class="btn btn-sm" id="tr-relay-go">${esc(t("trc.rel.assign"))}</button> <button type="button" class="btn btn-sm" id="tr-relay-csv">CSV</button>
+    <button type="button" class="btn btn-sm" id="tr-relay-xml">${esc(t("trc.rel.xml"))}</button></p><div id="tr-relay"></div>
+    <p class="tr-hint">${esc(t("trc.rel.hint"))}</p>`,
   onOpen: (f) => {
     const read = () => {
       const branches = {};
@@ -273,13 +276,14 @@ export async function relayDialog(E) {
       return { teams: Math.max(0, Math.round(num(f.elements.teams.value)) || 0), legs: Math.max(1, Math.round(num(f.elements.legs.value)) || 1), first: Math.max(1, Math.round(num(f.elements.first.value)) || 1), branches };
     };
     const go = () => { plan = render(f.querySelector("#tr-relay"), read()); };
+    const csvFile = `${t("trc.rel.csvFile", { name: fileName(c.name) })}.csv`, xmlFile = `${t("trc.rel.xmlFile", { name: fileName(c.name) })}.xml`;
     f.querySelector("#tr-relay-go").addEventListener("click", go);
-    f.querySelector("#tr-relay-csv").addEventListener("click", () => { go(); const s = read(); download(`${fileName(c.name)} - relais.csv`, `Team,${Array.from({ length: s.legs }, (_, i) => `Leg ${i + 1}`).join(",")}\r\n${plan.teams.map((t) => `${t.team},${t.legs.join(",")}`).join("\r\n")}\r\n`, "text/csv"); });
-    f.querySelector("#tr-relay-xml").addEventListener("click", async () => { go(); const { iofXmlText } = await import("./exports.js"); const saved = ev.courses[id].relay; ev.courses[id].relay = read(); const t = iofXmlText(ev, 3); ev.courses[id].relay = saved; download(`${fileName(c.name)} - équipes IOF XML.xml`, t, "application/xml"); });
+    f.querySelector("#tr-relay-csv").addEventListener("click", () => { go(); const s = read(); download(csvFile, `Team,${Array.from({ length: s.legs }, (_, i) => `Leg ${i + 1}`).join(",")}\r\n${plan.teams.map((t) => `${t.team},${t.legs.join(",")}`).join("\r\n")}\r\n`, "text/csv"); });
+    f.querySelector("#tr-relay-xml").addEventListener("click", async () => { go(); const { iofXmlText } = await import("./exports.js"); const saved = ev.courses[id].relay; ev.courses[id].relay = read(); const t = iofXmlText(ev, 3); ev.courses[id].relay = saved; download(xmlFile, t, "application/xml"); });
     if (st.teams > 0) go();
   } });
   if (!v) return;
   const branches = {};
   for (const tok of v.fixed.trim().split(/[\s,;]+/).filter(Boolean)) { const m = /^([A-Za-z]):(\d+)$/.exec(tok); if (m) (branches[m[1].toUpperCase()] ||= []).push(Number(m[2]) - 1); }
-  E.change((x) => { x.courses[id].relay = { teams: Math.max(0, Math.round(num(v.teams)) || 0), legs: Math.max(1, Math.round(num(v.legs)) || 1), first: Math.max(1, Math.round(num(v.first)) || 1), branches }; x.courses[id].hideVariations = v.hide; }, "Variantes de relais");
+  E.change((x) => { x.courses[id].relay = { teams: Math.max(0, Math.round(num(v.teams)) || 0), legs: Math.max(1, Math.round(num(v.legs)) || 1), first: Math.max(1, Math.round(num(v.first)) || 1), branches }; x.courses[id].hideVariations = v.hide; }, t("trc.rel.undo"));
 }

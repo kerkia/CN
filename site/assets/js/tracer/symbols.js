@@ -3,6 +3,8 @@
 // (Purple Pen's Symbol.FindBestText: the language's own text, else English; singular or plural, gender, case), and its
 // drawing as paths in a box (a square cell, or eight cells for an instruction line).
 
+import { lang as uiLang } from "./lang.js";
+
 let DB = null, LOADING = null, ALL_TEXTS = null;
 const URL_MAIN = "assets/tracer/symbols.json", URL_TEXTS = "assets/tracer/symbol-texts.json";
 
@@ -85,7 +87,7 @@ export function modifiedCase(s, lang, custom = null) {
   return bestText(textsOf(s), lang, false, "", "")?.mc ?? "";
 }
 /** The symbol's name in a language (the user interface's), else English. */
-export const symbolName = (s, lang = "fr") => s?.n?.[lang] || s?.n?.en || s?.id || "";
+export const symbolName = (s, lang = uiLang()) => s?.n?.[lang] || s?.n?.en || s?.id || "";
 
 // ---- drawing ---------------------------------------------------------------------------------------------------------
 /**

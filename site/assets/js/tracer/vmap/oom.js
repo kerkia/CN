@@ -6,6 +6,7 @@
 import { VMap, VColor, PointSymbol, LineSymbol, AreaSymbol, TextSymbol } from "./map.js";
 import { Glyph, PointSymDef, LineSymDef, AreaSymDef, TextSymDef, LineComboSymDef, AreaComboSymDef, SPACING, LOC, ROTATE, FILL, HALIGN, VALIGN, faceMetrics } from "./symdefs.js";
 import { SymPath, PathWithHoles, K } from "./sympath.js";
+import { t } from "../lang.js";
 
 const REG_BLACK = -900;
 const CURVE = 1, HOLE = 16, DASH = 32;
@@ -27,9 +28,9 @@ export function readOom(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const doc = new DOMParser().parseFromString(new TextDecoder("utf-8").decode(u8), "application/xml");
   const root = doc.documentElement;
-  if (!root || root.localName !== "map") throw new Error("Ce n'est pas un fichier OpenOrienteering Mapper.");
+  if (!root || root.localName !== "map") throw new Error(t("trc.vmap.notOom"));
   const version = ai(root, "version", 0);
-  if (version < 6 || version > 9) throw new Error(`Fichier Mapper au format ${version} : seuls les formats 6 à 9 se lisent.`);
+  if (version < 6 || version > 9) throw new Error(t("trc.vmap.oomVersion", { v: version }));
   const map = new VMap();
   map.useEuclid = true;
   const ctx = { map, colors: new Map(), defs: new Map(), delayed: [] };
@@ -98,7 +99,7 @@ function readSymbol(s, ctx) {
     else if (type === 4) { const as = kid(s, "area_symbol"); if (as) d = areaSymdef(name, code, as, ctx); }
     else if (type === 8) { const ts = kid(s, "text_symbol"); if (ts) d = textSymdef(name, code, ts, ctx); }
     else if (type === 16) { const cs = kid(s, "combined_symbol"); if (cs) ctx.delayed.push({ id, name, code, hidden, parts: kids(cs, "part").map((p) => (ab(p, "private") ? { def: kid(p, "symbol") ? readSymbol(kid(p, "symbol"), ctx) : null } : { ref: ai(p, "symbol", -1) })) }); return null; }
-  } catch (e) { ctx.map.notes.push(`Symbole ${code} : ${e.message}`); }
+  } catch (e) { ctx.map.notes.push(t("trc.vmap.symbolErr", { id: code, err: e.message })); }
   if (!d) return null;
   ctx.map.addSymdef(d);
   ctx.defs.set(id, d);

@@ -9,13 +9,16 @@ import * as M from "./model.js";
 import { inPoly } from "./layout.js";
 import { modal, download, fileName, saveFiles } from "./dialogs.js";
 import { where } from "./ribbon-data.js";
+import { t, tn, lang, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 const km = (a, b) => (Math.abs(a - b) < 50 ? `${nf(a / 1000, 1)} km` : `${nf(a / 1000, 1)}–${nf(b / 1000, 1)} km`);
 const range = (a, b) => (a === b ? String(a) : `${a}–${b}`);
 const climbText = (c) => (c >= 0 ? `${Math.round(c / 5) * 5} m` : "");
-const KIND_NAME = { start: "Départ", finish: "Arrivée", crossing: "Passage obligatoire", "map-exchange": "Échange de carte", "map-issue": "Remise de carte" };
+const KIND_NAME = { start: t("trc.rep.kStart"), finish: t("trc.rep.kFinish"), crossing: t("trc.rep.kCrossing"), "map-exchange": t("trc.rep.kMapExchange"), "map-issue": t("trc.rep.kMapIssue") };
+// a row's tag (row.tag) and a section's id (section.id) name what they hold whatever the language (« Vérifier » reads them)
+const tagged = (cells, tag) => Object.assign(cells, { tag });
 /** A control's name as Purple Pen's NameStyle.Medium: the code, or the kind. */
 export const ctrlName = (ev, id) => { const c = ev.controls[id]; return !c ? "?" : c.kind === "normal" ? c.code : KIND_NAME[c.kind] || c.kind; };
 const sortedCourses = (ev) => M.courseIds(ev, false);
@@ -32,7 +35,7 @@ export function courseSummary(ev) {
         d.code ? "" : c.load >= 0 ? String(c.load) : "", d.code ? "" : `1:${nf(c.printScale || ev.map.scale)}`]);
     }
   }
-  return { title: "Résumé des circuits", sections: [{ head: ["Circuit", "Postes", "Longueur", "Dénivelée", "Charge", "Impression"], align: "lrrrrr", rows }] };
+  return { title: t("trc.rep.summaryTitle"), sections: [{ head: [t("trc.rep.course"), t("trc.rep.controls"), t("trc.rep.length"), t("trc.rep.climb"), t("trc.rep.load"), t("trc.rep.printScale")], align: "lrrrrr", rows }] };
 }
 export function legLengths(ev) {
   const sections = [];
@@ -62,10 +65,10 @@ export function legLengths(ev) {
         }
       });
     });
-    sections.push({ title: `${c.name} : ${range(v.minNormal, v.maxNormal)} poste${v.maxNormal > 1 ? "s" : ""}, ${km(v.totalMin, v.totalMax)}${c.climb >= 0 ? `, ${climbText(c.climb)}` : ""}`,
-      head: ["Interposte", "Postes", "Longueur", "Balisé"], align: "llrr", rows, foot: n > 1 ? ["Moyenne", "", `${Math.round(total / (n - 1))} m`, ""] : null });
+    sections.push({ title: tn("trc.rep.legsTitle", v.maxNormal, { name: c.name, range: range(v.minNormal, v.maxNormal), km: km(v.totalMin, v.totalMax), climb: c.climb >= 0 ? `, ${climbText(c.climb)}` : "" }),
+      head: [t("trc.rep.leg"), t("trc.rep.controls"), t("trc.rep.length"), t("trc.rep.flagged")], align: "llrr", rows, foot: n > 1 ? [t("trc.rep.average"), "", `${Math.round(total / (n - 1))} m`, ""] : null });
   }
-  return { title: "Longueurs des interpostes", sections };
+  return { title: t("trc.rep.legLengthsTitle"), sections };
 }
 export function crossRef(ev) {
   const courses = sortedCourses(ev);
@@ -80,8 +83,8 @@ export function crossRef(ev) {
   });
   const str = (s) => (!s ? "" : [...s].sort((a, b) => a - b).map((i) => (i < 0 ? "*" : String(i))).join(","));
   const rows = ctrls.map((id) => [ev.controls[id].code, ...courses.map((_, col) => str(cell.get(`${id}:${col}`))), String(courses.filter((_, col) => cell.has(`${id}:${col}`)).length)]);
-  return { title: "Références croisées", intro: "Le numéro du poste dans chaque circuit (* : circuit au score sans numéro).",
-    sections: [{ head: ["Poste", ...courses.map((c) => ev.courses[c].name), "Circuits"], align: `l${"r".repeat(courses.length + 1)}`, rows, rule3: true }] };
+  return { title: t("trc.rep.crossRefTitle"), intro: t("trc.rep.crossRefIntro"),
+    sections: [{ head: [t("trc.rep.control"), ...courses.map((c) => ev.courses[c].name), t("trc.rep.courses")], align: `l${"r".repeat(courses.length + 1)}`, rows, rule3: true }] };
 }
 /** Visits of a control: a butterfly's twice (QueryEvent.GetControlVisitLoad). */
 function visitLoad(ev, id) {
@@ -101,24 +104,24 @@ function visitLoad(ev, id) {
 }
 export function loadReport(ev) {
   const courses = sortedCourses(ev), intro = [];
-  if (!courses.every((c) => ev.courses[c].load >= 0)) intro.push(`Attention : la charge n'est pas renseignée pour tous les circuits (${where("load")}) ; les totaux en tiennent compte.`);
-  if (courses.some((c) => M.hasVariations(ev, c))) intro.push("Note : pour les circuits à variantes, la charge d'un poste est la part des variantes qui y passent.");
+  if (!courses.every((c) => ev.courses[c].load >= 0)) intro.push(t("trc.rep.loadMissingAll", { where: where("load") }));
+  if (courses.some((c) => M.hasVariations(ev, c))) intro.push(t("trc.rep.loadVariations"));
   const infos = Object.keys(ev.controls).map(Number).filter((id) => ev.controls[id].kind === "normal").map((id) => ({
     id, name: ctrlName(ev, id), n: M.coursesUsing(ev, id, false).length, load: M.controlLoad(ev, id), visits: visitLoad(ev, id) }));
   infos.sort((a, b) => b.load - a.load || b.visits - a.visits || b.n - a.n || M.compareCodes(a.name, b.name) || a.id - b.id);
   const multi = infos.some((x) => x.visits > x.load);
-  if (multi) intro.push("Note : des circuits passent plusieurs fois au même poste (papillons) ; la colonne Passages les compte.");
+  if (multi) intro.push(t("trc.rep.loadButterflies"));
   const legs = new Map();
   for (const cid of Object.keys(ev.courses).map(Number)) for (const l of M.enumLegs(ev, M.cdCourse(cid))) {
     const a = ev.courseControls[l.cc1].control, b = ev.courseControls[l.cc2].control, k = `${a}:${b}`;
     if (!legs.has(k)) legs.set(k, { text: `${ctrlName(ev, a)}–${ctrlName(ev, b)}`, n: M.coursesUsingLeg(ev, a, b, false).length, load: M.legLoad(ev, a, b) });
   }
   const legRows = [...legs.values()].filter((x) => x.n > 1).sort((a, b) => b.load - a.load || b.n - a.n || a.text.localeCompare(b.text));
-  return { title: "Charge des postes et des interpostes", intro: intro.join("\n"), sections: [
-    { title: "Circuits", head: ["Circuit", "Charge"], align: "lr", rows: courses.map((c) => [ev.courses[c].name, ev.courses[c].load >= 0 ? String(ev.courses[c].load) : ""]) },
-    { title: "Postes", head: multi ? ["Poste", "Circuits", "Charge", "Passages"] : ["Poste", "Circuits", "Charge"], align: multi ? "lrrr" : "lrr",
+  return { title: t("trc.rep.loadTitle"), intro: intro.join("\n"), sections: [
+    { title: t("trc.rep.courses"), head: [t("trc.rep.course"), t("trc.rep.load")], align: "lr", rows: courses.map((c) => [ev.courses[c].name, ev.courses[c].load >= 0 ? String(ev.courses[c].load) : ""]) },
+    { title: t("trc.rep.controls"), head: multi ? [t("trc.rep.control"), t("trc.rep.courses"), t("trc.rep.load"), t("trc.rep.visits")] : [t("trc.rep.control"), t("trc.rep.courses"), t("trc.rep.load")], align: multi ? "lrrr" : "lrr",
       rows: infos.map((x) => [x.name, String(x.n), x.load >= 0 ? String(x.load) : "", ...(multi ? [x.visits >= 0 ? String(x.visits) : ""] : [])]) },
-    { title: "Interpostes", text: "Seuls les interpostes de plus d'un circuit.", head: ["Interposte", "Circuits", "Charge"], align: "lrr", rows: legRows.map((x) => [x.text, String(x.n), x.load >= 0 ? String(x.load) : ""]) }] };
+    { title: t("trc.rep.legs"), text: t("trc.rep.legsShared"), head: [t("trc.rep.leg"), t("trc.rep.courses"), t("trc.rep.load")], align: "lrr", rows: legRows.map((x) => [x.text, String(x.n), x.load >= 0 ? String(x.load) : ""]) }] };
 }
 
 // ---- event audit ----------------------------------------------------------------------------------------------------------
@@ -138,15 +141,15 @@ export function audit(ev) {
   const missing = [], checkLoad = courses.some((c) => ev.courses[c].load >= 0);
   for (const c of courses) {
     const ids = M.ccIds(ev, M.cdCourse(c)), kinds = ids.map((id) => M.kindOfCC(ev, id));
-    if (ev.courses[c].kind === "score") { if (!kinds.includes("start")) missing.push([name(c), "Départ", "Le circuit au score n'a pas de départ."]); }
+    if (ev.courses[c].kind === "score") { if (!kinds.includes("start")) missing.push(tagged([name(c), t("trc.rep.kStart"), t("trc.rep.noStartScore")], "start")); }
     else {
-      if (!kinds.includes("start")) missing.push([name(c), "Départ", "Le circuit n'a pas de départ."]);
-      if (!kinds.includes("finish")) missing.push([name(c), "Arrivée", "Le circuit n'a pas d'arrivée."]);
-      if (!(ev.courses[c].climb >= 0)) missing.push([name(c), "Dénivelée", `La dénivelée n'est pas renseignée (${where("rep-climb")} la calcule).`]);
+      if (!kinds.includes("start")) missing.push(tagged([name(c), t("trc.rep.kStart"), t("trc.rep.noStart")], "start"));
+      if (!kinds.includes("finish")) missing.push(tagged([name(c), t("trc.rep.kFinish"), t("trc.rep.noFinish")], "finish"));
+      if (!(ev.courses[c].climb >= 0)) missing.push(tagged([name(c), t("trc.rep.climb"), t("trc.rep.noClimb", { where: where("rep-climb") })], "climb"));
     }
-    if (checkLoad && !(ev.courses[c].load >= 0)) missing.push([name(c), "Charge", "La charge n'est pas renseignée."]);
+    if (checkLoad && !(ev.courses[c].load >= 0)) missing.push(tagged([name(c), t("trc.rep.load"), t("trc.rep.noLoad")], "load"));
   }
-  if (missing.length) sections.push({ title: "Éléments manquants", head: ["Circuit", "Élément", "Raison"], align: "lll", rows: missing });
+  if (missing.length) sections.push({ id: "missing", title: t("trc.rep.missingTitle"), head: [t("trc.rep.course"), t("trc.rep.item"), t("trc.rep.reason")], align: "lll", rows: missing });
   // Purple Pen: repeated controls
   const rep = [];
   for (const c of courses) for (const d of designators(ev, c)) {
@@ -156,8 +159,8 @@ export function audit(ev) {
       if (dup && !rep.some((r) => r.c === c && r.x === x)) rep.push({ c, x, score });
     });
   }
-  if (rep.length) sections.push({ title: "Postes répétés", head: ["Circuit", "Poste", "Problème"], align: "lll",
-    rows: rep.map((r) => [name(r.c), ctrlName(ev, r.x), r.score ? "Deux fois dans le circuit au score." : "Deux fois de suite."]) });
+  if (rep.length) sections.push({ id: "repeated", title: t("trc.rep.repeatedTitle"), head: [t("trc.rep.course"), t("trc.rep.control"), t("trc.rep.problem")], align: "lll",
+    rows: rep.map((r) => [name(r.c), ctrlName(ev, r.x), r.score ? t("trc.rep.twiceScore") : t("trc.rep.twiceInRow")]) });
   // Purple Pen: close-together controls (100 m), with the discipline's IOF limits (O'CN)
   const sprint = isSprint(ev), minD = sprint ? 15 : 30, sameD = sprint ? 30 : 60;
   const normal = Object.keys(ev.controls).map(Number).filter((id) => ev.controls[id].kind === "normal");
@@ -168,11 +171,11 @@ export function audit(ev) {
     if (d >= 100.4999) continue;
     const sa = ev.controls[a].symbols?.[1] || null, sb = ev.controls[b].symbols?.[1] || null, same = !!(sa && sb && sa === sb);
     const codes = [ev.controls[a].code, ev.controls[b].code].sort(M.compareCodes);
-    near.push({ d, row: [codes.join(", "), `${Math.round(d)} m`, same ? "oui" : "non", d < minD ? `Trop près : ${minD} m au moins (IOF${sprint ? ", sprint" : ""}).` : d < sameD && same ? `À moins de ${sameD} m sur le même objet : les distinguer (IOF).` : ""] });
+    near.push({ d, row: [codes.join(", "), `${Math.round(d)} m`, same ? t("trc.rep.yes") : t("trc.rep.no"), d < minD ? (sprint ? t("trc.rep.tooCloseSprint", { m: minD }) : t("trc.rep.tooClose", { m: minD })) : d <sameD && same ? t("trc.rep.sameFeature", { m: sameD }) : ""] });
   }
   near.sort((x, y) => x.d - y.d);
-  if (near.length) sections.push({ title: "Postes proches", text: `Les paires de postes à moins de 100 m. Règles IOF${sprint ? " (sprint)" : ""} : ${minD} m au moins entre deux postes ; à moins de ${sameD} m, des objets clairement différents sur le terrain et sur la carte.`,
-    head: ["Postes", "Distance", "Même symbole (colonne D)", "Règle"], align: "lrll", rows: near.map((x) => x.row) });
+  if (near.length) sections.push({ id: "near", title: t("trc.rep.nearTitle"), text: sprint ? t("trc.rep.nearTextSprint", { min: minD, same: sameD }) : t("trc.rep.nearText", { min: minD, same: sameD }),
+    head: [t("trc.rep.controls"), t("trc.rep.distance"), t("trc.rep.sameSymbol"), t("trc.rep.rule")], align: "lrll", rows: near.map((x) => x.row) });
   // Purple Pen: legs run both ways
   const fwd = new Map();
   for (const c of courses) {
@@ -190,10 +193,10 @@ export function audit(ev) {
     seen.add(k);
     both.push([`${ctrlName(ev, a)} → ${ctrlName(ev, b)}`, cs.map(name).join(", ")], [`${ctrlName(ev, b)} → ${ctrlName(ev, a)}`, back.map(name).join(", ")]);
   }
-  if (both.length) sections.push({ title: "Interpostes courus dans les deux sens", head: ["Interposte", "Circuits"], align: "ll", rows: both });
+  if (both.length) sections.push({ id: "both", title: t("trc.rep.bothWaysTitle"), head: [t("trc.rep.leg"), t("trc.rep.courses")], align: "ll", rows: both });
   // Purple Pen: unused controls
   const unused = M.unusedControls(ev, false).sort((a, b) => M.compareControls(ev, a, b));
-  if (unused.length) sections.push({ title: "Postes inutilisés", text: `Ces postes ne servent dans aucun circuit (${where("remove-unused")}).`, head: ["Poste", "Position (mm)"], align: "ll",
+  if (unused.length) sections.push({ id: "unused", title: t("trc.rep.unusedTitle"), text: t("trc.rep.unusedText", { where: where("remove-unused") }), head: [t("trc.rep.control"), t("trc.rep.position")], align: "ll",
     rows: unused.map((id) => [ctrlName(ev, id), `(${Math.round(ev.controls[id].x)}, ${Math.round(ev.controls[id].y)})`]) });
   // Purple Pen: missing description boxes
   const boxes = [];
@@ -203,16 +206,16 @@ export function audit(ev) {
     if (c.kind !== "normal" && c.kind !== "start") continue;
     const s = c.symbols || [];
     if (c.kind === "start" && !s.some(Boolean)) continue;
-    if (!s[1]) boxes.push([ctrlName(ev, id), "D", "La colonne D (l'objet) est vide."]);
-    else if ((s[3] === "10.1" || s[3] === "10.2") && !s[2]) boxes.push([ctrlName(ev, id), "E", "Un croisement ou une jonction demande un second objet en colonne E."]);
-    else if (s[4] === "11.15" && !s[2]) boxes.push([ctrlName(ev, id), "E", "« Entre » demande un second objet en colonne E."]);
+    if (!s[1]) boxes.push([ctrlName(ev, id), "D", t("trc.rep.emptyD")]);
+    else if ((s[3] === "10.1" || s[3] === "10.2") && !s[2]) boxes.push([ctrlName(ev, id), "E", t("trc.rep.crossingE")]);
+    else if (s[4] === "11.15" && !s[2]) boxes.push([ctrlName(ev, id), "E", t("trc.rep.betweenE")]);
   }
-  if (boxes.length) sections.push({ title: "Définitions incomplètes", head: ["Poste", "Colonne", "Raison"], align: "lll", rows: boxes });
+  if (boxes.length) sections.push({ id: "descr", title: t("trc.rep.descTitle"), head: [t("trc.rep.control"), t("trc.rep.column"), t("trc.rep.reason")], align: "lll", rows: boxes });
   // Purple Pen: missing punch patterns (only when some control has one)
   const punched = normal.filter((id) => !unused.includes(id));
   if (punched.some((id) => /1/.test(ev.controls[id].punch?.dots || ""))) {
-    const rows = punched.filter((id) => !/1/.test(ev.controls[id].punch?.dots || "")).sort((a, b) => M.compareControls(ev, a, b)).map((id) => [ctrlName(ev, id), "Pas de motif de poinçon."]);
-    if (rows.length) sections.push({ title: "Poinçons manquants", head: ["Poste", "Raison"], align: "ll", rows });
+    const rows = punched.filter((id) => !/1/.test(ev.controls[id].punch?.dots || "")).sort((a, b) => M.compareControls(ev, a, b)).map((id) => [ctrlName(ev, id), t("trc.rep.noPunch")]);
+    if (rows.length) sections.push({ id: "punches", title: t("trc.rep.punchTitle"), head: [t("trc.rep.control"), t("trc.rep.reason")], align: "ll", rows });
   }
   // Purple Pen: missing scores
   const scores = [];
@@ -223,26 +226,26 @@ export function audit(ev) {
     for (const id of M.ccIds(ev, M.cdCourse(c))) {
       const cc = ev.courseControls[id];
       if (ev.controls[cc.control].kind !== "normal") continue;
-      if (!(cc.points > 0)) here.push([name(c), ctrlName(ev, cc.control), "Pas de points."]); else any = true;
+      if (!(cc.points > 0)) here.push([name(c), ctrlName(ev, cc.control), t("trc.rep.noPoints")]); else any = true;
     }
     if (any) scores.push(...here);
   }
-  if (scores.length) sections.push({ title: "Points manquants", head: ["Circuit", "Poste", "Raison"], align: "lll", rows: scores });
+  if (scores.length) sections.push({ id: "scores", title: t("trc.rep.pointsTitle"), head: [t("trc.rep.course"), t("trc.rep.control"), t("trc.rep.reason")], align: "lll", rows: scores });
 
   // ---- O'CN's further checks ----
   const more = [];
   const areas = Object.values(ev.specials).filter((s) => ["out-of-bounds", "dangerous-area"].includes(s.kind) && s.pts?.length >= 3);
   const bounds = Object.values(ev.specials).filter((s) => s.kind === "boundary" && s.pts?.length >= 2);
   const forbid = Object.values(ev.specials).filter((s) => s.kind === "forbidden-route" && s.pts?.length);
-  const areaName = (s) => (s.kind === "out-of-bounds" ? "une zone interdite" : "une zone dangereuse");
+  const oob = (s) => s.kind === "out-of-bounds";
   for (const id of normal) {
     if (unused.includes(id)) continue;
     const c = ev.controls[id];
-    for (const s of areas) if (inPoly(s.pts, [c.x, c.y])) more.push(["", ctrlName(ev, id), `Le poste est dans ${areaName(s)}.`]);
+    for (const s of areas) if (inPoly(s.pts, [c.x, c.y])) more.push(tagged(["", ctrlName(ev, id), oob(s) ? t("trc.rep.inOob") : t("trc.rep.inDanger")], "in-area"));
     const code = c.code;
-    if (/^\d+$/.test(code) && Number(code) < 31) more.push(["", code, "Code inférieur à 31 : réservé aux fonctions des boîtiers électroniques (effacer, vérifier, départ…)."]);
+    if (/^\d+$/.test(code) && Number(code) < 31) more.push(tagged(["", code, t("trc.rep.codeBelow31")], "code"));
     const flip = flipCode(code);
-    if (flip && flip !== code && normal.some((o) => o !== id && ev.controls[o].code === flip) && M.compareCodes(code, flip) < 0) more.push(["", `${code}, ${flip}`, "Ces codes se lisent l'un pour l'autre à l'envers."]);
+    if (flip && flip !== code && normal.some((o) => o !== id && ev.controls[o].code === flip) && M.compareCodes(code, flip) < 0) more.push(tagged(["", `${code}, ${flip}`, t("trc.rep.codesFlip")], "flip"));
   }
   const R = M.controlRadius(ev) * M.objRatio(ev, ev.allControls.printScale);
   for (const c of courses) {
@@ -257,20 +260,20 @@ export function audit(ev) {
         legsDone.add(key);
         const pts = M.legPoints(ev, a, b), legName = `${ctrlName(ev, a)}–${ctrlName(ev, b)}`, flag = M.legFlagging(ev, a, b);
         const len = M.legLengthM(ev, a, b);
-        if (ev.controls[a].kind === "normal" && ev.controls[b].kind === "normal" && len < (sprint ? 30 : 60)) more.push([tag, legName, `Interposte très court (${Math.round(len)} m).`]);
+        if (ev.controls[a].kind === "normal" && ev.controls[b].kind === "normal" && len < (sprint ? 30 : 60)) more.push(tagged([tag, legName, t("trc.rep.shortLeg", { m: Math.round(len) })], "short"));
         for (let k = 0; k + 1 < pts.length; k++) {
           for (const s of areas) {
             const poly = [...s.pts, s.pts[0]];
-            if (flag !== "all" && poly.some((q, j) => j + 1 < poly.length && segX(pts[k], pts[k + 1], q, poly[j + 1]))) { more.push([tag, legName, `La ligne droite de l'interposte traverse ${areaName(s)}.`]); break; }
+            if (flag !== "all" && poly.some((q, j) => j + 1 < poly.length && segX(pts[k], pts[k + 1], q, poly[j + 1]))) { more.push(tagged([tag, legName, oob(s) ? t("trc.rep.crossOob") : t("trc.rep.crossDanger")], "cross-area")); break; }
           }
-          for (const s of bounds) if (s.pts.some((q, j) => j + 1 < s.pts.length && segX(pts[k], pts[k + 1], q, s.pts[j + 1]))) { more.push([tag, legName, "La ligne droite de l'interposte traverse une limite infranchissable."]); break; }
-          for (const s of forbid) if (segDist(s.pts[0], pts[k], pts[k + 1]) < R * 0.6) { more.push([tag, legName, "L'interposte passe sur un passage interdit."]); break; }
+          for (const s of bounds) if (s.pts.some((q, j) => j + 1 < s.pts.length && segX(pts[k], pts[k + 1], q, s.pts[j + 1]))) { more.push(tagged([tag, legName, t("trc.rep.crossBoundary")], "boundary")); break; }
+          for (const s of forbid) if (segDist(s.pts[0], pts[k], pts[k + 1]) < R * 0.6) { more.push(tagged([tag, legName, t("trc.rep.forbiddenRoute")], "forbidden")); break; }
         }
         // through another control of the course
         for (const o of new Set(ctl)) {
           if (o === a || o === b || ev.controls[o].kind !== "normal") continue;
           const p = [ev.controls[o].x, ev.controls[o].y];
-          if (M.nearest(pts, p).d < R) { more.push([tag, legName, `L'interposte passe dans le cercle du poste ${ctrlName(ev, o)}.`]); }
+          if (M.nearest(pts, p).d < R) { more.push(tagged([tag, legName, t("trc.rep.throughCircle", { code: ctrlName(ev, o) })], "circle")); }
         }
       }
       // dog-legs: the way out within 20° of the way in, at a normal control
@@ -282,12 +285,12 @@ export function audit(ev) {
         const a1 = Math.atan2(u[1] - c0[1], u[0] - c0[0]), a2 = Math.atan2(w[1] - c0[1], w[0] - c0[0]);
         let diff = Math.abs(a1 - a2) * 180 / Math.PI; if (diff > 180) diff = 360 - diff;
         if (diff < 20) legsDone.add(`dog:${b}`);
-        if (diff < 20) more.push([tag, ctrlName(ev, b), `Aller-retour au poste (${Math.round(diff)}° entre l'arrivée et le départ) : les coureurs qui en repartent montrent le poste à ceux qui arrivent.`]);
+        if (diff < 20) more.push(tagged([tag, ctrlName(ev, b), t("trc.rep.dogLeg", { deg: Math.round(diff) })], "dog-leg"));
       }
     }
   }
-  if (more.length) sections.push({ title: "Autres vérifications (O'CN)", text: "Des contrôles au-delà de ceux de Purple Pen : à juger sur le terrain, certains sont voulus.", head: ["Circuit", "Objet", "Remarque"], align: "lll", rows: more });
-  return { title: "Contrôle de l'événement", intro: sections.length ? "" : "Aucun problème trouvé.", sections };
+  if (more.length) sections.push({ id: "more", title: t("trc.rep.moreTitle"), text: t("trc.rep.moreText"), head: [t("trc.rep.course"), t("trc.rep.object"), t("trc.rep.remark")], align: "lll", rows: more });
+  return { title: t("trc.rep.auditTitle"), intro: sections.length ? "" : t("trc.rep.noProblem"), sections };
 }
 
 // ---- display and CSV ----------------------------------------------------------------------------------------------------------
@@ -295,26 +298,28 @@ function html(rep) {
   return `${rep.intro ? rep.intro.split("\n").map((t) => `<p class="tr-hint">${esc(t)}</p>`).join("") : ""}${rep.sections.map((s) => `
     ${s.title ? `<h3>${esc(s.title)}</h3>` : ""}${s.text ? `<p class="tr-hint">${esc(s.text)}</p>` : ""}
     <div class="table-wrap"><table class="tr-table"><thead><tr>${s.head.map((h, i) => `<th class="${s.align[i] === "r" ? "r" : ""}">${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${s.rows.map((r, ri) => `<tr${s.rule3 && ri % 3 === 2 ? ' class="tr-rule"' : ""}>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.head.length}"><small>Rien.</small></td></tr>`}
+    <tbody>${s.rows.map((r, ri) => `<tr${s.rule3 && ri % 3 === 2 ? ' class="tr-rule"' : ""}>${r.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${s.head.length}"><small>${esc(t("trc.rep.nothing"))}</small></td></tr>`}
     ${s.foot ? `<tr class="tr-sum">${s.foot.map((c, i) => `<td class="${s.align[i] === "r" ? "r" : ""}">${esc(c)}</td>`).join("")}</tr>` : ""}</tbody></table></div>`).join("")}`;
 }
-const cq = (v) => { const s = String(v ?? "").trim(); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-/** CSV for French spreadsheets: « ; » between columns, UTF-8 with its mark. */
+const cq = (v) => { const s = String(v ?? "").trim(); return /[";,\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+/** CSV for the reader's spreadsheets: « ; » between columns in French (its decimal comma), « , » in English; UTF-8
+ *  with its mark. */
 export function csv(rep) {
+  const sep = lang() === "en" ? "," : ";";
   const lines = [cq(rep.title), ...(rep.intro ? rep.intro.split("\n").map(cq) : [])];
   for (const s of rep.sections) {
     lines.push("");
     if (s.title) lines.push(cq(s.title));
-    lines.push(s.head.map(cq).join(";"));
-    for (const r of s.rows) lines.push(r.map(cq).join(";"));
-    if (s.foot) lines.push(s.foot.map(cq).join(";"));
+    lines.push(s.head.map(cq).join(sep));
+    for (const r of s.rows) lines.push(r.map(cq).join(sep));
+    if (s.foot) lines.push(s.foot.map(cq).join(sep));
   }
   return `﻿${lines.join("\r\n")}\r\n`;
 }
 async function show(E, rep, slug) {
-  await modal(E, { title: `${rep.title} — ${E.ev.title.replace(/\|/g, " ")}`, wide: true, ok: null, cancel: "Fermer",
+  await modal(E, { title: `${rep.title} — ${E.ev.title.replace(/\|/g, " ")}`, wide: true, ok: null, cancel: t("trc.rep.close"),
     body: `<div class="tr-report">${html(rep)}</div>`,
-    extra: `<button type="button" class="btn" data-csv>CSV</button><button type="button" class="btn" data-print>Imprimer</button>`,
+    extra: `<button type="button" class="btn" data-csv>CSV</button><button type="button" class="btn" data-print>${esc(t("trc.rep.print"))}</button>`,
     onOpen: (f) => {
       f.querySelector("[data-csv]").addEventListener("click", () => download(`${fileName(E.ev.title)} - ${slug}.csv`, csv(rep), "text/csv;charset=utf-8"));
       f.querySelector("[data-print]").addEventListener("click", () => printReport(rep, E.ev.title));
@@ -328,17 +333,18 @@ function printReport(rep, title) {
     <h1>${esc(rep.title)} — ${esc(title.replace(/\|/g, " "))}</h1>${html(rep)}`);
   w.document.close(); w.focus(); setTimeout(() => w.print(), 200);
 }
-export const summary = (E) => show(E, courseSummary(E.ev), "résumé");
-export const legLengthsReport = (E) => show(E, legLengths(E.ev), "interpostes");
-export const crossRefReport = (E) => show(E, crossRef(E.ev), "références croisées");
-export const loadReportDialog = (E) => show(E, loadReport(E.ev), "charge");
-export const auditReport = (E) => show(E, audit(E.ev), "contrôle");
+export const summary = (E) => show(E, courseSummary(E.ev), t("trc.rep.slugSummary"));
+export const legLengthsReport = (E) => show(E, legLengths(E.ev), t("trc.rep.slugLegs"));
+export const crossRefReport = (E) => show(E, crossRef(E.ev), t("trc.rep.slugCrossRef"));
+export const loadReportDialog = (E) => show(E, loadReport(E.ev), t("trc.rep.slugLoad"));
+export const auditReport = (E) => show(E, audit(E.ev), t("trc.rep.slugAudit"));
 /** Every report, one CSV file each, in a zip. */
 export async function csvAll(E) {
   const { zip } = await import("./pdf.js");
   const ev = E.ev, enc = new TextEncoder();
-  const files = { "resume.csv": courseSummary(ev), "interpostes.csv": legLengths(ev), "references-croisees.csv": crossRef(ev), "charge.csv": loadReport(ev), "controle.csv": audit(ev) };
+  const files = { [`${t("trc.rep.csvSummary")}.csv`]: courseSummary(ev), [`${t("trc.rep.csvLegs")}.csv`]: legLengths(ev), [`${t("trc.rep.csvCrossRef")}.csv`]: crossRef(ev),
+    [`${t("trc.rep.csvLoad")}.csv`]: loadReport(ev), [`${t("trc.rep.csvAudit")}.csv`]: audit(ev) };
   const out = {};
   for (const [n, rep] of Object.entries(files)) out[n] = enc.encode(csv(rep));
-  await saveFiles(E, out, `${fileName(ev.title)} - rapports.zip`);
+  await saveFiles(E, out, `${t("trc.rep.zipName", { name: fileName(ev.title) })}.zip`);
 }

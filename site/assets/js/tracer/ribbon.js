@@ -21,9 +21,10 @@ import { PAGES, pageOf } from "./pdf.js";
 import * as FW from "../fullwin.js";
 import { hasGeo } from "./geo.js";
 import { mapColors, defaultLayer } from "./appear.js";
+import { t, tn, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 const km = (m) => `${nf(m / 1000, 1)} km`;
 const today = () => new Date().toISOString().slice(0, 10);
 const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -33,14 +34,14 @@ const savePref = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PRE
 const GUIDE = (ch) => `#/methodes?onglet=tracer${ch ? `&voir=${ch}` : ""}`;
 // the commands that need a point on the map: the ribbon asks for the click
 const PICK = {
-  "gap-add-circle": "Cliquez sur le cercle, là où le couper", "bend-add": "Cliquez sur l'interposte, là où le plier",
-  "gap-add-leg": "Cliquez sur l'interposte, là où le couper", "bend-remove": "Cliquez le coude à retirer",
-  "gap-remove-leg": "Cliquez la coupure à refermer", "corner-add": "Cliquez sur la ligne ou le bord, là où ajouter un sommet",
-  "corner-remove": "Cliquez le sommet à retirer",
+  "gap-add-circle": t("trc.rib.pickGapCircle"), "bend-add": t("trc.rib.pickBendAdd"),
+  "gap-add-leg": t("trc.rib.pickGapLeg"), "bend-remove": t("trc.rib.pickBendRemove"),
+  "gap-remove-leg": t("trc.rib.pickGapRemove"), "corner-add": t("trc.rib.pickCornerAdd"),
+  "corner-remove": t("trc.rib.pickCornerRemove"),
 };
-const BLENDS = [["none", "Par-dessus", "Le violet couvre la carte."], ["blend", "Mélangé", "Le noir de la carte reste visible à travers le violet, comme à l'impression."],
-  ["layer", "En couches", "Les cercles et les traits passent sous les couleurs de la carte au-dessus d'une couleur choisie ; les numéros restent dessus (carte OCAD ou Mapper)."]];
-const FLAGS = [["none", "Aucun"], ["all", "Tout"], ["begin", "Le début"], ["end", "La fin"]];
+const BLENDS = [["none", t("trc.rib.blendNone"), t("trc.rib.blendNoneTip")], ["blend", t("trc.rib.blendBlend"), t("trc.rib.blendBlendTip")],
+  ["layer", t("trc.rib.blendLayer"), t("trc.rib.blendLayerTip")]];
+const FLAGS = [["none", t("trc.rib.flagNone")], ["all", t("trc.rib.flagAll")], ["begin", t("trc.rib.flagBegin")], ["end", t("trc.rib.flagEnd")]];
 const SCALES = [4000, 5000, 7500, 10000, 12500, 15000];
 
 /** Mount the ribbon in the editor (its root has #tr-ribbon and the title bar's #tr-rsearch, #tr-rdisplay). */
@@ -64,21 +65,21 @@ export function mountRibbon(E) {
   /** null when the command can run, else why not (shown in its tooltip). */
   function why(it) {
     const act = it.act || it.tool;
-    if (E.blank && !["view-course", "view-map", "save-to"].includes(act)) return "Ouvrez, créez ou importez d'abord un événement (« Événements », en haut à gauche).";
+    if (E.blank && !["view-course", "view-map", "save-to"].includes(act)) return t("trc.rib.whyBlank");
     const n = it.need;
-    if ((n === "edit" || n === "course" || n === "vector" || (it.tool && it.tool !== "select")) && E.readOnly) return "Lecture seule.";
-    if (n === "course" && !E.cd.course) return "Choisissez d'abord un circuit (les onglets au-dessus de la carte).";
-    if (n === "vector" && E.map?.kind !== "vector") return "Avec une carte OCAD ou Mapper seulement.";
-    if (n === "after" && raceLater()) return `Les circuits restent secrets jusqu'à la course : à partir du ${new Date(E.meta.date).toLocaleDateString("fr-FR")}.`;
-    if ((act === "var-fork" || act === "var-loop" || act === "var-delete") && !E.sel?.cc && it.t !== "small") return E.cd.course ? "Choisissez d'abord le poste d'où partent les variantes." : "Choisissez d'abord un circuit, puis le poste d'où partent les variantes.";
-    if (act === "pdf-course" && !E.cd.course) return "Choisissez d'abord un circuit.";
+    if ((n === "edit" || n === "course" || n === "vector" || (it.tool && it.tool !== "select")) && E.readOnly) return t("trc.rib.readOnly");
+    if (n === "course" && !E.cd.course) return t("trc.rib.whyCourse");
+    if (n === "vector" && E.map?.kind !== "vector") return t("trc.rib.whyVector");
+    if (n === "after" && raceLater()) return t("trc.rib.whyAfter", { date: new Date(E.meta.date).toLocaleDateString(locale()) });
+    if ((act === "var-fork" || act === "var-loop" || act === "var-delete") && !E.sel?.cc && it.t !== "small") return E.cd.course ? t("trc.rib.whyVarControl") : t("trc.rib.whyVarCourse");
+    if (act === "pdf-course" && !E.cd.course) return t("trc.rib.whyPdfCourse");
     return null;
   }
   function labelOf(it) {
     const c = ctl(), sp = special();
-    if (it.act === "delete" && R.ctx === "control") return E.cd.course && E.sel?.cc ? "Retirer du circuit" : "Supprimer le poste";
-    if (it.act === "special-props" && sp) return sp.kind === "text" ? "Texte…" : sp.kind === "descriptions" ? "Colonnes…" : "Apparence…";
-    if (it.act === "toggle-exchange" && cc()?.exchange) return "Retirer l'échange";
+    if (it.act === "delete" && R.ctx === "control") return E.cd.course && E.sel?.cc ? t("trc.rib.removeFromCourse") : t("trc.rib.deleteControl");
+    if (it.act === "special-props" && sp) return sp.kind === "text" ? t("trc.rib.spText") : sp.kind === "descriptions" ? t("trc.rib.spColumns") : t("trc.rib.spAppearance");
+    if (it.act === "toggle-exchange" && cc()?.exchange) return t("trc.rib.removeExchange");
     if (it.count === "unused" && !E.blank) { const n = M.unusedControls(E.ev).length; return n ? `${it.label} (${n})` : it.label; }
     void c;
     return it.label;
@@ -117,7 +118,7 @@ export function mountRibbon(E) {
     const attrs = `type="button" data-ri="${i}" ${it.act ? `data-ract="${esc(it.act)}"` : `data-rtool="${esc(it.tool)}"`} ${w ? 'aria-disabled="true"' : ""} ${p != null ? `aria-pressed="${p}"` : ""}`;
     const badge = b ? `<span class="tr-rbadge${softBadge(it.badge) ? " soft" : ""}">${b}</span>` : "";
     if (size === "big") {
-      const caret = it.split ? `<span class="tr-rsplit" data-rsplit="${i}" role="button" aria-label="Plus de choix" title="Plus de choix">▾</span>` : "";
+      const caret = it.split ? `<span class="tr-rsplit" data-rsplit="${i}" role="button" aria-label="${esc(t("trc.rib.moreChoices"))}" title="${esc(t("trc.rib.moreChoices"))}">▾</span>` : "";
       return `<button class="tr-rbig${it.split ? " has-split" : ""}" ${attrs}>${svg(it.icon, 26)}<span class="tr-rl">${esc(label)}</span>${caret}${badge}</button>`;
     }
     return `<button class="tr-rsmall" ${attrs}>${svg(it.icon, 16)}<span class="tr-rl">${esc(label)}</span>${it.key && it.key.length === 1 ? `<kbd class="tr-rkey">${esc(it.key)}</kbd>` : ""}${it.split ? '<span class="tr-rcaret">▾</span>' : ""}${badge}</button>`;
@@ -139,25 +140,25 @@ export function mountRibbon(E) {
       const w = why(it), i = reg(it, { why: w });
       return `<button type="button" class="tr-rcell" data-ri="${i}" data-rtool="special:${k}" ${w ? 'aria-disabled="true"' : ""} aria-pressed="${E.tool === `special:${k}`}" aria-label="${esc(it.label)}">${svg(it.icon, 18)}</button>`;
     };
-    const more = { t: "small", act: "special-more", label: "Tous les objets spéciaux", icon: "special", tip: "Point d'eau, poste de secours, zones, lignes, cadres : la liste complète." };
+    const more = { t: "small", act: "special-more", label: t("trc.rib.allSpecials"), icon: "special", tip: t("trc.rib.allSpecialsTip") };
     const mw = why({ ...more, need: "edit" }), mi = reg(more, { why: mw });
-    return `<div class="tr-rgallery${mode === "line" ? " line" : ""}">${list.map(cell).join("")}<button type="button" class="tr-rmore" data-ri="${mi}" data-ract="special-more" ${mw ? 'aria-disabled="true"' : ""} aria-label="Tous les objets spéciaux">▾</button></div>`;
+    return `<div class="tr-rgallery${mode === "line" ? " line" : ""}">${list.map(cell).join("")}<button type="button" class="tr-rmore" data-ri="${mi}" data-ract="special-more" ${mw ? 'aria-disabled="true"' : ""} aria-label="${esc(t("trc.rib.allSpecials"))}">▾</button></div>`;
   }
-  // ---- settings in the ribbon ----------------------------------------------------------------------------------------------
+  // ---- settings in the ribbon (their names and tooltips: ribbon-data.js INFO.field) ---------------------------------------------
   const FIELDS = {
-    descStandard: { label: "Norme", tip: "La norme des définitions : IOF 2018/2024, ou 2004.", opts: () => [["2018", "IOF 2018"], ["2004", "IOF 2004"]], get: () => E.ev.descStandard,
+    descStandard: { opts: () => [["2018", "IOF 2018"], ["2004", "IOF 2004"]], get: () => E.ev.descStandard,
       set: (v) => D.applyStandards(E, v, E.ev.appearance.mapStandard) },
-    lang: { label: "Langue", tip: "La langue des définitions en texte (23 langues).", opts: () => D.langChoices(E.ev.lang), get: () => E.ev.lang,
-      set: async (v) => { if (!["fr", "en"].includes(v)) await (await import("./symbols.js")).loadAllTexts(); E.change((x) => { x.lang = v; }, "Langue des définitions"); } },
-    mapStandard: { label: "Carte", tip: "La norme de la carte, qui fixe la taille des cercles et des numéros : ISOM 2017 (forêt), ISSprOM 2019 (sprint), ISOM 2000.",
+    lang: { opts: () => D.langChoices(E.ev.lang), get: () => E.ev.lang,
+      set: async (v) => { if (!["fr", "en"].includes(v)) await (await import("./symbols.js")).loadAllTexts(); E.change((x) => { x.lang = v; }, t("trc.rib.undoLang")); } },
+    mapStandard: {
       opts: () => [["2017", "ISOM 2017"], ["Spr2019", "ISSprOM 2019"], ["2000", "ISOM 2000"]], get: () => E.ev.appearance.mapStandard, set: (v) => D.applyStandards(E, E.ev.descStandard, v) },
-    printScale: { label: "Échelle", tip: "L'échelle d'impression du circuit en cours (de « Tous les postes » quand aucun circuit n'est choisi).",
+    printScale: {
       opts: () => { const cur = course() ? course().printScale : E.ev.allControls.printScale; return [...new Set([...SCALES, E.ev.map.scale, cur])].filter((x) => x > 0).sort((a, b) => a - b).map((x) => [String(x), `1:${nf(x)}`]); },
       get: () => String(course() ? course().printScale : E.ev.allControls.printScale),
-      set: (v) => { const id = E.cd.course, k = Number(v); E.change((x) => { if (id) x.courses[id].printScale = k; else x.allControls.printScale = k; }, "Échelle d'impression"); } },
-    paper: { label: "Papier", tip: "", opts: () => {
+      set: (v) => { const id = E.cd.course, k = Number(v); E.change((x) => { if (id) x.courses[id].printScale = k; else x.allControls.printScale = k; }, t("trc.rib.undoPrintScale")); } },
+    paper: { opts: () => {
         const out = [];
-        for (const p of Object.keys(PAGES)) out.push([`${p}:portrait`, `${p} portrait`], [`${p}:landscape`, `${p} paysage`], [`${p}:auto`, `${p}, selon le circuit`]);
+        for (const p of Object.keys(PAGES)) out.push([`${p}:portrait`, t("trc.rib.paperPortrait", { p })], [`${p}:landscape`, t("trc.rib.paperLandscape", { p })], [`${p}:auto`, t("trc.rib.paperAuto", { p })]);
         return out;
       },
       get: () => {
@@ -171,21 +172,21 @@ export function mountRibbon(E) {
         E.change((x) => {
           if (!cd.course) x.printArea = make(x.printArea);
           else { const c = x.courses[cd.course]; if (cd.part >= 0) c.partAreas = { ...(c.partAreas || {}), [cd.part]: make(c.partAreas?.[cd.part] || c.printArea) }; else c.printArea = make(c.printArea); }
-        }, "Papier");
+        }, t("trc.rib.undoPaper"));
       } },
-    circle: { label: "Cercles", num: true, tip: "La taille des cercles, en proportion de la norme.", get: () => E.ev.appearance.controlCircleSize, set: (v) => E.change((x) => { x.appearance.controlCircleSize = v; }, "Taille des cercles") },
-    line: { label: "Traits", num: true, tip: "L'épaisseur des traits, en proportion de la norme.", get: () => E.ev.appearance.lineWidth, set: (v) => E.change((x) => { x.appearance.lineWidth = v; }, "Épaisseur des traits") },
-    number: { label: "Numéros", num: true, tip: "La hauteur des numéros, en proportion de la norme.", get: () => E.ev.appearance.numberHeight, set: (v) => E.change((x) => { x.appearance.numberHeight = v; }, "Hauteur des numéros") },
-    intensity: { label: "Intensité", range: true, tip: "Pâlir la carte, pour mieux voir le circuit (aussi : le curseur sous les boutons de zoom).", get: () => E.opts.intensity,
+    circle: { num: true, get: () => E.ev.appearance.controlCircleSize, set: (v) => E.change((x) => { x.appearance.controlCircleSize = v; }, t("trc.rib.undoCircle")) },
+    line: { num: true, get: () => E.ev.appearance.lineWidth, set: (v) => E.change((x) => { x.appearance.lineWidth = v; }, t("trc.rib.undoLine")) },
+    number: { num: true, get: () => E.ev.appearance.numberHeight, set: (v) => E.change((x) => { x.appearance.numberHeight = v; }, t("trc.rib.undoNumber")) },
+    intensity: { range: true, get: () => E.opts.intensity,
       set: (v) => E.setIntensity(v) },
-    code: { label: "Code", text: true, tip: "Le code du poste (1 à 3 caractères), tel que le porte le boîtier.", get: () => ctl()?.code || "", set: (v, el) => { if (!A.changeCode(E, E.sel.control, v) && el) el.value = ctl()?.code || ""; },
+    code: { text: true, get: () => ctl()?.code || "", set: (v, el) => { if (!A.changeCode(E, E.sel.control, v) && el) el.value = ctl()?.code || ""; },
       show: () => ctl()?.kind === "normal" },
   };
   function fieldHtml(id, mode) {
     const f = FIELDS[id];
     if (!f || (f.show && !f.show())) return "";
     const dis = E.blank || (E.readOnly && id !== "intensity") ? "disabled" : "";
-    f.label = INFO.field[id]?.[0] || f.label; f.tip = INFO.field[id]?.[1] || f.tip;
+    f.label = INFO.field[id]?.[0] || id; f.tip = INFO.field[id]?.[1] || "";
     const i = reg({ t: "field", label: f.label, tip: f.tip, id });
     let ctl0;
     if (f.range) ctl0 = `<input type="range" min="0.2" max="1" step="0.05" value="${f.get()}" data-rfield="${id}" aria-label="${esc(f.label)}">`;
@@ -201,8 +202,8 @@ export function mountRibbon(E) {
     if (mode === "line") return `<span class="tr-rchip line">${esc(lines[0])}</span>`;
     if (id === "issues") {
       const rows = R.issueRows.slice(0, 3);
-      return `<div class="tr-rchip issues">${!R.checked ? '<span class="muted">Contrôle en cours…</span>' : rows.length ? rows.map((r) => `<button type="button" data-ract="rep-audit" class="tr-rissue"><i class="${r.warn ? "w" : ""}"></i>${esc(r.text)}</button>`).join("")
-        + (R.issues > 3 ? `<span class="muted">et ${R.issues - 3} autre${R.issues - 3 > 1 ? "s" : ""}…</span>` : "") : '<span class="tr-rok">✓ Aucun problème trouvé</span>'}</div>`;
+      return `<div class="tr-rchip issues">${!R.checked ? `<span class="muted">${esc(t("trc.rib.checking"))}</span>` : rows.length ? rows.map((r) => `<button type="button" data-ract="rep-audit" class="tr-rissue"><i class="${r.warn ? "w" : ""}"></i>${esc(r.text)}</button>`).join("")
+        + (R.issues > 3 ? `<span class="muted">${esc(tn("trc.rib.issuesMore", R.issues - 3))}</span>` : "") : `<span class="tr-rok">${esc(t("trc.rib.noProblem"))}</span>`}</div>`;
     }
     return `<div class="tr-rchip"><b>${esc(lines[0])}</b>${lines.slice(1).map((l) => `<span>${esc(l)}</span>`).join("")}</div>`;
   }
@@ -210,44 +211,44 @@ export function mountRibbon(E) {
     if (E.blank) return id === "issues" ? [] : [];
     const ev = E.ev;
     switch (id) {
-      case "issues": return ["Contrôle"];
+      case "issues": return [t("trc.rib.audit")];
       case "mapInfo": {
         const m = E.map, sc = `1:${nf(ev.map.scale)}`;
-        if (!m) return [`Pas de carte · ${sc}`];
-        return [m.kind === "vector" ? `${m.format === "oom" ? "Mapper" : `OCAD ${m.version || ""}`.trim()} · ${sc}` : m.kind === "pdf" ? `PDF · ${sc}` : `Image ${Math.round(ev.map.dpi || m.dpi || 0)} ppp · ${sc}`];
+        if (!m) return [t("trc.rib.noMap", { scale: sc })];
+        return [m.kind === "vector" ? `${m.format === "oom" ? "Mapper" : `OCAD ${m.version || ""}`.trim()} · ${sc}` : m.kind === "pdf" ? `PDF · ${sc}` : t("trc.rib.imageDpi", { dpi: Math.round(ev.map.dpi || m.dpi || 0), scale: sc })];
       }
-      case "geoInfo": return [hasGeo(ev) ? "Géoréférencée ✓" : "Non géoréférencée"];
+      case "geoInfo": return [hasGeo(ev) ? t("trc.rib.georefYes") : t("trc.rib.georefNo")];
       case "course": {
         const c = course();
-        if (!c) return ["Tous les postes", `${Object.values(ev.controls).filter((x) => x.kind === "normal").length} postes, ${M.unusedControls(ev).length} inutilisé(s)`];
+        if (!c) return [t("trc.rib.allControls"), t("trc.rib.allControlsCount", { n: Object.values(ev.controls).filter((x) => x.kind === "normal").length, unused: M.unusedControls(ev).length })];
         const v = E.layout?.view;
         if (!v) return [c.name];
         const len = v.totalMin === v.totalMax ? km(v.totalMin) : `${km(v.totalMin)} – ${km(v.totalMax)}`;
-        return [`${c.name} · ${len}${c.climb >= 0 ? ` · ${Math.round(c.climb)} m` : ""}`, `${v.minNormal === v.maxNormal ? v.minNormal : `${v.minNormal} – ${v.maxNormal}`} postes · 1:${nf(c.printScale)}`,
-          c.load >= 0 ? `${c.load} concurrents attendus` : "Concurrents : non renseignés"];
+        return [`${c.name} · ${len}${c.climb >= 0 ? ` · ${Math.round(c.climb)} m` : ""}`, t("trc.rib.courseControls", { n: v.minNormal === v.maxNormal ? v.minNormal : `${v.minNormal} – ${v.maxNormal}`, scale: nf(c.printScale) }),
+          c.load >= 0 ? tn("trc.rib.competitorsExpected", c.load) : t("trc.rib.competitorsUnknown")];
       }
       case "control": {
         const c = ctl(); if (!c) return [];
         const used = M.coursesUsing(ev, E.sel.control).map((x) => ev.courses[x].name), load = M.controlLoad(ev, E.sel.control);
         let next = "";
-        if (E.cd.course && E.sel.cc) { const v = E.layout?.view, i = v ? v.controls.findIndex((x) => x.ccs.includes(E.sel.cc)) : -1; if (i >= 0 && v.controls[i].legLen?.length) next = `Vers le suivant : ${nf(v.controls[i].legLen[0])} m`; }
-        return [used.length ? used.join(", ") : "Dans aucun circuit", load >= 0 ? `${load} concurrents` : `Position ${nf(c.x, 1)} ; ${nf(c.y, 1)} mm`, ...(next ? [next] : [])];
+        if (E.cd.course && E.sel.cc) { const v = E.layout?.view, i = v ? v.controls.findIndex((x) => x.ccs.includes(E.sel.cc)) : -1; if (i >= 0 && v.controls[i].legLen?.length) next = t("trc.rib.toNext", { m: nf(v.controls[i].legLen[0]) }); }
+        return [used.length ? used.join(", ") : t("trc.rib.inNoCourse"), load >= 0 ? tn("trc.rib.competitors", load) : t("trc.rib.position", { x: nf(c.x, 1), y: nf(c.y, 1) }), ...(next ? [next] : [])];
       }
       case "leg": {
         const s = E.sel; if (s?.kind !== "leg" || !ev.controls[s.c1] || !ev.controls[s.c2]) return [];
         const a = ev.controls[s.c1], b = ev.controls[s.c2], len = M.legLengthM(ev, s.c1, s.c2), straight = M.mmToM(ev, M.dist([a.x, a.y], [b.x, b.y]));
         const used = M.coursesUsingLeg(ev, s.c1, s.c2).map((x) => ev.courses[x].name), load = M.legLoad(ev, s.c1, s.c2);
-        return [`${a.code || "Départ"} → ${b.code || "Arrivée"} · ${nf(len)} m${Math.abs(len - straight) > 1 ? ` (ligne droite ${nf(straight)} m)` : ""}`, used.join(", ") || "—", ...(load >= 0 ? [`${load} concurrents`] : [])];
+        return [`${a.code || t("trc.rib.start")} → ${b.code || t("trc.rib.finish")} · ${nf(len)} m${Math.abs(len - straight) > 1 ? ` ${t("trc.rib.straightLine", { m: nf(straight) })}` : ""}`, used.join(", ") || "—", ...(load >= 0 ? [tn("trc.rib.competitors", load)] : [])];
       }
       case "special": {
         const sp = special(); if (!sp) return [];
-        const shown = sp.all ? "Sur tous les circuits" : `Sur : ${sp.courses.map((x) => (x.course ? ev.courses[x.course]?.name : "Tous les postes")).join(", ") || "aucun circuit"}`;
+        const shown = sp.all ? t("trc.rib.onAllCourses") : t("trc.rib.shownOn", { list: sp.courses.map((x) => (x.course ? ev.courses[x.course]?.name : t("trc.rib.allControls"))).join(", ") || t("trc.rib.noCourse") });
         return [A.SPECIAL_NAME[sp.kind] || sp.kind, shown];
       }
       case "drawing": {
         const p = E.pending; if (!p) return [];
-        const name = p.kind === "route" ? "Itinéraire" : A.SPECIAL_NAME[p.kind] || p.kind;
-        return [`${name} · ${p.pts.length} point${p.pts.length > 1 ? "s" : ""}`, p.kind === "route" ? "Cliquez le long du chemin prévu" : "Cliquez les sommets suivants", "Entrée termine, Échap annule"];
+        const name = p.kind === "route" ? t("trc.rib.route") : A.SPECIAL_NAME[p.kind] || p.kind;
+        return [tn("trc.rib.drawPoints", p.pts.length, { name }), p.kind === "route" ? t("trc.rib.drawRouteHint") : t("trc.rib.drawCornersHint"), t("trc.rib.drawKeys")];
       }
       default: return [];
     }
@@ -259,11 +260,11 @@ export function mountRibbon(E) {
     const cur = id === "blend" ? (E.ev.appearance.blend === "layer" && !vector ? "blend" : E.ev.appearance.blend || "none") : (E.sel?.kind === "leg" ? M.legFlagging(E.ev, E.sel.c1, E.sel.c2) : "none");
     const dis = E.blank || E.readOnly ? "disabled" : "";
     if (mode === "line") {
-      const i = reg({ t: "field", label: id === "blend" ? "Violet" : "Balisage", tip: id === "blend" ? "La façon dont le violet se pose sur la carte." : "Le balisage de l'interposte." });
-      return `<label class="tr-rfield line" data-ri="${i}"><span>${id === "blend" ? "Violet" : "Balisage"}</span><select data-rmode="${id}" ${dis}>${list.map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
+      const i = reg({ t: "field", label: id === "blend" ? t("trc.rib.purple") : t("trc.rib.flagging"), tip: id === "blend" ? t("trc.rib.purpleTip") : t("trc.rib.flaggingTip") });
+      return `<label class="tr-rfield line" data-ri="${i}"><span>${id === "blend" ? t("trc.rib.purple") : t("trc.rib.flagging")}</span><select data-rmode="${id}" ${dis}>${list.map(([k, l]) => `<option value="${k}" ${k === cur ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
     }
-    return `<div class="tr-rmodes">${list.map(([k, l, t]) => {
-      const i = reg({ t: "small", label: id === "blend" ? `Violet : ${l}` : `Balisage : ${l.toLowerCase()}`, tip: t || (k === "none" ? "Interposte non balisé." : k === "all" ? "Tout l'interposte balisé." : k === "begin" ? "Le début de l'interposte balisé." : "La fin de l'interposte balisée (vers l'arrivée).") });
+    return `<div class="tr-rmodes">${list.map(([k, l, d]) => {
+      const i = reg({ t: "small", label: id === "blend" ? t("trc.rib.blendMode", { mode: l }) : t("trc.rib.flagMode", { mode: l.toLowerCase() }), tip: d || (k === "none" ? t("trc.rib.flagNoneTip") : k === "all" ? t("trc.rib.flagAllTip") : k === "begin" ? t("trc.rib.flagBeginTip") : t("trc.rib.flagEndTip")) });
       return `<button type="button" class="tr-rmode" data-ri="${i}" data-rmode="${id}" data-v="${k}" aria-pressed="${k === cur}" ${dis}>${preview(id, k)}<span>${esc(l)}</span></button>`;
     }).join("")}</div>`;
   }
@@ -279,20 +280,21 @@ export function mountRibbon(E) {
   // ---- the groups and the tabs -------------------------------------------------------------------------------------------------
   function groupHtml(g, mode, folded) {
     if (folded) {
-      const first = firstIcon(g.items) || "dots", i = reg({ t: "group", label: g.title || "Plus", tip: `Le groupe « ${g.title || "Plus"} », replié faute de place : un clic l'ouvre.` });
-      if (mode === "line") return `<div class="tr-rgrp folded"><button type="button" class="tr-rsmall" data-ri="${i}" data-rfold="${esc(g.id)}" aria-haspopup="true">${svg(first, 16)}<span class="tr-rl">${esc(g.title || "Plus")}</span><span class="tr-rcaret">▾</span></button></div>`;
-      return `<div class="tr-rgrp folded"><div class="tr-rgrp-body"><button type="button" class="tr-rbig" data-ri="${i}" data-rfold="${esc(g.id)}" aria-haspopup="true">${svg(first, 26)}<span class="tr-rl">${esc(g.title || "Plus")} ▾</span></button></div><div class="tr-rgrp-t">&nbsp;</div></div>`;
+      const name = g.title || t("trc.rib.more");
+      const first = firstIcon(g.items) || "dots", i = reg({ t: "group", label: name, tip: t("trc.rib.foldedGroupTip", { name }) });
+      if (mode === "line") return `<div class="tr-rgrp folded"><button type="button" class="tr-rsmall" data-ri="${i}" data-rfold="${esc(g.id)}" aria-haspopup="true">${svg(first, 16)}<span class="tr-rl">${esc(name)}</span><span class="tr-rcaret">▾</span></button></div>`;
+      return `<div class="tr-rgrp folded"><div class="tr-rgrp-body"><button type="button" class="tr-rbig" data-ri="${i}" data-rfold="${esc(g.id)}" aria-haspopup="true">${svg(first, 26)}<span class="tr-rl">${esc(name)} ▾</span></button></div><div class="tr-rgrp-t">&nbsp;</div></div>`;
     }
-    const li = g.launcher ? reg({ t: "small", act: g.launcher, label: launcherLabel(g.launcher), tip: "La fenêtre complète de ces réglages." }) : -1;
+    const li = g.launcher ? reg({ t: "small", act: g.launcher, label: launcherLabel(g.launcher), tip: t("trc.rib.launcherTip") }) : -1;
     return `<div class="tr-rgrp" data-g="${esc(g.id)}"><div class="tr-rgrp-body">${g.items.map((x) => itemHtml(x, mode)).join("")}</div>
       ${mode === "line" ? "" : `<div class="tr-rgrp-t">${esc(groupTitle(g))}</div>`}${li >= 0 && mode !== "line" ? `<button type="button" class="tr-rlaunch" data-ri="${li}" data-ract="${esc(g.launcher)}" aria-label="${esc(launcherLabel(g.launcher))}">${svg("launcher", 12)}</button>` : ""}</div>`;
   }
-  const launcherLabel = (act) => ({ "special-more": "Tous les objets spéciaux", standards: "Normes IOF", "course-props": "Propriétés du circuit", "print-area": "Zone d'impression", appearance: "Apparence des circuits" })[act] || "Plus de réglages";
+  const launcherLabel = (act) => ({ "special-more": t("trc.rib.allSpecials"), standards: t("trc.rib.launchStandards"), "course-props": t("trc.rib.courseProps"), "print-area": t("trc.rib.launchPrintArea"), appearance: t("trc.rib.launchAppearance") })[act] || t("trc.rib.launchMore");
   function groupTitle(g) {
-    if (R.tab === "ctx:control" && g.id === "ctl") { const c = ctl(); return c ? (c.kind === "normal" ? `Poste ${c.code}` : { start: "Départ", finish: "Arrivée", crossing: "Passage obligatoire", "map-issue": "Remise de carte", "map-exchange": "Échange de carte" }[c.kind] || "Poste") : g.title; }
+    if (R.tab === "ctx:control" && g.id === "ctl") { const c = ctl(); return c ? (c.kind === "normal" ? t("trc.rib.controlCode", { code: c.code }) : { start: t("trc.rib.start"), finish: t("trc.rib.finish"), crossing: t("trc.rib.crossing"), "map-issue": t("trc.rib.mapIssue"), "map-exchange": t("trc.rib.mapExchange") }[c.kind] || t("trc.rib.control")) : g.title; }
     if (R.tab === "ctx:special" && g.id === "obj") return A.SPECIAL_NAME[special()?.kind] || g.title;
-    if (R.tab === "ctx:leg" && g.id === "where") return "Interposte";
-    if (R.tab === "check" && g.id === "figures") return course() ? "Circuit en cours" : "L'événement";
+    if (R.tab === "ctx:leg" && g.id === "where") return t("trc.rib.leg");
+    if (R.tab === "check" && g.id === "figures") return course() ? t("trc.rib.currentCourse") : t("trc.rib.theEvent");
     return g.title;
   }
   const firstIcon = (items) => { for (const it of items) { if (it.icon) return it.icon; if (it.items) { const k = firstIcon(it.items); if (k) return k; } if (it.t === "gallery") return "special"; } return null; };
@@ -302,9 +304,9 @@ export function mountRibbon(E) {
     return groups.map((g, i) => groupHtml(g, mode, i >= groups.length - folded)).join("");
   }
   function tabsHtml() {
-    const tab = (t) => {
-      const b = t.badge ? badgeOf(t.badge) : null;
-      return `<button type="button" role="tab" class="tr-rtab${t.backstage ? " file" : ""}" data-rtab="${t.id}" aria-selected="${!t.backstage && R.tab === t.id}" ${E.blank && !t.backstage && t.id !== "home" ? 'data-blank="1"' : ""}>${esc(t.label)}${b ? ` <span class="tr-rbadge${softBadge(t.badge) ? " soft" : ""}" title="${t.badge === "issues" ? "Problèmes trouvés par le contrôle de l'événement" : "Commentaires de l'équipe encore ouverts"}">${b}</span>` : ""}</button>`;
+    const tab = (tb) => {
+      const b = tb.badge ? badgeOf(tb.badge) : null;
+      return `<button type="button" role="tab" class="tr-rtab${tb.backstage ? " file" : ""}" data-rtab="${tb.id}" aria-selected="${!tb.backstage && R.tab === tb.id}" ${E.blank && !tb.backstage && tb.id !== "home" ? 'data-blank="1"' : ""}>${esc(tb.label)}${b ? ` <span class="tr-rbadge${softBadge(tb.badge) ? " soft" : ""}" title="${esc(tb.badge === "issues" ? t("trc.rib.badgeIssues") : t("trc.rib.badgeComments"))}">${b}</span>` : ""}</button>`;
     };
     const ctx = R.ctx ? CONTEXT[R.ctx] : null;
     return `${TABS.map(tab).join("")}${ctx ? `<span class="tr-rctx${R.pulse ? " new" : ""}"><span class="tr-rctx-h">${esc(ctx.head)}</span><button type="button" role="tab" class="tr-rtab" data-rtab="ctx:${R.ctx}" aria-selected="${R.tab === `ctx:${R.ctx}`}">${esc(ctx.label)}</button></span>` : ""}`;
@@ -312,7 +314,7 @@ export function mountRibbon(E) {
   function render() {
     if (E.ui !== "ocn") return;
     hideTip();                                                   // its button may be drawn again
-    if (!host.firstChild) host.innerHTML = '<div class="tr-rtabs" role="tablist" aria-label="Onglets du ruban"></div><div class="tr-rbody" role="toolbar" aria-label="Commandes"></div>';
+    if (!host.firstChild) host.innerHTML = `<div class="tr-rtabs" role="tablist" aria-label="${esc(t("trc.rib.ariaTabs"))}"></div><div class="tr-rbody" role="toolbar" aria-label="${esc(t("trc.rib.ariaCommands"))}"></div>`;
     host.dataset.display = disp();
     host.classList.toggle("floating", wanted() === "folded" && R.floating);
     const tabsEl = host.querySelector(".tr-rtabs"), body = host.querySelector(".tr-rbody");
@@ -405,10 +407,10 @@ export function mountRibbon(E) {
       default:
     }
     if (PICK[act]) {
-      if (E.readOnly) { E.toast("Lecture seule."); return; }
+      if (E.readOnly) { E.toast(t("trc.rib.readOnly")); return; }
       E.pickOnce = (p) => { const [sx, sy] = E.toScreen(...p); D.action(E, act, null, { p, sx, sy }); };
       E.pickCancel = null;
-      E.help(`${PICK[act]} (Échap pour annuler).`);
+      E.help(t("trc.rib.pickHelp", { what: PICK[act] }));
       E.canvas.focus({ preventScroll: true });
       return;
     }
@@ -450,7 +452,7 @@ export function mountRibbon(E) {
     const b = e.target.closest("button[data-ract], button[data-rtool]");
     if (!b) return;
     const it = R.items[Number(b.dataset.ri)];
-    if (b.getAttribute("aria-disabled") === "true") { E.toast(it?.why || "Indisponible pour l'instant."); return; }
+    if (b.getAttribute("aria-disabled") === "true") { E.toast(it?.why || t("trc.rib.unavailable")); return; }
     if (b.dataset.rtool) { E.setTool(b.dataset.rtool); E.canvas.focus({ preventScroll: true }); if (wanted() === "folded") { R.floating = false; render(); } return; }
     run(b.dataset.ract, b);
   });
@@ -509,7 +511,7 @@ export function mountRibbon(E) {
     if (!b) return;
     e.preventDefault();
     const k = b.dataset.rtool ? `tool:${b.dataset.rtool}` : b.dataset.ract, inBar = qatList().includes(k);
-    D.popupMenu(E, e.clientX, e.clientY, [[inBar ? "qat-remove" : "qat-add", inBar ? "Retirer de la barre d'accès rapide" : "Ajouter à la barre d'accès rapide"], ["qat-menu", "Personnaliser la barre…"]], (a) => {
+    D.popupMenu(E, e.clientX, e.clientY, [[inBar ? "qat-remove" : "qat-add", inBar ? t("trc.rib.qatRemove") : t("trc.rib.qatAdd")], ["qat-menu", t("trc.rib.qatCustomise")]], (a) => {
       if (a === "qat-menu") { qatMenu(); return; }
       setQat(inBar ? qatList().filter((x) => x !== k) : [...qatList(), k]);
     });
@@ -517,12 +519,12 @@ export function mountRibbon(E) {
   function setField(id, el) {
     const f = FIELDS[id];
     if (!f || f.range) return;
-    if (f.num) { const v = Number(String(el.value).replace(",", ".")); if (!(v > 0.2 && v <= 5)) { el.value = f.get(); E.toast("Une proportion entre 0,3 et 3."); return; } f.set(Math.round(v * 100) / 100); return; }
+    if (f.num) { const v = Number(String(el.value).replace(",", ".")); if (!(v > 0.2 && v <= 5)) { el.value = f.get(); E.toast(t("trc.rib.proportion")); return; } f.set(Math.round(v * 100) / 100); return; }
     f.set(f.text ? el.value.trim() : el.value, el);
   }
   function setMode(id, v) {
     if (E.readOnly || E.blank) return;
-    if (id === "blend") E.change((x) => { x.appearance.blend = v; if (v === "layer" && x.appearance.lowerPurpleLayer == null) x.appearance.lowerPurpleLayer = defaultLayer(E.map); }, "Mélange du violet");
+    if (id === "blend") E.change((x) => { x.appearance.blend = v; if (v === "layer" && x.appearance.lowerPurpleLayer == null) x.appearance.lowerPurpleLayer = defaultLayer(E.map); }, t("trc.rib.undoBlend"));
     else if (id === "flag") D.action(E, `flag-${v}`, null);
   }
 
@@ -532,13 +534,13 @@ export function mountRibbon(E) {
   function setQat(list) { savePref("qat", list); renderQat(); }
   /** What a key of the bar is: an action, « tool:… » a tool, « undo », « redo ». */
   function qatInfo(k) {
-    if (k === "undo") return { act: "undo", label: "Annuler", icon: "undo", key: "Ctrl+Z" };
-    if (k === "redo") return { act: "redo", label: "Rétablir", icon: "redo", key: "Ctrl+Y" };
-    if (k === "pdf-course") return { act: k, label: "PDF de ce circuit", icon: "printer", tip: "Le PDF du circuit en cours, avec les derniers réglages." };
+    if (k === "undo") return { act: "undo", label: t("trc.rib.undo"), icon: "undo", key: "Ctrl+Z" };
+    if (k === "redo") return { act: "redo", label: t("trc.rib.redo"), icon: "redo", key: "Ctrl+Y" };
+    if (k === "pdf-course") return { act: k, label: t("trc.rib.pdfThisCourse"), icon: "printer", tip: t("trc.rib.pdfThisCourseTip") };
     if (k.startsWith("tool:special:")) { const sp = k.slice(13); return { t: "small", tool: k.slice(5), label: A.SPECIAL_NAME[sp] || sp, icon: ACT_OF[sp] || sp, need: "edit" }; }
     const tool = k.startsWith("tool:") ? k.slice(5) : null, c = commands().find((x) => (tool ? x.tool === tool : x.act === k));
     // the bar has no tab around it: a few names said in full
-    const full = { "course-props": "Propriétés du circuit", "pdf-courses": "PDF des circuits", "export-iof3": "IOF XML 3.0", "versions": "Versions", "comments": "Commentaires de l'équipe" }[k];
+    const full = { "course-props": t("trc.rib.courseProps"), "pdf-courses": t("trc.rib.pdfCourses"), "export-iof3": "IOF XML 3.0", "versions": t("trc.rib.versions"), "comments": t("trc.rib.teamComments") }[k];
     if (c) return full ? { ...c, label: full } : c;
     for (const sec of BACKSTAGE) for (const [act, l, d] of [...(sec.items || []), ...(sec.groups || []).flatMap((g) => g[1])]) if (act === k) return { act, label: l, tip: d, icon: ACT_ICON_OF(act) };
     return { act: k, label: k, icon: ACT_ICON_OF(k) };
@@ -558,14 +560,14 @@ export function mountRibbon(E) {
     const b = e.target.closest("[data-qk]");
     if (!b) return;
     const it = qatInfo(b.dataset.qk);
-    if (b.getAttribute("aria-disabled") === "true") { E.toast(why(it) || "Indisponible pour l'instant."); return; }
+    if (b.getAttribute("aria-disabled") === "true") { E.toast(why(it) || t("trc.rib.unavailable")); return; }
     if (it.tool) E.setTool(it.tool); else run(it.act, b);
   });
   qatEl?.addEventListener("contextmenu", (e) => {
     const b = e.target.closest("[data-qk]");
     if (!b) return;
     e.preventDefault();
-    D.popupMenu(E, e.clientX, e.clientY, [["qat-remove", "Retirer de la barre d'accès rapide"], ["qat-menu", "Personnaliser la barre…"]], (a) => {
+    D.popupMenu(E, e.clientX, e.clientY, [["qat-remove", t("trc.rib.qatRemove")], ["qat-menu", t("trc.rib.qatCustomise")]], (a) => {
       if (a === "qat-menu") qatMenu(); else setQat(qatList().filter((x) => x !== b.dataset.qk));
     });
   });
@@ -574,9 +576,9 @@ export function mountRibbon(E) {
     const list = qatList(), r = (qatMore || qatEl).getBoundingClientRect();
     const extra = list.filter((k) => !QAT_CHOICES.includes(k));
     const items = [...QAT_CHOICES, ...extra].map((k) => [k, `${qatInfo(k).label}${list.includes(k) ? "  ✓" : ""}`]);
-    D.popupMenu(E, Math.max(8, r.left - 120), r.bottom + 4, [...items, "-", ["qat-reset", "Les boutons par défaut"], ["qat-help", "Une autre commande : clic droit sur son bouton dans le ruban"]], (k) => {
+    D.popupMenu(E, Math.max(8, r.left - 120), r.bottom + 4, [...items, "-", ["qat-reset", t("trc.rib.qatDefaults")], ["qat-help", t("trc.rib.qatOther")]], (k) => {
       if (k === "qat-reset") { setQat(null); return; }
-      if (k === "qat-help") { E.toast("Clic droit sur un bouton du ruban, puis « Ajouter à la barre d'accès rapide »."); return; }
+      if (k === "qat-help") { E.toast(t("trc.rib.qatHelp")); return; }
       setQat(list.includes(k) ? list.filter((x) => x !== k) : [...list, k]);
     });
   }
@@ -604,7 +606,7 @@ export function mountRibbon(E) {
       if (m) { setMode(m.dataset.rmode, m.dataset.v); closePops(); return; }
       if (!b) return;
       const it = R.items[Number(b.dataset.ri)];
-      if (b.getAttribute("aria-disabled") === "true") { E.toast(it?.why || "Indisponible pour l'instant."); return; }
+      if (b.getAttribute("aria-disabled") === "true") { E.toast(it?.why || t("trc.rib.unavailable")); return; }
       closePops();
       if (b.dataset.rtool) E.setTool(b.dataset.rtool); else run(b.dataset.ract, b);
     });
@@ -617,9 +619,9 @@ export function mountRibbon(E) {
   dispBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     const r = dispBtn.getBoundingClientRect(), c = chosen(), on = (k) => ((c || "auto") === k ? " ✓" : "");
-    D.popupMenu(E, r.right - 290, r.bottom + 4, [["ribbon-auto", `Automatique (${FW.isFull() ? "les onglets seuls en plein écran" : "selon la hauteur de la fenêtre"})${on("auto")}`],
-      ["ribbon-full", `Ruban complet${on("full")}`], ["ribbon-line", `Une seule ligne${on("line")}`], ["ribbon-folded", `Les onglets seuls (Ctrl+F1)${on("folded")}`], "-",
-      ["ui-classic", "Mode Purple Pen : les menus"], "-", ["keytips", "Raccourcis du ruban (Alt)"], ["guide", "Le guide du tracé"]], (a) => run(a, dispBtn));
+    D.popupMenu(E, r.right - 290, r.bottom + 4, [["ribbon-auto", `${t("trc.rib.dispAuto", { how: FW.isFull() ? t("trc.rib.dispAutoFw") : t("trc.rib.dispAutoPage") })}${on("auto")}`],
+      ["ribbon-full", `${t("trc.rib.dispFull")}${on("full")}`], ["ribbon-line", `${t("trc.rib.dispLine")}${on("line")}`], ["ribbon-folded", `${t("trc.rib.dispFolded")}${on("folded")}`], "-",
+      ["ui-classic", t("trc.rib.uiPp")], "-", ["keytips", t("trc.rib.keytips")], ["guide", t("trc.rib.guide")]], (a) => run(a, dispBtn));
   });
 
   // ---- tooltips ----------------------------------------------------------------------------------------------------------------
@@ -631,11 +633,11 @@ export function mountRibbon(E) {
     hideTip(); tipFor = el;
     tipTimer = setTimeout(() => {
       if (!document.contains(el)) return;
-      const old = it.act ? menuAt(it.act) : it.tool ? "la barre d'outils" : "";
+      const old = it.act ? menuAt(it.act) : it.tool ? t("trc.rib.toolbar") : "";
       tip = document.createElement("div");
       tip.className = "tr-rtip"; tip.setAttribute("role", "tooltip");
       tip.innerHTML = `<b><span>${esc(it.label)}</span>${it.key ? `<kbd>${esc(it.key)}</kbd>` : ""}</b>${it.tip ? `<p>${esc(it.tip)}</p>` : ""}${it.why ? `<p class="tr-rtip-why">${esc(it.why)}</p>` : ""}
-        ${old ? `<p class="tr-rtip-old">Mode Purple Pen : ${esc(old)}</p>` : ""}<p class="tr-rtip-more">F1 : le guide du tracé</p>`;
+        ${old ? `<p class="tr-rtip-old">${esc(t("trc.rib.tipPp", { where: old }))}</p>` : ""}<p class="tr-rtip-more">${esc(t("trc.rib.tipF1"))}</p>`;
       document.body.appendChild(tip);
       const r = el.getBoundingClientRect();
       tip.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - tip.offsetWidth - 8))}px`;
@@ -656,11 +658,11 @@ export function mountRibbon(E) {
     closePops(); hideTip();
     E.$(".tr-bs")?.remove();
     const bs = document.createElement("div");
-    bs.className = "tr-bs"; bs.setAttribute("role", "dialog"); bs.setAttribute("aria-label", "Fichier");
+    bs.className = "tr-bs"; bs.setAttribute("role", "dialog"); bs.setAttribute("aria-label", TABS[0].label);
     bs.style.top = `${E.$(".tr-top").offsetHeight}px`;
     E.root.appendChild(bs);
     const draw = (s) => {
-      bs.innerHTML = `<nav class="tr-bs-nav"><button type="button" class="tr-bs-back" data-bs-close>← Revenir au tracé</button>
+      bs.innerHTML = `<nav class="tr-bs-nav"><button type="button" class="tr-bs-back" data-bs-close>${esc(t("trc.rib.bsBack"))}</button>
         ${BACKSTAGE.map((x) => `<button type="button" data-bs="${x.id}" ${x.act ? `data-bs-act="${x.act}"` : ""} aria-current="${x.id === s}">${svg(x.icon, 18)}<span>${esc(x.label)}</span></button>`).join("")}</nav>
         <div class="tr-bs-main">${pageHtml(s)}</div>`;
     };
@@ -688,33 +690,33 @@ export function mountRibbon(E) {
   function pageHtml(s) {
     const sec = BACKSTAGE.find((x) => x.id === s);
     if (s === "info") {
-      if (E.blank) return `<h3>Aucun événement ouvert</h3><p class="tr-bs-sub">Créez un événement, ouvrez l'un des vôtres, ou importez un fichier O'CN (.ocnt) ou Purple Pen (.ppen).</p>
-        <div class="tr-bs-cards">${card(["start-new", "Nouvel événement", "Une compétition de votre club ou un entraînement, sur sa carte."])}${card(["start-open", "Ouvrir un événement", "Un de ceux que vous avez créés ou dont l'équipe vous compte."])}${card(["start-import", "Importer un événement", "Un fichier O'CN (.ocnt) ou Purple Pen (.ppen) et sa carte."])}</div>`;
+      if (E.blank) return `<h3>${esc(t("trc.rib.bsNoEvent"))}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsNoEventSub"))}</p>
+        <div class="tr-bs-cards">${card(["start-new", t("trc.rib.bsNewEvent"), t("trc.rib.bsNewEventDesc")])}${card(["start-open", t("trc.rib.bsOpenEvent"), t("trc.rib.bsOpenEventDesc")])}${card(["start-import", t("trc.rib.bsImportEvent"), t("trc.rib.bsImportEventDesc")])}</div>`;
       const ev = E.ev, m = E.meta || {}, n = Object.values(ev.controls).filter((c) => c.kind === "normal").length;
-      const map = E.map ? (E.map.kind === "vector" ? (E.map.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${E.map.version || ""}`) : E.map.kind === "pdf" ? "PDF" : "Image") : "aucune";
-      const role = { owner: "créateur", setter: "traceur", controller: "contrôleur", viewer: "lecteur" }[E.role] || E.role || "";
-      return `<h3>${esc(ev.title.replace(/\|/g, " ") || m.title || "Événement")}</h3><p class="tr-bs-sub">${m.kind === "race" ? "Compétition" : "Entraînement"}${m.date ? ` · ${new Date(m.date).toLocaleDateString("fr-FR", { dateStyle: "long" })}` : ""}</p>
-        <dl class="tr-bs-info"><dt>Carte</dt><dd>${esc(ev.map.file || m.map?.name || "")} · ${esc(map)} · 1:${nf(ev.map.scale)}${hasGeo(ev) ? " · géoréférencée" : ""}</dd>
-          <dt>Circuits</dt><dd>${M.courseIds(ev).map((id) => esc(ev.courses[id].name)).join(", ") || "aucun"} · ${n} postes</dd>
-          <dt>Votre rôle</dt><dd>${esc(role)}${E.readOnly ? " · lecture seule" : ""}</dd><dt>Chiffrement</dt><dd>${E.key ? "oui, avec la phrase de passe de l'équipe" : "non"}</dd>
-          <dt>Enregistré</dt><dd>${E.lastSaved ? `à ${E.lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "tout seul, après chaque changement"}</dd></dl>
-        <div class="tr-bs-cards">${card(["event-props", "Propriétés", "Le titre, l'échelle de la carte, la langue des définitions, des notes."])}${card(["team", "L'équipe", "Les membres de l'équipe et leur rôle."])}${card(["encryption", "Le chiffrement", "Une phrase de passe de l'équipe."])}</div>`;
+      const map = E.map ? (E.map.kind === "vector" ? (E.map.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${E.map.version || ""}`) : E.map.kind === "pdf" ? "PDF" : t("trc.rib.mapImage")) : t("trc.rib.mapNone");
+      const role = { owner: t("trc.rib.roleOwner"), setter: t("trc.rib.roleSetter"), controller: t("trc.rib.roleController"), viewer: t("trc.rib.roleViewer") }[E.role] || E.role || "";
+      return `<h3>${esc(ev.title.replace(/\|/g, " ") || m.title || t("trc.rib.event"))}</h3><p class="tr-bs-sub">${esc(m.kind === "race" ? t("trc.rib.competition") : t("trc.rib.training"))}${m.date ? ` · ${new Date(m.date).toLocaleDateString(locale(), { dateStyle: "long" })}` : ""}</p>
+        <dl class="tr-bs-info"><dt>${esc(t("trc.rib.bsMap"))}</dt><dd>${esc(ev.map.file || m.map?.name || "")} · ${esc(map)} · 1:${nf(ev.map.scale)}${hasGeo(ev) ? ` · ${esc(t("trc.rib.georefShort"))}` : ""}</dd>
+          <dt>${esc(t("trc.rib.bsCourses"))}</dt><dd>${M.courseIds(ev).map((id) => esc(ev.courses[id].name)).join(", ") || esc(t("trc.rib.none"))} · ${esc(tn("trc.rib.nControls", n))}</dd>
+          <dt>${esc(t("trc.rib.bsRole"))}</dt><dd>${esc(role)}${E.readOnly ? ` · ${esc(t("trc.rib.readOnlyShort"))}` : ""}</dd><dt>${esc(t("trc.rib.bsEncryption"))}</dt><dd>${esc(E.key ? t("trc.rib.encryptedYes") : t("trc.rib.encryptedNo"))}</dd>
+          <dt>${esc(t("trc.rib.bsSaved"))}</dt><dd>${esc(E.lastSaved ? t("trc.rib.savedAt", { time: E.lastSaved.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : t("trc.rib.savedAuto"))}</dd></dl>
+        <div class="tr-bs-cards">${card(["event-props", t("trc.rib.bsProps"), t("trc.rib.bsPropsDesc")])}${card(["team", t("trc.rib.bsTeam"), t("trc.rib.bsTeamDesc")])}${card(["encryption", t("trc.rib.bsEncryptionCard"), t("trc.rib.bsEncryptionDesc")])}</div>`;
     }
     if (s === "options") {
-      const ui = (k, t, d) => `<button type="button" class="tr-bs-card${E.ui === k ? " on" : ""}" data-bs-ui="${k}">${svg(k === "ocn" ? "ribbon" : "menu", 22)}<b>${t}${E.ui === k ? " ✓" : ""}</b><span>${d}</span></button>`;
-      const dp = (where, k, t, d) => { const on = (chosen(where) || "auto") === k; return `<button type="button" class="tr-bs-card${on ? " on" : ""}" data-bs-disp="${where}:${k}">${svg(k === "full" ? "ribbon" : k === "line" ? "minus" : k === "auto" ? "sliders" : "fit", 22)}<b>${t}${on ? " ✓" : ""}</b><span>${d}</span></button>`; };
+      const ui = (k, label, d) => `<button type="button" class="tr-bs-card${E.ui === k ? " on" : ""}" data-bs-ui="${k}">${svg(k === "ocn" ? "ribbon" : "menu", 22)}<b>${esc(label)}${E.ui === k ? " ✓" : ""}</b><span>${esc(d)}</span></button>`;
+      const dp = (where, k, label, d) => { const on = (chosen(where) || "auto") === k; return `<button type="button" class="tr-bs-card${on ? " on" : ""}" data-bs-disp="${where}:${k}">${svg(k === "full" ? "ribbon" : k === "line" ? "minus" : k === "auto" ? "sliders" : "fit", 22)}<b>${esc(label)}${on ? " ✓" : ""}</b><span>${esc(d)}</span></button>`; };
       const qat = (loadPref("qat", null) || QAT_DEFAULT).map((k) => qatInfo(k).label).join(", ");
-      return `<h3>Options</h3><p class="tr-bs-sub">Gardées sur ce navigateur.</p>
-        <h4>L'interface</h4><div class="tr-bs-cards">${ui("ocn", "Mode O'CN : le ruban", "Les commandes par onglets, dans l'ordre du travail, et celles de l'objet choisi dans son propre onglet. Par défaut.")}
-          ${ui("pp", "Mode Purple Pen : les menus", "Les menus Fichier, Événement, Circuit, Rapports, Affichage et la barre d'outils, comme dans Purple Pen.")}</div>
-        <h4>Le ruban dans la page</h4><div class="tr-bs-cards">${dp("ribbon", "auto", "Automatique", "Le ruban complet, ou une seule ligne quand la fenêtre a moins de 800 points de haut.")}${dp("ribbon", "full", "Complet", "Les grands boutons et leurs noms.")}
-          ${dp("ribbon", "line", "Une seule ligne", "Une rangée de petits boutons : plus de place pour la carte.")}${dp("ribbon", "folded", "Les onglets seuls", "Le ruban s'ouvre sur la carte au clic d'un onglet (Ctrl+F1).")}</div>
-        <h4>Le ruban en plein écran (⤢)</h4><div class="tr-bs-cards">${dp("ribbonFw", "auto", "Automatique", "Les onglets seuls : la carte a tout l'écran, le ruban s'ouvre au clic d'un onglet.")}${dp("ribbonFw", "full", "Complet", "Le ruban entier, comme dans la page.")}${dp("ribbonFw", "line", "Une seule ligne", "Une rangée de petits boutons.")}</div>
-        <h4>La barre d'accès rapide</h4><p class="tr-bs-sub">En haut, à côté du titre : ${esc(qat)}. Son ▾ en ajoute ou en retire ; un clic droit sur un bouton du ruban l'y ajoute.</p>
-        <div class="tr-bs-cards">${card(["qat-reset", "Les boutons par défaut", "Annuler, Rétablir, PDF de ce circuit, Contrôle de l'événement, Propriétés du circuit."])}</div>
-        <h4>Les fichiers</h4><div class="tr-bs-cards">${card(["save-to", "Plusieurs fichiers", "Quand une commande crée plusieurs fichiers : un dossier choisi, ou un seul .zip."])}</div>`;
+      return `<h3>${esc(t("trc.rib.optOptions"))}</h3><p class="tr-bs-sub">${esc(t("trc.rib.optKept"))}</p>
+        <h4>${esc(t("trc.rib.optInterface"))}</h4><div class="tr-bs-cards">${ui("ocn", t("trc.rib.uiOcn"), t("trc.rib.uiOcnDesc"))}
+          ${ui("pp", t("trc.rib.uiPp"), t("trc.rib.uiPpDesc"))}</div>
+        <h4>${esc(t("trc.rib.optRibbonPage"))}</h4><div class="tr-bs-cards">${dp("ribbon", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoPageDesc"))}${dp("ribbon", "full", t("trc.rib.optFull"), t("trc.rib.optFullDesc"))}
+          ${dp("ribbon", "line", t("trc.rib.optLine"), t("trc.rib.optLineDesc"))}${dp("ribbon", "folded", t("trc.rib.optFolded"), t("trc.rib.optFoldedDesc"))}</div>
+        <h4>${esc(t("trc.rib.optRibbonFw"))}</h4><div class="tr-bs-cards">${dp("ribbonFw", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoFwDesc"))}${dp("ribbonFw", "full", t("trc.rib.optFull"), t("trc.rib.optFullFwDesc"))}${dp("ribbonFw", "line", t("trc.rib.optLine"), t("trc.rib.optLineFwDesc"))}</div>
+        <h4>${esc(t("trc.rib.optQat"))}</h4><p class="tr-bs-sub">${esc(t("trc.rib.optQatWhere", { list: qat }))}</p>
+        <div class="tr-bs-cards">${card(["qat-reset", t("trc.rib.qatDefaults"), t("trc.rib.qatDefaultsDesc")])}</div>
+        <h4>${esc(t("trc.rib.optFiles"))}</h4><div class="tr-bs-cards">${card(["save-to", t("trc.rib.optSeveralFiles"), t("trc.rib.optSeveralFilesDesc")])}</div>`;
     }
-    if (sec?.groups) return `<h3>${esc(sec.label)}</h3><p class="tr-bs-sub">Chaque fichier, et à qui il sert.</p>${sec.groups.map(([t, items]) => `<h4>${esc(t)}</h4><div class="tr-bs-cards">${items.map(card).join("")}</div>`).join("")}`;
+    if (sec?.groups) return `<h3>${esc(sec.label)}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsEachFile"))}</p>${sec.groups.map(([title, items]) => `<h4>${esc(title)}</h4><div class="tr-bs-cards">${items.map(card).join("")}</div>`).join("")}`;
     if (sec?.items) return `<h3>${esc(sec.label)}</h3><div class="tr-bs-cards">${sec.items.map(card).join("")}</div>`;
     return "";
   }
@@ -724,11 +726,13 @@ export function mountRibbon(E) {
   let found = [];
   function index() {
     const out = commands().map((c) => ({ ...c, where: `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""}`, old: c.act ? menuAt(c.act) : "" }));
-    for (const k of Object.keys(A.SPECIAL_NAME)) out.push({ tool: `special:${k}`, label: A.SPECIAL_NAME[k], icon: ACT_OF[k] || k, tip: SPECIAL_TIP(k), tab: TABS[1], group: { title: "Objets spéciaux" }, where: "Tracer › Objets spéciaux", need: "edit", old: "" });
-    for (const s of BACKSTAGE) for (const [act, l, d] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!out.some((x) => x.act === act)) out.push({ act, label: l, tip: d, icon: ACT_ICON_OF(act), where: `Fichier › ${s.label}`, backstage: true, old: menuAt(act) });
-    out.push({ act: "ui-classic", label: "Mode Purple Pen (les menus)", tip: "Revenir aux menus et à la barre d'outils de Purple Pen.", icon: "menu", where: "Fichier › Options", backstage: true, old: "" });
-    out.push({ act: "ribbon-line", label: "Ruban sur une seule ligne", tip: "", icon: "minus", where: "Affichage du ruban", backstage: true, old: "" });
-    out.push({ act: "ribbon-folded", label: "Replier le ruban", tip: "Ctrl+F1", icon: "fit", where: "Affichage du ruban", backstage: true, old: "" });
+    const specials = TABS[1].groups.find((g) => g.id === "specials")?.title || "";
+    for (const k of Object.keys(A.SPECIAL_NAME)) out.push({ tool: `special:${k}`, label: A.SPECIAL_NAME[k], icon: ACT_OF[k] || k, tip: SPECIAL_TIP(k), tab: TABS[1], group: { title: specials }, where: `${TABS[1].label} › ${specials}`, need: "edit", old: "" });
+    for (const s of BACKSTAGE) for (const [act, l, d] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!out.some((x) => x.act === act)) out.push({ act, label: l, tip: d, icon: ACT_ICON_OF(act), where: `${TABS[0].label} › ${s.label}`, backstage: true, old: menuAt(act) });
+    const options = BACKSTAGE.find((s) => s.id === "options")?.label || "";
+    out.push({ act: "ui-classic", label: t("trc.rib.searchUiPp"), tip: t("trc.rib.searchUiPpTip"), icon: "menu", where: `${TABS[0].label} › ${options}`, backstage: true, old: "" });
+    out.push({ act: "ribbon-line", label: t("trc.rib.searchLine"), tip: "", icon: "minus", where: t("trc.rib.searchDisplay"), backstage: true, old: "" });
+    out.push({ act: "ribbon-folded", label: t("trc.rib.searchFold"), tip: "Ctrl+F1", icon: "fit", where: t("trc.rib.searchDisplay"), backstage: true, old: "" });
     return out;
   }
   function showResults() {
@@ -741,12 +745,12 @@ export function mountRibbon(E) {
     found = found.filter((c, i) => found.findIndex((x) => (x.act || x.tool) === (c.act || c.tool) && x.ctx === c.ctx) === i).slice(0, 9);
     res.hidden = false;
     res.innerHTML = found.length ? found.map((c, i) => `<button type="button" data-fi="${i}" class="${i === 0 ? "on" : ""}">${svg(c.icon || "dots", 16)}<span>${esc(c.label)}</span><small>${esc(c.where)}</small></button>`).join("")
-      : '<p class="tr-rsearch-none">Aucune commande. Essayez « fourche », « gpx », « caler », « échelle »…</p>';
+      : `<p class="tr-rsearch-none">${esc(t("trc.rib.searchNone"))}</p>`;
   }
   async function choose(c) {
     res.hidden = true; search.value = ""; search.blur();
     if (c.ctx) {
-      if (R.ctx !== c.ctx) { E.toast(`« ${c.label} » est dans l'onglet « ${CONTEXT[c.ctx].label} », qui vient quand ${({ control: "un poste", leg: "un interposte", special: "un objet", drawing: "un tracé" })[c.ctx]} est choisi.`, 6000); return; }
+      if (R.ctx !== c.ctx) { E.toast(t("trc.rib.inCtxTab", { label: c.label, tab: CONTEXT[c.ctx].label, what: ({ control: t("trc.rib.aControl"), leg: t("trc.rib.aLeg"), special: t("trc.rib.anItem"), drawing: t("trc.rib.aDrawing") })[c.ctx] }), 6000); return; }
       R.tab = `ctx:${c.ctx}`;
     } else if (!c.backstage && c.tab?.id && c.tab.id !== "file") { if (!c.tab.id.startsWith("ctx:")) R.prevTab = c.tab.id; R.tab = c.tab.id; }
     render();
@@ -858,28 +862,29 @@ export function mountRibbon(E) {
 }
 
 /** The event audit's findings, one line each, the problems before the reminders (« Vérifier »: its count and its first lines). */
+// the audit's sections and rows are known by their id and tag (reports.js: section.id, row.tag), whatever the language
 function issueRows(rep) {
-  const out = [], plural = (n, w) => `${n} ${w}${n > 1 ? "s" : ""}`;
+  const out = [];
   for (const s of rep.sections) {
-    const t = s.title || "";
-    if (t === "Postes proches") { for (const r of s.rows) if (r[3]) out.push({ text: `Postes ${r[0]} à ${r[1]} : ${r[3].replace(/\s*\((IOF|sprint)[^)]*\)/g, "")}` }); }
-    else if (t === "Interpostes courus dans les deux sens") { for (let i = 0; i < s.rows.length; i += 2) out.push({ text: `Interposte ${s.rows[i][0]} couru dans les deux sens`, warn: true }); }
-    else if (t === "Postes inutilisés") out.push({ text: `${plural(s.rows.length, "poste")} inutilisé${s.rows.length > 1 ? "s" : ""}`, warn: true });
-    else if (t === "Éléments manquants") { for (const r of s.rows) out.push({ text: `${r[0]} : ${r[2].replace(/\s*\(.*\)/, "")}`, warn: r[1] === "Dénivelée" || r[1] === "Charge" }); }
-    else if (t === "Postes répétés") { for (const r of s.rows) out.push({ text: `${r[0]}, poste ${r[1]} : ${r[2]}` }); }
-    else if (t === "Définitions incomplètes") { for (const r of s.rows) out.push({ text: `Poste ${r[0]} : ${r[2]}`, warn: true }); }
-    else if (t.startsWith("Autres vérifications")) { for (const r of s.rows) out.push({ text: `${r[0] ? `${r[0]}, ` : ""}${r[1]} : ${r[2]}`, warn: /court|Aller-retour/.test(r[2]) }); }
+    const id = s.id || "";
+    if (id === "near") { for (const r of s.rows) if (r[3]) out.push({ text: t("trc.rib.issNear", { codes: r[0], dist: r[1], text: r[3].replace(/\s*\((IOF|sprint)[^)]*\)/g, "") }) }); }
+    else if (id === "both") { for (let i = 0; i < s.rows.length; i += 2) out.push({ text: t("trc.rib.issBoth", { leg: s.rows[i][0] }), warn: true }); }
+    else if (id === "unused") out.push({ text: tn("trc.rib.issUnused", s.rows.length), warn: true });
+    else if (id === "missing") { for (const r of s.rows) out.push({ text: t("trc.rib.issColon", { a: r[0], b: r[2].replace(/\s*\(.*\)/, "") }), warn: r.tag === "climb" || r.tag === "load" }); }
+    else if (id === "repeated") { for (const r of s.rows) out.push({ text: t("trc.rib.issRepeated", { course: r[0], control: r[1], text: r[2] }) }); }
+    else if (id === "descr") { for (const r of s.rows) out.push({ text: t("trc.rib.issDescr", { control: r[0], text: r[2] }), warn: true }); }
+    else if (id === "more") { for (const r of s.rows) out.push({ text: r[0] ? t("trc.rib.issMore", { course: r[0], obj: r[1], text: r[2] }) : t("trc.rib.issColon", { a: r[1], b: r[2] }), warn: r.tag === "short" || r.tag === "dog-leg" }); }
     else for (const r of s.rows) out.push({ text: r.filter(Boolean).join(" · "), warn: true });
   }
-  // « Circuit A : la dénivelée… »: the audit's sentences go on after a colon
-  for (const o of out) o.text = o.text.replace(/ : ([A-ZÀ-Ý])(?=[a-zà-ÿ])/g, (m, c) => ` : ${c.toLowerCase()}`);
+  // « Circuit A : la dénivelée… »: the audit's sentences go on after a colon (« : » in French, ":" in English)
+  for (const o of out) o.text = o.text.replace(/( ?:) ([A-ZÀ-Ý])(?=[a-zà-ÿ])/g, (m, p, c) => `${p} ${c.toLowerCase()}`);
   return out.sort((a, b) => (a.warn ? 1 : 0) - (b.warn ? 1 : 0));
 }
 
 // the special objects' icons and a word on each (the gallery, the search)
 const ACT_OF = { "first-aid": "firstaid", "optional-crossing-point": "crossing", "forbidden-route": "forbidden", "registration-mark": "regmark", "out-of-bounds": "oob",
   "dangerous-area": "danger", "temporary-construction": "construction", "white-out": "whiteout", rectangle: "rect" };
-const SPECIAL_TIP = (k) => (["text", "image", "rectangle", "ellipse"].includes(k) ? "Glisser un cadre sur la carte."
-  : ["boundary", "line"].includes(k) ? "Un clic par point, puis un double-clic (ou Entrée) pour finir."
-    : ["out-of-bounds", "dangerous-area", "temporary-construction", "white-out"].includes(k) ? "Un clic par sommet, puis un double-clic (ou Entrée) : la zone se ferme toute seule." : "Un clic à l'endroit voulu.");
+const SPECIAL_TIP = (k) => (["text", "image", "rectangle", "ellipse"].includes(k) ? t("trc.rib.spTipFrame")
+  : ["boundary", "line"].includes(k) ? t("trc.rib.spTipLine")
+    : ["out-of-bounds", "dangerous-area", "temporary-construction", "white-out"].includes(k) ? t("trc.rib.spTipArea") : t("trc.rib.spTipPoint"));
 const ACT_ICON_OF = (act) => ACT_ICON[act] || "dots";

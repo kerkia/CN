@@ -14,9 +14,10 @@ import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
 import { where } from "./ribbon-data.js";
 import { actIcon } from "./icons.js";
+import { t, tn, lang, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const nf = (v) => new Intl.NumberFormat("fr-FR").format(v);
+const nf = (v) => new Intl.NumberFormat(locale()).format(v);
 
 // ---- the modal box ---------------------------------------------------------------------------------------------------------
 // remember: a dialog that comes back with the choices made last time on this browser (the exports' format, resolution,
@@ -26,7 +27,7 @@ const recall = (k) => { try { return JSON.parse(localStorage.getItem(PREFS) || "
 const keepChoices = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PREFS) || "{}"); o.dialogs = { ...(o.dialogs || {}), [k]: v }; localStorage.setItem(PREFS, JSON.stringify(o)); } catch (e) { /* this visit */ } };
 const kept = (el) => el.name && !/^c\d+$/.test(el.name) && !["file", "password", "hidden", "submit", "button"].includes(el.type);
 /** A modal form: returns a promise of the form's values (an object by input name) or null when cancelled. */
-export function modal(E, { title, body, ok = "OK", cancel = "Annuler", wide = false, onOpen = null, validate = null, extra = "", remember = null }) {
+export function modal(E, { title, body, ok = "OK", cancel = t("trc.dlg.cancel"), wide = false, onOpen = null, validate = null, extra = "", remember = null }) {
   return new Promise((resolve) => {
     const m = document.createElement("div");
     m.className = "tr-modal";
@@ -90,7 +91,7 @@ export function dropZone(zone, onFiles) {
   host.addEventListener("dragleave", (e) => { if (e.target === host || e.target === zone) zone.classList.remove("over"); });
   host.addEventListener("drop", (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); zone.classList.remove("over"); take(e.dataTransfer.files); });
 }
-export const confirm = (E, text, okLabel, then) => modal(E, { title: "Confirmer", body: `<p>${esc(text)}</p>`, ok: okLabel }).then((v) => { if (v) then(); });
+export const confirm = (E, text, okLabel, then) => modal(E, { title: t("trc.dlg.confirm"), body: `<p>${esc(text)}</p>`, ok: okLabel }).then((v) => { if (v) then(); });
 const field = (label, input, hint = "") => `<label class="tr-field"><span>${esc(label)}</span>${input}${hint ? `<small>${esc(hint)}</small>` : ""}</label>`;
 const sel = (name, opts, cur) => `<select name="${name}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
 const num = (v) => { const x = Number(String(v).replace(",", ".")); return Number.isFinite(x) ? x : NaN; };
@@ -110,8 +111,8 @@ export function popupMenu(E, cx, cy, items, onPick) {
 }
 export function specialMenu(E, btn) {
   const r = btn.getBoundingClientRect();
-  const groups = [["Points", ["water", "first-aid", "optional-crossing-point", "forbidden-route", "registration-mark"]],
-    ["Lignes et zones", ["boundary", "out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "line"]], ["Cadres", ["text", "image", "rectangle", "ellipse"]]];
+  const groups = [[t("trc.dlg.grpPoints"), ["water", "first-aid", "optional-crossing-point", "forbidden-route", "registration-mark"]],
+    [t("trc.dlg.grpLines"), ["boundary", "out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "line"]], [t("trc.dlg.grpFrames"), ["text", "image", "rectangle", "ellipse"]]];
   const items = [];
   for (const [, ks] of groups) { if (items.length) items.push("-"); for (const k of ks) items.push([k, SPECIAL_NAME[k]]); }
   popupMenu(E, r.left, r.bottom + 4, items, (k) => E.setTool(`special:${k}`));
@@ -119,16 +120,16 @@ export function specialMenu(E, btn) {
 
 // ---- actions -------------------------------------------------------------------------------------------------------------------
 const lazy = { pdf: () => import("./pdf.js"), out: () => import("./exports.js"), rep: () => import("./reports.js"), relay: () => import("./relay.js"), more: () => import("./extras.js") };
-const needCourse = (E) => { if (!E.cd.course) { E.toast("Choisissez d'abord un circuit (onglet en haut)."); return false; } return true; };
-const needSel = (E, kind) => { if (E.sel?.kind !== kind && !(kind === "control" && E.sel?.kind === "number")) { E.toast(kind === "control" ? "Choisissez d'abord un poste." : "Choisissez d'abord un interposte."); return false; } return true; };
+const needCourse = (E) => { if (!E.cd.course) { E.toast(t("trc.dlg.needCourse")); return false; } return true; };
+const needSel = (E, kind) => { if (E.sel?.kind !== kind && !(kind === "control" && E.sel?.kind === "number")) { E.toast(kind === "control" ? t("trc.dlg.needControl") : t("trc.dlg.needLeg")); return false; } return true; };
 
 export async function action(E, act, btn, at = {}) {
   const ev = E.ev, s = E.sel;
-  const ro = () => { if (E.readOnly) { E.toast("Lecture seule."); return true; } return false; };
+  const ro = () => { if (E.readOnly) { E.toast(t("trc.dlg.readOnly")); return true; } return false; };
   // the start screen's three choices (pages/tracer.js), from the Fichier menu too
   if (act.startsWith("start-")) { E.onStart?.(act.slice(6)); return; }
   // no event open yet: only the start screen leads somewhere
-  if (E.blank && !["view-map", "view-course", "save-to", "ui-ribbon", "ui-classic"].includes(act)) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return; }
+  if (E.blank && !["view-map", "view-course", "save-to", "ui-ribbon", "ui-classic"].includes(act)) { E.toast(t("trc.dlg.needEvent")); E.onStart?.(); return; }
   switch (act) {
     case "save": await E.saveNow(true); break;
     case "export-ocn": exportOcn(E); break;
@@ -159,8 +160,8 @@ export async function action(E, act, btn, at = {}) {
     case "standards": if (!ro()) standards(E); break;
     case "numbering": if (!ro()) numbering(E); break;
     case "codes": if (!ro()) changeCodes(E); break;
-    case "renumber": if (!ro()) confirm(E, "Renuméroter tous les postes à partir du premier code de l'événement ?", "Renuméroter", () => E.change((x) => M.autoRenumber(x), "Renumérotation")); break;
-    case "remove-unused": if (!ro()) { const n = M.unusedControls(ev).length; if (!n) E.toast("Aucun poste inutilisé."); else confirm(E, `Supprimer ${n} poste(s) qui ne servent dans aucun circuit ?`, "Supprimer", () => E.change((x) => { M.removeUnused(x); }, "Postes inutilisés supprimés")); } break;
+    case "renumber": if (!ro()) confirm(E, t("trc.dlg.renumberAsk"), t("trc.dlg.renumber"), () => E.change((x) => M.autoRenumber(x), t("trc.dlg.renumbering"))); break;
+    case "remove-unused": if (!ro()) { const n = M.unusedControls(ev).length; if (!n) E.toast(t("trc.dlg.noUnused")); else confirm(E, tn("trc.dlg.removeUnusedAsk", n), t("trc.dlg.delete"), () => E.change((x) => { M.removeUnused(x); }, t("trc.dlg.unusedRemoved"))); } break;
     case "move-all": if (!ro()) moveAll(E); break;
     case "calage": if (!ro()) (await import("./calage.js")).calage(E, { fromPpen: false }); break;
     case "custom-text": if (!ro()) customText(E); break;
@@ -171,11 +172,11 @@ export async function action(E, act, btn, at = {}) {
     case "encryption": encryption(E); break;
     case "course-new": if (!ro()) courseProps(E, 0); break;
     case "course-props": if (!ro() && needCourse(E)) courseProps(E, E.cd.course); break;
-    case "course-dup": if (!ro() && needCourse(E)) { const v = await modal(E, { title: "Dupliquer le circuit", body: field("Nom de la copie", `<input name="name" value="${esc(E.course().name)} (copie)" required>`), ok: "Dupliquer" }); if (v?.name) { let id; E.change((x) => { id = M.duplicateCourse(x, E.cd.course, v.name.trim()); }, "Circuit dupliqué"); E.setCourse(id); } } break;
-    case "course-delete": if (!ro() && needCourse(E)) confirm(E, `Supprimer le circuit « ${E.course().name} » ? (ses postes restent dans « Tous les postes »)`, "Supprimer", () => { const id = E.cd.course; E.change((x) => M.deleteCourse(x, id), "Circuit supprimé"); E.setCourse(M.courseIds(E.ev)[0] || 0); }); break;
+    case "course-dup": if (!ro() && needCourse(E)) { const v = await modal(E, { title: t("trc.dlg.dupTitle"), body: field(t("trc.dlg.dupName"), `<input name="name" value="${esc(t("trc.dlg.copyName", { name: E.course().name }))}" required>`), ok: t("trc.dlg.dup") }); if (v?.name) { let id; E.change((x) => { id = M.duplicateCourse(x, E.cd.course, v.name.trim()); }, t("trc.dlg.duplicated")); E.setCourse(id); } } break;
+    case "course-delete": if (!ro() && needCourse(E)) confirm(E, t("trc.dlg.deleteCourseAsk", { name: E.course().name }), t("trc.dlg.delete"), () => { const id = E.cd.course; E.change((x) => M.deleteCourse(x, id), t("trc.dlg.courseDeleted")); E.setCourse(M.courseIds(E.ev)[0] || 0); }); break;
     case "course-order": if (!ro()) courseOrder(E); break;
     case "var-fork": case "var-loop": if (!ro() && needCourse(E) && needSel(E, "control")) addVariation(E, act === "var-loop"); break;
-    case "var-delete": if (!ro() && needCourse(E) && needSel(E, "control")) E.change((x) => M.deleteVariation(x, E.cd, s.cc), "Variante supprimée"); break;
+    case "var-delete": if (!ro() && needCourse(E) && needSel(E, "control")) E.change((x) => M.deleteVariation(x, E.cd, s.cc), t("trc.dlg.varDeleted")); break;
     case "relay": if (needCourse(E)) (await lazy.relay()).relayDialog(E); break;
     case "print-area": (await lazy.pdf()).printAreaDialog(E); break;
     case "part-options": if (!ro() && needCourse(E)) partOptions(E); break;
@@ -192,73 +193,73 @@ export async function action(E, act, btn, at = {}) {
     case "field": (await lazy.more()).fieldMode(E); break;
     case "view-course": E.fitCourse(); break;
     case "view-map": E.fitMap(); break;
-    case "view-all": E.opts.allControls = !E.opts.allControls; E.refresh(); E.toast(E.opts.allControls ? "Tous les postes affichés en pâle." : "Postes des autres circuits masqués."); break;
+    case "view-all": E.opts.allControls = !E.opts.allControls; E.refresh(); E.toast(E.opts.allControls ? t("trc.dlg.allShown") : t("trc.dlg.othersHidden")); break;
     case "view-printarea": E.opts.printArea = !E.opts.printArea; E.redraw(); break;
-    case "save-to": { const v = await modal(E, { title: "Plusieurs fichiers", body: `<label class="tr-check"><input type="radio" name="how" value="folder"> Les écrire dans un dossier de mon choix (Chrome, Edge)</label>
-      <label class="tr-check"><input type="radio" name="how" value="zip"> Les télécharger en un .zip</label><label class="tr-check"><input type="radio" name="how" value="" checked> Me demander à chaque fois</label>` });
+    case "save-to": { const v = await modal(E, { title: t("trc.dlg.severalFiles"), body: `<label class="tr-check"><input type="radio" name="how" value="folder"> ${esc(t("trc.dlg.saveToFolder"))}</label>
+      <label class="tr-check"><input type="radio" name="how" value="zip"> ${esc(t("trc.dlg.saveToZip"))}</label><label class="tr-check"><input type="radio" name="how" value="" checked> ${esc(t("trc.dlg.saveToAsk"))}</label>` });
       if (v) { try { const o = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); o.saveTo = v.how || null; localStorage.setItem("ocn.tr.prefs", JSON.stringify(o)); } catch (e) { /* not kept */ } } break; }
     case "view-others": (await lazy.more()).otherCourses(E); break;
     case "import-course": if (!ro()) (await lazy.more()).readCourseFromMap(E); break;
     case "take-lock": await E.takeLock(); break;
     case "route-draw": if (!ro() && s?.kind === "leg") { E.setTool("route"); const a = ev.controls[s.c1]; E.pending = { kind: "route", c1: s.c1, c2: s.c2, pts: [[a.x, a.y]] };
-      E.ghost = { pts: E.pending.pts.slice() }; E.help("Itinéraire : cliquer le long du chemin prévu, double-cliquer (ou Entrée) pour finir."); E.redraw(); } break;
+      E.ghost = { pts: E.pending.pts.slice() }; E.help(t("trc.dlg.routeHelp")); E.redraw(); } break;
     case "finish-draw": A.finishPending(E); break;
     case "cancel-draw": E.cancelPending?.(); break;
-    case "overprint": if (!ro()) E.change((x) => { x.appearance.ocadOverprint = !x.appearance.ocadOverprint; }, "Effets de surimpression"); break;
+    case "overprint": if (!ro()) E.change((x) => { x.appearance.ocadOverprint = !x.appearance.ocadOverprint; }, t("trc.dlg.overprint")); break;
     // right-click and pane buttons
     case "delete": A.deleteSelection(E); break;
     case "control-props": if (s?.control) controlProps(E, s.control); break;
     case "rotate": rotateStretch(E, "rotate"); break;
     case "stretch": rotateStretch(E, "stretch"); break;
-    case "toggle-exchange": if (!ro() && s?.cc) E.change((x) => { const cc = x.courseControls[s.cc]; cc.exchange = !cc.exchange; if (!cc.exchange) delete cc.flip; }, "Échange de carte"); break;
-    case "points": if (!ro() && s?.cc) { const v = await modal(E, { title: "Points du poste", body: field("Points", `<input name="p" type="number" min="0" value="${ev.courseControls[s.cc].points || 0}">`) }); if (v) E.change((x) => { x.courseControls[s.cc].points = Math.max(0, Math.round(num(v.p)) || 0); }, "Points"); } break;
+    case "toggle-exchange": if (!ro() && s?.cc) E.change((x) => { const cc = x.courseControls[s.cc]; cc.exchange = !cc.exchange; if (!cc.exchange) delete cc.flip; }, t("trc.dlg.mapExchange")); break;
+    case "points": if (!ro() && s?.cc) { const v = await modal(E, { title: t("trc.dlg.pointsTitle"), body: field(t("trc.dlg.points"), `<input name="p" type="number" min="0" value="${ev.courseControls[s.cc].points || 0}">`) }); if (v) E.change((x) => { x.courseControls[s.cc].points = Math.max(0, Math.round(num(v.p)) || 0); }, t("trc.dlg.points")); } break;
     case "text-before": case "text-after": if (!ro() && s?.control) textLine(E, { control: s.control, cc: s.cc, textKind: act === "text-before" ? "beforeCourseControl" : "afterCourseControl" }); break;
-    case "gap-add-circle": if (!ro() && s?.control && at.p) { const c = ev.controls[s.control], a = M.angleDeg([c.x, c.y], at.p), r = 10; E.change((x) => M.addCircleGap(x, s.control, M.gapScale(x, E.course()?.printScale || x.allControls.printScale), [c.x + Math.cos((a - r) * Math.PI / 180), c.y + Math.sin((a - r) * Math.PI / 180)], [c.x + Math.cos((a + r) * Math.PI / 180), c.y + Math.sin((a + r) * Math.PI / 180)]), "Coupure du cercle"); } break;
-    case "number-auto": if (!ro() && s?.control) E.change((x) => { if (s.cc && x.courseControls[s.cc]) delete x.courseControls[s.cc].number; else delete x.controls[s.control].codeAngle; }, "Numéro automatique"); break;
-    case "bend-add": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.addBend(x, s.c1, s.c2, M.nearest(M.legPoints(x, s.c1, s.c2), at.p).at), "Coude ajouté"); break;
-    case "bend-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "bend") E.change((x) => M.removeBend(x, h.c1, h.c2, h.pt), "Coude retiré"); break; }
-    case "gap-add-leg": if (!ro() && s?.kind === "leg" && at.p) { const pts = M.legPoints(ev, s.c1, s.c2), n = M.nearest(pts, at.p), w = 1.2 * (E.layout?.ratio || 1); E.change((x) => M.addLegGap(x, s.c1, s.c2, M.pointAt(pts, n.len - w), M.pointAt(pts, n.len + w)), "Coupure"); } break;
-    case "gap-remove-leg": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.removeLegGap(x, s.c1, s.c2, at.p), "Coupure refermée"); break;
-    case "route-clear": if (!ro() && s?.kind === "leg") E.change((x) => M.setLegRoute(x, s.c1, s.c2, null), "Itinéraire effacé"); break;
-    case "flag-none": case "flag-all": case "flag-begin": case "flag-end": if (!ro() && s?.kind === "leg") E.change((x) => M.setFlagging(x, s.c1, s.c2, act.slice(5)), "Balisage"); break;
+    case "gap-add-circle": if (!ro() && s?.control && at.p) { const c = ev.controls[s.control], a = M.angleDeg([c.x, c.y], at.p), r = 10; E.change((x) => M.addCircleGap(x, s.control, M.gapScale(x, E.course()?.printScale || x.allControls.printScale), [c.x + Math.cos((a - r) * Math.PI / 180), c.y + Math.sin((a - r) * Math.PI / 180)], [c.x + Math.cos((a + r) * Math.PI / 180), c.y + Math.sin((a + r) * Math.PI / 180)]), t("trc.dlg.circleGap")); } break;
+    case "number-auto": if (!ro() && s?.control) E.change((x) => { if (s.cc && x.courseControls[s.cc]) delete x.courseControls[s.cc].number; else delete x.controls[s.control].codeAngle; }, t("trc.dlg.numberAuto")); break;
+    case "bend-add": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.addBend(x, s.c1, s.c2, M.nearest(M.legPoints(x, s.c1, s.c2), at.p).at), t("trc.dlg.bendAdded")); break;
+    case "bend-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "bend") E.change((x) => M.removeBend(x, h.c1, h.c2, h.pt), t("trc.dlg.bendRemoved")); break; }
+    case "gap-add-leg": if (!ro() && s?.kind === "leg" && at.p) { const pts = M.legPoints(ev, s.c1, s.c2), n = M.nearest(pts, at.p), w = 1.2 * (E.layout?.ratio || 1); E.change((x) => M.addLegGap(x, s.c1, s.c2, M.pointAt(pts, n.len - w), M.pointAt(pts, n.len + w)), t("trc.dlg.gap")); } break;
+    case "gap-remove-leg": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.removeLegGap(x, s.c1, s.c2, at.p), t("trc.dlg.gapClosed")); break;
+    case "route-clear": if (!ro() && s?.kind === "leg") E.change((x) => M.setLegRoute(x, s.c1, s.c2, null), t("trc.dlg.routeCleared")); break;
+    case "flag-none": case "flag-all": case "flag-begin": case "flag-end": if (!ro() && s?.kind === "leg") E.change((x) => M.setFlagging(x, s.c1, s.c2, act.slice(5)), t("trc.dlg.flagging")); break;
     case "special-props": if (!ro() && s?.kind === "special") specialProps(E, s.id); break;
-    case "corner-add": if (!ro() && s?.kind === "special" && at.p) E.change((x) => M.addSpecialCorner(x, s.id, at.p), "Sommet ajouté"); break;
-    case "corner-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "corner") E.change((x) => M.removeSpecialCorner(x, h.id, h.pt), "Sommet retiré"); break; }
+    case "corner-add": if (!ro() && s?.kind === "special" && at.p) E.change((x) => M.addSpecialCorner(x, s.id, at.p), t("trc.dlg.cornerAdded")); break;
+    case "corner-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "corner") E.change((x) => M.removeSpecialCorner(x, h.id, h.pt), t("trc.dlg.cornerRemoved")); break; }
     case "displayed-courses": if (!ro() && s?.kind === "special") displayedCourses(E, s.id); break;
-    default: E.toast(`Action inconnue : ${act}`);
+    default: E.toast(t("trc.dlg.unknownAction", { act }));
   }
   void btn;
 }
 
 // ---- dialogs -------------------------------------------------------------------------------------------------------------------
 export async function eventTitle(E) {
-  const v = await modal(E, { title: "Titre de l'événement", body: field("Titre (une barre | sépare deux lignes)", `<input name="t" value="${esc(E.ev.title)}" required>`) });
-  if (v) E.change((x) => { x.title = v.t.trim(); }, "Titre");
+  const v = await modal(E, { title: t("trc.dlg.eventTitle"), body: field(t("trc.dlg.eventTitleField"), `<input name="t" value="${esc(E.ev.title)}" required>`) });
+  if (v) E.change((x) => { x.title = v.t.trim(); }, t("trc.dlg.title"));
 }
 /** The languages of Purple Pen's symbol file, by their own names (the event's, if another, kept). */
 export function langChoices(cur) {
   const L = languages(), up = (s, k) => { try { return s.charAt(0).toLocaleUpperCase(k) + s.slice(1); } catch (e) { return s; } };
-  const list = Object.entries(L).map(([k, v]) => [k, up(v.name || k, k)]).sort((a, b) => a[1].localeCompare(b[1], "fr"));
-  if (cur && !L[cur]) list.unshift([cur, `${cur} (pas dans le fichier de symboles : textes en anglais)`]);
+  const list = Object.entries(L).map(([k, v]) => [k, up(v.name || k, k)]).sort((a, b) => a[1].localeCompare(b[1], lang()));
+  if (cur && !L[cur]) list.unshift([cur, t("trc.dlg.langMissing", { lang: cur })]);
   return list;
 }
 /** The fonts a text object offers, with the one it already names (a .ppen may name any). */
 function fontChoices(cur) {
   const list = [["Arial", "Arial"], ["Roboto", "Roboto"], ["Roboto Condensed", "Roboto Condensed"], ["Times New Roman", "Times New Roman"], ["Courier New", "Courier New"]];
-  if (cur && !list.some(([v]) => v === cur)) list.push([cur, `${cur} (imprimée en ${FAMILY_LABEL[family(cur)]})`]);
+  if (cur && !list.some(([v]) => v === cur)) list.push([cur, t("trc.dlg.fontPrinted", { font: cur, family: FAMILY_LABEL[family(cur)] })]);
   return list;
 }
 async function eventProps(E) {
   const ev = E.ev;
   await loadSymbols();
-  const v = await modal(E, { title: "Propriétés de l'événement", body: `
-    ${field("Titre (une barre | sépare deux lignes sur les définitions)", `<input name="title" value="${esc(ev.title)}" required>`)}
-    ${field("Échelle de la carte (1:…)", `<input name="scale" value="${ev.map.scale}" inputmode="numeric" required>`, "L'échelle de la carte elle-même ; chaque circuit a son échelle d'impression.")}
-    ${ev.map.kind === "bitmap" ? field("Résolution de l'image (points par pouce)", `<input name="dpi" value="${ev.map.dpi}" inputmode="numeric">`, "Sert à mesurer les distances : vérifiez une distance connue.") : ""}
-    ${field("Échelle d'impression de « Tous les postes »", `<input name="acScale" value="${ev.allControls.printScale}" inputmode="numeric">`)}
-    ${field("Langue des définitions en texte", sel("lang", langChoices(ev.lang), ev.lang), "Les langues du fichier de symboles de Purple Pen")}
-    ${field("Notes", `<textarea name="notes" rows="3">${esc(ev.notes || "")}</textarea>`)}`,
-  validate: (o) => (!(num(o.scale) > 100) ? "Échelle de carte invalide." : ev.map.kind === "bitmap" && !(num(o.dpi) > 10) ? "Résolution invalide." : null) });
+  const v = await modal(E, { title: t("trc.dlg.eventProps"), body: `
+    ${field(t("trc.dlg.eventTitleDesc"), `<input name="title" value="${esc(ev.title)}" required>`)}
+    ${field(t("trc.dlg.mapScale"), `<input name="scale" value="${ev.map.scale}" inputmode="numeric" required>`, t("trc.dlg.mapScaleHint"))}
+    ${ev.map.kind === "bitmap" ? field(t("trc.dlg.dpi"), `<input name="dpi" value="${ev.map.dpi}" inputmode="numeric">`, t("trc.dlg.dpiHint")) : ""}
+    ${field(t("trc.dlg.acScale"), `<input name="acScale" value="${ev.allControls.printScale}" inputmode="numeric">`)}
+    ${field(t("trc.dlg.descLang"), sel("lang", langChoices(ev.lang), ev.lang), t("trc.dlg.descLangHint"))}
+    ${field(t("trc.dlg.notes"), `<textarea name="notes" rows="3">${esc(ev.notes || "")}</textarea>`)}`,
+  validate: (o) => (!(num(o.scale) > 100) ? t("trc.dlg.badMapScale") : ev.map.kind === "bitmap" && !(num(o.dpi) > 10) ? t("trc.dlg.badDpi") : null) });
   if (!v) return;
   if (!["fr", "en"].includes(v.lang)) await (await import("./symbols.js")).loadAllTexts();
   E.change((x) => {
@@ -266,7 +267,7 @@ async function eventProps(E) {
     const scale = num(v.scale);
     if (x.map.kind === "bitmap") { const dpi = num(v.dpi); x.map.w = x.map.w * x.map.dpi / dpi; x.map.h = x.map.h * x.map.dpi / dpi; x.map.dpi = dpi; }
     x.map.scale = scale; x.allControls.printScale = num(v.acScale) || scale; x.lang = v.lang;
-  }, "Propriétés de l'événement");
+  }, t("trc.dlg.eventProps"));
 }
 async function appearance(E) {
   const a = E.ev.appearance;
@@ -274,24 +275,24 @@ async function appearance(E) {
   const mp = mapPurple(E.map), dflt = mp || M.PURPLE, purple = a.purple || dflt, pct = (c) => c.map((x) => Math.round(x * 100)).join(" ");
   const cols = mapColors(E.map), vector = cols.length > 0;
   const layerId = cols.some(([id]) => id === a.lowerPurpleLayer) ? a.lowerPurpleLayer : defaultLayer(E.map);
-  const blends = [["none", "Aucun"], ["blend", "Mélange (le noir reste visible)"], ...(vector ? [["layer", "Couches (le violet sous les couleurs de la carte choisies)"]] : [])];
-  const v = await modal(E, { title: "Apparence des circuits", wide: true, body: `
+  const blends = [["none", t("trc.dlg.blendNone")], ["blend", t("trc.dlg.blendBlend")], ...(vector ? [["layer", t("trc.dlg.blendLayer")]] : [])];
+  const v = await modal(E, { title: t("trc.dlg.appearanceTitle"), wide: true, body: `
     <div class="tr-grid2">
-    ${field("Taille des cercles (× norme)", `<input name="cs" value="${a.controlCircleSize}">`)}
-    ${field("Épaisseur des traits (× norme)", `<input name="lw" value="${a.lineWidth}">`)}
-    ${field("Hauteur des numéros (× norme)", `<input name="nh" value="${a.numberHeight}">`)}
-    ${field("Point central (mm, 0 = aucun)", `<input name="dot" value="${a.centerDot}">`)}
-    ${field("Police des numéros", sel("font", [["Roboto", "Roboto"], ["Arial", "Arial (ISOM 2017)"]], a.numberFont))}
-    <label class="tr-check"><input type="checkbox" name="bold" ${a.numberBold ? "checked" : ""}> Numéros en gras</label>
-    ${field("Contour blanc des numéros (mm)", `<input name="outline" value="${a.numberOutline}">`)}
-    ${field("Coupure automatique des interpostes (mm)", `<input name="gap" value="${a.autoLegGap}">`, "0 : pas de coupure aux croisements")}
-    ${field("Taille selon l'échelle d'impression", sel("scaling", [["None", "Ne pas agrandir"], ["RelativeToMap", "Relative à l'échelle de la carte"], ["RelativeTo15000", "Relative au 1:15 000 (ISOM 2017)"]], a.itemScaling))}
-    ${field("Mélange du violet avec la carte", sel("blend", blends, a.blend === "layer" && !vector ? "blend" : a.blend), vector ? "" : "La mise en couches demande une carte OCAD ou OpenOrienteering Mapper.")}
-    ${vector ? field("Violet inférieur sous la couleur", sel("layer", cols.map(([id, n]) => [id, n]), layerId), "Mode « Couches » : les cercles et les traits passent sous les couleurs de la carte au-dessus de celle-ci ; les numéros restent dessus.") : ""}
-    <label class="tr-check"><input type="checkbox" name="dpurple" ${a.purple ? "" : "checked"}> Violet par défaut : ${esc(mp ? `celui de la carte (${pct(mp)})` : `IOF (${pct(M.PURPLE)})`)}</label>
-    ${field("Violet CMJN (%)", `<input name="cmyk" value="${pct(purple)}">`, "4 nombres : cyan magenta jaune noir")}
-    ${vector ? `<label class="tr-check"><input type="checkbox" name="over" ${a.ocadOverprint ? "checked" : ""}> Effets de surimpression de la carte (couleurs « surimpression » fondues, comme à l'impression)</label>` : ""}
-    <label class="tr-check"><input type="checkbox" name="descPurple" ${a.descriptionsPurple ? "checked" : ""}> Définitions sur la carte en violet</label>
+    ${field(t("trc.dlg.circleSize"), `<input name="cs" value="${a.controlCircleSize}">`)}
+    ${field(t("trc.dlg.lineWidth"), `<input name="lw" value="${a.lineWidth}">`)}
+    ${field(t("trc.dlg.numberHeight"), `<input name="nh" value="${a.numberHeight}">`)}
+    ${field(t("trc.dlg.centerDot"), `<input name="dot" value="${a.centerDot}">`)}
+    ${field(t("trc.dlg.numberFont"), sel("font", [["Roboto", "Roboto"], ["Arial", "Arial (ISOM 2017)"]], a.numberFont))}
+    <label class="tr-check"><input type="checkbox" name="bold" ${a.numberBold ? "checked" : ""}> ${esc(t("trc.dlg.numberBold"))}</label>
+    ${field(t("trc.dlg.numberOutline"), `<input name="outline" value="${a.numberOutline}">`)}
+    ${field(t("trc.dlg.autoLegGap"), `<input name="gap" value="${a.autoLegGap}">`, t("trc.dlg.autoLegGapHint"))}
+    ${field(t("trc.dlg.itemScaling"), sel("scaling", [["None", t("trc.dlg.scaleNone")], ["RelativeToMap", t("trc.dlg.scaleMap")], ["RelativeTo15000", t("trc.dlg.scale15000")]], a.itemScaling))}
+    ${field(t("trc.dlg.purpleBlend"), sel("blend", blends, a.blend === "layer" && !vector ? "blend" : a.blend), vector ? "" : t("trc.dlg.purpleBlendHint"))}
+    ${vector ? field(t("trc.dlg.lowerPurple"), sel("layer", cols.map(([id, n]) => [id, n]), layerId), t("trc.dlg.lowerPurpleHint")) : ""}
+    <label class="tr-check"><input type="checkbox" name="dpurple" ${a.purple ? "" : "checked"}> ${esc(t("trc.dlg.defaultPurple", { which: mp ? t("trc.dlg.purpleOfMap", { cmyk: pct(mp) }) : `IOF (${pct(M.PURPLE)})` }))}</label>
+    ${field(t("trc.dlg.purpleCmyk"), `<input name="cmyk" value="${pct(purple)}">`, t("trc.dlg.purpleCmykHint"))}
+    ${vector ? `<label class="tr-check"><input type="checkbox" name="over" ${a.ocadOverprint ? "checked" : ""}> ${esc(t("trc.dlg.mapOverprint"))}</label>` : ""}
+    <label class="tr-check"><input type="checkbox" name="descPurple" ${a.descriptionsPurple ? "checked" : ""}> ${esc(t("trc.dlg.descPurple"))}</label>
     </div>`,
   onOpen: (f) => {
     const sync = () => {
@@ -301,7 +302,7 @@ async function appearance(E) {
     };
     f.elements.dpurple.addEventListener("change", sync); f.elements.blend.addEventListener("change", sync); sync();
   },
-  validate: (o) => ([o.cs, o.lw, o.nh].some((x) => !(num(x) > 0)) ? "Les tailles doivent être positives." : !o.dpurple && o.cmyk.trim().split(/[\s,;]+/).length !== 4 ? "Quatre nombres pour le violet." : null) });
+  validate: (o) => ([o.cs, o.lw, o.nh].some((x) => !(num(x) > 0)) ? t("trc.dlg.sizesPositive") : !o.dpurple && o.cmyk.trim().split(/[\s,;]+/).length !== 4 ? t("trc.dlg.fourNumbers") : null) });
   if (!v) return;
   E.change((x) => {
     const ap = x.appearance;
@@ -312,12 +313,12 @@ async function appearance(E) {
     if (vector) ap.ocadOverprint = !!v.over;
     const cm = v.dpurple ? null : v.cmyk.trim().split(/[\s,;]+/).map((y) => Math.min(100, Math.max(0, num(y))) / 100);
     ap.purple = !cm || cm.every((y, i) => Math.abs(y - dflt[i]) < 0.005) ? null : cm;
-  }, "Apparence");
+  }, t("trc.dlg.appearance"));
 }
 async function standards(E) {
-  const v = await modal(E, { title: "Normes IOF", body: `
-    ${field("Définitions de postes", sel("desc", [["2018", "IOF 2018/2024"], ["2004", "IOF 2004"]], E.ev.descStandard))}
-    ${field("Carte (tailles des symboles)", sel("map", [["2017", "ISOM 2017 (forêt)"], ["Spr2019", "ISSprOM 2019 (sprint)"], ["2000", "ISOM 2000"]], E.ev.appearance.mapStandard))}` });
+  const v = await modal(E, { title: t("trc.dlg.standards"), body: `
+    ${field(t("trc.dlg.descStandard"), sel("desc", [["2018", "IOF 2018/2024"], ["2004", "IOF 2004"]], E.ev.descStandard))}
+    ${field(t("trc.dlg.mapStandard"), sel("map", [["2017", t("trc.dlg.isom2017")], ["Spr2019", "ISSprOM 2019 (sprint)"], ["2000", "ISOM 2000"]], E.ev.appearance.mapStandard))}` });
   if (v) applyStandards(E, v.desc, v.map);
 }
 /** The description and map standards (the dialog, the ribbon's fields). */
@@ -331,71 +332,71 @@ export function applyStandards(E, desc, map) {
       const old = symbol(id, desc === "2018" ? "2004" : "2018");
       return old?.repl && symbol(old.repl, desc) ? old.repl : id;
     });
-  }, "Normes IOF");
+  }, t("trc.dlg.standards"));
 }
 async function numbering(E) {
   const n = E.ev.numbering;
-  const v = await modal(E, { title: "Numérotation automatique", body: `${field("Premier code", `<input name="start" value="${n.start}" inputmode="numeric">`)}
-    <label class="tr-check"><input type="checkbox" name="inv" ${n.noInvertible ? "checked" : ""}> Éviter les codes lisibles à l'envers (61, 68, 86…)</label>
-    <label class="tr-check"><input type="checkbox" name="now"> Renuméroter tous les postes maintenant</label>`,
-  validate: (o) => (!(num(o.start) >= 1 && num(o.start) < 1000) ? "Un code de 1 à 999." : null) });
+  const v = await modal(E, { title: t("trc.dlg.autoNumbering"), body: `${field(t("trc.dlg.firstCode"), `<input name="start" value="${n.start}" inputmode="numeric">`)}
+    <label class="tr-check"><input type="checkbox" name="inv" ${n.noInvertible ? "checked" : ""}> ${esc(t("trc.dlg.noInvertible"))}</label>
+    <label class="tr-check"><input type="checkbox" name="now"> ${esc(t("trc.dlg.renumberNow"))}</label>`,
+  validate: (o) => (!(num(o.start) >= 1 && num(o.start) < 1000) ? t("trc.dlg.codeRange") : null) });
   if (!v) return;
-  E.change((x) => { x.numbering = { start: Math.round(num(v.start)), noInvertible: v.inv }; if (v.now) M.autoRenumber(x); }, "Numérotation");
+  E.change((x) => { x.numbering = { start: Math.round(num(v.start)), noInvertible: v.inv }; if (v.now) M.autoRenumber(x); }, t("trc.dlg.numbering"));
 }
 async function changeCodes(E) {
   const ids = Object.keys(E.ev.controls).map(Number).filter((id) => E.ev.controls[id].kind === "normal").sort((a, b) => M.compareControls(E.ev, a, b));
-  const v = await modal(E, { title: "Changer les codes", wide: true, body: `<div class="tr-codes">${ids.map((id) => `<label>${esc(E.ev.controls[id].code)} → <input name="c${id}" value="${esc(E.ev.controls[id].code)}" size="4" maxlength="3"></label>`).join("")}</div>`,
+  const v = await modal(E, { title: t("trc.dlg.changeCodes"), wide: true, body: `<div class="tr-codes">${ids.map((id) => `<label>${esc(E.ev.controls[id].code)} → <input name="c${id}" value="${esc(E.ev.controls[id].code)}" size="4" maxlength="3"></label>`).join("")}</div>`,
     validate: (o) => {
       const codes = ids.map((id) => o[`c${id}`].trim());
-      if (codes.some((c) => !c || c.length > 3 || /\s/.test(c))) return "Chaque code a de 1 à 3 caractères, sans espace.";
+      if (codes.some((c) => !c || c.length > 3 || /\s/.test(c))) return t("trc.dlg.codesFormat");
       const dup = codes.find((c, i) => codes.indexOf(c) !== i);
-      return dup ? `Le code ${dup} est en double.` : null;
+      return dup ? t("trc.dlg.codeTwice", { code: dup }) : null;
     } });
-  if (v) E.change((x) => { for (const id of ids) x.controls[id].code = v[`c${id}`].trim(); }, "Codes changés");
+  if (v) E.change((x) => { for (const id of ids) x.controls[id].code = v[`c${id}`].trim(); }, t("trc.dlg.codesChanged"));
 }
 async function moveAll(E) {
-  const v = await modal(E, { title: "Déplacer tous les postes", body: `<p>Après une mise à jour de la carte : décaler, tourner ou mettre à l'échelle tous les objets.</p>
-    <div class="tr-grid2">${field("Décalage vers la droite (mm)", '<input name="dx" value="0">')}${field("Décalage vers le haut (mm)", '<input name="dy" value="0">')}
-    ${field("Rotation (degrés, sens inverse des aiguilles)", '<input name="rot" value="0">')}${field("Facteur d'échelle", '<input name="k" value="1">')}</div>
-    <p class="tr-hint">Rotation et échelle autour du centre des postes.</p>` });
+  const v = await modal(E, { title: t("trc.dlg.moveAll"), body: `<p>${esc(t("trc.dlg.moveAllIntro"))}</p>
+    <div class="tr-grid2">${field(t("trc.dlg.shiftRight"), '<input name="dx" value="0">')}${field(t("trc.dlg.shiftUp"), '<input name="dy" value="0">')}
+    ${field(t("trc.dlg.rotation"), '<input name="rot" value="0">')}${field(t("trc.dlg.scaleFactor"), '<input name="k" value="1">')}</div>
+    <p class="tr-hint">${esc(t("trc.dlg.moveAllHint"))}</p>` });
   if (!v) return;
   const dx = num(v.dx) || 0, dy = num(v.dy) || 0, a = (num(v.rot) || 0) * Math.PI / 180, k = num(v.k) || 1;
   const cs = Object.values(E.ev.controls), cx = cs.reduce((s, c) => s + c.x, 0) / (cs.length || 1), cy = cs.reduce((s, c) => s + c.y, 0) / (cs.length || 1);
   const c = Math.cos(a) * k, sn = Math.sin(a) * k;
-  E.change((x) => M.transformAll(x, [c, -sn, sn, c, cx - c * cx + sn * cy + dx, cy - sn * cx - c * cy + dy]), "Tous les postes déplacés");
+  E.change((x) => M.transformAll(x, [c, -sn, sn, c, cx - c * cx + sn * cy + dx, cy - sn * cx - c * cy + dy]), t("trc.dlg.allMoved"));
 }
 export async function courseProps(E, courseId, focus = null) {
   const c = courseId ? E.ev.courses[courseId] : null;
   const isNew = !c;
   const d = c || { kind: "normal", name: "", printScale: E.ev.map.scale, climb: -1, length: null, secondary: "", descKind: "symbols", labels: "sequence", firstNumber: 1, scoreColumn: 0, hideFromReports: false, load: -1 };
-  const v = await modal(E, { title: isNew ? "Nouveau circuit" : `Propriétés du circuit ${c.name}`, wide: true, body: `<div class="tr-grid2">
-    ${field("Nom", `<input name="name" value="${esc(d.name)}" required>`)}
-    ${field("Type", sel("kind", [["normal", "Circuit normal"], ["score", "Circuit au score"]], d.kind))}
-    ${field("Catégories (2e ligne des définitions)", `<input name="secondary" value="${esc(d.secondary || "")}" placeholder="H21E, D21E">`, "Séparées par des virgules pour l'export IOF XML")}
-    ${field("Dénivelée (m, vide = aucune)", `<input name="climb" value="${d.climb >= 0 ? d.climb : ""}" inputmode="numeric">`)}
-    ${field("Longueur (km, vide = calculée)", `<input name="length" value="${d.length ?? ""}" inputmode="decimal">`)}
-    ${field("Échelle d'impression (1:…)", `<input name="ps" value="${d.printScale}" inputmode="numeric" required>`)}
-    ${field("Définitions", sel("descKind", [["symbols", "Symboles"], ["text", "Texte"], ["symbols-and-text", "Symboles et texte"]], d.descKind))}
-    ${field("Étiquettes des postes", sel("labels", [["sequence", "Numéro d'ordre"], ["code", "Code"], ["sequence-and-code", "Numéro et code (VTT)"], ["sequence-and-score", "Numéro et points"], ["code-and-score", "Code et points"], ["score", "Points"]], d.labels))}
-    ${field("Premier numéro", `<input name="first" value="${d.firstNumber}" inputmode="numeric">`)}
-    ${field("Points du score (colonne)", sel("scoreCol", [["0", "A"], ["1", "B"], ["7", "H"], ["-1", "aucune"]], d.scoreColumn ?? 0))}
-    ${field("Concurrents attendus", `<input name="load" value="${d.load >= 0 ? d.load : ""}" inputmode="numeric">`)}
-    <label class="tr-check"><input type="checkbox" name="hide" ${d.hideFromReports ? "checked" : ""}> Circuit d'essai (hors rapports)</label></div>`,
+  const v = await modal(E, { title: isNew ? t("trc.dlg.newCourse") : t("trc.dlg.courseProps", { name: c.name }), wide: true, body: `<div class="tr-grid2">
+    ${field(t("trc.dlg.name"), `<input name="name" value="${esc(d.name)}" required>`)}
+    ${field(t("trc.dlg.type"), sel("kind", [["normal", t("trc.dlg.normalCourse")], ["score", t("trc.dlg.scoreCourse")]], d.kind))}
+    ${field(t("trc.dlg.classes"), `<input name="secondary" value="${esc(d.secondary || "")}" placeholder="${esc(t("trc.dlg.classesPlaceholder"))}">`, t("trc.dlg.classesHint"))}
+    ${field(t("trc.dlg.climb"), `<input name="climb" value="${d.climb >= 0 ? d.climb : ""}" inputmode="numeric">`)}
+    ${field(t("trc.dlg.length"), `<input name="length" value="${d.length ?? ""}" inputmode="decimal">`)}
+    ${field(t("trc.dlg.printScale"), `<input name="ps" value="${d.printScale}" inputmode="numeric" required>`)}
+    ${field(t("trc.dlg.descriptions"), sel("descKind", [["symbols", t("trc.dlg.symbols")], ["text", t("trc.dlg.text")], ["symbols-and-text", t("trc.dlg.symbolsAndText")]], d.descKind))}
+    ${field(t("trc.dlg.labels"), sel("labels", [["sequence", t("trc.dlg.lblSequence")], ["code", t("trc.dlg.lblCode")], ["sequence-and-code", t("trc.dlg.lblSeqCode")], ["sequence-and-score", t("trc.dlg.lblSeqScore")], ["code-and-score", t("trc.dlg.lblCodeScore")], ["score", t("trc.dlg.points")]], d.labels))}
+    ${field(t("trc.dlg.firstNumber"), `<input name="first" value="${d.firstNumber}" inputmode="numeric">`)}
+    ${field(t("trc.dlg.scoreColumn"), sel("scoreCol", [["0", "A"], ["1", "B"], ["7", "H"], ["-1", t("trc.dlg.scoreColNone")]], d.scoreColumn ?? 0))}
+    ${field(t("trc.dlg.expected"), `<input name="load" value="${d.load >= 0 ? d.load : ""}" inputmode="numeric">`)}
+    <label class="tr-check"><input type="checkbox" name="hide" ${d.hideFromReports ? "checked" : ""}> ${esc(t("trc.dlg.testCourse"))}</label></div>`,
   onOpen: (f) => { if (focus) f.elements[focus]?.focus(); },
-  validate: (o) => (!o.name.trim() ? "Un nom." : !(num(o.ps) > 100) ? "Échelle d'impression invalide." : o.climb && !(num(o.climb) >= 0) ? "Dénivelée invalide." : o.length && !(num(o.length) > 0) ? "Longueur invalide." : null) });
+  validate: (o) => (!o.name.trim() ? t("trc.dlg.needName") : !(num(o.ps) > 100) ? t("trc.dlg.badPrintScale") : o.climb && !(num(o.climb) >= 0) ? t("trc.dlg.badClimb") : o.length && !(num(o.length) > 0) ? t("trc.dlg.badLength") : null) });
   if (!v) return;
   const props = { name: v.name.trim(), kind: v.kind, secondary: v.secondary.trim() || null, climb: v.climb === "" ? -1 : num(v.climb), length: v.length === "" ? null : num(v.length),
     printScale: num(v.ps), descKind: v.descKind, labels: v.kind === "score" ? v.labels : ["sequence", "code", "sequence-and-code"].includes(v.labels) ? v.labels : "sequence",
     firstNumber: Math.max(1, Math.round(num(v.first)) || 1), scoreColumn: v.kind === "score" ? Number(v.scoreCol) : -1, hideFromReports: v.hide, load: v.load === "" ? -1 : Math.round(num(v.load)) };
   if (isNew) {
     let id;
-    E.change((x) => { id = M.createCourse(x, props); Object.assign(x.courses[id], props); }, "Nouveau circuit");
+    E.change((x) => { id = M.createCourse(x, props); Object.assign(x.courses[id], props); }, t("trc.dlg.newCourse"));
     E.setCourse(id);
-  } else E.change((x) => Object.assign(x.courses[courseId], props), "Propriétés du circuit");
+  } else E.change((x) => Object.assign(x.courses[courseId], props), t("trc.dlg.courseProperties"));
 }
 async function courseOrder(E) {
   const ids = M.courseIds(E.ev);
-  const v = await modal(E, { title: "Ordre des circuits", body: `<ol class="tr-order">${ids.map((id) => `<li data-id="${id}"><span>${esc(E.ev.courses[id].name)}</span>
+  const v = await modal(E, { title: t("trc.dlg.courseOrder"), body: `<ol class="tr-order">${ids.map((id) => `<li data-id="${id}"><span>${esc(E.ev.courses[id].name)}</span>
     <button type="button" class="btn btn-sm" data-up>▲</button><button type="button" class="btn btn-sm" data-down>▼</button></li>`).join("")}</ol><input type="hidden" name="order">`,
   onOpen: (f) => {
     const list = f.querySelector(".tr-order");
@@ -408,39 +409,39 @@ async function courseOrder(E) {
     });
     sync();
   } });
-  if (v) E.change((x) => { v.order.split(",").map(Number).forEach((id, i) => { x.courses[id].order = i + 1; }); }, "Ordre des circuits");
+  if (v) E.change((x) => { v.order.split(",").map(Number).forEach((id, i) => { x.courses[id].order = i + 1; }); }, t("trc.dlg.courseOrder"));
 }
 async function addVariation(E, loop) {
   const prob = M.variationProblem(E.ev, E.cd, E.sel.cc);
-  if (prob) { E.toast({ all: "Pas de variante dans « Tous les postes ».", score: "Pas de variante dans un circuit au score.", none: "Choisissez un poste.", finish: "Pas de variante sur le dernier poste.", exists: "Une variante part déjà de ce poste." }[prob]); return; }
-  const v = await modal(E, { title: loop ? "Boucles" : "Fourche", body: field(loop ? "Nombre de boucles" : "Nombre de branches", `<input name="n" type="number" min="2" max="8" value="${loop ? 2 : 2}">`,
-    loop ? "Le poste choisi est le point de passage des boucles ; ajoutez ensuite les postes de chaque boucle." : "Ajoutez ensuite les postes de chaque branche : choisissez la branche avec le sélecteur de variante.") });
+  if (prob) { E.toast({ all: t("trc.dlg.varNoAll"), score: t("trc.dlg.varNoScore"), none: t("trc.dlg.chooseControl"), finish: t("trc.dlg.varNoLast"), exists: t("trc.dlg.varExists") }[prob]); return; }
+  const v = await modal(E, { title: loop ? t("trc.dlg.loops") : t("trc.dlg.fork"), body: field(loop ? t("trc.dlg.nLoops") : t("trc.dlg.nBranches"), `<input name="n" type="number" min="2" max="8" value="${loop ? 2 : 2}">`,
+    loop ? t("trc.dlg.loopsHint") : t("trc.dlg.forkHint")) });
   if (!v) return;
-  E.change((x) => M.addVariation(x, E.cd, E.sel.cc, loop, Math.max(2, Math.min(8, Math.round(num(v.n)) || 2))), loop ? "Boucles" : "Fourche");
+  E.change((x) => M.addVariation(x, E.cd, E.sel.cc, loop, Math.max(2, Math.min(8, Math.round(num(v.n)) || 2))), loop ? t("trc.dlg.loops") : t("trc.dlg.fork"));
 }
 async function partOptions(E) {
-  if (E.cd.part < 0) { E.toast("Choisissez une partie (au-dessus de la carte)."); return; }
+  if (E.cd.part < 0) { E.toast(t("trc.dlg.choosePart")); return; }
   const o = M.partOptions(E.ev, E.cd);
-  const v = await modal(E, { title: `Partie ${E.cd.part + 1}`, body: `<label class="tr-check"><input type="checkbox" name="sf" ${o.showFinish ? "checked" : ""}> Montrer l'arrivée sur cette partie</label>` });
-  if (v) E.change((x) => { x.courses[E.cd.course].partOptions = { ...(x.courses[E.cd.course].partOptions || {}), [E.cd.part]: { showFinish: v.sf } }; }, "Options de la partie");
+  const v = await modal(E, { title: t("trc.dlg.part", { n: E.cd.part + 1 }), body: `<label class="tr-check"><input type="checkbox" name="sf" ${o.showFinish ? "checked" : ""}> ${esc(t("trc.dlg.showFinish"))}</label>` });
+  if (v) E.change((x) => { x.courses[E.cd.course].partOptions = { ...(x.courses[E.cd.course].partOptions || {}), [E.cd.part]: { showFinish: v.sf } }; }, t("trc.dlg.partOptions"));
 }
 async function loads(E) {
   const ids = M.courseIds(E.ev);
-  const v = await modal(E, { title: "Charge des concurrents", body: `<p>Le nombre de concurrents attendus par circuit : la charge de chaque poste et interposte en découle.</p>
+  const v = await modal(E, { title: t("trc.dlg.loads"), body: `<p>${esc(t("trc.dlg.loadsIntro"))}</p>
     <table class="tr-table"><tbody>${ids.map((id) => `<tr><td>${esc(E.ev.courses[id].name)}</td><td><input name="l${id}" value="${E.ev.courses[id].load >= 0 ? E.ev.courses[id].load : ""}" size="5" inputmode="numeric"></td></tr>`).join("")}</tbody></table>
-    <p class="tr-hint">Inscriptions connues de la course : <button type="button" class="btn btn-sm" id="tr-loads-fill">Remplir d'après les inscriptions FFCO</button></p>`,
+    <p class="tr-hint">${esc(t("trc.dlg.loadsKnown"))} <button type="button" class="btn btn-sm" id="tr-loads-fill">${esc(t("trc.dlg.loadsFill"))}</button></p>`,
   onOpen: (f) => f.querySelector("#tr-loads-fill").addEventListener("click", async () => {
     const fill = await (await import("./extras.js")).registrationLoads(E);
     if (!fill) return;
     for (const id of ids) if (fill[id] != null) f.elements[`l${id}`].value = fill[id];
   }) });
-  if (v) E.change((x) => { for (const id of ids) x.courses[id].load = v[`l${id}`] === "" ? -1 : Math.max(0, Math.round(num(v[`l${id}`])) || 0); }, "Charge des concurrents");
+  if (v) E.change((x) => { for (const id of ids) x.courses[id].load = v[`l${id}`] === "" ? -1 : Math.max(0, Math.round(num(v[`l${id}`])) || 0); }, t("trc.dlg.loads"));
 }
 export async function customText(E, controlId = null) {
   if (controlId) {
     const c = E.ev.controls[controlId];
-    const v = await modal(E, { title: "Texte de la définition", body: field("Texte propre à ce poste (vide = texte calculé)", `<textarea name="t" rows="3">${esc(c.descText || "")}</textarea>`) });
-    if (v) E.change((x) => { x.controls[controlId].descText = v.t.trim() || undefined; if (!v.t.trim()) delete x.controls[controlId].descText; }, "Texte de la définition");
+    const v = await modal(E, { title: t("trc.dlg.descText"), body: field(t("trc.dlg.descTextField"), `<textarea name="t" rows="3">${esc(c.descText || "")}</textarea>`) });
+    if (v) E.change((x) => { x.controls[controlId].descText = v.t.trim() || undefined; if (!v.t.trim()) delete x.controls[controlId].descText; }, t("trc.dlg.descText"));
     return;
   }
   (await import("./extras.js")).customSymbolText(E);
@@ -449,31 +450,31 @@ export async function textLine(E, line) {
   const cc = line.cc ? E.ev.courseControls[line.cc] : null, c = E.ev.controls[line.control];
   const before = line.textKind?.startsWith("before"), onCourse = line.textKind?.includes("Course");
   const cur = onCourse ? (before ? cc?.before : cc?.after) : (before ? c.before : c.after);
-  const v = await modal(E, { title: before ? "Ligne de texte avant le poste" : "Ligne de texte après le poste", body: `${field("Texte (vide = pas de ligne ; | pour deux lignes)", `<input name="t" value="${esc(cur || "")}">`)}
-    <label class="tr-check"><input type="checkbox" name="all" ${!onCourse ? "checked" : ""}> Sur tous les circuits qui passent à ce poste</label>` });
+  const v = await modal(E, { title: before ? t("trc.dlg.textBefore") : t("trc.dlg.textAfter"), body: `${field(t("trc.dlg.textLineField"), `<input name="t" value="${esc(cur || "")}">`)}
+    <label class="tr-check"><input type="checkbox" name="all" ${!onCourse ? "checked" : ""}> ${esc(t("trc.dlg.textAllCourses"))}</label>` });
   if (!v) return;
   E.change((x) => {
     const t = v.t.trim() || undefined, key = before ? "before" : "after";
     if (v.all) { x.controls[line.control][key] = t; if (cc) delete x.courseControls[line.cc][key]; }
     else if (line.cc) { x.courseControls[line.cc][key] = t; }
     for (const o of [x.controls[line.control], line.cc ? x.courseControls[line.cc] : null]) if (o && !o[key]) delete o[key];
-  }, "Ligne de texte");
+  }, t("trc.dlg.textLine"));
 }
 export async function codeEdit(E, controlId) {
   const c = E.ev.controls[controlId];
-  const v = await modal(E, { title: "Code du poste", body: field("Code (1 à 3 caractères)", `<input name="code" value="${esc(c.code)}" maxlength="3" required>`),
-    validate: (o) => { const p = M.codeProblem(E.ev, o.code.trim()), other = M.findCode(E.ev, o.code.trim()); return p === "length" || p === "space" ? "1 à 3 caractères, sans espace." : other && other !== controlId ? "Ce code est déjà pris." : null; } });
-  if (v) E.change((x) => { x.controls[controlId].code = v.code.trim(); }, "Code changé");
+  const v = await modal(E, { title: t("trc.dlg.controlCode"), body: field(t("trc.dlg.codeField"), `<input name="code" value="${esc(c.code)}" maxlength="3" required>`),
+    validate: (o) => { const p = M.codeProblem(E.ev, o.code.trim()), other = M.findCode(E.ev, o.code.trim()); return p === "length" || p === "space" ? t("trc.dlg.codeFormat") : other && other !== controlId ? t("trc.dlg.codeTaken") : null; } });
+  if (v) E.change((x) => { x.controls[controlId].code = v.code.trim(); }, t("trc.dlg.codeChanged"));
 }
 export async function controlProps(E, controlId) {
   const c = E.ev.controls[controlId];
-  const v = await modal(E, { title: c.kind === "normal" ? `Poste ${c.code}` : "Départ", body: `
-    ${c.kind === "normal" ? field("Code", `<input name="code" value="${esc(c.code)}" maxlength="3">`) : ""}
-    ${field("Dimensions (colonne F)", `<input name="f" value="${esc(c.colF || "")}" placeholder="2.5, 3x4, 2/1">`)}
-    ${field("Texte de la définition (vide = calculé)", `<textarea name="t" rows="2">${esc(c.descText || "")}</textarea>`)}
-    ${field("Notes de l'équipe (non imprimées)", `<textarea name="notes" rows="2">${esc(c.notes || "")}</textarea>`)}
-    <p class="tr-hint">Les symboles se choisissent dans les cases des définitions, à gauche.</p>`,
-  validate: (o) => { if (c.kind !== "normal") return null; const p = M.codeProblem(E.ev, o.code.trim()), other = M.findCode(E.ev, o.code.trim()); return p === "length" || p === "space" ? "Code : 1 à 3 caractères." : other && other !== controlId ? "Ce code est déjà pris." : null; } });
+  const v = await modal(E, { title: c.kind === "normal" ? t("trc.dlg.controlTitle", { code: c.code }) : t("trc.dlg.start"), body: `
+    ${c.kind === "normal" ? field(t("trc.dlg.code"), `<input name="code" value="${esc(c.code)}" maxlength="3">`) : ""}
+    ${field(t("trc.dlg.colF"), `<input name="f" value="${esc(c.colF || "")}" placeholder="2.5, 3x4, 2/1">`)}
+    ${field(t("trc.dlg.descTextShort"), `<textarea name="t" rows="2">${esc(c.descText || "")}</textarea>`)}
+    ${field(t("trc.dlg.teamNotes"), `<textarea name="notes" rows="2">${esc(c.notes || "")}</textarea>`)}
+    <p class="tr-hint">${esc(t("trc.dlg.symbolsHint"))}</p>`,
+  validate: (o) => { if (c.kind !== "normal") return null; const p = M.codeProblem(E.ev, o.code.trim()), other = M.findCode(E.ev, o.code.trim()); return p === "length" || p === "space" ? t("trc.dlg.codeFormatShort") : other && other !== controlId ? t("trc.dlg.codeTaken") : null; } });
   if (!v) return;
   E.change((x) => {
     const k = x.controls[controlId];
@@ -481,55 +482,55 @@ export async function controlProps(E, controlId) {
     k.colF = v.f.trim() || null; if (k.colF) k.symbols[3] = null;
     if (v.t.trim()) k.descText = v.t.trim(); else delete k.descText;
     if (v.notes.trim()) k.notes = v.notes.trim(); else delete k.notes;
-  }, "Poste modifié");
+  }, t("trc.dlg.controlChanged"));
 }
 async function rotateStretch(E, what) {
   const s = E.sel;
   const obj = s?.kind === "special" ? E.ev.specials[s.id] : s?.control ? E.ev.controls[s.control] : null;
-  if (!obj || !(obj.kind === "crossing" || obj.kind === "optional-crossing-point")) { E.toast("Choisissez un point de passage."); return; }
-  const v = await modal(E, { title: what === "rotate" ? "Orientation" : "Étirement", body: what === "rotate"
-    ? field("Orientation (degrés, sens inverse des aiguilles)", `<input name="v" value="${Math.round(obj.orientation || 0)}">`)
-    : field("Étirement (mm)", `<input name="v" value="${obj.stretch || 0}">`) });
+  if (!obj || !(obj.kind === "crossing" || obj.kind === "optional-crossing-point")) { E.toast(t("trc.dlg.chooseCrossing")); return; }
+  const v = await modal(E, { title: what === "rotate" ? t("trc.dlg.orientation") : t("trc.dlg.stretch"), body: what === "rotate"
+    ? field(t("trc.dlg.orientationField"), `<input name="v" value="${Math.round(obj.orientation || 0)}">`)
+    : field(t("trc.dlg.stretchField"), `<input name="v" value="${obj.stretch || 0}">`) });
   if (!v) return;
-  E.change((x) => { const o = s.kind === "special" ? x.specials[s.id] : x.controls[s.control]; if (what === "rotate") o.orientation = num(v.v) || 0; else o.stretch = Math.max(0, num(v.v) || 0); }, what === "rotate" ? "Orientation" : "Étirement");
+  E.change((x) => { const o = s.kind === "special" ? x.specials[s.id] : x.controls[s.control]; if (what === "rotate") o.orientation = num(v.v) || 0; else o.stretch = Math.max(0, num(v.v) || 0); }, what === "rotate" ? t("trc.dlg.orientation") : t("trc.dlg.stretch"));
 }
 export async function specialProps(E, id) {
   const sp = E.ev.specials[id];
-  if (sp.kind === "text") return textProps(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), "Texte modifié"));
-  if (["line", "rectangle", "ellipse"].includes(sp.kind)) return lineAppearance(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), "Apparence"));
+  if (sp.kind === "text") return textProps(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), t("trc.dlg.textChanged")));
+  if (["line", "rectangle", "ellipse"].includes(sp.kind)) return lineAppearance(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), t("trc.dlg.appearance")));
   if (sp.kind === "descriptions") {
-    const v = await modal(E, { title: "Définitions sur la carte", body: field("Nombre de colonnes", `<input name="c" type="number" min="1" max="6" value="${sp.columns || 1}">`) });
-    if (v) E.change((x) => { x.specials[id].columns = Math.max(1, Math.min(6, Math.round(num(v.c)) || 1)); }, "Colonnes");
+    const v = await modal(E, { title: t("trc.dlg.descOnMap"), body: field(t("trc.dlg.nColumns"), `<input name="c" type="number" min="1" max="6" value="${sp.columns || 1}">`) });
+    if (v) E.change((x) => { x.specials[id].columns = Math.max(1, Math.min(6, Math.round(num(v.c)) || 1)); }, t("trc.dlg.columns"));
   }
 }
-const COLOR_OPTS = [["purple", "Violet"], ["lower-purple", "Violet (sous la carte)"], ["black", "Noir"], ["custom", "Couleur CMJN…"]];
+const COLOR_OPTS = [["purple", t("trc.dlg.colPurple")], ["lower-purple", t("trc.dlg.colLowerPurple")], ["black", t("trc.dlg.colBlack")], ["custom", t("trc.dlg.colCmyk")]];
 export async function textProps(E, id, then) {
   const sp = id ? E.ev.specials[id] : { text: "$(CourseName)", font: { name: "Arial", bold: true, italic: false, height: -1 }, color: "purple" };
   const col = Array.isArray(sp.color) ? "custom" : sp.color;
-  const v = await modal(E, { title: "Texte", body: `
-    ${field("Texte", `<textarea name="text" rows="3">${esc(sp.text)}</textarea>`, "Champs : $(EventTitle) $(CourseName) $(CourseLength) $(CourseClimb) $(ClassList) $(PrintScale) $(CoursePart) $(Variation) $(RelayTeam) $(RelayLeg)")}
-    <div class="tr-grid2">${field("Police", sel("font", fontChoices(sp.font?.name || "Arial"), sp.font?.name || "Arial"), "Imprimée en Roboto, Helvetica (Arial), Times ou Courier, avec son gras et son italique")}
-    ${field("Hauteur des capitales (mm, vide = remplir le cadre)", `<input name="h" value="${sp.font?.height > 0 ? sp.font.height : ""}">`)}
-    <label class="tr-check"><input type="checkbox" name="bold" ${sp.font?.bold ? "checked" : ""}> Gras</label><label class="tr-check"><input type="checkbox" name="italic" ${sp.font?.italic ? "checked" : ""}> Italique</label>
-    ${field("Couleur", sel("color", COLOR_OPTS, col))}${field("CMJN (%)", `<input name="cmyk" value="${Array.isArray(sp.color) ? sp.color.map((x) => Math.round(x * 100)).join(" ") : "0 0 0 100"}">`)}</div>` });
+  const v = await modal(E, { title: t("trc.dlg.text"), body: `
+    ${field(t("trc.dlg.text"), `<textarea name="text" rows="3">${esc(sp.text)}</textarea>`, t("trc.dlg.textFields", { fields: "$(EventTitle) $(CourseName) $(CourseLength) $(CourseClimb) $(ClassList) $(PrintScale) $(CoursePart) $(Variation) $(RelayTeam) $(RelayLeg)" }))}
+    <div class="tr-grid2">${field(t("trc.dlg.font"), sel("font", fontChoices(sp.font?.name || "Arial"), sp.font?.name || "Arial"), t("trc.dlg.fontHint"))}
+    ${field(t("trc.dlg.capHeight"), `<input name="h" value="${sp.font?.height > 0 ? sp.font.height : ""}">`)}
+    <label class="tr-check"><input type="checkbox" name="bold" ${sp.font?.bold ? "checked" : ""}> ${esc(t("trc.dlg.bold"))}</label><label class="tr-check"><input type="checkbox" name="italic" ${sp.font?.italic ? "checked" : ""}> ${esc(t("trc.dlg.italic"))}</label>
+    ${field(t("trc.dlg.colour"), sel("color", COLOR_OPTS, col))}${field(t("trc.dlg.cmyk"), `<input name="cmyk" value="${Array.isArray(sp.color) ? sp.color.map((x) => Math.round(x * 100)).join(" ") : "0 0 0 100"}">`)}</div>` });
   if (!v) return;
   then({ text: v.text, font: { name: v.font, bold: v.bold, italic: v.italic, height: v.h === "" ? -1 : num(v.h) }, color: v.color === "custom" ? v.cmyk.trim().split(/[\s,;]+/).map((x) => (num(x) || 0) / 100) : v.color });
 }
 export async function lineAppearance(E, idOrKind, then) {
   const sp = typeof idOrKind === "number" ? E.ev.specials[idOrKind] : { lineKind: "single", lineWidth: 0.35, gapSize: 0.5, dashSize: 1.5, radius: 0, color: "purple" };
   const col = Array.isArray(sp.color) ? "custom" : sp.color || "purple";
-  const v = await modal(E, { title: "Apparence du trait", body: `<div class="tr-grid2">
-    ${field("Trait", sel("kind", [["single", "Simple"], ["double", "Double"], ["dashed", "Tirets"]], sp.lineKind || "single"))}
-    ${field("Épaisseur (mm)", `<input name="w" value="${sp.lineWidth || 0.35}">`)}
-    ${field("Écart (mm)", `<input name="gap" value="${sp.gapSize || 0.5}">`)}${field("Longueur des tirets (mm)", `<input name="dash" value="${sp.dashSize || 1.5}">`)}
-    ${(sp.kind === "rectangle" || idOrKind === "rectangle") ? field("Rayon des coins (mm)", `<input name="r" value="${sp.radius || 0}">`) : '<input type="hidden" name="r" value="0">'}
-    ${field("Couleur", sel("color", COLOR_OPTS, col))}${field("CMJN (%)", `<input name="cmyk" value="${Array.isArray(sp.color) ? sp.color.map((x) => Math.round(x * 100)).join(" ") : "0 0 0 100"}">`)}</div>` });
+  const v = await modal(E, { title: t("trc.dlg.lineAppearance"), body: `<div class="tr-grid2">
+    ${field(t("trc.dlg.line"), sel("kind", [["single", t("trc.dlg.lineSingle")], ["double", t("trc.dlg.lineDouble")], ["dashed", t("trc.dlg.lineDashed")]], sp.lineKind || "single"))}
+    ${field(t("trc.dlg.lineWidthMm"), `<input name="w" value="${sp.lineWidth || 0.35}">`)}
+    ${field(t("trc.dlg.gapMm"), `<input name="gap" value="${sp.gapSize || 0.5}">`)}${field(t("trc.dlg.dashMm"), `<input name="dash" value="${sp.dashSize || 1.5}">`)}
+    ${(sp.kind === "rectangle" || idOrKind === "rectangle") ? field(t("trc.dlg.radiusMm"), `<input name="r" value="${sp.radius || 0}">`) : '<input type="hidden" name="r" value="0">'}
+    ${field(t("trc.dlg.colour"), sel("color", COLOR_OPTS, col))}${field(t("trc.dlg.cmyk"), `<input name="cmyk" value="${Array.isArray(sp.color) ? sp.color.map((x) => Math.round(x * 100)).join(" ") : "0 0 0 100"}">`)}</div>` });
   if (!v) return;
   then({ lineKind: v.kind, lineWidth: num(v.w) || 0.35, gapSize: num(v.gap) || 0, dashSize: num(v.dash) || 0, radius: num(v.r) || 0,
     color: v.color === "custom" ? v.cmyk.trim().split(/[\s,;]+/).map((x) => (num(x) || 0) / 100) : v.color });
 }
 export async function imageFile(E, then) {
-  const v = await modal(E, { title: "Image", body: field("Image (PNG, JPEG)", '<input type="file" name="f" accept="image/png,image/jpeg">'), validate: (o) => (!o.f?.length ? "Choisissez une image." : null) });
+  const v = await modal(E, { title: t("trc.dlg.image"), body: field(t("trc.dlg.imageField"), '<input type="file" name="f" accept="image/png,image/jpeg">'), validate: (o) => (!o.f?.length ? t("trc.dlg.chooseImage") : null) });
   if (!v) return;
   const f = v.f[0], buf = new Uint8Array(await f.arrayBuffer());
   let s = ""; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -538,31 +539,31 @@ export async function imageFile(E, then) {
 async function displayedCourses(E, id) {
   const sp = E.ev.specials[id], ids = M.courseIds(E.ev);
   const on = (c, part = -1) => sp.all || sp.courses.some((x) => x.course === c && (x.part ?? -1) === part);
-  const v = await modal(E, { title: "Circuits où l'objet apparaît", body: `<div class="tr-checks">
-    <label class="tr-check"><input type="checkbox" name="c0" ${on(0) ? "checked" : ""}> Tous les postes</label>
+  const v = await modal(E, { title: t("trc.dlg.objCourses"), body: `<div class="tr-checks">
+    <label class="tr-check"><input type="checkbox" name="c0" ${on(0) ? "checked" : ""}> ${esc(t("trc.dlg.allControls"))}</label>
     ${ids.map((c) => `<label class="tr-check"><input type="checkbox" name="c${c}" ${on(c) ? "checked" : ""}> ${esc(E.ev.courses[c].name)}</label>`).join("")}</div>
-    <p><button type="button" class="btn btn-sm" id="tr-all">Tous</button> <button type="button" class="btn btn-sm" id="tr-none">Aucun</button></p>`,
+    <p><button type="button" class="btn btn-sm" id="tr-all">${esc(t("trc.dlg.all"))}</button> <button type="button" class="btn btn-sm" id="tr-none">${esc(t("trc.dlg.none"))}</button></p>`,
   onOpen: (f) => {
     f.querySelector("#tr-all").addEventListener("click", () => f.querySelectorAll("input[type=checkbox]").forEach((x) => { x.checked = true; }));
     f.querySelector("#tr-none").addEventListener("click", () => f.querySelectorAll("input[type=checkbox]").forEach((x) => { x.checked = false; }));
   } });
   if (!v) return;
   const cds = [0, ...ids].filter((c) => v[`c${c}`]).map((c) => ({ course: c, part: -1 }));
-  E.change((x) => M.setDisplayedCourses(x, id, cds), "Circuits de l'objet");
+  E.change((x) => M.setDisplayedCourses(x, id, cds), t("trc.dlg.objCoursesChanged"));
 }
 export function issueKind(E, then) {
-  modal(E, { title: "Point de remise de carte", body: `<p>Où les coureurs reçoivent-ils la carte ?</p>
-    <label class="tr-check"><input type="radio" name="k" value="beginning" checked> Au début du trajet balisé vers le départ</label>
-    <label class="tr-check"><input type="radio" name="k" value="middle"> Au milieu du trajet balisé</label>
-    <label class="tr-check"><input type="radio" name="k" value="end"> Au triangle de départ</label>` }).then((v) => { if (v) then(v.k); });
+  modal(E, { title: t("trc.dlg.issuePoint"), body: `<p>${esc(t("trc.dlg.issueWhere"))}</p>
+    <label class="tr-check"><input type="radio" name="k" value="beginning" checked> ${esc(t("trc.dlg.issueBeginning"))}</label>
+    <label class="tr-check"><input type="radio" name="k" value="middle"> ${esc(t("trc.dlg.issueMiddle"))}</label>
+    <label class="tr-check"><input type="radio" name="k" value="end"> ${esc(t("trc.dlg.issueEnd"))}</label>` }).then((v) => { if (v) then(v.k); });
 }
 export async function sharedMove(E, hit, others, to) {
   const names = others.map((x) => E.ev.courses[x].name).join(", ");
-  const v = await modal(E, { title: "Poste commun", body: `<p>Ce poste sert aussi sur : ${esc(names)}.</p>
-    <label class="tr-check"><input type="radio" name="w" value="all" checked> Le déplacer dans tous les circuits</label>
-    <label class="tr-check"><input type="radio" name="w" value="new"> Créer un nouveau poste pour ce circuit seulement</label>` });
+  const v = await modal(E, { title: t("trc.dlg.shared"), body: `<p>${esc(t("trc.dlg.sharedAlso", { courses: names }))}</p>
+    <label class="tr-check"><input type="radio" name="w" value="all" checked> ${esc(t("trc.dlg.sharedMoveAll"))}</label>
+    <label class="tr-check"><input type="radio" name="w" value="new"> ${esc(t("trc.dlg.sharedNew"))}</label>` });
   if (!v) { E.redraw(); return; }
-  if (v.w === "all") E.change((x) => M.moveControl(x, hit.control, to), "Poste commun déplacé");
+  if (v.w === "all") E.change((x) => M.moveControl(x, hit.control, to), t("trc.dlg.sharedMoved"));
   else {
     let nid;
     E.change((x) => {
@@ -571,21 +572,22 @@ export async function sharedMove(E, hit, others, to) {
       x.controls[nid].symbols = old.symbols.slice(); x.controls[nid].colF = old.colF;
       x.courseControls[hit.cc].control = nid;
       delete x.courseControls[hit.cc].number;
-    }, "Nouveau poste pour ce circuit");
+    }, t("trc.dlg.sharedNewDone"));
     E.select({ kind: "control", control: nid, cc: hit.cc });
   }
 }
 export async function conflict(E, info) {
-  const v = await modal(E, { title: "Modifié ailleurs", body: `<p>${esc(info?.by || "Un autre membre de l'équipe")} a enregistré l'événement ${info?.at ? `à ${new Date(info.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""} pendant que vous travailliez.</p>
-    <label class="tr-check"><input type="radio" name="w" value="reload" checked> Recharger sa version (vos dernières modifications sont perdues)</label>
-    <label class="tr-check"><input type="radio" name="w" value="mine"> Garder ma version (la sienne est gardée dans les versions)</label>`, cancel: null });
+  const who = info?.by || t("trc.dlg.anotherMember");
+  const v = await modal(E, { title: t("trc.dlg.conflictTitle"), body: `<p>${esc(info?.at ? t("trc.dlg.conflictAt", { who, time: new Date(info.at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : t("trc.dlg.conflict", { who }))}</p>
+    <label class="tr-check"><input type="radio" name="w" value="reload" checked> ${esc(t("trc.dlg.conflictReload"))}</label>
+    <label class="tr-check"><input type="radio" name="w" value="mine"> ${esc(t("trc.dlg.conflictMine"))}</label>`, cancel: null });
   if (!v) return;
   if (v.w === "reload") {
     const r = await S.loadJson(E.meta.id, "event", E.key);
-    if (r) { E.ev = r.data; E.version = r.version; E.dirty = false; E.undo = []; E.redo = []; E.refresh(); E.status("Version de l'équipe rechargée", "ok"); }
+    if (r) { E.ev = r.data; E.version = r.version; E.dirty = false; E.undo = []; E.redo = []; E.refresh(); E.status(t("trc.dlg.teamReloaded"), "ok"); }
   } else {
     const r = await S.loadJson(E.meta.id, "event", E.key);
-    if (r) await S.saveVersion(E.meta.id, r.data, E.key, `Version de ${info?.by || "l'équipe"} remplacée`, A.summaryOf(r.data)).catch(() => {});
+    if (r) await S.saveVersion(E.meta.id, r.data, E.key, t("trc.dlg.versionReplaced", { who: info?.by || t("trc.dlg.theTeam") }), A.summaryOf(r.data)).catch(() => {});
     E.version = info?.version ?? E.version;
     await E.saveNow(true);
   }
@@ -612,10 +614,10 @@ export async function saveFiles(E, files, zipName) {
     let pref = null;
     try { pref = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}").saveTo || null; } catch (e) { /* none */ }
     if (!pref) {
-      const v = await modal(E, { title: `${names.length} fichiers`, ok: "Enregistrer", body: `
-        <label class="tr-check"><input type="radio" name="how" value="folder" checked> Les écrire dans un dossier de mon choix</label>
-        <label class="tr-check"><input type="radio" name="how" value="zip"> Les télécharger en un seul fichier .zip</label>
-        <label class="tr-check"><input type="checkbox" name="keep" checked> Ne plus me demander (modifiable dans Affichage)</label>` });
+      const v = await modal(E, { title: tn("trc.dlg.nFiles", names.length), ok: t("trc.dlg.save"), body: `
+        <label class="tr-check"><input type="radio" name="how" value="folder" checked> ${esc(t("trc.dlg.filesToFolder"))}</label>
+        <label class="tr-check"><input type="radio" name="how" value="zip"> ${esc(t("trc.dlg.filesToZip"))}</label>
+        <label class="tr-check"><input type="checkbox" name="keep" checked> ${esc(t("trc.dlg.filesKeep"))}</label>` });
       if (!v) return;
       pref = v.how;
       if (v.keep) { try { const o = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); o.saveTo = pref; localStorage.setItem("ocn.tr.prefs", JSON.stringify(o)); } catch (e) { /* this time only */ } }
@@ -629,11 +631,11 @@ export async function saveFiles(E, files, zipName) {
         const fh = await dir.getFileHandle(n, { create: true }), w = await fh.createWritable();
         await w.write(files[n]); await w.close();
       }
-      E.toast(`${names.length} fichiers écrits dans « ${dir.name} ».`, 5000);
+      E.toast(tn("trc.dlg.filesWritten", names.length, { dir: dir.name }), 5000);
       return;
     } catch (err) {
       if (err?.name === "AbortError") return;
-      E.toast("Le dossier n'a pas pu être écrit : téléchargement en .zip.");
+      E.toast(t("trc.dlg.folderFailed"));
     }
   }
   const { zip } = await import("./pdf.js");
@@ -641,43 +643,41 @@ export async function saveFiles(E, files, zipName) {
   for (const n of names) bin[n] = typeof files[n] === "string" ? enc.encode(files[n]) : files[n];
   download(zipName, new Blob([await zip(bin)], { type: "application/zip" }));
 }
-export const fileName = (s) => String(s || "evenement").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
+export const fileName = (s) => String(s || t("trc.dlg.defaultFile")).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
 /** The event as an O'CN file (.ocnt, ocnfile.js): the whole event in one file, the map in it by default. */
 async function exportOcn(E) {
   // the stored map's own name (a .ppen's map name can be another file's: an OCAD map replaced by its PDF), with an extension
   const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/tiff": ".tif", "image/bmp": ".bmp", "application/pdf": ".pdf" };
-  const mapName = (type) => { const n = String(E.meta.map?.name || E.ev.map.file || "carte").split(/[\\/]/).pop(); return /\.[a-z0-9]{2,5}$/i.test(n) ? n : n + (ext[type] || ""); };
-  const v = await modal(E, { title: "Exporter au format O'CN", ok: "Exporter", remember: "exportOcn", body: `<p>Un seul fichier <b>.ocnt</b> qui contient tout l'événement — postes, circuits,
-    définitions, apparence, zones d'impression, géoréférencement — et, si vous le cochez, la carte elle-même. Il se rouvre sur O'CN par
-    « Importer un événement », pour une copie, un autre club ou une archive.</p>
-    <label class="tr-check"><input type="checkbox" name="withMap" checked> Inclure la carte (« ${esc(mapName(E.meta.map?.type))} »)</label>
-    ${E.key ? `<p class="tr-hint">L'événement est chiffré sur O'CN, mais ce fichier ne l'est pas : gardez-le pour l'équipe.</p>` : ""}` });
+  const mapName = (type) => { const n = String(E.meta.map?.name || E.ev.map.file || t("trc.dlg.defaultMap")).split(/[\\/]/).pop(); return /\.[a-z0-9]{2,5}$/i.test(n) ? n : n + (ext[type] || ""); };
+  const v = await modal(E, { title: t("trc.dlg.exportOcn"), ok: t("trc.dlg.export"), remember: "exportOcn", body: `<p>${t("trc.dlg.exportOcnIntro")}</p>
+    <label class="tr-check"><input type="checkbox" name="withMap" checked> ${esc(t("trc.dlg.includeMap", { name: mapName(E.meta.map?.type) }))}</label>
+    ${E.key ? `<p class="tr-hint">${esc(t("trc.dlg.exportOcnPlain"))}</p>` : ""}` });
   if (!v) return;
   let map = null;
   if (v.withMap) {
     const r = await S.loadMap(E.meta.id, E.key).catch(() => null);
     if (r?.bytes) map = { name: mapName(r.type || E.meta.map?.type), type: r.type || E.meta.map?.type || "", bytes: r.bytes };
-    else E.toast("La carte n'a pas pu être lue : le fichier est exporté sans elle.", 6000);
+    else E.toast(t("trc.dlg.mapUnread"), 6000);
   }
   download(`${fileName(E.ev.title)}.ocnt`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
-  E.toast(map ? "Fichier O'CN exporté, avec sa carte." : "Fichier O'CN exporté.");
+  E.toast(map ? t("trc.dlg.ocnExportedMap") : t("trc.dlg.ocnExported"));
 }
 function exportPpen(E) {
   download(`${fileName(E.ev.title)}.ppen`, writePpen(E.ev), "application/xml");
-  E.toast(`Fichier .ppen enregistré : à mettre dans le même dossier que la carte « ${E.ev.map.file || "(carte)"} » pour l'ouvrir dans Purple Pen.`, 7000);
+  E.toast(t("trc.dlg.ppenSaved", { map: E.ev.map.file || t("trc.dlg.mapPlaceholder") }), 7000);
 }
 export async function importPpen(E, preset = null) {
   let file = preset;
-  const v = await modal(E, { title: "Importer un fichier Purple Pen", body: `${dropHtml("tr-ip-drop", "Déposez ici le fichier .ppen, ou cliquez pour le choisir", ".ppen,.xml", false)}
-    <p class="tr-hint" id="tr-ip-file">${file ? `✓ « ${esc(file.name)} »` : "Aucun fichier choisi."}</p>
-    <p>Les circuits de cet événement sont remplacés par ceux du fichier ; la carte reste celle de l'événement.</p>
-    <label class="tr-check"><input type="checkbox" name="calage"> Ce .ppen a été fait sur un autre fichier de carte (autre PDF, image, ou une carte OCAD quand celle de l'événement n'en est pas une) : caler ensuite les postes sur cette carte</label>`,
+  const v = await modal(E, { title: t("trc.dlg.importPpen"), body: `${dropHtml("tr-ip-drop", t("trc.dlg.ppenDrop"), ".ppen,.xml", false)}
+    <p class="tr-hint" id="tr-ip-file">${esc(file ? t("trc.dlg.fileChosen", { name: file.name }) : t("trc.dlg.noFile"))}</p>
+    <p>${esc(t("trc.dlg.ppenReplaces"))}</p>
+    <label class="tr-check"><input type="checkbox" name="calage"> ${esc(t("trc.dlg.ppenCalage"))}</label>`,
   onOpen: (f) => dropZone(f.querySelector("#tr-ip-drop"), (list) => {
     const p = list.find((x) => /\.(ppen|xml)$/i.test(x.name));
-    f.querySelector("#tr-ip-file").textContent = p ? `✓ « ${p.name} »` : `« ${list[0].name} » n'est pas un fichier .ppen.`;
+    f.querySelector("#tr-ip-file").textContent = p ? t("trc.dlg.fileChosen", { name: p.name }) : t("trc.dlg.notPpen", { name: list[0].name });
     if (p) file = p;
   }),
-  validate: () => (!file ? "Déposez ou choisissez le fichier .ppen." : null), ok: "Importer" });
+  validate: () => (!file ? t("trc.dlg.ppenNeeded") : null), ok: t("trc.dlg.import") });
   if (!v) return;
   try {
     const imported = readPpen(await file.text());
@@ -690,11 +690,11 @@ export async function importPpen(E, preset = null) {
       x.map = { ...imported.map, ...keep.map, scale: imported.map.scale || keep.map.scale, dpi: keep.map.kind === "bitmap" ? (imported.map.dpi || keep.map.dpi) : keep.map.dpi };
       if (keep.map.kind === "bitmap" && imported.map.dpi && imported.map.dpi !== keep.map.dpi) { x.map.w = keep.map.w * keep.map.dpi / imported.map.dpi; x.map.h = keep.map.h * keep.map.dpi / imported.map.dpi; }
       if (!x.title) x.title = keep.title;
-    }, "Import .ppen");
+    }, t("trc.dlg.ppenImport"));
     E.setCourse(M.courseIds(E.ev)[0] || 0); E.fitCourse();
-    E.toast(`${Object.keys(E.ev.courses).length} circuit(s), ${Object.keys(E.ev.controls).length} poste(s) importés.`);
+    E.toast(t("trc.dlg.imported", { courses: tn("trc.dlg.nCourses", Object.keys(E.ev.courses).length), controls: tn("trc.dlg.nControls", Object.keys(E.ev.controls).length) }));
     if (v.calage) (await import("./calage.js")).calage(E, { fromPpen: true });
-  } catch (err) { E.toast("Ce fichier n'est pas un événement Purple Pen lisible."); }
+  } catch (err) { E.toast(t("trc.dlg.ppenUnreadable")); }
 }
 
 // ---- team, versions, encryption ----------------------------------------------------------------------------------------------
@@ -702,76 +702,77 @@ async function team(E) {
   const meta = E.meta;
   const owner = E.role === "owner" || E.role === "setter";
   const rows = (meta.team || []).map((m) => ({ ...m }));
+  const roles = [["setter", t("trc.dlg.roleSetter")], ["controller", t("trc.dlg.roleController")], ["viewer", t("trc.dlg.roleViewer")]];
+  const roleName = (r) => roles.find(([k]) => k === r)?.[1] || r;
   const render = (box) => {
-    box.innerHTML = `<table class="tr-table"><thead><tr><th>Licencié</th><th>Rôle</th><th></th></tr></thead><tbody>
-      <tr><td>${esc(meta.ownerName)} <small>(${esc(meta.ownerLic || "")})</small></td><td>Créateur</td><td></td></tr>
-      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")} <small>(${esc(m.lic)})</small></td><td>${owner ? sel(`r${i}`, [["setter", "Traceur"], ["controller", "Contrôleur"], ["viewer", "Lecteur"]], m.role) : esc(m.role)}</td>
-      <td>${owner ? `<button type="button" class="btn btn-sm" data-rm="${i}">Retirer</button>` : ""}</td></tr>`).join("")}</tbody></table>`;
+    box.innerHTML = `<table class="tr-table"><thead><tr><th>${esc(t("trc.dlg.member"))}</th><th>${esc(t("trc.dlg.role"))}</th><th></th></tr></thead><tbody>
+      <tr><td>${esc(meta.ownerName)} <small>(${esc(meta.ownerLic || "")})</small></td><td>${esc(t("trc.dlg.creator"))}</td><td></td></tr>
+      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")} <small>(${esc(m.lic)})</small></td><td>${owner ? sel(`r${i}`, roles, m.role) : esc(roleName(m.role))}</td>
+      <td>${owner ? `<button type="button" class="btn btn-sm" data-rm="${i}">${esc(t("trc.dlg.remove"))}</button>` : ""}</td></tr>`).join("")}</tbody></table>`;
     box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { rows.splice(Number(b.dataset.rm), 1); render(box); }));
     box.querySelectorAll("select").forEach((s2) => s2.addEventListener("change", () => { rows[Number(s2.name.slice(1))].role = s2.value; }));
   };
-  const v = await modal(E, { title: "Équipe et partage", wide: true, ok: owner ? "Enregistrer" : "Fermer", cancel: owner ? "Annuler" : null, body: `
-    <p>Seule l'équipe ouvre l'événement : les circuits restent secrets jusqu'à la course. Le traceur et le contrôleur modifient, le lecteur lit et commente.</p>
+  const v = await modal(E, { title: t("trc.dlg.team"), wide: true, ok: owner ? t("trc.dlg.save") : t("trc.dlg.close"), cancel: owner ? t("trc.dlg.cancel") : null, body: `
+    <p>${esc(t("trc.dlg.teamIntro"))}</p>
     <div id="tr-team"></div>
-    ${owner ? `<div class="tr-row">${field("Numéro de licence", '<input id="tr-lic" inputmode="numeric" size="9">')}<button type="button" class="btn btn-sm" id="tr-add">Ajouter</button></div>` : ""}`,
+    ${owner ? `<div class="tr-row">${field(t("trc.dlg.licence"), '<input id="tr-lic" inputmode="numeric" size="9">')}<button type="button" class="btn btn-sm" id="tr-add">${esc(t("trc.dlg.add"))}</button></div>` : ""}`,
   onOpen: (f) => {
     const box = f.querySelector("#tr-team");
     render(box);
     f.querySelector("#tr-add")?.addEventListener("click", async () => {
       const lic = f.querySelector("#tr-lic").value.trim();
-      if (!/^\d{1,8}$/.test(lic)) { E.toast("Un numéro de licence."); return; }
+      if (!/^\d{1,8}$/.test(lic)) { E.toast(t("trc.dlg.needLicence")); return; }
       if (rows.some((m) => m.lic === lic)) return;
       const r = await S.api(`/${meta.id}/member?lic=${encodeURIComponent(lic)}`).catch(() => null);
-      if (!r?.name) { E.toast("Licence introuvable dans le fichier des licenciés."); return; }
+      if (!r?.name) { E.toast(t("trc.dlg.licenceNotFound")); return; }
       rows.push({ lic, name: r.name, role: "controller" }); render(box); f.querySelector("#tr-lic").value = "";
     });
   } });
   if (!v || !owner) return;
   const r = await S.api(`/${meta.id}`, { method: "PUT", body: { team: rows.map((m) => ({ lic: m.lic, name: m.name, role: m.role })) } });
   E.meta = r.event;
-  E.toast("Équipe enregistrée.");
+  E.toast(t("trc.dlg.teamSaved"));
 }
 async function versionSave(E) {
-  const v = await modal(E, { title: "Enregistrer une version", body: field("Note (ce qui a changé)", '<input name="note" maxlength="280" placeholder="Après la visite de terrain du 12/11">') });
+  const v = await modal(E, { title: t("trc.dlg.versionSave"), body: field(t("trc.dlg.versionNote"), `<input name="note" maxlength="280" placeholder="${esc(t("trc.dlg.versionNoteExample"))}">`) });
   if (!v) return;
   await E.saveNow(true);
   await S.saveVersion(E.meta.id, E.ev, E.key, v.note.trim(), A.summaryOf(E.ev));
-  E.toast("Version enregistrée.");
+  E.toast(t("trc.dlg.versionSaved"));
 }
 async function versions(E) {
   const r = await S.api(`/${E.meta.id}/versions`);
   const list = r.versions || [];
-  const v = await modal(E, { title: "Versions", wide: true, ok: null, cancel: "Fermer", body: list.length ? `<div class="table-wrap"><table class="tr-table"><thead><tr><th>Date</th><th>Par</th><th>Note</th><th>Contenu</th><th></th></tr></thead><tbody>
-    ${list.map((x) => `<tr><td class="num">${new Date(x.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td><td><small>${esc(x.summary)}</small></td>
-    <td><button type="button" class="btn btn-sm" data-diff="${x.n}">Différences</button> <button type="button" class="btn btn-sm" data-restore="${x.n}">Rétablir</button></td></tr>`).join("")}</tbody></table></div><div id="tr-diff"></div>`
-    : `<p>Aucune version enregistrée pour l'instant. Une version se garde à la demande (${where("version-save")}) et automatiquement toutes les 30 minutes de travail.</p>`,
+  const v = await modal(E, { title: t("trc.dlg.versions"), wide: true, ok: null, cancel: t("trc.dlg.close"), body: list.length ? `<div class="table-wrap"><table class="tr-table"><thead><tr><th>${esc(t("trc.dlg.colDate"))}</th><th>${esc(t("trc.dlg.colBy"))}</th><th>${esc(t("trc.dlg.colNote"))}</th><th>${esc(t("trc.dlg.colContent"))}</th><th></th></tr></thead><tbody>
+    ${list.map((x) => `<tr><td class="num">${new Date(x.at).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" })}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td><td><small>${esc(x.summary)}</small></td>
+    <td><button type="button" class="btn btn-sm" data-diff="${x.n}">${esc(t("trc.dlg.differences"))}</button> <button type="button" class="btn btn-sm" data-restore="${x.n}">${esc(t("trc.dlg.restore"))}</button></td></tr>`).join("")}</tbody></table></div><div id="tr-diff"></div>`
+    : `<p>${t("trc.dlg.noVersions", { where: where("version-save") })}</p>`,
   onOpen: (f, done) => {
     f.querySelectorAll("[data-diff]").forEach((b) => b.addEventListener("click", async () => {
       const old = await S.loadVersion(E.meta.id, b.dataset.diff, E.key);
-      f.querySelector("#tr-diff").innerHTML = `<h3>Depuis cette version</h3><ul>${(await import("./extras.js")).diff(old, E.ev).map((x) => `<li>${esc(x)}</li>`).join("") || "<li>Aucune différence.</li>"}</ul>`;
+      f.querySelector("#tr-diff").innerHTML = `<h3>${esc(t("trc.dlg.sinceVersion"))}</h3><ul>${(await import("./extras.js")).diff(old, E.ev).map((x) => `<li>${esc(x)}</li>`).join("") || `<li>${esc(t("trc.dlg.noDifference"))}</li>`}</ul>`;
     }));
     f.querySelectorAll("[data-restore]").forEach((b) => b.addEventListener("click", async () => {
-      if (E.readOnly) { E.toast("Lecture seule."); return; }
+      if (E.readOnly) { E.toast(t("trc.dlg.readOnly")); return; }
       const old = await S.loadVersion(E.meta.id, b.dataset.restore, E.key);
       if (!old) return;
       done(null);
-      E.change((x) => { for (const k of Object.keys(x)) delete x[k]; Object.assign(x, old); }, "Version rétablie");
-      E.toast("Version rétablie (Ctrl+Z pour revenir).");
+      E.change((x) => { for (const k of Object.keys(x)) delete x[k]; Object.assign(x, old); }, t("trc.dlg.versionRestored"));
+      E.toast(t("trc.dlg.versionRestoredUndo"));
     }));
   } });
   void v;
 }
 async function encryption(E) {
   const on = !!E.meta.encrypted, owner = E.role === "owner";
-  if (!owner) { E.toast(on ? "L'événement est chiffré ; seul son créateur change ce réglage." : "Seul le créateur de l'événement peut le chiffrer."); return; }
-  const v = await modal(E, { title: "Chiffrement", wide: true, ok: on ? "Retirer le chiffrement" : "Chiffrer", body: on
-    ? "<p>L'événement est chiffré dans le navigateur : le serveur ne garde que des données illisibles. Le retirer renvoie l'événement, sa carte et ses commentaires en clair.</p>"
-    : `<p>Chiffré dans votre navigateur avec une phrase de passe, l'événement (circuits, carte, commentaires, versions futures) devient illisible pour le serveur et ses administrateurs.
-      Donnez la phrase de passe à votre équipe par un autre moyen ; <strong>perdue, l'événement est perdu</strong> (exportez un .ppen d'abord).</p>
-      ${field("Phrase de passe (12 caractères au moins)", '<input name="p1" type="password" autocomplete="new-password">')}${field("Encore une fois", '<input name="p2" type="password" autocomplete="new-password">')}`,
-  validate: (o) => (on ? null : o.p1.length < 12 ? "12 caractères au moins." : o.p1 !== o.p2 ? "Les deux phrases diffèrent." : null) });
+  if (!owner) { E.toast(on ? t("trc.dlg.encOwnerOnly") : t("trc.dlg.encCreatorOnly")); return; }
+  const v = await modal(E, { title: t("trc.dlg.encryption"), wide: true, ok: on ? t("trc.dlg.encRemove") : t("trc.dlg.encrypt"), body: on
+    ? `<p>${esc(t("trc.dlg.encOnIntro"))}</p>`
+    : `<p>${t("trc.dlg.encOffIntro")}</p>
+      ${field(t("trc.dlg.passphrase"), '<input name="p1" type="password" autocomplete="new-password">')}${field(t("trc.dlg.passphraseAgain"), '<input name="p2" type="password" autocomplete="new-password">')}`,
+  validate: (o) => (on ? null : o.p1.length < 12 ? t("trc.dlg.passphraseShort") : o.p1 !== o.p2 ? t("trc.dlg.passphraseDiffer") : null) });
   if (!v) return;
-  E.status("Chiffrement…", "busy");
+  E.status(t("trc.dlg.encrypting"), "busy");
   const map = await S.loadMap(E.meta.id, E.key);
   const comments = await S.loadJson(E.meta.id, "comments", E.key).catch(() => null);
   let key = null, setting = null;
@@ -789,6 +790,6 @@ async function encryption(E) {
   const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { encrypted: setting } });
   E.meta = r.event;
   E.dirty = true; await E.saveNow(true);
-  E.toast(on ? "Chiffrement retiré." : "Événement chiffré, versions comprises.", 7000);
+  E.toast(on ? t("trc.dlg.encRemoved") : t("trc.dlg.encDone"), 7000);
 }
 export { field, sel, num, symbolName };

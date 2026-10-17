@@ -10,6 +10,7 @@
 
 import * as M from "./model.js";
 import { readZip } from "../trace/georef.js";
+import { t } from "./lang.js";
 
 export const EXT = ".ocnt";
 export const FORMAT = "ocn-trace";
@@ -26,7 +27,7 @@ function script(src) {
 export async function writeOcn(ev, { map = null } = {}) {
   await script(FFLATE);
   const enc = new TextEncoder();
-  const name = map ? String(map.name || "carte").split(/[\\/]/).pop() : null;
+  const name = map ? String(map.name || t("trc.ocn.mapName")).split(/[\\/]/).pop() : null;
   const head = {
     format: FORMAT, version: FORMAT_VERSION, app: "O'CN — https://ocn.kerkia.com", saved: new Date().toISOString(),
     title: ev.title || "", map: map ? { file: name, type: map.type || "", size: map.bytes.length } : null, event: ev,
@@ -40,13 +41,13 @@ export async function writeOcn(ev, { map = null } = {}) {
 export async function readOcn(buf) {
   let entries;
   try { entries = await readZip(buf instanceof ArrayBuffer ? buf : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)); }
-  catch (e) { throw new Error("ce n'est pas un fichier O'CN (.ocnt) lisible"); }
+  catch (e) { throw new Error(t("trc.ocn.notOcn")); }
   const ej = entries.find((x) => x.name === "event.json");
-  if (!ej) throw new Error("ce fichier ne contient pas d'événement (event.json manquant)");
+  if (!ej) throw new Error(t("trc.ocn.noEvent"));
   let head;
-  try { head = JSON.parse(new TextDecoder().decode(ej.data)); } catch (e) { throw new Error("l'événement du fichier est illisible"); }
-  if (head.format !== FORMAT || !head.event) throw new Error("ce n'est pas un fichier de tracé O'CN");
-  if (head.version > FORMAT_VERSION || (head.event.v || 1) > M.VERSION) throw new Error("ce fichier a été enregistré par une version plus récente du site : rechargez la page, puis réessayez");
+  try { head = JSON.parse(new TextDecoder().decode(ej.data)); } catch (e) { throw new Error(t("trc.ocn.badEvent")); }
+  if (head.format !== FORMAT || !head.event) throw new Error(t("trc.ocn.notTrace"));
+  if (head.version > FORMAT_VERSION || (head.event.v || 1) > M.VERSION) throw new Error(t("trc.ocn.newer"));
   const ev = head.event;
   for (const k of ["controls", "courses", "courseControls", "legs", "specials"]) ev[k] = ev[k] || {};
   const me = head.map && entries.find((x) => x.name === `map/${head.map.file}`);

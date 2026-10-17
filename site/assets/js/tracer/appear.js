@@ -5,6 +5,7 @@
 // blended darker, as they print. Shared by the editor's screen, the images and the PDFs.
 
 import * as M from "./model.js";
+import { t } from "./lang.js";
 
 /** The CMYK of the course's purple. */
 export function coursePurple(ev, map) {
@@ -24,7 +25,7 @@ export function layerOf(ev, map) {
 /** The default colour for « layer » mode (FindPurple.FindBestLowerPurpleLayer), or null. */
 export const defaultLayer = (map) => (map?.kind === "vector" ? map.vmap.lowerPurpleLayer()?.id ?? null : null);
 /** The map's colours from the top down, for a choice: [[id, name]]. */
-export const mapColors = (map) => (map?.kind === "vector" ? map.vmap.colors.slice().reverse().map((c) => [c.id, c.name || `Couleur ${c.id}`]) : []);
+export const mapColors = (map) => (map?.kind === "vector" ? map.vmap.colors.slice().reverse().map((c) => [c.id, c.name || t("trc.appear.colour", { id: c.id })]) : []);
 
 /** The items of the lower purple, drawn under the map's upper colours in « layer » mode. */
 export const isLower = (it) => it.color === "lower" || it.color === "purple50";

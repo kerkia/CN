@@ -15,18 +15,19 @@ import { modal, field, sel, saveFiles, fileName } from "./dialogs.js";
 import { printBox } from "./pdf.js";
 import { coursePurple } from "./appear.js";
 import { textWidth, ASCENT, DESCENT } from "./fonts.js";
+import { t, tn } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 // the course colours, as Purple Pen numbers them (NormalCourseAppearance), from the bottom of the table to its top
 const ROLE = { white: { id: 44, name: "White" }, purple50: { id: 13, name: "50% purple" }, lower: { id: 12, name: "Lower purple" }, upper: { id: 11, name: "Purple" }, black: { id: 0, name: "Black" } };
 // symbol numbers and names by course object (ISOM's 7xx course symbols)
 const KIND = {
-  start: ["701", "Départ"], control: ["702", "Poste"], dot: ["702", "Point central du poste"], number: ["703", "Numéro de poste"], code: ["703", "Code de poste"],
-  leg: ["704", "Interposte"], flagged: ["705", "Itinéraire balisé"], finish: ["706", "Arrivée"], boundary: ["707", "Limite infranchissable"],
-  crossing: ["708", "Point de passage"], "optional-crossing-point": ["708", "Point de passage"], "out-of-bounds": ["709", "Zone interdite"], "dangerous-area": ["710", "Zone dangereuse"],
-  "forbidden-route": ["711", "Passage interdit"], "first-aid": ["712", "Poste de secours"], water: ["713", "Ravitaillement"], "registration-mark": ["714", "Repère de calage"],
-  issue: ["715", "Point de remise des cartes"], "temporary-construction": ["716", "Construction temporaire"], line: ["720", "Trait"], rect: ["721", "Cadre"], text: ["722", "Texte"],
-  descriptions: ["790", "Définitions"], "white-out": ["890", "Masque blanc"], exchange: ["702", "Poste avec échange de carte"], other: ["799", "Objet du circuit"],
+  start: ["701", t("trc.cf.symStart")], control: ["702", t("trc.cf.symControl")], dot: ["702", t("trc.cf.symDot")], number: ["703", t("trc.cf.symNumber")], code: ["703", t("trc.cf.symCode")],
+  leg: ["704", t("trc.cf.symLeg")], flagged: ["705", t("trc.cf.symFlagged")], finish: ["706", t("trc.cf.symFinish")], boundary: ["707", t("trc.cf.symBoundary")],
+  crossing: ["708", t("trc.cf.symCrossing")], "optional-crossing-point": ["708", t("trc.cf.symCrossing")], "out-of-bounds": ["709", t("trc.cf.symOob")], "dangerous-area": ["710", t("trc.cf.symDanger")],
+  "forbidden-route": ["711", t("trc.cf.symForbidden")], "first-aid": ["712", t("trc.cf.symFirstAid")], water: ["713", t("trc.cf.symWater")], "registration-mark": ["714", t("trc.cf.symRegMark")],
+  issue: ["715", t("trc.cf.symIssue")], "temporary-construction": ["716", t("trc.cf.symConstruction")], line: ["720", t("trc.cf.symLine")], rect: ["721", t("trc.cf.symRect")], text: ["722", t("trc.cf.symText")],
+  descriptions: ["790", t("trc.cf.symDescriptions")], "white-out": ["890", t("trc.cf.symWhiteOut")], exchange: ["702", t("trc.cf.symExchange")], other: ["799", t("trc.cf.symOther")],
 };
 const DEG = Math.PI / 180;
 const POINT_T = new Set(["control", "finish", "start", "crossing", "issue", "point"]);
@@ -104,7 +105,7 @@ export function courseModel(E, cd, { overprint = true, variationName = "", team 
     const key = Array.isArray(role) ? role.join(",") : role;
     if (byRole.has(key)) return byRole.get(key);
     let c;
-    if (Array.isArray(role)) c = { id: 61 + colors.filter((x) => x.id >= 61).length, name: `Couleur ${role.map((x) => Math.round(x * 100)).join("/")}`, cmyk: role, overprint: false };
+    if (Array.isArray(role)) c = { id: 61 + colors.filter((x) => x.id >= 61).length, name: t("trc.cf.colour", { cmyk: role.map((x) => Math.round(x * 100)).join("/") }), cmyk: role, overprint: false };
     else {
       const r = ROLE[role] || ROLE.black;
       c = { ...r, cmyk: role === "white" ? [0, 0, 0, 0] : role === "black" ? [0, 0, 0, 1] : role === "purple50" ? P.map((x) => x / 2) : P, overprint: ["upper", "lower", "purple50"].includes(role) && overprint };
@@ -163,7 +164,7 @@ export function courseModel(E, cd, { overprint = true, variationName = "", team 
   const { box } = printBox(E, cd, layout);
   const ps = cd.course ? ev.courses[cd.course].printScale : ev.allControls.printScale;
   return { scale: ev.map.scale, printScale: ps || ev.map.scale, printArea: [box[0] + fx, box[1] + fy, box[2] + fx, box[3] + fy],
-    notes: `${title || ev.title} — créé par O'CN (ocn.kerkia.com)`, colors, symbols, objects, skipped, images, realWorld: null, templates: [], layoutImages: [] };
+    notes: t("trc.cf.notes", { title: title || ev.title }), colors, symbols, objects, skipped, images, realWorld: null, templates: [], layoutImages: [] };
 }
 
 /**
@@ -198,7 +199,7 @@ async function mapTemplate(E, files) {
   // a PDF: its page as an image at about 10 px per mm (254 dpi), at most 9000 px a side
   const k = Math.min(10, 9000 / Math.max(ev.map.w, ev.map.h));
   const c = await E.map.renderRegion([0, 0, ev.map.w, ev.map.h], k);
-  const name = `${String(ev.map.file || "carte").replace(/\.[^.]+$/, "")}.png`;
+  const name = `${String(ev.map.file || t("trc.cf.mapFile")).replace(/\.[^.]+$/, "")}.png`;
   files[name] = new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/png"))).arrayBuffer());
   return { file: name, x: ev.map.w / 2, y: ev.map.h / 2, mmPerPx: 1 / k };
 }
@@ -223,23 +224,23 @@ export async function courseFilesDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
   const anyVars = ids.some((id) => M.hasVariations(ev, id));
   const kindLabel = { ocad: "OCAD", bitmap: "image", pdf: "PDF", none: "" }[ev.map.kind] || "";
-  const v = await modal(E, { title: "Fichiers OCAD ou Mapper des circuits", wide: true, ok: "Créer", remember: "courseFiles", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Format", sel("fmt", [["ocad2018", "OCAD 2018 et suivants"], ["ocad12", "OCAD 12"], ["ocad11", "OCAD 11"], ["ocad10", "OCAD 10"], ["ocad9", "OCAD 9"],
+  const v = await modal(E, { title: t("trc.cf.title"), wide: true, ok: t("trc.cf.create"), remember: "courseFiles", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : esc(t("trc.cf.allControls"))}</label>`).join("")}</div>
+    <div class="tr-grid2">${field(t("trc.cf.format"), sel("fmt", [["ocad2018", t("trc.cf.ocad2018")], ["ocad12", "OCAD 12"], ["ocad11", "OCAD 11"], ["ocad10", "OCAD 10"], ["ocad9", "OCAD 9"],
       ["omap", "OpenOrienteering Mapper (.omap)"], ["xmap", "OpenOrienteering Mapper (.xmap)"]], "ocad2018"))}
-    ${anyVars ? field("Variantes", sel("vars", [["all", "Chaque variante à part"], ["combined", "Toutes ensemble"]], "all")) : ""}
-    ${field("Préfixe des noms de fichiers", `<input name="prefix" value="">`, "Facultatif")}</div>
-    <label class="tr-check"><input type="checkbox" name="over" ${ev.appearance.blend !== "none" ? "checked" : ""}> Violet en surimpression (le noir de la carte reste visible)</label>
-    <p class="tr-hint">Chaque circuit devient une carte qui ne contient que le circuit — postes, traits, numéros, objets spéciaux et définitions, en symboles 7xx —, avec la carte de l'événement en modèle (fond)${kindLabel ? ` : ${ev.map.kind === "pdf" ? "la page du PDF est jointe en image PNG" : `« ${esc(ev.map.file)} »`}, à mettre dans le même dossier que les fichiers créés` : ""}.
-    ${ev.map.kind === "ocad" ? "Les postes sont écrits dans les coordonnées du fichier de la carte : ils tombent juste sur elle." : ""}</p>` });
+    ${anyVars ? field(t("trc.cf.variations"), sel("vars", [["all", t("trc.cf.varsAll")], ["combined", t("trc.cf.varsCombined")]], "all")) : ""}
+    ${field(t("trc.cf.prefix"), `<input name="prefix" value="">`, t("trc.cf.optional"))}</div>
+    <label class="tr-check"><input type="checkbox" name="over" ${ev.appearance.blend !== "none" ? "checked" : ""}> ${esc(t("trc.cf.overprint"))}</label>
+    <p class="tr-hint">${!kindLabel ? t("trc.cf.hint") : ev.map.kind === "pdf" ? t("trc.cf.hintPdf") : t("trc.cf.hintFile", { file: esc(ev.map.file) })}
+    ${ev.map.kind === "ocad" ? t("trc.cf.hintOcad") : ""}</p>` });
   if (!v) return;
-  E.status("Création des fichiers…", "busy");
+  E.status(t("trc.cf.busy"), "busy");
   try {
     const [fmt, ver] = v.fmt.startsWith("ocad") ? ["ocad", Number(v.fmt.slice(4))] : [v.fmt, 0];
     const designators = [];
     for (const id of [0, ...ids]) {
       if (!v[`c${id}`]) continue;
-      if (!id) { designators.push({ cd: M.cdAll(), name: "Tous les postes" }); continue; }
+      if (!id) { designators.push({ cd: M.cdAll(), name: t("trc.cf.allControls") }); continue; }
       const c = ev.courses[id];
       let list = [{ cd: M.cdCourse(id), name: c.name }];
       if (M.hasVariations(ev, id) && v.vars !== "combined") list = M.allVariations(ev, id).map((x) => ({ cd: M.cdCourse(id, -1, x.path), name: `${c.name} ${x.code}`, variation: x.code }));
@@ -249,7 +250,7 @@ export async function courseFilesDialog(E) {
         else designators.push(d);
       }
     }
-    if (!designators.length) { E.toast("Aucun circuit choisi."); E.status("Prêt", "ok"); return; }
+    if (!designators.length) { E.toast(t("trc.cf.noCourse")); E.status(t("trc.cf.ready"), "ok"); return; }
     const files = {};
     const template = await mapTemplate(E, files);
     const rw = await realWorldFor(E, fmt);
@@ -271,8 +272,8 @@ export async function courseFilesDialog(E) {
       else files[`${base}.${fmt}`] = new TextEncoder().encode(W.writeOom(model, { xmap: fmt === "xmap" }));
     }
     await saveFiles(E, files, `${fileName(ev.title)} - ${fmt === "ocad" ? "OCAD" : "Mapper"}.zip`);
-    E.status("Fichiers créés", "ok");
-    if (skipped) E.toast(`${skipped} objet(s) du circuit n'ont pas pu être repris dans ces fichiers.`, 6000);
-    else if (fmt !== "ocad" || ver <= 10) { if (models.some((x) => x.model.images.length)) E.toast("Les images placées sur la carte sont des modèles à part : gardez leurs fichiers à côté des cartes créées.", 6000); }
-  } catch (err) { console.error(err); E.status("Fichiers impossibles", "bad"); E.toast(`Création impossible : ${err.message}`); }
+    E.status(t("trc.cf.done"), "ok");
+    if (skipped) E.toast(tn("trc.cf.skipped", skipped), 6000);
+    else if (fmt !== "ocad" || ver <= 10) { if (models.some((x) => x.model.images.length)) E.toast(t("trc.cf.imagesApart"), 6000); }
+  } catch (err) { console.error(err); E.status(t("trc.cf.failed"), "bad"); E.toast(t("trc.cf.failedToast", { err: err.message })); }
 }

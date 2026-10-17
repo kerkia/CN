@@ -11,6 +11,7 @@ import { where } from "./ribbon-data.js";
 import { relayAssignments } from "./relay.js";
 import { zip, printBox } from "./pdf.js";
 import { paintCourse, paintMap, purpleOverride, syncMap } from "./appear.js";
+import { t } from "./lang.js";
 
 const x = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const r2 = (v) => Math.round(v * 100) / 100;
@@ -152,13 +153,13 @@ export function iofXml(E, version) {
   const ev = E.ev;
   const missing = M.courseIds(ev).filter((id) => !(M.findKind(ev, id, "start") && M.hasFinish(ev, id))).map((id) => ev.courses[id].name);
   download(`${fileName(ev.title)} - IOF XML ${version === 3 ? "3.0" : "2.0.3"}.xml`, iofXmlText(ev, version), "application/xml");
-  if (missing.length) E.toast(`Sans départ ou sans arrivée, non exportés : ${missing.join(", ")}.`, 6000);
+  if (missing.length) E.toast(t("trc.exp.notExported", { list: missing.join(", ") }), 6000);
 }
 
 // ---- GPX and KML (need the map's georeference) -----------------------------------------------------------------------------------
 function needGeo(E) {
   if (hasGeo(E.ev)) return true;
-  E.toast(`La carte n'est pas géoréférencée : ${where("georef")}.`, 6000);
+  E.toast(t("trc.exp.noGeo", { where: where("georef") }), 6000);
   return false;
 }
 export function gpx(E) {
@@ -199,7 +200,7 @@ export async function courseImage(E, cd, dpi, { withMap = true } = {}) {
   const { box, k } = printBox(E, cd, layout);
   const pxPerMm = (dpi / 25.4) * k;                            // image px per map mm
   const W = Math.round((box[2] - box[0]) * pxPerMm), H = Math.round((box[3] - box[1]) * pxPerMm);
-  if (W * H > 120e6) throw new Error("image trop grande : baissez la résolution");
+  if (W * H > 120e6) throw new Error(t("trc.exp.tooBig"));
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
@@ -218,18 +219,18 @@ function worldFile(ev, box, pxPerMm) {
 }
 export async function imagesDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev);
-  const v = await modal(E, { title: "Images des circuits", wide: true, ok: "Créer", remember: "images", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? x(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Format", sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"], ["gif", "GIF (256 couleurs)"]], "png"))}${field("Résolution (ppp)", '<input name="dpi" value="200" inputmode="numeric">')}
-    ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul"]], "map"))}</div>
-    <p class="tr-hint">${hasGeo(ev) ? "Un fichier de géoréférencement (world file, en degrés WGS 84) accompagne chaque image." : "La carte n'est pas géoréférencée : pas de world file."}</p>`,
-  validate: (o) => (!(num(o.dpi) >= 50 && num(o.dpi) <= 1200) ? "Une résolution de 50 à 1200 ppp." : null) });
+  const v = await modal(E, { title: t("trc.exp.imagesTitle"), wide: true, ok: t("trc.exp.create"), remember: "images", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? x(ev.courses[id].name) : x(t("trc.exp.allControls"))}</label>`).join("")}</div>
+    <div class="tr-grid2">${field(t("trc.exp.format"), sel("fmt", [["png", "PNG"], ["jpeg", "JPEG"], ["gif", t("trc.exp.gif")]], "png"))}${field(t("trc.exp.dpi"), '<input name="dpi" value="200" inputmode="numeric">')}
+    ${field(t("trc.exp.content"), sel("content", [["map", t("trc.exp.contentMap")], ["course", t("trc.exp.contentCourse")]], "map"))}</div>
+    <p class="tr-hint">${x(hasGeo(ev) ? t("trc.exp.worldYes") : t("trc.exp.worldNo"))}</p>`,
+  validate: (o) => (!(num(o.dpi) >= 50 && num(o.dpi) <= 1200) ? t("trc.exp.dpiErr") : null) });
   if (!v) return;
-  E.status("Création des images…", "busy");
+  E.status(t("trc.exp.busy"), "busy");
   const files = {};
   for (const id of [0, ...ids]) {
     if (!v[`c${id}`]) continue;
-    const cd = id ? M.cdCourse(id) : M.cdAll(), name = fileName(id ? ev.courses[id].name : "Tous les postes");
+    const cd = id ? M.cdCourse(id) : M.cdAll(), name = fileName(id ? ev.courses[id].name : t("trc.exp.allControls"));
     const { canvas, box, pxPerMm } = await courseImage(E, cd, num(v.dpi), { withMap: v.content === "map" });
     const ext = { png: ["png", "pgw"], jpeg: ["jpg", "jgw"], gif: ["gif", "gfw"] }[v.fmt];
     if (v.fmt === "gif") {
@@ -244,7 +245,7 @@ export async function imagesDialog(E) {
   }
   if (Object.keys(files).length === 1) { const [n, b] = Object.entries(files)[0]; download(n, new Blob([b])); }
   else await saveFiles(E, files, `${fileName(ev.title)} - images.zip`);
-  E.status("Images créées", "ok");
+  E.status(t("trc.exp.done"), "ok");
 }
 
 // ---- RouteGadget --------------------------------------------------------------------------------------------------------------------
@@ -264,5 +265,5 @@ export async function routeGadget(E) {
   // positions stay in mm and the map's corners in the Map element let it scale them)
   files[`${fileName(ev.title)}.xml`] = new TextEncoder().encode(iofXmlText(ev, 3));
   await saveFiles(E, files, `${fileName(ev.title)} - RouteGadget.zip`);
-  E.toast("Fichiers RouteGadget créés (carte et circuits). Les temps intermédiaires viennent ensuite du logiciel de chronométrage. Dans O'CN, « Publier vers l'analyse multi » fait mieux sans fichier.", 8000);
+  E.toast(t("trc.exp.routeGadget"), 8000);
 }

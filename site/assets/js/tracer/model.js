@@ -989,7 +989,10 @@ export function removeSpecialCorner(ev, sid, pt) {
 export function expandText(ev, cd, text, { fileName = "", variation = "", team = null, leg = null } = {}) {
   const v = cd.course ? view(ev, cd, { specials: false, descriptions: false }) : null;
   const course = cd.course ? ev.courses[cd.course] : null;
-  const km = (m) => (m / 1000).toFixed(1).replace(".", ",");
+  // numbers as the event's own language writes them (its description sheets'), not the interface's: « 4,2 km » / "4.2 km"
+  let nf;
+  try { nf = (d) => new Intl.NumberFormat(ev.lang || "fr", { minimumFractionDigits: d, maximumFractionDigits: d }); nf(0); } catch (e) { nf = (d) => new Intl.NumberFormat("fr", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  const km = (m) => nf(1).format(m / 1000);
   const len = v ? (Math.abs(v.totalMax - v.totalMin) < 1 ? `${km(v.totalMin)} km` : `${km(v.totalMin)}–${km(v.totalMax)} km`) : "";
   return String(text)
     .replaceAll("$(EventTitle)", ev.title.replace(/\|/g, " "))
@@ -1000,7 +1003,7 @@ export function expandText(ev, cd, text, { fileName = "", variation = "", team =
     .replaceAll("$(RelayLeg)", leg != null ? String(leg) : "-")
     .replaceAll("$(CourseLength)", len)
     .replaceAll("$(CourseClimb)", course && course.climb >= 0 ? String(Math.round(course.climb / 5) * 5) : "")
-    .replaceAll("$(PrintScale)", `1:${new Intl.NumberFormat("fr-FR").format(v?.printScale || ev.map.scale)}`)
+    .replaceAll("$(PrintScale)", `1:${nf(0).format(v?.printScale || ev.map.scale)}`)
     .replaceAll("$(ClassList)", (course?.secondary || "").replace(/\|/g, " "))
     .replaceAll("$(FileName)", fileName)
     .replaceAll("$(MapFileName)", ev.map.file || "");

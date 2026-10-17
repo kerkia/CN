@@ -7,6 +7,7 @@
 // { t: "field", id } a setting drawn by ribbon.js; { t: "chip", id } live figures; { t: "modes", id } choices with a preview.
 
 import { MENUS } from "./icons.js";
+import { t } from "./lang.js";
 
 const B = (act, label, icon, o = {}) => ({ t: "big", act, label, icon, ...o });
 const S = (act, label, icon, o = {}) => ({ t: "small", act, label, icon, ...o });
@@ -17,149 +18,149 @@ const stack = (...items) => ({ t: "stack", items });
 export const GALLERY = ["water", "first-aid", "out-of-bounds", "boundary", "dangerous-area", "forbidden-route", "text", "image"];
 
 export const TABS = [
-  { id: "file", label: "Fichier", key: "F", backstage: true },
-  { id: "home", label: "Tracer", key: "T", icon: "control", guide: "postes", groups: [
-    { id: "select", title: "Sélection", items: [T("select", "Sélection", "select", { key: "S", need: null,
-      tip: "Cliquer un objet pour le choisir ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour déplacer la carte." })] },
-    { id: "controls", title: "Postes", items: [
-      T("control", "Poste", "control", { key: "P", tip: "Poser un poste : il vient après le poste choisi, dans l'interposte choisi, ou dans l'interposte le plus proche. L'outil reste actif pour poser les suivants." }),
-      T("start", "Départ", "start", { key: "D", tip: "Poser le départ, ou cliquer un départ déjà posé pour le reprendre dans ce circuit." }),
-      T("finish", "Arrivée", "finish", { key: "A", tip: "Poser l'arrivée." }),
-      stack(T("crossing", "Passage obligatoire", "crossing", { small: true, key: "O", tip: "Un point de passage obligé (une brèche, un pont) : cliquer sur l'interposte." }),
-        T("issue", "Remise de carte", "issue", { small: true, tip: "Là où le coureur reçoit sa carte, avant le départ ; un trajet balisé mène au départ." }),
-        T("exchange", "Échange de carte", "exchange", { small: true, tip: "Cliquer un poste du circuit : le coureur y change de carte, et le circuit se partage en parties." }))] },
-    { id: "legs", title: "Interpostes", items: [stack(
-      T("bend", "Coude", "bend", { small: true, key: "C", tip: "Cliquer un interposte pour le plier (contourner une zone interdite) ; cliquer un coude pour le retirer." }),
-      T("gap", "Coupure", "gap", { small: true, key: "X", tip: "Glisser le long d'un interposte ou d'un cercle pour le couper, et laisser lisible un détail de la carte." }),
-      T("route", "Itinéraire", "route", { small: true, tip: "Le chemin prévu des coureurs, pour la dénivelée : cliquer l'interposte, puis les points du chemin. Il ne s'imprime pas." }))] },
-    { id: "specials", title: "Objets spéciaux", launcher: "special-more", items: [{ t: "gallery" }] },
-    { id: "descr", title: "Définitions", guide: "definitions", launcher: "standards", items: [
-      T("descr", "Sur la carte", "descr", { tip: "Glisser un cadre sur la carte : les définitions du circuit s'y placent, et leur largeur fixe leur taille." }),
-      stack({ t: "field", id: "descStandard" }, { t: "field", id: "lang" }, S("custom-text", "Textes…", "text", { need: "edit", tip: "Changer le texte qu'un symbole donne dans les définitions en texte." }))] },
+  { id: "file", label: t("trc.rd.tabFile"), key: "F", backstage: true },
+  { id: "home", label: t("trc.rd.tabHome"), key: "T", icon: "control", guide: "postes", groups: [
+    { id: "select", title: t("trc.rd.gSelect"), items: [T("select", t("trc.rd.select"), "select", { key: "S", need: null,
+      tip: t("trc.rd.selectTip") })] },
+    { id: "controls", title: t("trc.rd.gControls"), items: [
+      T("control", t("trc.rd.control"), "control", { key: "P", tip: t("trc.rd.controlTip") }),
+      T("start", t("trc.rd.start"), "start", { key: "D", tip: t("trc.rd.startTip") }),
+      T("finish", t("trc.rd.finish"), "finish", { key: "A", tip: t("trc.rd.finishTip") }),
+      stack(T("crossing", t("trc.rd.crossing"), "crossing", { small: true, key: "O", tip: t("trc.rd.crossingTip") }),
+        T("issue", t("trc.rd.issue"), "issue", { small: true, tip: t("trc.rd.issueTip") }),
+        T("exchange", t("trc.rd.exchange"), "exchange", { small: true, tip: t("trc.rd.exchangeTip") }))] },
+    { id: "legs", title: t("trc.rd.gLegs"), items: [stack(
+      T("bend", t("trc.rd.bend"), "bend", { small: true, key: "C", tip: t("trc.rd.bendTip") }),
+      T("gap", t("trc.rd.gap"), "gap", { small: true, key: "X", tip: t("trc.rd.gapTip") }),
+      T("route", t("trc.rd.route"), "route", { small: true, tip: t("trc.rd.routeTip") }))] },
+    { id: "specials", title: t("trc.rd.gSpecials"), launcher: "special-more", items: [{ t: "gallery" }] },
+    { id: "descr", title: t("trc.rd.gDescr"), guide: "definitions", launcher: "standards", items: [
+      T("descr", t("trc.rd.descr"), "descr", { tip: t("trc.rd.descrTip") }),
+      stack({ t: "field", id: "descStandard" }, { t: "field", id: "lang" }, S("custom-text", t("trc.rd.customText"), "text", { need: "edit", tip: t("trc.rd.customTextTip") }))] },
   ] },
-  { id: "courses", label: "Circuits", key: "C", icon: "course", guide: "circuits", groups: [
-    { id: "course", title: "Circuit", launcher: "course-props", items: [
-      B("course-new", "Nouveau circuit", "addcircle", { need: "edit", tip: "Un nouveau circuit (aussi : le « + » au bout des onglets)." }),
-      B("course-props", "Propriétés", "pencil", { need: "course", tip: "Le nom, le type (normal ou au score), les catégories, la dénivelée, l'échelle d'impression, les définitions, la numérotation." }),
-      stack(S("course-dup", "Dupliquer", "copy", { need: "course", tip: "Une copie du circuit, pour en dériver un autre." }),
-        S("course-order", "Ordre des circuits", "sort", { need: "edit", tip: "L'ordre des onglets et des listes." }),
-        S("course-delete", "Supprimer", "trash", { need: "course", tip: "Supprimer le circuit ; ses postes restent dans « Tous les postes »." }))] },
-    { id: "variations", title: "Variantes et parties", items: [
-      B("var-fork", "Fourche", "fork", { need: "course", tip: "Une fourche à partir du poste choisi : des branches qui se rejoignent plus loin." }),
-      B("var-loop", "Boucles", "loop", { need: "course", tip: "Des boucles à partir du poste choisi, qui y reviennent (un « papillon »)." }),
-      stack(S("relay", "Relais…", "relay", { need: "course", tip: "Quelle variante court chaque relayeur de chaque équipe." }),
-        S("var-delete", "Supprimer la variante", "removecircle", { need: "course", tip: "Supprimer la fourche ou les boucles qui partent du poste choisi." }),
-        S("part-options", "Options de la partie", "parts", { need: "course", tip: "Pour un circuit en plusieurs parties (échange de carte) : montrer ou non l'arrivée sur la partie choisie." }))] },
-    { id: "print", title: "Impression", guide: "sorties", launcher: "print-area", items: [
-      B("print-area", "Zone d'impression", "frame", { tip: "La partie de la carte imprimée, le format et l'orientation de la feuille, les marges." }),
-      stack({ t: "field", id: "printScale" }, { t: "field", id: "paper" }, S("view-printarea", "Montrer la zone", "frame", { toggle: "printArea", tip: "Montrer en pointillés la zone d'impression du circuit." }))] },
-    { id: "numbers", title: "Numérotation", items: [
-      stack(S("numbering", "Premier code…", "hash", { need: "edit", tip: "Le premier code des nouveaux postes, et si l'on évite les codes lisibles à l'envers." }),
-        S("codes", "Changer les codes…", "tag", { need: "edit", tip: "Changer les codes de plusieurs postes d'un coup." }),
-        S("renumber", "Renuméroter", "renumber", { need: "edit", tip: "Redonner un code à chaque poste, à partir du premier code." })),
-      stack(S("remove-unused", "Postes inutilisés", "trash", { need: "edit", count: "unused", tip: "Supprimer les postes qu'aucun circuit n'utilise." }),
-        S("punch", "Poinçons…", "dots", { need: "edit", tip: "Le dessin de la pince de chaque poste, pour vérifier les cartons." }))] },
+  { id: "courses", label: t("trc.rd.tabCourses"), key: "C", icon: "course", guide: "circuits", groups: [
+    { id: "course", title: t("trc.rd.gCourse"), launcher: "course-props", items: [
+      B("course-new", t("trc.rd.courseNew"), "addcircle", { need: "edit", tip: t("trc.rd.courseNewTip") }),
+      B("course-props", t("trc.rd.courseProps"), "pencil", { need: "course", tip: t("trc.rd.coursePropsTip") }),
+      stack(S("course-dup", t("trc.rd.courseDup"), "copy", { need: "course", tip: t("trc.rd.courseDupTip") }),
+        S("course-order", t("trc.rd.courseOrder"), "sort", { need: "edit", tip: t("trc.rd.courseOrderTip") }),
+        S("course-delete", t("trc.rd.courseDelete"), "trash", { need: "course", tip: t("trc.rd.courseDeleteTip") }))] },
+    { id: "variations", title: t("trc.rd.gVariations"), items: [
+      B("var-fork", t("trc.rd.varFork"), "fork", { need: "course", tip: t("trc.rd.varForkTip") }),
+      B("var-loop", t("trc.rd.varLoop"), "loop", { need: "course", tip: t("trc.rd.varLoopTip") }),
+      stack(S("relay", t("trc.rd.relay"), "relay", { need: "course", tip: t("trc.rd.relayTip") }),
+        S("var-delete", t("trc.rd.varDelete"), "removecircle", { need: "course", tip: t("trc.rd.varDeleteTip") }),
+        S("part-options", t("trc.rd.partOptions"), "parts", { need: "course", tip: t("trc.rd.partOptionsTip") }))] },
+    { id: "print", title: t("trc.rd.gPrint"), guide: "sorties", launcher: "print-area", items: [
+      B("print-area", t("trc.rd.printArea"), "frame", { tip: t("trc.rd.printAreaTip") }),
+      stack({ t: "field", id: "printScale" }, { t: "field", id: "paper" }, S("view-printarea", t("trc.rd.viewPrintarea"), "frame", { toggle: "printArea", tip: t("trc.rd.viewPrintareaTip") }))] },
+    { id: "numbers", title: t("trc.rd.gNumbers"), items: [
+      stack(S("numbering", t("trc.rd.numbering"), "hash", { need: "edit", tip: t("trc.rd.numberingTip") }),
+        S("codes", t("trc.rd.codes"), "tag", { need: "edit", tip: t("trc.rd.codesTip") }),
+        S("renumber", t("trc.rd.renumber"), "renumber", { need: "edit", tip: t("trc.rd.renumberTip") })),
+      stack(S("remove-unused", t("trc.rd.removeUnused"), "trash", { need: "edit", count: "unused", tip: t("trc.rd.removeUnusedTip") }),
+        S("punch", t("trc.rd.punch"), "dots", { need: "edit", tip: t("trc.rd.punchTip") }))] },
   ] },
-  { id: "map", label: "Carte", key: "A", icon: "map", guide: "carte", groups: [
-    { id: "mapfile", title: "Carte", items: [
-      B("map-change", "Changer de carte", "swap", { need: "edit", tip: "Une autre carte (une version corrigée, un meilleur scan, le fichier OCAD) : les postes gardent leur place." }),
-      stack({ t: "chip", id: "mapInfo" }, S("event-props", "Échelle, résolution…", "sliders", { need: "edit", tip: "Le titre, l'échelle de la carte (et la résolution d'une image), la langue des définitions, des notes." }),
-        S("import-course", "Lire un circuit imprimé", "scan", { need: "edit", tip: "Lire les cercles, le départ et l'arrivée imprimés sur une carte (un PDF, une photo) et en faire des postes." }))] },
-    { id: "position", title: "Position", items: [
-      B("calage", "Caler les postes", "target", { need: "edit", tip: "Replacer tous les postes sur la carte en deux clics par poste, sur deux postes éloignés : décalage, rotation, échelle." }),
-      stack(S("georef", "Géoréférencer…", "globe", { tip: "Situer la carte sur la Terre : des points cliqués, un fichier de calage, un KMZ." }),
-        S("move-all", "Déplacer tous les postes…", "move", { need: "edit", tip: "Décaler, tourner ou mettre à l'échelle tous les postes à la fois." }), { t: "chip", id: "geoInfo" })] },
-    { id: "purple", title: "Violet", launcher: "appearance", items: [{ t: "modes", id: "blend" },
-      stack(S("appearance", "Apparence…", "palette", { need: "edit", tip: "Le violet en CMJN, la police et le contour des numéros, la coupure automatique des traits, la taille selon l'échelle." }),
-        S("overprint", "Surimpression", "layers", { need: "vector", toggle: "overprint", tip: "Les couleurs que la carte marque « surimpression », fondues comme à l'impression (carte OCAD ou Mapper)." }))] },
-    { id: "symbols", title: "Symboles", launcher: "appearance", items: [stack({ t: "field", id: "circle" }, { t: "field", id: "line" }, { t: "field", id: "number" }),
+  { id: "map", label: t("trc.rd.tabMap"), key: "A", icon: "map", guide: "carte", groups: [
+    { id: "mapfile", title: t("trc.rd.gMapfile"), items: [
+      B("map-change", t("trc.rd.mapChange"), "swap", { need: "edit", tip: t("trc.rd.mapChangeTip") }),
+      stack({ t: "chip", id: "mapInfo" }, S("event-props", t("trc.rd.eventProps"), "sliders", { need: "edit", tip: t("trc.rd.eventPropsTip") }),
+        S("import-course", t("trc.rd.importCourse"), "scan", { need: "edit", tip: t("trc.rd.importCourseTip") }))] },
+    { id: "position", title: t("trc.rd.gPosition"), items: [
+      B("calage", t("trc.rd.calage"), "target", { need: "edit", tip: t("trc.rd.calageTip") }),
+      stack(S("georef", t("trc.rd.georef"), "globe", { tip: t("trc.rd.georefTip") }),
+        S("move-all", t("trc.rd.moveAll"), "move", { need: "edit", tip: t("trc.rd.moveAllTip") }), { t: "chip", id: "geoInfo" })] },
+    { id: "purple", title: t("trc.rd.gPurple"), launcher: "appearance", items: [{ t: "modes", id: "blend" },
+      stack(S("appearance", t("trc.rd.appearance"), "palette", { need: "edit", tip: t("trc.rd.appearanceTip") }),
+        S("overprint", t("trc.rd.overprint"), "layers", { need: "vector", toggle: "overprint", tip: t("trc.rd.overprintTip") }))] },
+    { id: "symbols", title: t("trc.rd.gSymbols"), launcher: "appearance", items: [stack({ t: "field", id: "circle" }, { t: "field", id: "line" }, { t: "field", id: "number" }),
       stack({ t: "field", id: "mapStandard" })] },
-    { id: "view", title: "Affichage", items: [
-      stack(S("view-course", "Tout le circuit", "fit", { tip: "Cadrer tout le circuit." }), S("view-map", "Toute la carte", "map", { tip: "Cadrer toute la carte." }),
-        S("view-all", "Tous les postes", "view", { toggle: "allControls", tip: "Montrer en pâle les postes des autres circuits, pour les reprendre." })),
-      stack(S("view-others", "Autres circuits…", "layers", { tip: "Montrer d'autres circuits en bleu pâle sous celui en cours." }), { t: "field", id: "intensity" })] },
+    { id: "view", title: t("trc.rd.gView"), items: [
+      stack(S("view-course", t("trc.rd.viewCourse"), "fit", { tip: t("trc.rd.viewCourseTip") }), S("view-map", t("trc.rd.viewMap"), "map", { tip: t("trc.rd.viewMapTip") }),
+        S("view-all", t("trc.rd.viewAll"), "view", { toggle: "allControls", tip: t("trc.rd.viewAllTip") })),
+      stack(S("view-others", t("trc.rd.viewOthers"), "layers", { tip: t("trc.rd.viewOthersTip") }), { t: "field", id: "intensity" })] },
   ] },
-  { id: "check", label: "Vérifier", key: "V", icon: "shield", guide: "verifier", badge: "issues", groups: [
-    { id: "audit", title: "Contrôle", items: [B("rep-audit", "Contrôle de l'événement", "shield", { badge: "issues",
-      tip: "Postes trop proches, définitions incomplètes, codes, interpostes à travers une zone interdite… Le nombre de problèmes est tenu à jour." }), { t: "chip", id: "issues" }] },
-    { id: "reports", title: "Rapports", items: [
-      B("rep-summary", "Résumé", "list", { tip: "Pour chaque circuit : la longueur, la dénivelée, le nombre de postes." }),
-      B("rep-legs", "Longueurs", "ruler", { tip: "La longueur de chaque interposte de chaque circuit." }),
-      stack(S("rep-cross", "Références croisées", "table", { tip: "Quels circuits passent à quel poste." }),
-        S("rep-load", "Charge des postes", "bars", { tip: "Le nombre de concurrents attendus à chaque poste et sur chaque interposte." }),
-        S("export-csv", "Tableaux (CSV)", "table", { tip: "Les tableaux des rapports, pour un tableur." }))] },
-    { id: "calc", title: "Calculs", guide: "calculs", items: [
-      B("rep-climb", "Dénivelée (IGN)", "mountain", { tip: "La dénivelée de chaque circuit, sur le modèle de terrain de l'IGN (carte géoréférencée)." }),
-      B("rep-times", "Temps du vainqueur", "stopwatch", { tip: "Le temps attendu du vainqueur de chaque circuit, et la longueur pour un temps visé." }),
-      stack(S("load", "Concurrents…", "bars", { need: "edit", tip: "Le nombre de concurrents de chaque circuit (repris des inscriptions de la FFCO quand il y en a)." }))] },
-    { id: "figures", title: "Circuit", items: [{ t: "chip", id: "course" }] },
+  { id: "check", label: t("trc.rd.tabCheck"), key: "V", icon: "shield", guide: "verifier", badge: "issues", groups: [
+    { id: "audit", title: t("trc.rd.gAudit"), items: [B("rep-audit", t("trc.rd.repAudit"), "shield", { badge: "issues",
+      tip: t("trc.rd.repAuditTip") }), { t: "chip", id: "issues" }] },
+    { id: "reports", title: t("trc.rd.gReports"), items: [
+      B("rep-summary", t("trc.rd.repSummary"), "list", { tip: t("trc.rd.repSummaryTip") }),
+      B("rep-legs", t("trc.rd.repLegs"), "ruler", { tip: t("trc.rd.repLegsTip") }),
+      stack(S("rep-cross", t("trc.rd.repCross"), "table", { tip: t("trc.rd.repCrossTip") }),
+        S("rep-load", t("trc.rd.repLoad"), "bars", { tip: t("trc.rd.repLoadTip") }),
+        S("export-csv", t("trc.rd.exportCsv"), "table", { tip: t("trc.rd.exportCsvTip") }))] },
+    { id: "calc", title: t("trc.rd.gCalc"), guide: "calculs", items: [
+      B("rep-climb", t("trc.rd.repClimb"), "mountain", { tip: t("trc.rd.repClimbTip") }),
+      B("rep-times", t("trc.rd.repTimes"), "stopwatch", { tip: t("trc.rd.repTimesTip") }),
+      stack(S("load", t("trc.rd.load"), "bars", { need: "edit", tip: t("trc.rd.loadTip") }))] },
+    { id: "figures", title: t("trc.rd.gFigures"), items: [{ t: "chip", id: "course" }] },
   ] },
-  { id: "out", label: "Imprimer", key: "I", icon: "printer", guide: "sorties", groups: [
+  { id: "out", label: t("trc.rd.tabOut"), key: "I", icon: "printer", guide: "sorties", groups: [
     { id: "pdf", title: "PDF", items: [
-      B("pdf-courses", "Cartes des circuits", "printer", { split: [["pdf-course", "Ce circuit"], ["pdf-courses", "Tous les circuits…"]],
-        tip: "Les cartes des circuits à imprimer, à leur échelle d'impression. Imprimez le PDF en taille réelle." }),
-      B("pdf-descriptions", "Définitions", "descr", { tip: "Les définitions seules, plusieurs par page, à découper pour les porte-définitions." }),
-      B("pdf-punch", "Cartons de contrôle", "punch", { tip: "Les cartons de contrôle, avec une case par poste." })] },
-    { id: "timing", title: "Chronométrage", items: [
+      B("pdf-courses", t("trc.rd.pdfCourses"), "printer", { split: [["pdf-course", t("trc.rd.pdfThisCourse")], ["pdf-courses", t("trc.rd.pdfAllCourses")]],
+        tip: t("trc.rd.pdfCoursesTip") }),
+      B("pdf-descriptions", t("trc.rd.pdfDescriptions"), "descr", { tip: t("trc.rd.pdfDescriptionsTip") }),
+      B("pdf-punch", t("trc.rd.pdfPunch"), "punch", { tip: t("trc.rd.pdfPunchTip") })] },
+    { id: "timing", title: t("trc.rd.gTiming"), items: [
       B("export-iof3", "IOF XML", "stopwatch", { split: [["export-iof3", "IOF XML 3.0"], ["export-iof2", "IOF XML 2.0.3"]],
-        tip: "Les circuits pour MeOS, OE, SportSoftware : postes, ordre, longueurs, équipes des relais. 2.0.3 pour les logiciels anciens." })] },
-    { id: "gps", title: "GPS et web", items: [
-      stack(S("export-gpx", "GPX des postes", "pin", { tip: "Les postes en points GPS (carte géoréférencée)." }),
-        S("export-kml", "KML des circuits", "globe", { tip: "Les circuits pour Google Earth ou une carte en ligne (carte géoréférencée)." }),
-        S("export-images", "Images…", "image", { tip: "Une image par circuit (PNG, JPEG, GIF), avec son fichier de calage quand la carte est géoréférencée." })),
-      stack(S("export-routegadget", "RouteGadget", "route", { tip: "La carte en image et les circuits, à déposer sur RouteGadget." }))] },
-    { id: "software", title: "Autres logiciels", items: [stack(
-      S("export-ocad", "OCAD ou Mapper…", "layers", { tip: "Chaque circuit en carte OCAD ou OpenOrienteering Mapper, la carte en fond." }),
-      S("export-ocn", "Fichier O'CN…", "export", { tip: "Tout l'événement en un seul fichier .ocnt, sa carte comprise si on le veut." }),
-      S("export-ppen", "Purple Pen (.ppen)", "export", { tip: "Le fichier de l'événement pour Purple Pen, à mettre à côté de la carte." }))] },
-    { id: "files", title: "Fichiers", items: [stack(S("save-to", "Plusieurs fichiers…", "folder",
-      { tip: "Quand une commande crée plusieurs fichiers : les écrire dans un dossier choisi, ou en un seul .zip." }))] },
+        tip: t("trc.rd.exportIofTip") })] },
+    { id: "gps", title: t("trc.rd.gGps"), items: [
+      stack(S("export-gpx", t("trc.rd.exportGpx"), "pin", { tip: t("trc.rd.exportGpxTip") }),
+        S("export-kml", t("trc.rd.exportKml"), "globe", { tip: t("trc.rd.exportKmlTip") }),
+        S("export-images", t("trc.rd.exportImages"), "image", { tip: t("trc.rd.exportImagesTip") })),
+      stack(S("export-routegadget", "RouteGadget", "route", { tip: t("trc.rd.exportRoutegadgetTip") }))] },
+    { id: "software", title: t("trc.rd.gSoftware"), items: [stack(
+      S("export-ocad", t("trc.rd.exportOcad"), "layers", { tip: t("trc.rd.exportOcadTip") }),
+      S("export-ocn", t("trc.rd.exportOcn"), "export", { tip: t("trc.rd.exportOcnTip") }),
+      S("export-ppen", "Purple Pen (.ppen)", "export", { tip: t("trc.rd.exportPpenTip") }))] },
+    { id: "files", title: t("trc.rd.gFiles"), items: [stack(S("save-to", t("trc.rd.saveTo"), "folder",
+      { tip: t("trc.rd.saveToTip") }))] },
   ] },
-  { id: "team", label: "Équipe et course", key: "E", icon: "team", guide: "outils", badge: "comments", groups: [
-    { id: "teamwork", title: "Équipe", items: [
-      B("team", "Équipe", "team", { tip: "Les membres de l'équipe et leur rôle : traceur, contrôleur, lecteur." }),
-      B("comments", "Commentaires", "comment", { badge: "comments", tip: "Les commentaires de l'équipe, épinglés sur la carte ; « Fait » quand c'est réglé." }),
-      stack(S("versions", "Versions…", "history", { tip: "Chaque version gardée, ce qui a changé depuis, et la rouvrir." }),
-        S("version-save", "Garder une version…", "bookmark", { need: "edit", tip: "Garder l'état actuel sous un nom, pour y revenir plus tard." }),
-        S("save", "Enregistrer maintenant", "save", { key: "Ctrl+S", tip: "L'enregistrement se fait aussi tout seul, quelques secondes après chaque changement." }))] },
-    { id: "terrain", title: "Terrain", items: [
-      B("field", "Mode terrain", "phone", { tip: "Sur le téléphone : la carte géoréférencée avec sa position GPS, pour poser, vérifier et ramasser les postes." }),
-      stack(S("rep-pickup", "Plan de ramassage", "box", { tip: "Quand et dans quel ordre ramasser les postes." }),
-        S("offline", "Hors ligne…", "offline", { tip: "Garder l'événement sur cet appareil pour l'ouvrir sans réseau." }))] },
-    { id: "after", title: "Après la course", guide: "apres", items: [
-      B("publish", "Analyse multi", "share", { need: "after", tip: "Les circuits dans « Analyse multi », où les coureurs déposent leurs traces GPS." }),
-      B("send-results", "Vers « Résultats »", "send", { need: "after", tip: "Longueurs, dénivelées et postes de chaque circuit, envoyés aux résultats de la course." }),
-      B("rep-after", "Bilan", "chart", { need: "after", tip: "Pour chaque interposte : meilleur temps, temps médian, erreurs, itinéraires pris." })] },
-    { id: "security", title: "Sécurité", items: [stack(S("encryption", "Chiffrement…", "lock", { tip: "Chiffrer l'événement avec une phrase de passe de l'équipe : le serveur ne peut plus le lire." }))] },
+  { id: "team", label: t("trc.rd.tabTeam"), key: "E", icon: "team", guide: "outils", badge: "comments", groups: [
+    { id: "teamwork", title: t("trc.rd.gTeamwork"), items: [
+      B("team", t("trc.rd.team"), "team", { tip: t("trc.rd.teamTip") }),
+      B("comments", t("trc.rd.comments"), "comment", { badge: "comments", tip: t("trc.rd.commentsTip") }),
+      stack(S("versions", t("trc.rd.versions"), "history", { tip: t("trc.rd.versionsTip") }),
+        S("version-save", t("trc.rd.versionSave"), "bookmark", { need: "edit", tip: t("trc.rd.versionSaveTip") }),
+        S("save", t("trc.rd.save"), "save", { key: "Ctrl+S", tip: t("trc.rd.saveTip") }))] },
+    { id: "terrain", title: t("trc.rd.gTerrain"), items: [
+      B("field", t("trc.rd.field"), "phone", { tip: t("trc.rd.fieldTip") }),
+      stack(S("rep-pickup", t("trc.rd.repPickup"), "box", { tip: t("trc.rd.repPickupTip") }),
+        S("offline", t("trc.rd.offline"), "offline", { tip: t("trc.rd.offlineTip") }))] },
+    { id: "after", title: t("trc.rd.gAfter"), guide: "apres", items: [
+      B("publish", t("trc.rd.publish"), "share", { need: "after", tip: t("trc.rd.publishTip") }),
+      B("send-results", t("trc.rd.sendResults"), "send", { need: "after", tip: t("trc.rd.sendResultsTip") }),
+      B("rep-after", t("trc.rd.repAfter"), "chart", { need: "after", tip: t("trc.rd.repAfterTip") })] },
+    { id: "security", title: t("trc.rd.gSecurity"), items: [stack(S("encryption", t("trc.rd.encryption"), "lock", { tip: t("trc.rd.encryptionTip") }))] },
   ] },
 ];
 
 /** What the settings, figures and galleries of the ribbon are (the tooltips, the guide's « Le ruban »). */
 export const INFO = {
   field: {
-    descStandard: ["Norme", "La norme des définitions : IOF 2018/2024, ou 2004."],
-    lang: ["Langue", "La langue des définitions en texte (23 langues)."],
-    mapStandard: ["Carte", "La norme de la carte, qui fixe la taille des cercles et des numéros : ISOM 2017 (forêt), ISSprOM 2019 (sprint), ISOM 2000."],
-    printScale: ["Échelle", "L'échelle d'impression du circuit en cours (de « Tous les postes » quand aucun circuit n'est choisi)."],
-    paper: ["Papier", "Le format et l'orientation de la feuille du circuit en cours (ou de sa partie) ; « selon le circuit » tourne la feuille dans le sens du circuit."],
-    circle: ["Cercles", "La taille des cercles, en proportion de la norme."],
-    line: ["Traits", "L'épaisseur des traits, en proportion de la norme."],
-    number: ["Numéros", "La hauteur des numéros, en proportion de la norme."],
-    intensity: ["Intensité", "Pâlir la carte, pour mieux voir le circuit (aussi : le curseur sous les boutons de zoom)."],
-    code: ["Code", "Le code du poste (1 à 3 caractères), tel que le porte le boîtier."],
+    descStandard: [t("trc.rd.fDescStandard"), t("trc.rd.fDescStandardTip")],
+    lang: [t("trc.rd.fLang"), t("trc.rd.fLangTip")],
+    mapStandard: [t("trc.rd.fMapStandard"), t("trc.rd.fMapStandardTip")],
+    printScale: [t("trc.rd.fPrintScale"), t("trc.rd.fPrintScaleTip")],
+    paper: [t("trc.rd.fPaper"), t("trc.rd.fPaperTip")],
+    circle: [t("trc.rd.fCircle"), t("trc.rd.fCircleTip")],
+    line: [t("trc.rd.fLine"), t("trc.rd.fLineTip")],
+    number: [t("trc.rd.fNumber"), t("trc.rd.fNumberTip")],
+    intensity: [t("trc.rd.fIntensity"), t("trc.rd.fIntensityTip")],
+    code: [t("trc.rd.fCode"), t("trc.rd.fCodeTip")],
   },
   chip: {
-    issues: "Les premiers problèmes que trouve le contrôle de l'événement, tenus à jour à chaque changement ; un clic ouvre le contrôle complet.",
-    course: "Le circuit en cours : longueur, dénivelée, nombre de postes, échelle, concurrents attendus.",
-    mapInfo: "La carte : son format et son échelle.", geoInfo: "Si la carte est géoréférencée.",
-    control: "Les circuits qui passent au poste, sa charge, la longueur jusqu'au suivant.", leg: "La longueur de l'interposte (et en ligne droite), ses circuits, sa charge.",
-    special: "L'objet et les circuits où il s'affiche.", drawing: "Ce qui est en train d'être dessiné, son nombre de points, et comment finir.",
+    issues: t("trc.rd.chipIssues"),
+    course: t("trc.rd.chipCourse"),
+    mapInfo: t("trc.rd.chipMapInfo"), geoInfo: t("trc.rd.chipGeoInfo"),
+    control: t("trc.rd.chipControl"), leg: t("trc.rd.chipLeg"),
+    special: t("trc.rd.chipSpecial"), drawing: t("trc.rd.chipDrawing"),
   },
   modes: {
-    blend: "Comment le violet se pose sur la carte, chaque façon montrée en petit : par-dessus, mélangé (le noir reste visible), en couches (sous les couleurs de la carte, OCAD ou Mapper).",
-    flag: "Le balisage de l'interposte, chaque façon montrée en petit : aucun, tout, le début, la fin.",
+    blend: t("trc.rd.modesBlend"),
+    flag: t("trc.rd.modesFlag"),
   },
-  gallery: "Les objets spéciaux les plus courants — point d'eau, poste de secours, zone interdite, limite infranchissable, zone dangereuse, itinéraire interdit, texte, image — et ▾ pour tous.",
+  gallery: t("trc.rd.gallery"),
 };
 
 /** The quick-access bar (the title bar, the O'CN mode): what a setter is likely to use most, whatever the tab — undo and redo, the
@@ -171,80 +172,80 @@ export const QAT_CHOICES = ["undo", "redo", "save", "pdf-course", "pdf-courses",
 
 /** The contextual tabs, by the selection's kind (ribbon.js fills in titles and figures). */
 export const CONTEXT = {
-  control: { label: "Poste", head: "Outils du poste", guide: "postes", groups: [
-    { id: "ctl", title: "Poste", items: [stack({ t: "field", id: "code" }, S("control-props", "Définition…", "descr", { need: "edit", tip: "Les colonnes de la définition du poste, et son code." }),
-      S("toggle-exchange", "Échange de carte ici", "exchange", { need: "edit", toggle: "exchange", tip: "Le coureur change de carte à ce poste ; le circuit se partage en parties." }))] },
-    { id: "vars", title: "Variantes", items: [B("var-fork", "Fourche ici", "fork", { need: "edit", tip: "Des branches qui partent de ce poste et se rejoignent plus loin." }),
-      B("var-loop", "Boucles ici", "loop", { need: "edit", tip: "Des boucles qui partent de ce poste et y reviennent." }),
-      stack(S("var-delete", "Supprimer la variante", "removecircle", { need: "edit", tip: "Supprimer la fourche ou les boucles qui partent de ce poste." }),
-        S("points", "Points…", "hash", { need: "edit", tip: "Les points du poste, dans un circuit au score." }))] },
-    { id: "lines", title: "Définitions", items: [stack(S("text-before", "Texte avant…", "text", { need: "edit", tip: "Une ligne de texte dans les définitions, juste avant ce poste (« Passage dans le village »)." }),
-      S("text-after", "Texte après…", "text", { need: "edit", tip: "Une ligne de texte dans les définitions, juste après ce poste." }))] },
-    { id: "drawing", title: "Dessin", items: [stack(S("gap-add-circle", "Couper le cercle", "gap", { need: "edit", tip: "Puis cliquer sur le cercle là où le couper, pour laisser lisible un détail de la carte." }),
-      S("number-auto", "Numéro à sa place", "number", { need: "edit", tip: "Remettre le numéro à la place que le tracé lui choisit." })),
-      stack(S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole du passage obligatoire." }),
-        S("stretch", "Étirer…", "stretch", { need: "edit", tip: "Allonger le symbole du passage obligatoire." }))] },
-    { id: "where", title: "Dans les circuits", items: [{ t: "chip", id: "control" }] },
-    { id: "remove", title: "", items: [B("delete", "Retirer", "trash", { need: "edit", key: "Suppr", tip: "Dans un circuit : retirer le poste du circuit, il reste dans « Tous les postes ». Dans « Tous les postes » : le supprimer." })] },
+  control: { label: t("trc.rd.ctxControl"), head: t("trc.rd.ctxControlHead"), guide: "postes", groups: [
+    { id: "ctl", title: t("trc.rd.gCtl"), items: [stack({ t: "field", id: "code" }, S("control-props", t("trc.rd.controlProps"), "descr", { need: "edit", tip: t("trc.rd.controlPropsTip") }),
+      S("toggle-exchange", t("trc.rd.toggleExchange"), "exchange", { need: "edit", toggle: "exchange", tip: t("trc.rd.toggleExchangeTip") }))] },
+    { id: "vars", title: t("trc.rd.gVars"), items: [B("var-fork", t("trc.rd.ctlVarFork"), "fork", { need: "edit", tip: t("trc.rd.ctlVarForkTip") }),
+      B("var-loop", t("trc.rd.ctlVarLoop"), "loop", { need: "edit", tip: t("trc.rd.ctlVarLoopTip") }),
+      stack(S("var-delete", t("trc.rd.varDelete"), "removecircle", { need: "edit", tip: t("trc.rd.ctlVarDeleteTip") }),
+        S("points", t("trc.rd.points"), "hash", { need: "edit", tip: t("trc.rd.pointsTip") }))] },
+    { id: "lines", title: t("trc.rd.gLines"), items: [stack(S("text-before", t("trc.rd.textBefore"), "text", { need: "edit", tip: t("trc.rd.textBeforeTip") }),
+      S("text-after", t("trc.rd.textAfter"), "text", { need: "edit", tip: t("trc.rd.textAfterTip") }))] },
+    { id: "drawing", title: t("trc.rd.gDrawing"), items: [stack(S("gap-add-circle", t("trc.rd.gapAddCircle"), "gap", { need: "edit", tip: t("trc.rd.gapAddCircleTip") }),
+      S("number-auto", t("trc.rd.numberAuto"), "number", { need: "edit", tip: t("trc.rd.numberAutoTip") })),
+      stack(S("rotate", t("trc.rd.rotate"), "rotate", { need: "edit", tip: t("trc.rd.ctlRotateTip") }),
+        S("stretch", t("trc.rd.stretch"), "stretch", { need: "edit", tip: t("trc.rd.ctlStretchTip") }))] },
+    { id: "where", title: t("trc.rd.gWhereControl"), items: [{ t: "chip", id: "control" }] },
+    { id: "remove", title: "", items: [B("delete", t("trc.rd.ctlDelete"), "trash", { need: "edit", key: t("trc.rd.keyDel"), tip: t("trc.rd.ctlDeleteTip") })] },
   ] },
-  leg: { label: "Interposte", head: "Outils de l'interposte", guide: "circuits", groups: [
-    { id: "shape", title: "Forme", items: [B("bend-add", "Ajouter un coude", "bend", { need: "edit", tip: "Puis cliquer sur l'interposte, là où le plier. Un coude se glisse ensuite." }),
-      B("gap-add-leg", "Couper", "gap", { need: "edit", tip: "Puis cliquer sur l'interposte, là où le couper." }),
-      stack(S("bend-remove", "Retirer un coude", "bend", { need: "edit", tip: "Puis cliquer le coude à retirer." }),
-        S("gap-remove-leg", "Refermer une coupure", "gap", { need: "edit", tip: "Puis cliquer la coupure à refermer." })),
-      stack(S("route-draw", "Itinéraire prévu", "route", { need: "edit", tip: "Dessiner le chemin prévu des coureurs, pour la dénivelée ; il ne s'imprime pas." }),
-        S("route-clear", "Effacer l'itinéraire", "trash", { need: "edit", tip: "Effacer le chemin prévu : la dénivelée se calcule de nouveau sur la ligne droite." }))] },
-    { id: "flagging", title: "Balisage", items: [{ t: "modes", id: "flag" }] },
-    { id: "where", title: "Interposte", items: [{ t: "chip", id: "leg" }] },
+  leg: { label: t("trc.rd.ctxLeg"), head: t("trc.rd.ctxLegHead"), guide: "circuits", groups: [
+    { id: "shape", title: t("trc.rd.gShape"), items: [B("bend-add", t("trc.rd.bendAdd"), "bend", { need: "edit", tip: t("trc.rd.bendAddTip") }),
+      B("gap-add-leg", t("trc.rd.gapAddLeg"), "gap", { need: "edit", tip: t("trc.rd.gapAddLegTip") }),
+      stack(S("bend-remove", t("trc.rd.bendRemove"), "bend", { need: "edit", tip: t("trc.rd.bendRemoveTip") }),
+        S("gap-remove-leg", t("trc.rd.gapRemoveLeg"), "gap", { need: "edit", tip: t("trc.rd.gapRemoveLegTip") })),
+      stack(S("route-draw", t("trc.rd.routeDraw"), "route", { need: "edit", tip: t("trc.rd.routeDrawTip") }),
+        S("route-clear", t("trc.rd.routeClear"), "trash", { need: "edit", tip: t("trc.rd.routeClearTip") }))] },
+    { id: "flagging", title: t("trc.rd.gFlagging"), items: [{ t: "modes", id: "flag" }] },
+    { id: "where", title: t("trc.rd.gWhereLeg"), items: [{ t: "chip", id: "leg" }] },
   ] },
-  special: { label: "Objet", head: "Outils de l'objet", guide: "speciaux", groups: [
-    { id: "obj", title: "Objet", items: [B("special-props", "Modifier…", "pencil", { need: "edit", tip: "Le texte, l'apparence du trait, ou les colonnes des définitions." }),
-      B("displayed-courses", "Circuits…", "layers", { need: "edit", tip: "Les circuits sur lesquels l'objet s'affiche et s'imprime." }),
-      stack(S("corner-add", "Ajouter un sommet", "vertex", { need: "edit", tip: "Puis cliquer sur la ligne ou le bord de la zone." }),
-        S("corner-remove", "Retirer un sommet", "vertex", { need: "edit", tip: "Puis cliquer le sommet à retirer." })),
-      stack(S("rotate", "Faire pivoter…", "rotate", { need: "edit", tip: "Faire pivoter le symbole." }), S("stretch", "Étirer…", "stretch", { need: "edit", tip: "Allonger le symbole." }))] },
+  special: { label: t("trc.rd.ctxSpecial"), head: t("trc.rd.ctxSpecialHead"), guide: "speciaux", groups: [
+    { id: "obj", title: t("trc.rd.gObj"), items: [B("special-props", t("trc.rd.specialProps"), "pencil", { need: "edit", tip: t("trc.rd.specialPropsTip") }),
+      B("displayed-courses", t("trc.rd.displayedCourses"), "layers", { need: "edit", tip: t("trc.rd.displayedCoursesTip") }),
+      stack(S("corner-add", t("trc.rd.cornerAdd"), "vertex", { need: "edit", tip: t("trc.rd.cornerAddTip") }),
+        S("corner-remove", t("trc.rd.cornerRemove"), "vertex", { need: "edit", tip: t("trc.rd.cornerRemoveTip") })),
+      stack(S("rotate", t("trc.rd.rotate"), "rotate", { need: "edit", tip: t("trc.rd.spRotateTip") }), S("stretch", t("trc.rd.stretch"), "stretch", { need: "edit", tip: t("trc.rd.spStretchTip") }))] },
     { id: "where", title: "", items: [{ t: "chip", id: "special" }] },
-    { id: "remove", title: "", items: [B("delete", "Supprimer", "trash", { need: "edit", key: "Suppr", tip: "Supprimer l'objet." })] },
+    { id: "remove", title: "", items: [B("delete", t("trc.rd.spDelete"), "trash", { need: "edit", key: t("trc.rd.keyDel"), tip: t("trc.rd.spDeleteTip") })] },
   ] },
-  drawing: { label: "Tracé en cours", head: "Tracé en cours", guide: "speciaux", groups: [
-    { id: "draw", title: "", items: [B("finish-draw", "Terminer", "check", { key: "Entrée", tip: "Finir la ligne, la zone ou l'itinéraire (comme un double-clic)." }),
-      B("cancel-draw", "Annuler", "close", { key: "Échap", tip: "Abandonner ce tracé." }), { t: "chip", id: "drawing" }] },
+  drawing: { label: t("trc.rd.ctxDrawing"), head: t("trc.rd.ctxDrawing"), guide: "speciaux", groups: [
+    { id: "draw", title: "", items: [B("finish-draw", t("trc.rd.finishDraw"), "check", { key: t("trc.rd.keyEnter"), tip: t("trc.rd.finishDrawTip") }),
+      B("cancel-draw", t("trc.rd.cancelDraw"), "close", { key: t("trc.rd.keyEsc"), tip: t("trc.rd.cancelDrawTip") }), { t: "chip", id: "drawing" }] },
   ] },
 };
 
 /** The « Fichier » page (the ribbon's backstage): its sections, each a list of commands with what they are for. */
 export const BACKSTAGE = [
-  { id: "info", label: "Informations", icon: "sliders" },
-  { id: "new", label: "Nouveau", icon: "file", act: "start-new" },
-  { id: "open", label: "Ouvrir", icon: "folder", act: "start-open" },
-  { id: "import", label: "Importer", icon: "import", items: [
-    ["start-import", "Un événement", "Un fichier O'CN (.ocnt), qui contient sa carte, ou un fichier Purple Pen (.ppen) et sa carte : un nouvel événement, à côté de celui-ci."],
-    ["import-ppen", "Les circuits d'un .ppen", "Remplace les circuits de cet événement par ceux d'un fichier Purple Pen ; la carte reste celle de l'événement."],
-    ["map-change", "Une autre carte", "OCAD, Mapper, PDF, TIFF ou image : les postes gardent leur place."],
-    ["import-course", "Un circuit imprimé", "Les cercles, le départ et l'arrivée lus sur une carte imprimée ou photographiée."],
-    ["georef", "Un calage", "Le géoréférencement de la carte : un fichier de calage (world file et .prj), un KMZ ou un KML, ou des points cliqués."]] },
-  { id: "save", label: "Enregistrer", icon: "save", items: [
-    ["save", "Enregistrer maintenant", "L'enregistrement se fait aussi tout seul, quelques secondes après chaque changement."],
-    ["version-save", "Garder une version", "L'état actuel sous un nom, pour y revenir plus tard ; une version est aussi gardée toutes les 30 minutes de travail."],
-    ["versions", "Les versions", "Chaque version, ce qui a changé depuis (« poste 34 déplacé de 40 m »), et la rouvrir."]] },
-  { id: "export", label: "Exporter", icon: "export", groups: [
-    ["Pour imprimer", [["pdf-courses", "PDF des circuits", "Un circuit par page, par partie, par variante ou par relayeur ; la carte et le circuit, ou le circuit seul pour une surimpression."],
-      ["pdf-descriptions", "PDF des définitions", "Plusieurs par page, à découper pour les porte-définitions."], ["pdf-punch", "Cartons de contrôle", "Une case par poste, avec le dessin des pinces."]]],
-    ["Pour le chronométrage", [["export-iof3", "IOF XML 3.0", "Pour MeOS, OE, SportSoftware : les circuits, l'ordre des postes, les longueurs, les équipes des relais."],
-      ["export-iof2", "IOF XML 2.0.3", "La même chose pour les logiciels plus anciens."]]],
-    ["Pour les GPS et le web", [["export-gpx", "GPX des postes", "Les postes en points GPS (carte géoréférencée)."], ["export-kml", "KML des circuits", "Pour Google Earth ou une carte en ligne."],
-      ["export-images", "Images des circuits", "PNG, JPEG ou GIF, avec leur fichier de calage."], ["export-routegadget", "RouteGadget", "La carte en image et les circuits."]]],
-    ["Pour d'autres logiciels", [["export-ocn", "Fichier O'CN (.ocnt)", "Tout l'événement en un seul fichier, sa carte comprise si on le veut : une copie, une archive, un autre club."],
-      ["export-ocad", "OCAD ou Mapper", "Chaque circuit en carte OCAD (9 à 2018) ou Mapper, la carte en fond."], ["export-ppen", "Purple Pen (.ppen)", "L'événement, à ouvrir dans Purple Pen à côté de la carte."],
-      ["export-csv", "Tableaux (CSV)", "Les rapports, pour un tableur."]]]] },
-  { id: "share", label: "Partager", icon: "team", items: [
-    ["team", "L'équipe", "Le traceur et le contrôleur modifient, un lecteur lit et commente. Les administrateurs du site ne voient pas l'événement."],
-    ["encryption", "Le chiffrement", "Une phrase de passe de l'équipe : le serveur ne garde que des données illisibles."],
-    ["publish", "Vers l'analyse multi", "Après la course : la carte et les circuits, pour que les coureurs y déposent leurs traces GPS."],
-    ["send-results", "Vers « Résultats »", "À partir du jour de la course : les longueurs, dénivelées et postes des circuits."]] },
-  { id: "offline", label: "Hors ligne", icon: "offline", items: [
-    ["offline", "Travailler hors ligne", "Garder l'événement sur cet appareil : il s'ouvre sans réseau, et les modifications partent quand le réseau revient."]] },
-  { id: "options", label: "Options", icon: "sliders" },
+  { id: "info", label: t("trc.rd.bsInfo"), icon: "sliders" },
+  { id: "new", label: t("trc.rd.bsNew"), icon: "file", act: "start-new" },
+  { id: "open", label: t("trc.rd.bsOpen"), icon: "folder", act: "start-open" },
+  { id: "import", label: t("trc.rd.bsImport"), icon: "import", items: [
+    ["start-import", t("trc.rd.bsStartImport"), t("trc.rd.bsStartImportDesc")],
+    ["import-ppen", t("trc.rd.bsImportPpen"), t("trc.rd.bsImportPpenDesc")],
+    ["map-change", t("trc.rd.bsMapChange"), t("trc.rd.bsMapChangeDesc")],
+    ["import-course", t("trc.rd.bsImportCourse"), t("trc.rd.bsImportCourseDesc")],
+    ["georef", t("trc.rd.bsGeoref"), t("trc.rd.bsGeorefDesc")]] },
+  { id: "save", label: t("trc.rd.bsSave"), icon: "save", items: [
+    ["save", t("trc.rd.save"), t("trc.rd.saveTip")],
+    ["version-save", t("trc.rd.bsVersionSave"), t("trc.rd.bsVersionSaveDesc")],
+    ["versions", t("trc.rd.bsVersions"), t("trc.rd.bsVersionsDesc")]] },
+  { id: "export", label: t("trc.rd.bsExport"), icon: "export", groups: [
+    [t("trc.rd.bsForPrint"), [["pdf-courses", t("trc.rd.bsPdfCourses"), t("trc.rd.bsPdfCoursesDesc")],
+      ["pdf-descriptions", t("trc.rd.bsPdfDescriptions"), t("trc.rd.bsPdfDescriptionsDesc")], ["pdf-punch", t("trc.rd.pdfPunch"), t("trc.rd.bsPdfPunchDesc")]]],
+    [t("trc.rd.bsForTiming"), [["export-iof3", "IOF XML 3.0", t("trc.rd.bsIof3Desc")],
+      ["export-iof2", "IOF XML 2.0.3", t("trc.rd.bsIof2Desc")]]],
+    [t("trc.rd.bsForGps"), [["export-gpx", t("trc.rd.exportGpx"), t("trc.rd.exportGpxTip")], ["export-kml", t("trc.rd.exportKml"), t("trc.rd.bsKmlDesc")],
+      ["export-images", t("trc.rd.bsImages"), t("trc.rd.bsImagesDesc")], ["export-routegadget", "RouteGadget", t("trc.rd.bsRoutegadgetDesc")]]],
+    [t("trc.rd.bsForSoftware"), [["export-ocn", t("trc.rd.bsOcn"), t("trc.rd.bsOcnDesc")],
+      ["export-ocad", t("trc.rd.bsOcad"), t("trc.rd.bsOcadDesc")], ["export-ppen", "Purple Pen (.ppen)", t("trc.rd.bsPpenDesc")],
+      ["export-csv", t("trc.rd.exportCsv"), t("trc.rd.bsCsvDesc")]]]] },
+  { id: "share", label: t("trc.rd.bsShare"), icon: "team", items: [
+    ["team", t("trc.rd.bsTeam"), t("trc.rd.bsTeamDesc")],
+    ["encryption", t("trc.rd.bsEncryption"), t("trc.rd.bsEncryptionDesc")],
+    ["publish", t("trc.rd.bsPublish"), t("trc.rd.bsPublishDesc")],
+    ["send-results", t("trc.rd.sendResults"), t("trc.rd.bsSendResultsDesc")]] },
+  { id: "offline", label: t("trc.rd.bsOffline"), icon: "offline", items: [
+    ["offline", t("trc.rd.bsWorkOffline"), t("trc.rd.bsWorkOfflineDesc")]] },
+  { id: "options", label: t("trc.rd.bsOptions"), icon: "sliders" },
 ];
 
 // ---- where a command is: the messages name it in the interface the user has (ribbon or menus) ---------------------------------
@@ -266,7 +267,7 @@ export function commands() {
 }
 const RIBBON_AT = {};
 for (const c of commands()) if (c.act && !RIBBON_AT[c.act]) RIBBON_AT[c.act] = `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""} › ${c.label.replace(/…$/, "")}`;
-for (const s of BACKSTAGE) for (const [a, l] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!RIBBON_AT[a]) RIBBON_AT[a] = `Fichier › ${s.label} › ${l}`;
+for (const s of BACKSTAGE) for (const [a, l] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!RIBBON_AT[a]) RIBBON_AT[a] = `${TABS[0].label} › ${s.label} › ${l}`;
 const MENU_AT = {};
 for (const m of MENUS) for (const it of m.items) if (it !== "-" && !MENU_AT[it[0]]) MENU_AT[it[0]] = `${m.label} › ${it[1].replace(/…$/, "")}`;
 /** Where a command is, in the interface in use: « Carte › Position › Caler les postes », or « Événement › Caler les postes sur la carte ». */

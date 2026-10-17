@@ -22,6 +22,7 @@ import { centreOnMap } from "../tracer/calage.js";
 import * as OFF from "../tracer/offline.js";
 import { bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice } from "../beta.js";
+import { t, tn, lang, locale } from "../tracer/lang.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const listHash = () => (inOwnTab() ? "#/orga-tracer?fen=1" : "#/orga-tracer");
@@ -36,7 +37,7 @@ export async function render(main, r) {
   const notice = betaNotice("tracer");
   await openBlank();
   notice.then(() => { if (leaving) return; if (r.query.id) openEvent(r.query.id); else startScreen(); });
-  return { title: "Tracer", cleanup: () => { leaving = true; document.querySelector(".tr-start")?.remove(); window.__tracer?.close?.(); leaveFull(); } };
+  return { title: t("trc.page.title"), cleanup: () => { leaving = true; document.querySelector(".tr-start")?.remove(); window.__tracer?.close?.(); leaveFull(); } };
 }
 
 // ---- the editor: empty, or an event; switching closes the open one first (saved, its lock released) ---------------------------
@@ -64,7 +65,7 @@ async function openBlank() {
   await closeEditor();
   if (leaving) return;
   pageMain.innerHTML = "";
-  await openEditor({ container: pageMain, blank: true, meta: { id: null, title: "" }, role: "viewer", you: null, ev: M.newEvent({}), version: 0,
+  await openEditor({ container: pageMain, blank: true, meta: { id: null, title: "" }, role: "viewer", you: null, ev: M.newEvent({ lang: lang() }), version: 0,
     mapSrc: null, onStart, onClose });
 }
 /** After a dialog given up: the start screen again when no event is open. */
@@ -99,29 +100,28 @@ function startScreen(focus = "") {
   el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "tr-start-h");
   const ico = (k) => `<span class="tr-start-ico" aria-hidden="true">${{ new: "＋", import: "⇩", open: "▤" }[k]}</span>`;
   el.innerHTML = html`<div class="tr-start-box">
-    <div class="tr-start-head"><h2 id="tr-start-h">Que voulez-vous faire ?</h2>
-      <button type="button" class="tr-start-x" data-start-close title="Fermer (Échap)" aria-label="Fermer">×</button></div>
+    <div class="tr-start-head"><h2 id="tr-start-h">${t("trc.page.startQ")}</h2>
+      <button type="button" class="tr-start-x" data-start-close title="${t("trc.page.closeEsc")}" aria-label="${t("trc.page.close")}">×</button></div>
     <div class="tr-start-cards">
       <section class="tr-start-card" data-k="new">
-        <h3>${raw(ico("new"))}Nouvel événement</h3>
-        <p>Tracer les circuits d'une compétition de votre club ou d'un entraînement, sur votre carte.</p>
-        <p class="tr-start-need"><b>Il vous faut</b> la carte : un fichier OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap) de préférence, sinon un PDF ou une image (JPG, PNG, TIFF…).</p>
-        <button type="button" class="btn btn-primary" data-start="new">Créer un événement…</button>
+        <h3>${raw(ico("new"))}${t("trc.page.newEvent")}</h3>
+        <p>${t("trc.page.newDesc")}</p>
+        <p class="tr-start-need">${raw(t("trc.page.newNeed"))}</p>
+        <button type="button" class="btn btn-primary" data-start="new">${t("trc.page.createBtn")}</button>
       </section>
       <section class="tr-start-card" data-k="import">
-        <h3>${raw(ico("import"))}Importer un événement</h3>
-        <p>Reprendre un événement préparé ailleurs : sur un autre compte, un autre club, ou dans Purple Pen.</p>
-        <p class="tr-start-need"><b>Il vous faut</b> un fichier O'CN (.ocnt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</p>
-        <button type="button" class="btn" data-start="import">Importer…</button>
+        <h3>${raw(ico("import"))}${t("trc.page.importEvent")}</h3>
+        <p>${t("trc.page.importDesc")}</p>
+        <p class="tr-start-need">${raw(t("trc.page.importNeed"))}</p>
+        <button type="button" class="btn" data-start="import">${t("trc.page.importBtn")}</button>
       </section>
       <section class="tr-start-card tr-start-open" data-k="open">
-        <h3>${raw(ico("open"))}Ouvrir un événement</h3>
-        <p>Reprendre un de vos événements : ceux que vous avez créés et ceux dont l'équipe vous compte.</p>
-        <div class="tr-start-list" id="tr-start-list"><div class="muted">Chargement…</div></div>
+        <h3>${raw(ico("open"))}${t("trc.page.openEvent")}</h3>
+        <p>${t("trc.page.openDesc")}</p>
+        <div class="tr-start-list" id="tr-start-list"><div class="muted">${t("trc.page.loading")}</div></div>
       </section>
     </div>
-    <p class="tr-start-foot">Vous pouvez aussi déposer vos fichiers sur cette fenêtre : une carte seule pour un nouvel événement, un fichier .ocnt, ou un .ppen avec sa carte, pour un import.
-      Les circuits restent secrets : seule l'équipe de l'événement l'ouvre (son créateur et les licenciés qu'il ajoute), pas les administrateurs du site.</p>
+    <p class="tr-start-foot">${t("trc.page.startFoot")}</p>
   </div>`;
   E.root.appendChild(el);
   el.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => choose(b.dataset.start)));
@@ -148,14 +148,14 @@ async function fillOpenList(el) {
   const box = el.querySelector("#tr-start-list");
   let events;
   try { events = await loadEvents(); }
-  catch (e) { box.innerHTML = html`<div class="tr-err">Liste indisponible (${e.code || e.message}).</div>`; return; }
+  catch (e) { box.innerHTML = html`<div class="tr-err">${t("trc.page.listErr", { err: e.code || e.message })}</div>`; return; }
   if (!document.contains(box)) return;
   const openId = window.__tracer?.blank ? null : window.__tracer?.meta?.id;
   box.innerHTML = events.length ? html`<ul>${events.map((e) => html`<li><button type="button" data-open="${e.id}" ${raw(e.id === openId ? 'aria-current="true"' : "")}>
       <span class="tr-start-t">${e.title}${e.encrypted ? " 🔒" : ""}</span>
-      <span class="tr-start-m">${fmtDate(e.date, "short")} · ${e.kind === "race" ? "Compétition" : "Entraînement"}${e.mine ? "" : ` · ${e.ownerName || "équipe"}`}${e.offline ? " · hors ligne" : ""}${e.pending ? " · à envoyer" : ""}${e.id === openId ? " · ouvert" : ""}</span>
+      <span class="tr-start-m">${fmtDate(e.date, "short")} · ${e.kind === "race" ? t("trc.page.kindRace") : t("trc.page.kindTraining")}${e.mine ? "" : ` · ${e.ownerName || t("trc.page.team")}`}${e.offline ? ` · ${t("trc.page.tagOffline")}` : ""}${e.pending ? ` · ${t("trc.page.tagPending")}` : ""}${e.id === openId ? ` · ${t("trc.page.tagOpen")}` : ""}</span>
     </button></li>`)}</ul>`
-    : html`<div class="muted">Aucun événement pour l'instant : créez-en un, ou importez un fichier.</div>`;
+    : html`<div class="muted">${t("trc.page.noEvents")}</div>`;
   box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     closeStart();
     if (b.dataset.open === openId) return;
@@ -188,26 +188,28 @@ async function clubRaces() {
 
 // ---- what the event is: a competition of one's club, or a training ------------------------------------------------------------
 function kindFields(races, title = "") {
-  return `<div class="tr-checks"><label class="tr-check"><input type="radio" name="kind" value="race" ${races.length ? "checked" : "disabled"}> Une compétition de votre club</label>
-    <label class="tr-check"><input type="radio" name="kind" value="training" ${races.length ? "" : "checked"}> Un entraînement</label></div>
-    <div data-k="race">${field("Compétition", `<select name="race">${races.map((x) => `<option value="${x.key}">${escA(fmtDate(x.date, "short"))} — ${escA(x.name)}${x.place ? ` (${escA(x.place)})` : ""}</option>`).join("")}</select>`,
-      races.length ? "Les compétitions à venir et des 60 derniers jours organisées par votre club." : "Aucune compétition de votre club dans l'agenda.")}</div>
-    <div data-k="training" hidden>${field("Titre", `<input name="title" placeholder="Entraînement du mercredi" value="${escA(title)}">`)}${field("Date", `<input name="date" type="date" value="${today()}">`)}</div>`;
+  return `<div class="tr-checks"><label class="tr-check"><input type="radio" name="kind" value="race" ${races.length ? "checked" : "disabled"}> ${escA(t("trc.page.kindRaceOpt"))}</label>
+    <label class="tr-check"><input type="radio" name="kind" value="training" ${races.length ? "" : "checked"}> ${escA(t("trc.page.kindTrainingOpt"))}</label></div>
+    <div data-k="race">${field(escA(t("trc.page.kindRace")), `<select name="race">${races.map((x) => `<option value="${x.key}">${escA(fmtDate(x.date, "short"))} — ${escA(x.name)}${x.place ? ` (${escA(x.place)})` : ""}</option>`).join("")}</select>`,
+      escA(races.length ? t("trc.page.racesHint") : t("trc.page.noRaces")))}</div>
+    <div data-k="training" hidden>${field(escA(t("trc.page.titleLabel")), `<input name="title" placeholder="${escA(t("trc.page.titlePh"))}" value="${escA(title)}">`)}${field(escA(t("trc.page.dateLabel")), `<input name="date" type="date" value="${today()}">`)}</div>`;
 }
 function bindKind(f, races) {
   const sync = () => { const k = f.elements.kind.value; f.querySelectorAll("[data-k]").forEach((d) => { d.hidden = d.dataset.k !== k; }); };
   f.querySelectorAll("input[name=kind]").forEach((x) => x.addEventListener("change", sync)); sync();
   f.elements.race?.addEventListener("change", () => { const r = races.find((x) => x.key === f.elements.race.value); if (r && /sprint/i.test(r.epr) && f.elements.std) { f.elements.std.value = "Spr2019"; f.elements.scale.value = "4000"; } });
 }
-const kindProblem = (o) => (o.kind === "race" && !o.race ? "Choisissez la compétition." : o.kind === "training" && (o.title || "").trim().length < 3 ? "Le titre de l'entraînement." : null);
+const kindProblem = (o) => (o.kind === "race" && !o.race ? t("trc.page.needRace") : o.kind === "training" && (o.title || "").trim().length < 3 ? t("trc.page.needTitle") : null);
 async function createEvent(v, races) {
   const race = v.kind === "race" ? races.find((x) => x.key === v.race) : null;
   const body = race ? { kind: "race", race: race.key, title: race.name, date: race.date } : { kind: "training", title: v.title.trim(), date: v.date || today() };
   try { return { id: (await S.api("", { method: "POST", body })).id, title: body.title }; }
-  catch (e) { alertBox(e.code === "not organiser" ? "Seuls les membres du club organisateur créent l'événement d'une compétition." : `Création impossible : ${e.code || e.message}`); return null; }
+  catch (e) { alertBox(e.code === "not organiser" ? t("trc.page.notOrganiser") : t("trc.page.createErr", { err: e.code || e.message })); return null; }
 }
 const isPpenFile = (f) => /\.(ppen|xml)$/i.test(f.name);
-const fmtN = (v) => new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(v);
+const fmtN = (v) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(v);
+/** A file's size in megabytes, one decimal, in the interface's language. */
+const fmtMb = (bytes) => t("trc.page.mb", { n: new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(bytes / 1e6) });
 /** An OCAD or Mapper map opened as soon as it is chosen: its scale, size and georeference shown before the event is made. */
 async function openVectorFile(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -218,46 +220,46 @@ async function openVectorFile(file) {
   src.geoInfo = await (await import("../tracer/vmap/georef.js")).geoFromVector(src.vmap, src).catch(() => null);
   return { src };
 }
-const vectorLabel = (src) => `${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`}, 1:${fmtN(src.scale)}, ${fmtN(src.w)} × ${fmtN(src.h)} mm${src.geoInfo ? `, géoréférencée (${src.geoInfo.name})` : ""}`;
+const vectorLabel = (src) => `${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`}, 1:${fmtN(src.scale)}, ${fmtN(src.w)} × ${fmtN(src.h)} mm${src.geoInfo ? `, ${t("trc.page.georef", { name: src.geoInfo.name })}` : ""}`;
 const baseName = (n) => String(n || "").split(/[\\/]/).pop().replace(/\.[^.]+$/, "").toLowerCase();
 
 // ---- a new event: its map, dropped or chosen ----------------------------------------------------------------------------------
 async function newEvent(main, files = null) {
   const races = await clubRaces();
   let mapFile = null, vec = null, handed = false;
-  const v = await modal({ title: "Nouvel événement", wide: true, ok: "Créer", body: `
+  const v = await modal({ title: t("trc.page.newEvent"), wide: true, ok: t("trc.page.create"), body: `
     ${kindFields(races)}
-    ${dropHtml("tr-new-drop", "Déposez ici la carte — OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image (JPG, PNG, GIF, TIFF, BMP) —, ou cliquez pour la choisir", MAP_ACCEPT, false)}
-    <p class="tr-hint" id="tr-new-map">Le fichier OCAD ou Mapper de la carte est le meilleur choix : nette à toutes les échelles, avec son violet, ses couches et son géoréférencement. Un PDF exporté d'OCAD ou de Mapper reste net aussi ; une image (même un scan ou une photo prise bien à plat) convient.</p>
-    <div class="tr-grid2">${field("Échelle de la carte (1:…)", '<input name="scale" value="10000" inputmode="numeric">')}
-    ${field("Résolution de l'image (ppp)", '<input name="dpi" inputmode="numeric" placeholder="lue dans le fichier">', "Pour une image seulement.")}
-    ${field("Norme de carte", '<select name="std"><option value="2017">Forêt (ISOM 2017)</option><option value="Spr2019">Sprint (ISSprOM 2019)</option></select>')}</div>`,
+    ${dropHtml("tr-new-drop", t("trc.page.newDrop"), MAP_ACCEPT, false)}
+    <p class="tr-hint" id="tr-new-map">${escA(t("trc.page.newMapHint"))}</p>
+    <div class="tr-grid2">${field(escA(t("trc.page.scaleLabel")), '<input name="scale" value="10000" inputmode="numeric">')}
+    ${field(escA(t("trc.page.dpiLabel")), `<input name="dpi" inputmode="numeric" placeholder="${escA(t("trc.page.dpiPh"))}">`, escA(t("trc.page.dpiHint")))}
+    ${field(escA(t("trc.page.stdLabel")), `<select name="std"><option value="2017">${escA(t("trc.page.stdForest"))}</option><option value="Spr2019">${escA(t("trc.page.stdSprint"))}</option></select>`)}</div>`,
   onOpen: (f, done) => {
     bindKind(f, races);
     const show = (html, bad = false) => { const p = f.querySelector("#tr-new-map"); p.innerHTML = html; p.classList.toggle("tr-bad", bad); };
     const take = async (list) => {
       if (list.some((x) => isPpenFile(x) || isOcnFile(x))) { handed = true; done(null); importEvent(main, list).then((id) => { if (!id) backToStart(); }); return; }   // the import
       const file = list.find(isMapFile);
-      if (!file) { show(`« ${escA(list[0].name)} » n'est pas une carte (OCAD, Mapper, PDF ou image).`, true); return; }
+      if (!file) { show(t("trc.page.notMap", { name: escA(list[0].name) }), true); return; }
       mapFile = file; vec = null;
       if (isVectorMap(file.name)) {
-        show(`Lecture de « ${escA(file.name)} »…`);
+        show(t("trc.page.reading", { name: escA(file.name) }));
         const r = await openVectorFile(file);
         if (mapFile !== file) return;                        // another file chosen meanwhile
         if (!r.src) { mapFile = null; show(escA(mapError(r.err)), true); return; }
         vec = r.src;
         f.elements.scale.value = String(vec.scale);
-        show(`✓ Carte « ${escA(file.name)} » (${escA(vectorLabel(vec))})`);
+        show(t("trc.page.mapOk", { name: escA(file.name), info: escA(vectorLabel(vec)) }));
         return;
       }
-      show(`✓ Carte « ${escA(file.name)} » (${isPdf(file.name, file.type) ? "PDF" : "image"}, ${(file.size / 1e6).toFixed(1).replace(".", ",")} Mo)`);
+      show(t("trc.page.mapOk", { name: escA(file.name), info: escA(`${isPdf(file.name, file.type) ? "PDF" : t("trc.page.image")}, ${fmtMb(file.size)}`) }));
       if (!isPdf(file.name, file.type)) { const dpi = imageDpi(await file.arrayBuffer()); if (dpi && !f.elements.dpi.value) f.elements.dpi.value = String(dpi); }
     };
     dropZone(f.querySelector("#tr-new-drop"), take);
     if (files?.length) take(files);
   },
-  validate: (o) => kindProblem(o) || (!mapFile ? "Déposez ou choisissez la carte." : isVectorMap(mapFile.name) && !vec ? "La carte est en cours de lecture." : !(Number(o.scale) > 100) ? "L'échelle de la carte."
-    : !isPdf(mapFile.name, mapFile.type) && !vec && o.dpi && !(Number(o.dpi) > 10) ? "La résolution de l'image." : null) });
+  validate: (o) => kindProblem(o) || (!mapFile ? t("trc.page.needMap") : isVectorMap(mapFile.name) && !vec ? t("trc.page.mapReading") : !(Number(o.scale) > 100) ? t("trc.page.badScale")
+    : !isPdf(mapFile.name, mapFile.type) && !vec && o.dpi && !(Number(o.dpi) > 10) ? t("trc.page.badDpi") : null) });
   if (!v) return handed ? "import" : null;               // a .ppen or .ocnt dropped here went on to the import
   const bytes = vec?.bytes || new Uint8Array(await mapFile.arrayBuffer()), type = mimeOf(mapFile.name, mapFile.type);
   let err = null;
@@ -266,7 +268,7 @@ async function newEvent(main, files = null) {
   const created = await createEvent(v, races);
   if (!created) return null;
   const dpi = src.kind === "bitmap" ? src.dpi || 300 : 0;
-  const ev = M.newEvent({ title: created.title, standard: v.std, map: { kind: src.kind === "vector" ? "ocad" : src.kind, file: mapFile.name, scale: Number(v.scale), dpi,
+  const ev = M.newEvent({ title: created.title, lang: lang(), standard: v.std, map: { kind: src.kind === "vector" ? "ocad" : src.kind, file: mapFile.name, scale: Number(v.scale), dpi,
     w: src.kind === "bitmap" ? (src.pxW * 25.4) / dpi : src.w, h: src.kind === "bitmap" ? (src.pxH * 25.4) / dpi : src.h, ox: src.ox, oy: src.oy } });
   if (v.std === "Spr2019") ev.appearance.itemScaling = "RelativeTo15000";
   if (src.world) { const g = geoFromWorld(ev, src.world.wf, null, src.pxW, src.pxH, src.world.crs); if (g) ev.geo = g; }   // a GeoTIFF
@@ -283,33 +285,30 @@ async function newEvent(main, files = null) {
 async function importEvent(main, files = []) {
   const races = await clubRaces();
   const st = { ppen: null, ocn: null, ev: null, map: null, mapFromOcn: false, notes: [] };
-  const v = await modal({ title: "Importer un événement", wide: true, ok: "Importer", body: `
-    <p>Un fichier <b>O'CN (.ocnt)</b>, qui contient tout l'événement et sa carte ; ou un fichier <b>Purple Pen (.ppen)</b> et <b>sa carte</b> : déposez-les ensemble ici,
-    l'un après l'autre, ou cliquez pour les choisir. La carte d'un .ppen peut être un fichier OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap), un PDF ou une image
-    (JPG, PNG, GIF, TIFF, BMP) : le fichier que nomme le .ppen, ou à défaut n'importe quel PDF ou image de la même carte (un scan ou une photo prise bien à plat
-    conviennent) — vous calerez alors les postes sur la carte en deux clics.</p>
-    ${dropHtml("tr-imp-drop", "Déposez ici le fichier .ocnt, ou le .ppen et sa carte (OCAD, Mapper, PDF ou image), ou cliquez pour les choisir", `.ocnt,.ppen,.xml,${MAP_ACCEPT}`)}
+  const v = await modal({ title: t("trc.page.importEvent"), wide: true, ok: t("trc.page.import"), body: `
+    <p>${t("trc.page.importBody")}</p>
+    ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `.ocnt,.ppen,.xml,${MAP_ACCEPT}`)}
     <ul class="tr-files" id="tr-imp-files"></ul>
-    <h3>L'événement</h3>
+    <h3>${escA(t("trc.page.theEvent"))}</h3>
     ${kindFields(races)}`,
   onOpen: (f) => {
     bindKind(f, races);
     const render = () => {
       const ev = st.ev, expected = ev?.map?.file || "", ocad = /\.(ocd|omap|xmap)$/i.test(expected) || ev?.map?.kind === "ocad";
       const lines = [];
-      if (st.ocn && ev) {
-        const nCtl = Object.values(ev.controls).filter((c) => c.kind === "normal").length;
-        lines.push(`<li class="ok">✓ Fichier O'CN « ${escA(st.ocn.name)} » : ${escA(ev.title || "sans titre")}, ${Object.keys(ev.courses).length} circuit(s), ${nCtl} poste(s)${expected ? ` ; sa carte : « ${escA(expected)} » au 1:${ev.map.scale}` : ""}${st.mapFromOcn ? ", comprise dans le fichier" : ""}.</li>`);
-      } else if (st.ppen && ev) {
-        const nCtl = Object.values(ev.controls).filter((c) => c.kind === "normal").length;
-        lines.push(`<li class="ok">✓ Fichier Purple Pen « ${escA(st.ppen.name)} » : ${escA(ev.title || "sans titre")}, ${Object.keys(ev.courses).length} circuit(s), ${nCtl} poste(s)${expected ? ` ; sa carte : « ${escA(expected)} » au 1:${ev.map.scale}` : ""}.</li>`);
-      } else lines.push('<li class="todo">… Le fichier .ocnt ou .ppen : pas encore choisi.</li>');
+      // the event file's line: its name, title, courses and controls, and its map
+      const fileVars = (name, inside) => ({ name: escA(name), title: escA(ev.title || t("trc.page.untitled")),
+        courses: tn("trc.page.nCourses", Object.keys(ev.courses).length), controls: tn("trc.page.nControls", Object.values(ev.controls).filter((c) => c.kind === "normal").length),
+        map: `${expected ? t("trc.page.itsMap", { file: escA(expected), scale: ev.map.scale }) : ""}${inside ? t("trc.page.mapInside") : ""}` });
+      if (st.ocn && ev) lines.push(`<li class="ok">${t("trc.page.ocnLine", fileVars(st.ocn.name, st.mapFromOcn))}</li>`);
+      else if (st.ppen && ev) lines.push(`<li class="ok">${t("trc.page.ppenLine", fileVars(st.ppen.name, false))}</li>`);
+      else lines.push(`<li class="todo">${escA(t("trc.page.fileTodo"))}</li>`);
       if (st.map && st.mapFromOcn) { /* the .ocnt's own map: said on its line */ } else if (st.map) {
         const vec = isVectorMap(st.map.name), same = !expected || baseName(expected) === baseName(st.map.name);
-        lines.push(`<li class="ok">✓ Carte « ${escA(st.map.name)} » (${vec ? "OCAD ou Mapper" : isPdf(st.map.name, st.map.type) ? "PDF" : "image"}, ${(st.map.size / 1e6).toFixed(1).replace(".", ",")} Mo).</li>`);
-        if (vec && ocad && !same) lines.push(`<li class="ok">Une autre version de la carte OCAD ou Mapper du .ppen (« ${escA(expected)} ») : les postes gardent leurs coordonnées sur la carte.</li>`);
-        else if (!same || (vec && !ocad && ev)) lines.push(`<li class="warn">Ce n'est pas le fichier que nomme le .ppen (« ${escA(expected)} ») : après l'import, vous calerez les postes sur cette carte en deux clics (un poste, puis sa place sur la carte, deux fois).</li>`);
-      } else lines.push(`<li class="todo">… La carte : pas encore choisie${ocad ? ` — le .ppen utilise une carte OCAD ou Mapper : déposez « ${escA(expected)} », ou à défaut un PDF ou une image de cette carte (un scan ou une photo prise bien à plat conviennent).` : expected ? ` — déposez « ${escA(expected)} », ou un PDF ou une image de la même carte.` : "."}</li>`);
+        lines.push(`<li class="ok">${t("trc.page.mapLine", { name: escA(st.map.name), info: escA(`${vec ? t("trc.page.ocadOrMapper") : isPdf(st.map.name, st.map.type) ? "PDF" : t("trc.page.image")}, ${fmtMb(st.map.size)}`) })}</li>`);
+        if (vec && ocad && !same) lines.push(`<li class="ok">${t("trc.page.otherVersion", { file: escA(expected) })}</li>`);
+        else if (!same || (vec && !ocad && ev)) lines.push(`<li class="warn">${t("trc.page.notPpenMap", { file: escA(expected) })}</li>`);
+      } else lines.push(`<li class="todo">${ocad ? t("trc.page.mapTodoOcad", { file: escA(expected) }) : expected ? t("trc.page.mapTodoFile", { file: escA(expected) }) : escA(t("trc.page.mapTodo"))}</li>`);
       for (const n of st.notes) lines.push(`<li class="bad">${n}</li>`);
       f.querySelector("#tr-imp-files").innerHTML = lines.join("");
     };
@@ -322,12 +321,12 @@ async function importEvent(main, files = []) {
             st.ev = r.ev; st.ocn = file; st.ppen = null;
             if (r.map) { st.map = new File([r.map.bytes], r.map.name, { type: r.map.type || mimeOf(r.map.name, "") }); st.mapFromOcn = true; }
             if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || "";
-          } catch (e) { st.notes.push(`« ${escA(file.name)} » : ${escA(e.message)}.`); }
+          } catch (e) { st.notes.push(t("trc.page.fileErr", { name: escA(file.name), err: escA(e.message) })); }
         } else if (isPpenFile(file)) {
           try { st.ev = readPpen(await file.text()); st.ppen = file; st.ocn = null; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
-          catch (e) { st.notes.push(`« ${escA(file.name)} » n'est pas un fichier Purple Pen lisible.`); }
+          catch (e) { st.notes.push(t("trc.page.badPpen", { name: escA(file.name) })); }
         } else if (isMapFile(file)) { st.map = file; st.mapFromOcn = false; }
-        else st.notes.push(`« ${escA(file.name)} » n'est ni un fichier .ocnt ou .ppen, ni une carte (OCAD, Mapper, PDF ou image).`);
+        else st.notes.push(t("trc.page.badFile", { name: escA(file.name) }));
       }
       render();
     };
@@ -335,7 +334,7 @@ async function importEvent(main, files = []) {
     render();
     if (files?.length) take(files);
   },
-  validate: (o) => (!st.ev ? "Il manque le fichier .ocnt ou .ppen." : !st.map ? "Il manque la carte (OCAD, Mapper, PDF ou image)." : kindProblem(o)) });
+  validate: (o) => (!st.ev ? t("trc.page.needFile") : !st.map ? t("trc.page.needImpMap") : kindProblem(o)) });
   if (!v) return null;
   const ev = st.ev, file = st.map, bytes = new Uint8Array(await file.arrayBuffer()), type = mimeOf(file.name, file.type);
   // an O'CN file on its own map (inside it, or the same file): the event as it was, in its own frame — nothing to align
@@ -384,15 +383,15 @@ async function importEvent(main, files = []) {
   return created.id;
 }
 
-const mapError = (e) => (e?.message && e.message !== "map" ? `La carte n'a pas pu être lue : ${e.message}` : "La carte n'a pas pu être lue.");
+const mapError = (e) => (e?.message && e.message !== "map" ? t("trc.page.mapErr", { err: e.message }) : t("trc.page.mapErr0"));
 /** The event as kept on this device, opened without the network (offline.js); false when there is none. */
 async function openLocal(id, onClose) {
   const card = (await OFF.keptEvents().catch(() => [])).find((x) => x.id === id);
   if (!card) return false;
   let key = card.encrypted ? await S.keyFor(id) : null;
   if (card.encrypted && !key) {
-    const v = await modal({ title: "Événement chiffré", ok: "Ouvrir", body: field("Phrase de passe de l'équipe", '<input name="p" type="password" autocomplete="current-password">'),
-      validate: async (o) => ((await S.unlock(id, card.encrypted, o.p)) ? null : "Phrase de passe incorrecte.") });
+    const v = await modal({ title: t("trc.page.encrypted"), ok: t("trc.page.open"), body: field(escA(t("trc.page.passphrase")), '<input name="p" type="password" autocomplete="current-password">'),
+      validate: async (o) => ((await S.unlock(id, card.encrypted, o.p)) ? null : t("trc.page.badPass")) });
     if (!v) return true;
     key = await S.keyFor(id);
   }
@@ -407,12 +406,12 @@ async function openLocal(id, onClose) {
   await openEditor({ container: pageMain, meta: rec.meta, role: rec.role, you: rec.you, ev: rec.ev, version: rec.baseVersion, mapSrc, key, readOnly: rec.role === "viewer", offline: true, onClose, onStart });
   return true;
 }
-function alertBox(text) { return modal({ title: "Tracer", body: `<p>${escA(text)}</p>`, cancel: null }); }
+function alertBox(text) { return modal({ title: t("trc.page.title"), body: `<p>${escA(text)}</p>`, cancel: null }); }
 
 // ---- opening ----------------------------------------------------------------------------------------------------------------
 async function openEvent(id, { align = false } = {}) {
   const loading = document.createElement("div");
-  loading.className = "tr-loading"; loading.innerHTML = '<div class="spinner"></div><p>Ouverture de l\'événement…</p>';
+  loading.className = "tr-loading"; loading.innerHTML = `<div class="spinner"></div><p>${escA(t("trc.page.opening"))}</p>`;
   document.body.appendChild(loading);
   let info;
   try { info = await S.api(`/${id}`); }
@@ -421,7 +420,7 @@ async function openEvent(id, { align = false } = {}) {
     if (!e.status) { loading.remove(); if (await openLocal(id, onClose)) return; }
     loading.remove();
     history.replaceState(null, "", listHash());
-    await alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : !e.status ? "Pas de réseau, et cet événement n'est pas gardé sur cet appareil (Fichier › Travailler hors ligne)." : `Ouverture impossible : ${e.code || e.message}`);
+    await alertBox(e.status === 403 ? t("trc.page.notTeam") : e.status === 404 ? t("trc.page.notFound") : !e.status ? t("trc.page.noNetwork") : t("trc.page.openErr", { err: e.code || e.message }));
     backToStart();
     return;
   }
@@ -431,27 +430,27 @@ async function openEvent(id, { align = false } = {}) {
       key = await S.keyFor(id);
       if (!key) {
         loading.remove();
-        const v = await modal({ title: "Événement chiffré", ok: "Ouvrir", body: field("Phrase de passe de l'équipe", '<input name="p" type="password" autocomplete="current-password">'),
-          validate: async (o) => ((await S.unlock(id, info.event.encrypted, o.p)) ? null : "Phrase de passe incorrecte.") });
+        const v = await modal({ title: t("trc.page.encrypted"), ok: t("trc.page.open"), body: field(escA(t("trc.page.passphrase")), '<input name="p" type="password" autocomplete="current-password">'),
+          validate: async (o) => ((await S.unlock(id, info.event.encrypted, o.p)) ? null : t("trc.page.badPass")) });
         if (!v) { history.replaceState(null, "", listHash()); backToStart(); return; }
         key = await S.keyFor(id);
         document.body.appendChild(loading);
       }
     }
     const [evR, mapR] = await Promise.all([S.loadJson(id, "event", key), S.loadMap(id, key)]);
-    let ev = evR?.data || M.newEvent({ title: info.event.title }), dirty = false;
+    let ev = evR?.data || M.newEvent({ title: info.event.title, lang: lang() }), dirty = false;
     // changes made offline and not sent yet: sent now — or, if the team saved meanwhile, the user chooses
     const pend = await OFF.pendingOf(id, key).catch(() => null);
     if (pend) {
       if (pend.baseVersion === (evR?.version || 0)) { ev = pend.ev; dirty = true; }
       else {
         loading.remove();
-        const v = await modal({ title: "Modifications faites hors ligne", ok: "Continuer", body: `<p>Des modifications faites sur cet appareil sans réseau (${new Date(pend.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}) n'ont pas été envoyées, et l'équipe a enregistré l'événement depuis.</p>
-          <label class="tr-check"><input type="radio" name="w" value="mine" checked> Garder mes modifications (la version de l'équipe est gardée dans les versions)</label>
-          <label class="tr-check"><input type="radio" name="w" value="team"> Prendre la version de l'équipe (mes modifications hors ligne sont abandonnées)</label>`, cancel: null });
+        const v = await modal({ title: t("trc.page.pendTitle"), ok: t("trc.page.continue"), body: `<p>${escA(t("trc.page.pendBody", { date: new Date(pend.at).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" }) }))}</p>
+          <label class="tr-check"><input type="radio" name="w" value="mine" checked> ${escA(t("trc.page.pendMine"))}</label>
+          <label class="tr-check"><input type="radio" name="w" value="team"> ${escA(t("trc.page.pendTeam"))}</label>`, cancel: null });
         document.body.appendChild(loading);
         if (v?.w === "team") await OFF.clearPending(id);
-        else { await S.saveVersion(id, ev, key, "Version de l'équipe, remplacée par des modifications faites hors ligne", "").catch(() => {}); ev = pend.ev; dirty = true; }
+        else { await S.saveVersion(id, ev, key, t("trc.page.pendVersion"), "").catch(() => {}); ev = pend.ev; dirty = true; }
       }
     }
     const mapType = info.event.map?.type || mapR?.type || "";
@@ -468,7 +467,7 @@ async function openEvent(id, { align = false } = {}) {
   } catch (e) {
     loading.remove();
     history.replaceState(null, "", listHash());
-    await alertBox(e.status === 403 ? "Vous ne faites pas partie de l'équipe de cet événement." : e.status === 404 ? "Événement introuvable." : `Ouverture impossible : ${e.code || e.message}`);
+    await alertBox(e.status === 403 ? t("trc.page.notTeam") : e.status === 404 ? t("trc.page.notFound") : t("trc.page.openErr", { err: e.code || e.message }));
     backToStart();
   }
 }

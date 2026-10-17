@@ -1,6 +1,8 @@
 // The Tracer's icons — 24 × 24 line drawings in the text colour — and the editor's menus, shared by the editor
 // (tracer/editor.js, dialogs.js) and its guide (pages/methods.js, « Le tracé »), so that both show the same pictures.
 
+import { t } from "./lang.js";
+
 export const ICON = {
   // the tools
   select: '<path d="M5 3l14 8-6 2-3 6z"/>',
@@ -139,22 +141,22 @@ export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) :
 
 /** The editor's menus, the « Purple Pen mode » (the ribbon of ribbon-data.js is the « O'CN mode », by default): { label, icon, items: [action, label] or "-" }. */
 export const MENUS = [
-  { label: "Fichier", icon: "file", items: [["start-new", "Nouvel événement…"], ["start-open", "Ouvrir un événement…"], ["start-import", "Importer un événement (O'CN .ocnt, Purple Pen .ppen)…"], "-",
-    ["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
-    ["export-ocn", "Exporter au format O'CN (.ocnt), avec la carte…"], ["export-ppen", "Exporter au format Purple Pen (.ppen)"], ["import-ppen", "Remplacer les circuits par ceux d'un fichier .ppen…"], "-",
-    ["pdf-courses", "PDF des circuits…"], ["pdf-descriptions", "PDF des définitions…"], ["pdf-punch", "Cartons de contrôle (PDF)…"], "-",
-    ["export-iof3", "IOF XML 3.0 (logiciels de chronométrage)"], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", "GPX des postes"], ["export-kml", "KML des circuits"],
-    ["export-images", "Images des circuits (PNG, JPEG, GIF)…"], ["export-ocad", "Fichiers OCAD ou Mapper des circuits…"], ["export-routegadget", "Fichiers RouteGadget"], ["export-csv", "Tableaux (CSV)"], "-",
-    ["publish", "Publier vers l'analyse multi…"], ["send-results", "Envoyer les circuits à « Résultats »…"], ["map-change", "Changer de carte…"], "-", ["offline", "Travailler hors ligne…"]] },
-  { label: "Événement", icon: "event", items: [["event-props", "Propriétés…"], ["appearance", "Apparence des circuits…"], ["standards", "Normes IOF…"], ["numbering", "Numérotation automatique…"],
-    ["codes", "Changer les codes…"], ["renumber", "Renuméroter tous les postes"], ["remove-unused", "Supprimer les postes inutilisés"], ["calage", "Caler les postes sur la carte…"], ["move-all", "Déplacer tous les postes…"],
-    ["custom-text", "Textes des définitions…"], ["punch", "Poinçons…"], ["load", "Charge des concurrents…"], ["georef", "Géoréférencer la carte…"], "-", ["team", "Équipe et partage…"], ["encryption", "Chiffrement…"]] },
-  { label: "Circuit", icon: "course", items: [["course-new", "Nouveau circuit…"], ["course-props", "Propriétés du circuit…"], ["course-dup", "Dupliquer le circuit…"], ["course-delete", "Supprimer le circuit"],
-    ["course-order", "Ordre des circuits…"], "-", ["var-fork", "Ajouter une fourche…"], ["var-loop", "Ajouter des boucles…"], ["var-delete", "Supprimer la variante"], ["relay", "Variantes de relais…"], "-",
-    ["print-area", "Zone d'impression…"], ["part-options", "Options de la partie…"]] },
-  { label: "Rapports", icon: "reports", items: [["rep-summary", "Résumé des circuits"], ["rep-legs", "Longueurs des interpostes"], ["rep-cross", "Références croisées"], ["rep-load", "Charge des postes et interpostes"],
-    ["rep-audit", "Contrôle de l'événement"], "-", ["rep-climb", "Dénivelée (IGN)…"], ["rep-times", "Temps estimés du vainqueur…"], ["rep-pickup", "Plan de ramassage…"], ["rep-after", "Bilan après la course…"], "-", ["comments", "Commentaires de l'équipe…"], ["field", "Mode terrain…"]] },
-  { label: "Affichage", icon: "view", items: [["view-course", "Tout le circuit"], ["view-map", "Toute la carte"], ["view-all", "Afficher tous les postes"], ["view-printarea", "Afficher la zone d'impression"],
-    ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"], ["save-to", "Plusieurs fichiers : dossier ou .zip…"], "-",
-    ["ui-ribbon", "Mode O'CN : le ruban"]] },
+  { label: t("trc.ico.menuFile"), icon: "file", items: [["start-new", t("trc.ico.startNew")], ["start-open", t("trc.ico.startOpen")], ["start-import", t("trc.ico.startImport")], "-",
+    ["save", t("trc.ico.save")], ["version-save", t("trc.ico.versionSave")], ["versions", t("trc.ico.versions")], "-",
+    ["export-ocn", t("trc.ico.exportOcn")], ["export-ppen", t("trc.ico.exportPpen")], ["import-ppen", t("trc.ico.importPpen")], "-",
+    ["pdf-courses", t("trc.ico.pdfCourses")], ["pdf-descriptions", t("trc.ico.pdfDescriptions")], ["pdf-punch", t("trc.ico.pdfPunch")], "-",
+    ["export-iof3", t("trc.ico.exportIof3")], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", t("trc.ico.exportGpx")], ["export-kml", t("trc.ico.exportKml")],
+    ["export-images", t("trc.ico.exportImages")], ["export-ocad", t("trc.ico.exportOcad")], ["export-routegadget", t("trc.ico.exportRoutegadget")], ["export-csv", t("trc.ico.exportCsv")], "-",
+    ["publish", t("trc.ico.publish")], ["send-results", t("trc.ico.sendResults")], ["map-change", t("trc.ico.mapChange")], "-", ["offline", t("trc.ico.offline")]] },
+  { label: t("trc.ico.menuEvent"), icon: "event", items: [["event-props", t("trc.ico.eventProps")], ["appearance", t("trc.ico.appearance")], ["standards", t("trc.ico.standards")], ["numbering", t("trc.ico.numbering")],
+    ["codes", t("trc.ico.codes")], ["renumber", t("trc.ico.renumber")], ["remove-unused", t("trc.ico.removeUnused")], ["calage", t("trc.ico.calage")], ["move-all", t("trc.ico.moveAll")],
+    ["custom-text", t("trc.ico.customText")], ["punch", t("trc.ico.punch")], ["load", t("trc.ico.load")], ["georef", t("trc.ico.georef")], "-", ["team", t("trc.ico.team")], ["encryption", t("trc.ico.encryption")]] },
+  { label: t("trc.ico.menuCourse"), icon: "course", items: [["course-new", t("trc.ico.courseNew")], ["course-props", t("trc.ico.courseProps")], ["course-dup", t("trc.ico.courseDup")], ["course-delete", t("trc.ico.courseDelete")],
+    ["course-order", t("trc.ico.courseOrder")], "-", ["var-fork", t("trc.ico.varFork")], ["var-loop", t("trc.ico.varLoop")], ["var-delete", t("trc.ico.varDelete")], ["relay", t("trc.ico.relay")], "-",
+    ["print-area", t("trc.ico.printArea")], ["part-options", t("trc.ico.partOptions")]] },
+  { label: t("trc.ico.menuReports"), icon: "reports", items: [["rep-summary", t("trc.ico.repSummary")], ["rep-legs", t("trc.ico.repLegs")], ["rep-cross", t("trc.ico.repCross")], ["rep-load", t("trc.ico.repLoad")],
+    ["rep-audit", t("trc.ico.repAudit")], "-", ["rep-climb", t("trc.ico.repClimb")], ["rep-times", t("trc.ico.repTimes")], ["rep-pickup", t("trc.ico.repPickup")], ["rep-after", t("trc.ico.repAfter")], "-", ["comments", t("trc.ico.comments")], ["field", t("trc.ico.field")]] },
+  { label: t("trc.ico.menuView"), icon: "view", items: [["view-course", t("trc.ico.viewCourse")], ["view-map", t("trc.ico.viewMap")], ["view-all", t("trc.ico.viewAll")], ["view-printarea", t("trc.ico.viewPrintarea")],
+    ["view-others", t("trc.ico.viewOthers")], "-", ["import-course", t("trc.ico.importCourse")], ["save-to", t("trc.ico.saveTo")], "-",
+    ["ui-ribbon", t("trc.ico.uiRibbon")]] },
 ];

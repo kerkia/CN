@@ -6,6 +6,7 @@
 import { VMap, VColor, PointSymbol, LineSymbol, AreaSymbol, TextSymbol, LineTextSymbol, RectSymbol, GraphicsLine, GraphicsArea, LayerLine, LayerArea, LayerBitmap } from "./map.js";
 import { Glyph, PointSymDef, LineSymDef, AreaSymDef, TextSymDef, RectangleSymDef, GraphicsSymDef, ImageSymDef, SPACING, LOC, ROTATE, FILL, HALIGN, VALIGN, faceMetrics } from "./symdefs.js";
 import { SymPath, PathWithHoles, K, FLAG_LEFT, FLAG_RIGHT, FLAG_MAIN } from "./sympath.js";
+import { t } from "../lang.js";
 
 export const isOcad = (u8) => u8.length > 4 && u8[0] === 0xad && u8[1] === 0x0c;
 
@@ -61,13 +62,13 @@ function readElements(r, size) {
 /** Read an OCAD file into a VMap. Returns { map, version }. */
 export function readOcad(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  if (!isOcad(u8)) throw new Error("Ce n'est pas un fichier OCAD.");
+  if (!isOcad(u8)) throw new Error(t("trc.vmap.notOcad"));
   const r = new Reader(u8), map = new VMap();
   const h = { mark: r.i16(), sectionMark: r.i16(), version: r.i16(), sub: r.i16(), firstSym: r.i32(), firstIdx: r.i32(), setupPos: r.i32(), setupSize: r.i32(),
     infoPos: r.i32(), infoSize: r.i32(), firstStIdx: r.i32() };
   r.i32(); r.i32(); r.i32();
   const version = h.version;
-  if (version < 6 || (version > 12 && version !== 2018)) throw new Error(`Fichier OCAD ${version} : seuls OCAD 6 à 12 et 2018 se lisent.`);
+  if (version < 6 || (version > 12 && version !== 2018)) throw new Error(t("trc.vmap.ocadVersion", { v: version }));
   if (version >= 12) { r.i32(); r.i32(); r.i32(); }
   const ids = new Map();                                       // colour number → VColor
   const symdefs = new Map();                                   // symbol id → symdef
@@ -125,7 +126,7 @@ export function readOcad(bytes) {
     for (const p of pos) {
       if (p <= 0 || p > r.length) continue;
       r.seek(p);
-      try { const s = readSymbol(r, version); if (s) syms.push(s); } catch (e) { map.notes.push(`Symbole illisible (${e.message})`); }
+      try { const s = readSymbol(r, version); if (s) syms.push(s); } catch (e) { map.notes.push(t("trc.vmap.badSymbol", { err: e.message })); }
     }
   }
   for (const s of syms) if (s.otp !== 3 && s.otp !== 4) createSymdef(s, ctx);
@@ -334,7 +335,7 @@ function createSymdef(s, ctx) {
     else if (s.otp === 3) d = areaSymdef(name, id, s, ctx);
     else if (s.otp === 4) d = textSymdef(name, id, s, ctx);
     else if (s.otp === 5 || s.otp === 7) d = rectSymdef(name, id, s, ctx);
-  } catch (e) { ctx.map.notes.push(`Symbole ${id} : ${e.message}`); }
+  } catch (e) { ctx.map.notes.push(t("trc.vmap.symbolErr", { id, err: e.message })); }
   if (!d) return;
   if ((s.status & 2) !== 0) d.visible = false;
   ctx.map.addSymdef(d);
@@ -392,7 +393,7 @@ function lineSymdef(name, id, s, ctx) {
     const gi = { spacingMethod: SPACING.OCAD, glyph: glyphOf(s.prim, ctx), number: s.nPrimSym, spacing: mm(s.primSymDist) };
     if (s.decMode > 0) {
       Object.assign(gi, { loc: LOC.SpacedDecrease, ...spaced(), decreaseLimit: s.decLast / 100, decreaseBoth: s.decMode === 2 });
-      if (s.decMode === 3 || !s.decSymbolDistance || s.decSymbolWidth) ctx.map.notes.push(`Ligne ${id} : une décroissance d'OCAD 12 dessinée comme OCAD 11`);
+      if (s.decMode === 3 || !s.decSymbolDistance || s.decSymbolWidth) ctx.map.notes.push(t("trc.vmap.decrease", { id }));
     } else if ((width > 0 && s.mainGap > 0) || s.secGap > 0) Object.assign(gi, { loc: LOC.GapCenters, minimum: 1 });
     else Object.assign(gi, { loc: LOC.Spaced, ...spaced() });
     glyphs.push(gi);

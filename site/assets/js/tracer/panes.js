@@ -7,6 +7,7 @@ import { describe, sheetItems, sheetSize, hitTest, widthInCells } from "./descr.
 import { drawItems } from "./draw.js";
 import { symbolsFor, symbolName, symbolPaths, symbol } from "./symbols.js";
 import * as D from "./dialogs.js";
+import { t, lang } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const COLUMN = { 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H" };
@@ -22,7 +23,7 @@ export function descPane(E) {
   const size = sheetSize(lines, descKind, cell);
   let canvas = box.querySelector("canvas");
   if (!canvas) {
-    box.innerHTML = '<canvas tabindex="0" data-own-keys aria-label="Définitions des postes"></canvas><p class="tr-desc-hint">Cliquer une ligne pour choisir le poste, puis une case pour la remplir. Au clavier : ↑ ↓ les lignes, ← → les cases, Entrée ou une lettre pour choisir le symbole, Suppr pour vider.</p>';
+    box.innerHTML = `<canvas tabindex="0" data-own-keys aria-label="${esc(t("trc.pane.descLabel"))}"></canvas><p class="tr-desc-hint">${esc(t("trc.pane.descHint"))}</p>`;
     canvas = box.querySelector("canvas");
     canvas.addEventListener("click", (e) => { onClick(E, e); });
     canvas.addEventListener("dblclick", (e) => onClick(E, e, true));
@@ -115,7 +116,7 @@ function onKey(E, e) {
   }
   if ((e.key === "Delete" || e.key === "Backspace") && symbolic && COLUMN[box]) {
     e.preventDefault();
-    E.change((ev) => { ev.controls[line.control].symbols[box - 2] = null; if (box === 5) ev.controls[line.control].colF = null; }, `Définition : colonne ${COLUMN[box]} vidée`);
+    E.change((ev) => { ev.controls[line.control].symbols[box - 2] = null; if (box === 5) ev.controls[line.control].colF = null; }, t("trc.pane.columnCleared", { col: COLUMN[box] }));
     canvas.focus();
   }
 }
@@ -135,10 +136,10 @@ function symbolPicker(E, controlId, box, cx, cy, typed = "") {
   const current = c.symbols[box - 2];
   const pop = document.createElement("div");
   pop.className = "tr-pop tr-sympop";
-  pop.innerHTML = `<div class="tr-pop-head"><strong>Colonne ${col}</strong> <input type="search" placeholder="Chercher…" class="tr-symsearch"></div>
-    ${col === "F" ? `<label class="tr-dim">Dimensions <input class="tr-dimin" value="${esc(c.colF || "")}" placeholder="2.5 ou 3x4 ou 2/1"></label>` : ""}
-    <div class="tr-symgrid">${[null, ...list].map((s) => `<button type="button" class="tr-sym ${s?.id === current ? "on" : ""}" data-id="${s ? esc(s.id) : ""}" title="${esc(s ? symbolName(s, "fr") : "Vide")}">
-      <canvas width="40" height="40"></canvas><span>${esc(s ? symbolName(s, "fr") : "(vide)")}</span></button>`).join("")}</div>`;
+  pop.innerHTML = `<div class="tr-pop-head"><strong>${esc(t("trc.pane.column", { col }))}</strong> <input type="search" placeholder="${esc(t("trc.pane.search"))}" class="tr-symsearch"></div>
+    ${col === "F" ? `<label class="tr-dim">${esc(t("trc.pane.dimensions"))} <input class="tr-dimin" value="${esc(c.colF || "")}" placeholder="${esc(t("trc.pane.dimPlaceholder"))}"></label>` : ""}
+    <div class="tr-symgrid">${[null, ...list].map((s) => `<button type="button" class="tr-sym ${s?.id === current ? "on" : ""}" data-id="${s ? esc(s.id) : ""}" title="${esc(s ? symbolName(s, lang()) : t("trc.pane.empty"))}">
+      <canvas width="40" height="40"></canvas><span>${esc(s ? symbolName(s, lang()) : t("trc.pane.emptyBox"))}</span></button>`).join("")}</div>`;
   E.root.appendChild(pop);
   place(pop, cx, cy);
   pop.querySelectorAll(".tr-sym").forEach((b, i) => {
@@ -150,7 +151,7 @@ function symbolPicker(E, controlId, box, cx, cy, typed = "") {
       E.change((ev) => {
         ev.controls[controlId].symbols[box - 2] = s ? s.id : null;
         if (col === "F" && s) ev.controls[controlId].colF = null;
-      }, `Définition : colonne ${col}`);
+      }, t("trc.pane.columnSet", { col }));
       pop.remove();
     });
   });
@@ -194,7 +195,7 @@ function symbolPicker(E, controlId, box, cx, cy, typed = "") {
   dim?.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     const v = dim.value.trim();
-    E.change((ev) => { ev.controls[controlId].colF = v || null; if (v) ev.controls[controlId].symbols[3] = null; }, "Dimensions");
+    E.change((ev) => { ev.controls[controlId].colF = v || null; if (v) ev.controls[controlId].symbols[3] = null; }, t("trc.pane.dimensions"));
     pop.remove();
   });
   closeOnOutside(pop);
@@ -206,14 +207,14 @@ function directivePicker(E, controlId, cx, cy) {
   const list = ids.map((id) => symbol(id, std)).filter(Boolean);
   const pop = document.createElement("div");
   pop.className = "tr-pop tr-sympop";
-  pop.innerHTML = `<div class="tr-symgrid wide">${list.map((s) => `<button type="button" class="tr-sym wide ${c.symbols[0] === s.id ? "on" : ""}" title="${esc(symbolName(s, "fr"))}">
-    <canvas width="240" height="30"></canvas><span>${esc(symbolName(s, "fr"))}</span></button>`).join("")}</div>`;
+  pop.innerHTML = `<div class="tr-symgrid wide">${list.map((s) => `<button type="button" class="tr-sym wide ${c.symbols[0] === s.id ? "on" : ""}" title="${esc(symbolName(s, lang()))}">
+    <canvas width="240" height="30"></canvas><span>${esc(symbolName(s, lang()))}</span></button>`).join("")}</div>`;
   E.root.appendChild(pop);
   place(pop, cx, cy);
   pop.querySelectorAll(".tr-sym").forEach((b, i) => {
     const s = list[i], g = b.querySelector("canvas").getContext("2d");
     drawItems(g, symbolPaths(s, 0, 0, 240, 30).map((p) => ({ t: "path", ...p, color: "black" })), (x, y) => [x, y], 1, { blend: "none" });
-    b.addEventListener("click", () => { E.change((ev) => { ev.controls[controlId].symbols[0] = s.id; }, "Directive"); pop.remove(); });
+    b.addEventListener("click", () => { E.change((ev) => { ev.controls[controlId].symbols[0] = s.id; }, t("trc.pane.directive")); pop.remove(); });
   });
   closeOnOutside(pop);
 }
