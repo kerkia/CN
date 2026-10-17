@@ -1,7 +1,7 @@
 // Application shell: router (with the login gate), header (navigation,
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
-import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce } from "./util.js";
+import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce, fmtCat } from "./util.js";
 import { t, lang, setLang, OPEN, LANG_NAMES } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
@@ -485,7 +485,7 @@ function bindSearch() {
     }).sort((a, b) => b.n - a.n).slice(0, 12);
     active = -1;
     box.innerHTML = items.length ? html`${items.map((r, i) => html`<a href="${link.runner(r.lic)}" role="option" data-i="${i}" data-lic="${r.lic}">
-        <span>${displayName(r.nom)}<div class="sub">${r.cat || ""} · ${data.clubName(r.club)}</div></span>
+        <span>${displayName(r.nom)}<div class="sub">${fmtCat(r.cat)} · ${data.clubName(r.club)}</div></span>
         <span class="sub num">${fmt(r.n)} ${t("rn.races")}</span></a>`)}`
       : html`<div class="empty">${t("search.none")}</div>`;
     box.classList.remove("hidden");

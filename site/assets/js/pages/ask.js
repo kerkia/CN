@@ -4,8 +4,8 @@
 // the result; the query runs here, in the browser, with DuckDB-WASM — the model never sees the data. A query that
 // fails goes back to the model once, with its error. Only one SELECT is ever run, on the five tables.
 
-import { html, raw, $, fmt, fmtDate, fmtTime, downloadCsv, normalise, plural } from "../util.js";
-import { t } from "../i18n.js";
+import { html, raw, $, fmt, fmtDate, fmtTime, downloadCsv, normalise, pct, fmtCat } from "../util.js";
+import { t, tn, lang } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as store from "../store.js";
 import { timeChart, columnChart, slotColor } from "../charts.js";
@@ -15,20 +15,15 @@ import { PROVIDERS, ProviderError, loadChoice, saveChoice, forgetChoice, suggest
 
 const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm";
 const TABLES = ["runners", "clubs", "races", "results", "cn"];
-const EXAMPLES = [
-  "Quels coureurs de mon club sont dans le meilleur centile de leur catégorie en forêt ? Fais un tableau.",
-  "Trace l'écart entre mon CN officiel et mon CN Top sur les 3 dernières années.",
-  "Mes 10 meilleures courses en sprint selon le score Top",
-  "Compare l'évolution du CN Top forêt des 5 meilleurs coureurs de mon club depuis 2024",
-  "Combien de coureurs ont un CN Top en forêt aujourd'hui, par ligue ?",
-  "Mon taux de PM par saison",
-];
+const EXAMPLES = [1, 2, 3, 4, 5, 6].map((i) => t(`ia.ex.${i}`));
 // O'CN's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
 const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
   ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"], ["@cf/qwen/qwen3-30b-a3b-fp8", "Qwen3 30B"]];
 
 // what survives a visit to another page: the answers, the database once loaded
 const memo = { answers: [], duck: null, loaded: new Set(), manifest: null };
+// a server refusal: its code worded here (the server sends codes, not sentences), else its message
+const errText = (d, status) => (d.code ? t(`ia.err.${d.code}`, { n: d.n, detail: d.detail || "" }) : d.error || t("ia.err.generic", { status }));
 
 // ---- the database ---------------------------------------------------------------------------------------------------
 async function duck() {
@@ -49,7 +44,7 @@ async function duck() {
 async function manifest() {
   if (memo.manifest) return memo.manifest;
   const r = await fetch("data/ask/manifest.json", { credentials: "same-origin", cache: "no-cache" });
-  if (!r.ok || !(r.headers.get("content-type") || "").includes("json")) throw new Error("Les données des questions ne sont pas encore construites.");
+  if (!r.ok || !(r.headers.get("content-type") || "").includes("json")) throw new Error(t("ia.noData"));
   return (memo.manifest = await r.json());
 }
 
@@ -59,10 +54,10 @@ async function ensureTables(sql, say) {
   const m = await manifest();
   const need = TABLES.filter((tb) => new RegExp(`\\b${tb}\\b`, "i").test(sql) && !memo.loaded.has(tb));
   for (const tb of need) {
-    const mb = ((m.tables?.[tb]?.bytes || 0) / 1e6).toLocaleString("fr-FR", { maximumFractionDigits: 1 });
-    say(`Chargement de la table « ${tb} » (${mb} Mo, une fois par visite)…`);
+    const mb = fmt((m.tables?.[tb]?.bytes || 0) / 1e6, 1);
+    say(t("ia.loadingTable", { tb, mb }));
     const r = await fetch(`data/ask/${tb}.parquet`, { credentials: "same-origin", cache: "no-cache" });
-    if (!r.ok || (r.headers.get("content-type") || "").includes("html")) throw new Error(`La table « ${tb} » n'a pas pu être lue (${r.status}).`);
+    if (!r.ok || (r.headers.get("content-type") || "").includes("html")) throw new Error(t("ia.tableFailed", { tb, status: r.status }));
     await db.registerFileBuffer(`${tb}.parquet`, new Uint8Array(await r.arrayBuffer()));
     await conn.query(`CREATE OR REPLACE VIEW ${tb} AS SELECT * FROM '${tb}.parquet'`);
     memo.loaded.add(tb);
@@ -75,13 +70,13 @@ export function checkSql(sql) {
   const s = String(sql || "").replace(/--[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").trim().replace(/;\s*$/, "");
   // string literals and quoted names (the French column titles) left out of the checks
   const bare = s.replace(/'(?:[^']|'')*'/g, "''").replace(/"(?:[^"]|"")*"/g, '""');
-  if (!/^(with|select|from)\b/i.test(bare)) return "La requête n'est pas une lecture (SELECT).";
-  if (bare.includes(";")) return "La requête contient plusieurs instructions.";
+  if (!/^(with|select|from)\b/i.test(bare)) return t("ia.sql.notRead");
+  if (bare.includes(";")) return t("ia.sql.several");
   if (/\b(attach|detach|copy|install|load|pragma|set|reset|export|import|create|insert|update|delete|drop|alter|call|checkpoint|vacuum|use)\b/i.test(bare)) {
-    return "La requête contient une instruction autre qu'une lecture.";
+    return t("ia.sql.write");
   }
   if (/\b(read_\w+|glob|parquet_\w+|sniff_csv|query|query_table|getenv)\s*\(/i.test(bare) || /\b(from|join)\s*''/i.test(bare) || /:\/\//.test(s)) {
-    return "La requête lit autre chose que les tables du site.";
+    return t("ia.sql.other");
   }
   return null;
 }
@@ -116,17 +111,17 @@ function colOf(result, name) {
 function formatter(a, col) {
   const f = Object.entries(a.formats || {}).find(([k]) => colOf({ columns: [col] }, k))?.[1];
   if (f === "duration") return (v) => (v == null ? "—" : fmtTime(Math.round(v)));
-  if (f === "percent") return (v) => (v == null ? "—" : `${fmt(100 * v, 1)} %`);
+  if (f === "percent") return (v) => (v == null ? "—" : pct(v, 1));
   if (f === "date" || col.date) return (v) => (v == null ? "—" : fmtDate(String(v).slice(0, 10)));
   if (f === "integer") return (v) => (v == null ? "—" : fmt(Math.round(v)));
   if (col.numeric) return (v) => (v == null ? "—" : fmt(v, Number.isInteger(v) ? 0 : f === "decimal" ? 2 : 1));
-  return (v) => (v == null ? "—" : String(v));
+  return (v) => (v == null ? "—" : /^[HD]\d{2}$/.test(String(v)) ? fmtCat(v) : String(v));
 }
 
 function draw(el, a, result) {
   const { columns, rows } = result;
   const body = $(".ia-body", el);
-  if (!rows.length) { body.innerHTML = html`<div class="empty">La requête n'a renvoyé aucune ligne.</div>`; return; }
+  if (!rows.length) { body.innerHTML = html`<div class="empty">${t("ia.noRows")}</div>`; return; }
   const x = colOf(result, a.x), series = colOf(result, a.series);
   let ys = (a.y || []).map((n) => colOf(result, n)).filter(Boolean);
   if (!ys.length) ys = columns.filter((c) => c.numeric && c !== x && c !== series);
@@ -152,7 +147,7 @@ function draw(el, a, result) {
       columnChart(chartEl, { categories: cats, yName: ys.length === 1 ? ys[0].name : "",
         series: ys.slice(0, 6).map((c, i) => ({ name: c.name, color: slotColor(i), data: rows.map((r) => r[c.name]) })) });
     }
-    body.insertAdjacentHTML("beforeend", html`<details class="ia-more"><summary>Les données</summary><div class="ia-table"></div></details>`);
+    body.insertAdjacentHTML("beforeend", html`<details class="ia-more"><summary>${t("ia.data")}</summary><div class="ia-table"></div></details>`);
     table($(".ia-table", body), a, result);
   } else {
     body.innerHTML = html`<div class="ia-table"></div>`;
@@ -176,45 +171,39 @@ export async function render(main) {
   let followUp = null;
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.ask")}</h1>
-      <p class="lede">Posez une question sur les classements, les résultats, les clubs : une IA écrit la requête, votre navigateur l'exécute sur
-        les données du site et en fait un tableau ou un graphique.</p></div></div>
+      <p class="lede">${t("ia.lede")}</p></div></div>
     <section class="card"><div class="card-body ia-top">
       <div>
         <form id="ia-form" class="ia-form">
-          <textarea id="ia-q" rows="4" maxlength="1000" placeholder="Par exemple : mon CN Top en forêt mois par mois depuis 2024"></textarea>
+          <textarea id="ia-q" rows="4" maxlength="1000" placeholder="${t("ia.placeholder")}"></textarea>
           <div class="ia-row">
             <div id="ia-follow"></div>
-            <select id="ia-model" title="Le modèle qui écrit la requête">${(me?.admin ? MODELS : MODELS.slice(0, 1)).map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
-            <button type="submit" class="btn btn-primary" id="ia-go">Demander</button>
+            <select id="ia-model" title="${t("ia.model.tip")}">${(me?.admin ? MODELS : MODELS.slice(0, 1)).map(([v, l]) => html`<option value="${v}">${l}</option>`)}</select>
+            <button type="submit" class="btn btn-primary" id="ia-go">${t("ia.ask")}</button>
           </div>
         </form>
-        <p class="muted ia-note">Gratuit, dans la limite d'une centaine de questions par jour pour tout le site (15 par personne et par jour ; sans
-          limite avec votre propre clé, ci-dessous). L'IA ne voit pas les données : elle
-          écrit une requête, que votre navigateur exécute. Elle peut se tromper : l'interprétation retenue et la requête sont affichées sous chaque réponse.</p>
+        <p class="muted ia-note">${t("ia.note")}</p>
         <details class="ia-byok" id="by">
-          <summary>Votre propre clé d'API : Claude, ChatGPT, Gemini ou OpenRouter</summary>
+          <summary>${t("ia.byok.summary")}</summary>
           <div class="ia-byok-body">
-            <p class="ia-note" style="margin-top:0">Un modèle plus puissant, à vos frais : votre navigateur l'appelle directement avec votre clé.</p>
+            <p class="ia-note" style="margin-top:0">${t("ia.byok.intro")}</p>
             <div class="ia-byok-grid">
-              <label class="field"><span>Fournisseur</span><select id="by-prov">${Object.entries(PROVIDERS).map(([k, v]) => html`<option value="${k}">${v.label}</option>`)}</select></label>
-              <label class="field"><span>Clé d'API</span><input id="by-key" type="password" autocomplete="off" spellcheck="false"></label>
-              <div class="field ia-byok-model"><span>Modèle</span>
-                <input id="by-filter" type="search" autocomplete="off" spellcheck="false" placeholder="Filtrer : claude, gpt, gemini, gratuit…" aria-label="Filtrer les modèles">
-                <select id="by-model" aria-label="Modèle"><option value="" disabled selected>— chargez la liste —</option></select></div>
+              <label class="field"><span>${t("ia.byok.provider")}</span><select id="by-prov">${Object.entries(PROVIDERS).map(([k, v]) => html`<option value="${k}">${v.label}</option>`)}</select></label>
+              <label class="field"><span>${t("ia.byok.key")}</span><input id="by-key" type="password" autocomplete="off" spellcheck="false"></label>
+              <div class="field ia-byok-model"><span>${t("ia.byok.model")}</span>
+                <input id="by-filter" type="search" autocomplete="off" spellcheck="false" placeholder="${t("ia.byok.filter")}" aria-label="${t("ia.byok.filterLabel")}">
+                <select id="by-model" aria-label="${t("ia.byok.model")}"><option value="" disabled selected>${t("ia.byok.loadFirst")}</option></select></div>
             </div>
             <div class="ia-row ia-byok-actions">
-              <label class="checkline"><input type="checkbox" id="by-remember"> Se souvenir de la clé sur cet appareil</label>
+              <label class="checkline"><input type="checkbox" id="by-remember"> ${t("ia.byok.remember")}</label>
               <span style="flex:1"></span>
-              <button type="button" class="btn btn-sm" id="by-load">Charger les modèles</button>
-              <button type="button" class="btn btn-sm btn-primary" id="by-save">Utiliser</button>
-              <button type="button" class="btn btn-ghost btn-sm" id="by-forget">Oublier la clé</button>
+              <button type="button" class="btn btn-sm" id="by-load">${t("ia.byok.load")}</button>
+              <button type="button" class="btn btn-sm btn-primary" id="by-save">${t("ia.byok.use")}</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="by-forget">${t("ia.byok.forget")}</button>
             </div>
             <div class="ia-status" id="by-status"></div>
             <p class="muted ia-note" id="by-note"></p>
-            <p class="muted ia-note">La clé reste dans ce navigateur : elle n'est jamais envoyée à O'CN (sans « Se souvenir », elle s'efface à la
-              fermeture de l'onglet ; elle s'efface aussi à la déconnexion). Le fournisseur reçoit la question, la description des tables et votre
-              numéro de licence — jamais les données —, selon ses conditions, et vous facture à ses tarifs (une question coûte de moins d'un
-              centime à environ un centime). Créez une clé réservée à cet usage, avec une limite de dépenses : un script de la page pourrait la lire.</p>
+            <p class="muted ia-note">${t("ia.byok.privacy")}</p>
           </div>
         </details>
       </div>
@@ -261,8 +250,8 @@ export async function render(main) {
 
   const answersEl = $("#ia-answers");
   const showFollow = () => {
-    $("#ia-follow").innerHTML = followUp ? html`<span class="chip ia-follow-chip" title="${followUp.question}">Suite de : ${followUp.question.slice(0, 70)}${followUp.question.length > 70 ? "…" : ""}
-      <button type="button" class="btn btn-ghost btn-sm" id="ia-unfollow" aria-label="Question indépendante">✕</button></span>` : "";
+    $("#ia-follow").innerHTML = followUp ? html`<span class="chip ia-follow-chip" title="${followUp.question}">${t("ia.follow", { q: followUp.question.slice(0, 70) + (followUp.question.length > 70 ? "…" : "") })}
+      <button type="button" class="btn btn-ghost btn-sm" id="ia-unfollow" aria-label="${t("ia.unfollow")}">✕</button></span>` : "";
     $("#ia-unfollow")?.addEventListener("click", () => { followUp = null; showFollow(); });
   };
 
@@ -278,11 +267,11 @@ export async function render(main) {
   function foot(el, entry) {
     const u = entry.usage;
     $(".ia-foot", el).innerHTML = html`
-      ${entry.result ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="csv">Télécharger (CSV)</button>` : ""}
-      ${entry.answer?.sql ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="follow">Préciser cette réponse</button>` : ""}
-      ${u ? html`<span class="muted">${u.provider ? `${u.provider} · ${u.model}` : String(u.model).split("/").pop()} · ${fmt(u.tokensIn)} + ${fmt(u.tokensOut)} jetons${
-        u.neurons != null ? ` · ~${fmt(u.neurons)} neurones` : ""}${u.dollars != null ? ` · ${fmt(u.dollars, 4)} $` : ""} · ${fmt(u.ms / 1000, 1)} s${entry.retried ? " · requête corrigée une fois" : ""}</span>` : ""}
-      ${entry.answer?.sql ? html`<details><summary>La requête</summary><pre>${entry.answer.sql}</pre></details>` : ""}`;
+      ${entry.result ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="csv">${t("ia.csv")}</button>` : ""}
+      ${entry.answer?.sql ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="follow">${t("ia.refine")}</button>` : ""}
+      ${u ? html`<span class="muted">${u.provider ? `${u.provider} · ${u.model}` : String(u.model).split("/").pop()} · ${t("ia.usage.tokens", { in: fmt(u.tokensIn), out: fmt(u.tokensOut) })}${
+        u.neurons != null ? ` · ${t("ia.usage.neurons", { n: fmt(u.neurons) })}` : ""}${u.dollars != null ? ` · ${fmt(u.dollars, 4)} $` : ""} · ${fmt(u.ms / 1000, 1)} s${entry.retried ? ` · ${t("ia.usage.retried")}` : ""}</span>` : ""}
+      ${entry.answer?.sql ? html`<details><summary>${t("ia.query")}</summary><pre>${entry.answer.sql}</pre></details>` : ""}`;
     $("[data-act=csv]", el)?.addEventListener("click", () => {
       const { columns, rows } = entry.result;
       downloadCsv("ocn-ia.csv", columns.map((c) => c.name), rows.map((r) => columns.map((c) => r[c.name])));
@@ -302,49 +291,49 @@ export async function render(main) {
     const own = $("#ia-model").value === "byok" ? loadChoice() : null;
     const post = async (extra) => {
       const r = await fetch("/api/ask", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, method: store.get().method, terrain: store.get().terrain, model: $("#ia-model").value,
+        body: JSON.stringify({ question, method: store.get().method, terrain: store.get().terrain, model: $("#ia-model").value, lang: lang(),
           previous: entry.previous || undefined, promptOnly: own ? true : undefined, ...extra }) });
       const d = await r.json().catch(() => ({}));
       if (own) {
         // the user's own model: the instructions from O'CN, the call from this browser to their provider, with their key
-        if (!r.ok || !d.messages) throw new Error(d.error || `Erreur ${r.status}`);
+        if (!r.ok || !d.messages) throw new Error(errText(d, r.status));
         const t0 = Date.now(), out = await PROVIDERS[own.provider].chat(own.key, own.model, d.messages);
         entry.usage = { provider: PROVIDERS[own.provider].label, model: own.model, ms: Date.now() - t0, tokensIn: out.tokensIn, tokensOut: out.tokensOut,
           dollars: out.dollars ?? null };
         const answer = parseAnswer(out.text);
-        if (!answer) throw new Error("La réponse du modèle n'a pas pu être lue.");
+        if (!answer) throw new Error(t("ia.unreadable"));
         return answer;
       }
-      if (!r.ok || !d.answer) throw new Error(d.error || `Erreur ${r.status}`);
+      if (!r.ok || !d.answer) throw new Error(errText(d, r.status));
       entry.usage = d.usage;
       return d.answer;
     };
-    if ($("#ia-model").value === "byok" && !own) { say("Choisissez d'abord votre fournisseur, votre clé et le modèle, puis « Utiliser »."); return; }
+    if ($("#ia-model").value === "byok" && !own) { say(t("ia.byok.chooseFirst")); return; }
     $("#ia-go").disabled = true;
     try {
-      say(own ? `${PROVIDERS[own.provider].label} écrit la requête…` : "L'IA écrit la requête…");
+      say(own ? t("ia.writingBy", { p: PROVIDERS[own.provider].label }) : t("ia.writing"));
       duck().catch(() => {});                                   // the engine loads meanwhile
       entry.answer = await post({});
       el.replaceWith(card(entry)); const cur = answersEl.firstElementChild;
-      if (!entry.answer.sql) { $(".ia-body", cur).innerHTML = html`<div class="empty">${entry.answer.explanation || "Pas de requête possible."}</div>`; foot(cur, entry); return; }
+      if (!entry.answer.sql) { $(".ia-body", cur).innerHTML = html`<div class="empty">${entry.answer.explanation || t("ia.noQuery")}</div>`; foot(cur, entry); return; }
       const sayCur = (s) => { const st = $(".ia-status", cur); if (st) st.textContent = s; };
       for (let attempt = 0; ; attempt++) {
         const bad = checkSql(entry.answer.sql);
         try {
           if (bad) throw new Error(bad);
           const conn = await ensureTables(entry.answer.sql, sayCur);
-          sayCur("Exécution de la requête…");
+          sayCur(t("ia.running"));
           entry.result = await run(conn, entry.answer.sql);
           break;
         } catch (e) {
           if (attempt) throw e;
-          sayCur("La requête a échoué ; l'IA la corrige…");
+          sayCur(t("ia.retrying"));
           const failed = { sql: entry.answer.sql, error: String(e.message || e).split("\n")[0].slice(0, 400) };
           entry.answer = await post({ failed });
           entry.retried = true;
           $("h2", cur).textContent = entry.answer.title || question;
           $(".ia-expl", cur).textContent = entry.answer.explanation || "";
-          if (!entry.answer.sql) throw new Error(entry.answer.explanation || "Pas de requête possible.");
+          if (!entry.answer.sql) throw new Error(entry.answer.explanation || t("ia.noQuery"));
         }
       }
       draw(cur, entry.answer, entry.result);
@@ -366,13 +355,13 @@ export async function render(main) {
     $("#ia-model option[value=byok]")?.remove();
     if (!c) return;
     const o = document.createElement("option");
-    o.value = "byok"; o.textContent = `Votre clé : ${PROVIDERS[c.provider].label} · ${c.model}`;
+    o.value = "byok"; o.textContent = t("ia.byok.option", { p: PROVIDERS[c.provider].label, m: c.model });
     $("#ia-model").prepend(o);
   };
   const showProvider = () => {
     const pv = PROVIDERS[$("#by-prov").value];
     $("#by-key").placeholder = pv.hint;
-    $("#by-note").innerHTML = html`${pv.note} <a href="${pv.keys}" target="_blank" rel="noopener noreferrer">Créer une clé</a>`;
+    $("#by-note").innerHTML = html`${t(pv.note)} <a href="${pv.keys}" target="_blank" rel="noopener noreferrer">${t("ia.byok.createKey")}</a>`;
   };
   // the models as a menu: OpenRouter's free ones first, then one group per maker (its own name, the price per million
   // tokens); the filter keeps the entries whose name or id contains its words (« gratuit » finds the free ones)
@@ -381,17 +370,17 @@ export async function render(main) {
     moonshotai: "Moonshot", perplexity: "Perplexity", minimax: "MiniMax", nousresearch: "Nous Research" };
   const ORDER = Object.keys(VENDORS);
   const isFree = (m) => /:free$/.test(m.id) || (m.price && m.price[0] === 0 && m.price[1] === 0);
-  const priceOf = (m) => (isFree(m) ? " — gratuit" : m.price && Number.isFinite(m.price[0])
-    ? ` — ${fmt(m.price[0], 2)} $ / ${fmt(m.price[1], 2)} $ le million de jetons (entrée / sortie)` : "");
+  const priceOf = (m) => (isFree(m) ? ` — ${t("ia.byok.free")}` : m.price && Number.isFinite(m.price[0])
+    ? ` — ${t("ia.byok.price", { in: fmt(m.price[0], 2), out: fmt(m.price[1], 2) })}` : "");
   const vendorOf = (id) => id.split("/")[0];
   let picked = null;                                   // the model chosen (or suggested): a filter that hides it does not lose it
   function drawModels(keep) {
     const sel = $("#by-model"), prov = $("#by-prov").value, q = normalise($("#by-filter").value || "").split(/\s+/).filter(Boolean);
     if (!models.length) {
-      sel.innerHTML = keep ? html`<option value="${keep}" selected>${keep}</option>` : html`<option value="" disabled selected>— chargez la liste —</option>`;
+      sel.innerHTML = keep ? html`<option value="${keep}" selected>${keep}</option>` : html`<option value="" disabled selected>${t("ia.byok.loadFirst")}</option>`;
       return;
     }
-    const shown = models.filter((m) => { const t = normalise(`${m.id} ${m.name} ${isFree(m) ? "gratuit free" : ""}`); return q.every((w) => t.includes(w)); });
+    const shown = models.filter((m) => { const txt = normalise(`${m.id} ${m.name} ${isFree(m) ? `free ${normalise(t("ia.byok.free"))}` : ""}`); return q.every((w) => txt.includes(w)); });
     const groups = new Map();
     const add = (g, m) => { if (!groups.has(g)) groups.set(g, []); groups.get(g).push(m); };
     for (const m of shown) {
@@ -404,16 +393,16 @@ export async function render(main) {
     for (const list of groups.values()) list.sort((a, b) => (b.created || 0) - (a.created || 0) || a.name.localeCompare(b.name));   // newest first
     const label = (m, g) => `${g && g !== "Gratuits" ? m.name.replace(/^[^:]+:\s*/, "") : m.name}${priceOf(m)}`;
     const opt = (m, g) => html`<option value="${m.id}" title="${m.id}" ${raw(m.id === keep ? "selected" : "")}>${label(m, g)}</option>`;
-    sel.innerHTML = shown.length ? keys.map((g) => (g ? html`<optgroup label="${g === "Gratuits" ? g : VENDORS[g] || g}">${groups.get(g).map((m) => opt(m, g))}</optgroup>`
-      : groups.get(g).map((m) => opt(m, g)).join(""))).join("") : html`<option value="" disabled selected>Aucun modèle ne correspond</option>`;
+    sel.innerHTML = shown.length ? keys.map((g) => (g ? html`<optgroup label="${g === "Gratuits" ? t("ia.byok.groupFree") : VENDORS[g] || g}">${groups.get(g).map((m) => opt(m, g))}</optgroup>`
+      : groups.get(g).map((m) => opt(m, g)).join(""))).join("") : html`<option value="" disabled selected>${t("ia.byok.none")}</option>`;
     if (shown.length && !shown.some((m) => m.id === keep)) sel.selectedIndex = 0;
-    byStatus(q.length ? `${plural(shown.length, "modèle", "modèles")} sur ${fmt(models.length)}.`
-      : `${plural(models.length, "modèle disponible", "modèles disponibles")}${prov === "openrouter" && !$("#by-key").value.trim() ? " (la clé sera vérifiée à la première question)" : ""}.`);
+    byStatus(q.length ? t("ia.byok.of", { shown: tn("ia.byok.model", shown.length), all: fmt(models.length) })
+      : `${tn("ia.byok.available", models.length)}${prov === "openrouter" && !$("#by-key").value.trim() ? t("ia.byok.checkLater") : ""}.`);
   }
   async function loadModels() {
     const prov = $("#by-prov").value, key = $("#by-key").value.trim(), keep = $("#by-model").value;
-    if (!key && prov !== "openrouter") { byStatus("Collez d'abord votre clé."); return false; }
-    byStatus("Chargement des modèles…");
+    if (!key && prov !== "openrouter") { byStatus(t("ia.byok.pasteFirst")); return false; }
+    byStatus(t("ia.byok.loading"));
     try {
       models = await PROVIDERS[prov].models(key);
     } catch (e) { byStatus(e instanceof ProviderError ? e.message : String(e.message || e), true); return false; }
@@ -431,17 +420,17 @@ export async function render(main) {
   $("#by-key").addEventListener("change", () => { if ($("#by-key").value.trim()) loadModels(); });
   $("#by-save").addEventListener("click", async () => {
     const provider = $("#by-prov").value, key = $("#by-key").value.trim();
-    if (!key) { byStatus("Collez votre clé d'API.", true); return; }
+    if (!key) { byStatus(t("ia.byok.paste"), true); return; }
     if (!models.length && !(await loadModels())) return;
     const model = $("#by-model").value;
-    if (!model) { byStatus("Choisissez un modèle.", true); return; }
+    if (!model) { byStatus(t("ia.byok.chooseModel"), true); return; }
     const c = { provider, key, model, remember: $("#by-remember").checked };
     saveChoice(c); ownOption(c); $("#ia-model").value = "byok";
-    byStatus(`Prêt : les questions iront à ${PROVIDERS[provider].label} (${model}).`);
+    byStatus(t("ia.byok.ready", { p: PROVIDERS[provider].label, m: model }));
   });
   $("#by-forget").addEventListener("click", () => {
     forgetChoice(); ownOption(null); $("#by-key").value = ""; $("#by-remember").checked = false; $("#ia-model").selectedIndex = 0;
-    byStatus("Clé oubliée : les questions vont au modèle gratuit, gpt-oss-120b.");
+    byStatus(t("ia.byok.forgotten"));
   });
   {
     const c = loadChoice();
@@ -449,7 +438,7 @@ export async function render(main) {
       $("#by-prov").value = c.provider; $("#by-key").value = c.key; $("#by-remember").checked = !!c.remember;
       picked = c.model; drawModels(c.model);             // the model kept; the whole list with « Charger les modèles »
       ownOption(c); $("#ia-model").value = "byok";
-      byStatus(`Clé enregistrée${c.remember ? " sur cet appareil" : " pour cet onglet"} : ${PROVIDERS[c.provider].label} (${c.model}).`);
+      byStatus(t(c.remember ? "ia.byok.saved.device" : "ia.byok.saved.tab", { p: PROVIDERS[c.provider].label, m: c.model }));
     } else if ($("#by-prov").value === "openrouter") loadModels();     // a public list: no key sent
     showProvider();
   }

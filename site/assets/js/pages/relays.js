@@ -2,8 +2,8 @@
 // teams, made automatically or changed runner by runner, their predicted times and their place among every club's
 // best team. The model and the solver: relay.js.
 
-import { html, raw, $, $$, fmt, fmtTime, fmtDate } from "../util.js";
-import { t } from "../i18n.js";
+import { html, raw, $, $$, fmt, fmtTime, fmtDate, fmtSex } from "../util.js";
+import { t, tn } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { methodSeg, bindMethodSeg, methodLabel, filterFold, setLede } from "../ui.js";
@@ -102,9 +102,9 @@ export async function render(main, { query }) {
   // ---- the format: its legs (reference times editable; one's own format entirely) -------------------------------
   function drawFormat() {
     const f = fmtNow, total = f.legs.reduce((s, l) => s + l.ref, 0);
-    $("#rl-format-hint").textContent = `${f.legs.length} relayeurs · ${fmt(total)} min · ${TARGETS[f.target]}`;
-    const sexSel = (i, v) => html`<select data-leg-sex="${i}"><option value="" ${raw(!v ? "selected" : "")}>D/H</option>
-      <option value="D" ${raw(v === "D" ? "selected" : "")}>D</option><option value="H" ${raw(v === "H" ? "selected" : "")}>H</option></select>`;
+    $("#rl-format-hint").textContent = tn("rl.fmtHint", f.legs.length, { min: fmt(total), target: TARGETS[f.target] });
+    const sexSel = (i, v) => html`<select data-leg-sex="${i}"><option value="" ${raw(!v ? "selected" : "")}>${t("rl.s.both")}</option>
+      <option value="D" ${raw(v === "D" ? "selected" : "")}>${fmtSex("D")}</option><option value="H" ${raw(v === "H" ? "selected" : "")}>${fmtSex("H")}</option></select>`;
     $("#rl-format").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr><th class="r">${t("rl.leg")}</th>
         <th class="r">${t("rl.ref")}</th><th>${f.custom ? t("rl.who") : t("rl.legRule")}</th>${f.custom ? html`<th></th>` : ""}</tr></thead>
       <tbody>${f.legs.map((l, i) => html`<tr><td class="r num">${i + 1}</td>
@@ -114,8 +114,8 @@ export async function render(main, { query }) {
           : html`<span class="muted">${consLabel(l) || "—"}</span>`}</td>
         ${f.custom ? html`<td><button class="btn btn-sm" type="button" data-leg-del="${i}" ${raw(f.legs.length < 2 ? "disabled" : "")}>✕</button></td>` : ""}</tr>`)}</tbody></table></div>
       <div class="card-body">${f.custom ? html`<button class="btn btn-sm" type="button" id="rl-add">${t("rl.addLeg")}</button>`
-        : html`<div class="muted" style="font-size:12.5px"><b>${t("rl.slots")}</b> : ${f.slots.map((s) => s.label).join(" · ")}</div>`}
-        ${next ? html`<div class="muted" style="font-size:12.5px;margin-top:8px">${t("rl.next")} : <a href="#/agenda?id=${next.id}">${next.name}</a>,
+        : html`<div class="muted" style="font-size:12.5px"><b>${t("ui.colon", { a: t("rl.slots") })}</b> ${f.slots.map((s) => s.label).join(" · ")}</div>`}
+        ${next ? html`<div class="muted" style="font-size:12.5px;margin-top:8px">${t("ui.colon", { a: t("rl.next") })} <a href="#/agenda?id=${next.id}">${next.name}</a>,
           ${fmtDate(next.date)}${next.place ? ` · ${next.place}` : ""}${next.key === key ? "" : html` — <a href="#/relais" id="rl-next-use">${t("rl.next.use")}</a>`}</div>` : ""}</div>`;
     $("#rl-next-use")?.addEventListener("click", (e) => { e.preventDefault(); setFormat(next.key); });
     const changed = () => { manual = manual && manual.length === fmtNow.legs.length ? manual : null; compute(); drawFormat(); };
@@ -126,12 +126,12 @@ export async function render(main, { query }) {
       $$("[data-leg-min]").forEach((x) => x.addEventListener("change", () => { fmtNow.slots[x.dataset.legMin].min = num(x.value); relabel(); changed(); }));
       $$("[data-leg-max]").forEach((x) => x.addEventListener("change", () => { fmtNow.slots[x.dataset.legMax].max = num(x.value); relabel(); changed(); }));
       $$("[data-leg-del]").forEach((x) => x.addEventListener("click", () => { const i = Number(x.dataset.legDel); fmtNow.legs.splice(i, 1); fmtNow.slots.splice(i, 1); manual = null; changed(); }));
-      $("#rl-add").addEventListener("click", () => { fmtNow.legs.push({ ref: 40 }); fmtNow.slots.push({ label: "D/H16 et +", min: 16 }); manual = null; changed(); });
+      $("#rl-add").addEventListener("click", () => { fmtNow.legs.push({ ref: 40 }); fmtNow.slots.push({ label: t("rl.s.any", { x: t("rl.s.both"), n: 16 }), min: 16 }); manual = null; changed(); });
     }
   }
   // one's own format: each leg's runner as typed, the criterion being the leg's own
   function relabel() {
-    fmtNow.slots.forEach((s, i) => { s.label = consLabel(s) || "tous"; Object.assign(fmtNow.legs[i], { sex: s.sex, min: s.min, max: s.max }); });
+    fmtNow.slots.forEach((s, i) => { s.label = consLabel(s) || t("rl.cons.any"); Object.assign(fmtNow.legs[i], { sex: s.sex, min: s.min, max: s.max }); });
   }
 
   // ---- data and computation -------------------------------------------------------------------------------------------

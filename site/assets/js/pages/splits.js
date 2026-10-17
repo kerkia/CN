@@ -21,7 +21,7 @@
 // WinSplits' "time loss", not a judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
 // « Sans temps perdu » takes it off: the table, the ranks and the gaps then show the race without the mistakes.
 
-import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import { lineChart, columnChart, slotColor, css } from "../charts.js";
 import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs } from "../ui.js";
@@ -44,7 +44,7 @@ const REFS = ["legs", "legsSel", "cum", "cumSel", "legs5", "legs25", "legs50", "
 const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : null; };
 const behind = (ratio) => (ratio == null ? null : (ratio - 1) * 100);           // % behind the best
-const pct = (v, d = 0) => (v == null ? "—" : `${v > 0 && d >= 0 ? "+" : ""}${fmt(v, d)} %`);
+const pct = (v, d = 0) => (v == null ? "—" : `${v > 0 && d >= 0 ? "+" : ""}${pctN(v, d)}`);
 const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
@@ -239,7 +239,7 @@ export async function render(main, { query = {} } = {}) {
         const plus = Number(ref.slice(4)) || 0;
         let acc = 0;
         refCum = best.map((v) => (acc == null || !isFinite(v) ? (acc = null) : (acc += v * (1 + plus / 100))));
-        refTitle = plus ? `${t("spl.ref.t.legs")} + ${plus} %` : t("spl.ref.t.legs");
+        refTitle = plus ? `${t("spl.ref.t.legs")} + ${pctN(plus)}` : t("spl.ref.t.legs");
       } else {
         const who = ref === "winner" ? R.find((x) => x.place === 1)
           : R.find((x) => x.r.name === refName) || byPlace(R)[0];
@@ -426,10 +426,10 @@ export async function render(main, { query = {} } = {}) {
             { key: "name", label: t("prov.name"), sort: (r) => r.x.r.name, defaultDir: 1,
               render: (r) => html`<span style="white-space:nowrap">${name(r.x)}</span><div class="muted" style="font-size:11.5px">${r.x.r.club || ""}</div>` },
             { key: "n", label: t("spl.grp.legs"), align: "r num", sort: (r) => r.n, render: (r) => html`${fmt(r.n)} <span class="muted" style="font-size:11.5px">/ ${fmt(r.of)}</span>` },
-            { key: "pack", label: t("spl.grp.pack"), align: "r num", sort: (r) => r.pack, render: (r) => (r.pack == null ? "—" : `${fmt(r.pack, 0)} %`) },
+            { key: "pack", label: t("spl.grp.pack"), align: "r num", sort: (r) => r.pack, render: (r) => (r.pack == null ? "—" : pctN(r.pack, 0)) },
             { key: "front", label: t("spl.grp.front"), align: "r num", sort: (r) => r.front, render: (r) => fmt(r.front) },
             { key: "behind", label: t("spl.grp.behind"), align: "r num", sort: (r) => r.behind, render: (r) => fmt(r.behind) },
-            { key: "follow", label: t("spl.grp.follow"), align: "r num", sort: (r) => r.follow, render: (r) => (r.follow == null ? "—" : `${fmt(r.follow, 0)} %`) },
+            { key: "follow", label: t("spl.grp.follow"), align: "r num", sort: (r) => r.follow, render: (r) => (r.follow == null ? "—" : pctN(r.follow, 0)) },
             { key: "gain", label: t("spl.grp.gain"), align: "r num", sort: (r) => r.gain, render: (r) => (r.gain == null ? "—" : signed(r.gain)) },
             { key: "mates", label: t("spl.grp.with"), sort: (r) => r.mates.length,
               render: (r) => (r.mates.length ? html`<div style="font-size:12px;min-width:220px">${r.mates.slice(0, 4).map((m) => html`<div>${m.name}${m.cls ? html` <span class="muted">(${m.cls})</span>` : ""} <span class="muted">· ${t("spl.grp.ctl")} ${m.span}</span></div>`)}
@@ -472,9 +472,9 @@ export async function render(main, { query = {} } = {}) {
           { key: "avgRank", label: t("spl.avgRank"), align: "r num", sort: (r) => r.avgRank, defaultDir: 1, render: (r) => fmt(r.avgRank, 1) },
           { key: "errs", label: t("spl.errors"), align: "r num", sort: (r) => r.errs, defaultDir: 1, render: (r) => fmt(r.errs) },
           { key: "lost", label: t("spl.lost"), align: "r num", sort: (r) => r.lost, defaultDir: 1, render: (r) => (r.lost ? clock(r.lost) : "—") },
-          { key: "lostPct", label: t("spl.lostPct"), align: "r num", sort: (r) => r.lostPct, defaultDir: 1, render: (r) => (r.lostPct == null ? "—" : `${fmt(r.lostPct, 1)} %`) },
+          { key: "lostPct", label: t("spl.lostPct"), align: "r num", sort: (r) => r.lostPct, defaultDir: 1, render: (r) => (r.lostPct == null ? "—" : pctN(r.lostPct, 1)) },
           { key: "pace", label: t("spl.pace"), align: "r num", sort: (r) => r.pace, defaultDir: 1, render: (r) => pct(r.pace) },
-          { key: "reg", label: t("spl.reg"), align: "r num", sort: (r) => r.reg, defaultDir: 1, render: (r) => (r.reg == null ? "—" : `${fmt(r.reg, 0)} %`) },
+          { key: "reg", label: t("spl.reg"), align: "r num", sort: (r) => r.reg, defaultDir: 1, render: (r) => (r.reg == null ? "—" : pctN(r.reg, 0)) },
           { key: "duels", label: t("spl.duels"), align: "r num", sort: (r) => r.duels, render: (r) => `${fmt(r.duels)} / ${fmt(r.of)}` },
         ],
       });

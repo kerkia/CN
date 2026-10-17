@@ -3,7 +3,9 @@
 // (/api/ask with promptOnly, the same as for its own model); the key goes from this browser to the provider and nowhere
 // else: never to O'CN. It is kept for the tab's session, or on this device when the user asks (« Se souvenir »), and
 // « Oublier » drops it. Each provider lists its models with the key (OpenRouter's list is public), so no model name is
-// written here that could go stale.
+// written here that could go stale. Texts: byok.* in the catalogues (a provider's `note` is its key).
+
+import { t } from "./i18n.js";
 
 const STORE = "ocn.ia.byok";
 const LLM_OUT = 8000;                     // tokens a model may write: reasoning models count their thinking in it
@@ -13,9 +15,7 @@ export const PROVIDERS = {
   openrouter: {
     label: "OpenRouter", hint: "sk-or-…", keys: "https://openrouter.ai/settings/keys",
     // free models (2026-10-16, OpenRouter's documentation): 20 requests a minute, 50 a day (1 000 once 10 credits were bought)
-    note: "Une seule clé pour la plupart des modèles (Claude, GPT, Gemini, Llama…), un plafond de dépenses par clé. Les modèles gratuits sont limités "
-      + "à 50 requêtes par jour (1 000 après un achat de 10 crédits) et 20 par minute — une question en fait une, deux si la requête est corrigée — ; "
-      + "certains de leurs fournisseurs peuvent se servir des questions : voyez les réglages de confidentialité de votre compte OpenRouter.",
+    note: "byok.note.openrouter",
     prefer: [/^anthropic\/claude-sonnet/, /^anthropic\/claude/, /^openai\/gpt-5/, /^google\/gemini.*flash/],
     async models() {
       const d = await getJson("https://openrouter.ai/api/v1/models", {});
@@ -33,7 +33,7 @@ export const PROVIDERS = {
   },
   anthropic: {
     label: "Anthropic (Claude)", hint: "sk-ant-…", keys: "https://console.anthropic.com/settings/keys",
-    note: "Les modèles Claude. Une clé de « workspace » avec une limite de dépenses est conseillée.",
+    note: "byok.note.anthropic",
     prefer: [/sonnet/, /haiku/, /opus/],
     async models(key) {
       const d = await getJson("https://api.anthropic.com/v1/models?limit=100", anthropicHeaders(key));
@@ -49,7 +49,7 @@ export const PROVIDERS = {
   },
   openai: {
     label: "OpenAI (ChatGPT)", hint: "sk-…", keys: "https://platform.openai.com/api-keys",
-    note: "Les modèles GPT. Une clé de projet avec une limite de dépenses est conseillée.",
+    note: "byok.note.openai",
     prefer: [/^gpt-5(?!.*(nano|mini|chat))/, /^gpt-5/, /^gpt-4\.1(?!.*nano)/, /^gpt-4o(?!.*mini)/, /^o\d/],
     async models(key) {
       const d = await getJson("https://api.openai.com/v1/models", { Authorization: `Bearer ${key}` });
@@ -65,7 +65,7 @@ export const PROVIDERS = {
   },
   gemini: {
     label: "Google (Gemini)", hint: "AIza…", keys: "https://aistudio.google.com/apikey",
-    note: "Les modèles Gemini. Avec une clé gratuite, Google peut utiliser les questions pour améliorer ses produits.",
+    note: "byok.note.gemini",
     prefer: [/flash(?!-lite)/, /pro/],
     async models(key) {
       const d = await getJson("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { "x-goog-api-key": key });
@@ -94,17 +94,18 @@ export class ProviderError extends Error {}
 async function call(url, init) {
   let r;
   try { r = await fetch(url, { ...init, credentials: "omit", referrerPolicy: "no-referrer" }); } catch (e) {
-    throw new ProviderError("Le fournisseur n'a pas répondu (réseau, ou appel refusé par le navigateur).");
+    throw new ProviderError(t("byok.err.network"));
   }
   const d = await r.json().catch(() => ({}));
   if (r.ok) return d;
   const detail = String(d?.error?.message || d?.error || d?.message || "").slice(0, 200);
   // (Google answers 400 « API key not valid » to a wrong key)
-  throw new ProviderError(r.status === 401 || r.status === 403 || /api.?key/i.test(detail) ? `Clé refusée par le fournisseur${detail ? ` (${detail})` : ""}.`
-    : r.status === 402 ? "Crédit épuisé chez le fournisseur."
-    : r.status === 404 ? `Modèle inconnu du fournisseur${detail ? ` (${detail})` : ""}.`
-    : r.status === 429 ? "Trop de demandes ou quota atteint chez le fournisseur : réessayez dans un moment."
-    : `Le fournisseur a répondu ${r.status}${detail ? ` : ${detail}` : ""}.`);
+  const det = detail ? ` (${detail})` : "";
+  throw new ProviderError(r.status === 401 || r.status === 403 || /api.?key/i.test(detail) ? t("byok.err.key", { detail: det })
+    : r.status === 402 ? t("byok.err.credit")
+    : r.status === 404 ? t("byok.err.model", { detail: det })
+    : r.status === 429 ? t("byok.err.rate")
+    : t(detail ? "byok.err.statusDetail" : "byok.err.status", { status: r.status, detail }));
 }
 const getJson = (url, headers) => call(url, { headers });
 const postJson = (url, headers, body) => call(url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });

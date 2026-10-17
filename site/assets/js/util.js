@@ -1,6 +1,6 @@
 // Shared helpers.
 
-import { lang, locale } from "./i18n.js";
+import { t, has, lang, locale } from "./i18n.js";
 
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 export const esc = (v) => (v == null ? "" : String(v).replace(/[&<>"']/g, (c) => ESC[c]));
@@ -50,10 +50,17 @@ export const ord = (n) => (n == null ? "—" : lang() === "en" ? `${fmt(n)}${EN_
 export const plural = (n, one, many) => `${fmt(n)} ${(lang() === "en" ? Math.abs(n) !== 1 : Math.abs(n) >= 2) ? many : one}`;
 /** An FFCO class as shown: « H21 », « D16 » in French; « M21 », « W16 » in English (owner, 2026-10-17). */
 export const fmtCat = (c) => (c && lang() === "en" ? String(c).replace(/^([HD])(?=\d|$|\s)/, (m) => (m === "H" ? "M" : "W")) : c ?? "");
+/** A format or discipline of FFCO's data as shown: itself in French; in English word by word through the
+ *  catalogue's « format.<word> » (Nuit -> Night, Pédestre -> Foot, VTT MD -> MTB MD), unknown words kept. */
+export const fmtFormat = (s) => (s && lang() === "en"
+  ? String(s).replace(/[\p{L}']+/gu, (w) => (has(`format.${w}`) ? t(`format.${w}`) : w)).replace(/\s{2,}/g, " ").trim() : s ?? "");
 /** The sex letter of a class as shown: H / D in French, M / W in English. */
 export const fmtSex = (x) => (lang() === "en" ? { H: "M", D: "W" }[x] || x : x);
 export const fmtSigned =(n) => (n == null ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n)));
-export const pct = (x, digits = 0) => (x == null ? "—" : fmt(100 * x, digits) + " %");
+// « 12 % » in French, « 12% » in English
+export const pct = (x, digits = 0) => (x == null ? "—" : fmt(100 * x, digits) + (lang() === "en" ? "%" : " %"));
+/** The same for a number already in percent (12.5 -> « 12,5 % » / « 12.5% »). */
+export const pctN = (n, digits = 0) => (n == null ? "—" : fmt(n, digits) + (lang() === "en" ? "%" : " %"));
 
 export function fmtDate(iso, style = "medium") {
   if (!iso) return "—";

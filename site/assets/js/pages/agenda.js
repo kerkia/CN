@@ -2,37 +2,39 @@
 // long scrolling table, with filters, and the details of the chosen event on the right —
 // including the online-registration deadline and the number of registrants.
 
-import { html, raw, $, $$, fmt, fmtDate, isoDay } from "../util.js";
-import { t } from "../i18n.js";
+import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat } from "../util.js";
+import { t, tn, locale } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
 import { getProv } from "./provisional.js";
 
-const KINDS = [["c", "Les courses"], ["e", "Les entraînements/stages"], ["f", "Les formations/séminaires"]];
+const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
 
-/** Merge of FFCO's "discipline" and "format": Forêt MD, Forêt LD, Sprint, Nuit, VTT MD, Ski, … */
+/** Merge of FFCO's "discipline" and "format": Forêt MD, Forêt LD, Sprint, Nuit, VTT MD, Ski, … (the data's French
+ *  values compared, shown in the site's language) */
 export function typeLabel(e) {
   const sp = e.spec || "", ep = e.epr || "";
-  if (e.kind === "e") return sp && sp !== "Pédestre" ? `Entraînement ${sp}` : "Entraînement";
-  if (e.kind === "f") return "Formation";
-  if (sp === "Pédestre") return ep === "MD" || ep === "LD" ? `Forêt ${ep}` : ep || "Pédestre";
-  if (sp === "VTT" || sp === "Ski") return ep ? `${sp} ${ep}` : sp;
-  if (sp.startsWith("Raid")) return sp;
-  return ep ? `${sp} ${ep}` : sp || "—";
+  const FOOT = "Pédestre";                                             // the agenda's value (i18n-ignore)
+  if (e.kind === "e") return sp && sp !== FOOT ? t("agd.type.trainingIn", { x: fmtFormat(sp) }) : t("agd.type.training");
+  if (e.kind === "f") return t("agd.type.workshop");
+  if (sp === FOOT) return ep === "MD" || ep === "LD" ? t("agd.type.forest", { x: ep }) : fmtFormat(ep) || t("agd.type.foot");
+  if (sp === "VTT" || sp === "Ski") return fmtFormat(ep ? `${sp} ${ep}` : sp);
+  if (sp.startsWith("Raid")) return fmtFormat(sp);
+  return fmtFormat(ep ? `${sp} ${ep}` : sp) || "—";
 }
 
 const groupOf = (e) => (e.kind === "c" ? (e.groupe || "").replace(/^Groupe\s+/i, "") : "");
 /** Only http(s) links are made clickable. */
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
-const longDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const longDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const keyOf = (e, i) => (e.id != null ? String(e.id) : `x${i}`);
 
 export async function render(main, { query }) {
   const A = await data.agenda();
   if (!A) {
     main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.agenda")}</h1></div></div>
-      <div class="card"><div class="empty">L'agenda n'est pas encore disponible.</div></div>`;
+      <div class="card"><div class="empty">${t("agd.unavailable")}</div></div>`;
     return { title: t("nav.agenda") };
   }
   const today = isoDay(new Date());
@@ -65,10 +67,9 @@ export async function render(main, { query }) {
 
   main.innerHTML = html`<div class="agenda-page" id="agenda-page">
     <div class="page-head"><div><h1>${t("nav.agenda")}</h1>
-      <p class="lede">Les prochaines manifestations de course d'orientation en France, d'après l'agenda de la FFCO
-        (mis à jour chaque matin${A.generated ? html`, dernière mise à jour le ${fmtDate(A.generated.slice(0, 10))}` : ""}).</p></div></div>
+      <p class="lede">${t("agd.lede", { updated: A.generated ? t("agd.updated", { d: fmtDate(A.generated.slice(0, 10)) }) : "" })}</p></div></div>
     <details class="filters-fold" id="fold">
-      <summary><span>Filtres</span><span class="badge" id="fold-badge" hidden></span></summary>
+      <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
       <section class="card agenda-filters" id="filters"></section>
     </details>
     <div class="agenda-layout">
@@ -106,16 +107,16 @@ export async function render(main, { query }) {
   const multi = (id, summary, body) => html`<details class="multi" id="${id}">
       <summary><span>${summary}</span></summary>
       <div class="multi-panel">
-        <div class="multi-actions"><button type="button" class="clear" data-all="${id}">Tout cocher</button><button type="button" class="clear" data-none="${id}">Tout décocher</button></div>
+        <div class="multi-actions"><button type="button" class="clear" data-all="${id}">${t("agd.checkAll")}</button><button type="button" class="clear" data-none="${id}">${t("agd.uncheckAll")}</button></div>
         ${body}
       </div></details>`;
-  const summary = (n, total, all, none) => (n === total ? all : n === 0 ? none : `${n} sur ${total}`);
+  const summary = (n, total, all, none) => (n === total ? all : n === 0 ? none : t("agd.nOf", { n, total }));
   const regionSummary = () => {
     const states = A.regions.map(regionState);
     const on = states.filter((x) => x === "on").length, part = states.filter((x) => x === "part").length;
-    if (on === states.length) return "Toutes";
-    if (on + part === 0) return "Aucune";
-    return part ? `${on} sur ${states.length} (+${part} partielle${part > 1 ? "s" : ""})` : `${on} sur ${states.length}`;
+    if (on === states.length) return t("agd.allF");
+    if (on + part === 0) return t("agd.noneF");
+    return part ? tn("agd.partial", part, { on, total: states.length }) : t("agd.nOf", { n: on, total: states.length });
   };
   const regionState = (r) => {
     if (!r.depts.length) return st.regions.has(r.name) ? "on" : "off";
@@ -128,22 +129,22 @@ export async function render(main, { query }) {
     $("#filters").innerHTML = html`
       <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
-        <label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>Comptant pour le CN uniquement</label>
+        <label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>
       </div>
       <div class="frow">
-        <label class="field"><span>Entre le</span><input type="date" id="f-from" value="${st.from}"></label>
-        <label class="field"><span>et le</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
-        <label class="field"><span>Spécialité</span><select id="f-spec"><option value="">Toutes</option>
-          ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${s}</option>`)}</select></label>
-        <div class="field field-wide"><span>Région</span>${multi("m-regions", regionSummary(),
+        <label class="field"><span>${t("agd.from")}</span><input type="date" id="f-from" value="${st.from}"></label>
+        <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
+        <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
+          ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
+        <div class="field field-wide"><span>${t("agd.region")}</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
-        <div class="field field-wide"><span>Département</span>${multi("m-depts", summary(st.depts.size, allDepts.length, "Tous", "Aucun"),
+        <div class="field field-wide"><span>${t("agd.dept")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
             ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>
-        <button type="button" class="btn btn-sm" id="f-reset">Réinitialiser</button>
+        <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
       </div>
-      ${groupsPresent.length ? html`<div class="frow"><div class="field"><span>Groupe (courses)</span>
-        <div class="chips" role="group" aria-label="Groupe">${groupsPresent.map((g) => html`<button type="button" class="chip toggle" data-group="${g}" aria-pressed="${st.groups.has(g)}"><span class="tick" aria-hidden="true"></span>${g}</button>`)}
+      ${groupsPresent.length ? html`<div class="frow"><div class="field"><span>${t("agd.group")}</span>
+        <div class="chips" role="group" aria-label="${t("agd.groupAria")}">${groupsPresent.map((g) => html`<button type="button" class="chip toggle" data-group="${g}" aria-pressed="${st.groups.has(g)}"><span class="tick" aria-hidden="true"></span>${g}</button>`)}
         </div></div></div>` : ""}`;
     openIds.forEach((id) => { const d = $(`#${id}`); if (d) d.open = true; });
     $$('input[data-state="part"]', main).forEach((i) => { i.indeterminate = true; });   // region with only some departments checked
@@ -196,15 +197,15 @@ export async function render(main, { query }) {
     const n = activeFilters();
     $("#fold-badge").hidden = !n;
     $("#fold-badge").textContent = n;
-    $("#count").textContent = `${fmt(shown.length)} manifestation${shown.length > 1 ? "s" : ""}`;
+    $("#count").textContent = tn("agd.count", shown.length);
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
-        <th>Date</th><th>CN</th><th>Événement</th><th>Lieu</th><th>Type</th></tr></thead>
+        <th>${t("agd.col.date")}</th><th>${t("agd.col.cn")}</th><th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
-        <td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">oui</span></span>` : html`<span class="dim"><span class="m-only">hors CN</span><span class="d-only">non</span></span>`}</td>
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">annulée</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="Liste de départ publiée">départs</span>` : ""}</td>
+        <td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
-        <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">Aucune manifestation avec ces critères.</div>`;
+        <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
   }
   // Wide screen: list and details side by side. Phone: one at a time. Opening an event adds a history
   // entry, so the phone's own Back button (or the one in the details) returns to the list where it was.
@@ -252,33 +253,33 @@ export async function render(main, { query }) {
   const row = (label, value) => (value ? html`<dt>${label}</dt><dd>${value}</dd>` : "");
   const when = (iso) => {
     const n = Math.round((new Date(iso + "T00:00:00") - new Date(today + "T00:00:00")) / 86400e3);
-    return n === 0 ? "aujourd'hui" : n === 1 ? "demain" : n > 1 ? `dans ${n} jours` : n === -1 ? "hier" : `il y a ${-n} jours`;
+    return n === 0 ? t("agd.today") : n === 1 ? t("agd.tomorrow") : n > 1 ? t("agd.inDays", { n }) : n === -1 ? t("agd.yesterday") : t("agd.daysAgo", { n: -n });
   };
 
   // the start list the organiser published (liveresultat, their site), shown on « Récemment »
   function startBox(e) {
     const key = starts.get(String(e.id));
-    return key ? html`<div class="reg open"><div class="reg-title">Liste de départ publiée</div>
-      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">Horaires de départ →</a>
-      <span class="dim" style="font-size:12px">avec le CN de chacun et sa place attendue</span></p></div>` : "";
+    return key ? html`<div class="reg open"><div class="reg-title">${t("agd.startList")}</div>
+      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.startTimes")}</a>
+      <span class="dim" style="font-size:12px">${t("agd.startHint")}</span></p></div>` : "";
   }
 
   function registration(e) {
     if (e.kind !== "c") return "";
     const r = e.reg;
-    if (!r) return html`<div class="reg closed"><div class="reg-title">Inscriptions</div><div class="dim">Pas d'inscription en ligne sur le site de la FFCO.</div></div>`;
+    if (!r) return html`<div class="reg closed"><div class="reg-title">${t("agd.reg")}</div><div class="dim">${t("agd.reg.none")}</div></div>`;
     const closed = r.closed || (r.close && r.close < today);
     const dates = r.close || r.mods || r.count != null;
     return html`<div class="reg ${closed ? "closed" : "open"}">
-      <div class="reg-title">Inscriptions en ligne · ${closed ? "fermées" : "ouvertes"}</div>
+      <div class="reg-title">${t("agd.reg.online", { state: closed ? t("agd.reg.closed") : t("agd.reg.open") })}</div>
       ${dates ? html`<dl>
-        ${row("Clôture des inscriptions", r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
-        ${row("Clôture des modifications (puces, compositions)", r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
-        ${row("Nombre d'inscrits", r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${fmt(r.teams)} équipe${r.teams > 1 ? "s" : ""})</span>` : ""}` : "")}
-        ${row("Par circuit", r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
-      </dl>` : html`<div class="dim">Dates de clôture non publiées.</div>`}
+        ${row(t("agd.reg.close"), r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
+        ${row(t("agd.reg.mods"), r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
+        ${row(t("agd.reg.count"), r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${tn("agd.reg.teams", r.teams)})</span>` : ""}` : "")}
+        ${row(t("agd.reg.byCircuit"), r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
+      </dl>` : html`<div class="dim">${t("agd.reg.noDates")}</div>`}
 
-      <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">Inscriptions en ligne ↗</a></p>
+      <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">${t("agd.reg.link")}</a></p>
     </div>`;
   }
 
@@ -290,15 +291,15 @@ export async function render(main, { query }) {
   function accessBox(e) {
     const fl = e.flechage || "";
     const approx = `${fl && !safeUrl(fl) ? `${fl}, ` : ""}${e.place || ""}${e.dep ? ` ${e.dep}` : ""}`.trim();
-    const go = e.gps ? [[gmaps(e.gps), "Google Maps"], [waze(e.gps), "Waze"], ...(onApple ? [[apple(e.gps), "Plans"]] : [])]
-      : safeUrl(e.mapUrl) ? [[e.mapUrl, "Ouvrir l'itinéraire"]]
-      : approx ? [[`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(approx)}`, "Itinéraire (lieu approximatif)"]] : [];
+    const go = e.gps ? [[gmaps(e.gps), "Google Maps"], [waze(e.gps), "Waze"], ...(onApple ? [[apple(e.gps), t("agd.go.apple")]] : [])]
+      : safeUrl(e.mapUrl) ? [[e.mapUrl, t("agd.go.route")]]
+      : approx ? [[`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(approx)}`, t("agd.go.approx")]] : [];
     if (!e.access && !fl && !go.length) return "";
     return html`<div class="accessbox">
-      <div class="reg-title">Accès</div>
-      ${e.access ? html`<div class="access-text">${e.access}</div><div class="dim access-src">Extrait de l'annonce de course</div>` : ""}
-      ${fl && !(e.access || "").includes(fl) ? html`<div style="margin-top:6px">Fléchage : ${link(fl)}</div>` : ""}
-      ${e.gps ? html`<div class="dim" style="margin-top:6px">Coordonnées : ${e.gps[0]}, ${e.gps[1]}</div>` : ""}
+      <div class="reg-title">${t("agd.access")}</div>
+      ${e.access ? html`<div class="access-text">${e.access}</div><div class="dim access-src">${t("agd.access.src")}</div>` : ""}
+      ${fl && !(e.access || "").includes(fl) ? html`<div style="margin-top:6px">${raw(t("agd.signs", { x: link(fl) }))}</div>` : ""}
+      ${e.gps ? html`<div class="dim" style="margin-top:6px">${t("agd.coords", { x: `${e.gps[0]}, ${e.gps[1]}` })}</div>` : ""}
       ${go.length ? html`<div class="row" style="gap:8px;margin-top:10px">${go.map(([u, l]) => html`<a class="btn btn-sm btn-primary" href="${u}" target="_blank" rel="noopener">${l} ↗</a>`)}</div>` : ""}
     </div>`;
   }
@@ -306,40 +307,40 @@ export async function render(main, { query }) {
   function drawDetail() {
     const e = st.selected && byKey.get(st.selected);
     const box = $("#detail");
-    const backBtn = html`<button type="button" class="btn btn-sm detail-back" data-back>← Liste des manifestations</button>`;
-    if (!e) { box.innerHTML = html`<div class="empty">Cliquez sur une manifestation pour en voir le détail.</div>`; return; }
+    const backBtn = html`<button type="button" class="btn btn-sm detail-back" data-back>${t("agd.back")}</button>`;
+    if (!e) { box.innerHTML = html`<div class="empty">${t("agd.pick")}</div>`; return; }
     const region = e.region || (e.dep && regionOfDept.get(e.dep)) || "";
     box.innerHTML = html`
       <div class="detail-nav">${backBtn}</div>
       <div class="card-head"><div><h2>${e.name}</h2>
-        <div class="hint">${longDate(e.date)}${e.cancelled ? " · annulée" : ""}</div></div></div>
+        <div class="hint">${longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
-        <div class="row" style="gap:6px">${e.cn ? html`<span class="tag tag-in">Compte pour le CN</span>` : html`<span class="tag">Hors CN</span>`}
+        <div class="row" style="gap:6px">${e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
-        ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">Annonce de course (PDF) ↗</a></div>` : ""}
+        ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
         ${startBox(e)}
         ${registration(e)}
         ${accessBox(e)}
         <dl>
-          ${row("Manifestation", e.manif)}
-          ${row("Lieu", e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
-          ${row("Région", region)}
-          ${row("Spécialité", e.spec)}
-          ${row("Épreuve", e.epr)}
-          ${row("Organisateur", e.org)}
-          ${row("Arbitre titulaire", e.referee)}
-          ${row("Arbitre stagiaire", e.referee2)}
-          ${row("Contrôleur des circuits", e.controller)}
-          ${row("Délégué", e.delegate)}
-          ${row("Moniteur", e.monitor)}
-          ${row("Site web", e.site ? link(e.site) : "")}
-          ${row("Contact", e.contact)}
-          ${row("Téléphone", e.phone ? html`<a href="tel:${e.phone.replace(/\s+/g, "")}">${e.phone}</a>` : "")}
-          ${row("E-mail", e.email ? html`<a href="mailto:${e.email}">${e.email}</a>` : "")}
+          ${row(t("agd.d.manif"), e.manif)}
+          ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
+          ${row(t("agd.d.region"), region)}
+          ${row(t("agd.d.spec"), fmtFormat(e.spec))}
+          ${row(t("agd.d.epr"), fmtFormat(e.epr))}
+          ${row(t("agd.d.org"), e.org)}
+          ${row(t("agd.d.referee"), e.referee)}
+          ${row(t("agd.d.referee2"), e.referee2)}
+          ${row(t("agd.d.controller"), e.controller)}
+          ${row(t("agd.d.delegate"), e.delegate)}
+          ${row(t("agd.d.monitor"), e.monitor)}
+          ${row(t("agd.d.site"), e.site ? link(e.site) : "")}
+          ${row(t("agd.d.contact"), e.contact)}
+          ${row(t("agd.d.phone"), e.phone ? html`<a href="tel:${e.phone.replace(/\s+/g, "")}">${e.phone}</a>` : "")}
+          ${row(t("agd.d.email"), e.email ? html`<a href="mailto:${e.email}">${e.email}</a>` : "")}
           ${(e.extra || []).map(([l, v]) => row(l, v))}
-          ${row("Observations", e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
+          ${row(t("agd.d.obs"), e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
-        ${e.id != null ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">Fiche sur le site de la FFCO ↗</a></p>` : ""}
+        ${e.id != null ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
         <div class="detail-nav">${backBtn}</div>
       </div>`;
   }

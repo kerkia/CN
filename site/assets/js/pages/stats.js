@@ -7,7 +7,7 @@
 // left, men on the right, each category as a share of everyone selected; with a ligue or a club, the whole
 // population stays drawn as an outline for comparison.
 
-import { html, raw, $, $$, fmt } from "../util.js";
+import { html, raw, $, $$, fmt, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { columnChart, pyramidChart, terrainColor, css } from "../charts.js";
@@ -195,7 +195,7 @@ export async function render(main, query) {
     ]);
     const n = (tl, s, a) => tl.count[s].get(a) || 0;
     const line = (color, label, tl, s, a) => `<div style="display:flex;gap:8px;align-items:center;margin-top:3px">
-      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color}"></span><b>${fmt(pct(tl, s, a), 1)} %</b>
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color}"></span><b>${pctN(pct(tl, s, a), 1)}</b>
       <span style="color:var(--ink-2)">${label} · ${fmt(n(tl, s, a))}</span></div>`;
     pyramidChart($("#pyr"), {
       categories: ages.map(String),
@@ -207,15 +207,15 @@ export async function render(main, query) {
         const a = ages[i];
         return `<div style="color:var(--ink-3);font-size:12px">${t("ag.cat")} D${a} · H${a}</div>
           ${line(cD, t("ag.women"), cur, "D", a)}${line(cH, t("ag.men"), cur, "H", a)}
-          ${ref ? `<div style="color:var(--ink-3);font-size:12px;margin-top:6px">${t("ag.refShort")} : D ${fmt(pct(ref, "D", a), 1)} % · H ${fmt(pct(ref, "H", a), 1)} %</div>` : ""}`;
+          ${ref ? `<div style="color:var(--ink-3);font-size:12px;margin-top:6px">${t("ag.refLine", { ref: t("ag.refShort"), w: pctN(pct(ref, "D", a), 1), m: pctN(pct(ref, "H", a), 1) })}</div>` : ""}`;
       },
     });
-    const cell = (tl, s, a) => html`<td class="r num">${fmt(n(tl, s, a))}</td><td class="r num">${fmt(pct(tl, s, a), 1)} %</td>`;
+    const cell = (tl, s, a) => html`<td class="r num">${fmt(n(tl, s, a))}</td><td class="r num">${pctN(pct(tl, s, a), 1)}</td>`;
     $("#pyr-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("ag.cat")}</th>
       <th class="r">${t("ag.women")}</th><th class="r">%</th><th class="r">${t("ag.men")}</th><th class="r">%</th>
       ${filtered ? html`<th class="r">${t("ag.refShort")} D %</th><th class="r">${t("ag.refShort")} H %</th>` : ""}</tr></thead>
       <tbody>${[...ages].reverse().map((a) => html`<tr><td>${a}</td>${cell(cur, "D", a)}${cell(cur, "H", a)}
-        ${filtered ? html`<td class="r num">${fmt(pct(ref, "D", a), 1)} %</td><td class="r num">${fmt(pct(ref, "H", a), 1)} %</td>` : ""}</tr>`)}</tbody></table>`;
+        ${filtered ? html`<td class="r num">${pctN(pct(ref, "D", a), 1)}</td><td class="r num">${pctN(pct(ref, "H", a), 1)}</td>` : ""}</tr>`)}</tbody></table>`;
   }
 
   await loadSeason();

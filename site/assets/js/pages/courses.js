@@ -3,7 +3,7 @@
 // those a runner took part in, those a club took part in. Selecting a circuit
 // moves the tree to the left and shows its results, with category toggles.
 
-import { html, raw, $, $$, fmt, fmtDate, fmtTime, displayName, normalise, debounce, ord } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtTime, displayName, normalise, debounce, ord, fmtFormat, fmtCat } from "../util.js";
 import { xyChart, regressionChart, linreg, methodColor } from "../charts.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
@@ -150,7 +150,7 @@ export async function render(main, { arg, query }) {
           <span class="tree-date num">${fmtDate(c.date, "short")}</span>
           <span class="tree-title"><b>${c.title}</b><span class="dim"> · ${c.location || ""}</span></span>
           <span class="tree-meta">${c.groupe ? html`<span class="tag">${c.groupe}</span>` : ""}
-            <span class="tag">${c.epreuve || ""}</span>
+            <span class="tag">${fmtFormat(c.epreuve)}</span>
             ${mine.length ? html`<span class="tag tag-in">${mine.map((r) => (r[R.place] ? ord(r[R.place]) : t(`status.${r[R.status]}`) || "—")).join(" · ")}</span>` : ""}
             <span class="dim num">${fmt(c.n)}</span></span>
         </button>
@@ -235,7 +235,7 @@ export async function render(main, { arg, query }) {
       </div>
       ${toggles && cats.length > 1 ? html`<div class="card-body" style="padding-bottom:0"><div class="chips" role="group" aria-label="${t("rk.col.cat")}">
         ${cats.map(([k, n]) => html`<button type="button" class="chip toggle" data-cat="${k}" aria-pressed="${st.cats.has(k)}">
-          <span class="tick" aria-hidden="true"></span>${k} <span class="dim num">${fmt(n)}</span></button>`)}
+          <span class="tick" aria-hidden="true"></span>${fmtCat(k)} <span class="dim num">${fmt(n)}</span></button>`)}
         ${st.cats.size ? html`<button type="button" class="btn btn-ghost btn-sm" id="cats-all">${t("cs.allCats")}</button>` : ""}
       </div></div>` : ""}
       <div data-panel="resultats"><div id="res-table"></div></div>

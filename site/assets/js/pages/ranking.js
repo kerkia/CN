@@ -2,7 +2,7 @@
 // figures per method, the list with the distributions beside it, and
 // multi-select into the comparison.
 
-import { html, raw, $, $$, fmt, fmtSigned, fmtDate, ord, displayName, normalise, summary, quantile, downloadCsv, debounce } from "../util.js";
+import { html, raw, $, $$, fmt, fmtSigned, fmtDate, ord, displayName, normalise, summary, quantile, downloadCsv, debounce, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -181,7 +181,7 @@ export function drawCdf(id, groups, { highlight, onClick } = {}) {
   cdfChart($(`#${id}`), { series: [...cdf, ...hl], onClick });
   const qs = [10, 25, 50, 75, 90, 95, 99];
   $(`#${id}-table`).innerHTML = html`<table class="data compact"><thead><tr><th>${t("rk.cdf.pct")}</th>${cdf.map((x) => html`<th class="r">${x.name}</th>`)}</tr></thead>
-    <tbody>${qs.map((q) => html`<tr><td>${q} %</td>${cdf.map((x) => html`<td class="r num">${fmt(quantile(x.values, q / 100))}</td>`)}</tr>`)}
+    <tbody>${qs.map((q) => html`<tr><td>${pctN(q)}</td>${cdf.map((x) => html`<td class="r num">${fmt(quantile(x.values, q / 100))}</td>`)}</tr>`)}
     <tr><td>${t("st.ranked")}</td>${cdf.map((x) => html`<td class="r num">${fmt(x.values.length)}</td>`)}</tr></tbody></table>`;
 }
 

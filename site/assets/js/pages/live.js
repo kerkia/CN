@@ -3,8 +3,8 @@
 // so the live traffic never goes through this site's login gate. What only this site adds: each runner recognised
 // (name + club) and linked to their page, their CN (Top and official) in the race's discipline, and the place their
 // CN predicts. Times are liveresultat's hundredths of a second.
-import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
-import { t } from "../i18n.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat } from "../util.js";
+import { t, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
 import { nameKey, session } from "../auth.js";
@@ -33,7 +33,7 @@ const pref = { get: () => { try { return localStorage.getItem("ocn.liveCountry")
   set: (v) => { try { localStorage.setItem("ocn.liveCountry", v); } catch (e) { /* this visit only */ } } };
 const countryName = (() => {
   let dn = null;
-  try { dn = new Intl.DisplayNames(["fr"], { type: "region" }); } catch (e) { /* codes then */ }
+  try { dn = new Intl.DisplayNames([lang()], { type: "region" }); } catch (e) { /* codes then */ }
   return (c) => (c === "?" ? t("lv.country.unknown") : dn?.of(c) || c);
 })();
 
@@ -53,11 +53,11 @@ async function list(main, query) {
     try {
       const own = ((await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || [])
         .filter((b) => b.date >= new Date(Date.now() - 3 * 86400e3).toLocaleDateString("sv-SE") && (b.last || b.mine || session()?.admin));
-      if (own.length) $("#lv-org").innerHTML = html`<section class="card"><div class="card-head"><div><h2>Diffusées par leur organisateur</h2>
-        <div class="hint">Depuis leur logiciel de chronométrage, par « Organisation › Direct »</div></div></div>
+      if (own.length) $("#lv-org").innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("lv.org.title")}</h2>
+        <div class="hint">${t("lv.org.hint")}</div></div></div>
         <div class="table-wrap"><table class="data compact"><tbody>${own.map((b) => html`<tr><td>${fmtDate(b.date)}</td>
           <td><a href="#/direct/${b.id}">${b.name}</a></td><td class="muted">${b.organizer || ""}</td>
-          <td class="muted">${b.last ? `dernier envoi ${new Date(b.last).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "pas encore d'envoi"}</td></tr>`)}</tbody></table></div></section>`;
+          <td class="muted">${b.last ? t("lv.org.last", { t: new Date(b.last).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : t("lv.org.none")}</td></tr>`)}</tbody></table></div></section>`;
     } catch (e) { /* none shown */ }
   }
   const today = new Date().toLocaleDateString("sv-SE");
@@ -207,8 +207,8 @@ async function race(main, id, wanted) {
     chips();
   }
   function chips() {
-    $("#lv-chips").innerHTML = html`${st.classes.map((c) => html`<button type="button" class="lv-item${c === st.cls ? " on" : ""}" aria-pressed="${c === st.cls}" data-c="${c}">${c}</button>`)}`;
-    $("#lv-sel").innerHTML = html`${st.classes.map((c) => html`<option value="${c}" ${raw(c === st.cls ? "selected" : "")}>${c}</option>`)}`;
+    $("#lv-chips").innerHTML = html`${st.classes.map((c) => html`<button type="button" class="lv-item${c === st.cls ? " on" : ""}" aria-pressed="${c === st.cls}" data-c="${c}">${fmtCat(c)}</button>`)}`;
+    $("#lv-sel").innerHTML = html`${st.classes.map((c) => html`<option value="${c}" ${raw(c === st.cls ? "selected" : "")}>${fmtCat(c)}</option>`)}`;
     $("#lv-chips .on")?.scrollIntoView({ block: "nearest" });
   }
   function status() {
@@ -281,7 +281,7 @@ async function race(main, id, wanted) {
     };
     const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="8">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
-    $("#lv-class").textContent = `${st.cls} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
+    $("#lv-class").textContent = `${fmtCat(st.cls)} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
       <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),

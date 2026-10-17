@@ -2,7 +2,7 @@
 // circuit, how the head-to-head went, and how those people are linked to each
 // other. Globally: the leading runners of a discipline and who races whom.
 
-import { html, raw, esc, $, $$, fmt, fmtDate, displayName } from "../util.js";
+import { html, raw, esc, $, $$, fmt, fmtDate, displayName, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -351,7 +351,7 @@ async function global(main, query) {
     networkChart($("#net"), {
       nodes, links,
       onClick: (id) => { location.hash = link.network(id, { t: terrain }); },
-      tip: (nd) => `<b>${esc(nd.name)}</b> · ${fmt(nd.meta.cn[method])}<br><span style="color:var(--ink-3)">${esc(data.clubName(nd.meta.club))} · ${esc(nd.meta.cat)}</span>
+      tip: (nd) => `<b>${esc(nd.name)}</b> · ${fmt(nd.meta.cn[method])}<br><span style="color:var(--ink-3)">${esc(data.clubName(nd.meta.club))} · ${esc(fmtCat(nd.meta.cat))}</span>
         <br>${fmt(degree.get(nd.id) || 0)} ${t("nw.links")}<br><span style="color:var(--ink-3)">${t("nw.clickEgo")}</span>`,
       edgeTip: (l) => `${esc(nameOf(l.source))} — ${esc(nameOf(l.target))}<br><b>${fmt(l.value)}</b> ${t("nw.shared")}`,
     });

@@ -2,7 +2,7 @@
 // never moves when others are removed); line style identifies the method.
 // The period applies to every panel: the chart, the summary and the head-to-head.
 
-import { html, raw, esc, $, $$, fmt, fmtDate, fmtTime, displayName, initials, addDays, debounce } from "../util.js";
+import { html, raw, esc, $, $$, fmt, fmtDate, fmtTime, displayName, initials, addDays, debounce, pctN, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -105,7 +105,7 @@ export async function render(main, { query }) {
       const r = data.runner(c.lic);
       return html`<span class="pill"><span class="dot" style="background:${raw(slotColor(c.slot))}"></span>
         <a href="${link.runner(c.lic)}">${displayName(r?.nom || c.lic)}</a>
-        <span class="dim">${r?.cat || ""}</span>
+        <span class="dim">${fmtCat(r?.cat)}</span>
         <button type="button" data-rm="${c.lic}" aria-label="×">×</button></span>`;
     })}<span class="spacer"></span><button class="btn btn-ghost btn-sm" type="button" id="clear">${t("cp.clear")}</button>`
       : html`<span class="muted">${t("cp.empty")}</span>`;
@@ -291,7 +291,7 @@ export async function render(main, { query }) {
     for (const c of sel) for (const m of methods) {
       const p = monthlyProgress(m, racesOf.get(c.lic) || [], terrain, meta, ac);
       series.push({ name: nameOf(c.lic), color: slotColor(c.slot), dash: METHOD_DASH[m],
-        data: p.filter((s) => s.pct != null).map((s) => [s.iso, Math.round(s.pct), s.cat]) });
+        data: p.filter((s) => s.pct != null).map((s) => [s.iso, Math.round(s.pct), fmtCat(s.cat)]) });
     }
     const all = series.flatMap((s) => s.data.map((p) => p[0])).sort();
     $("#prog-legend").innerHTML = runnerLegend(sel);
@@ -304,7 +304,7 @@ export async function render(main, { query }) {
     $("#prog-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th>
       ${series.map((s) => html`<th class="r">${s.name}</th>`)}</tr></thead>
       <tbody>${months.map((d) => html`<tr><td>${fmtDate(d, "month")}</td>${idx.map((m) => {
-        const p = m.get(d); return html`<td class="r num">${p ? `${p[1]} % · ${p[2]}` : "—"}</td>`;
+        const p = m.get(d); return html`<td class="r num">${p ? `${pctN(p[1])} · ${p[2]}` : "—"}</td>`;
       })}</tr>`)}</tbody></table>`;
   }
 

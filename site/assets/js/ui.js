@@ -1,6 +1,6 @@
 // Reusable interface pieces.
 
-import { html, raw, esc, fmt, $, $$, debounce, normalise, displayName } from "./util.js";
+import { html, raw, esc, fmt, $, $$, debounce, normalise, displayName, fmtCat } from "./util.js";
 import * as data from "./data.js";
 import { t } from "./i18n.js";
 import * as store from "./store.js";
@@ -171,7 +171,9 @@ export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
     });
   }
   const rowHtml = (r, i) => html`<tr class="${rowClass ? rowClass(r) : ""}">
-    ${columns.map((c) => html`<td class="${c.align || ""} ${c.cls || ""}">${c.render ? c.render(r, i) : r[c.key]}</td>`)}</tr>`;
+    ${columns.map((c) => html`<td class="${c.align || ""} ${c.cls || ""}">${cell(c, r, i)}</td>`)}</tr>`;
+  // a column keyed "cat" holds FFCO classes: M21 / W35 in English (util.fmtCat)
+  const cell = (c, r, i) => { const v = c.render ? c.render(r, i) : r[c.key]; return c.key === "cat" && typeof v === "string" ? fmtCat(v) : v; };
   // under the table: the rows shown so far, or, once the table is long enough to scroll within the page, their number
   const status = () => (shown < all.length
     ? t("table.more", { shown: fmt(shown), all: fmt(all.length) }) : all.length > 15 ? t("table.rows", { n: fmt(all.length) }) : "");

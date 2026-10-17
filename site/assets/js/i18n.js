@@ -9,7 +9,7 @@
 // The catalogues load before any module that imports this one runs (top-level await), so t() is synchronous everywhere.
 
 export const LANGS = ["fr", "en"];
-export const LANG_NAMES = { fr: "Français", en: "English" };
+export const LANG_NAMES = { fr: "Français", en: "English" };     // each in its own language (i18n-ignore)
 const KEY = "ocn.lang";
 // While the English is being written: French unless English is chosen, and the switch shown to administrators only.
 // true once every text exists in both languages: the browser's language decides, everyone sees the switch.

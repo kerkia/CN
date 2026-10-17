@@ -8,7 +8,7 @@
 // 3. Only then, if the organiser wishes: « Publier sur O'CN » (upload.js) — the race, the consent, the send.
 // A PDF cannot be read in the browser: it goes straight to step 3, and the site reads it on reception.
 
-import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as local from "../local.js";
 import { readFile } from "../localparse.js";
@@ -142,7 +142,7 @@ export async function render(main, { query = {}, organiser = null } = {}) {
     $("#dep-class").innerHTML = html`<table class="data compact"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th>${t("prov.club")}</th><th>${t("prov.cat")}</th><th class="r">${t("prov.time")}</th></tr></thead>
       <tbody>${k.runners.map((r) => html`<tr><td class="r num">${r.place ?? ""}</td><td>${r.name}</td><td style="font-size:12.5px">${r.club || ""}</td>
-        <td>${r.category || ""}</td><td class="r num">${r.status === "ok" ? clock(r.time_s) : STATUS[r.status]}</td></tr>`)}</tbody></table>`;
+        <td>${fmtCat(r.category)}</td><td class="r num">${r.status === "ok" ? clock(r.time_s) : STATUS[r.status]}</td></tr>`)}</tbody></table>`;
   }
 
   // ---- 3. publish ----------------------------------------------------------------------------------------------------

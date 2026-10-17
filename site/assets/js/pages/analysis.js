@@ -17,7 +17,7 @@
 //    rule; the trace's length against the straight line; pace; mean heart rate and cadence).
 // Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
-import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -42,7 +42,7 @@ const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.
 const PREFS_KEY = "ocn.an.prefs";                      // the playback's settings, kept on the device
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") || {}; } catch (e) { return {}; } }
 const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
-const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${fmt(Math.abs(p))} %`; };
+const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
 const tick = () => new Promise((r) => setTimeout(r, 30));
 
 // ---- the precise calibration, with split times -----------------------------------------------------------------------

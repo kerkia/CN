@@ -8,7 +8,8 @@ import * as store from "../store.js";
 import { link } from "../app.js";
 
 // Same names as the regions of the Agenda page (ffco_scraper/agenda.py).
-const REGIONS = ["Auvergne-Rhône-Alpes",     // the agenda values, proper names (i18n-ignore) "Bourgogne-Franche-Comté", "Bretagne", "Centre-Val de Loire", "Corse", "Grand Est",
+// the agenda values, proper names (i18n-ignore-next 3)
+const REGIONS = ["Auvergne-Rhône-Alpes", "Bourgogne-Franche-Comté", "Bretagne", "Centre-Val de Loire", "Corse", "Grand Est",
   "Hauts-de-France", "Île-de-France", "Normandie", "Nouvelle-Aquitaine", "Occitanie", "Pays de la Loire",
   "Provence-Alpes-Côte d'Azur", "Outre-mer"];
 

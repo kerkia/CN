@@ -2,7 +2,7 @@
 // event, the race-by-race breakdown at any date, progression against the age
 // category, full race history and per-season summary.
 
-import { html, raw, esc, $, $$, fmt, fmtSigned, fmtDate, fmtTime, displayName, initials, addDays, ord, plural } from "../util.js";
+import { html, raw, esc, $, $$, fmt, fmtSigned, fmtDate, fmtTime, displayName, initials, addDays, ord, plural, fmtFormat, pctN, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -62,7 +62,7 @@ export async function render(main, { arg, query }) {
       <div>
         <h1>${name} ${data.isAnon(lic) ? "" : html`<span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span>`}</h1>
         <div class="lede meta">
-          <span>${last?.[R.cat] || person.cat || ""}</span>
+          <span>${fmtCat(last?.[R.cat] || person.cat)}</span>
           ${cp.code ? html`<span><a href="${link.club(cp.code)}">${data.clubName(club)}</a></span>` : ""}
           ${cp.ligue ? html`<span>${data.ligueName(cp.ligue)}</span>` : ""}
           <span>${t("rn.since")} ${fmtDate(person.first)}</span>
@@ -199,7 +199,7 @@ export async function render(main, { arg, query }) {
     if (!$("#tiles")) return;                           // the page was left while the ranking loaded
     $("#tiles").innerHTML = html`${tiles}${rankTiles}${bestTiles}
       ${tile(t("rn.last12"), fmt(recent.length), `${t(`terrain.${terrain}`)}`)}
-      ${tile(t("rn.pm12"), recent.length ? `${fmt((100 * pm) / recent.length)} %` : "—", recent.length ? t("rn.pm12.sub", { pm, n: recent.length }) : t(`terrain.${terrain}`))}
+      ${tile(t("rn.pm12"), recent.length ? pctN((100 * pm) / recent.length) : "—", recent.length ? t("rn.pm12.sub", { pm, n: recent.length }) : t(`terrain.${terrain}`))}
       ${tile(t("rn.podiums"), fmt(podiums), plural(wins, t("rn.win"), t("rn.wins")))}`;
   }
 
@@ -356,7 +356,7 @@ export async function render(main, { arg, query }) {
         columns: [
           { key: "date", label: t("col.date"), cls: "num cell-date", sort: (row) => row.race[R.date], render: (row) => fmtDate(row.race[R.date], "short") },
           { key: "type", label: t("col.type"), cls: "cell-type", sort: (row) => row.race[R.epreuve] || "", defaultDir: 1,
-            render: (row) => row.race[R.epreuve] || "" },
+            render: (row) => fmtFormat(row.race[R.epreuve]) },
           { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (row) => name(row), defaultDir: 1,
             render: (row) => html`<a href="${raceLink(row.race)}" title="${place(row)}">${name(row)}</a>` },
           { key: "score", label: t("rn.score"), align: "r", cls: "num cell-score", sort: (row) => row.value,
@@ -435,7 +435,7 @@ export async function render(main, { arg, query }) {
       columns: [
         { key: "date", label: t("col.date"), cls: "num cell-date", sort: (x) => x.date, render: (x) => fmtDate(x.date, "short") },
         { key: "type", label: t("col.type"), cls: "cell-type", sort: (x) => x.race?.[R.epreuve] || "", defaultDir: 1,
-          render: (x) => x.race?.[R.epreuve] || "" },
+          render: (x) => fmtFormat(x.race?.[R.epreuve]) },
         { key: "comp", label: t("col.comp"), cls: "cell-comp", sort: (x) => name(x), defaultDir: 1,
           render: (x) => (x.race ? html`<a href="${raceLink(x.race)}" title="${x.place}">${name(x)}</a>`
             : html`<a href="https://cn.ffcorientation.fr/circuit/${x.id}/" target="_blank" rel="noopener" title="${x.place}">${name(x)}</a>`) },
@@ -529,8 +529,8 @@ export async function render(main, { arg, query }) {
     const bestPct = mine.reduce((b, s) => (s.pct != null && (!b || s.pct > b.pct) ? s : b), null);
     const cats = [...new Set(mine.map((s) => s.cat))];
     $("#pg-tiles").innerHTML = html`
-      ${tile(t("pg.nowPct"), lastS?.pct != null ? `${fmt(lastS.pct)} %` : "—", lastS ? `${lastS.cat} · ${fmtDate(lastS.iso, "month")}` : "")}
-      ${tile(t("pg.bestPct"), bestPct ? `${fmt(bestPct.pct)} %` : "—", bestPct ? `${bestPct.cat} · ${fmtDate(bestPct.iso, "month")}` : "")}
+      ${tile(t("pg.nowPct"), lastS?.pct != null ? pctN(lastS.pct) : "—", lastS ? `${fmtCat(lastS.cat)} · ${fmtDate(lastS.iso, "month")}` : "")}
+      ${tile(t("pg.bestPct"), bestPct ? pctN(bestPct.pct) : "—", bestPct ? `${fmtCat(bestPct.cat)} · ${fmtDate(bestPct.iso, "month")}` : "")}
       ${tile(t("pg.cats"), fmt(cats.length), cats.join(" → "))}`;
     if (!mine.length) {
       for (const id of ["path", "pct", "curve"]) $(`#${id}`).innerHTML = html`<div class="empty">${t("rn.noRaces")}</div>`;
@@ -553,8 +553,8 @@ export async function render(main, { arg, query }) {
       tip: (axisValue) => {
         const d = typeof axisValue === "number" ? new Date(axisValue).toISOString().slice(0, 10) : axisValue;
         const s = mine.find((x) => x.iso === d) || mine.reduce((b, x) => (x.iso <= d ? x : b), mine[0]);
-        return `<div style="color:var(--ink-3);font-size:12px">${fmtDate(s.iso, "month")} · ${esc(s.cat || "")}</div><div><b>${fmt(s.cn)}</b> ${esc(name)}</div>
-          ${s.curve ? `<div style="color:var(--ink-2)">${t("pg.median")} ${esc(s.cat)} : ${fmt(s.curve[qi(50)])} · ${fmt(s.pct)} %</div>` : ""}`;
+        return `<div style="color:var(--ink-3);font-size:12px">${fmtDate(s.iso, "month")} · ${esc(fmtCat(s.cat))}</div><div><b>${fmt(s.cn)}</b> ${esc(name)}</div>
+          ${s.curve ? `<div style="color:var(--ink-2)">${t("pg.medianOf", { cat: esc(fmtCat(s.cat)), cn: fmt(s.curve[qi(50)]) })} · ${pctN(s.pct)}</div>` : ""}`;
       },
     });
     c1.dispatchAction({ type: "dataZoom", start: zoom.start, end: zoom.end });
@@ -562,7 +562,7 @@ export async function render(main, { arg, query }) {
     $("#pct-legend").innerHTML = "";
     const allIso = [...new Set(methods.flatMap((m) => per[m].map((s) => s.iso)))].sort();
     const c2 = bandChart($("#pct"), {
-      categories: allIso, time: true, yName: "%", yMin: 0, yMax: 100, yFormat: (v) => `${fmt(v)} %`,
+      categories: allIso, time: true, yName: "%", yMin: 0, yMax: 100, yFormat: (v) => pctN(v),
       bands: [{ name: "p25–p75", color: blue, opacity: 0.10, lo: allIso.map(() => 25), hi: allIso.map(() => 75) }],
       lines: methods.map((m) => {
         const byIso = new Map(per[m].map((s) => [s.iso, s.pct == null ? null : Math.round(s.pct)]));
@@ -570,7 +570,7 @@ export async function render(main, { arg, query }) {
       }),
       tip: (axisValue, params) => {
         const d = typeof axisValue === "number" ? new Date(axisValue).toISOString().slice(0, 10) : axisValue;
-        const rows = methods.map((m) => { const s = per[m].find((x) => x.iso === d); return s?.pct != null ? `<div><b>${fmt(s.pct)} %</b> <span style="color:var(--ink-3)">${esc(s.cat)}</span></div>` : ""; });
+        const rows = methods.map((m) => { const s = per[m].find((x) => x.iso === d); return s?.pct != null ? `<div><b>${pctN(s.pct)}</b> <span style="color:var(--ink-3)">${esc(fmtCat(s.cat))}</span></div>` : ""; });
         return `<div style="color:var(--ink-3);font-size:12px">${fmtDate(d, "month")}</div>${rows.join("")}`;
       },
     });
@@ -601,14 +601,14 @@ export async function render(main, { arg, query }) {
         const me = ends.filter((s) => s.cat === cat);
         return `<div style="color:var(--ink-3);font-size:12px">${esc(cat)} · ${fmt(r[0])} ${t("pg.ranked")}</div>
           <div><b>${fmt(r[qi(50)])}</b> ${t("pg.median").toLowerCase()}</div>
-          <div style="color:var(--ink-2)">p25–p75 : ${fmt(r[qi(25)])} – ${fmt(r[qi(75)])}<br>p10–p90 : ${fmt(r[qi(10)])} – ${fmt(r[qi(90)])}</div>
-          ${me.map((s) => `<div style="margin-top:4px"><b>${fmt(s.cn)}</b> ${s.iso.slice(0, 4)} · ${fmt(s.pct)} %</div>`).join("")}`;
+          <div style="color:var(--ink-2)">${t("pg.range", { a: "p25", b: "p75", lo: fmt(r[qi(25)]), hi: fmt(r[qi(75)]) })}<br>${t("pg.range", { a: "p10", b: "p90", lo: fmt(r[qi(10)]), hi: fmt(r[qi(90)]) })}</div>
+          ${me.map((s) => `<div style="margin-top:4px"><b>${fmt(s.cn)}</b> ${s.iso.slice(0, 4)} · ${pctN(s.pct)}</div>`).join("")}`;
       },
     });
     const table = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("rk.col.cat")}</th><th class="r">CN</th>
       <th class="r">${t("pg.median")}</th><th class="r">${t("pg.pctShort")}</th></tr></thead>
-      <tbody>${[...mine].reverse().map((s) => html`<tr><td>${fmtDate(s.iso, "month")}</td><td>${s.cat}</td><td class="r num">${fmt(s.cn)}</td>
-        <td class="r num">${fmt(s.curve?.[qi(50)])}</td><td class="r num">${s.pct == null ? "—" : `${fmt(s.pct)} %`}</td></tr>`)}</tbody></table>`;
+      <tbody>${[...mine].reverse().map((s) => html`<tr><td>${fmtDate(s.iso, "month")}</td><td>${fmtCat(s.cat)}</td><td class="r num">${fmt(s.cn)}</td>
+        <td class="r num">${fmt(s.curve?.[qi(50)])}</td><td class="r num">${s.pct == null ? "—" : pctN(s.pct)}</td></tr>`)}</tbody></table>`;
     $("#path-table").innerHTML = table;
     $("#pct-table").innerHTML = table;
     $("#curve-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("rk.col.cat")}</th><th class="r">${t("pg.ranked")}</th>
@@ -635,7 +635,7 @@ export async function render(main, { arg, query }) {
       { key: "date", label: t("col.date"), cls: "num", sort: (x) => x.r[R.date], render: (x) => fmtDate(x.r[R.date], "short") },
       { key: "comp", label: t("col.comp"), sort: (x) => data.comp(x.r[R.course])?.title,
         render: (x) => { const c = data.comp(x.r[R.course]); return html`<a href="${raceLink(x.r)}" title="${c?.location || ""}">${c?.title || ""}</a>
-          <div class="dim" style="font-size:12px">${terrainTag(x.r[R.terrain])} ${x.r[R.circuit] || ""} · ${x.r[R.epreuve] || ""} ${x.r[R.groupe] ? html`<span class="tag">${x.r[R.groupe]}</span>` : ""}</div>`; } },
+          <div class="dim" style="font-size:12px">${terrainTag(x.r[R.terrain])} ${x.r[R.circuit] || ""} · ${fmtFormat(x.r[R.epreuve])} ${x.r[R.groupe] ? html`<span class="tag">${x.r[R.groupe]}</span>` : ""}</div>`; } },
       { key: "cat", label: t("rk.col.cat"), render: (x) => x.r[R.cat] || "" },
       { key: "place", label: t("col.place"), align: "r", cls: "num", sort: (x) => x.r[R.place], defaultDir: 1,
         render: (x) => x.r[R.place] ? html`${fmt(x.r[R.place])}<span class="dim"> / ${fmt(x.r[R.nOnCircuit])}</span>` : statusLabel(x.r[R.status]) },

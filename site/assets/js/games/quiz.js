@@ -57,7 +57,7 @@ const SCORING = {
 export function runGame(root, spec) {
   let seed = spec.seed ?? newSeed();
   const S = SCORING[spec.scoring] || SCORING.count;
-  const bestBox = () => { const b = bests()[spec.key]; return b ? html`<span class="g-best">${t("g.best")} : <b>${b.label}</b></span>` : ""; };
+  const bestBox = () => { const b = bests()[spec.key]; return b ? html`<span class="g-best">${t("ui.colon", { a: t("g.best") })} <b>${b.label}</b></span>` : ""; };
 
   const intro = () => {
     root.innerHTML = html`<div class="g-intro">

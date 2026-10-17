@@ -2,7 +2,7 @@
 // with a 2px surface ring, 10% area wash, hairline solid gridlines, crosshair
 // tooltip with the value leading, one y-axis only.
 
-import { esc, fmt, fmtDate } from "./util.js";
+import { esc, fmt, fmtDate, pctN } from "./util.js";
 import { lang, t } from "./i18n.js";
 
 const registry = new Set();
@@ -322,7 +322,7 @@ export function cdfChart(el, { series, onClick }) {
       scale: true, splitNumber: el.clientWidth < 360 ? 2 : el.clientWidth < 520 ? 3 : 5, ...axisCommon(th), splitLine: { show: false },
       axisLabel: { color: th.ink3, formatter: (v) => fmt(v), hideOverlap: true } },
     yAxis: { type: "value", min: 0, max: 100, name: "%", nameTextStyle: { color: th.ink3 }, ...axisCommon(th),
-      axisLabel: { color: th.ink3, formatter: (v) => `${fmt(v)} %` } },
+      axisLabel: { color: th.ink3, formatter: (v) => pctN(v) } },
     series: series.map((s) => ({
       // drawn in one pass: progressive chunks leave a half-drawn curve in a background tab
       name: s.name, type: "scatter", data: s.data, z: s.highlight ? 4 : 2, progressive: 0,

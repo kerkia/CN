@@ -18,6 +18,7 @@ function rng(seed) {
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
 }
+// made-up names and clubs, French on purpose (i18n-ignore-next 3)
 const FIRST = ["Camille", "Lucas", "Léa", "Hugo", "Manon", "Louis", "Chloé", "Jules", "Inès", "Arthur", "Zoé", "Paul"];
 const LAST = ["MOREL", "GARNIER", "LEFORT", "ROUSSEL", "BRUNET", "PERRIN", "CHEVALIER", "FAURE", "MARCHAND", "BLANC"];
 const CLUBS = ["CO Vallée", "Orient'Express", "ASO Forêts", "Balise 21", "Raid & CO", "Les Lynx", "Azimut Club"];

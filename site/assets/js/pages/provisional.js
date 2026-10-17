@@ -3,7 +3,7 @@
 // and CNs of each method. For a race FFCO has since published, its own figures sit next to them as a check.
 // The data (site/data/prov/) is served to every logged-in user, like the rest of site/data.
 
-import { html, raw, $, $$, fmt, fmtDate, normalise, displayName } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise, displayName, fmtFormat, pctN, fmtCat } from "../util.js";
 import { t, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -112,9 +112,9 @@ function list(main, idx, query) {
     $("#pv-tiles").innerHTML = html`
       <div class="tile"><div class="tile-label">${t("prov.races")}</div><div class="tile-value">${fmt(T.length)}</div></div>
       <div class="tile"><div class="tile-label">${t("prov.withResults")}</div><div class="tile-value">${fmt(found)}</div>
-        <div class="tile-sub">${T.length ? fmt((100 * found) / T.length) : 0} %</div></div>
+        <div class="tile-sub">${pctN(T.length ? (100 * found) / T.length : 0)}</div></div>
       <div class="tile"><div class="tile-label">${t("prov.withSplits")}</div><div class="tile-value">${fmt(T.filter((r) => r.splits).length)}</div></div>
-      <div class="tile"><div class="tile-label">${t("prov.matched")}</div><div class="tile-value">${n ? `${fmt((100 * m) / n)} %` : "—"}</div>
+      <div class="tile"><div class="tile-label">${t("prov.matched")}</div><div class="tile-value">${n ? pctN((100 * m) / n) : "—"}</div>
         <div class="tile-sub">${t("prov.matched.hint")}</div></div>`;
   };
   function drawWho() {
@@ -150,12 +150,12 @@ function list(main, idx, query) {
           : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
-        <td class="pv-wrap">${parts(r.epreuve, r.terrain)}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
+        <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
           : r.ffco_id ? html`<span class="tag" title="${t("prov.ffcoResults")}">FFCO</span>` : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
           ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
-        <td class="r num">${r.runners ? `${fmt((100 * r.matched) / r.runners)} %` : "—"}</td>
+        <td class="r num">${r.runners ? pctN((100 * r.matched) / r.runners) : "—"}</td>
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
         <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>`
           : r.soon ? "" : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
@@ -206,7 +206,7 @@ async function detail(main, idx, query) {
     <div class="crumbs">${race.date_iso > new Date().toISOString().slice(0, 10)
       ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/resultats">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
-      <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, race.epreuve, race.terrain)}</p></div>
+      <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">FFCO ↗</a>` : ""}</div></div>
@@ -280,7 +280,7 @@ async function detail(main, idx, query) {
           render: (r) => (r.lic ? html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>`
             : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`) },
         { key: "cat", label: t("rk.col.cat"), defaultDir: 1, sort: (r) => r.category || r.catCn,
-          render: (r) => r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "") },
+          render: (r) => fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "") },
         { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => clubOf(r).code || r.club,
           render: (r) => { const c = clubOf(r);
             return c.code ? html`<a href="${link.club(c.code)}" title="${c.name}">${c.code}</a>` : html`<span style="font-size:12.5px">${r.club || ""}</span>`; } },
@@ -319,7 +319,7 @@ async function detail(main, idx, query) {
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
         <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
         <td style="font-size:12.5px">${clubOf(r).code ? html`<a href="${link.club(clubOf(r).code)}" title="${clubOf(r).name}">${clubOf(r).code}</a>` : r.club || ""}</td>
-        <td>${r.category || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${r.catCn}</span>` : "")}</td>
+        <td>${fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "")}</td>
         <td class="r num">${cn(r) ? fmt(cn(r)) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${expected.get(r) ?? ""}</td></tr>`)}</tbody></table></div>`;
   }

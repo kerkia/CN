@@ -2,7 +2,7 @@
 // method. Season by season for any base, measure, sex and age group; month by
 // month for the CN of all ranked runners; and where each club stands today.
 
-import { html, raw, $, $$, fmt, fmtDate, normalise, debounce, addDays, ord } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise, debounce, addDays, ord, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -264,7 +264,7 @@ export async function render(main, { query }) {
         <th class="r">${t("cfc.points")}</th><th class="r" title="${t("cfc.runners.hint")}">${t("cfc.runners")}</th><th class="r">${t("cfc.women")}</th></tr></thead>
         <tbody>${shown.map(([code, v], i) => html`${i && shown[i - 1][1][0] !== v[0] - 1 ? html`<tr><td colspan="5" class="muted c">…</td></tr>` : ""}
           <tr class="${codes.has(code) ? "selected" : ""}"><td class="r num">${v[0]}</td><td><a href="${link.club(code)}">${clubName(code)}</a></td>
-          <td class="r num"><b>${fmt(v[1])}</b></td><td class="r num">${fmt(v[2])}</td><td class="r num">${v[1] ? `${fmt(Math.round((100 * v[5]) / v[1]))} %` : ""}</td></tr>`)}</tbody></table></div>`;
+          <td class="r num"><b>${fmt(v[1])}</b></td><td class="r num">${fmt(v[2])}</td><td class="r num">${v[1] ? pctN(Math.round((100 * v[5]) / v[1])) : ""}</td></tr>`)}</tbody></table></div>`;
     $$("[data-cfc]").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); cfcSeason = a.dataset.cfc; sync(); drawCfc(); }));
   }
 

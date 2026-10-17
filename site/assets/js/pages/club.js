@@ -1,7 +1,7 @@
 // Club: headline figures, how the club's ranked headcount and mean CN moved
 // over time, and its roster with each runner's current CN.
 
-import { html, raw, $, $$, fmt, fmtDate, displayName, addDays, isoDay, ord } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, displayName, addDays, isoDay, ord, pctN, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -199,7 +199,7 @@ export async function render(main, { arg: code, query }) {
             render: (r) => fmt(r.rank[m]) },
           { key: `pct_${m}`, label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct?.[m],
             render: (r) => (r.pct?.[m] == null ? html`<span class="dim">—</span>`
-              : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[m]), cat: r.cat })}">${data.fmtPct(r.pct[m])}</span>`) },
+              : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[m]), cat: fmtCat(r.cat) })}">${data.fmtPct(r.pct[m])}</span>`) },
         ]),
         // the share of mispunches in the discipline's races of the last 12 months (owner, 2026-10-15), read from each
         // member's races once the table is shown (filled in place, sortable once read)
@@ -226,7 +226,7 @@ export async function render(main, { arg: code, query }) {
     const v = pmCache.get(`${lic}|${terrain}`);
     if (!v) return html`<span class="dim">…</span>`;
     if (!v.n) return html`<span class="dim">—</span>`;
-    return html`<span title="${t("cl.pm12.tip", { pm: v.pm, n: v.n })}">${fmt((100 * v.pm) / v.n)} %</span>`;
+    return html`<span title="${t("cl.pm12.tip", { pm: v.pm, n: v.n })}">${pctN((100 * v.pm) / v.n)}</span>`;
   };
   async function loadPm(list, terrain) {
     const month = data.latestMonth();
