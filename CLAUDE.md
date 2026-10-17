@@ -937,14 +937,27 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys
   `x.one` / `x.other`) from `i18n.js`; an area's own catalogues `i18n/<area>.fr.js` / `.en.js` (`loadArea`, the Tracer's);
-  long texts (documentation, guides, legal pages) are whole modules per language (`*.fr.js` / `*.en.js`). English
-  vocabulary: `docs/i18n/glossary.md` (IOF terms; FFCO's classes H/D shown M/W in English: `util.fmtCat`, `fmtSex`).
-  Numbers and dates through `util.fmt` / `fmtDate` / `i18n.locale()`, never a hard-coded `fr-FR`. The language: the one
-  chosen (`localStorage ocn.lang`, the user menu, Réglages, the login page, `?lang=`), else the browser's once `OPEN`
-  (French browsers French, the others English); until then French unless chosen, the switch for administrators only.
-  `?lang=xx`: a pseudo-language that marks every catalogue text, so what the code writes itself shows plain.
-  `node tools/i18n_check.mjs` lists keys missing in a language, placeholders that differ, and French written in the code
-  (`--list` for all; a line marked `i18n-ignore` is a pattern matching French documents, not UI text).
+  long texts (documentation, guides, legal pages) are whole modules per language, `site/assets/js/content/<name>.fr.js` /
+  `.en.js` (privacy, vma, orgdirect; the Documentation's `methods.*.js` export `build(X)`: the page passes its neutral
+  helpers and data, the module returns the tabs, panels and the charts that carry words — keep the two in step, same
+  code, French the reference). The Tracer: its catalogue `i18n/tracer.fr.js` / `.en.js` (keys `trc.<module>.*`), loaded by
+  `tracer/lang.js` with a top-level await — every Tracer module imports `t` from it, never from `i18n.js` directly. English
+  vocabulary: `docs/i18n/glossary.md` (IOF terms, Purple Pen's English for the Tracer; FFCO's classes H/D shown M/W in
+  English: `util.fmtCat`, `fmtSex`; `ui.dataTable` shows a column keyed `cat` through it). FFCO's formats word by word
+  (`util.fmtFormat`: Nuit → Night, keys `format.<word>`), percentages `util.pct` / `pctN` (« 12 % » / « 12% »), a label
+  and its colon `t("ui.colon", { a })`; a CSV's separator « ; » in French, « , » in English. Numbers and dates through
+  `util.fmt` / `fmtDate` / `i18n.locale()`, never a hard-coded `fr-FR` (what the Tracer prints on an event's map follows
+  the event's own description language, `ev.lang`). The language: the one chosen (`localStorage ocn.lang`, the user menu,
+  Réglages, `?lang=`), else the browser's once `OPEN` (French browsers French, the others English); until then French
+  unless chosen, the switch for administrators only. **The account's language** (D1 `users.lang`, migration 0009, set by
+  Réglages / the switch / registration): every e-mail is written in its recipient's (`_lib/templates.js`, French and
+  English side by side; the administrators' alerts in each administrator's), and a login on a device that has no choice
+  of its own takes it (`i18n.adoptLang`). « IA » answers in the asker's language (`systemPrompt({ lang })`) and its errors
+  carry a `code` the page words. The white paper exists in both languages (`docs/whitepaper/methode-top.en.tex`,
+  `site/assets/ocn-methode-top.en.pdf`). `?lang=xx`: a pseudo-language that marks every catalogue text, so what the code
+  writes itself shows plain. `node tools/i18n_check.mjs` lists keys missing in a language, placeholders that differ,
+  French written in the code and French typography between placeholders (`--list` for all; a line marked `i18n-ignore`,
+  or the N lines after a comment `i18n-ignore-next N`, are patterns or names, not UI text).
 - UI text lives in the catalogues (`i18n/fr.js`, `i18n/en.js`; above). Method keys: `official`, `top6w`, `top6w3`, `fair`, `fair3` (labels « Top » /
   « Fit » for the published pair, « Top géométrique » / « Fit géométrique » for the geometric one, since 2026-10-16). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).

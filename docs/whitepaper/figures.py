@@ -2,7 +2,10 @@
 Sources: site/assets/study.json (the studies' aggregate figures: `fig.trunc`, `calib`, `onecn`, `mle_fit`, and `lineaire`,
 the study of 2026-10-15/16) and site/data/evaluation.json (the published evaluation, rebuilt by every migration).
 Writes fig/fig_trunc.pdf, fig/fig_share.pdf and numbers.tex (one \\newcommand per number quoted by methode-top.tex).
-Run from anywhere: py -3 docs/whitepaper/figures.py"""
+2026-10-17: `--lang en` writes the English ones instead, for methode-top.en.tex: fig/en/*.pdf and numbers.en.tex (same
+macro names; decimal point, thousands comma, no space before %); French stays the default, its outputs unchanged.
+Run from anywhere: py -3 docs/whitepaper/figures.py [--lang fr|en]"""
+import argparse
 import json
 from pathlib import Path
 
@@ -10,25 +13,43 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+_ap = argparse.ArgumentParser(description="The white paper's figures and numbers")
+_ap.add_argument("--lang", choices=("fr", "en"), default="fr")
+LANG = _ap.parse_args().lang
+EN = LANG == "en"
 HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
 D = json.load(open(ROOT / "site" / "assets" / "study.json", encoding="utf-8"))
 L = D["lineaire"]
 EV = json.load(open(ROOT / "site" / "data" / "evaluation.json", encoding="utf-8"))
-FIG = HERE / "fig"
+FIG = HERE / "fig" / "en" if EN else HERE / "fig"
 FIG.mkdir(exist_ok=True)
 plt.rcParams.update({"font.family": "serif", "font.size": 9, "axes.titlesize": 10, "axes.labelsize": 9, "legend.fontsize": 8,
                      "axes.spines.top": False, "axes.spines.right": False, "figure.dpi": 150})
 GREEN, BROWN, GREY, ORANGE, BLUE, INK = "#2f8a3e", "#ad6129", "#777777", "#e8641c", "#1c80bb", "#222222"
-T = {"For": "Forêt", "Spr": "Sprint", "VTT": "VTT"}
+T = {"For": "Forest", "Spr": "Sprint", "VTT": "MTB"} if EN else {"For": "Forêt", "Spr": "Sprint", "VTT": "VTT"}
+PC = "%" if EN else " %"                              # English: no space before the per cent sign
+TXT = {   # the figures' words
+    "fr": {"mean": "moyenne", "courses": "part des circuits",
+           "trunc_x": "valeur sur tout le peloton, au-dessus de celle des deux tiers les plus rapides",
+           "since": "depuis juillet 2025", "duels": "écart, points de duels",
+           "share_x": "part du peloton qui mesure le circuit (%) ; en pointillé, la part retenue"},
+    "en": {"mean": "mean", "courses": "share of courses",
+           "trunc_x": "value over the whole field, above that over the fastest two thirds",
+           "since": "since July 2025", "duels": "difference (points)",
+           "share_x": "share of the field that values the course (%); dotted line: the share chosen"},
+}[LANG]
 
 
 def fr(x, dec=1):
+    """A number for the text: '4{,}8' in French, '4.8' in English."""
+    if EN:
+        return f"{x:.{dec}f}"
     return f"{x:.{dec}f}".replace(".", "{,}").replace("-", "-")
 
 
 def sg(x, dec=2):
-    s = f"{x:+.{dec}f}".replace(".", "{,}")
+    s = f"{x:+.{dec}f}" if EN else f"{x:+.{dec}f}".replace(".", "{,}")
     return s.replace("-", "$-$").replace("+", "$+$")
 
 
@@ -41,6 +62,8 @@ def ci(a, dec=2):
     """'+0,42 [+0,39 ; +0,45]' for LaTeX; a = [point, low, high] in points."""
     if not a:
         return "---"
+    if EN:                                            # '+0.42 [+0.39, +0.45]'
+        return f"{sg(a[0], dec)} [{sg(a[1], dec)}, {sg(a[2], dec)}]"
     return f"{sg(a[0], dec)} [{sg(a[1], dec)}~; {sg(a[2], dec)}]"
 
 
@@ -52,14 +75,15 @@ for ax, t in zip(axes, ("For", "Spr")):
     ax.bar(edges[:-1], share, width=[edges[i + 1] - edges[i] for i in range(len(share))], align="edge", color=BROWN, linewidth=0, alpha=0.9)
     ax.axvline(d["mean"], color=INK, ls="--", lw=0.9)
     ax.axvline(1.0, color=GREY, lw=0.8)
-    ax.text(d["mean"] + 0.006, max(share) * 0.95, f"moyenne {100 * (d['mean'] - 1):.1f} %".replace(".", ","), fontsize=8)
+    label = f"{TXT['mean']} {100 * (d['mean'] - 1):.1f}{PC}"
+    ax.text(d["mean"] + 0.006, max(share) * 0.95, label if EN else label.replace(".", ","), fontsize=8)
     ticks = [1.0, 1.1, 1.2, 1.3, 1.4]
-    ax.set_xticks(ticks, ["0" if r == 1 else f"+{round(100 * (r - 1))} %" for r in ticks])
+    ax.set_xticks(ticks, ["0" if r == 1 else f"+{round(100 * (r - 1))}{PC}" for r in ticks])
     ax.set_xlim(edges[0], edges[-1])
     ax.set_title(T[t])
-    ax.yaxis.set_major_formatter(lambda v, _: f"{round(100 * v)} %")
-axes[0].set_ylabel("part des circuits")
-fig.supxlabel("valeur sur tout le peloton, au-dessus de celle des deux tiers les plus rapides", fontsize=9)
+    ax.yaxis.set_major_formatter(lambda v, _: f"{round(100 * v)}{PC}")
+axes[0].set_ylabel(TXT["courses"])
+fig.supxlabel(TXT["trunc_x"], fontsize=9)
 fig.tight_layout()
 fig.savefig(FIG / "fig_trunc.pdf")
 plt.close(fig)
@@ -69,7 +93,7 @@ fig, axes = plt.subplots(1, 3, figsize=(6.4, 2.4), sharey=False)
 for ax, t in zip(axes, ("For", "Spr", "VTT")):
     rows = L["share"][t]["rows"]
     xs = [r["pct"] for r in rows]
-    for sc, col, lab, dx in (("all_holdout", GREEN, "2012–2024", -0.6), ("all_tuned", ORANGE, "depuis juillet 2025", 0.6)):
+    for sc, col, lab, dx in (("all_holdout", GREEN, "2012–2024", -0.6), ("all_tuned", ORANGE, TXT["since"], 0.6)):
         ys = [r[sc][0] for r in rows]
         ax.plot([x + dx for x in xs], ys, "-o", color=col, ms=3, lw=1.2, label=lab)
         ax.vlines([x + dx for x in xs], [r[sc][1] for r in rows], [r[sc][2] for r in rows], color=col, lw=0.8, alpha=0.6)
@@ -82,8 +106,8 @@ for ax, t in zip(axes, ("For", "Spr", "VTT")):
     ax.axhline(0, color=GREY, lw=0.6)
     ax.set_xticks([50, 67, 75, 90, 100], ["50", "⅔", "75", "90", "100"])
     ax.set_title(T[t])
-axes[0].set_ylabel("écart, points de duels")
-fig.supxlabel("part du peloton qui mesure le circuit (%) ; en pointillé, la part retenue", fontsize=9)
+axes[0].set_ylabel(TXT["duels"])
+fig.supxlabel(TXT["share_x"], fontsize=9)
 axes[2].legend(loc="lower left", frameon=False, fontsize=7)
 fig.tight_layout()
 fig.savefig(FIG / "fig_share.pdf")
@@ -102,7 +126,7 @@ for key, e in (("F", hf), ("S", hs)):
     cmd[f"gain{key}"] = ci([100 * x for x in e["d"]["top6w-official"]["acc"]])
     cmd[f"gainR{key}"] = ci([100 * x for x in e["d"]["top6w-official"]["r2"]], 1)
     cmd[f"geo{key}"] = ci(neg([100 * x for x in e["d"]["top6w3-top6w"]["acc"]]))    # Top − geometric
-    cmd[f"comps{key}"] = f"{e['comps']:,}".replace(",", "\\,")
+    cmd[f"comps{key}"] = f"{e['comps']:,}" if EN else f"{e['comps']:,}".replace(",", "\\,")
 for key, e in (("F", hfn), ("S", hsn)):
     cmd[f"gainN{key}"] = ci([100 * x for x in e["d"]["top6w-official"]["acc"]])
     cmd[f"geoN{key}"] = ci(neg([100 * x for x in e["d"]["top6w3-top6w"]["acc"]]))
@@ -111,7 +135,7 @@ for key, e in (("F", hfn), ("S", hsn)):
 def wins(tr, pair):
     rows = EV["rows"][tr]["all"]
     ss = [k for k in rows if k.isdigit()]
-    return f"{sum(rows[y]['d'][pair]['acc'][1] > 0 for y in ss)} sur {len(ss)}"
+    return f"{sum(rows[y]['d'][pair]['acc'][1] > 0 for y in ss)} {'of' if EN else 'sur'} {len(ss)}"
 
 
 cmd["winsF"], cmd["winsS"] = wins("For", "top6w-official"), wins("Spr", "top6w-official")
@@ -132,9 +156,10 @@ cmd["geoVTT"] = ci(vg.get("VTT", {}).get("all_holdout"))
 cmd["truncF"] = fr(100 * (D["fig"]["trunc"]["For"]["mean"] - 1), 1)
 cmd["truncS"] = fr(100 * (D["fig"]["trunc"]["Spr"]["mean"] - 1), 1)
 cmd["calibYoungOff"] = fr(D["calib"]["For"]["young"]["v"]["official"][0], 1)
-lines = ["% generated by figures.py: the numbers the text quotes (2026-10-16)"]
+lines = ["% generated by figures.py --lang en: the numbers the English text quotes (2026-10-16)" if EN else
+         "% generated by figures.py: the numbers the text quotes (2026-10-16)"]
 for k, v in cmd.items():
     name = "N" + "".join(ch for ch in k if ch.isalpha())
     lines.append(f"\\newcommand{{\\{name}}}{{{v}}}")
-(HERE / "numbers.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
-print("figures and", len(cmd), "numbers written")
+(HERE / ("numbers.en.tex" if EN else "numbers.tex")).write_text("\n".join(lines) + "\n", encoding="utf-8")
+print(f"figures and {len(cmd)} numbers written ({LANG})")
