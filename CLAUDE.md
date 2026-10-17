@@ -401,7 +401,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15): the bar shows the groups as tabs — « Classement » (« Classement national » until 2026-10-15; Coureur, Classement, Courses
   classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
   Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
-  (`localStorage ocn.nav.<group>`). The row under it shows the current group's pages. The runner search sits at the right
+  (`localStorage ocn.nav.<group>`) — a list or a view, never a tool that reopens its work (the analyses, « Direct », « Tracer »:
+  `TOOL_PAGES`) nor a `?fen=1` address (owner, 2026-10-17: the memory is shared by the tabs, and « Courses » reopened « Analyse
+  solo » at its calibration in full window, the menus gone; a stale memory is ignored when read). The row under it shows the current group's pages. The runner search sits at the right
   end of the page's tab row (`app.placeSearch`, `.tabs-row`) on Coureur, Classement and Comparer only (`SEARCH_IN_TABS`). One's name opens a menu: Ma page, Documentation = `#/methodes`, Réglages, Nous écrire,
   Administration, Déconnexion. On a phone the menu button lists both groups under headings (`app.renderHeader`).
 - **One method at a time** (owner, 2026-10-12): `store.method` (default `official`; `store.methods` = `[method]` for the
@@ -845,7 +847,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   refits on the resize event; Échap or « ⤡ » back) and « ↗ » (the same page alone in a new tab, `?fen=1`, kept by
   `app.replaceQuery`; opened by script without noopener, so « Analyse solo » finds its session's files). In full window the
   button is « ⤡ » « Revenir au menu (Échap) » everywhere, a `?fen=1` tab included (owner, 2026-10-15: its former « ✕ Fermer
-  cet onglet » did not close it - a browser refuses to close a tab reloaded or not opened by script). Playback speeds × 1, 2,
+  cet onglet » did not close it - a browser refuses to close a tab reloaded or not opened by script). Full window always has a
+  way back (owner, 2026-10-17): while it is on, `fullwin.guard` shows a fixed « ⤡ Revenir au menu » (`#fw-guard`) whenever the page
+  shows no « ⤡ » of its own (checked every 0.7 s; « Analyse solo »'s calibration step has none). Playback speeds × 1, 2,
   5, 10, 20, then every × 20 up to × 100 (owner, 2026-10-15; `SPEEDS` in `analysis.js` and `shared.js`).
 - **Analyse solo / multi** (owner, 2026-10-14; « Analyse multi » = the former « Analyse club » and « Analyse compétition »,
   2026-10-15): « Analyse

@@ -15,12 +15,35 @@ const look = () => { const on = isFull(); return { on, text: on ? "⤡" : "⤢",
   title: on ? "Revenir au menu (Échap)" : "Plein écran : la carte occupe toute la fenêtre" }; };
 function label() {
   const l = look();
-  for (const b of document.querySelectorAll('[data-fw="toggle"]')) { b.setAttribute("aria-pressed", String(l.on)); b.textContent = l.text; b.title = l.title; }
+  for (const b of document.querySelectorAll('[data-fw="toggle"]:not(#fw-guard)')) { b.setAttribute("aria-pressed", String(l.on)); b.textContent = l.text; b.title = l.title; }
 }
 export function setFull(on) {
   document.body.classList.toggle(CLS, !!on);
   label();
+  guard(!!on);
   window.dispatchEvent(new Event("resize"));             // the pages fit their height to the window on resize
+}
+/* Full window always has a way back to the menus (owner, 2026-10-17: « Analyse solo » opened in full window at its calibration,
+   whose step draws no « ⤡ », left no way back): while it is on, a « ⤡ Revenir au menu » of its own shows in the window's top
+   right corner whenever the page shows none. */
+let guardTimer = null;
+function guard(on) {
+  clearInterval(guardTimer); guardTimer = null;
+  let b = document.getElementById("fw-guard");
+  if (!on) { b?.remove(); return; }
+  if (!b) {
+    b = document.createElement("button");
+    b.type = "button"; b.id = "fw-guard"; b.className = "btn btn-sm fw-btn"; b.dataset.fw = "toggle";
+    b.textContent = "⤡ Revenir au menu"; b.title = "Revenir au menu (Échap)";
+    b.style.cssText = "position:fixed;top:8px;right:8px;z-index:400;box-shadow:var(--shadow-pop)";
+    document.body.appendChild(b);
+  }
+  const check = () => {
+    const own = [...document.querySelectorAll('[data-fw="toggle"]')].some((x) => x !== b && x.getClientRects().length > 0);
+    b.hidden = own;
+  };
+  check();
+  guardTimer = setInterval(check, 700);
 }
 /** Leaving the page: the site's bar comes back. */
 export function leaveFull() { tabParams = null; tabHandler = null; escapeOwner = null; beforeClose = null; if (isFull()) setFull(false); }

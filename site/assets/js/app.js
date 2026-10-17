@@ -312,9 +312,13 @@ function renderHeader(r) {
     : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
     : route === "splits" ? "provisional" : route;
   const group = groups.find(([, , items]) => items.some(([k]) => k === current));
-  // a group's tab leads back to the page last seen in it
-  const lastIn = (g, items) => { try { return localStorage.getItem(`ocn.nav.${g}`) || items[0][1]; } catch (e) { return items[0][1]; } };
-  if (group) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash || group[2][0][1]); } catch (e) {} }
+  // a group's tab leads back to the page last seen in it — a list or a view, never one of the tools that reopen their work (the
+  // analyses, « Direct », « Tracer »), and never a tab of its own's address (?fen=1, full window without the menus): the memory is
+  // shared by the tabs, and « Courses » reopened « Analyse solo » at its calibration in full window, the menus gone (owner, 2026-10-17)
+  const TOOL_PAGES = /^#\/(analyse|analyse-competition|analyse-solo|analyse-perso|analyse-club|orga-direct|orga-tracer)(?:[?/]|$)/;
+  const navMemo = (h) => (h && !TOOL_PAGES.test(h) && !/[?&]fen=1(?:&|$)/.test(h) ? h : null);
+  const lastIn = (g, items) => { try { return navMemo(localStorage.getItem(`ocn.nav.${g}`)) || items[0][1]; } catch (e) { return items[0][1]; } };
+  if (group && navMemo(location.hash)) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash); } catch (e) {} }
   document.body.dataset.group = group?.[0] || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
