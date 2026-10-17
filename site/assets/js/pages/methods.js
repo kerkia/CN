@@ -15,6 +15,7 @@ import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
 import * as TR from "../tracer/icons.js";
+import * as TRD from "../tracer/ribbon-data.js";
 
 const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
 const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"],
@@ -890,9 +891,11 @@ export async function render(main, { query = {} } = {}) {
   function tracerDoc() {
     const CHAPTERS = [["principe", "Pour commencer"], ["carte", "La carte"], ["ecran", "L'écran"], ["postes", "Les postes"], ["circuits", "Les circuits"],
       ["definitions", "Les définitions"], ["speciaux", "Objets spéciaux"], ["sorties", "Imprimer et exporter"], ["verifier", "Vérifier"],
-      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["menus", "Les menus"], ["calculs", "Ses calculs"]];
+      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["menus", "Le mode Purple Pen"], ["calculs", "Ses calculs"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Le tracé";
+    // where a command is in the ribbon (the O'CN mode, by default): « Carte › Position › Caler les postes »
+    const W = (act) => TRD.ribbonAt(act);
     // the tools of the editor's bar, with the letter that picks them
     const TOOLS = [
       ["select", "Sélection", "S", "Cliquer un objet pour le choisir ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour déplacer la carte. Double-cliquer un poste ouvre sa définition."],
@@ -917,6 +920,8 @@ export async function render(main, { query = {} } = {}) {
       ["Maj + clic", "Garder l'outil après avoir posé un départ, une arrivée ou un objet"],
       ["Maj en glissant un poste", "Le poser exactement sur un poste voisin"],
       ["Molette, + et −", "Zoomer"], ["Flèches, clic droit glissé", "Déplacer la carte"], ["Clic droit", "Le menu de l'objet sous la souris"],
+      ["Alt", "Les raccourcis du ruban : une lettre sur chaque onglet, puis sur chaque bouton de l'onglet choisi"], ["Alt + Q", "Rechercher une commande"],
+      ["Ctrl + F1", "Replier le ruban à ses onglets, ou le déplier"], ["F1", "Le guide, au chapitre de la commande sous la souris"],
     ];
     // what each menu entry does (the menus come from tracer/icons.js, as in the editor)
     const MENU_HELP = {
@@ -969,53 +974,74 @@ export async function render(main, { query = {} } = {}) {
       "view-printarea": "Montrer le cadre de la zone d'impression.", "view-others": "Montrer d'autres circuits en bleu pâle sous celui en cours.",
       "import-course": "Lire les cercles, le départ et l'arrivée imprimés sur une carte (un PDF, une photo) et en faire des postes.",
       "save-to": "Quand une commande crée plusieurs fichiers : les écrire dans un dossier choisi, ou en un seul .zip.",
+      "ui-ribbon": "Revenir au ruban, le mode O'CN.",
     };
-    // the editor's screen, drawn: its zones numbered as in the list under it
+    // the editor's screen in the O'CN mode, drawn: its zones numbered as in the list under it
     const screenFig = () => {
       const P = "#a7179b", ink2 = "var(--ink-2)", line = "var(--border-strong)";
       const mark = (n, x, y) => `<g><circle cx="${x}" cy="${y}" r="11" fill="${P}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:#fff">${n}</text></g>`;
-      const icon = (k, x, y, s = 0.72) => `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="${ink2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TR.ICON[k]}</g>`;
-      let mx = 238;
-      const menus = TR.MENUS.map((m) => { const w = 26 + m.label.length * 7.1; const s = `${icon(m.icon, mx, 9, 0.62)}<text x="${mx + 19}" y="23" font-size="12.5" style="fill:var(--ink)">${m.label}</text>`; mx += w + 8; return s; }).join("");
-      const tools = ["select", "start", "control", "finish", "crossing", "issue", "exchange", "bend", "gap", "route", "descr", "special"]
-        .map((k, i) => (i === 0 ? `<rect x="${73 + i * 28}" y="40" width="24" height="22" rx="5" fill="color-mix(in srgb, ${P} 14%, transparent)" stroke="${P}"/>` : "") + icon(k, 76 + i * 28, 42)).join("");
-      const ctl = [[300, 330, "start"], [372, 250, 1], [470, 300, 2], [560, 205, 3], [655, 275, 4], [702, 352, "finish"]];
+      const icon = (k, x, y, s = 0.72, c = ink2) => `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${TR.ICON[k]}</g>`;
+      const txt = (x, y, t, o = "") => `<text x="${x}" y="${y}" font-size="11" ${o}>${t}</text>`;
+      // the tabs of the ribbon, the contextual one at the end
+      let tx = 66;
+      const tabs = ["Tracer", "Circuits", "Carte", "Vérifier", "Imprimer", "Équipe et course"].map((l, i) => {
+        const w = l.length * 6.4 + 18 + (l === "Vérifier" ? 16 : 0), x = tx; tx += w;
+        return `${txt(x + 8, 53, l, `style="fill:${i ? "var(--ink-2)" : "var(--ink)"}" ${i ? "" : 'font-weight="700"'}`)}${i ? "" : `<line x1="${x + 4}" y1="61" x2="${x + w - 6}" y2="61" stroke="${P}" stroke-width="2.5"/>`}${l === "Vérifier" ? `<circle cx="${x + w - 12}" cy="49" r="7" fill="var(--amber)"/><text x="${x + w - 12}" y="52.5" text-anchor="middle" font-size="9.5" font-weight="700" style="fill:#1b1a17">2</text>` : ""}`;
+      }).join("");
+      const big = (k, x, label, on = false) => `${on ? `<rect x="${x - 4}" y="68" width="56" height="52" rx="6" fill="color-mix(in srgb, ${P} 13%, transparent)" stroke="${P}" stroke-opacity=".6"/>` : ""}${icon(k, x + 12, 72, 1, P)}<text x="${x + 24}" y="112" text-anchor="middle" font-size="10.5" style="fill:var(--ink)">${label}</text>`;
+      const small = (k, x, y, label) => `${icon(k, x, y - 9, 0.5)}<text x="${x + 16}" y="${y + 1}" font-size="10" style="fill:var(--ink)">${label}</text>`;
+      const sep = (x) => `<line x1="${x}" y1="68" x2="${x}" y2="140" stroke="${line}"/>`;
+      const gt = (x, t) => `<text x="${x}" y="140" text-anchor="middle" font-size="9.5" style="fill:var(--ink-3)">${t}</text>`;
+      const cells = ["water", "firstaid", "oob", "boundary", "danger", "forbidden", "text", "image"].map((k, i) => `<rect x="${452 + (i % 4) * 25}" y="${70 + Math.floor(i / 4) * 25}" width="23" height="23" rx="4" fill="var(--surface)" stroke="${line}"/>${icon(k, 456 + (i % 4) * 25, 74 + Math.floor(i / 4) * 25, 0.62, P)}`).join("");
+      const ctl = [[330, 380, "start"], [400, 300, 1], [495, 345, 2], [585, 255, 3], [675, 320, 4], [705, 405, "finish"]];
       let legs = "";
       for (let i = 1; i < ctl.length; i++) {
         const [x1, y1] = ctl[i - 1], [x2, y2] = ctl[i], d = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / d, uy = (y2 - y1) / d, a = i === 1 ? 10 : 12, b = i === ctl.length - 1 ? 15 : 12;
         legs += `<line x1="${x1 + ux * a}" y1="${y1 + uy * a}" x2="${x2 - ux * b}" y2="${y2 - uy * b}"/>`;
       }
       const marks = ctl.map(([x, y, k]) => (k === "start" ? `<path d="M${x} ${y - 11}l10 17h-20z"/>` : k === "finish" ? `<circle cx="${x}" cy="${y}" r="9"/><circle cx="${x}" cy="${y}" r="14"/>`
-        : `<circle cx="${x}" cy="${y}" r="12"/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${P}">${k}</text>`)).join("");
+        : `<circle cx="${x}" cy="${y}" r="12" ${k === 3 ? 'stroke="#0a84ff" stroke-width="3"' : ""}/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${k === 3 ? "#0a84ff" : P}">${k}</text>`)).join("");
       const rows = [["", "", "Départ : sommet"], ["1", "31", "Rocher, côté nord"], ["2", "45", "Dépression"], ["3", "52", "Chemin, croisement"], ["4", "38", "Clairière"]];
-      const sheet = rows.map(([n, c, t], i) => `<text x="22" y="${142 + i * 20}" font-size="11" font-weight="700" style="fill:var(--ink)">${n}</text><text x="38" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink)">${c}</text><text x="64" y="${142 + i * 20}" font-size="10.5" style="fill:var(--ink-2)">${t}</text><line x1="12" y1="${148 + i * 20}" x2="222" y2="${148 + i * 20}" stroke="${line}"/>`).join("");
-      return `<svg viewBox="0 0 760 432" role="img" aria-label="L'écran du tracé, ses zones numérotées">
-        <rect x="0.5" y="0.5" width="759" height="431" rx="9" fill="var(--surface)" stroke="${line}"/>
-        <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="18" y="22" font-size="11.5" style="fill:var(--ink)">▤ Événements</text>
-        <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>${menus}
-        <text x="700" y="23" font-size="11.5" style="fill:var(--good)">Enregistré</text>
+      const sheet = rows.map(([n, c, t], i) => `${i === 3 ? `<rect x="12" y="${182 + i * 20}" width="210" height="20" fill="#fff59d"/>` : ""}<text x="22" y="${196 + i * 20}" font-size="11" font-weight="700" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${n}</text><text x="38" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${c}</text><text x="64" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#333" : "var(--ink-2)"}">${t}</text><line x1="12" y1="${202 + i * 20}" x2="222" y2="${202 + i * 20}" stroke="${line}"/>`).join("");
+      return `<svg viewBox="0 0 760 486" role="img" aria-label="L'écran du tracé en mode O'CN, ses zones numérotées">
+        <rect x="0.5" y="0.5" width="759" height="485" rx="9" fill="var(--surface)" stroke="${line}"/>
+        <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/>${icon("folder", 13, 11, 0.55)}${txt(32, 22, "Événements", 'style="fill:var(--ink)"')}
+        <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
+        <rect x="196" y="11" width="34" height="15" rx="7.5" fill="var(--flag)"/><text x="213" y="22" text-anchor="middle" font-size="8.5" font-weight="700" style="fill:#fff">BÊTA</text>
+        <line x1="240" y1="10" x2="240" y2="27" stroke="${line}"/>${icon("undo", 248, 9, 0.62)}${icon("redo", 270, 9, 0.62)}${icon("printer", 292, 9, 0.62)}
+        <rect x="470" y="7" width="176" height="22" rx="6" fill="var(--surface-2)" stroke="${line}"/>${icon("search", 476, 11, 0.55)}${txt(494, 22, "Rechercher une commande", 'style="fill:var(--ink-3)"')}
+        ${txt(656, 22, "Enregistré", 'style="fill:var(--good)"')}${icon("ribbon", 712, 9, 0.62)}${icon("fit", 734, 9, 0.62)}
         <line x1="0" y1="35" x2="760" y2="35" stroke="${line}"/>
-        ${icon("undo", 10, 42)}${icon("redo", 36, 42)}<line x1="64" y1="42" x2="64" y2="60" stroke="${line}"/>${tools}
-        <line x1="0" y1="66" x2="760" y2="66" stroke="${line}"/>
-        <text x="12" y="84" font-size="12" style="fill:var(--ink-2)">Tous les postes</text><text x="118" y="84" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
-        <line x1="114" y1="91" x2="176" y2="91" stroke="${P}" stroke-width="2.5"/><text x="190" y="84" font-size="12" style="fill:var(--ink-2)">Circuit B</text>${icon("plus", 252, 72, 0.55)}
-        <line x1="0" y1="93" x2="760" y2="93" stroke="${line}"/>
-        <rect x="12" y="102" width="210" height="146" fill="var(--surface)" stroke="var(--ink)"/>
-        <text x="117" y="118" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
-        <line x1="12" y1="125" x2="222" y2="125" stroke="var(--ink)"/>${sheet}<path d="M20 135.5l9 5-9 5z" fill="none" stroke="var(--ink)" stroke-width="1.3"/>
-        <text x="14" y="276" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
-        <text x="14" y="294" font-size="11" style="fill:var(--ink-2)">Longueur 3,2 km · Dénivelée 85 m</text><text x="14" y="310" font-size="11" style="fill:var(--ink-2)">4 postes · 1:10 000</text>
-        <rect x="14" y="320" width="120" height="20" rx="5" fill="var(--surface-2)" stroke="${line}"/><text x="22" y="334" font-size="10.5" style="fill:var(--ink)">Propriétés du circuit…</text>
-        <rect x="233" y="94" width="527" height="306" fill="var(--surface-2)"/>
-        <path d="M250 150c60-30 120 10 170-20s110-40 150 10M260 200c70-20 120 30 200 0s120-30 180 20M300 390c40-60 120-50 170-20" fill="none" stroke="#c8865a" stroke-opacity=".55" stroke-width="1.4"/>
-        <ellipse cx="520" cy="350" rx="60" ry="26" fill="#f6c46a" fill-opacity=".45"/>
+        <rect x="8" y="40" width="50" height="19" rx="5" fill="${P}"/><text x="33" y="53.5" text-anchor="middle" font-size="11" font-weight="700" style="fill:#fff">Fichier</text>${tabs}
+        <rect x="560" y="38" width="128" height="24" fill="color-mix(in srgb, ${P} 9%, var(--surface))"/><line x1="560" y1="38.5" x2="688" y2="38.5" stroke="${P}" stroke-width="3"/>
+        <text x="566" y="53" font-size="7.5" font-weight="700" letter-spacing=".5" style="fill:${P}">OUTILS DU POSTE</text><text x="644" y="53" font-size="11" font-weight="700" style="fill:var(--ink)">Poste</text>
+        <line x1="0" y1="62" x2="760" y2="62" stroke="${line}"/>
+        ${big("select", 12, "Sélection", true)}${gt(36, "Sélection")}${sep(66)}
+        ${big("control", 74, "Poste")}${big("start", 126, "Départ")}${big("finish", 178, "Arrivée")}
+        ${small("crossing", 236, 84, "Passage obligatoire")}${small("issue", 236, 103, "Remise de carte")}${small("exchange", 236, 122, "Échange de carte")}${gt(240, "Postes")}${sep(346)}
+        ${small("bend", 354, 84, "Coude")}${small("gap", 354, 103, "Coupure")}${small("route", 354, 122, "Itinéraire")}${gt(395, "Interpostes")}${sep(444)}
+        ${cells}<rect x="552" y="70" width="10" height="48" rx="2" fill="var(--surface-2)" stroke="${line}"/><text x="557" y="97" text-anchor="middle" font-size="8" style="fill:var(--ink-3)">▾</text>${gt(505, "Objets spéciaux")}${sep(572)}
+        ${big("descr", 580, "Sur la carte")}${txt(640, 86, "Norme", 'style="fill:var(--ink-2)"')}<rect x="676" y="76" width="70" height="15" rx="3" fill="var(--plane)" stroke="${line}"/>${txt(681, 87, "IOF 2018 ▾", 'font-size="9.5" style="fill:var(--ink)"')}
+        ${txt(640, 108, "Langue", 'style="fill:var(--ink-2)"')}<rect x="676" y="98" width="70" height="15" rx="3" fill="var(--plane)" stroke="${line}"/>${txt(681, 109, "Français ▾", 'font-size="9.5" style="fill:var(--ink)"')}${gt(664, "Définitions")}
+        ${icon("launcher", 742, 131, 0.45)}
+        <line x1="0" y1="148" x2="760" y2="148" stroke="${line}"/>
+        <text x="12" y="165" font-size="12" style="fill:var(--ink-2)">Tous les postes</text><text x="118" y="165" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
+        <line x1="114" y1="172" x2="176" y2="172" stroke="${P}" stroke-width="2.5"/><text x="190" y="165" font-size="12" style="fill:var(--ink-2)">Circuit B</text>${icon("plus", 252, 154, 0.55)}
+        <line x1="0" y1="174" x2="760" y2="174" stroke="${line}"/>
+        <rect x="12" y="180" width="210" height="124" fill="var(--surface)" stroke="var(--ink)"/>${sheet}
+        <path d="M20 189.5l9 5-9 5z" fill="none" stroke="var(--ink)" stroke-width="1.3"/>
+        <text x="14" y="330" font-size="12" font-weight="700" style="fill:var(--ink)">Circuit A</text>
+        <text x="14" y="348" font-size="11" style="fill:var(--ink-2)">Longueur 3,2 km · Dénivelée 85 m</text><text x="14" y="364" font-size="11" style="fill:var(--ink-2)">4 postes · 1:10 000</text>
+        <rect x="233" y="175" width="527" height="285" fill="var(--surface-2)"/>
+        <path d="M250 230c60-30 120 10 170-20s110-40 150 10M260 280c70-20 120 30 200 0s120-30 180 20M300 450c40-60 120-50 170-20" fill="none" stroke="#c8865a" stroke-opacity=".55" stroke-width="1.4"/>
+        <ellipse cx="520" cy="410" rx="60" ry="26" fill="#f6c46a" fill-opacity=".45"/>
         <g fill="none" stroke="${P}" stroke-width="2.2">${legs}${marks}</g>
-        <line x1="232" y1="93" x2="232" y2="400" stroke="${line}" stroke-width="2"/>
-        <g>${[0, 1, 2].map((i) => `<rect x="724" y="${104 + i * 26}" width="24" height="22" rx="5" fill="var(--surface)" stroke="${line}"/>`).join("")}${icon("plus", 727, 106, 0.6)}${icon("minus", 727, 132, 0.6)}${icon("fit", 727, 158, 0.6)}
-          <line x1="736" y1="186" x2="736" y2="240" stroke="${P}" stroke-width="3" stroke-linecap="round"/><circle cx="736" cy="196" r="5" fill="${P}"/></g>
-        <line x1="0" y1="400" x2="760" y2="400" stroke="${line}"/>
-        <text x="12" y="420" font-size="11" style="fill:var(--ink-3)">Cliquer pour poser un poste — il vient après le poste choisi…</text><text x="748" y="420" text-anchor="end" font-size="11" style="fill:var(--ink-3)">1:10 000 · 140 %</text>
-        ${mark(1, 226, 18)}${mark(2, 424, 51)}${mark(3, 292, 80)}${mark(4, 222, 112)}${mark(5, 214, 266)}${mark(6, 420, 165)}${mark(7, 708, 116)}${mark(8, 446, 416)}
+        <line x1="232" y1="174" x2="232" y2="460" stroke="${line}" stroke-width="2"/>
+        <g>${[0, 1, 2].map((i) => `<rect x="724" y="${184 + i * 26}" width="24" height="22" rx="5" fill="var(--surface)" stroke="${line}"/>`).join("")}${icon("plus", 727, 186, 0.6)}${icon("minus", 727, 212, 0.6)}${icon("fit", 727, 238, 0.6)}
+          <line x1="736" y1="266" x2="736" y2="320" stroke="${P}" stroke-width="3" stroke-linecap="round"/><circle cx="736" cy="276" r="5" fill="${P}"/></g>
+        <line x1="0" y1="460" x2="760" y2="460" stroke="${line}"/>
+        <text x="12" y="477" font-size="11" style="fill:var(--ink-3)">Cliquer pour choisir un objet ; glisser un objet choisi pour le déplacer…</text><text x="748" y="477" text-anchor="end" font-size="11" style="fill:var(--ink-3)">1:10 000 · 140 %</text>
+        ${mark(1, 352, 18)}${mark(2, 540, 50)}${mark(3, 346, 136)}${mark(4, 700, 50)}${mark(5, 292, 162)}${mark(6, 222, 186)}${mark(7, 420, 240)}${mark(8, 708, 196)}
       </svg>`;
     };
     const CH = {
@@ -1039,7 +1065,7 @@ export async function render(main, { query = {} } = {}) {
             <div class="mx-step"><b>Poser les postes</b>Avec l'outil Poste, sur l'onglet « Tous les postes » ou directement dans un circuit.</div>
             <div class="mx-step"><b>Composer les circuits</b>Un onglet par circuit : départ, postes dans l'ordre, arrivée.</div>
             <div class="mx-step"><b>Remplir les définitions</b>Dans le panneau de gauche, case par case, symboles ou texte.</div>
-            <div class="mx-step"><b>Vérifier</b>Longueurs, dénivelée, postes trop proches, définitions oubliées : le menu Rapports.</div>
+            <div class="mx-step"><b>Vérifier</b>Longueurs, dénivelée, postes trop proches, définitions oubliées : l'onglet Vérifier.</div>
             <div class="mx-step"><b>Imprimer et exporter</b>Les PDF des cartes et des définitions, les fichiers pour le chronométrage.</div>
           </div>
           <h3>Les trois choix</h3>
@@ -1051,7 +1077,7 @@ export async function render(main, { query = {} } = {}) {
             <li><b>Ouvrir un événement</b> : un de ceux que vous avez créés ou dont l'équipe vous compte, dans la liste.</li>
           </ul>
           <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ocnt ou un .ppen un import. Le bouton
-            « Événements », en haut à gauche, et le menu Fichier ramènent ces trois choix à tout moment ; Échap les ferme. Un lien qui nomme un événement l'ouvre
+            « Événements », en haut à gauche, et la page Fichier (Nouveau, Ouvrir, Importer) ramènent ces trois choix à tout moment ; Échap les ferme. Un lien qui nomme un événement l'ouvre
             directement.</p>
           <h3>Créer un événement</h3>
           <p>« Nouvel événement » demande :</p>
@@ -1069,9 +1095,9 @@ export async function render(main, { query = {} } = {}) {
             <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute, comme traceur,
               contrôleur ou lecteur. Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Enregistré tout seul</h3><p>Quelques secondes après chaque changement ; une version est gardée toutes les
-              30 minutes de travail, et on peut en garder une sous un nom (Fichier › Enregistrer une version).</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe (Événement › Chiffrement), le serveur ne
-              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un fichier O'CN (Fichier › Exporter au format O'CN), qui, lui,
+              30 minutes de travail, et on peut en garder une sous un nom (${W("version-save")}).</p></div>
+            <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe (${W("encryption")}), le serveur ne
+              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un fichier O'CN (${W("export-ocn")}), qui, lui,
               n'est pas chiffré.</p></div>
           </div>
         </section>`,
@@ -1090,29 +1116,28 @@ export async function render(main, { query = {} } = {}) {
               distances viennent de sa <b>résolution</b> : à 300 points par pouce, 1 mm de carte fait 11,8 points.</p></div>
           </div>
           <p>La résolution d'une image est lue dans le fichier quand il la donne ; sinon elle est demandée. Pour la vérifier, mesurez une distance connue
-            (Rapports › Longueurs des interpostes) ; Événement › Propriétés la corrige. Une carte OCAD peut appeler d'autres fichiers en fond (des
+            (${W("rep-legs")}) ; ${W("event-props")} la corrige. Une carte OCAD peut appeler d'autres fichiers en fond (des
             « modèles », une photo aérienne) : ils ne sont pas dessinés.</p>
-          <p>Le curseur sous les boutons de zoom pâlit la carte, pour mieux voir le circuit. Fichier › Changer de carte en met une autre (une version corrigée,
+          <p>Le curseur sous les boutons de zoom (ou Carte › Affichage › Intensité) pâlit la carte, pour mieux voir le circuit. ${W("map-change")} en met une autre (une version corrigée,
             un meilleur scan, le fichier OCAD au lieu d'une image) : les postes gardent leur place sur la feuille, leurs coordonnées (une nouvelle version du même
             fichier OCAD), leur place sur le terrain (deux cartes géoréférencées), ou se calent ensuite en deux clics.</p>
           <h3>Le violet du circuit</h3>
-          <p>Événement › Apparence des circuits règle la façon dont le circuit se pose sur la carte :</p>
+          <p>Le groupe Carte › Violet règle la façon dont le circuit se pose sur la carte ; chaque façon y est montrée en petit :</p>
           <ul class="mx-list">
             <li><b>Par-dessus</b> : le violet couvre la carte.</li>
             <li><b>Mélangé</b> : le noir de la carte reste visible à travers le violet, comme à l'impression en surimpression.</li>
             <li><b>En couches</b> (carte OCAD ou Mapper) : les cercles, les traits et les zones interdites passent sous les couleurs de la carte au-dessus d'une couleur
               choisie, d'ordinaire sous le noir des chemins et des rochers ; les numéros restent dessus.</li>
           </ul>
-          <p>Sur une carte OCAD ou Mapper, le violet est par défaut celui de la carte ; on peut en donner un autre en CMJN. Les « effets de surimpression » montrent
+          <p>Sur une carte OCAD ou Mapper, le violet est par défaut celui de la carte ; on peut en donner un autre en CMJN (Carte › Violet › Apparence). Les « effets de surimpression » (Carte › Violet › Surimpression) montrent
             les couleurs que la carte marque « surimpression » fondues, comme elles s'impriment.</p>
           <h3>Caler les postes en deux clics</h3>
-          <p>Quand les postes ne tombent pas au bon endroit — un fichier .ppen fait sur une autre carte, un scan un peu tourné — Événement › Caler les postes sur la
-            carte les replace : on clique un poste, puis l'endroit où il devrait être, et cela deux fois, avec deux postes éloignés l'un de l'autre. Le tracé en
+          <p>Quand les postes ne tombent pas au bon endroit — un fichier .ppen fait sur une autre carte, un scan un peu tourné — ${W("calage")} les replace : on clique un poste, puis l'endroit où il devrait être, et cela deux fois, avec deux postes éloignés l'un de l'autre. Le tracé en
             déduit le décalage, la rotation et l'échelle. Si l'échelle change, il propose de corriger la carte (la résolution de l'image ou l'échelle du PDF),
             les longueurs du circuit restant justes, ou les postes. Un .ppen fait sur une carte OCAD, importé avec la même carte OCAD, n'a pas besoin de calage.</p>
           <h3>Le géoréférencement</h3>
           <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
-            (Lambert 93, UTM, les systèmes d'OCAD) et un TIFF géoréférencé le sont tout seuls. Sinon, Événement › Géoréférencer la carte : deux points de la
+            (Lambert 93, UTM, les systèmes d'OCAD) et un TIFF géoréférencé le sont tout seuls. Sinon, ${W("georef")} : deux points de la
             carte (un carrefour, un angle de bâtiment) cliqués avec leur latitude et leur longitude — un clic droit sur Géoportail ou une carte en ligne les
             donne —, ou trois et plus pour une photo déformée ; ou un fichier de calage (.jgw, .pgw… avec son .prj) ; ou un KMZ de la même image. La fenêtre
             vérifie l'échelle obtenue contre celle de la carte.</p>
@@ -1123,29 +1148,64 @@ export async function render(main, { query = {} } = {}) {
           <h2>L'écran</h2>
           <figure class="mx-fig">${raw(screenFig())}</figure>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>La barre du haut</b>« Événements » ramène les trois choix (ouvrir un autre événement, en créer ou en importer un) ; puis le
-              titre et les menus. À droite, l'état de l'enregistrement,
-              et ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
-            <div class="mx-step"><b>Les outils</b>Annuler, rétablir, puis un outil par objet à poser (chapitre « Les postes »).</div>
-            <div class="mx-step"><b>Les onglets</b>« Tous les postes », puis un onglet par circuit, et « + » pour en créer un.</div>
-            <div class="mx-step"><b>Les définitions</b>Celles du circuit en cours, à remplir en cliquant (chapitre « Les définitions »).</div>
-            <div class="mx-step"><b>L'objet choisi</b>Ce qu'on sait de lui (longueur, circuits, charge…) et ses boutons. Sans rien de choisi : le circuit.</div>
+            <div class="mx-step"><b>La barre du haut</b>« Événements » ramène les trois choix (ouvrir un autre événement, en créer ou en importer un) ; le titre ;
+              l'accès rapide : annuler, rétablir, et le PDF du circuit en cours. À droite, la recherche d'une commande, l'état de l'enregistrement, ▭ (l'affichage du
+              ruban, le mode Purple Pen), ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
+            <div class="mx-step"><b>Les onglets du ruban</b>Fichier, puis un onglet par étape du travail : Tracer, Circuits, Carte, Vérifier, Imprimer, Équipe et
+              course. Un chiffre sur Vérifier : les problèmes trouvés ; sur Équipe et course : les commentaires encore ouverts.</div>
+            <div class="mx-step"><b>Le ruban</b>Les commandes de l'onglet, par groupes : de grands boutons pour les plus courantes, de petits empilés par trois, des
+              réglages en place, et ↘ dans le coin d'un groupe pour sa fenêtre complète.</div>
+            <div class="mx-step"><b>L'onglet de l'objet choisi</b>Un poste, un interposte, un objet choisi, ou une ligne en train d'être dessinée, a son propre
+              onglet, en violet, avec tout ce qui s'applique à lui.</div>
+            <div class="mx-step"><b>Les circuits</b>« Tous les postes », puis un onglet par circuit, et « + » pour en créer un.</div>
+            <div class="mx-step"><b>Les définitions</b>Celles du circuit en cours, à remplir en cliquant (chapitre « Les définitions ») ; dessous, le circuit en
+              cours quand rien n'est choisi.</div>
             <div class="mx-step"><b>La carte</b>Où l'on pose et déplace les objets. Glisser la séparation à gauche élargit le panneau.</div>
-            <div class="mx-step"><b>Le zoom</b>Zoom avant, arrière, tout le circuit, et le curseur qui pâlit la carte.</div>
-            <div class="mx-step"><b>La ligne d'aide</b>Ce que fait l'outil en cours ; à droite, l'échelle et le zoom.</div>
+            <div class="mx-step"><b>Le zoom et la ligne d'aide</b>Zoom avant, arrière, tout le circuit, et le curseur qui pâlit la carte ; en bas, ce que fait
+              l'outil en cours, l'échelle et le zoom.</div>
           </div>
+          <h3>Le ruban</h3>
+          <p>Les onglets suivent le travail : <b>Tracer</b> pour poser les postes et les objets, <b>Circuits</b> pour composer les circuits, leurs variantes et leur
+            impression, <b>Carte</b> pour la carte elle-même (la changer, la caler, la géoréférencer, la façon dont le violet s'y pose), <b>Vérifier</b>, <b>Imprimer</b>
+            (les PDF et tous les fichiers à exporter), <b>Équipe et course</b> (l'équipe, le terrain, l'après-course). La page <b>Fichier</b> réunit ce qui sert
+            rarement : les informations de l'événement, nouveau, ouvrir, importer, enregistrer et les versions, chaque fichier à exporter avec ce à quoi il sert,
+            partager, hors ligne et les options.</p>
+          <p>Un bouton grisé dit pourquoi dans sa bulle (« Choisissez d'abord un circuit », « à partir du jour de la course »…) : on ne tombe pas sur une commande qui
+            refuse. La bulle de chaque bouton dit aussi ce qu'il fait, sa touche, et où il se trouve dans le mode Purple Pen ; F1 ouvre le guide à son chapitre.
+            Certains réglages se font dans le ruban même, avec l'effet tout de suite : l'échelle d'impression, la norme et la langue des définitions, la taille des
+            cercles, des traits et des numéros, la façon dont le violet se pose sur la carte et le balisage d'un interposte, chacune montrée en petit.</p>
+          <h3>L'onglet de l'objet choisi</h3>
+          <p>Choisir un poste fait venir l'onglet <b>Poste</b> : son code, sa définition, une fourche ou des boucles à partir de lui, une ligne de texte avant ou
+            après lui, couper son cercle, l'échange de carte, et ce qu'on sait de lui (ses circuits, sa charge, la longueur jusqu'au suivant). Un interposte a l'onglet
+            <b>Interposte</b> (coude, coupure, itinéraire, balisage), un objet spécial l'onglet <b>Objet</b> (apparence, circuits, sommets), et une ligne ou une zone
+            en train d'être dessinée l'onglet <b>Tracé en cours</b>, avec « Terminer » et « Annuler ». Choisi depuis l'onglet Tracer, l'objet ouvre son onglet tout
+            seul ; depuis un autre onglet, son onglet apparaît et clignote, sans prendre la place de celui où l'on travaille. Les commandes qui demandent un endroit
+            (« Ajouter un coude », « Couper le cercle ») demandent ensuite un clic sur la carte ; Échap y renonce.</p>
+          <h3>Trouver une commande</h3>
+          <p>La <b>recherche</b>, en haut (Alt + Q), trouve une commande par un mot de son nom ou de ce qu'elle fait (« fourche », « gpx », « caler », « échelle »), et
+            dit où elle est ; Entrée la lance et fait clignoter son bouton, pour la retrouver la fois suivante. <b>Alt</b> seul fait paraître une lettre sur chaque
+            onglet, puis, l'onglet choisi, sur chaque bouton : deux touches lancent n'importe quelle commande sans la souris.</p>
+          <h3>Plus de place pour la carte</h3>
+          <p>Le bouton ▭, en haut à droite, met le ruban sur <b>une seule ligne</b> de petits boutons, ou n'en garde que <b>les onglets</b> (Ctrl + F1) : il s'ouvre
+            alors sur la carte au clic d'un onglet et se referme après la commande. Quand la fenêtre est étroite, les groupes se replient d'eux-mêmes, en commençant par
+            la droite, chacun en un bouton qui l'ouvre.</p>
+          <h3>Le mode Purple Pen</h3>
+          <p>Ceux qui connaissent Purple Pen peuvent garder ses menus : Fichier › Options, ou le bouton ▭ › Mode Purple Pen, remplace le ruban par les menus Fichier,
+            Événement, Circuit, Rapports, Affichage et la barre d'outils. Affichage › Mode O'CN, ou le bouton « Ruban » en haut à droite, ramène le ruban. Les
+            deux modes font les mêmes choses, et le choix est gardé sur ce navigateur ; le chapitre « Le mode Purple Pen » donne, pour chaque commande des menus, sa
+            place dans le ruban.</p>
           <h3>Se déplacer sur la carte</h3>
-          <p>La molette zoome autour de la souris ; glisser là où il n'y a rien (ou clic droit glissé) déplace la carte ; les flèches aussi. Affichage › Tout le
-            circuit et Toute la carte recadrent. Zoomer loin sur une carte OCAD, Mapper ou PDF la redessine nette.</p>
+          <p>La molette zoome autour de la souris ; glisser là où il n'y a rien (ou clic droit glissé) déplace la carte ; les flèches aussi. Carte › Affichage › Tout
+            le circuit et Toute la carte recadrent. Zoomer loin sur une carte OCAD, Mapper ou PDF la redessine nette.</p>
           <h3>Choisir, déplacer, supprimer</h3>
           <p>Avec l'outil Sélection, un clic choisit un poste, un interposte, un numéro ou un objet ; il se surligne en bleu, sa ligne de définitions en jaune.
             Glisser un objet choisi le déplace. Un objet choisi montre ses <b>poignées</b> : les coudes d'un interposte, les bords de ses coupures, les sommets d'une
             zone, le coin des définitions ; elles se glissent. Suppr supprime l'objet ; dans un circuit, un poste est seulement retiré du circuit et reste dans
             « Tous les postes ».</p>
           <h3>Le clic droit</h3>
-          <p>Le clic droit ouvre le menu de l'objet sous la souris : pour un poste, sa définition, une fourche ou des boucles à partir de lui, un échange de carte, une
-            ligne de texte avant ou après lui dans les définitions, couper son cercle, le retirer ; pour un interposte, un coude, une coupure, le balisage ; pour un
-            objet, son apparence, ses sommets, les circuits où il apparaît.</p>
+          <p>Le clic droit ouvre aussi le menu de l'objet sous la souris, avec les commandes de son onglet : pour un poste, sa définition, une fourche ou des
+            boucles, un échange de carte, une ligne de texte, couper son cercle, le retirer ; pour un interposte, un coude, une coupure, le balisage ; pour un objet,
+            son apparence, ses sommets, les circuits où il apparaît.</p>
           <h3>Le clavier</h3>
           <div class="table-wrap"><table class="data compact tr-doc-tools"><thead><tr><th>Touche</th><th>Effet</th></tr></thead><tbody>
             ${KEYS.map(([k, v]) => html`<tr><td style="white-space:nowrap"><b>${k}</b></td><td>${v}</td></tr>`)}</tbody></table></div>
@@ -1161,7 +1221,7 @@ export async function render(main, { query = {} } = {}) {
           <h3>« Tous les postes » et les circuits</h3>
           <p>L'onglet <b>Tous les postes</b> rassemble tous les postes de l'événement, avec leurs codes. Un poste posé là n'appartient encore à aucun circuit. Un
             poste posé dans un circuit y entre aussi. Un même poste sert à plusieurs circuits : dans un circuit, les postes des autres circuits s'affichent en pâle
-            quand l'outil Poste est actif (ou toujours, avec Affichage › Afficher tous les postes) ; un clic sur l'un d'eux l'ajoute au circuit.</p>
+            quand l'outil Poste est actif (ou toujours, avec ${W("view-all")}) ; un clic sur l'un d'eux l'ajoute au circuit.</p>
           <h3>Où va un nouveau poste</h3>
           <p>Dans un circuit, un poste posé va :</p>
           <ul class="mx-list">
@@ -1172,8 +1232,8 @@ export async function render(main, { query = {} } = {}) {
           <p>Pour ajouter un poste en fin de circuit, choisissez le dernier poste, puis posez le nouveau. Pour en insérer un entre 3 et 4, choisissez
             l'interposte 3–4, ou cliquez simplement près de lui. Le départ et l'arrivée vont toujours au début et à la fin.</p>
           <h3>Codes et numéros</h3>
-          <p>Chaque poste reçoit un <b>code</b> (31, 32…, réglé par Événement › Numérotation automatique, qui évite par défaut les codes lisibles à l'envers) ; le
-            panneau de l'objet choisi le change. Dans un circuit, le <b>numéro d'ordre</b> se place tout seul près du cercle, sans gêner les traits ; glissez-le pour
+          <p>Chaque poste reçoit un <b>code</b> (31, 32…, réglé par ${W("numbering")}, qui évite par défaut les codes lisibles à l'envers) ; le
+            champ Code de l'onglet Poste le change. Dans un circuit, le <b>numéro d'ordre</b> se place tout seul près du cercle, sans gêner les traits ; glissez-le pour
             le mettre ailleurs, et posez-le sur son cercle pour qu'il se replace tout seul. Les propriétés du circuit montrent à la place le code, ou les deux.</p>
           <h3>Déplacer un poste</h3>
           <p>Glissez-le avec l'outil Sélection : ses interpostes suivent dans tous les circuits. Un poste commun à d'autres circuits, déplacé de plus de 75 m, fait
@@ -1183,47 +1243,47 @@ export async function render(main, { query = {} } = {}) {
         <section class="mx-slide" id="tr-circuits">
           <p class="mx-kicker">${K}</p>
           <h2>Les circuits</h2>
-          <p>Le « + » au bout des onglets (ou Circuit › Nouveau circuit) crée un circuit. Ses <b>propriétés</b> (Circuit › Propriétés du circuit, ou un clic sur
+          <p>Le « + » au bout des onglets (ou ${W("course-new")}) crée un circuit. Ses <b>propriétés</b> (${W("course-props")}, ou un clic sur
             l'en-tête des définitions) :</p>
           <ul class="mx-list">
             <li><b>Nom</b> et <b>catégories</b>, qui s'impriment en tête des définitions ;</li>
             <li><b>type</b> : normal (les postes dans l'ordre) ou <b>au score</b> (les postes dans n'importe quel ordre, chacun avec ses points) ;</li>
-            <li><b>dénivelée</b> et <b>longueur</b> : la longueur est calculée (le long des coudes), la dénivelée vient de Rapports › Dénivelée ou se tape ;</li>
-            <li><b>échelle d'impression</b> : une carte au 1:10 000 peut s'imprimer au 1:7 500 pour les jeunes ; cercles et numéros y prennent la taille que la norme prévoit (Événement › Apparence) ;</li>
+            <li><b>dénivelée</b> et <b>longueur</b> : la longueur est calculée (le long des coudes), la dénivelée vient de ${W("rep-climb")} ou se tape ;</li>
+            <li><b>échelle d'impression</b> : une carte au 1:10 000 peut s'imprimer au 1:7 500 pour les jeunes ; cercles et numéros y prennent la taille que la norme prévoit (Carte › Symboles) ; elle se change aussi dans Circuits › Impression › Échelle ;</li>
             <li><b>définitions</b> en symboles, en texte ou les deux, et l'<b>étiquette</b> des postes : numéro d'ordre, code, ou les deux ;</li>
             <li>les <b>concurrents attendus</b>, pour la charge des postes.</li>
           </ul>
-          <p>Circuit › Dupliquer copie un circuit pour en dériver un autre ; Ordre des circuits range les onglets. Supprimer un circuit laisse ses postes dans
-            « Tous les postes » (Événement › Supprimer les postes inutilisés les enlève).</p>
+          <p>${W("course-dup")} copie un circuit pour en dériver un autre ; ${W("course-order")} range les onglets. Supprimer un circuit laisse ses postes dans
+            « Tous les postes » (${W("remove-unused")} les enlève).</p>
           <h3>Les interpostes</h3>
           <ul class="mx-list">
             <li>Un <b>coude</b> (outil Coude) plie un interposte pour contourner une zone interdite ; la longueur suit le trait.</li>
             <li>Une <b>coupure</b> (outil Coupure, en glissant) interrompt un trait ou un cercle pour laisser lisible un détail de la carte. Le tracé coupe aussi
-              tout seul un trait là où il croise un autre interposte du circuit (Événement › Apparence règle cette coupure).</li>
-            <li>Le <b>balisage</b> (clic droit sur l'interposte, ou le panneau de l'interposte choisi) : tout l'interposte, son début ou sa fin balisés, dessinés en
+              tout seul un trait là où il croise un autre interposte du circuit (Carte › Violet › Apparence règle cette coupure).</li>
+            <li>Le <b>balisage</b> (l'onglet Interposte, qui montre chaque façon en petit, ou le clic droit) : tout l'interposte, son début ou sa fin balisés, dessinés en
               tirets.</li>
             <li>Un <b>passage obligatoire</b> (outil Passage obligatoire) marque une brèche ou un pont où le coureur doit passer.</li>
           </ul>
           <h3>Les variantes : fourches et boucles</h3>
           <p>Pour un relais ou une course en masse, les coureurs d'un même circuit ne font pas tous les mêmes postes. Choisissez le poste d'où partent les variantes,
-            puis Circuit › Ajouter une fourche (des branches qui se rejoignent plus loin) ou Ajouter des boucles (des boucles qui reviennent au même poste), avec
+            puis, dans son onglet Poste, Fourche ici (des branches qui se rejoignent plus loin) ou Boucles ici (des boucles qui reviennent au même poste), avec
             le nombre de branches. Un sélecteur apparaît au-dessus de la carte : choisissez une branche, et posez ses postes comme d'habitude. La longueur du
-            circuit s'affiche alors de la variante la plus courte à la plus longue. Circuit › Variantes de relais répartit les variantes entre les équipes et leurs
+            circuit s'affiche alors de la variante la plus courte à la plus longue. ${W("relay")} répartit les variantes entre les équipes et leurs
             relayeurs, de façon que chaque équipe coure, sur l'ensemble de ses relayeurs, toutes les branches ; les PDF s'impriment par équipe et par relayeur.</p>
           <h3>Plusieurs parties</h3>
           <p>Un <b>échange de carte</b> (outil Échange de carte sur un poste du circuit) partage le circuit en parties : un sélecteur de partie apparaît, et chaque
-            partie a sa zone d'impression et s'imprime sur sa propre feuille. Circuit › Options de la partie montre ou non l'arrivée sur une partie.</p>
+            partie a sa zone d'impression et s'imprime sur sa propre feuille. ${W("part-options")} montre ou non l'arrivée sur une partie.</p>
           <h3>La zone d'impression</h3>
-          <p>Circuit › Zone d'impression choisit le papier (A4, A3…), l'orientation, les marges, et la partie de la carte à imprimer : automatique, centrée sur le
+          <p>${W("print-area")} choisit le papier (A4, A3…), l'orientation, les marges, et la partie de la carte à imprimer : automatique, centrée sur le
             circuit, ou un cadre tiré sur la carte. Une zone plus grande que la feuille se découpe sur plusieurs pages qui se chevauchent un peu, ou se réduit à son
-            centre. Affichage › Afficher la zone d'impression la montre en pointillés.</p>
+            centre. ${W("view-printarea")} la montre en pointillés.</p>
         </section>`,
       definitions: () => html`
         <section class="mx-slide" id="tr-definitions">
           <p class="mx-kicker">${K}</p>
           <h2>Les définitions</h2>
           <p>Le panneau de gauche montre les définitions du circuit en cours, telles qu'elles s'imprimeront. Elles suivent la norme IOF (2018/2024 par défaut, 2004
-            possible : Événement › Normes IOF) : une ligne par poste, avec ses colonnes C à H — quel détail, lequel, sa nature, sa taille, l'emplacement du poste.</p>
+            possible : Tracer › Définitions › Norme) : une ligne par poste, avec ses colonnes C à H — quel détail, lequel, sa nature, sa taille, l'emplacement du poste.</p>
           <ul class="mx-list">
             <li>Un <b>clic sur une ligne</b> choisit le poste, et la carte se centre dessus.</li>
             <li>Un <b>second clic sur une case</b> ouvre les symboles de cette colonne ; tapez quelques lettres pour filtrer (« rav » donne « Ravine »). La colonne F
@@ -1232,18 +1292,18 @@ export async function render(main, { query = {} } = {}) {
             <li>Un clic sur la case du <b>code</b> le change ; sur le <b>titre</b>, change le titre de l'événement ; sur l'<b>en-tête</b> (longueur, dénivelée),
               ouvre les propriétés du circuit.</li>
             <li>La ligne de l'<b>arrivée</b> (et celles des passages obligatoires et de la remise de carte) donne le balisage jusqu'à l'arrivée : un clic choisit sa forme.</li>
-            <li>Une <b>ligne de texte</b> avant ou après un poste (clic droit sur le poste) ajoute une consigne (« Passage dans le village »).</li>
+            <li>Une <b>ligne de texte</b> avant ou après un poste (l'onglet Poste › Définitions, ou le clic droit sur le poste) ajoute une consigne (« Passage dans le village »).</li>
           </ul>
-          <p>Les définitions s'impriment en symboles, en texte, ou les deux (les propriétés du circuit). Le texte se compose dans la langue choisie (Événement ›
-            Propriétés), parmi 23 langues ; Événement › Textes des définitions change le texte d'un symbole. Pour les mettre sur la carte, l'outil Définitions sur la
+          <p>Les définitions s'impriment en symboles, en texte, ou les deux (les propriétés du circuit). Le texte se compose dans la langue choisie (Tracer ›
+            Définitions › Langue), parmi 23 langues ; ${W("custom-text")} change le texte d'un symbole. Pour les mettre sur la carte, l'outil Définitions sur la
             carte : glissez un cadre, sa largeur fixe la taille ; le coin en bas à droite redimensionne, un clic droit répartit sur plusieurs colonnes.
-            Fichier › PDF des définitions les imprime seules, plusieurs par page, à découper pour les porte-définitions.</p>
+            ${W("pdf-descriptions")} les imprime seules, plusieurs par page, à découper pour les porte-définitions.</p>
         </section>`,
       speciaux: () => html`
         <section class="mx-slide" id="tr-speciaux">
           <p class="mx-kicker">${K}</p>
           <h2>Les objets spéciaux</h2>
-          <p>L'outil Objets spéciaux ${ic("special", 16)} ouvre leur liste. Chacun se pose à sa façon :</p>
+          <p>Les plus courants sont dans la galerie de Tracer › Objets spéciaux ; ▾ ou ↘ ${ic("special", 16)} ouvre la liste complète. Chacun se pose à sa façon :</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("water", 18)} Points</h3><p>Point d'eau, poste de secours, point de passage facultatif,
               itinéraire interdit, repère de calage : un clic à l'endroit voulu.</p></div>
@@ -1252,8 +1312,8 @@ export async function render(main, { query = {} } = {}) {
             <div class="mx-box" style="--c:var(--s5)"><h3>${ic("text", 18)} Cadres</h3><p>Texte, image, rectangle, ellipse : glisser un cadre sur la carte, puis
               donner le texte (police, taille, couleur), choisir l'image, ou l'apparence du trait.</p></div>
           </div>
-          <p>Un objet s'affiche sur tous les circuits, ou seulement sur ceux choisis (son panneau, ou clic droit › Circuits où il apparaît). Ses sommets se
-            glissent ; un clic droit sur une ligne ou une zone ajoute ou retire un sommet. Le <b>masque blanc</b> efface un morceau de carte sous le circuit (une
+          <p>Un objet s'affiche sur tous les circuits, ou seulement sur ceux choisis (l'onglet Objet › Circuits, ou le clic droit). Ses sommets se
+            glissent ; l'onglet Objet (ou le clic droit) ajoute ou retire un sommet. Le <b>masque blanc</b> efface un morceau de carte sous le circuit (une
             légende obsolète, un détail à cacher). Une zone interdite traversée par un interposte est signalée par le contrôle de l'événement.</p>
         </section>`,
       sorties: () => html`
@@ -1261,21 +1321,21 @@ export async function render(main, { query = {} } = {}) {
           <p class="mx-kicker">${K}</p>
           <h2>Imprimer et exporter</h2>
           <h3>Les cartes des circuits</h3>
-          <p>Fichier › PDF des circuits : cochez les circuits (et « Tous les postes », pour le contrôleur), puis choisissez :</p>
+          <p>${W("pdf-courses")} : cochez les circuits (et « Tous les postes », pour le contrôleur), puis choisissez :</p>
           <ul class="mx-list">
             <li>un seul PDF d'une page par circuit, ou un PDF par circuit, ou par partie ;</li>
             <li>pour les variantes, chacune à part, toutes ensemble, ou par équipe et relayeur ;</li>
             <li>la carte et le circuit, ou le <b>circuit seul</b>, pour une surimpression sur des cartes déjà imprimées ;</li>
             <li>les couleurs en CMJN (pour un imprimeur) ou en RVB.</li>
           </ul>
-          <p>Chaque circuit s'imprime à son échelle d'impression, sur sa zone d'impression. <b>Imprimez le PDF en taille réelle</b> (sans « ajuster à la page »),
+          <p>Le bouton ${ic("printer", 14)} de l'accès rapide, en haut, donne le PDF du circuit en cours avec les derniers réglages. Chaque circuit s'imprime à son échelle d'impression, sur sa zone d'impression. <b>Imprimez le PDF en taille réelle</b> (sans « ajuster à la page »),
             sinon l'échelle est fausse : mesurez une longueur connue sur la première feuille.</p>
           <h3>Les autres fichiers</h3>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("stopwatch", 18)} Chronométrage</h3><p>IOF XML 3.0 (ou 2.0.3 pour les logiciels anciens) : les
               circuits, l'ordre des postes, les longueurs, les équipes des relais. À importer dans le logiciel de chronométrage avant la course.</p></div>
             <div class="mx-box" style="--c:var(--s2)"><h3>${ic("descr", 18)} Définitions, cartons</h3><p>Le PDF des définitions seules, et les cartons de
-              contrôle avec une case par poste (Événement › Poinçons dessine la pince de chaque poste).</p></div>
+              contrôle avec une case par poste (${W("punch")} dessine la pince de chaque poste).</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>${ic("globe", 18)} GPS et cartes en ligne</h3><p>GPX des postes, KML des circuits, images des
               circuits (PNG, JPEG, GIF) avec leur fichier de calage, fichiers RouteGadget : il faut une carte géoréférencée.</p></div>
             <div class="mx-box" style="--c:var(--s4)"><h3>${ic("layers", 18)} OCAD et Mapper</h3><p>Chaque circuit en carte OCAD (9 à 12, 2018) ou Mapper, en
@@ -1285,10 +1345,10 @@ export async function render(main, { query = {} } = {}) {
               .ppen s'ouvre dans Purple Pen à côté de la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("table", 18)} Tableaux</h3><p>Les rapports en CSV (séparateur « ; »), pour un tableur.</p></div>
           </div>
-          <p>Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; Affichage › Plusieurs fichiers
+          <p>Quand une commande crée plusieurs fichiers, ils s'écrivent dans un dossier choisi (Chrome, Edge) ou dans un seul .zip ; ${W("save-to")}
             change ce choix.</p>
           <h3>L'apparence</h3>
-          <p>Événement › Apparence des circuits règle la taille des cercles et l'épaisseur des traits (en proportion de la norme), la police, la taille et le gras des
+          <p>Carte › Symboles règle la taille des cercles, l'épaisseur des traits et la hauteur des numéros (en proportion de la norme) ; Carte › Violet › Apparence, la police et le gras des
             numéros, leur contour blanc, la coupure automatique des traits qui se croisent, la taille selon l'échelle d'impression, et le violet. Les textes posés sur
             la carte s'impriment dans la police qu'ils nomment, avec gras et italique, et dans toutes les langues.</p>
         </section>`,
@@ -1296,7 +1356,7 @@ export async function render(main, { query = {} } = {}) {
         <section class="mx-slide" id="tr-verifier">
           <p class="mx-kicker">${K}</p>
           <h2>Vérifier</h2>
-          <p>Le menu Rapports donne, pour l'événement entier :</p>
+          <p>L'onglet Vérifier donne, pour l'événement entier :</p>
           <ul class="mx-list">
             <li><b>Résumé des circuits</b> : longueur, dénivelée, nombre de postes ;</li>
             <li><b>Longueurs des interpostes</b>, circuit par circuit ;</li>
@@ -1306,55 +1366,87 @@ export async function render(main, { query = {} } = {}) {
               autres (au moins 30 m entre deux postes en forêt, 15 m en sprint, et des détails nettement différents à moins de 60 m, 30 m en sprint), interpostes qui
               traversent une zone interdite ou une limite infranchissable, qui passent dans le cercle d'un autre poste, allers-retours, interpostes trop courts.</li>
           </ul>
+          <p>Le contrôle tourne tout seul après chaque changement : le nombre de problèmes trouvés s'affiche sur l'onglet Vérifier — en rouge, en orange quand il
+            ne reste que des rappels, une dénivelée pas encore renseignée par exemple —, et les premiers dans l'onglet même ; un clic ouvre le contrôle complet. Le
+            groupe « Circuit en cours » donne sa longueur, sa dénivelée, son nombre de postes, son échelle et ses concurrents attendus.</p>
           <h3>Dénivelée et temps du vainqueur</h3>
-          <p>Rapports › Dénivelée calcule la montée de chaque circuit sur le modèle de terrain de l'IGN (carte géoréférencée, en France) ; cochez les circuits pour reprendre
+          <p>${W("rep-climb")} calcule la montée de chaque circuit sur le modèle de terrain de l'IGN (carte géoréférencée, en France) ; cochez les circuits pour reprendre
             la valeur dans leurs propriétés. Dessinez avec l'outil Itinéraire le chemin prévu là où la ligne droite passe sur une colline que les coureurs
-            contourneront. Rapports › Temps estimés du vainqueur donne, pour chaque circuit, le temps attendu du vainqueur, d'après les résultats des deux dernières
+            contourneront. ${W("rep-times")} donne, pour chaque circuit, le temps attendu du vainqueur, d'après les résultats des deux dernières
             saisons, et la longueur qui donne un temps visé (chapitre « Ses calculs »).</p>
-          <p>La charge vient du nombre de concurrents de chaque circuit : Événement › Charge des concurrents le reprend des inscriptions de la FFCO quand la course y est.</p>
+          <p>La charge vient du nombre de concurrents de chaque circuit : ${W("load")} le reprend des inscriptions de la FFCO quand la course y est.</p>
         </section>`,
       outils: () => html`
         <section class="mx-slide" id="tr-outils">
           <p class="mx-kicker">${K}</p>
           <h2>En équipe et sur le terrain</h2>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} L'équipe</h3><p>Événement › Équipe et partage : ajoutez des licenciés par leur numéro.
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} L'équipe</h3><p>${W("team")} : ajoutez des licenciés par leur numéro.
               Le traceur et le contrôleur modifient, le lecteur lit et commente. Un seul modifie à la fois ; les autres peuvent « prendre la main ».</p></div>
-            <div class="mx-box" style="--c:var(--s2)"><h3>${ic("comment", 18)} Commentaires</h3><p>Rapports › Commentaires de l'équipe : un commentaire épinglé à un
-              endroit de la carte, des réponses, et « Fait » quand c'est réglé.</p></div>
-            <div class="mx-box" style="--c:var(--s3)"><h3>${ic("history", 18)} Versions</h3><p>Fichier › Versions : chaque version, ce qui a changé depuis
+            <div class="mx-box" style="--c:var(--s2)"><h3>${ic("comment", 18)} Commentaires</h3><p>${W("comments")} : un commentaire épinglé à un
+              endroit de la carte, des réponses, et « Fait » quand c'est réglé ; le nombre de ceux encore ouverts s'affiche sur l'onglet.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>${ic("history", 18)} Versions</h3><p>${W("versions")} : chaque version, ce qui a changé depuis
               (« poste 34 déplacé de 40 m »), et la rouvrir.</p></div>
             <div class="mx-box" style="--c:var(--s4)"><h3>${ic("phone", 18)} Mode terrain</h3><p>Sur le téléphone, la carte géoréférencée avec sa position GPS, le
               poste le plus proche, sa distance et sa direction ; chaque poste noté posé, vérifié, ramassé ou à problème, avec une photo.</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("offline", 18)} Hors ligne</h3><p>Fichier › Travailler hors ligne garde l'événement sur l'appareil :
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("offline", 18)} Hors ligne</h3><p>${W("offline")} garde l'événement sur l'appareil :
               il s'ouvre sans réseau, et les modifications partent quand le réseau revient.</p></div>
-            <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Ramassage</h3><p>Rapports › Plan de ramassage : à quelle heure chaque poste peut être
+            <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Ramassage</h3><p>${W("rep-pickup")} : à quelle heure chaque poste peut être
               ramassé, et l'ordre de ramassage de chaque ramasseur.</p></div>
           </div>
-          <p>Aussi : Affichage › Lire un circuit sur la carte reprend les postes d'un circuit imprimé (un PDF ou une photo d'une course passée), à vérifier ensuite ;
-            Affichage › Autres circuits montre d'autres circuits en pâle, pour éviter les croisements et les postes trop proches.</p>
+          <p>Aussi : ${W("import-course")} reprend les postes d'un circuit imprimé (un PDF ou une photo d'une course passée), à vérifier ensuite ;
+            ${W("view-others")} montre d'autres circuits en pâle, pour éviter les croisements et les postes trop proches.</p>
         </section>`,
       apres: () => html`
         <section class="mx-slide" id="tr-apres">
           <p class="mx-kicker">${K}</p>
           <h2>Après la course</h2>
-          <p>Le jour de la course ou après (jamais avant : les circuits restent secrets), le traceur peut :</p>
+          <p>Le jour de la course ou après (jamais avant : les circuits restent secrets, et les boutons d'Équipe et course › Après la course restent grisés jusque-là), le
+            traceur peut :</p>
           <ul class="mx-list">
-            <li><b>publier les circuits vers l'analyse multi</b> (Fichier) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
+            <li><b>publier les circuits vers l'analyse multi</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS ;</li>
-            <li><b>envoyer les circuits à « Résultats »</b> (Fichier) : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
+            <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
               quand les fichiers des organisateurs ne les donnent pas ;</li>
-            <li>lire le <b>bilan</b> (Rapports › Bilan après la course) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
+            <li>lire le <b>bilan</b> (${W("rep-after")}) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
               trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse multi.</li>
           </ul>
         </section>`,
+      ruban: () => {
+        // each item of a group: a command, a setting, a figure, the gallery
+        const flat = (items) => items.flatMap((it) => (it.t === "stack" ? flat(it.items) : [it]));
+        const entry = (it) => {
+          if (it.t === "field") { const f = TRD.INFO.field[it.id] || [it.id, ""]; return html`<dt>${ic("sliders", 16)}<span>${f[0]}</span></dt><dd>${f[1]}</dd>`; }
+          if (it.t === "chip") return html`<dt>${ic("list", 16)}<span>${{ issues: "Les problèmes", course: "Le circuit en cours", mapInfo: "La carte", geoInfo: "Géoréférencée ?", control: "Le poste", leg: "L'interposte", special: "L'objet", drawing: "Le tracé" }[it.id] || ""}</span></dt><dd>${TRD.INFO.chip[it.id] || ""}</dd>`;
+          if (it.t === "modes") return html`<dt>${ic("palette", 16)}<span>${it.id === "blend" ? "Par-dessus, Mélangé, En couches" : "Aucun, Tout, Le début, La fin"}</span></dt><dd>${TRD.INFO.modes[it.id]}</dd>`;
+          if (it.t === "gallery") return html`<dt>${ic("special", 16)}<span>La galerie</span></dt><dd>${TRD.INFO.gallery}</dd>`;
+          return html`<dt>${ic(it.icon, 16)}<span>${it.label}${it.key && it.key.length === 1 ? ` (${it.key})` : ""}</span></dt><dd>${it.tip || MENU_HELP[it.act] || ""}${it.split ? ` Le petit ▾ : ${it.split.map((x) => x[1]).join(", ")}.` : ""}</dd>`;
+        };
+        const groups = (gs) => gs.map((g) => html`<h4 class="tr-doc-gh">${g.title || "—"}</h4><dl class="tr-doc-menu">${flat(g.items).map(entry)}</dl>`);
+        return html`
+        <section class="mx-slide" id="tr-ruban">
+          <p class="mx-kicker">${K}</p>
+          <h2>Le ruban, onglet par onglet</h2>
+          <p>Chaque commande du mode O'CN, l'interface par défaut, avec l'icône qu'elle porte dans le tracé : les onglets, ceux de l'objet choisi, puis la page Fichier.</p>
+          ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
+          <h3 class="tr-doc-mh">${ic("select", 20)}<span>Les onglets de l'objet choisi</span></h3>
+          ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
+          <h3 class="tr-doc-mh">${ic("file", 20)}<span>La page Fichier</span></h3>
+          ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
+            sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
+              : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Informations</span></dt><dd>L'événement : sa carte, ses circuits, votre rôle, le chiffrement ; ses propriétés, son équipe.</dd>`
+                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Le mode O'CN (le ruban) ou le mode Purple Pen (les menus) ; le ruban complet, sur une ligne ou ses onglets seuls ; les fichiers multiples.</dd>`
+                  : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
+        </section>`;
+      },
       menus: () => html`
         <section class="mx-slide" id="tr-menus">
           <p class="mx-kicker">${K}</p>
-          <h2>Les menus, un par un</h2>
-          <p>Chaque commande des cinq menus, avec l'icône qu'elle porte dans le tracé.</p>
+          <h2>Le mode Purple Pen, menu par menu</h2>
+          <p>Avec le mode Purple Pen (Fichier › Options, ou le bouton ▭ en haut à droite), le ruban laisse la place aux menus et à la barre d'outils, comme dans
+            Purple Pen. Chaque commande des cinq menus, avec l'icône qu'elle porte, et sa place dans le ruban.</p>
           ${TR.MENUS.map((m) => html`<h3 class="tr-doc-mh">${ic(m.icon, 20)}<span>${m.label}</span></h3>
-            <dl class="tr-doc-menu">${m.items.filter((it) => it !== "-").map(([a, label]) => html`<dt>${raw(TR.actIcon(a, 16))}<span>${label}</span></dt><dd>${MENU_HELP[a] || ""}</dd>`)}</dl>`)}
+            <dl class="tr-doc-menu">${m.items.filter((it) => it !== "-").map(([a, label]) => html`<dt>${raw(TR.actIcon(a, 16))}<span>${label}</span></dt><dd>${MENU_HELP[a] || ""}${W(a) && !W(a).startsWith(m.label + " ›") ? html` <span class="tr-doc-where">Ruban : ${W(a)}</span>` : ""}</dd>`)}</dl>`)}
         </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">

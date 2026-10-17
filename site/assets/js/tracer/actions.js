@@ -496,16 +496,18 @@ export function describeSelection(E) {
   }
   return "";
 }
+/** A control's new code, checked (the pane's field, the ribbon's): false when refused. */
+export function changeCode(E, id, v) {
+  const problem = M.codeProblem(E.ev, v), other = M.findCode(E.ev, v);
+  if (problem === "length" || problem === "space") { E.toast("Un code a de 1 à 3 caractères, sans espace."); return false; }
+  if (other && other !== id) { E.toast(`Le code ${v} est déjà pris.`); return false; }
+  if (v === E.ev.controls[id].code) return true;
+  if (problem === "upside") E.toast(`Le code ${v} se lit aussi à l'envers : à éviter.`);
+  return E.change((ev) => { ev.controls[id].code = v; }, "Code changé");
+}
 export function bindInfo(E, el) {
   const code = el.querySelector("#tr-code");
-  code?.addEventListener("change", () => {
-    const v = code.value.trim(), id = E.sel.control;
-    const problem = M.codeProblem(E.ev, v), other = M.findCode(E.ev, v);
-    if (problem === "length" || problem === "space") { E.toast("Un code a de 1 à 3 caractères, sans espace."); code.value = E.ev.controls[id].code; return; }
-    if (other && other !== id) { E.toast(`Le code ${v} est déjà pris.`); code.value = E.ev.controls[id].code; return; }
-    if (problem === "upside") E.toast(`Le code ${v} se lit aussi à l'envers : à éviter.`);
-    E.change((ev) => { ev.controls[id].code = v; }, "Code changé");
-  });
+  code?.addEventListener("change", () => { if (!changeCode(E, E.sel.control, code.value.trim())) code.value = E.ev.controls[E.sel.control].code; });
   const flag = el.querySelector("#tr-flag");
   flag?.addEventListener("change", () => { const s = E.sel; E.change((ev) => M.setFlagging(ev, s.c1, s.c2, flag.value), "Balisage"); });
 }

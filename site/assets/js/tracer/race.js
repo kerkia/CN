@@ -15,6 +15,7 @@ import * as S from "./store.js";
 import * as G from "./geo.js";
 import { modal, field, num, download, fileName } from "./dialogs.js";
 import { ctrlName, csv } from "./reports.js";
+import { where } from "./ribbon-data.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -98,7 +99,7 @@ function coursePolyline(ev, cd) {
 }
 export async function climb(E) {
   const ev = E.ev;
-  if (!G.hasGeo(ev)) { E.toast("Géoréférencez d'abord la carte (Événement › Géoréférencer la carte) : il faut savoir où est le terrain."); return; }
+  if (!G.hasGeo(ev)) { E.toast(`Géoréférencez d'abord la carte (${where("georef")}) : il faut savoir où est le terrain.`); return; }
   const ids = courseList(ev);
   if (!ids.length) { E.toast("Aucun circuit en ligne."); return; }
   const rows = [], profiles = [];
@@ -472,7 +473,7 @@ export async function sendCourses(E) {
  *  printed on it, the controls' positions on that image, the georeference — after the race only. */
 export async function publish(E) {
   const ev = E.ev;
-  if (!G.hasGeo(ev)) { E.toast("Géoréférencez d'abord la carte (Événement › Géoréférencer la carte) : l'analyse pose les traces GPS sur la carte."); return; }
+  if (!G.hasGeo(ev)) { E.toast(`Géoréférencez d'abord la carte (${where("georef")}) : l'analyse pose les traces GPS sur la carte.`); return; }
   const today = new Date().toISOString().slice(0, 10), isRace = E.meta.kind === "race";
   if (isRace && E.meta.date && E.meta.date > today) { E.toast(`Les circuits restent secrets jusqu'à la course (${E.meta.date}) : publiez-les après.`, 6000); return; }
   const info = isRace ? await raceInfo(E).catch(() => ({})) : {};

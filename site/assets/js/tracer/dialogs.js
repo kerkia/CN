@@ -12,6 +12,7 @@ import { writeOcn } from "./ocnfile.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
+import { where } from "./ribbon-data.js";
 import { actIcon } from "./icons.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -106,7 +107,7 @@ export async function action(E, act, btn, at = {}) {
   // the start screen's three choices (pages/tracer.js), from the Fichier menu too
   if (act.startsWith("start-")) { E.onStart?.(act.slice(6)); return; }
   // no event open yet: only the start screen leads somewhere
-  if (E.blank && !["view-map", "view-course", "save-to"].includes(act)) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return; }
+  if (E.blank && !["view-map", "view-course", "save-to", "ui-ribbon", "ui-classic"].includes(act)) { E.toast("Ouvrez, créez ou importez d'abord un événement."); E.onStart?.(); return; }
   switch (act) {
     case "save": await E.saveNow(true); break;
     case "export-ocn": exportOcn(E); break;
@@ -115,6 +116,9 @@ export async function action(E, act, btn, at = {}) {
     case "import-ppen": if (!ro()) importPpen(E); break;
     case "export-ppen": exportPpen(E); break;
     case "pdf-courses": (await lazy.pdf()).coursesDialog(E); break;
+    case "pdf-course": if (needCourse(E)) (await lazy.pdf()).coursesDialog(E, { only: E.cd.course }); break;
+    case "ui-ribbon": E.setUi?.("ocn"); break;
+    case "ui-classic": E.setUi?.("pp"); break;
     case "pdf-descriptions": (await lazy.pdf()).descriptionsDialog(E); break;
     case "pdf-punch": (await lazy.pdf()).punchDialog(E); break;
     case "export-iof3": (await lazy.out()).iofXml(E, 3); break;
@@ -206,7 +210,7 @@ export async function eventTitle(E) {
   if (v) E.change((x) => { x.title = v.t.trim(); }, "Titre");
 }
 /** The languages of Purple Pen's symbol file, by their own names (the event's, if another, kept). */
-function langChoices(cur) {
+export function langChoices(cur) {
   const L = languages(), up = (s, k) => { try { return s.charAt(0).toLocaleUpperCase(k) + s.slice(1); } catch (e) { return s; } };
   const list = Object.entries(L).map(([k, v]) => [k, up(v.name || k, k)]).sort((a, b) => a[1].localeCompare(b[1], "fr"));
   if (cur && !L[cur]) list.unshift([cur, `${cur} (pas dans le fichier de symboles : textes en anglais)`]);
@@ -288,14 +292,18 @@ async function standards(E) {
   const v = await modal(E, { title: "Normes IOF", body: `
     ${field("Définitions de postes", sel("desc", [["2018", "IOF 2018/2024"], ["2004", "IOF 2004"]], E.ev.descStandard))}
     ${field("Carte (tailles des symboles)", sel("map", [["2017", "ISOM 2017 (forêt)"], ["Spr2019", "ISSprOM 2019 (sprint)"], ["2000", "ISOM 2000"]], E.ev.appearance.mapStandard))}` });
-  if (!v) return;
+  if (v) applyStandards(E, v.desc, v.map);
+}
+/** The description and map standards (the dialog, the ribbon's fields). */
+export function applyStandards(E, desc, map) {
+  if (desc === E.ev.descStandard && map === E.ev.appearance.mapStandard) return;
   E.change((x) => {
-    x.descStandard = v.desc; x.appearance.mapStandard = v.map;
+    x.descStandard = desc; x.appearance.mapStandard = map;
     // symbols that do not exist in the new standard take their replacement (ChangeEvent.UpdateDescriptionToMatchStandard)
     for (const c of Object.values(x.controls)) c.symbols = c.symbols.map((id) => {
-      if (!id || symbol(id, v.desc)) return id;
-      const old = symbol(id, v.desc === "2018" ? "2004" : "2018");
-      return old?.repl && symbol(old.repl, v.desc) ? old.repl : id;
+      if (!id || symbol(id, desc)) return id;
+      const old = symbol(id, desc === "2018" ? "2004" : "2018");
+      return old?.repl && symbol(old.repl, desc) ? old.repl : id;
     });
   }, "Normes IOF");
 }
@@ -710,7 +718,7 @@ async function versions(E) {
   const v = await modal(E, { title: "Versions", wide: true, ok: null, cancel: "Fermer", body: list.length ? `<div class="table-wrap"><table class="tr-table"><thead><tr><th>Date</th><th>Par</th><th>Note</th><th>Contenu</th><th></th></tr></thead><tbody>
     ${list.map((x) => `<tr><td class="num">${new Date(x.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</td><td>${esc(x.by)}</td><td>${esc(x.note)}</td><td><small>${esc(x.summary)}</small></td>
     <td><button type="button" class="btn btn-sm" data-diff="${x.n}">Différences</button> <button type="button" class="btn btn-sm" data-restore="${x.n}">Rétablir</button></td></tr>`).join("")}</tbody></table></div><div id="tr-diff"></div>`
-    : "<p>Aucune version enregistrée pour l'instant. Une version se garde à la demande (Fichier › Enregistrer une version) et automatiquement toutes les 30 minutes de travail.</p>",
+    : `<p>Aucune version enregistrée pour l'instant. Une version se garde à la demande (${where("version-save")}) et automatiquement toutes les 30 minutes de travail.</p>`,
   onOpen: (f, done) => {
     f.querySelectorAll("[data-diff]").forEach((b) => b.addEventListener("click", async () => {
       const old = await S.loadVersion(E.meta.id, b.dataset.diff, E.key);

@@ -13,6 +13,12 @@ import * as S from "./store.js";
 import { isPdf } from "./mapsrc.js";
 import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
 import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
+import { where } from "./ribbon-data.js";
+
+// the course PDF's last choices, kept on this browser (the ribbon's « Ce circuit » comes back with them)
+const PDF_PREF = "pdfCourses";
+const lastPdf = () => { try { return JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}")[PDF_PREF] || {}; } catch (e) { return {}; } };
+const keepPdf = (o) => { try { const p = JSON.parse(localStorage.getItem("ocn.tr.prefs") || "{}"); p[PDF_PREF] = o; localStorage.setItem("ocn.tr.prefs", JSON.stringify(p)); } catch (e) { /* this visit */ } };
 
 const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
 const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
@@ -291,17 +297,19 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
 }
 
 // ---- dialogs: course maps -------------------------------------------------------------------------------------------------------
-export async function coursesDialog(E) {
-  const ev = E.ev, ids = M.courseIds(ev);
+/** The courses' PDF. only: one course checked (the ribbon's « Ce circuit »); the other choices are the last ones made. */
+export async function coursesDialog(E, { only = null } = {}) {
+  const ev = E.ev, ids = M.courseIds(ev), last = lastPdf();
   const anyParts = ids.some((id) => M.countParts(ev, M.cdCourse(id)) > 1), anyVars = ids.some((id) => M.hasVariations(ev, id));
-  const v = await modal(E, { title: "PDF des circuits", wide: true, ok: "Créer", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
-    <div class="tr-grid2">${field("Fichiers", sel("files", [["one", "Un seul PDF, une page par circuit"], ["course", "Un PDF par circuit"], ...(anyParts ? [["part", "Un PDF par partie"]] : [])], "one"))}
-    ${anyVars ? field("Variantes", sel("vars", [["all", "Chaque variante à part"], ["combined", "Toutes ensemble"], ["teams", "Par équipe et relayeur (variantes de relais)"]], "all")) : ""}
-    ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul (surimpression)"]], "map"))}
-    ${field("Couleurs", sel("color", [["cmyk", "CMJN (imprimeur)"], ["rgb", "RVB"]], "cmyk"))}</div>
-    <p class="tr-hint">Chaque circuit s'imprime à son échelle d'impression, sur la zone d'impression choisie (Circuit › Zone d'impression) ou centré sur le circuit. Imprimez le PDF sans mise à l'échelle (taille réelle).</p>` });
+  const v = await modal(E, { title: only ? `PDF du circuit ${esc(ev.courses[only]?.name || "")}` : "PDF des circuits", wide: true, ok: "Créer", body: `
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${only ? (id === only ? "checked" : "") : id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : "Tous les postes"}</label>`).join("")}</div>
+    <div class="tr-grid2">${field("Fichiers", sel("files", [["one", "Un seul PDF, une page par circuit"], ["course", "Un PDF par circuit"], ...(anyParts ? [["part", "Un PDF par partie"]] : [])], last.files && (last.files !== "part" || anyParts) ? last.files : "one"))}
+    ${anyVars ? field("Variantes", sel("vars", [["all", "Chaque variante à part"], ["combined", "Toutes ensemble"], ["teams", "Par équipe et relayeur (variantes de relais)"]], last.vars || "all")) : ""}
+    ${field("Contenu", sel("content", [["map", "Carte et circuit"], ["course", "Circuit seul (surimpression)"]], last.content || "map"))}
+    ${field("Couleurs", sel("color", [["cmyk", "CMJN (imprimeur)"], ["rgb", "RVB"]], last.color || "cmyk"))}</div>
+    <p class="tr-hint">Chaque circuit s'imprime à son échelle d'impression, sur la zone d'impression choisie (${where("print-area")}) ou centré sur le circuit. Imprimez le PDF sans mise à l'échelle (taille réelle).</p>` });
   if (!v) return;
+  keepPdf({ files: v.files, vars: v.vars || last.vars, content: v.content, color: v.color });
   E.status("Création des PDF…", "busy");
   try {
     const L = await pdfLib();
@@ -446,7 +454,7 @@ export async function printAreaDialog(E) {
     ${field("Zone", sel("where", [["auto", "Centrée sur le circuit"], ["draw", "Un rectangle à tracer sur la carte (deux coins)"], ["view", "La partie de la carte visible à l'écran"], ["keep", "Garder la zone actuelle"]], pa.auto ? "auto" : "keep"))}
     ${field("Si la zone dépasse la page", sel("over", [["tile", "La découper sur plusieurs pages"], ["crop", "En garder le centre, sur une page"]], pa.restrict ? "crop" : "tile"))}</div>
     <label class="tr-check"><input type="checkbox" name="all"> Pour tous les circuits</label>
-    <p class="tr-hint">Affichage › Afficher la zone d'impression la montre sur la carte.</p>` });
+    <p class="tr-hint">${where("view-printarea")} la montre sur la carte.</p>` });
   if (!v) return;
   const [w, h] = PAGES[v.paper];
   const land = v.orient === "landscape";

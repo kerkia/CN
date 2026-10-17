@@ -4,6 +4,9 @@
 // pan, the wheel to zoom; a new control goes after the selected control, into the selected leg, or into the closest leg).
 // Every change goes through change(): a snapshot for undo (100 steps), a new layout, a redraw, and a save a moment later
 // (the event's version guards against two people saving over each other; a lock tells the team who is editing).
+// Two interfaces (owner, 2026-10-17): the « O'CN mode », by default — a ribbon (ribbon.js, ribbon-data.js) — and the « Purple
+// Pen mode » — the menus and the tool bar (icons.js MENUS) —, chosen per browser (Fichier › Options, the ▭ button; Affichage ›
+// Mode O'CN in the menus).
 
 import * as M from "./model.js";
 import { layoutCourse, distFrom } from "./layout.js";
@@ -19,6 +22,8 @@ import * as D from "./dialogs.js";
 import { syncMap, splitItems, itemBlend, purpleOverride } from "./appear.js";
 import { isMapFile } from "./mapsrc.js";
 import { svg, actIcon, MENUS } from "./icons.js";
+import { mountRibbon } from "./ribbon.js";
+import { uiMode, setUiMode } from "./ribbon-data.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const TOOLS = [["select", "Sélection", "Cliquer pour choisir un objet ; glisser un objet choisi pour le déplacer ; glisser ailleurs pour se déplacer"],
@@ -45,11 +50,11 @@ export async function openEditor(ctx) {
     cd: M.cdAll(), variation: null, sel: null, tool: "select", undo: [], redo: [], dirty: false, saving: false, lastSaved: null,
     opts: { intensity: loadPref("intensity", 1), allControls: loadPref("allControls", false), others: [], printArea: false },
     layout: null, items: [], view: { k: 1, ox: 0, oy: 0 }, pending: null,
-    overlays: [], closeHooks: [], pickOnce: null,
+    overlays: [], closeHooks: [], pickOnce: null, rev: 0, ui: uiMode(),
   };
   window.__tracer = E;                                   // for support and scripted checks
   const root = document.createElement("div");
-  root.className = "tr-app";
+  root.className = `tr-app tr-ui-${E.ui}`;
   root.setAttribute("role", "application");
   root.innerHTML = shell(E);
   // in the page under the site's menus, as the analyses (owner, 2026-10-15): ⤢ fills the window, ↗ moves it to a tab
@@ -102,6 +107,22 @@ export async function openEditor(ctx) {
     $$("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === t || (t.startsWith("special:") && b.dataset.tool === "special"))));
     canvas.dataset.tool = t.split(":")[0];
     E.help(); draw();
+    E.ribbon?.update();
+  };
+  /** A line, an area or a route being drawn, given up (Échap, the ribbon's « Annuler »). */
+  E.cancelPending = () => { E.pending = null; E.ghost = null; if (E.tool !== "select") E.setTool("select"); else { E.help(); draw(); E.ribbon?.update(); } };
+  E.setIntensity = (v) => { E.opts.intensity = v; savePref("intensity", v); const r = $("#tr-intensity"); if (r) r.value = String(v); draw(); };
+  /** The interface: "ocn" (the ribbon) or "pp" (Purple Pen's menus), kept on this browser. */
+  E.setUi = (m) => {
+    m = m === "pp" ? "pp" : "ocn";
+    if (m === E.ui) return;
+    setUiMode(m); E.ui = m;
+    root.classList.toggle("tr-ui-ocn", m === "ocn"); root.classList.toggle("tr-ui-pp", m === "pp");
+    E.ribbon?.closePops?.(); E.ribbon?.closeBackstage?.();
+    if (m === "ocn" && !E.ribbon) mountRibbon(E);
+    refresh(); size();
+    E.toast(m === "ocn" ? "Mode O'CN : le ruban. Les menus de Purple Pen se retrouvent par le bouton ▭, en haut à droite, ou Fichier › Options."
+      : "Mode Purple Pen : les menus. Le ruban revient par Affichage › Mode O'CN, ou le bouton « Ruban » en haut à droite.", 7000);
   };
   E.setCourse = (courseId, part = -1, path = null) => {
     E.cd = courseId ? M.cdCourse(courseId, part, path) : M.cdAll();
@@ -118,7 +139,7 @@ export async function openEditor(ctx) {
   E.toScreen = (x, y) => [E.view.ox + x * E.view.k, E.view.oy - y * E.view.k];
 
   function afterChange() {
-    E.dirty = true;
+    E.dirty = true; E.rev++;
     renderTabs(); refresh();
     scheduleSave();
     fontCheck();
@@ -179,6 +200,7 @@ export async function openEditor(ctx) {
     $("#tr-undo").disabled = !E.undo.length || E.readOnly;
     $("#tr-redo").disabled = !E.redo.length || E.readOnly;
     draw();
+    if (E.ui === "ocn") E.ribbon?.update();
   }
   const selKey = (s) => !s ? null : s.kind === "leg" ? { leg: [s.c1, s.c2] } : s.kind === "special" ? { special: s.id } : s.kind === "control" ? { control: s.control } : null;
   /** The other controls (light purple) while adding, or when « tous les postes » is on; other courses' outlines. */
@@ -244,6 +266,9 @@ export async function openEditor(ctx) {
     if (E.ghost) drawGhost(T);
     if (E.dragRect) { g.strokeStyle = "#0a84ff"; g.setLineDash([5, 4]); const [x1, y1] = T(...E.dragRect[0]), [x2, y2] = T(...E.dragRect[1]); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.setLineDash([]); }
     scheduleSharp();
+    // a shape being drawn: the ribbon's « Tracé en cours » tab follows its points
+    const pk = E.pending ? `${E.pending.kind}:${E.pending.pts.length}` : "";
+    if (E.ribbon && E.ui === "ocn" && pk !== E.ribbon.pk) { E.ribbon.pk = pk; E.ribbon.update(); }
   }
   /** The map, or a part of a vector map's colours ("below", "above": transparent where the part draws nothing). */
   function drawMap(v, part) {
@@ -392,6 +417,8 @@ export async function openEditor(ctx) {
     const sx = e.offsetX, sy = e.offsetY, p = E.toMap(sx, sy);
     if (e.button === 2) { drag = { kind: "pan", sx, sy, ox: E.view.ox, oy: E.view.oy, moved: false, right: true }; return; }
     if (e.button === 1) { drag = { kind: "pan", sx, sy, ox: E.view.ox, oy: E.view.oy, moved: false }; return; }
+    // a command waits for a point (the ribbon's « Ajouter un coude », « Couper le cercle »…): the click is for it
+    if (E.pickOnce) { drag = { kind: "pan", sx, sy, ox: E.view.ox, oy: E.view.oy, moved: false, click: true }; return; }
     // a tool that draws by dragging
     if (!E.readOnly && E.tool !== "select") {
       const d = A.toolDown(E, p, sx, sy, e);
@@ -447,7 +474,7 @@ export async function openEditor(ctx) {
     else if (e.key === "Delete" || e.key === "Backspace") { if (E.sel) { e.preventDefault(); A.deleteSelection(E); } }
     else if (e.key === "Escape") {
       if (E.pickOnce) { E.pickOnce = null; const c = E.pickCancel; E.pickCancel = null; c?.(); E.help(); }
-      else if (E.pending) { E.pending = null; E.ghost = null; E.help(); draw(); }
+      else if (E.pending) E.cancelPending();
       else if (E.tool !== "select") E.setTool("select");
       else if (E.sel) E.select(null);
       else if (FW.isFull() && !FW.inOwnTab()) FW.setFull(false);
@@ -496,7 +523,8 @@ export async function openEditor(ctx) {
       E.sel = null; refresh();
     });
   }
-  function infoPane() { $("#tr-info").innerHTML = A.describeSelection(E); A.bindInfo(E, $("#tr-info")); }
+  // the selected object's pane: in the O'CN mode its details are in its contextual tab, the pane shows the course
+  function infoPane() { const el = $("#tr-info"); el.hidden = E.ui === "ocn" && !!E.sel; el.innerHTML = A.describeSelection(E); A.bindInfo(E, el); }
 
   root.addEventListener("click", (e) => {
     const b = e.target.closest("[data-act]");
@@ -530,13 +558,13 @@ export async function openEditor(ctx) {
     close();
   });
   // Échap: the editor's own uses first (a pick, a tool, a selection), then out of full window
-  FW.setEscapeOwner(() => document.body.contains(root) && !!(E.pickOnce || E.pending || E.tool !== "select" || E.sel || root.querySelector(".tr-modal")));
+  FW.setEscapeOwner(() => document.body.contains(root) && !!(E.pickOnce || E.pending || E.tool !== "select" || E.sel || root.querySelector(".tr-modal") || E.ribbon?.ownsEscape?.()));
   FW.setBeforeClose(() => save(false));                  // « ✕ » of a tab of its own: the work saved first
   $("#tr-fit").addEventListener("click", () => fitCourse());
   $("#tr-zin").addEventListener("click", () => zoomAt(1.4));
   $("#tr-zout").addEventListener("click", () => zoomAt(1 / 1.4));
   $("#tr-intensity").value = String(E.opts.intensity);
-  $("#tr-intensity").addEventListener("input", (e) => { E.opts.intensity = Number(e.target.value); savePref("intensity", E.opts.intensity); draw(); });
+  $("#tr-intensity").addEventListener("input", (e) => { E.setIntensity(Number(e.target.value)); if (E.ui === "ocn") E.ribbon?.render(); });
   // the left pane's width
   const split = $("#tr-split");
   split.addEventListener("pointerdown", (e) => {
@@ -640,6 +668,7 @@ export async function openEditor(ctx) {
   ro.observe(canvas);
 
   // ---- start -------------------------------------------------------------------------------------------------------
+  if (E.ui === "ocn") mountRibbon(E);
   // a vector map is opened in the event's frame (its origin): its size is what the file draws, kept with the event
   if (E.map?.kind === "vector" && E.ev.map.kind === "ocad") { E.ev.map.w = E.map.w; E.ev.map.h = E.map.h; }
   renderTabs();
@@ -695,19 +724,27 @@ function shell(E) {
   <header class="tr-top">
     <button type="button" class="btn btn-sm tr-back" id="tr-close" title="Ouvrir un autre événement, en créer un ou en importer un">${svg("folder", 15)}<span>Événements</span></button>
     <span class="tr-title"></span><span class="beta-tag" title="Version bêta, encore peu testée : signalez les problèmes par « Nous écrire » (le menu de votre nom)">Bêta</span>
-    <nav class="tr-menus">
+    <nav class="tr-menus tr-pp">
       ${MENUS.map(menu).join("")}
     </nav>
-    <div class="tr-tools" role="toolbar" aria-label="Outils">
+    <span class="tr-qat" role="toolbar" aria-label="Accès rapide">
       <button type="button" class="tr-icon" id="tr-undo" title="Annuler (Ctrl+Z)" aria-label="Annuler">${svg("undo")}</button>
       <button type="button" class="tr-icon" id="tr-redo" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">${svg("redo")}</button>
+      <button type="button" class="tr-icon tr-ocn" data-act="pdf-course" title="Le PDF du circuit en cours, avec les derniers réglages" aria-label="PDF de ce circuit">${svg("printer")}</button>
+    </span>
+    <div class="tr-tools tr-pp" role="toolbar" aria-label="Outils">
       <span class="tr-sep"></span>
       ${TOOLS.map(tool).join("")}
       <button type="button" class="tr-tool" data-tool="special" title="Objets spéciaux" aria-label="Objets spéciaux">${svg("special")}</button>
     </div>
+    <span class="tr-search tr-ocn">${svg("search", 15)}<input id="tr-rsearch" type="search" placeholder="Rechercher une commande (Alt+Q)" autocomplete="off" spellcheck="false" aria-label="Rechercher une commande">
+      <div class="tr-rsearch-res" id="tr-rsearch-res" role="listbox" hidden></div></span>
     <span class="tr-status" id="tr-status"></span>
+    <button type="button" class="tr-icon tr-ocn" id="tr-rdisplay" title="Affichage du ruban, mode Purple Pen" aria-label="Affichage du ruban" aria-haspopup="menu">${svg("ribbon")}</button>
+    <button type="button" class="btn btn-sm tr-pp tr-ui-btn" data-act="ui-ribbon" title="Revenir au ruban (mode O'CN)">${svg("ribbon", 15)}<span>Ruban</span></button>
     <span class="fw-btns">${FW.buttons()}</span>
   </header>
+  <div class="tr-ribbon tr-ocn" id="tr-ribbon"></div>
   <div class="tr-banner" id="tr-banner" hidden></div>
   <div class="tr-tabbar"><div class="tr-tabs" id="tr-tabs" role="tablist"></div><div class="tr-parts" id="tr-parts" hidden></div><div class="tr-vars" id="tr-vars" hidden></div></div>
   <div class="tr-body">

@@ -98,6 +98,12 @@ export const ICON = {
   line: '<path d="M4 19L20 5"/>',
   rect: '<rect x="4" y="6" width="16" height="12"/>',
   ellipse: '<ellipse cx="12" cy="12" rx="9" ry="6"/>',
+  // the ribbon (ribbon.js)
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  launcher: '<path d="M7 17L17 7M10 17h7v-7"/>',
+  ribbon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 13h18"/><path d="M7 4v5M12 4v5"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h10"/>',
 };
 export const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ""}</svg>`;
 
@@ -116,6 +122,8 @@ export const ACT_ICON = {
   "rep-summary": "list", "rep-legs": "ruler", "rep-cross": "table", "rep-load": "bars", "rep-audit": "shield", "rep-climb": "mountain",
   "rep-times": "stopwatch", "rep-pickup": "box", "rep-after": "chart", comments: "comment", field: "phone",
   "view-course": "fit", "view-map": "map", "view-all": "view", "view-printarea": "frame", "view-others": "layers", "import-course": "scan", "save-to": "folder",
+  "ui-ribbon": "ribbon", "ui-classic": "menu", "pdf-course": "printer", "special-more": "special", "finish-draw": "check", "cancel-draw": "close",
+  "route-draw": "route", "route-clear": "route", overprint: "layers", "ribbon-full": "ribbon", "ribbon-line": "minus", "ribbon-folded": "fit", keytips: "hash", guide: "list",
   // the right-click menu
   "control-props": "descr", "toggle-exchange": "exchange", points: "hash", "text-before": "text", "text-after": "text", "gap-add-circle": "gap",
   "number-auto": "number", delete: "trash", "bend-add": "bend", "bend-remove": "bend", "gap-add-leg": "gap", "gap-remove-leg": "gap",
@@ -129,7 +137,7 @@ export const ACT_ICON = {
 /** A menu entry's icon (an empty slot of the same width when it has none, so the labels line up). */
 export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) : `<span class="tr-mi-none" style="width:${s}px"></span>`);
 
-/** The editor's menus: { label, icon, items: [action, label] or "-" }. */
+/** The editor's menus, the « Purple Pen mode » (the ribbon of ribbon-data.js is the « O'CN mode », by default): { label, icon, items: [action, label] or "-" }. */
 export const MENUS = [
   { label: "Fichier", icon: "file", items: [["start-new", "Nouvel événement…"], ["start-open", "Ouvrir un événement…"], ["start-import", "Importer un événement (O'CN .ocnt, Purple Pen .ppen)…"], "-",
     ["save", "Enregistrer maintenant"], ["version-save", "Enregistrer une version…"], ["versions", "Versions…"], "-",
@@ -147,5 +155,6 @@ export const MENUS = [
   { label: "Rapports", icon: "reports", items: [["rep-summary", "Résumé des circuits"], ["rep-legs", "Longueurs des interpostes"], ["rep-cross", "Références croisées"], ["rep-load", "Charge des postes et interpostes"],
     ["rep-audit", "Contrôle de l'événement"], "-", ["rep-climb", "Dénivelée (IGN)…"], ["rep-times", "Temps estimés du vainqueur…"], ["rep-pickup", "Plan de ramassage…"], ["rep-after", "Bilan après la course…"], "-", ["comments", "Commentaires de l'équipe…"], ["field", "Mode terrain…"]] },
   { label: "Affichage", icon: "view", items: [["view-course", "Tout le circuit"], ["view-map", "Toute la carte"], ["view-all", "Afficher tous les postes"], ["view-printarea", "Afficher la zone d'impression"],
-    ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"], ["save-to", "Plusieurs fichiers : dossier ou .zip…"]] },
+    ["view-others", "Autres circuits…"], "-", ["import-course", "Lire un circuit sur la carte (PDF, photo)…"], ["save-to", "Plusieurs fichiers : dossier ou .zip…"], "-",
+    ["ui-ribbon", "Mode O'CN : le ruban"]] },
 ];

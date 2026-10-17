@@ -8,6 +8,7 @@
 import * as M from "./model.js";
 import { inPoly } from "./layout.js";
 import { modal, download, fileName, saveFiles } from "./dialogs.js";
+import { where } from "./ribbon-data.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -100,7 +101,7 @@ function visitLoad(ev, id) {
 }
 export function loadReport(ev) {
   const courses = sortedCourses(ev), intro = [];
-  if (!courses.every((c) => ev.courses[c].load >= 0)) intro.push("Attention : la charge n'est pas renseignée pour tous les circuits (Événement › Charge des concurrents) ; les totaux en tiennent compte.");
+  if (!courses.every((c) => ev.courses[c].load >= 0)) intro.push(`Attention : la charge n'est pas renseignée pour tous les circuits (${where("load")}) ; les totaux en tiennent compte.`);
   if (courses.some((c) => M.hasVariations(ev, c))) intro.push("Note : pour les circuits à variantes, la charge d'un poste est la part des variantes qui y passent.");
   const infos = Object.keys(ev.controls).map(Number).filter((id) => ev.controls[id].kind === "normal").map((id) => ({
     id, name: ctrlName(ev, id), n: M.coursesUsing(ev, id, false).length, load: M.controlLoad(ev, id), visits: visitLoad(ev, id) }));
@@ -141,7 +142,7 @@ export function audit(ev) {
     else {
       if (!kinds.includes("start")) missing.push([name(c), "Départ", "Le circuit n'a pas de départ."]);
       if (!kinds.includes("finish")) missing.push([name(c), "Arrivée", "Le circuit n'a pas d'arrivée."]);
-      if (!(ev.courses[c].climb >= 0)) missing.push([name(c), "Dénivelée", "La dénivelée n'est pas renseignée (Rapports › Dénivelée (IGN) la calcule)."]);
+      if (!(ev.courses[c].climb >= 0)) missing.push([name(c), "Dénivelée", `La dénivelée n'est pas renseignée (${where("rep-climb")} la calcule).`]);
     }
     if (checkLoad && !(ev.courses[c].load >= 0)) missing.push([name(c), "Charge", "La charge n'est pas renseignée."]);
   }
@@ -192,7 +193,7 @@ export function audit(ev) {
   if (both.length) sections.push({ title: "Interpostes courus dans les deux sens", head: ["Interposte", "Circuits"], align: "ll", rows: both });
   // Purple Pen: unused controls
   const unused = M.unusedControls(ev, false).sort((a, b) => M.compareControls(ev, a, b));
-  if (unused.length) sections.push({ title: "Postes inutilisés", text: "Ces postes ne servent dans aucun circuit (Événement › Supprimer les postes inutilisés).", head: ["Poste", "Position (mm)"], align: "ll",
+  if (unused.length) sections.push({ title: "Postes inutilisés", text: `Ces postes ne servent dans aucun circuit (${where("remove-unused")}).`, head: ["Poste", "Position (mm)"], align: "ll",
     rows: unused.map((id) => [ctrlName(ev, id), `(${Math.round(ev.controls[id].x)}, ${Math.round(ev.controls[id].y)})`]) });
   // Purple Pen: missing description boxes
   const boxes = [];

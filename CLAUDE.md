@@ -802,6 +802,34 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   symbol « code.1 » and the arcs, as Purple Pen). Images placed on the map: OCAD 11+ layout images kept in the file (parameter
   27 with « F » = base 64), else files beside the course files as templates (OCAD 9-10: a PNG made a GIF; Mapper: in front of
   the map).
+- **The Tracer's two interfaces** (owner, 2026-10-17, after the ribbon study, private artifact
+  https://claude.ai/artifact/Hgd25Hv125DLJohzSyyoqQ): the **« O'CN mode »**, by default — a ribbon — and the **« Purple Pen mode »** —
+  the menus of `icons.js` `MENUS` and the tool bar, unchanged —, per browser (`ocn.tr.prefs` `ui`: "ocn" | "pp"; `E.ui`, `E.setUi`; Fichier ›
+  Options or the ▭ button › Mode Purple Pen, back by Affichage › Mode O'CN or the « Ruban » button). One title bar for both (`.tr-ocn` /
+  `.tr-pp` parts, `.tr-ui-ocn` / `.tr-ui-pp` on the root). The ribbon is data, `tracer/ribbon-data.js` (`TABS`: Fichier, Tracer, Circuits,
+  Carte, Vérifier, Imprimer, Équipe et course; `CONTEXT`: Poste, Interposte, Objet, Tracé en cours, by the selection; `BACKSTAGE`: the
+  « Fichier » page; `INFO`: what its settings and figures are; `where(act)`: a command's place in the interface in use, which the
+  messages naming a command use), drawn by `tracer/ribbon.js` (`mountRibbon`; `E.ribbon.update()` after each refresh, tool change and
+  drawing step). Every button runs the editor's own action (`dialogs.action`) or tool; the ribbon's own acts: `pdf-course` (the PDF of
+  the course in hand with the last choices, `pdf.coursesDialog({ only })`; also the quick-access printer), `special-more`, `route-draw`,
+  `finish-draw` / `cancel-draw` (`E.cancelPending`), `overprint`, `ribbon-full|line|folded`, `ui-classic`, and the commands that need a
+  point (`PICK`: « Ajouter un coude », « Couper le cercle »…, `E.pickOnce`, which the canvas now gives every click). A greyed button says
+  why (`why()`: no event, read-only, no course, not a vector map, before the race day for the after-race ones); contextual commands that do
+  not apply to the selection are left out (`applies()`). A contextual tab opens by itself when the object is chosen with Sélection from
+  « Tracer » (not when just placed by a tool), else it waits and pulses; it goes when the selection does. In place: fields (description
+  standard, language, map standard, print scale, circle/line/number sizes, intensity, a control's code — `A.changeCode`), choices with a
+  preview (the purple's blend, a leg's flagging), a gallery of 8 special objects. Live figures: « Vérifier » counts the event audit's
+  findings (`reports.audit`, 0.5 s after a change, `issueRows`: red for problems, amber for reminders only such as a climb not filled in)
+  and lists the first three; « Équipe et course » counts open comments (`E.commentsData`, read once at opening). Tooltips: what it does,
+  its key, why it is greyed, its place in the Purple Pen mode, F1 for the guide's chapter. Search (Alt+Q) over every command, the
+  « Fichier » page and the old menu names: Entrée runs it and flashes its button. Key hints (Alt alone: tab letters, then button letters).
+  Display (`ocn.tr.prefs` `ribbon`): full, one line (labels dropped when too long), tabs only (Ctrl+F1, opens over the map); groups fold
+  from the right into one button when the width is short; one line on a phone. In the O'CN mode the left pane's object details give way to
+  the contextual tab (`#tr-info` hidden while something is chosen). The guide (« Le tracé »): « L'écran » drawn with the ribbon, « Le
+  ruban » (every tab, group and command from the data), « Le mode Purple Pen » (the menus, each command's place in the ribbon), and every
+  « Menu › Commande » of its text as the ribbon's place (`W(act)` = `ribbonAt`). The home page's « Tracé » slide was taken again with the
+  ribbon (`reel-tracer.webp`, same local demonstration event, scratch `shot_tracer2.mjs`: the beta notice acknowledged and the ribbon set
+  in the headless profile, the left pane widened to 470 px so that the map fills the width with the whole course in view).
 - **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse

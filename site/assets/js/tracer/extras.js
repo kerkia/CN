@@ -11,6 +11,7 @@ import { openMap, isMapFile, mimeOf, imageDpi, isPdf, MAP_ACCEPT } from "./mapsr
 import { modal, field, sel, num, dropHtml, dropZone } from "./dialogs.js";
 import { symbol, symbolText, symbolName, symbolsFor, loadAllTexts } from "./symbols.js";
 import { ctrlName } from "./reports.js";
+import { where } from "./ribbon-data.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -122,7 +123,7 @@ export async function changeMap(E, preset = null) {
     else if (v.fit === "calage") delete x.geo;                  // the old calibration no longer fits once the course moves
   }, "Nouvelle carte");
   E.fitCourse();
-  if (v.fit === "calage") { E.toast(hadGeo && !newGeo ? "Carte changée ; son ancien géoréférencement a été retiré (Événement › Géoréférencer la carte)." : "Carte changée.", 6000); (await import("./calage.js")).calage(E, { fromPpen: false }); }
+  if (v.fit === "calage") { E.toast(hadGeo && !newGeo ? `Carte changée ; son ancien géoréférencement a été retiré (${where("georef")}).` : "Carte changée.", 6000); (await import("./calage.js")).calage(E, { fromPpen: false }); }
   else E.toast(newGeo ? "Carte changée et géoréférencée." : "Carte changée.");
 }
 
@@ -137,7 +138,7 @@ export async function punchPatterns(E) {
     <p>Le motif de la pince de chaque poste (cartons de contrôle papier). Un clic marque ou efface une pointe.</p>
     <div class="tr-punches">${ids.map((id) => `<div class="tr-punch-row"><b>${esc(ev.controls[id].code)}</b> ${grid(id)}
       <select data-size="${id}" aria-label="Taille de la grille">${[3, 4, 5, 6, 7].map((n) => `<option ${n === pats.get(id).n ? "selected" : ""}>${n}</option>`).join("")}</select></div>`).join("")}</div>
-    <p class="tr-hint">Le PDF des cartons de contrôle (Fichier) dispose les cases selon Événement › Poinçons du carton : ${ev.punchCard.rows} × ${ev.punchCard.cols}.</p>
+    <p class="tr-hint">Le PDF des cartons de contrôle (${where("pdf-punch")}) dispose les cases selon ce carton : ${ev.punchCard.rows} × ${ev.punchCard.cols}.</p>
     <div class="tr-grid2">${field("Lignes du carton", `<input name="rows" value="${ev.punchCard.rows}" inputmode="numeric">`)}${field("Colonnes du carton", `<input name="cols" value="${ev.punchCard.cols}" inputmode="numeric">`)}</div>
     <label class="tr-check"><input type="checkbox" name="ltr" ${ev.punchCard.ltr ? "checked" : ""}> Numéroter de gauche à droite</label>
     <label class="tr-check"><input type="checkbox" name="ttb" ${ev.punchCard.ttb ? "checked" : ""}> Numéroter de haut en bas d'abord</label>`,

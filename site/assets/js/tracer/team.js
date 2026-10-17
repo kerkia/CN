@@ -10,6 +10,7 @@ import * as G from "./geo.js";
 import { modal, field } from "./dialogs.js";
 import { ctrlName } from "./reports.js";
 import * as IDB from "./idb.js";
+import { where } from "./ribbon-data.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const when = (t) => new Date(t).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
@@ -208,7 +209,7 @@ function renderField(E) {
   for (const st of Object.values(E.fieldData?.controls || {})) if (counts[st.state] != null) counts[st.state]++;
   const total = Object.values(E.ev.controls).filter((c) => c.kind === "normal").length;
   const st = t ? E.fieldData?.controls?.[t.id] : null;
-  const gpsLine = !G.hasGeo(E.ev) ? "Carte non géoréférencée : pas de position GPS (Événement › Géoréférencer la carte)."
+  const gpsLine = !G.hasGeo(E.ev) ? `Carte non géoréférencée : pas de position GPS (${where("georef")}).`
     : !E.gps ? (E.gpsError || "Recherche de la position…") : `Position à ± ${Math.round(E.gps.acc)} m.`;
   box.innerHTML = `<div class="tr-field-head"><b>Mode terrain</b> <small>${esc(gpsLine)}</small>
       <button type="button" class="tr-icon" data-f="close" title="Quitter le mode terrain" aria-label="Quitter">✕</button></div>

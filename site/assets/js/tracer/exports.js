@@ -7,6 +7,7 @@ import { layoutCourse } from "./layout.js";
 import { itemsFor, drawItems, cmykToRgb, SCREEN } from "./draw.js";
 import { modal, download, fileName, field, sel, num, saveFiles } from "./dialogs.js";
 import { hasGeo, toLatLon } from "./geo.js";
+import { where } from "./ribbon-data.js";
 import { relayAssignments } from "./relay.js";
 import { zip, printBox } from "./pdf.js";
 import { paintCourse, paintMap, purpleOverride, syncMap } from "./appear.js";
@@ -157,7 +158,7 @@ export function iofXml(E, version) {
 // ---- GPX and KML (need the map's georeference) -----------------------------------------------------------------------------------
 function needGeo(E) {
   if (hasGeo(E.ev)) return true;
-  E.toast("La carte n'est pas géoréférencée : Événement › Propriétés… puis « Géoréférencer la carte ».", 6000);
+  E.toast(`La carte n'est pas géoréférencée : ${where("georef")}.`, 6000);
   return false;
 }
 export function gpx(E) {
