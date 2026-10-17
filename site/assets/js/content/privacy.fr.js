@@ -65,7 +65,8 @@ export const body = (SITE) => `
       <ul>
         <li><b>Données conservées :</b> l'adresse e-mail ; les prénom, nom et numéro de licence saisis, vérifiés lors de l'inscription
           d'après les résultats publiés par la FFCO ; le mot de passe, sous une forme chiffrée irréversible ; les dates d'inscription et
-          de dernière connexion ; les réglages d'alertes (régions choisies) et la liste des courses déjà annoncées par e-mail ; pour le
+          de dernière connexion ; la langue choisie pour le site et les e-mails ; les réglages d'alertes (régions choisies) et la liste des
+          courses déjà annoncées par e-mail ; pour le
           simulateur de relais, les coureurs ajoutés (nom, catégorie, CN estimé) et ceux marqués indisponibles, visibles de vous seul.
           N'y ajoutez que des personnes qui y consentent.</li>
         <li><b>Finalités et bases légales :</b> l'exécution du service demandé lors de la création du compte (réserver l'accès aux
@@ -103,8 +104,8 @@ export const body = (SITE) => `
       </ul>
       <h2 style="font-size:16px">Cookies et stockage local</h2>
       <p>Le site dépose un seul cookie, strictement nécessaire à son fonctionnement : il maintient votre connexion, pendant 30 jours
-        au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (thème, discipline et méthode
-        choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le tracé des circuits, ses réglages d'affichage, la clé
+        au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (langue, thème, discipline et
+        méthode choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le tracé des circuits, ses réglages d'affichage, la clé
         d'un événement chiffré, tirée de sa phrase de passe (le temps de l'onglet), les états du mode terrain en attente de réseau et, si vous
         gardez un événement pour travailler hors ligne, sa copie (circuits et carte, chiffrés s'il l'est) et les fichiers du site, effacés à la déconnexion ;
         si vous utilisez votre propre clé d'API sur la page « IA », cette clé (le temps de l'onglet, ou sur l'appareil si vous le demandez ;
@@ -129,5 +130,5 @@ export const body = (SITE) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : ocn@kerkia.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 15 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 17 octobre 2026.</p>
 `;

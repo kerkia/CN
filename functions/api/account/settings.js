@@ -1,5 +1,7 @@
-// POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names] }
-// Only the fields sent are changed. The agenda alerts need the right the administrator grants.
+// POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names],
+//   lang?: "fr" | "en" }
+// Only the fields sent are changed. The agenda alerts need the right the administrator grants. The language is the one
+// the account's e-mails are written in, and the one a login on another device takes.
 import { alertsAllowed, json, publicUser, readBody, withUser } from "../../_lib/api.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
@@ -17,6 +19,10 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
     const r = b.agendaRegions;
     if (!Array.isArray(r) || r.length > 30 || r.some((x) => typeof x !== "string" || x.length > 60)) return json({ error: "bad request" }, 400);
     sets.push("agenda_regions = ?"); vals.push(JSON.stringify([...new Set(r)]));
+  }
+  if ("lang" in b) {
+    if (b.lang !== "fr" && b.lang !== "en") return json({ error: "bad request" }, 400);
+    sets.push("lang = ?"); vals.push(b.lang);
   }
   if (!sets.length) return json({ error: "bad request" }, 400);
   await env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, user.id).run();

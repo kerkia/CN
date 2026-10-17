@@ -1,4 +1,4 @@
-// POST /api/account/register { email, password, first, last, licence, consent, website }
+// POST /api/account/register { email, password, first, last, licence, consent, website, lang }
 //
 // Accepts the registration only if (first name, last name, licence) matches a licensee in
 // the FFCO index (the same check as the historic login) and the visitor declares being one.
@@ -23,7 +23,7 @@ export async function sendVerification(env, user) {
     env.DB.prepare("INSERT INTO tokens (token_hash, user_id, kind, expires_at) VALUES (?, ?, 'verify', ?)")
       .bind(hash, user.id, Date.now() + DAY),
   ]);
-  return sendOrQueue(env, { to: user.email, ...verifyMail(env, token, user.first_name), kind: "verify", priority: 1,
+  return sendOrQueue(env, { to: user.email, ...verifyMail(env, token, user.first_name, user.lang), kind: "verify", priority: 1,
     token: { hash, ttl: DAY } });
 }
 
@@ -55,9 +55,9 @@ export async function onRequestPost({ request, env }) {
   }
   const pw = await hashPassword(password, env);
   const row = await env.DB.prepare(
-    `INSERT INTO users (email, pw_hash, pw_salt, pw_iter, first_name, last_name, licence, display_name, consent_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-  ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso()).first();
+    `INSERT INTO users (email, pw_hash, pw_salt, pw_iter, first_name, last_name, licence, display_name, consent_at, created_at, lang)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+  ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), b.lang === "en" ? "en" : "fr").first();
   const mail = await sendVerification(env, row);
   return json({ ok: true, mail });
 }

@@ -3,6 +3,7 @@
 // is private. The session kept here in localStorage is just who the visitor is, for the UI.
 
 import * as local from "./local.js";
+import { adoptLang } from "./i18n.js";
 import * as data from "./data.js";
 
 const KEY = "cnx.session";
@@ -59,6 +60,7 @@ export async function accountLogin(email, password) {
     const u = r.data;
     const s = { ...fromUser(u), until: Date.now() + DAYS * 86400e3 };
     keep(s);
+    if (adoptLang(u.lang)) setTimeout(() => location.reload(), 0);       // the account's language on a new device
     return s;
   }
   const code = r.status === 0 ? "unavailable" : r.status === 429 ? "rate" : r.data?.error || "generic";

@@ -61,7 +61,7 @@ async function register(main) {
     if (f.get("password") !== f.get("password2")) return t("ac.reg.err.password2");
     const r = await auth.api("api/account/register", {
       email: f.get("email"), password: f.get("password"), first: f.get("first"), last: f.get("last"),
-      licence: f.get("licence"), consent: f.get("consent") === "on", website: f.get("website"),
+      licence: f.get("licence"), consent: f.get("consent") === "on", website: f.get("website"), lang: lang(),
     });
     if (r.ok) {
       form.outerHTML = html`<div class="notice ok">${t("ac.reg.done")} <b>${f.get("email")}</b>.</div>

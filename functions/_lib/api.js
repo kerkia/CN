@@ -44,7 +44,10 @@ export const publicUser = (env, u) => ({
   agendaAlert: !!u.agenda_alert, agendaRegions: jsonList(u.agenda_regions), deadlineAlert: !!u.deadline_alert,
   // rights granted on the admin page, administrators included (an admin may uncheck one to see the site as others do)
   analyst: !!u.analyst, agendaAllowed: !!u.alerts_allowed,
+  lang: userLang(u),
 });
+/** An account's language, "fr" or "en" (users.lang, migration 0009; French before it). */
+export const userLang = (u) => (u?.lang === "en" ? "en" : "fr");
 /** May this account receive the agenda alerts? */
 export const alertsAllowed = (env, u) => !!u.alerts_allowed;
 

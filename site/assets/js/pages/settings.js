@@ -1,7 +1,7 @@
 // Settings: e-mail notifications, password change, account deletion (e-mail accounts only).
 
 import { html, $, $$, displayName } from "../util.js";
-import { t } from "../i18n.js";
+import { t, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
@@ -33,6 +33,9 @@ export async function render(main) {
         <label class="check"><input id="notify" type="checkbox" ${user.notify ? "checked" : ""}><span>${t("st.notify")}
           <br><span class="muted" style="font-size:12.5px">${t("st.notify.hint")}</span></span></label>
         <div class="notice ok" id="notify-ok" hidden>${t("st.saved")}</div>
+        ${OPEN || user.admin ? html`<label class="field"><span>${t("st.lang")}</span><select id="st-lang" style="max-width:220px">
+          ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${l === lang() ? "selected" : ""}>${LANG_NAMES[l]}</option>`)}</select>
+          <span class="muted" style="font-size:12.5px">${t("st.lang.hint")}</span></label>` : ""}
       </div></section>
 
       <section class="card"><div class="card-head"><h2>${t("st.ag.title")}</h2></div><div class="card-body stack" style="gap:10px">
@@ -72,6 +75,11 @@ export async function render(main) {
 
   const flash = (el, text, ok) => { el.textContent = text; el.className = `notice${ok ? " ok" : ""}`; el.hidden = false; };
 
+  // the language: on the account (its e-mails), then on this device, the page drawn again in it
+  $("#st-lang")?.addEventListener("change", (e) => {
+    const l = e.target.value;
+    auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
+  });
   $("#notify").addEventListener("change", async (e) => {
     const box = e.target;
     box.disabled = true;

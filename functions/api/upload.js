@@ -136,7 +136,13 @@ export async function startRun(env) {
 async function alertAdmins(env, user, up) {
   const admins = adminEmails(env);
   if (!admins.length) return;
-  for (const to of admins) await sendOrQueue(env, { to, ...uploadMail(env, user, up), kind: "alert", priority: 1 });
+  // each administrator in their own language (the account with that address, French without one)
+  const langs = new Map();
+  try {
+    const { results } = await env.DB.prepare(`SELECT email, lang FROM users WHERE email IN (${admins.map(() => "?").join(", ")})`).bind(...admins).all();
+    for (const r of results) langs.set(r.email, r.lang);
+  } catch (e) { /* French then */ }
+  for (const to of admins) await sendOrQueue(env, { to, ...uploadMail(env, user, up, langs.get(to)), kind: "alert", priority: 1 });
 }
 
 /** The files kept 60 days: older ones are deleted (their meta.json too; the results they gave stay). */

@@ -60,7 +60,7 @@ export const body = (SITE) => `
       <ul>
         <li><b>Data kept:</b> the email address; the first name, surname and licence number entered, checked at registration against
           the results published by the FFCO; the password, in an irreversibly encrypted form; the dates of registration and last
-          login; the alert settings (regions chosen) and the list of races already announced by email; for the relay simulator, the
+          login; the language chosen for the site and the emails; the alert settings (regions chosen) and the list of races already announced by email; for the relay simulator, the
           runners added (name, class, estimated CN) and those marked unavailable, visible to you alone. Only add people who agree to
           it.</li>
         <li><b>Purposes and legal bases:</b> performing the service requested when the account is created (reserving access to FFCO
@@ -95,7 +95,7 @@ export const body = (SITE) => `
       </ul>
       <h2 style="font-size:16px">Cookies and local storage</h2>
       <p>The site sets a single cookie, strictly necessary for it to work: it keeps you logged in, for 30 days at most. The browser
-        also keeps, on your device, your display preferences (theme, chosen discipline and method), what you enter in the MAS
+        also keeps, on your device, your display preferences (language, theme, chosen discipline and method), what you enter in the MAS
         calculator or the relay simulator and, for course setting, its display settings, the key of an encrypted event, derived from
         its passphrase (for the duration of the tab), the field-mode states waiting for the network and, if you keep an event to work
         offline, its copy (courses and map, encrypted if it is) and the site's files, erased when you log out; if you use your own API
@@ -119,5 +119,5 @@ export const body = (SITE) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: ocn@kerkia.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 15 October 2026.</p>
+      <p class="muted">Last updated: 17 October 2026.</p>
 `;

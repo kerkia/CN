@@ -21,7 +21,8 @@ export async function onRequestPost({ request, env }) {
   ]);
   const { results } = await env.DB.prepare("SELECT * FROM users WHERE licence = ? AND email_verified = 1 ORDER BY id").bind(user.licence).all();
   if (results.length > 1 && env.ALERT_EMAIL) {
-    await sendOrQueue(env, { to: env.ALERT_EMAIL, ...duplicateAlert(env, user.licence, results), kind: "alert", priority: 1 });
+    const to = await env.DB.prepare("SELECT lang FROM users WHERE email = ?").bind(env.ALERT_EMAIL).first().catch(() => null);
+    await sendOrQueue(env, { to: env.ALERT_EMAIL, ...duplicateAlert(env, user.licence, results, to?.lang), kind: "alert", priority: 1 });
   }
   if (!user.email_verified) await signupAlert(env, user);              // a confirmed account is announced once
   return json({ ok: true });
@@ -32,9 +33,9 @@ async function signupAlert(env, user) {
   const admins = adminEmails(env).filter((e) => e !== user.email);
   if (!admins.length) return;
   const { results: to } = await env.DB.prepare(
-    `SELECT email FROM users WHERE email_verified = 1 AND status = 'active' AND signup_alert = 1
+    `SELECT email, lang FROM users WHERE email_verified = 1 AND status = 'active' AND signup_alert = 1
      AND email IN (${admins.map(() => "?").join(", ")})`).bind(...admins).all();
   if (!to.length) return;
   const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email_verified = 1").first();
-  for (const a of to) await sendOrQueue(env, { to: a.email, ...newUserMail(env, user, total.n), kind: "alert", priority: 1 });
+  for (const a of to) await sendOrQueue(env, { to: a.email, ...newUserMail(env, user, total.n, a.lang), kind: "alert", priority: 1 });
 }

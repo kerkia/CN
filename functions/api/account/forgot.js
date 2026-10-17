@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env }) {
         env.DB.prepare("INSERT INTO tokens (token_hash, user_id, kind, expires_at) VALUES (?, ?, 'reset', ?)")
           .bind(hash, u.id, Date.now() + 3600e3),
       ]);
-      await sendOrQueue(env, { to: u.email, ...resetMail(env, token), kind: "reset", priority: 1, token: { hash, ttl: 3600e3 } });
+      await sendOrQueue(env, { to: u.email, ...resetMail(env, token, u.lang), kind: "reset", priority: 1, token: { hash, ttl: 3600e3 } });
     }
   }
   return json({ ok: true });

@@ -1486,4 +1486,9 @@ export default {
   "od.s.lastSent": "Dernier envoi",
   "od.s.viewers": "Spectateurs connectés",
   "od.htmlNote": "Liste HTML : seuls les coureurs arrivés ou sortis de course apparaissent. L'IOF XML 3.0 montre aussi ceux qui sont en course.",
+  // IA: the model's answer unreadable (functions/api/ask.js code)
+  "ia.err.unreadable": "La réponse du modèle n'a pas pu être lue.",
+  // Réglages: the language (pages/settings.js)
+  "st.lang": "Langue",
+  "st.lang.hint": "La langue du site sur cet appareil, et celle de vos e-mails.",
 };

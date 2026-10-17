@@ -46,6 +46,16 @@ export function setLang(l) {
   location.reload();
 }
 
+/** At login: the account's language, unless this device has a choice of its own; true when the page must be drawn
+ *  again in it (the caller reloads). */
+export function adoptLang(l) {
+  try {
+    if (!LANGS.includes(l) || l === UI || localStorage.getItem(KEY)) return false;
+    localStorage.setItem(KEY, l);
+    return true;
+  } catch (e) { return false; }
+}
+
 /** Load an area's catalogues (i18n/<area>.fr.js and, in English, <area>.en.js) into the tables; once. */
 const areas = new Map();
 export function loadArea(name) {

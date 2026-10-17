@@ -2303,4 +2303,9 @@ export default {
   "od.s.lastSent": "Last sent",
   "od.s.viewers": "Spectators connected",
   "od.htmlNote": "HTML list: only the runners who have finished or retired appear. IOF XML 3.0 also shows those still out.",
+  // IA: the model's answer unreadable (functions/api/ask.js code)
+  "ia.err.unreadable": "The model's answer couldn't be read.",
+  // Réglages: the language (pages/settings.js)
+  "st.lang": "Language",
+  "st.lang.hint": "The site's language on this device, and that of your emails.",
 };
