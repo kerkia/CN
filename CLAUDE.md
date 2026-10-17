@@ -933,7 +933,19 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   editor; Cloudflare takes 100 MB a request). R2's free 10 GB (420 MB used on 2026-10-14: the database and the site
   state) hold some 2000 phone photos of 5 MB; the administrators see the bucket's use on the list pages
   (`/api/analyses?stats=1`).
-- UI text lives in `i18n.js` (French). Method keys: `official`, `top6w`, `top6w3`, `fair`, `fair3` (labels « Top » /
+- **Languages: French and English** (owner, 2026-10-17; the work in progress until `i18n.OPEN` is true). **Never write UI
+  text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
+  first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys
+  `x.one` / `x.other`) from `i18n.js`; an area's own catalogues `i18n/<area>.fr.js` / `.en.js` (`loadArea`, the Tracer's);
+  long texts (documentation, guides, legal pages) are whole modules per language (`*.fr.js` / `*.en.js`). English
+  vocabulary: `docs/i18n/glossary.md` (IOF terms; FFCO's classes H/D shown M/W in English: `util.fmtCat`, `fmtSex`).
+  Numbers and dates through `util.fmt` / `fmtDate` / `i18n.locale()`, never a hard-coded `fr-FR`. The language: the one
+  chosen (`localStorage ocn.lang`, the user menu, Réglages, the login page, `?lang=`), else the browser's once `OPEN`
+  (French browsers French, the others English); until then French unless chosen, the switch for administrators only.
+  `?lang=xx`: a pseudo-language that marks every catalogue text, so what the code writes itself shows plain.
+  `node tools/i18n_check.mjs` lists keys missing in a language, placeholders that differ, and French written in the code
+  (`--list` for all; a line marked `i18n-ignore` is a pattern matching French documents, not UI text).
+- UI text lives in the catalogues (`i18n/fr.js`, `i18n/en.js`; above). Method keys: `official`, `top6w`, `top6w3`, `fair`, `fair3` (labels « Top » /
   « Fit » for the published pair, « Top géométrique » / « Fit géométrique » for the geometric one, since 2026-10-16). Old saved selections or links naming the removed
   `v2026`, `top6w2` or `fair2` are mapped in `store.js` (`RENAMED`).
 - Runner race rows (`R`) and race result rows (`C`) carry each method's columns, the geometric pair (`f3*`, `t3*`)

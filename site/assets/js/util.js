@@ -1,5 +1,7 @@
 // Shared helpers.
 
+import { lang, locale } from "./i18n.js";
+
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 export const esc = (v) => (v == null ? "" : String(v).replace(/[&<>"']/g, (c) => ESC[c]));
 
@@ -35,15 +37,21 @@ export function mount(el, content) {
 }
 
 // ---- numbers & dates ------------------------------------------------------
-const LOCALE = "fr-FR";
+// numbers and dates in the interface's language (i18n.locale: fr-FR or en-GB)
 export const fmt = (n, digits = 0) =>
-  n == null || Number.isNaN(n) ? "—" : Number(n).toLocaleString(LOCALE, {
+  n == null || Number.isNaN(n) ? "—" : Number(n).toLocaleString(locale(), {
     maximumFractionDigits: digits, minimumFractionDigits: digits,
   });
-/** French ordinal: 1er, 2e, 3e… */
-export const ord = (n) => (n == null ? "—" : n === 1 ? "1er" : `${fmt(n)}e`);
-/** "1 victoire" / "3 victoires" — French plural agrees from 2 up. */
-export const plural = (n, one, many) => `${fmt(n)} ${Math.abs(n) >= 2 ? many : one}`;
+/** An ordinal: 1er, 2e, 3e… in French; 1st, 2nd, 3rd, 4th… in English. */
+const EN_ORD = new Intl.PluralRules("en-GB", { type: "ordinal" });
+const EN_SUFFIX = { one: "st", two: "nd", few: "rd", other: "th" };
+export const ord = (n) => (n == null ? "—" : lang() === "en" ? `${fmt(n)}${EN_SUFFIX[EN_ORD.select(n)]}` : n === 1 ? "1er" : `${fmt(n)}e`);
+/** "1 victoire" / "3 victoires": the plural from 2 up in French, for anything but 1 in English (0 races). */
+export const plural = (n, one, many) => `${fmt(n)} ${(lang() === "en" ? Math.abs(n) !== 1 : Math.abs(n) >= 2) ? many : one}`;
+/** An FFCO class as shown: « H21 », « D16 » in French; « M21 », « W16 » in English (owner, 2026-10-17). */
+export const fmtCat = (c) => (c && lang() === "en" ? String(c).replace(/^([HD])(?=\d|$|\s)/, (m) => (m === "H" ? "M" : "W")) : c ?? "");
+/** The sex letter of a class as shown: H / D in French, M / W in English. */
+export const fmtSex = (x) => (lang() === "en" ? { H: "M", D: "W" }[x] || x : x);
 export const fmtSigned =(n) => (n == null ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n)));
 export const pct = (x, digits = 0) => (x == null ? "—" : fmt(100 * x, digits) + " %");
 
@@ -55,7 +63,7 @@ export function fmtDate(iso, style = "medium") {
     : style === "short"
       ? { day: "2-digit", month: "2-digit", year: "2-digit" }
       : { day: "numeric", month: "short", year: "numeric" };
-  return d.toLocaleDateString(LOCALE, opts);
+  return d.toLocaleDateString(locale(), opts);
 }
 export function fmtTime(s) {
   if (s == null) return "—";
@@ -122,11 +130,13 @@ export function nameParts(nom) {
   return last.length && first.length ? { first: first.join(" "), last: last.map(cap).join(" ") } : { first: nom || "", last: "" };
 }
 export function downloadCsv(filename, header, rows) {
+  // the separator spreadsheets expect in the interface's language: « ; » in French (decimal comma), « , » in English
+  const sep = lang() === "en" ? "," : ";";
   const q = (v) => {
     const s = v == null ? "" : String(v);
-    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    return s.includes(sep) || /["\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const text = [header, ...rows].map((r) => r.map(q).join(";")).join("\n");
+  const text = [header, ...rows].map((r) => r.map(q).join(sep)).join("\n");
   const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);

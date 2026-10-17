@@ -2,7 +2,7 @@
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
 import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce } from "./util.js";
-import { t } from "./i18n.js";
+import { t, lang, setLang, OPEN, LANG_NAMES } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
 import { disposeAll } from "./charts.js";
@@ -342,6 +342,8 @@ function renderHeader(r) {
       </div>`)}
     </nav>
     <div class="topbar-tools">
+      ${!me && OPEN ? html`<button type="button" class="theme-btn lang-btn" data-lang="${lang() === "en" ? "fr" : "en"}" lang="${lang() === "en" ? "fr" : "en"}"
+        title="${LANG_NAMES[lang() === "en" ? "fr" : "en"]}">${lang() === "en" ? "FR" : "EN"}</button>` : ""}
       ${themeMenu()}
       ${me ? html`
       <div class="nav-group user-menu" data-group="me">
@@ -355,6 +357,7 @@ function renderHeader(r) {
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
+          ${OPEN || me.admin ? html`<button type="button" class="lang-btn" data-lang="${lang() === "en" ? "fr" : "en"}" lang="${lang() === "en" ? "fr" : "en"}">${LANG_NAMES[lang() === "en" ? "fr" : "en"]}</button>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
       </div>` : ""}
@@ -414,6 +417,11 @@ function renderHeader(r) {
     let tm;
     window.addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(drawContours, 120); });
   }
+  // the language: kept on this device and on the account (its e-mails follow), then the page drawn again
+  document.querySelectorAll(".lang-btn").forEach((b) => b.addEventListener("click", () => {
+    if (me) auth.api("api/account/settings", { lang: b.dataset.lang }).catch(() => {}).finally(() => setLang(b.dataset.lang));
+    else setLang(b.dataset.lang);
+  }));
   $("#logout-btn")?.addEventListener("click", async () => {
     await auth.logout();
     data.dropPrivate();

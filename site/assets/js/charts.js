@@ -3,6 +3,7 @@
 // tooltip with the value leading, one y-axis only.
 
 import { esc, fmt, fmtDate } from "./util.js";
+import { lang } from "./i18n.js";
 
 const registry = new Set();
 
@@ -34,7 +35,8 @@ export function disposeAll() {
 function init(el) {
   const existing = window.echarts.getInstanceByDom(el);
   if (existing) existing.dispose();
-  const c = window.echarts.init(el, null, { renderer: "canvas" });
+  // month names on time axes, the toolbox: the interface's language (the French locale loaded by index.html)
+  const c = window.echarts.init(el, null, { renderer: "canvas", locale: lang() === "en" ? "EN" : "FR" });
   registry.add(c);
   const ro = new ResizeObserver(() => c.resize());
   ro.observe(el);
