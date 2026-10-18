@@ -46,7 +46,7 @@ export const publicUser = (env, u) => ({
   analyst: !!u.analyst, agendaAllowed: !!u.alerts_allowed,
   lang: userLang(u),
   // the alerts by push notification (migration 0010): the start times and the results on by default, the agenda's off
-  pushStarts: u.push_starts !== 0, pushResults: u.push_results !== 0, pushAgenda: u.push_agenda === 1, pushDeadline: u.push_deadline === 1,
+  pushStarts: u.push_starts !== 0, startsAlert: u.starts_alert === 1, pushResults: u.push_results !== 0, pushAgenda: u.push_agenda === 1, pushDeadline: u.push_deadline === 1,
 });
 /** An account's language, "fr" or "en" (users.lang, migration 0009; French before it). */
 export const userLang = (u) => (u?.lang === "en" ? "en" : "fr");

@@ -9,13 +9,13 @@ import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
 
-// The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `agenda`: the e-mail
+// The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
 // needs the administrator's right (users.alerts_allowed); no `mail`: by notification only.
 const ALERTS = [
   { key: "results", mail: "notify", push: "pushResults" },
-  { key: "starts", mail: null, push: "pushStarts" },
-  { key: "agenda", mail: "agendaAlert", push: "pushAgenda", agenda: true },
-  { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", agenda: true },
+  { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true },
+  { key: "agenda", mail: "agendaAlert", push: "pushAgenda", gated: true },
+  { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", gated: true },
 ];
 
 // Same names as the regions of the Agenda page (ffco_scraper/agenda.py).
@@ -52,7 +52,7 @@ export async function render(main) {
           <tbody>${ALERTS.map((a) => html`<tr>
             <td><b>${t(`st.alerts.${a.key}`)}</b><br><span class="muted">${t(`st.alerts.${a.key}.hint`)}</span></td>
             <td>${!a.mail ? html`<span class="muted" title="${t("st.alerts.pushOnly")}">—</span>`
-              : a.agenda && !user.agendaAllowed ? html`<span class="muted" title="${t("st.alerts.mailLocked")}">🔒</span>`
+              : a.gated && !user.agendaAllowed ? html`<span class="muted" title="${t("st.alerts.mailLocked")}">🔒</span>`
               : html`<input type="checkbox" data-alert="${a.mail}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.mail")}" ${user[a.mail] ? "checked" : ""}>`}</td>
             <td><input type="checkbox" data-alert="${a.push}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.push")}" ${user[a.push] ? "checked" : ""}></td>
           </tr>`)}</tbody>

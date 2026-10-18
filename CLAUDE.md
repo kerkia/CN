@@ -730,10 +730,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   e-mail later (owner: the Resend plan is too small).
 - **Alerts by e-mail and/or push** (owner, 2026-10-18): every alert of Réglages › Alertes (`pages/settings.js` `ALERTS`, a table
   E-mail | Notification) — « une de mes courses est en ligne » (`notify` / `push_results`, both on by default), « mon heure de
-  départ est publiée » (push only, `push_starts`, on), « nouvelle course dans mes régions » (`agenda_alert` / `push_agenda`) and
+  départ est publiée » (`starts_alert`, migration 0011, off / `push_starts`, on; the e-mail `startMail`, once per race and again
+  when the time changes, as the push), « nouvelle course dans mes régions » (`agenda_alert` / `push_agenda`) and
   « la clôture des inscriptions approche » (`deadline_alert` / `push_deadline`; push off until ticked) — goes by e-mail, push or
-  both. The agenda's e-mails stay a right the administrator grants (🔒 otherwise); push is open to everyone; one list of regions
-  for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
+  both. The e-mails of the start time and of the agenda are a right the administrator grants (🔒 otherwise; the Resend quota);
+  push is open to everyone; one list of regions for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
   WebCrypto — checked against Mozilla's `http_ece` and FCM, which answers 410 to an unknown token and 403 to a wrong key; only
   the browsers' push services are posted to, `validSubscription`). Keys: `VAPID_PUBLIC_KEY` in wrangler.toml, `VAPID_PRIVATE_KEY`
   a Pages secret (and `.dev.vars`), made by `tools/vapid.mjs` (the private key kept in `C:\kerkia\cn-data\vapid-private.txt`,

@@ -424,3 +424,28 @@ export function agendaPush(lang, events, kind = "new") {
     url, tag: n === 1 ? `agenda-${e.id}` : "agenda",
   };
 }
+
+/** A runner's start time by e-mail (the twin of startPush; users.starts_alert). s = { key, name, date, place, start_s, cls } */
+export function startMail(env, user, s, changed) {
+  const lang = L(user.lang), en = lang === "en";
+  const url = `${siteUrl(env)}/#/resultats?course=${encodeURIComponent(s.key)}`, settings = `${siteUrl(env)}/#/reglages`;
+  const when = clock(s.start_s), day = longDate(s.date, lang);
+  const rows = [[en ? "Race" : "Course", s.name], [en ? "Date" : "Date", day], [en ? "Place" : "Lieu", s.place],
+    [en ? "Course / class" : "Circuit / catégorie", s.cls], [en ? "Start time" : "Heure de départ", when]].filter(([, v]) => v);
+  const table = `<table style="border-collapse:collapse;margin:8px 0">${rows.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#5b6675">${esc(k)}</td><td style="padding:3px 0"><b>${esc(v)}</b></td></tr>`).join("")}</table>`;
+  const text = rows.map(([k, v]) => `${k}${en ? ":" : " :"} ${v}`).join("\n");
+  if (en) return {
+    subject: `${changed ? "Start time changed" : "Your start time"}: ${when} — ${s.name} — O'CN`,
+    html: wrap(env, changed ? "Your start time has changed" : "Your start time", `<p>Hello ${esc(user.first_name)},</p>
+<p>${changed ? "The start list of your race was updated:" : "The start list of your race is published:"}</p>${table}${button(url, "See the start list", lang)}
+<p style="font-size:13px;color:#5b6675">You receive this message because you asked for your start times by email. <a href="${esc(settings)}">Change my settings</a>.</p>`, lang),
+    text: `Hello ${user.first_name},\n\n${text}\n\n${url}\n\nTo stop receiving these messages: ${settings}`,
+  };
+  return {
+    subject: `${changed ? "Heure de départ modifiée" : "Votre heure de départ"} : ${when} — ${s.name} — O'CN`,
+    html: wrap(env, changed ? "Votre heure de départ a changé" : "Votre heure de départ", `<p>Bonjour ${esc(user.first_name)},</p>
+<p>${changed ? "La liste de départ de votre course a été mise à jour :" : "La liste de départ de votre course est publiée :"}</p>${table}${button(url, "Voir la liste de départ", lang)}
+<p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez demandé vos heures de départ par e-mail. <a href="${esc(settings)}">Modifier mes réglages</a>.</p>`, lang),
+    text: `Bonjour ${user.first_name},\n\n${text}\n\n${url}\n\nPour ne plus recevoir ces messages : ${settings}`,
+  };
+}

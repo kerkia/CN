@@ -16,7 +16,8 @@
 //        update.py calls again while some are left
 //   POST /api/notify { starts: [{ lic, key, name, date, place, start_s, cls }] } (2026-10-18): the start times of the
 //        coming races' published start lists; each account with push_starts and a device gets its own, once, and
-//        again when it changes (push_sent). -> { startsQueued, pushSent, pushLeft, … }
+//        again when it changes (push_sent); by e-mail too for the accounts that chose it (users.starts_alert, a right the
+//        administrator grants). -> { startsQueued, pushSent, pushLeft, … }
 //
 // update.py computes who ran which new competition (it has the database); this side only
 // knows who subscribed, so the server stays small.
@@ -25,7 +26,7 @@ import { alertsAllowed, json, jsonList, readBody } from "../_lib/api.js";
 import { sha256hex } from "../_lib/crypto.js";
 import { flushQueue, queueStatement } from "../_lib/mail.js";
 import { flushPush, pushReady, queuePush } from "../_lib/push.js";
-import { agendaMail, agendaPush, digestMail, resultsPush, startPush } from "../_lib/templates.js";
+import { agendaMail, agendaPush, digestMail, resultsPush, startMail, startPush } from "../_lib/templates.js";
 
 async function authorised(request, env) {
   const given = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -44,15 +45,17 @@ const ACTIVE = "u.email_verified = 1 AND u.status = 'active'";
 const HAS_PUSH = "EXISTS (SELECT 1 FROM push_subs s WHERE s.user_id = u.id)";
 // told of their results: by e-mail, or by push on a device
 const subscribed = (env) => (pushReady(env) ? `${ACTIVE} AND (u.notify = 1 OR (u.push_results = 1 AND ${HAS_PUSH}))` : `${ACTIVE} AND u.notify = 1`);
-const PUSHED = `${ACTIVE} AND u.push_starts = 1 AND ${HAS_PUSH}`;
+// told of their start times: by push on a device, or by e-mail (a right the administrator grants, users.starts_alert)
+const startsWho = (env) => `${ACTIVE} AND ((u.starts_alert = 1 AND u.alerts_allowed = 1)${pushReady(env) ? ` OR (u.push_starts = 1 AND ${HAS_PUSH})` : ""})`;
 
 export async function onRequestGet({ request, env }) {
   if (!(await authorised(request, env))) return json({ error: "forbidden" }, 403);
   const { results } = await env.DB.prepare(`SELECT DISTINCT licence FROM users u WHERE ${subscribed(env)}`).all();
-  const push = pushReady(env) ? (await env.DB.prepare(`SELECT DISTINCT licence FROM users u WHERE ${PUSHED}`).all()).results.map((r) => r.licence) : [];
+  const starts = (await env.DB.prepare(`SELECT DISTINCT licence FROM users u WHERE ${startsWho(env)}`).all()).results.map((r) => r.licence);
   // v 2 (2026-10-17): races with `alias` and `prov` understood — update.py sends the organisers' results only then;
-  // v 3 (2026-10-18): `starts` understood (push notifications)
-  return json({ licences: results.map((r) => r.licence), push, v: 3 });
+  // v 3 (2026-10-18): `starts` understood (push notifications; `push`, the licences told of their start times, by push or
+  // e-mail since the same evening)
+  return json({ licences: results.map((r) => r.licence), push: starts, v: 3 });
 }
 
 /**
@@ -147,10 +150,9 @@ const parisClock = () => {
   return h * 3600 + m * 60 + s;
 };
 
-/** The start times of the coming races -> a notification queued for each account (with push on) whose time is new or
- *  changed (push_sent), kept until the race's day is over. -> the number queued */
+/** The start times of the coming races -> for each account told of them whose time is new or changed (push_sent), a
+ *  notification queued (kept until the race's day is over) and/or an e-mail. -> the number of start times told */
 async function queueStarts(env, list) {
-  if (!pushReady(env)) return 0;
   const today = parisDay(), now = parisClock();
   const str = (v, n) => String(v ?? "").trim().slice(0, n);
   const items = list.slice(0, 2000).map((s) => ({
@@ -164,11 +166,14 @@ async function queueStarts(env, list) {
   const lics = [...byLic.keys()], users = [];
   for (let i = 0; i < lics.length; i += 90) {
     const part = lics.slice(i, i + 90);
-    users.push(...(await env.DB.prepare(`SELECT u.* FROM users u WHERE ${PUSHED} AND u.licence IN (${part.map(() => "?").join(",")})`)
-      .bind(...part).all()).results);
+    users.push(...(await env.DB.prepare(`SELECT u.*, ${HAS_PUSH} AS has_push FROM users u WHERE ${startsWho(env)}
+      AND u.licence IN (${part.map(() => "?").join(",")})`).bind(...part).all()).results);
   }
   const stmts = [];
+  let told_n = 0;
   for (const u of users) {
+    const mail = !!u.starts_alert && alertsAllowed(env, u), push = !!u.push_starts && !!u.has_push && pushReady(env);
+    if (!mail && !push) continue;
     const mine = byLic.get(u.licence) || [];
     const { results: sent } = await env.DB.prepare(`SELECT race_key, start_s FROM push_sent WHERE user_id = ? AND race_key IN
       (${mine.map(() => "?").join(",")})`).bind(u.id, ...mine.map((s) => s.key)).all();
@@ -176,14 +181,16 @@ async function queueStarts(env, list) {
     for (const s of mine) {
       if (told.get(s.key) === s.start_s) continue;
       const hours = Math.max(1, (Date.parse(`${s.date}T23:59:59Z`) - Date.now()) / 3600e3);
-      stmts.push(queuePush(env, u.id, "start", startPush(u.lang, s, told.has(s.key)), { topic: `start-${s.key}`, hours }));
+      if (push) stmts.push(queuePush(env, u.id, "start", startPush(u.lang, s, told.has(s.key)), { topic: `start-${s.key}`, hours }));
+      if (mail) stmts.push(queueStatement(env, { to: u.email, ...startMail(env, u, s, told.has(s.key)), kind: "start", priority: 0 }));
+      told_n++;
       stmts.push(env.DB.prepare(`INSERT INTO push_sent (user_id, race_key, start_s, sent_at) VALUES (?, ?, ?, ?)
         ON CONFLICT (user_id, race_key) DO UPDATE SET start_s = excluded.start_s, sent_at = excluded.sent_at`)
         .bind(u.id, s.key, s.start_s, Date.now()));
     }
   }
   for (let i = 0; i < stmts.length; i += 80) await env.DB.batch(stmts.slice(i, i + 80));
-  return stmts.length / 2;
+  return told_n;
 }
 
 export async function onRequestPost({ request, env }) {

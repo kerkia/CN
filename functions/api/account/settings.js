@@ -1,5 +1,5 @@
 // POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names],
-//   lang?: "fr" | "en", pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool }
+//   lang?: "fr" | "en", startsAlert?: bool, pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool }
 // Every alert by e-mail and/or push (2026-10-18): the push ones are open to every account.
 // Only the fields sent are changed. The agenda alerts need the right the administrator grants. The language is the one
 // the account's e-mails are written in, and the one a login on another device takes.
@@ -10,10 +10,10 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!b) return json({ error: "bad request" }, 400);
   const sets = [], vals = [];
   for (const [field, column] of [["notify", "notify"], ["agendaAlert", "agenda_alert"], ["deadlineAlert", "deadline_alert"],
-    ["pushStarts", "push_starts"], ["pushResults", "push_results"], ["pushAgenda", "push_agenda"], ["pushDeadline", "push_deadline"]]) {
+    ["startsAlert", "starts_alert"], ["pushStarts", "push_starts"], ["pushResults", "push_results"], ["pushAgenda", "push_agenda"], ["pushDeadline", "push_deadline"]]) {
     if (field in b) {
       if (typeof b[field] !== "boolean") return json({ error: "bad request" }, 400);
-      if ((field === "agendaAlert" || field === "deadlineAlert") && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);
+      if (["agendaAlert", "deadlineAlert", "startsAlert"].includes(field) && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);
       sets.push(`${column} = ?`); vals.push(b[field] ? 1 : 0);
     }
   }
