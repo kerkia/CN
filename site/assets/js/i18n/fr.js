@@ -603,7 +603,12 @@ export default {
   "st.link": "Réglages", "st.lede": "Votre compte, vos alertes par e-mail ou par notification, et la suppression du compte.", "admin.link": "Administration",
 
   // admin
-  "ad.title": "Administration", "ad.lede": "Les comptes inscrits (plusieurs comptes confirmés pour une même licence sont signalés) et l'utilisation du site.",
+  "ad.title": "Administration", "ad.lede.accounts": "Les comptes inscrits, leurs droits et leur état ; plusieurs comptes confirmés pour une même licence sont signalés.",
+  "ad.lede.members": "Le nombre de comptes inscrits et actifs, aujourd'hui et jour après jour.",
+  "ad.lede.usage": "L'utilisation du site sur une période : visites, pages vues et jours d'activité, par compte et par page.",
+  "ad.lede.uploads": "Les fichiers de résultats déposés sur le site.",
+  "ad.lede.sites": "Les sites d'organisateurs à contacter au sujet des robots.",
+  "ad.lede.anon": "Les licenciés dont le nom et la licence sont remplacés par un pseudonyme.",
   "ad.accounts": "Comptes", "ad.confirmed": "Confirmés", "ad.dups": "Licences en doublon", "ad.queue": "E-mails en attente",
   "ad.search": "Rechercher (e-mail, nom, licence)", "ad.onlyDups": "Doublons seulement",
   "ad.col.email": "E-mail", "ad.col.name": "Nom", "ad.col.lic": "Licence", "ad.col.status": "Statut", "ad.col.created": "Inscrit le",

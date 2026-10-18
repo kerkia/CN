@@ -8,7 +8,7 @@ import { html, raw, $, $$, normalise, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { tile, seg, chartCard, bindChartCard, legend } from "../ui.js";
+import { tile, seg, chartCard, bindChartCard, legend, setLede } from "../ui.js";
 import { columnChart, timeChart, css } from "../charts.js";
 import { link, replaceQuery } from "../app.js";
 
@@ -45,7 +45,7 @@ export async function render(main, { query = {} } = {}) {
   let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites", anonymises: "anon" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede">${t("ad.lede")}</p></div>
+    <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede" id="page-lede"></p></div>
       <div class="row" style="gap:8px"><div id="ad-tabs"></div></div></div>
     <div data-panel="accounts" hidden>
       <div class="tiles tiles-compact" id="ad-tiles" style="margin-bottom:14px"></div>
@@ -102,6 +102,7 @@ export async function render(main, { query = {} } = {}) {
       ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
+    setLede(t(`ad.lede.${tab}`));       // the head says what the tab shows (one line: the tabs' own paragraphs say more)
     if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
