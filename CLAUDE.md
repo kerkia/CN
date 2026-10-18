@@ -407,7 +407,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `alias`); `/api/notify` mails a race once (it looks up all its ids in `notified`, then records them), FFCO's link when both
   exist, else « Résultats » (`prov`, « résultats de l'organisateur » in the mail). **« Résultats » counts FFCO's results** too: a
   runner's own races are those they are recognised in by an organiser's list or by FFCO's (`data.runnerRaces`), « Avec résultats »
-  includes FFCO's, and a race without an organiser's list links to « Courses classées » (tag « FFCO »); the tile « Avec résultats
+  includes FFCO's, and a race without an organiser's list links to « Courses classées »; the sources column lists the organisers' sources only (owner, 2026-10-18: « FFCO » there repeated the FFCO column), a dash for a race FFCO alone has published; the tile « Avec résultats
   trouvés » still measures the organisers' lists found.
 - **« Courses classées » by link** (`#/courses?id=`, the e-mail digest's link; owner, 2026-10-17): a race named in the address
   brings its discipline (the site-wide one switches, so the list beside it holds it, opened and marked) and, without `circ=`,
