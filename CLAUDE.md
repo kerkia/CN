@@ -789,7 +789,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   fine for training maps.
   **French wording** (owner, 2026-10-15): « le tracé » (des circuits), never « le Tracer » — « Tracer » is the menu's verb, as
   « Déposer »; « la page « Tracer » » when the page is meant.
-  « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback.
+  « Analyse solo » ↗ passes its files' IndexedDB key and `play=1` (`fullwin.setTabParams`): the new tab goes on with the playback. Files read back there (or after a reload) keep the race, circuit and runner of the address: no new match from the trace (`take`'s `remember`), and a runner is looked for in the address's document first (owner, 2026-10-18: a runner chosen by hand was replaced by the matched one, whose calibration was not the one kept, and the tab stopped at the calibration).
   **Third pass (owner, 2026-10-15: « fix the small gaps, then the big ones »): OCAD and Mapper.** `tracer/vmap/` ports Purple
   Pen's MapModel (BSD): `ocad.js` reads OCAD 6-12 and 2018, `oom.js` OpenOrienteering Mapper (.omap/.xmap), into `map.js` (colours
   bottom to top, drawn one colour at a time; `draw(g, rect, { begin, end, overprint })` draws part of the colour table), `symdefs.js`

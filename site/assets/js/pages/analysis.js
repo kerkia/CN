@@ -258,9 +258,13 @@ export async function render(main, { query = {}, route } = {}) {
     const rank = (d) => (d.classes.some((k) => k.runners.some((r) => r.splits)) ? 1e9 : 0) + (d.prio ?? 0);
     docs.sort((a, b) => rank(b) - rank(a));
     const wanted = query.r || null;
-    const pick = (test) => { for (let i = 0; i < docs.length; i++) for (let j = 0; j < docs[i].classes.length; j++) {
-      const n = docs[i].classes[j].runners.findIndex(test); if (n >= 0) return [i, j, n]; } return null; };
-    [di, ci, ri] = (wanted && pick((r) => r.name === wanted)) || (me && pick((r) => r.lic && r.lic === me.lic)) || [0, 0, 0];
+    const pick = (test, only = null) => { for (let i = 0; i < docs.length; i++) { if (only != null && i !== only) continue;
+      for (let j = 0; j < docs[i].classes.length; j++) { const n = docs[i].classes[j].runners.findIndex(test); if (n >= 0) return [i, j, n]; } } return null; };
+    // a runner named in the address is looked for in the document it names first (a reload, a tab opened by « ↗ »: the
+    // same document, so the same calibration), then in every document
+    const qd = Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc) : null;
+    [di, ci, ri] = (wanted && qd != null && pick((r) => r.name === wanted, qd)) || (wanted && pick((r) => r.name === wanted))
+      || (me && pick((r) => r.lic && r.lic === me.lic)) || [0, 0, 0];
     if (Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] && !wanted) { di = Number(query.doc); ci = Math.min(Number(query.c) || 0, docs[di].classes.length - 1); ri = 0; }
     if (query.r && docs[di]?.classes[ci]) { const n = docs[di].classes[ci].runners.findIndex((r) => r.name === query.r); if (n >= 0) ri = n; }
   }
@@ -372,7 +376,10 @@ export async function render(main, { query = {}, route } = {}) {
       for (const role of Object.keys(files)) { const rec = files[role]; if (rec && !rec.file && (rec.name === name || rec.name?.startsWith(`${name} › `))) rec.file = f; }
     }
     if (remember) rememberFiles();
-    if (newTrace && track) {
+    // the race of the trace, for a trace just dropped only: files read back (a reload, a tab opened by « ↗ ») keep the race,
+    // circuit and runner chosen with them — matching again could pick another race or runner than the one chosen by hand,
+    // whose calibration is not the one kept, and the new tab stopped at the calibration instead of playing (owner, 2026-10-18)
+    if (newTrace && track && remember) {
       matchedNote = "";
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
