@@ -2,10 +2,11 @@
 // flagged, rights, disable / re-enable / delete, and the administrator's own e-mail at each new account.
 // « Inscrits » (2026-10-15): the registered and active accounts (a visit in the last 21 days), today and day by day.
 // « Utilisation »: how much the site is used over any period — visits, page views, active days, per account
-// and per page. The server enforces the role; this page only reads and acts.
+// and per page. « Démo » (2026-10-18): the demo accounts — read-only, tied to no licence, for a set time — made for a
+// federation, a league or a club that wants to see the site. The server enforces the role; this page only reads and acts.
 
 import { html, raw, $, $$, normalise, fmt, fmtDate } from "../util.js";
-import { t } from "../i18n.js";
+import { t, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { tile, seg, chartCard, bindChartCard, legend, setLede } from "../ui.js";
@@ -42,7 +43,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites", anonymises: "anon" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede" id="page-lede"></p></div>
@@ -92,6 +93,23 @@ export async function render(main, { query = {} } = {}) {
         </div></section>
       <section class="card"><div class="card-head"><h2 id="an-title">${t("ad.an.list")}</h2></div><div class="table-wrap" id="an-list"></div></section>
     </div>
+    <div data-panel="demo" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.dm.lede")}</p>
+      <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("ad.dm.new")}</h2></div>
+        <div class="card-body">
+          <form id="dm-form" class="filters" style="margin:0;padding:0;border:0;background:none;align-items:flex-end">
+            <label class="field"><span>${t("ad.dm.label")}</span><input id="dm-label" required maxlength="80" style="width:240px"
+              placeholder="${t("ad.dm.label.ph")}"></label>
+            <label class="field"><span>${t("ad.dm.email")}</span><input id="dm-email" type="email" maxlength="120" style="width:240px"
+              placeholder="${t("ad.dm.email.ph")}"></label>
+            <label class="field"><span>${t("ad.dm.days")}</span><input id="dm-days" type="number" min="1" max="365" value="30" style="width:90px"></label>
+            <label class="field"><span>${t("st.lang")}</span><select id="dm-lang">${LANGS.map((l) => html`<option value="${l}">${LANG_NAMES[l]}</option>`)}</select></label>
+            <button class="btn btn-primary" type="submit">${t("ad.dm.create")}</button>
+          </form>
+          <div id="dm-made" style="margin-top:12px"></div>
+        </div></section>
+      <section class="card"><div class="card-head"><h2>${t("ad.dm.list")}</h2></div><div class="table-wrap" id="dm-list"></div></section>
+    </div>
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
@@ -99,16 +117,71 @@ export async function render(main, { query = {} } = {}) {
 
   function showTab() {
     $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
-      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")]], tab);
+      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
     setLede(t(`ad.lede.${tab}`));       // the head says what the tab shows (one line: the tabs' own paragraphs say more)
-    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
     if (tab === "sites") drawSites();
     if (tab === "anon") drawAnon();
+    if (tab === "demo") drawDemo();
+  }
+
+  // « Démo »: the demo accounts. A password is shown once, when made or renewed: to be sent with the address and the site's link
+  let demoBound = false;
+  function showMade(email, password) {
+    const text = t("ad.dm.message", { site: location.origin, email, password });
+    $("#dm-made").innerHTML = html`<div class="notice ok" style="white-space:pre-line">${text}</div>
+      <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn btn-sm" id="dm-copy">${t("ad.dm.copy")}</button>
+        <span class="muted" style="font-size:12.5px">${t("ad.dm.once")}</span></div>`;
+    $("#dm-copy").addEventListener("click", (e) => navigator.clipboard?.writeText(text).then(() => { e.target.textContent = t("ad.dm.copied"); }));
+  }
+  async function drawDemo() {
+    if (!demoBound) {
+      demoBound = true;
+      $("#dm-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const res = await auth.api("api/admin/demo", { label: $("#dm-label").value, email: $("#dm-email").value || undefined,
+          days: Number($("#dm-days").value), lang: $("#dm-lang").value });
+        if (!res.ok) {
+          $("#dm-made").innerHTML = html`<div class="notice">${t(res.data?.error === "exists" ? "ad.dm.err.exists" : res.data?.error === "email" ? "ad.dm.err.email" : "ac.err.generic")}</div>`;
+          return;
+        }
+        e.target.reset();
+        showMade(res.data.account.email, res.data.password);
+        drawDemo();
+      });
+    }
+    const box = $("#dm-list");
+    const r = await fetch("api/admin/demo", { credentials: "same-origin", cache: "no-store" });
+    const { accounts = [], today = "" } = r.ok ? await r.json() : {};
+    box.innerHTML = accounts.length ? html`<table class="data compact"><thead><tr><th>${t("ad.dm.label")}</th><th>${t("ad.dm.email")}</th>
+      <th>${t("ad.dm.until")}</th><th>${t("ad.dm.last")}</th><th></th></tr></thead>
+      <tbody>${accounts.map((a) => {
+        const over = a.until < today, off = a.status !== "active";
+        return html`<tr>
+          <td>${a.label}</td><td style="font-size:12.5px">${a.email}</td>
+          <td class="num">${fmtDate(a.until)} ${over ? html`<span class="tag">${t("ad.dm.expired")}</span>` : off ? html`<span class="tag">${t("ad.dm.off")}</span>` : ""}</td>
+          <td class="num" style="font-size:12.5px">${a.lastLogin ? fmtDate(a.lastLogin.slice(0, 10), "short") : "—"}</td>
+          <td><div class="row" style="gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm" data-dm="extend" data-id="${a.id}">${t("ad.dm.extend")}</button>
+            <button type="button" class="btn btn-sm" data-dm="password" data-id="${a.id}" data-email="${a.email}">${t("ad.dm.password")}</button>
+            <button type="button" class="btn btn-sm" data-dm="${off ? "enable" : "disable"}" data-id="${a.id}">${t(off ? "ad.dm.enable" : "ad.dm.disable")}</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-dm="delete" data-id="${a.id}" style="color:var(--bad)">${t("ad.dm.delete")}</button>
+          </div></td></tr>`;
+      })}</tbody></table>` : html`<div class="empty">${t("ad.dm.none")}</div>`;
+    $$("[data-dm]", box).forEach((btn) => btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.id), act = btn.dataset.dm;
+      if (act === "delete" && !confirm(t("ad.dm.confirm"))) return;
+      btn.disabled = true;
+      const res = act === "extend" || act === "password" ? await auth.api("api/admin/demo", { id, action: act, days: 30 })
+        : await auth.api("api/admin/user", { id, action: act });
+      if (res.ok && act === "password") showMade(btn.dataset.email, res.data.password);
+      drawDemo();
+    }));
   }
 
   // « Sites »: the organisers' sites to follow up with — robots.txt forbids what the collection reads all the same, or

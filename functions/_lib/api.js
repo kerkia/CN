@@ -46,17 +46,28 @@ export const publicUser = (env, u) => ({
   analyst: !!u.analyst, agendaAllowed: !!u.alerts_allowed,
   lang: userLang(u),
   // the alerts by push notification (migration 0010): the start times and the results on by default, the agenda's off
-  pushStarts: u.push_starts !== 0, startsAlert: u.starts_alert === 1, pushResults: u.push_results !== 0, pushAgenda: u.push_agenda === 1, pushDeadline: u.push_deadline === 1,
+  pushStarts: u.push_starts !== 0, startsAlert: u.starts_alert === 1, pushResults: u.push_results !== 0, pushAgenda: u.push_agenda === 1,
+  pushDeadline: u.push_deadline === 1,
+  // a demo account (admin page, « Démo »): read-only, tied to no licence, valid until that day
+  demo: u.demo_until || null,
 });
 /** An account's language, "fr" or "en" (users.lang, migration 0009; French before it). */
 export const userLang = (u) => (u?.lang === "en" ? "en" : "fr");
 /** May this account receive the agenda alerts? */
 export const alertsAllowed = (env, u) => !!u.alerts_allowed;
 
+/** Today in Paris, YYYY-MM-DD. */
+export const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+/** A demo account past its last day (users.demo_until, migration 0012). */
+export const demoExpired = (u) => !!u?.demo_until && u.demo_until < parisToday();
+
 export async function sessionCookie(env, user) {
-  const token = await signSession({ uid: user.id, lic: user.licence, exp: Date.now() + SESSION_DAYS * 86400e3, chk: Date.now() },
+  // a demo account's session: marked (the login gate refuses its changes) and never longer than the account
+  const until = user.demo_until ? Date.parse(`${user.demo_until}T23:59:59+01:00`) : Infinity;
+  const exp = Math.min(Date.now() + SESSION_DAYS * 86400e3, until);
+  const token = await signSession({ uid: user.id, lic: user.licence, exp, chk: Date.now(), ...(user.demo_until ? { demo: 1 } : {}) },
     env.SESSION_SECRET);
-  return `${COOKIE}=${token}; Path=/; Max-Age=${SESSION_DAYS * 86400}; HttpOnly; Secure; SameSite=Lax`;
+  return `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
 }
 export const clearCookie = () => `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
 
@@ -65,7 +76,7 @@ export async function currentUser(request, env) {
   const s = await readSession(request, env.SESSION_SECRET);
   if (!s?.uid) return null;
   const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(s.uid).first();
-  return u && u.status === "active" && u.email_verified ? u : null;
+  return u && u.status === "active" && u.email_verified && !demoExpired(u) ? u : null;
 }
 
 /** Wrap a handler so it only runs for a logged-in account; admin: true also requires the admin role. */

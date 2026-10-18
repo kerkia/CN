@@ -21,7 +21,9 @@ export const body = (SITE) => `
         licences by name and club.</p>
       <p>This processing is based on the publisher's legitimate interest in informing licence holders and analysing the national
         ranking from results already published. On ${SITE}, this data is only accessible to logged-in accounts, which are reserved
-        for licence holders. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
+        for licence holders, whose registration is checked against their name and licence number. The one exception: the publisher
+        may open, for a limited time, a demo account for an orienteering body (federation, league, club) that wants to see the
+        site; it is tied to no licence, can't change or upload anything and stops working on the date set. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
         the source remains the FFCO's website.</p>
       <h2 style="font-size:16px">Results and start-list uploads</h2>
       <p>When a results file is uploaded, the uploader's account, the race, the file's name and size and the date of the upload are

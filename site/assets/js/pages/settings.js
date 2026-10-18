@@ -2,7 +2,7 @@
 // grants, push open to all) —, this device's notifications, the language, password change, account deletion (e-mail
 // accounts only).
 
-import { html, $, $$, displayName } from "../util.js";
+import { html, $, $$, displayName, fmtDate } from "../util.js";
 import { t, tn, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -24,6 +24,23 @@ const REGIONS = ["Auvergne-Rhône-Alpes", "Bourgogne-Franche-Comté", "Bretagne"
   "Hauts-de-France", "Île-de-France", "Normandie", "Nouvelle-Aquitaine", "Occitanie", "Pays de la Loire",
   "Provence-Alpes-Côte d'Azur", "Outre-mer"];
 
+/** A demo account (admin page, « Démo »): what it is, until when; only the language here (on this device). */
+function demoPage(main, user) {
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("st.title")}</h1></div></div>
+    <div class="stack" style="max-width:640px">
+      <section class="card"><div class="card-head"><h2>${t("st.account")}</h2></div><div class="card-body stack" style="gap:10px">
+        <div><b>${user.nom}</b></div>
+        <div class="notice info">${t("st.demo", { date: fmtDate(user.demo) })}</div>
+        <label class="field"><span>${t("st.lang")}</span><select id="st-lang" style="max-width:220px">
+          ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${l === lang() ? "selected" : ""}>${LANG_NAMES[l]}</option>`)}</select></label>
+      </div></section>
+      <p class="muted"><a href="#/compte/confidentialite">${t("pv.title")}</a></p>
+    </div>`;
+  $("#st-lang").addEventListener("change", (e) => setLang(e.target.value));
+  return { title: t("st.title") };
+}
+
 export async function render(main) {
   const me = auth.session();
   if (!me.email) {                                  // signed in with name + licence: no account behind it
@@ -34,6 +51,7 @@ export async function render(main) {
   const r = await fetch("api/account/me", { credentials: "same-origin", cache: "no-store" });
   const user = r.ok ? await r.json() : null;
   if (!user) { window.dispatchEvent(new Event("cnx:unauthorised")); return null; }
+  if (user.demo) return demoPage(main, user);
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("st.title")}</h1><p class="lede">${t("st.lede")}</p></div></div>

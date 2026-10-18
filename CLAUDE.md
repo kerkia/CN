@@ -1034,6 +1034,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`Anon.lic`), names come only from `runners.json`; the auth index keeps their real licence and name (they can still sign
   up). Provisional results: rows matched to their licence, unmatched rows by name (`privacy.anonymise_row`, birth year and
   bib dropped). Not covered: « En direct » (liveresultat relayed live).
+- **Demo accounts** (owner, 2026-10-18: to let Swiss Orienteering, or any federation, league or club, see the site): made on the
+  admin page's « Démo » tab (`functions/api/admin/demo.js`: label, sign-in — else `demo-<label>@ocn.invalid`, a domain that
+  receives nothing —, days, language; a readable password shown once with a message to copy; +30 days, new password, disable /
+  enable / delete through `/api/admin/user`). D1 `users.demo_until` (migration 0012, the last valid Paris day; NULL for every other
+  account), no licence (`licence` ''), no alert. **Read-only**: the session cookie carries `demo` (`api.sessionCookie`, never
+  longer than the account) and the login gate refuses every method but GET/HEAD/OPTIONS except `/api/track` and `/api/ask`
+  (`DEMO_WRITES`, 403 `demo`); past its day the login says « disabled », `currentUser` and the gate's hourly check refuse it. Kept
+  out of « Comptes » and « Inscrits ». In the app (`session.demo`): no « Ma page », the brand and the home page lead to
+  « Classement », an orange line under the bar (`demo.strip`), Réglages reduced to what the account is and the language, no
+  push offer. The privacy page names the exception to « accounts reserved to licensees ».
 - **Privacy and legal notices** (`#/compte/confidentialite`, `pages/account.js` `privacy`, public; reviewed 2026-10-15): the
   GDPR's information (controller Yann Le Helloco, legal bases, licensees without an account and their right to object,
   processors Cloudflare / Resend / GitHub and their transfer safeguards, the IP-keyed rate limits, every right, the CNIL)

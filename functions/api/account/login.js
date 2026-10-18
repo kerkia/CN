@@ -1,6 +1,6 @@
 // POST /api/account/login { email, password } -> the user and a session cookie.
 
-import { allow, cleanEmail, clientIp, json, nowIso, pause, publicUser, readBody, sessionCookie } from "../../_lib/api.js";
+import { allow, cleanEmail, clientIp, demoExpired, json, nowIso, pause, publicUser, readBody, sessionCookie } from "../../_lib/api.js";
 import { checkPassword, defaultIterations, hashPassword } from "../../_lib/crypto.js";
 
 export async function onRequestPost({ request, env }) {
@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env }) {
   const ok = user ? await checkPassword(password, user, env)
     : (await hashPassword(password, env), false);
   if (!ok) { await pause(500); return json({ error: "invalid" }, 401); }
-  if (user.status !== "active") return json({ error: "disabled" }, 403);
+  if (user.status !== "active" || demoExpired(user)) return json({ error: "disabled" }, 403);   // (a demo account past its day too)
   if (!user.email_verified) return json({ error: "unverified" }, 403);
   if (user.pw_iter !== defaultIterations(env)) {                         // the count was changed: upgrade the stored hash
     const pw = await hashPassword(password, env);

@@ -5,7 +5,7 @@ import { isAdmin, json, withUser } from "../../_lib/api.js";
 
 export const onRequestGet = withUser(async ({ env }) => {
   const [users, seen, first] = await env.DB.batch([
-    env.DB.prepare("SELECT id, email, email_verified, status, created_at FROM users"),
+    env.DB.prepare("SELECT id, email, email_verified, status, created_at FROM users WHERE demo_until IS NULL"),   // demo accounts apart
     env.DB.prepare("SELECT user_id, day FROM usage_daily GROUP BY user_id, day ORDER BY day"),
     env.DB.prepare("SELECT MIN(day) AS day FROM usage_daily"),
   ]);

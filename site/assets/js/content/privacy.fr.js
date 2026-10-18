@@ -22,7 +22,10 @@ export const body = (SITE) => `
         ou déposés sur ${SITE}, rapprochés des licences d'après le nom et le club.</p>
       <p>Ce traitement repose sur l'intérêt légitime de l'éditeur à informer les licenciés et à analyser le classement national à
         partir de résultats déjà publiés. Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés, réservés aux
-        licenciés. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
+        licenciés, dont l'inscription est vérifiée d'après le nom et le numéro de licence. Seule exception : l'éditeur peut ouvrir,
+        pour une durée limitée, un compte de démonstration à un organisme de course d'orientation (fédération, ligue, club) qui
+        souhaite découvrir le site ; ce compte n'est rattaché à aucune licence, ne peut rien modifier ni déposer et cesse de
+        fonctionner à la date fixée. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
         « Vos droits ») ; la source demeure le site de la FFCO.</p>
       <h2 style="font-size:16px">Dépôts de résultats et d'horaires de départ</h2>
       <p>Lors du dépôt d'un fichier de résultats, sont enregistrés le compte de l'auteur du dépôt, la course, le nom et la taille du

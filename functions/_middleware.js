@@ -16,6 +16,9 @@ const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\
   /^\/sw-push\.js$/, /^\/manifest\.webmanifest$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset)$/];
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
+// A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
+const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];
+const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
 
 /**
  * The path as the file server will resolve it: percent-decoding undone
@@ -91,12 +94,17 @@ export async function onRequest(context) {
       status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });
   }
+  if (s.demo && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !DEMO_WRITES.some((re) => re.test(path))) {
+    return new Response(JSON.stringify({ error: "demo" }), {
+      status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    });
+  }
   // Accounts (cookie carries a uid): at most once an hour, check the account still exists and
-  // is not disabled, then re-sign the cookie.
+  // is not disabled (nor a demo account past its day), then re-sign the cookie.
   let refreshed = null;
   if (env.DB && Date.now() - (s.chk || 0) > RECHECK_MS) {
-    const u = await env.DB.prepare("SELECT status, email_verified FROM users WHERE id = ?").bind(s.uid).first();
-    if (!u || u.status !== "active" || !u.email_verified) {
+    const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(s.uid).first();
+    if (!u || u.status !== "active" || !u.email_verified || (u.demo_until && u.demo_until < parisToday())) {
       return new Response(JSON.stringify({ error: "login required" }), {
         status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store",
           "Set-Cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` },

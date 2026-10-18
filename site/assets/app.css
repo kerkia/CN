@@ -830,6 +830,9 @@ table.data tr.pv-none td .tag { opacity: .7; }
   border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); }
 .dropzone:hover, .dropzone.over { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface-2)); }
 .dropzone span { font-size: 12.5px; }
+/* a demo account (admin page, « Démo »): one line under the bar on every page */
+.demo-strip { background: var(--flag); color: #fff; font-size: 12.5px; font-weight: 600; text-align: center; padding: 3px 12px; }
+
 /* push notifications (push.js): the card that offers them on this device */
 .push-offer { position: fixed; right: 16px; bottom: 16px; z-index: 900; max-width: 360px; display: flex; flex-direction: column; gap: 10px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 12px; padding: 12px 14px;

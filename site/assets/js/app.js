@@ -1,7 +1,7 @@
 // Application shell: router (with the login gate), header (navigation,
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
-import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce, fmtCat } from "./util.js";
+import { html, raw, $, $$, esc, fmt, fmtDate, normalise, displayName, nameParts, debounce, fmtCat } from "./util.js";
 import { t, lang, setLang, OPEN, LANGS, LANG_NAMES } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
@@ -344,7 +344,7 @@ function renderHeader(r) {
     ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
-    <a class="brand" href="${me ? link.runner(me.lic) : "#/"}">
+    <a class="brand" href="${me ? (me.lic ? link.runner(me.lic) : link.ranking()) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
         <path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="currentColor"/>
@@ -368,7 +368,7 @@ function renderHeader(r) {
           <span class="user-name">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</span>
           <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
         <div class="nav-menu">
-          <a href="${link.runner(me.lic)}" ${raw(route === "runner" && parseHash().arg === me.lic ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>
+          ${me.lic ? html`<a href="${link.runner(me.lic)}" ${raw(route === "runner" && parseHash().arg === me.lic ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
           <a href="#/methodes" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
@@ -384,6 +384,8 @@ function renderHeader(r) {
       ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer"].includes(route) ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
+  // a demo account (admin page, « Démo »): said on every page, with its last day
+  if (me?.demo) $("#topbar").insertAdjacentHTML("beforeend", html`<div class="demo-strip">${t("demo.strip", { date: fmtDate(me.demo, "long") })}</div>`);
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
   // the method: one for the whole site; a switch redraws the page (a ?m= in the address follows)
   const pickMethod = (m) => {
@@ -580,9 +582,9 @@ async function route_() {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
-  // logged in, the home page leads to one's own page
+  // logged in, the home page leads to one's own page (a demo account, tied to no licence: to the ranking)
   if (me && r.route === "overview") {
-    history.replaceState(null, "", link.runner(me.lic));
+    history.replaceState(null, "", me.lic ? link.runner(me.lic) : link.ranking());
     r = parseHash();
   }
   if (me && !data.isPrivateLoaded()) {
@@ -683,14 +685,15 @@ window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOu
 /** Called by the login page once the credentials are accepted: land on one's own page. */
 export async function signedIn(s) {
   await data.bootPrivate();
-  store.set({ lastRunner: s.lic });
+  if (s.lic) store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
-  location.hash = next && next.startsWith("#/") && next !== "#/" ? next : link.runner(s.lic);
+  // one's own page; a demo account, tied to no licence, lands on the ranking
+  location.hash = next && next.startsWith("#/") && next !== "#/" ? next : s.lic ? link.runner(s.lic) : link.ranking();
   pushBoot();
 }
 /** Push notifications on this device (push.js): renewed, or offered, a few seconds into a signed-in visit. */
-const pushBoot = () => setTimeout(() => { if (auth.session()?.email) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
+const pushBoot = () => setTimeout(() => { if (auth.session()?.email && !auth.session()?.demo) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
 
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
