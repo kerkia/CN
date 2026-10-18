@@ -1,6 +1,7 @@
 // O'CN's push notifications (2026-10-18; assets/js/push.js registers it, functions/_lib/push.js sends): shows what the server
 // pushed — { title, body, url, tag } — and opens its page when tapped. Registered on its own scope (/push/, which no page
 // lives under) so that it never sees the site's requests and stays apart from the Tracer's offline worker (/sw.js, scope /).
+// Its icons (assets/icon-192.png, badge-96.png: Android's monochrome badge) are drawn from the favicon's shapes.
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
