@@ -933,7 +933,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   editor; Cloudflare takes 100 MB a request). R2's free 10 GB (420 MB used on 2026-10-14: the database and the site
   state) hold some 2000 phone photos of 5 MB; the administrators see the bucket's use on the list pages
   (`/api/analyses?stats=1`).
-- **Languages: French and English** (owner, 2026-10-17; the work in progress until `i18n.OPEN` is true). **Never write UI
+- **Languages: French and English** (owner, 2026-10-17; open to everyone since 2026-10-18, `i18n.OPEN` true). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys
   `x.one` / `x.other`) from `i18n.js`; an area's own catalogues `i18n/<area>.fr.js` / `.en.js` (`loadArea`, the Tracer's);
@@ -947,12 +947,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`util.fmtFormat`: Nuit → Night, keys `format.<word>`), percentages `util.pct` / `pctN` (« 12 % » / « 12% »), a label
   and its colon `t("ui.colon", { a })`; a CSV's separator « ; » in French, « , » in English. Numbers and dates through
   `util.fmt` / `fmtDate` / `i18n.locale()`, never a hard-coded `fr-FR` (what the Tracer prints on an event's map follows
-  the event's own description language, `ev.lang`). The language: the one chosen (`localStorage ocn.lang`, the user menu,
-  Réglages, `?lang=`), else the browser's once `OPEN` (French browsers French, the others English); until then French
-  unless chosen, the switch for administrators only. **The account's language** (D1 `users.lang`, migration 0009, set by
-  Réglages / the switch / registration): every e-mail is written in its recipient's (`_lib/templates.js`, French and
-  English side by side; the administrators' alerts in each administrator's), and a login on a device that has no choice
-  of its own takes it (`i18n.adoptLang`). « IA » answers in the asker's language (`systemPrompt({ lang })`) and its errors
+  the event's own description language, `ev.lang`). The language: the one chosen (`localStorage ocn.lang`: the language
+  menu beside the theme on every page, signed in or not — `app.langMenu`, a globe and the code, each language in its own
+  name —, Réglages, the registration form's first field, `?lang=`), else the browser's (the first of its preferred
+  languages the site has, English when none). A change redraws the page (`setLang` reloads); the registration form keeps
+  what is typed, passwords apart (`sessionStorage ocn.reg.draft`). **The account's language** (D1 `users.lang`, migration
+  0009): set by the menu or Réglages when signed in, by registration (the form's language); every e-mail is written in its
+  recipient's (`_lib/templates.js`, French and English side by side; the administrators' alerts in each administrator's).
+  At login a language chosen on the device becomes the account's (`i18n.storedLang`), else the device takes the account's
+  (`i18n.adoptLang`). « IA » answers in the asker's language (`systemPrompt({ lang })`) and its errors
   carry a `code` the page words. The white paper exists in both languages (`docs/whitepaper/methode-top.en.tex`,
   `site/assets/ocn-methode-top.en.pdf`). `?lang=xx`: a pseudo-language that marks every catalogue text, so what the code
   writes itself shows plain. `node tools/i18n_check.mjs` lists keys missing in a language, placeholders that differ,

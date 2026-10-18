@@ -229,6 +229,11 @@ p { margin: 0; }
 .theme-menu > .icon-btn.nav-top { padding: 0; }
 .theme-menu .nav-menu { left: auto; right: 0; min-width: 160px; }
 .theme-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
+/* the language, beside the theme: a globe and the current one's code; the languages in their own names */
+.lang-menu > .icon-btn.nav-top { display: inline-flex; align-items: center; width: auto; padding: 0 8px; gap: 5px; }
+.lang-menu .lang-code { font-size: 12.5px; font-weight: 650; letter-spacing: .02em; }
+.lang-menu .nav-menu { left: auto; right: 0; min-width: 140px; }
+.lang-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
 .swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-strong); flex: none; }
 .user-btn { padding: 4px 8px; }
 .user-btn .user-name { display: flex; flex-direction: column; align-items: flex-start; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }

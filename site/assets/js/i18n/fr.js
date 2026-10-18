@@ -1491,4 +1491,7 @@ export default {
   // Réglages: the language (pages/settings.js)
   "st.lang": "Langue",
   "st.lang.hint": "La langue du site sur cet appareil, et celle de vos e-mails.",
+  // Registration: the language (pages/account.js)
+  "ac.reg.lang": "Langue du site et des e-mails",
+  "ac.reg.lang.hint": "Modifiable ensuite dans Réglages.",
 };

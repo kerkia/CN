@@ -2,7 +2,7 @@
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
 import { html, raw, $, $$, esc, fmt, normalise, displayName, nameParts, debounce, fmtCat } from "./util.js";
-import { t, lang, setLang, OPEN, LANG_NAMES } from "./i18n.js";
+import { t, lang, setLang, OPEN, LANGS, LANG_NAMES } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
 import { disposeAll } from "./charts.js";
@@ -212,6 +212,19 @@ function themeMenu() {
   </div>`;
 }
 
+/** The language, beside the theme for everyone (owner, 2026-10-18: the home page and the registration included): the
+ *  current one's code, a menu of each language in its own name. A choice is kept on this device and, signed in, on the
+ *  account (its e-mails follow), then the page is drawn again in it. */
+function langMenu() {
+  return html`<div class="nav-group lang-menu" data-group="lang">
+    <button class="icon-btn nav-top" type="button" id="lang-btn" aria-expanded="false" aria-haspopup="menu" title="${t("st.lang")}" aria-label="${t("st.lang")}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+      <span class="lang-code">${lang().toUpperCase()}</span>
+    </button>
+    <div class="nav-menu" role="menu">${LANGS.map((l) => html`<button type="button" role="menuitemradio" aria-checked="${String(l === lang())}" data-lang-pick="${l}" lang="${l}">${LANG_NAMES[l]}</button>`)}</div>
+  </div>`;
+}
+
 /** The relief behind the second row (owner, 2026-10-13, as on the study's page): a few hills, their contour lines
  *  drawn by marching squares in the map's brown, an index contour every fifth line. Redrawn when the bar is, and on resize. */
 function drawContours(retry = 2) {
@@ -342,8 +355,7 @@ function renderHeader(r) {
       </div>`)}
     </nav>
     <div class="topbar-tools">
-      ${!me && OPEN ? html`<button type="button" class="theme-btn lang-btn" data-lang="${lang() === "en" ? "fr" : "en"}" lang="${lang() === "en" ? "fr" : "en"}"
-        title="${LANG_NAMES[lang() === "en" ? "fr" : "en"]}">${lang() === "en" ? "FR" : "EN"}</button>` : ""}
+      ${OPEN || me?.admin ? langMenu() : ""}
       ${themeMenu()}
       ${me ? html`
       <div class="nav-group user-menu" data-group="me">
@@ -357,7 +369,6 @@ function renderHeader(r) {
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
-          ${OPEN || me.admin ? html`<button type="button" class="lang-btn" data-lang="${lang() === "en" ? "fr" : "en"}" lang="${lang() === "en" ? "fr" : "en"}">${LANG_NAMES[lang() === "en" ? "fr" : "en"]}</button>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
       </div>` : ""}
@@ -418,9 +429,12 @@ function renderHeader(r) {
     window.addEventListener("resize", () => { clearTimeout(tm); tm = setTimeout(drawContours, 120); });
   }
   // the language: kept on this device and on the account (its e-mails follow), then the page drawn again
-  document.querySelectorAll(".lang-btn").forEach((b) => b.addEventListener("click", () => {
-    if (me) auth.api("api/account/settings", { lang: b.dataset.lang }).catch(() => {}).finally(() => setLang(b.dataset.lang));
-    else setLang(b.dataset.lang);
+  $$("[data-lang-pick]").forEach((b) => b.addEventListener("click", () => {
+    const l = b.dataset.langPick;
+    closeMenus();
+    if (l === lang()) return;
+    if (me) auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
+    else setLang(l);
   }));
   $("#logout-btn")?.addEventListener("click", async () => {
     await auth.logout();

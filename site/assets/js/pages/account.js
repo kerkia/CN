@@ -2,7 +2,7 @@
 // password, reset, resend, privacy policy. #/compte/<view>[?token=…]
 
 import { html, raw, $, esc } from "../util.js";
-import { t, lang } from "../i18n.js";
+import { t, lang, setLang, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import { SITE } from "../app.js";
 
@@ -33,6 +33,15 @@ function bind(form, label, go) {
 }
 
 // ---- sign-up ---------------------------------------------------------------------------------
+// What is typed, passwords apart, kept for the tab while the form is open: a change of language redraws the page
+// (the form's own choice or the menu beside the theme) and finds it again; gone once the account is created.
+const DRAFT = "ocn.reg.draft", KEPT = ["first", "last", "licence", "email"];
+const readDraft = () => { try { return JSON.parse(sessionStorage.getItem(DRAFT) || "{}"); } catch (e) { return {}; } };
+const keepDraft = (form) => {
+  try { sessionStorage.setItem(DRAFT, JSON.stringify(Object.fromEntries(KEPT.map((k) => [k, form.elements[k]?.value || ""])))); } catch (e) { /* not kept */ }
+};
+const dropDraft = () => { try { sessionStorage.removeItem(DRAFT); } catch (e) { /* nothing kept */ } };
+
 async function register(main) {
   let open = true;
   try { open = (await (await fetch("api/account/status")).json()).registration; } catch (e) { open = false; }
@@ -40,6 +49,9 @@ async function register(main) {
     ? html`<div class="notice info">${t("ac.reg.closed")}</div><a class="btn" href="#/" style="justify-content:center">${t("ac.toLogin")}</a>`
     : html`<p class="soft" style="margin:0">${t("ac.reg.lede")}</p>
       <form id="reg" class="stack" style="gap:12px" autocomplete="on">
+        <label class="field"><span>${t("ac.reg.lang")}</span><select name="lang" id="reg-lang">
+          ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${raw(l === lang() ? "selected" : "")}>${LANG_NAMES[l]}</option>`)}</select>
+          <span class="muted" style="font-size:12.5px">${t("ac.reg.lang.hint")}</span></label>
         <div class="row" style="gap:12px;flex-wrap:nowrap">
           <label class="field" style="flex:1"><span>${t("ac.reg.first")}</span><input name="first" type="text" autocomplete="given-name" required maxlength="60"></label>
           <label class="field" style="flex:1"><span>${t("ac.reg.last")}</span><input name="last" type="text" autocomplete="family-name" required maxlength="60"></label>
@@ -57,6 +69,11 @@ async function register(main) {
       <a href="#/">${t("ac.toLogin")}</a>`);
   const form = $("#reg");
   if (!form) return { title: t("ac.reg.title") };
+  const draft = readDraft();
+  for (const k of KEPT) if (draft[k] && form.elements[k]) form.elements[k].value = draft[k];
+  form.addEventListener("input", () => keepDraft(form));
+  // the language: the page drawn again in it (what is typed comes back), the account created in it
+  $("#reg-lang").addEventListener("change", (e) => { keepDraft(form); setLang(e.target.value); });
   bind(form, t("ac.reg.submit"), async (f) => {
     if (f.get("password") !== f.get("password2")) return t("ac.reg.err.password2");
     const r = await auth.api("api/account/register", {
@@ -64,6 +81,7 @@ async function register(main) {
       licence: f.get("licence"), consent: f.get("consent") === "on", website: f.get("website"), lang: lang(),
     });
     if (r.ok) {
+      dropDraft();
       form.outerHTML = html`<div class="notice ok">${t("ac.reg.done")} <b>${f.get("email")}</b>.</div>
         <p class="soft" style="margin:0">${t("ac.reg.done2")}</p>
         ${r.data?.mail === "queued" ? html`<p class="muted" style="margin:0">${t("ac.reg.queued")}</p>` : ""}

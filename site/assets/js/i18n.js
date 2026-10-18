@@ -3,17 +3,18 @@
 // loaded by its pages (loadArea: i18n/<area>.fr.js, <area>.en.js; the Tracer's). Long texts (the documentation, the
 // guides, the legal pages) are whole modules per language, not keys. A text missing in English falls back to French.
 //
-// The language: the one chosen (localStorage ocn.lang — the user menu, Réglages, the login page; ?lang= in an address),
-// else the browser's: French for a French-speaking browser, English for any other. « xx » is a test pseudo-language:
+// The language: the one chosen (localStorage ocn.lang — the language menu beside the theme, on every page, Réglages, the
+// registration form; ?lang= in an address; a signed-in account's own at login on a device that has none), else the
+// browser's: the first of its preferred languages the site has, English when it has none of them. « xx » is a test pseudo-language:
 // French texts transformed, so that any text not drawn through t() stands out (?lang=xx).
 // The catalogues load before any module that imports this one runs (top-level await), so t() is synchronous everywhere.
 
 export const LANGS = ["fr", "en"];
 export const LANG_NAMES = { fr: "Français", en: "English" };     // each in its own language (i18n-ignore)
 const KEY = "ocn.lang";
-// While the English is being written: French unless English is chosen, and the switch shown to administrators only.
-// true once every text exists in both languages: the browser's language decides, everyone sees the switch.
-export const OPEN = false;
+// false while the English was being written (French unless chosen, the switch for administrators only); true since
+// 2026-10-18 (owner): the browser's language decides, everyone has the switch.
+export const OPEN = true;
 
 function chosen() {
   try {
@@ -24,7 +25,9 @@ function chosen() {
   } catch (e) { /* no storage: the browser decides */ }
   if (!OPEN) return "fr";
   const nav = (typeof navigator !== "undefined" && (navigator.languages?.length ? navigator.languages : [navigator.language])) || [];
-  return nav.some((l) => /^fr\b/i.test(l || "")) || !nav.length ? "fr" : "en";
+  if (!nav.length) return "fr";
+  const first = nav.map((l) => String(l || "").slice(0, 2).toLowerCase()).find((l) => LANGS.includes(l));
+  return first || "en";
 }
 
 const UI = chosen();
@@ -44,6 +47,11 @@ export function setLang(l) {
   if (!LANGS.includes(l) && l !== "xx") return;
   try { localStorage.setItem(KEY, l); } catch (e) { /* this visit only */ }
   location.reload();
+}
+
+/** The language chosen on this device (the menu, Réglages, ?lang=), or null when none was: the browser's decides. */
+export function storedLang() {
+  try { const v = localStorage.getItem(KEY); return LANGS.includes(v) ? v : null; } catch (e) { return null; }
 }
 
 /** At login: the account's language, unless this device has a choice of its own; true when the page must be drawn

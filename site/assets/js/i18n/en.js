@@ -2308,4 +2308,7 @@ export default {
   // Réglages: the language (pages/settings.js)
   "st.lang": "Language",
   "st.lang.hint": "The site's language on this device, and that of your emails.",
+  // Registration: the language (pages/account.js)
+  "ac.reg.lang": "Language of the site and the emails",
+  "ac.reg.lang.hint": "You can change it later in Settings.",
 };
