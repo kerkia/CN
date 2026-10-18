@@ -190,12 +190,15 @@ def deploy() -> bool:
     print(f"4. deploy to {PAGES_PROJECT}: {'ok' if r.returncode == 0 else 'FAILED'} in {time.monotonic() - t0:.0f}s")
     for ln in tail:
         print(f"   {ln}")
-    if r.returncode == 0:
+    if r.returncode == 0 and OCAP_PUBLISH:
         deploy_ocap(npx)
     return r.returncode == 0
 
 
 OCAP_PROJECT = os.environ.get("OCAP_PAGES_PROJECT", "ocap")
+# O'Cap is being retired (owner, 2026-10-18): O'CN no longer depends on it (its live relay is O'CN's own, live/). Until it is,
+# its data is still published after each O'CN deploy; set this to "0" (here or in the workflow's environment) to stop.
+OCAP_PUBLISH = os.environ.get("OCAP_PUBLISH", "1") != "0"
 
 
 def deploy_ocap(npx: str) -> bool:

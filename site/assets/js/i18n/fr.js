@@ -719,7 +719,7 @@ export default {
   "lv.loading": "Chargement…",
   "lv.none": "Aucune course ne correspond.",
   "lv.unavailable": "Liste indisponible pour l'instant.",
-  "lv.source": "Résultats en direct publiés par les organisateurs sur liveresultat, relayés par O'Cap.",
+  "lv.source": "Résultats en direct publiés par les organisateurs sur liveresultat, relayés par O'CN.",
   "lv.country": "Pays", "lv.country.all": "Tous les pays", "lv.country.unknown": "Pays inconnu",
   "lv.noneCountry": "Aucune course en direct en ce moment pour ce pays ({c}) : choisissez « Tous les pays » pour voir les autres.",
   "lv.org": "Organisateur",

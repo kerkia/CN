@@ -3,7 +3,7 @@
 // this page, open on the arena PC in Chrome or Edge (the File System Access API keeps the file: it is chosen once), re-reads
 // it, reads it here — IOF XML 3.0 with its own reader below, which keeps the runners still out and their split times; the
 // OE / MeOS HTML lists with localparse.js — and sends only the classes that changed (functions/api/live/push.js, then the
-// race's object on the live server, ocap/worker, which pushes them to the pages watching). Nothing is declared beforehand:
+// race's object on O'CN's live relay, live/ (Worker « ocn-live »), which pushes them to the pages watching). Nothing is declared beforehand:
 // the classes, their controls and runners come from the file, and a class that appears is added. A timer in a small
 // Worker paces the reads (a hidden tab's own timers are slowed to once a minute); the file's handle is kept in IndexedDB,
 // so a reload asks one click to read it again. A broadcast is fed by the account that opened it (or an administrator):

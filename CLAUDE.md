@@ -21,7 +21,8 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
-| `ocap/` | **O'Cap** (working name, 2026-10-09): a separate public, phone-first site — Bientôt, En direct (liveresultat relayed by one Durable Object per race, WebSockets), Récemment; no login, no CN, FR/EN. Its own Cloudflare projects: Pages `ocap` (https://ocap.pages.dev; its data exported from `site/data` by `ocap/export.py` and published by `update.deploy` after each O'CN deploy) and Worker `ocap-live` (Durable Objects, deployed by hand: `cd ocap/worker && npx wrangler deploy`); see `ocap/README.md` |
+| `ocap/` | **O'Cap** (working name, 2026-10-09): a separate public, phone-first site — Bientôt, En direct (liveresultat relayed by one Durable Object per race, WebSockets), Récemment; no login, no CN, FR/EN. Its own Cloudflare projects: Pages `ocap` (https://ocap.pages.dev; its data exported from `site/data` by `ocap/export.py` and published by `update.deploy` after each O'CN deploy) and Worker `ocap-live` (Durable Objects, deployed by hand: `cd ocap/worker && npx wrangler deploy`); see `ocap/README.md`. **Being retired** (owner, 2026-10-18): O'CN depends on none of it any more (its live relay is `live/`); its publication after each O'CN deploy stops with `OCAP_PUBLISH=0` (`update.py`), then the Pages project `ocap` and the Worker `ocap-live` can be deleted |
+| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18, from O'Cap's `ocap-live`, which it replaces): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js` and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -42,7 +43,7 @@ commit results, personal data, secrets or credentials.
   stale `site/data`, and anything not pushed is overwritten by the next run.
 - `site/_routes.json` keeps the public files (`/`, `/assets/*`, `robots.txt`, `meta.json`…) out of the Functions:
   served free and unmetered, without the login gate (which only passed them through); the data and the API stay
-  behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN, O'Cap and `ocap-live`.
+  behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN and its `ocn-live` (and O'Cap with `ocap-live` until they are deleted).
 - **Open tabs follow a deploy** (2026-10-15): the pages' modules stay in memory for the whole visit, so a tab left
   open kept running old code after a fix. `update.deploy` writes `site/assets/build.txt` (`write_build_stamp`: a hash
   of site/ without data/ and auth/, unchanged by data-only deploys; git-ignored); `app.codeChanged` reads it at a change
@@ -618,14 +619,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`/api/live/broadcasts`) and numbered from 900 000 000 (liveresultat's ids are far below), registered by the live server's
   `Directory` object; each race is a `LiveRace` object that, for such numbers, never reads liveresultat and keeps what is
   pushed (one storage key per class), pushing changes to the pages watching as for a liveresultat race. O'CN reaches both
-  objects through Durable Object bindings to `ocap-live` (`wrangler.toml` LIVE_RACE, LIVE_DIR) at internal paths (`/push`,
+  objects through Durable Object bindings to its live relay `ocn-live` (`live/`; `ocap-live` until 2026-10-18, so the broadcasts
+  opened before then stayed there) (`wrangler.toml` LIVE_RACE, LIVE_DIR) at internal paths (`/push`,
   `/broadcasts`) that no public route forwards (`functions/_lib/live.js`). Any account opens a broadcast (10 a day at most),
   and only the account that opened it, or an administrator, feeds it (`by`, the account's id, is never sent to others: the
   list says `mine`); the page lists one's own. « En direct » lists the last 3 days' broadcasts that sent something (and
   one's own before their first send; all to administrators). Local test as a regular account: launch config
-  `pages-dev-user` (8792, ADMIN_EMAILS overridden). The live server
-  (`ocap/worker`) is deployed by hand. Local test: launch configs `ocap-live-dev` (8787), `ocap-dev` (8791) and
-  `pages-dev-games` (8790), `localStorage["ocn.liveBase"]="http://localhost:8791"`; `iofLive` / `toLive` are exported for checks.
+  `pages-dev-user` (8792, ADMIN_EMAILS overridden). The live relay
+  (`live/`) is deployed by hand. Local test: launch configs `ocn-live-dev` (8786) and `pages-dev-games` (8790; the local Pages
+  dev binds to the running relay); `iofLive` / `toLive` are exported for checks.
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; administrators only the first
   day, **every account since 2026-10-16** — 15 questions a day per account on the free model, administrators apart, `PER_DAY`
   in `api/ask.js`; the other Workers AI models of the menu are the administrators' tests): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**
@@ -1048,11 +1050,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
   « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) for every account since
   2026-10-15 (the `users.live` right before: migration 0007; its admin page checkbox removed 2026-10-16, the column kept
-  unread): liveresultat's races from O'Cap's live server
-  (`LIVE` = https://ocap.pages.dev: its `/api/live/list`, open to other sites, and `/ws/<race>`), so live traffic
-  never goes through O'CN's gate; each runner recognised by name (+ club number) and linked, their CN Top and
+  unread): liveresultat's races from O'CN's live relay (`live/`, Worker `ocn-live`; O'Cap's site and `ocap-live` until
+  2026-10-18), through O'CN's own Functions — `/api/live/list` (kept in the edge cache for the directory's lifetime, 2 min)
+  and `/ws/<race>` (the WebSocket handed to the race's object) —, signed-in accounts only: the login gate passes the 101
+  handshake on untouched (`_middleware.js`); each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top
-  CN predicts (« Attendu »). `localStorage["ocn.liveBase"]` points it at a local O'Cap for tests.
+  CN predicts (« Attendu »). `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
   account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so. The

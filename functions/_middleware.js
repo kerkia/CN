@@ -114,6 +114,8 @@ export async function onRequest(context) {
     }
   }
   const res = await next();
+  // a WebSocket handshake (/ws/<race>, « En direct ») goes back as it is: a copy of the response would lose its socket
+  if (res.status === 101 || res.webSocket) return res;
   // private data must not sit in shared caches
   const out = new Response(res.body, res);
   // (the API endpoints set their own no-store: a cached /api/account/me showed stale settings)

@@ -1251,7 +1251,7 @@ export default {
   "lv.loading": "Loading…",
   "lv.none": "No races match.",
   "lv.unavailable": "List unavailable for now.",
-  "lv.source": "Live results published by the organisers on liveresultat, relayed by O'Cap.",
+  "lv.source": "Live results published by the organisers on liveresultat, relayed by O'CN.",
   "lv.country": "Country",
   "lv.country.all": "All countries",
   "lv.country.unknown": "Unknown country",

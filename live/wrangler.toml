@@ -1,0 +1,27 @@
+# O'CN's live relay (Durable Objects): one object per liveresultat competition (« En direct ») or organiser's broadcast
+# (« Organisation › Direct »), and a directory (liveresultat's list, the broadcasts). Reached only through O'CN's Durable
+# Object bindings (wrangler.toml at the root: LIVE_RACE, LIVE_DIR): no public address. Deployed by hand:
+#   cd live && npx wrangler deploy
+# (it replaces O'Cap's « ocap-live », 2026-10-18; a new Worker, so its objects started empty)
+name = "ocn-live"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveRace"
+
+[[durable_objects.bindings]]
+name = "DIR"
+class_name = "Directory"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRace"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Directory"]
+
+# LR_API: liveresultat's API; local tests point it at live/dev/lr-mock.mjs (wrangler dev --var LR_API:http://localhost:8790/api.php)

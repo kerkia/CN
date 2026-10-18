@@ -20,17 +20,19 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "cn-state"
 
-# the live server (ocap/worker, Worker « ocap-live »): its race objects and directory, for the races an organiser feeds live
-# (« Organisation › Direct », functions/api/live/*); the pushes reach them at internal paths no public route forwards
+# O'CN's live relay (live/, Worker « ocn-live », deployed by hand: cd live && npx wrangler deploy; it replaces O'Cap's
+# « ocap-live », 2026-10-18): its race objects — liveresultat's races for « En direct » (functions/ws/[comp].js) and the
+# organisers' broadcasts (« Organisation › Direct », functions/api/live/push.js) — and its directory (liveresultat's list,
+# functions/api/live/list.js; the broadcasts); the pushes reach them at internal paths no public route forwards
 [[durable_objects.bindings]]
 name = "LIVE_RACE"
 class_name = "LiveRace"
-script_name = "ocap-live"
+script_name = "ocn-live"
 
 [[durable_objects.bindings]]
 name = "LIVE_DIR"
 class_name = "Directory"
-script_name = "ocap-live"
+script_name = "ocn-live"
 
 # Workers AI (« IA », functions/api/ask.js): the language model that writes a query for a question; free plan, 10 000
 # neurons a day for the whole account, the calls fail past it (nothing billed)

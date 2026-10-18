@@ -1,7 +1,7 @@
 // POST /api/live/push?id=<broadcast> — one update of an organiser's live race (pages/orgdirect.js: the classes that changed
 // since its last read of the timing software's export, in liveresultat's compact form). Handed as it is to the race's
-// Durable Object on the live server (ocap/worker, « LiveRace », bound here as LIVE_RACE, internal path /push), which
-// pushes the changes to the pages watching — O'CN's « En direct » and O'Cap. Only the account that opened the broadcast,
+// Durable Object on O'CN's live relay (live/, Worker « ocn-live », « LiveRace », bound here as LIVE_RACE, internal path
+// /push), which pushes the changes to the pages watching (« En direct »). Only the account that opened the broadcast,
 // or an administrator, feeds it (every account may open one since 2026-10-15, owner). The body is not parsed here (the
 // free plan's ~10 ms of CPU): the race's object checks it.
 import { isAdmin, json, withUser } from "../../_lib/api.js";
@@ -19,9 +19,9 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   const body = await request.text();
   if (body.length > MAX_BODY) return json({ error: "too large" }, 413);
   const race = env.LIVE_RACE.get(env.LIVE_RACE.idFromName(id));
-  const r = await race.fetch(`https://ocap-live/push?comp=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  const r = await race.fetch(`https://ocn-live/push?comp=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
   if (r.ok) {
-    waitUntil(liveDir(env).fetch("https://ocap-live/broadcasts", { method: "POST", headers: { "Content-Type": "application/json" },
+    waitUntil(liveDir(env).fetch("https://ocn-live/broadcasts", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ op: "touch", id: Number(id) }) }).catch(() => {}));
   }
   return new Response(await r.text(), { status: r.status, headers: { "Content-Type": "application/json" } });
