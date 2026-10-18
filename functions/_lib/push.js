@@ -60,12 +60,13 @@ export async function encrypt(p256dh, auth, payload) {
 
 const signers = new Map();          // the site's signing key, imported once per isolate
 async function signer(env) {
-  if (!signers.has(env.VAPID_PRIVATE_KEY)) {
+  const d = String(env.VAPID_PRIVATE_KEY).trim();          // (a secret piped in may end with a newline)
+  if (!signers.has(d)) {
     const pub = unb64u(env.VAPID_PUBLIC_KEY);
-    const jwk = { kty: "EC", crv: "P-256", d: env.VAPID_PRIVATE_KEY, x: b64u(pub.slice(1, 33)), y: b64u(pub.slice(33, 65)), ext: true };
-    signers.set(env.VAPID_PRIVATE_KEY, await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]));
+    const jwk = { kty: "EC", crv: "P-256", d, x: b64u(pub.slice(1, 33)), y: b64u(pub.slice(33, 65)), ext: true };
+    signers.set(d, await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]));
   }
-  return signers.get(env.VAPID_PRIVATE_KEY);
+  return signers.get(d);
 }
 
 /** RFC 8292: the Authorization header for a push service (its origin is the token's audience; valid 12 hours). */
