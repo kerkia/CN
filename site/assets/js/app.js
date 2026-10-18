@@ -687,7 +687,10 @@ export async function signedIn(s) {
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
   location.hash = next && next.startsWith("#/") && next !== "#/" ? next : link.runner(s.lic);
+  pushBoot();
 }
+/** Push notifications on this device (push.js): renewed, or offered, a few seconds into a signed-in visit. */
+const pushBoot = () => setTimeout(() => { if (auth.session()?.email) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
 
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
@@ -700,6 +703,7 @@ async function start() {
   codeChanged();                                   // the version this visit runs
   window.addEventListener("hashchange", route_);
   route_();
+  pushBoot();
 }
 start().catch((e) => {
   console.error(e);

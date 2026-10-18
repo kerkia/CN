@@ -99,5 +99,7 @@ export async function logout() {
   try { for (const k of Object.keys(sessionStorage)) if (k.startsWith("ocn.tr.key.")) sessionStorage.removeItem(k); } catch (e) { /* nothing kept */ }
   // the API key « IA » may use (askbyok.js), even one remembered on this device
   for (const s of ["sessionStorage", "localStorage"]) { try { window[s].removeItem("ocn.ia.byok"); } catch (e) { /* nothing kept */ } }
+  // this device's push notifications (push.js), while the session still lets it tell the server
+  try { await (await import("./push.js")).disable(); } catch (e) { /* none */ }
   try { await fetch("api/logout", { method: "POST", credentials: "same-origin" }); } catch (e) {}
 }

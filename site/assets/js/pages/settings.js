@@ -1,11 +1,22 @@
-// Settings: e-mail notifications, password change, account deletion (e-mail accounts only).
+// Settings: the alerts — each by e-mail and/or push notification (2026-10-18; the agenda's e-mails a right the administrator
+// grants, push open to all) —, this device's notifications, the language, password change, account deletion (e-mail
+// accounts only).
 
 import { html, $, $$, displayName } from "../util.js";
-import { t, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
+import { t, tn, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
+
+// The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `agenda`: the e-mail
+// needs the administrator's right (users.alerts_allowed); no `mail`: by notification only.
+const ALERTS = [
+  { key: "results", mail: "notify", push: "pushResults" },
+  { key: "starts", mail: null, push: "pushStarts" },
+  { key: "agenda", mail: "agendaAlert", push: "pushAgenda", agenda: true },
+  { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", agenda: true },
+];
 
 // Same names as the regions of the Agenda page (ffco_scraper/agenda.py).
 // the agenda values, proper names (i18n-ignore-next 3)
@@ -30,28 +41,36 @@ export async function render(main) {
       <section class="card"><div class="card-head"><h2>${t("st.account")}</h2></div><div class="card-body stack" style="gap:10px">
         <div><span class="muted">${t("ac.email")}</span><br><b>${user.email}</b></div>
         <div><span class="muted">${t("st.licensee")}</span><br><a href="${link.runner(user.lic)}">${displayName(user.nom)}</a> · ${t("rn.licence")} ${user.lic}</div>
-        <label class="check"><input id="notify" type="checkbox" ${user.notify ? "checked" : ""}><span>${t("st.notify")}
-          <br><span class="muted" style="font-size:12.5px">${t("st.notify.hint")}</span></span></label>
-        <div class="notice ok" id="notify-ok" hidden>${t("st.saved")}</div>
         ${OPEN || user.admin ? html`<label class="field"><span>${t("st.lang")}</span><select id="st-lang" style="max-width:220px">
           ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${l === lang() ? "selected" : ""}>${LANG_NAMES[l]}</option>`)}</select>
           <span class="muted" style="font-size:12.5px">${t("st.lang.hint")}</span></label>` : ""}
       </div></section>
 
-      <section class="card"><div class="card-head"><h2>${t("st.ag.title")}</h2></div><div class="card-body stack" style="gap:10px">
-        ${user.agendaAllowed ? html`
-        <label class="check"><input id="ag-alert" type="checkbox" ${user.agendaAlert ? "checked" : ""}><span>${t("st.ag.label")}
-          <br><span class="muted" style="font-size:12.5px">${t("st.ag.hint")}</span></span></label>
-        <label class="check"><input id="dl-alert" type="checkbox" ${user.deadlineAlert ? "checked" : ""}><span>${t("st.dl.label")}
-          <br><span class="muted" style="font-size:12.5px">${t("st.dl.hint")}</span></span></label>
-        <div id="ag-regions" ${user.agendaAlert || user.deadlineAlert ? "" : "hidden"}>
+      <section class="card"><div class="card-head"><h2>${t("st.alerts.title")}</h2></div><div class="card-body stack" style="gap:10px">
+        <table class="alerts-table">
+          <thead><tr><th></th><th>${t("st.alerts.mail")}</th><th>${t("st.alerts.push")}</th></tr></thead>
+          <tbody>${ALERTS.map((a) => html`<tr>
+            <td><b>${t(`st.alerts.${a.key}`)}</b><br><span class="muted">${t(`st.alerts.${a.key}.hint`)}</span></td>
+            <td>${!a.mail ? html`<span class="muted" title="${t("st.alerts.pushOnly")}">—</span>`
+              : a.agenda && !user.agendaAllowed ? html`<span class="muted" title="${t("st.alerts.mailLocked")}">🔒</span>`
+              : html`<input type="checkbox" data-alert="${a.mail}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.mail")}" ${user[a.mail] ? "checked" : ""}>`}</td>
+            <td><input type="checkbox" data-alert="${a.push}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.push")}" ${user[a.push] ? "checked" : ""}></td>
+          </tr>`)}</tbody>
+        </table>
+        ${user.agendaAllowed ? "" : html`<p class="muted" style="margin:0;font-size:12.5px">🔒 ${t("st.alerts.mailLocked")}</p>`}
+        <div id="ag-regions" hidden>
           <div class="row" style="gap:8px;margin-bottom:8px"><b style="font-size:13.5px">${t("st.ag.regions")}</b>
             <button type="button" class="btn btn-ghost btn-sm" id="ag-all">${t("st.ag.all")}</button>
             <button type="button" class="btn btn-ghost btn-sm" id="ag-none">${t("st.ag.clear")}</button></div>
           <div class="ag-grid">${REGIONS.map((r) => html`<label class="check"><input type="checkbox" data-region="${r}" ${user.agendaRegions.includes(r) ? "checked" : ""}><span>${r}</span></label>`)}</div>
         </div>
         <div class="notice" id="ag-hint" hidden>${t("st.ag.none")}</div>
-        <div class="notice ok" id="ag-ok" hidden>${t("st.saved")}</div>` : html`<p class="soft" style="margin:0">${t("st.ag.locked")}</p>`}
+        <div class="notice ok" id="alerts-ok" hidden>${t("st.saved")}</div>
+      </div></section>
+
+      <section class="card"><div class="card-head"><h2>${t("st.push.title")}</h2></div><div class="card-body stack" style="gap:8px">
+        <p class="soft" style="margin:0">${t("st.push.hint")}</p>
+        <div id="push-device" class="stack" style="gap:8px"></div>
       </div></section>
 
       <section class="card"><div class="card-head"><h2>${t("st.pw.title")}</h2></div><div class="card-body">
@@ -80,38 +99,64 @@ export async function render(main) {
     const l = e.target.value;
     auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
   });
-  $("#notify").addEventListener("change", async (e) => {
-    const box = e.target;
+  // the alerts: each box saved as it changes; the regions shown while an agenda alert is on, by either channel
+  const agendaOn = () => $$("[data-alert]").some((i) => i.checked && /^(agendaAlert|deadlineAlert|pushAgenda|pushDeadline)$/.test(i.dataset.alert));
+  const regions = () => $$("[data-region]").filter((i) => i.checked).map((i) => i.dataset.region);
+  const showRegions = () => {
+    $("#ag-regions").hidden = !agendaOn();
+    $("#ag-hint").hidden = !(agendaOn() && !regions().length);
+  };
+  const saved = () => {
+    $("#alerts-ok").hidden = false;
+    setTimeout(() => { const n = $("#alerts-ok"); if (n) n.hidden = true; }, 2500);
+  };
+  showRegions();
+  $$("[data-alert]").forEach((box) => box.addEventListener("change", async () => {
     box.disabled = true;
-    const res = await auth.api("api/account/settings", { notify: box.checked });
+    const res = await auth.api("api/account/settings", { [box.dataset.alert]: box.checked });
     box.disabled = false;
     if (!res.ok) { box.checked = !box.checked; return; }
-    $("#notify-ok").hidden = false;
-    setTimeout(() => { const n = $("#notify-ok"); if (n) n.hidden = true; }, 2500);
-  });
+    showRegions();
+    saved();
+    if (box.dataset.alert.startsWith("push")) drawDevice();
+  }));
+  async function saveRegions() {
+    showRegions();
+    if ((await auth.api("api/account/settings", { agendaRegions: regions() })).ok) saved();
+  }
+  $$("[data-region]").forEach((i) => i.addEventListener("change", saveRegions));
+  $("#ag-all").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = true)); saveRegions(); });
+  $("#ag-none").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = false)); saveRegions(); });
 
-  // the agenda alerts (new courses, registrations closing soon), one list of regions: saved at each change
-  const agState = () => ({
-    agendaAlert: $("#ag-alert").checked,
-    deadlineAlert: $("#dl-alert").checked,
-    agendaRegions: $$("[data-region]").filter((i) => i.checked).map((i) => i.dataset.region),
-  });
-  async function saveAlert() {
-    const s = agState(), on = s.agendaAlert || s.deadlineAlert;
-    $("#ag-regions").hidden = !on;
-    $("#ag-hint").hidden = !(on && !s.agendaRegions.length);
-    const res = await auth.api("api/account/settings", s);
-    if (!res.ok) return;
-    $("#ag-ok").hidden = false;
-    setTimeout(() => { const n = $("#ag-ok"); if (n) n.hidden = true; }, 2500);
+  // this device: its notifications on or off (the browser asks first), a test
+  const push = await import("../push.js");
+  async function drawDevice(note = "") {
+    const box = $("#push-device");
+    if (!box) return;
+    const [state, cfg] = await Promise.all([push.deviceState(), push.getConfig(true)]);
+    const n = cfg?.devices || 0;
+    const wanted = $$("[data-alert]").some((i) => i.checked && i.dataset.alert.startsWith("push"));
+    box.innerHTML = html`<p style="margin:0"><b>${t("st.push.dev.title")}</b> ${t(`st.push.dev.${state}`)}</p>
+      ${state === "on" ? html`<div class="row" style="gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm" id="push-test">${t("st.push.test")}</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="push-off">${t("st.push.off")}</button></div>`
+        : state === "off" ? html`<div><button type="button" class="btn btn-primary btn-sm" id="push-on">${t("st.push.on")}</button></div>` : ""}
+      ${n ? html`<p class="muted" style="margin:0;font-size:12.5px">${tn("st.push.devices", n)}</p>` : ""}
+      ${state === "on" && !wanted ? html`<p class="muted" style="margin:0;font-size:12.5px">${t("st.push.noneWanted")}</p>` : ""}
+      ${note ? html`<div class="notice">${note}</div>` : ""}`;
+    $("#push-on")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const s = await push.enable();
+      drawDevice(s === "on" || s === "denied" ? "" : t("st.push.failed"));
+    });
+    $("#push-off")?.addEventListener("click", async (e) => { e.target.disabled = true; await push.disable(); drawDevice(); });
+    $("#push-test")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const r = await push.test();
+      drawDevice(r === null ? t("st.push.test.fail") : r === 0 ? t("st.push.test.none") : tn("st.push.test.sent", r));
+    });
   }
-  if (user.agendaAllowed) {                   // the alerts are a right the administrator grants
-    $("#ag-alert").addEventListener("change", saveAlert);
-    $("#dl-alert").addEventListener("change", saveAlert);
-    $$("[data-region]").forEach((i) => i.addEventListener("change", saveAlert));
-    $("#ag-all").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = true)); saveAlert(); });
-    $("#ag-none").addEventListener("click", () => { $$("[data-region]").forEach((i) => (i.checked = false)); saveAlert(); });
-  }
+  drawDevice();
 
   $("#pw").addEventListener("submit", async (e) => {
     e.preventDefault();

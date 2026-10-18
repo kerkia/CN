@@ -724,8 +724,30 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   startlist` lists the race's deposits, DELETE `{id}` removes one, both organisers only; a `prov` run started at once).
   `sources/upload.py` reads it into a « startlist » document (the race's latest deposit by any organiser supersedes) and lists the
   race in `prov_meta` `org_starts`: liveresultat and the club's site are no longer read for its start list, and `run.build`
-  publishes the organiser's alone, up to `ORG_START_DAYS` (90) ahead. Later (owner): e-mail the runners their start times,
-  Web Push to phones (the Resend plan is too small for the first).
+  publishes the organiser's alone, up to `ORG_START_DAYS` (90) ahead. The runners get their start time by push (below); by
+  e-mail later (owner: the Resend plan is too small).
+- **Alerts by e-mail and/or push** (owner, 2026-10-18): every alert of Réglages › Alertes (`pages/settings.js` `ALERTS`, a table
+  E-mail | Notification) — « une de mes courses est en ligne » (`notify` / `push_results`, both on by default), « mon heure de
+  départ est publiée » (push only, `push_starts`, on), « nouvelle course dans mes régions » (`agenda_alert` / `push_agenda`) and
+  « la clôture des inscriptions approche » (`deadline_alert` / `push_deadline`; push off until ticked) — goes by e-mail, push or
+  both. The agenda's e-mails stay a right the administrator grants (🔒 otherwise); push is open to everyone; one list of regions
+  for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
+  WebCrypto — checked against Mozilla's `http_ece` and FCM, which answers 410 to an unknown token and 403 to a wrong key; only
+  the browsers' push services are posted to, `validSubscription`). Keys: `VAPID_PUBLIC_KEY` in wrangler.toml, `VAPID_PRIVATE_KEY`
+  a Pages secret (and `.dev.vars`), made by `tools/vapid.mjs` (the private key kept in `C:\kerkia\cn-data\vapid-private.txt`,
+  never in the repository); without them push is off (`pushReady`) and Réglages says so. D1 (migration 0010): `users.push_*`,
+  `push_subs` (one per device: endpoint, keys, label), `push_queue` (sent a few per call by `flushPush`, 8, the Functions' CPU
+  budget; expired rows dropped), `push_sent` (the start time last sent per account and race: sent again only when it changes).
+  `/api/notify` queues pushes beside the e-mails (results: `items`; agenda and deadlines: `agenda`; start times: `starts`, which
+  `notify.run_push` reads from the provisional results' start lists after every deploy) and returns `pushLeft`;
+  `notify._drain_push` calls again while some are left. `/api/push` (GET config, `subscribe`, `unsubscribe`, `test`). The browser:
+  `push.js` (registers `/sw-push.js` on its own scope `/push/`, apart from the Tracer's offline `/sw.js`; renews this device's
+  subscription once a visit, moving it to the account signed in; `offer`, a small card asking for this device — a browser asks
+  only after a click —, again 14 days after « Plus tard »; dropped at logout), the device block of Réglages (state, turn on/off,
+  « Envoyer un essai »). A tap opens the notification's page (the worker controls no page: a message to an open tab, else a new
+  window). iPhones receive notifications only from the site added to the home screen: `site/manifest.webmanifest` and PNG icons
+  (`assets/icon-*.png`, `apple-touch-icon.png`, `badge-96.png`, drawn from the favicon's shapes). The privacy page's
+  « Notifications » says what is kept.
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

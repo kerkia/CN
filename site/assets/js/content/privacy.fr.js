@@ -73,7 +73,7 @@ export const body = (SITE) => `
           N'y ajoutez que des personnes qui y consentent.</li>
         <li><b>Finalités et bases légales :</b> l'exécution du service demandé lors de la création du compte (réserver l'accès aux
           licenciés de la FFCO, confirmer l'adresse e-mail, réinitialiser le mot de passe) ; l'intérêt légitime de l'éditeur à détecter
-          les comptes multiples pour une même licence ; votre consentement pour les alertes par e-mail, que vous pouvez retirer à tout
+          les comptes multiples pour une même licence ; votre consentement pour les alertes par e-mail ou par notification, que vous pouvez retirer à tout
           moment dans Réglages.</li>
         <li><b>Durée de conservation :</b> jusqu'à la suppression du compte, que vous pouvez effectuer à tout moment dans Réglages. Un
           e-mail en attente d'envoi est effacé dès son envoi.</li>
@@ -82,6 +82,16 @@ export const body = (SITE) => `
       </ul>
       <p>Un message envoyé par la page « Nous écrire » parvient à l'éditeur par e-mail, accompagné de votre adresse, de votre nom et du
         navigateur utilisé ; il est conservé dans sa messagerie le temps nécessaire au traitement de la demande.</p>
+      <h2 style="font-size:16px">Notifications</h2>
+      <p>Si vous autorisez les notifications d'O'CN sur un appareil, le site conserve, pour cet appareil, l'adresse d'envoi que lui
+        attribue le service de notification de votre navigateur (Google pour Chrome et Android, Apple pour Safari, Mozilla pour
+        Firefox, Microsoft pour Edge), les clés qui servent à chiffrer les messages et le type d'appareil (par exemple
+        « Chrome · Android »). Les messages (votre heure de départ, la mise en ligne de vos résultats, les courses de l'agenda,
+        selon vos réglages) sont chiffrés de bout en bout : le service de notification les achemine sans pouvoir les lire. Le site
+        conserve aussi la dernière heure de départ notifiée pour chaque course, afin de ne la renvoyer que si elle change, et les
+        notifications en attente d'envoi, quelques jours au plus. Base légale : votre consentement, donné en autorisant les
+        notifications et retirable à tout moment dans Réglages ou dans les réglages de votre navigateur. Ces données sont effacées
+        lorsque vous désactivez les notifications sur l'appareil, lorsque vous vous déconnectez de cet appareil et avec le compte.</p>
       <h2 style="font-size:16px">Statistiques d'utilisation</h2>
       <p>Afin de connaître l'usage du site et de l'améliorer (intérêt légitime), le site enregistre, pour chaque compte, le nombre de
         pages vues par jour et par rubrique (Classement, Coureur, Réseau, etc.) et le nombre de visites. Aucune autre donnée n'est

@@ -13,6 +13,12 @@ or FFCO's. The races of the last PROV_DAYS days with a list of results naming a
 subscribed runner are posted at every run; one race travels with every id it is known by
 (FFCO's competition id, its key on « Résultats »: `alias`), and the site mails it once.
 
+Push notifications (2026-10-18): every alert goes by e-mail, by push, or both, as each account chose; the site decides
+(this side only says who ran what). The pushes wait in the site's queue and go a few per call: _drain_push calls again
+while some are left. run_push() sends the start times of the coming races' published start lists (the provisional
+results' files) for the licences whose account wants them by push; the site notifies each once, and again when the time
+changes.
+
 The shared secret NOTIFY_SECRET comes from the environment or from
 <data dir>/notify.secret; it must equal the Pages project's NOTIFY_SECRET.
 Failures never break an update: the pending list is kept and retried next run.
@@ -170,15 +176,84 @@ def run(db: Path, out: Path | None = None) -> None:
         while res["remaining"] and res["budget"] and res["sent"]:
             res = _call("POST", {"items": []})
             sent += res["sent"]
+        pushed, push_left = _drain_push(res)
         PENDING.unlink(missing_ok=True)
         CATCHUP.write_text(date.today().isoformat())
-        if ids or queued or sent or res["remaining"]:
+        if ids or queued or sent or res["remaining"] or pushed:
             print(f"5. notify: {len(ids)} competitions, {n_prov} organisers' results, {len(items)} subscribed runners, "
-                  f"{queued} digests queued, {sent} e-mails sent, {res['remaining']} waiting")
+                  f"{queued} digests queued (e-mail or push), {sent} e-mails sent, {res['remaining']} waiting, "
+                  f"{pushed} notifications sent{f', {push_left} waiting' if push_left else ''}")
     except urllib.error.HTTPError as e:
         print(f"5. notify: the site refused ({e.code}{' — NOTIFY_SECRET differs from the Pages one' if e.code == 403 else ''}) — will retry at the next run")
     except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
         print(f"5. notify: failed ({e}) — will retry at the next run")
+    run_push(out)
+
+
+def _drain_push(res: dict) -> tuple[int, int]:
+    """Send the site's queued notifications, a few per call, while some are left and the calls make progress.
+    -> (sent, left). (Each call drains the e-mail queue too, within its quota.)"""
+    sent, left, before = res.get("pushSent", 0), res.get("pushLeft", 0), None
+    for _ in range(80):
+        if not left or (before is not None and left >= before):
+            break
+        before = left
+        res = _call("POST", {"items": []})
+        sent += res.get("pushSent", 0)
+        left = res.get("pushLeft", 0)
+    return sent, left
+
+
+def _starts(out: Path, licences: set[str]) -> list[dict]:
+    """The start times of the coming races (today included) for these licences: one per runner and race, from the
+    race's first start list (its documents come best first: the organiser's own, « Organisation › Horaires »)."""
+    today = date.today().isoformat()
+    items: dict[tuple[str, str], dict] = {}
+    for r in _prov_races(out):
+        if not r.get("startlist") or (r.get("date_iso") or "") < today:
+            continue
+        try:
+            race = json.loads((out / "prov" / f"{r['key']}.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for doc in race.get("docs", []):
+            if doc.get("kind") != "startlist" or not doc.get("classes"):
+                continue
+            for k in doc["classes"]:
+                for runner in k.get("runners", []):
+                    lic, s = runner.get("lic"), runner.get("start_s")
+                    if not lic or s is None or _norm(lic) not in licences or (_norm(lic), r["key"]) in items:
+                        continue
+                    items[(_norm(lic), r["key"])] = {"lic": _norm(lic), "key": r["key"], "name": r.get("name") or "",
+                                                     "date": r["date_iso"], "place": r.get("place") or "",
+                                                     "start_s": int(s), "cls": k.get("name") or ""}
+            break                                   # the race's first start list only
+    return list(items.values())
+
+
+def run_push(out: Path | None) -> None:
+    """Send the published start times to the site, which notifies the runners with push on. Never raises."""
+    if not _secret() or not out or not any(r.get("startlist") for r in _prov_races(out)):
+        return
+    try:
+        got = _call("GET")
+        licences = {_norm(x) for x in got.get("push") or []}
+        starts = _starts(out, licences) if got.get("v", 1) >= 3 and licences else []
+        if not starts:
+            return
+        queued = sent = 0
+        for i in range(0, len(starts), 300):
+            res = _call("POST", {"starts": starts[i:i + 300]})
+            queued += res.get("startsQueued", 0)
+            sent += res.get("pushSent", 0)
+        more, left = _drain_push(res)
+        if queued or sent or more:
+            print(f"5b. push: {len(starts)} start times of {len(licences)} runners with notifications, {queued} new or changed, "
+                  f"{sent + more} notifications sent{f', {left} waiting' if left else ''}")
+    except urllib.error.HTTPError as e:
+        print(f"5b. push: the site refused ({e.code}) — will retry at the next run")
+    except (urllib.error.URLError, OSError, KeyError, ValueError) as e:
+        print(f"5b. push: failed ({e}) — will retry at the next run")
 
 
 def type_label(e: dict) -> str:
@@ -215,8 +290,10 @@ def run_agenda(agenda_json: Path) -> None:
                 ev["reg"] = {k: e["reg"].get(k) for k in ("url", "close", "mods", "count", "teams")}
             events.append(ev)
         res = _call("POST", {"agenda": events})
+        pushed, push_left = _drain_push(res)
         print(f"6. agenda alert: {len(events)} upcoming courses checked, {res.get('agendaQueued', 0)} new-course and "
-              f"{res.get('deadlineQueued', 0)} closing-registration e-mails queued, {res['sent']} sent, {res['remaining']} waiting")
+              f"{res.get('deadlineQueued', 0)} closing-registration alerts queued (e-mail or push), {res['sent']} e-mails sent, "
+              f"{res['remaining']} waiting, {pushed} notifications sent{f', {push_left} waiting' if push_left else ''}")
     except urllib.error.HTTPError as e:
         print(f"6. agenda alert: the site refused ({e.code}{' — NOTIFY_SECRET differs from the Pages one' if e.code == 403 else ''}) — will retry at the next run")
     except (urllib.error.URLError, OSError, KeyError, ValueError) as e:

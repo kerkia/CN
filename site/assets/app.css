@@ -830,6 +830,25 @@ table.data tr.pv-none td .tag { opacity: .7; }
   border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); }
 .dropzone:hover, .dropzone.over { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface-2)); }
 .dropzone span { font-size: 12.5px; }
+/* push notifications (push.js): the card that offers them on this device */
+.push-offer { position: fixed; right: 16px; bottom: 16px; z-index: 900; max-width: 360px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 12px; padding: 12px 14px;
+  box-shadow: var(--shadow-pop); font-size: 13.5px; line-height: 1.45; }
+.push-offer-text { display: flex; flex-direction: column; gap: 2px; }
+.push-offer-text span { color: var(--ink-2); }
+.push-offer-btns { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 600px) { .push-offer { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-width: none; } }
+body.full-win .push-offer { display: none; }
+/* Réglages › Alertes: each alert by e-mail and/or notification */
+.alerts-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.alerts-table th { font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: center; padding: 0 6px 6px; white-space: nowrap; }
+.alerts-table td { padding: 8px 6px; border-top: 1px solid var(--border); vertical-align: middle; }
+.alerts-table td:first-child { padding-left: 0; line-height: 1.4; }
+.alerts-table td:first-child .muted { font-size: 12.5px; }
+.alerts-table td:not(:first-child) { text-align: center; width: 88px; }
+.alerts-table input[type=checkbox] { width: 18px; height: 18px; }
+@media (max-width: 600px) { .alerts-table td:not(:first-child) { width: 64px; } .alerts-table td:first-child .muted { display: none; } }
+
 /* « Organisation › Horaires »: the formats' examples */
 .os-example { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; margin: 4px 0 10px; }
 .upload-check { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45;

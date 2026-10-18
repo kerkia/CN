@@ -369,3 +369,58 @@ export function contactMail(env, user, msg) {
     text: `${rows.map(([l, , t]) => `${l} : ${t}`).join("\n")}\n\n${msg.text}`,
   };
 }
+
+// Push notifications (functions/_lib/push.js, site/sw-push.js): { title, body, url, tag } in the account's language.
+const clock = (s) => {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}${sec ? `:${String(sec).padStart(2, "0")}` : ""}`;
+};
+/** A runner's start time, published (or changed: `changed`) on the start list of a coming race.
+ *  s = { key, name, date, place, start_s, cls } */
+export function startPush(lang, s, changed) {
+  const en = L(lang) === "en";
+  const day = s.date ? new Date(s.date + "T00:00:00").toLocaleDateString(locale(lang), { weekday: "short", day: "numeric", month: "short" }) : "";
+  const where = [s.name, day].filter(Boolean).join(" · ");
+  const what = `${en ? "Start" : "Départ"} ${clock(s.start_s)}${s.cls ? ` · ${s.cls}` : ""}`;
+  return {
+    title: en ? (changed ? "Start time changed" : "Your start time") : (changed ? "Heure de départ modifiée" : "Votre heure de départ"),
+    body: `${where}
+${what}`, url: `/#/resultats?course=${encodeURIComponent(s.key)}`, tag: `start-${s.key}`,
+  };
+}
+/** Réglages' « Envoyer un essai ». */
+export function testPush(lang) {
+  const en = L(lang) === "en";
+  return { title: "O'CN", body: en ? "Notifications work on this device." : "Les notifications fonctionnent sur cet appareil.",
+    url: "/#/reglages", tag: "test" };
+}
+
+const pushDay = (iso, lang) => (iso ? new Date(iso + "T00:00:00").toLocaleDateString(locale(lang), { weekday: "short", day: "numeric", month: "short" }) : "");
+/** A list of names for one line: the first two, then « +3 ». */
+const fewNames = (names, en) => (names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} ${en ? "and" : "et"} ${names.length - 2} ${en ? "more" : "autres"}`);
+/** « A race you ran is online » (the push twin of digestMail). races: [{ id, prov?, title, date }] */
+export function resultsPush(lang, races) {
+  const en = L(lang) === "en", n = races.length, r = races[0];
+  const url = n > 1 ? "/#/resultats" : r.prov ? `/#/resultats?course=${encodeURIComponent(r.prov)}` : `/#/courses?id=${encodeURIComponent(r.id)}`;
+  return {
+    title: en ? (n === 1 ? "Your results are online" : `${n} of your races are online`) : (n === 1 ? "Vos résultats sont en ligne" : `${n} de vos courses sont en ligne`),
+    body: n === 1 ? [r.title, pushDay(r.date, lang)].filter(Boolean).join(" · ") : fewNames(races.map((x) => x.title), en),
+    url, tag: n === 1 ? `results-${r.prov || r.id}` : "results",
+  };
+}
+/** The agenda's alerts: new races in the regions followed (`kind` "new"), or registrations closing soon ("deadline").
+ *  events: as announceAgenda keeps them ({ id, name, date, place, reg: { close } }). */
+export function agendaPush(lang, events, kind = "new") {
+  const en = L(lang) === "en", n = events.length, e = events[0];
+  const url = n === 1 ? `/#/agenda?id=${encodeURIComponent(e.id)}` : "/#/agenda";
+  if (kind === "deadline") return {
+    title: en ? "Registrations closing soon" : "Clôture des inscriptions proche",
+    body: n === 1 ? `${e.name} · ${en ? "closes" : "clôture"} ${pushDay(e.reg?.close, lang)}` : fewNames(events.map((x) => x.name), en),
+    url, tag: n === 1 ? `deadline-${e.id}` : "deadline",
+  };
+  return {
+    title: en ? (n === 1 ? "A new race in your regions" : `${n} new races in your regions`) : (n === 1 ? "Une nouvelle course dans vos régions" : `${n} nouvelles courses dans vos régions`),
+    body: n === 1 ? [e.name, pushDay(e.date, lang), e.place].filter(Boolean).join(" · ") : fewNames(events.map((x) => x.name), en),
+    url, tag: n === 1 ? `agenda-${e.id}` : "agenda",
+  };
+}

@@ -1,13 +1,22 @@
 // Called by update.py (Authorization: Bearer NOTIFY_SECRET), never by the browser.
 //
-//   GET  /api/notify            -> { licences: [...] } licences with at least one subscribed account
+// Every alert goes by e-mail, by push notification (functions/_lib/push.js; 2026-10-18), or both, as each account chose
+// (users.notify / push_results, agenda_alert / push_agenda, deadline_alert / push_deadline; the start times by push only,
+// push_starts). Push needs a device (push_subs); the agenda e-mails need the administrator's right.
+//
+//   GET  /api/notify            -> { licences: [...] } licences with at least one account told of its results (e-mail
+//        or push), `push`: those with the start times by push
 //   POST /api/notify { items: [{ lic, races: [{ id, alias?, prov?, title, date, location }] }] }
-//        queues one digest e-mail per subscribed account (races it was not told about yet),
-//        then sends what fits in today's quota. { items: [] } just drains the backlog.
+//        queues one digest per subscribed account (races it was not told about yet), by e-mail and/or push,
+//        then sends what fits in today's quota. { items: [] } just drains the backlog (e-mails and pushes).
 //        A race comes with every id it is known by (FFCO's competition id, its key on « Résultats »: `alias`):
 //        it is announced once, by whichever source published first (owner, 2026-10-17); `prov` = the race's key
 //        on « Résultats » when the results are an organiser's (the e-mail links there).
-//   -> { queued, sent, remaining, budget }
+//   -> { queued, sent, remaining, budget, pushSent, pushLeft }: pushes go out a few a call (push_queue, flushPush);
+//        update.py calls again while some are left
+//   POST /api/notify { starts: [{ lic, key, name, date, place, start_s, cls }] } (2026-10-18): the start times of the
+//        coming races' published start lists; each account with push_starts and a device gets its own, once, and
+//        again when it changes (push_sent). -> { startsQueued, pushSent, pushLeft, … }
 //
 // update.py computes who ran which new competition (it has the database); this side only
 // knows who subscribed, so the server stays small.
@@ -15,7 +24,8 @@
 import { alertsAllowed, json, jsonList, readBody } from "../_lib/api.js";
 import { sha256hex } from "../_lib/crypto.js";
 import { flushQueue, queueStatement } from "../_lib/mail.js";
-import { agendaMail, digestMail } from "../_lib/templates.js";
+import { flushPush, pushReady, queuePush } from "../_lib/push.js";
+import { agendaMail, agendaPush, digestMail, resultsPush, startPush } from "../_lib/templates.js";
 
 async function authorised(request, env) {
   const given = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
@@ -30,13 +40,19 @@ async function authorised(request, env) {
   return ok;
 }
 
-const SUBSCRIBED = "notify = 1 AND email_verified = 1 AND status = 'active'";
+const ACTIVE = "u.email_verified = 1 AND u.status = 'active'";
+const HAS_PUSH = "EXISTS (SELECT 1 FROM push_subs s WHERE s.user_id = u.id)";
+// told of their results: by e-mail, or by push on a device
+const subscribed = (env) => (pushReady(env) ? `${ACTIVE} AND (u.notify = 1 OR (u.push_results = 1 AND ${HAS_PUSH}))` : `${ACTIVE} AND u.notify = 1`);
+const PUSHED = `${ACTIVE} AND u.push_starts = 1 AND ${HAS_PUSH}`;
 
 export async function onRequestGet({ request, env }) {
   if (!(await authorised(request, env))) return json({ error: "forbidden" }, 403);
-  const { results } = await env.DB.prepare(`SELECT DISTINCT licence FROM users WHERE ${SUBSCRIBED}`).all();
-  // v 2 (2026-10-17): races with `alias` and `prov` understood — update.py sends the organisers' results only then
-  return json({ licences: results.map((r) => r.licence), v: 2 });
+  const { results } = await env.DB.prepare(`SELECT DISTINCT licence FROM users u WHERE ${subscribed(env)}`).all();
+  const push = pushReady(env) ? (await env.DB.prepare(`SELECT DISTINCT licence FROM users u WHERE ${PUSHED}`).all()).results.map((r) => r.licence) : [];
+  // v 2 (2026-10-17): races with `alias` and `prov` understood — update.py sends the organisers' results only then;
+  // v 3 (2026-10-18): `starts` understood (push notifications)
+  return json({ licences: results.map((r) => r.licence), push, v: 3 });
 }
 
 /**
@@ -74,13 +90,16 @@ async function announceAgenda(env, list) {
   }
   if (first || !fresh.length) return { queued: 0, events };
   const { results: users } = await env.DB.prepare(
-    "SELECT * FROM users WHERE agenda_alert = 1 AND email_verified = 1 AND status = 'active'").all();
+    `SELECT u.*, ${HAS_PUSH} AS has_push FROM users u WHERE ${ACTIVE} AND (u.agenda_alert = 1 OR u.push_agenda = 1)`).all();
   const stmts = [];
   for (const u of users) {
-    if (!alertsAllowed(env, u)) continue;             // a right the administrator grants
+    const mail = !!u.agenda_alert && alertsAllowed(env, u);           // e-mail: a right the administrator grants
+    const push = !!u.push_agenda && !!u.has_push && pushReady(env);  // push: everyone
     const regions = new Set(jsonList(u.agenda_regions));
     const mine = fresh.filter((e) => regions.has(e.region));
-    if (mine.length) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, mine), kind: "agenda", priority: 0 }));
+    if (!mine.length) continue;
+    if (mail) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, mine), kind: "agenda", priority: 0 }));
+    if (push) stmts.push(queuePush(env, u.id, "agenda", agendaPush(u.lang, mine, "new"), { hours: 48 }));
   }
   for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
   return { queued: stmts.length, events };
@@ -103,25 +122,74 @@ async function announceDeadlines(env, events) {
   const soon = events.filter((e) => e.reg?.close && e.reg.close >= today && e.reg.close <= until);
   if (!soon.length) return 0;
   const { results: users } = await env.DB.prepare(
-    "SELECT * FROM users WHERE deadline_alert = 1 AND email_verified = 1 AND status = 'active'").all();
+    `SELECT u.*, ${HAS_PUSH} AS has_push FROM users u WHERE ${ACTIVE} AND (u.deadline_alert = 1 OR u.push_deadline = 1)`).all();
   const stmts = [];
   for (const u of users) {
-    if (!alertsAllowed(env, u)) continue;
+    const mail = !!u.deadline_alert && alertsAllowed(env, u), push = !!u.push_deadline && !!u.has_push && pushReady(env);
+    if (!mail && !push) continue;                     // not marked told: an alert turned on later still gets them
     const regions = new Set(jsonList(u.agenda_regions));
     const mine = soon.filter((e) => regions.has(e.region)).slice(0, 90);
     if (!mine.length) continue;
     const res = await env.DB.batch(mine.map((e) => env.DB.prepare(
       "INSERT OR IGNORE INTO deadline_announced (user_id, event_id, seen_at) VALUES (?, ?, ?)").bind(u.id, e.id, Date.now())));
     const fresh = mine.filter((_, i) => res[i].meta.changes).sort((a, b) => a.reg.close.localeCompare(b.reg.close));
-    if (fresh.length) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, fresh, "deadline"), kind: "deadline", priority: 0 }));
+    if (!fresh.length) continue;
+    if (mail) stmts.push(queueStatement(env, { to: u.email, ...agendaMail(env, u, fresh, "deadline"), kind: "deadline", priority: 0 }));
+    if (push) stmts.push(queuePush(env, u.id, "deadline", agendaPush(u.lang, fresh, "deadline"), { hours: 48 }));
   }
   for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
   return stmts.length;
 }
 
+/** A time of day in Paris, in seconds. */
+const parisClock = () => {
+  const [h, m, s] = new Date().toLocaleTimeString("en-GB", { timeZone: "Europe/Paris", hour12: false }).split(":").map(Number);
+  return h * 3600 + m * 60 + s;
+};
+
+/** The start times of the coming races -> a notification queued for each account (with push on) whose time is new or
+ *  changed (push_sent), kept until the race's day is over. -> the number queued */
+async function queueStarts(env, list) {
+  if (!pushReady(env)) return 0;
+  const today = parisDay(), now = parisClock();
+  const str = (v, n) => String(v ?? "").trim().slice(0, n);
+  const items = list.slice(0, 2000).map((s) => ({
+    lic: str(s?.lic, 12), key: str(s?.key, 40), name: str(s?.name, 120), date: str(s?.date, 10), place: str(s?.place, 80),
+    cls: str(s?.cls, 40), start_s: Number(s?.start_s),
+  })).filter((s) => s.lic && /^[A-Za-z0-9_-]+$/.test(s.key) && /^\d{4}-\d\d-\d\d$/.test(s.date) && Number.isInteger(s.start_s)
+    && s.start_s >= 0 && s.start_s < 86400 * 2 && (s.date > today || (s.date === today && s.start_s > now)));
+  if (!items.length) return 0;
+  const byLic = new Map();
+  for (const s of items) { if (!byLic.has(s.lic)) byLic.set(s.lic, []); byLic.get(s.lic).push(s); }
+  const lics = [...byLic.keys()], users = [];
+  for (let i = 0; i < lics.length; i += 90) {
+    const part = lics.slice(i, i + 90);
+    users.push(...(await env.DB.prepare(`SELECT u.* FROM users u WHERE ${PUSHED} AND u.licence IN (${part.map(() => "?").join(",")})`)
+      .bind(...part).all()).results);
+  }
+  const stmts = [];
+  for (const u of users) {
+    const mine = byLic.get(u.licence) || [];
+    const { results: sent } = await env.DB.prepare(`SELECT race_key, start_s FROM push_sent WHERE user_id = ? AND race_key IN
+      (${mine.map(() => "?").join(",")})`).bind(u.id, ...mine.map((s) => s.key)).all();
+    const told = new Map(sent.map((r) => [r.race_key, r.start_s]));
+    for (const s of mine) {
+      if (told.get(s.key) === s.start_s) continue;
+      const hours = Math.max(1, (Date.parse(`${s.date}T23:59:59Z`) - Date.now()) / 3600e3);
+      stmts.push(queuePush(env, u.id, "start", startPush(u.lang, s, told.has(s.key)), { topic: `start-${s.key}`, hours }));
+      stmts.push(env.DB.prepare(`INSERT INTO push_sent (user_id, race_key, start_s, sent_at) VALUES (?, ?, ?, ?)
+        ON CONFLICT (user_id, race_key) DO UPDATE SET start_s = excluded.start_s, sent_at = excluded.sent_at`)
+        .bind(u.id, s.key, s.start_s, Date.now()));
+    }
+  }
+  for (let i = 0; i < stmts.length; i += 80) await env.DB.batch(stmts.slice(i, i + 80));
+  return stmts.length / 2;
+}
+
 export async function onRequestPost({ request, env }) {
   if (!(await authorised(request, env))) return json({ error: "forbidden" }, 403);
   const b = await readBody(request);
+  const startsQueued = Array.isArray(b?.starts) ? await queueStarts(env, b.starts) : 0;
   let agendaQueued = 0, deadlineQueued = 0;
   if (Array.isArray(b?.agenda)) {
     const r = await announceAgenda(env, b.agenda);
@@ -140,9 +208,10 @@ export async function onRequestPost({ request, env }) {
     const byLic = new Map(items.map((i) => [String(i.lic), (i.races || []).slice(0, 30).map(race).filter((r) => ID.test(r.id))]));
     const lics = [...byLic.keys()];
     const { results: users } = await env.DB.prepare(
-      `SELECT * FROM users WHERE ${SUBSCRIBED} AND licence IN (${lics.map(() => "?").join(",")})`).bind(...lics).all();
+      `SELECT u.*, ${HAS_PUSH} AS has_push FROM users u WHERE ${subscribed(env)} AND u.licence IN (${lics.map(() => "?").join(",")})`).bind(...lics).all();
     // announce each (account, race) once, whatever id it comes with: the ids already told, then those of the new races
     const todo = users.map((u) => [u, byLic.get(u.licence) || []]).filter(([, rs]) => rs.length);
+    const pushes = [];
     if (todo.length) {
       const told = await env.DB.batch(todo.map(([u, rs]) => {
         const ids = [...new Set(rs.flatMap((r) => [r.id, ...r.alias]))];
@@ -155,12 +224,15 @@ export async function onRequestPost({ request, env }) {
         for (const r of fresh) for (const x of [r.id, ...r.alias]) {
           marks.push(env.DB.prepare("INSERT OR IGNORE INTO notified (user_id, course_id) VALUES (?, ?)").bind(u.id, x));
         }
-        if (fresh.length) stmts.push(queueStatement(env, { to: u.email, ...digestMail(env, u, fresh), kind: "digest", priority: 0 }));
+        if (fresh.length && u.notify) stmts.push(queueStatement(env, { to: u.email, ...digestMail(env, u, fresh), kind: "digest", priority: 0 }));
+        if (fresh.length && u.push_results && u.has_push && pushReady(env)) pushes.push(queuePush(env, u.id, "results", resultsPush(u.lang, fresh), { hours: 72 }));
       });
       for (let i = 0; i < marks.length; i += 80) await env.DB.batch(marks.slice(i, i + 80));
       if (stmts.length) await env.DB.batch(stmts);
-      queued = stmts.length;
+      for (let i = 0; i < pushes.length; i += 80) await env.DB.batch(pushes.slice(i, i + 80));
+      queued = stmts.length + pushes.length;
     }
   }
-  return json({ queued, agendaQueued, deadlineQueued, ...(await flushQueue(env)) });
+  const mail = await flushQueue(env);
+  return json({ queued, agendaQueued, deadlineQueued, startsQueued, ...mail, ...(await flushPush(env)) });
 }

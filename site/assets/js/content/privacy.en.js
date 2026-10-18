@@ -67,7 +67,7 @@ export const body = (SITE) => `
           it.</li>
         <li><b>Purposes and legal bases:</b> performing the service requested when the account is created (reserving access to FFCO
           licence holders, confirming the email address, resetting the password); the publisher's legitimate interest in detecting
-          several accounts for the same licence; your consent for email alerts, which you can withdraw at any time in Settings.</li>
+          several accounts for the same licence; your consent for alerts by email or notification, which you can withdraw at any time in Settings.</li>
         <li><b>Retention period:</b> until the account is deleted, which you can do at any time in Settings. An email waiting to be
           sent is erased as soon as it is sent.</li>
         <li><b>Recipients:</b> the site's administrator and the technical providers listed below. No data is sold or used for
@@ -75,6 +75,15 @@ export const body = (SITE) => `
       </ul>
       <p>A message sent through the “Contact us” page reaches the publisher by email, with your address, your name and the browser
         used; it is kept in their mailbox for as long as needed to handle the request.</p>
+      <h2 style="font-size:16px">Notifications</h2>
+      <p>If you allow O'CN's notifications on a device, the site keeps, for that device, the sending address given to it by your
+        browser's notification service (Google for Chrome and Android, Apple for Safari, Mozilla for Firefox, Microsoft for Edge), the
+        keys used to encrypt the messages and the kind of device (for example “Chrome · Android”). The messages (your start time,
+        your results going online, the calendar's races, as you chose) are encrypted end to end: the notification service carries
+        them without being able to read them. The site also keeps the last start time notified for each race, so that it is sent
+        again only if it changes, and the notifications waiting to be sent, for a few days at most. Legal basis: your consent, given
+        by allowing notifications and withdrawn at any time in Settings or in your browser's settings. These data are erased when you
+        turn notifications off on the device, when you sign out on that device, and with the account.</p>
       <h2 style="font-size:16px">Usage statistics</h2>
       <p>To know how the site is used and to improve it (legitimate interest), the site records, for each account, the number of
         pages viewed per day and per section (Ranking, Runner, Network, etc.) and the number of visits. No other data is recorded for
