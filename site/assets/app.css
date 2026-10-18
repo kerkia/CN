@@ -1899,3 +1899,4 @@ body.full-win .tr-app { border: 0; }
 .cg-dotlg { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .cg-dotlg.ring { background: none; border: 2px solid; width: 11px; height: 11px; }
 .cg-dotlg.ring.thin { border-width: 1.2px; width: 8px; height: 8px; }
+.cg-rule { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }

@@ -667,10 +667,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   mockup on real data): at a month-end (`?date=`), for the site's method and discipline, each class's CN spread on one axis —
   a band from the 10th to the 90th percentile, the middle half darker, the median (white tick) and the mean (◆) —, women and
   men side by side per age (`?sexe=` D or H for one), the axis from a round value under the lowest band; the D21 and H21
-  medians as dashed lines (`?ref=0` hides them). **Exceptional in their class** (the owner's choice): a CN above Q3 + 1.5 × IQR
-  of the class (the box plot's fence), within its best 5 % (`pct` ≥ 95), in a class of at least 20 ranked runners (`MIN_OUT`);
-  classes of 5-19 drawn pale with none, under 5 left out (`MIN_SHOWN`). They are dots (a click opens the runner) and a table:
-  CN, class percentile, × the class median, percentile in D21 / H21 (the share of that class below their CN). The signed-in
+  medians as dashed lines (`?ref=0` hides them). **The best of each class** (owner, 2026-10-18, second rule; one rule everywhere,
+  written under the chart, `cg.rule`): in each class of at least 5 ranked runners (`MIN_SHOWN`), its best 2 % rounded down
+  (`TOP_SHARE`) and at least its first, equal CNs at the cut all in — forest Top 62 runners (1 to 5 a class), sprint 31, VTT 25.
+  The first rule (above Q3 + 1.5 × IQR, top 5 %, 20 runners or more) followed each class's spread: a D65 leader at 1.84 × her
+  median was out while an H55 third at 1.63 × was in, D18 and women's veteran classes had nobody. Classes of 5-19 drawn pale
+  (less certain percentiles). They are dots (a click opens the runner) and a table, by class then rank by default: CN, class
+  rank (« 1er sur 76 »), × the class median, percentile in D21 / H21 (the share of that class below their CN).
   runner is ringed on their class's row; « Mon club » (`?club=1`) rings the club's runners. All computed in the browser from
   `loadRanking` (the monthly snapshots); the Documentation's « Les calculs du site › Coureurs » explains it.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score

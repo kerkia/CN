@@ -1433,11 +1433,13 @@ export function build(X) {
           <p>La page « Catégories » montre, à une fin de mois, la répartition des CN de chaque catégorie sur un même axe : une bande claire du
             10<sup>e</sup> au 90<sup>e</sup> centile, la moitié centrale plus foncée (du 25<sup>e</sup> au 75<sup>e</sup>), la médiane et la moyenne. On
             y voit d'un coup d'œil où les catégories se recouvrent : en forêt, en octobre 2026, le CN Top médian des H55 valait celui des H16.</p>
-          <p>Un coureur y est dit <b>exceptionnel dans sa catégorie</b> quand trois conditions sont réunies : son CN dépasse le 3<sup>e</sup> quartile de
-            sa catégorie de plus d'une fois et demie l'écart entre le 1<sup>er</sup> et le 3<sup>e</sup> quartiles (la règle des « boîtes à moustaches »
-            pour repérer les valeurs qui sortent du lot), il est parmi les 5 % meilleurs de sa catégorie, et celle-ci compte au moins 20 coureurs
-            classés — dans une catégorie de 7 coureurs, la règle désignerait un coureur au 86<sup>e</sup> centile. Pour chacun, la page donne combien de
-            fois la médiane de sa catégorie il vaut, et son centile s'il courait en H21 ou en D21.</p>
+          <p>Les points désignent <b>les meilleurs de chaque catégorie</b>, par une seule règle, la même partout : dans chaque catégorie
+            d'au moins 5 coureurs classés, ses 2 % meilleurs (arrondi à l'unité inférieure), et au moins son premier ; à CN égal à la
+            limite, tous. Une catégorie de 76 coureurs en montre donc un, une de 192 en montre trois, une de 275 en montre cinq. Une
+            règle fondée sur l'écart de chaque catégorie (repérer les CN qui « sortent de la boîte » d'une boîte à moustaches) aurait
+            traité les catégories différemment : plus une catégorie est étalée, plus il faut d'avance pour en sortir, et des catégories
+            entières seraient restées sans personne. Pour chacun, la page donne son rang dans sa catégorie, combien de fois la médiane
+            de celle-ci il vaut, et son centile s'il courait en H21 ou en D21.</p>
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Coureurs</p>

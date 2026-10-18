@@ -1433,11 +1433,12 @@ export function build(X) {
           <p>The “Classes” page shows, at a month-end, how each class's CNs are spread on one shared axis: a light band from the
             10<sup>th</sup> to the 90<sup>th</sup> percentile, the middle half darker (25<sup>th</sup> to 75<sup>th</sup>), the median and the mean. It
             shows at a glance where classes overlap: in forest, in October 2026, the median CN Top of M55 matched that of M16.</p>
-          <p>A runner is called <b>exceptional in their class</b> when three conditions hold: their CN is above their class's 3<sup>rd</sup> quartile
-            by more than one and a half times the gap between the 1<sup>st</sup> and 3<sup>rd</sup> quartiles (the box-plot rule for spotting values
-            that stand out), they are within the best 5% of their class, and the class has at least 20 ranked runners — in a class of 7, the rule
-            would pick a runner at the 86<sup>th</sup> percentile. For each, the page gives how many times their class median they score, and their
-            percentile if they raced in M21 or W21.</p>
+          <p>The dots mark <b>the best of each class</b>, by one rule, the same everywhere: in each class of at least 5 ranked runners,
+            its best 2% (rounded down), and at least its first; all of them at an equal CN at the cut. A class of 76 runners therefore
+            shows one, a class of 192 shows three, a class of 275 shows five. A rule based on each class's spread (spotting the CNs
+            that "leave the box" of a box plot) would have treated classes differently: the more spread out a class, the bigger the lead
+            needed to leave it, and whole classes would have had nobody. For each, the page gives their rank in their class, how many
+            times their class median they score, and their percentile if they raced in M21 or W21.</p>
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Runners</p>

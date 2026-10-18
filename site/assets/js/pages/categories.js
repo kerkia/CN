@@ -1,12 +1,15 @@
 // « Catégories » (#/categories, menu « Classement » after « Classement »; owner, 2026-10-18): how each class's CNs are
 // spread at a month-end, side by side on one CN axis — a band from the 10th to the 90th percentile, the middle half
-// darker, the median and the mean —, and the runners who stand out in their class. The method and the discipline are the
-// site's; the rows are loadRanking's (every ranked runner of France, their class as at the end of that year).
+// darker, the median and the mean —, and the best runners of each class. The method and the discipline are the site's;
+// the rows are loadRanking's (every ranked runner of France, their class as at the end of that year).
 //
-// « Exceptionnel » (owner's choice, 2026-10-18): a CN above Q3 + 1.5 × the interquartile range of the class (the box
-// plot's fence), in its top 5 % (percentile ≥ 95), in a class of at least 20 ranked runners. Classes of 5 to 19 are drawn
-// pale and have none; under 5 they are left out. The signed-in runner is marked on their class's row, and their club's
-// runners can be shown as rings. Everything is computed here from the published monthly snapshots.
+// « The best of each class » (owner, 2026-10-18, second rule): in every class shown (5 ranked runners or more), its best
+// 2 % rounded down and at least its first, equal CNs at the cut all in — one rule everywhere, stated under the chart. The
+// first rule (above the box plot's fence, top 5 %, 20 runners or more) depended on each class's spread: a D65 leader at
+// 1.84 × her median was out while an H55 third at 1.63 × was in, and D18 and several women's veteran classes had nobody.
+// Classes of 5 to 19 are drawn pale (their percentiles rest on few runners); under 5 they are left out. The signed-in
+// runner is marked on their class's row, and their club's runners can be shown as rings. Everything is computed here from
+// the published monthly snapshots.
 
 import { html, raw, $, $$, fmt, fmtCat, ord, quantile, mean, pctN, debounce } from "../util.js";
 import { t, tn } from "../i18n.js";
@@ -18,11 +21,11 @@ import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
 import { loadRanking, dateControls, bindDateControls } from "./ranking.js";
 
-const MIN_SHOWN = 5, MIN_OUT = 20, MIN_PCT = 95;
+const MIN_SHOWN = 5, MIN_SURE = 20, TOP_SHARE = 0.02;
 const AGE_ORDER = (cat) => Number(cat.slice(1));
 
-/** Each class's distribution at a month: [{ cat, sexe, n, p10, p25, p50, p75, p90, mean, fence, rows }], by age then
- *  women before men; and every runner's place in their class. */
+/** Each class's distribution at a month: [{ cat, sexe, n, p10, p25, p50, p75, p90, mean, rows }], by age then women
+ *  before men. */
 function classes(rows, m) {
   const by = new Map();
   for (const r of rows) {
@@ -38,7 +41,6 @@ function classes(rows, m) {
     const q = (p) => quantile(v, p);
     const c = { cat, sexe: cat[0], n: v.length, sorted: v, p10: q(0.1), p25: q(0.25), p50: q(0.5), p75: q(0.75), p90: q(0.9),
       mean: mean(v), rows: rs };
-    c.fence = c.p75 + 1.5 * (c.p75 - c.p25);
     out.push(c);
   }
   return out.sort((a, b) => AGE_ORDER(a.cat) - AGE_ORDER(b.cat) || (a.sexe === b.sexe ? 0 : a.sexe === "D" ? -1 : 1));
@@ -70,10 +72,11 @@ export async function render(main, { query }) {
         <div class="cg-legend" id="cg-legend"></div>
         <div class="cg-plot" id="cg-plot"><svg id="cg-svg" width="100%" role="img" aria-label="${t("cg.chart", { cn: cnLabel(store.get().method) })}"></svg>
           <div class="cg-tip" id="cg-tip" hidden></div></div>
+        <p class="cg-rule">${t("cg.rule", { pct: pctN(TOP_SHARE * 100), min: MIN_SHOWN })}</p>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><div><h2 id="cg-out-title">${t("cg.out")}</h2><div class="hint">${t("cg.out.hint", { min: MIN_OUT, pct: pctN(MIN_PCT) })}</div></div></div>
+      <div class="card-head"><div><h2 id="cg-out-title">${t("cg.out")}</h2><div class="hint">${t("cg.out.hint")}</div></div></div>
       <div id="cg-table"></div>
     </section>`;
 
@@ -100,17 +103,19 @@ export async function render(main, { query }) {
     all = (await loadRanking([m], terrain, f.month)).rows;
     $("#cg-card").classList.remove("loading-veil");
     cls = classes(all, m);
-    // the runners who stand out: above the class's fence, in its top 5 %, in a class of 20 or more
+    // the best of each class: its best 2 % rounded down, at least its first, equal CNs at the cut all in
     const ref = Object.fromEntries(cls.filter((c) => c.cat === "H21" || c.cat === "D21").map((c) => [c.sexe, c]));
     outs = [];
     for (const c of cls) {
-      if (c.n < MIN_OUT) continue;
+      const k = Math.max(1, Math.floor(c.n * TOP_SHARE));
+      const cut = c.sorted[c.n - k];                       // the k-th best CN (sorted ascending)
       for (const r of c.rows) {
         const v = r.cn[m];
-        if (v > c.fence && (r.pct[m] ?? 0) >= MIN_PCT) {
-          const rc = ref[c.sexe];
-          outs.push({ ...r, v, cls: c, xMed: v / c.p50, refPct: rc && rc !== c ? below(rc.sorted, v) : null });
-        }
+        if (v < cut) continue;
+        const rc = ref[c.sexe];
+        // rank: 1 = the class's best, equal CNs share it
+        outs.push({ ...r, v, cls: c, rank: 1 + c.sorted.filter((x) => x > v).length, xMed: v / c.p50,
+          refPct: rc && rc !== c ? below(rc.sorted, v) : null });
       }
     }
     outs.sort((a, b) => b.xMed - a.xMed);
@@ -174,7 +179,7 @@ export async function render(main, { query }) {
       s += `<text x="${L - 8}" y="${(Math.min(...ys) + Math.max(...ys) + lane) / 2 + 4}" font-size="12" fill="${ink}" text-anchor="end">${a}</text>`;
     }
     for (const c of shown) {
-      const yy = yOf.get(c.cat), cy = yy + lane / 2, h = lane - 3, small = c.n < MIN_OUT, op = small ? 0.45 : 1;
+      const yy = yOf.get(c.cat), cy = yy + lane / 2, h = lane - 3, small = c.n < MIN_SURE, op = small ? 0.45 : 1;
       s += `<g class="cg-row" data-cat="${c.cat}" opacity="${op}">`
         + `<rect x="${L}" y="${yy}" width="${W - L - R}" height="${lane}" fill="transparent"/>`
         + `<rect x="${X(c.p10)}" y="${cy - h / 4}" width="${Math.max(1, X(c.p90) - X(c.p10))}" height="${h / 2}" rx="2" fill="${col[c.sexe]}" opacity=".28"/>`
@@ -205,7 +210,7 @@ export async function render(main, { query }) {
       <span>${raw(`<span class="cg-dotlg" style="background:${ink}"></span>`)}${t("cg.legend.out")}</span>
       ${mine ? html`<span>${raw(`<span class="cg-dotlg ring" style="border-color:${css("--flag") || ink}"></span>`)}${t("cg.legend.me")}</span>` : ""}
       ${club.length ? html`<span>${raw(`<span class="cg-dotlg ring thin" style="border-color:${ink}"></span>`)}${t("cg.legend.club")}</span>` : ""}
-      ${shown.some((c) => c.n < MIN_OUT) ? html`<span class="muted">${t("cg.legend.small", { min: MIN_OUT })}</span>` : ""}`;
+      ${shown.some((c) => c.n < MIN_SURE) ? html`<span class="muted">${t("cg.legend.small", { min: MIN_SURE })}</span>` : ""}`;
   }
 
   // the tooltip: a class's figures over its row, a runner's over their dot; a dot opens the runner's page
@@ -224,7 +229,7 @@ export async function render(main, { query }) {
     const m = store.get().method, c = cls.find((k) => k.cat === r.cat), v = r.cn[m];
     const o = kind === "out" ? outs.find((x) => x.lic === r.lic) : null;
     return html`<b>${r.name}</b> · ${fmtCat(r.cat)}${r.clubCode ? ` · ${r.clubCode}` : ""}<br>
-      ${cnLabel(m)} ${fmt(v)} · ${t("cg.tip.pct", { p: data.fmtPct(r.pct[m]) })}
+      ${cnLabel(m)} ${fmt(v)} · ${o ? t("cg.tip.rank", { rank: ord(o.rank), n: fmt(o.cls.n) }) : t("cg.tip.pct", { p: data.fmtPct(r.pct[m]) })}
       ${c ? html`<br>${t("cg.tip.xmed", { x: fmt(v / c.p50, 2) })}` : ""}
       ${o?.refPct != null ? html`<br>${t("cg.tip.ref", { p: data.fmtPct(o.refPct), cat: fmtCat(`${o.sexe}21`) })}` : ""}`;
   };
@@ -238,7 +243,7 @@ export async function render(main, { query }) {
     const row = e.target.closest(".cg-row");
     if (row) {
       const c = cls.find((k) => k.cat === row.dataset.cat);
-      showTip(e, html`<b>${fmtCat(c.cat)}</b> · ${tn("cg.runners", c.n)}${c.n < MIN_OUT ? html` <span class="muted">· ${t("cg.small")}</span>` : ""}<br>
+      showTip(e, html`<b>${fmtCat(c.cat)}</b> · ${tn("cg.runners", c.n)}${c.n < MIN_SURE ? html` <span class="muted">· ${t("cg.small")}</span>` : ""}<br>
         ${ord(10)} ${fmt(c.p10)} · ${ord(25)} ${fmt(c.p25)}<br>
         ${t("cg.median")} ${fmt(c.p50)} · ${t("cg.mean")} ${fmt(c.mean)}<br>
         ${ord(75)} ${fmt(c.p75)} · ${ord(90)} ${fmt(c.p90)}`);
@@ -259,15 +264,17 @@ export async function render(main, { query }) {
     $("#cg-out-title").textContent = `${t("cg.out")} · ${fmt(rows.length)}`;
     if (!rows.length) { $("#cg-table").innerHTML = html`<div class="empty">${t("cg.noOut")}</div>`; table = null; return; }
     table = dataTable($("#cg-table"), {
-      rows, sortKey: "xmed", sortDir: -1, compact: true,
+      rows, sortKey: "cat", sortDir: 1, compact: true,                // by class (age, women first), then rank
       columns: [
         { key: "name", label: t("rk.col.name"), sort: (r) => r.key, defaultDir: 1,
           render: (r) => html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>${me && r.lic === me.lic ? html` <span class="tag">${t("cg.me")}</span>` : ""}` },
-        { key: "cat", label: t("rk.col.cat"), sort: (r) => `${r.sexe}${String(AGE_ORDER(r.cat)).padStart(2, "0")}`, defaultDir: 1 },
+        { key: "cat", label: t("rk.col.cat"), defaultDir: 1,
+          sort: (r) => `${String(AGE_ORDER(r.cat)).padStart(2, "0")}${r.sexe === "D" ? 0 : 1}${String(r.rank).padStart(4, "0")}` },
         { key: "club", label: t("rk.col.club"), cls: "num", sort: (r) => r.clubCode, defaultDir: 1,
           render: (r) => (r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "") },
         { key: "cn", label: cnLabel(m), align: "r", cls: "num", sort: (r) => r.v, render: (r) => fmt(r.v) },
-        { key: "pct", label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct[m], render: (r) => data.fmtPct(r.pct[m]) },
+        { key: "rank", label: t("cg.col.rank"), align: "r", cls: "num", sort: (r) => r.rank, defaultDir: 1,
+          render: (r) => t("cg.rankOf", { rank: ord(r.rank), n: fmt(r.cls.n) }) },
         { key: "xmed", label: t("cg.col.xmed"), align: "r", cls: "num", sort: (r) => r.xMed, render: (r) => fmt(r.xMed, 2) },
         { key: "ref", label: t("cg.col.ref", { w: fmtCat("D21"), m: fmtCat("H21") }), align: "r", cls: "num", sort: (r) => r.refPct,
           render: (r) => (r.refPct == null ? html`<span class="dim">—</span>` : data.fmtPct(r.refPct)) },
