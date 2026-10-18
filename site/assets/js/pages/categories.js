@@ -62,6 +62,10 @@ export async function render(main, { query }) {
   const me = auth.session();
   const myClub = auth.myClub();
   let all = null, cls = [], outs = [], table = null;
+  // the runners' dots as drawn (x, y in the chart's units, which are pixels): the pointer takes the nearest within HIT, so a
+  // thin ring (one's club) is as easy to reach as a filled dot (owner, 2026-10-18)
+  let dotsAt = [];
+  const HIT = 10;
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cg.title")}</h1><p class="lede">${t("cg.lede")}</p></div></div>
@@ -187,16 +191,20 @@ export async function render(main, { query }) {
         + `<line x1="${X(c.p50)}" x2="${X(c.p50)}" y1="${cy - h / 2}" y2="${cy + h / 2}" stroke="${surf}" stroke-width="2"/>`
         + `<path d="M${X(c.mean)} ${cy - 3.5}l3.5 3.5-3.5 3.5-3.5-3.5z" fill="${ink}"/></g>`;
     }
+    dotsAt = [];
     for (const r of club) {
       if (!yOf.has(r.cat)) continue;
+      dotsAt.push({ x: X(r.cn[m]), y: yOf.get(r.cat) + lane / 2, lic: r.lic, kind: "club" });
       s += `<circle class="cg-dot" data-lic="${r.lic}" data-kind="club" cx="${X(r.cn[m])}" cy="${yOf.get(r.cat) + lane / 2}" r="3.2" fill="none" stroke="${ink}" stroke-width="1.2"/>`;
     }
     for (const o of outsShown) {
       if (!yOf.has(o.cat)) continue;
+      dotsAt.push({ x: X(o.v), y: yOf.get(o.cat) + lane / 2, lic: o.lic, kind: "out" });
       s += `<circle class="cg-dot" data-lic="${o.lic}" data-kind="out" cx="${X(o.v)}" cy="${yOf.get(o.cat) + lane / 2}" r="4.2" fill="${col[o.sexe]}" stroke="${surf}" stroke-width="1.5"/>`;
     }
     if (mine && yOf.has(mine.cat)) {
       const mx = X(mine.cn[m]), my = yOf.get(mine.cat) + lane / 2;
+      dotsAt.push({ x: mx, y: my, lic: mine.lic, kind: "me" });
       s += `<circle class="cg-dot" data-lic="${mine.lic}" data-kind="me" cx="${mx}" cy="${my}" r="6" fill="none" stroke="${css("--flag") || ink}" stroke-width="2.2"/>`
         + `<text x="${mx}" y="${my - 8}" font-size="11" font-weight="600" fill="${css("--flag") || ink}" text-anchor="middle">${t("cg.me")}</text>`;
     }
@@ -234,11 +242,21 @@ export async function render(main, { query }) {
       ${o?.refPct != null ? html`<br>${t("cg.tip.ref", { p: data.fmtPct(o.refPct), cat: fmtCat(`${o.sexe}21`) })}` : ""}`;
   };
   const plotEl = $("#cg-plot");
+  /** The dot nearest the pointer, within HIT pixels, or null. */
+  const dotNear = (e) => {
+    const svg = $("#cg-svg"), ctm = svg?.getScreenCTM();
+    if (!ctm || !dotsAt.length) return null;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+    let best = null, bd = HIT;
+    for (const d of dotsAt) { const dd = Math.hypot(d.x - pt.x, d.y - pt.y); if (dd <= bd) { bd = dd; best = d; } }
+    return best;
+  };
   plotEl.addEventListener("mousemove", (e) => {
-    const dot = e.target.closest(".cg-dot");
+    const dot = dotNear(e);
+    plotEl.style.cursor = dot ? "pointer" : "";
     if (dot) {
-      const r = all.find((x) => x.lic === dot.dataset.lic);
-      if (r) { showTip(e, runnerTip(r, dot.dataset.kind)); return; }
+      const r = all.find((x) => x.lic === dot.lic);
+      if (r) { showTip(e, runnerTip(r, dot.kind)); return; }
     }
     const row = e.target.closest(".cg-row");
     if (row) {
@@ -253,8 +271,8 @@ export async function render(main, { query }) {
   });
   plotEl.addEventListener("mouseleave", () => { tip().hidden = true; });
   plotEl.addEventListener("click", (e) => {
-    const dot = e.target.closest(".cg-dot");
-    if (dot) location.hash = link.runner(dot.dataset.lic);
+    const dot = dotNear(e);
+    if (dot) location.hash = link.runner(dot.lic);
   });
 
   // ---- the runners who stand out ----------------------------------------------------------------------------------------
