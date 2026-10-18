@@ -32,7 +32,6 @@ Thumbs.db
 # local assistant settings
 .claude/
 .dev.vars
-ocap/site/data/
 
 # the white paper build (docs/whitepaper/build.py): the PDF is published under site/assets
 docs/whitepaper/methode-top.pdf

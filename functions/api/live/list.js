@@ -1,5 +1,5 @@
 // GET /api/live/list — liveresultat's competitions of the last 3 and next 7 days, from O'CN's live relay (live/, Worker
-// « ocn-live », its Durable Object « Directory », bound here as LIVE_DIR; O'Cap's site served it until 2026-10-18). Kept in the
+// « ocn-live », its Durable Object « Directory », bound here as LIVE_DIR). Kept in the
 // edge cache for the directory's own lifetime (2 minutes, 30 s while races still lack their country), so that a crowd opening
 // « En direct » makes liveresultat read once per place and period; an empty list (liveresultat overloaded) is never kept.
 // Signed-in accounts only (the login gate).

@@ -20,8 +20,7 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "cn-state"
 
-# O'CN's live relay (live/, Worker « ocn-live », deployed by hand: cd live && npx wrangler deploy; it replaces O'Cap's
-# « ocap-live », 2026-10-18): its race objects — liveresultat's races for « En direct » (functions/ws/[comp].js) and the
+# O'CN's live relay (live/, Worker « ocn-live », deployed by hand: cd live && npx wrangler deploy): its race objects — liveresultat's races for « En direct » (functions/ws/[comp].js) and the
 # organisers' broadcasts (« Organisation › Direct », functions/api/live/push.js) — and its directory (liveresultat's list,
 # functions/api/live/list.js; the broadcasts); the pushes reach them at internal paths no public route forwards
 [[durable_objects.bindings]]

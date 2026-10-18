@@ -1,4 +1,4 @@
-// O'CN's live relay (Worker « ocn-live », 2026-10-18: it replaces O'Cap's « ocap-live », O'Cap being retired): one Durable Object per
+// O'CN's live relay (Worker « ocn-live », 2026-10-18): one Durable Object per
 // liveresultat competition, awake only while someone watches it. O'CN reaches it through Durable Object bindings only
 // (functions/api/live/*, functions/ws/[comp].js): the Worker has no public address (workers_dev off).
 //

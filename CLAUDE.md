@@ -21,8 +21,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
-| `ocap/` | **O'Cap** (working name, 2026-10-09): a separate public, phone-first site — Bientôt, En direct (liveresultat relayed by one Durable Object per race, WebSockets), Récemment; no login, no CN, FR/EN. Its own Cloudflare projects: Pages `ocap` (https://ocap.pages.dev; its data exported from `site/data` by `ocap/export.py` and published by `update.deploy` after each O'CN deploy) and Worker `ocap-live` (Durable Objects, deployed by hand: `cd ocap/worker && npx wrangler deploy`); see `ocap/README.md`. **Being retired** (owner, 2026-10-18): O'CN depends on none of it any more (its live relay is `live/`); its publication after each O'CN deploy stops with `OCAP_PUBLISH=0` (`update.py`), then the Pages project `ocap` and the Worker `ocap-live` can be deleted |
-| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18, from O'Cap's `ocap-live`, which it replaces): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js` and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
+| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js` and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -43,7 +42,9 @@ commit results, personal data, secrets or credentials.
   stale `site/data`, and anything not pushed is overwritten by the next run.
 - `site/_routes.json` keeps the public files (`/`, `/assets/*`, `robots.txt`, `meta.json`…) out of the Functions:
   served free and unmetered, without the login gate (which only passed them through); the data and the API stay
-  behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN and its `ocn-live` (and O'Cap with `ocap-live` until they are deleted).
+  behind it. The Workers free quota (100 000 requests/day) is **per account**, shared by O'CN and its `ocn-live`. **O'Cap** (`ocap/`, a public phone-first companion site, Pages `ocap` and Worker
+  `ocap-live`, 2026-10-09) was switched off and deleted on 2026-10-18 (owner): its code, its Cloudflare projects, their
+  deployments and stored data are gone; its live relay became O'CN's `live/` (it held no broadcast to carry over).
 - **Open tabs follow a deploy** (2026-10-15): the pages' modules stay in memory for the whole visit, so a tab left
   open kept running old code after a fix. `update.deploy` writes `site/assets/build.txt` (`write_build_stamp`: a hash
   of site/ without data/ and auth/, unchanged by data-only deploys; git-ignored); `app.codeChanged` reads it at a change
@@ -235,7 +236,7 @@ competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat
 "start"); a coming race is not listed on « Résultats » (index `soon`, `startlist`, `agenda_id`): its start list is reached from « Agenda », and its page
 shows start time, current CN Top / official and the expected place; « Agenda » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
-the names are members-only and not read. O'Cap's export skips the coming races. Organisers' sites too (`run.site_start_lists`,
+the names are members-only and not read. Organisers' sites too (`run.site_start_lists`,
 `ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
 races of today to +7 days, 8 sites a run, each every 6 h): read by `parsers/startlist.py` (IOF XML StartList, HTML tables,
 OE12 and MeOS PDFs by column positions and section lines; never by the results parsers: a start time is not a race
@@ -292,8 +293,7 @@ menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still w
 « Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
-WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared; O'Cap's `analysis.js`
-follows the same rules. By hand: `python -m ffco_scraper.prov --db <db>
+WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared. By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
 ## Changing a method: migrations
@@ -619,8 +619,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`/api/live/broadcasts`) and numbered from 900 000 000 (liveresultat's ids are far below), registered by the live server's
   `Directory` object; each race is a `LiveRace` object that, for such numbers, never reads liveresultat and keeps what is
   pushed (one storage key per class), pushing changes to the pages watching as for a liveresultat race. O'CN reaches both
-  objects through Durable Object bindings to its live relay `ocn-live` (`live/`; `ocap-live` until 2026-10-18, so the broadcasts
-  opened before then stayed there) (`wrangler.toml` LIVE_RACE, LIVE_DIR) at internal paths (`/push`,
+  objects through Durable Object bindings to its live relay `ocn-live` (`live/`) (`wrangler.toml` LIVE_RACE, LIVE_DIR) at internal paths (`/push`,
   `/broadcasts`) that no public route forwards (`functions/_lib/live.js`). Any account opens a broadcast (10 a day at most),
   and only the account that opened it, or an administrator, feeds it (`by`, the account's id, is never sent to others: the
   list says `mine`); the page lists one's own. « En direct » lists the last 3 days' broadcasts that sent something (and
@@ -1034,7 +1033,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`engine_meta` `anonymized`; an incremental build keeps old seasons). `build_site` maps every licence read from the database
   (`Anon.lic`), names come only from `runners.json`; the auth index keeps their real licence and name (they can still sign
   up). Provisional results: rows matched to their licence, unmatched rows by name (`privacy.anonymise_row`, birth year and
-  bib dropped); O'Cap follows (exported from them). Not covered: « En direct » (liveresultat relayed live).
+  bib dropped). Not covered: « En direct » (liveresultat relayed live).
 - **Privacy and legal notices** (`#/compte/confidentialite`, `pages/account.js` `privacy`, public; reviewed 2026-10-15): the
   GDPR's information (controller Yann Le Helloco, legal bases, licensees without an account and their right to object,
   processors Cloudflare / Resend / GitHub and their transfer safeguards, the IP-keyed rate limits, every right, the CNIL)
@@ -1051,8 +1050,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
   « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) for every account since
   2026-10-15 (the `users.live` right before: migration 0007; its admin page checkbox removed 2026-10-16, the column kept
-  unread): liveresultat's races from O'CN's live relay (`live/`, Worker `ocn-live`; O'Cap's site and `ocap-live` until
-  2026-10-18), through O'CN's own Functions — `/api/live/list` (kept in the edge cache for the directory's lifetime, 2 min)
+  unread): liveresultat's races from O'CN's live relay (`live/`, Worker `ocn-live`), through O'CN's own Functions — `/api/live/list` (kept in the edge cache for the directory's lifetime, 2 min)
   and `/ws/<race>` (the WebSocket handed to the race's object) —, signed-in accounts only: the login gate passes the 101
   handshake on untouched (`_middleware.js`); each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top

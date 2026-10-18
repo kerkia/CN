@@ -1,5 +1,5 @@
 // /ws/<competition> — « En direct »'s live connection to one race, handed to that race's Durable Object on O'CN's live relay
-// (live/, Worker « ocn-live », « LiveRace », bound here as LIVE_RACE; O'Cap's site did it until 2026-10-18). One request per
+// (live/, Worker « ocn-live », « LiveRace », bound here as LIVE_RACE). One request per
 // connection; the updates then flow over the WebSocket. Signed-in accounts only: the login gate passes the handshake on
 // untouched (_middleware.js).
 export async function onRequest({ request, env, params }) {

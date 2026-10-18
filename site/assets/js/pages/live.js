@@ -1,6 +1,6 @@
 // « En direct » (#/direct[/<race>[/<class>]], every account): the races liveresultat shows,
 // then one race live, from O'CN's live relay (live/, Worker « ocn-live »: one reader per race, changes pushed over a WebSocket),
-// reached through this site's Functions (/api/live/list, /ws/<race>; O'Cap's site until 2026-10-18). What it adds: each runner recognised
+// reached through this site's Functions (/api/live/list, /ws/<race>). What it adds: each runner recognised
 // (name + club) and linked to their page, their CN (Top and official) in the race's discipline, and the place their
 // CN predicts. Times are liveresultat's hundredths of a second.
 import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat } from "../util.js";
@@ -15,7 +15,7 @@ import { link, replaceQuery } from "../app.js";
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
 // server (localStorage « ocn.liveBase »)
 const devBase = (() => { try { return localStorage.getItem("ocn.liveBase"); } catch (e) { return null; } })();
-export const LIVE = devBase || "";               // O'CN itself since 2026-10-18 (O'Cap's site before, O'Cap being retired)
+export const LIVE = devBase || "";               // this site
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
 const ST_LABEL = { dns: t("status.dns"), dnf: t("status.abandon"), mp: t("status.pm"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), nc: t("status.nc") };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
