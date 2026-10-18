@@ -6,8 +6,7 @@
 
 import { plain } from "./localparse.js";
 
-const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
-const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+import { PDFJS, PDFJS_WORKER } from "./vendor.js";
 
 // ---- the model ---------------------------------------------------------------------------------------------------------
 const CLOCK = /^\s*([01]?\d|2[0-3])[:hH]([0-5]\d)(?::([0-5]\d))?\s*$/;

@@ -477,7 +477,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the nav entry and the route gate check `me.admin`): a runner's GPS trace on their own map for a race of « Résultats »,
   played back as Livelox does. Everything is read in the browser (`trace/`), nothing sent; only the controls' positions
   are kept (`localStorage ocn.an.cal.<race>.<doc>.<circuit>.<runner>.<WxH>`). Files, dropped together: the map (image,
-  a PDF's first page through pdf.js from jsdelivr, or a KMZ with its image), the trace (`trace/track.js`: GPX with
+  a PDF's first page through pdf.js (vendored), or a KMZ with its image), the trace (`trace/track.js`: GPX with
   Garmin's extensions, TCX, **FIT** — definition/data messages, compressed timestamp headers, developer fields skipped;
   channels altitude, heart rate, cadence, temperature, power), and optionally the map's georeferencing (`trace/georef.js`:
   KMZ/KML GroundOverlay with LatLonBox + rotation or gx:LatLonQuad; a world file + .prj, Lambert conformal conic and
@@ -634,7 +634,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   whole account — past it the calls fail until the next day, nothing billed on the free plan) turns the question into ONE
   DuckDB query and says how to show it (`functions/_lib/ask.js`: `TABLES`, the tables described for the model — keep them in
   step with `site_ask.py` —, `systemPrompt` with its rules and one worked example, `parseAnswer` tolerant of the models' JSON
-  slips). The browser runs the query with **DuckDB-WASM** (1.32.0 from jsdelivr) on `site/data/ask/*.parquet`, loading only
+  slips). The browser runs the query with **DuckDB-WASM** (1.32.0, vendored: the « eh » engine only, in two parts the page joins) on `site/data/ask/*.parquet`, loading only
   the tables the query names (`cn` 2.7 MB and `runners` 0.4 MB for most questions; `results` 8.8 MB): **the model never sees
   the data**, only the question, the tables' description, the asker's licence, today's date and the site's method and
   discipline. `checkSql` lets only one read run (no other statement, no file, no address); a query that fails goes back
@@ -816,7 +816,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   TIFF read by `tiff.js` (strips/tiles, none/LZW/Deflate/PackBits, predictor, 1-16 bits, palette, planar; a GeoTIFF's
   tie point/scale/matrix + EPSG 2154/326xx/4326 georeferences the event; checked pixel for pixel against Pillow on 13
   variants); large images drawn from reduced copies (`mapsrc.withLevels`). Fonts as Purple Pen (`fonts.js`): Roboto and
-  Roboto Condensed from fontsource on jsdelivr + fontkit, their widths for layout and description sheets
+  Roboto Condensed from fontsource (vendored) + fontkit, their widths for layout and description sheets
   (`DescriptionAppearance` sizes), embedded in the PDFs; Arial numbers = Helvetica (same widths); offline fallback to
   Helvetica and Purple Pen's « no Arial Narrow » sizes. **Every language** (2026-10-15): fontsource's subsets read from each
   face's CSS (unicode ranges), the basic Latin ones with the editor, the others (latin-ext, cyrillic, greek…) when a text needs
@@ -857,7 +857,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   darkened). .ppen and IOF XML keep the OCAD file's own mm (`M.fileOffset`, `shiftToFile`; import with the OCAD map: no calage; round
   trip exact). Georeferencing from the file (`vmap/georef.js`): OCAD's grid ids → proj4 from Purple Pen's MapProjection table,
   Mapper's EPSG/UTM/PROJ.4, common EPSG codes (`site/assets/tracer/crs.json`, built by the scratch `gen_crs.py`), proj4js 2.12.1
-  from jsdelivr; numbers that can only be Lambert 93 without a grid. « Fichiers OCAD ou Mapper des circuits » (`coursefiles.js`,
+  (vendored); numbers that can only be Lambert 93 without a grid. « Fichiers OCAD ou Mapper des circuits » (`coursefiles.js`,
   `vmap/ocadwrite.js` OCAD 9-12/2018, `vmap/oomwrite.js`; Purple Pen's Create OCAD Files): each course's drawing items as 7xx
   symbols (line, area with hatching, text with its white frame) in the course colours (Purple 11, Lower purple 12, 50 % 13, Black
   0, White 44), the map as template (the OCAD/Mapper file at offset 0, the image, a PDF as a PNG), the map's real-world
@@ -1063,5 +1063,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   days), today and day by day; visits are counted since 2026-10-07 (the window complete from 2026-10-27); a deleted
   account leaves no trace.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
+- **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
+  public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
+  apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff
+  files the Tracer reads) live in `site/assets/vendor/<name>@<version>/` with their licences, built from npm by `tools/vendor.py`
+  (`build`; nothing of a package's install scripts runs); files over Cloudflare Pages' 25 MiB are split in two parts that
+  `vendor.joined` puts back together (DuckDB's engine, 34 MB). The code takes every path from `site/assets/js/vendor.js`
+  (ECharts from `index.html`). **Check for updates regularly** — at least monthly, and whenever a library's security advisory
+  comes out: `python tools/vendor.py check` lists newer releases; to update one, change its version in `tools/vendor.py`,
+  `build`, change it in `vendor.js` (and `index.html` for ECharts), test the pages `vendor.js` names for it, commit. Major
+  versions need reading their changelog first (pdf.js and DuckDB change their APIs). Never add a `<script>` or `import()` from
+  another host: vendor it.
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.

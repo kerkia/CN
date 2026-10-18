@@ -7,8 +7,7 @@
 
 import { isTiff, decodeTiff, tiffDpi } from "./tiff.js";
 
-const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
-const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+import { PDFJS, PDFJS_WORKER } from "../vendor.js";
 let pdfjsLib = null;
 async function pdfjs() {
   if (pdfjsLib) return pdfjsLib;

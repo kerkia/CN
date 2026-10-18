@@ -1,9 +1,8 @@
 // A map file read in the browser, for the Analyse pages: an image (PNG, JPEG, WebP, GIF, BMP) as an ImageBitmap, or a
-// PDF's first page rendered on a canvas by pdf.js (from jsdelivr, loaded only when a PDF comes). imageBlob() gives the
+// PDF's first page rendered on a canvas by pdf.js (served from /assets/vendor, loaded only when a PDF comes). imageBlob() gives the
 // map back as a file to store, never degraded: the original image when it is one, else a lossless PNG of the rendering.
 
-const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
-const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+import { PDFJS, PDFJS_WORKER } from "../vendor.js";
 const MAX_SIDE = 4200;                                 // a PDF page rendered at most this wide or high
 
 export const isImage = (f) => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(f.name) || f.type.startsWith("image/") || f.type === "application/pdf";

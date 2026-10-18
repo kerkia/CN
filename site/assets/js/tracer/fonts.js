@@ -1,5 +1,5 @@
 // The Tracer's fonts, as Purple Pen uses them: Roboto (control numbers by default, column A, F) and Roboto Condensed
-// (description sheet titles, column B, directives, texts, control codes), from the fontsource packages on jsdelivr
+// (description sheet titles, column B, directives, texts, control codes), from the fontsource packages (served from /assets/vendor)
 // (Apache 2.0 / OFL), with fontkit (MIT) to read them: their own advance widths place the labels, the screen draws with them
 // (FontFace), and the PDFs embed them (subset). Text objects may name any font, as in Purple Pen: Arial (and the other sans
 // serif faces) is printed in Helvetica, Times New Roman (and the serif faces) in Times, Courier New (and the fixed-width
@@ -13,13 +13,9 @@
 // Without the network the Tracer falls back to Helvetica's widths and, for the condensed font, Purple Pen's own fallback sizes
 // (its « Arial » heights).
 
-const CDN = "https://cdn.jsdelivr.net/npm/@fontsource";
-const PKG = {
-  Roboto: `${CDN}/roboto@5.0.8`, "Roboto Condensed": `${CDN}/roboto-condensed@5.0.8`,
-  "Noto Sans JP": `${CDN}/noto-sans-jp@5.0.19`, "Noto Sans TC": `${CDN}/noto-sans-tc@5.0.19`, "Noto Sans HK": `${CDN}/noto-sans-hk@5.0.19`,
-};
+import { FONT_PKG as PKG, FONTKIT } from "../vendor.js";
 export const FONT_CSS = ["Roboto", "Roboto Condensed"].flatMap((f) => ["400", "700"].map((w) => `${PKG[f]}/${w}.css`));
-export const FONTKIT = "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js";
+export { FONTKIT };
 const CJK = { ja: "Noto Sans JP", "zh-TW": "Noto Sans TC", "zh-HK": "Noto Sans HK" };
 let cjk = "Noto Sans JP";
 /** The event's language chooses the Chinese or Japanese font (the same characters are drawn differently). */

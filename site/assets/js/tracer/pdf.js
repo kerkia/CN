@@ -16,8 +16,7 @@ import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
 import { where } from "./ribbon-data.js";
 import { t } from "./lang.js";
 
-const PDFLIB = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";
-const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
+import { PDFLIB, FFLATE } from "../vendor.js";
 const loaded = {};
 function script(src) {
   if (!loaded[src]) loaded[src] = new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error(src)); document.head.appendChild(s); });

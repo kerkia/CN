@@ -8,7 +8,8 @@
 import { geoFromPoints } from "../geo.js";
 import { projector, guessCrs, LAMBERT93 } from "../../trace/georef.js";
 
-export const PROJ4 = "https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js";
+import { PROJ4 } from "../../vendor.js";
+export { PROJ4 };
 let tableP = null, projP = null;
 const table = () => (tableP ||= fetch("/assets/tracer/crs.json").then((r) => (r.ok ? r.json() : { ocad: {}, epsg: {} })).catch(() => { tableP = null; return { ocad: {}, epsg: {} }; }));
 const proj4lib = () => (projP ||= new Promise((res, rej) => {

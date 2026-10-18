@@ -17,7 +17,7 @@ export const FORMAT = "ocn-trace";
 export const FORMAT_VERSION = 1;
 export const isOcnFile = (f) => /\.ocnt$/i.test(f?.name || "");
 
-const FFLATE = "https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js";
+import { FFLATE } from "../vendor.js";
 function script(src) {
   if (window.fflate) return Promise.resolve();
   return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("fflate")); document.head.appendChild(s); });

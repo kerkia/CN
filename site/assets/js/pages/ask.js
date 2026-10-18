@@ -13,7 +13,7 @@ import { dataTable } from "../ui.js";
 import { parseAnswer } from "../askparse.js";
 import { PROVIDERS, ProviderError, loadChoice, saveChoice, forgetChoice, suggest } from "../askbyok.js";
 
-const DUCKDB = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/+esm";
+import { DUCKDB_DIR, joined } from "../vendor.js";
 const TABLES = ["runners", "clubs", "races", "results", "cn"];
 const EXAMPLES = [1, 2, 3, 4, 5, 6].map((i) => t(`ia.ex.${i}`));
 // O'CN's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
@@ -29,12 +29,12 @@ const errText = (d, status) => (d.code ? t(`ia.err.${d.code}`, { n: d.n, detail:
 async function duck() {
   if (memo.duck) return memo.duck;
   memo.duck = (async () => {
-    const duckdb = await import(DUCKDB);
-    const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
-    const url = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }));
-    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(url));
-    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-    URL.revokeObjectURL(url);
+    // served by the site (/assets/vendor, tools/vendor.py): the engine in two parts joined here, the « eh » build only
+    const duckdb = await import(`${DUCKDB_DIR}/duckdb-browser.mjs`);
+    const wasm = await joined(`${DUCKDB_DIR}/duckdb-eh.wasm`, "application/wasm");
+    const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(`${DUCKDB_DIR}/duckdb-browser-eh.worker.js`));
+    await db.instantiate(wasm);
+    URL.revokeObjectURL(wasm);
     return { db, conn: await db.connect() };
   })();
   memo.duck.catch(() => { memo.duck = null; });

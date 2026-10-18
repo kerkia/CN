@@ -24,8 +24,8 @@
     if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = t;
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/i18n/langFR.js" defer></script>
+  <script src="/assets/vendor/echarts@5.5.1/dist/echarts.min.js" defer></script>
+  <script src="/assets/vendor/echarts@5.5.1/i18n/langFR.js" defer></script>
   <script type="module" src="assets/js/app.js"></script>
 </head>
 <body>
