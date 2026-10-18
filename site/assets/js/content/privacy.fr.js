@@ -24,11 +24,13 @@ export const body = (SITE) => `
         partir de résultats déjà publiés. Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés, réservés aux
         licenciés. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
         « Vos droits ») ; la source demeure le site de la FFCO.</p>
-      <h2 style="font-size:16px">Dépôts de résultats</h2>
+      <h2 style="font-size:16px">Dépôts de résultats et d'horaires de départ</h2>
       <p>Lors du dépôt d'un fichier de résultats, sont enregistrés le compte de l'auteur du dépôt, la course, le nom et la taille du
         fichier ainsi que la date du dépôt. Le fichier est conservé 60 jours dans l'espace de stockage du site (Cloudflare), puis
         effacé ; les résultats qu'il contient restent affichés. L'administrateur voit l'auteur de chaque dépôt et peut retirer un
-        dépôt.</p>
+        dépôt. Les horaires de départ qu'un organisateur dépose avant la course (« Organisation › Horaires ») suivent les mêmes
+        règles ; seuls les noms, clubs, catégories et heures de départ en sont publiés, et les organisateurs de la course peuvent les
+        retirer.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>
@@ -130,5 +132,5 @@ export const body = (SITE) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : ocn@kerkia.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 17 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 18 octobre 2026.</p>
 `;

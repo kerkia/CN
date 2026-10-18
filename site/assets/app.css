@@ -830,6 +830,8 @@ table.data tr.pv-none td .tag { opacity: .7; }
   border: 2px dashed var(--border-strong); border-radius: 12px; background: var(--surface-2); }
 .dropzone:hover, .dropzone.over { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface-2)); }
 .dropzone span { font-size: 12.5px; }
+/* « Organisation › Horaires »: the formats' examples */
+.os-example { font-size: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; overflow-x: auto; white-space: pre; margin: 4px 0 10px; }
 .upload-check { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; line-height: 1.45;
   background: color-mix(in srgb, var(--good) 12%, transparent); }
 .upload-check.warn { background: color-mix(in srgb, #d9a400 16%, transparent); }

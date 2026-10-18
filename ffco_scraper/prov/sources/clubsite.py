@@ -444,4 +444,10 @@ def download_url(url: str) -> str:
     m = re.search(r"drive\.google\.com/file/d/([\w-]+)", url)
     if m:
         return f"https://drive.google.com/uc?export=download&id={m.group(1)}"
+    # a Google Sheets page shows its first 100 rows or so (2026-10-18: SpOC's start list, 129 rows, read as 38 runners):
+    # its CSV export has them all, the sheet's tab kept
+    m = re.search(r"docs\.google\.com/spreadsheets/d/([\w-]+)", url)
+    if m and "/export" not in url:
+        gid = re.search(r"[#&?]gid=(\d+)", url)
+        return f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=csv" + (f"&gid={gid.group(1)}" if gid else "")
     return url

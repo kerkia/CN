@@ -699,6 +699,20 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`X-Upload` `organiser: true`, checked the same way, 403 « not organiser » otherwise) is noted « déposé par
   l'organisateur », and its race is no longer looked for on the club's site or the platforms (`prov_meta` `org_races`,
   kept by `sources/upload.apply`, skipped in `run.run`'s loop): the organiser's file is used as it is.
+- **Organisation › Horaires** (`#/orga-horaires`, route `orgStarts`, `pages/orgstarts.js`; owner, 2026-10-18): an organiser deposits
+  the start list of a coming competition of their club (the agenda's competitions of today to +90 days, relays apart; administrators
+  see all). Files: IOF XML StartList (best), CSV (a header row then a runner a row — Heure/Départ, Nom, Prénom or a whole name,
+  Club, Catégorie, Circuit, in any order and with « ; », « , » or tabs —, or a grid: a circuit per column pair), HTML, OE/MeOS PDF,
+  or a Google Sheets link shared to anyone with the link (`functions/api/sheet.js` fetches its CSV export: the browser cannot;
+  60 a day an account). **Read in the browser** (`localstart.js`, pdf.js for PDFs, words of a run placed by Arial widths) as the
+  server reads it (`parsers/startlist.py`: `_csv`, `_read_table`, `_grid`) — keep them in step; checked on 20 real files, 19
+  identical —, shown with warnings (a name twice, unknown circuit, another date, registrations vs runners), then sent as upload
+  kind « startlist » (`api/upload.js`: organisers only, until the race's day, an agenda race `a<id>` allowed; GET `?race=&kind=
+  startlist` lists the race's deposits, DELETE `{id}` removes one, both organisers only; a `prov` run started at once).
+  `sources/upload.py` reads it into a « startlist » document (the race's latest deposit by any organiser supersedes) and lists the
+  race in `prov_meta` `org_starts`: liveresultat and the club's site are no longer read for its start list, and `run.build`
+  publishes the organiser's alone, up to `ORG_START_DAYS` (90) ahead. Later (owner): e-mail the runners their start times,
+  Web Push to phones (the Resend plan is too small for the first).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

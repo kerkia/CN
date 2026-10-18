@@ -47,6 +47,7 @@ SITE_STARTLIST = "liste de départ (site de l'organisateur)"
 MAYBE = " (à vérifier)"                   # (clubsite: a file found on the race's page that says nothing of itself)
 START_SITES = 8                 # organisers' sites searched for start lists per run (the longest unsearched first)
 START_KINDS = ("startlist", "startfile")       # a start list read, or only linked (a PDF)
+ORG_START_DAYS = 90             # an organiser's start list (« Organisation › Horaires ») is published this far ahead
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 # One address per platform competition, however a club's page spells it (« …?lang=fr&comp=… »): the same document
 # is then kept once, whether matched automatically or linked from the organiser's site.
@@ -623,7 +624,9 @@ def start_lists(con, f: Fetcher, lr: LiveResultat, today: date) -> int:
     """The coming races' start lists, from the liveresultat competition assigned to each (races.assign): a document
     of kind "startlist", replaced by the results once the race has run (same address)."""
     hi = (today + timedelta(days=START_DAYS)).isoformat()
-    soon = con.execute("SELECT * FROM prov_races WHERE date_iso > ? AND date_iso <= ?", (today.isoformat(), hi)).fetchall()
+    org = set(store.meta_get(con, "org_starts", []) or [])
+    soon = [r for r in con.execute("SELECT * FROM prov_races WHERE date_iso > ? AND date_iso <= ?", (today.isoformat(), hi)).fetchall()
+            if r["key"] not in org]
     if not soon:
         return 0
     comps = [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if today.isoformat() < c["date"] <= hi]
@@ -675,9 +678,10 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     seen = store.meta_get(con, "startsites", {})
     now = datetime.now(timezone.utc)
+    org = set(store.meta_get(con, "org_starts", []) or [])          # their organiser gave it: nothing to look for
     due = [r for r in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? ORDER BY date_iso",
                                   (today.isoformat(), hi)).fetchall()
-           if not seen.get(r["key"]) or now - datetime.fromisoformat(seen[r["key"]]) >= timedelta(hours=START_EVERY)]
+           if r["key"] not in org and (not seen.get(r["key"]) or now - datetime.fromisoformat(seen[r["key"]]) >= timedelta(hours=START_EVERY))]
     due.sort(key=lambda r: seen.get(r["key"], ""))
     changed = 0
     for race in due[:START_SITES]:
@@ -745,14 +749,20 @@ def build(con, out: Path, today: date) -> int:
     anon = privacy.load()                # the anonymised runners: their rows by licence, the unmatched ones by name
     index, written = [], 0
     hi = (today + timedelta(days=START_DAYS)).isoformat()
+    far = (today + timedelta(days=ORG_START_DAYS)).isoformat()
+    org_starts = set(store.meta_get(con, "org_starts", []) or [])
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
-                                 (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key AND d.kind IN ('startlist', 'startfile'))))
-                               ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi)).fetchall():
+                                 (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key AND d.kind IN ('startlist', 'startfile')))
+                                 OR (date_iso <= ? AND EXISTS (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key
+                                     AND d.kind = 'startlist' AND d.source = 'upload')))
+                               ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi, far)).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
         # the same file under two addresses (http and https, with or without www): shown once, the https one
         docs.sort(key=lambda x: x["url"].startswith("http:"))
         seen_sha: set[str] = set()
         docs = [x for x in docs if not x["parsed"] or not x["sha"] or not (x["sha"] in seen_sha or seen_sha.add(x["sha"]))]
+        if race["key"] in org_starts:                 # the organiser's start list alone (« Organisation › Horaires »)
+            docs = [x for x in docs if x["kind"] not in START_KINDS or x["source"] == "upload"]
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's

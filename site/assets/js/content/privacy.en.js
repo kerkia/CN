@@ -23,10 +23,12 @@ export const body = (SITE) => `
         ranking from results already published. On ${SITE}, this data is only accessible to logged-in accounts, which are reserved
         for licence holders. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
         the source remains the FFCO's website.</p>
-      <h2 style="font-size:16px">Results uploads</h2>
+      <h2 style="font-size:16px">Results and start-list uploads</h2>
       <p>When a results file is uploaded, the uploader's account, the race, the file's name and size and the date of the upload are
         recorded. The file is kept for 60 days in the site's storage (Cloudflare), then erased; the results it contains remain on
-        display. The administrator sees who made each upload and can remove an upload.</p>
+        display. The administrator sees who made each upload and can remove an upload. The start lists an organiser uploads before
+        the race (“Organising › Start times”) follow the same rules; only the names, clubs, classes and start times are published,
+        and the race's organisers can remove them.</p>
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>
@@ -119,5 +121,5 @@ export const body = (SITE) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: ocn@kerkia.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 17 October 2026.</p>
+      <p class="muted">Last updated: 18 October 2026.</p>
 `;

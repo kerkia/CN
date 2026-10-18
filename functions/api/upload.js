@@ -12,6 +12,11 @@
 // courses are set before the race), by its organisers only (checked as for { organiser: true }, which need not be
 // sent), a .xml file of COURSES_MAX at most; the results lists then get each circuit's length, climb and controls when
 // their files lack them. Not the organiser's results: the race is still looked for on the club's site and the platforms.
+// { kind: "startlist" } (2026-10-18, « Organisation › Horaires »): an organiser's start list (IOF XML StartList, CSV, HTML,
+// PDF; STARTS_MAX at most) for a coming race of the agenda or of the list, until its day, by its organisers only; it is
+// published at once and replaces the start lists the site would find elsewhere (ffco_scraper/prov/sources/upload.py).
+// GET /api/upload?race=<key>&kind=startlist — that race's start lists deposited and still published (its organisers);
+// DELETE /api/upload { id } — one of them taken off (its organisers, or an administrator): as the admin page does it.
 
 import { adminEmails, allow, isAdmin, json, nowIso, withUser } from "../_lib/api.js";
 import { clubOf, orgCode } from "../_lib/club.js";
@@ -20,7 +25,9 @@ import { uploadMail } from "../_lib/templates.js";
 
 export const MAX_BYTES = 30 * 1024 * 1024;
 export const COURSES_MAX = 5 * 1024 * 1024;
+export const STARTS_MAX = 10 * 1024 * 1024;
 const EXT = /\.(xml|html?|pdf|zip|gz|csv|txt)$/i;
+const STARTS_EXT = /\.(xml|html?|pdf|csv|txt)$/i;
 const KEEP_DAYS = 60;
 const TERRAINS = ["Forêt", "Sprint", "VTT", "Ski"];
 const FORMATS = ["Sprint", "MD", "LD", "Nuit", "Autre"];
@@ -36,15 +43,16 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   if (!meta || typeof meta !== "object") return json({ error: "bad request" }, 400);
   if (meta.consent !== true) return json({ error: "consent" }, 400);
   const kind = meta.kind == null ? "results" : meta.kind;
-  if (kind !== "results" && kind !== "courses") return json({ error: "kind" }, 400);
-  const courses = kind === "courses", max = courses ? COURSES_MAX : MAX_BYTES;
+  if (!["results", "courses", "startlist"].includes(kind)) return json({ error: "kind" }, 400);
+  const courses = kind === "courses", starts = kind === "startlist";
+  const max = courses ? COURSES_MAX : starts ? STARTS_MAX : MAX_BYTES;
   const filename = clean(meta.filename, 120).replace(/[\\/]/g, "_");
-  if (!(courses ? /\.xml$/i : EXT).test(filename)) return json({ error: "type" }, 415);
+  if (!(courses ? /\.xml$/i : starts ? STARTS_EXT : EXT).test(filename)) return json({ error: "type" }, 415);
   const size = Number(request.headers.get("Content-Length") || 0);
   if (!size) return json({ error: "empty" }, 400);
   if (size > max) return json({ error: "too big", max }, 413);
-  if (courses && !meta.race) return json({ error: "race" }, 400);
-  if (!(await allow(env, `${courses ? "courses" : "upload"}:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
+  if ((courses || starts) && !meta.race) return json({ error: "race" }, 400);
+  if (!(await allow(env, `${courses ? "courses" : starts ? "starts" : "upload"}:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
 
   // the race: one of the list, or a new one (the last 60 days, as on the page); courses: a coming one of the agenda too
   let raceKey = null, label, newRace = null, organiser = false, raceDay = null;
@@ -52,11 +60,17 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
     raceKey = clean(meta.race, 40);
     const res = await env.ASSETS.fetch(new URL("/data/prov/index.json", request.url));
     const race = (res.ok ? (await res.json()).races?.find((r) => r.key === raceKey) : null)
-      || (courses ? await agendaRace(env, request, raceKey) : null);
+      || (courses || starts ? await agendaRace(env, request, raceKey) : null);
     if (!race) return json({ error: "unknown race" }, 400);
     label = `${race.name} (${race.date_iso})`;
     raceDay = race.date_iso;
-    if (courses) {                    // its setters: a member of the organising club, or an administrator
+    if (starts) {                     // its organisers, until the race's day (after it, its results)
+      const code = orgCode(race.org);
+      if (!isAdmin(env, user) && (!code || (await clubOf(env, request, user.licence)) !== code)) return json({ error: "not organiser" }, 403);
+      if (raceDay < isoDay(new Date())) return json({ error: "past" }, 400);
+      organiser = true;
+      label += " — horaires de départ";
+    } else if (courses) {             // its setters: a member of the organising club, or an administrator
       const code = orgCode(race.org);
       if (!isAdmin(env, user) && (!code || (await clubOf(env, request, user.licence)) !== code)) return json({ error: "not organiser" }, 403);
       label += " — circuits du traceur";
@@ -107,6 +121,59 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   const soon = courses && raceDay > isoDay(new Date()) ? false : await startRun(env);
   waitUntil(Promise.all([alertAdmins(env, user, { race: label, filename, size, kind }), cleanUp(env)]).catch(() => {}));
   return json({ ok: true, id, soon });
+});
+
+/** A race of the list, else a competition of the agenda, by its key; or null. */
+async function findRace(env, request, key) {
+  const res = await env.ASSETS.fetch(new URL("/data/prov/index.json", request.url));
+  return (res.ok ? (await res.json()).races?.find((r) => r.key === key) : null) || await agendaRace(env, request, key);
+}
+/** Is the account one of the race's organisers (a member of its organising club), or an administrator? */
+async function organises(env, request, user, race) {
+  if (isAdmin(env, user)) return true;
+  const code = orgCode(race?.org);
+  return !!code && (await clubOf(env, request, user.licence)) === code;
+}
+/** An upload's meta.json (its kind among others), or null. */
+async function metaOf(env, id) {
+  const o = env.BUCKET ? await env.BUCKET.get(`uploads/${id}/meta.json`) : null;
+  return o ? o.json() : null;
+}
+
+export const onRequestGet = withUser(async ({ request, env }, user) => {
+  const q = new URL(request.url).searchParams;
+  const key = clean(q.get("race"), 40);
+  if (!key || q.get("kind") !== "startlist") return json({ error: "bad request" }, 400);
+  const race = await findRace(env, request, key);
+  if (!race) return json({ error: "unknown race" }, 400);
+  if (!(await organises(env, request, user, race))) return json({ error: "not organiser" }, 403);
+  const { results } = await env.DB.prepare(
+    "SELECT id, user_id, filename, size, created_at FROM uploads WHERE race_key = ? AND status = 'active' ORDER BY id DESC LIMIT 20")
+    .bind(key).all();
+  const out = [];
+  for (const u of results) {
+    if ((await metaOf(env, u.id))?.kind === "startlist") out.push({ id: u.id, filename: u.filename, size: u.size, created: u.created_at, mine: u.user_id === user.id });
+  }
+  return json({ uploads: out });
+});
+
+export const onRequestDelete = withUser(async ({ request, env }, user) => {
+  let b = null;
+  try { b = await request.json(); } catch (e) { /* none */ }
+  const id = Number(b?.id);
+  if (!Number.isInteger(id) || id <= 0) return json({ error: "bad request" }, 400);
+  const up = await env.DB.prepare("SELECT * FROM uploads WHERE id = ?").bind(id).first();
+  const meta = up ? await metaOf(env, id) : null;
+  if (!up || meta?.kind !== "startlist") return json({ error: "not found" }, 404);           // results: the admin page
+  if (!(await organises(env, request, user, await findRace(env, request, up.race_key)))) return json({ error: "not organiser" }, 403);
+  if (up.status !== "removed") {
+    if (up.r2_key) await env.BUCKET.delete(up.r2_key);
+    await env.BUCKET.put(`uploads/${id}/meta.json`, JSON.stringify({ ...meta, status: "removed", size: 0 }),
+      { httpMetadata: { contentType: "application/json" } });
+    await env.DB.prepare("UPDATE uploads SET status = 'removed' WHERE id = ?").bind(id).run();
+    await startRun(env);
+  }
+  return json({ ok: true });
 });
 
 /** A competition of the agenda (site/data/agenda.json) by its race key « a<id> », shaped as a race of the list; or null. */

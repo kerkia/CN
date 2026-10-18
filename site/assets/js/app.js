@@ -40,6 +40,7 @@ const PAGES = {
   orgTraining: () => import("./pages/shared.js"),
   orgResults: () => import("./pages/orgresults.js"),
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
+  orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
   orgTracer: () => import("./pages/tracer.js"),       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
@@ -57,13 +58,13 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
-  orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgTracer: "nav.orgTracer.hint" };
+  orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
-  || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults";
+  || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -103,7 +104,7 @@ function parseHash() {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
-    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
+    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -319,7 +320,7 @@ function renderHeader(r) {
     // the results of their competitions, « Direct » (live results from the timing software's export) and « Tracer » (course
     // setting, Purple Pen's way), every one for every account (owner, 2026-10-15)
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
-      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
+      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
   ] : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
@@ -377,7 +378,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgDirect", "orgTracer"].includes(route) ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer"].includes(route) ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));

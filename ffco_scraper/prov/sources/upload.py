@@ -19,6 +19,11 @@ CourseData file, read by parsers.coursedata only, becomes a document of kind "co
 and controls for the race's results lists that lack them (run.fill_courses). It is no results list: its race is still
 looked for everywhere, and a newer one by the same account replaces it (results and courses apart). Sent before the
 race, often weeks before: a race not in prov_races yet is tried again at the next run.
+
+An organiser's start list (« Organisation › Horaires », meta "kind": "startlist", the same check, until the race's day;
+2026-10-18): read by parsers.startlist (IOF XML, CSV, HTML, PDF) into a document of kind "startlist"; a newer one by the
+same account replaces it. Its race is in prov_meta 'org_starts': the run no longer looks for its start list elsewhere
+(liveresultat, the club's site) and publishes only the organiser's (run.build), up to ORG_START_DAYS ahead.
 """
 
 from __future__ import annotations
@@ -31,7 +36,7 @@ import zipfile
 from pathlib import Path
 
 from .. import races, store
-from ..parsers import coursedata
+from ..parsers import coursedata, startlist
 
 log = logging.getLogger(__name__)
 READABLE = (".xml", ".html", ".htm", ".pdf", ".csv", ".txt")
@@ -88,8 +93,9 @@ def race_for(con, m: dict) -> str | None:
 
 
 def kind_of(m: dict) -> str:
-    """What an upload is: "results" (results or split times), or "courses" (a course setter's IOF XML CourseData)."""
-    return "courses" if m.get("kind") == "courses" else "results"
+    """What an upload is: "results" (results or split times), "courses" (a course setter's IOF XML CourseData) or
+    "startlist" (an organiser's start list)."""
+    return m.get("kind") if m.get("kind") in ("courses", "startlist") else "results"
 
 
 def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
@@ -97,15 +103,17 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
     done = store.meta_get(con, "uploads", {}) or {}
     ups = uploads(folder)
     changed = 0
-    # the latest upload of an account for a race replaces its earlier ones (of the same kind)
+    # the latest upload of an account for a race replaces its earlier ones (of the same kind); a start list, the race's
+    # latest by any of its organisers (two would be two lists)
+    owner = lambda m: None if kind_of(m) == "startlist" else m.get("user")
     latest: dict = {}
     for m in ups:
         if m.get("status") == "active" and m.get("race"):
-            latest[(m.get("user"), m["race"], kind_of(m))] = m["id"]
+            latest[(owner(m), m["race"], kind_of(m))] = m["id"]
     for m in ups:
         uid, state = str(m.get("id")), [m.get("size"), m.get("status")]
-        courses = kind_of(m) == "courses"
-        superseded = m.get("race") and latest.get((m.get("user"), m["race"], kind_of(m))) not in (None, m["id"])
+        courses, starts = kind_of(m) == "courses", kind_of(m) == "startlist"
+        superseded = m.get("race") and latest.get((owner(m), m["race"], kind_of(m))) not in (None, m["id"])
         if done.get(uid) == state + [bool(superseded)] and not reread:
             continue
         prefix = f"upload:{uid}/"
@@ -119,23 +127,25 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
                         con.execute("DELETE FROM prov_races WHERE key = ?", (key,))
             elif m.get("path"):
                 key = race_for(con, m)
-                if key is None and courses:
-                    log.info("upload %s: courses of a race not known yet (%s), tried again next time", uid, m.get("race"))
+                if key is None and (courses or starts):
+                    log.info("upload %s: %s of a race not known yet (%s), tried again next time", uid, kind_of(m), m.get("race"))
                     continue                               # (not marked as read)
                 if key is None:
                     log.warning("upload %s: unknown race %s", uid, m.get("race"))
                 else:
                     when = str(m.get("created") or "")[:10]
                     who = "par l'organisateur " if m.get("organiser") and not courses else ""
-                    what = "circuits du traceur, déposés" if courses else f"déposé {who}".strip()
+                    what = "circuits du traceur, déposés" if courses else "horaires de départ déposés par l'organisateur" if starts \
+                        else f"déposé {who}".strip()
                     note = f"{what} sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"{what} sur O'CN"
                     for name, content in files_in(m.get("filename") or m["path"].name, m["path"].read_bytes()):
-                        d = coursedata.parse(content, name) if courses else parse_any(content, name)
+                        d = coursedata.parse(content, name) if courses else startlist.parse(content, name) if starts \
+                            else parse_any(content, name)
                         if d is not None:
                             d["title"] = d.get("title") or name
                         changed += save(con, key, prefix + name, "upload", d, kind=None if d else "unparsed", note=note)
                     # the race is looked at again soon (its scores, the platforms): the upload may be its first news
-                    if not courses:
+                    if not courses and not starts:
                         con.execute("UPDATE prov_races SET done = 0, next_check = NULL WHERE key = ?", (key,))
             else:
                 continue                                   # the file is gone (after 60 days): its documents stay
@@ -146,5 +156,8 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
     # the races an organiser gave results for: not looked for elsewhere any more
     store.meta_set(con, "org_races", sorted({m["race"] for m in ups if m.get("organiser") and kind_of(m) == "results"
                                              and m.get("status") == "active" and m.get("race")}))
+    # the races whose organiser gave the start list: theirs only, nothing looked for elsewhere
+    store.meta_set(con, "org_starts", sorted({m["race"] for m in ups if kind_of(m) == "startlist"
+                                              and m.get("status") == "active" and m.get("race")}))
     con.commit()
     return changed

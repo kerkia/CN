@@ -98,13 +98,14 @@ Administration (pour désactiver cette alerte) : ${url}`,
  *  "courses", the course setter's circuits from « Organisation › Tracer »). */
 export function uploadMail(env, user, up, lang) {
   const url = `${siteUrl(env)}/#/admin?onglet=depots`;
-  const courses = up.kind === "courses";
+  const courses = up.kind === "courses", starts = up.kind === "startlist";
   const kb = Math.max(1, Math.round(up.size / 1024));
   if (L(lang) === "en") {
     const lines = [`Race: ${up.race}`, `File: ${up.filename} (${kb} KB)`,
       `Uploaded by: ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
-    const head = courses ? "Courses uploaded" : "Results uploaded";
+    const head = courses ? "Courses uploaded" : starts ? "Start list uploaded" : "Results uploaded";
     const intro = courses ? "The courses of a race (the course setter's IOF XML file) have just been uploaded to “Results”."
+      : starts ? "An organiser has just uploaded the start list of a coming race (“Organisation › Start times”)."
       : "A results file has just been uploaded to “Results”.";
     const when = courses ? "They complete the race's results lists (length, climb, controls), once the race is over."
       : "It is published at the next collection run.";
@@ -120,8 +121,9 @@ The uploads (to remove one): ${url}`,
   }
   const lines = [`Course : ${up.race}`, `Fichier : ${up.filename} (${kb} Ko)`,
     `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
-  const head = courses ? "Circuits déposés" : "Résultats déposés";
+  const head = courses ? "Circuits déposés" : starts ? "Horaires de départ déposés" : "Résultats déposés";
   const intro = courses ? "Les circuits d'une course (fichier IOF XML du traceur) viennent d'être déposés sur « Résultats »."
+    : starts ? "Un organisateur vient de déposer les horaires de départ d'une course à venir (« Organisation › Horaires »)."
     : "Un fichier de résultats vient d'être déposé sur « Résultats ».";
   const when = courses ? "Ils complètent les listes de résultats de la course (longueur, dénivelé, postes), une fois la course passée."
     : "Il est publié au prochain passage de la collecte.";

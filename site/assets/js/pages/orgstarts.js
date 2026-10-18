@@ -1,0 +1,247 @@
+// « Organisation › Horaires » (#/orga-horaires, owner 2026-10-18): an organiser publishes the start list of a coming
+// competition of their club. The page lists the club's competitions of the agenda for the next ORG_DAYS days (all of them
+// for an administrator) with what the site has of their start list; a race opens its deposit (?course=a<agenda id>):
+// 1. a file — IOF XML StartList, CSV (our layout, OE's, MeOS'), HTML, a PDF of OE or MeOS — or a Google Sheets link (read
+// as CSV through functions/api/sheet.js); 2. it is read in the browser (localstart.js, the server's reader ported) and shown,
+// circuit by circuit, with what deserves a look; 3. consent, then functions/api/upload.js ({ kind: "startlist" }): the next
+// collection run publishes it (ffco_scraper/prov/sources/upload.py) on the race's page and in the agenda, and it replaces
+// the start lists the site would find elsewhere. A deposit replaces the previous one; « Retirer » takes it off.
+
+import { html, $, fmt, fmtDate, fmtCat, addDays } from "../util.js";
+import { t, tn } from "../i18n.js";
+import * as auth from "../auth.js";
+import * as data from "../data.js";
+import { getProv } from "./provisional.js";
+import { parse as readStarts } from "../localstart.js";
+
+const ORG_DAYS = 90;                     // as far ahead as the collection publishes an organiser's start list
+const MAX = 10 * 1024 * 1024;            // functions/api/upload.js STARTS_MAX
+const EXT = /\.(xml|html?|pdf|csv|txt)$/i;
+const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
+const isRelay = (e) => /relais|relay/i.test(`${e.name || ""} ${e.epr || ""}`);
+const hm = (s) => (s == null ? "" : `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${s % 60 ? `:${String(s % 60).padStart(2, "0")}` : ""}`);
+const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+
+export async function render(main, { query = {} } = {}) {
+  const me = auth.session(), club = auth.myClub();
+  const today = new Date().toISOString().slice(0, 10);
+  const [agenda, idx] = await Promise.all([data.agenda().catch(() => null), getProv("index.json").catch(() => null)]);
+  const prov = new Map((idx?.races || []).map((r) => [r.key, r]));
+  const races = (agenda?.events || [])
+    .filter((e) => e.kind === "c" && e.id && !e.cancelled && e.date >= today && e.date <= addDays(today, ORG_DAYS) && !isRelay(e))
+    .map((e) => ({ key: `a${e.id}`, e, p: prov.get(`a${e.id}`) }))
+    .sort((a, b) => a.e.date.localeCompare(b.e.date) || a.e.name.localeCompare(b.e.name));
+  const mine = me?.admin ? races : races.filter((x) => club && orgCode(x.e.org) === club);
+  if (query.course) {
+    const race = mine.find((x) => x.key === query.course);
+    if (!race) {
+      main.innerHTML = html`<div class="crumbs"><a href="#/orga-horaires">${t("os.title")}</a></div>
+        <div class="card"><div class="empty">${t("os.notMine")}</div></div>`;
+      return { title: t("os.title") };
+    }
+    return deposit(main, race);
+  }
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("os.title")}</h1><p class="lede">${t("os.lede", { n: ORG_DAYS })}</p></div></div>
+    ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="os-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
+    <section class="card"><div class="table-wrap" id="os-list"></div></section>
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("os.hint")}</p>`;
+  const status = (x) => {
+    if (!x.p?.startlist) return html`<span class="muted">${t("os.st.none")}</span>`;
+    const src = x.p.sources || [];
+    return src.includes("upload") ? html`<span class="tag">${t("os.st.yours")}</span>`
+      : html`${t("os.st.found")}${src.length ? html` <span class="muted">(${src.map((s) => (s === "site" ? t("src.site") : s)).join(", ")})</span>` : ""}`;
+  };
+  const draw = (q = "") => {
+    const list = q ? mine.filter((x) => norm(`${x.e.name} ${x.e.org || ""} ${x.e.place || ""}`).includes(norm(q))) : mine;
+    $("#os-list").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th>
+        <th>${t("sh.org.col.org")}</th><th class="r">${t("os.col.reg")}</th><th>${t("os.col.now")}</th><th></th></tr></thead>
+      <tbody>${list.map((x) => html`<tr><td class="num">${fmtDate(x.e.date, "short")}</td>
+        <td><a href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${x.e.name}</a>${x.e.place ? html` <span class="muted">· ${x.e.place}</span>` : ""}</td>
+        <td class="muted">${x.e.org || "—"}</td>
+        <td class="r num">${x.e.reg?.count ? fmt(x.e.reg.count) : ""}</td>
+        <td>${status(x)}</td>
+        <td class="r"><a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${t("os.deposit")}</a></td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${club || me?.admin ? t("os.none", { club: club || "—", n: ORG_DAYS }) : t("sh.org.noclub")}</div>`;
+  };
+  draw();
+  $("#os-filter")?.addEventListener("input", (e) => draw(e.target.value));
+  return { title: t("os.title") };
+}
+
+// ---- one race: the file, the check, the publication ---------------------------------------------------------------
+async function deposit(main, race) {
+  const e = race.e;
+  let file = null, read = null;
+  main.innerHTML = html`
+    <div class="crumbs"><a href="#/orga-horaires">${t("os.title")}</a></div>
+    <div class="page-head"><div><h1>${e.name}</h1>
+      <p class="lede meta"><span>${fmtDate(e.date)}</span>${e.place ? html`<span>${e.place}</span>` : ""}${e.org ? html`<span>${e.org}</span>` : ""}
+        ${e.reg?.count ? html`<span>${tn("os.reg", e.reg.count, { n: fmt(e.reg.count) })}</span>` : ""}</p></div></div>
+    <div id="os-current"></div>
+    <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("os.step1")}</h2></div>
+      <div class="card-body upload-grid">
+        <div class="upload-form">
+          <label class="dropzone" id="os-drop" style="min-height:150px">
+            <input type="file" id="os-file" accept=".xml,.csv,.txt,.html,.htm,.pdf" hidden>
+            <strong id="os-file-name">${t("os.drop")}</strong><span class="muted">${t("os.drop.hint")}</span></label>
+          <div class="filters" style="margin:12px 0 0;padding:0;border:0;background:none">
+            <label class="field" style="flex:1;min-width:220px"><span>${t("os.sheet")}</span>
+              <input type="url" id="os-sheet" placeholder="https://docs.google.com/spreadsheets/d/…" style="width:100%"></label>
+            <button type="button" class="btn btn-sm" id="os-sheet-read" style="align-self:flex-end">${t("os.sheet.read")}</button>
+          </div>
+          <div id="os-err"></div>
+        </div>
+        <div class="upload-help prose">${help()}</div>
+      </div></section>
+    <section class="card" id="os-check" style="margin-bottom:16px" hidden><div class="card-head"><div><h2>${t("os.step2")}</h2>
+      <div class="hint" id="os-check-hint"></div></div><label class="field" style="flex-direction:row;align-items:center;gap:8px">
+      <span>${t("col.circuit")}</span><select id="os-circuit"></select></label></div>
+      <div class="card-body"><div class="tiles tiles-compact" id="os-tiles" style="margin-bottom:12px"></div><div id="os-warn"></div></div>
+      <div class="table-wrap" id="os-table" style="max-height:420px"></div></section>
+    <section class="card" id="os-send" hidden><div class="card-head"><h2>${t("os.step3")}</h2></div><div class="card-body">
+      <label class="check"><input type="checkbox" id="os-consent"> ${t("os.consent")}</label>
+      <div class="row" style="margin-top:10px;gap:10px;align-items:center"><button type="button" class="btn btn-primary" id="os-publish" disabled>${t("os.publish")}</button>
+        <progress id="os-bar" max="100" value="0" hidden style="width:160px"></progress></div>
+      <div id="os-msg" style="margin-top:10px"></div>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">${t("os.privacy")}</p></div></section>`;
+
+  // what is published now: the organisers' deposits, each removable
+  async function current() {
+    const box = $("#os-current");
+    const r = await fetch(`api/upload?race=${encodeURIComponent(race.key)}&kind=startlist`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+    const ups = r?.ok ? (await r.json()).uploads || [] : [];
+    const found = race.p?.startlist && !(race.p.sources || []).includes("upload");
+    box.innerHTML = ups.length ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.yours", { date: fmtDate(ups[0].created.slice(0, 10)), file: ups[0].filename })}
+        <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a>
+        <button type="button" class="btn btn-sm" id="os-remove" style="margin-left:8px">${t("os.remove")}</button>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${t("os.now.replace")}</div></div>`
+      : found ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.found")}
+        <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a></div>` : "";
+    $("#os-remove")?.addEventListener("click", async () => {
+      if (!confirm(t("os.remove.confirm"))) return;
+      const x = await fetch("api/upload", { method: "DELETE", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: ups[0].id }) }).catch(() => null);
+      box.innerHTML = html`<div class="notice ${x?.ok ? "ok" : ""}" style="margin-bottom:16px">${x?.ok ? t("os.removed") : t("up.err.other")}</div>`;
+    });
+  }
+  current();
+
+  const err = (msg) => { $("#os-err").innerHTML = msg ? html`<div class="notice" style="margin-top:10px">${msg}</div>` : ""; };
+  async function take(f, label) {
+    err("");
+    if (f.size > MAX) return err(t("os.err.big"));
+    if (!EXT.test(f.name)) return err(t("os.err.type"));
+    $("#os-file-name").textContent = label || f.name;
+    let d = null;
+    try { d = await readStarts(new Uint8Array(await f.arrayBuffer()), f.name); } catch (x) { d = null; }
+    if (!d) {
+      $("#os-check").hidden = true; $("#os-send").hidden = true;
+      return err(/\.pdf$/i.test(f.name) ? t("os.err.pdf") : t("os.err.read"));
+    }
+    file = f; read = d;
+    check();
+  }
+  $("#os-file").addEventListener("change", (ev) => ev.target.files[0] && take(ev.target.files[0]));
+  const drop = $("#os-drop");
+  drop.addEventListener("dragover", (ev) => { ev.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (ev) => { ev.preventDefault(); drop.classList.remove("over"); if (ev.dataTransfer.files[0]) take(ev.dataTransfer.files[0]); });
+  $("#os-sheet-read").addEventListener("click", async () => {
+    const url = $("#os-sheet").value.trim();
+    if (!/^https:\/\/docs\.google\.com\/spreadsheets\/d\//.test(url)) return err(t("os.sheet.bad"));
+    const b = $("#os-sheet-read");
+    b.disabled = true;
+    const r = await fetch(`api/sheet?url=${encodeURIComponent(url)}`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+    b.disabled = false;
+    if (!r?.ok) {
+      const j = r ? await r.json().catch(() => ({})) : {};
+      return err(j.error === "not shared" ? t("os.sheet.private") : j.error === "too many" ? t("up.err.many") : t("os.sheet.fail"));
+    }
+    const bytes = await r.arrayBuffer();
+    take(new File([bytes], `horaires-${race.key}.csv`, { type: "text/csv" }), t("os.sheet.name"));
+  });
+
+  // 2. the check: the list as read, and what deserves a look
+  function check() {
+    const d = read, all = d.classes.flatMap((k) => k.runners);
+    const starts = all.map((r) => r.start_s).filter((s) => s != null).sort((a, b) => a - b);
+    $("#os-check").hidden = false; $("#os-send").hidden = false;
+    $("#os-check-hint").textContent = t(d.by === "category" ? "os.by.cat" : "os.by.circuit");
+    $("#os-tiles").innerHTML = html`
+      <div class="tile"><div class="tile-label">${t("os.t.runners")}</div><div class="tile-value">${fmt(all.length)}</div></div>
+      <div class="tile"><div class="tile-label">${t(d.by === "category" ? "os.t.cats" : "os.t.circuits")}</div><div class="tile-value">${fmt(d.classes.length)}</div></div>
+      <div class="tile"><div class="tile-label">${t("os.t.first")}</div><div class="tile-value">${hm(starts[0])}</div></div>
+      <div class="tile"><div class="tile-label">${t("os.t.last")}</div><div class="tile-value">${hm(starts.at(-1))}</div></div>`;
+    const warn = [];
+    const seen = new Map();
+    for (const r of all) { const k = norm(r.name).split(" ").sort().join(" "); seen.set(k, [...(seen.get(k) || []), r.name]); }
+    const twice = [...seen.values()].filter((v) => v.length > 1).map((v) => v[0]);
+    if (twice.length) warn.push(t("os.w.twice", { list: twice.slice(0, 5).join(", ") + (twice.length > 5 ? "…" : "") }));
+    if (d.classes.some((k) => k.name === "?")) warn.push(t("os.w.noclass"));
+    if (d.date && d.date !== e.date) warn.push(t("os.w.date", { file: fmtDate(d.date), race: fmtDate(e.date) }));
+    if (e.reg?.count && Math.abs(e.reg.count - all.length) > Math.max(3, 0.15 * e.reg.count)) warn.push(t("os.w.reg", { reg: fmt(e.reg.count), file: fmt(all.length) }));
+    const sameTime = d.classes.flatMap((k) => { const c = new Map(); for (const r of k.runners) c.set(r.start_s, (c.get(r.start_s) || 0) + 1);
+      return [...c.entries()].filter(([s, n]) => s != null && n > 1).map(([s]) => `${k.name} ${hm(s)}`); });
+    if (sameTime.length) warn.push(t("os.w.same", { list: sameTime.slice(0, 4).join(", ") + (sameTime.length > 4 ? "…" : "") }));
+    $("#os-warn").innerHTML = warn.length ? html`<div class="notice">${t("os.w.title")}<ul style="margin:6px 0 0;padding-left:18px">${warn.map((w) => html`<li>${w}</li>`)}</ul></div>`
+      : html`<div class="notice info">${t("os.w.none")}</div>`;
+    $("#os-circuit").innerHTML = d.classes.map((k, i) => html`<option value="${i}">${k.name} (${fmt(k.runners.length)})</option>`).join("");
+    const table = () => {
+      const k = d.classes[Number($("#os-circuit").value) || 0];
+      $("#os-table").innerHTML = html`<table class="data compact"><thead><tr><th class="r">${t("os.c.start")}</th><th>${t("rk.col.name")}</th>
+        <th>${t("rk.col.club")}</th><th>${t("rk.col.cat")}</th></tr></thead>
+        <tbody>${[...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9)).map((r) => html`<tr><td class="r num">${hm(r.start_s)}</td>
+          <td>${r.name}</td><td class="muted">${r.club ? data.clubName(r.club) : ""}</td><td>${fmtCat(r.category)}</td></tr>`)}</tbody></table>`;
+    };
+    $("#os-circuit").onchange = table;
+    table();
+    $("#os-consent").checked = false;
+    $("#os-publish").disabled = true;
+    $("#os-msg").innerHTML = "";
+  }
+  $("#os-consent").addEventListener("change", (ev) => { $("#os-publish").disabled = !ev.target.checked || !file; });
+
+  // 3. the publication: the file as it is (a sheet: its CSV), to functions/api/upload.js
+  $("#os-publish").addEventListener("click", () => {
+    if (!file || !$("#os-consent").checked) return;
+    const body = { race: race.key, filename: file.name, consent: true, kind: "startlist" };
+    const bar = $("#os-bar"), msg = $("#os-msg"), btn = $("#os-publish");
+    btn.disabled = true; bar.hidden = false; bar.value = 0; msg.innerHTML = "";
+    const x = new XMLHttpRequest();
+    x.open("POST", "/api/upload");
+    x.setRequestHeader("X-Upload", encodeURIComponent(JSON.stringify(body)));
+    x.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    x.upload.onprogress = (ev) => { if (ev.lengthComputable) bar.value = (100 * ev.loaded) / ev.total; };
+    x.onload = () => {
+      bar.hidden = true;
+      let r = {};
+      try { r = JSON.parse(x.responseText); } catch (ex) { /* not JSON */ }
+      if (x.status === 200 && r.ok) {
+        msg.innerHTML = html`<div class="notice ok">${r.soon ? t("os.done.soon") : t("os.done.later")}
+          <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a></div>`;
+        current();
+        return;
+      }
+      btn.disabled = false;
+      const m = { "too big": t("os.err.big"), type: t("os.err.type"), "too many": t("up.err.many"), "not organiser": t("os.notMine"),
+        past: t("os.err.past") }[r.error] || (x.status === 401 ? t("up.err.login") : t("up.err.other"));
+      msg.innerHTML = html`<div class="notice">${m}</div>`;
+    };
+    x.onerror = () => { bar.hidden = true; btn.disabled = false; msg.innerHTML = html`<div class="notice">${t("up.err.other")}</div>`; };
+    x.send(file);
+  });
+  return { title: `${t("os.title")} · ${e.name}` };
+}
+
+// ---- the formats: what is read, with an example -------------------------------------------------------------------
+function help() {
+  return html`<h3>${t("os.help.title")}</h3>
+    <p><strong>${t("os.help.best")}</strong> ${t("os.help.best.text")}</p>
+    <p><strong>${t("os.help.csv")}</strong> ${t("os.help.csv.text")}</p>
+    <pre class="os-example">${t("os.help.csv.example")}</pre>
+    <p class="muted" style="font-size:12.5px">${t("os.help.csv.notes")}</p>
+    <p><strong>${t("os.help.sheet")}</strong> ${t("os.help.sheet.text")}</p>
+    <pre class="os-example">${t("os.help.sheet.example")}</pre>
+    <p><strong>${t("os.help.else")}</strong> ${t("os.help.else.text")}</p>`;
+}

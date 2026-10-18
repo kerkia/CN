@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import html as htmllib
 import io
+import csv
 import re
 from collections import Counter
 
@@ -26,12 +27,6 @@ from .iofxml import _child, _children, _clock, _date, _ln, _txt
 
 KIND = "startlist"
 _CLOCK = re.compile(r"^\s*([01]?\d|2[0-3])[:hH]([0-5]\d)(?::([0-5]\d))?\s*$")
-_HEAD = {
-    "time": ("heure", "depart", "start", "h dep", "hdep", "horaire", "hour", "time"),
-    "name": ("nom", "name", "coureur", "prenom", "concurrent"),
-    "club": ("club", "equipe", "organisation", "ligue", "n club", "no club", "num club", "numero club", "numero de club", "code club"),
-    "cat": ("cat", "categorie", "class", "circuit"),
-}
 
 
 def parse(content: bytes, url: str) -> dict | None:
@@ -41,6 +36,8 @@ def parse(content: bytes, url: str) -> dict | None:
             return _xml(content)
         if content[:5] == b"%PDF-":
             return _pdf(content)
+        if is_csv(content, url):
+            return _csv(content)
         if b"<table" in content[:2_000_000].lower():
             return _html(content.decode("utf-8", "replace") if b"charset=iso" not in content[:3000].lower()
                          else content.decode("latin-1", "replace"))
@@ -118,44 +115,164 @@ def _cells(tr: str) -> list[str]:
     return out
 
 
+_HEAD = {
+    "time": ("heure", "depart", "start", "h dep", "hdep", "horaire", "hour", "time"),
+    "first": ("prenom", "first name", "firstname", "given"),
+    "name": ("nom", "name", "coureur", "concurrent", "surname", "family", "last name", "lastname"),
+    "club": ("club", "equipe", "organisation", "ligue", "n club", "no club", "num club", "numero club", "numero de club",
+             "code club", "city", "ville", "cl name"),
+    "course": ("circuit", "parcours", "course"),
+    "cat": ("cat", "categorie", "class", "classe"),
+}
+_EXACT = {"short": "cat", "long": "cat"}       # OE's class names (« Short », « Long »): never « Longueur »
+
+
+def _key(h: str) -> str | None:
+    """What a heading names: "time", "first", "name" (a full name, or the family name beside a "first"), "club",
+    "course" (the circuit) or "cat" (the class or category); None for anything else (bib, chip, birth year…)."""
+    p = re.sub(r"[._\-/:]+", " ", model.plain(h)).strip()
+    if not p:
+        return None
+    if re.search(r"\bnom\b", p) and "prenom" in p or p in ("name", "full name"):
+        return "name"                                     # « Nom prénom », « Prénom Nom »: the whole name
+    if p in _EXACT:
+        return _EXACT[p]
+    if p.startswith("classif"):
+        return None                                       # OE's « Classifier »: a status, not the class
+    for key, words in _HEAD.items():
+        if any(p == w or p.startswith(w + " ") or (p.startswith(w) and len(w) >= 4) for w in words):
+            if key == "time" and re.search(r"\b(no|n|nr|num|numero|bib|dossard)\b", p):
+                return None                               # « Start no. »: the bib, not the time
+            return key
+    return None
+
+
 def _grid(head: list[str], above: list[list[str]]) -> dict | None:
     """A start list laid out as a grid (2026-10-17, organisers' Google Sheets): a « name, club » pair per circuit, with one
     time column for all (O'Bugey) or a time column of its own before each pair (SpOC); the circuits' names in a row above,
-    over each circuit's own columns. -> {"groups": [(time col, name col, club col | None, label)]}."""
-    plain = [model.plain(h).strip(" .:") for h in head]
-    is_ = lambda p, key: bool(p) and any(p == w or p.startswith(w) for w in _HEAD[key])
-    names = [i for i, p in enumerate(plain) if is_(p, "name")]
-    times = [i for i, p in enumerate(plain) if is_(p, "time")]
+    over each circuit's own columns. -> {"groups": [(time col, name col, first-name col | None, club col | None, label)]}."""
+    keys = [_key(h) for h in head]
+    names = [i for i, k in enumerate(keys) if k == "name"]
+    times = [i for i, k in enumerate(keys) if k == "time"]
     if len(names) < 2 or not times or times[0] > names[0]:
         return None
     # the circuits' row: the last row above with several word cells (row numbers and blanks aside)
     labels = next((r for r in reversed(above) if len([x for x in r if x and _wordy(x)]) >= 2), [])
-    groups, starts = [], []
+    starts = []
     for k, ni in enumerate(names):
         ti = max(t for t in times if t < ni)
         starts.append(ti if k == 0 or ti > names[k - 1] else ni)     # a time column of its own opens the circuit
+    groups = []
     for k, ni in enumerate(names):
         ti = max(t for t in times if t < ni)
-        ci = ni + 1 if ni + 1 < len(plain) and is_(plain[ni + 1], "club") else None
         stop = starts[k + 1] if k + 1 < len(starts) else len(head)
+        fi = next((j for j in range(ni + 1, stop) if keys[j] == "first"), None)
+        ci = next((j for j in range(ni + 1, stop) if keys[j] == "club"), None)
         label = next((labels[j] for j in range(starts[k], min(stop, len(labels))) if labels[j] and _wordy(labels[j])), "")
-        groups.append((ti, ni, ci, label or f"Circuit {k + 1}"))
+        groups.append((ti, ni, fi, ci, label or f"Circuit {k + 1}"))
     return {"groups": groups}
 
 
 def _columns(head: list[str]) -> dict:
     cols = {}
     for i, h in enumerate(head):
-        p = model.plain(h).strip(" .:")
-        for key, words in _HEAD.items():
-            if key not in cols and any(p == w or p.startswith(w) for w in words):
-                cols[key] = i
-                break
+        k = _key(h)
+        if k and k not in cols:
+            cols[k] = i
     return cols if "time" in cols and "name" in cols else {}
 
 
 def _wordy(s: str) -> bool:
     return bool(re.search(r"[A-Za-zÀ-ÿ]{2,}", s)) and clock(s) is None
+
+
+def _club(s: str | None) -> str | None:
+    """A club as printed; an FFCO number that lost its leading zero (« 703 », « 111 ») gets it back."""
+    s = (s or "").strip()
+    return (s.zfill(4) if re.fullmatch(r"\d{3}", s) else s) or None
+
+
+def _cell(c: list[str], i: int | None) -> str:
+    return c[i] if i is not None and i < len(c) else ""
+
+
+def _read_table(rows: list[list[str]], label: str, lead: list[str]) -> list[dict]:
+    """One table's rows (cells, merged ones expanded): its classes. A header row names the columns (« Heure, Nom, Prénom,
+    Club, Circuit »: a list, grouped by its circuit or class column), or a grid of circuits side by side; without a header,
+    a row's first clock time, the first word cell after it (the name) and the next (the club). A row of one word cell
+    before the runners is the next class's name. `lead` gathers the text above the header (title, format, day)."""
+    cur = model.klass(label or "?")
+    out, groups = [], {}
+    cols, grid, above = {}, None, []
+    for c in rows:
+        if not any(c):
+            continue
+        if not cols and not grid and not any(clock(x) for x in c):
+            grid = _grid(c, above)
+            if grid:
+                groups = {lab: model.klass(lab) for *_, lab in grid["groups"]}     # the sheet's column order
+                continue
+            cols = _columns(c) or cols
+            if cols:
+                continue
+            above.append(c)
+            if len(lead) < 6:
+                lead += [x for x in c if x and _wordy(x)][:3]
+        if grid:
+            # a grid: each row a start time, and a runner (or none) in each circuit's columns
+            for ti, ni, fi, ci, lab in grid["groups"]:
+                start, name = clock(_cell(c, ti)), _cell(c, ni)
+                if fi is not None and _cell(c, fi):
+                    name = f"{_cell(c, fi)} {name}".strip()
+                if start is None or not name or not _wordy(name) or len(name) > 60:
+                    continue
+                groups.setdefault(lab, model.klass(lab))["runners"].append(
+                    model.runner(name, club=_club(_cell(c, ci)), status="start", start_s=start))
+            continue
+        if len([x for x in c if x]) == 1 and _wordy(next(x for x in c if x)):
+            # a row of one cell: the next class
+            if cur["runners"]:
+                out.append(cur)
+            cur = model.klass(re.sub(r"\s*\(\d+\)\s*$", "", next(x for x in c if x)))
+            continue
+        group = None
+        if cols:
+            start, name = clock(_cell(c, cols["time"])), _cell(c, cols["name"])
+            if _cell(c, cols.get("first")):
+                name = f"{_cell(c, cols['first'])} {name}".strip()
+            club, cat = _cell(c, cols.get("club")), _cell(c, cols.get("cat"))
+            # a list of every runner: grouped by its circuit column, else by its class column
+            group = _cell(c, cols.get("course")) or (cat if "course" not in cols else "") or None
+        else:
+            # no header: the first clock time, the first wordy cell after it (the name), the next one (the club)
+            ti = next((i for i, x in enumerate(c) if clock(x) is not None), None)
+            if ti is None:
+                continue
+            wordy = [i for i in range(len(c)) if i != ti and _wordy(c[i])]
+            after = [i for i in wordy if i > ti] or wordy
+            if not after:
+                continue
+            start, name = clock(c[ti]), c[after[0]]
+            club = c[after[1]] if len(after) > 1 else None
+            cat = None
+        if start is None or not _wordy(name) or len(name) > 60:
+            continue
+        r = model.runner(name, club=_club(club), category=model.category((cat or "").split(" ")[0]), status="start", start_s=start)
+        (groups.setdefault(group, model.klass(group)) if group else cur)["runners"].append(r)
+    if cur["runners"]:
+        out.append(cur)
+    return out + [k for k in groups.values() if k["runners"]]
+
+
+def _merge(classes: list[dict]) -> list[dict]:
+    """Classes of the same name (a page of many little tables without titles; a list in several parts) as one."""
+    merged: dict[str, dict] = {}
+    for k in classes:
+        if k["name"] in merged:
+            merged[k["name"]]["runners"] += k["runners"]
+        else:
+            merged[k["name"]] = k
+    return list(merged.values())
 
 
 def _html(page: str) -> dict | None:
@@ -172,79 +289,37 @@ def _html(page: str) -> dict | None:
         heads = re.findall(r"(?is)<(?:h[1-6]|caption|b|strong)[^>]*>(.*?)</(?:h[1-6]|caption|b|strong)>", before)
         label = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"(?s)<[^>]+>", " ", heads[-1]))).strip() if heads else ""
         label = re.sub(r"\s*\(\d+\)\s*$", "", label)
-        cur = model.klass(label or "?")
-        cols, grid, above, by_label = {}, None, [], {}
-        for tr in re.findall(r"(?is)<tr[^>]*>(.*?)</tr>", m.group(1)):
-            c = _cells(tr)
-            if not c:
-                continue
-            if not cols and not grid and not any(clock(x) for x in c):
-                grid = _grid(c, above)
-                if grid:
-                    by_label = {lab: model.klass(lab) for *_, lab in grid["groups"]}     # the sheet's column order
-                    continue
-                cols = _columns(c) or cols
-                if cols:
-                    continue
-                above.append(c)
-                if len(lead) < 6:
-                    lead += [x for x in c if x and _wordy(x)][:3]
-            if grid:
-                # a grid: each row a start time, and a runner (or none) in each circuit's columns
-                for ti, ni, ci, lab in grid["groups"]:
-                    start = clock(c[ti]) if ti < len(c) else None
-                    name = c[ni] if ni < len(c) else ""
-                    if start is None or not name or not _wordy(name) or len(name) > 60:
-                        continue
-                    club = c[ci] if ci is not None and ci < len(c) else None
-                    if club and re.fullmatch(r"\d{3}", club):          # « 703 », « 111 »: the FFCO number lost its zero
-                        club = club.zfill(4)
-                    k = by_label.setdefault(lab, model.klass(lab))
-                    k["runners"].append(model.runner(name, club=club or None, status="start", start_s=start))
-                continue
-            if len([x for x in c if x]) == 1 and _wordy(next(x for x in c if x)):
-                # a row of one cell: the next class
-                if cur["runners"]:
-                    classes.append(cur)
-                cur = model.klass(re.sub(r"\s*\(\d+\)\s*$", "", next(x for x in c if x)))
-                continue
-            if cols:
-                ti, ni = cols["time"], cols["name"]
-                if ti >= len(c) or ni >= len(c):
-                    continue
-                start, name = clock(c[ti]), c[ni]
-                club = c[cols["club"]] if "club" in cols and cols["club"] < len(c) else None
-                cat = c[cols["cat"]] if "cat" in cols and cols["cat"] < len(c) else None
-            else:
-                # no header: the first clock time, the first wordy cell after it (the name), the next one (the club)
-                ti = next((i for i, x in enumerate(c) if clock(x) is not None), None)
-                if ti is None:
-                    continue
-                wordy = [i for i in range(len(c)) if i != ti and _wordy(c[i])]
-                after = [i for i in wordy if i > ti] or wordy
-                if not after:
-                    continue
-                start, name = clock(c[ti]), c[after[0]]
-                club = c[after[1]] if len(after) > 1 else None
-                cat = None
-            if start is None or not _wordy(name) or len(name) > 60:
-                continue
-            cur["runners"].append(model.runner(name, club=club or None, category=model.category(cat or ""),
-                                               status="start", start_s=start))
-        if cur["runners"]:
-            classes.append(cur)
-        classes += [k for k in by_label.values() if k["runners"]]
-    # a page of many little tables without titles: one class per distinct label
-    merged: dict[str, dict] = {}
-    for k in classes:
-        if k["name"] in merged:
-            merged[k["name"]]["runners"] += k["runners"]
-        else:
-            merged[k["name"]] = k
-    d = _finish(list(merged.values()), title, None)
+        classes += _read_table([_cells(tr) for tr in re.findall(r"(?is)<tr[^>]*>(.*?)</tr>", m.group(1))], label, lead)
+    d = _finish(_merge(classes), title, None)
     if d:
         d["head"] = " ".join([title or "", *lead])[:300].strip()     # what race and day it is about (run.site_start_lists)
     return d
+
+
+# ---- CSV (2026-10-18: an organiser's start list deposited on « Organisation › Horaires », a Google Sheets export, OE's or
+# MeOS' CSV): the same tables as HTML, one row a line
+def _csv(content: bytes) -> dict | None:
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("cp1252", "replace")              # OE and Excel on Windows
+    sample = text[:8000]
+    delim = max(";,\t", key=sample.count)
+    rows = [[x.strip() for x in r] for r in csv.reader(io.StringIO(text), delimiter=delim)]
+    lead: list[str] = []
+    d = _finish(_merge(_read_table(rows, "", lead)), lead[0][:120] if lead else None, None)
+    if d:
+        d["head"] = " ".join(lead)[:300].strip()
+    return d
+
+
+def is_csv(content: bytes, url: str) -> bool:
+    """A CSV file: by its name, else a text with no tag and many separators."""
+    if re.search(r"(?i)\.(csv|txt)$", url or ""):
+        return True
+    head = content[:4000]
+    return not head.startswith(b"%PDF") and b"<" not in head and sum(head.count(x) for x in (b";", b",", b"\t")) >= 6 \
+        and head.count(b"\n") >= 2
 
 
 # ---- PDF ----------------------------------------------------------------------------------------------------------------
