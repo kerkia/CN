@@ -1886,3 +1886,16 @@ body.full-win .tr-app { border: 0; }
   .tr-menus { order: 3; width: 100%; overflow-x: auto; }
   .tr-title { max-width: 40vw; }
 }
+
+/* « Catégories »: each class's band on one CN axis, its tooltip and legend */
+.cg-plot { position: relative; }
+.cg-plot svg { display: block; overflow: visible; }
+.cg-plot .cg-dot { cursor: pointer; }
+.cg-tip { position: absolute; z-index: 5; pointer-events: none; background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 6px 9px; font-size: 12.5px; line-height: 1.45; color: var(--ink); box-shadow: var(--shadow-pop); white-space: nowrap; }
+.cg-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 12.5px; color: var(--ink-2); margin: 0 0 8px; }
+.cg-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.cg-sw { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
+.cg-dotlg { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.cg-dotlg.ring { background: none; border: 2px solid; width: 11px; height: 11px; }
+.cg-dotlg.ring.thin { border-width: 1.2px; width: 8px; height: 8px; }

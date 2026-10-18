@@ -7,7 +7,7 @@
 // left, men on the right, each category as a share of everyone selected; with a ligue or a club, the whole
 // population stays drawn as an outline for comparison.
 
-import { html, raw, $, $$, fmt, pctN } from "../util.js";
+import { html, raw, $, $$, fmt, pctN, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as data from "../data.js";
 import { columnChart, pyramidChart, terrainColor, css } from "../charts.js";
@@ -205,7 +205,7 @@ export async function render(main, query) {
       refRight: ref && ages.map((a) => pct(ref, "H", a)),
       tip: (i) => {
         const a = ages[i];
-        return `<div style="color:var(--ink-3);font-size:12px">${t("ag.cat")} D${a} · H${a}</div>
+        return `<div style="color:var(--ink-3);font-size:12px">${t("ag.cat")} ${fmtCat("D" + a)} · ${fmtCat("H" + a)}</div>
           ${line(cD, t("ag.women"), cur, "D", a)}${line(cH, t("ag.men"), cur, "H", a)}
           ${ref ? `<div style="color:var(--ink-3);font-size:12px;margin-top:6px">${t("ag.refLine", { ref: t("ag.refShort"), w: pctN(pct(ref, "D", a), 1), m: pctN(pct(ref, "H", a), 1) })}</div>` : ""}`;
       },

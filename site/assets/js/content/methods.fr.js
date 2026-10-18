@@ -1427,6 +1427,18 @@ export function build(X) {
             coureur au 90<sup>e</sup> centile fait mieux que 90 % de sa catégorie. La courbe « toutes saisons » regroupe les saisons depuis 2012 : c'est
             une photographie de l'ensemble des coureurs, pas le suivi d'une même génération.</p>
         </section>
+        <section class="mx-slide" id="categories">
+          <p class="mx-kicker">Coureurs</p>
+          <h2>Les catégories côte à côte</h2>
+          <p>La page « Catégories » montre, à une fin de mois, la répartition des CN de chaque catégorie sur un même axe : une bande claire du
+            10<sup>e</sup> au 90<sup>e</sup> centile, la moitié centrale plus foncée (du 25<sup>e</sup> au 75<sup>e</sup>), la médiane et la moyenne. On
+            y voit d'un coup d'œil où les catégories se recouvrent : en forêt, en octobre 2026, le CN Top médian des H55 valait celui des H16.</p>
+          <p>Un coureur y est dit <b>exceptionnel dans sa catégorie</b> quand trois conditions sont réunies : son CN dépasse le 3<sup>e</sup> quartile de
+            sa catégorie de plus d'une fois et demie l'écart entre le 1<sup>er</sup> et le 3<sup>e</sup> quartiles (la règle des « boîtes à moustaches »
+            pour repérer les valeurs qui sortent du lot), il est parmi les 5 % meilleurs de sa catégorie, et celle-ci compte au moins 20 coureurs
+            classés — dans une catégorie de 7 coureurs, la règle désignerait un coureur au 86<sup>e</sup> centile. Pour chacun, la page donne combien de
+            fois la médiane de sa catégorie il vaut, et son centile s'il courait en H21 ou en D21.</p>
+        </section>
         <section class="mx-slide">
           <p class="mx-kicker">Coureurs</p>
           <h2>La page d'un coureur</h2>

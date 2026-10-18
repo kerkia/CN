@@ -13,6 +13,7 @@ export const SITE = "O'CN";
 
 const PAGES = {
   ranking: () => import("./pages/ranking.js"),
+  categories: () => import("./pages/categories.js"),   // « Catégories »: each class's CN spread and its standouts (2026-10-18)
   runner: () => import("./pages/runner.js"),
   compare: () => import("./pages/compare.js"),
   clubs: () => import("./pages/clubs.js"),
@@ -39,8 +40,8 @@ const PAGES = {
   orgRace: () => import("./pages/shared.js"),
   orgTraining: () => import("./pages/shared.js"),
   orgResults: () => import("./pages/orgresults.js"),
-  orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
+  orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
@@ -55,14 +56,14 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // Lean pages (owner, 2026-10-12): where the title only repeats the menu, the page starts with its tabs; its text is the
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
-const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
+const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
-const isLean = (r) => ["ranking", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
+const isLean = (r) => ["ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
@@ -82,6 +83,7 @@ function parseHash() {
   const route =
     !head ? "overview"
     : head === "classement" ? "ranking"
+    : head === "categories" ? "categories"
     : head === "coureur" ? "runner"
     : head === "progression" ? "runner"        // merged into the runner page
     : head === "comparer" ? "compare"
@@ -299,6 +301,7 @@ function renderHeader(r) {
     ["cn", t("nav.g.cn"), [
       ["runner", "#/coureur", t("nav.runner")],
       ["ranking", "#/classement", t("nav.ranking")],
+      ["categories", "#/categories", t("nav.categories")],
       ["courses", "#/courses", t("nav.coursesCn")],
       ["compare", "#/comparer", t("nav.compare")],
       ["clubs", "#/clubs", t("nav.clubs")],

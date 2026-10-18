@@ -663,6 +663,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   club page's « Membres » too, both sortable. The PM rate (`data.pmRate`: the share of « pm » among a runner's races of the
   discipline in the 12 months to the latest data) is the members' « PM 12 mois » column (read from their race files once the
   table is shown, filled in place) and the runner page's « PM sur 12 mois » tile (beside « Courses sur 12 mois »).
+- **Catégories** (`#/categories`, `pages/categories.js`, menu « Classement » after « Classement »; owner, 2026-10-18, after a
+  mockup on real data): at a month-end (`?date=`), for the site's method and discipline, each class's CN spread on one axis —
+  a band from the 10th to the 90th percentile, the middle half darker, the median (white tick) and the mean (◆) —, women and
+  men side by side per age (`?sexe=` D or H for one), the axis from a round value under the lowest band; the D21 and H21
+  medians as dashed lines (`?ref=0` hides them). **Exceptional in their class** (the owner's choice): a CN above Q3 + 1.5 × IQR
+  of the class (the box plot's fence), within its best 5 % (`pct` ≥ 95), in a class of at least 20 ranked runners (`MIN_OUT`);
+  classes of 5-19 drawn pale with none, under 5 left out (`MIN_SHOWN`). They are dots (a click opens the runner) and a table:
+  CN, class percentile, × the class median, percentile in D21 / H21 (the share of that class below their CN). The signed-in
+  runner is ringed on their class's row; « Mon club » (`?club=1`) rings the club's runners. All computed in the browser from
+  `loadRanking` (the monthly snapshots); the Documentation's « Les calculs du site › Coureurs » explains it.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
   officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
   `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —

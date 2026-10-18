@@ -1427,6 +1427,18 @@ export function build(X) {
             runner at the 90<sup>th</sup> percentile does better than 90% of their class. The “all seasons” curve pools the seasons since 2012: it is
             a snapshot of all the runners, not the follow-up of one generation.</p>
         </section>
+        <section class="mx-slide" id="categories">
+          <p class="mx-kicker">Runners</p>
+          <h2>Classes side by side</h2>
+          <p>The “Classes” page shows, at a month-end, how each class's CNs are spread on one shared axis: a light band from the
+            10<sup>th</sup> to the 90<sup>th</sup> percentile, the middle half darker (25<sup>th</sup> to 75<sup>th</sup>), the median and the mean. It
+            shows at a glance where classes overlap: in forest, in October 2026, the median CN Top of M55 matched that of M16.</p>
+          <p>A runner is called <b>exceptional in their class</b> when three conditions hold: their CN is above their class's 3<sup>rd</sup> quartile
+            by more than one and a half times the gap between the 1<sup>st</sup> and 3<sup>rd</sup> quartiles (the box-plot rule for spotting values
+            that stand out), they are within the best 5% of their class, and the class has at least 20 ranked runners — in a class of 7, the rule
+            would pick a runner at the 86<sup>th</sup> percentile. For each, the page gives how many times their class median they score, and their
+            percentile if they raced in M21 or W21.</p>
+        </section>
         <section class="mx-slide">
           <p class="mx-kicker">Runners</p>
           <h2>A runner's page</h2>

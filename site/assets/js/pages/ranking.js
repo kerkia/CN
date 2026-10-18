@@ -2,7 +2,7 @@
 // figures per method, the list with the distributions beside it, and
 // multi-select into the comparison.
 
-import { html, raw, $, $$, fmt, fmtSigned, fmtDate, ord, displayName, normalise, summary, quantile, downloadCsv, debounce, pctN } from "../util.js";
+import { html, raw, $, $$, fmt, fmtSigned, fmtDate, ord, displayName, normalise, summary, quantile, downloadCsv, debounce, pctN, fmtCat } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -338,7 +338,7 @@ export async function render(main, { query }) {
       { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
       { key: "pct", label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct[sortMethod],
         render: (r) => (r.pct[sortMethod] == null ? html`<span class="dim">—</span>`
-          : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[sortMethod]), cat: r.cat })}">${data.fmtPct(r.pct[sortMethod])}</span>`) },
+          : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[sortMethod]), cat: fmtCat(r.cat) })}">${data.fmtPct(r.pct[sortMethod])}</span>`) },
       { key: "club", label: t("rk.col.club"), cls: "num", sort: (r) => r.clubCode, defaultDir: 1,
         render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "" },
     ];
