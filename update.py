@@ -173,13 +173,36 @@ def write_build_stamp() -> str:
     return stamp
 
 
-def deploy() -> bool:
-    """Publish site/ with the Pages Functions in functions/. True on success."""
+def code_fingerprint() -> str:
+    """What a deploy publishes besides the data: site/ without data/ and auth/ (the build stamp) and functions/."""
+    h = hashlib.sha1(write_build_stamp().encode())
+    fn = ROOT / "functions"
+    for p in sorted(fn.rglob("*")):
+        if p.is_file():
+            h.update(p.relative_to(fn).as_posix().encode("utf-8"))
+            h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
+def code_changed(db: Path) -> bool:
+    """True when the code differs from the last deploy's (2026-10-18: a push's own run is often cancelled by the next
+    scheduled one queued behind the running one, and a scheduled run published only when it found new data — the
+    pushed code waited for the next results)."""
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
+    row = con.execute("SELECT value FROM engine_meta WHERE key = 'deployed_code'").fetchone()
+    con.close()
+    return not row or row[0] != code_fingerprint()
+
+
+def deploy(db: Path | None = None) -> bool:
+    """Publish site/ with the Pages Functions in functions/. True on success; with `db`, the code's fingerprint is
+    recorded there (`code_changed`)."""
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
         print("4. deploy: npx not found (install Node.js)")
         return False
-    write_build_stamp()
+    code = code_fingerprint()
     t0 = time.monotonic()
     cmd = [npx, "--yes", "wrangler", "pages", "deploy", "site", "--project-name", PAGES_PROJECT,
            "--branch", "main", "--commit-dirty=true"]
@@ -189,6 +212,12 @@ def deploy() -> bool:
     print(f"4. deploy to {PAGES_PROJECT}: {'ok' if r.returncode == 0 else 'FAILED'} in {time.monotonic() - t0:.0f}s")
     for ln in tail:
         print(f"   {ln}")
+    if r.returncode == 0 and db is not None:
+        con = sqlite3.connect(db)
+        con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
+        con.execute("INSERT OR REPLACE INTO engine_meta (key, value) VALUES ('deployed_code', ?)", (code,))
+        con.commit()
+        con.close()
     return r.returncode == 0
 
 
@@ -263,6 +292,9 @@ def main() -> None:
             sync_privacy(args.db)                               # before any build: the anonymised runners' list
             migrate(args.db, args.out)                          # no-op once done
             apply_privacy(args.db, args.out)                    # no-op unless the anonymised runners changed
+            if args.deploy and code_changed(args.db):
+                print("code changed since the last deploy: to be published")
+                DEPLOY_PENDING.touch()
         if args.deploy_only:
             import ffco_scraper.agenda as agenda
             try:
@@ -272,7 +304,7 @@ def main() -> None:
             if not current:                                    # missing, or built by an older version of the scraper
                 agenda.refresh(args.out / "agenda.json")
                 print("agenda: rebuilt")
-            ok = deploy()
+            ok = deploy(args.db)
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
             sys.exit(0 if ok else 1)
@@ -282,14 +314,14 @@ def main() -> None:
             print(f"agenda: {'updated' if changed else 'unchanged'} in {time.monotonic() - t0:.0f}s")
             if changed:
                 DEPLOY_PENDING.touch()
-            if args.deploy and DEPLOY_PENDING.exists() and deploy():
+            if args.deploy and DEPLOY_PENDING.exists() and deploy(args.db):
                 DEPLOY_PENDING.unlink(missing_ok=True)
             if args.deploy and not DEPLOY_PENDING.exists():       # the courses are online: alert the subscribers
                 notify.run_agenda(args.out / "agenda.json")
             sys.exit(0)
         if args.prov_only:
             _provisional(args)
-            if args.deploy and DEPLOY_PENDING.exists() and deploy():
+            if args.deploy and DEPLOY_PENDING.exists() and deploy(args.db):
                 DEPLOY_PENDING.unlink(missing_ok=True)
             if args.deploy and not args.dry_run and not DEPLOY_PENDING.exists():
                 notify.run(args.db, args.out)               # the organisers' results just published (owner, 2026-10-17)
@@ -302,7 +334,7 @@ def main() -> None:
         # Published only when something new was found: a mere "looked again" must not cost a deploy.
         if not args.dry_run:
             _provisional(args)
-        if args.deploy and DEPLOY_PENDING.exists() and deploy():
+        if args.deploy and DEPLOY_PENDING.exists() and deploy(args.db):
             DEPLOY_PENDING.unlink(missing_ok=True)
         # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue
         if args.deploy and not args.dry_run and not DEPLOY_PENDING.exists():
