@@ -747,7 +747,7 @@ export default {
   "ac.reg.closed": "Les inscriptions ouvriront prochainement.",
   "ac.reg.done": "Compte créé. Un message de confirmation vient d'être envoyé à",
   "ac.reg.done2": "Cliquez sur le lien qu'il contient pour activer votre compte (pensez à vérifier les courriers indésirables).",
-  "ac.reg.queued": "L'envoi est différé (limite quotidienne) : le message arrivera dans la journée ou le lendemain.",
+  "ac.reg.queued": "L'envoi est différé : le message partira dès que possible (nouvel essai toutes les heures).",
   "ac.reg.err.mismatch": "Ces informations ne correspondent à aucun licencié. Vérifiez l'orthographe du prénom et du nom, et le numéro de licence.",
   "ac.reg.err.email": "Adresse e-mail invalide.",
   "ac.reg.err.password": "Le mot de passe doit comporter au moins 6 caractères.",

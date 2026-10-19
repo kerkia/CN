@@ -1100,7 +1100,7 @@ export default {
   "ac.reg.closed": "Registration will open soon.",
   "ac.reg.done": "Account created. A confirmation message has just been sent to",
   "ac.reg.done2": "Click the link in it to activate your account (remember to check your spam folder).",
-  "ac.reg.queued": "Sending is delayed (daily limit): the message will arrive later today or tomorrow.",
+  "ac.reg.queued": "Sending is delayed: the message will go out as soon as possible (it is retried every hour).",
   "ac.reg.err.mismatch": "This information matches no licence holder. Check the spelling of your first name and surname, and your licence number.",
   "ac.reg.err.email": "Invalid email address.",
   "ac.reg.err.password": "The password must be at least 6 characters long.",
