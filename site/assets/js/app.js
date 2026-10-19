@@ -347,8 +347,8 @@ function renderHeader(r) {
     </button>` : ""}
     <a class="brand" href="${me ? (me.lic ? link.runner(me.lic) : link.ranking()) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
         <path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="currentColor"/>
+        <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
       </svg>
       <span class="brand-name"><span class="brand-o">O</span>zimut</span>
     </a>
