@@ -2,7 +2,7 @@
 // national-race points) and how (total, mean, top 5, headcount), over the
 // runners of a sex and age group — plus the same by ligue.
 
-import { html, raw, $, $$, fmt, normalise, debounce, downloadCsv } from "../util.js";
+import { html, raw, $, $$, fmt, normalise, debounce, downloadCsv, ord } from "../util.js";
 import { t } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
@@ -189,7 +189,7 @@ async function listView(main, query, mode) {
     const shown = res.clubs.filter((g) => listed(g) && (!ligue || g.ligue === ligue) &&
       (!qn || normalise(`${g.code} ${clubName(g.code)}`).includes(qn)));
     const lead = (m) => [...res.clubs].filter((g) => g[sel.base][m]).sort((a, b) => b[sel.base][m] - a[sel.base][m])[0];
-    const tl = (m) => { const g = lead(m); return tile(`1er · ${measureLabel(m, sel.base)}`, g ? fmt(g[sel.base][m], digits(m)) : "—", g ? clubName(g.code) : ""); };
+    const tl = (m) => { const g = lead(m); return tile(`${ord(1)} · ${measureLabel(m, sel.base)}`, g ? fmt(g[sel.base][m], digits(m)) : "—", g ? clubName(g.code) : ""); };
     $("#tiles").innerHTML = html`${ms.map(tl)}`;
     $("#clubs-title").textContent = `${fmt(shown.length)} ${t("cm.clubsRanked")} — ${measureLabel(sel.measure, sel.base)} · ${baseLabel(sel.base)}`;
     if (![...measuresOf(sel.base), "code", "name", "lg", "best", "members"].includes(sortKey)) { sortKey = sel.measure; sortDir = -1; }

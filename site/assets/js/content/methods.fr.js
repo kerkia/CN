@@ -311,17 +311,17 @@ export function build(X) {
       objectifs: () => html`
         <section class="mx-slide mx-hero">
           <p class="mx-kicker">L'étude</p>
-          <h2>Un CN simple à comprendre, qui compte vos meilleures courses et prédit mieux les résultats</h2>
+          <h2>Un indice simple à comprendre, qui compte vos meilleures courses et prédit mieux les résultats</h2>
           <p class="mx-lead">Ce chapitre explique pourquoi la méthode Ozimut a été créée, comment elle a été évaluée, quelles idées ont été essayées et
             lesquelles ont été retenues. Il aboutit à la méthode en ligne depuis le 16 octobre 2026 : la plus simple de celles qui prédisent le mieux.</p>
           ${hf && hs ? html`<div class="mx-stats">
             <div class="mx-stat"><b>${lvl(hf, "acc", "official")} % puis ${lvl(hf, "acc", "top6w")} %</b><span>des duels bien prédits en forêt par le CN
-              officiel, puis par l'indice Ozimut. Un duel, ce sont deux coureurs d'un même circuit ; il est bien prédit quand celui qui avait le meilleur CN
+              officiel, puis par l'indice Ozimut. Un duel, ce sont deux coureurs d'un même circuit ; il est bien prédit quand celui qui avait la meilleure valeur
               finit devant.</span></div>
             <div class="mx-stat"><b>${lvl(hs, "acc", "official")} % puis ${lvl(hs, "acc", "top6w")} %</b><span>des duels bien prédits en sprint, sur les
               mêmes saisons.</span></div>
             <div class="mx-stat"><b>${lvl(hf, "r2", "official")} % puis ${lvl(hf, "r2", "top6w")} %</b><span>des écarts de temps entre coureurs d'un même
-              circuit expliqués par le CN en forêt.</span></div>
+              circuit expliqués en forêt par le CN officiel, puis par l'indice Ozimut.</span></div>
             <div class="mx-stat"><b>${fmt(ev.rows.For.all.holdout.comps + ev.rows.Spr.all.holdout.comps)}</b><span>compétitions de ${ev.holdout[0]} à
               ${ev.holdout[1]}, mises de côté pendant la mise au point des méthodes et utilisées seulement pour les juger.</span></div>
           </div>` : ""}
