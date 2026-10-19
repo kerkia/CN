@@ -410,6 +410,16 @@ def _provisional(args) -> None:
         print(f"provisional: failed — {type(e).__name__}: {e}")
 
 
+def day_point_due(out: Path) -> bool:
+    """The published rankings' latest point (meta.json's last month) is older than today in Paris."""
+    import build_site
+    try:
+        last = json.loads((out / "meta.json").read_text(encoding="utf-8"))["months"][-1]
+    except (OSError, ValueError, KeyError, IndexError):
+        return False                         # no site data here: nothing to move
+    return last < build_site.paris_today().isoformat()
+
+
 def _run(args, since, t0) -> bool:
     """Steps 1-3; True when the site data was rebuilt."""
     # ---- 1. fetch & compare -------------------------------------------------------
@@ -453,8 +463,17 @@ def _run(args, since, t0) -> bool:
             return False
 
     if not since:
-        print(f"nothing changed — done in {time.monotonic() - t0:.0f}s")
-        return False
+        if args.no_site or not day_point_due(args.out):
+            print(f"nothing changed — done in {time.monotonic() - t0:.0f}s")
+            return False
+        # nothing new, but a new day: the rankings' latest point (a junior's CN fades by the day) moves to today -
+        # the current season's snapshots only, once a day, at the first run after midnight in Paris
+        import build_site
+        today = build_site.paris_today().isoformat()
+        print(f"3. nothing changed; the rankings' latest point moves to {today}")
+        build_site.main(["--since", today, "--out", str(args.out), "--db", str(args.db)])
+        print(f"done in {time.monotonic() - t0:.0f}s")
+        return True
 
     # ---- 2. recompute from the earliest change ------------------------------------
     print(f"2. recompute CN from {since}")

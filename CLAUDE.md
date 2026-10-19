@@ -192,7 +192,10 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   own `cn_j15` column is on its internal scale), **computed on that day** from the published scores (`build_site.cn_j15`
   → `agg_at`, since 2026-10-19; before, the last CN after a race within the window, which still counted races that had
   left the window since the runner's last race: production read on the day −0.12 point in sprint, +0.02 forest, +0.22
-  VTT, measured 2026-10-19). The month-end snapshots were always computed on their day.
+  VTT, measured 2026-10-19). The month-end snapshots were always computed on their day. Their last point is **the build day**
+  (Paris, `build_site.paris_today`; owner, 2026-10-19 — before, the last race date of the data): a junior's CN fades by the
+  day and a race leaving the window shows that day. A run with nothing new but a new Paris day rebuilds the current
+  season's snapshots once (`update.day_point_due`, the first run after midnight) and deploys.
 - The engine takes a circuit's rules (sample, mean) from its discipline's params (`pt(terrain)` in `run_method`,
   2026-10-13); `cn.js` mirrors `circuit_value` as `circuitValue` for the live page's estimates (`meta.methods.*.params`
   carries `sample_fraction`, `cv_power`, `cn_power`, per terrain).

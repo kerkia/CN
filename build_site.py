@@ -71,6 +71,17 @@ def official_terrain(t: str, year: int) -> str:
     return "Ped" if t in FOOT and year < SPLIT_YEAR else t
 
 
+def paris_today() -> date:
+    """Today in Paris (the site's day): the CI runs in UTC; without the time-zone database (Windows without tzdata),
+    the machine's own date - the PC is in Paris."""
+    try:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Europe/Paris")).date()
+    except Exception:
+        return date.today()
+
+
 def month_ends(first: date, last: date) -> list[date]:
     out = []
     y, m = first.year, first.month
@@ -469,8 +480,11 @@ def main(argv: list[str] | None = None) -> None:
     # -- month-end snapshots ------------------------------------------------
     last_race = max(date.fromisoformat(v[0]) for v in comps.values())
     first_race = min(date.fromisoformat(v[0]) for v in comps.values())
-    months = month_ends(first_race, last_race)
-    months[-1] = min(months[-1], last_race)
+    # the last point is today, not the last race (owner, 2026-10-19): a junior's CN moves by the day as their races
+    # fade (CnParams.junior_fade), so the rankings' latest column is each runner's CN on the day the site was built
+    last_point = max(last_race, paris_today())
+    months = month_ends(first_race, last_point)
+    months[-1] = min(months[-1], last_point)
     print(f"{len(months)} month-ends {months[0]} .. {months[-1]}")
 
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
