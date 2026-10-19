@@ -654,6 +654,97 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .home-login { background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: var(--shadow-pop); }
 /* the login page's reel (reel.js): wide screens only, phones keep the few lines of .home-text */
 .home-text { display: none; }
+/* the home page's presentation (tour.js): a course through the site, start triangle, numbered controls, finish */
+.tour { max-width: 1180px; margin: 44px auto 0; }
+.tour-top { max-width: 760px; margin-bottom: 36px; }
+.tour-top h2 { font-size: clamp(30px, 4.2vw, 46px); line-height: 1.05; margin: 8px 0 12px; text-wrap: balance; }
+.tour-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--flag); }
+.tour-lede { color: var(--ink-2); font-size: 16.5px; line-height: 1.55; margin: 0; max-width: 46em; }
+.tour-figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
+.tour-fig { border-top: 3px solid var(--ink); padding-top: 8px; }
+.tour-fig b { display: block; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tour-fig span { font-size: 13px; color: var(--ink-2); }
+.tour-course { position: relative; padding-left: 64px; }
+.tour-course::before { content: ""; position: absolute; left: 21px; top: 30px; bottom: 70px; width: 3px; background: var(--course); border-radius: 2px; }
+.tour-start { position: absolute; left: 0; top: 0; width: 45px; height: 45px; color: var(--course); }
+.tour-leg { position: relative; padding: 50px 0 14px; }
+.tour-ctrl { position: absolute; left: -64px; top: 42px; width: 45px; height: 45px; border-radius: 50%; border: 3px solid var(--course); background: var(--plane);
+  display: grid; place-items: center; font-weight: 800; font-size: 18px; color: var(--course); }
+svg.tour-ctrl-finish { border: 0; background: none; fill: var(--plane); color: var(--course); }
+.tour-leg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 28px; align-items: end; margin-bottom: 22px; }
+.tour-leg h2 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.08; margin: 4px 0 0; text-wrap: balance; }
+.tour-leg .tour-lede { margin-top: 8px; }
+.tour-who { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.tour-who span { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; border: 1.5px solid currentColor; }
+.tour-who-r, .tour-who-all { color: var(--forest); } .tour-who-c, .tour-who-l { color: var(--water); } .tour-who-o { color: var(--flag); }
+.tour figure { margin: 0; min-width: 0; }
+.tour figcaption { font-size: 14px; color: var(--ink-2); margin-top: 9px; line-height: 1.4; }
+.tour figcaption b { color: var(--ink); font-weight: 600; }
+.tour-shot { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-pop); background: var(--surface); }
+.tour-shot img, .tour-phone img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.tour-shot img:focus-visible, .tour-phone img:focus-visible { outline: 3px solid var(--course); outline-offset: 3px; }
+.tour-phone { background: #0c0f0d; border-radius: 26px; padding: 8px; box-shadow: var(--shadow-pop); }
+.tour-phone img { border-radius: 19px; }
+.tour-g-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.tour-g-side { display: grid; gap: 24px; }
+.tour-g-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 24px; }
+.tour-g-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.tour-g-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+.tour-g-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.tour-duel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.tour-duel > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.tour-duel h3 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
+.tour-vs { display: flex; align-items: baseline; gap: 14px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.tour-vs s { font-size: 26px; color: var(--ink-3); } .tour-vs b { font-size: 42px; font-weight: 800; color: var(--forest); }
+.tour-duel p { margin: 0; font-size: 14px; color: var(--ink-2); }
+.tour-duel + .tour-g-2 { margin-top: 0; }
+.tour-mock { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 14px 16px; font-size: 14px; }
+.tour-mock-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 8px; }
+.tour-mock-head em { font-style: normal; font-size: 11.5px; font-weight: 700; color: #fff; background: #d23b2f; border-radius: 99px; padding: 2px 9px; letter-spacing: .05em; }
+.tour-mock table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tour-mock th { text-align: left; font-size: 12px; color: var(--ink-2); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.tour-mock td { padding: 6px; border-bottom: 1px solid var(--border); }
+.tour-mock tr.new td { background: var(--forest-wash); }
+.tour-new { font-size: 11px; color: var(--forest); font-weight: 700; }
+.tour-lock { border-radius: 19px; aspect-ratio: 9 / 17; padding: 24px 11px; color: #fff; display: flex; flex-direction: column; gap: 10px;
+  background: linear-gradient(160deg, #234a2f 0%, #2f6a3d 45%, #c9632a 100%); }
+.tour-clock { text-align: center; font-size: 48px; font-weight: 700; line-height: 1; margin-top: 6px; }
+.tour-day { text-align: center; font-size: 13px; opacity: .85; margin-bottom: 12px; }
+.tour-notif { background: rgba(255, 255, 255, .88); color: #18201b; border-radius: 15px; padding: 9px 11px; font-size: 12.5px; line-height: 1.35;
+  display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 9px; }
+.tour-notif svg { grid-row: span 3; width: 24px; height: 24px; }
+.tour-notif small { color: #5b6960; }
+.tour-finish-band { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.tour-pledge { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.tour-pledge li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; }
+.tour-pledge svg { width: 22px; height: 22px; color: var(--forest); margin-top: 1px; }
+.tour-cta { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: var(--shadow-pop); }
+.tour-cta h3 { font-size: 26px; margin: 0 0 8px; }
+.tour-cta p { margin: 0; color: var(--ink-2); }
+.tour-cta-row { margin: 16px 0 14px; }
+.tour-cta-mail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.tour-cta-mail b { color: var(--flag); user-select: all; }
+.tour-note { color: var(--ink-3); font-size: 13px; margin: 36px 0 10px; padding-top: 18px; border-top: 1px solid var(--border); }
+.tour-box { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+.tour-box::backdrop { background: rgba(8, 12, 9, .82); }
+.tour-box img { max-width: 96vw; max-height: 88vh; width: auto; height: auto; border-radius: 10px; display: block; }
+.tour-box p { color: #e8ede8; text-align: center; font-size: 14px; margin: 8px 0 0; }
+@media (max-width: 980px) {
+  .tour-g-main, .tour-finish-band { grid-template-columns: minmax(0, 1fr); }
+  .tour-g-4, .tour-g-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .tour { margin-top: 28px; }
+  .tour-course { padding-left: 0; }
+  .tour-course::before, .tour-start { display: none; }
+  .tour-ctrl { position: static; margin-bottom: 10px; }
+  .tour-leg-head { grid-template-columns: minmax(0, 1fr); }
+  .tour-who { justify-content: flex-start; }
+  .tour-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tour-g-3, .tour-g-2, .tour-duel { grid-template-columns: minmax(0, 1fr); }
+  .tour-g-4, .tour-g-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .reel { margin-top: 4px; outline: none; border-radius: var(--radius); }
 .reel:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
 .reel-bars { display: flex; gap: 4px; margin: 0 0 8px; }

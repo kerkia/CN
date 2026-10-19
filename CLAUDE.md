@@ -364,6 +364,19 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
   automatic under reduced motion); phones keep the short text (`.home-text`).
+- **The site in pictures** (owner, 2026-10-19; first made as a brochure for Swiss Orienteering): the home page, under the hero,
+  presents the whole site (`site/assets/js/tour.js`, rendered by `pages/overview.js`; texts `tour.*` in both catalogues; styles
+  `.tour-*`): a course drawn down the page — the start triangle, eight numbered controls (runner, ranking, the CN Top with its
+  duel figures, races, training, clubs, organisers, phones), the finish (privacy pledges, « Créer mon compte », the demo-account
+  offer) —, screenshots that enlarge on click, two drawn mockups (« En direct », the phone's notifications), the live counts of
+  `meta.json`. **Its screenshots show nobody's real results** (the page is public): `site/assets/tour/<fr|en>/*.webp` were taken
+  on a **scrambled copy of the data** — the R2 database copied to `C:\kerkia\cn-data\synth`, scrambled by the scratch `synth.py`
+  (invented names and licences, each club code given another club's members, every time multiplied by the runner's own factor
+  0.90-1.10 and a per-race noise, official CN and points scaled back, places recounted, the organisers' files likewise), then
+  `update.migrate` + the provisional build on it (scratch `build_synth.py`, into `synth/out/data`), and the screenshots by
+  puppeteer-core + headless Edge (from PowerShell: the Bash sandbox blocks the browser) on the local dev server with every
+  `/data/` request served from that copy and the account shown as « Camille Martin » (scratch `shots/lib.mjs`, `OCN_SYNTH`). Never
+  replace them with screenshots of the real data. « Analyse GPS » and « Tracé » reuse the reel's invented images.
 - **Coupe de France des clubs** (2026-10-10): `site_extras.cfc` -> `cfc.json`, FFCO's « Classement National des Clubs »
   rule of 2026 (annexe 2: each runner's 5 best official CN race scores of the year in foot + 5 best in VTT or ski, women
   x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
