@@ -301,7 +301,7 @@ export async function render(main, { arg, query }) {
     const methods = store.get().methods;
     const ranked = rows.filter((x) => x.r[C.place]);
     const series = methods.map((m) => ({
-      name: "CN", color: methodColor(m), method: m,
+      name: t("chart.cn"), color: methodColor(m), method: m,
       data: ranked.map((x) => {
         const cn = cnOf(m, x.r);
         const score = x.r[SCORE[m]];
@@ -315,7 +315,7 @@ export async function render(main, { arg, query }) {
     })));
     regressionChart($("#cvs"), { series, xName: t(`co.cnVsScore.x.${st.cnRef}`), yName: t("rn.score") });
     $("#cvs-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("rk.col.name")}</th>
-      ${series.map((s) => html`<th class="r">${t(`co.cnVsScore.x.${st.cnRef}`)} ${s.name}</th><th class="r">${t("rn.score")} ${s.name}</th>`)}</tr></thead>
+      ${series.map(() => html`<th class="r">${t(`co.cnVsScore.x.${st.cnRef}`)}</th><th class="r">${t("rn.score")}</th>`)}</tr></thead>
       <tbody>${ranked.map((x) => html`<tr><td>${displayName(data.runner(x.r[C.lic])?.nom || x.r[C.lic])}</td>
         ${series.map((s) => {
           const p = s.data.find((d) => d[2] === x.r[C.lic]);

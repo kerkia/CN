@@ -1563,7 +1563,7 @@ export function build(X) {
     }));
     const max = Math.ceil(Math.max(0, ...pts.flat().filter(Boolean)) / 1000) * 1000;
     $("#agr-legend").innerHTML = legend(series.map((s) => ({ label: `${s.name} / ${methodShort("official")}`, color: s.color, dot: true })));
-    scatterChart($("#agr"), { series, xName: methodLabel("official"), yName: "CN", max });
+    scatterChart($("#agr"), { series, xName: methodLabel("official"), yName: "Indice Ozimut", max });
     const stat = (name, pairs) => {
       const d = pairs.map((p) => p[1] - p[0]);
       return { name, n: pairs.length, r: pearson(pairs.map((p) => p[0]), pairs.map((p) => p[1])), bias: mean(d), mae: mean(d.map(Math.abs)) };

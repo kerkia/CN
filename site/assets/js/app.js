@@ -2,11 +2,11 @@
 // discipline selector, search, the logged-in user, the number of runners being compared).
 
 import { html, raw, $, $$, esc, fmt, fmtDate, normalise, displayName, nameParts, debounce, fmtCat } from "./util.js";
-import { t, lang, setLang, OPEN, LANGS, LANG_NAMES } from "./i18n.js";
+import { t, lang, setLang, OPEN, LANGS, LANG_NAMES, setDefaults } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
 import { disposeAll } from "./charts.js";
-import { methodSwitch } from "./ui.js";
+import { methodSwitch, cnWords } from "./ui.js";
 import * as auth from "./auth.js";
 import * as bridge from "./bridge.js";
 
@@ -692,6 +692,9 @@ export async function signedIn(s) {
 }
 /** Push notifications on this device (push.js): renewed, or offered, a few seconds into a signed-in visit. */
 const pushBoot = () => setTimeout(() => { if (auth.session()?.email && !auth.session()?.demo) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
+
+// the words for the value of the method shown, in any text that names it without its caller giving them (« indices Ozimut »)
+setDefaults(() => cnWords(store.get().method));
 
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });

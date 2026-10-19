@@ -91,7 +91,12 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
 the data) and **the geometric pair is gone** (ENGINE 13; `fair3`/`top6w3` below are history). Words (`docs/i18n/glossary.md`):
 « classement Ozimut » / Ozimut rank, « indice Ozimut » / Ozimut index (a runner's value, was « CN Top »), « score Ozimut » /
 Ozimut score (a runner's points in a race), « valeur Ozimut du circuit » / course's Ozimut value; « CN officiel » unchanged;
-French elides (« d'Ozimut », « de l'indice Ozimut »: `ui.cnWords` gives `{cnLow}` and `{cnOf}` beside `{cn}`).
+French elides (« d'Ozimut », « de l'indice Ozimut »). **A text about the value of the method shown follows the method**
+(owner, 2026-10-19): it uses the placeholders of `ui.cnWords` — `{cn}`, `{cnLow}`, `{cnOf}` « de l'indice Ozimut », `{cnPl}`
+« indices Ozimut », `{cnS}`/`{cnSCap}` « indice » / « CN », `{cnTo}` « à l'indice », `{cnThe}`/`{cnTheCap}` (i18n `cn.<method>.*`) —,
+which `t()` fills from the site's method when the caller gives none (`i18n.setDefaults`, registered by app.js); table
+columns and chart axes use `col.cn` / `chart.cn`; never « CN » written in the code. Texts about FFCO's own CN keep « CN »
+(« Compte pour le CN », « Coureurs au CN »); those about both methods name both (« scores, CN et indices provisoires »).
 
 1. **`official`** — FFCO's published values, copied verbatim (before 2026 FFCO had one pooled pedestrian
    ranking for forest and sprint, filed under "Ped": `build_site.official_terrain`, `data.snapTerrain`,

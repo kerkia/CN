@@ -356,7 +356,7 @@ async function global(main, query) {
       edgeTip: (l) => `${esc(nameOf(l.source))} — ${esc(nameOf(l.target))}<br><b>${fmt(l.value)}</b> ${t("nw.shared")}`,
     });
     const tbl = top.map((r, i) => ({ r, pos: i + 1, deg: degree.get(r.lic) || 0, strong: strongest.get(r.lic) }));
-    $("#net-table").innerHTML = html`<table class="data compact"><thead><tr><th>#</th><th>${t("rk.col.name")}</th><th>${t("rk.col.club")}</th><th class="r">CN</th>
+    $("#net-table").innerHTML = html`<table class="data compact"><thead><tr><th>#</th><th>${t("rk.col.name")}</th><th>${t("rk.col.club")}</th><th class="r">${t("col.cn")}</th>
       <th class="r">${t("nw.links")}</th><th>${t("nw.strongest")}</th></tr></thead><tbody>${tbl.map((x) => html`<tr><td class="num">${x.pos}</td>
       <td>${x.r.name}</td><td class="num">${clubCode(x.r.club)}</td><td class="r num">${fmt(x.r.cn[method])}</td><td class="r num">${fmt(x.deg)}</td>
       <td>${x.strong ? `${nameOf(x.strong[0])} (${fmt(x.strong[1])})` : "—"}</td></tr>`)}</tbody></table>`;
@@ -369,7 +369,7 @@ async function global(main, query) {
         { key: "code", label: t("nw.clubNo"), cls: "num", sort: (x) => x.r.clubCode, defaultDir: 1, render: (x) => clubCode(x.r.club) },
         { key: "club", label: t("rk.col.club"), render: (x) => data.clubName(x.r.club) },
         { key: "cat", label: t("rk.col.cat"), render: (x) => x.r.cat },
-        { key: "cn", label: "CN", align: "r", cls: "num", sort: (x) => x.r.cn[method], render: (x) => fmt(x.r.cn[method]) },
+        { key: "cn", label: t("col.cn"), align: "r", cls: "num", sort: (x) => x.r.cn[method], render: (x) => fmt(x.r.cn[method]) },
         { key: "deg", label: t("nw.links"), align: "r", cls: "num", sort: (x) => x.deg, render: (x) => fmt(x.deg) },
         { key: "strong", label: t("nw.strongest"), render: (x) => (x.strong ? html`<a href="${link.runner(x.strong[0])}">${nameOf(x.strong[0])}</a> <span class="dim num">${fmt(x.strong[1])}</span>` : "—") },
       ],

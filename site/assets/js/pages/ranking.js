@@ -153,7 +153,7 @@ export function drawDistribution(id, series) {
   $(`#${id}-legend`).innerHTML = series.length > 1 ? legend(series.map((x) => ({ color: x.color, label: x.name }))) : "";
   distributionChart($(`#${id}`), { series, binSize: BIN });
   const allBins = [...new Set(series.flatMap((x) => x.bins.map((b) => b[0])))].sort((a, b) => a - b);
-  $(`#${id}-table`).innerHTML = html`<table class="data compact"><thead><tr><th>CN</th>${series.map((x) => html`<th class="r">${x.name}</th>`)}</tr></thead>
+  $(`#${id}-table`).innerHTML = html`<table class="data compact"><thead><tr><th>${t("col.cn")}</th>${series.map((x) => html`<th class="r">${x.name}</th>`)}</tr></thead>
     <tbody>${allBins.map((b) => html`<tr><td class="num">${fmt(b - BIN / 2)} – ${fmt(b + BIN / 2)}</td>${series.map((x) => html`<td class="r num">${fmt(x.bins.find((y) => y[0] === b)?.[1] || 0)}</td>`)}</tr>`)}</tbody></table>`;
 }
 
@@ -303,15 +303,15 @@ export async function render(main, { query }) {
 
     // charts beside the list: the filtered set, the whole field, and the CDF
     drawDistribution("dist", methods.map((m) => ({
-      name: "CN", color: methodColor(m), bins: bins(rows.map((r) => r.cn[m]).filter((v) => v != null)),
+      name: t("chart.cn"), color: methodColor(m), bins: bins(rows.map((r) => r.cn[m]).filter((v) => v != null)),
     })));
     drawDistribution("gdist", methods.map((m) => ({
-      name: "CN", color: methodColor(m), bins: bins(loaded.rows.map((r) => r.cn[m]).filter((v) => v != null)),
+      name: t("chart.cn"), color: methodColor(m), bins: bins(loaded.rows.map((r) => r.cn[m]).filter((v) => v != null)),
     })));
     const filteredSet = new Set(rows.filter((r) => r.cn[sortMethod] != null).map((r) => r.lic));
     const nAll = loaded.rows.filter((r) => r.cn[sortMethod] != null).length;
     drawCdf("cdf", methods.map((m) => ({
-      name: "CN", color: methodColor(m), rows: loaded.rows.map((r) => ({ lic: r.lic, name: r.name, value: r.cn[m] })),
+      name: t("chart.cn"), color: methodColor(m), rows: loaded.rows.map((r) => ({ lic: r.lic, name: r.name, value: r.cn[m] })),
     })), {
       highlight: filteredSet.size < nAll ? { name: t("rk.cdf.filtered"), lics: filteredSet, of: methods.indexOf(sortMethod) } : null,
       onClick: (lic) => { location.hash = link.runner(lic); },
@@ -327,7 +327,7 @@ export async function render(main, { query }) {
       { key: "name", label: t("rk.col.name"), sort: (r) => r.key, defaultDir: 1, render: (r) => html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>` },
       ...methods.map((m) => ({
         key: `cn_${m}`, align: "r", cls: "num",
-        label: html`CN${m === sortMethod ? html`<span class="arrow">▼</span>` : ""}`,
+        label: html`${t("col.cn")}${m === sortMethod ? html`<span class="arrow">▼</span>` : ""}`,
         sort: (r) => r.cn[m],
         render: (r) => r.cn[m] == null ? html`<span class="dim">—</span>`
           : html`<span class="${m === sortMethod ? "cn" : ""}">${fmt(r.cn[m])}</span>`,
@@ -378,7 +378,7 @@ export async function render(main, { query }) {
       columns: [
         { key: "name", label: t("rk.col.name"), render: (r) => html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>` },
         { key: "cat", label: t("rk.col.cat") },
-        { key: "cn", label: "CN", align: "r", cls: "num", render: (r) => fmt(r.cn[sortMethod]) },
+        { key: "cn", label: t("col.cn"), align: "r", cls: "num", render: (r) => fmt(r.cn[sortMethod]) },
         { key: "d", label: t("rk.col.delta"), align: "r", cls: "num", sort: (r) => r.delta[sortMethod],
           render: (r) => html`<b class="delta-up">${fmtSigned(r.delta[sortMethod])}</b>` },
       ],

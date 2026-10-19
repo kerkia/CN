@@ -71,7 +71,7 @@ const keyLine = (color, dash) =>
  * Time series. series: [{ name, color, dash, data: [[iso, value, extra?]],
  *   kind: "line" | "dots", step, area, endLabel }]
  */
-export function timeChart(el, { series, yName = "CN", onClick, zoom, tooltipExtra, yMin, yMax, digits = 0 } = {}) {
+export function timeChart(el, { series, yName = t("chart.cn"), onClick, zoom, tooltipExtra, yMin, yMax, digits = 0 } = {}) {
   const th = theme();
   const c = init(el);
   // phones: no room for end labels, the legend already names every series
@@ -190,7 +190,7 @@ export function distributionChart(el, { series, binSize = 250 }) {
       },
     }),
     xAxis: {
-      type: "value", name: "CN", nameLocation: "end", nameTextStyle: { color: th.ink3 },
+      type: "value", name: t("chart.cn"), nameLocation: "end", nameTextStyle: { color: th.ink3 },
       ...axisCommon(th), splitLine: { show: false },
       axisLabel: { color: th.ink3, formatter: (v) => fmt(v) },
     },
@@ -318,7 +318,7 @@ export function cdfChart(el, { series, onClick }) {
           `<span style="color:${th.ink3}">${esc(s.name)} · ${t("chart.cdf.tip", { pct: fmt(pct, 1) })}</span>`;
       },
     }),
-    xAxis: { type: "value", name: "CN", nameLocation: "middle", nameGap: 28, nameTextStyle: { color: th.ink3 },
+    xAxis: { type: "value", name: t("chart.cn"), nameLocation: "middle", nameGap: 28, nameTextStyle: { color: th.ink3 },
       scale: true, splitNumber: el.clientWidth < 360 ? 2 : el.clientWidth < 520 ? 3 : 5, ...axisCommon(th), splitLine: { show: false },
       axisLabel: { color: th.ink3, formatter: (v) => fmt(v), hideOverlap: true } },
     yAxis: { type: "value", min: 0, max: 100, name: "%", nameTextStyle: { color: th.ink3 }, ...axisCommon(th),
@@ -344,7 +344,7 @@ export function cdfChart(el, { series, onClick }) {
  * aligned to categories or a list of [category, value] pairs.
  * tip(axisValue) returns the tooltip HTML for one category.
  */
-export function bandChart(el, { categories, bands = [], lines = [], yName = "CN", yMin, yMax, tip, yFormat = (v) => fmt(v), time = false }) {
+export function bandChart(el, { categories, bands = [], lines = [], yName = t("chart.cn"), yMin, yMax, tip, yFormat = (v) => fmt(v), time = false }) {
   const th = theme();
   const c = init(el);
   const series = [];

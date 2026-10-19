@@ -313,7 +313,7 @@ async function detail(main, idx, query) {
     const expected = new Map(ranked.map((r, i) => [r, i + 1]));
     $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
-      <th class="r">CN</th>
+      <th class="r">${t("col.cn")}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>

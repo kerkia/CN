@@ -262,7 +262,7 @@ export async function render(main, { arg, query }) {
     const dates = [...new Set(methods.flatMap((m) => seriesFor(m).map((p) => p[0])))].sort().reverse();
     const lookup = Object.fromEntries(methods.map((m) => [m, new Map(seriesFor(m))]));
     $("#evo-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("col.date")}</th>
-      ${methods.map(() => html`<th class="r">CN</th>`)}</tr></thead><tbody>
+      ${methods.map(() => html`<th class="r">${t("col.cn")}</th>`)}</tr></thead><tbody>
       ${dates.map((d) => html`<tr><td>${fmtDate(d)}</td>${methods.map((m) => html`<td class="r num">${fmt(lookup[m].get(d))}</td>`)}</tr>`)}
       </tbody></table>`;
   }
@@ -297,7 +297,7 @@ export async function render(main, { arg, query }) {
       columns: [
         { key: "date", label: t("col.date"), cls: "num", sort: (e) => e.date, render: (e) => fmtDate(e.date) },
         { key: "what", label: raw(t("rn.hist.what")), render: what },
-        { key: "cn", label: "CN", align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
+        { key: "cn", label: t("col.cn"), align: "r", cls: "num", sort: (e) => e.cn, render: (e) => (e.cn == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn)}</b>`) },
         { key: "delta", label: t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta,
           render: (e) => (e.delta == null ? "" : html`<span class="${e.delta > 0 ? "delta-up" : e.delta < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta)}</span>`) },
       ],
@@ -329,7 +329,7 @@ export async function render(main, { arg, query }) {
     $("#calc").innerHTML = html`${methods.map((m) => {
       const x = explain(m, races, iso, terrain, meta);
       const head = html`<div class="calc-head">
-        <div class="row"><h3>${t("rn.calc.cn")}</h3></div>
+        <div class="row"><h3>${t("rn.calc.cn", cnWords(m))}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
       const top = m === "top6w";
@@ -499,7 +499,7 @@ export async function render(main, { arg, query }) {
           sort: (e) => e.races[0]?.text || "",
           render: (e) => html`${e.races.map((x) => html`<div class="${x.struck ? "struck" : ""}">${label(x, e)}</div>`)}` },
         ...methods.flatMap((m) => [
-          { key: `cn_${m}`, label: several ? html`${key(m)}CN ${methodShort(m)}` : "CN", align: "r", cls: "num", sort: (e) => e.cn[m],
+          { key: `cn_${m}`, label: several ? html`${key(m)}${methodShort(m)}` : t("col.cn"), align: "r", cls: "num", sort: (e) => e.cn[m],
             render: (e) => (e.cn[m] == null ? html`<span class="dim">—</span>` : html`<b>${fmt(e.cn[m])}</b>`) },
           { key: `d_${m}`, label: several ? html`Var. ${methodShort(m)}` : t("rn.ev.delta"), align: "r", cls: "num", sort: (e) => e.delta[m],
             render: (e) => (e.delta[m] == null ? "" : html`<span class="${e.delta[m] > 0 ? "delta-up" : e.delta[m] < 0 ? "delta-down" : "dim"}">${fmtSigned(e.delta[m])}</span>`) },
@@ -605,7 +605,7 @@ export async function render(main, { arg, query }) {
           ${me.map((s) => `<div style="margin-top:4px"><b>${fmt(s.cn)}</b> ${s.iso.slice(0, 4)} · ${pctN(s.pct)}</div>`).join("")}`;
       },
     });
-    const table = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("rk.col.cat")}</th><th class="r">CN</th>
+    const table = html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("rk.col.cat")}</th><th class="r">${t("col.cn")}</th>
       <th class="r">${t("pg.median")}</th><th class="r">${t("pg.pctShort")}</th></tr></thead>
       <tbody>${[...mine].reverse().map((s) => html`<tr><td>${fmtDate(s.iso, "month")}</td><td>${fmtCat(s.cat)}</td><td class="r num">${fmt(s.cn)}</td>
         <td class="r num">${fmt(s.curve?.[qi(50)])}</td><td class="r num">${s.pct == null ? "—" : pctN(s.pct)}</td></tr>`)}</tbody></table>`;
