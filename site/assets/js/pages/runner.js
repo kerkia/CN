@@ -329,7 +329,7 @@ export async function render(main, { arg, query }) {
     $("#calc").innerHTML = html`${methods.map((m) => {
       const x = explain(m, races, iso, terrain, meta);
       const head = html`<div class="calc-head">
-        <div class="row"><h3>${t("rn.calc.cn")}</h3></div>
+        <div class="row"><h3>${t("rn.calc.cn", cnWords(m))}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
       const top = m === "top6w";

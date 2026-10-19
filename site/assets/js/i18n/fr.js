@@ -537,7 +537,7 @@ export default {
   "rn.lede.nav": "Le CN d'un coureur, ses courses, son évolution, sa progression, sa carte et son réseau.",
   "nw.lede.nav": "Le réseau des meilleurs, les territoires, la participation et la pyramide des âges.",
   "ag.lede.nav": "Les prochaines manifestations de course d'orientation, d'après l'agenda de la FFCO.",
-  "rn.after": "après", "rn.calc.cn": "CN à cette date", "rn.tab.races": "Courses", "rn.tab.calc": "Calcul", "rn.tab.history": "Historique", "rn.tab.progress": "Progression",
+  "rn.after": "après", "rn.calc.cn": "{cn} à cette date", "rn.tab.races": "Courses", "rn.tab.calc": "Calcul", "rn.tab.history": "Historique", "rn.tab.progress": "Progression",
   "rn.pg.offWarn": "Le CN officiel se prête mal aux analyses sur plusieurs saisons : il fait un saut chaque 1er janvier et ses règles ont changé au fil des années (forêt et sprint réunis avant 2026). Pour suivre une progression, préférez l'indice Ozimut, calculé de la même façon sur toute la période.",
   "rn.pg.toTop": "Afficher l'indice Ozimut",
   "rn.tab.seasons": "Saisons", "rn.tab.map": "Carte", "rn.tab.network": "Réseau",
@@ -564,7 +564,7 @@ export default {
   "calc.mean.l": "Moyenne pondérée", "calc.mean.q": "Moyenne quadratique pondérée (racine de la moyenne des carrés)",
   "calc.mean.c": "Moyenne cubique pondérée (racine cubique de la moyenne des cubes)",
   "calc.fair.formula": "{Mean} des {pct} % meilleurs scores sur {win}, minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
-  "calc.top6w.formula": "Parmi les {pct} % meilleurs scores sur {win}, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; le CN est la {mean} des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
+  "calc.top6w.formula": "Parmi les {pct} % meilleurs scores sur {win}, du meilleur au moins bon, chaque course occupe autant de places que son poids, jusqu'à 6 places (la dernière seulement pour ce qui reste) ; l'indice Ozimut est la {mean} des scores retenus. Minimum 3 courses. Chaque score est calculé une fois pour toutes, avec le facteur de recalage du jour de la course.",
 
   "col.date": "Date", "col.comp": "Compétition", "col.circuit": "Circuit", "col.terrain": "Spéc.",
   "col.format": "Format", "col.groupe": "Niv.", "col.place": "Place", "col.time": "Temps",
