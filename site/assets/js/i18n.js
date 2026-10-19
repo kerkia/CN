@@ -83,11 +83,17 @@ export const has = (key) => key in FR;
 const PSEUDO = { a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ" };
 const pseudo = (s) => `⟦${s.split(/(\{\w+\}|<[^>]*>|&\w+;)/).map((p, i) => (i % 2 ? p : p.replace(/[a-zA-Z]/g, (c) => PSEUDO[c] || c))).join("")}⟧`;
 
+// Placeholders a text may use without its caller giving them: the words for the value of the method the site shows
+// ({cnPl} « indices Ozimut », {cnTo} « à l'indice »…: ui.cnWords), registered by app.js (setDefaults).
+let DEFAULTS = null;
+export const setDefaults = (fn) => { DEFAULTS = fn; };
+
 /** The text of `key` in the interface's language; `vars` fills its {placeholders}. */
 export const t = (key, vars) => {
   let s = EN && EN[key] != null ? EN[key] : FR[key];
   if (s == null) return key;
   if (UI === "xx") s = pseudo(s);
+  if (DEFAULTS && s.includes("{cn")) vars = { ...DEFAULTS(), ...vars };
   if (!vars) return s;
   const out = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
   // an English text that opens on a placeholder (« {cn} history ») opens with a capital (« Official CN history »)

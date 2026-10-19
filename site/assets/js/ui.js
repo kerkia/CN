@@ -13,8 +13,11 @@ export const methodShort = (m) => t(`m.${m}.short`);
  *  « score Ozimut » / « score officiel », and a runner's ranking value, « indice Ozimut » / « CN officiel ». The Fit shares the
  *  Top's scores; the linear pair has its own. `lower`: inside a sentence. */
 export const cnLabel = (m) => t(`cn.${m}`);
-/** A method's value label for a text: { cn } at its head, { cnLow } in mid-phrase, { cnOf } with its article (French). */
-export const cnWords = (m) => ({ cn: t(`cn.${m}`), cnLow: t(`cn.${m}.low`), cnOf: t(`cn.${m}.of`) });
+/** A method's value words for a text (i18n `cn.<method>.*`): {cn} at its head, {cnLow} in mid-phrase, {cnOf} with its
+ *  article, {cnPl} plural, {cnS} / {cnSCap} short (« indice », « CN »), {cnTo} « à l'indice » / « au CN », {cnThe} /
+ *  {cnTheCap} « l'indice » / « le CN ». The site's method fills them in any text (app.js: i18n.setDefaults). */
+const CN_FORMS = { cnLow: "low", cnOf: "of", cnPl: "pl", cnS: "s", cnSCap: "S", cnTo: "to", cnThe: "the", cnTheCap: "The" };
+export const cnWords = (m) => ({ cn: t(`cn.${m}`), ...Object.fromEntries(Object.entries(CN_FORMS).map(([k, f]) => [k, t(`cn.${m}.${f}`)])) });
 export const scoreLabel = (m, lower = false) => { const s = t(`score.${m}`); return lower ? s.charAt(0).toLowerCase() + s.slice(1) : s; };
 
 /** A short line in a method's dash pattern (charts.METHOD_DASH), for legends. */

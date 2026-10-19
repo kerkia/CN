@@ -187,7 +187,7 @@ export async function render(main, { query }) {
         { key: "name", label: t("rk.col.name"), render: (x) => html`<span class="dot" style="background:${raw(slotColor(x.c.slot))};margin-right:7px"></span><a href="${link.runner(x.c.lic)}">${nameOf(x.c.lic)}</a>` },
         { key: "cat", label: t("rk.col.cat"), render: (x) => x.now?.cat || x.r?.cat || "" },
         ...methods.map((m, i) => ({
-          key: `cn${i}`, align: "r", cls: "num", label: "CN", sort: (x) => x.now?.cn[m],
+          key: `cn${i}`, align: "r", cls: "num", label: t("col.cn"), sort: (x) => x.now?.cn[m],
           render: (x) => x.now?.cn[m] == null ? html`<span class="dim">—</span>` : html`<b>${fmt(x.now.cn[m])}</b>`,
         })),
         { key: "peak", label: t("cp.peak"), align: "r", cls: "num", sort: (x) => x.peak?.[1],
@@ -331,7 +331,7 @@ export async function render(main, { query }) {
         { key: "sel", label: "", cls: "c", render: (r) => html`<input type="checkbox" data-sel="${r.lic}" ${raw(store.inCompare(r.lic) ? "checked" : "")} aria-label="${r.name}">` },
         { key: "pos", label: "#", cls: "rank num", sort: (r) => r.pos, defaultDir: 1 },
         { key: "name", label: t("rk.col.name"), sort: (r) => r.key, defaultDir: 1, render: (r) => html`<span class="name">${r.name}</span>` },
-        ...methods.map((m) => ({ key: m, label: "CN", align: "r", cls: "num", sort: (r) => r.cn[m], render: (r) => fmt(r.cn[m]) })),
+        ...methods.map((m) => ({ key: m, label: t("col.cn"), align: "r", cls: "num", sort: (r) => r.cn[m], render: (r) => fmt(r.cn[m]) })),
         { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
         { key: "club", label: t("rk.col.club"), render: (r) => html`<span title="${data.clubName(r.club)}">${r.clubCode || ""}</span>` },
       ],

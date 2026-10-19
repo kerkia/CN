@@ -128,7 +128,7 @@ export async function render(main, { query }) {
     ${withMethods && store.get().methods.length > 1 ? store.get().methods.map((m) => html`<span>${dashKey(m)} ${methodShort(m)}</span>`) : ""}`;
   const keyFor = (m, y) => `${m}_${data.snapTerrain(m, terrain, y)}`;
   const group = () => `${sel.sexe}${sel.age}`;
-  const yLabel = () => (sel.measure === "n" ? t("cb.runners") : sel.base === "pts" ? t("cm.points") : "CN");
+  const yLabel = () => (sel.measure === "n" ? t("cb.runners") : sel.base === "pts" ? t("cm.points") : t("col.cn"));
 
   /** Season by season, at each season's last month-end. */
   function drawYears() {

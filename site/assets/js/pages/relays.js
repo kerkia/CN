@@ -208,7 +208,7 @@ export async function render(main, { query }) {
       <h3 style="margin:4px 16px 4px;font-size:15px">${t("rl.out.title")}</h3>
       <div class="hint" style="margin:0 16px 8px">${t("rl.out.hint")}</div>
       ${outList.length ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>${t("rk.col.name")}</th><th>${t("rk.col.cat")}</th>
-        <th class="r">CN</th><th></th></tr></thead>
+        <th class="r">${t("col.cn")}</th><th></th></tr></thead>
         <tbody>${outList.map((r) => html`<tr><td>${r.name}${r.added ? html` <span class="tag">${t("rl.extra.tag")}</span>` : ""}</td><td>${r.cat}</td>
           <td class="r num">${r.cn ? fmt(r.cn) : ""}</td>
           <td class="r"><button type="button" class="btn btn-ghost btn-sm" data-out-back="${r.lic}">${t("rl.out.back")}</button></td></tr>`)}</tbody></table></div>`
@@ -303,7 +303,7 @@ export async function render(main, { query }) {
         <span class="muted" style="font-weight:400">· ${t("rl.place")} ${placeOf(cost)}${res.firsts[0] && res.k ? ` · +${mmss(total - res.k * res.firsts[0].cost)}` : ""}</span>` : ""}</h3>
       ${slotsOk ? "" : html`<div class="notice warn" style="margin:0 16px 8px">${t("rl.invalid")}</div>`}
       <div class="table-wrap"><table class="data compact"><thead><tr>${editable ? html`<th></th>` : ""}<th class="r">${t("rl.leg")}</th><th class="r">${t("rl.ref")}</th>
-        <th>${t("rl.slot")}</th><th>${t("rl.runner")}</th><th class="r">CN</th><th class="r">${t("rl.time")}</th><th class="r">${t("rl.cum")}</th><th></th></tr></thead>
+        <th>${t("rl.slot")}</th><th>${t("rl.runner")}</th><th class="r">${t("col.cn")}</th><th class="r">${t("rl.time")}</th><th class="r">${t("rl.cum")}</th><th></th></tr></thead>
         <tbody>${rs.map((r, i) => {
           cum = times[i] != null && cum != null ? cum + times[i] : null;
           const slot = slotsOk ? f.slots[slotsOk[i]].label : "";
