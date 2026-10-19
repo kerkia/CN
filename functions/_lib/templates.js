@@ -19,7 +19,7 @@ function wrap(env, title, bodyHtml, lang) {
   const F = FRAME[L(lang)];
   return `<!doctype html><html lang="${L(lang)}"><body style="margin:0;background:#f4f6f9;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#1b2430">
 <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-<div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px"><span style="color:#e8641c">O</span>zimut <span style="font-weight:500;font-size:13px;color:#5b6675">${F.tagline}</span></div>
+<div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px"><img src="${siteUrl(env)}/assets/mail-mark.png" width="28" height="28" alt="" style="vertical-align:-6px;margin-right:8px;border:0"><span style="color:#e8641c">O</span>zimut <span style="font-weight:500;font-size:13px;color:#5b6675">${F.tagline}</span></div>
 <div style="background:#fff;border-radius:10px;padding:22px 24px;line-height:1.5">
 <h1 style="font-size:18px;margin:0 0 12px">${esc(title)}</h1>${bodyHtml}</div>
 <p style="font-size:12px;color:#5b6675;margin:14px 4px">${esc(F.foot(env.MAIL_FROM))}</p>

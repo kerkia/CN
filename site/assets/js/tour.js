@@ -41,7 +41,7 @@ function live() {
       <td class="num">${tm}</td><td class="num">${ex}</td></tr>`)}</tbody></table>
     <figcaption><b>${t("tour.cap.live.b")}</b> ${t("tour.cap.live")} <i>${t("tour.mockup")}</i></figcaption></figure>`;
 }
-const logo = `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="#18201b"/><path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="#18201b" stroke-width="2.4" stroke-linejoin="round"/></svg>`;
+const logo = `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="#18201b"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="#18201b" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="#18201b" stroke-width="2" stroke-linecap="round"/></svg>`;
 function notif() {
   const n = (i) => html`<div class="tour-notif">${raw(logo)}<b>${t(`tour.notif.${i}.t`)}</b><span>${t(`tour.notif.${i}.b`)}</span><small>${t(`tour.notif.${i}.s`)}</small></div>`;
   return html`<figure><div class="tour-phone"><div class="tour-lock" role="img" aria-label="${t("tour.cap.notif.b")}">

@@ -503,8 +503,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button
   (`.btn-primary`) in control-flag orange, contour lines behind the header's second row (`app.drawContours`, 2026-10-13: a
   relief of a few hills drawn on a canvas by marching squares in the map's brown, an index contour every fifth line, as on
-  the study's page; redrawn with the bar and on resize). Logo: the original hourglass — a diamond whose top-right triangle is orange
-  and bottom-left one in the text colour — without the blue square (app.js, favicon.svg; e-mails: ink name, orange button).
+  the study's page; redrawn with the bar and on resize). Logo (owner, 2026-10-19; the logo study, private artifact https://claude.ai/artifact/CSyWqbeCtWjFoLamUgwhsM, proposal 6): a
+  compass bezel — a ring with four ticks — and, as its needle on a bearing of 45°, the control flag's two quarters of the
+  former hourglass (top-right orange, bottom-left in the text colour); outlines always drawn last, over the fills (app.js
+  `.brand-mark`, favicon.svg, tour.js; the PNG icons and badge drawn by the study's scratch `make_mark.py`; e-mails: the
+  mark as `assets/mail-mark.png` beside the name with its orange O, an orange button).
 - **Lean pages** (owner, 2026-10-12): where the title only repeats the menu (Classement, Courses classées, Comparer, Clubs,
   Statistiques, Agenda, the lists of Résultats and En direct: `app.isLean`), `app.leanHead` drops the title line: the page
   starts with its tabs, its buttons go to the right of the tab row (`.tabs-actions`), its text is the tooltip of its name

@@ -347,8 +347,8 @@ function renderHeader(r) {
     </button>` : ""}
     <a class="brand" href="${me ? (me.lic ? link.runner(me.lic) : link.ranking()) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="currentColor"/>
-        <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- a compass bezel, the control flag's two quarters as its needle on a bearing of 45° (owner, 2026-10-19) -->
+        <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <span class="brand-name"><span class="brand-o">O</span>zimut</span>
     </a>
