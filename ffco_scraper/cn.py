@@ -143,6 +143,13 @@ class CnParams:
     tail_k: float | None = None
     tail_mean: float = 0.0
     cn_power: float = 1.0
+    # The juniors' races fade (owner, 2026-10-19; study of 2026-10-19): a race run in a junior category (H/D 12-20,
+    # `is_junior`) weighs its title weight x (1 - its age / (junior_fade x the window)) in the CN's mean, read on the day
+    # the CN is computed - 1 on the race's day, 0 at the window's end (floor JUNIOR_FADE_FLOOR) - while an adult's race
+    # keeps its weight. A junior improves fast: their races of ten months ago describe a slower runner. The races kept and
+    # the Top's places are chosen as before, by score and title weight; only how much each kept race weighs changes.
+    # 0: off (the official CN, the geometric pair).
+    junior_fade: float = 0.0
     # A discipline's own values over the ones above, e.g. {"VTT": {"window_days": 730}}:
     # VTT and ski have far fewer competitions than forest and sprint.
     by_terrain: dict = field(default_factory=dict, hash=False, compare=False)
@@ -285,8 +292,26 @@ def trimmed_mean(scores: list[int], params: CnParams) -> tuple[int | None, int]:
     return Decimal_round(sum(kept) / len(kept)), len(kept)
 
 
+JUNIOR_FADE_FLOOR = 1e-3        # a race on the window's last day still counts a little (a mean of zero weights is undefined)
+_JUNIOR = re.compile(r"^[HD](\d+)")
+
+
+def is_junior(cat: str | None) -> bool:
+    """A junior category: H or D followed by an age of 20 or less (H10 to H20, D20E...)."""
+    m = _JUNIOR.match((cat or "").strip().upper())
+    return bool(m) and int(m.group(1)) <= 20
+
+
+def fade_factors(dates: list[date], juniors: list[bool], as_of: date, params: CnParams) -> list[float] | None:
+    """Each race's factor in the CN's mean read on `as_of` (params.junior_fade), or None when nothing fades."""
+    if not params.junior_fade or not any(juniors):
+        return None
+    span = params.junior_fade * params.window_days
+    return [max(JUNIOR_FADE_FLOOR, 1 - (as_of - d).days / span) if j else 1.0 for d, j in zip(dates, juniors)]
+
+
 def top_n_weighted(
-    scores: list[int], weights: list[float], params: CnParams
+    scores: list[int], weights: list[float], params: CnParams, fade: list[float] | None = None
 ) -> tuple[int | None, int]:
     """Keep the best N races and average them weighted by race group.
 
@@ -296,16 +321,16 @@ def top_n_weighted(
     n = len(scores)
     if n < params.min_scores_for_cn:
         return None, 0
-    pairs = sorted(zip(scores, weights), key=lambda p: p[0], reverse=True)
+    pairs = sorted(zip(scores, weights, fade or [1.0] * n), key=lambda p: p[0], reverse=True)
     # Only the best `eligible_fraction` of the window is even considered,
     # so a runner with few races cannot have all of them counted.
     pool = max(1, Decimal_round(params.eligible_fraction * n))
     slots, kept = float(params.top_n), []
-    for s, w in pairs[:pool]:
+    for s, w, f in pairs[:pool]:
         if slots <= 0:
             break
         used = min(w, slots)                 # the last race may only partly fit
-        kept.append((s, used))
+        kept.append((s, used * f))           # a junior race's places by its weight, its say in the mean faded
         slots -= used
     total_w = sum(u for _, u in kept)
     if total_w <= 0:
@@ -317,28 +342,30 @@ def top_n_weighted(
 
 
 def aggregate(
-    scores: list[int], weights: list[float], params: CnParams
+    scores: list[int], weights: list[float], params: CnParams, fade: list[float] | None = None
 ) -> tuple[int | None, int]:
     if params.aggregation == "top6_weighted":
-        return top_n_weighted(scores, weights, params)
+        return top_n_weighted(scores, weights, params, fade)
     return trimmed_mean(scores, params)
 
 
 class RunnerHistory:
     """A runner's scores in date order, supporting 'CN as of date D'."""
 
-    __slots__ = ("dates", "scores", "weights")
+    __slots__ = ("dates", "scores", "weights", "juniors")
 
     def __init__(self) -> None:
         self.dates: list[date] = []
         self.scores: list[int] = []
         self.weights: list[float] = []
+        self.juniors: list[bool] = []
 
-    def add(self, d: date, score: int, weight: float = 1.0) -> None:
-        # races are fed in date order, so append keeps the list sorted
+    def add(self, d: date, score: int, weight: float = 1.0, junior: bool = False) -> None:
+        # races are fed in date order, so append keeps the list sorted; `junior`: run in a junior category
         self.dates.append(d)
         self.scores.append(score)
         self.weights.append(weight)
+        self.juniors.append(junior)
 
     def slice(self, as_of: date, window_days: int) -> tuple[list[int], list[float]]:
         lo = bisect_left(self.dates, as_of - timedelta(days=window_days))
@@ -349,6 +376,9 @@ class RunnerHistory:
         return self.slice(as_of, window_days)[0]
 
     def cn_as_of(self, as_of: date, params: CnParams) -> tuple[int | None, int, int]:
-        s, w = self.slice(as_of, params.window_days)
-        cn, kept = aggregate(s, w, params)
+        lo = bisect_left(self.dates, as_of - timedelta(days=params.window_days))
+        hi = bisect_right(self.dates, as_of)
+        s, w = self.scores[lo:hi], self.weights[lo:hi]
+        fade = fade_factors(self.dates[lo:hi], self.juniors[lo:hi], as_of, params) if params.junior_fade else None
+        cn, kept = aggregate(s, w, params, fade)
         return cn, len(s), kept

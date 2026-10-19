@@ -66,8 +66,18 @@ export function trimmed(values, minScores = 2) {
   return { cn: dround(kept.reduce((s, x) => s + x, 0) / kept.length), roles, nKept: kept.length };
 }
 
-/** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean, 3 = cubic. */
-export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3, power = 1 } = {}) {
+/** A junior category (cn.is_junior): H or D followed by an age of 20 or less. */
+export function isJunior(cat) {
+  const m = /^[HD](\d+)/.exec(String(cat || "").trim().toUpperCase());
+  return !!m && Number(m[1]) <= 20;
+}
+const FADE_FLOOR = 1e-3;                         // cn.JUNIOR_FADE_FLOOR
+const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
+
+/** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean, 3 = cubic.
+ *  `fade` (cn.fade_factors): each race's factor in the mean - a junior's race fading with its age -, its places
+ *  still taken by its weight. */
+export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3, power = 1, fade = null } = {}) {
   const n = values.length;
   if (n < minScores) return { cn: null, roles: values.map(() => null), used: values.map(() => 0), nKept: 0 };
   // topN is a number of slots: from the best score down, each race fills as many as its weight, the last
@@ -81,7 +91,8 @@ export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores =
     if (slots <= 0) { roles[idx] = "notTop6"; return; }
     const u = Math.min(weights[idx], slots);
     slots -= u; used[idx] = u; nKept++;
-    roles[idx] = "kept"; sw += u; sx += (power === 1 ? values[idx] : values[idx] ** power) * u;
+    const uf = u * (fade ? fade[idx] : 1);
+    roles[idx] = "kept"; sw += uf; sx += (power === 1 ? values[idx] : values[idx] ** power) * uf;
   });
   const mean = sw > 0 ? sx / sw : null;
   return { cn: mean == null ? null : dround(power === 1 ? mean : mean ** (1 / power)), roles, used, nKept };
@@ -101,11 +112,15 @@ export function explain(method, races, iso, terrain, meta) {
     // the value the Courses page shows), the same in both methods; the CN is the weighted mean of the best
     // 60 % of them (70 % in VTT and ski) - all of them for Fair, only those filling the weight places for Top.
     const [score, counts, weight] = [SCORE_COL[method], COUNTS_COL[method], WEIGHT_COL[method]];
+    // the juniors' races fade (params.junior_fade): weight x (1 - age / the window) in the mean, read on `iso`
+    const span = (p.junior_fade || 0) * windowDays(method, terrain, meta);
     const rows = races
       .filter((r) => r[R.terrain] === terrain && inWin(r) && r[counts] && r[score] != null)
-      .map((r) => ({ race: r, value: r[score], weight: r[weight] || 1 }));
+      .map((r) => ({ race: r, value: r[score], weight: r[weight] || 1,
+        fade: span && isJunior(r[R.cat]) ? Math.max(FADE_FLOOR, 1 - daysBetween(r[R.date], iso) / span) : 1 }));
     const res = topWeighted(rows.map((x) => x.value), rows.map((x) => x.weight), {
       topN: p.top_n ?? Infinity, frac: p.eligible_fraction, minScores: p.min_scores, power: p.cn_power ?? 1,
+      fade: span ? rows.map((x) => x.fade) : null,
     });
     rows.forEach((x, i) => { x.role = res.roles[i]; x.used = res.used[i]; });
     return { method, cn: res.cn, rows, nKept: res.nKept, from, iso };

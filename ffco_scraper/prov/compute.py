@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from ..cn import CnParams, Decimal_round, aggregate, circuit_value, title_weight
+from ..cn import CnParams, Decimal_round, aggregate, circuit_value, fade_factors, is_junior, title_weight
 from ..cn_engine import build_methods, daily_knots, factor_on
 
 COMPUTED = ("fair", "top6w", "fair3", "top6w3")
@@ -52,23 +52,31 @@ class Scorer:
 
     def internal_j15(self, lic: str, base: str, terrain: str, as_of: date) -> int | None:
         p = self.params(base, terrain)
-        rows = self.con.execute("""SELECT score_raw, poids FROM scores INDEXED BY idx_scores_runner WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
-                                   AND score_raw IS NOT NULL AND date_iso >= ? AND date_iso <= ?""",
+        rows = self.con.execute("""SELECT score_raw, poids, date_iso, categorie FROM scores INDEXED BY idx_scores_runner WHERE licence = ?
+                                   AND method = ? AND terrain = ? AND counts_for_cn = 1
+                                   AND score_raw IS NOT NULL AND date_iso >= ? AND date_iso <= ?
+                                   ORDER BY date_iso, course_id, circuit_id""",
                                 (lic, base, terrain, (as_of - timedelta(days=p.window_days)).isoformat(), as_of.isoformat())).fetchall()
         if not rows:
             return None
-        cn, kept = aggregate([r[0] for r in rows], [r[1] or 1.0 for r in rows], p)
+        fade = fade_factors([date.fromisoformat(r[2]) for r in rows], [is_junior(r[3]) for r in rows], as_of, p)
+        cn, kept = aggregate([r[0] for r in rows], [r[1] or 1.0 for r in rows], p, fade)
         return cn if kept else None
 
     # ---- the CN after the race -------------------------------------------------------------------------------
-    def cn_after(self, lic: str, method: str, terrain: str, d: date, score: int, weight: float, skip_course: int | None) -> int | None:
+    def cn_after(self, lic: str, method: str, terrain: str, d: date, score: int, weight: float, skip_course: int | None,
+                 cat: str | None = None) -> int | None:
+        """`cat`: the runner's category in this race (a junior's races fade, params.junior_fade)."""
         p = self.params(method, terrain)
-        rows = self.con.execute("""SELECT score, poids FROM scores INDEXED BY idx_scores_runner WHERE licence = ? AND method = ? AND terrain = ? AND counts_for_cn = 1
-                                   AND score IS NOT NULL AND date_iso >= ? AND date_iso <= ? AND course_id IS NOT ?""",
+        rows = self.con.execute("""SELECT score, poids, date_iso, categorie FROM scores INDEXED BY idx_scores_runner WHERE licence = ?
+                                   AND method = ? AND terrain = ? AND counts_for_cn = 1
+                                   AND score IS NOT NULL AND date_iso >= ? AND date_iso <= ? AND course_id IS NOT ?
+                                   ORDER BY date_iso, course_id, circuit_id""",
                                 (lic, method, terrain, (d - timedelta(days=p.window_days)).isoformat(), d.isoformat(), skip_course)).fetchall()
         s = [r[0] for r in rows] + [score]
         w = [r[1] or 1.0 for r in rows] + [weight if method != "official" else 1.0]
-        return aggregate(s, w, p)[0]
+        fade = fade_factors([date.fromisoformat(r[2]) for r in rows] + [d], [is_junior(r[3]) for r in rows] + [is_junior(cat)], d, p)
+        return aggregate(s, w, p, fade)[0]
 
     # ---- one class ---------------------------------------------------------------------------------------------
     def score_class(self, klass: dict, race, ffco_course: int | None) -> dict | None:
@@ -116,7 +124,8 @@ class Scorer:
                 for m in COMPUTED:
                     if BASE[m] == base:
                         r["scores"][m] = pub
-                        r["cnAfter"][m] = self.cn_after(r["lic"], m, terrain, d, pub, weight, ffco_course)
+                        r["cnAfter"][m] = self.cn_after(r["lic"], m, terrain, d, pub, weight, ffco_course,
+                                                        r.get("category") or r.get("catCn"))
             # the CN J-15 shown: the runner's published CN, as on the rest of the site
             for r in rows:
                 for m in COMPUTED:

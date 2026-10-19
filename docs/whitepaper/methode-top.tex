@@ -24,15 +24,15 @@
 
 \title{Le classement national recalculé\\\large La méthode « Top » d'O'CN : objectifs, méthode, étude et résultats}
 \author{O'CN — Observatoire du classement national de course d'orientation\\\small \url{https://ocn.kerkia.com} — site indépendant, sans lien avec la FFCO}
-\date{16 octobre 2026}
+\date{19 octobre 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-À partir des mêmes résultats que la Fédération française de course d'orientation (FFCO), O'CN calcule un classement national alternatif, la méthode « Top », et le compare au classement officiel sur quinze saisons. La méthode Top garde le score de course de la FFCO et des moyennes ordinaires : chacun peut refaire un score ou un \CN{} à la main. Elle ne change que ce qui compte : les meilleures courses retenues sur six places, une part du peloton réglée dans chaque spécialité pour mesurer la difficulté des circuits, et un recalage continu.
+À partir des mêmes résultats que la Fédération française de course d'orientation (FFCO), O'CN calcule un classement national alternatif, la méthode « Top », et le compare au classement officiel sur quinze saisons. La méthode Top garde le score de course de la FFCO et des moyennes ordinaires : chacun peut refaire un score ou un \CN{} à la main. Elle ne change que ce qui compte : les meilleures courses retenues sur six places, une part du peloton réglée dans chaque spécialité pour mesurer la difficulté des circuits, un recalage continu, et, depuis le 19 octobre 2026, des courses de jeunes qui comptent de moins en moins avec le temps.
 
-Sur les saisons 2012 à 2024, qui n'ont pas servi à régler la méthode, le \CN{} \Top{} désigne le bon vainqueur dans \NaccFtop~\% des duels entre deux coureurs d'un même circuit en forêt, contre \NaccFoff~\% pour le \CN{} officiel ; en sprint, \NaccStop~\% contre \NaccSoff~\%. Des variantes plus savantes, essayées en octobre 2026, font jeu égal en forêt et gagnent au plus 0,15 point en sprint.
+Sur les saisons 2012 à 2024, qui n'ont pas servi à régler la méthode, le \CN{} \Top{} désigne le bon vainqueur dans \NaccFtop~\% des duels entre deux coureurs d'un même circuit en forêt, contre \NaccFoff~\% pour le \CN{} officiel ; en sprint, \NaccStop~\% contre \NaccSoff~\%. La variante la plus savante essayée en octobre 2026, une moyenne géométrique, faisait jeu égal en forêt et gagnait 0,15 point en sprint ; depuis que les courses des jeunes comptent de moins en moins avec le temps, la méthode Top fait mieux qu'elle en forêt et jeu égal en sprint.
 \end{abstract}
 
 \tableofcontents
@@ -70,12 +70,12 @@ Toutes les méthodes sont jugées sur les mêmes coureurs. Les courses d'une sai
 La méthode Top se lit en deux temps, comme le classement mondial de l'IOF : chaque course rapporte un \emph{score \Top}, et le \emph{\CN{} \Top} d'un coureur résume ses meilleurs scores \Top{} des douze derniers mois.
 
 \begin{description}
-  \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne pondérée de ses 60~\% meilleurs scores \Top{} des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans). Ce n'est pas un classement : c'est une étape du calcul, faite des courses déjà courues.
+  \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne pondérée de ses 60~\% meilleurs scores \Top{} des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans), une course courue en catégorie jeune comptant pour $1 - \text{âge} / \text{fenêtre}$. Ce n'est pas un classement : c'est une étape du calcul, faite des courses déjà courues.
   \item[Valeur du circuit.] La moyenne des produits niveau habituel $\times$ temps des coureurs les plus rapides qui ont un niveau : 90~\% en forêt, les deux tiers en sprint, 75~\% en VTT et en ski, le nombre arrondi au-dessus ; au moins quatre coureurs, et les quatre quand il n'y en a que quatre.
   \item[Score \Top.] La valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
   \item[\CN{} \Top.] Les meilleurs scores \Top, parmi les 60~\% meilleurs des douze derniers mois, remplissent six places : deux pour un championnat de France, une et demie pour une course nationale, une pour toute autre course. Le \CN{} \Top{} est la moyenne pondérée des scores retenus :
   \[ \text{\CN{} \Top} = \textstyle\sum (\text{places} \times \text{score}) \big/ \sum \text{places} . \]
-  Une fois les six places remplies, une course de plus ne peut pas le faire baisser. Il faut au moins trois courses.
+  Une course courue en catégorie jeune (H et D jusqu'à 20 ans) garde ses places mais compte dans la moyenne pour $1 - \text{âge} / \text{fenêtre}$. Une fois les six places remplies, une course de plus ne peut pas faire baisser le \CN{} d'un adulte. Il faut au moins trois courses.
   \item[Recalage.] Chaque jour, un facteur maintient à 5\,600 la moyenne des 20~\% meilleurs \CN{} \Top{} de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée des dix dernières années ; entre deux mois, il passe en ligne droite de l'un à l'autre.
 \end{description}
 
@@ -127,6 +127,16 @@ Face à elle, la méthode retenue fait, de 2012 à 2024 : \NgeoF{} point de duel
 
 Ce que la variante apprenait reste vrai : c'est la part du peloton qui mesure le circuit qui faisait la différence. En forêt, presque tout le peloton gagne près d'un demi-point sur les deux tiers, quelle que soit la moyenne.
 
+\paragraph{Les courses des jeunes (19 octobre 2026).} Le \CN{} d'un jeune retarde sur son niveau : un an et demi plus tard, le niveau habituel d'un jeune a monté de 22~\% en forêt, celui d'un adulte de 11~\% (la montée générale de l'échelle comprise). Ses courses d'il y a dix mois décrivent un coureur plus lent. Une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte donc dans la moyenne pour $1 - \text{âge} / \text{fenêtre}$ : en entier le jour de la course, à moitié six mois plus tard, presque plus à la fin de la fenêtre. Elle garde ses places ; les courses des adultes gardent leur poids ; la règle s'applique au niveau habituel, qui mesure les circuits, comme au \CN{} \Top. Le \CN{} de chaque règle a été relu le jour même, quinze jours avant chaque course.
+\begin{itemize}
+  \item \textbf{Forêt} : \NjunF{} point de 2012 à 2024, mieux dans \NjunFBetter{} saisons sur 15, \NjunFT{} depuis juillet 2025.
+  \item \textbf{Sprint} : \NjunS{} de 2012 à 2024, rien de significatif depuis juillet 2025 (\NjunST).
+  \item \textbf{VTT} : \NjunV{} de 2012 à 2024, \NjunVT{} depuis juillet 2025.
+\end{itemize}
+Faire vieillir les courses de tous les coureurs apporte peu : au mieux \NjunAdult{} en forêt (le poids divisé par deux tous les six mois), et rien de plus une fois les courses des jeunes effacées (\NjunBoth{} avec les deux). Le niveau d'un adulte bouge peu d'une saison à l'autre. Une fenêtre de deux ans fait \NjunWin{} ; effacer les courses dans le \CN{} \Top{} seul, sans toucher au niveau habituel, \NjunTop. Le prix : en forêt, les jeunes sont un peu plus souvent annoncés devant les H/D\,21--34 qu'ils ne finissent devant (\NjunBiasBefore{} points avant, \NjunBiasAfter{} après) ; en sprint et en VTT, où ils étaient sous-évalués, l'écart se réduit. Le \CN{} d'un jeune peut désormais bouger entre deux courses.
+
+\paragraph{Les coureurs loin de leur niveau (18 octobre 2026).} Sur un circuit, quelques coureurs finissent loin de ce que leur niveau habituel laisse prévoir : bien plus vite, souvent des jeunes en progrès dont le niveau était en effet trop bas (un an plus tard, 17 à 19~\% au-dessus des autres coureurs de leur âge), ou bien plus lentement, après une erreur. 28 règles ont essayé de les écarter de la valeur du circuit : d'un côté ou des deux, au-delà d'un seuil ou en part fixe, et de ne plus laisser les jeunes mesurer les circuits. N'écarter que les plus rapides fait monter les circuits des jeunes, donc leurs \CN, donc la mesure de leurs circuits suivants : en forêt, leurs circuits finissent jusqu'à \NoutLoop~\% au-dessus de ceux des adultes, et la prédiction recule (\NoutFast, \NoutFastFive{} au seuil de 5~\%). Écarter les deux côtés coûte en forêt (\NoutBothF) ; en sprint et en VTT, ajouté à l'écart des jeunes, il gagne \NoutXS{} et \NoutXV. Ces gains demanderaient deux règles de plus dans la mesure des circuits, pour corriger le même défaut que l'effacement des courses des jeunes : un \CN{} de jeune en retard sur son niveau. La méthode garde la mesure des circuits telle quelle et traite ce retard là où il naît, dans le \CN.
+
 \paragraph{Le recalage.} Le \CN{} d'un coureur est fait de ses meilleures courses, donc un peu au-dessus de ses courses ordinaires ; les circuits suivants sont mesurés avec ces niveaux un peu hauts, et le niveau général monte de quelques dixièmes de pour cent par mois. Le facteur d'un jour était calculé sur un niveau qui avait 18 à 20 mois de retard, et le niveau publié dépassait la cible de 7~\% en forêt. Prolonger la moyenne de 13 mois au rythme de la montée des dix dernières années garde un facteur aussi régulier, et ramène le niveau publié près de la cible : depuis 2018, à 2~\% en moyenne en forêt et en VTT, à 3~\% en sprint, avec des écarts de 6 à 9~\% après les saisons Covid.
 
 \paragraph{Les autres idées.} Chaque idée a été recalculée et jugée de la même façon ; aucune n'a été retenue.
@@ -159,8 +169,8 @@ Ces chiffres portent sur \NcompsF{} compétitions de forêt et \NcompsS{} de spr
 
 \section{Conclusion : la plus simple de celles qui prédisent le mieux}
 
-Toutes les variantes essayées se tiennent en quelques dixièmes de point de duels bien prédits, et les meilleures en quelques centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places, une part du peloton réglée par spécialité pour mesurer les circuits — 90~\% en forêt, les deux tiers en sprint, 75~\% en VTT et en ski —, et un recalage continu. Elle gagne plus de deux points de duels sur le \CN{} officiel, en forêt comme en sprint ; elle fait jeu égal en forêt avec la variante géométrique qui l'a précédée, et ne lui cède que 0,15 point en sprint.
+Toutes les variantes essayées se tiennent en quelques dixièmes de point de duels bien prédits, et les meilleures en quelques centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places, une part du peloton réglée par spécialité pour mesurer les circuits — 90~\% en forêt, les deux tiers en sprint, 75~\% en VTT et en ski —, un recalage continu, et des courses de jeunes qui comptent de moins en moins avec le temps. Elle gagne plus de deux points de duels sur le \CN{} officiel, en forêt comme en sprint ; depuis que les courses des jeunes s'effacent avec le temps, elle fait mieux en forêt que la variante géométrique qui l'a précédée, et jeu égal en sprint.
 
-Cette méthode est en ligne depuis le 16 octobre 2026 sur O'CN, sous le nom « Top ». Le classement officiel y reste la seule référence qui fait foi. Les données proviennent du site du classement national de la FFCO : une course absente, mal saisie ou corrigée ensuite peut expliquer un écart. Les méthodes calculées par le site partent des \CN{} de 2010, et leurs premiers mois reflètent surtout ce point de départ.
+Cette méthode est en ligne depuis le 16 octobre 2026 sur O'CN, sous le nom « Top » ; les courses des jeunes y comptent de moins en moins avec le temps depuis le 19 octobre. Le classement officiel y reste la seule référence qui fait foi. Les données proviennent du site du classement national de la FFCO : une course absente, mal saisie ou corrigée ensuite peut expliquer un écart. Les méthodes calculées par le site partent des \CN{} de 2010, et leurs premiers mois reflètent surtout ce point de départ.
 
 \end{document}

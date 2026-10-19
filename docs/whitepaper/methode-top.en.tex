@@ -24,15 +24,15 @@
 
 \title{The national ranking recalculated\\\large O'CN's ``Top'' method: aims, method, study and results}
 \author{O'CN — Observatoire du classement national de course d'orientation\\\small \url{https://ocn.kerkia.com} — an independent site, not affiliated with FFCO}
-\date{16 October 2026}
+\date{19 October 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Starting from the same results as the French orienteering federation (Fédération française de course d'orientation, FFCO), O'CN calculates an alternative national ranking, the ``Top'' method, and compares it with the official ranking over fifteen seasons. The Top method keeps FFCO's race score and ordinary means: anyone can work out a score or a \CN{} by hand. It changes only what matters: the best races kept, filling six places; a share of the field, set for each discipline, to measure how hard the courses are; and a continuous rescaling.
+Starting from the same results as the French orienteering federation (Fédération française de course d'orientation, FFCO), O'CN calculates an alternative national ranking, the ``Top'' method, and compares it with the official ranking over fifteen seasons. The Top method keeps FFCO's race score and ordinary means: anyone can work out a score or a \CN{} by hand. It changes only what matters: the best races kept, filling six places; a share of the field, set for each discipline, to measure how hard the courses are; a continuous rescaling; and, since 19 October 2026, juniors' races that count less and less as they age.
 
-Over the 2012 to 2024 seasons, which were not used to tune the method, the \CN{} \Top{} picks the right winner in \NaccFtop\% of duels between two runners on the same course in forest, against \NaccFoff\% for the official \CN; in sprint, \NaccStop\% against \NaccSoff\%. More sophisticated variants, tried in October 2026, do just as well in forest and gain at most 0.15 points in sprint.
+Over the 2012 to 2024 seasons, which were not used to tune the method, the \CN{} \Top{} picks the right winner in \NaccFtop\% of duels between two runners on the same course in forest, against \NaccFoff\% for the official \CN; in sprint, \NaccStop\% against \NaccSoff\%. The most sophisticated variant tried in October 2026, a geometric mean, did just as well in forest and gained 0.15 points in sprint; since juniors' races count less and less as they age, the Top method does better than it in forest and as well in sprint.
 \end{abstract}
 
 \tableofcontents
@@ -70,12 +70,12 @@ All the methods are judged on the same runners. A season's races are only a samp
 The Top method works in two steps, like the IOF World Ranking: each race earns a \emph{Top score}, and a runner's \emph{\CN{} \Top} sums up their best Top scores of the last twelve months.
 
 \begin{description}
-  \item[Usual level.] For each runner, fifteen days before the race, the weighted mean of their best 60\% of Top scores over the last twelve months, each according to its weight, with no limit on places (in MTB and ski: 70\% of the scores, over two and three years). It is not a ranking: it is a step of the calculation, made of races already run.
+  \item[Usual level.] For each runner, fifteen days before the race, the weighted mean of their best 60\% of Top scores over the last twelve months, each according to its weight, with no limit on places (in MTB and ski: 70\% of the scores, over two and three years), a race run in a junior class counting for $1 - \text{age} / \text{window}$. It is not a ranking: it is a step of the calculation, made of races already run.
   \item[Course value.] The mean of the products usual level $\times$ time of the fastest runners who have a level: 90\% in forest, two thirds in sprint, 75\% in MTB and ski, the number rounded up; at least four runners, and all four when there are only four.
   \item[Top score.] The course value divided by the time, multiplied by the rescaling factor of the day, and fixed once and for all.
   \item[\CN{} \Top.] The best Top scores, among the best 60\% of the last twelve months, fill six places: two for a French championship, one and a half for a national race, one for any other race. The \CN{} \Top{} is the weighted mean of the scores kept:
   \[ \text{\CN{} \Top} = \textstyle\sum (\text{places} \times \text{score}) \big/ \sum \text{places} . \]
-  Once the six places are filled, one more race cannot lower it. At least three races are needed.
+  A race run in a junior class (M and W up to 20) keeps its places but counts in the mean for $1 - \text{age} / \text{window}$. Once the six places are filled, one more race cannot lower an adult's \CN. At least three races are needed.
   \item[Rescaling.] Each day, a factor holds the mean of the best 20\% of \CN{} \Top s of each discipline at 5,600. It is worked out from the level measured two months earlier, averaged over 13 months and carried forward 10 months at the pace of the rise over the last ten years; from one month to the next, it moves in a straight line.
 \end{description}
 
@@ -127,6 +127,16 @@ Against it, the method chosen gives, from 2012 to 2024: \NgeoF{} points of duels
 
 What the variant taught still holds: it is the share of the field that values the course that made the difference. In forest, almost the whole field gains nearly half a point over the two thirds, whatever the mean.
 
+\paragraph{Juniors' races (19 October 2026).} A junior's \CN{} lags behind their level: a year and a half later, a junior's usual level has risen by 22\% in forest, an adult's by 11\% (the general rise of the scale included). Their races of ten months ago describe a slower runner. A race run in a junior class (M and W up to 20) therefore counts in the mean for $1 - \text{age} / \text{window}$: in full on the race's day, half six months later, hardly at all at the end of the window. It keeps its places; adults' races keep their weight; the rule applies to the usual level, which values the courses, as to the \CN{} \Top. Each rule's \CN{} was read on the day itself, fifteen days before each race.
+\begin{itemize}
+  \item \textbf{Forest}: \NjunF{} points from 2012 to 2024, better in \NjunFBetter{} seasons of 15, \NjunFT{} since July 2025.
+  \item \textbf{Sprint}: \NjunS{} from 2012 to 2024, nothing significant since July 2025 (\NjunST).
+  \item \textbf{MTB}: \NjunV{} from 2012 to 2024, \NjunVT{} since July 2025.
+\end{itemize}
+Ageing every runner's races brings little: at best \NjunAdult{} in forest (the weight halved every six months), and nothing more once the juniors' races fade (\NjunBoth{} with both). An adult's level changes little from one season to the next. A two-year window gives \NjunWin; fading the races in the \CN{} \Top{} alone, leaving the usual level as it was, \NjunTop. The price: in forest, juniors are predicted ahead of M/W\,21--34 a little more often than they finish ahead (\NjunBiasBefore{} points before, \NjunBiasAfter{} after); in sprint and MTB, where they were underrated, the gap narrows. A junior's \CN{} can now move between two races.
+
+\paragraph{Runners far from their level (18 October 2026).} On a course, a few runners finish far from what their usual level predicts: much faster, often juniors who are improving and whose level was indeed too low (a year later, 17 to 19\% above the other runners of their age), or much slower, after a mistake. 28 rules tried to leave them out of the course value: on one side or both, beyond a threshold or as a fixed share, and to stop juniors from valuing courses. Leaving out the fastest only raises the juniors' courses, so their \CN s, so the value of their next courses: in forest, their courses end up as much as \NoutLoop\% above the adults', and predictions get worse (\NoutFast, \NoutFastFive{} at the 5\% threshold). Leaving out both sides costs in forest (\NoutBothF); in sprint and MTB, together with leaving the juniors out, it gains \NoutXS{} and \NoutXV. Those gains would take two more rules in valuing a course, to correct the same flaw as the fading of the juniors' races: a junior's \CN{} lagging behind their level. The method keeps the course value as it is and treats that lag where it arises, in the \CN.
+
 \paragraph{The rescaling.} A runner's \CN{} is made of their best races, so it sits a little above their ordinary races; the following courses are valued with these slightly high levels, and the general level rises by a few tenths of a per cent a month. The factor for a day used to be worked out from a level 18 to 20 months out of date, and the published level overshot the target by 7\% in forest. Carrying the 13-month mean forward at the pace of the rise over the last ten years keeps the factor just as smooth, and brings the published level back close to the target: since 2018, within 2\% on average in forest and MTB and 3\% in sprint, with gaps of 6 to 9\% after the Covid seasons.
 
 \paragraph{Other ideas.} Each idea was recalculated and judged in the same way; none was kept.
@@ -159,8 +169,8 @@ These figures cover \NcompsF{} forest competitions and \NcompsS{} sprint ones, e
 
 \section{Conclusion: the simplest of those that predict best}
 
-All the variants tried lie within a few tenths of a point of one another in duels called right, and the best within a few hundredths. At that level, a gain no longer shows in a ranking, but a complicated rule shows in every explanation. The method chosen therefore keeps FFCO's score and ordinary means, and changes only what really matters: the best races kept, filling six places; a share of the field set for each discipline to value the courses (90\% in forest, two thirds in sprint, 75\% in MTB and ski); and a continuous rescaling. It gains more than two points of duels over the official \CN, in forest as in sprint; it draws level in forest with the geometric variant that came before it, and trails it by only 0.15 points in sprint.
+All the variants tried lie within a few tenths of a point of one another in duels called right, and the best within a few hundredths. At that level, a gain no longer shows in a ranking, but a complicated rule shows in every explanation. The method chosen therefore keeps FFCO's score and ordinary means, and changes only what really matters: the best races kept, filling six places; a share of the field set for each discipline to value the courses (90\% in forest, two thirds in sprint, 75\% in MTB and ski); a continuous rescaling; and juniors' races that count less and less as they age. It gains more than two points of duels over the official \CN, in forest as in sprint; since juniors' races fade as they age, it does better in forest than the geometric variant that came before it, and as well in sprint.
 
-This method has been online on O'CN since 16 October 2026, under the name ``Top''. The official ranking remains the only authoritative reference there. The data come from FFCO's national ranking site: a race that is missing, entered wrongly or corrected later may explain a difference. The methods calculated by the site start from the \CN s of 2010, and their first months mostly reflect that starting point.
+This method has been online on O'CN since 16 October 2026, under the name ``Top''; juniors' races have counted less and less in it as they age since 19 October. The official ranking remains the only authoritative reference there. The data come from FFCO's national ranking site: a race that is missing, entered wrongly or corrected later may explain a difference. The methods calculated by the site start from the \CN s of 2010, and their first months mostly reflect that starting point.
 
 \end{document}

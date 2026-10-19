@@ -1173,7 +1173,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 .calc-table th.cell-date, .calc-table td.cell-date { width: 60px; }
 .calc-table th.cell-type, .calc-table td.cell-type { width: 48px; }
 .calc-table th.cell-score, .calc-table td.cell-score { width: 54px; }
-.calc-table th.cell-w, .calc-table td.cell-w { width: 46px; }
+.calc-table th.cell-w, .calc-table td.cell-w { width: 96px; white-space: nowrap; }   /* weight, and a junior race's fading factor */
 .calc-table th.cell-use, .calc-table td.cell-use { width: 104px; }
 .calc-table td.cell-comp { overflow: hidden; }
 .calc-table td.cell-comp a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

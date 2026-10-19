@@ -47,7 +47,7 @@ from pathlib import Path
 import httpx
 from lxml import html as lhtml
 
-from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, is_nc, top_n_weighted
+from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, fade_factors, is_junior, is_nc, top_n_weighted
 from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
 import privacy
 import site_extras
@@ -279,27 +279,43 @@ def main(argv: list[str] | None = None) -> None:
         if r["circuit_id"] in circuits:
             by_method[r["method"]][(anon.lic(r["licence"]), r["circuit_id"])] = r
     cn_after = defaultdict(dict)    # method -> (licence, date, terrain) -> cn
-    cn_hist = defaultdict(lambda: defaultdict(lambda: ([], [])))   # method -> (licence, terrain) -> dates, cns
     for r in conn.execute(
         f"SELECT method, licence, date_iso, terrain, cn FROM cn_history "
-        f"WHERE method IN ({','.join('?' * len(COMPUTED))}) ORDER BY date_iso", COMPUTED
+        f"WHERE method IN ({','.join('?' * len(COMPUTED))}) AND cn IS NOT NULL", COMPUTED
     ):
-        if r["cn"] is not None:
-            cn_after[r["method"]][(anon.lic(r["licence"]), r["date_iso"], r["terrain"])] = r["cn"]
-        h = cn_hist[r["method"]][(anon.lic(r["licence"]), r["terrain"])]
-        h[0].append(r["date_iso"])
-        h[1].append(r["cn"])
+        cn_after[r["method"]][(anon.lic(r["licence"]), r["date_iso"], r["terrain"])] = r["cn"]
+    # histories per runner/terrain for each method (its published scores, fixed at their race's day): the month-end
+    # snapshots and the CN J-15 of the race files are aggregated from them on their own day, so that a race leaving
+    # the window, or a junior's race fading (params.junior_fade), shows on that day
+    hist_of = {b: defaultdict(lambda: ([], [], [], [])) for b in BASES}   # base -> (lic, t) -> dates, scores, weights, juniors
+    for base in BASES:
+        for (lic, cid), v in sorted(by_method[base].items(), key=lambda kv: kv[1]["date_iso"]):
+            if v["counts_for_cn"] and v["score"] is not None:
+                k = (lic, TERRAINS.get(v["terrain"], "For"))
+                hist_of[base][k][0].append(date.fromisoformat(v["date_iso"]))
+                hist_of[base][k][1].append(v["score"])
+                hist_of[base][k][2].append(v["poids"] or 1.0)
+                hist_of[base][k][3].append(is_junior(v["categorie"]))
+
+    def agg_at(dates, scores, weights, juniors, X: date, p: CnParams):
+        # the aggregate of the published scores (each fixed with its race's factor): no factor here
+        lo = bisect_left(dates, X - timedelta(days=p.window_days))
+        hi = bisect_right(dates, X)
+        fade = fade_factors(dates[lo:hi], juniors[lo:hi], X, p) if p.junior_fade else None
+        cn, kept = top_n_weighted(scores[lo:hi], weights[lo:hi], p, fade)
+        return Decimal_round(cn) if cn and kept else None
+
+    j15_memo = {}
 
     def cn_j15(method, lic, terrain, d):
-        """The runner's published CN 15 days before a race (the engine's cn_j15 is on its internal scale)."""
-        h = cn_hist[method].get((lic, terrain))
-        if not h:
-            return None
-        asof = date.fromisoformat(d) - timedelta(days=pf.lag_days)
-        i = bisect_right(h[0], asof.isoformat()) - 1
-        if i < 0 or h[0][i] <= (asof - timedelta(days=PARAMS[method].for_terrain(terrain).window_days)).isoformat():
-            return None
-        return h[1][i]
+        """The runner's published CN 15 days before a race, computed on that day (the engine's cn_j15 is on its internal
+        scale; the last CN after a race is not it either: a race may have left the window since, a junior's faded)."""
+        key = (method, lic, terrain, d)
+        if key not in j15_memo:
+            h = hist_of[BASE[method]].get((lic, TERRAINS.get(terrain, "For")))
+            j15_memo[key] = h and agg_at(*h, date.fromisoformat(d) - timedelta(days=pf.lag_days),
+                                          PARAMS[method].for_terrain(terrain))
+        return j15_memo[key]
     raw_res = {}
     real_names = {}                  # pseudonym -> (licence, name): the anonymised, for the auth index only
     for r in conn.execute(
@@ -458,16 +474,7 @@ def main(argv: list[str] | None = None) -> None:
     months[-1] = min(months[-1], last_race)
     print(f"{len(months)} month-ends {months[0]} .. {months[-1]}")
 
-    # histories per runner/terrain for each method
-    hist_of = {b: defaultdict(lambda: ([], [], [])) for b in BASES}   # base -> (lic, t) -> dates, scores, weights
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
-    for base in BASES:
-        for (lic, cid), v in sorted(by_method[base].items(), key=lambda kv: kv[1]["date_iso"]):
-            if v["counts_for_cn"] and v["score"] is not None:
-                k = (lic, TERRAINS.get(v["terrain"], "For"))
-                hist_of[base][k][0].append(date.fromisoformat(v["date_iso"]))
-                hist_of[base][k][1].append(v["score"])
-                hist_of[base][k][2].append(v["poids"] or 1.0)
     # Before 2026 the official pedestrian ranking was a single one, so its
     # history is pooled under "Ped"; from 2026 it is per terrain (VTT and ski: always).
     off_events = []
@@ -482,13 +489,6 @@ def main(argv: list[str] | None = None) -> None:
     for d, lic, t, ncn in off_events:
         hoff[(lic, t)][0].append(d)
         hoff[(lic, t)][1].append(ncn)
-
-    def agg_at(dates, scores, weights, X: date, p: CnParams):
-        # the aggregate of the published scores (each fixed with its race's factor): no factor here
-        lo = bisect_left(dates, X - timedelta(days=p.window_days))
-        hi = bisect_right(dates, X)
-        cn, kept = top_n_weighted(scores[lo:hi], weights[lo:hi], p)
-        return Decimal_round(cn) if cn and kept else None
 
     def off_at(dates, cns, X: date):
         hi = bisect_right(dates, X)
@@ -513,13 +513,13 @@ def main(argv: list[str] | None = None) -> None:
         files = defaultdict(dict)   # (method, t) -> lic -> [12]
         for base in BASES:
             family = [n for n in COMPUTED if BASE[n] == base]      # the Fair and its Top
-            for (lic, t), (ds, ss, ws) in hist_of[base].items():
+            for (lic, t), (ds, ss, ws, js) in hist_of[base].items():
                 full_t = TERRAIN_NAMES[t]                 # params are keyed by the database's terrain
                 ps = {n: PARAMS[n].for_terrain(full_t) for n in family}
                 for m in ym:
                     if ds and ds[0] <= m and ds[-1] >= m - timedelta(days=ps[base].window_days + 1):
                         for mth in family:
-                            cn = agg_at(ds, ss, ws, m, ps[mth])
+                            cn = agg_at(ds, ss, ws, js, m, ps[mth])
                             if cn:
                                 files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         for (lic, t), (ds, cs) in hoff.items():
@@ -606,6 +606,7 @@ def main(argv: list[str] | None = None) -> None:
             "min_scores": p.min_scores_for_cn, "min_ranked": p.min_ranked,
             "window_days": p.window_days, "lag_days": p.lag_days, "by_terrain": by_terrain(p),
             "cv_power": p.cv_power, "cn_power": p.cn_power, "sample_fraction": p.sample_fraction,
+            "junior_fade": p.junior_fade,
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}
 

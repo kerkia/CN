@@ -158,7 +158,8 @@ export function build(X) {
         <th class="r">Meilleurs scores regardés</th><th class="r">Coureurs qui mesurent le circuit</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
           <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026. Du 13 au 16 octobre, le site a publié une autre version, le
+      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026 ; depuis le 19 octobre, les courses des jeunes y comptent de moins
+        en moins avec le temps (plus bas). Du 13 au 16 octobre, le site a publié une autre version, le
         <b>Top géométrique</b> : une méthode empirique, réglée sur quinze saisons de résultats pour prédire au mieux, qui mesure les circuits par une
         moyenne géométrique et le niveau habituel par une moyenne cubique. À peine plus précise en sprint, elle était bien plus difficile à expliquer ;
         elle reste calculée pour comparaison. Elle est présentée, avec les raisons de chaque choix et les mesures qui les justifient, dans
@@ -173,7 +174,8 @@ export function build(X) {
       <p>Le niveau habituel d'un coureur est la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs scores Top des 12 derniers mois
         (70 % sur deux ans en VTT, sur trois ans en ski), chaque score compté selon son poids (voir le CN Top plus bas), sans limite de places. Il dit ce
         que vaut le coureur d'ordinaire. Ce n'est pas un classement : c'est une étape du calcul, faite des courses que le coureur a déjà courues. Le
-        CN Top, lui, ne retient que les meilleures courses : il sert à classer.</p>
+        CN Top, lui, ne retient que les meilleures courses : il sert à classer. Comme dans le CN Top, les courses courues en catégorie jeune y comptent
+        de moins en moins avec le temps.</p>
       <ul class="mx-list">
         <li><span>Seuls comptent les coureurs qui ont un niveau habituel dans la spécialité de la course. Il en faut au moins ${fmt(pf.min_ranked)} sur le
           circuit ; sinon le circuit n'a pas de valeur et ne donne pas de score.</span></li>
@@ -233,14 +235,19 @@ export function build(X) {
         de France à 6 800, qui prend 2 places, et quatre autres courses à 6 500, 6 400, 6 200 et 6 000, qui prennent une place chacune. Le CN Top vaut
         (2 × 6 800 + 6 500 + 6 400 + 6 200 + 6 000) ÷ 6 = 6 450.</p>
       <div class="mx-eq">CN Top = Σ (places × score) ÷ Σ places
-        <small>au plus ${fmt(p6.top_n)} places, dans toutes les spécialités</small></div>
+        <small>au plus ${fmt(p6.top_n)} places, dans toutes les spécialités ; une course courue en catégorie jeune compte pour places × (1 − son âge ÷ la fenêtre)</small></div>
       <ul class="mx-list">
         <li><span>Les poids suivent le nom de la compétition. Les niveaux A, B, C et D de la FFCO ne sont pas utilisés.</span></li>
+        <li><span><b>Les courses des jeunes comptent de moins en moins avec le temps.</b> Une course courue en catégorie jeune (H et D jusqu'à 20 ans)
+          prend ses places comme les autres, mais elle compte dans la moyenne pour 1 − son âge ÷ 12 mois (÷ deux ans en VTT, trois en ski) : en entier le
+          jour de la course, à moitié six mois plus tard, presque plus à la fin de la fenêtre. Un jeune progresse vite : ses courses d'il y a dix mois
+          décrivent un coureur plus lent. Les courses des adultes gardent leur poids. Le CN Top d'un jeune peut donc bouger entre deux courses.</span></li>
         <li><span>Il faut au moins ${fmt(pf.min_scores)} courses dans les 12 derniers mois pour être classé. Quand il y a moins de ${fmt(p6.top_n)} places
           remplies, le CN Top est la moyenne pondérée de ce qui est là.</span></li>
-        <li><span>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut pas faire baisser le CN Top : soit elle prend la place d'une
-          course moins bonne, soit elle reste dehors. Il faut pour cela en général 10 courses en 12 mois, moins avec des championnats ou des nationales.
-          Tant que les places ne sont pas remplies, le CN Top est une moyenne ordinaire, et une course moins bonne que les autres le fait baisser.</span></li>
+        <li><span>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut pas faire baisser le CN Top d'un adulte : soit elle prend la place
+          d'une course moins bonne, soit elle reste dehors. Il faut pour cela en général 10 courses en 12 mois, moins avec des championnats ou des nationales.
+          Tant que les places ne sont pas remplies, le CN Top est une moyenne ordinaire, et une course moins bonne que les autres le fait baisser. Pour un
+          jeune, une course récente pèse plus que les anciennes qu'elle remplace : moins bonne qu'elles, elle peut faire baisser son CN Top.</span></li>
       </ul>
     </section>
 
@@ -289,7 +296,7 @@ export function build(X) {
     const YES = (x) => mark("yes", "oui", x), NO = (x) => mark("no", "non", x), PART = (x) => mark("part", "en partie", x);
     const CRIT = [
       ["Compte les championnats et les nationales", (m) => (m === "official" ? NO("souvent écartés") : YES("ils pèsent plus"))],
-      ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("une fois les 6 places remplies"))],
+      ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("pour un adulte, une fois les 6 places remplies"))],
       ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : isTop(m) ? YES("les meilleures courses") : PART("le niveau habituel"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("saut au 1er janvier") : YES("recalage progressif"))],
       ["Simple à expliquer", (m) => (m === "official" ? YES() : m === "top6w3" || m === "fair3" ? NO("moyennes géométrique et cubique") : YES("des moyennes ordinaires"))],
@@ -398,7 +405,7 @@ export function build(X) {
             <div class="s"><b>Les meilleures courses comptent le plus</b>un championnat de France compte double, une nationale une fois et demie ; seules
               les moins bonnes courses sont laissées de côté</div>
             <div class="p"><b>Une course de plus peut faire baisser le CN</b>ce qui dissuade de courir</div><div class="arrow">→</div>
-            <div class="s"><b>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut plus le faire baisser</b>les places sont remplies par
+            <div class="s"><b>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut plus faire baisser le CN d'un adulte</b>les places sont remplies par
               les meilleures courses : plus on court, plus on a de chances de bien les remplir</div>
             <div class="p"><b>Le circuit mesuré sur les deux tiers les plus rapides</b>les coureurs qui se sont trompés ne comptent pas, et bien s'orienter
               sur un circuit piégeux rapporte moins qu'ailleurs</div><div class="arrow">→</div>
@@ -504,7 +511,7 @@ export function build(X) {
             <li><span><b>Le poids d'une course suit le nom de la compétition.</b> Un championnat de France a un poids de ${fmtW(pf.weights.cdf)} : c'est la
               course la plus relevée, celle que les coureurs préparent, et elle compte comme deux courses. Une course nationale a un poids de
               ${fmtW(pf.weights.national)}, toute autre course un poids de ${fmtW(pf.weights.other)}. Les niveaux A, B, C et D de la FFCO ne sont pas utilisés.</span></li>
-            <li><span><b>${fmt(p6.top_n)} places</b>, remplies du meilleur score au moins bon. Une fois les places remplies, une course de plus ne peut pas faire baisser le CN.
+            <li><span><b>${fmt(p6.top_n)} places</b>, remplies du meilleur score au moins bon. Une fois les places remplies, une course de plus ne peut pas faire baisser le CN d'un adulte.
               Le classement mondial de l'IOF fonctionne de la même façon, avec les cinq meilleures courses. Dix places ne faisaient pas mieux ; quatre
               faisaient moins bien (−0,24 point en forêt).</span></li>
             <li><span><b>Seuls les ${pctOf(pf.eligible_fraction)} meilleurs scores</b> des 12 derniers mois peuvent compter, pour le CN Top comme pour le
@@ -529,6 +536,46 @@ export function build(X) {
             ${ci(S.onecn?.For?.all_tuned?.ST6_t)} depuis juillet 2025, une perte qui grandit au fil des saisons), et les jeunes surévalués de
             ${fmt(Math.abs(calib("For", "young", "ST6_t")?.[0] ?? 1.4), 1)} % face aux H/D 21.` : ""}</p>
         </section>
+        ${S?.jeunes ? html`<section class="mx-slide" style="${cvar("top6w")}">
+          <p class="mx-kicker">Les courses des jeunes</p>
+          <h2>Un jeune progresse vite : ses anciennes courses comptent de moins en moins</h2>
+          <p>Le CN d'un jeune retarde sur son niveau. Un an et demi plus tard, le niveau habituel d'un jeune a monté de 22 % en forêt, celui d'un adulte
+            de 11 % (la montée générale de l'échelle comprise) : ses courses d'il y a dix mois décrivent un coureur plus lent. Depuis le 19 octobre 2026,
+            une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte dans la moyenne pour 1 − son âge ÷ la fenêtre, les courses des adultes
+            gardant leur poids ; dans le niveau habituel, qui mesure les circuits, comme dans le CN Top.</p>
+          <ul class="mx-list">
+            <li><span><b>Forêt</b> : ${pts(S.jeunes.J.For.holdout)} de 2012 à 2024, mieux dans ${S.jeunes.J.For.better} saisons sur ${S.jeunes.J.For.seasons},
+              ${pts(S.jeunes.J.For.tuned)} depuis juillet 2025.</span></li>
+            <li><span><b>Sprint</b> : ${pts(S.jeunes.J.Spr.holdout)} de 2012 à 2024, rien de significatif depuis juillet 2025
+              (${ci(S.jeunes.J.Spr.tuned)}).</span></li>
+            <li><span><b>VTT</b> : ${pts(S.jeunes.J.VTT.holdout)} de 2012 à 2024, ${pts(S.jeunes.J.VTT.tuned)} depuis juillet 2025.</span></li>
+          </ul>
+          <p>Faire vieillir les courses de tous les coureurs apporte peu : au mieux ${pts(S.jeunes.adults_best.For.holdout)} en forêt (le poids divisé par
+            deux tous les six mois), et rien de plus une fois les courses des jeunes effacées (${pts(S.jeunes.adults_and_juniors.For.holdout)} avec les deux,
+            ${pts(S.jeunes.J.For.holdout)} avec les jeunes seuls). Le niveau d'un adulte bouge peu d'une saison à l'autre : une course de l'an dernier le
+            renseigne encore. Une fenêtre de deux ans fait ${pts(S.jeunes.window24.For.holdout)} en forêt ; effacer les courses dans le CN Top seul, sans
+            toucher au niveau habituel, ${pts(S.jeunes.top_only.For.holdout)}. Le prix : en forêt, les jeunes sont un peu plus souvent annoncés devant les
+            H/D 21-34 qu'ils ne finissent devant (${sg(S.jeunes.J.For.junior_bias[0], 1)} points avant, ${sg(S.jeunes.J.For.junior_bias[1], 1)} après) ; en
+            sprint et en VTT, où ils étaient sous-évalués, l'écart se réduit.</p>
+        </section>` : ""}
+        ${S?.ecarts ? html`<section class="mx-slide">
+          <p class="mx-kicker">Les coureurs loin de leur niveau</p>
+          <h2>Les écarter de la mesure des circuits ne vaut pas la peine</h2>
+          <p>Sur un circuit, quelques coureurs finissent loin de ce que leur niveau habituel laisse prévoir : bien plus vite, souvent des jeunes en progrès
+            dont le niveau était en effet trop bas (un an plus tard, 17 à 19 % au-dessus des autres coureurs de leur âge), ou bien plus lentement, après une
+            erreur. L'étude du 18 octobre 2026 a essayé, sur 28 règles, de les écarter de la valeur du circuit : d'un côté ou des deux, au-delà d'un seuil ou
+            en part fixe, et de ne plus laisser les jeunes mesurer les circuits.</p>
+          <ul class="mx-list">
+            <li><span><b>N'écarter que les plus rapides</b> fait monter les circuits des jeunes, donc leurs CN, donc la mesure de leurs circuits suivants : en
+              forêt, les circuits des jeunes finissent jusqu'à ${fmt(S.ecarts.loop_fast_25[0], 0)} % au-dessus de ceux des adultes, et la prédiction recule
+              (${pts(S.ecarts.fast_25.For.holdout)}, ${pts(S.ecarts.fast_5.For.holdout)} au seuil de 5 %).</span></li>
+            <li><span><b>Écarter les deux côtés</b> coûte en forêt (${pts(S.ecarts.both_25.For.holdout)}) ; en sprint, ajouté à l'écart des jeunes, il gagne
+              ${pts(S.ecarts.both_and_no_juniors.Spr.holdout)}, et ${pts(S.ecarts.both_and_no_juniors.VTT.holdout)} en VTT.</span></li>
+          </ul>
+          <p>Ces gains demanderaient deux règles de plus dans la mesure des circuits, à expliquer et à tenir à jour, pour corriger le même défaut que
+            l'effacement des courses des jeunes : un CN de jeune en retard sur son niveau. La méthode garde la mesure des circuits telle quelle et traite ce
+            retard là où il naît, dans le CN.</p>
+        </section>` : ""}
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">La valeur du circuit</p>
           <h2>Quelle part du peloton mesure le circuit</h2>
@@ -714,10 +761,12 @@ export function build(X) {
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">La méthode retenue</p>
           <h2>En ligne depuis le 16 octobre 2026</h2>
+          <p>Les courses des jeunes y comptent de moins en moins avec le temps depuis le 19 octobre 2026.</p>
           <ul class="mx-list">
             <li><span><b>Niveau habituel</b> : pour chaque coureur, 15 jours avant la course, la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs
-              scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans). Ce
-              n'est pas un classement, mais une étape du calcul de la valeur des circuits.</span></li>
+              scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans), une
+              course courue en catégorie jeune comptant pour 1 − son âge ÷ la fenêtre. Ce n'est pas un classement, mais une étape du calcul de la valeur
+              des circuits.</span></li>
             <li><span><b>Valeur du circuit</b> : la moyenne des produits niveau habituel × temps des coureurs les plus rapides ayant un niveau :
               ${shareName(own(pf, "For", "sample_fraction") ?? 2 / 3)} en forêt, ${shareName(own(pf, "Spr", "sample_fraction") ?? 2 / 3)} en sprint,
               ${shareName(own(pf, "VTT", "sample_fraction") ?? 2 / 3)} en VTT et en ski ; au moins ${fmt(pf.min_ranked)} coureurs, tous les
@@ -727,7 +776,7 @@ export function build(X) {
             <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
               ${fmt(p6.top_n)} places : ${fmtW(pf.weights.cdf)} pour un championnat de France, ${fmtW(pf.weights.national)} pour une course nationale,
               ${fmtW(pf.weights.other)} pour une autre course. Le CN Top est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de
-              places. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
+              places ; une course courue en catégorie jeune y compte pour 1 − son âge ÷ la fenêtre. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
             <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top
               de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée
               des dix dernières années, dans les quatre spécialités ; les mois se comptent au calendrier.</span></li>
@@ -742,13 +791,13 @@ export function build(X) {
             centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue
             garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places,
             une part du peloton réglée par spécialité pour mesurer les circuits, et un recalage continu. Elle gagne plus de deux points de duels sur le CN
-            officiel en forêt comme en sprint ; elle fait jeu égal en forêt avec la variante géométrique qui l'a précédée, une méthode empirique réglée
-            sur les données pour ses performances, et ne lui cède que 0,15 point en sprint.</p>
+            officiel en forêt comme en sprint. Depuis que les courses des jeunes comptent de moins en moins avec le temps, elle fait mieux en forêt que la
+            variante géométrique qui l'a précédée, une méthode empirique réglée sur les données pour ses performances, et jeu égal en sprint.</p>
           <div class="mx-verdict">
             <div class="mx-box" style="${cvar("top6w")}"><h3>Classer, qualifier, sélectionner</h3>
               <div class="who">${cnLabel("top6w")}</div>
               <p>Ce dont le coureur est capable à son meilleur, nourri par les grandes compétitions ; une fois ses 6 places remplies, une course de plus ne
-                le fait pas baisser.</p></div>
+                fait pas baisser celui d'un adulte.</p></div>
             <div class="mx-box" style="${cvar("top6w")}"><h3>Prédire qui finira devant</h3>
               <div class="who">${cnLabel("top6w")}</div>
               <p>Nettement devant la méthode officielle : plus de 2 points de duels bien prédits de plus, en forêt comme en sprint.</p></div>

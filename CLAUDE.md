@@ -95,7 +95,19 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
 3. **`top6w`, « Méthode CN « Top »** — **the method published since 2026-10-16** (owner: a method everyone can follow by
    hand, at a cost of a few hundredths of a point; ENGINE 11). **Derived from `fair`** (`CnEngine.derive`): same race scores,
    circuit values and recalage factors; the best 60 % scores fill **6 weight places** from the best down, the last race only
-   for the places left, in a weighted **arithmetic** mean. Racing more can only raise it once the places are filled. Circuits:
+   for the places left, in a weighted **arithmetic** mean. Racing more can only raise an adult's once the places are filled.
+   **The juniors' races fade** (owner, 2026-10-19; ENGINE 12; `CnParams.junior_fade` 1.0 on `fair`, so on the Top and on the
+   usual level that values circuits, 0 on the geometric pair): a race run in a junior category (H/D 12-20, `cn.is_junior` on the
+   race's own category) keeps its places but weighs × (1 − its age / the window) in the mean, read on the day the CN is computed
+   (`cn.fade_factors`, floor 1e-3; `RunnerHistory.add(..., junior)`, every history the engine, `prov/compute.py` and
+   `build_site` build; `cn.js` `explain`/`topWeighted`/`isJunior`, the runner page's calculation shows the factor). A junior's
+   CN therefore moves between races, and a recent junior race below the older ones' mean can lower it. Study of 2026-10-19
+   (private artifact https://claude.ai/artifact/4QztRsFZh8siyimuLvYiGa; scratch `rvar.py`, 17 curves from 2010 on the
+   2026-10-09 database, CN J-15 read on its day, against production read the same way, 2012-2024): forest +0.18 [0.16, 0.21]
+   (15 of 15 seasons better, +0.14 since July 2025), sprint +0.11 [0.05, 0.17] (ns since 2025), VTT +0.15 (+0.28 since 2025);
+   every runner's races fading ≤ +0.08 and nothing once the juniors' fade, a 24-month window −0.6, the Top alone −0.08; junior
+   bias in forest +2.3 → +3.9 (sprint and VTT better). MTBO would gain more with adults fading over its 24 months and juniors
+   over 12 (+0.41): not taken. `study.json` `jeunes`. Circuits:
    FFCO's arithmetic mean of usual level × time over the fastest **90 % in forest, ⌈2N/3⌉ in sprint, 75 % in VTT and ski**
    (all four when only four, FFCO's exception kept; `build_methods` `fair.by_terrain`). Recalage: the geometric pair's
    (`norm3`: anchored on the Top's cohort, the drift corrected, calendar months, carried 10 months). **Study of 2026-10-15/16**
@@ -135,7 +147,8 @@ admin page; `store.available()`, `store.setAnalyst`; display only — the data f
 The Top keeps its colour and dash whichever pair publishes it (`charts.METHOD_SLOT`, `build_site` `COLOR`). **The
 documentation (page and PDF) never names the Fit** (owner, 2026-10-14: misleading): the circuits are measured from the scores
 the runners present earned in their previous races, their « niveau habituel », a step of the calculation and not a ranking.
-« A race more never lowers the CN » is only said with « once the 6 places are filled » (before, the CN Top is an ordinary mean).
+« A race more never lowers the CN » is only said with « once the 6 places are filled » (before, the CN Top is an ordinary mean),
+and of an adult's CN (a junior's recent races weigh more than their older ones, 2026-10-19).
 **The documentation was shortened on 2026-10-16** (owner): the study tab has six chapters (Objectifs, Le point de départ,
 La mesure, Les choix et les variantes, Les résultats, La méthode retenue), the alternatives in a few lines each, the
 conclusion on simplicity and accuracy; old `?voir=score|circuit|recalage|ecartes` links open « choix »; the white paper
@@ -155,10 +168,13 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   ten-year drift — `norm3`, shared by both pairs since 2026-10-16; see method 4). The factor of a race is that of
   its **day**: straight line between monthly knots, each monthly factor reached on the 1st of the following month
   (`cn_engine.daily_knots` / `factor_on`). A race's published score = raw score × factor of its day, **fixed once,
-  never revised**; the CN is the aggregate of those published scores (no factor at CN level), so a CN only moves
-  when a race enters or leaves the window. Never explain method artefacts in the UI — fix the method instead.
+  never revised**; the CN is the aggregate of those published scores (no factor at CN level), so an adult's CN only
+  moves when a race enters or leaves the window (a junior's also as their races fade). Never explain method artefacts in the UI — fix the method instead.
 - The CN J-15 shown for computed methods is the runner's **published** CN 15 days before the race (the engine's
-  own `cn_j15` column is on its internal scale).
+  own `cn_j15` column is on its internal scale), **computed on that day** from the published scores (`build_site.cn_j15`
+  → `agg_at`, since 2026-10-19; before, the last CN after a race within the window, which still counted races that had
+  left the window since the runner's last race: production read on the day −0.12 point in sprint, +0.02 forest, +0.22
+  VTT, measured 2026-10-19). The month-end snapshots were always computed on their day.
 - The engine takes a circuit's rules (sample, mean) from its discipline's params (`pt(terrain)` in `run_method`,
   2026-10-13); `cn.js` mirrors `circuit_value` as `circuitValue` for the live page's estimates (`meta.methods.*.params`
   carries `sample_fraction`, `cv_power`, `cn_power`, per terrain).
@@ -167,6 +183,13 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   2 races minimum (2026-10-07: +11 % ranked in forest, +38 % in sprint, and those runners' Fit CN still beats
   their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
+  **Leaving out the runners far from the circuit's line** (study of 2026-10-18, private artifact
+  https://claude.ai/artifact/WS7C7tMKsj7h7ZzezNCLvE; scratch `ovar.py`, 28 rules: by residual from the score line or a fitted
+  line, one side or both, threshold or share, on top of or instead of the time trim, Huber, juniors or few-race runners not
+  valuing): the fast tail's CN is really ~18 % too low, but one side only feeds back through the circuits (forest junior circuits
+  +16-25 % above adult ones; −0.21 to −1.06 point), both sides lose in forest; juniors not valuing + both sides beyond the 2.5 %
+  thresholds gains +0.29 in sprint and VTT but adds two rules for the flaw the juniors' fading treats: not adopted (owner,
+  2026-10-19). `study.json` `ecarts`; the Documentation's « Les choix » has a slide on each study, the white paper a paragraph.
 
 ## Provisional results (« Résultats »)
 

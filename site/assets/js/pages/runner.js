@@ -312,7 +312,7 @@ export async function render(main, { arg, query }) {
     const p = paramsFor(meta, m, terrain), pct = Math.round(100 * (p.eligible_fraction ?? 0.6));
     const days = p.window_days ?? 365;
     const power = p.cn_power ?? 1, meanKey = power === 3 ? "calc.mean.c" : power === 2 ? "calc.mean.q" : "calc.mean.l";
-    return { pct, rest: 100 - pct, win: days > 365 ? `${Math.round(days / 365)} ans` : "12 mois",
+    return { pct, rest: 100 - pct, win: days > 365 ? t("calc.winYears", { n: Math.round(days / 365) }) : t("calc.win12"),
       Mean: t(meanKey), mean: t(meanKey).toLowerCase() };
   }
   function roleLabel(role, m) {
@@ -335,8 +335,9 @@ export async function render(main, { arg, query }) {
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
       const top = m === "top6w" || m === "top6w3";
-      if (m === "fair" || m === "fair3") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.`;
-      else if (top) formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.`;
+      const fading = x.rows.some((row) => row.fade < 1) ? html` ${t("calc.fadeNote")}` : "";
+      if (m === "fair" || m === "fair3") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.${fading}`;
+      else if (top) formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.${fading}`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;
       const body = x.rows.length ? html`<div class="calc-table" id="calc-t-${m}"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
@@ -365,10 +366,11 @@ export async function render(main, { arg, query }) {
           ...(m !== "official" ? [{ key: "w", label: t("col.weight"), align: "r", cls: "num cell-w", sort: (row) => row.weight,
             render: (row) => {
               const w = (v) => fmt(v, Number.isInteger(v) ? 0 : 1);
-              // the last race kept may only partly fit in the 6 slots
+              // the last race kept may only partly fit in the 6 slots; a junior's race fades with its age
+              const fade = row.fade < 1 ? html` <span class="dim" title="${t("calc.fade", { f: fmt(row.fade, 2) })}">× ${fmt(row.fade, 2)}</span>` : "";
               return row.used && row.used < row.weight
-                ? html`<span title="${t("calc.partial")}">×${w(row.used)}<span class="dim">/${w(row.weight)}</span></span>`
-                : html`×${w(row.weight)}`;
+                ? html`<span title="${t("calc.partial")}">×${w(row.used)}<span class="dim">/${w(row.weight)}</span></span>${fade}`
+                : html`×${w(row.weight)}${fade}`;
             } }] : []),
           { key: "use", label: t("col.use"), cls: "cell-use", sort: (row) => ROLE(row.role), defaultDir: 1, render: (row) => roleLabel(row.role, m) },
         ],

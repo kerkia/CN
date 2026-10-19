@@ -158,7 +158,8 @@ export function build(X) {
         <th class="r">Best scores considered</th><th class="r">Runners who measure the course</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "the last 12 months" : `the last ${fmt(Math.round(w / 365))} years`}</td>
           <td class="r">the best ${pctOf(f)}</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">This method has been online since 16 October 2026. From 13 to 16 October, the site published another version, the
+      <p style="margin-top:14px">This method has been online since 16 October 2026; since 19 October, juniors' races count less and less in it as they
+        age (below). From 13 to 16 October, the site published another version, the
         <b>geometric Top</b>: an empirical method, tuned on fifteen seasons of results to predict as well as possible, which measures courses with a
         geometric mean and the usual level with a cubic mean. Barely more accurate in sprint, it was much harder to explain;
         it is still calculated for comparison. It is presented, with the reasons for each choice and the measurements that support them, in
@@ -173,7 +174,8 @@ export function build(X) {
       <p>A runner's usual level is the weighted mean of their best ${pctOf(pf.eligible_fraction)} Top scores of the last 12 months
         (70% over two years in MTB, over three years in ski), each score counted by its weight (see the CN Top below), with no limit on places. It says
         what the runner is usually worth. It is not a ranking: it is a step in the calculation, made of the races the runner has already run. The
-        CN Top, on the other hand, keeps only the best races: it is what ranks the runners.</p>
+        CN Top, on the other hand, keeps only the best races: it is what ranks the runners. As in the CN Top, races run in a junior class count less
+        and less in it as they age.</p>
       <ul class="mx-list">
         <li><span>Only runners who have a usual level in the race's discipline count. At least ${fmt(pf.min_ranked)} are needed on the
           course; otherwise the course has no value and gives no score.</span></li>
@@ -233,14 +235,19 @@ export function build(X) {
         championship at 6,800, which takes 2 places, and four other races at 6,500, 6,400, 6,200 and 6,000, which take one place each. The CN Top is
         (2 × 6,800 + 6,500 + 6,400 + 6,200 + 6,000) ÷ 6 = 6,450.</p>
       <div class="mx-eq">CN Top = Σ (places × score) ÷ Σ places
-        <small>at most ${fmt(p6.top_n)} places, in every discipline</small></div>
+        <small>at most ${fmt(p6.top_n)} places, in every discipline; a race run in a junior class counts for places × (1 − its age ÷ the window)</small></div>
       <ul class="mx-list">
         <li><span>The weights follow the competition's name. FFCO's levels A, B, C and D are not used.</span></li>
+        <li><span><b>Juniors' races count less and less as they age.</b> A race run in a junior class (M and W up to 20) takes its places like the
+          others, but counts in the mean for 1 − its age ÷ 12 months (÷ two years in MTB, three in ski): in full on the race's day, half six months
+          later, hardly at all at the end of the window. A junior improves fast: their races of ten months ago describe a slower runner. Adults' races
+          keep their weight. A junior's CN Top can therefore move between two races.</span></li>
         <li><span>At least ${fmt(pf.min_scores)} races in the last 12 months are needed to be ranked. When fewer than ${fmt(p6.top_n)} places
           are filled, the CN Top is the weighted mean of what is there.</span></li>
-        <li><span>Once the ${fmt(p6.top_n)} places are filled, one more race cannot lower the CN Top: either it takes the place of a weaker
+        <li><span>Once the ${fmt(p6.top_n)} places are filled, one more race cannot lower an adult's CN Top: either it takes the place of a weaker
           race, or it stays out. This usually takes 10 races in 12 months, fewer with championships or national races.
-          Until the places are filled, the CN Top is an ordinary mean, and a race worse than the others lowers it.</span></li>
+          Until the places are filled, the CN Top is an ordinary mean, and a race worse than the others lowers it. For a junior, a recent race weighs
+          more than the older ones it replaces: worse than them, it can lower their CN Top.</span></li>
       </ul>
     </section>
 
@@ -289,7 +296,7 @@ export function build(X) {
     const YES = (x) => mark("yes", "yes", x), NO = (x) => mark("no", "no", x), PART = (x) => mark("part", "partly", x);
     const CRIT = [
       ["Counts championships and national races", (m) => (m === "official" ? NO("often left out") : YES("they weigh more"))],
-      ["One more race does not lower the CN", (m) => (m === "official" ? NO("often it does") : PART("once the 6 places are filled"))],
+      ["One more race does not lower the CN", (m) => (m === "official" ? NO("often it does") : PART("for an adult, once the 6 places are filled"))],
       ["Reflects the level in major competitions", (m) => (m === "official" ? NO("without the best 10%") : isTop(m) ? YES("the best races") : PART("the usual level"))],
       ["Stable from one year to the next", (m) => (m === "official" ? NO("jump on 1 January") : YES("gradual rescaling"))],
       ["Simple to explain", (m) => (m === "official" ? YES() : m === "top6w3" || m === "fair3" ? NO("geometric and cubic means") : YES("ordinary means"))],
@@ -398,7 +405,7 @@ export function build(X) {
             <div class="s"><b>The best races count the most</b>a French championship counts double, a national race one and a half times; only
               the weakest races are left aside</div>
             <div class="p"><b>One more race can lower the CN</b>which discourages racing</div><div class="arrow">→</div>
-            <div class="s"><b>Once the ${fmt(p6.top_n)} places are filled, one more race can no longer lower it</b>the places are filled by
+            <div class="s"><b>Once the ${fmt(p6.top_n)} places are filled, one more race can no longer lower an adult's CN</b>the places are filled by
               the best races: the more you race, the better your chance of filling them well</div>
             <div class="p"><b>The course measured on the fastest two thirds</b>runners who made mistakes do not count, and navigating well
               on a tricky course earns less than elsewhere</div><div class="arrow">→</div>
@@ -504,7 +511,7 @@ export function build(X) {
             <li><span><b>A race's weight follows the competition's name.</b> A French championship has a weight of ${fmtW(pf.weights.cdf)}: it is the
               most competitive race, the one runners prepare for, and it counts as two races. A national race has a weight of
               ${fmtW(pf.weights.national)}, any other race a weight of ${fmtW(pf.weights.other)}. FFCO's A, B, C and D levels are not used.</span></li>
-            <li><span><b>${fmt(p6.top_n)} places</b>, filled from the best score down. Once the places are filled, one more race cannot lower the CN.
+            <li><span><b>${fmt(p6.top_n)} places</b>, filled from the best score down. Once the places are filled, one more race cannot lower an adult's CN.
               The IOF World Ranking works the same way, with the best five races. Ten places did no better; four
               did worse (−0.24 points in forest).</span></li>
             <li><span><b>Only the best ${pctOf(pf.eligible_fraction)} of scores</b> from the last 12 months can count, for the CN Top as for the
@@ -529,6 +536,46 @@ export function build(X) {
             ${ci(S.onecn?.For?.all_tuned?.ST6_t)} since July 2025, a loss that grows over the seasons), and juniors overrated by
             ${fmt(Math.abs(calib("For", "young", "ST6_t")?.[0] ?? 1.4), 1)}% against M/W21.` : ""}</p>
         </section>
+        ${S?.jeunes ? html`<section class="mx-slide" style="${cvar("top6w")}">
+          <p class="mx-kicker">Juniors' races</p>
+          <h2>A junior improves fast: their older races count less and less</h2>
+          <p>A junior's CN lags behind their level. A year and a half later, a junior's usual level has risen by 22% in forest, an adult's by 11% (the
+            general rise of the scale included): their races of ten months ago describe a slower runner. Since 19 October 2026, a race run in a junior
+            class (M and W up to 20) counts in the mean for 1 − its age ÷ the window, adults' races keeping their weight; in the usual level, which
+            measures the courses, as in the CN Top.</p>
+          <ul class="mx-list">
+            <li><span><b>Forest</b>: ${pts(S.jeunes.J.For.holdout)} from 2012 to 2024, better in ${S.jeunes.J.For.better} seasons of ${S.jeunes.J.For.seasons},
+              ${pts(S.jeunes.J.For.tuned)} since July 2025.</span></li>
+            <li><span><b>Sprint</b>: ${pts(S.jeunes.J.Spr.holdout)} from 2012 to 2024, nothing significant since July 2025
+              (${ci(S.jeunes.J.Spr.tuned)}).</span></li>
+            <li><span><b>MTB</b>: ${pts(S.jeunes.J.VTT.holdout)} from 2012 to 2024, ${pts(S.jeunes.J.VTT.tuned)} since July 2025.</span></li>
+          </ul>
+          <p>Ageing every runner's races brings little: at best ${pts(S.jeunes.adults_best.For.holdout)} in forest (the weight halved every six months), and
+            nothing more once the juniors' races fade (${pts(S.jeunes.adults_and_juniors.For.holdout)} with both, ${pts(S.jeunes.J.For.holdout)} with the
+            juniors alone). An adult's level changes little from one season to the next: a race of last year still tells about it. A two-year window gives
+            ${pts(S.jeunes.window24.For.holdout)} in forest; fading the races in the CN Top alone, leaving the usual level as it was,
+            ${pts(S.jeunes.top_only.For.holdout)}. The price: in forest, juniors are predicted ahead of M/W 21-34 a little more often than they finish ahead
+            (${sg(S.jeunes.J.For.junior_bias[0], 1)} points before, ${sg(S.jeunes.J.For.junior_bias[1], 1)} after); in sprint and MTB, where they were
+            underrated, the gap narrows.</p>
+        </section>` : ""}
+        ${S?.ecarts ? html`<section class="mx-slide">
+          <p class="mx-kicker">Runners far from their level</p>
+          <h2>Leaving them out of the course's measure is not worth it</h2>
+          <p>On a course, a few runners finish far from what their usual level predicts: much faster, often juniors who are improving and whose level was
+            indeed too low (a year later, 17 to 19% above the other runners of their age), or much slower, after a mistake. The study of 18 October 2026
+            tried, with 28 rules, to leave them out of the course value: on one side or both, beyond a threshold or as a fixed share, and to stop juniors
+            from measuring courses.</p>
+          <ul class="mx-list">
+            <li><span><b>Leaving out the fastest only</b> raises the juniors' courses, so their CNs, so the measure of their next courses: in forest, the
+              juniors' courses end up as much as ${fmt(S.ecarts.loop_fast_25[0], 0)}% above the adults', and predictions get worse
+              (${pts(S.ecarts.fast_25.For.holdout)}, ${pts(S.ecarts.fast_5.For.holdout)} at the 5% threshold).</span></li>
+            <li><span><b>Leaving out both sides</b> costs in forest (${pts(S.ecarts.both_25.For.holdout)}); in sprint, together with leaving the juniors out,
+              it gains ${pts(S.ecarts.both_and_no_juniors.Spr.holdout)}, and ${pts(S.ecarts.both_and_no_juniors.VTT.holdout)} in MTB.</span></li>
+          </ul>
+          <p>Those gains would take two more rules in the course's measure, to explain and to maintain, to correct the same flaw as the fading of the
+            juniors' races: a junior's CN lagging behind their level. The method keeps the course's measure as it is and treats that lag where it arises,
+            in the CN.</p>
+        </section>` : ""}
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">The course value</p>
           <h2>Which share of the field measures the course</h2>
@@ -714,10 +761,11 @@ export function build(X) {
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">The method retained</p>
           <h2>Online since 16 October 2026</h2>
+          <p>Juniors' races have counted less and less in it as they age since 19 October 2026.</p>
           <ul class="mx-list">
             <li><span><b>Usual level</b>: for each runner, 15 days before the race, the weighted mean of their best ${pctOf(pf.eligible_fraction)} of
-              Top scores from the last 12 months, each according to its weight, with no limit on places (in MTB and ski: 70% of the scores, over two and three years). It
-              is not a ranking, but a step in calculating the course value.</span></li>
+              Top scores from the last 12 months, each according to its weight, with no limit on places (in MTB and ski: 70% of the scores, over two and three years),
+              a race run in a junior class counting for 1 − its age ÷ the window. It is not a ranking, but a step in calculating the course value.</span></li>
             <li><span><b>Course value</b>: the mean of the products usual level × time of the fastest runners who have a level:
               ${shareName(own(pf, "For", "sample_fraction") ?? 2 / 3)} in forest, ${shareName(own(pf, "Spr", "sample_fraction") ?? 2 / 3)} in sprint,
               ${shareName(own(pf, "VTT", "sample_fraction") ?? 2 / 3)} in MTB and ski; at least ${fmt(pf.min_ranked)} runners, all
@@ -727,7 +775,7 @@ export function build(X) {
             <li><span><b>CN Top</b>: the best Top scores, among the best ${pctOf(pf.eligible_fraction)} of the last 12 months, fill
               ${fmt(p6.top_n)} places: ${fmtW(pf.weights.cdf)} for a French championship, ${fmtW(pf.weights.national)} for a national race,
               ${fmtW(pf.weights.other)} for any other race. The CN Top is the weighted mean of the scores kept, each counted as many times as it has
-              places. At least ${fmt(pf.min_scores)} races are needed.</span></li>
+              places; a race run in a junior class counts for 1 − its age ÷ the window. At least ${fmt(pf.min_scores)} races are needed.</span></li>
             <li><span><b>Rescaling</b>: each day, a factor keeps the mean of the best ${pctOf(pf.anchor_top_fraction)} of CN Top values
               in each discipline at ${fmt(pf.anchor_target)}. It is calculated on the level measured two months earlier, averaged over 13 months, extended by 10 months at the pace of the rise
               over the last ten years, in all four disciplines; months are counted by the calendar.</span></li>
@@ -742,13 +790,13 @@ export function build(X) {
             hundredths. At that level, a gain no longer shows in a ranking, but a complicated rule shows in every explanation. The method retained
             therefore keeps FFCO's score and ordinary means, and changes only what really matters: the best races kept over six places,
             a share of the field set per discipline to measure the courses, and continuous rescaling. It gains more than two points of duels over the official
-            CN in forest as in sprint; it is level in forest with the geometric variant that preceded it, an empirical method tuned
-            on the data for its performance, and gives up only 0.15 points to it in sprint.</p>
+            CN in forest as in sprint. Since juniors' races count less and less as they age, it does better in forest than the geometric variant
+            that preceded it, an empirical method tuned on the data for its performance, and as well in sprint.</p>
           <div class="mx-verdict">
             <div class="mx-box" style="${cvar("top6w")}"><h3>Ranking, qualifying, selecting</h3>
               <div class="who">${cnLabel("top6w")}</div>
               <p>What the runner can do at their best, fed by the major competitions; once their 6 places are filled, one more race does not
-                lower it.</p></div>
+                lower an adult's.</p></div>
             <div class="mx-box" style="${cvar("top6w")}"><h3>Predicting who will finish ahead</h3>
               <div class="who">${cnLabel("top6w")}</div>
               <p>Well ahead of the official method: more than 2 points more duels called right, in forest as in sprint.</p></div>

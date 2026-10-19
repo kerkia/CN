@@ -50,6 +50,7 @@ from .cn import (
     circuit_value,
     classify_status,
     is_nc,
+    is_junior,
     group_weight,
     race_weight,
     parse_time,
@@ -277,6 +278,15 @@ def build_methods() -> dict[str, MethodSpec]:
         by_terrain={"Forêt": {"sample_fraction": 0.90},
                     "VTT": {"window_days": 730, "eligible_fraction": 0.70, "sample_fraction": 0.75},
                     "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "sample_fraction": 0.75}},
+        # The juniors' races fade over the window (owner, 2026-10-19): a race run in H/D 12-20 weighs
+        # 1 - its age / the window in the mean, an adult's race keeps its weight (cn.fade_factors). Study of
+        # 2026-10-19 (the 2026-10-09 database, every rule from 2010, CN J-15 read on its day; against production read
+        # the same way, 2012-2024): forest +0.18 [0.16, 0.21] point of duels (better in 15 of 15 seasons, +0.14
+        # [0.08, 0.20] since July 2025), sprint +0.11 [0.05, 0.17] (since July 2025 +0.04, not significant), VTT +0.15
+        # [0.10, 0.19] (+0.28 [0.07, 0.53] since July 2025). Fading every runner's races gained at most +0.08 (forest,
+        # halving every 6 months) and nothing once the juniors' fade; a 24-month window lost 0.6; the Top alone, the
+        # usual level unchanged, lost 0.08. In both steps, so that the circuits' values follow.
+        junior_fade=1.0,
     )
     # The method retained (study of 2026-10-13, owner's go-ahead): the CN as the weighted cubic mean of the kept
     # scores - k = 3: computed at race level, a runner 1 % slower than another gets 3 % fewer points and the CN
@@ -307,7 +317,7 @@ def build_methods() -> dict[str, MethodSpec]:
     # 0 (the whole field; k = 3 already -0.05), sprint 400 (+0.11 [+0.06, +0.15]; flat from 200 to 1000: the gain is the
     # four-runner exception dropped), VTT 50 (+0.12 [+0.05, +0.19]; smaller k gain more on 2012-2024 but lose since 2025),
     # ski 50 as VTT (not measurable). `tail_mean`: the mean tail effect of the discipline's circuits, 2011-2026.
-    fair3 = dataclasses.replace(fair, by_terrain={
+    fair3 = dataclasses.replace(fair, junior_fade=0.0, by_terrain={
         "Forêt": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 0.0, "tail_mean": 0.0397},
         "Sprint": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 400.0, "tail_mean": 0.0239},
         "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0, "tail_k": 50.0, "tail_mean": 0.0247},
@@ -327,7 +337,7 @@ def build_methods() -> dict[str, MethodSpec]:
             params=fair,
             rescale=None,  # no annual step at all
             normalisation=norm3,     # since 2026-10-16: anchored on the Top, the drift corrected (+0.08 point in forest)
-            description="the usual level: weighted mean of the best 60 %; arithmetic circuit value over the fastest share (forest 90 %, sprint 2/3, VTT and ski 75 %)",
+            description="the usual level: weighted mean of the best 60 %, juniors' races fading over the window; arithmetic circuit value over the fastest share (forest 90 %, sprint 2/3, VTT and ski 75 %)",
         ),
         "top6w": MethodSpec(
             name="top6w",
@@ -336,7 +346,7 @@ def build_methods() -> dict[str, MethodSpec]:
             params=dataclasses.replace(fair, top_n=6),
             derived_from="fair",
             normalisation=norm3,
-            description="Top: fair's scores, best 6 weighted places, weighted arithmetic mean",
+            description="Top: fair's scores, best 6 weighted places, weighted arithmetic mean, juniors' races fading over the window",
         ),
         "fair3": MethodSpec(
             name="fair3",
@@ -523,8 +533,8 @@ class CnEngine:
                     for h in hist.values():
                         h.scores = [Decimal_round(x * f) for x in h.scores]
 
-        for lic, terrain, d, raw, w in self.conn.execute(
-            """SELECT licence, terrain, date_iso, score_raw, poids FROM scores
+        for lic, terrain, d, raw, w, cat in self.conn.execute(
+            """SELECT licence, terrain, date_iso, score_raw, poids, categorie FROM scores
                WHERE method = ? AND date_iso < ? AND counts_for_cn = 1 AND score_raw IS NOT NULL
                ORDER BY date_iso, course_id, circuit_id""",
             (spec.name, since),
@@ -533,7 +543,7 @@ class CnEngine:
             if current_year is None:
                 current_year = dd.year
             cross_into(dd.year)
-            hist[(lic, terrain)].add(dd, raw, w)
+            hist[(lic, terrain)].add(dd, raw, w, is_junior(cat))
         # rescales between the last stored race and `since` were computed from
         # this same unchanged state, so they are replayed too
         if current_year is not None:
@@ -696,7 +706,7 @@ class CnEngine:
                         score = 0
                         counts = 1
                 if counts and score is not None:
-                    hist[(r["licence"], terrain)].add(d, score, weight)
+                    hist[(r["licence"], terrain)].add(d, score, weight, is_junior(cat))
                     stats["scores"] += 1
                     cn_after, n_w, n_k = cn_for(r["licence"], terrain, d)
                     # n_kept == 0 means this is the seed showing through, not a
@@ -758,12 +768,13 @@ class CnEngine:
         raw: dict = defaultdict(RunnerHistory)
         pub: dict = defaultdict(RunnerHistory)
         for s in self.conn.execute(
-                "SELECT licence, terrain, date_iso, score, score_raw, poids FROM scores "
+                "SELECT licence, terrain, date_iso, score, score_raw, poids, categorie FROM scores "
                 "WHERE method=? AND counts_for_cn=1 AND score_raw IS NOT NULL AND date_iso >= ? "
                 "ORDER BY date_iso, course_id, circuit_id", (spec.name, start)):
             d, w, key = date.fromisoformat(s["date_iso"]), s["poids"] or 1.0, (s["licence"], s["terrain"])
-            raw[key].add(d, s["score_raw"], w)
-            pub[key].add(d, s["score"] if s["score"] is not None else s["score_raw"], w)
+            jun = is_junior(s["categorie"])
+            raw[key].add(d, s["score_raw"], w, jun)
+            pub[key].add(d, s["score"] if s["score"] is not None else s["score_raw"], w, jun)
         rows = []
         for r in self.conn.execute(
                 "SELECT licence, terrain, date_iso, cn_raw, n_scores_window FROM cn_history "
@@ -888,10 +899,11 @@ class CnEngine:
         cfg, p = spec.normalisation, spec.params
         hist: dict = defaultdict(RunnerHistory)
         for s in self.conn.execute(
-                "SELECT licence, terrain, date_iso, score_raw, poids FROM scores "
+                "SELECT licence, terrain, date_iso, score_raw, poids, categorie FROM scores "
                 "WHERE method=? AND counts_for_cn=1 AND score_raw IS NOT NULL "
                 "ORDER BY date_iso, course_id, circuit_id", (spec.name,)):
-            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score_raw"], s["poids"] or 1.0)
+            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score_raw"], s["poids"] or 1.0,
+                                                   is_junior(s["categorie"]))
         tops: dict[str, CnParams] = {}
         rows = []
         for r in self.conn.execute(
@@ -917,10 +929,11 @@ class CnEngine:
             start = (date.fromisoformat(rewrite_from) - timedelta(days=p.max_window_days + 1)).isoformat()
         hist: dict = defaultdict(RunnerHistory)
         for s in self.conn.execute(
-                "SELECT licence, terrain, date_iso, score, poids FROM scores "
+                "SELECT licence, terrain, date_iso, score, poids, categorie FROM scores "
                 "WHERE method=? AND counts_for_cn=1 AND score IS NOT NULL AND date_iso >= ? "
                 "ORDER BY date_iso", (spec.name, start)):
-            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score"], s["poids"] or 1.0)
+            hist[(s["licence"], s["terrain"])].add(date.fromisoformat(s["date_iso"]), s["score"], s["poids"] or 1.0,
+                                                   is_junior(s["categorie"]))
         updates = []
         for r in self.conn.execute(
                 "SELECT licence, terrain, date_iso, cn_raw FROM cn_history WHERE method=? AND date_iso >= ?",

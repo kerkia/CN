@@ -81,7 +81,9 @@ TOP6W_CN_VERSION = 5
 #  11 (2026-10-16): the linear pair becomes the method published: "fair" values circuits by the arithmetic mean over the
 #                   fastest 90 % in forest, two-thirds in sprint, 75 % in VTT and ski, with the drift-corrected recalage
 #                   anchored on the Top; "top6w" is the Top everyone sees, "top6w3"/"fair3" the geometric analysis pair
-ENGINE_VERSION = 11
+#  12 (2026-10-19): the linear pair's juniors' races fade over the window (a race run in H/D 12-20 weighs 1 - its age /
+#                   the window in the CN's mean, junior_fade); the race files' CN J-15 is computed on its own day
+ENGINE_VERSION = 12
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
