@@ -103,7 +103,7 @@ export async function render(main, query) {
     $("#tiles").innerHTML = html`
       ${tile(t("tr.m.comps"), fmt(total), period)}
       ${tile(t(`tr.count.${level}`), fmt(rows.length), terrain ? t(`terrain.${terrain}`) : t("ag.allSpecs"))}
-      ${tile(`1er · ${t(`tr.m.${measure}`)}`, top ? show(top, measure) : "—", top ? placeName(top.code) : "")}
+      ${tile(`${ord(1)} · ${t(`tr.m.${measure}`)}`, top ? show(top, measure) : "—", top ? placeName(top.code) : "")}
       ${tile(t("tr.unplaced"), fmt(unplaced), t(`tr.unplaced.${level}`))}`;
     $("#list-title").textContent = `${t(`tr.by.${level}`)} · ${t(`tr.m.${measure}`)}`;
     $("#list-hint").textContent = period;

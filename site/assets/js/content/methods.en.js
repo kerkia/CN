@@ -311,17 +311,17 @@ export function build(X) {
       objectifs: () => html`
         <section class="mx-slide mx-hero">
           <p class="mx-kicker">The study</p>
-          <h2>A CN that is simple to understand, counts your best races and predicts results better</h2>
+          <h2>An index that is simple to understand, counts your best races and predicts results better</h2>
           <p class="mx-lead">This chapter explains why the Ozimut method was created, how it was evaluated, which ideas were tried and which
             were kept. It ends with the method online since 16 October 2026: the simplest of those that predict best.</p>
           ${hf && hs ? html`<div class="mx-stats">
             <div class="mx-stat"><b>${lvl(hf, "acc", "official")}% then ${lvl(hf, "acc", "top6w")}%</b><span>of duels called right in forest by the official
-              CN, then by the Ozimut index. A duel is two runners on the same course; it is called right when the one with the better CN
+              CN, then by the Ozimut index. A duel is two runners on the same course; it is called right when the one with the higher value
               finishes ahead.</span></div>
             <div class="mx-stat"><b>${lvl(hs, "acc", "official")}% then ${lvl(hs, "acc", "top6w")}%</b><span>of duels called right in sprint, over the
               same seasons.</span></div>
             <div class="mx-stat"><b>${lvl(hf, "r2", "official")}% then ${lvl(hf, "r2", "top6w")}%</b><span>of the time differences between runners on the same
-              course explained by the CN in forest.</span></div>
+              course explained in forest by the official CN, then by the Ozimut index.</span></div>
             <div class="mx-stat"><b>${fmt(ev.rows.For.all.holdout.comps + ev.rows.Spr.all.holdout.comps)}</b><span>competitions from ${ev.holdout[0]} to
               ${ev.holdout[1]}, set aside while the methods were being tuned and used only to judge them.</span></div>
           </div>` : ""}

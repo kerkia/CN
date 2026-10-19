@@ -4,7 +4,7 @@
 // when the reel has the focus; it stops while the pointer is over it, and does not run by itself for visitors who
 // ask for less motion.
 
-import { esc, fmt } from "./util.js";
+import { esc, fmt, ord } from "./util.js";
 import { t } from "./i18n.js";
 
 const W = 560, H = 300;
@@ -261,7 +261,7 @@ function vTable() {
       const lost = v - best[k], cls = v === best[k] ? "rv-cell-best" : lost > 38 ? "rv-cell-lost" : "";
       return `<g class="rv-fade" ${d(0.1 + 0.07 * k)}>${cls ? `<rect class="${cls}" x="${x0 + k * cw + 3}" y="${y + 4}" width="${cw - 6}" height="30" rx="5"/>` : ""}
         <text class="rv-lab rv-num rv-small" x="${x0 + k * cw + cw / 2}" y="${y + 18}" text-anchor="middle">${mmss(v)}</text>
-        <text class="rv-lab rv-tiny" x="${x0 + k * cw + cw / 2}" y="${y + 30}" text-anchor="middle">${lost ? "+" + lost : "1er"}</text></g>`;
+        <text class="rv-lab rv-tiny" x="${x0 + k * cw + cw / 2}" y="${y + 30}" text-anchor="middle">${lost ? "+" + lost : ord(1)}</text></g>`;
     }).join("");
     return `${label(30, y + 24, String(i + 1), `class="rv-lab rv-strong"`)}${blur(52, y + 24, name(i + 4).split(" ")[1])}${cells}`;
   }).join("");
