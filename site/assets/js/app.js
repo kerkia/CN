@@ -592,6 +592,7 @@ async function route_() {
     try { await data.bootPrivate(); } catch (e) { return signedOut(); }
     await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
+    movedNotice();
   }
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
@@ -689,7 +690,10 @@ export async function signedIn(s) {
   // one's own page; a demo account, tied to no licence, lands on the ranking
   location.hash = next && next.startsWith("#/") && next !== "#/" ? next : s.lic ? link.runner(s.lic) : link.ranking();
   pushBoot();
+  movedNotice();
 }
+/** The window about the move to ozimut.com, once to each account that existed before it (moved.js). */
+const movedNotice = () => { if (auth.session()?.movedNotice) setTimeout(() => import("./moved.js").then((m) => m.maybe()).catch(() => {}), 1200); };
 /** Push notifications on this device (push.js): renewed, or offered, a few seconds into a signed-in visit. */
 const pushBoot = () => setTimeout(() => { if (auth.session()?.email && !auth.session()?.demo) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
 

@@ -197,6 +197,8 @@ p { margin: 0; }
 .brand-mark { width: 30px; height: 30px; flex: none; }
 .brand-name { font-size: 16px; letter-spacing: -0.01em; white-space: nowrap; line-height: 1.2; }
 .brand-o { color: var(--flag); }
+/* the window about the move to ozimut.com (moved.js) */
+.moved-list { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 7px; line-height: 1.5; }
 /* the move to ozimut.com (bridge.js): why this browser stays on the old address for now */
 .bridge-note { background: var(--flag-wash); color: var(--ink); border-bottom: 1px solid var(--border); padding: 10px 20px;
   font-size: 14px; line-height: 1.45; text-align: center; }                 /* the name's O in the control-flag orange (owner, 2026-10-19) */

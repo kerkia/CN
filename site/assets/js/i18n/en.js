@@ -551,6 +551,16 @@ export default {
   "footer.rules": "Site rules and privacy",
   // the move to ozimut.com (bridge.js)
   "bridge.moving": "O'CN is becoming Ozimut, at ozimut.com: one moment, you are being taken there with your settings.",
+  // the window about the move to ozimut.com (moved.js)
+  "moved.title": "O'CN is now Ozimut",
+  "moved.lede": "The site is now called <b>Ozimut</b> and lives at <b>ozimut.com</b>. Your account, your settings and your e-mail alerts are kept. A few useful steps, on each of your devices:",
+  "moved.bookmarks": "Update your bookmarks: <b>ozimut.com</b>.",
+  "moved.push": "Notifications need allowing again on this device, in <a href=\"#/reglages\">Settings</a>.",
+  "moved.home": "On iPhone or iPad, if the site was on your Home Screen: remove the old icon and add ozimut.com from Safari (Share › Add to Home Screen).",
+  "moved.ia": "An API key you had saved for “AI” needs entering again.",
+  "moved.method": "The “Top” method is now the Ozimut method: your CN Top has become your Ozimut index.",
+  "moved.mail": "The site's e-mails now come from alert@ozimut.com; to write to us: contact@ozimut.com.",
+  "moved.ok": "Got it",
   "bridge.waiting.one": "O'CN is becoming Ozimut, at ozimut.com. This browser still holds one course-setting item waiting for the network: open “Course setting” online so that it goes, then reload the page to move to ozimut.com.",
   "bridge.waiting.other": "O'CN is becoming Ozimut, at ozimut.com. This browser still holds {n} course-setting items waiting for the network: open “Course setting” online so that they go, then reload the page to move to ozimut.com.",
   "footer.disclaimer": "independent, unofficial site, not affiliated with FFCO. CN data from {site}.",

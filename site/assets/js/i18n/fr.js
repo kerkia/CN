@@ -482,6 +482,16 @@ export default {
   "footer.rules": "Règles du site et confidentialité",
   // the move to ozimut.com (bridge.js)
   "bridge.moving": "O'CN devient Ozimut, à l'adresse ozimut.com : un instant, vous y êtes conduit avec vos réglages.",
+  // the window about the move to ozimut.com (moved.js)
+  "moved.title": "O'CN devient Ozimut",
+  "moved.lede": "Le site s'appelle désormais <b>Ozimut</b> et se trouve à l'adresse <b>ozimut.com</b>. Votre compte, vos réglages et vos alertes par e-mail sont conservés. Quelques gestes utiles, sur chacun de vos appareils :",
+  "moved.bookmarks": "Mettez à jour vos favoris : <b>ozimut.com</b>.",
+  "moved.push": "Les notifications sont à autoriser à nouveau sur cet appareil, dans <a href=\"#/reglages\">Réglages</a>.",
+  "moved.home": "Sur iPhone ou iPad, si le site était sur votre écran d'accueil : retirez l'ancienne icône et ajoutez ozimut.com depuis Safari (Partager › Sur l'écran d'accueil).",
+  "moved.ia": "Une clé d'API que vous aviez enregistrée pour « IA » est à saisir à nouveau.",
+  "moved.method": "La méthode « Top » s'appelle désormais la méthode Ozimut : votre CN Top est devenu votre indice Ozimut.",
+  "moved.mail": "Les e-mails du site viennent désormais de alert@ozimut.com ; pour nous écrire : contact@ozimut.com.",
+  "moved.ok": "Compris",
   "bridge.waiting.one": "O'CN devient Ozimut, à l'adresse ozimut.com. Ce navigateur garde encore un envoi du tracé qui attend le réseau : ouvrez « Tracer » en ligne pour qu'il parte, puis rechargez la page pour passer sur ozimut.com.",
   "bridge.waiting.other": "O'CN devient Ozimut, à l'adresse ozimut.com. Ce navigateur garde encore {n} envois du tracé qui attendent le réseau : ouvrez « Tracer » en ligne pour qu'ils partent, puis rechargez la page pour passer sur ozimut.com.",
   "footer.disclaimer": "site indépendant et non officiel, sans lien avec la FFCO. Données CN issues de {site}.",

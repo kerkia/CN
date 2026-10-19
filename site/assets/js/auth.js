@@ -84,7 +84,7 @@ export async function handoffLogin(token) {
 
 /** What the browser keeps of the account (the rights decide what the pages show). */
 const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
-  agendaAllowed: !!u.agendaAllowed });
+  agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice });
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {
   const s = session();

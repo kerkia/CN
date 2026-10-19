@@ -52,7 +52,7 @@ REPLY_TO = "contact@ozimut.com"
 MAIL_FROM_NAME = "Ozimut"
 # who gets the duplicate-licence alerts, and which accounts see the admin page
 ALERT_EMAIL = "contact@ozimut.com"
-ADMIN_EMAILS = "ocn@kerkia.com"
+ADMIN_EMAILS = "ocn@kerkia.com, admin@ozimut.com"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"
 # the repository whose workflow an upload starts

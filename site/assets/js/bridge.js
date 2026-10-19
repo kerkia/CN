@@ -15,6 +15,9 @@ import * as auth from "./auth.js";
 
 const OLD = ["ocn.kerkia.com"];              // the old addresses (the server's own list: wrangler.toml OLD_HOSTS)
 const NEW = "https://ozimut.com";
+// The switch, in two steps (owner, 2026-10-19): false, the old address serves the renamed site and moves only a visitor who
+// asks (https://ocn.kerkia.com/?demenagement: to try the move with one's own account); true, it moves everyone.
+const ACTIVE = false;
 const MARK = "#oz=";
 // what is carried over: preferences and the work kept in this browser, nothing that names a secret or a server
 const KEEP = [/^cnx\.(theme|state)$/, /^ocn\.lang$/, /^ocn\.nav\./, /^ocn\.(vma|relay|games\.best|liveCountry|push\.later)$/,
@@ -24,12 +27,21 @@ const NEVER = [/^ocn\.liveBase$/, /^ocn\.ia\.byok$/, /^cnx\.session$/];
 const MAX = 60000;                           // characters of payload: a phone browser's address bar takes far more, but stay sane
 const allowed = (k) => KEEP.some((re) => re.test(k)) && !NEVER.some((re) => re.test(k));
 
-function target() {
+/** Where this old address sends its visitors: ozimut.com, or the local test's other address; null on the new address. */
+function destination() {
   try {
     const test = localStorage.getItem("ocn.bridgeTo");
     if (test && ["localhost", "127.0.0.1"].includes(location.hostname)) return test.replace(/\/+$/, "");
   } catch (e) { /* no storage: no test */ }
   return OLD.includes(location.hostname) ? NEW : null;
+}
+/** True on an old address (the welcome window waits for the new one). */
+export const onOldAddress = () => !!destination();
+function target() {
+  const to = destination();
+  if (!to) return null;
+  if (ACTIVE) return to;
+  return new URLSearchParams(location.search).has("demenagement") ? to : null;
 }
 
 const b64 = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
