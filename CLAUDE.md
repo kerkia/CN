@@ -1165,5 +1165,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   subscription of the same label. Local test: `OLD_HOSTS=localhost` and `SITE_URL=http://127.0.0.1:<port>` in `.dev.vars`,
   `localStorage["ocn.bridgeTo"] = "http://127.0.0.1:<port>"` on localhost. Internal names stay: Pages `observatoire-cn`, D1
   `ocn`, R2 `cn-state`, Worker `ocn-live`, repo `kerkia/CN`, the `ocn.*` / `cnx.*` browser keys, the method key `top6w`.
+  **Switched on 2026-10-19 evening** (`bridge.ACTIVE` true, 348a5a5; before it, false moved only `?demenagement` visitors).
+  The window about the move (`moved.js`, D1 `users.moved_notice` 0 = to show, set for the accounts of before the move) shows
+  once on the new address. Mail goes from alert@ozimut.com (the Resend key's domain is « All domains »), replies to
+  contact@ozimut.com (Proton). The ozimut.com zone's Browser Cache TTL is « Respect Existing Headers »: its default (4 h)
+  overrode Pages' `max-age=0` on `/assets/` and kept old modules after a deploy. ocn.kerkia.com stays attached indefinitely.
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.
