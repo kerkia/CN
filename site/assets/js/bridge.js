@@ -17,7 +17,7 @@ const OLD = ["ocn.kerkia.com"];              // the old addresses (the server's 
 const NEW = "https://ozimut.com";
 // The switch, in two steps (owner, 2026-10-19): false, the old address serves the renamed site and moves only a visitor who
 // asks (https://ocn.kerkia.com/?demenagement: to try the move with one's own account); true, it moves everyone.
-const ACTIVE = false;
+const ACTIVE = true;
 const MARK = "#oz=";
 // what is carried over: preferences and the work kept in this browser, nothing that names a secret or a server
 const KEEP = [/^cnx\.(theme|state)$/, /^ocn\.lang$/, /^ocn\.nav\./, /^ocn\.(vma|relay|games\.best|liveCountry|push\.later)$/,
