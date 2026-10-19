@@ -298,6 +298,8 @@ export function build(X) {
       ["Counts championships and national races", (m) => (m === "official" ? NO("often left out") : YES("they weigh more"))],
       ["One more race does not lower the CN", (m) => (m === "official" ? NO("often it does") : PART("for an adult, once the 6 places are filled"))],
       ["Reflects the level in major competitions", (m) => (m === "official" ? NO("without the best 10%") : isTop(m) ? YES("the best races") : PART("the usual level"))],
+      ["Follows juniors' progress quickly", (m) => (m === "official" ? NO("a race of a year ago counts as much")
+        : m === "top6w" || m === "fair" ? YES("their older races fade") : NO("every race counts the same"))],
       ["Stable from one year to the next", (m) => (m === "official" ? NO("jump on 1 January") : YES("gradual rescaling"))],
       ["Simple to explain", (m) => (m === "official" ? YES() : m === "top6w3" || m === "fair3" ? NO("geometric and cubic means") : YES("ordinary means"))],
       ["Authoritative for selections", (m) => (m === "official" ? YES("the only official ranking") : NO("an analysis calculation"))],
@@ -412,8 +414,12 @@ export function build(X) {
             <div class="s"><b>The share of the field set per discipline</b>in forest, 90% of the runners: a course's difficulty includes
               the mistakes it causes, and avoiding them pays; in sprint, two thirds, as FFCO does</div>
             <div class="p"><b>A jump on 1 January</b>the whole ranking changes at once</div><div class="arrow">→</div>
-            <div class="s"><b>Gradual rescaling, day after day</b>a race's score is fixed once and for all, and the CN only moves when
+            <div class="s"><b>Gradual rescaling, day after day</b>a race's score is fixed once and for all, and an adult's CN only moves when
               a race enters or leaves the last 12 months</div>
+            <div class="p"><b>A junior's CN lags behind their progress</b>their race of eleven months ago counts as much as yesterday's, though
+              they ran much slower then</div><div class="arrow">→</div>
+            <div class="s"><b>Juniors' races fade with time</b>a race run in a junior class counts less and less over the 12 months: a junior's
+              CN follows their progress much faster, and their courses are measured better</div>
             <div class="p"><b>One CN for two purposes</b>measuring courses and ranking runners</div><div class="arrow">→</div>
             <div class="s"><b>One calculation for each purpose</b>a course's value is measured from the scores the runners present earned
               in their previous races; the CN Top keeps their best races</div>

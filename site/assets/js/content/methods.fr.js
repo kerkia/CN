@@ -298,6 +298,8 @@ export function build(X) {
       ["Compte les championnats et les nationales", (m) => (m === "official" ? NO("souvent écartés") : YES("ils pèsent plus"))],
       ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("pour un adulte, une fois les 6 places remplies"))],
       ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : isTop(m) ? YES("les meilleures courses") : PART("le niveau habituel"))],
+      ["Suit vite la progression des jeunes", (m) => (m === "official" ? NO("une course d'il y a un an compte autant")
+        : m === "top6w" || m === "fair" ? YES("leurs anciennes courses s'effacent") : NO("toutes les courses comptent autant"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("saut au 1er janvier") : YES("recalage progressif"))],
       ["Simple à expliquer", (m) => (m === "official" ? YES() : m === "top6w3" || m === "fair3" ? NO("moyennes géométrique et cubique") : YES("des moyennes ordinaires"))],
       ["Fait foi pour les sélections", (m) => (m === "official" ? YES("seul classement officiel") : NO("calcul d'analyse"))],
@@ -412,8 +414,12 @@ export function build(X) {
             <div class="s"><b>La part du peloton réglée par spécialité</b>en forêt, 90 % des coureurs : la difficulté d'un circuit comprend
               les erreurs qu'il provoque, et les éviter rapporte ; en sprint, les deux tiers, comme la FFCO</div>
             <div class="p"><b>Un saut au 1<sup>er</sup> janvier</b>tout le classement change d'un coup</div><div class="arrow">→</div>
-            <div class="s"><b>Un recalage progressif, jour après jour</b>le score d'une course est fixé une fois pour toutes, et le CN ne bouge que quand
-              une course entre dans les 12 derniers mois ou en sort</div>
+            <div class="s"><b>Un recalage progressif, jour après jour</b>le score d'une course est fixé une fois pour toutes, et le CN d'un adulte ne
+              bouge que quand une course entre dans les 12 derniers mois ou en sort</div>
+            <div class="p"><b>Le CN d'un jeune retarde sur ses progrès</b>sa course d'il y a onze mois compte autant que celle d'hier, alors qu'il
+              courait bien moins vite</div><div class="arrow">→</div>
+            <div class="s"><b>Les courses des jeunes s'effacent avec le temps</b>une course courue en catégorie jeune compte de moins en moins au fil des
+              12 mois : le CN d'un jeune suit sa progression bien plus vite, et ses circuits sont mieux mesurés</div>
             <div class="p"><b>Un seul CN pour deux usages</b>mesurer les circuits et classer les coureurs</div><div class="arrow">→</div>
             <div class="s"><b>Un calcul pour chaque usage</b>la valeur d'un circuit se mesure à partir des scores que les coureurs présents ont obtenus
               dans leurs courses précédentes ; le CN Top retient leurs meilleures courses</div>
