@@ -4,9 +4,9 @@
 // pan, the wheel to zoom; a new control goes after the selected control, into the selected leg, or into the closest leg).
 // Every change goes through change(): a snapshot for undo (100 steps), a new layout, a redraw, and a save a moment later
 // (the event's version guards against two people saving over each other; a lock tells the team who is editing).
-// Two interfaces (owner, 2026-10-17): the « O'CN mode », by default — a ribbon (ribbon.js, ribbon-data.js) — and the « Purple
+// Two interfaces (owner, 2026-10-17): the « Ozimut mode », by default — a ribbon (ribbon.js, ribbon-data.js) — and the « Purple
 // Pen mode » — the menus and the tool bar (icons.js MENUS) —, chosen per browser (Fichier › Options, the ▭ button; Affichage ›
-// Mode O'CN in the menus).
+// Mode Ozimut in the menus).
 
 import * as M from "./model.js";
 import { layoutCourse, distFrom } from "./layout.js";
@@ -21,6 +21,7 @@ import * as A from "./actions.js";
 import * as D from "./dialogs.js";
 import { syncMap, splitItems, itemBlend, purpleOverride } from "./appear.js";
 import { isMapFile } from "./mapsrc.js";
+import { isOcnFile } from "./ocnfile.js";
 import { svg, actIcon, MENUS } from "./icons.js";
 import { mountRibbon } from "./ribbon.js";
 import { uiMode, setUiMode } from "./ribbon-data.js";
@@ -523,7 +524,7 @@ export async function openEditor(ctx) {
       E.sel = null; refresh();
     });
   }
-  // the selected object's pane: in the O'CN mode its details are in its contextual tab, the pane shows the course
+  // the selected object's pane: in the Ozimut mode its details are in its contextual tab, the pane shows the course
   function infoPane() { const el = $("#tr-info"); el.hidden = E.ui === "ocn" && !!E.sel; el.innerHTML = A.describeSelection(E); A.bindInfo(E, el); }
 
   root.addEventListener("click", (e) => {
@@ -693,8 +694,8 @@ export async function openEditor(ctx) {
     const files = [...(e.dataTransfer?.files || [])];
     if (!files.length || root.querySelector(".tr-modal")) return;
     e.preventDefault();
-    // no event yet, or an O'CN file: a new event, through the start screen (a map alone: created; a .ocnt or .ppen: imported)
-    const ocn = files.some((f) => /\.ocnt$/i.test(f.name));
+    // no event yet, or an Ozimut file: a new event, through the start screen (a map alone: created; a .ozmt, .ocnt or .ppen: imported)
+    const ocn = files.some(isOcnFile);
     if ((E.blank || ocn) && E.onStart) { E.onStart(ocn || files.some((f) => /\.(ppen|xml)$/i.test(f.name)) ? "import" : "new", files); return; }
     if (E.readOnly) { E.toast(t("trc.ed.readOnlyDot")); return; }
     const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find(isMapFile);

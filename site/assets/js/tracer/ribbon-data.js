@@ -1,4 +1,4 @@
-// The Tracer's ribbon, as data (owner, 2026-10-17: the « O'CN mode », by default; the menus of icons.js stay as the « Purple Pen
+// The Tracer's ribbon, as data (owner, 2026-10-17: the « Ozimut mode », by default; the menus of icons.js stay as the « Purple Pen
 // mode »). Shared by the editor (ribbon.js draws it), the guide (pages/methods.js: « L'écran », « Le ruban ») and the messages
 // that name where a command is (where()). Tabs follow the setter's work; contextual tabs (CONTEXT) come with the selection.
 // An item: { t: "big" | "small", act (an action of dialogs.js, or one of ribbon.js) | tool (an editor tool), label, icon, key,
@@ -163,7 +163,7 @@ export const INFO = {
   gallery: t("trc.rd.gallery"),
 };
 
-/** The quick-access bar (the title bar, the O'CN mode): what a setter is likely to use most, whatever the tab — undo and redo, the
+/** The quick-access bar (the title bar, the Ozimut mode): what a setter is likely to use most, whatever the tab — undo and redo, the
  *  PDF of the course in hand to print a proof, the event audit, the course's properties (name, climb, scale) —; each user changes it
  *  (its ▾, or a right-click on any button of the ribbon), kept in ocn.tr.prefs « qat ». QAT_CHOICES: offered in its ▾ menu. */
 export const QAT_DEFAULT = ["undo", "redo", "pdf-course", "rep-audit", "course-props"];

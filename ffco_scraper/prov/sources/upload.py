@@ -137,7 +137,7 @@ def apply(con, folder: Path, save, parse_any, reread: bool = False) -> int:
                     who = "par l'organisateur " if m.get("organiser") and not courses else ""
                     what = "circuits du traceur, déposés" if courses else "horaires de départ déposés par l'organisateur" if starts \
                         else f"déposé {who}".strip()
-                    note = f"{what} sur O'CN le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"{what} sur O'CN"
+                    note = f"{what} sur Ozimut le {when[8:10]}/{when[5:7]}/{when[:4]}" if len(when) == 10 else f"{what} sur Ozimut"
                     for name, content in files_in(m.get("filename") or m["path"].name, m["path"].read_bytes()):
                         d = coursedata.parse(content, name) if courses else startlist.parse(content, name) if starts \
                             else parse_any(content, name)

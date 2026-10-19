@@ -212,7 +212,7 @@ def main(argv: list[str] | None = None) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
 
     methods = build_methods()
-    COMPUTED = list(methods)                       # fair, top6w, fair3, top6w3
+    COMPUTED = list(methods)                       # fair, top6w
     PARAMS: dict[str, CnParams] = {n: methods[n].params for n in COMPUTED}
     BASE = {n: methods[n].derived_from or n for n in COMPUTED}   # whose scores and recalage a method uses
     BASES = [n for n in COMPUTED if BASE[n] == n]
@@ -403,9 +403,8 @@ def main(argv: list[str] | None = None) -> None:
                 o["temps_s"], o["status"],
                 # official: score, cn j-15, cn after
                 o["score"], o["cn_j15"], to_int(raw["nouveau_cn"]) if raw else None,
-                # fair + top6w, then fair3 + top6w3 (see method_cols)
+                # fair + top6w (see method_cols; the geometric pair's columns, appended here, went on 2026-10-19)
                 *method_cols(lic, cid, terr_full, d, "fair", "top6w"),
-                *method_cols(lic, cid, terr_full, d, "fair3", "top6w3"),
             ])
         buckets[int(lic) // 10 if str(lic).isdigit() else 999999][lic] = races
     for b, content in buckets.items():
@@ -419,7 +418,7 @@ def main(argv: list[str] | None = None) -> None:
         raw = raw_res.get((lic, cid))
         row = [lic, to_int(raw["place"]) if raw else None, o["temps_s"], o["status"],
                o["categorie"], o["club"], o["score"], o["cn_j15"]]
-        for m in COMPUTED:                          # fair, top6w, fair3, top6w3: score, CN J-15
+        for m in COMPUTED:                          # fair, top6w: score, CN J-15
             v = by_method[m].get((lic, cid))
             row += [v["score"] if v else None, cn_j15(m, lic, o["terrain"], o["date_iso"]) if v else None]
         by_course[circuits[cid][0]][cid].append(row)
@@ -593,7 +592,7 @@ def main(argv: list[str] | None = None) -> None:
         ds = [{r[0]: r[1 + last] for r in s["rows"]} for s in snaps]
         for lic in sorted(set.intersection(*(set(d) for d in ds))):   # sorted: the sample below is then stable
             if all(d[lic] for d in ds):
-                pairs.append([d[lic] for d in ds])     # official, fair, top6w, fair3, top6w3
+                pairs.append([d[lic] for d in ds])     # official, fair, top6w
         agree[t] = pairs[:4000]
 
     def by_terrain(p):            # a discipline's own values, by site code (see CnParams.by_terrain)
@@ -610,7 +609,7 @@ def main(argv: list[str] | None = None) -> None:
             "anchor_top_k": norm_cfg.anchor_top_k, "anchor_top_fraction": norm_cfg.anchor_top_fraction,
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}
 
-    COLOR = {"fair": 2, "top6w": 4, "fair3": 5, "top6w3": 3}      # palette slots, as in the browser (charts.METHOD_SLOT)
+    COLOR = {"fair": 2, "top6w": 4}      # palette slots, as in the browser (charts.METHOD_SLOT)
     methods_meta = {"official": {"color": 1},
                     **{n: {"color": COLOR[n], "params": params_meta(PARAMS[n])} for n in COMPUTED}}
     meta = {

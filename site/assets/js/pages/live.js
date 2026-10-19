@@ -1,5 +1,5 @@
 // « En direct » (#/direct[/<race>[/<class>]], every account): the races liveresultat shows,
-// then one race live, from O'CN's live relay (live/, Worker « ocn-live »: one reader per race, changes pushed over a WebSocket),
+// then one race live, from Ozimut's live relay (live/, Worker « ocn-live »: one reader per race, changes pushed over a WebSocket),
 // reached through this site's Functions (/api/live/list, /ws/<race>). What it adds: each runner recognised
 // (name + club) and linked to their page, their CN (Top and official) in the race's discipline, and the place their
 // CN predicts. Times are liveresultat's hundredths of a second.
@@ -19,7 +19,7 @@ export const LIVE = devBase || "";               // this site
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
 const ST_LABEL = { dns: t("status.dns"), dnf: t("status.abandon"), mp: t("status.pm"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), nc: t("status.nc") };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
-const VALUER = { official: "official", top6w: "fair", top6w3: "fair3", fair: "fair", fair3: "fair3" };
+const VALUER = { official: "official", top6w: "fair", fair: "fair" };
 const JUST_IN_MS = 90000;
 
 export async function render(main, { path = "", query = {} } = {}) {

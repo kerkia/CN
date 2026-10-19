@@ -129,19 +129,11 @@ class CnParams:
     min_scores_for_cn: int = 2
     window_days: int = 365
     lag_days: int = 15                   # CN "à J-15"
-    # Power means (2026-10-07): 1 = the plain mean (FFCO's rule); 2 = the quadratic mean, which leans towards
-    # the higher values. `cn_power` for a runner's CN (weighted mean of the kept scores): 3 since the study of
-    # 2026-10-13 (the cubic mean: computed at race level, a runner 1 % slower than another gets 3 % fewer points
-    # and the CN is the plain mean of those scores, shown on the usual scale). `cv_power` for the circuit value,
-    # the mean of CN x time over the sample: 1 = FFCO's arithmetic mean, 0 = the geometric mean (the same study:
-    # the natural estimate of a circuit's difficulty when a run is multiplicative, one disaster cannot carry it).
+    # Power means (2026-10-07): 1 = the plain mean (FFCO's rule, and every method published since 2026-10-16);
+    # 2 = the quadratic mean, 0 = the geometric mean, kept for studies. `cn_power` for a runner's CN (weighted mean
+    # of the kept scores), `cv_power` for the circuit value (the mean of CN x time over the sample). The geometric
+    # pair's dial on the slow tail (tail_k, 2026-10-15) went with that pair on 2026-10-19.
     cv_power: float = 1.0
-    # The dial (owner, 2026-10-15; geometric mean only): the circuit value blends A, the fastest two-thirds times the
-    # discipline's usual tail effect `tail_mean` (ln), and B, the whole field: V = A^(1-w) B^w, w = n / (n + tail_k) - the
-    # whole field weighs more on a large circuit. tail_k 0: the whole field; a large tail_k: the two-thirds (always
-    # ceil(2n/3), FFCO's « all four when only four » exception dropped). None: off (sample_fraction applies).
-    tail_k: float | None = None
-    tail_mean: float = 0.0
     cn_power: float = 1.0
     # The juniors' races fade (owner, 2026-10-19; study of 2026-10-19): a race run in a junior category (H/D 12-20,
     # `is_junior`) weighs its title weight x (1 - its age / (junior_fade x the window)) in the CN's mean, read on the day
@@ -257,16 +249,6 @@ def circuit_value(
         n = max(1, _apply_rounding(params.sample_fraction * n_total, params.sample_rounding))
     subset = ordered[:n]
     q = params.cv_power
-    if q == 0 and params.tail_k is not None:
-        # the two-thirds by the usual rule whatever the size (no « all three » exception: the tail is weighed instead)
-        n = max(1, math.ceil(2 * n_total / 3))
-        subset = ordered[:n]
-        ln_all = sum(math.log(cn * t) for cn, t in ordered) / n_total
-        ln_sub = sum(math.log(cn * t) for cn, t in subset) / n
-        w = n_total / (n_total + params.tail_k)
-        mean_value = math.exp(ln_sub + params.tail_mean + w * ((ln_all - ln_sub) - params.tail_mean))
-        coeff = params.k_over_1000 if k is None else k
-        return Decimal_round(mean_value * coeff), n_total
     if q == 1:
         mean_value = sum(cn * t for cn, t in subset) / len(subset)
     elif q == 0:                         # the geometric mean: exp of the mean of ln(CN x time)

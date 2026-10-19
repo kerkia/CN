@@ -397,7 +397,7 @@ function vTracer() {
 
 // 18. the invitation
 function vJoin() {
-  return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="118" text-anchor="middle">O'CN</text></g>
+  return svg(`<g class="rv-pop"><text class="rv-logo" x="${W / 2}" y="118" text-anchor="middle"><tspan class="rv-logo-o">O</tspan>zimut</text></g>
     ${["For", "Spr", "VTT", "Ski"].map((x, k) => `<g class="rv-pop" ${d(0.3 + 0.1 * k)}><rect x="${W / 2 - 196 + k * 100}" y="148" width="92" height="28" rx="14" class="rv-ter-${x.toLowerCase()}"/>
       <text class="rv-lab rv-strong" x="${W / 2 - 150 + k * 100}" y="167" text-anchor="middle">${esc(t(`terrain.${x}`))}</text></g>`).join("")}`);
 }

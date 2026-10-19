@@ -1,7 +1,7 @@
 // « IA » with the user's own key (owner, 2026-10-15): a model of their choosing — OpenRouter, Anthropic (Claude), OpenAI
-// (ChatGPT) or Google (Gemini) — called by the browser itself. O'CN's server only hands over the instructions
+// (ChatGPT) or Google (Gemini) — called by the browser itself. Ozimut's server only hands over the instructions
 // (/api/ask with promptOnly, the same as for its own model); the key goes from this browser to the provider and nowhere
-// else: never to O'CN. It is kept for the tab's session, or on this device when the user asks (« Se souvenir »), and
+// else: never to Ozimut. It is kept for the tab's session, or on this device when the user asks (« Se souvenir »), and
 // « Oublier » drops it. Each provider lists its models with the key (OpenRouter's list is public), so no model name is
 // written here that could go stale. Texts: byok.* in the catalogues (a provider's `note` is its key).
 
@@ -25,7 +25,7 @@ export const PROVIDERS = {
     },
     async chat(key, model, messages) {
       const d = await postJson("https://openrouter.ai/api/v1/chat/completions",
-        { Authorization: `Bearer ${key}`, "X-Title": "O'CN" },
+        { Authorization: `Bearer ${key}`, "X-Title": "Ozimut" },
         { model, messages, max_tokens: LLM_OUT, temperature: 0.1, usage: { include: true } });
       return { text: d.choices?.[0]?.message?.content || "", tokensIn: d.usage?.prompt_tokens, tokensOut: d.usage?.completion_tokens,
         dollars: typeof d.usage?.cost === "number" ? d.usage.cost : null };

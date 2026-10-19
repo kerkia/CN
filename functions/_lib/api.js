@@ -43,7 +43,7 @@ export const publicUser = (env, u) => ({
   uid: u.id, lic: u.licence, nom: u.display_name, email: u.email, notify: !!u.notify, admin: isAdmin(env, u),
   agendaAlert: !!u.agenda_alert, agendaRegions: jsonList(u.agenda_regions), deadlineAlert: !!u.deadline_alert,
   // rights granted on the admin page, administrators included (an admin may uncheck one to see the site as others do)
-  analyst: !!u.analyst, agendaAllowed: !!u.alerts_allowed,
+  agendaAllowed: !!u.alerts_allowed,
   lang: userLang(u),
   // the alerts by push notification (migration 0010): the start times and the results on by default, the agenda's off
   pushStarts: u.push_starts !== 0, startsAlert: u.starts_alert === 1, pushResults: u.push_results !== 0, pushAgenda: u.push_agenda === 1,

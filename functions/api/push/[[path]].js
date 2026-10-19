@@ -7,6 +7,7 @@
 //   POST /api/push/test         -> { reached }: a test notification to the account's devices
 import { allow, json, readBody, userLang, withUser } from "../../_lib/api.js";
 import { pushReady, pushToUser, validSubscription } from "../../_lib/push.js";
+import { oldHosts } from "../../_middleware.js";
 import { testPush } from "../../_lib/templates.js";
 
 export const onRequestGet = withUser(async ({ env }, user) => {
@@ -23,9 +24,17 @@ export const onRequestPost = withUser(async ({ request, env, params }, user) => 
     if (!validSubscription(b.subscription)) return json({ error: "bad request" }, 400);
     if (!(await allow(env, `push-sub:${user.id}`, 30, 3600))) return json({ error: "too many" }, 429);
     const s = b.subscription, label = String(b.label || "").slice(0, 60) || null;
-    await env.DB.prepare(`INSERT INTO push_subs (user_id, endpoint, p256dh, auth, label, created_at) VALUES (?, ?, ?, ?, ?, ?)
+    const host = new URL(request.url).hostname, old = oldHosts(env);
+    await env.DB.prepare(`INSERT INTO push_subs (user_id, endpoint, p256dh, auth, label, created_at, origin) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth,
-        label = excluded.label, fails = 0`).bind(user.id, s.endpoint, s.keys.p256dh, s.keys.auth, label, Date.now()).run();
+        label = excluded.label, fails = 0, origin = excluded.origin`).bind(user.id, s.endpoint, s.keys.p256dh, s.keys.auth, label,
+      Date.now(), host).run();
+    // the move to ozimut.com: a device that subscribes again on the new address leaves its old address's subscription
+    // (same account, same label), which would otherwise send every notification twice
+    if (label && !old.includes(host)) {
+      await env.DB.prepare(`DELETE FROM push_subs WHERE user_id = ? AND label = ? AND endpoint <> ?
+        AND (origin IS NULL OR origin IN (SELECT value FROM json_each(?)))`).bind(user.id, label, s.endpoint, JSON.stringify(old)).run();
+    }
     return json({ ok: true });
   }
   if (action === "unsubscribe") {

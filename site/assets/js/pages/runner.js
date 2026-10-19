@@ -13,7 +13,7 @@ import { placeOf, loadMap, featuresOf, DEPT_REGION } from "../geo.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, legend, dataTable, tile,
   methodLabel, methodShort, statusLabel, seg, errorBox, runnerSearch, bindRunnerSearch, terrainTag, filterFold,
-  pageTabs, tabFrom, bindPageTabs, scoreCell, subHead, cnLabel, scoreLabel,
+  pageTabs, tabFrom, bindPageTabs, scoreCell, subHead, cnLabel, cnWords, scoreLabel,
 } from "../ui.js";
 
 // the page's tabs: the races, the CN's calculation, its history, the progression (the CN over time, then against the
@@ -86,7 +86,7 @@ export async function render(main, { arg, query }) {
     <div data-panel="calcul">
     <section class="card" style="margin-bottom:16px">
       <div class="card-head">
-        <h2>${t("rn.calc", { cn: cnLabel(store.get().method) })}</h2>
+        <h2>${t("rn.calc", cnWords(store.get().method))}</h2>
         <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("f.date")}</span>
           <input type="date" id="calc-date"></label>
       </div>
@@ -95,7 +95,7 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="historique">
     <section class="card" style="margin-bottom:16px">
-      <div class="card-head"><div><h2>${t("rn.cnHistory", { cn: cnLabel(store.get().method) })}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
+      <div class="card-head"><div><h2>${t("rn.cnHistory", cnWords(store.get().method))}</h2><div class="hint" id="cnhist-hint">${t("rn.cnHistory.hint")}</div></div>
         <span id="hist-seg"></span></div>
       <div id="cnhist"></div>
     </section>
@@ -105,7 +105,7 @@ export async function render(main, { arg, query }) {
       <span style="flex:1 1 320px">${t("rn.pg.offWarn")}</span>
       <button type="button" class="btn btn-sm" id="pg-to-top">${t("rn.pg.toTop")}</button></div>` : ""}
     <div style="margin-bottom:16px">${chartCard({
-      id: "evo", title: t("rn.evolution"), hint: t("rn.evolution.hint"), tall: true,
+      id: "evo", title: t("rn.evolution", cnWords(store.get().method)), hint: t("rn.evolution.hint"), tall: true,
       tools: html`<label class="checkline"><input type="checkbox" id="show-scores" ${raw(showScores ? "checked" : "")}>${t("rn.showScores")}</label>`,
     })}</div>
     <section class="card" style="margin-bottom:16px">
@@ -130,10 +130,8 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="reseau"><div id="rn-net"></div></div>`;
   ["evo", "path", "pct", "curve", "rmap"].forEach((id) => bindChartCard(main, id));
-  // the official CN over several seasons (owner, 2026-10-15): the warning's button picks the Top as the header's switch does
+  // the official CN over several seasons (owner, 2026-10-15): the warning's button picks Ozimut as the header's switch does
   $("#pg-to-top")?.addEventListener("click", () => {
-    const sel = document.querySelector("#method-pick");                   // analysts: a list of every method
-    if (sel) { sel.value = "top6w"; sel.dispatchEvent(new Event("change")); return; }
     document.querySelector('[data-method-pick="top6w"]')?.click();
   });
 
@@ -190,7 +188,7 @@ export async function render(main, { arg, query }) {
       } else {
         for (const e of cnHistory(m, races, terrain, meta, month)) if (e.cn && (!best || e.cn > best.cn)) best = { cn: e.cn, date: e.date };
       }
-      return tile(t("rn.best", { cn: cnLabel(m) }), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
+      return tile(t("rn.best", cnWords(m)), best ? fmt(best.cn) : "—", best ? fmtDate(best.date) : "");
     });
     const recent = mineT.filter((r) => r[R.date] > addDays(month, -365));
     const pm = recent.filter((r) => r[R.status] === "pm").length;       // mispunches in those races (owner, 2026-10-15)
@@ -334,9 +332,9 @@ export async function render(main, { arg, query }) {
         <div class="row"><h3>${t("rn.calc.cn")}</h3></div>
         <div class="big num">${x.cn == null ? "—" : fmt(x.cn)}</div></div>`;
       let formula;
-      const top = m === "top6w" || m === "top6w3";
+      const top = m === "top6w";
       const fading = x.rows.some((row) => row.fade < 1) ? html` ${t("calc.fadeNote")}` : "";
-      if (m === "fair" || m === "fair3") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.${fading}`;
+      if (m === "fair") formula = html`${t("calc.fair.formula", calcVars(m))} ${t("calc.weights")}.${fading}`;
       else if (top) formula = html`${t("calc.top6w.formula", calcVars(m))} ${t("calc.weights")}.${fading}`;
       else formula = html`${t("calc.official.note")} <code>${x.reconstructed == null ? "—" : fmt(x.reconstructed)}</code>${
         x.pooled ? html`<br>${t("rk.noted2026")}` : ""}`;

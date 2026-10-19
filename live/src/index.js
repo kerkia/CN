@@ -1,5 +1,5 @@
-// O'CN's live relay (Worker « ocn-live », 2026-10-18): one Durable Object per
-// liveresultat competition, awake only while someone watches it. O'CN reaches it through Durable Object bindings only
+// Ozimut's live relay (Worker « ocn-live », 2026-10-18): one Durable Object per
+// liveresultat competition, awake only while someone watches it. Ozimut reaches it through Durable Object bindings only
 // (functions/api/live/*, functions/ws/[comp].js): the Worker has no public address (workers_dev off).
 //
 // Each phone opens a WebSocket (one request, then nothing but the updates pushed to it) and says which class it is
@@ -11,18 +11,18 @@
 
 import { DurableObject } from "cloudflare:workers";
 
-const UA = "OCN-live/1.0 (+https://ocn.kerkia.com; one reader per competition, relayed to its spectators)";
+const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, relayed to its spectators)";
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
 const RECHECK_MS = 90000;                        // a watched class is re-read at least this often (passings list is short)
 const MAX_READS = 30;                            // liveresultat reads per wake-up, at most (subrequest limit: 50)
 
 const api = (env) => env.LR_API || "https://liveresultat.orientering.se/api.php";
 
-// Races fed by their organiser through O'CN (« Organisation › Direct », 2026-10-15): numbers from 900 000 000 (liveresultat's
+// Races fed by their organiser through Ozimut (« Organisation › Direct », 2026-10-15): numbers from 900 000 000 (liveresultat's
 // are far below), never read from liveresultat. Their object keeps what the organiser's page sends — the classes that
 // changed since its last read of the timing software's export — and pushes the changes to the pages watching, as for a
-// liveresultat race. The push is internal: only O'CN reaches it, through its Durable Object binding (path /push, which
-// no public route forwards: O'CN's Function passes on /ws/<number> WebSocket requests only).
+// liveresultat race. The push is internal: only Ozimut reaches it, through its Durable Object binding (path /push, which
+// no public route forwards: Ozimut's Function passes on /ws/<number> WebSocket requests only).
 const PUSHED_FROM = 900000000;
 const isPushed = (comp) => Number(comp) >= PUSHED_FROM;
 const MAX_PUT = 100;                             // keys per storage.put (the limit is 128)
@@ -126,7 +126,7 @@ export class LiveRace extends DurableObject {
     try { ws.close(code, "bye"); } catch (e) { /* already closed */ }
   }
 
-  /** An organiser's push (internal, from O'CN): { info, order: [class names, in the file's order], classes: { name:
+  /** An organiser's push (internal, from Ozimut): { info, order: [class names, in the file's order], classes: { name:
    *  { controls, rows } } } — the classes that changed, in liveresultat's compact form; answers what it did. */
   async push(request, comp) {
     if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return new Response("Not an organiser's race", { status: 400 });
@@ -358,7 +358,7 @@ export class Directory extends DurableObject {
     });
   }
 
-  /** The organisers' broadcasts (internal, from O'CN): GET lists them, the newest first; POST { op: "new", name, date,
+  /** The organisers' broadcasts (internal, from Ozimut): GET lists them, the newest first; POST { op: "new", name, date,
    *  organizer, key, by } opens one and answers its number; POST { op: "touch", id } records a push. */
   async broadcasts(request) {
     const all = (await this.ctx.storage.get("broadcasts")) || [];

@@ -259,7 +259,7 @@ async function detail(main, idx, query) {
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
       ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w3", "fair3").replace("top6w", "fair")] != null)
-        .map((m) => fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m === "top6w3" ? "fair3" : m])).join(" · ") || "—"}`}`;
+        .map((m) => fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m])).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
     const scored = d.by !== "category" || !!k.values;
     // the same table as a race's on « Courses »: per method the CN J-15, then the score with its gap to that CN; the

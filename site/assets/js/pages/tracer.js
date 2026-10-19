@@ -1,7 +1,7 @@
 // « Organisation › Tracer » (#/orga-tracer): course setting in the browser, as Purple Pen does it (owner, 2026-10-15). The
 // editor (tracer/editor.js) opens at once, empty, drawn in the page under the site's menus as the analyses are, and a start
 // screen over it offers the three ways in (owner, 2026-10-17): a new event (a competition of one's club from the agenda, or a
-// training) with its map (an OCAD or Mapper file, a PDF or an image); an event imported from an O'CN file (.ocnt, which holds
+// training) with its map (an OCAD or Mapper file, a PDF or an image); an event imported from an Ozimut file (.ozmt, or .ocnt before 2026-10-19, which holds
 // its map) or a Purple Pen file (.ppen) with its map; or one of one's events (those one created or whose team one belongs
 // to). « Événements » in the editor, and the Fichier menu, bring the start screen back. « ⤢ » the whole window (Échap or « ⤡ »
 // back), « ↗ » a tab of its own (?fen=1; fullwin.js). A link naming an event (?id=) opens it straight away.
@@ -14,7 +14,7 @@ import { getProv } from "./provisional.js";
 import * as S from "../tracer/store.js";
 import * as M from "../tracer/model.js";
 import { readPpen } from "../tracer/ppen.js";
-import { readOcn, isOcnFile } from "../tracer/ocnfile.js";
+import { readOcn, isOcnFile, ACCEPT as OCN_ACCEPT } from "../tracer/ocnfile.js";
 import { openMap, isMapFile, mimeOf, imageDpi, isPdf, isVectorMap, MAP_ACCEPT } from "../tracer/mapsrc.js";
 import { geoFromWorld } from "../tracer/geo.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
@@ -130,7 +130,7 @@ function startScreen(focus = "") {
   const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".tr-modal")) { e.stopPropagation(); e.preventDefault(); closeStart(); } };
   document.addEventListener("keydown", onKey, true);
   el._off = () => document.removeEventListener("keydown", onKey, true);
-  // files dropped on it: a map alone, a new event; a .ocnt, or a .ppen with or without its map, an import
+  // files dropped on it: a map alone, a new event; a .ozmt (or .ocnt), or a .ppen with or without its map, an import
   el.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); e.stopPropagation(); el.classList.add("over"); } });
   el.addEventListener("dragleave", (e) => { if (e.target === el) el.classList.remove("over"); });
   el.addEventListener("drop", (e) => {
@@ -260,7 +260,7 @@ async function newEvent(main, files = null) {
   },
   validate: (o) => kindProblem(o) || (!mapFile ? t("trc.page.needMap") : isVectorMap(mapFile.name) && !vec ? t("trc.page.mapReading") : !(Number(o.scale) > 100) ? t("trc.page.badScale")
     : !isPdf(mapFile.name, mapFile.type) && !vec && o.dpi && !(Number(o.dpi) > 10) ? t("trc.page.badDpi") : null) });
-  if (!v) return handed ? "import" : null;               // a .ppen or .ocnt dropped here went on to the import
+  if (!v) return handed ? "import" : null;               // a .ppen, .ozmt or .ocnt dropped here went on to the import
   const bytes = vec?.bytes || new Uint8Array(await mapFile.arrayBuffer()), type = mimeOf(mapFile.name, mapFile.type);
   let err = null;
   const src = vec || await openMap(bytes, type, mapFile.name, Number(v.dpi) || 0).catch((e) => { err = e; return null; });
@@ -281,13 +281,13 @@ async function newEvent(main, files = null) {
   return created.id;
 }
 
-// ---- an imported event: an O'CN file (.ocnt, which holds its map), or a Purple Pen file (.ppen) and its map, dropped together or one after the other
+// ---- an imported event: an Ozimut file (.ozmt or .ocnt, which holds its map), or a Purple Pen file (.ppen) and its map, dropped together or one after the other
 async function importEvent(main, files = []) {
   const races = await clubRaces();
   const st = { ppen: null, ocn: null, ev: null, map: null, mapFromOcn: false, notes: [] };
   const v = await modal({ title: t("trc.page.importEvent"), wide: true, ok: t("trc.page.import"), body: `
     <p>${t("trc.page.importBody")}</p>
-    ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `.ocnt,.ppen,.xml,${MAP_ACCEPT}`)}
+    ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `${OCN_ACCEPT},.ppen,.xml,${MAP_ACCEPT}`)}
     <ul class="tr-files" id="tr-imp-files"></ul>
     <h3>${escA(t("trc.page.theEvent"))}</h3>
     ${kindFields(races)}`,
@@ -303,7 +303,7 @@ async function importEvent(main, files = []) {
       if (st.ocn && ev) lines.push(`<li class="ok">${t("trc.page.ocnLine", fileVars(st.ocn.name, st.mapFromOcn))}</li>`);
       else if (st.ppen && ev) lines.push(`<li class="ok">${t("trc.page.ppenLine", fileVars(st.ppen.name, false))}</li>`);
       else lines.push(`<li class="todo">${escA(t("trc.page.fileTodo"))}</li>`);
-      if (st.map && st.mapFromOcn) { /* the .ocnt's own map: said on its line */ } else if (st.map) {
+      if (st.map && st.mapFromOcn) { /* the .ozmt's own map: said on its line */ } else if (st.map) {
         const vec = isVectorMap(st.map.name), same = !expected || baseName(expected) === baseName(st.map.name);
         lines.push(`<li class="ok">${t("trc.page.mapLine", { name: escA(st.map.name), info: escA(`${vec ? t("trc.page.ocadOrMapper") : isPdf(st.map.name, st.map.type) ? "PDF" : t("trc.page.image")}, ${fmtMb(st.map.size)}`) })}</li>`);
         if (vec && ocad && !same) lines.push(`<li class="ok">${t("trc.page.otherVersion", { file: escA(expected) })}</li>`);
@@ -337,7 +337,7 @@ async function importEvent(main, files = []) {
   validate: (o) => (!st.ev ? t("trc.page.needFile") : !st.map ? t("trc.page.needImpMap") : kindProblem(o)) });
   if (!v) return null;
   const ev = st.ev, file = st.map, bytes = new Uint8Array(await file.arrayBuffer()), type = mimeOf(file.name, file.type);
-  // an O'CN file on its own map (inside it, or the same file): the event as it was, in its own frame — nothing to align
+  // an Ozimut file on its own map (inside it, or the same file): the event as it was, in its own frame — nothing to align
   if (st.ocn && (st.mapFromOcn || baseName(file.name) === baseName(ev.map.file))) {
     let err0 = null;
     const src = await openMap(bytes, type, file.name, ev.map.dpi || 0, ev.map.kind === "ocad" ? ev.map : null).catch((e) => { err0 = e; return null; });
@@ -357,7 +357,7 @@ async function importEvent(main, files = []) {
   // another file than the .ppen's own (an OCAD map's PDF or image, a scan): the controls are aligned on it once opened; an OCAD or
   // Mapper map for a .ppen made on one keeps the controls' coordinates (Purple Pen keeps the map file's own millimetres)
   const vector = isVectorMap(file.name, bytes), ppenOcad = ev.map.kind === "ocad" || /\.(ocd|omap|xmap)$/i.test(ev.map.file || "");
-  // an O'CN file on another map than its own: aligned like a .ppen on another map (its coordinates are its own frame's)
+  // an Ozimut file on another map than its own: aligned like a .ppen on another map (its coordinates are its own frame's)
   const differs = st.ocn ? true : vector ? !ppenOcad : ppenOcad || (!!ev.map.file && baseName(ev.map.file) !== baseName(file.name));
   let err = null;
   const src = await openMap(bytes, type, file.name, ev.map.dpi || 0).catch((e) => { err = e; return null; });

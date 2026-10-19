@@ -19,8 +19,8 @@ from datetime import date, timedelta
 from ..cn import CnParams, Decimal_round, aggregate, circuit_value, fade_factors, is_junior, title_weight
 from ..cn_engine import build_methods, daily_knots, factor_on
 
-COMPUTED = ("fair", "top6w", "fair3", "top6w3")
-BASE = {"fair": "fair", "top6w": "fair", "fair3": "fair3", "top6w3": "fair3"}
+COMPUTED = ("fair", "top6w")
+BASE = {"fair": "fair", "top6w": "fair"}
 FAIL = ("mp", "dnf", "dsq", "ot")
 OFFICIAL = CnParams()
 
@@ -105,8 +105,8 @@ class Scorer:
                 if sc is not None:
                     r["scores"]["official"] = sc
                     r["cnAfter"]["official"] = self.cn_after(r["lic"], "official", terrain, d, sc, 1.0, ffco_course)
-        # the computed methods: one circuit value per base (fair, fair3), shared by its Top
-        for base in ("fair", "fair3"):
+        # the computed methods: one circuit value per base (fair), shared by its Top
+        for base in ("fair",):
             p = self.params(base, terrain)
             as_of = d - timedelta(days=p.lag_days)
             cn_in = {r["lic"]: self.internal_j15(r["lic"], base, terrain, as_of) for r in rows}

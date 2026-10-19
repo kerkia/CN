@@ -12,15 +12,14 @@
                         fastest share of them (forest 90 %, sprint 2/3, VTT and
                         ski 75 %; since 2026-10-16).
 
-  method 3  'top6w'     "Top", the method published (since 2026-10-16): the same race
-                        scores as 'fair' (derived from it, not recomputed), but the CN
-                        keeps only the best races filling 6 weight places - it rewards racing.
+  method 3  'top6w'     the Ozimut method, published (the « Top » until 2026-10-19): the same
+                        race scores as 'fair' (derived from it, not recomputed), but the
+                        index keeps only the best races filling 6 weight places - it rewards racing.
 
-  methods 'fair3' and 'top6w3'  the geometric pair (study of 2026-10-13, published as the
-                        Top from 2026-10-13 to 2026-10-16, an analysis method since): the
-                        circuit valued by a geometric mean with the tail dial, the usual level
-                        a cubic mean. Slightly better in sprint (+0.12 point of duels), level in
-                        forest; kept for the analysts as the reference the simple method is held to.
+The geometric pair ('fair3', 'top6w3': a geometric circuit value with a tail dial, a cubic
+usual level; published from 2026-10-13 to 2026-10-16, an analysis method until 2026-10-19)
+was removed on 2026-10-19 (owner): forest -0.02 point of duels, sprint +0.15 against the
+arithmetic method, which anyone can follow by hand. Its code is in git history.
 
 For both computed methods forest, sprint, VTT and ski are independent
 rankings in every season — the federation only split forest and sprint in
@@ -247,7 +246,7 @@ def build_methods() -> dict[str, MethodSpec]:
     # field, level with the geometric Top), sprint the two-thirds (FFCO's rule; 50-60 % win since 2025 but lose over the
     # fifteen seasons, 100 % -0.34), VTT 75 % (+0.15; 85 % is best on 2012-2024 but -0.49 since 2025), ski 75 % as VTT
     # (unmeasurable). The usual level's share of best scores was tested too (50-100 %, eval_elig_n.json): 60 % stays
-    # (50 % -0.03, 70 % -0.11, 100 % -0.62 in forest; flat in sprint). Its recalage is the geometric pair's (below).
+    # (50 % -0.03, 70 % -0.11, 100 % -0.62 in forest; flat in sprint). Its recalage was made for the geometric pair (below).
     fair = CnParams(
         sample_rounding="ceil",
         k_over_1000=1.0,
@@ -288,82 +287,30 @@ def build_methods() -> dict[str, MethodSpec]:
         # usual level unchanged, lost 0.08. In both steps, so that the circuits' values follow.
         junior_fade=1.0,
     )
-    # The method retained (study of 2026-10-13, owner's go-ahead): the CN as the weighted cubic mean of the kept
-    # scores - k = 3: computed at race level, a runner 1 % slower than another gets 3 % fewer points and the CN
-    # is the plain mean of those scores, shown on the usual scale -, the circuit valued by the geometric mean of
-    # CN J-15 x time over every ranked CN holder in forest, over the fastest two-thirds in sprint. FFCO's
-    # two-thirds leave out the runners who made mistakes: the value came out 4.8 % too low on average in forest,
-    # unevenly (standard deviation 5.4 points, following the circuit's mistake rate); in sprint, where mistakes
-    # are rarer, the whole field loses. VTT and ski keep FFCO's circuit value and the quadratic mean (the whole
-    # field hurt the VTT Top since 2022; ski cannot be measured). Measured against the quadratic Top on the same
-    # runners, 2012-2024: forest tau +0.014 [+0.012, +0.015] (14 seasons of 15; national races +0.004), sprint
-    # +0.0025 [+0.0014, +0.0035]; juniors no longer rated 3 % too low against H/D21 in forest. The recalage
-    # anchors the Top's cohort (the published CN) and corrects the drift of the raw scale, in forest and sprint.
-    # Since 2026-10-14 (owner: a rank built only from a weighted arithmetic average of the race scores) the Top is
-    # the weighted ARITHMETIC mean of its 6 places, in every discipline; the usual level that values the circuits
-    # (fair3) keeps the cubic mean. Measured on the same runners, 2012-2024, against the cubic Top: duels called
-    # right forest -0.01 point [-0.02, -0.00] (national races 0.00), time gaps explained -1.1 point; sprint -0.10
-    # [-0.14, -0.07], -3.4 points. The order in forest is the same: the cubic mean matters for valuing circuits.
-    # Also since 2026-10-14 (owner: identical logic and formulas in every discipline, only parameters differing) VTT and
-    # ski follow sprint's rules - geometric circuit value over the fastest two-thirds, cubic usual level - and every
-    # discipline has the same recalage, counted in calendar months. What still differs: the window and the share of best
-    # scores (VTT and ski have few races), and the share of the field valuing a circuit - the whole field in forest only:
-    # measured with today's Top, the whole field costs sprint -0.21 point [-0.29, -0.15] (9 seasons of 15 worse, none
-    # better) and VTT -0.63 since July 2025 (worse every season since 2022), and gains forest +0.6 (better every season).
-    # The sprint rules cost VTT -0.06 [-0.09, -0.03] against its former rules (arithmetic value, quadratic level).
-    # Since 2026-10-15 (owner: no binary « all or two-thirds ») the share of the field is a dial, `tail_k` (cn.circuit_value):
-    # the whole field weighs n / (n + k). k per discipline by one criterion - the best duels called right on 2012-2024
-    # without a significant loss since July 2025 (study copies, eval_tail*_n.json; against the rules of 2026-10-14): forest
-    # 0 (the whole field; k = 3 already -0.05), sprint 400 (+0.11 [+0.06, +0.15]; flat from 200 to 1000: the gain is the
-    # four-runner exception dropped), VTT 50 (+0.12 [+0.05, +0.19]; smaller k gain more on 2012-2024 but lose since 2025),
-    # ski 50 as VTT (not measurable). `tail_mean`: the mean tail effect of the discipline's circuits, 2011-2026.
-    fair3 = dataclasses.replace(fair, junior_fade=0.0, by_terrain={
-        "Forêt": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 0.0, "tail_mean": 0.0397},
-        "Sprint": {"cv_power": 0.0, "cn_power": 3.0, "tail_k": 400.0, "tail_mean": 0.0239},
-        "VTT": {"window_days": 730, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0, "tail_k": 50.0, "tail_mean": 0.0247},
-        "Ski": {"window_days": 1095, "eligible_fraction": 0.70, "cv_power": 0.0, "cn_power": 3.0, "tail_k": 50.0, "tail_mean": 0.0235},
-    })
-    # carried 10 calendar months: counted in months with races, the 7 of 2026-10-13 stretched over forest's few race-less
-    # months; in calendar months 7 left the forest level 2.7 % above 5600, 10 keeps the three measurable disciplines within
-    # 2 % at every date checked (2018-2026)
-    norm3 = Normalisation(mode="monthly_drift", anchor_top_n=6, anchor_cn_power=1.0, calendar_months=True,
-                          trend_ahead_months=10.0)
-    # the Top: 6 weighted places, their weighted arithmetic mean in every discipline
-    top3 = dataclasses.replace(fair3, top_n=6, cn_power=1.0,
-                               by_terrain={t: {**o, "cn_power": 1.0} for t, o in fair3.by_terrain.items()})
+    # The recalage (2026-10-13, made for the geometric pair, shared by the linear one since 2026-10-16): each month a
+    # factor brings the mean of the best 20 % of the index - the cohort the published method's 6 places give - to 5600,
+    # the drift of the raw scale over ten years corrected, counted in calendar months, carried 10 months (7 left the forest
+    # level 2.7 % above 5600, 10 keeps the three measurable disciplines within about 2 %).
+    norm = Normalisation(mode="monthly_drift", anchor_top_n=6, anchor_cn_power=1.0, calendar_months=True,
+                         trend_ahead_months=10.0)
     return {
         "fair": MethodSpec(
             name="fair",
             params=fair,
             rescale=None,  # no annual step at all
-            normalisation=norm3,     # since 2026-10-16: anchored on the Top, the drift corrected (+0.08 point in forest)
+            normalisation=norm,      # since 2026-10-16: anchored on the published index, the drift corrected (+0.08 point in forest)
             description="the usual level: weighted mean of the best 60 %, juniors' races fading over the window; arithmetic circuit value over the fastest share (forest 90 %, sprint 2/3, VTT and ski 75 %)",
         ),
         "top6w": MethodSpec(
             name="top6w",
-            # the published Top (since 2026-10-16): fair's race scores, the CN keeps only the best races filling 6
-            # weight places, in a weighted arithmetic mean: racing more can only raise it.
+            # the Ozimut method, published (the « Top » until 2026-10-19): fair's race scores, the index keeps only the
+            # best races filling 6 weight places, in a weighted arithmetic mean: racing more can only raise it.
             params=dataclasses.replace(fair, top_n=6),
             derived_from="fair",
-            normalisation=norm3,
-            description="Top: fair's scores, best 6 weighted places, weighted arithmetic mean, juniors' races fading over the window",
-        ),
-        "fair3": MethodSpec(
-            name="fair3",
-            params=fair3,
-            rescale=None,
-            normalisation=norm3,
-            description="Fit: geometric circuit value (whole field in forest), cubic mean; recalage on the Top",
-        ),
-        "top6w3": MethodSpec(
-            name="top6w3",
-            params=top3,
-            derived_from="fair3",
-            normalisation=norm3,
-            description="Top, derived from fair3: the same scores, 6 weighted places, weighted arithmetic mean",
+            normalisation=norm,
+            description="Ozimut: fair's scores, best 6 weighted places, weighted arithmetic mean, juniors' races fading over the window",
         ),
     }
-
 
 class CnEngine:
     def __init__(self, db_path: Path) -> None:

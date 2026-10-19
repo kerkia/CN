@@ -1,0 +1,169 @@
+% Ozimut - the Ozimut method: the white paper (French). Build: py -3 docs/whitepaper/build.py (figures and numbers.tex,
+% pdflatex x2, the PDF moved to site/assets/ozimut-methode.pdf and copied to ocn-methode-top.pdf, its former name).
+% Aggregate figures only: no name, no personal result.
+% 2026-10-16: the method published is the linear one (plain means, the share of the field valuing a circuit set per
+% discipline); the text was shortened (owner): the alternatives in a few lines, the conclusion on simplicity and accuracy.
+% 2026-10-19 (owner): the site O'CN renamed Ozimut, the method « Top » the Ozimut method (indice Ozimut, score Ozimut,
+% valeur Ozimut du circuit); the geometric pair no longer a method: one line among the variants set aside.
+% Formerly methode-top.tex.
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\usepackage[margin=24mm]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue!50!black,citecolor=black]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{4pt}
+\graphicspath{{fig/}}
+\newcommand{\CN}{\textsc{cn}}
+\input{numbers.tex}
+
+\title{La méthode Ozimut\\\large Le classement national recalculé : objectifs, méthode, étude et résultats}
+\author{Ozimut — La course d'orientation, en cartes et en chiffres\\\small \url{https://ozimut.com} — site indépendant, sans lien avec la FFCO}
+\date{19 octobre 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+À partir des mêmes résultats que la Fédération française de course d'orientation (FFCO), le site Ozimut calcule un classement national alternatif, la méthode Ozimut, et le compare au classement officiel sur quinze saisons. La méthode Ozimut garde le score de course de la FFCO et des moyennes ordinaires : chacun peut refaire un score ou un indice à la main. Elle ne change que ce qui compte : les meilleures courses retenues sur six places, une part du peloton réglée dans chaque spécialité pour mesurer la difficulté des circuits, un recalage continu, et, depuis le 19 octobre 2026, des courses de jeunes qui comptent de moins en moins avec le temps.
+
+Sur les saisons 2012 à 2024, qui n'ont pas servi à régler la méthode, l'indice Ozimut désigne le bon vainqueur dans \NaccFtop~\% des duels entre deux coureurs d'un même circuit en forêt, contre \NaccFoff~\% pour le \CN{} officiel ; en sprint, \NaccStop~\% contre \NaccSoff~\%.
+\end{abstract}
+
+\tableofcontents
+
+\section{Objectifs}
+
+Le classement national (\CN) sert à deux choses différentes. Il sert à mesurer la difficulté des circuits : il faut pour cela le niveau habituel des coureurs présents, sans qu'une contre-performance ou un exploit isolé le déforme. Il sert aussi à classer : pour les qualifications aux championnats de France, il faut savoir ce dont un coureur est capable dans une grande compétition, donc regarder ses meilleures courses.
+
+La méthode alternative devait :
+\begin{itemize}
+  \item partir des mêmes résultats et du même score de course que la FFCO, pour que chacun puisse comprendre et vérifier ;
+  \item compter les championnats de France et les courses nationales, que la méthode officielle écarte souvent ;
+  \item ne pas pénaliser le coureur qui court une course de plus, une fois ses meilleures courses en place ;
+  \item supprimer le saut du 1\textsuperscript{er} janvier, pour pouvoir suivre un coureur sur plusieurs saisons ;
+  \item mieux prédire les résultats, et le prouver par une mesure fiable ;
+  \item rester simple : des moyennes ordinaires et une règle commune. Quand une variante plus savante ne gagne que quelques centièmes de point, la règle simple l'emporte.
+\end{itemize}
+
+\section{Le point de départ : le classement officiel}
+
+\paragraph{Le score d'une course.} Pour chaque coureur classé qui a un \CN, on multiplie son \CN{} par son temps : un coureur de \CN{} 6\,000 qui court en 50 minutes donne 300\,000. La \emph{valeur du circuit} est la moyenne de ces produits pour les deux tiers les plus rapides. Le score d'un coureur est la valeur du circuit divisée par son temps. Un coureur qui court comme son \CN{} le laisse prévoir obtient un score proche de son \CN. Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.
+
+\paragraph{Le \CN.} Le \CN{} officiel est la moyenne des scores des douze derniers mois, sans les 10~\% meilleurs ni les 40~\% moins bons (depuis 2026). Chaque 1\textsuperscript{er} janvier, les \CN{} d'une spécialité sont multipliés par un même nombre, pour que la moyenne des 20~\% meilleurs vaille 5\,600.
+
+\paragraph{Ce qu'il fait bien, ce qu'il fait moins bien.} Le classement officiel fait foi : c'est le seul qui compte pour les sélections. Sa règle est publique et simple, et il mesure bien le niveau habituel. Sans son travail de collecte des résultats, ni Ozimut ni cette étude n'existeraient. Mais il écarte les 10~\% meilleures courses, souvent les championnats et les nationales ; pour un coureur bien classé, une course de plus fait souvent baisser le \CN{} ; toutes les courses pèsent pareil ; et le saut du 1\textsuperscript{er} janvier empêche de comparer les \CN{} d'une année à l'autre.
+
+\section{Comment juger un classement}
+
+Un bon \CN{} doit annoncer les résultats. Pour chaque coureur, on prend le \CN{} qu'il avait quinze jours avant la course, qui ne sait rien de la course, et l'on regarde circuit par circuit si ces \CN{} annonçaient l'ordre d'arrivée. Sur un circuit, chaque paire de coureurs forme un \emph{duel} ; il est bien prédit quand le coureur qui avait le \CN{} le plus haut finit devant. Chaque circuit pèse son nombre de coureurs. On mesure aussi la part des écarts de temps entre coureurs que le \CN{} annonçait, la règle qui traduit un écart de \CN{} en écart de temps étant apprise sur la saison précédente.
+
+Toutes les méthodes sont jugées sur les mêmes coureurs. Les courses d'une saison ne sont qu'un échantillon : on refait donc le calcul 2\,000 fois sur des saisons tirées au sort, en tirant des compétitions entières. Un écart est dit \emph{significatif} quand l'intervalle à 95~\% de ces tirages, écrit entre crochets, ne contient pas 0. Les réglages ont été choisis sur la période de juillet 2025 à octobre 2026 ; les saisons 2012 à 2024 n'ont servi qu'à juger. Chaque variante a été recalculée depuis 2010 sur une copie de la base de données.
+
+\section{La méthode Ozimut}
+
+La méthode Ozimut se lit en deux temps, comme le classement mondial de l'IOF : chaque course rapporte un \emph{score Ozimut}, et l'\emph{indice Ozimut} d'un coureur, qui tient la place du \CN, résume ses meilleurs scores Ozimut des douze derniers mois.
+
+\begin{description}
+  \item[Niveau habituel.] Pour chaque coureur, quinze jours avant la course, la moyenne pondérée de ses 60~\% meilleurs scores Ozimut des douze derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70~\% des scores, sur deux et trois ans), une course courue en catégorie jeune comptant pour $1 - \text{âge} / \text{fenêtre}$. Ce n'est pas un classement : c'est une étape du calcul, faite des courses déjà courues.
+  \item[Valeur Ozimut du circuit.] La moyenne des produits niveau habituel $\times$ temps des coureurs les plus rapides qui ont un niveau : 90~\% en forêt, les deux tiers en sprint, 75~\% en VTT et en ski, le nombre arrondi au-dessus ; au moins quatre coureurs, et les quatre quand il n'y en a que quatre.
+  \item[Score Ozimut.] La valeur Ozimut du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
+  \item[Indice Ozimut.] Les meilleurs scores Ozimut, parmi les 60~\% meilleurs des douze derniers mois, remplissent six places : deux pour un championnat de France, une et demie pour une course nationale, une pour toute autre course. L'indice Ozimut est la moyenne pondérée des scores retenus :
+  \[ \text{indice Ozimut} = \textstyle\sum (\text{places} \times \text{score}) \big/ \sum \text{places} . \]
+  Une course courue en catégorie jeune (H et D jusqu'à 20 ans) garde ses places mais compte dans la moyenne pour $1 - \text{âge} / \text{fenêtre}$. Une fois les six places remplies, une course de plus ne peut pas faire baisser l'indice d'un adulte. Il faut au moins trois courses.
+  \item[Recalage.] Chaque jour, un facteur maintient à 5\,600 la moyenne des 20~\% meilleurs indices Ozimut de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée des dix dernières années ; entre deux mois, il passe en ligne droite de l'un à l'autre.
+\end{description}
+
+\paragraph{Exemple.} Un circuit compte six coureurs qui ont un niveau ; F s'est perdu.
+\begin{center}\small
+\begin{tabular}{@{}lrrrrr@{}}\toprule
+Coureur & Niveau & Temps & Niveau $\times$ temps & Score officiel & Score Ozimut en forêt$^*$ \\ \midrule
+A & 6\,000 & 50 min & 300\,000 & 6\,075 & 6\,617 \\
+B & 5\,500 & 56 min & 308\,000 & 5\,424 & 5\,908 \\
+C & 5\,000 & 62 min & 310\,000 & 4\,899 & 5\,336 \\
+D & 4\,500 & 66 min & 297\,000 & 4\,602 & 5\,013 \\
+E & 4\,000 & 80 min & 320\,000 & 3\,797 & 4\,135 \\
+F & 5\,000 & 90 min & 450\,000 & 3\,375 & 3\,676 \\ \bottomrule
+\end{tabular}
+\end{center}
+$^*$ Avant recalage, le niveau habituel de chacun supposé égal à son \CN. La règle officielle, comme la méthode Ozimut en sprint, mesure le circuit sur les quatre plus rapides : la valeur est 303\,750, et A marque 6\,075. En forêt, la méthode Ozimut prend 90~\% de six coureurs, arrondi au-dessus, soit les six, F compris : la valeur passe à 330\,833, et A, qui a couru sans faute, marque 6\,617 avant recalage. Ce circuit a coûté cher à un coureur sur six ; celui qui l'a couru sans faute en est récompensé. Sur un vrai circuit de plusieurs dizaines de coureurs, une seule erreur pèse bien moins, et le recalage ramène le niveau général à 5\,600.
+
+\section{Les choix et les variantes}
+
+\paragraph{Les poids et les places.} Le poids d'une course suit le nom de la compétition, pas les niveaux A, B, C et D de la FFCO. Six places, comme les cinq courses du classement mondial de l'IOF : dix places ne faisaient pas mieux, quatre faisaient moins bien.
+
+\paragraph{Les 60~\% meilleurs scores.} Les scores laissés de côté sont, pour l'essentiel, les courses où le coureur s'est trompé. Pour le niveau habituel, les 50~\% meilleurs font \NeligFifty{} point de duels, les 70~\% \NeligSeventy{} et tous les scores \NeligAll{} en forêt, face aux 60~\% ; en sprint, de 50 à 80~\% se valent. Exiger cinq courses, ou se contenter de deux, faisait moins bien.
+
+\paragraph{Les circuits se mesurent sur le niveau habituel, pas sur les indices Ozimut.} Les indices Ozimut ne retiennent que les meilleures courses : ils se nourriraient d'eux-mêmes, et un groupe qui court surtout entre soi verrait ses indices monter. Mesurés avec les indices Ozimut, les duels seraient moins bien prédits (\NoneCn{} point de 2012 à 2024, \NoneCnT{} depuis juillet 2025, une perte qui grandit au fil des saisons).
+
+\paragraph{La part du peloton qui mesure le circuit.} C'est le choix qui compte le plus. Le dernier tiers d'un circuit réunit des coureurs plus faibles, qui ont couru à leur niveau, et des coureurs qui se sont trompés. En les écartant, la règle de la FFCO mesure la difficulté du circuit couru presque sans erreur ; or certains circuits provoquent bien plus d'erreurs que d'autres, et sur ces circuits tous les scores sortent trop bas. En forêt, la valeur mesurée sur tout le peloton dépasse celle des deux tiers de \NtruncF~\% en moyenne, mais très inégalement (figure~\ref{fig:trunc}) ; en sprint, de \NtruncS~\%.
+
+\begin{figure}[h]\centering\includegraphics{fig_trunc.pdf}
+\caption{Pour chaque circuit, de 2012 à 2026 : de combien la valeur mesurée sur tout le peloton dépasse celle des deux tiers les plus rapides.}\label{fig:trunc}\end{figure}
+
+La part a été réglée dans chaque spécialité par un seul critère : celle qui prédit le mieux les duels de 2012 à 2024, sans perte significative depuis juillet 2025 (figure~\ref{fig:share}).
+\begin{itemize}
+  \item \textbf{Forêt : 90~\%.} Tout le peloton gagne \NallVsTwoF{} point sur les deux tiers, et 90~\% encore \NnineVsAll{} sur tout le peloton (\NnineVsAllN{} sur les courses nationales), mieux dans \NnineBetter{} saisons sur 15 et moins bien dans \NnineWorse. Le dernier dixième, ce sont les courses très perdues : les laisser de côté évite qu'un seul coureur égaré porte la valeur du circuit.
+  \item \textbf{Sprint : les deux tiers}, la règle de la FFCO. Rien ne fait mieux sur les quinze saisons ; tout le peloton fait \NallVsTwoS. Les erreurs y sont deux fois plus rares qu'en forêt.
+  \item \textbf{VTT : 75~\%} (\NvttSeventyFive). 85~\% fait le mieux de 2012 à 2024 (\NvttEightyFive), mais perd depuis juillet 2025 (\NvttEightyFiveT). \textbf{Ski : 75~\%}, comme le VTT : il a trop peu de courses pour être mesuré.
+\end{itemize}
+
+\begin{figure}[h]\centering\includegraphics{fig_share.pdf}
+\caption{Écart de la part des duels bien prédits face aux deux tiers les plus rapides, en points, selon la part du peloton qui mesure le circuit, avec l'intervalle à 95~\%. En forêt, le point à 90~\% est mesuré face à tout le peloton.}\label{fig:share}\end{figure}
+
+\paragraph{Les courses des jeunes (19 octobre 2026).} Le \CN{} d'un jeune retarde sur son niveau : un an et demi plus tard, le niveau habituel d'un jeune a monté de 22~\% en forêt, celui d'un adulte de 11~\% (la montée générale de l'échelle comprise). Ses courses d'il y a dix mois décrivent un coureur plus lent. Une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte donc dans la moyenne pour $1 - \text{âge} / \text{fenêtre}$ : en entier le jour de la course, à moitié six mois plus tard, presque plus à la fin de la fenêtre. Elle garde ses places ; les courses des adultes gardent leur poids ; la règle s'applique au niveau habituel, qui mesure les circuits, comme à l'indice Ozimut. L'indice de chaque règle a été relu le jour même, quinze jours avant chaque course.
+\begin{itemize}
+  \item \textbf{Forêt} : \NjunF{} point de 2012 à 2024, mieux dans \NjunFBetter{} saisons sur 15, \NjunFT{} depuis juillet 2025.
+  \item \textbf{Sprint} : \NjunS{} de 2012 à 2024, rien de significatif depuis juillet 2025 (\NjunST).
+  \item \textbf{VTT} : \NjunV{} de 2012 à 2024, \NjunVT{} depuis juillet 2025.
+\end{itemize}
+Faire vieillir les courses de tous les coureurs apporte peu : au mieux \NjunAdult{} en forêt (le poids divisé par deux tous les six mois), et rien de plus une fois les courses des jeunes effacées (\NjunBoth{} avec les deux). Le niveau d'un adulte bouge peu d'une saison à l'autre. Une fenêtre de deux ans fait \NjunWin{} ; effacer les courses dans l'indice Ozimut seul, sans toucher au niveau habituel, \NjunTop. Le prix : en forêt, les jeunes sont un peu plus souvent annoncés devant les H/D\,21--34 qu'ils ne finissent devant (\NjunBiasBefore{} points avant, \NjunBiasAfter{} après) ; en sprint et en VTT, où ils étaient sous-évalués, l'écart se réduit. L'indice d'un jeune peut désormais bouger entre deux courses.
+
+\paragraph{Les coureurs loin de leur niveau (18 octobre 2026).} Sur un circuit, quelques coureurs finissent loin de ce que leur niveau habituel laisse prévoir : bien plus vite, souvent des jeunes en progrès dont le niveau était en effet trop bas (un an plus tard, 17 à 19~\% au-dessus des autres coureurs de leur âge), ou bien plus lentement, après une erreur. 28 règles ont essayé de les écarter de la valeur du circuit : d'un côté ou des deux, au-delà d'un seuil ou en part fixe, et de ne plus laisser les jeunes mesurer les circuits. N'écarter que les plus rapides fait monter les circuits des jeunes, donc leurs \CN, donc la mesure de leurs circuits suivants : en forêt, leurs circuits finissent jusqu'à \NoutLoop~\% au-dessus de ceux des adultes, et la prédiction recule (\NoutFast, \NoutFastFive{} au seuil de 5~\%). Écarter les deux côtés coûte en forêt (\NoutBothF) ; en sprint et en VTT, ajouté à l'écart des jeunes, il gagne \NoutXS{} et \NoutXV. Ces gains demanderaient deux règles de plus dans la mesure des circuits, pour corriger le même défaut que l'effacement des courses des jeunes : un \CN{} de jeune en retard sur son niveau. La méthode garde la mesure des circuits telle quelle et traite ce retard là où il naît, dans l'indice.
+
+\paragraph{Le recalage.} L'indice Ozimut d'un coureur est fait de ses meilleures courses, donc un peu au-dessus de ses courses ordinaires ; les circuits suivants sont mesurés avec ces niveaux un peu hauts, et le niveau général monte de quelques dixièmes de pour cent par mois. Le facteur d'un jour était calculé sur un niveau qui avait 18 à 20 mois de retard, et le niveau publié dépassait la cible de 7~\% en forêt. Prolonger la moyenne de 13 mois au rythme de la montée des dix dernières années garde un facteur aussi régulier, et ramène le niveau publié près de la cible : depuis 2018, à 2~\% en moyenne en forêt et en VTT, à 3~\% en sprint, avec des écarts de 6 à 9~\% après les saisons Covid.
+
+\paragraph{Les autres idées.} Chaque idée a été recalculée et jugée de la même façon ; aucune n'a été retenue.
+\begin{itemize}
+  \item \emph{Une moyenne géométrique pour la valeur du circuit} (multiplier les produits niveau habituel $\times$ temps entre eux et en prendre la racine, au lieu de les additionner) : face à la méthode Ozimut, sur les mêmes coureurs, \NgeoVarF{} point de duels en forêt et \NgeoVarS{} en sprint. Un peu meilleure en sprint, elle est écartée parce que la moyenne ordinaire se refait à la main.
+  \item \emph{Rendre le retard plus cher}, en élevant le temps à une puissance : c'était en fait changer les moyennes du circuit et du \CN{} ; la moyenne quadratique, en ligne du 7 au 13 octobre, bousculait les classements sans corriger la part du peloton.
+  \item \emph{Une règle temps-score propre à chaque circuit} : moins bien ; sur une vingtaine de coureurs, l'estimation est trop incertaine.
+  \item \emph{Plus de poids aux courses qui départagent mieux les coureurs} : pas de différence significative.
+  \item \emph{Un score qui pénalise moins les très grosses pertes de temps} : un peu mieux en forêt, nettement moins bien en sprint.
+  \item \emph{Le niveau estimé par un modèle statistique} qui sépare la forme du jour et les erreurs : \NmleS{} point en sprint, \NmleF{} en forêt, où se tromper souvent est un trait du coureur.
+  \item \emph{Atténuer les temps aberrants} (méthode de Huber) au lieu de régler la part du peloton : environ 0,1 point de moins.
+  \item \emph{Une valeur de circuit commune aux circuits de même longueur en sprint}, \emph{un score fondé sur l'écart au temps moyen} à la façon de l'IOF, \emph{un recalage qui réagit à ses propres effets} : moins bien, ou instable.
+\end{itemize}
+
+\section{Résultats}
+
+Sur les saisons 2012 à 2024, qui n'ont pas servi aux réglages, et sur les mêmes coureurs :
+\begin{center}\small
+\begin{tabular}{@{}lrrrr@{}}\toprule
+ & \multicolumn{2}{c}{Forêt} & \multicolumn{2}{c}{Sprint} \\
+ & officiel & Ozimut & officiel & Ozimut \\ \midrule
+duels bien prédits & \NaccFoff~\% & \NaccFtop~\% & \NaccSoff~\% & \NaccStop~\% \\
+écarts de temps expliqués & \NrrFoff~\% & \NrrFtop~\% & \NrrSoff~\% & \NrrStop~\% \\ \midrule
+gain de l'indice Ozimut en duels, toutes les courses & \multicolumn{2}{c}{\NgainF} & \multicolumn{2}{c}{\NgainS} \\
+gain de l'indice Ozimut en duels, courses nationales & \multicolumn{2}{c}{\NgainNF} & \multicolumn{2}{c}{\NgainNS} \\
+gain de l'indice Ozimut en écarts de temps expliqués & \multicolumn{2}{c}{\NgainRF} & \multicolumn{2}{c}{\NgainRS} \\
+saisons où le gain est significatif & \multicolumn{2}{c}{\NwinsF} & \multicolumn{2}{c}{\NwinsS} \\ \bottomrule
+\end{tabular}
+\end{center}
+Ces chiffres portent sur \NcompsF{} compétitions de forêt et \NcompsS{} de sprint, chaque circuit pesant son nombre de coureurs ; les gains sont en points, avec leur intervalle à 95~\%. Les jeunes, que le \CN{} officiel sous-évalue de \NcalibYoungOff~\% en forêt face aux H/D\,21 (leurs circuits provoquent beaucoup d'erreurs), étaient à leur place quand tout le peloton mesurait le circuit (étude du 13 octobre). Les vétérans restent surévalués de 8 à 9~\% par toutes les méthodes, la méthode officielle comprise : la cause n'est pas la mesure du circuit.
+
+\section{Conclusion : la plus simple de celles qui prédisent le mieux}
+
+Toutes les variantes essayées se tiennent en quelques dixièmes de point de duels bien prédits, et les meilleures en quelques centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places, une part du peloton réglée par spécialité pour mesurer les circuits — 90~\% en forêt, les deux tiers en sprint, 75~\% en VTT et en ski —, un recalage continu, et des courses de jeunes qui comptent de moins en moins avec le temps. Elle gagne plus de deux points de duels sur le \CN{} officiel, en forêt comme en sprint.
+
+Cette méthode est en ligne sur le site Ozimut depuis le 16 octobre 2026, d'abord sous le nom « Top » ; les courses des jeunes y comptent de moins en moins avec le temps depuis le 19 octobre. Le classement officiel y reste la seule référence qui fait foi. Les données proviennent du site du classement national de la FFCO : une course absente, mal saisie ou corrigée ensuite peut expliquer un écart. Les méthodes calculées par le site partent des \CN{} de 2010, et leurs premiers mois reflètent surtout ce point de départ.
+
+\end{document}

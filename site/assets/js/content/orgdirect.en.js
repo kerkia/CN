@@ -18,7 +18,7 @@ export const steps = `
   <ol class="od-steps" start="3">
     <li>On the arena computer, connected to the internet, open this page in <b>Chrome or Edge</b>. Firefox and Safari don't let a
       page re-read a file on its own.</li>
-    <li>Log in to O'CN with the account that creates the broadcast: only that account can feed it afterwards. You can create it
+    <li>Log in to Ozimut with the account that creates the broadcast: only that account can feed it afterwards. You can create it
       the day before, from here or from another computer.</li>
     <li>Choose the race below, or create it: its name, its date and the organiser are enough.</li>
     <li>Choose the exported file, <b>once only</b>. The browser asks for permission to read it.</li>
@@ -30,6 +30,6 @@ export const steps = `
   <ul class="od-steps">
     <li>Courses, classes, controls and runners don't need to be declared: they come from the file, and a course that appears during
       the race is added.</li>
-    <li>Runners are recognised by their name and club, and linked to their page on O'CN.</li>
+    <li>Runners are recognised by their name and club, and linked to their page on Ozimut.</li>
   </ul>
   <p style="margin:12px 0 0">Spectators follow the race in <b>Races › Live</b>: the link appears below once the race is chosen.</p>`;

@@ -1,4 +1,4 @@
-// The Tracer's ribbon — the « O'CN mode », by default (owner, 2026-10-17; the menus stay as the « Purple Pen mode »). Drawn from
+// The Tracer's ribbon — the « Ozimut mode », by default (owner, 2026-10-17; the menus stay as the « Purple Pen mode »). Drawn from
 // ribbon-data.js: tabs in the order of the setter's work, contextual tabs that come with the selection (a control, a leg, an
 // object, a shape being drawn) and hold what applies to it, the « Fichier » page (backstage), a quick-access bar, a command
 // search (Alt+Q), key hints (Alt), live figures (the event audit's problems, open comments, the course's length and climb),

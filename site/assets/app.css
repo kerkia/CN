@@ -1,4 +1,4 @@
-/* O'CN — design tokens and components.
+/* Ozimut — design tokens and components.
  *
  * Series colours are the validated categorical palette (dataviz skill,
  * references/palette.md), in fixed order. Methods take slots 1-3 (the only
@@ -196,6 +196,10 @@ p { margin: 0; }
 .brand:hover { text-decoration: none; }
 .brand-mark { width: 30px; height: 30px; flex: none; }
 .brand-name { font-size: 16px; letter-spacing: -0.01em; white-space: nowrap; line-height: 1.2; }
+.brand-o { color: var(--flag); }
+/* the move to ozimut.com (bridge.js): why this browser stays on the old address for now */
+.bridge-note { background: var(--flag-wash); color: var(--ink); border-bottom: 1px solid var(--border); padding: 10px 20px;
+  font-size: 14px; line-height: 1.45; text-align: center; }                 /* the name's O in the control-flag orange (owner, 2026-10-19) */
 .nav { display: flex; gap: 2px; }
 /* a group's button and its drop-down menu (also the menu under one's name) */
 .nav-group { position: relative; }
@@ -839,6 +843,7 @@ svg.tour-ctrl-finish { border: 0; background: none; fill: var(--plane); color: v
 .reel .rv-tag-b { fill: var(--flag); }
 .reel .rv-timer { fill: var(--flag); }
 .reel .rv-logo { font-size: 92px; font-weight: 800; fill: var(--accent); letter-spacing: -0.02em; }
+.reel .rv-logo-o { fill: var(--flag); }
 /* the views' motion: replayed each time a slide comes (.is-anim), at each element's own delay (--d) */
 .reel .rv-draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .reel .rv-grow-y { transform-box: fill-box; transform-origin: 50% 100%; }
@@ -1828,7 +1833,7 @@ body.full-win .tr-app { border: 0; }
   .tr-start-cards { grid-template-columns: minmax(0, 1fr); }
   .tr-start-list { max-height: 40vh; }
 }
-/* the Tracer's two interfaces (owner, 2026-10-17): the « O'CN mode », a ribbon (tracer/ribbon.js), by default, and the « Purple
+/* the Tracer's two interfaces (owner, 2026-10-17): the « Ozimut mode », a ribbon (tracer/ribbon.js), by default, and the « Purple
    Pen mode », the menus and the tool bar; the title bar is shared, each mode's parts marked .tr-ocn / .tr-pp */
 .tr-ui-ocn .tr-pp, .tr-ui-pp .tr-ocn { display: none !important; }
 .tr-qat { display: inline-flex; align-items: center; gap: 2px; }

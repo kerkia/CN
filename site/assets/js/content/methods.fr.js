@@ -11,14 +11,14 @@ export function build(X) {
     EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows,
     RACE6, r6, n0, more } = X;
 
-  const TABS = [["officiel", "CN officiel"], ["top", "CN Top"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
+  const TABS = [["officiel", "CN officiel"], ["top", "Méthode Ozimut"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
   const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"],
     ["choix", "Les choix et les variantes"], ["resultats", "Les résultats"], ["conclusion", "La méthode retenue"]];
   const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["resultats", "Résultats et temps intermédiaires"],
     ["relais", "Relais"], ["limites", "Limites"]];
-  const lede = html`Les règles du classement officiel et du Top, l'étude qui a conduit au Top, les autres calculs du site, et le tracé des circuits.`;
+  const lede = html`Les règles du classement officiel et de la méthode Ozimut, l'étude qui y a conduit, les autres calculs du site, et le tracé des circuits.`;
   const note = html`Site indépendant et non officiel, sans lien avec la Fédération française de course
-        d'orientation. Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; les autres sont des calculs alternatifs, à but d'analyse.`;
+        d'orientation. Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; la méthode Ozimut est un calcul alternatif, fait par le site sur les mêmes résultats.`;
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const force = html`le niveau habituel des coureurs`;
   const EV_LABEL = { acc: "Duels bien prédits", r2: "Écarts de temps expliqués" };
@@ -105,7 +105,7 @@ export function build(X) {
   }
 
   // ======================================================================================================
-  // 2. CN Top
+  // 2. The Ozimut method
   // ======================================================================================================
   function top() {
     // the worked example, computed with each visible method's rules on the same ten scores
@@ -140,41 +140,39 @@ export function build(X) {
     return html`
     <section class="mx-slide">
       <p class="mx-kicker" style="${cvar("top6w")}">${methodKey("top6w")} ${methodLabel("top6w")}</p>
-      <h2>Un score Top par course, un CN Top par coureur</h2>
-      <p class="mx-lead">La méthode Top se lit en deux temps, comme le classement mondial de l'IOF. D'abord, chaque course rapporte un <b>score Top</b> à
-        chaque coureur. Ensuite, le <b>CN Top</b> d'un coureur résume ses meilleurs scores Top des 12 derniers mois.</p>
+      <h2>Un score Ozimut par course, un indice Ozimut par coureur</h2>
+      <p class="mx-lead">La méthode Ozimut se lit en deux temps, comme le classement mondial de l'IOF. D'abord, chaque course rapporte un <b>score Ozimut</b> à
+        chaque coureur. Ensuite, l'<b>indice Ozimut</b> d'un coureur résume ses meilleurs scores Ozimut des 12 derniers mois.</p>
       <div class="mx-grid">
-        <div class="mx-box" style="--c:var(--s1)"><h3>Le score Top d'une course</h3>
+        <div class="mx-box" style="--c:var(--s1)"><h3>Le score Ozimut d'une course</h3>
           <p>La difficulté du circuit se mesure sur le niveau habituel des coureurs présents, comme la FFCO le fait avec leur CN. Le score d'un coureur
             est cette difficulté divisée par son temps.</p></div>
-        <div class="mx-box" style="--c:var(--s3)"><h3>Le CN Top d'un coureur</h3>
-          <p>Ses meilleurs scores Top des 12 derniers mois remplissent ${fmt(p6.top_n)} places ; le CN Top est leur moyenne, chaque course comptée
+        <div class="mx-box" style="--c:var(--s3)"><h3>L'indice Ozimut d'un coureur</h3>
+          <p>Ses meilleurs scores Ozimut des 12 derniers mois remplissent ${fmt(p6.top_n)} places ; l'indice Ozimut est leur moyenne, chaque course comptée
             selon ses places.</p></div>
       </div>
-      <p style="margin-top:14px">Tout se calcule avec des moyennes ordinaires : chacun peut refaire un score ou un CN à la main. Les formules sont les mêmes dans
+      <p style="margin-top:14px">Tout se calcule avec des moyennes ordinaires : chacun peut refaire un score ou un indice à la main. Les formules sont les mêmes dans
         les quatre spécialités ; seuls trois réglages changent : les courses prises en compte et la part des meilleurs scores, parce que le VTT et le ski
         ont bien moins de courses, et la part du peloton qui mesure le circuit.</p>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("f.terrain")}</th><th>Courses prises en compte</th>
         <th class="r">Meilleurs scores regardés</th><th class="r">Coureurs qui mesurent le circuit</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
           <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026 ; depuis le 19 octobre, les courses des jeunes y comptent de moins
-        en moins avec le temps (plus bas). Du 13 au 16 octobre, le site a publié une autre version, le
-        <b>Top géométrique</b> : une méthode empirique, réglée sur quinze saisons de résultats pour prédire au mieux, qui mesure les circuits par une
-        moyenne géométrique et le niveau habituel par une moyenne cubique. À peine plus précise en sprint, elle était bien plus difficile à expliquer ;
-        elle reste calculée pour comparaison. Elle est présentée, avec les raisons de chaque choix et les mesures qui les justifient, dans
+      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026, sous le nom de méthode « Top » jusqu'au 19 octobre ; depuis le
+        19 octobre, les courses des jeunes y comptent de moins en moins avec le temps (plus bas). Les raisons de chaque choix, les variantes essayées et
+        les mesures qui les justifient sont dans
         <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>.</p>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
-      <p class="mx-kicker">Le score Top · étape 1</p>
+      <p class="mx-kicker">Le score Ozimut · étape 1</p>
       <h2>Le niveau habituel des coureurs présents</h2>
-      <p>Comme pour le CN officiel, la difficulté d'un circuit se mesure sur les coureurs présents. Mais la méthode Top n'utilise pas leur CN Top : elle
+      <p>Comme pour le CN officiel, la difficulté d'un circuit se mesure sur les coureurs présents. Mais la méthode Ozimut n'utilise pas leur indice Ozimut : elle
         utilise leur <b>niveau habituel</b>, tel qu'il était ${fmt(pf.lag_days)} jours avant la course.</p>
-      <p>Le niveau habituel d'un coureur est la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs scores Top des 12 derniers mois
-        (70 % sur deux ans en VTT, sur trois ans en ski), chaque score compté selon son poids (voir le CN Top plus bas), sans limite de places. Il dit ce
-        que vaut le coureur d'ordinaire. Ce n'est pas un classement : c'est une étape du calcul, faite des courses que le coureur a déjà courues. Le
-        CN Top, lui, ne retient que les meilleures courses : il sert à classer. Comme dans le CN Top, les courses courues en catégorie jeune y comptent
+      <p>Le niveau habituel d'un coureur est la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs scores Ozimut des 12 derniers mois
+        (70 % sur deux ans en VTT, sur trois ans en ski), chaque score compté selon son poids (voir l'indice Ozimut plus bas), sans limite de places. Il dit ce
+        que vaut le coureur d'ordinaire. Ce n'est pas un classement : c'est une étape du calcul, faite des courses que le coureur a déjà courues. L'indice
+        Ozimut, lui, ne retient que les meilleures courses : il sert à classer. Comme dans l'indice Ozimut, les courses courues en catégorie jeune y comptent
         de moins en moins avec le temps.</p>
       <ul class="mx-list">
         <li><span>Seuls comptent les coureurs qui ont un niveau habituel dans la spécialité de la course. Il en faut au moins ${fmt(pf.min_ranked)} sur le
@@ -185,13 +183,13 @@ export function build(X) {
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
-      <p class="mx-kicker">Le score Top · étape 2</p>
-      <h2>La valeur du circuit</h2>
-      <p>Pour chaque coureur, on multiplie son niveau habituel par son temps. La valeur du circuit est la <b>moyenne de ces produits pour les plus
+      <p class="mx-kicker">Le score Ozimut · étape 2</p>
+      <h2>La valeur Ozimut du circuit</h2>
+      <p>Pour chaque coureur, on multiplie son niveau habituel par son temps. La valeur Ozimut du circuit est la <b>moyenne de ces produits pour les plus
         rapides</b> : ${shareName(own(pf, "For", "sample_fraction") ?? 2 / 3)} en forêt, ${shareName(own(pf, "Spr", "sample_fraction") ?? 2 / 3)} en sprint,
         ${shareName(own(pf, "VTT", "sample_fraction") ?? 2 / 3)} en VTT et en ski. C'est la règle de la FFCO, qui prend les deux tiers les plus rapides,
         avec une part réglée dans chaque spécialité.</p>
-      <div class="mx-eq">valeur du circuit = moyenne des (niveau habituel × temps) des plus rapides
+      <div class="mx-eq">valeur Ozimut du circuit = moyenne des (niveau habituel × temps) des plus rapides
         <small>forêt : ${shareShort(own(pf, "For", "sample_fraction") ?? 2 / 3)} des coureurs ayant un niveau · sprint : ${shareShort(own(pf, "Spr", "sample_fraction") ?? 2 / 3)} · VTT et ski : ${shareShort(own(pf, "VTT", "sample_fraction") ?? 2 / 3)} ; le nombre est arrondi au-dessus</small></div>
       <p>Les coureurs les plus lents d'un circuit sont ceux qui se sont trompés, et ceux qui ont couru à leur niveau. Les compter dit à quel point le
         circuit était piégeux ; les écarter dit la difficulté du circuit couru sans faute. La bonne part n'est pas la même partout : en forêt, où une
@@ -201,53 +199,53 @@ export function build(X) {
       <ul class="mx-list">
         <li><span>Quand le circuit ne compte que ${fmt(pf.min_ranked)} coureurs ayant un niveau, les ${fmt(pf.min_ranked)} comptent, comme dans la règle
           officielle.</span></li>
-        <li><span>Un poinçon manquant, un abandon, une disqualification ou un hors-délai ne comptent pas dans la valeur du circuit.</span></li>
+        <li><span>Un poinçon manquant, un abandon, une disqualification ou un hors-délai ne comptent pas dans la valeur Ozimut du circuit.</span></li>
       </ul>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
-      <p class="mx-kicker">Le score Top · étape 3</p>
+      <p class="mx-kicker">Le score Ozimut · étape 3</p>
       <h2>Le score</h2>
-      <div class="mx-eq">score Top = valeur du circuit ÷ temps du coureur × facteur de recalage du jour</div>
+      <div class="mx-eq">score Ozimut = valeur Ozimut du circuit ÷ temps du coureur × facteur de recalage du jour</div>
       <ul class="mx-list">
         <li><span>Comme pour le score officiel, courir 10 % plus vite donne un score 11 % plus haut, et courir 10 % plus lentement un score 9 % plus bas.</span></li>
-        <li><span>Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent un score de 0, qui compte dans le CN Top.</span></li>
+        <li><span>Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent un score de 0, qui compte dans l'indice Ozimut.</span></li>
         <li><span>Le facteur de recalage, expliqué plus bas, est celui du jour de la course. Le score est calculé une fois pour toutes et n'est jamais revu.</span></li>
       </ul>
       <h3>Exemple : un circuit de six coureurs</h3>
-      ${r6Table("Niveau", [["Score officiel", (i, tm) => n0(r6.off / tm)], ["Score Top en forêt", (i, tm) => n0(r6.topFor / tm)], ["Score Top en sprint", (i, tm) => n0(r6.topSpr / tm)]])}
+      ${r6Table("Niveau", [["Score officiel", (i, tm) => n0(r6.off / tm)], ["Score Ozimut en forêt", (i, tm) => n0(r6.topFor / tm)], ["Score Ozimut en sprint", (i, tm) => n0(r6.topSpr / tm)]])}
       <p>On suppose ici que le niveau habituel de chaque coureur est égal à son CN, et on ne tient pas compte du recalage. F s'est perdu : 90 minutes
         pour un coureur de niveau 5 000, alors que C, du même niveau, a mis 62 minutes. La règle officielle mesure le circuit sur les quatre plus
-        rapides, A à D : la valeur est ${n0(r6.off)}. En sprint, la méthode Top fait de même. En forêt, elle prend ${fmt(r6.keepFor)} coureurs sur six
+        rapides, A à D : la valeur est ${n0(r6.off)}. En sprint, la méthode Ozimut fait de même. En forêt, elle prend ${fmt(r6.keepFor)} coureurs sur six
         (90 % de six, arrondi au-dessus), F compris : la valeur passe à ${n0(r6.topFor)}, et A, qui a couru sans faute, marque ${n0(r6.topFor / 50)} au lieu
         de ${n0(r6.off / 50)}. Ce circuit a coûté cher à un coureur sur six ; celui qui l'a couru sans faute en est récompensé. Sur un vrai circuit de
         plusieurs dizaines de coureurs, une seule erreur pèse bien moins, et le recalage ramène le niveau général à ${fmt(pf.anchor_target)}.</p>
     </section>
 
     <section class="mx-slide" style="${cvar("top6w")}">
-      <p class="mx-kicker">Le CN Top d'un coureur</p>
+      <p class="mx-kicker">L'indice Ozimut d'un coureur</p>
       <h2>${fmt(p6.top_n)} places pour les meilleures courses</h2>
-      <p>On range les scores Top des 12 derniers mois du meilleur au moins bon, et on ne regarde que les ${pctOf(p6.eligible_fraction)} meilleurs. On remplit
+      <p>On range les scores Ozimut des 12 derniers mois du meilleur au moins bon, et on ne regarde que les ${pctOf(p6.eligible_fraction)} meilleurs. On remplit
         alors ${fmt(p6.top_n)} places, en commençant par le meilleur score. Chaque course prend autant de places que son poids : ${fmtW(pf.weights.cdf)} places
         pour un championnat de France, ${fmtW(pf.weights.national)} place pour une course nationale (O'France, Nationale), ${fmtW(pf.weights.other)} place pour
         toute autre course, courses de sélection et championnats de ligue compris. La dernière course retenue ne prend que les places qui restent.</p>
-      <p>Le CN Top est la <b>moyenne pondérée</b> des scores retenus : chaque score compte autant de fois qu'il a de places. Prenons un championnat
-        de France à 6 800, qui prend 2 places, et quatre autres courses à 6 500, 6 400, 6 200 et 6 000, qui prennent une place chacune. Le CN Top vaut
+      <p>L'indice Ozimut est la <b>moyenne pondérée</b> des scores retenus : chaque score compte autant de fois qu'il a de places. Prenons un championnat
+        de France à 6 800, qui prend 2 places, et quatre autres courses à 6 500, 6 400, 6 200 et 6 000, qui prennent une place chacune. L'indice Ozimut vaut
         (2 × 6 800 + 6 500 + 6 400 + 6 200 + 6 000) ÷ 6 = 6 450.</p>
-      <div class="mx-eq">CN Top = Σ (places × score) ÷ Σ places
+      <div class="mx-eq">indice Ozimut = Σ (places × score) ÷ Σ places
         <small>au plus ${fmt(p6.top_n)} places, dans toutes les spécialités ; une course courue en catégorie jeune compte pour places × (1 − son âge ÷ la fenêtre)</small></div>
       <ul class="mx-list">
         <li><span>Les poids suivent le nom de la compétition. Les niveaux A, B, C et D de la FFCO ne sont pas utilisés.</span></li>
         <li><span><b>Les courses des jeunes comptent de moins en moins avec le temps.</b> Une course courue en catégorie jeune (H et D jusqu'à 20 ans)
           prend ses places comme les autres, mais elle compte dans la moyenne pour 1 − son âge ÷ 12 mois (÷ deux ans en VTT, trois en ski) : en entier le
           jour de la course, à moitié six mois plus tard, presque plus à la fin de la fenêtre. Un jeune progresse vite : ses courses d'il y a dix mois
-          décrivent un coureur plus lent. Les courses des adultes gardent leur poids. Le CN Top d'un jeune peut donc bouger entre deux courses.</span></li>
+          décrivent un coureur plus lent. Les courses des adultes gardent leur poids. L'indice Ozimut d'un jeune peut donc bouger entre deux courses.</span></li>
         <li><span>Il faut au moins ${fmt(pf.min_scores)} courses dans les 12 derniers mois pour être classé. Quand il y a moins de ${fmt(p6.top_n)} places
-          remplies, le CN Top est la moyenne pondérée de ce qui est là.</span></li>
-        <li><span>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut pas faire baisser le CN Top d'un adulte : soit elle prend la place
+          remplies, l'indice Ozimut est la moyenne pondérée de ce qui est là.</span></li>
+        <li><span>Une fois les ${fmt(p6.top_n)} places remplies, une course de plus ne peut pas faire baisser l'indice Ozimut d'un adulte : soit elle prend la place
           d'une course moins bonne, soit elle reste dehors. Il faut pour cela en général 10 courses en 12 mois, moins avec des championnats ou des nationales.
-          Tant que les places ne sont pas remplies, le CN Top est une moyenne ordinaire, et une course moins bonne que les autres le fait baisser. Pour un
-          jeune, une course récente pèse plus que les anciennes qu'elle remplace : moins bonne qu'elles, elle peut faire baisser son CN Top.</span></li>
+          Tant que les places ne sont pas remplies, l'indice Ozimut est une moyenne ordinaire, et une course moins bonne que les autres le fait baisser. Pour un
+          jeune, une course récente pèse plus que les anciennes qu'elle remplace : moins bonne qu'elles, elle peut faire baisser son indice Ozimut.</span></li>
       </ul>
     </section>
 
@@ -255,23 +253,23 @@ export function build(X) {
       <p class="mx-kicker">Le recalage</p>
       <h2>Un facteur par jour, jamais revu</h2>
       <p>Sans correction, le niveau général des CN monterait peu à peu d'une année à l'autre ; l'étude explique pourquoi. Le recalage corrige cette
-        dérive : chaque score Top est multiplié par un facteur, le même pour toutes les courses d'un même jour dans une même spécialité.</p>
+        dérive : chaque score Ozimut est multiplié par un facteur, le même pour toutes les courses d'un même jour dans une même spécialité.</p>
       <ul class="mx-list">
-        <li><span>Le facteur est choisi pour que la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top de chaque spécialité reste à
+        <li><span>Le facteur est choisi pour que la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs indices Ozimut de chaque spécialité reste à
           ${fmt(pf.anchor_target)}, la règle de la FFCO depuis 2026. Il change un peu chaque jour, au lieu d'une fois par an.</span></li>
-        <li><span>Pour le calculer, on mesure le niveau des CN Top ${fmt(pf.anchor_lag_months)} mois plus tôt, en moyenne sur 13 mois, puis on le prolonge
+        <li><span>Pour le calculer, on mesure le niveau des indices Ozimut ${fmt(pf.anchor_lag_months)} mois plus tôt, en moyenne sur 13 mois, puis on le prolonge
           de 10 mois, au rythme auquel il a monté pendant les dix dernières années. Les mois se comptent au calendrier : un mois sans course garde le niveau
           du mois précédent. Le facteur est calculé pour chaque mois ; entre deux mois, il passe en ligne droite de l'un à l'autre. La règle est la même
           dans les quatre spécialités.</span></li>
-        <li><span>Le facteur d'une course est fixé une fois pour toutes. Un CN Top ne change donc que quand une course entre dans les 12 derniers mois ou en
+        <li><span>Le facteur d'une course est fixé une fois pour toutes. Un indice Ozimut ne change donc que quand une course entre dans les 12 derniers mois ou en
           sort, jamais à cause du recalage.</span></li>
       </ul>
-      <div style="margin-top:16px">${chartCard({ id: "norm", title: "Le facteur de recalage", hint: "Le facteur appliqué au score Top d'une course, selon son jour et sa spécialité", short: true })}</div>
+      <div style="margin-top:16px">${chartCard({ id: "norm", title: "Le facteur de recalage", hint: "Le facteur appliqué au score Ozimut d'une course, selon son jour et sa spécialité", short: true })}</div>
     </section>
 
     <section class="mx-slide">
       <p class="mx-kicker" style="--c:var(--s3)">Illustration</p>
-      <h2>Mêmes scores, CN différents</h2>
+      <h2>Mêmes scores, valeurs différentes</h2>
       <p class="mx-lead">Un coureur a couru ${fmt(n)} courses en 12 mois. Voici ses scores, du meilleur au moins bon. Le meilleur, ${fmt(EXAMPLE[0][0])}, est
         un championnat de France (★) ; ${fmt(EXAMPLE[2][0])} est une course nationale. Voici ce que chaque calcul retient de ces mêmes scores.</p>
       ${["official", "top6w"].map((m) => html`<div class="mx-agg" style="${cvar(m)}">
@@ -279,7 +277,7 @@ export function build(X) {
         ${chips(m)}
         <div class="cn">${fmt(EX[m].cn)}</div></div>`)}
       <p class="muted" style="font-size:13px">Les nombres en exposant (×2, ×1,5) sont les places prises par la course. L'exemple applique chaque règle aux
-        mêmes scores. En réalité, le score officiel et le score Top d'une même course diffèrent, puisque la valeur du circuit n'est pas calculée de la même
+        mêmes scores. En réalité, le score officiel et le score Ozimut d'une même course diffèrent, puisque la valeur du circuit n'est pas calculée de la même
         façon.</p>
     </section>`;
   }
@@ -291,15 +289,14 @@ export function build(X) {
     const S = study, L = study?.lineaire;
     const pctCi = (a) => (a ? `${sg(a[0], 1)} % [${sg(a[1], 1)} ; ${sg(a[2], 1)}]` : "—");
     const calib = (tr, g, m) => S?.calib?.[tr]?.[g]?.v?.[m];
-    const isTop = (m) => m.startsWith("top");
     const mark = (kind, label, note) => html`<span class="mx-mark ${kind}">${label}</span>${note ? html`<span class="mx-note">${note}</span>` : ""}`;
     const YES = (x) => mark("yes", "oui", x), NO = (x) => mark("no", "non", x), PART = (x) => mark("part", "en partie", x);
     const CRIT = [
       ["Compte les championnats et les nationales", (m) => (m === "official" ? NO("souvent écartés") : YES("ils pèsent plus"))],
       ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("pour un adulte, une fois les 6 places remplies"))],
-      ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : isTop(m) ? YES("les meilleures courses") : PART("le niveau habituel"))],
+      ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : YES("les meilleures courses"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("saut au 1er janvier") : YES("recalage progressif"))],
-      ["Simple à expliquer", (m) => (m === "official" ? YES() : m === "top6w3" || m === "fair3" ? NO("moyennes géométrique et cubique") : YES("des moyennes ordinaires"))],
+      ["Simple à expliquer", (m) => (m === "official" ? YES() : YES("des moyennes ordinaires"))],
       ["Fait foi pour les sélections", (m) => (m === "official" ? YES("seul classement officiel") : NO("calcul d'analyse"))],
     ];
     const noStudy = html`<p class="muted">Les chiffres de l'étude ne sont pas disponibles pour le moment.</p>`;
@@ -315,11 +312,11 @@ export function build(X) {
         <section class="mx-slide mx-hero">
           <p class="mx-kicker">L'étude</p>
           <h2>Un CN simple à comprendre, qui compte vos meilleures courses et prédit mieux les résultats</h2>
-          <p class="mx-lead">Ce chapitre explique pourquoi la méthode Top a été créée, comment elle a été évaluée, quelles idées ont été essayées et
+          <p class="mx-lead">Ce chapitre explique pourquoi la méthode Ozimut a été créée, comment elle a été évaluée, quelles idées ont été essayées et
             lesquelles ont été retenues. Il aboutit à la méthode en ligne depuis le 16 octobre 2026 : la plus simple de celles qui prédisent le mieux.</p>
           ${hf && hs ? html`<div class="mx-stats">
             <div class="mx-stat"><b>${lvl(hf, "acc", "official")} % puis ${lvl(hf, "acc", "top6w")} %</b><span>des duels bien prédits en forêt par le CN
-              officiel, puis par le CN Top. Un duel, ce sont deux coureurs d'un même circuit ; il est bien prédit quand celui qui avait le meilleur CN
+              officiel, puis par l'indice Ozimut. Un duel, ce sont deux coureurs d'un même circuit ; il est bien prédit quand celui qui avait le meilleur CN
               finit devant.</span></div>
             <div class="mx-stat"><b>${lvl(hs, "acc", "official")} % puis ${lvl(hs, "acc", "top6w")} %</b><span>des duels bien prédits en sprint, sur les
               mêmes saisons.</span></div>
@@ -341,8 +338,8 @@ export function build(X) {
               <p>Pour les qualifications aux championnats de France, il faut savoir ce dont un coureur est capable <b>dans une grande compétition</b>, donc
                 regarder ses meilleures courses.</p></div>
           </div>
-          <div class="mx-callout">Le ${cnLabel("official")} sert aux deux usages : il convient au premier et dessert le second. La méthode Top les sépare. Le
-            <b>score Top</b> d'une course se mesure sur le niveau habituel des coureurs présents ; le <b>CN Top</b> d'un coureur retient ses meilleures courses.</div>
+          <div class="mx-callout">Le ${cnLabel("official")} sert aux deux usages : il convient au premier et dessert le second. La méthode Ozimut les sépare. Le
+            <b>score Ozimut</b> d'une course se mesure sur le niveau habituel des coureurs présents ; l'<b>indice Ozimut</b> d'un coureur retient ses meilleures courses.</div>
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Les objectifs</p>
@@ -397,10 +394,10 @@ export function build(X) {
           </table></div>
         </section>
         <section class="mx-slide">
-          <p class="mx-kicker" style="--c:var(--s3)">Ce que change la méthode Top</p>
+          <p class="mx-kicker" style="--c:var(--s3)">Ce que change la méthode Ozimut</p>
           <h2>Mêmes résultats, mêmes temps, autre calcul</h2>
           <div class="mx-fix">
-            <div class="head">Méthode officielle</div><div></div><div class="head">Méthode Top</div>
+            <div class="head">Méthode officielle</div><div></div><div class="head">Méthode Ozimut</div>
             <div class="p"><b>Les meilleures courses sont écartées</b>souvent les championnats de France et les nationales</div><div class="arrow">→</div>
             <div class="s"><b>Les meilleures courses comptent le plus</b>un championnat de France compte double, une nationale une fois et demie ; seules
               les moins bonnes courses sont laissées de côté</div>
@@ -416,7 +413,7 @@ export function build(X) {
               une course entre dans les 12 derniers mois ou en sort</div>
             <div class="p"><b>Un seul CN pour deux usages</b>mesurer les circuits et classer les coureurs</div><div class="arrow">→</div>
             <div class="s"><b>Un calcul pour chaque usage</b>la valeur d'un circuit se mesure à partir des scores que les coureurs présents ont obtenus
-              dans leurs courses précédentes ; le CN Top retient leurs meilleures courses</div>
+              dans leurs courses précédentes ; l'indice Ozimut retient leurs meilleures courses</div>
           </div>
         </section>`,
 
@@ -446,8 +443,8 @@ export function build(X) {
             bien prédits moins la part des duels mal prédits. Avec 80 % de duels bien prédits, et donc 20 % de mal prédits, τ vaut 0,80 − 0,20 = 0,60.
             C'est la même mesure sur une autre échelle : τ vaut 0 pour un CN tiré au hasard et 1 pour un ordre parfait. Ce document donne la part des
             duels, plus parlante.</p>
-          ${hf ? html`<p>En forêt, de ${ev.holdout[0]} à ${ev.holdout[1]}, le CN officiel prédit bien ${lvl(hf, "acc", "official")} % des duels et le CN Top
-            ${lvl(hf, "acc", "top6w")} %. Le CN officiel se trompe donc sur ${fmt(100 * (1 - hf.acc.official), 1)} % des duels, et le CN Top sur
+          ${hf ? html`<p>En forêt, de ${ev.holdout[0]} à ${ev.holdout[1]}, le CN officiel prédit bien ${lvl(hf, "acc", "official")} % des duels et l'indice Ozimut
+            ${lvl(hf, "acc", "top6w")} %. Le CN officiel se trompe donc sur ${fmt(100 * (1 - hf.acc.official), 1)} % des duels, et l'indice Ozimut sur
             ${fmt(100 * (1 - hf.acc.top6w), 1)} % : c'est ${fmt(Math.round(100 * (1 - (1 - hf.acc.top6w) / (1 - hf.acc.official))))} % d'erreurs en moins.
             Les écarts entre les variantes essayées pendant l'étude sont souvent de quelques dixièmes de point.</p>` : ""}
         </section>
@@ -514,25 +511,25 @@ export function build(X) {
             <li><span><b>${fmt(p6.top_n)} places</b>, remplies du meilleur score au moins bon. Une fois les places remplies, une course de plus ne peut pas faire baisser le CN d'un adulte.
               Le classement mondial de l'IOF fonctionne de la même façon, avec les cinq meilleures courses. Dix places ne faisaient pas mieux ; quatre
               faisaient moins bien (−0,24 point en forêt).</span></li>
-            <li><span><b>Seuls les ${pctOf(pf.eligible_fraction)} meilleurs scores</b> des 12 derniers mois peuvent compter, pour le CN Top comme pour le
+            <li><span><b>Seuls les ${pctOf(pf.eligible_fraction)} meilleurs scores</b> des 12 derniers mois peuvent compter, pour l'indice Ozimut comme pour le
               niveau habituel, et il faut au moins ${fmt(pf.min_scores)} courses. Les scores laissés de côté sont, pour l'essentiel, les courses où le coureur
               s'est trompé. Regarder 70 ou 80 % des scores coûtait de 0,4 à 1 point ; 50 % faisait jeu égal. Exiger cinq courses réduisait le nombre de
               coureurs qui mesurent les circuits ; se contenter de deux classait plus de coureurs, mais coûtait de 0,1 à 0,4 point.</span></li>
           </ul>
-          ${L?.eligible_grid ? html`<p>La part de scores qui fait le niveau habituel a été mesurée à part, le CN Top gardant ses 60 % : en forêt, contre les
+          ${L?.eligible_grid ? html`<p>La part de scores qui fait le niveau habituel a été mesurée à part, l'indice Ozimut gardant ses 60 % : en forêt, contre les
             60 % meilleurs, les 50 % font ${pts(L.eligible_grid.For[50].all_holdout)}, les 70 % ${pts(L.eligible_grid.For[70].all_holdout)}, les 80 %
             ${pts(L.eligible_grid.For[80].all_holdout)} et tous les scores ${pts(L.eligible_grid.For[100].all_holdout)}. En sprint, de 50 à 80 % se valent.
             Les erreurs d'un coureur doivent rester hors du niveau qui mesure les circuits.</p>` : ""}
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Le niveau habituel</p>
-          <h2>Les circuits se mesurent sur le niveau habituel, pas sur les CN Top</h2>
+          <h2>Les circuits se mesurent sur le niveau habituel, pas sur les indices Ozimut</h2>
           <p>Le classement mondial de l'IOF mesure une course d'après les points de classement des coureurs présents. Ici, ce n'est pas possible avec les
-            CN Top, parce qu'ils ne retiennent que les meilleures courses : ils se nourriraient d'eux-mêmes. Un groupe qui court surtout entre soi, comme les
+            indices Ozimut, parce qu'ils ne retiennent que les meilleures courses : ils se nourriraient d'eux-mêmes. Un groupe qui court surtout entre soi, comme les
             vétérans ou les jeunes, aurait des CN tirés vers le haut, ses circuits paraîtraient plus difficiles, et ses CN monteraient encore. Dans les
             premiers essais, les H/D 21 se trouvaient ainsi sous-évalués de 13 % environ.</p>
           <p>Les circuits se mesurent donc sur le niveau habituel : la moyenne pondérée des ${pctOf(pf.eligible_fraction)} meilleurs scores, sans limite de
-            places. ${S ? html`Mesurés avec les CN Top, les duels seraient moins bien prédits (${ci(S.onecn?.For?.all_holdout?.ST6_t)} point de 2012 à 2024,
+            places. ${S ? html`Mesurés avec les indices Ozimut, les duels seraient moins bien prédits (${ci(S.onecn?.For?.all_holdout?.ST6_t)} point de 2012 à 2024,
             ${ci(S.onecn?.For?.all_tuned?.ST6_t)} depuis juillet 2025, une perte qui grandit au fil des saisons), et les jeunes surévalués de
             ${fmt(Math.abs(calib("For", "young", "ST6_t")?.[0] ?? 1.4), 1)} % face aux H/D 21.` : ""}</p>
         </section>
@@ -542,7 +539,7 @@ export function build(X) {
           <p>Le CN d'un jeune retarde sur son niveau. Un an et demi plus tard, le niveau habituel d'un jeune a monté de 22 % en forêt, celui d'un adulte
             de 11 % (la montée générale de l'échelle comprise) : ses courses d'il y a dix mois décrivent un coureur plus lent. Depuis le 19 octobre 2026,
             une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte dans la moyenne pour 1 − son âge ÷ la fenêtre, les courses des adultes
-            gardant leur poids ; dans le niveau habituel, qui mesure les circuits, comme dans le CN Top.</p>
+            gardant leur poids ; dans le niveau habituel, qui mesure les circuits, comme dans l'indice Ozimut.</p>
           <ul class="mx-list">
             <li><span><b>Forêt</b> : ${pts(S.jeunes.J.For.holdout)} de 2012 à 2024, mieux dans ${S.jeunes.J.For.better} saisons sur ${S.jeunes.J.For.seasons},
               ${pts(S.jeunes.J.For.tuned)} depuis juillet 2025.</span></li>
@@ -553,7 +550,7 @@ export function build(X) {
           <p>Faire vieillir les courses de tous les coureurs apporte peu : au mieux ${pts(S.jeunes.adults_best.For.holdout)} en forêt (le poids divisé par
             deux tous les six mois), et rien de plus une fois les courses des jeunes effacées (${pts(S.jeunes.adults_and_juniors.For.holdout)} avec les deux,
             ${pts(S.jeunes.J.For.holdout)} avec les jeunes seuls). Le niveau d'un adulte bouge peu d'une saison à l'autre : une course de l'an dernier le
-            renseigne encore. Une fenêtre de deux ans fait ${pts(S.jeunes.window24.For.holdout)} en forêt ; effacer les courses dans le CN Top seul, sans
+            renseigne encore. Une fenêtre de deux ans fait ${pts(S.jeunes.window24.For.holdout)} en forêt ; effacer les courses dans l'indice Ozimut seul, sans
             toucher au niveau habituel, ${pts(S.jeunes.top_only.For.holdout)}. Le prix : en forêt, les jeunes sont un peu plus souvent annoncés devant les
             H/D 21-34 qu'ils ne finissent devant (${sg(S.jeunes.J.For.junior_bias[0], 1)} points avant, ${sg(S.jeunes.J.For.junior_bias[1], 1)} après) ; en
             sprint et en VTT, où ils étaient sous-évalués, l'écart se réduit.</p>
@@ -595,7 +592,7 @@ export function build(X) {
                 <td class="r num"><b>${sg(L.share.For.rows.find((x) => x.pct === 100).all_tuned[0] + L.forest90.vs100.all_tuned[0], 2)}*</b></td><td class="r">—</td><td class="r">—</td><td class="r">—</td><td class="r">—</td></tr>` : "") : ""}`)}
 
             </tbody></table></div>
-          <p class="muted" style="font-size:13px">Écart de la part des duels bien prédits, en points, face aux deux tiers les plus rapides, avec la méthode Top
+          <p class="muted" style="font-size:13px">Écart de la part des duels bien prédits, en points, face aux deux tiers les plus rapides, avec la méthode Ozimut
             (moyennes ordinaires, recalage prolongé). Un astérisque marque un écart significatif ; en gras, la part retenue. Le ski suit le VTT : il a trop
             peu de courses pour être mesuré.</p>
           <ul class="mx-list">
@@ -612,45 +609,6 @@ export function build(X) {
               et ne perd rien de significatif depuis. <b>Ski : 75 %</b>, comme le VTT.</span></li>
           </ul>` : noStudy}
         </section>
-        <section class="mx-slide" style="${cvar("top6w3")}">
-          <p class="mx-kicker">La variante géométrique</p>
-          <h2>Une méthode empirique, étudiée pour ses performances</h2>
-          <p>Le <b>Top géométrique</b> est une autre façon de calculer le score Top, étudiée du 7 au 16 octobre 2026 et publiée sur le site du 13 au 16
-            octobre. Il garde tout le reste de la méthode Top : les six places, les poids des courses, le recalage. Il change deux calculs.</p>
-          <ul class="mx-list">
-            <li><span><b>La valeur du circuit, en moyenne géométrique.</b> Au lieu d'additionner les produits niveau habituel × temps puis de diviser par
-              leur nombre, on les multiplie entre eux et on prend la racine : la racine carrée pour deux produits, la racine sixième pour six. Prenons deux
-              coureurs du même niveau, sur un circuit où ce niveau met d'ordinaire 60 minutes : l'un court en 30 minutes, l'autre en 120. La moyenne
-              ordinaire de leurs temps vaut (30 + 120) ÷ 2 = 75 minutes ; leur moyenne géométrique vaut √(30 × 120) = 60 minutes. Le coureur deux fois
-              trop lent et le coureur deux fois trop rapide s'annulent : un coureur très perdu compte, mais ne pèse pas plus qu'un coureur très rapide. À
-              cela s'ajoute un réglage du poids des plus lents, propre à chaque spécialité : tout le peloton en forêt, presque seulement les deux tiers les
-              plus rapides en sprint, un intermédiaire en VTT et en ski.</span></li>
-            <li><span><b>Le niveau habituel, en moyenne cubique.</b> On élève chaque score au cube, on fait la moyenne de ces cubes, puis on en prend la
-              racine cubique. Pour trois scores de 6 000, 5 000 et 4 000, la moyenne ordinaire vaut 5 000 et la moyenne cubique 5 130 : elle penche vers les
-              bonnes courses, sans écarter les autres.</span></li>
-          </ul>
-          <p><b>Une méthode déduite des données.</b> Ces choix n'ont pas été posés à l'avance. Seule la moyenne géométrique a une raison simple : les temps
-            se comparent en proportion. Le reste a été trouvé dans les résultats : la puissance de la moyenne, la part du peloton, le réglage de chaque
-            spécialité ont été recalculés sur quinze saisons, plusieurs dizaines de variantes au total, et chaque fois gardés parce qu'ils prédisaient
-            mieux les duels. Le réglage du poids des plus lents, par exemple, vaut 0 en forêt et 400 en sprint sans qu'on sache dire pourquoi : c'est
-            ce que les résultats désignaient. C'est ce qui faisait son intérêt, puisqu'elle a été étudiée pour ses performances, et sa limite : une
-            règle qu'on ne peut ni justifier simplement, ni refaire à la main.</p>
-          <p>Les premières mesures, le 7 octobre, étaient parties d'une autre idée, rendre le retard plus cher en élevant le temps à une puissance ; elle
-            revenait exactement à changer ces deux moyennes.</p>
-          ${L?.vs_geo ? html`<div class="table-wrap"><table class="data compact"><thead><tr><th>Méthode Top retenue contre la variante géométrique</th>
-            ${SCH.map((h) => html`<th class="r">${raw(h)}</th>`)}<th class="r">Écarts de temps<br>expliqués</th></tr></thead><tbody>
-            ${[["For", "Forêt"], ["Spr", "Sprint"], ["VTT", "VTT"]].map(([tr, name]) => html`<tr><td>${name}</td>${SC.map((sc) => html`<td class="r num">${ci(L.vs_geo[tr]?.[sc])}</td>`)}
-              <td class="r num">${L.vs_geo.r2?.[tr] ? sg(L.vs_geo.r2[tr][0], 1) : "—"}</td></tr>`)}</tbody></table></div>
-          <p class="muted" style="font-size:13px">Écarts en points de duels bien prédits, avec leur intervalle à 95 %, sur les mêmes coureurs ; un nombre positif
-            est en faveur de la méthode retenue.</p>` : noStudy}
-          <p>Sur quinze saisons, les deux méthodes font jeu égal en forêt, la variante géométrique gagne environ 0,15 point en sprint, et la méthode
-            retenue un dixième en VTT. Ces écarts se mesurent, mais aucun coureur ne les verrait : ils valent un ou deux duels sur mille. Devant cela, la méthode
-            retenue est celle que chacun peut refaire à la main, avec des moyennes ordinaires et la règle de la FFCO pour le circuit, la part du peloton en
-            plus. La variante géométrique reste calculée pour comparaison, sous le nom « Top géométrique », pour les comptes qui analysent les méthodes.</p>
-          <p>Ce qu'elle apprenait reste vrai : c'est la mesure du circuit, et d'abord la part du peloton qu'elle regarde, qui faisait la différence entre
-            les méthodes. En forêt, tout le peloton ou 90 % gagnent près d'un demi-point sur les deux tiers, quelle que soit la moyenne ; la moyenne
-            géométrique n'apportait rien de plus. En sprint, elle apportait 0,15 point.</p>
-        </section>
         <section class="mx-slide">
           <p class="mx-kicker">Le recalage</p>
           <h2>Un facteur prolongé au rythme de la montée du niveau</h2>
@@ -664,15 +622,19 @@ export function build(X) {
             après les saisons Covid, dont le peu de courses a dérangé le rythme de la montée). Un
             facteur qui fait des à-coups met les scores de deux mois voisins à des niveaux différents : une droite recalculée chaque mois coûtait 0,06 point.
             ${L?.recalage_gain ? html`Appliquée à la méthode retenue, la correction gagne ${pts(L.recalage_gain.For)} de duels en forêt et ne change rien de
-            significatif ailleurs.` : ""} Les CN ramenés à 5 600 sont les CN Top, ceux qui sont publiés, et non les niveaux habituels.</p>
+            significatif ailleurs.` : ""} Les valeurs ramenées à 5 600 sont les indices Ozimut, ceux qui sont publiés, et non les niveaux habituels.</p>
         </section>
         <section class="mx-slide" style="--c:var(--bad)">
           <p class="mx-kicker">Mesuré, puis écarté</p>
           <h2>Les autres idées, et ce qu'elles ont donné</h2>
           <ul class="mx-list bad">
+            <li><span><b>La valeur du circuit en moyenne géométrique</b> (avec le niveau habituel en moyenne cubique) : face à la méthode Ozimut, sur les
+              mêmes coureurs, −0,02 point de duels en forêt et +0,15 [0,10 ; 0,20] en sprint. Un peu meilleure en sprint, elle a été écartée parce que la
+              moyenne ordinaire se refait à la main : pour quelques centièmes de point, la règle simple l'emporte. Ce qui faisait la différence entre les
+              méthodes, c'était la part du peloton qui mesure le circuit, pas la façon d'en faire la moyenne.</span></li>
             <li><span><b>Rendre le retard plus cher</b> (le temps élevé à une puissance, 7 octobre 2026) : un gain jusqu'à la puissance 2, puis plus rien ;
-              c'était en fait changer les moyennes du circuit et du CN (ci-dessus). Le Top publié du 7 au 13 octobre utilisait une moyenne quadratique pour le
-              CN ; il bousculait les classements et ne corrigeait pas le vrai défaut, la part du peloton.</span></li>
+              c'était en fait changer les moyennes du circuit et du niveau habituel, comme la variante précédente. La version publiée du 7 au 13 octobre
+              utilisait une moyenne quadratique pour le CN ; elle bousculait les classements et ne corrigeait pas le vrai défaut, la part du peloton.</span></li>
             <li><span><b>Une règle propre à chaque circuit pour traduire le temps en score</b>, estimée sur le circuit lui-même : moins bien
               (${pts(S?.onecn?.For?.all_holdout?.IK_t)} en forêt, ${pts(S?.onecn?.Spr?.all_holdout?.IK_t)} en sprint) ; sur une vingtaine de coureurs,
               l'estimation est trop incertaine.</span></li>
@@ -681,8 +643,6 @@ export function build(X) {
             <li><span><b>Le niveau estimé par un modèle statistique</b> qui sépare la forme du jour et les erreurs : meilleur en sprint
               (${S ? sg(S.mle_fit.Spr[0], 2) : "+0,37"} point), nettement moins bon en forêt (${S ? sg(S.mle_fit.For[0], 2) : "−1,62"} point) : en forêt, se
               tromper souvent est un trait du coureur.</span></li>
-            <li><span><b>Une moyenne de puissance 4 pour le niveau habituel</b> : un peu mieux que la cubique sur l'ensemble des courses de forêt, une perte
-              sur les nationales ; le CN reposerait sur une ou deux courses.</span></li>
             <li><span><b>Atténuer les temps aberrants</b> (une méthode statistique dite de Huber) ou n'écarter que les 15 % les plus lents, au lieu de régler
               la part du peloton : environ 0,1 point de moins.</span></li>
             <li><span><b>Une valeur de circuit commune aux circuits de même longueur en sprint</b> : l'allure n'est pas comparable d'un circuit à l'autre.</span></li>
@@ -695,7 +655,7 @@ export function build(X) {
         <section class="mx-slide mx-hero">
           <p class="mx-kicker">Les résultats</p>
           <h2>Contre le classement officiel, sur quinze saisons qui n'ont pas servi aux réglages</h2>
-          ${ev ? html`<p class="mx-lead">De ${ev.holdout[0]} à ${ev.holdout[1]}, sur les mêmes coureurs, le CN Top prédit bien ${lvl(hf, "acc", "top6w")} % des
+          ${ev ? html`<p class="mx-lead">De ${ev.holdout[0]} à ${ev.holdout[1]}, sur les mêmes coureurs, l'indice Ozimut prédit bien ${lvl(hf, "acc", "top6w")} % des
             duels en forêt contre ${lvl(hf, "acc", "official")} % pour le CN officiel, et ${lvl(hs, "acc", "top6w")} % contre ${lvl(hs, "acc", "official")} % en
             sprint. Il explique aussi bien mieux les écarts de temps entre coureurs.</p>` : ""}
         </section>
@@ -703,16 +663,14 @@ export function build(X) {
           <p class="mx-kicker">Contre le classement officiel</p>
           <h2>Les chiffres</h2>
           <div class="table-wrap"><table class="data compact"><thead><tr><th></th><th class="r" colspan="2">Forêt</th><th class="r" colspan="2">Sprint</th></tr>
-            <tr><th></th><th class="r">${methodShort("official")}</th><th class="r">Top</th><th class="r">${methodShort("official")}</th><th class="r">Top</th></tr></thead>
+            <tr><th></th><th class="r">${methodShort("official")}</th><th class="r">${methodShort("top6w")}</th><th class="r">${methodShort("official")}</th><th class="r">${methodShort("top6w")}</th></tr></thead>
             <tbody>
               <tr><td>duels bien prédits</td><td class="r num">${lvl(hf, "acc", "official")} %</td><td class="r num"><b>${lvl(hf, "acc", "top6w")} %</b></td><td class="r num">${lvl(hs, "acc", "official")} %</td><td class="r num"><b>${lvl(hs, "acc", "top6w")} %</b></td></tr>
               <tr><td>écarts de temps expliqués</td><td class="r num">${lvl(hf, "r2", "official")} %</td><td class="r num"><b>${lvl(hf, "r2", "top6w")} %</b></td><td class="r num">${lvl(hs, "r2", "official")} %</td><td class="r num"><b>${lvl(hs, "r2", "top6w")} %</b></td></tr>
-              <tr><td>gain du Top en duels, toutes les courses</td><td class="r num" colspan="2">${dci(hf, "top6w-official", "acc")}</td><td class="r num" colspan="2">${dci(hs, "top6w-official", "acc")}</td></tr>
-              <tr><td>gain du Top en duels, courses nationales</td><td class="r num" colspan="2">${dci(hfn, "top6w-official", "acc")}</td><td class="r num" colspan="2">${dci(hsn, "top6w-official", "acc")}</td></tr>
-              <tr><td>gain du Top en écarts de temps expliqués</td><td class="r num" colspan="2">${dci(hf, "top6w-official", "r2")}</td><td class="r num" colspan="2">${dci(hs, "top6w-official", "r2")}</td></tr>
-              <tr><td>saisons où le gain du Top est significatif</td><td class="r num" colspan="2">${evWins("For").join(" sur ")}</td><td class="r num" colspan="2">${evWins("Spr").join(" sur ")}</td></tr>
-              ${tops.includes("top6w3") ? html`<tr><td>écart du Top géométrique sur le Top, en duels</td><td class="r num" colspan="2">${dci(hf, "top6w3-top6w", "acc")}</td><td class="r num" colspan="2">${dci(hs, "top6w3-top6w", "acc")}</td></tr>
-              <tr><td>écart du Top géométrique sur le Top, en écarts de temps</td><td class="r num" colspan="2">${dci(hf, "top6w3-top6w", "r2")}</td><td class="r num" colspan="2">${dci(hs, "top6w3-top6w", "r2")}</td></tr>` : ""}
+              <tr><td>gain de l'indice Ozimut en duels, toutes les courses</td><td class="r num" colspan="2">${dci(hf, "top6w-official", "acc")}</td><td class="r num" colspan="2">${dci(hs, "top6w-official", "acc")}</td></tr>
+              <tr><td>gain de l'indice Ozimut en duels, courses nationales</td><td class="r num" colspan="2">${dci(hfn, "top6w-official", "acc")}</td><td class="r num" colspan="2">${dci(hsn, "top6w-official", "acc")}</td></tr>
+              <tr><td>gain de l'indice Ozimut en écarts de temps expliqués</td><td class="r num" colspan="2">${dci(hf, "top6w-official", "r2")}</td><td class="r num" colspan="2">${dci(hs, "top6w-official", "r2")}</td></tr>
+              <tr><td>saisons où le gain de l'indice Ozimut est significatif</td><td class="r num" colspan="2">${evWins("For").join(" sur ")}</td><td class="r num" colspan="2">${evWins("Spr").join(" sur ")}</td></tr>
             </tbody></table></div>
           <p class="muted" style="font-size:13px">Saisons ${ev.holdout[0]} à ${ev.holdout[1]} : ${fmt(ev.rows.For.all.holdout.comps)} compétitions en forêt et
             ${fmt(ev.rows.Spr.all.holdout.comps)} en sprint, les mêmes coureurs pour chaque méthode, chaque circuit pesant son nombre de coureurs. Les gains
@@ -729,7 +687,7 @@ export function build(X) {
             coureurs qui ont un CN dans chaque méthode. Avant 2026, la méthode officielle est le classement commun forêt et sprint de la FFCO.</p>
         </section>
         <section class="mx-slide" id="periodes">
-          <p class="mx-kicker">Toutes les méthodes</p>
+          <p class="mx-kicker">Les deux méthodes</p>
           <h2>Pendant les saisons mises de côté, et pendant la mise au point</h2>
           <div id="ev-periods"></div>
         </section>` : html`<section class="mx-slide"><p>${t("me.val.none")}</p></section>`}
@@ -745,8 +703,8 @@ export function build(X) {
         <section class="mx-slide">
           <p class="mx-kicker">Accord entre méthodes</p>
           <h2>Des classements proches, pas identiques</h2>
-          <p>Chaque point est un coureur au dernier classement publié : en largeur son CN officiel, en hauteur son CN dans l'autre méthode. Les points proches
-            de la diagonale ont à peu près le même CN dans les deux méthodes.</p>
+          <p>Chaque point est un coureur au dernier classement publié : en largeur son CN officiel, en hauteur son indice Ozimut. Les points proches
+            de la diagonale ont à peu près la même valeur dans les deux méthodes.</p>
           <div class="filters" id="agr-filters"></div>
           <div class="grid grid-main-side" style="align-items:start">
             ${chartCard({ id: "agr", title: "Le même coureur dans deux méthodes", hint: "Chaque point est un coureur, au dernier classement publié", tall: true })}
@@ -764,24 +722,24 @@ export function build(X) {
           <p>Les courses des jeunes y comptent de moins en moins avec le temps depuis le 19 octobre 2026.</p>
           <ul class="mx-list">
             <li><span><b>Niveau habituel</b> : pour chaque coureur, 15 jours avant la course, la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs
-              scores Top des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans), une
+              scores Ozimut des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans), une
               course courue en catégorie jeune comptant pour 1 − son âge ÷ la fenêtre. Ce n'est pas un classement, mais une étape du calcul de la valeur
               des circuits.</span></li>
-            <li><span><b>Valeur du circuit</b> : la moyenne des produits niveau habituel × temps des coureurs les plus rapides ayant un niveau :
+            <li><span><b>Valeur Ozimut du circuit</b> : la moyenne des produits niveau habituel × temps des coureurs les plus rapides ayant un niveau :
               ${shareName(own(pf, "For", "sample_fraction") ?? 2 / 3)} en forêt, ${shareName(own(pf, "Spr", "sample_fraction") ?? 2 / 3)} en sprint,
               ${shareName(own(pf, "VTT", "sample_fraction") ?? 2 / 3)} en VTT et en ski ; au moins ${fmt(pf.min_ranked)} coureurs, tous les
               ${fmt(pf.min_ranked)} quand il n'y en a que ${fmt(pf.min_ranked)}.</span></li>
-            <li><span><b>Score Top</b> : la valeur du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
+            <li><span><b>Score Ozimut</b> : la valeur Ozimut du circuit divisée par le temps, multipliée par le facteur de recalage du jour, et fixée une fois pour toutes.
               Un poinçon manquant, un abandon, une disqualification ou un hors-délai donnent 0, qui compte.</span></li>
-            <li><span><b>CN Top</b> : les meilleurs scores Top, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
+            <li><span><b>Indice Ozimut</b> : les meilleurs scores Ozimut, parmi les ${pctOf(pf.eligible_fraction)} meilleurs des 12 derniers mois, remplissent
               ${fmt(p6.top_n)} places : ${fmtW(pf.weights.cdf)} pour un championnat de France, ${fmtW(pf.weights.national)} pour une course nationale,
-              ${fmtW(pf.weights.other)} pour une autre course. Le CN Top est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de
+              ${fmtW(pf.weights.other)} pour une autre course. L'indice Ozimut est la moyenne pondérée des scores retenus, chacun compté autant de fois qu'il a de
               places ; une course courue en catégorie jeune y compte pour 1 − son âge ÷ la fenêtre. Il faut au moins ${fmt(pf.min_scores)} courses.</span></li>
-            <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs CN Top
+            <li><span><b>Recalage</b> : chaque jour, un facteur maintient à ${fmt(pf.anchor_target)} la moyenne des ${pctOf(pf.anchor_top_fraction)} meilleurs indices Ozimut
               de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée
               des dix dernières années, dans les quatre spécialités ; les mois se comptent au calendrier.</span></li>
           </ul>
-          <p>Les règles complètes sont dans l'onglet <a href="#/methodes?onglet=top" data-tab-link="top">CN Top</a>.</p>
+          <p>Les règles complètes sont dans l'onglet <a href="#/methodes?onglet=top" data-tab-link="top">Méthode Ozimut</a>.</p>
           <p><a class="mx-dl" href="${PDF}" download>⬇ Télécharger l'étude en PDF (livre blanc)</a></p>
         </section>
         <section class="mx-slide">
@@ -791,8 +749,7 @@ export function build(X) {
             centièmes. À ce niveau, un gain ne se voit plus dans un classement, mais une règle compliquée se voit dans chaque explication. La méthode retenue
             garde donc le score de la FFCO et des moyennes ordinaires, et ne change que ce qui compte vraiment : les meilleures courses retenues sur six places,
             une part du peloton réglée par spécialité pour mesurer les circuits, et un recalage continu. Elle gagne plus de deux points de duels sur le CN
-            officiel en forêt comme en sprint. Depuis que les courses des jeunes comptent de moins en moins avec le temps, elle fait mieux en forêt que la
-            variante géométrique qui l'a précédée, une méthode empirique réglée sur les données pour ses performances, et jeu égal en sprint.</p>
+            officiel en forêt comme en sprint.</p>
           <div class="mx-verdict">
             <div class="mx-box" style="${cvar("top6w")}"><h3>Classer, qualifier, sélectionner</h3>
               <div class="who">${cnLabel("top6w")}</div>
@@ -810,8 +767,8 @@ export function build(X) {
               <p>Le seul classement officiel, celui des sélections, quelles que soient ses limites.</p></div>
           </div>
           <p class="muted" style="font-size:13px;margin-top:14px">Les données proviennent du site du classement national de la FFCO ; une course absente, mal
-            saisie ou corrigée ensuite peut expliquer un écart. Les méthodes calculées par le site partent des CN de 2010 : leurs premiers mois reflètent
-            surtout ce point de départ. Leurs CN ne remplacent en aucun cas le classement officiel.</p>
+            saisie ou corrigée ensuite peut expliquer un écart. La méthode Ozimut part des CN de 2010 : ses premiers mois reflètent
+            surtout ce point de départ. Ses indices ne remplacent en aucun cas le classement officiel.</p>
         </section>`,
     };
     return buildChapters(STUDY_CHAPTERS, CH, "objectifs");
@@ -827,7 +784,7 @@ export function build(X) {
       ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["menus", "Le mode Purple Pen"], ["calculs", "Ses calculs"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Le tracé";
-    // where a command is in the ribbon (the O'CN mode, by default): « Carte › Position › Caler les postes »
+    // where a command is in the ribbon (the Ozimut mode, by default): « Carte › Position › Caler les postes »
     const W = (act) => TRD.ribbonAt(act);
     // the tools of the editor's bar, with the letter that picks them
     const TOOLS = [
@@ -861,11 +818,11 @@ export function build(X) {
     const MENU_HELP = {
       "start-new": "Créer un autre événement, sur sa carte (le premier des trois choix qu'offre la page à son ouverture).",
       "start-open": "Ouvrir un autre de vos événements (ceux que vous avez créés et ceux dont l'équipe vous compte).",
-      "start-import": "Un événement pris dans un fichier O'CN (.ocnt, qui contient sa carte) ou Purple Pen (.ppen, avec sa carte) : un nouvel événement, à côté de celui-ci.",
+      "start-import": "Un événement pris dans un fichier Ozimut (.ozmt, qui contient sa carte) ou Purple Pen (.ppen, avec sa carte) : un nouvel événement, à côté de celui-ci.",
       save: "Enregistre tout de suite ; l'enregistrement se fait aussi tout seul, quelques secondes après chaque changement.",
       "version-save": "Garde l'état actuel sous un nom, pour y revenir plus tard.",
       versions: "La liste des versions (une version est aussi gardée toutes les 30 minutes de travail) : voir ce qui a changé, en rouvrir une.",
-      "export-ocn": "Tout l'événement en un seul fichier O'CN (.ocnt), sa carte comprise si on le veut : une copie, une archive, ou l'événement pour un autre club ; il se rouvre par « Importer un événement ».",
+      "export-ocn": "Tout l'événement en un seul fichier Ozimut (.ozmt), sa carte comprise si on le veut : une copie, une archive, ou l'événement pour un autre club ; il se rouvre par « Importer un événement ».",
       "export-ppen": "Le fichier de l'événement pour Purple Pen, à mettre à côté de la carte.",
       "import-ppen": "Remplace les circuits de l'événement par ceux d'un fichier Purple Pen ; la carte reste celle de l'événement.",
       "pdf-courses": "Les cartes des circuits à imprimer.", "pdf-descriptions": "Les définitions seules, plusieurs par page.",
@@ -908,9 +865,9 @@ export function build(X) {
       "view-printarea": "Montrer le cadre de la zone d'impression.", "view-others": "Montrer d'autres circuits en bleu pâle sous celui en cours.",
       "import-course": "Lire les cercles, le départ et l'arrivée imprimés sur une carte (un PDF, une photo) et en faire des postes.",
       "save-to": "Quand une commande crée plusieurs fichiers : les écrire dans un dossier choisi, ou en un seul .zip.",
-      "ui-ribbon": "Revenir au ruban, le mode O'CN.",
+      "ui-ribbon": "Revenir au ruban, le mode Ozimut.",
     };
-    // the editor's screen in the O'CN mode, drawn: its zones numbered as in the list under it
+    // the editor's screen in the Ozimut mode, drawn: its zones numbered as in the list under it
     const screenFig = () => {
       const P = "#a7179b", ink2 = "var(--ink-2)", line = "var(--border-strong)";
       const mark = (n, x, y) => `<g><circle cx="${x}" cy="${y}" r="11" fill="${P}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:#fff">${n}</text></g>`;
@@ -937,7 +894,7 @@ export function build(X) {
         : `<circle cx="${x}" cy="${y}" r="12" ${k === 3 ? 'stroke="#0a84ff" stroke-width="3"' : ""}/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${k === 3 ? "#0a84ff" : P}">${k}</text>`)).join("");
       const rows = [["", "", "Départ : sommet"], ["1", "31", "Rocher, côté nord"], ["2", "45", "Dépression"], ["3", "52", "Chemin, croisement"], ["4", "38", "Clairière"]];
       const sheet = rows.map(([n, c, t], i) => `${i === 3 ? `<rect x="12" y="${182 + i * 20}" width="210" height="20" fill="#fff59d"/>` : ""}<text x="22" y="${196 + i * 20}" font-size="11" font-weight="700" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${n}</text><text x="38" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${c}</text><text x="64" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#333" : "var(--ink-2)"}">${t}</text><line x1="12" y1="${202 + i * 20}" x2="222" y2="${202 + i * 20}" stroke="${line}"/>`).join("");
-      return `<svg viewBox="0 0 760 486" role="img" aria-label="L'écran du tracé en mode O'CN, ses zones numérotées">
+      return `<svg viewBox="0 0 760 486" role="img" aria-label="L'écran du tracé en mode Ozimut, ses zones numérotées">
         <rect x="0.5" y="0.5" width="759" height="485" rx="9" fill="var(--surface)" stroke="${line}"/>
         <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/>${icon("folder", 13, 11, 0.55)}${txt(32, 22, "Événements", 'style="fill:var(--ink)"')}
         <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
@@ -988,7 +945,7 @@ export function build(X) {
             tout se passe dans le navigateur, et l'événement est enregistré sur le site.</p>
           <p>Il reprend les règles de traçage et le format de fichier de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
             le logiciel libre de traçage de Peter Golde, que beaucoup de clubs connaissent : un événement passe de l'un à l'autre, dans les deux sens. Il a aussi son
-            propre fichier, le fichier O'CN (.ocnt), qui garde tout l'événement et sa carte en un seul fichier. On n'a pas besoin de connaître Purple Pen pour s'en
+            propre fichier, le fichier Ozimut (.ozmt), qui garde tout l'événement et sa carte en un seul fichier. On n'a pas besoin de connaître Purple Pen pour s'en
             servir : ce guide explique tout.</p>
           <div class="mx-callout"><b>Version bêta.</b> Le tracé vient d'être réalisé et n'a encore été que peu testé : essayez-le, et signalez-nous ce qui ne va
             pas par la page « Nous écrire » (le menu de votre nom). Il n'est pas encore conseillé pour préparer une vraie compétition ; il convient très bien aux cartes
@@ -1007,10 +964,10 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>Nouvel événement</b> : tracer les circuits d'une compétition de votre club ou d'un entraînement. Il faut la carte.</li>
             <li><b>Importer un événement</b> : reprendre un événement préparé ailleurs, sur un autre compte, dans un autre club ou dans Purple Pen. Il faut un fichier
-              O'CN (.ocnt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</li>
+              Ozimut (.ozmt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</li>
             <li><b>Ouvrir un événement</b> : un de ceux que vous avez créés ou dont l'équipe vous compte, dans la liste.</li>
           </ul>
-          <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ocnt ou un .ppen un import. Le bouton
+          <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ozmt ou un .ppen un import. Le bouton
             « Événements », en haut à gauche, et la page Fichier (Nouveau, Ouvrir, Importer) ramènent ces trois choix à tout moment ; Échap les ferme. Un lien qui nomme un événement l'ouvre
             directement.</p>
           <h3>Créer un événement</h3>
@@ -1022,8 +979,9 @@ export function build(X) {
             <li><b>L'échelle de la carte</b> (lue dans le fichier OCAD ou Mapper) et sa <b>norme</b> : forêt (ISOM 2017) ou sprint (ISSprOM 2019), qui fixe la taille
               des cercles et des numéros.</li>
           </ul>
-          <p>« Importer un événement » demande les mêmes renseignements (compétition ou entraînement) et le fichier : un fichier O'CN (.ocnt) se rouvre tel qu'il a
-            été enregistré, avec sa carte ; un fichier Purple Pen (.ppen) avec sa carte. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
+          <p>« Importer un événement » demande les mêmes renseignements (compétition ou entraînement) et le fichier : un fichier Ozimut (.ozmt) se rouvre tel qu'il a
+            été enregistré, avec sa carte (un fichier enregistré plus tôt en .ocnt s'ouvre de même) ; un fichier Purple Pen (.ppen)
+            avec sa carte. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
             OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute, comme traceur,
@@ -1031,7 +989,7 @@ export function build(X) {
             <div class="mx-box" style="--c:var(--s3)"><h3>Enregistré tout seul</h3><p>Quelques secondes après chaque changement ; une version est gardée toutes les
               30 minutes de travail, et on peut en garder une sous un nom (${W("version-save")}).</p></div>
             <div class="mx-box" style="--c:var(--s5)"><h3>Chiffré si on veut</h3><p>Avec une phrase de passe de l'équipe (${W("encryption")}), le serveur ne
-              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un fichier O'CN (${W("export-ocn")}), qui, lui,
+              garde que des données illisibles. Perdue, elle ne se retrouve pas : exportez d'abord un fichier Ozimut (${W("export-ocn")}), qui, lui,
               n'est pas chiffré.</p></div>
           </div>
         </section>`,
@@ -1132,7 +1090,7 @@ export function build(X) {
             bouton qui l'ouvre.</p>
           <h3>Le mode Purple Pen</h3>
           <p>Ceux qui connaissent Purple Pen peuvent garder ses menus : Fichier › Options, ou le bouton ▭ › Mode Purple Pen, remplace le ruban par les menus Fichier,
-            Événement, Circuit, Rapports, Affichage et la barre d'outils. Affichage › Mode O'CN, ou le bouton « Ruban » en haut à droite, ramène le ruban. Les
+            Événement, Circuit, Rapports, Affichage et la barre d'outils. Affichage › Mode Ozimut, ou le bouton « Ruban » en haut à droite, ramène le ruban. Les
             deux modes font les mêmes choses, et le choix est gardé sur ce navigateur ; le chapitre « Le mode Purple Pen » donne, pour chaque commande des menus, sa
             place dans le ruban.</p>
           <h3>Se déplacer sur la carte</h3>
@@ -1283,7 +1241,7 @@ export function build(X) {
               circuits (PNG, JPEG, GIF) avec leur fichier de calage, fichiers RouteGadget : il faut une carte géoréférencée.</p></div>
             <div class="mx-box" style="--c:var(--s4)"><h3>${ic("layers", 18)} OCAD et Mapper</h3><p>Chaque circuit en carte OCAD (9 à 12, 2018) ou Mapper, en
               symboles de circuit, avec la carte de l'événement en fond : pour finir ou imprimer le circuit avec ces logiciels.</p></div>
-            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("export", 18)} O'CN et Purple Pen</h3><p>Le fichier O'CN (.ocnt) garde tout l'événement, et sa
+            <div class="mx-box" style="--c:var(--s5)"><h3>${ic("export", 18)} Ozimut et Purple Pen</h3><p>Le fichier Ozimut (.ozmt) garde tout l'événement, et sa
               carte si on le veut, en un seul fichier : une copie, une archive, l'événement pour un autre club ; il se rouvre par « Importer un événement ». Le
               .ppen s'ouvre dans Purple Pen à côté de la carte ; il garde tout, sauf ce que Purple Pen ne connaît pas (les itinéraires, par exemple).</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("table", 18)} Tableaux</h3><p>Les rapports en CSV (séparateur « ; »), pour un tableur.</p></div>
@@ -1371,7 +1329,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
           <h2>Le ruban, onglet par onglet</h2>
-          <p>Chaque commande du mode O'CN, l'interface par défaut, avec l'icône qu'elle porte dans le tracé : les onglets, ceux de l'objet choisi, puis la page Fichier.</p>
+          <p>Chaque commande du mode Ozimut, l'interface par défaut, avec l'icône qu'elle porte dans le tracé : les onglets, ceux de l'objet choisi, puis la page Fichier.</p>
           ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
           <h3 class="tr-doc-mh">${ic("select", 20)}<span>Les onglets de l'objet choisi</span></h3>
           ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
@@ -1379,7 +1337,7 @@ export function build(X) {
           ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
             sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
               : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Informations</span></dt><dd>L'événement : sa carte, ses circuits, votre rôle, le chiffrement ; ses propriétés, son équipe.</dd>`
-                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Le mode O'CN (le ruban) ou le mode Purple Pen (les menus) ; le ruban complet, sur une ligne ou ses onglets seuls ; les fichiers multiples.</dd>`
+                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Le mode Ozimut (le ruban) ou le mode Purple Pen (les menus) ; le ruban complet, sur une ligne ou ses onglets seuls ; les fichiers multiples.</dd>`
                   : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
         </section>`;
       },
@@ -1481,7 +1439,7 @@ export function build(X) {
           <h2>Les catégories côte à côte</h2>
           <p>La page « Catégories » montre, à une fin de mois, la répartition des CN de chaque catégorie sur un même axe : une bande claire du
             10<sup>e</sup> au 90<sup>e</sup> centile, la moitié centrale plus foncée (du 25<sup>e</sup> au 75<sup>e</sup>), la médiane et la moyenne. On
-            y voit d'un coup d'œil où les catégories se recouvrent : en forêt, en octobre 2026, le CN Top médian des H55 valait celui des H16.</p>
+            y voit d'un coup d'œil où les catégories se recouvrent : en forêt, en octobre 2026, l'indice Ozimut médian des H55 valait celui des H16.</p>
           <p>Les points désignent <b>les meilleurs de chaque catégorie</b>, par une seule règle, la même partout : dans chaque catégorie
             d'au moins 5 coureurs classés, ses 2 % meilleurs (arrondi à l'unité inférieure), et au moins son premier ; à CN égal à la
             limite, tous. Une catégorie de 76 coureurs en montre donc un, une de 192 en montre trois, une de 275 en montre cinq. Une
@@ -1533,8 +1491,8 @@ export function build(X) {
           <ul class="mx-list">
             <li><span><b>Officiel</b> : le CN officiel de chaque coureur reconnu, 15 jours avant la course, et la règle de la FFCO (moyenne ordinaire sur les deux
               tiers les plus rapides).</span></li>
-            <li><span><b>Top</b> : le niveau habituel de chaque coureur reconnu, 15 jours avant la course, la mesure du circuit de la méthode Top (la
-              moyenne des niveaux × temps des plus rapides : 90 % du peloton en forêt, deux tiers en sprint), et le facteur de recalage du jour. Le CN Top provisoire après la course suit la règle des places.</span></li>
+            <li><span><b>Ozimut</b> : le niveau habituel de chaque coureur reconnu, 15 jours avant la course, la valeur Ozimut du circuit (la
+              moyenne des niveaux × temps des plus rapides : 90 % du peloton en forêt, deux tiers en sprint), et le facteur de recalage du jour. L'indice Ozimut provisoire après la course suit la règle des places.</span></li>
             <li><span>Seules les listes <b>par circuit</b> sont notées. Une liste par catégorie l'est circuit par circuit une fois qu'on sait quelles catégories
               couraient sur quel circuit (d'après les listes par circuit de la même course, la liste d'inscription de la FFCO ou l'annonce de course). Les
               coureurs non reconnus restent sans CN.</span></li>
@@ -1579,8 +1537,8 @@ export function build(X) {
           <ul class="mx-list bad">
             <li><span>Les données proviennent du site du classement national de la FFCO. Une course absente, mal saisie ou corrigée ensuite peut expliquer un
               écart.</span></li>
-            <li><span>Les méthodes calculées par le site partent des CN de 2010 ; leurs premiers mois reflètent surtout ce point de départ.</span></li>
-            <li><span>Leurs CN ne remplacent en aucun cas le classement officiel, qui reste la seule référence.</span></li>
+            <li><span>La méthode Ozimut part des CN de 2010 ; ses premiers mois reflètent surtout ce point de départ.</span></li>
+            <li><span>Ses indices ne remplacent en aucun cas le classement officiel, qui reste la seule référence.</span></li>
             <li><span>Les classements mensuels sont calculés en fin de mois ; la page d'un coureur détaille le calcul à n'importe quelle date.</span></li>
             <li><span>Les résultats provisoires sont ceux des organisateurs, avant toute correction de la FFCO.</span></li>
           </ul>
@@ -1590,8 +1548,8 @@ export function build(X) {
   }
 
   // how far the methods agree, per discipline: each visible computed method against the official one.
-  // meta.agreement rows: [official, fair, top6w, fair3, top6w3]
-  const AGREE_COL = { fair: 1, top6w: 2, fair3: 3, top6w3: 4 };
+  // meta.agreement rows: [official, fair, top6w]
+  const AGREE_COL = { fair: 1, top6w: 2 };
   const computed = M.filter((m) => m !== "official");     // never the Fits (M excludes them)
   let agTerrain = "For";
   function drawAgreement() {
@@ -1610,12 +1568,7 @@ export function build(X) {
       const d = pairs.map((p) => p[1] - p[0]);
       return { name, n: pairs.length, r: pearson(pairs.map((p) => p[0]), pairs.map((p) => p[1])), bias: mean(d), mae: mean(d.map(Math.abs)) };
     };
-    const vs = (a, b) => stat(`${methodShort(b)} / ${methodShort(a)}`,
-      pts.filter((p) => p[AGREE_COL[a]] && p[AGREE_COL[b]]).map((p) => [p[AGREE_COL[a]], p[AGREE_COL[b]]]));
-    const stats = [
-      ...series.map((x) => stat(`${x.name} / ${methodShort("official")}`, x.data)),
-      ...(computed.includes("top6w") && computed.includes("top6w3") ? [vs("top6w", "top6w3")] : []),
-    ];
+    const stats = series.map((x) => stat(`${x.name} / ${methodShort("official")}`, x.data));
     $("#agr-stats").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
       <th>Méthodes comparées</th><th class="r">Coureurs</th><th class="r">Corrélation</th><th class="r">Écart moyen</th><th class="r">Écart moyen absolu</th></tr></thead>
       <tbody>${stats.map((s) => html`<tr><td>${s.name}</td><td class="r num">${fmt(s.n)}</td>
@@ -1623,17 +1576,15 @@ export function build(X) {
     $("#agr-table").innerHTML = $("#agr-stats").innerHTML;
   }
   // the evaluation's season-by-season chart: one measure, one comparison, one scope, forest and sprint side by side
-  let evMeas = "acc", evPair = "top6w-official", evScope = "all", evPeriod = "holdout";
-  const EV_PAIRS = () => (analyst ? ["top6w-official", ...ev.pairs.filter((x) => !x.includes("fair") && x !== "top6w-official")] : ["top6w-official"]);
+  let evMeas = "acc", evScope = "all", evPeriod = "holdout";
+  const evPair = "top6w-official";
+  const EV_PAIRS = () => [evPair];
   function drawEval() {
     if (!ev || !$("#ev-seasons", main)) return;
-    if (!EV_PAIRS().includes(evPair)) evPair = EV_PAIRS()[0];
     $("#ev-controls").innerHTML = html`
       <div class="field"><span>Mesure</span>${seg("evm", EVM.map((m) => [m, EV_LABEL[m]]), evMeas)}</div>
-      <div class="field"><span>Comparaison</span>${seg("evp", EV_PAIRS().map((p) => [p, pairLabel(p)]), evPair)}</div>
       <div class="field"><span>Courses</span>${seg("evs", [["all", "toutes"], ["nat", "nationales"]], evScope)}</div>`;
     $$('[data-seg="evm"]').forEach((x) => x.addEventListener("click", () => { evMeas = x.dataset.value; drawEval(); }));
-    $$('[data-seg="evp"]').forEach((x) => x.addEventListener("click", () => { evPair = x.dataset.value; drawEval(); }));
     $$('[data-seg="evs"]').forEach((x) => x.addEventListener("click", () => { evScope = x.dataset.value; drawEval(); }));
     $("#ev-seasons").innerHTML = html`${["For", "Spr"].map((tr) => {
       const rows = evRows(tr, evScope);

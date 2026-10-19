@@ -18,7 +18,7 @@ export const steps = `
   <ol class="od-steps" start="3">
     <li>Sur l'ordinateur de l'arène, relié à internet, ouvrez cette page dans <b>Chrome ou Edge</b>. Firefox et Safari ne permettent
       pas à une page de relire un fichier toute seule.</li>
-    <li>Connectez-vous à O'CN avec le compte qui crée la diffusion : seul ce compte peut ensuite l'alimenter. Vous pouvez la
+    <li>Connectez-vous à Ozimut avec le compte qui crée la diffusion : seul ce compte peut ensuite l'alimenter. Vous pouvez la
       créer la veille, d'ici ou d'un autre ordinateur.</li>
     <li>Choisissez la course ci-dessous, ou créez-la : son nom, sa date et l'organisateur suffisent.</li>
     <li>Choisissez le fichier exporté, <b>une seule fois</b>. Le navigateur demande l'autorisation de le lire.</li>
@@ -31,7 +31,7 @@ export const steps = `
   <ul class="od-steps">
     <li>Les circuits, les catégories, les postes et les coureurs n'ont pas à être déclarés : ils viennent du fichier, et un circuit qui
       apparaît en cours de course est ajouté.</li>
-    <li>Les coureurs sont reconnus par leur nom et leur club, et reliés à leur page sur O'CN.</li>
+    <li>Les coureurs sont reconnus par leur nom et leur club, et reliés à leur page sur Ozimut.</li>
   </ul>
   <p style="margin:12px 0 0">Les spectateurs suivent la course dans <b>Courses › En direct</b> : le lien apparaît plus bas une fois la
     course choisie.</p>`;

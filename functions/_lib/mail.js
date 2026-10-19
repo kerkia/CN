@@ -36,6 +36,8 @@ export async function budgetLeft(env, priority = 1) {
 
 /** One delivery attempt. { ok, permanent, rateLimited } — permanent: retrying will not help. */
 async function deliver(env, m) {
+  // replies go to the mailbox someone reads (REPLY_TO, since the move to ozimut.com: the site sends from alert@, unread)
+  m = { ...m, replyTo: m.replyTo || env.REPLY_TO || null };
   if (env.DEV_ECHO === "1") {
     console.log(`[mail] to ${m.to} — ${m.subject}${m.replyTo ? ` (reply to ${m.replyTo})` : ""}\n${m.text}\n` +
       (m.attachments?.length ? `[attachments] ${m.attachments.map((a) => `${a.filename} (${Math.round(a.content.length * 0.75 / 1024)} Ko)`).join(", ")}\n` : ""));
@@ -47,7 +49,7 @@ async function deliver(env, m) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: `${env.MAIL_FROM_NAME || "O'CN"} <${env.MAIL_FROM}>`,
+        from: `${env.MAIL_FROM_NAME || "Ozimut"} <${env.MAIL_FROM}>`,
         to: [m.to], subject: m.subject, html: m.html, text: m.text,
         ...(m.replyTo ? { reply_to: m.replyTo } : {}),
         ...(m.attachments?.length ? { attachments: m.attachments } : {}),   // [{ filename, content: base64 }]

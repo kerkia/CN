@@ -10,7 +10,7 @@ import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey, filterFold,
-  statusLabel, pageTabs, tabFrom, bindPageTabs,
+  statusLabel, pageTabs, tabFrom, bindPageTabs, cnWords,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
@@ -55,7 +55,7 @@ export async function render(main, { query }) {
       </div>
     </div></section>
     ${filterFold(html`<div class="filters" id="filters"></div>`)}
-    <div data-panel="evolution"><div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart"), tall: true })}</div></div>
+    <div data-panel="evolution"><div style="margin-bottom:16px">${chartCard({ id: "cmp", title: t("cp.chart", cnWords(store.get().method)), tall: true })}</div></div>
     <div data-panel="bilan"><section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.table")}</h2><div class="hint" id="sum-hint"></div></div></div>
       <div id="summary"></div></section></div>
     <div data-panel="duels"><section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("cp.h2h")}</h2><div class="hint" id="h2h-hint"></div></div></div>

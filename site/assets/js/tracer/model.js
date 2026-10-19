@@ -658,7 +658,7 @@ function putLeg(ev, id, leg) {
   if (vacuous(leg)) { if (id) delete ev.legs[id]; return; }
   if (id) ev.legs[id] = leg; else addObj(ev, "leg", leg);
 }
-/** The route the setter expects on a leg (O'CN's, not in .ppen): the points between the two controls, or null. */
+/** The route the setter expects on a leg (Ozimut's, not in .ppen): the points between the two controls, or null. */
 export function setLegRoute(ev, c1, c2, pts) {
   const [id, leg] = legFor(ev, c1, c2);
   if (pts?.length) leg.route = pts.map((p) => p.slice()); else delete leg.route;

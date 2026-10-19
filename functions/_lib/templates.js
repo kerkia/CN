@@ -8,10 +8,10 @@ const L = (lang) => (lang === "en" ? "en" : "fr");
 const locale = (lang) => (L(lang) === "en" ? "en-GB" : "fr-FR");
 
 const FRAME = {
-  fr: { tagline: "Observatoire du classement national de CO",
+  fr: { tagline: "La course d'orientation, en cartes et en chiffres",
     foot: (from) => `Site indépendant, sans lien avec la FFCO. Message envoyé automatiquement ; vous pouvez écrire à ${from}.`,
     copy: "Si le bouton ne fonctionne pas, copiez ce lien :" },
-  en: { tagline: "French orienteering national ranking observatory",
+  en: { tagline: "Orienteering, in maps and numbers",
     foot: (from) => `An independent site, not affiliated with the FFCO. Automatic message; you can write to ${from}.`,
     copy: "If the button doesn't work, copy this link:" },
 };
@@ -19,7 +19,7 @@ function wrap(env, title, bodyHtml, lang) {
   const F = FRAME[L(lang)];
   return `<!doctype html><html lang="${L(lang)}"><body style="margin:0;background:#f4f6f9;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#1b2430">
 <div style="max-width:560px;margin:0 auto;padding:24px 16px">
-<div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px">O'CN <span style="font-weight:500;font-size:13px;color:#5b6675">${F.tagline}</span></div>
+<div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px"><span style="color:#e8641c">O</span>zimut <span style="font-weight:500;font-size:13px;color:#5b6675">${F.tagline}</span></div>
 <div style="background:#fff;border-radius:10px;padding:22px 24px;line-height:1.5">
 <h1 style="font-size:18px;margin:0 0 12px">${esc(title)}</h1>${bodyHtml}</div>
 <p style="font-size:12px;color:#5b6675;margin:14px 4px">${esc(F.foot(env.MAIL_FROM))}</p>
@@ -31,34 +31,34 @@ const button = (href, label, lang) => `<p style="margin:18px 0"><a href="${esc(h
 export function verifyMail(env, token, firstName, lang) {
   const url = `${siteUrl(env)}/#/compte/verifier?token=${encodeURIComponent(token)}`;
   if (L(lang) === "en") return {
-    subject: "Confirm your email address — O'CN",
+    subject: "Confirm your email address — Ozimut",
     html: wrap(env, "Confirm your email address", `<p>Hello ${esc(firstName)},</p>
 <p>Thank you for registering. Click below to confirm your email address and activate your account (link valid for 24 hours).</p>${button(url, "Confirm my address", lang)}
 <p style="font-size:13px;color:#5b6675">If you didn't register, ignore this message: nothing will be activated.</p>`, lang),
-    text: `Hello ${firstName},\n\nConfirm your email address to activate your O'CN account (link valid for 24 hours):\n${url}\n\nIf you didn't register, ignore this message.`,
+    text: `Hello ${firstName},\n\nConfirm your email address to activate your Ozimut account (link valid for 24 hours):\n${url}\n\nIf you didn't register, ignore this message.`,
   };
   return {
-    subject: "Confirmez votre adresse e-mail — O'CN",
+    subject: "Confirmez votre adresse e-mail — Ozimut",
     html: wrap(env, "Confirmez votre adresse e-mail", `<p>Bonjour ${esc(firstName)},</p>
 <p>Merci de votre inscription. Cliquez ci-dessous pour confirmer votre adresse e-mail et activer votre compte (lien valable 24 heures).</p>${button(url, "Confirmer mon adresse", lang)}
 <p style="font-size:13px;color:#5b6675">Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message : rien ne sera activé.</p>`, lang),
-    text: `Bonjour ${firstName},\n\nConfirmez votre adresse e-mail pour activer votre compte O'CN (lien valable 24 h) :\n${url}\n\nSi vous n'êtes pas à l'origine de cette inscription, ignorez ce message.`,
+    text: `Bonjour ${firstName},\n\nConfirmez votre adresse e-mail pour activer votre compte Ozimut (lien valable 24 h) :\n${url}\n\nSi vous n'êtes pas à l'origine de cette inscription, ignorez ce message.`,
   };
 }
 
 export function resetMail(env, token, lang) {
   const url = `${siteUrl(env)}/#/compte/reinitialiser?token=${encodeURIComponent(token)}`;
   if (L(lang) === "en") return {
-    subject: "Resetting your password — O'CN",
+    subject: "Resetting your password — Ozimut",
     html: wrap(env, "Reset your password", `<p>A password reset was requested for this account. The link below is valid for 1 hour.</p>${button(url, "Choose a new password", lang)}
 <p style="font-size:13px;color:#5b6675">If you didn't ask for anything, ignore this message: your password stays unchanged.</p>`, lang),
-    text: `A password reset was requested for your O'CN account. Link valid for 1 hour:\n${url}\n\nIf you didn't ask for anything, ignore this message.`,
+    text: `A password reset was requested for your Ozimut account. Link valid for 1 hour:\n${url}\n\nIf you didn't ask for anything, ignore this message.`,
   };
   return {
-    subject: "Réinitialisation de votre mot de passe — O'CN",
+    subject: "Réinitialisation de votre mot de passe — Ozimut",
     html: wrap(env, "Réinitialiser votre mot de passe", `<p>Une réinitialisation de mot de passe a été demandée pour ce compte. Le lien ci-dessous est valable 1 heure.</p>${button(url, "Choisir un nouveau mot de passe", lang)}
 <p style="font-size:13px;color:#5b6675">Si vous n'avez rien demandé, ignorez ce message : votre mot de passe reste inchangé.</p>`, lang),
-    text: `Une réinitialisation de mot de passe a été demandée pour votre compte O'CN. Lien valable 1 heure :\n${url}\n\nSi vous n'avez rien demandé, ignorez ce message.`,
+    text: `Une réinitialisation de mot de passe a été demandée pour votre compte Ozimut. Lien valable 1 heure :\n${url}\n\nSi vous n'avez rien demandé, ignorez ce message.`,
   };
 }
 
@@ -70,7 +70,7 @@ export function newUserMail(env, user, total, lang) {
   if (L(lang) === "en") {
     const lines = [`Email: ${user.email}`, `Licence: ${user.licence} (${user.display_name})`, `Registered on: ${day}`, `Confirmed accounts: ${total}`];
     return {
-      subject: `New account: ${who} — O'CN`,
+      subject: `New account: ${who} — Ozimut`,
       html: wrap(env, `New account: ${who}`, `<p>A new account has just been confirmed.</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Open the admin page", lang)}
 <p style="font-size:13px;color:#5b6675">You receive this message because the new sign-ups alert is on, on the admin page.</p>`, lang),
@@ -83,7 +83,7 @@ Administration (to turn this alert off): ${url}`,
   const lines = [`E-mail : ${user.email}`, `Licence : ${user.licence} (${user.display_name})`,
     `Inscrit le : ${day}`, `Comptes confirmés : ${total}`];
   return {
-    subject: `Nouveau compte : ${who} — O'CN`,
+    subject: `Nouveau compte : ${who} — Ozimut`,
     html: wrap(env, `Nouveau compte : ${who}`, `<p>Un nouveau compte vient d'être confirmé.</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Ouvrir la page d'administration", lang)}
 <p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que l'alerte des nouvelles inscriptions est activée sur la page d'administration.</p>`, lang),
@@ -110,7 +110,7 @@ export function uploadMail(env, user, up, lang) {
     const when = courses ? "They complete the race's results lists (length, climb, controls), once the race is over."
       : "It is published at the next collection run.";
     return {
-      subject: `${head}: ${up.race} — O'CN`,
+      subject: `${head}: ${up.race} — Ozimut`,
       html: wrap(env, head, `<p>${intro} ${when}</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "See the uploads", lang)}`, lang),
       text: `${intro}
@@ -128,7 +128,7 @@ The uploads (to remove one): ${url}`,
   const when = courses ? "Ils complètent les listes de résultats de la course (longueur, dénivelé, postes), une fois la course passée."
     : "Il est publié au prochain passage de la collecte.";
   return {
-    subject: `${head} : ${up.race} — O'CN`,
+    subject: `${head} : ${up.race} — Ozimut`,
     html: wrap(env, head, `<p>${intro} ${when}</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Voir les dépôts", lang)}`, lang),
     text: `${intro}
@@ -144,13 +144,13 @@ export function duplicateAlert(env, licence, accounts, lang) {
   const en = L(lang) === "en";
   const lines = accounts.map((a) => `${a.email} — ${a.first_name} ${a.last_name} — ${en ? "registered on" : "inscrit le"} ${String(a.created_at).slice(0, 10)}${a.status === "disabled" ? (en ? " (disabled)" : " (désactivé)") : ""}`);
   if (en) return {
-    subject: `Licence ${licence}: ${accounts.length} accounts — O'CN`,
+    subject: `Licence ${licence}: ${accounts.length} accounts — Ozimut`,
     html: wrap(env, `Licence ${licence}: ${accounts.length} accounts`, `<p>Several confirmed accounts match the same FFCO licence:</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Open the admin page", lang)}`, lang),
     text: `Several confirmed accounts for licence ${licence}:\n${lines.join("\n")}\n\nAdministration: ${url}`,
   };
   return {
-    subject: `Licence ${licence} : ${accounts.length} comptes — O'CN`,
+    subject: `Licence ${licence} : ${accounts.length} comptes — Ozimut`,
     html: wrap(env, `Licence ${licence} : ${accounts.length} comptes`, `<p>Plusieurs comptes confirmés correspondent à la même licence FFCO :</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Ouvrir la page d'administration", lang)}`, lang),
     text: `Plusieurs comptes confirmés pour la licence ${licence} :\n${lines.join("\n")}\n\nAdministration : ${url}`,
@@ -169,14 +169,14 @@ export function digestMail(env, user, races) {
   const list = `<ul style="padding-left:18px">${rows.map((r) => `<li style="margin:6px 0"><a href="${esc(r.url)}">${esc(r.title)}</a>${r.location ? ` — ${esc(r.location)}` : ""}${r.date ? ` (${esc(r.date)})` : ""}${r.note ? ` <span style="color:#5b6675">· ${esc(r.note)}</span>` : ""}</li>`).join("")}</ul>`;
   const listText = rows.map((r) => `- ${r.title}${r.location ? ` (${r.location})` : ""}${r.date ? ` ${r.date}` : ""}${r.note ? ` · ${r.note}` : ""}\n  ${r.url}`).join("\n");
   if (en) return {
-    subject: n === 1 ? `New race online: ${races[0].title} — O'CN` : `${n} new races online — O'CN`,
+    subject: n === 1 ? `New race online: ${races[0].title} — Ozimut` : `${n} new races online — Ozimut`,
     html: wrap(env, n === 1 ? "One of your races is online" : `${n} of your races are online`, `<p>Hello ${esc(user.first_name)},</p>
 ${list}
 <p style="font-size:13px;color:#5b6675">You receive this message because you turned notifications on. <a href="${esc(settings)}">Change my settings</a>.</p>`, lang),
     text: `Hello ${user.first_name},\n\n${listText}\n\nTo stop receiving these messages: ${settings}`,
   };
   return {
-    subject: n === 1 ? `Nouvelle course en ligne : ${races[0].title} — O'CN` : `${n} nouvelles courses en ligne — O'CN`,
+    subject: n === 1 ? `Nouvelle course en ligne : ${races[0].title} — Ozimut` : `${n} nouvelles courses en ligne — Ozimut`,
     html: wrap(env, n === 1 ? "Une de vos courses est en ligne" : `${n} de vos courses sont en ligne`, `<p>Bonjour ${esc(user.first_name)},</p>
 ${list}
 <p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez activé les notifications. <a href="${esc(settings)}">Modifier mes réglages</a>.</p>`, lang),
@@ -211,18 +211,18 @@ const AGENDA = {
     count: (n, teams) => `${n} inscrit${n > 1 ? "s" : ""}${teams != null ? ` (${teams} équipe${teams > 1 ? "s" : ""})` : ""} à ce jour`,
     regOnline: "Inscriptions en ligne", noDates: " — dates de clôture non encore publiées", colon: " :",
     invitationArrow: "Annonce de course (PDF) →", access: "Accès", accessSrc: "(extrait de l'annonce)", accessText: "Accès (extrait de l'annonce)",
-    see: "Voir dans O'CN", ffco: "Fiche sur le site de la FFCO", hello: "Bonjour", also: "Et aussi :",
+    see: "Voir sur Ozimut", ffco: "Fiche sur le site de la FFCO", hello: "Bonjour", also: "Et aussi :",
     more: (n, link) => `… et ${n} autre${n > 1 ? "s" : ""} dans l'${link}.`, moreText: (n, url) => `… et ${n} autre${n > 1 ? "s" : ""} : ${url}`,
     agenda: "agenda", why: (w, link) => `Vous recevez ce message parce que vous avez activé l'alerte ${w}. ${link}.`, settings: "Modifier mes réglages",
     stop: "Pour modifier ou arrêter cette alerte :",
     new: {
-      subject: (n, e) => (n === 1 ? `Nouvelle course à l'agenda : ${e.name} — O'CN` : `${n} nouvelles courses à l'agenda — O'CN`),
+      subject: (n, e) => (n === 1 ? `Nouvelle course à l'agenda : ${e.name} — Ozimut` : `${n} nouvelles courses à l'agenda — Ozimut`),
       title: (n) => (n === 1 ? "Une nouvelle course à l'agenda" : `${n} nouvelles courses à l'agenda`),
       intro: (n) => `${n === 1 ? "Une course vient" : "Des courses viennent"} d'être ajoutée${n > 1 ? "s" : ""} à l'agenda dans les régions que vous suivez :`,
       why: "« nouvelles courses »",
     },
     deadline: {
-      subject: (n, e) => (n === 1 ? `Inscriptions bientôt closes : ${e.name} — O'CN` : `${n} courses : inscriptions bientôt closes — O'CN`),
+      subject: (n, e) => (n === 1 ? `Inscriptions bientôt closes : ${e.name} — Ozimut` : `${n} courses : inscriptions bientôt closes — Ozimut`),
       title: (n) => (n === 1 ? "Inscriptions bientôt closes" : `Inscriptions bientôt closes pour ${n} courses`),
       intro: (n) => `Les inscriptions ferment dans les 8 prochains jours pour ${n === 1 ? "cette course" : "ces courses"}, dans les régions que vous suivez :`,
       why: "« clôture des inscriptions »",
@@ -239,18 +239,18 @@ const AGENDA = {
     count: (n, teams) => `${n} entr${n !== 1 ? "ies" : "y"}${teams != null ? ` (${teams} team${teams !== 1 ? "s" : ""})` : ""} so far`,
     regOnline: "Online entries", noDates: " — deadlines not published yet", colon: ":",
     invitationArrow: "Race announcement (PDF) →", access: "Getting there", accessSrc: "(from the announcement)", accessText: "Getting there (from the announcement)",
-    see: "See in O'CN", ffco: "Page on the FFCO website", hello: "Hello", also: "And also:",
+    see: "See on Ozimut", ffco: "Page on the FFCO website", hello: "Hello", also: "And also:",
     more: (n, link) => `… and ${n} more in the ${link}.`, moreText: (n, url) => `… and ${n} more: ${url}`,
     agenda: "calendar", why: (w, link) => `You receive this message because you turned on the ${w} alert. ${link}.`, settings: "Change my settings",
     stop: "To change or stop this alert:",
     new: {
-      subject: (n, e) => (n === 1 ? `New race in the calendar: ${e.name} — O'CN` : `${n} new races in the calendar — O'CN`),
+      subject: (n, e) => (n === 1 ? `New race in the calendar: ${e.name} — Ozimut` : `${n} new races in the calendar — Ozimut`),
       title: (n) => (n === 1 ? "A new race in the calendar" : `${n} new races in the calendar`),
       intro: (n) => `${n === 1 ? "A race has" : "Races have"} just been added to the calendar in the regions you follow:`,
       why: "“new races”",
     },
     deadline: {
-      subject: (n, e) => (n === 1 ? `Entries closing soon: ${e.name} — O'CN` : `${n} races: entries closing soon — O'CN`),
+      subject: (n, e) => (n === 1 ? `Entries closing soon: ${e.name} — Ozimut` : `${n} races: entries closing soon — Ozimut`),
       title: (n) => (n === 1 ? "Entries closing soon" : `Entries closing soon for ${n} races`),
       intro: (n) => `Entries close within the next 8 days for ${n === 1 ? "this race" : "these races"}, in the regions you follow:`,
       why: "“entry deadline”",
@@ -330,7 +330,7 @@ ${e.access ? `<div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;
     const rows = courseRows(env, e, lang), reg = registrationBlock(e, lang);
     return [`${e.name}`, `${longDate(e.date, lang)}${e.type ? ` · ${type(e)}` : ""}`, ...(e.invitation ? [`${T.invitation}${T.colon} ${e.invitation}`] : []),
       reg.text, ...(e.access ? [`${T.accessText}${T.colon}\n${e.access}`] : []),
-      ...rows.map(([l, , t]) => `${l}${T.colon} ${t}`), `O'CN${T.colon} ${link(e)}`, `FFCO${T.colon} ${ffco(e)}`].join("\n");
+      ...rows.map(([l, , t]) => `${l}${T.colon} ${t}`), `Ozimut${T.colon} ${link(e)}`, `FFCO${T.colon} ${ffco(e)}`].join("\n");
   };
   const compactLine = (e) => `${e.name} — ${shortDate(e.date, lang)}${e.place ? `, ${e.place}` : ""}${e.type ? ` (${type(e)})` : ""}`;
 
@@ -361,7 +361,7 @@ export function contactMail(env, user, msg) {
     ...(msg.files.length ? [["Pièces jointes", esc(msg.files.join(", ")), msg.files.join(", ")]] : []),
   ];
   return {
-    subject: `[O'CN · ${msg.category}] ${msg.subject}`,
+    subject: `[Ozimut · ${msg.category}] ${msg.subject}`,
     html: wrap(env, msg.subject, `<table style="border-collapse:collapse;font-size:13.5px;margin-bottom:14px">${rows.map(([l, h]) =>
       `<tr><td style="padding:2px 12px 2px 0;color:#5b6675;vertical-align:top;white-space:nowrap">${l}</td><td style="padding:2px 0">${h}</td></tr>`).join("")}</table>
 <div style="border-top:1px solid #dde3ea;padding-top:12px">${msg.html || `<p style="white-space:pre-line">${esc(msg.text)}</p>`}</div>
@@ -391,7 +391,7 @@ ${what}`, url: `/#/resultats?course=${encodeURIComponent(s.key)}`, tag: `start-$
 /** Réglages' « Envoyer un essai ». */
 export function testPush(lang) {
   const en = L(lang) === "en";
-  return { title: "O'CN", body: en ? "Notifications work on this device." : "Les notifications fonctionnent sur cet appareil.",
+  return { title: "Ozimut", body: en ? "Notifications work on this device." : "Les notifications fonctionnent sur cet appareil.",
     url: "/#/reglages", tag: "test" };
 }
 
@@ -435,14 +435,14 @@ export function startMail(env, user, s, changed) {
   const table = `<table style="border-collapse:collapse;margin:8px 0">${rows.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#5b6675">${esc(k)}</td><td style="padding:3px 0"><b>${esc(v)}</b></td></tr>`).join("")}</table>`;
   const text = rows.map(([k, v]) => `${k}${en ? ":" : " :"} ${v}`).join("\n");
   if (en) return {
-    subject: `${changed ? "Start time changed" : "Your start time"}: ${when} — ${s.name} — O'CN`,
+    subject: `${changed ? "Start time changed" : "Your start time"}: ${when} — ${s.name} — Ozimut`,
     html: wrap(env, changed ? "Your start time has changed" : "Your start time", `<p>Hello ${esc(user.first_name)},</p>
 <p>${changed ? "The start list of your race was updated:" : "The start list of your race is published:"}</p>${table}${button(url, "See the start list", lang)}
 <p style="font-size:13px;color:#5b6675">You receive this message because you asked for your start times by email. <a href="${esc(settings)}">Change my settings</a>.</p>`, lang),
     text: `Hello ${user.first_name},\n\n${text}\n\n${url}\n\nTo stop receiving these messages: ${settings}`,
   };
   return {
-    subject: `${changed ? "Heure de départ modifiée" : "Votre heure de départ"} : ${when} — ${s.name} — O'CN`,
+    subject: `${changed ? "Heure de départ modifiée" : "Votre heure de départ"} : ${when} — ${s.name} — Ozimut`,
     html: wrap(env, changed ? "Votre heure de départ a changé" : "Votre heure de départ", `<p>Bonjour ${esc(user.first_name)},</p>
 <p>${changed ? "La liste de départ de votre course a été mise à jour :" : "La liste de départ de votre course est publiée :"}</p>${table}${button(url, "Voir la liste de départ", lang)}
 <p style="font-size:13px;color:#5b6675">Vous recevez ce message parce que vous avez demandé vos heures de départ par e-mail. <a href="${esc(settings)}">Modifier mes réglages</a>.</p>`, lang),

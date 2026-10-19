@@ -29,7 +29,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!env.AI) return json({ error: "ai not bound" }, 500);
   if (!(await allow(env, `ask:${user.id}`, admin ? PER_HOUR_ADMIN : PER_HOUR, 3600))) return json({ error: "Trop de questions cette heure-ci.", code: "hour" }, 429);
   if (!admin && !(await allow(env, `askday:${user.id}`, PER_DAY, 86400))) {
-    return json({ error: `Vous avez posé ${PER_DAY} questions aujourd'hui au modèle gratuit d'O'CN : réessayez demain, ou utilisez votre propre clé d'API.`,
+    return json({ error: `Vous avez posé ${PER_DAY} questions aujourd'hui au modèle gratuit d'Ozimut : réessayez demain, ou utilisez votre propre clé d'API.`,
       code: "day", n: PER_DAY }, 429);
   }
   const model = b.model && MODELS[b.model] && admin ? b.model : DEFAULT_MODEL;

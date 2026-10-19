@@ -4,7 +4,7 @@
 export const body = (SITE) => `
       <p>${SITE} est un site indépendant, sans lien avec la Fédération française de course d'orientation (FFCO). Il est édité à titre
         personnel et non commercial par <b>Yann Le Helloco</b>, responsable du traitement des données personnelles décrites ci-dessous
-        au sens du règlement (UE) 2016/679 (RGPD). Contact : <b>ocn@kerkia.com</b>.</p>
+        au sens du règlement (UE) 2016/679 (RGPD). Contact : <b>contact@ozimut.com</b>.</p>
       <h2 style="font-size:16px">Conditions d'utilisation</h2>
       <p>${SITE} fonctionne avec des ressources gratuites et limitées, partagées entre tous ses utilisateurs. Il est destiné à être
         consulté personnellement par les licenciés, au moyen d'un navigateur. Sauf accord préalable de l'éditeur, sont en conséquence
@@ -12,7 +12,7 @@ export const body = (SITE) => `
         massifs, la réutilisation des données à d'autres fins et tout usage de nature à surcharger le site au détriment des autres
         utilisateurs. Un compte qui ne respecte pas ces règles peut être suspendu.</p>
       <p>Pour un besoin particulier (étude, besoins d'un club ou d'une ligue, données destinées à un autre outil), il est possible
-        d'écrire à l'éditeur, par la page « Nous écrire » ou à ocn@kerkia.com : la demande sera examinée.</p>
+        d'écrire à l'éditeur, par la page « Nous écrire » ou à contact@ozimut.com : la demande sera examinée.</p>
       <h2 style="font-size:16px">Données des résultats, y compris celles des licenciés sans compte</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr : nom,
         club, catégorie, numéro de licence, temps et place de chaque licencié classé, qu'il dispose ou non d'un compte sur ${SITE}, y
@@ -60,12 +60,12 @@ export const body = (SITE) => `
         postes et des coudes des circuits, sans nom ni code.</p>
       <h2 style="font-size:16px">Questions à l'IA</h2>
       <p>Sur la page « IA », votre question est envoyée au modèle de langage qui écrit la requête, avec la description des tables du
-        site, la date du jour, votre numéro de licence et la méthode et la discipline choisies : par défaut le modèle d'O'CN, exécuté
+        site, la date du jour, votre numéro de licence et la méthode et la discipline choisies : par défaut le modèle d'Ozimut, exécuté
         par Cloudflare (Workers AI) ; ni le site ni Cloudflare ne conservent les questions. La requête s'exécute ensuite dans votre
         navigateur, sur les données que le site publie : elles ne sont transmises à aucun modèle. Si vous utilisez votre propre clé
         d'API (Anthropic, OpenAI, Google ou OpenRouter), votre navigateur envoie ces mêmes éléments directement à ce fournisseur, sous
         votre compte et selon ses conditions (avec une clé gratuite, Google peut se servir des questions pour améliorer ses
-        produits) ; la clé reste dans votre navigateur et n'est jamais transmise à O'CN.</p>
+        produits) ; la clé reste dans votre navigateur et n'est jamais transmise à Ozimut.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
         <li><b>Données conservées :</b> l'adresse e-mail ; les prénom, nom et numéro de licence saisis, vérifiés lors de l'inscription
@@ -86,7 +86,7 @@ export const body = (SITE) => `
       <p>Un message envoyé par la page « Nous écrire » parvient à l'éditeur par e-mail, accompagné de votre adresse, de votre nom et du
         navigateur utilisé ; il est conservé dans sa messagerie le temps nécessaire au traitement de la demande.</p>
       <h2 style="font-size:16px">Notifications</h2>
-      <p>Si vous autorisez les notifications d'O'CN sur un appareil, le site conserve, pour cet appareil, l'adresse d'envoi que lui
+      <p>Si vous autorisez les notifications d'Ozimut sur un appareil, le site conserve, pour cet appareil, l'adresse d'envoi que lui
         attribue le service de notification de votre navigateur (Google pour Chrome et Android, Apple pour Safari, Mozilla pour
         Firefox, Microsoft pour Edge), les clés qui servent à chiffrer les messages et le type d'appareil (par exemple
         « Chrome · Android »). Les messages (votre heure de départ, la mise en ligne de vos résultats, les courses de l'agenda,
@@ -137,13 +137,13 @@ export const body = (SITE) => `
         est satisfaite de la même manière ; un compte, en revanche, est supprimé intégralement. Les données d'un licencié mineur sont
         anonymisées, et son compte supprimé s'il en a un, sur simple demande de son représentant légal, qui exerce ces droits en son
         nom.</p>
-      <p>Vous pouvez supprimer vous-même votre compte, dans Réglages. Les autres demandes sont à adresser à ocn@kerkia.com ; il y est
+      <p>Vous pouvez supprimer vous-même votre compte, dans Réglages. Les autres demandes sont à adresser à contact@ozimut.com ; il y est
         répondu dans un délai d'un mois. En cas de doute raisonnable sur l'identité du demandeur, un justificatif peut être demandé.
         Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une réclamation auprès de la CNIL
         (<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>).</p>
       <h2 style="font-size:16px">Mentions légales</h2>
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
-        contact : ocn@kerkia.com.<br>
+        contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
       <p class="muted">Dernière mise à jour : 18 octobre 2026.</p>
 `;

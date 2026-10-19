@@ -1,4 +1,4 @@
-// The documentation, in four tabs (owner, 2026-10-14): « CN officiel » and « CN Top », each the method's rules and
+// The documentation, in four tabs (owner, 2026-10-14): « CN officiel » and « Méthode Ozimut », each the method's rules and
 // formulas, facts only; « L'étude », the white paper — objectives, method of evaluation, the point of departure, the
 // choices, the score and its mean, the circuit's value, the recalage, the results, the alternatives discarded, the
 // conclusion — with the figures that support each decision (site/assets/study.json, the study of 13 October 2026, and
@@ -17,8 +17,9 @@ import { replaceQuery } from "../app.js";
 import * as TR from "../tracer/icons.js";
 import * as TRD from "../tracer/ribbon-data.js";
 
-// the white paper in the reader's language (docs/whitepaper: methode-top.tex, methode-top.en.tex)
-const PDF = lang() === "en" ? "assets/ocn-methode-top.en.pdf" : "assets/ocn-methode-top.pdf";
+// the white paper in the reader's language (docs/whitepaper: methode-ozimut.tex, methode-ozimut.en.tex; the old ocn-methode-top*.pdf
+// are copies kept for old links)
+const PDF = lang() === "en" ? "assets/ozimut-methode.en.pdf" : "assets/ozimut-methode.pdf";
 const cvar = (m) => `--c:var(--s${METHOD_SLOT[m]})`;
 const MINUS = "−";
 
@@ -58,10 +59,10 @@ const star = (a) => (est(a) ? "*" : "");
 export async function render(main, { query = {} } = {}) {
   const meta = data.meta();
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
-  // the methods the documentation names: the official one and the Top, the Top géométrique for analysts; never the Fits
-  const M = available().filter((m) => m !== "fair" && m !== "fair3");
-  const analyst = available().includes("fair");
-  const tops = M.filter((m) => m === "top6w" || m === "top6w3");
+  // the methods the documentation names: the official one and Ozimut (top6w); never the usual level (fair)
+  const M = available();
+  const analyst = false;                      // (no analysis methods since 2026-10-19; the content modules still take it)
+  const tops = ["top6w"];
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);
   // a discipline's own value: meta files the params under the codes (For, Spr, VTT, Ski); the French name kept as a fallback
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p.by_terrain?.[TNAME[tr]]?.[key] ?? p[key];
@@ -72,7 +73,7 @@ export async function render(main, { query = {} } = {}) {
     fetch("assets/study.json", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const season = v ? v.season || Object.keys(v.acc.For?.all || {}).pop() : null;
   const VM = v ? M.filter((m) => v.methods.includes(m)) : [];
-  const ref = VM.includes("top6w") ? "top6w" : VM.includes("top6w3") ? "top6w3" : null;
+  const ref = VM.includes("top6w") ? "top6w" : null;
   const entry = (tr, scope = "all") => (v?.acc?.[tr]?.[scope]?.[season]?.[0] ? v.acc[tr][scope][season] : null);
   const right = (e, m) => e[1 + v.methods.indexOf(m)];
   const share = (e, m) => (100 * right(e, m)) / e[0];

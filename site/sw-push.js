@@ -1,4 +1,4 @@
-// O'CN's push notifications (2026-10-18; assets/js/push.js registers it, functions/_lib/push.js sends): shows what the server
+// Ozimut's push notifications (2026-10-18; assets/js/push.js registers it, functions/_lib/push.js sends): shows what the server
 // pushed — { title, body, url, tag } — and opens its page when tapped. Registered on its own scope (/push/, which no page
 // lives under) so that it never sees the site's requests and stays apart from the Tracer's offline worker (/sw.js, scope /).
 // Its icons (assets/icon-192.png, badge-96.png: Android's monochrome badge) are drawn from the favicon's shapes.
@@ -9,7 +9,7 @@ self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("push", (e) => {
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch (err) { m = { body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(m.title || "O'CN", {
+  e.waitUntil(self.registration.showNotification(m.title || "Ozimut", {
     body: m.body || "", tag: m.tag || undefined, renotify: !!m.tag, data: { url: m.url || "/" },
     icon: "/assets/icon-192.png", badge: "/assets/badge-96.png", lang: m.lang || undefined,
   }));

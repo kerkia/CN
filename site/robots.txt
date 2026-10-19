@@ -1,6 +1,6 @@
-# O'CN — https://ocn.kerkia.com
+# Ozimut — https://ozimut.com
 # The site is for personal use by FFCO licensees, behind a login, on limited free resources: robots may read the home
-# page only. For any automated or bulk use, write to ocn@kerkia.com (see « Règles du site » on the site).
+# page only. For any automated or bulk use, write to contact@ozimut.com (see « Règles du site » on the site).
 User-agent: *
 Allow: /$
 Disallow: /

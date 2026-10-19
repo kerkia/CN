@@ -73,8 +73,17 @@ export async function accountLogin(email, password) {
   throw err;
 }
 
+/** The move to ozimut.com (bridge.js): the old address's one-time token exchanged for a session here. -> the session or null. */
+export async function handoffLogin(token) {
+  const r = await api("api/account/handoff", { token });
+  if (!r.ok || !r.data) return null;
+  const s = { ...fromUser(r.data), until: Date.now() + DAYS * 86400e3 };
+  keep(s);
+  return s;
+}
+
 /** What the browser keeps of the account (the rights decide what the pages show). */
-const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, analyst: !!u.analyst, demo: u.demo || null,
+const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
   agendaAllowed: !!u.agendaAllowed });
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {

@@ -8,7 +8,7 @@ import * as S from "./store.js";
 import { symbol, symbolName, loadSymbols, languages } from "./symbols.js";
 import { family, FAMILY_LABEL } from "./fonts.js";
 import { readPpen, writePpen } from "./ppen.js";
-import { writeOcn } from "./ocnfile.js";
+import { writeOcn, EXT as OCN_EXT } from "./ocnfile.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
@@ -644,7 +644,7 @@ export async function saveFiles(E, files, zipName) {
   download(zipName, new Blob([await zip(bin)], { type: "application/zip" }));
 }
 export const fileName = (s) => String(s || t("trc.dlg.defaultFile")).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
-/** The event as an O'CN file (.ocnt, ocnfile.js): the whole event in one file, the map in it by default. */
+/** The event as an Ozimut file (.ozmt, ocnfile.js): the whole event in one file, the map in it by default. */
 async function exportOcn(E) {
   // the stored map's own name (a .ppen's map name can be another file's: an OCAD map replaced by its PDF), with an extension
   const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/tiff": ".tif", "image/bmp": ".bmp", "application/pdf": ".pdf" };
@@ -659,7 +659,7 @@ async function exportOcn(E) {
     if (r?.bytes) map = { name: mapName(r.type || E.meta.map?.type), type: r.type || E.meta.map?.type || "", bytes: r.bytes };
     else E.toast(t("trc.dlg.mapUnread"), 6000);
   }
-  download(`${fileName(E.ev.title)}.ocnt`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
+  download(`${fileName(E.ev.title)}${OCN_EXT}`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
   E.toast(map ? t("trc.dlg.ocnExportedMap") : t("trc.dlg.ocnExported"));
 }
 function exportPpen(E) {

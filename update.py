@@ -83,7 +83,9 @@ TOP6W_CN_VERSION = 5
 #                   anchored on the Top; "top6w" is the Top everyone sees, "top6w3"/"fair3" the geometric analysis pair
 #  12 (2026-10-19): the linear pair's juniors' races fade over the window (a race run in H/D 12-20 weighs 1 - its age /
 #                   the window in the CN's mean, junior_fade); the race files' CN J-15 is computed on its own day
-ENGINE_VERSION = 12
+#  13 (2026-10-19): the geometric pair ("fair3", "top6w3") removed (owner): its data dropped, the site's race files
+#                   rebuilt without its columns; "top6w" is published as the Ozimut method
+ENGINE_VERSION = 13
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page
@@ -93,7 +95,7 @@ ENGINE_VERSION = 12
 #   6 (2026-10-14): evaluation.json, the duels called right weighted by each circuit's runners (not once per circuit)
 #   7 (2026-10-15): ask/*.parquet, the tables « IA » queries in the browser (site_ask.py)
 EXTRAS_VERSION = 7
-COMPUTED = ("fair", "top6w", "fair3", "top6w3")   # in this order: each Top is derived from its Fit
+COMPUTED = ("fair", "top6w")   # in this order: the Ozimut method (top6w) is derived from the usual level (fair)
 
 
 def migrate(db: Path, out: Path) -> bool:

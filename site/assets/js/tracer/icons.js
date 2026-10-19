@@ -139,7 +139,7 @@ export const ACT_ICON = {
 /** A menu entry's icon (an empty slot of the same width when it has none, so the labels line up). */
 export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) : `<span class="tr-mi-none" style="width:${s}px"></span>`);
 
-/** The editor's menus, the « Purple Pen mode » (the ribbon of ribbon-data.js is the « O'CN mode », by default): { label, icon, items: [action, label] or "-" }. */
+/** The editor's menus, the « Purple Pen mode » (the ribbon of ribbon-data.js is the « Ozimut mode », by default): { label, icon, items: [action, label] or "-" }. */
 export const MENUS = [
   { label: t("trc.ico.menuFile"), icon: "file", items: [["start-new", t("trc.ico.startNew")], ["start-open", t("trc.ico.startOpen")], ["start-import", t("trc.ico.startImport")], "-",
     ["save", t("trc.ico.save")], ["version-save", t("trc.ico.versionSave")], ["versions", t("trc.ico.versions")], "-",

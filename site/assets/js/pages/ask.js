@@ -16,7 +16,7 @@ import { PROVIDERS, ProviderError, loadChoice, saveChoice, forgetChoice, suggest
 import { DUCKDB_DIR, joined } from "../vendor.js";
 const TABLES = ["runners", "clubs", "races", "results", "cn"];
 const EXAMPLES = [1, 2, 3, 4, 5, 6].map((i) => t(`ia.ex.${i}`));
-// O'CN's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
+// Ozimut's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
 const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
   ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"], ["@cf/qwen/qwen3-30b-a3b-fp8", "Qwen3 30B"]];
 
@@ -295,7 +295,7 @@ export async function render(main) {
           previous: entry.previous || undefined, promptOnly: own ? true : undefined, ...extra }) });
       const d = await r.json().catch(() => ({}));
       if (own) {
-        // the user's own model: the instructions from O'CN, the call from this browser to their provider, with their key
+        // the user's own model: the instructions from Ozimut, the call from this browser to their provider, with their key
         if (!r.ok || !d.messages) throw new Error(errText(d, r.status));
         const t0 = Date.now(), out = await PROVIDERS[own.provider].chat(own.key, own.model, d.messages);
         entry.usage = { provider: PROVIDERS[own.provider].label, model: own.model, ms: Date.now() - t0, tokensIn: out.tokensIn, tokensOut: out.tokensOut,

@@ -1,4 +1,4 @@
-"""A course setter's course data: IOF XML CourseData, 3.0 (Purple Pen's « Export IOF XML », OCAD, Condes, O'CN's own
+"""A course setter's course data: IOF XML CourseData, 3.0 (Purple Pen's « Export IOF XML », OCAD, Condes, Ozimut's own
 « Organisation › Tracer ») or the older 2.0.3 — each course's name, length, climb and controls in order. Not a results
 list: read as {"kind": "coursedata", "classes": [{name, length_m, climb_m, controls, runners: []}], "assign": {class:
 course}}, it gives the race's results lists the circuits' values their own files lack (run.fill_courses, 2026-10-15).

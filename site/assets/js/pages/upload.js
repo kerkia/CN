@@ -1,4 +1,4 @@
-// « Publier sur O'CN » — the last step of « Déposer » (pages/deposit.js): the file the organiser has read and looked at
+// « Publier sur Ozimut » — the last step of « Déposer » (pages/deposit.js): the file the organiser has read and looked at
 // in the browser is sent, for a race of the list or for a race the site does not know yet (its name, date, place,
 // club and format). The races of the file's date come first. The file goes as is to functions/api/upload.js (R2), and
 // the provisional-results run reads it (ffco_scraper/prov/sources/upload.py): it is published within minutes, or at

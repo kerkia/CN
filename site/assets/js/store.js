@@ -1,16 +1,12 @@
 // Global, persisted UI state shared by every page.
 
-// Every method, in display order: the published pair (fair / top6w: plain means, arithmetic circuit value over the
-// fastest share of the field — the Top everyone sees since 2026-10-16, owner: a method everyone can follow), then the
-// geometric pair (fair3 / top6w3, the Top from 2026-10-13 to 16, slightly better in sprint), kept for reference. Everyone
-// sees the official method and the Top; the others are analysis methods, shown only to the accounts with the "Analyse"
-// right (admin page, administrators included): the geometric Top and the « Fit » methods.
-export const METHODS = ["official", "top6w", "top6w3", "fair", "fair3"];
-const ANALYSIS = ["top6w3", "fair", "fair3"];
-const RENAMED = { top6w2: "top6w3", fair2: "fair3" };     // the quadratic pair, replaced on 2026-10-13
-let analyst = false;
+// The methods a visitor picks from: FFCO's official CN and the Ozimut method (top6w, « Top » until 2026-10-19). Since
+// 2026-10-19 (owner) there are no analysis methods: the geometric pair (fair3 / top6w3) is gone, and the usual level
+// (fair) only values the circuits, shown to nobody. Old links and saved choices naming them open the Ozimut method.
+export const METHODS = ["official", "top6w"];
+const RENAMED = { top6w2: "top6w", fair2: "top6w", top6w3: "top6w", fair3: "top6w", fair: "top6w" };
 /** The methods this visitor may see and pick. */
-export const available = () => METHODS.filter((m) => analyst || !ANALYSIS.includes(m));
+export const available = () => METHODS;
 // Disciplines offered by the site-wide selector: forest, sprint, mountain bike, ski.
 export const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 export const MAX_COMPARE = 8;
@@ -62,12 +58,6 @@ export function set(patch) {
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
-
-/** Whether this visitor may see the analysis methods; the method chosen must be one they may see. */
-export function setAnalyst(flag) {
-  analyst = !!flag;
-  if (!available().includes(state.method)) set({ method: defaults.method, methods: [defaults.method] });
 }
 
 // the method shown before the last switch (this visit only): the runner's chart draws it as a faint grey line

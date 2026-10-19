@@ -10,9 +10,11 @@ export const methodLabel = (m) => t(`m.${m}`);
 /** Short form for dense table headers. */
 export const methodShort = (m) => t(`m.${m}.short`);
 /** The two quantities of a method, named as the World Ranking separates them (owner, 2026-10-14): a race's points,
- *  « score Top » / « score officiel », and a runner's ranking value, « CN Top » / « CN officiel ». The Fit shares the
+ *  « score Ozimut » / « score officiel », and a runner's ranking value, « indice Ozimut » / « CN officiel ». The Fit shares the
  *  Top's scores; the linear pair has its own. `lower`: inside a sentence. */
 export const cnLabel = (m) => t(`cn.${m}`);
+/** A method's value label for a text: { cn } at its head, { cnLow } in mid-phrase, { cnOf } with its article (French). */
+export const cnWords = (m) => ({ cn: t(`cn.${m}`), cnLow: t(`cn.${m}.low`), cnOf: t(`cn.${m}.of`) });
 export const scoreLabel = (m, lower = false) => { const s = t(`score.${m}`); return lower ? s.charAt(0).toLowerCase() + s.slice(1) : s; };
 
 /** A short line in a method's dash pattern (charts.METHOD_DASH), for legends. */
@@ -26,19 +28,14 @@ export function dashKey(m) {
  * line style instead of the colour — for pages where colour identifies
  * something else (compared runners or clubs).
  */
-/** The site's method switch (app.renderHeader, at the right of the second row): Officiel | Top, every available
- *  method for the analysts. The pages have no method choice of their own since 2026-10-12. */
-/** The site's method, at the right of the header's second row: « Calcul du CN » (owner, 2026-10-13: the buttons alone
- *  did not say what they chose), then Officiel | Top, each with a one-line tooltip (`m.<method>.tip`); analysts get a
- *  list of every method. */
+/** The site's method, at the right of the header's second row (app.renderHeader): its label (owner, 2026-10-13: the
+ *  buttons alone did not say what they chose), then Officiel | Ozimut, each with a one-line tooltip (`m.<method>.tip`).
+ *  The pages have no method choice of their own since 2026-10-12. */
 export function methodSwitch() {
   const cur = store.get().method, ms = store.available();
   const tip = (m) => t(`m.${m}.tip`);
-  const pick = ms.length <= 2
-    ? html`<div class="seg method-switch" role="group" aria-label="${t("cm.method")}">${ms.map((m) => html`<button type="button"
-        data-method-pick="${m}" aria-pressed="${m === cur}" title="${tip(m)}">${methodShort(m)}</button>`)}</div>`
-    : html`<label class="method-switch" title="${tip(cur)}"><span class="sr-only">${t("cm.method")}</span><select id="method-pick" aria-label="${t("cm.method")}">
-        ${ms.map((m) => html`<option value="${m}" ${raw(m === cur ? "selected" : "")} title="${tip(m)}">${methodLabel(m)}</option>`)}</select></label>`;
+  const pick = html`<div class="seg method-switch" role="group" aria-label="${t("cm.method")}">${ms.map((m) => html`<button type="button"
+      data-method-pick="${m}" aria-pressed="${m === cur}" title="${tip(m)}">${methodShort(m)}</button>`)}</div>`;
   return html`<div class="method-pick"><span class="lab" title="${t("msw.tip")}">${t("msw.label")}</span>${pick}</div>`;
 }
 // (the pages' former method choices: nothing to draw any more)
@@ -104,7 +101,7 @@ export function bindPageTabs(root, tabs, current, onShow) {
 /** The short text beside a page's title (id page-lede), for pages whose views change it (Statistiques, Clubs). */
 export const setLede = (text) => { const el = document.getElementById("page-lede"); if (el) el.textContent = text; };
 
-/** A results table's column header with what the figure is below it (« CN Top » / « J-15 »). */
+/** A results table's column header with what the figure is below it (« Indice Ozimut » / « J-15 »). */
 export const subHead = (label, sub) => html`${label}<div class="th-sub">${sub}</div>`;
 
 export const methodKey = (m, dash = false) =>

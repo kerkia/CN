@@ -1,6 +1,6 @@
 // POST /api/live/push?id=<broadcast> — one update of an organiser's live race (pages/orgdirect.js: the classes that changed
 // since its last read of the timing software's export, in liveresultat's compact form). Handed as it is to the race's
-// Durable Object on O'CN's live relay (live/, Worker « ocn-live », « LiveRace », bound here as LIVE_RACE, internal path
+// Durable Object on Ozimut's live relay (live/, Worker « ocn-live », « LiveRace », bound here as LIVE_RACE, internal path
 // /push), which pushes the changes to the pages watching (« En direct »). Only the account that opened the broadcast,
 // or an administrator, feeds it (every account may open one since 2026-10-15, owner). The body is not parsed here (the
 // free plan's ~10 ms of CPU): the race's object checks it.

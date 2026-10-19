@@ -4,14 +4,14 @@ export const body = (SITE) => `
       <p class="muted"><i>This English version is provided for information; the French version prevails.</i></p>
       <p>${SITE} is an independent site, not affiliated with the French orienteering federation (FFCO). It is published on a
         personal, non-commercial basis by <b>Yann Le Helloco</b>, controller of the personal data described below within the
-        meaning of Regulation (EU) 2016/679 (GDPR). Contact: <b>ocn@kerkia.com</b>.</p>
+        meaning of Regulation (EU) 2016/679 (GDPR). Contact: <b>contact@ozimut.com</b>.</p>
       <h2 style="font-size:16px">Terms of use</h2>
       <p>${SITE} runs on free, limited resources shared by all its users. It is meant to be consulted personally by licence
         holders, with a web browser. Unless the publisher has agreed beforehand, the following are therefore forbidden: automated
         collection (robots, scripts, scraping of pages or data files), mass downloads, reuse of the data for other purposes, and any
         use likely to overload the site at the expense of other users. An account that breaks these rules may be suspended.</p>
       <p>For a particular need (a study, the needs of a club or a region, data meant for another tool), you can write to the
-        publisher, through the “Contact us” page or at ocn@kerkia.com: the request will be considered.</p>
+        publisher, through the “Contact us” page or at contact@ozimut.com: the request will be considered.</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the
         name, club, class, licence number, time and place of each ranked licence holder, whether or not they have an account on
@@ -55,11 +55,11 @@ export const body = (SITE) => `
         (Géoplateforme, France) only the coordinates of the controls and of the courses' bends, with no name or code.</p>
       <h2 style="font-size:16px">Questions to the AI</h2>
       <p>On the “AI” page, your question is sent to the language model that writes the query, with the description of the site's
-        tables, today's date, your licence number and the chosen method and discipline: by default O'CN's model, run by Cloudflare
+        tables, today's date, your licence number and the chosen method and discipline: by default Ozimut's model, run by Cloudflare
         (Workers AI); neither the site nor Cloudflare keeps the questions. The query then runs in your browser, on the data the site
         publishes: that data is sent to no model. If you use your own API key (Anthropic, OpenAI, Google or OpenRouter), your browser
         sends these same elements directly to that provider, under your account and its terms (with a free key, Google may use the
-        questions to improve its products); the key stays in your browser and is never sent to O'CN.</p>
+        questions to improve its products); the key stays in your browser and is never sent to Ozimut.</p>
       <h2 style="font-size:16px">Your account's data</h2>
       <ul>
         <li><b>Data kept:</b> the email address; the first name, surname and licence number entered, checked at registration against
@@ -78,7 +78,7 @@ export const body = (SITE) => `
       <p>A message sent through the “Contact us” page reaches the publisher by email, with your address, your name and the browser
         used; it is kept in their mailbox for as long as needed to handle the request.</p>
       <h2 style="font-size:16px">Notifications</h2>
-      <p>If you allow O'CN's notifications on a device, the site keeps, for that device, the sending address given to it by your
+      <p>If you allow Ozimut's notifications on a device, the site keeps, for that device, the sending address given to it by your
         browser's notification service (Google for Chrome and Android, Apple for Safari, Mozilla for Firefox, Microsoft for Edge), the
         keys used to encrypt the messages and the kind of device (for example “Chrome · Android”). The messages (your start time,
         your results going online, the calendar's races, as you chose) are encrypted end to end: the notification service carries
@@ -123,14 +123,14 @@ export const body = (SITE) => `
         changed; the measure can be reversed at your request. A request to erase results data is handled in the same way; an
         account, on the other hand, is deleted entirely. The data of a minor licence holder is anonymised, and their account deleted
         if they have one, on simple request by their legal representative, who exercises these rights on their behalf.</p>
-      <p>You can delete your account yourself, in Settings. Other requests should be sent to ocn@kerkia.com; they are answered within
+      <p>You can delete your account yourself, in Settings. Other requests should be sent to contact@ozimut.com; they are answered within
         one month. If there is reasonable doubt about the requester's identity, proof may be requested. If you consider that your
         rights are not respected, you can lodge a complaint with the CNIL
         (<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>), the French data
         protection authority.</p>
       <h2 style="font-size:16px">Legal notices</h2>
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
-        contact: ocn@kerkia.com.<br>
+        contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
       <p class="muted">Last updated: 18 October 2026.</p>
 `;

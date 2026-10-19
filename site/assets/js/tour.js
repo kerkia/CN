@@ -17,7 +17,7 @@ const LEGS = [
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "results"] },
   { id: "phones", who: ["all"], phones: ["phone-ranking", "phone-agenda", "phone-race", "phone-settings", "phone-runner"] },
 ];
-const MAIL = "ocn@kerkia.com";       // i18n-ignore
+const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
   : `assets/tour/${lang() === "en" ? "en" : "fr"}/${name}.webp`);
 const capKey = (name) => name.replace(/^@/, "");

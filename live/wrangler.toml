@@ -1,5 +1,5 @@
-# O'CN's live relay (Durable Objects): one object per liveresultat competition (« En direct ») or organiser's broadcast
-# (« Organisation › Direct »), and a directory (liveresultat's list, the broadcasts). Reached only through O'CN's Durable
+# Ozimut's live relay (Durable Objects): one object per liveresultat competition (« En direct ») or organiser's broadcast
+# (« Organisation › Direct »), and a directory (liveresultat's list, the broadcasts). Reached only through Ozimut's Durable
 # Object bindings (wrangler.toml at the root: LIVE_RACE, LIVE_DIR): no public address. Deployed by hand:
 #   cd live && npx wrangler deploy
 name = "ocn-live"

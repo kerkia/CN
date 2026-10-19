@@ -5,7 +5,7 @@
 // 2. What it holds: the circuits, runners, split and start times, the results circuit by circuit, and every analysis
 //    of « Temps intermédiaires » on it (#/temps-inter?course=fichier) — to look at a race privately, before or
 //    without publishing. The file stays in the tab's session (local.js) until the tab is closed or the account logs out.
-// 3. Only then, if the organiser wishes: « Publier sur O'CN » (upload.js) — the race, the consent, the send.
+// 3. Only then, if the organiser wishes: « Publier sur Ozimut » (upload.js) — the race, the consent, the send.
 // A PDF cannot be read in the browser: it goes straight to step 3, and the site reads it on reception.
 
 import { html, raw, $, $$, fmt, fmtDate, fmtCat } from "../util.js";

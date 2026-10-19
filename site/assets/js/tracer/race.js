@@ -1,7 +1,7 @@
 // The Tracer's tools that use the race's data or another service:
 //  - competitor loads from FFCO's registration counts per circuit (the agenda's reg.circuits);
 //  - the climb of each course from IGN's elevations (Géoplateforme, RGE ALTI) along its legs as drawn;
-//  - winning times estimated from O'CN's results: the winners' pace on recent races of the same discipline and format,
+//  - winning times estimated from Ozimut's results: the winners' pace on recent races of the same discipline and format,
 //    against their CN, gives a course's time for the expected winner's level, and the length for a target time;
 //  - the pick-up plan: when each control may be collected (the last start of each course using it and a slow runner's
 //    pace), in that order, with the controls nearby;

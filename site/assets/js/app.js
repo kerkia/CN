@@ -8,8 +8,9 @@ import * as data from "./data.js";
 import { disposeAll } from "./charts.js";
 import { methodSwitch } from "./ui.js";
 import * as auth from "./auth.js";
+import * as bridge from "./bridge.js";
 
-export const SITE = "O'CN";
+export const SITE = "Ozimut";
 
 const PAGES = {
   ranking: () => import("./pages/ranking.js"),
@@ -349,7 +350,7 @@ function renderHeader(r) {
         <path d="M16 3.5 L28.5 16 L16 28.5 L3.5 16 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
         <path d="M16 3.5 L28.5 16 L16 16 Z" fill="#e8641c"/><path d="M3.5 16 L16 28.5 L16 16 Z" fill="currentColor"/>
       </svg>
-      <span class="brand-name">${SITE}</span>
+      <span class="brand-name"><span class="brand-o">O</span>zimut</span>
     </a>
     <nav class="nav" id="nav" aria-label="Navigation">
       ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
@@ -592,10 +593,7 @@ async function route_() {
     await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
   }
-  // the analysis methods ("Fit") only for the accounts allowed to see them
-  const who = auth.session();
-  store.setAnalyst(!!who?.analyst);
-  // a link may carry the method (?m=official|top6w3…): it becomes the site's
+  // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there
   if (r.route === "deposit") {
@@ -699,6 +697,8 @@ const pushBoot = () => setTimeout(() => { if (auth.session()?.email && !auth.ses
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
 
 async function start() {
+  // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
+  if ((await bridge.arrive()) || (await bridge.leave())) return;
   // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   await data.bootPublic();

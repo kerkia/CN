@@ -391,7 +391,7 @@ def region_of(org_code: str | None) -> str | None:
 
 
 # The order a race's documents are shown in (the first one opens): the organiser's own files (or a file sent to
-# O'CN) are the reference; liveresultat comes last — live results are not corrected afterwards. A document missing
+# Ozimut) are the reference; liveresultat comes last — live results are not corrected afterwards. A document missing
 # half the runners of the fullest one loses its rank; then a list by circuit (scored), with splits, the most runners.
 SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "helga": 3, "liveresultat": 1}
 

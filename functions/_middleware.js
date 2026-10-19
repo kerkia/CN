@@ -14,7 +14,7 @@ export const COOKIE = "cnx_session";
 // (/api/notify checks its own bearer secret; the /api/account and /api/admin endpoints check the session themselves)
 const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
   /^\/sw-push\.js$/, /^\/manifest\.webmanifest$/,
-  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset)$/];
+  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/];
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
 const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];
@@ -56,8 +56,13 @@ export async function signSession(payload, secret) {
 export async function readSession(request, secret) {
   const cookie = request.headers.get("Cookie") || "";
   const m = cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
-  if (!m || !secret) return null;
-  const [body, sig] = m[1].split(".");
+  return m ? readToken(m[1], secret) : null;
+}
+
+/** A token signed by signSession, checked and not expired -> its payload, or null. */
+export async function readToken(token, secret) {
+  if (!token || !secret) return null;
+  const [body, sig] = String(token).split(".");
   if (!body || !sig) return null;
   try {
     const ok = await crypto.subtle.verify("HMAC", await hmacKey(secret), fromB64url(sig), enc.encode(body));
@@ -68,6 +73,9 @@ export async function readSession(request, secret) {
     return null;
   }
 }
+
+/** The site's former addresses (wrangler.toml OLD_HOSTS), which send their visitors on to SITE_URL. */
+export const oldHosts = (env) => String(env.OLD_HOSTS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
 
 /** Same rule as the browser (assets/js/auth.js) and the build (build_site.py). */
 export function nameKey(name) {

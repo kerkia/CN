@@ -8,7 +8,7 @@
 import { allow, json, withUser } from "../_lib/api.js";
 
 const SPECIALITES = ["For", "Spr", "Ped", "VTT", "Ski"];
-const UA = "ocn-history/1.0 (+https://ocn.kerkia.com; per-user view of the public FFCO history page)";
+const UA = "ozimut-history/1.0 (+https://ozimut.com; per-user view of the public FFCO history page)";
 
 const ENT = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&#x27;": "'", "&nbsp;": " " };
 const clean = (s) => s.replace(/<[^>]+>/g, " ").replace(/&(?:amp|lt|gt|quot|#39|#x27|nbsp);/g, (m) => ENT[m]).replace(/\s+/g, " ").trim();

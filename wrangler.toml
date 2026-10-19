@@ -20,7 +20,7 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "cn-state"
 
-# O'CN's live relay (live/, Worker « ocn-live », deployed by hand: cd live && npx wrangler deploy): its race objects — liveresultat's races for « En direct » (functions/ws/[comp].js) and the
+# Ozimut's live relay (live/, Worker « ocn-live », deployed by hand: cd live && npx wrangler deploy): its race objects — liveresultat's races for « En direct » (functions/ws/[comp].js) and the
 # organisers' broadcasts (« Organisation › Direct », functions/api/live/push.js) — and its directory (liveresultat's list,
 # functions/api/live/list.js; the broadcasts); the pushes reach them at internal paths no public route forwards
 [[durable_objects.bindings]]
@@ -39,14 +39,19 @@ script_name = "ocn-live"
 binding = "AI"
 
 [vars]
-SITE_URL = "https://ocn.kerkia.com"
+SITE_URL = "https://ozimut.com"
+# the former addresses (2026-10-19): they keep serving the site, and their pages send visitors on to SITE_URL with their
+# session and settings (assets/js/bridge.js, functions/api/account/handoff.js)
+OLD_HOSTS = "ocn.kerkia.com"
 # push notifications (functions/_lib/push.js): the site's public VAPID key, made with its private one (a Pages secret,
 # VAPID_PRIVATE_KEY) by tools/vapid.mjs
 VAPID_PUBLIC_KEY = "BCBEutwc9rhl-JARIchi73P0mqGNf0hJ2LG-7mU9n9clyEs9SLIlERGRKfxGFIYWs2mzybCtd2jjOYCzyhVNzns"
-MAIL_FROM = "ocn@kerkia.com"
-MAIL_FROM_NAME = "O'CN"
+MAIL_FROM = "alert@ozimut.com"
+# where replies to the automatic mails go (a mailbox read by hand, Proton); a mail that names its own Reply-To keeps it
+REPLY_TO = "contact@ozimut.com"
+MAIL_FROM_NAME = "Ozimut"
 # who gets the duplicate-licence alerts, and which accounts see the admin page
-ALERT_EMAIL = "ocn@kerkia.com"
+ALERT_EMAIL = "contact@ozimut.com"
 ADMIN_EMAILS = "ocn@kerkia.com"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"

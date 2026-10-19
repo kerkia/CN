@@ -4,7 +4,7 @@ A question asked on « IA » goes to a language model (functions/api/ask.js, Wor
 tables (ASK_SCHEMA in functions/_lib/ask.js: keep the two in step); the model answers with one SQL query, which the
 browser runs on these files, so the model never sees the data. Built from site/data after every build (site_extras.main),
 so it carries exactly what the site publishes: the anonymised runners as the site shows them, the official CN and the
-CN Top only (the analysis methods stay out).
+Ozimut index only (the usual level stays out).
 
     site/data/ask/runners.parquet   one row per runner
     site/data/ask/clubs.parquet     one row per club

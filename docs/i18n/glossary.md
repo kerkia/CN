@@ -1,4 +1,4 @@
-# O'CN — French ↔ English glossary
+# Ozimut — French ↔ English glossary
 
 The vocabulary of the site's English (owner, 2026-10-17). IOF English for the sport; British spelling (organiser,
 licence as a noun, colour, metre); plain words for the rest. Keep these terms everywhere: catalogues
@@ -72,7 +72,11 @@ clubs, places, ligues, départements, FFCO's own page titles); the source data f
 |---|---|---|
 | Classement national (CN) | national ranking (CN) | « CN » kept as the name of the points: « CN officiel » = official CN |
 | CN officiel | official CN | FFCO's |
-| CN Top / score Top | CN Top / Top score | kept as names |
+| méthode Ozimut (« Top » until 2026-10-19) | Ozimut method | the published calculation |
+| classement Ozimut | Ozimut rank | |
+| indice Ozimut (plural indices) | Ozimut index (plural indices) | a runner's value, its 6 weight places |
+| score Ozimut | Ozimut score | a runner's points in one race |
+| valeur Ozimut du circuit | course's Ozimut value | |
 | CN Fit (analysts only) | CN Fit | never in the documentation |
 | méthode officielle / méthode Top | official method / Top method | |
 | Top linéaire | linear Top | analysts |

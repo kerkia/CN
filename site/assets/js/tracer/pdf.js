@@ -328,7 +328,7 @@ export async function coursesDialog(E, { only = null } = {}) {
     if (!designators.length) { E.toast(t("trc.pdf.noCourse")); return; }
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
-      doc.setTitle(t("trc.pdf.docCourses", { title: ev.title })); doc.setCreator("O'CN"); doc.setProducer("O'CN (pdf-lib)");
+      doc.setTitle(t("trc.pdf.docCourses", { title: ev.title })); doc.setCreator("Ozimut"); doc.setProducer("Ozimut (pdf-lib)");
       const fonts = await makeFonts(doc, L);
       const images = new Map();
       for (const d of list) await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg });
@@ -363,7 +363,7 @@ export async function descriptionsDialog(E) {
   if (!v) return;
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
-  doc.setTitle(t("trc.pdf.docDescriptions", { title: ev.title })); doc.setCreator("O'CN");
+  doc.setTitle(t("trc.pdf.docDescriptions", { title: ev.title })); doc.setCreator("Ozimut");
   const fonts = await makeFonts(doc, L);
   const [PW, PH] = PAGES[v.paper], margin = 10, gap = 4, cell = num(v.cell);
   const sheets = [];

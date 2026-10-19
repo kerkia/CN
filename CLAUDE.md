@@ -1,6 +1,6 @@
-# O'CN — Observatoire du classement national de CO
+# Ozimut — La course d'orientation, en cartes et en chiffres (O'CN until 2026-10-19)
 
-Independent, unofficial site (https://ocn.kerkia.com) that scrapes the French orienteering federation's
+Independent, unofficial site (https://ozimut.com; https://ocn.kerkia.com until the move, see « The move to ozimut.com ») that scrapes the French orienteering federation's
 national ranking (FFCO, cn.ffcorientation.fr), recomputes it with alternative methods, and shows rankings,
 runner histories, clubs, comparisons, an agenda of upcoming events and per-race details. The site's UI is
 **in French**; code, comments and commit messages are in English.
@@ -30,8 +30,12 @@ commit results, personal data, secrets or credentials.
 
 ## Hosting and deployment
 
-- **Cloudflare Pages** project `observatoire-cn` (static `site/` + `functions/`), custom domain `ocn.kerkia.com`
-  (CNAME at GoDaddy). **D1** database `ocn` (accounts, sessions, mail queue). **R2** bucket `cn-state` (the
+- **Cloudflare Pages** project `observatoire-cn` (static `site/` + `functions/`), custom domains `ozimut.com` (bought
+  2026-10-18 at Cloudflare Registrar, its zone on Cloudflare; `www.ozimut.com` redirected to it by a Redirect Rule) and the
+  former `ocn.kerkia.com` (CNAME at GoDaddy, kept for good: its pages send visitors on, « The move to ozimut.com »). Mail:
+  the owner reads and writes `contact@ozimut.com` in **Proton Mail** (the domain's MX/SPF/DKIM are Proton's); the site sends
+  from `alert@ozimut.com` through Resend (its SPF and bounce address on the `send` subdomain), replies to `REPLY_TO`
+  (contact@); one DMARC record for both. **D1** database `ocn` (accounts, sessions, mail queue). **R2** bucket `cn-state` (the
   SQLite database and site data between CI runs). Free plans only: ~10 ms CPU per request (hence the light,
   peppered PBKDF2), 20 000 files per deployment (site/data is ~13k files), Resend 100 mails/day.
 - Pages secrets (set by the owner with `wrangler pages secret put`): `SESSION_SECRET`, `RESEND_API_KEY`,
@@ -83,6 +87,12 @@ VTT (~30 competitions a season) and ski (2-4, on one or two weekends) have their
 window 2 years (VTT) / 3 years (ski), best 70 % — with 12 months, too few riders held a CN to value the
 circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The official window stays 365 days.
 
+**Since 2026-10-19 (owner) the published method « Top » is the « méthode Ozimut »** (key `top6w` unchanged in the code and
+the data) and **the geometric pair is gone** (ENGINE 13; `fair3`/`top6w3` below are history). Words (`docs/i18n/glossary.md`):
+« classement Ozimut » / Ozimut rank, « indice Ozimut » / Ozimut index (a runner's value, was « CN Top »), « score Ozimut » /
+Ozimut score (a runner's points in a race), « valeur Ozimut du circuit » / course's Ozimut value; « CN officiel » unchanged;
+French elides (« d'Ozimut », « de l'indice Ozimut »: `ui.cnWords` gives `{cnLow}` and `{cnOf}` beside `{cn}`).
+
 1. **`official`** — FFCO's published values, copied verbatim (before 2026 FFCO had one pooled pedestrian
    ranking for forest and sprint, filed under "Ped": `build_site.official_terrain`, `data.snapTerrain`,
    `data.inSeries`; VTT and ski always had their own). The runner page's official calculation card reads FFCO's own
@@ -127,7 +137,9 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    Published level (best 20 % of CN Top, snapshots of March and September 2018-2026): mean distance to 5600 2.0 % forest,
    3.4 % sprint, 1.0 % VTT (peaks 6-9 % after the Covid seasons; the geometric pair alike: 1.9, 2.8, 0.9 %) — « within 2 % at
    every date » said of the geometric pair held only at the dates first checked.
-4. **`fair3` and `top6w3`, the geometric pair** — the Top published **from 2026-10-13 to 2026-10-16**, an analysis method since
+4. **`fair3` and `top6w3`, the geometric pair — removed on 2026-10-19 (owner; ENGINE 13: its data dropped, the race files'
+   columns 27-36 and the `c/` columns 12-15 gone, `cn.circuit_value`'s tail dial gone; the study and the white paper keep one
+   line: forest −0.02, sprint +0.15 [0.10, 0.20] against the published method, set aside for simplicity)** — the Top published **from 2026-10-13 to 2026-10-16**, an analysis method until 2026-10-19
    (labels « Fit géométrique » / « Top géométrique »): the circuit valued by a **geometric mean** with a dial on the slow tail
    (`CnParams.tail_k`, `cn.circuit_value`, mirrored by `cn.js circuitValue`: V = A^(1-w) x B^w, A = the fastest ceil(2n/3)
    times the discipline's usual tail effect `tail_mean`, B = the whole field, w = n / (n + k); forest 0, sprint 400, VTT and
@@ -141,9 +153,10 @@ circuits (VTT: half the circuits, 5 of 83 in 2021; ski: nothing after 2013). The
    History: `fair2`/`top6w2`, the quadratic pair (2026-10-07 to 13), dropped; `top6w3` cubic on 2026-10-13, arithmetic from
    2026-10-14; the four disciplines on one rule from 2026-10-14; the dial from 2026-10-15.
 
-**Who sees what**: everyone sees `official` and `top6w` (« Top », the method published); `top6w3` (« Top géométrique »)
-and the « Fit » methods `fair`/`fair3` are analysis methods, shown only to accounts with the `analyst` right (granted on the
-admin page; `store.available()`, `store.setAnalyst`; display only — the data files are the same for every logged-in user).
+**Who sees what**: everyone sees `official` and `top6w` (« Ozimut ») and nothing else since 2026-10-19: the usual level
+`fair` values the circuits and is shown to nobody, and the `analyst` right is gone (its admin checkbox and `store.setAnalyst`
+removed; the D1 column `users.analyst` stays, unread). Old links and saved choices naming `top6w3`, `fair`, `fair3` open
+Ozimut (`store.js` `RENAMED`). Before: `top6w3` and the « Fit » methods were analysis methods for the `analyst` right.
 The Top keeps its colour and dash whichever pair publishes it (`charts.METHOD_SLOT`, `build_site` `COLOR`). **The
 documentation (page and PDF) never names the Fit** (owner, 2026-10-14: misleading): the circuits are measured from the scores
 the runners present earned in their previous races, their « niveau habituel », a step of the calculation and not a ranking.
@@ -713,9 +726,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   rank (« 1er sur 76 »), × the class median, percentile in D21 / H21 (the share of that class below their CN).
   runner is ringed on their class's row; « Mon club » (`?club=1`) rings the club's runners. All computed in the browser from
   `loadRanking` (the monthly snapshots); the Documentation's « Les calculs du site › Coureurs » explains it.
-- **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them): a race's points are the « score Top » / « score
-  officiel » (`ui.scoreLabel`, i18n `score.*`), a runner's ranking value the « CN Top » / « CN officiel » (`ui.cnLabel`,
-  `cn.*`); the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
+- **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them; renamed 2026-10-19): a race's points are the
+  « score Ozimut » / « score officiel » (`ui.scoreLabel`, i18n `score.*`; « score Top » until 2026-10-19), a runner's ranking
+  value the « indice Ozimut » / « CN officiel » (`ui.cnLabel`, `ui.cnWords`, `cn.*`; « CN Top » until 2026-10-19); the
+  header's switch is « Classement : Officiel | Ozimut »; the Top's circuits are valued on the runners' « niveau habituel », which regular users never meet as a method —
   for analysts it is the « CN Fit » (it shares the Top's scores; the linear pair has its own « score linéaire »); the
   documentation never says « Fit ». The results
   tables' headers, the runner page's tiles and cards (`rn.current`, `rn.best`, `rn.calc`, `rn.cnHistory` take `{cn}`), the
@@ -728,8 +742,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `C:\kerkia\cn-data\study`; public, nothing personal) and from the live `evaluation.json`; « Les calculs du site » (clubs,
   coureurs, réseau, résultats et temps intermédiaires, relais, limites). Chapters are a second row of tabs (`?voir=`); the old
   tab names (`essentiel`, `detail`, `analyses`, `autres`) still open the right tab. The page's texts are in the module (French), written for orienteers who are not mathematicians (owner, 2026-10-14): plain sentences, both sides of every comparison, each term explained with numbers, one worked circuit of six runners (`RACE6`, F got lost) used on every tab, the dated exploratory tables folded away (`more`).
-  The PDF white paper (`site/assets/ocn-methode-top.pdf`, public, linked from the study) is LaTeX: `docs/whitepaper/`
-  (`methode-top.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
+  The PDF white paper (`site/assets/ozimut-methode.pdf` / `.en.pdf`, « La méthode Ozimut », public, linked from the study;
+  `build.py` also writes copies under the former names `ocn-methode-top*.pdf` for old links) is LaTeX: `docs/whitepaper/`
+  (`methode-ozimut.tex`, `figures.py` → `fig/*.pdf` and `tables.tex` from `study.json` and the study's evaluations,
   `build.py` runs it all with MiKTeX — per-user install, `winget install MiKTeX.MiKTeX --scope user`, packages fetched on the
   fly). Rebuild and commit the PDF when the study's numbers or texts change; the deploy serves it as any asset.
 - **Every page for every account** (owner, 2026-10-15): « Entrainement » (Jeux, VMA, the analyses), « En direct », the
@@ -794,7 +809,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`model.js`) mirrors Purple Pen's EventDB, QueryEvent, CourseView and ChangeEvent (controls, courses as linked course controls,
   forks and loops, map exchanges, legs with bends, gaps and flagging, specials, print areas, all in map mm, y up); `ppen.js` reads
   and writes **.ppen** (round trip checked on 15 sample events; « Purple Pen » is named as the file format the Tracer supports);
-  **the O'CN file** (`ocnfile.js`, owner, 2026-10-17: ours to evolve) is a `.ocnt` zip — `event.json` `{ format: "ocn-trace",
+  **the Ozimut file** (`ocnfile.js`, owner, 2026-10-17: ours to evolve; « fichier O'CN » until 2026-10-19) is a `.ozmt` zip
+  (`.ocnt`, its former extension, still opens everywhere: `isOcnFile`, `ACCEPT`; the content marker stays `ocn-trace`) — `event.json` `{ format: "ocn-trace",
   version, app, saved, title, map: { file, type, size } | null, event }`, `event` being the model's own event (all a .ppen holds plus
   O'CN's additions: georeferencing, routes, publication links…, in the event's frame), and `map/<name>` the map file itself when
   included (Fichier › Exporter au format O'CN, the stored map's name from the event's meta; checked byte for byte and event for event
@@ -1120,5 +1136,23 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `build`, change it in `vendor.js` (and `index.html` for ECharts), test the pages `vendor.js` names for it, commit. Major
   versions need reading their changelog first (pdf.js and DuckDB change their APIs). Never add a `<script>` or `import()` from
   another host: vendor it.
+- **The move to ozimut.com** (owner, 2026-10-19; plan: private artifact https://claude.ai/artifact/HQuwgQwKg9nexvGioSK77M).
+  The name « Ozimut » is written with a capital O, the rest lower case, and **its O in the control-flag orange** wherever it
+  is drawn (`.brand-o`, the e-mails' header, the reel's `.rv-logo-o`); tagline « La course d'orientation, en cartes et en
+  chiffres » / "Orienteering, in maps and numbers". Everything a browser keeps belongs to one address, so the old one keeps
+  serving the whole site (data and API too: a page held there must still work) and **its pages send visitors on**
+  (`assets/js/bridge.js`, called first by `app.start`): `leave()` on an `OLD` host reads an allowlist of localStorage
+  (`KEEP`: theme, state, language, navigation memory, the tools' prefs, calibrations, relay, VMA, games, the Tracer's field
+  queue; `NEVER`: `ocn.liveBase`, `ocn.ia.byok`, `cnx.session`), asks `/api/account/handoff` for a one-time token when
+  signed in (signed with `SESSION_SECRET|handoff`, so never a session cookie; 60 s; used once — D1 `handoffs`, migration
+  0013), and opens `https://ozimut.com/#oz=<deflate-raw, base64url>` (the fragment never reaches a server; calibrations
+  dropped first past 60 000 characters); `arrive()` on the new address takes the payload out of the address at once,
+  stores the settings it does not have, redeems the token (`auth.handoffLogin`), reloads on the page asked for. A browser
+  whose Tracer still has saves or photos waiting (IndexedDB `ocn-tracer` « pending », « photos ») stays on the old address
+  under a line saying why (`.bridge-note`). `OLD_HOSTS` (wrangler.toml) is the server's list (the hand-off issues tokens only
+  there); push: `push_subs.origin` (migration 0013), a device subscribing again on the new address drops its old
+  subscription of the same label. Local test: `OLD_HOSTS=localhost` and `SITE_URL=http://127.0.0.1:<port>` in `.dev.vars`,
+  `localStorage["ocn.bridgeTo"] = "http://127.0.0.1:<port>"` on localhost. Internal names stay: Pages `observatoire-cn`, D1
+  `ocn`, R2 `cn-state`, Worker `ocn-live`, repo `kerkia/CN`, the `ocn.*` / `cnx.*` browser keys, the method key `top6w`.
 - GitHub may occasionally fail runs on its own (e.g. "job was not acquired by Runner"): check
   githubstatus.com before suspecting the code; the next hourly run catches up.

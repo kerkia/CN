@@ -1,4 +1,4 @@
-// O'CN's service worker, registered only when a Tracer user keeps an event for working without the network
+// Ozimut's service worker, registered only when a Tracer user keeps an event for working without the network
 // (assets/js/tracer/offline.js; owner, 2026-10-15: field work). Network first, always: online, every request goes to the
 // network exactly as without it, so nothing stale is ever shown; only when the network fails does it answer from its copy —
 // the site's page and code, the Tracer's libraries and fonts (/assets/vendor), and the few data files the pages open with. The API

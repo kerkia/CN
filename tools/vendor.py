@@ -1,4 +1,4 @@
-"""The third-party code and fonts O'CN serves itself, under site/assets/vendor/ (owner, 2026-10-18: no request to a public
+"""The third-party code and fonts Ozimut serves itself, under site/assets/vendor/ (owner, 2026-10-18: no request to a public
 CDN such as cdn.jsdelivr.net, which Safari reports as a tracker; they also keep working when the CDN does not).
 
     python tools/vendor.py check    # each package's pinned version against npm's latest

@@ -37,7 +37,7 @@ from pathlib import Path
 import paths
 
 PENDING = paths.DATA_DIR / "notify.pending.json"        # competitions not yet announced
-SITE = os.environ.get("CN_SITE_URL", "https://ocn.kerkia.com").rstrip("/")
+SITE = os.environ.get("CN_SITE_URL", "https://ozimut.com").rstrip("/")
 RECENT_DAYS = 60            # a revised result for an old race must not mail anyone
 PROV_DAYS = 4               # the organisers' results of the last days only (a new subscriber is not told about old races)
 CHUNK = 50                  # licences per request (the Functions have a small budget per call)

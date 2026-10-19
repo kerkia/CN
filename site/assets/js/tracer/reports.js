@@ -1,6 +1,6 @@
 // The Tracer's reports (menu Rapports): Purple Pen's five — course summary, leg lengths, cross-reference, competitor load,
 // event audit (Reports.cs) — with the same rows and rules, shown as tables in a dialog and saved as CSV. The event audit
-// adds O'CN's checks after Purple Pen's: controls too close for the discipline (IOF: 30 m, 15 m in sprint; closer than
+// adds Ozimut's checks after Purple Pen's: controls too close for the discipline (IOF: 30 m, 15 m in sprint; closer than
 // 60 m / 30 m only on clearly different features), controls in out-of-bounds or dangerous areas, legs across them or across
 // an uncrossable boundary, legs passing through another control's circle, dog-legs, very short legs, codes below 31 or
 // readable upside down as another code.
@@ -161,7 +161,7 @@ export function audit(ev) {
   }
   if (rep.length) sections.push({ id: "repeated", title: t("trc.rep.repeatedTitle"), head: [t("trc.rep.course"), t("trc.rep.control"), t("trc.rep.problem")], align: "lll",
     rows: rep.map((r) => [name(r.c), ctrlName(ev, r.x), r.score ? t("trc.rep.twiceScore") : t("trc.rep.twiceInRow")]) });
-  // Purple Pen: close-together controls (100 m), with the discipline's IOF limits (O'CN)
+  // Purple Pen: close-together controls (100 m), with the discipline's IOF limits (Ozimut)
   const sprint = isSprint(ev), minD = sprint ? 15 : 30, sameD = sprint ? 30 : 60;
   const normal = Object.keys(ev.controls).map(Number).filter((id) => ev.controls[id].kind === "normal");
   const near = [];
@@ -232,7 +232,7 @@ export function audit(ev) {
   }
   if (scores.length) sections.push({ id: "scores", title: t("trc.rep.pointsTitle"), head: [t("trc.rep.course"), t("trc.rep.control"), t("trc.rep.reason")], align: "lll", rows: scores });
 
-  // ---- O'CN's further checks ----
+  // ---- Ozimut's further checks ----
   const more = [];
   const areas = Object.values(ev.specials).filter((s) => ["out-of-bounds", "dangerous-area"].includes(s.kind) && s.pts?.length >= 3);
   const bounds = Object.values(ev.specials).filter((s) => s.kind === "boundary" && s.pts?.length >= 2);

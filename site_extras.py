@@ -436,8 +436,8 @@ def cfc(comps: dict) -> None:
 
 
 # -- validation ------------------------------------------------------------------
-VAL_METHODS = ("official", "fair", "top6w", "fair3", "top6w3")
-VAL_CNJ15 = (7, 9, 11, 13, 15)               # c/ row columns: each method's CN 15 days before the race
+VAL_METHODS = ("official", "fair", "top6w")
+VAL_CNJ15 = (7, 9, 11)                       # c/ row columns: each method's CN 15 days before the race
 VAL_GROUPS = {"J": lambda a: a <= 20, "V": lambda a: a >= 55}     # juniors, 55 and over — against the 21s
 VAL_SEASON = "2025"                          # the reference season: complete, so built once per method change
 

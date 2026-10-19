@@ -35,7 +35,7 @@ from pathlib import Path
 
 API = "https://api.ffcorientation.fr"
 LICENCES = "https://licences.ffcorientation.fr"
-UA = "ocn-agenda/1.0 (+https://ocn.kerkia.com; reads the public FFCO agenda once a day)"
+UA = "ozimut-agenda/1.0 (+https://ozimut.com; reads the public FFCO agenda once a day)"
 WORKERS = 4
 PAUSE = 0.15            # seconds each worker waits after a request: polite to a small federation server
 

@@ -23,11 +23,11 @@ results: one row per runner and race
   place INTEGER (NULL when not ranked), finishers INTEGER (runners ranked on the circuit), time_s INTEGER (seconds),
   status VARCHAR ('ok', 'pm' mispunch, 'abandon', 'disqualifie', 'hors_delai'),
   cn_j15_official INTEGER, score_official INTEGER (the official CN 15 days before the race, the race's official score),
-  cn_j15_top INTEGER, score_top INTEGER (the same for the CN Top). A score is 0 for pm, abandon, disqualifie, hors_delai.
+  cn_j15_top INTEGER, score_top INTEGER (the same for the Ozimut index and score). A score is 0 for pm, abandon, disqualifie, hors_delai.
 cn: each runner's CN at the end of each month
   licence INTEGER, month DATE (a month's last day; the latest month is the current one, dated the day of the data),
   discipline VARCHAR ('For', 'Spr', 'VTT', 'Ski'; and 'Ped' = the official CN of forest and sprint together, before 2026),
-  method VARCHAR ('official' = « CN officiel », FFCO's; 'top' = « CN Top », O'CN's), cn SMALLINT
+  method VARCHAR ('official' = « CN officiel », FFCO's; 'top' = « indice Ozimut » / Ozimut index, this site's, formerly « CN Top »), cn SMALLINT
   Only runners holding a CN that month have a row.`;
 
 const DISCIPLINE = { For: "forest ('For')", Spr: "sprint ('Spr')", VTT: "mountain bike ('VTT')", Ski: "ski ('Ski')" };
@@ -49,7 +49,7 @@ Rules:
 - The question is in English. Classes are stored as FFCO writes them, H (men) and D (women): « M21 » in the question is
   'H21' in the data, « W35 » is 'D35'; show them as stored.` : ""}
 - Today is ${today}. « cette saison » = ${today.slice(0, 4)}; « les 3 dernières années » = since ${Number(today.slice(0, 4)) - 3}${today.slice(4)}.
-- Method: « CN officiel » -> method 'official', « CN Top » -> 'top'; if the question names neither, use '${method === "official" ? "official" : "top"}'.
+- Method: « CN officiel » -> method 'official', « indice Ozimut », « Ozimut » or « CN Top » (its former name) -> 'top'; if the question names neither, use '${method === "official" ? "official" : "top"}'.
 - Discipline: ${DISCIPLINE[terrain] || DISCIPLINE.For} when not said. Always filter cn and results on one discipline (or
   group by it): a runner has one CN per discipline and method, never mix them in one value. For the official CN in forest or sprint over periods reaching before 2026, use
   discipline IN ('For', 'Ped') (resp. ('Spr', 'Ped')): before 2026 FFCO had one pedestrian ranking.
@@ -63,9 +63,9 @@ Rules:
     percent_rank() OVER (PARTITION BY r.category ORDER BY c.cn) AS p
     FROM cn c JOIN runners r USING (licence)
     WHERE c.method = 'top' AND c.discipline = 'For' AND c.month = (SELECT max(month) FROM cn))
-  SELECT name AS "Coureur", category AS "Catégorie", cn AS "CN Top", round(100 * (1 - p), 1) AS "Rang (% des meilleurs)"
+  SELECT name AS "Coureur", category AS "Catégorie", cn AS "Indice Ozimut", round(100 * (1 - p), 1) AS "Rang (% des meilleurs)"
   FROM cur WHERE club = (SELECT club FROM runners WHERE licence = ${licence ?? "NULL"}) AND p >= 0.95 ORDER BY p DESC
-- Name the result's columns in ${L} with double quotes (${en ? `"Runner", "CN Top", "Gap"` : `"Coureur", "CN Top", "Écart"`}); keep licence out of tables
+- Name the result's columns in ${L} with double quotes (${en ? `"Runner", "Ozimut index", "Gap"` : `"Coureur", "Indice Ozimut", "Écart"`}); keep licence out of tables
   unless asked. Round decimals. A table has at most 200 rows unless the question asks for more; order its rows.
 - For a time, return seconds and set its format "duration"; for a share between 0 and 1, the format "percent".
 
