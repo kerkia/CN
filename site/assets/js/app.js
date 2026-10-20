@@ -562,9 +562,9 @@ function bindSearch() {
 
 function renderFooter() {
   const m = data.meta();
-  // (the sources of the results, French ones included, are named in the rules: owner, 2026-10-20)
+  // the site's independence and its sources are said in the rules, not on every page (owner, 2026-10-20)
   $("#footer").innerHTML = html`<div class="footer-inner">
-    <span>${SITE} — ${t("footer.disclaimer")} <a href="#/compte/confidentialite">${t("footer.rules")}</a></span>
+    <span><a href="#/compte/confidentialite">${t("footer.rules")}</a></span>
     <span class="num">${fmt(m.counts.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(m.counts.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(m.counts.results)} ${t("ov.results").toLowerCase()}</span>
   </div>`;
 }

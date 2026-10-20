@@ -9,16 +9,16 @@ export function build(X) {
     PDF, cvar, MINUS, EXAMPLE, pearson, roundHalfUp, sg, ci, neg, tickStep, tickDec, est, star, SEP,
     main, meta, pf, p6, M, analyst, tops, fmtW, own, TNAME, v, ev, study, season, VM, ref, entry, right, share,
     EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows,
-    RACE6, r6, n0, more } = X;
+    RACE6, r6, n0, more, fr = true } = X;
 
-  const TABS = [["officiel", "CN officiel"], ["top", "Méthode Ozimut"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]];
+  const TABS = [["officiel", "CN officiel"], ["top", "Méthode Ozimut"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]].filter(([k]) => fr || k !== "officiel");
   const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"],
     ["choix", "Les choix et les variantes"], ["resultats", "Les résultats"], ["conclusion", "La méthode retenue"]];
-  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["resultats", "Résultats et temps intermédiaires"],
-    ["relais", "Relais"], ["limites", "Limites"]];
-  const lede = html`Les règles du classement officiel et de la méthode Ozimut, l'étude qui y a conduit, les autres calculs du site, et le tracé des circuits.`;
-  const note = html`Site indépendant et non officiel, sans lien avec la Fédération française de course
-        d'orientation. Seule la ${methodLabel("official")} reprend des valeurs publiées par la FFCO ; la méthode Ozimut est un calcul alternatif, fait par le site sur les mêmes résultats.`;
+  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["resultats", fr ? "Résultats et temps intermédiaires" : "Temps intermédiaires"],
+    ["relais", "Relais"], ["limites", "Limites"]].filter(([k]) => fr || k === "resultats");
+  const lede = fr ? html`Les règles du classement officiel et de la méthode Ozimut, l'étude qui y a conduit, les autres calculs du site, et le tracé des circuits.`
+    : html`Les règles de la méthode Ozimut, l'étude qui l'a validée sur les résultats français, les temps intermédiaires et le tracé des circuits.`;
+  const note = !fr ? "" : html`Seule la ${methodLabel("official")} reprend des valeurs publiées par la Fédération française de course d'orientation (FFCO) ; la méthode Ozimut est un calcul alternatif, fait par le site sur les mêmes résultats.`;
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const force = html`le niveau habituel des coureurs`;
   const EV_LABEL = { acc: "Duels bien prédits", r2: "Écarts de temps expliqués" };
@@ -1486,7 +1486,7 @@ export function build(X) {
             <li><span><b>Âges</b> : la répartition des coureurs entre les catégories d'âge, dames à gauche, hommes à droite, en part de l'ensemble choisi.</span></li>
           </ul>
         </section>`,
-      resultats: () => html`
+      resultats: () => html`${!fr ? "" : html`
         <section class="mx-slide">
           <p class="mx-kicker">Résultats</p>
           <h2>Scores et CN provisoires</h2>
@@ -1504,7 +1504,7 @@ export function build(X) {
             <li><span>Ces valeurs sont provisoires jusqu'à la publication par la FFCO : les valeurs définitives peuvent différer, si des résultats sont corrigés
               ou des coureurs ajoutés.</span></li>
           </ul>
-        </section>
+        </section>`}
         <section class="mx-slide">
           <p class="mx-kicker">Temps intermédiaires</p>
           <h2>Le temps perdu et les erreurs</h2>
@@ -1549,7 +1549,7 @@ export function build(X) {
           </ul>
         </section>`,
     };
-    return buildChapters(SITE_CHAPTERS, CH, "clubs");
+    return buildChapters(SITE_CHAPTERS, CH, SITE_CHAPTERS[0][0]);
   }
 
   // how far the methods agree, per discipline: each visible computed method against the official one.

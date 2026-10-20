@@ -566,7 +566,6 @@ export default {
   "moved.ok": "Got it",
   "bridge.waiting.one": "O'CN is becoming Ozimut, at ozimut.com. This browser still holds one course-setting item waiting for the network: open “Course setting” online so that it goes, then reload the page to move to ozimut.com.",
   "bridge.waiting.other": "O'CN is becoming Ozimut, at ozimut.com. This browser still holds {n} course-setting items waiting for the network: open “Course setting” online so that they go, then reload the page to move to ozimut.com.",
-  "footer.disclaimer": "independent, unofficial site, not affiliated with any federation.",
   "m.official": "Official CN method",
   "m.fair": "Usual level",
   "m.top6w": "Ozimut method",

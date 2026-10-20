@@ -1215,8 +1215,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la
   fédération », « officiel », « là où Ozimut a les résultats de votre fédération »; the CN column and tags show with France only
   (`auth.sees("FR")`). Exceptions: the France option's own licence field (« Numéro de licence FFCO », once France is chosen),
-  the France-only pages, links to FFCO's own pages, and the Documentation (to be decided). The country is chosen in the header
-  (always shown) and in the Agenda's « Pays » field.
+  the France-only pages, links to FFCO's own pages, and the Ozimut method's tab and study (validated on France's results). The
+  country is chosen in the header (always shown) and in the Agenda's « Pays » field. The footer holds only the rules' link and
+  the counts: the site's independence is said in the rules (owner, 2026-10-20). **The Documentation shows what the account
+  sees** (owner, 2026-10-20): without France no « CN officiel » tab, and « Les calculs du site » keeps only the split times
+  (`fr` passed to `content/methods.*.js`: `TABS`, `SITE_CHAPTERS`, the lede, the note); the Ozimut method and the study stay.
 - **Admin › « Consommation »** (owner, 2026-10-20; `functions/api/admin/consumption.js`, `?onglet=consommation`): the free
   plans' use against their limits (`LIMITS`, checked by hand — change them there), the last 30 days as bars under the limit.
   E-mails and accounts from D1 (`mail_log` is never pruned); the rest from Cloudflare's GraphQL analytics and REST API —

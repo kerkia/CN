@@ -16,7 +16,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Pour un besoin particulier (étude, besoins d'un club ou d'une ligue, données destinées à un autre outil), il est possible
         d'écrire à l'éditeur, par la page « Nous écrire » ou à contact@ozimut.com : la demande sera examinée.</p>
       <h2 style="font-size:16px">Indépendance et sources</h2>
-      <p>${SITE} est indépendant et gratuit, sans lien avec aucune fédération ni aucun organisateur. Ses sources : pour la France,
+      <p>${SITE} est indépendant, non officiel et gratuit, sans lien avec aucune fédération ni aucun organisateur. Ses sources : pour la France,
         les résultats, le classement national (CN) et l'agenda publiés par la Fédération française de course d'orientation (FFCO)
         sur cn.ffcorientation.fr et ffcorientation.fr, qui restent la référence ; pour toutes les courses, les résultats et les
         horaires que publient les organisateurs (leur site, liveresultat, WinSplits, Helga, Orientation Data) ou qu'ils déposent sur

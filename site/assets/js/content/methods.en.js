@@ -9,16 +9,16 @@ export function build(X) {
     PDF, cvar, MINUS, EXAMPLE, pearson, roundHalfUp, sg, ci, neg, tickStep, tickDec, est, star, SEP,
     main, meta, pf, p6, M, analyst, tops, fmtW, own, TNAME, v, ev, study, season, VM, ref, entry, right, share,
     EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows,
-    RACE6, r6, n0, more } = X;
+    RACE6, r6, n0, more, fr = true } = X;
 
-  const TABS = [["officiel", "Official CN"], ["top", "Ozimut method"], ["etude", "The study"], ["calculs", "The site's calculations"], ["tracer", "Course setting"]];
+  const TABS = [["officiel", "Official CN"], ["top", "Ozimut method"], ["etude", "The study"], ["calculs", "The site's calculations"], ["tracer", "Course setting"]].filter(([k]) => fr || k !== "officiel");
   const STUDY_CHAPTERS = [["objectifs", "Objectives"], ["depart", "The starting point"], ["mesure", "The measure"],
     ["choix", "Choices and variants"], ["resultats", "The results"], ["conclusion", "The method adopted"]];
-  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Runners"], ["reseau", "Network"], ["resultats", "Results and split times"],
-    ["relais", "Relays"], ["limites", "Limitations"]];
-  const lede = html`The rules of the official ranking and of the Ozimut method, the study that led to it, the site's other calculations, and course setting.`;
-  const note = html`An independent, unofficial site, with no connection to the French orienteering federation
-        (Fédération française de course d'orientation). Only the ${methodLabel("official")} uses values published by FFCO; the Ozimut method is an alternative calculation, made by the site on the same results.`;
+  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Runners"], ["reseau", "Network"], ["resultats", fr ? "Results and split times" : "Split times"],
+    ["relais", "Relays"], ["limites", "Limitations"]].filter(([k]) => fr || k === "resultats");
+  const lede = fr ? html`The rules of the official ranking and of the Ozimut method, the study that led to it, the site's other calculations, and course setting.`
+    : html`The rules of the Ozimut method, the study that validated it on French results, split times and course setting.`;
+  const note = !fr ? "" : html`Only the ${methodLabel("official")} uses values published by the French orienteering federation (FFCO); the Ozimut method is an alternative calculation, made by the site on the same results.`;
   const pctOf = (x) => `${fmt(100 * x)}%`;
   const force = html`the runners' usual level`;
   const EV_LABEL = { acc: "Duels called right", r2: "Time differences explained" };
@@ -1484,7 +1484,7 @@ export function build(X) {
             <li><span><b>Ages</b>: how the runners are spread across the age classes, women on the left, men on the right, as a share of the chosen group.</span></li>
           </ul>
         </section>`,
-      resultats: () => html`
+      resultats: () => html`${!fr ? "" : html`
         <section class="mx-slide">
           <p class="mx-kicker">Results</p>
           <h2>Provisional scores and CNs</h2>
@@ -1502,7 +1502,7 @@ export function build(X) {
             <li><span>These values are provisional until FFCO publishes the results: the final values may differ if results are corrected
               or runners added.</span></li>
           </ul>
-        </section>
+        </section>`}
         <section class="mx-slide">
           <p class="mx-kicker">Splits</p>
           <h2>Time lost and mistakes</h2>
@@ -1547,7 +1547,7 @@ export function build(X) {
           </ul>
         </section>`,
     };
-    return buildChapters(SITE_CHAPTERS, CH, "clubs");
+    return buildChapters(SITE_CHAPTERS, CH, SITE_CHAPTERS[0][0]);
   }
 
   // how far the methods agree, per discipline: each visible computed method against the official one.

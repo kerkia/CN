@@ -14,6 +14,7 @@ import { timeChart, scatterChart, methodColor, terrainColor, METHOD_SLOT, css } 
 import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
+import { sees } from "../auth.js";
 import * as TR from "../tracer/icons.js";
 import * as TRD from "../tracer/ribbon-data.js";
 
@@ -63,6 +64,7 @@ export async function render(main, { query = {} } = {}) {
   const M = available();
   const analyst = false;                      // (no analysis methods since 2026-10-19; the content modules still take it)
   const tops = ["top6w"];
+  const fr = sees("FR");                      // France's ranking: its official CN and the ranking's calculations
   const fmtW = (w) => fmt(w, Number.isInteger(w) ? 0 : 1);
   // a discipline's own value: meta files the params under the codes (For, Spr, VTT, Ski); the French name kept as a fallback
   const own = (p, tr, key) => p.by_terrain?.[tr]?.[key] ?? p.by_terrain?.[TNAME[tr]]?.[key] ?? p[key];
@@ -132,7 +134,7 @@ export async function render(main, { query = {} } = {}) {
     methodLabel, methodShort, seg, cnLabel, replaceQuery, TR, TRD, PDF, cvar, MINUS, EXAMPLE, pearson, roundHalfUp, sg, ci, neg,
     tickStep, tickDec, est, star, SEP, main, meta, pf, p6, M, analyst, tops, fmtW, own, TNAME, v, ev, study, season, VM, ref, entry,
     right, share, EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows, RACE6,
-    r6, n0, more });
+    r6, n0, more, fr });
   const { TABS } = C;
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
@@ -194,7 +196,7 @@ export async function render(main, { query = {} } = {}) {
     const chapters = $$("[data-subtab]", panel).map((b) => b.dataset.subtab);
     const chapter = chapters.includes(goto) ? goto : chapters.length ? ($$("[data-subpanel]", panel).find((p) => !p.hidden)?.dataset.subpanel || chapters[0]) : null;
     if (chapter) showChapter(panel, chapter, true);
-    replaceQuery({ onglet: k === "officiel" ? null : k, voir: chapter || goto || null });
+    replaceQuery({ onglet: k === TABS[0][0] ? null : k, voir: chapter || goto || null });
     const target = goto && !chapters.includes(goto) && document.getElementById(goto);
     if (target) setTimeout(() => target.scrollIntoView({ behavior: instant ? "auto" : "smooth", block: "start" }), instant ? 50 : 0);
   }
@@ -207,7 +209,7 @@ export async function render(main, { query = {} } = {}) {
   }
   $$("[data-tab]", main).forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
   const OLD = { essentiel: "etude", detail: "top", analyses: "etude", autres: "calculs" };     // the tabs until 2026-10-14
-  const first = TABS.some(([k]) => k === query.onglet) ? query.onglet : OLD[query.onglet] || "officiel";
+  const first = TABS.some(([k]) => k === query.onglet) ? query.onglet : OLD[query.onglet] || TABS[0][0];
   // the study's chapters until 2026-10-16, folded into « Les choix et les variantes »
   const OLD_CH = { score: "choix", circuit: "choix", recalage: "choix", ecartes: "choix" };
   show(first, OLD_CH[query.voir] || query.voir, true);

@@ -497,7 +497,6 @@ export default {
   "moved.ok": "Compris",
   "bridge.waiting.one": "O'CN devient Ozimut, à l'adresse ozimut.com. Ce navigateur garde encore un envoi du tracé qui attend le réseau : ouvrez « Tracer » en ligne pour qu'il parte, puis rechargez la page pour passer sur ozimut.com.",
   "bridge.waiting.other": "O'CN devient Ozimut, à l'adresse ozimut.com. Ce navigateur garde encore {n} envois du tracé qui attendent le réseau : ouvrez « Tracer » en ligne pour qu'ils partent, puis rechargez la page pour passer sur ozimut.com.",
-  "footer.disclaimer": "site indépendant et non officiel, sans lien avec aucune fédération.",
   "m.official": "Méthode CN officielle", "m.fair": "Niveau habituel", "m.top6w": "Méthode Ozimut",
   "m.official.long": "Valeurs publiées par la FFCO",
   // the one-line tooltips of the header's switch
