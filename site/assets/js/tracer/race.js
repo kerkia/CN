@@ -17,13 +17,18 @@ import { modal, field, num, download, fileName } from "./dialogs.js";
 import { ctrlName, csv } from "./reports.js";
 import { where } from "./ribbon-data.js";
 import { t, tn, locale } from "./lang.js";
+import { provDir, sees } from "../auth.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
 const mmss = (s) => { if (!Number.isFinite(s)) return ""; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
 const hhmm = (s) => { if (!Number.isFinite(s)) return ""; const m = Math.round(s / 60); return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(circuit|parcours)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-const getData = async (path) => { const r = await fetch(`data/${path}`, { credentials: "same-origin", cache: "no-store" }); return r.ok ? r.json().catch(() => null) : null; };
+// (the provisional results from this account's folder: without France, the copy without CNs — auth.provDir)
+const getData = async (path) => {
+  const r = await fetch(path.startsWith("prov/") ? `${provDir()}${path.slice(5)}` : `data/${path}`, { credentials: "same-origin", cache: "no-store" });
+  return r.ok ? r.json().catch(() => null) : null;
+};
 const courseList = (ev) => M.courseIds(ev, false).filter((id) => ev.courses[id].kind !== "score");
 
 /** The race of the event: its agenda entry and its « Résultats » entry, when they exist. */
@@ -152,6 +157,7 @@ const CACHE = new Map();
 /** The winners of recent circuits of a discipline and format: [{ km, s (seconds), cn (official CN J-15), cat }]. */
 async function winners(format) {
   if (CACHE.has(format)) return CACHE.get(format);
+  if (!sees("FR")) return [];                    // the races' files are France's data (the login gate refuses them otherwise)
   const comps = await getData("competitions.json");
   if (!comps) return [];
   const col = Object.fromEntries(comps.cols.map((c, i) => [c, i]));

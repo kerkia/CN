@@ -7,6 +7,7 @@ import { t, tn, locale } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
 import { getProv } from "./provisional.js";
+import * as country from "../country.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -47,7 +48,8 @@ export async function render(main, { query }) {
   } catch (e) { /* no start lists then */ }
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
   const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
-  const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) }))
+  // the site's country's events (country.js; France's alone until another country's agenda is read)
+  const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) })).filter((e) => country.of(e) === country.current())
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || depOrder(a.dep) - depOrder(b.dep)
       || String(a.name || "").localeCompare(String(b.name || ""), "fr"));
   const byKey = new Map(events.map((e) => [e.key, e]));

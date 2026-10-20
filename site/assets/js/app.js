@@ -10,6 +10,7 @@ import { methodSwitch, cnWords } from "./ui.js";
 import * as auth from "./auth.js";
 import * as bridge from "./bridge.js";
 import * as pwa from "./pwa.js";
+import * as country from "./country.js";
 
 export const SITE = "Ozimut";
 
@@ -44,7 +45,8 @@ const PAGES = {
   orgResults: () => import("./pages/orgresults.js"),
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
-  orgTracer: () => import("./pages/tracer.js"),       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
+  orgTracer: () => import("./pages/tracer.js"),
+  needCountry: () => import("./pages/needcountry.js"),   // a page of France's data, to an account without France (2026-10-20)       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
@@ -63,6 +65,13 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
+// The pages of France's data (owner, 2026-10-20): the rankings and everything they hold, « IA », and the organisers' pages
+// tied to a French competition. An account that has not joined France sees « needCountry » instead (the login gate refuses
+// the data anyway: _middleware.js `needsFrance`); its menus leave them out.
+const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
+  "ask", "orgRace", "orgResults", "orgStarts", "deposit"]);
+/** Where a signed-in account lands: its own page, else the ranking with France, else the agenda. */
+const homeOf = (me) => (me.lic && auth.sees("FR") ? link.runner(me.lic) : auth.sees("FR") ? link.ranking() : "#/agenda");
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -299,6 +308,7 @@ function renderHeader(r) {
   // two groups (owner, 2026-10-12): the national ranking's analyses, and the races — coming, run, live. The bar shows
   // the groups, the row under it the current group's pages (and the runner search); the documentation, settings,
   // contact and logout are under one's name
+  const fr = auth.sees("FR");
   const groups = me ? [
     ["cn", t("nav.g.cn"), [
       ["runner", "#/coureur", t("nav.runner")],
@@ -326,7 +336,8 @@ function renderHeader(r) {
     // setting, Purple Pen's way), every one for every account (owner, 2026-10-15)
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
-  ] : [];                                     // logged out, the home page (the login) is the whole site
+  ].filter(([g]) => fr || g !== "cn").map(([g, label, items]) => [g, label, fr ? items : items.filter(([k]) => !FR_ROUTES.has(k))])
+    : [];                                     // logged out, the home page (the login) is the whole site
   const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
     : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
     : route === "splits" ? "provisional" : route;
@@ -346,7 +357,7 @@ function renderHeader(r) {
     ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
-    <a class="brand" href="${me ? (me.lic ? link.runner(me.lic) : link.ranking()) : "#/"}">
+    <a class="brand" href="${me ? homeOf(me) : "#/"}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <!-- a compass bezel, the control flag's two quarters as its needle on a bearing of 45° (owner, 2026-10-19) -->
         <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -361,6 +372,7 @@ function renderHeader(r) {
       </div>`)}
     </nav>
     <div class="topbar-tools">
+      ${me ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}
       ${themeMenu()}
       ${me ? html`
@@ -384,7 +396,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer"].includes(route) ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry"].includes(route) || !fr ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   // a demo account (admin page, « Démo »): said on every page, with its last day
@@ -444,6 +456,13 @@ function renderHeader(r) {
     if (l === lang()) return;
     if (me) auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
     else setLang(l);
+  }));
+  // the site's country (country.js): the page drawn again for it
+  $$("[data-country-pick]").forEach((b) => b.addEventListener("click", () => {
+    closeMenus();
+    if (b.dataset.countryPick === country.current()) return;
+    country.pick(b.dataset.countryPick);
+    route_();
   }));
   // the installable app (pwa.js): the item shows once the browser offers to install
   $("#install-btn")?.addEventListener("click", () => { closeMenus(); pwa.install(); });
@@ -587,9 +606,10 @@ async function route_() {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
-  // logged in, the home page leads to one's own page (a demo account, tied to no licence: to the ranking)
+  // logged in, the home page leads to one's own page (a demo account, tied to no licence: to the ranking; an account without
+  // France: to the agenda)
   if (me && r.route === "overview") {
-    history.replaceState(null, "", me.lic ? link.runner(me.lic) : link.ranking());
+    history.replaceState(null, "", homeOf(me));
     r = parseHash();
   }
   if (me && !data.isPrivateLoaded()) {
@@ -598,6 +618,7 @@ async function route_() {
     if (my !== token) return;
     movedNotice();
   }
+  if (me && FR_ROUTES.has(r.route) && !auth.sees("FR")) r = { ...r, route: "needCountry" };
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there

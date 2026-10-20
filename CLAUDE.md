@@ -1182,6 +1182,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   without `values`; the index without `PUB_INDEX_DROP` — `lics`, `rlics`, `matched`); `auth.provDir()` picks the folder (the
   pages through `provisional.getProv`, the Tracer's offline copy). Names, clubs, categories, times and splits stay: what the
   organisers publish (owner, 2026-10-20: as open as possible).
+  **The pages by profile** (step 4): `app.FR_ROUTES` (the rankings and all they hold, « IA », the organisers' pages tied
+  to a French competition) give an account without France `pages/needcountry.js` (what joining France opens, a link to
+  Réglages › Mes pays); its menus leave them and the « Classement » group out, it has no method switch and lands on the
+  agenda (`homeOf`). Résultats and En direct drop their CN, score, expected-place and « matched » columns and tile without
+  France; the Tracer's winning times need France. **The site's country** (`country.js`, owner, 2026-10-20: one global
+  choice beside the language rather than a filter per page): the countries with data are `meta.json` `countries` (France
+  alone when absent); the menu shows only once there are two; default the first accepted membership with data
+  (`localStorage ocn.country` once picked); the Agenda's and Résultats' lists keep the current country's (`country.of`: an
+  item's `country`, France when it has none).
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff

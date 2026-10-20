@@ -27,7 +27,7 @@ function pageName(k) {
     settings: "st.link", contact: "ct.title", admin: "ad.title", provisional: "prov.title", splits: "spl.title",
     deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "nav.analysis.long", games: "nav.games", vma: "nav.vma",
     analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long",
-    orgRace: "sh.org.race.title", orgTraining: "sh.org.club.title", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", categories: "cg.title" };
+    orgRace: "sh.org.race.title", orgTraining: "sh.org.club.title", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", categories: "cg.title", needCountry: "cty.need.title" };
   if (k.startsWith("network:")) {
     const v = k.slice(8);
     return v === "ego" || v === "leaders" ? t(`nw.mode.${v}`) : `${t("nav.network")} · ${t(`nw.mode.${v}`)}`;

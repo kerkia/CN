@@ -135,7 +135,10 @@ async function race(main, id, wanted) {
   };
   // the CNs shown and used: the official one 15 days before the race (as FFCO uses it; the monthly snapshot before
   // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
+  // without France (owner, 2026-10-20): the race as liveresultat gives it, no CN, score or expected place
+  const FR = sees("FR");
   async function cnFor(terrain) {
+    if (!FR) return { shown: new Map(), valuer: new Map(), monthJ15: null };
     const m = store.get().method, k = `${terrain}|${m}`;
     if (st.cn[k]) return st.cn[k];
     const day = st.info?.date || new Date().toISOString().slice(0, 10);
@@ -275,19 +278,19 @@ async function race(main, id, wanted) {
         <td class="lv-d" style="font-size:12.5px">${club}</td>
         <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
         <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td>
-        <td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>
+        ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>
-        <td class="r num">${x.expected ?? ""}</td></tr>`;
+        <td class="r num">${x.expected ?? ""}</td>` : ""}</tr>`;
     };
-    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="8">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${FR ? 8 : 5}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
     $("#lv-class").textContent = `${fmtCat(st.cls)} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
-      <th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),
+      ${FR ? html`<th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),
         store.get().method === "official" ? "J-15" : t("lv.today"))}</th>
       <th class="r" title="${t("lv.score.hint")}">${subHead(scoreLabel(store.get().method), t("lv.estGap"))}</th>
-      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th></tr></thead>
+      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>` : ""}</tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;
   }
