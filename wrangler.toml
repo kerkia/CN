@@ -59,7 +59,7 @@ REGISTRATION_OPEN = "1"
 WORLD_OPEN = "0"
 # Cloudflare Turnstile on registration (_lib/turnstile.js): the widget's public site key; its secret is the Pages secret
 # TURNSTILE_SECRET. Empty (or no secret): no check
-TURNSTILE_SITE_KEY = ""
+TURNSTILE_SITE_KEY = "0x4AAAAAAFd6fHJaiIvn92Xe"
 # the repository whose workflow an upload starts
 GH_REPO = "kerkia/CN"
 # Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day

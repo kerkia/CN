@@ -44,6 +44,7 @@ const dropDraft = () => { try { sessionStorage.removeItem(DRAFT); } catch (e) { 
 
 // Cloudflare Turnstile (owner, 2026-10-20; functions/_lib/turnstile.js): the one script the site loads from another host, on
 // this form only and only when the server has its keys — it cannot be served by the site itself (it is Cloudflare's check).
+// (A wrong site key shows nothing and logs Cloudflare's error 400020: the form then says so, `ac.reg.err.robotLoad`.)
 const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 let turnstileLoad = null;
 const loadTurnstile = () => turnstileLoad || (turnstileLoad = new Promise((ok, ko) => {
