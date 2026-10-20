@@ -421,6 +421,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   puppeteer-core + headless Edge (from PowerShell: the Bash sandbox blocks the browser) on the local dev server with every
   `/data/` request served from that copy and the account shown as « Camille Martin » (scratch `shots/lib.mjs`, `OCN_SYNTH`). Never
   replace them with screenshots of the real data. « Analyse GPS » and « Tracé » reuse the reel's invented images.
+  **Keep `synth/`** (owner, 2026-10-20: the data to redo the docs, slides and pictures stays). The sessions' scratch folders
+  were emptied on 2026-10-20; their scripts (`synth.py`, `build_synth.py`, `shots/`, `reelgps/`, `shot_tracer2.mjs`, the
+  studies' scripts…) were kept in `C:\kerkia\cn-data\scratch-scripts\<project>\<session>\scratchpad\`. Study database
+  copies and variant outputs are deleted once a study is over; the evaluations and logs stay.
 - **Coupe de France des clubs** (2026-10-10): `site_extras.cfc` -> `cfc.json`, FFCO's « Classement National des Clubs »
   rule of 2026 (annexe 2: each runner's 5 best official CN race scores of the year in foot + 5 best in VTT or ski, women
   x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
