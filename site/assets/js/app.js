@@ -593,7 +593,7 @@ async function route_() {
     r = parseHash();
   }
   if (me && !data.isPrivateLoaded()) {
-    try { await data.bootPrivate(); } catch (e) { return signedOut(); }
+    try { await data.bootPrivate({ fr: auth.sees("FR") }); } catch (e) { return signedOut(); }
     await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
     movedNotice();
@@ -687,7 +687,7 @@ window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOu
 
 /** Called by the login page once the credentials are accepted: land on one's own page. */
 export async function signedIn(s) {
-  await data.bootPrivate();
+  await data.bootPrivate({ fr: auth.sees("FR") });
   if (s.lic) store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}

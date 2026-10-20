@@ -7,7 +7,7 @@ import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat } from "../util.js";
 import { t, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
-import { nameKey, session } from "../auth.js";
+import { nameKey, sees, session } from "../auth.js";
 import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
@@ -120,7 +120,7 @@ async function race(main, id, wanted) {
     </div>`;
 
   // runners of this site by name, to recognise them: [runner…] per name key
-  await data.bootPrivate();
+  await data.bootPrivate({ fr: sees("FR") });
   const byName = new Map();
   for (const r of data.runners().list) {
     const k = nameKey(r.nom);

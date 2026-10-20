@@ -27,9 +27,20 @@ export const cleanLicence = (lic) => String(lic || "").replace(/\s+/g, "").repla
 export function session() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (s && (s.lic || s.demo) && s.until > Date.now()) return s;     // (a demo account has no licence)
+    // (a demo account has no licence, nor an account that has not joined France)
+    if (s && (s.uid || s.lic || s.demo) && s.until > Date.now()) return s;
   } catch (e) {}
   return null;
+}
+/**
+ * May the signed-in account see a country's data (an accepted membership, migration 0014; a demo account sees France)?
+ * The login gate refuses the rest (_middleware.js `needsFrance`). A session kept before the countries: its licence is France.
+ */
+export function sees(cc) {
+  const s = session();
+  if (!s) return false;
+  if (s.demo) return cc === "FR";
+  return Array.isArray(s.countries) ? s.countries.some((c) => c.cc === cc && c.status === "ok") : cc === "FR" && !!s.lic;
 }
 function keep(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
@@ -83,8 +94,9 @@ export async function handoffLogin(token) {
 }
 
 /** What the browser keeps of the account (the rights decide what the pages show). */
-const fromUser = (u) => ({ lic: String(u.lic), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
-  agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice });
+const fromUser = (u) => ({ uid: u.uid, lic: String(u.lic || ""), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
+  agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice,
+  countries: Array.isArray(u.countries) ? u.countries : null });     // { cc, club, id, status }: `sees`
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {
   const s = session();

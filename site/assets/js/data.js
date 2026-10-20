@@ -56,10 +56,17 @@ export async function bootPublic() {
 }
 export const isPrivateLoaded = () => !!RUNNERS;
 
-/** Everything else — only readable once logged in. */
-export async function bootPrivate() {
+/**
+ * Everything else — only readable once logged in. `fr`: the account sees France's data; without it the login gate refuses
+ * the runners (_middleware.js), so the list stays empty and nobody is recognised by name.
+ */
+export async function bootPrivate({ fr = true } = {}) {
   if (RUNNERS) return;
-  const [runners, comps] = await Promise.all([getJson("runners.json"), getJson("competitions.json")]);
+  // (refused all the same — France left on another device, this one not told yet —: the empty list too)
+  const none = { cols: [], rows: [] };
+  const [runners, comps] = await Promise.all([
+    fr ? getJson("runners.json").catch((e) => (/HTTP 403/.test(e.message) ? none : Promise.reject(e))) : none,
+    getJson("competitions.json")]);
   const cols = runners.cols;
   const ix = Object.fromEntries(cols.map((c, i) => [c, i]));
   const byLic = new Map();

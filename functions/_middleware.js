@@ -19,6 +19,16 @@ const RECHECK_MS = 3600e3;       // how often a session is re-validated against 
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
 const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];
 const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+// What a session may read by its countries (`cc`, the accepted memberships; owner, 2026-10-20). Everything under /data/ is
+// France's data — its licensees' names, results and CNs — except these, open to every account: the headline figures, the
+// list of competitions and the agenda (public on FFCO's site), the study's aggregates (the Documentation), and the
+// provisional results' copy without CN, scores or licences (prov/pub/). Deny by default: a new file is France's until listed.
+const DATA_FOR_ALL = [/^\/data\/(meta|competitions|agenda|evaluation|validation)\.json$/, /^\/data\/prov\/pub\//];
+// the endpoints that serve France's data: FFCO's own pages, « IA » (it queries the French tables), the relay's added runners
+const FR_API = [/^\/api\/ffco-(cn|history)$/, /^\/api\/ask$/, /^\/api\/account\/relay$/];
+/** Does a path need France? */
+export const needsFrance = (path) => (path.startsWith("/data/") && !DATA_FOR_ALL.some((re) => re.test(path)))
+  || FR_API.some((re) => re.test(path));
 
 /**
  * The path as the file server will resolve it: percent-decoding undone
@@ -110,8 +120,9 @@ export async function onRequest(context) {
   // Accounts (cookie carries a uid): at most once an hour, check the account still exists and
   // is not disabled (nor a demo account past its day), then re-sign the cookie with its countries of now (`cc`, the
   // accepted memberships of user_countries; a demo account sees France; migration 0014 not applied: none read).
-  let refreshed = null;
-  if (env.DB && Date.now() - (s.chk || 0) > RECHECK_MS) {
+  // (a cookie of before the countries carries no `cc`: checked now)
+  let refreshed = null, cc = Array.isArray(s.cc) ? s.cc : null;
+  if (env.DB && (!cc || Date.now() - (s.chk || 0) > RECHECK_MS)) {
     const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(s.uid).first();
     if (!u || u.status !== "active" || !u.email_verified || (u.demo_until && u.demo_until < parisToday())) {
       return new Response(JSON.stringify({ error: "login required" }), {
@@ -119,7 +130,7 @@ export async function onRequest(context) {
           "Set-Cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` },
       });
     }
-    let cc = s.cc || [];
+    cc = cc || (u.licence ? ["FR"] : []);
     try {
       const { results } = await env.DB.prepare("SELECT country FROM user_countries WHERE user_id = ? AND status = 'ok' ORDER BY added_at, rowid")
         .bind(s.uid).all();
@@ -127,6 +138,11 @@ export async function onRequest(context) {
     } catch (e) { /* no table yet: the cookie's own */ }
     const token = await signSession({ ...s, lic: u.licence, cc, chk: Date.now() }, env.SESSION_SECRET);
     refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
+  }
+  if (needsFrance(path) && !(cc || []).includes("FR")) {
+    return new Response(JSON.stringify({ error: "country", need: "FR" }), {
+      status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
+    });
   }
   // the sites to follow up with (admin page, « Sites »): administrators only
   if (path === "/data/prov/blocked.json") {
