@@ -10,7 +10,7 @@ import * as store from "../store.js";
 import { link } from "../app.js";
 
 // The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
-// needs the administrator's right (users.alerts_allowed); no `mail`: by notification only.
+// needs the administrator's right (users.alerts_allowed) and is not offered at all without it; no `mail`: by notification only.
 const ALERTS = [
   { key: "results", mail: "notify", push: "pushResults" },
   { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true },
@@ -70,12 +70,11 @@ export async function render(main) {
           <tbody>${ALERTS.map((a) => html`<tr>
             <td><b>${t(`st.alerts.${a.key}`)}</b><br><span class="muted">${t(`st.alerts.${a.key}.hint`)}</span></td>
             <td>${!a.mail ? html`<span class="muted" title="${t("st.alerts.pushOnly")}">—</span>`
-              : a.gated && !user.agendaAllowed ? html`<span class="muted" title="${t("st.alerts.mailLocked")}">🔒</span>`
+              : a.gated && !user.agendaAllowed ? ""
               : html`<input type="checkbox" data-alert="${a.mail}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.mail")}" ${user[a.mail] ? "checked" : ""}>`}</td>
             <td><input type="checkbox" data-alert="${a.push}" aria-label="${t(`st.alerts.${a.key}`)} · ${t("st.alerts.push")}" ${user[a.push] ? "checked" : ""}></td>
           </tr>`)}</tbody>
         </table>
-        ${user.agendaAllowed ? "" : html`<p class="muted" style="margin:0;font-size:12.5px">🔒 ${t("st.alerts.mailLocked")}</p>`}
         <div id="ag-regions" hidden>
           <div class="row" style="gap:8px;margin-bottom:8px"><b style="font-size:13.5px">${t("st.ag.regions")}</b>
             <button type="button" class="btn btn-ghost btn-sm" id="ag-all">${t("st.ag.all")}</button>

@@ -2594,7 +2594,6 @@ export default {
   "st.alerts.deadline": "Registrations are closing",
   "st.alerts.deadline.hint": "8 days before registrations close, in the chosen regions; once per race.",
   "st.alerts.pushOnly": "By notification only",
-  "st.alerts.mailLocked": "The start time and the calendar's alerts by email are opened by the administrator, account by account (ask if you'd like them); by notification they're open to everyone.",
   "st.push.noneWanted": "No alert is ticked in the “Notification” column: this device won't receive any.",
   "st.push.title": "Notifications on your devices",
   "st.push.hint": "Notifications reach every device (phone, computer) where you turned them on, for the alerts ticked in the “Notification” column.",

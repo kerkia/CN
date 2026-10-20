@@ -1788,7 +1788,6 @@ export default {
   "st.alerts.deadline": "La clôture des inscriptions approche",
   "st.alerts.deadline.hint": "8 jours avant la clôture, dans les régions choisies ; une fois par course.",
   "st.alerts.pushOnly": "Par notification seulement",
-  "st.alerts.mailLocked": "L'heure de départ et les alertes de l'agenda par e-mail sont ouvertes par l'administrateur, compte par compte (demandez-les si elles vous intéressent) ; par notification, elles sont ouvertes à tous.",
   "st.push.noneWanted": "Aucune alerte n'est cochée dans la colonne « Notification » : cet appareil n'en recevra pas.",
   "st.push.title": "Notifications sur vos appareils",
   "st.push.hint": "Les notifications arrivent sur chaque appareil (téléphone, ordinateur) où vous les avez activées, pour les alertes cochées dans la colonne « Notification ».",
