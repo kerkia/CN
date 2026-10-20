@@ -133,7 +133,7 @@ async function register(main) {
     if (!r.ok && tsWidget !== null) { try { window.turnstile.reset(tsWidget); } catch (e) { /* gone */ } tsToken = ""; }
     if (r.ok) {
       dropDraft();
-      form.outerHTML = html`<div class="notice ok">${t("ac.reg.done")} <b>${f.get("email")}</b>.</div>
+      form.outerHTML = html`<div class="notice ok"><span>${t("ac.reg.done")} <b>${f.get("email")}</b>.</span></div>
         <p class="soft" style="margin:0">${t("ac.reg.done2")}</p>
         ${r.data?.mail === "queued" ? html`<p class="muted" style="margin:0">${t("ac.reg.queued")}</p>` : ""}
         <p style="margin:0"><a href="#/compte/renvoyer">${t("ac.resend")}</a></p>`.toString();
