@@ -191,23 +191,45 @@ export async function render(main, { query }) {
         + `<line x1="${X(c.p50)}" x2="${X(c.p50)}" y1="${cy - h / 2}" y2="${cy + h / 2}" stroke="${surf}" stroke-width="2"/>`
         + `<path d="M${X(c.mean)} ${cy - 3.5}l3.5 3.5-3.5 3.5-3.5-3.5z" fill="${ink}"/></g>`;
     }
+    // the marks: one's club (thin rings), the runners who stand out (dots), oneself; one per runner, the club's ring around
+    // a dot when the runner is both. Runners of nearly the same CN on a row would hide each other (owner, 2026-10-20: two
+    // club-mates 20 points apart showed as one ring): each is moved up or down, as little as possible, until none overlap.
+    const marks = new Map();
+    const mark = (r, cat, v, kind) => {
+      if (!yOf.has(cat)) return;
+      const k = marks.get(r.lic) || { lic: r.lic, x: X(v), y0: yOf.get(cat) + lane / 2, kinds: {} };
+      k.kinds[kind] = r;
+      marks.set(r.lic, k);
+    };
+    for (const r of club) mark(r, r.cat, r.cn[m], "club");
+    for (const o of outsShown) mark(o, o.cat, o.v, "out");
+    if (mine) mark(mine, mine.cat, mine.cn[m], "me");
+    const radius = (k) => (k.kinds.me ? 6 : k.kinds.out && k.kinds.club ? 5.6 : k.kinds.out ? 4.2 : 3.2);
+    const placed = [];
+    for (const k of [...marks.values()].sort((a, b) => a.y0 - b.y0 || a.x - b.x)) {
+      const rk = radius(k);
+      let best = 0, worst = Infinity;
+      for (const dy of [0, -3, 3, -6, 6, -9, 9]) {
+        const clash = placed.reduce((w, p) => Math.max(w, rk + p.r + 0.6 - Math.hypot(k.x - p.x, k.y0 + dy - p.y)), 0);
+        if (clash < worst) { worst = clash; best = dy; }
+        if (clash <= 0) break;
+      }
+      k.y = k.y0 + best;
+      placed.push({ x: k.x, y: k.y, r: rk });
+    }
     dotsAt = [];
-    for (const r of club) {
-      if (!yOf.has(r.cat)) continue;
-      dotsAt.push({ x: X(r.cn[m]), y: yOf.get(r.cat) + lane / 2, lic: r.lic, kind: "club" });
-      s += `<circle class="cg-dot" data-lic="${r.lic}" data-kind="club" cx="${X(r.cn[m])}" cy="${yOf.get(r.cat) + lane / 2}" r="3.2" fill="none" stroke="${ink}" stroke-width="1.2"/>`;
+    let rings = "", dots = "", own = "";
+    for (const k of marks.values()) {
+      const { x, y } = k, o = k.kinds.out;
+      dotsAt.push({ x, y, lic: k.lic, kind: k.kinds.me ? "me" : o ? "out" : "club" });
+      if (k.kinds.club) rings += `<circle class="cg-dot" data-lic="${k.lic}" data-kind="club" cx="${x}" cy="${y}" r="${o ? 5.6 : 3.2}" fill="none" stroke="${ink}" stroke-width="1.2"/>`;
+      if (o) dots += `<circle class="cg-dot" data-lic="${k.lic}" data-kind="out" cx="${x}" cy="${y}" r="4.2" fill="${col[o.sexe]}" stroke="${surf}" stroke-width="1.5"/>`;
+      if (k.kinds.me) {
+        own += `<circle class="cg-dot" data-lic="${k.lic}" data-kind="me" cx="${x}" cy="${y}" r="6" fill="none" stroke="${css("--flag") || ink}" stroke-width="2.2"/>`
+          + `<text x="${x}" y="${y - 8}" font-size="11" font-weight="600" fill="${css("--flag") || ink}" text-anchor="middle">${t("cg.me")}</text>`;
+      }
     }
-    for (const o of outsShown) {
-      if (!yOf.has(o.cat)) continue;
-      dotsAt.push({ x: X(o.v), y: yOf.get(o.cat) + lane / 2, lic: o.lic, kind: "out" });
-      s += `<circle class="cg-dot" data-lic="${o.lic}" data-kind="out" cx="${X(o.v)}" cy="${yOf.get(o.cat) + lane / 2}" r="4.2" fill="${col[o.sexe]}" stroke="${surf}" stroke-width="1.5"/>`;
-    }
-    if (mine && yOf.has(mine.cat)) {
-      const mx = X(mine.cn[m]), my = yOf.get(mine.cat) + lane / 2;
-      dotsAt.push({ x: mx, y: my, lic: mine.lic, kind: "me" });
-      s += `<circle class="cg-dot" data-lic="${mine.lic}" data-kind="me" cx="${mx}" cy="${my}" r="6" fill="none" stroke="${css("--flag") || ink}" stroke-width="2.2"/>`
-        + `<text x="${mx}" y="${my - 8}" font-size="11" font-weight="600" fill="${css("--flag") || ink}" text-anchor="middle">${t("cg.me")}</text>`;
-    }
+    s += dots + rings + own;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     svg.setAttribute("height", H);
     svg.innerHTML = s;
