@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- The page sw.js serves when a page is asked for without the network (2026-10-20): kept by the worker at install, so it needs
+     nothing else (the logo drawn inline). French or English as the site, light or dark as the theme. -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ozimut — hors connexion</title>
+  <style>
+    :root { --bg: #f4f2ec; --card: #ffffff; --text: #1b1a17; --muted: #6b675e; --line: #e2ddd2; --flag: #e8641c; --flag-ink: #ffffff; color-scheme: light; }
+    :root[data-theme="dark"], :root[data-theme="forest"], :root[data-theme="undergrowth"] { --bg: #15171a; --card: #1e2125; --text: #f4f2ec; --muted: #a8a397; --line: #33373d; --flag: #ff8a45; --flag-ink: #1b1a17; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 440px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 28px 24px; text-align: center; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; margin-bottom: 18px; }
+    .brand svg { display: block; }
+    .brand b { color: var(--flag); }
+    h1 { font-size: 19px; margin: 0 0 8px; }
+    p { margin: 0 0 18px; color: var(--muted); }
+    button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 20px; background: var(--flag); color: var(--flag-ink); cursor: pointer; }
+  </style>
+  <script>
+    // the site's theme (cnx.theme) and language (ocn.lang, else the browser's)
+    let th = null, lg = null;
+    try { th = localStorage.getItem("cnx.theme"); lg = localStorage.getItem("ocn.lang"); } catch (e) {}
+    if (!th) th = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = th;
+    if (lg !== "fr" && lg !== "en") lg = ((navigator.languages || [navigator.language]).map((l) => String(l).slice(0, 2)).find((l) => l === "fr" || l === "en")) || "en";
+    document.documentElement.lang = lg;
+  </script>
+</head>
+<body>
+  <main>
+    <div class="brand"><svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true"><path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span><b>O</b>zimut</span></div>
+    <h1 data-fr="Pas de connexion" data-en="No connection">Pas de connexion</h1>
+    <p data-fr="Ozimut a besoin du réseau pour afficher cette page. Vérifiez votre connexion, puis réessayez."
+       data-en="Ozimut needs the network to show this page. Check your connection, then try again.">Ozimut a besoin du réseau pour afficher cette page. Vérifiez votre connexion, puis réessayez.</p>
+    <button type="button" id="retry" data-fr="Réessayer" data-en="Try again">Réessayer</button>
+  </main>
+  <script>
+    for (const el of document.querySelectorAll("[data-fr]")) el.textContent = el.dataset[document.documentElement.lang];
+    document.title = document.documentElement.lang === "en" ? "Ozimut — offline" : "Ozimut — hors connexion";
+    document.getElementById("retry").addEventListener("click", () => location.reload());
+    window.addEventListener("online", () => location.reload());
+  </script>
+</body>
+</html>

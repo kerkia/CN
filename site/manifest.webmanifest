@@ -1,16 +1,182 @@
 {
+  "id": "/",
   "name": "Ozimut — La course d'orientation, en cartes et en chiffres",
   "short_name": "Ozimut",
   "description": "Classement national de course d'orientation : classements, résultats, horaires de départ, analyses.",
   "lang": "fr",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f4f2ec",
   "theme_color": "#f4f2ec",
+  "categories": [
+    "sports"
+  ],
   "icons": [
-    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Classement",
+      "short_name": "Classement",
+      "description": "Le classement national",
+      "url": "/#/classement",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Résultats",
+      "short_name": "Résultats",
+      "description": "Les résultats des dernières courses",
+      "url": "/#/resultats",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Les prochaines courses",
+      "url": "/#/agenda",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Analyse solo",
+      "short_name": "Analyse solo",
+      "description": "Votre trace GPS sur la carte",
+      "url": "/#/analyse-solo",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/tour/fr/phone-ranking.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Le classement"
+    },
+    {
+      "src": "/assets/tour/fr/phone-runner.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "La page d'un coureur"
+    },
+    {
+      "src": "/assets/tour/fr/phone-race.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Une course"
+    },
+    {
+      "src": "/assets/tour/fr/ranking.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Le classement"
+    },
+    {
+      "src": "/assets/tour/fr/runner-calc.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Le calcul de l'indice"
+    },
+    {
+      "src": "/assets/tour/fr/results.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Les résultats des organisateurs"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/?recu=fichier",
+      "accept": {
+        "application/gpx+xml": [
+          ".gpx"
+        ],
+        "application/vnd.ant.fit": [
+          ".fit"
+        ],
+        "application/vnd.garmin.tcx+xml": [
+          ".tcx"
+        ],
+        "application/vnd.google-earth.kmz": [
+          ".kmz"
+        ]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/partage",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/gpx+xml",
+            "application/vnd.ant.fit",
+            "application/vnd.garmin.tcx+xml",
+            "application/vnd.google-earth.kmz",
+            "application/vnd.google-earth.kml+xml",
+            "application/octet-stream",
+            "application/xml",
+            "text/xml",
+            "image/*",
+            "application/pdf",
+            ".gpx",
+            ".fit",
+            ".tcx",
+            ".kmz",
+            ".kml"
+          ]
+        }
+      ]
+    }
+  }
 }

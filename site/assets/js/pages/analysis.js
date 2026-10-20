@@ -30,6 +30,7 @@ import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
+import { takeInbox } from "../pwa.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -1384,6 +1385,8 @@ export async function render(main, { query = {}, route } = {}) {
   await loadRace();
   pickers();
   const memo = memos[pageMode];
+  // files opened with the installed app or shared to it (pwa.js): they join the files of the visit, as if dropped
+  const received = await takeInbox();
   if (memo) {
     ({ map, track, courseCache, iofIndex, northUp, restoredFiles } = memo);
     Object.assign(files, memo.files);
@@ -1391,13 +1394,17 @@ export async function render(main, { query = {}, route } = {}) {
     filesCard(); setup();
   } else {
     filesCard(); setup();
-    restoreFromIdb();
+    if (received.length) await restoreFromIdb(); else restoreFromIdb();
   }
+  if (received.length) take(received);
+  const onInbox = async () => { const got = await takeInbox(); if (got.length) take(got); };
+  window.addEventListener("ocn:inbox", onInbox);
   return { title: t(perso ? "an.perso.title" : "an.title"), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     leaveFull();
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
+    window.removeEventListener("ocn:inbox", onInbox);
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++;
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };

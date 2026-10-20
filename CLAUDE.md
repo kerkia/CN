@@ -816,6 +816,19 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   window). iPhones receive notifications only from the site added to the home screen: `site/manifest.webmanifest` and PNG icons
   (`assets/icon-*.png`, `apple-touch-icon.png`, `badge-96.png`, drawn from the favicon's shapes). The privacy page's
   « Notifications » says what is kept.
+- **The installable app (PWA)** (owner, 2026-10-20; `pwa.js`, called first by `app.start` after the bridge): the manifest in the
+  site's language (`manifest.webmanifest` / `manifest.en.webmanifest`, same `id` "/"; `pwa.boot` sets the link): shortcuts
+  (Classement, Résultats, Agenda, Analyse solo), screenshots from the tour's synthetic pictures (`assets/tour/<lang>/`: never real
+  data), `file_handlers` (GPX, FIT, TCX, KMZ → `launchQueue`) and `share_target` (POST `/partage`: traces, KMZ/KML, map photos and
+  PDFs). **`/sw.js` is registered on every visit** (it was the Tracer's only, unregistered when no event was kept): a navigation
+  without the network gets `offline.html` (served by Pages at `/offline`, its `.html` address redirects; kept in cache
+  `ocn-shell-v2` at install; the logo inline), the share's files go to IndexedDB `ocn-inbox` (key "inbox", a day at most) and the
+  app opens `/?recu=partage#/analyse-solo`; a file opened with the app goes to the same inbox; « Analyse solo » (and « Analyse »)
+  takes it at render or on `ocn:inbox` — nothing is sent. The Tracer's network-first copy runs only while its cache
+  `ocn-offline-v1` exists (offline.js tells the worker `{ type: "ocn-offline", on }`; otherwise other requests are not touched).
+  « Installer l'application »: the user menu's item and Réglages › « L'application Ozimut » once the browser fires
+  `beforeinstallprompt` (Chrome, Edge, Android), else how to (iPhone: Share › « Sur l'écran d'accueil »). An install made on
+  ocn.kerkia.com stays on that origin (the bridge then moves its visitor to ozimut.com in a browser tab).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

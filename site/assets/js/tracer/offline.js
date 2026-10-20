@@ -28,14 +28,15 @@ const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/js/i18n/fr.js", "/ass
 /** The service worker and the page's files, for opening the Tracer without the network. */
 async function prepareSite() {
   if (!("serviceWorker" in navigator) || !window.caches) throw new Error(t("trc.off.noSupport"));
-  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  await navigator.serviceWorker.ready;
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });     // registered by app.js already: the same worker
+  const reg = await navigator.serviceWorker.ready;
   // what this visit loaded (the site's own modules, the data it opened with), the Tracer's modules and libraries
   const loaded = performance.getEntriesByType("resource").map((e) => e.name)
     .filter((u) => { try { const x = new URL(u); return x.origin === location.origin && (x.pathname.startsWith("/assets/") || /^\/data\/(meta|runners|competitions)\.json$/.test(x.pathname)); } catch (e) { return false; } })
     .filter((u) => !u.includes("/assets/build.txt"));
   const urls = [...new Set([...PAGES.map((p) => location.origin + p), ...TRACER.map((p) => location.origin + p), ...LIBS, ...loaded])];
   const c = await caches.open(CACHE);
+  tell(reg, true);
   let ok = 0;
   await Promise.all(urls.map(async (u) => {
     try { const r = await fetch(u, { credentials: "same-origin", mode: u.startsWith(location.origin) ? "same-origin" : "cors" }); if (r.ok) { await c.put(u, r); ok++; } } catch (e) { /* kept when next used */ }
@@ -115,11 +116,13 @@ export async function offlineDialog(E) {
     E.toast(t("trc.off.failed", { err: err.message }), 7000);
   }
 }
-/** No event kept any more: the service worker and its copy of the site go too. */
+/** The service worker told whether the copy exists (it copies what passes only then). */
+function tell(reg, on) { try { (reg?.active || navigator.serviceWorker?.controller)?.postMessage({ type: "ocn-offline", on }); } catch (e) { /* it reads the cache itself when it starts */ } }
+/** No event kept any more: the copy of the site goes too (the worker stays: app.js registers it for the installed app). */
 async function dropSiteIfUnused() {
   if ((await IDB.keys("events")).length) return;
   try { if (window.caches) await caches.delete(CACHE); } catch (e) { /* none */ }
-  try { const r = await navigator.serviceWorker?.getRegistration("/"); if (r) await r.unregister(); } catch (e) { /* none */ }
+  try { tell(await navigator.serviceWorker?.getRegistration("/"), false); } catch (e) { /* none */ }
 }
 /** At logout: the copies go, except those whose changes still wait for the network. */
 export async function dropCopies() {

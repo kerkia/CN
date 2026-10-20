@@ -8,6 +8,7 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
+import * as pwa from "../pwa.js";
 
 // The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
 // needs the administrator's right (users.alerts_allowed) and is not offered at all without it; no `mail`: by notification only.
@@ -88,6 +89,11 @@ export async function render(main) {
       <section class="card"><div class="card-head"><h2>${t("st.push.title")}</h2></div><div class="card-body stack" style="gap:8px">
         <p class="soft" style="margin:0">${t("st.push.hint")}</p>
         <div id="push-device" class="stack" style="gap:8px"></div>
+      </div></section>
+
+      <section class="card"><div class="card-head"><h2>${t("st.app.title")}</h2></div><div class="card-body stack" style="gap:8px">
+        <p class="soft" style="margin:0">${t("st.app.hint")}</p>
+        <div id="app-device" class="stack" style="gap:8px"></div>
       </div></section>
 
       <section class="card"><div class="card-head"><h2>${t("st.pw.title")}</h2></div><div class="card-body">
@@ -175,6 +181,18 @@ export async function render(main) {
   }
   drawDevice();
 
+  // this device: the app installed, or how to install it (pwa.js)
+  function drawApp() {
+    const box = $("#app-device");
+    if (!box) return;
+    const state = pwa.installState();
+    box.innerHTML = html`<p style="margin:0"><b>${t("st.push.dev.title")}</b> ${t(`st.app.${state}`)}</p>
+      ${state === "ready" ? html`<div><button type="button" class="btn btn-primary btn-sm" id="app-install">${t("pwa.install")}</button></div>` : ""}`;
+    $("#app-install")?.addEventListener("click", () => pwa.install());
+  }
+  drawApp();
+  window.addEventListener("ocn:install", drawApp);
+
   $("#pw").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target), err = $(".notice", e.target);
@@ -195,5 +213,5 @@ export async function render(main) {
     location.hash = "#/";
     location.reload();
   });
-  return { title: t("st.title") };
+  return { title: t("st.title"), cleanup: () => window.removeEventListener("ocn:install", drawApp) };
 }

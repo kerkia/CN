@@ -9,6 +9,7 @@ import { disposeAll } from "./charts.js";
 import { methodSwitch, cnWords } from "./ui.js";
 import * as auth from "./auth.js";
 import * as bridge from "./bridge.js";
+import * as pwa from "./pwa.js";
 
 export const SITE = "Ozimut";
 
@@ -372,6 +373,7 @@ function renderHeader(r) {
           ${me.lic ? html`<a href="${link.runner(me.lic)}" ${raw(route === "runner" && parseHash().arg === me.lic ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
           <a href="#/methodes" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
+          ${me.demo ? "" : html`<button type="button" id="install-btn" ${raw(pwa.installState() === "ready" ? "" : "hidden")}>${t("pwa.menu")}</button>`}
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
@@ -443,6 +445,8 @@ function renderHeader(r) {
     if (me) auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
     else setLang(l);
   }));
+  // the installable app (pwa.js): the item shows once the browser offers to install
+  $("#install-btn")?.addEventListener("click", () => { closeMenus(); pwa.install(); });
   $("#logout-btn")?.addEventListener("click", async () => {
     await auth.logout();
     data.dropPrivate();
@@ -706,12 +710,14 @@ window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.rel
 async function start() {
   // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
   if ((await bridge.arrive()) || (await bridge.leave())) return;
+  pwa.boot();                                      // the service worker, the manifest's language, files opened with the app
   // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   await data.bootPublic();
   renderFooter();
   codeChanged();                                   // the version this visit runs
   window.addEventListener("hashchange", route_);
+  window.addEventListener("ocn:install", () => { const b = $("#install-btn"); if (b) b.hidden = pwa.installState() !== "ready"; });
   route_();
   pushBoot();
 }
