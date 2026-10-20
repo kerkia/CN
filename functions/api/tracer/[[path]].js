@@ -36,7 +36,7 @@
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { newToken, randomBytes, sha256hex } from "../../_lib/crypto.js";
-import { clubOf, orgCode, raceOf } from "../../_lib/club.js";
+import { clubOf, findRace, orgCode, organises } from "../../_lib/club.js";
 
 const META = "tracer-meta/", DATA = "tracer/";
 const MAX_MAP = 80 * 1024 * 1024, MAX_EVENT = 12 * 1024 * 1024, MAX_SMALL = 4 * 1024 * 1024, MAX_PHOTO = 4 * 1024 * 1024, MAX_VERSIONS = 120;
@@ -82,13 +82,6 @@ async function loadInvites(env, base) {
   return (Array.isArray(list) ? list : []).filter((x) => x.expires > Date.now());
 }
 const saveInvites = (env, base, list) => env.BUCKET.put(`${base}invites`, JSON.stringify(list), { httpMetadata: { contentType: "application/json" } });
-/** A competition of the agenda (site/data/agenda.json) by its id, or null. */
-async function agendaRace(env, request, id) {
-  try {
-    const res = await env.ASSETS.fetch(new URL("/data/agenda.json", request.url));
-    return res.ok ? (await res.json()).events?.find((e) => e.kind === "c" && String(e.id) === String(id)) || null : null;
-  } catch (e) { return null; }
-}
 function rawResponse(o, type = "application/octet-stream") {
   return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || type, "Cache-Control": "no-store",
     "X-Version": o.customMetadata?.version || "", "X-Updated": o.customMetadata?.updated || "", "X-Updated-By": o.customMetadata?.by || "" } });
@@ -137,11 +130,11 @@ export const onRequest = withUser(async (ctx, user) => {
       let race = "", orgClub = "";
       if (kind === "race") {
         race = clean(b.race, 60);
-        const r = race ? (race.startsWith("a") ? await agendaRace(env, request, race.slice(1)) : await raceOf(env, request, race)) : null;
+        const r = race ? await findRace(env, request, race) : null;
         if (!r) return json({ error: "race" }, 400);
         orgClub = orgCode(r.org) || "";
-        // a competition: by a member of its organising club (or an administrator)
-        if (!isAdmin(env, user) && (!orgClub || (await lazyClub()) !== orgClub)) return json({ error: "not organiser" }, 403);
+        // a competition: by a member of its organising club, the account that declared it (or an administrator)
+        if (!(await organises(env, request, user, r, await lazyClub()))) return json({ error: "not organiser" }, 403);
       }
       const meta = { id: newId(), kind, title, date, race, orgClub, owner: user.id, ownerName: user.display_name || "", ownerLic: String(user.licence || ""),
         team: [], encrypted: null, created: nowIso(), updated: nowIso(), version: 0, map: null };

@@ -12,6 +12,7 @@ import { t, tn } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
+import * as declare from "../declare.js";
 import { parse as readStarts } from "../localstart.js";
 
 const ORG_DAYS = 90;                     // as far ahead as the collection publishes an organiser's start list
@@ -31,7 +32,11 @@ export async function render(main, { query = {} } = {}) {
     .filter((e) => e.kind === "c" && e.id && !e.cancelled && e.date >= today && e.date <= addDays(today, ORG_DAYS) && !isRelay(e))
     .map((e) => ({ key: `a${e.id}`, e, p: prov.get(`a${e.id}`) }))
     .sort((a, b) => a.e.date.localeCompare(b.e.date) || a.e.name.localeCompare(b.e.name));
-  const mine = me?.admin ? races : races.filter((x) => club && orgCode(x.e.org) === club);
+  // with the coming competitions the account declared (outside France; declare.js)
+  const D = await declare.load();
+  const mine = [...(me?.admin ? races : races.filter((x) => club && orgCode(x.e.org) === club)),
+    ...D.competitions.filter((d) => d.date >= today).map((d) => ({ key: d.key, e: { name: d.name, date: d.date, place: d.place, org: d.club },
+      p: prov.get(d.key) }))].sort((a, b) => a.e.date.localeCompare(b.e.date) || a.e.name.localeCompare(b.e.name));
   if (query.course) {
     const race = mine.find((x) => x.key === query.course);
     if (!race) {
@@ -43,6 +48,7 @@ export async function render(main, { query = {} } = {}) {
   }
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("os.title")}</h1><p class="lede">${t("os.lede", { n: ORG_DAYS })}</p></div></div>
+    <div id="dc-card"></div>
     ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="os-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="os-list"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("os.hint")}</p>`;
@@ -66,6 +72,7 @@ export async function render(main, { query = {} } = {}) {
   };
   draw();
   $("#os-filter")?.addEventListener("input", (e) => draw(e.target.value));
+  declare.card($("#dc-card"), { onChange: () => render(main, { query }) });
   return { title: t("os.title") };
 }
 

@@ -157,7 +157,7 @@ function list(main, idx, query) {
         <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn || !FR ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
           : r.ffco_id ? html`<span class="muted">—</span>` : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
-          ${r.site === false ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
+          ${r.site === false && country.of(r) === "FR" ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         ${FR ? html`<td class="r num">${r.runners ? pctN((100 * r.matched) / r.runners) : "—"}</td>` : ""}
         <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
@@ -180,6 +180,8 @@ async function detail(main, idx, query) {
     return { title: t("prov.title") };
   }
   const docs = race.docs.filter((d) => d.classes?.length);
+  // France's CN and its runners' licences: for France's members, on a race of France (a declared race elsewhere has neither)
+  const CN = auth.sees("FR") && country.of(race) === "FR";
   // the document shown first: the build's order (the organiser's files before the platforms, liveresultat last)
   const rank = (d) => d.prio ?? (d.by !== "category" ? 1e6 : 0) + d.classes.reduce((n, k) => n + k.runners.length, 0);
   let di = Math.max(0, Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] ? Number(query.doc)
@@ -208,7 +210,7 @@ async function detail(main, idx, query) {
 
   main.innerHTML = html`
     <div class="crumbs">${race.date_iso > new Date().toISOString().slice(0, 10)
-      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/resultats">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
+      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : /^d/.test(race.key) ? `?id=${race.key}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/resultats">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
@@ -216,7 +218,7 @@ async function detail(main, idx, query) {
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
-      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
+      ${CN ? html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
     ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources.admin")}</h2></summary>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
         <th class="r">${t("prov.classes")}</th><th>${t("prov.found")}</th><th>${t("prov.changed")}</th></tr></thead>
@@ -262,10 +264,10 @@ async function detail(main, idx, query) {
     const v = k.values || {};
     $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
-      ${d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w3", "fair3").replace("top6w", "fair")] != null)
+      ${!CN ? "" : d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w3", "fair3").replace("top6w", "fair")] != null)
         .map((m) => fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m])).join(" · ") || "—"}`}`;
     if (d.kind === "startlist") { startTable(k); return; }
-    const scored = auth.sees("FR") && (d.by !== "category" || !!k.values);      // no CN without France
+    const scored = CN && (d.by !== "category" || !!k.values);      // no CN without France, nor on another country's race
     // the same table as a race's on « Courses »: per method the CN J-15, then the score with its gap to that CN; the
     // CN after the race in the score's tooltip; once the race is published, the published score below
     const ok = (r) => r.status === "ok";
@@ -282,7 +284,7 @@ async function detail(main, idx, query) {
           render: (r) => (r.place != null ? fmt(r.place) : html`<span class="dim">${STATUS[r.status]}</span>`) },
         { key: "name", label: t("rk.col.name"), defaultDir: 1, sort: (r) => r.name,
           render: (r) => (r.lic ? html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>`
-            : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`) },
+            : CN ? html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>` : r.name) },
         { key: "cat", label: t("rk.col.cat"), defaultDir: 1, sort: (r) => r.category || r.catCn,
           render: (r) => fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "") },
         { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => clubOf(r).code || r.club,
@@ -306,8 +308,8 @@ async function detail(main, idx, query) {
   // place the Top CN gives them among the circuit's runners
   let cnNow = null;
   async function startTable(k) {
-    $("#pv-class-hint").innerHTML = html`${t("prov.start.hint")}`;
-    const FR = auth.sees("FR");                 // without France: start times only, no CN nor expected place
+    $("#pv-class-hint").innerHTML = html`${t(CN ? "prov.start.hint" : "prov.start.hintPlain")}`;
+    const FR = CN;                              // without France, or another country's race: start times only
     if (!cnNow && !FR) cnNow = new Map();
     if (!cnNow) {
       const month = data.latestMonth(), tr = TERRAIN_CODE[race.terrain] || "For";
@@ -323,7 +325,7 @@ async function detail(main, idx, query) {
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>` : ""}</tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
-        <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>`}</td>
+        <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : CN ? html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>` : r.name}</td>
         <td style="font-size:12.5px">${clubOf(r).code ? html`<a href="${link.club(clubOf(r).code)}" title="${clubOf(r).name}">${clubOf(r).code}</a>` : r.club || ""}</td>
         <td>${fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "")}</td>
         ${FR ? html`<td class="r num">${cn(r) ? fmt(cn(r)) : html`<span class="muted">—</span>`}</td>

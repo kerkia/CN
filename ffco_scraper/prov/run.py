@@ -30,7 +30,7 @@ from .model import plain
 from .sources.clubsite import ClubSite, address_other_day, download_url, other_day, other_year, uploaded_before
 from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
-from .sources import upload
+from .sources import declared, upload
 from .sources.liveresultat import API as LR_API, LiveResultat
 from .parsers import VERSION as PARSER_VERSION, coursedata
 from .sources.winsplits import BASE as WS_BASE, WinSplits
@@ -776,8 +776,9 @@ def build(con, out: Path, today: date) -> int:
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
                                  (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key AND d.kind IN ('startlist', 'startfile')))
                                  OR (date_iso <= ? AND EXISTS (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key
-                                     AND d.kind = 'startlist' AND d.source = 'upload')))
-                               ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi, far)).fetchall():
+                                     AND d.kind = 'startlist' AND d.source = 'upload'))
+                                 OR (date_iso <= ? AND key LIKE 'd%'))
+                               ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi, far, far)).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
         # the same file under two addresses (http and https, with or without www): shown once, the https one
         docs.sort(key=lambda x: x["url"].startswith("http:"))
@@ -786,6 +787,8 @@ def build(con, out: Path, today: date) -> int:
         if race["key"] in org_starts:                 # the organiser's start list alone (« Organisation › Horaires »)
             docs = [x for x in docs if x["kind"] not in START_KINDS or x["source"] == "upload"]
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
+        # a race of another country (a declared one): its runners are not France's licensees, nothing scored on France's CN
+        foreign = (race["country"] or "FR") != "FR"
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
@@ -817,17 +820,17 @@ def build(con, out: Path, today: date) -> int:
                 entry["by"] = parsed.get("by")
                 for k in parsed["classes"]:
                     for r in k["runners"]:
-                        r["lic"] = matcher.match(r)
+                        r["lic"] = None if foreign else matcher.match(r)
                         if r["lic"] and not r.get("category"):       # lists by circuit rarely print it: the CN data's
                             r["catCn"] = matcher.info[r["lic"]]["cat"]
                         if r["lic"] and r["lic"] in ffco:
                             r["ffco"] = ffco[r["lic"]]
                         privacy.anonymise_row(anon, r)
-                    if parsed.get("by") != "category" and parsed.get("kind") != "startlist":
+                    if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and not foreign:
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):
                         splits = True
-                if parsed.get("by") == "category" and parsed.get("kind") != "startlist" and circuits:
+                if parsed.get("by") == "category" and parsed.get("kind") != "startlist" and circuits and not foreign:
                     score_by_circuit(parsed, circuits, scorer, race)
                     entry["circuits"] = circuit_view(parsed)
                 # a list by circuit giving most runners' categories: seen by category too
@@ -853,13 +856,13 @@ def build(con, out: Path, today: date) -> int:
             e["prio"] = doc_priority(e, most)
         out_docs.sort(key=lambda e: -e["prio"])
         body = {k: race[k] for k in ("key", "date_iso", "name", "place", "org", "org_code", "terrain", "epreuve", "cn", "site",
-                                      "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done")}
+                                      "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done", "country")}
         body["docs"] = out_docs
         (d / f"{race['key']}.json").write_text(dump(body), encoding="utf-8")
         (pub / f"{race['key']}.json").write_text(dump(public_copy(body)), encoding="utf-8")
         written += 1
         index.append({k: race[k] for k in ("key", "date_iso", "name", "place", "org", "terrain", "epreuve", "cn", "ffco_id",
-                                           "last_check", "next_check", "done")} |
+                                           "last_check", "next_check", "done", "country")} |
                      {"docs": len([x for x in out_docs if x.get("classes")]), "refused": len([x for x in out_docs if x["kind"] in ("refused", "platform")]),
                       "runners": n_run, "matched": n_lic, "splits": splits, "region": region_of(race["org_code"]),
                       "site": bool(race["site"] or races.club_site(con, race["org_code"])),
@@ -868,7 +871,8 @@ def build(con, out: Path, today: date) -> int:
                       "lics": sorted(lics),
                       # a list of results among them (notify.py: « mise en ligne »), and its runners when they differ from lics
                       "results": results or None, "rlics": sorted(rlics) if results and rlics != lics else None,
-                      "sources": sorted({x["source"] for x in out_docs if x.get("classes")})})
+                      "sources": sorted({x["source"] for x in out_docs if x.get("classes")})} |
+                     ({"url": race["site"]} if race["key"].startswith("d") and race["site"] else {}))
     names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}
     blocked = [{"host": b["host"], "kind": b["kind"], "example": b["example"], "first": b["first_seen"], "last": b["last_seen"],
                 "hits": b["hits"], "races": [names.get(k) or {"key": k} for k in json.loads(b["races"] or "[]")]}
@@ -918,6 +922,8 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
                 store.meta_set(con, "agenda_backfill_from", lo_bf)
             except Exception:
                 log.exception("provisional: agenda backfill failed")
+        # the competitions organisers declared outside France (sources.declared): their races, before their files
+        stats["declared"] = declared.apply(con, Path(db).parent / "declared")
         # the files organisers uploaded on « Récemment » (sources.upload): read first, they are the freshest news
         uploaded = upload.apply(con, Path(db).parent / "uploads", save, parse_any,
                                 reread=store.meta_get(con, "parser_version") != PARSER_VERSION)
@@ -928,7 +934,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         lr, cs, hy, hg = LiveResultat(f), ClubSite(f), Heyries(f), Helga(f, con)
         stats["helga_new"] = hg.discover(limit=max(20, int(budget_s / 4)))
         looked = failed = 0
-        changed = uploaded
+        changed = uploaded + stats["declared"]
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
         recollect = store.meta_get(con, "collect_version", None) != COLLECT_VERSION

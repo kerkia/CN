@@ -236,7 +236,7 @@ def merge_duplicates(con) -> int:
     merged = 0
     for f in con.execute("SELECT * FROM prov_races WHERE key LIKE 'f%'").fetchall():
         others = con.execute("""SELECT * FROM prov_races WHERE date_iso = ? AND org_code IS ? AND key != ? AND key NOT LIKE 'f%'
-                                AND (ffco_id IS NULL OR ffco_id = ?)""", (f["date_iso"], f["org_code"], f["key"], f["ffco_id"])).fetchall()
+                                AND (ffco_id IS NULL OR ffco_id = ?) AND country IS NULL""", (f["date_iso"], f["org_code"], f["key"], f["ffco_id"])).fetchall()
         # the same name, both ways: a « Sprint » and a « KO Sprint » of the same day are two races
         same = lambda r: len(set(_words(r["name"])) & set(_words(f["name"]))) / max(1, len(set(_words(r["name"]))), len(set(_words(f["name"]))))
         best = max(others, key=same, default=None)

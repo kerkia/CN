@@ -36,6 +36,7 @@ import zipfile
 from pathlib import Path
 
 from .. import races, store
+from . import declared
 from ..parsers import coursedata, startlist
 
 log = logging.getLogger(__name__)
@@ -76,6 +77,10 @@ def files_in(name: str, content: bytes) -> list[tuple[str, bytes]]:
 def race_for(con, m: dict) -> str | None:
     """The race's key: the one chosen, or a race added for this upload ('u<id>')."""
     if m.get("race"):
+        # a declared competition the run has not seen yet (the folder copied before it was declared): from the upload's copy
+        if str(m["race"]).startswith("d") and m.get("declared") and \
+                not con.execute("SELECT 1 FROM prov_races WHERE key = ?", (m["race"],)).fetchone():
+            declared.upsert(con, m["declared"])
         return m["race"] if con.execute("SELECT 1 FROM prov_races WHERE key = ?", (m["race"],)).fetchone() else None
     r = m.get("new_race") or {}
     if not (r.get("name") and r.get("date")):

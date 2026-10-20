@@ -1,8 +1,9 @@
 // The site's country (owner, 2026-10-20): one choice for the whole site, beside the language, as the method is. The pages
 // that depend on a country (Agenda, Résultats, the organisers' pickers; the rankings once another country has data) show
-// that country's: the header's menu and the Agenda's « Pays » field (meta.json `countries`; France alone until then). Default: the
-// first country the account joined successfully that has data, else the first that has data. Kept on the device
-// (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
+// that country's: the header's menu and the Agenda's « Pays » field — the countries whose data the site reads (meta.json
+// `countries`; France alone until then) and those the account has joined, whose competitions their organisers declare
+// (functions/api/declared.js). Default: the first country the account joined successfully, else the first with data. Kept on
+// the device (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
 
 import { html } from "./util.js";
 import { t, lang } from "./i18n.js";
@@ -10,8 +11,12 @@ import * as data from "./data.js";
 import * as auth from "./auth.js";
 
 const KEY = "ocn.country";
-/** The countries whose data the site holds. */
-export const withData = () => (Array.isArray(data.meta()?.countries) && data.meta().countries.length ? data.meta().countries : ["FR"]);
+/** The countries the site offers: those whose data it holds, then those the account has joined (their organisers' competitions). */
+export function withData() {
+  const read = Array.isArray(data.meta()?.countries) && data.meta().countries.length ? data.meta().countries : ["FR"];
+  const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
+  return [...new Set([...read, ...mine])];
+}
 /** A country's name in the site's language. */
 export function name(cc) {
   try { return new Intl.DisplayNames([lang()], { type: "region" }).of(cc) || cc; } catch (e) { return cc; }

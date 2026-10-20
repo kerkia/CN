@@ -44,7 +44,9 @@ export const body = (SITE, { world = false } = {}) => `
         effacé ; les résultats qu'il contient restent affichés. L'administrateur voit l'auteur de chaque dépôt et peut retirer un
         dépôt. Les horaires de départ qu'un organisateur dépose avant la course (« Organisation › Horaires ») suivent les mêmes
         règles ; seuls les noms, clubs, catégories et heures de départ en sont publiés, et les organisateurs de la course peuvent les
-        retirer.</p>
+        retirer. Hors de France, un organisateur déclare les compétitions de son club (« Organisation ») : leur nom, date, lieu, club,
+        discipline et site sont publiés dans l'Agenda ; le site garde en plus le compte qui les a déclarées, qui seul peut les modifier
+        ou les retirer, et ne le publie pas.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>

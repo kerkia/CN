@@ -11,6 +11,7 @@ import { html, raw, fmtDate } from "../util.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
+import * as declare from "../declare.js";
 import * as S from "../tracer/store.js";
 import * as M from "../tracer/model.js";
 import { readPpen } from "../tracer/ppen.js";
@@ -173,7 +174,8 @@ async function modal(opts) { return (await import("../tracer/dialogs.js")).modal
 const field = (label, input, hint = "") => `<label class="tr-field"><span>${label}</span>${input}${hint ? `<small>${hint}</small>` : ""}</label>`;
 const escA = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-/** The competitions one's club organises: the agenda's coming ones and « Résultats »' recent ones. */
+/** The competitions one's club organises: the agenda's coming ones and « Résultats »' recent ones; and those the account
+ *  declared (outside France: declare.js). */
 async function clubRaces() {
   if (!current) await loadEvents().catch(() => {});
   const me = auth.session(), club = current?.club;
@@ -187,6 +189,8 @@ async function clubRaces() {
     for (const x of idx?.races || []) if (x.date_iso < today() && (me?.admin || orgCode(x.org) === club) && !out.some((o) => o.key === x.key))
       out.push({ key: x.key, date: x.date_iso, name: x.name, place: x.place || "", org: x.org, epr: x.epreuve || "" });
   } catch (e) { /* no results */ }
+  for (const d of (await declare.load()).competitions) if (!out.some((o) => o.key === d.key))
+    out.push({ key: d.key, date: d.date, name: d.name, place: d.place || "", org: d.club, epr: d.epreuve || "" });
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 

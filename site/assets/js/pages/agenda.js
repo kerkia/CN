@@ -31,6 +31,11 @@ const groupOf = (e) => (e.kind === "c" ? (e.groupe || "").replace(/^Groupe\s+/i,
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
 const longDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const keyOf = (e, i) => (e.id != null ? String(e.id) : `x${i}`);
+// a competition its organiser declared (« d<id> », a race of the provisional index) as an event of the agenda: the agenda's
+// discipline (« Pédestre ») and format from the race's terrain and format
+const SPEC = { "Forêt": "Pédestre", Sprint: "Pédestre", VTT: "VTT", Ski: "Ski" };      // the data's values (i18n-ignore)
+const declaredEvent = (r) => ({ kind: "c", id: r.key, declared: true, date: r.date_iso, name: r.name, place: r.place, org: r.org,
+  country: r.country, site: r.url || null, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "" });
 
 export async function render(main, { query }) {
   const A = await data.agenda();
@@ -40,20 +45,23 @@ export async function render(main, { query }) {
     return { title: t("nav.agenda") };
   }
   const today = isoDay(new Date());
-  // the coming races whose organiser has published a start list (shown on « Récemment »): agenda id -> race key
-  const starts = new Map();
+  // the coming races whose organiser has published a start list (shown on « Récemment »): agenda id -> race key; and the
+  // competitions declared by their organisers outside France (functions/api/declared.js), published with the provisional results
+  const starts = new Map(), declared = [];
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
       if (r.startlist && r.date_iso >= today) starts.set(String(r.agenda_id || r.key.replace(/^a/, "")), r.key);
+      if (/^d/.test(r.key) && r.date_iso >= today) declared.push(declaredEvent(r));
     }
   } catch (e) { /* no start lists then */ }
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
   const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
   // the site's country's events (country.js; France's alone until another country's agenda is read)
-  const events = A.events.map((e, i) => ({ ...e, key: keyOf(e, i) })).filter((e) => country.of(e) === country.current())
+  const events = [...A.events, ...declared].map((e, i) => ({ ...e, key: keyOf(e, i) })).filter((e) => country.of(e) === country.current())
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || depOrder(a.dep) - depOrder(b.dep)
       || String(a.name || "").localeCompare(String(b.name || ""), "fr"));
   const byKey = new Map(events.map((e) => [e.key, e]));
+  const fr = country.current() === "FR";        // France's regions, départements and CN: its agenda's
   const deptName = (c) => A.depts[c] || c;
   const regionOfDept = new Map(A.regions.flatMap((r) => r.depts.map((d) => [d, r.name])));
   const allDepts = A.regions.flatMap((r) => r.depts);
@@ -132,7 +140,7 @@ export async function render(main, { query }) {
     $("#filters").innerHTML = html`
       <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
-        ${sees("FR") ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
+        ${sees("FR") && fr ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
       </div>
       <div class="frow">
         <label class="field"><span>${t("cty.field.country")}</span><select id="f-country">
@@ -141,11 +149,11 @@ export async function render(main, { query }) {
         <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
-        <div class="field field-wide"><span>${t("agd.region")}</span>${multi("m-regions", regionSummary(),
+        ${fr ? html`<div class="field field-wide"><span>${t("agd.region")}</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
         <div class="field field-wide"><span>${t("agd.dept")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
-            ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>
+            ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}
         <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
       </div>
       ${groupsPresent.length ? html`<div class="frow"><div class="field"><span>${t("agd.group")}</span>
@@ -267,11 +275,11 @@ export async function render(main, { query }) {
     const key = starts.get(String(e.id));
     return key ? html`<div class="reg open"><div class="reg-title">${t("agd.startList")}</div>
       <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.startTimes")}</a>
-      <span class="dim" style="font-size:12px">${t("agd.startHint")}</span></p></div>` : "";
+      ${sees("FR") && !e.declared ? html`<span class="dim" style="font-size:12px">${t("agd.startHint")}</span>` : ""}</p></div>` : "";
   }
 
   function registration(e) {
-    if (e.kind !== "c") return "";
+    if (e.kind !== "c" || e.declared) return "";                // a declared competition: its organiser's own registration
     const r = e.reg;
     if (!r) return html`<div class="reg closed"><div class="reg-title">${t("agd.reg")}</div><div class="dim">${t("agd.reg.none")}</div></div>`;
     const closed = r.closed || (r.close && r.close < today);
@@ -346,7 +354,7 @@ export async function render(main, { query }) {
           ${(e.extra || []).map(([l, v]) => row(l, v))}
           ${row(t("agd.d.obs"), e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
-        ${e.id != null ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
+        ${e.id != null && !e.declared ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
         <div class="detail-nav">${backBtn}</div>
       </div>`;
   }

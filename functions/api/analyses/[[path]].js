@@ -24,7 +24,7 @@
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
-import { clubOf, orgCode, raceOf } from "../../_lib/club.js";
+import { clubOf, findRace, orgCode, organises } from "../../_lib/club.js";
 
 const META = "analyses-meta/";
 const DATA = "analyses/";
@@ -163,10 +163,10 @@ export const onRequest = withUser(async (ctx, user) => {
       if (kind === "race") {
         // a competition's analysis: by its organising club (or an administrator), one per race — a second asks opens it
         race = clean(b.race, 40);
-        const r = await raceOf(env, request, race);
-        if (!r) return json({ error: "race" }, 400);
+        const r = await findRace(env, request, race);
+        if (!r || /^a/.test(r.key)) return json({ error: "race" }, 400);         // a race of the list, or a declared one
         orgClub = orgCode(r.org) || "";
-        if (!isAdmin(env, user) && (!orgClub || (await lazyClub()) !== orgClub)) return json({ error: "not organiser" }, 403);
+        if (!(await organises(env, request, user, r, await lazyClub()))) return json({ error: "not organiser" }, 403);
         const same = (await listAll(env, META)).find((o) => o.customMetadata?.kind === "race" && o.customMetadata?.race === race);
         if (same) return json({ id: same.customMetadata.id, existing: true });
       }

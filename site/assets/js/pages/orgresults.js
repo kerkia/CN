@@ -4,12 +4,14 @@
 // three steps of pages/deposit.js; owner, 2026-10-15: depositing is the organisers' alone, « Courses › Résultats » is the
 // runners'), the server checks the account belongs to the organising club (functions/api/upload.js), and the race is then no
 // longer looked for on the club's site or the platforms (ffco_scraper/prov/sources/upload.py): its organiser's file is
-// used as it is. An organiser is a member of the race's organising club, from the account's latest race.
+// used as it is. An organiser is a member of the race's organising club, from the account's latest race; outside France,
+// the account that declared the competition (declare.js, owner 2026-10-20), its declared competitions listed with the club's.
 
 import { html, $, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv } from "./provisional.js";
+import * as declare from "../declare.js";
 
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -21,7 +23,12 @@ export async function render(main, { query = {} } = {}) {
   const idx = await getProv("index.json");
   const all = (idx?.races || []).filter((r) => !r.soon && r.date_iso <= today)
     .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name, "fr"));
-  const mine = me?.admin ? all : all.filter((r) => club && orgCode(r.org) === club);
+  const byClub = me?.admin ? all : all.filter((r) => club && orgCode(r.org) === club);
+  // the competitions the account declared (outside France), run already: as the list has them, else as declared
+  const D = await declare.load();
+  const known = new Map(all.map((r) => [r.key, r]));
+  const mine = [...byClub, ...D.competitions.filter((d) => d.date <= today && !byClub.some((r) => r.key === d.key))
+    .map((d) => known.get(d.key) || declare.asRace(d))].sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name));
   // a race: its deposit, here (the organiser's flow, not « Résultats »)
   if (query.course) {
     const race = mine.find((r) => r.key === query.course);
@@ -35,6 +42,7 @@ export async function render(main, { query = {} } = {}) {
   }
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("or.title")}</h1><p class="lede">${t("or.lede")}</p></div></div>
+    <div id="dc-card"></div>
     ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="or-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="or-list"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("or.hint")}</p>`;
@@ -51,5 +59,6 @@ export async function render(main, { query = {} } = {}) {
   };
   draw();
   $("#or-filter")?.addEventListener("input", (e) => draw(e.target.value));
+  declare.card($("#dc-card"), { onChange: () => render(main, { query }) });
   return { title: t("or.title") };
 }

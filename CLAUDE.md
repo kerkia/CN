@@ -1224,6 +1224,27 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the counts: the site's independence is said in the rules (owner, 2026-10-20). **The Documentation shows what the account
   sees** (owner, 2026-10-20): without France no « CN officiel » tab, and « Les calculs du site » keeps only the split times
   (`fr` passed to `content/methods.*.js`: `TABS`, `SITE_CHAPTERS`, the lede, the note); the Ozimut method and the study stay.
+- **Competitions declared by their organisers** (owner, 2026-10-20: non-France organisers post their own competitions, start
+  lists and results under their country). France's competitions come from FFCO's calendar; elsewhere an account with an accepted
+  membership (France apart) declares one under « Organisation » — the card « Mes compétitions déclarées » (`site/assets/js/declare.js`)
+  on Résultats, Horaires and Compétitions: country, club (the membership's by default), name, date (60 days back to ~13 months
+  ahead), place, discipline, format, website. `functions/api/declared.js` (GET mine — an administrator's: all —, POST, PUT, DELETE =
+  status « removed »; 20 a day) keeps it in R2 `declared/<id>.json` (`_lib/club.js` `DECLARED`, `loadDeclared`, `declaredRace`), race
+  key `d<id>`, and starts a `prov` run. **One lookup and one organiser rule for every competition key** (`_lib/club.js`): `findRace`
+  (a `d` key from its declaration — who declared it is never published —, else « Résultats », else the agenda's `a<id>`) and
+  `organises` (an administrator; for a declared competition the account that declared it; else a member of the organising club),
+  used by uploads (results — organiser only for a declared one —, start lists, courses), the multi analyses and the Tracer. An
+  upload's meta.json carries the declaration (`declared`), so `sources/upload.race_for` adds a race the run has not seen yet. CI
+  syncs `declared/` to `$CN_DATA_DIR/declared`; `sources/declared.py` upserts `prov_races` (column `country`, added by
+  `store.connect`; NULL = France) and drops removed ones with their documents. `run.build`: declared races listed up to
+  `ORG_START_DAYS` ahead even without a start list (index `country`, `url` = their website), their runners never matched to French
+  licences nor scored (`foreign`); `races.merge_duplicates` only merges France's. Pages: the Agenda adds the index's coming `d` races
+  as events of their country (`declaredEvent`: no registration box, no FFCO link; France's regions, départements and CN filter only
+  when the country is France); the organisers' lists, the deposit and the Tracer's competition picker add the account's declared
+  ones. The site's country menu offers the countries with data and those the account has joined (`country.withData`), the first
+  joined by default. The race page shows France's CN notes, « ? » marks and scores only to France's members on a French race (`CN`).
+  The privacy page says what a declaration keeps. Tested 2026-10-20 locally (a Swiss account: declare, start list, results, Agenda,
+  Résultats, analysis, Tracer; France unchanged) and the pipeline on a database copy.
 - **Admin › « Consommation »** (owner, 2026-10-20; `functions/api/admin/consumption.js`, `?onglet=consommation`): the free
   plans' use against their limits (`LIMITS`, checked by hand — change them there), the last 30 days as bars under the limit.
   E-mails and accounts from D1 (`mail_log` is never pruned); the rest from Cloudflare's GraphQL analytics and REST API —

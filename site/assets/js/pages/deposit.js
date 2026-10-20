@@ -22,7 +22,8 @@ const KINDS = { iofxml: "IOF XML", oe_html: "OE / OS (HTML)", meos_html: "MeOS (
 
 export async function render(main, { query = {}, organiser = null } = {}) {
   const idx = await getProv("index.json");
-  const races = idx?.races || [];
+  // a competition its organiser has just declared is not in the list yet (the next run adds it)
+  const races = [...(idx?.races || []), ...(organiser && !(idx?.races || []).some((r) => r.key === organiser.key) ? [organiser] : [])];
   const preset = races.some((r) => r.key === query.course) ? query.course : "";
   try { sessionStorage.setItem("ocn.dep.course", preset); } catch (e) { /* this page only */ }
   let di = 0, ci = 0, publishing = query.publier === "1", sessionNote = "";

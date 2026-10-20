@@ -16,7 +16,7 @@ import sqlite3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS prov_races (
-  key         TEXT PRIMARY KEY,          -- 'a<agenda id>' or 'f<FFCO course id>'
+  key         TEXT PRIMARY KEY,          -- 'a<agenda id>', 'f<FFCO course id>', 'u<upload id>', 'd<declared id>'
   date_iso    TEXT NOT NULL,
   name        TEXT NOT NULL,
   place       TEXT,
@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS prov_races (
   first_seen  TEXT NOT NULL,
   last_check  TEXT,
   next_check  TEXT,
-  done        INTEGER NOT NULL DEFAULT 0 -- 1: no more scanning (FFCO published long ago, or too old)
+  done        INTEGER NOT NULL DEFAULT 0, -- 1: no more scanning (FFCO published long ago, or too old)
+  country     TEXT                       -- ISO alpha-2 of a race outside France (a declared one: sources.declared); NULL: France
 );
 CREATE INDEX IF NOT EXISTS prov_races_date ON prov_races (date_iso);
 CREATE TABLE IF NOT EXISTS prov_docs (
@@ -90,6 +91,9 @@ def connect(db_path) -> sqlite3.Connection:
     con = sqlite3.connect(db_path)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    # columns added since the table was made
+    if "country" not in {r[1] for r in con.execute("PRAGMA table_info(prov_races)")}:
+        con.execute("ALTER TABLE prov_races ADD COLUMN country TEXT")
     return con
 
 

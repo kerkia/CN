@@ -16,6 +16,7 @@ import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
+import * as declare from "../declare.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, fitSimilarity } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
@@ -115,6 +116,7 @@ async function orgListPage(main, kind) {
       ${kind === "club" ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.org.new")}</button>` : ""}</div>
     ${raw(betaNote("multi"))}
     <section class="card sh-create" id="sh-create" hidden></section>
+    ${kind === "race" ? html`<div id="dc-card"></div>` : ""}
     ${kind === "race" && me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
@@ -126,7 +128,9 @@ async function orgListPage(main, kind) {
     const today = new Date().toISOString().slice(0, 10);
     const all = ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon && x.date_iso <= today)
       .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name, "fr"));
-    const mine = me?.admin ? all : all.filter((x) => club && orgCode(x.org) === club);
+    // with those the account declared (outside France; declare.js), once their results are on « Résultats »
+    const decl = new Set((await declare.load()).competitions.map((d) => d.key));
+    const mine = me?.admin ? all : all.filter((x) => (club && orgCode(x.org) === club) || decl.has(x.key));
     const byRace = new Map(data.analyses.map((a) => [a.race, a]));
     const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const draw = (q = "") => {
@@ -147,6 +151,7 @@ async function orgListPage(main, kind) {
     };
     draw();
     $("#sh-filter")?.addEventListener("input", (e) => draw(e.target.value));
+    declare.card($("#dc-card"));
   } else {
     const mine = data.analyses.filter((a) => a.organiser);
     $("#sh-list").innerHTML = mine.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th><th></th></tr></thead>
