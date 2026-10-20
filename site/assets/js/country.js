@@ -1,6 +1,6 @@
 // The site's country (owner, 2026-10-20): one choice for the whole site, beside the language, as the method is. The pages
 // that depend on a country (Agenda, Résultats, the organisers' pickers; the rankings once another country has data) show
-// that country's. Offered only once two countries have data (meta.json `countries`; France alone until then). Default: the
+// that country's: the header's menu and the Agenda's « Pays » field (meta.json `countries`; France alone until then). Default: the
 // first country the account joined successfully that has data, else the first that has data. Kept on the device
 // (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
 
@@ -31,10 +31,9 @@ export function pick(cc) {
 /** An event or race of a country (the data's `country`; France when it has none, as everything before 2026-10-20). */
 export const of = (x) => x?.country || "FR";
 
-/** The header's menu, beside the language's: nothing while only one country has data. */
+/** The header's menu, beside the language's (France alone for now: it says whose data the pages show). */
 export function menu() {
   const ok = withData();
-  if (ok.length < 2) return "";
   const cur = current();
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">

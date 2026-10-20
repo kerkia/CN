@@ -8,6 +8,7 @@ import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
 import { getProv } from "./provisional.js";
 import * as country from "../country.js";
+import { sees } from "../auth.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -131,9 +132,11 @@ export async function render(main, { query }) {
     $("#filters").innerHTML = html`
       <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
-        <label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>
+        ${sees("FR") ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
       </div>
       <div class="frow">
+        <label class="field"><span>${t("cty.field.country")}</span><select id="f-country">
+          ${country.withData().map((cc) => html`<option value="${cc}" ${raw(cc === country.current() ? "selected" : "")}>${country.name(cc)}</option>`)}</select></label>
         <label class="field"><span>${t("agd.from")}</span><input type="date" id="f-from" value="${st.from}"></label>
         <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
@@ -157,6 +160,7 @@ export async function render(main, { query }) {
     const el = e.target;
     if (el.dataset.kind) { el.checked ? st.kinds.add(el.dataset.kind) : st.kinds.delete(el.dataset.kind); }
     else if (el.id === "cn-only") st.cnOnly = el.checked;
+    else if (el.id === "f-country") { country.pick(el.value); location.reload(); return; }     // the site's country (country.js)
     else if (el.id === "f-from") { st.from = el.value || today; if (st.to && st.to < st.from) st.to = st.from; }
     else if (el.id === "f-to") st.to = el.value;
     else if (el.id === "f-spec") st.spec = el.value;
@@ -201,10 +205,10 @@ export async function render(main, { query }) {
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
-        <th>${t("agd.col.date")}</th><th>${t("agd.col.cn")}</th><th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
+        <th>${t("agd.col.date")}</th>${sees("FR") ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
-        <td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>
+        ${sees("FR") ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
         <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
@@ -317,7 +321,7 @@ export async function render(main, { query }) {
       <div class="card-head"><div><h2>${e.name}</h2>
         <div class="hint">${longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
-        <div class="row" style="gap:6px">${e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
+        <div class="row" style="gap:6px">${!sees("FR") ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
         ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
         ${startBox(e)}

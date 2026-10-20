@@ -850,7 +850,7 @@ export function build(X) {
       "remove-unused": "Delete the controls that no course uses.", calage: "Realign all the controls with the map, in two clicks (chapter “The map”).",
       "move-all": "Move, rotate or scale all the controls at once.",
       "custom-text": "Change the text that text descriptions give a symbol.", punch: "The pattern of each control's punch, to check the punch cards.",
-      load: "The number of competitors on each course (taken from FFCO's entries when there are any), for the controls' load.",
+      load: "The number of competitors on each course (taken from the official entries when there are any), for the controls' load.",
       georef: "Place the map on the Earth: clicked points, a world file, a KMZ.", team: "The team's members and their role.",
       encryption: "Encrypt the event with a team passphrase.",
       "course-new": "A new course (also: the “+” at the end of the tabs).",
@@ -1280,7 +1280,7 @@ export function build(X) {
             the value into their properties. With the Route tool, draw the planned route where the straight line goes over a hill that the runners
             will go round. ${W("rep-times")} gives, for each course, the expected winning time, based on the results of the last two
             seasons, and the length that gives a target time (chapter “The calculations”).</p>
-          <p>The load comes from the number of competitors on each course: ${W("load")} takes it from FFCO's entries when the race is listed there.</p>
+          <p>The load comes from the number of competitors on each course: ${W("load")} takes it from the official entries when the race is listed there.</p>
         </section>`,
       outils: () => html`
         <section class="mx-slide" id="tr-outils">
@@ -1364,11 +1364,11 @@ export function build(X) {
             rounded to 5 m. In a straight line, a leg that goes round a hill counts the hill: that is why the Route tool lets you draw the
             planned route, which is then used for the calculation.</p>
           <h3>The winning time</h3>
-          <p>From FFCO's results of the last two seasons (about a hundred races of the same format), we record for each course the winner's pace, in
+          <p>From the official results of the last two seasons (about a hundred races of the same format), we record for each course the winner's pace, in
             minutes per kilometre, and their official CN 15 days before. The higher the CN, the faster the pace: the relationship is fitted once
             and for all, and gives the pace of a winner with a given CN. For example, on the same course, a winner with a CN of 6,500 runs about 1.3 times
             as fast as a winner with a CN of 3,000.</p>
-          <p>FFCO does not publish the courses' climb; the organisers' files often give it (“Results”). On those courses, the winner's time is compared
+          <p>Official results do not give the courses' climb; the organisers' files often give it (“Results”). On those courses, the winner's time is compared
             with the time their CN would predict, according to the climb per kilometre: the more the course climbs, the longer the winner takes.
             So as not to rely on a handful of courses, the measurement is pulled towards the kilometre-effort rule (100 m of climb is worth 1 km on the flat, that is
             +10% of time for 10 m more per kilometre), the more so the less precise it is. In long distance, the measurement comes back to this rule; in sprint,

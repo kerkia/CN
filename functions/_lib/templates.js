@@ -9,10 +9,10 @@ const locale = (lang) => (L(lang) === "en" ? "en-GB" : "fr-FR");
 
 const FRAME = {
   fr: { tagline: "La course d'orientation, en cartes et en chiffres",
-    foot: (from) => `Site indépendant, sans lien avec la FFCO. Message envoyé automatiquement ; vous pouvez écrire à ${from}.`,
+    foot: (from) => `Site indépendant, sans lien avec aucune fédération. Message envoyé automatiquement ; vous pouvez écrire à ${from}.`,
     copy: "Si le bouton ne fonctionne pas, copiez ce lien :" },
   en: { tagline: "Orienteering, in maps and numbers",
-    foot: (from) => `An independent site, not affiliated with the FFCO. Automatic message; you can write to ${from}.`,
+    foot: (from) => `An independent site, not affiliated with any federation. Automatic message; you can write to ${from}.`,
     copy: "If the button doesn't work, copy this link:" },
 };
 function wrap(env, title, bodyHtml, lang) {
@@ -210,12 +210,12 @@ const AGENDA = {
     controller: "Contrôleur des circuits", delegate: "Délégué", monitor: "Moniteur", contact: "Contact", phone: "Téléphone",
     email: "E-mail", site: "Site web", signs: "Fléchage", invitation: "Annonce de course", invitationLink: "Télécharger l'annonce (PDF)",
     gps: "Itinéraire GPS", route: "Ouvrir l'itinéraire", obs: "Observations",
-    noReg: "Pas d'inscription en ligne indiquée sur le site de la FFCO.",
+    noReg: "Pas d'inscription en ligne indiquée sur le site de la fédération.",
     close: (d) => `clôture des inscriptions le <b>${d}</b>`, mods: (d) => `modifications (puces, compositions) jusqu'au ${d}`,
     count: (n, teams) => `${n} inscrit${n > 1 ? "s" : ""}${teams != null ? ` (${teams} équipe${teams > 1 ? "s" : ""})` : ""} à ce jour`,
     regOnline: "Inscriptions en ligne", noDates: " — dates de clôture non encore publiées", colon: " :",
     invitationArrow: "Annonce de course (PDF) →", access: "Accès", accessSrc: "(extrait de l'annonce)", accessText: "Accès (extrait de l'annonce)",
-    see: "Voir sur Ozimut", ffco: "Fiche sur le site de la FFCO", hello: "Bonjour", also: "Et aussi :",
+    see: "Voir sur Ozimut", ffco: "Fiche officielle", hello: "Bonjour", also: "Et aussi :",
     more: (n, link) => `… et ${n} autre${n > 1 ? "s" : ""} dans l'${link}.`, moreText: (n, url) => `… et ${n} autre${n > 1 ? "s" : ""} : ${url}`,
     agenda: "agenda", why: (w, link) => `Vous recevez ce message parce que vous avez activé l'alerte ${w}. ${link}.`, settings: "Modifier mes réglages",
     stop: "Pour modifier ou arrêter cette alerte :",
@@ -238,12 +238,12 @@ const AGENDA = {
     controller: "Course controller", delegate: "Delegate", monitor: "Instructor", contact: "Contact", phone: "Phone",
     email: "Email", site: "Website", signs: "Signposting", invitation: "Race announcement", invitationLink: "Download the announcement (PDF)",
     gps: "GPS route", route: "Open the route", obs: "Notes",
-    noReg: "No online entry given on the FFCO website.",
+    noReg: "No online entry given on the federation's website.",
     close: (d) => `entries close on <b>${d}</b>`, mods: (d) => `changes (SI cards, team line-ups) until ${d}`,
     count: (n, teams) => `${n} entr${n !== 1 ? "ies" : "y"}${teams != null ? ` (${teams} team${teams !== 1 ? "s" : ""})` : ""} so far`,
     regOnline: "Online entries", noDates: " — deadlines not published yet", colon: ":",
     invitationArrow: "Race announcement (PDF) →", access: "Getting there", accessSrc: "(from the announcement)", accessText: "Getting there (from the announcement)",
-    see: "See on Ozimut", ffco: "Page on the FFCO website", hello: "Hello", also: "And also:",
+    see: "See on Ozimut", ffco: "Official page", hello: "Hello", also: "And also:",
     more: (n, link) => `… and ${n} more in the ${link}.`, moreText: (n, url) => `… and ${n} more: ${url}`,
     agenda: "calendar", why: (w, link) => `You receive this message because you turned on the ${w} alert. ${link}.`, settings: "Change my settings",
     stop: "To change or stop this alert:",
@@ -334,7 +334,7 @@ ${e.access ? `<div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;
     const rows = courseRows(env, e, lang), reg = registrationBlock(e, lang);
     return [`${e.name}`, `${longDate(e.date, lang)}${e.type ? ` · ${type(e)}` : ""}`, ...(e.invitation ? [`${T.invitation}${T.colon} ${e.invitation}`] : []),
       reg.text, ...(e.access ? [`${T.accessText}${T.colon}\n${e.access}`] : []),
-      ...rows.map(([l, , t]) => `${l}${T.colon} ${t}`), `Ozimut${T.colon} ${link(e)}`, `FFCO${T.colon} ${ffco(e)}`].join("\n");
+      ...rows.map(([l, , t]) => `${l}${T.colon} ${t}`), `Ozimut${T.colon} ${link(e)}`, `${T.ffco}${T.colon} ${ffco(e)}`].join("\n");
   };
   const compactLine = (e) => `${e.name} — ${shortDate(e.date, lang)}${e.place ? `, ${e.place}` : ""}${e.type ? ` (${type(e)})` : ""}`;
 

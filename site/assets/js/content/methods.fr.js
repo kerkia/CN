@@ -850,7 +850,7 @@ export function build(X) {
       "remove-unused": "Supprimer les postes qu'aucun circuit n'utilise.", calage: "Recaler tous les postes sur la carte, en deux clics (chapitre « La carte »).",
       "move-all": "Déplacer, tourner ou mettre à l'échelle tous les postes à la fois.",
       "custom-text": "Changer le texte que les définitions en texte donnent à un symbole.", punch: "Le dessin de la pince de chaque poste, pour vérifier les cartons.",
-      load: "Le nombre de concurrents de chaque circuit (repris des inscriptions de la FFCO quand il y en a), pour la charge des postes.",
+      load: "Le nombre de concurrents de chaque circuit (repris des inscriptions officielles quand il y en a), pour la charge des postes.",
       georef: "Situer la carte sur la Terre : des points cliqués, un fichier de calage, un KMZ.", team: "Les membres de l'équipe et leur rôle.",
       encryption: "Chiffrer l'événement avec une phrase de passe de l'équipe.",
       "course-new": "Un nouveau circuit (aussi : le « + » au bout des onglets).",
@@ -1281,7 +1281,7 @@ export function build(X) {
             la valeur dans leurs propriétés. Dessinez avec l'outil Itinéraire le chemin prévu là où la ligne droite passe sur une colline que les coureurs
             contourneront. ${W("rep-times")} donne, pour chaque circuit, le temps attendu du vainqueur, d'après les résultats des deux dernières
             saisons, et la longueur qui donne un temps visé (chapitre « Ses calculs »).</p>
-          <p>La charge vient du nombre de concurrents de chaque circuit : ${W("load")} le reprend des inscriptions de la FFCO quand la course y est.</p>
+          <p>La charge vient du nombre de concurrents de chaque circuit : ${W("load")} le reprend des inscriptions officielles quand la course y figure.</p>
         </section>`,
       outils: () => html`
         <section class="mx-slide" id="tr-outils">
@@ -1365,11 +1365,11 @@ export function build(X) {
             arrondie à 5 m. En ligne droite, un interposte qui contourne une colline compte la colline : c'est pourquoi l'outil Itinéraire permet de dessiner le
             chemin prévu, qui sert alors au calcul.</p>
           <h3>Le temps du vainqueur</h3>
-          <p>Sur les résultats FFCO des deux dernières saisons (environ une centaine de courses du même format), on relève pour chaque circuit l'allure du
+          <p>Sur les résultats officiels des deux dernières saisons (environ une centaine de courses du même format), on relève pour chaque circuit l'allure du
             vainqueur, en minutes par kilomètre, et son CN officiel 15 jours avant. Plus le CN est haut, plus l'allure est rapide : la relation est ajustée une
             fois pour toutes, et donne l'allure d'un vainqueur de CN donné. Par exemple, sur un même circuit, un vainqueur de CN 6 500 court à peu près 1,3 fois
             plus vite qu'un vainqueur de CN 3 000.</p>
-          <p>La FFCO ne publie pas la dénivelée des circuits ; les fichiers des organisateurs la donnent souvent (« Résultats »). Sur ces circuits, on compare le
+          <p>Les résultats officiels ne donnent pas la dénivelée des circuits ; les fichiers des organisateurs la donnent souvent (« Résultats »). Sur ces circuits, on compare le
             temps du vainqueur à celui que son CN laisse attendre, selon la dénivelée par kilomètre : plus le circuit monte, plus le vainqueur met de temps.
             Pour ne pas se fier à quelques circuits, la mesure est rapprochée de la règle du kilomètre-effort (100 m de montée valent 1 km de plat, soit
             +10 % de temps pour 10 m de plus par kilomètre), d'autant plus qu'elle est imprécise. En longue distance, la mesure redonne cette règle ; en sprint,

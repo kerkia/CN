@@ -1210,6 +1210,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
   (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
   of `WORLD_OPEN`; the countries kept are listed either way.
+- **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
+  « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
+  (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la
+  fédération », « officiel », « là où Ozimut a les résultats de votre fédération »; the CN column and tags show with France only
+  (`auth.sees("FR")`). Exceptions: the France option's own licence field (« Numéro de licence FFCO », once France is chosen),
+  the France-only pages, links to FFCO's own pages, and the Documentation (to be decided). The country is chosen in the header
+  (always shown) and in the Agenda's « Pays » field.
 - **Admin › « Consommation »** (owner, 2026-10-20; `functions/api/admin/consumption.js`, `?onglet=consommation`): the free
   plans' use against their limits (`LIMITS`, checked by hand — change them there), the last 30 days as bars under the limit.
   E-mails and accounts from D1 (`mail_log` is never pruned); the rest from Cloudflare's GraphQL analytics and REST API —

@@ -562,10 +562,9 @@ function bindSearch() {
 
 function renderFooter() {
   const m = data.meta();
-  const [before, after] = t("footer.disclaimer").split("{site}");      // the source, as a link
+  // (the sources of the results, French ones included, are named in the rules: owner, 2026-10-20)
   $("#footer").innerHTML = html`<div class="footer-inner">
-    <span>${SITE} — ${before}<a href="https://cn.ffcorientation.fr/" target="_blank" rel="noopener">cn.ffcorientation.fr</a>${after}
-      <a href="#/compte/confidentialite">${t("footer.rules")}</a></span>
+    <span>${SITE} — ${t("footer.disclaimer")} <a href="#/compte/confidentialite">${t("footer.rules")}</a></span>
     <span class="num">${fmt(m.counts.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(m.counts.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(m.counts.results)} ${t("ov.results").toLowerCase()}</span>
   </div>`;
 }
@@ -712,8 +711,8 @@ export async function signedIn(s) {
   if (s.lic) store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
-  // one's own page; a demo account, tied to no licence, lands on the ranking
-  location.hash = next && next.startsWith("#/") && next !== "#/" ? next : s.lic ? link.runner(s.lic) : link.ranking();
+  // one's own page; a demo account, tied to no licence, lands on the ranking; an account without France on the agenda
+  location.hash = next && next.startsWith("#/") && next !== "#/" ? next : homeOf(s);
   pushBoot();
   movedNotice();
 }

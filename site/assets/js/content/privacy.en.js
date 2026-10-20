@@ -12,6 +12,11 @@ export const body = (SITE, { world = false } = {}) => `
         use likely to overload the site at the expense of other users. An account that breaks these rules may be suspended.</p>
       <p>For a particular need (a study, the needs of a club or a region, data meant for another tool), you can write to the
         publisher, through the “Contact us” page or at contact@ozimut.com: the request will be considered.</p>
+      <h2 style="font-size:16px">Independence and sources</h2>
+      <p>${SITE} is independent and free, not affiliated with any federation or organiser. Its sources: for France, the results,
+        the national ranking (CN) and the calendar published by the French orienteering federation (FFCO) on cn.ffcorientation.fr
+        and ffcorientation.fr, which remain the reference; for every race, the results and start times the organisers publish
+        (their website, liveresultat, WinSplits, Helga, Orientation Data) or upload to ${SITE}.</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the
         name, club, class, licence number, time and place of each ranked licence holder, whether or not they have an account on
