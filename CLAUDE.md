@@ -1177,6 +1177,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `auth.sees(cc)` (the session keeps `uid` and `countries`; one without a licence stays signed in), and
   `data.bootPrivate({ fr })` leaves the runners empty without France. The pages are not yet adapted (step 4): until then
   `WORLD_OPEN` stays "0".
+  **The provisional results without France** (step 3): `prov.run.build` writes beside each file a copy in `prov/pub/`
+  (`public_copy`: runners without `PUB_RUNNER_DROP` — licence, FFCO figures, scores, CNs, `catCn`, birth year —, classes
+  without `values`; the index without `PUB_INDEX_DROP` — `lics`, `rlics`, `matched`); `auth.provDir()` picks the folder (the
+  pages through `provisional.getProv`, the Tracer's offline copy). Names, clubs, categories, times and splits stay: what the
+  organisers publish (owner, 2026-10-20: as open as possible).
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff

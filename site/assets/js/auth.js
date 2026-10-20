@@ -42,6 +42,11 @@ export function sees(cc) {
   if (s.demo) return cc === "FR";
   return Array.isArray(s.countries) ? s.countries.some((c) => c.cc === cc && c.status === "ok") : cc === "FR" && !!s.lic;
 }
+/**
+ * The provisional results' folder for this account: the full files for France's members, else the copy without CNs, scores
+ * or licences (prov/pub/, ffco_scraper/prov/run.py `public_copy`; the login gate serves the full ones to France only).
+ */
+export const provDir = () => (sees("FR") ? "data/prov/" : "data/prov/pub/");
 function keep(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
 }

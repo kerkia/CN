@@ -396,6 +396,26 @@ def region_of(org_code: str | None) -> str | None:
 SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "helga": 3, "liveresultat": 1}
 
 
+# The copy for the accounts that have not joined France (prov/pub/; owner, 2026-10-20: names and times for everyone, as
+# the organisers publish them): what the matching to FFCO's licences and the CN computations add is left out — a runner's
+# licence and FFCO figures, provisional scores and CNs, the category read from the CN data, the birth year —, and a
+# circuit's values; in the index, the licences recognised. The login gate serves the full files to France only.
+PUB_RUNNER_DROP = ("lic", "ffco", "scores", "cnj15", "cnAfter", "catCn", "birth")
+PUB_INDEX_DROP = ("lics", "rlics", "matched")
+
+
+def public_copy(x):
+    """`x` (a race file's body, or any part of it) without what only France's members see."""
+    if isinstance(x, list):
+        return [public_copy(v) for v in x]
+    if not isinstance(x, dict):
+        return x
+    if isinstance(x.get("runners"), list):                  # a class: its runners, without the circuit's values
+        return {k: ([{f: v for f, v in r.items() if f not in PUB_RUNNER_DROP} if isinstance(r, dict) else r for r in x["runners"]]
+                    if k == "runners" else public_copy(v)) for k, v in x.items() if k != "values"}
+    return {k: public_copy(v) for k, v in x.items()}
+
+
 def doc_priority(entry: dict, most: int) -> int:
     ks = entry.get("classes") or []
     if not ks:
@@ -743,7 +763,9 @@ def build(con, out: Path, today: date) -> int:
     """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days, and the coming races with a start
     list (« soon »)."""
     d = out / "prov"
-    d.mkdir(parents=True, exist_ok=True)
+    pub = d / "pub"
+    pub.mkdir(parents=True, exist_ok=True)
+    dump = lambda o: json.dumps(o, ensure_ascii=False, separators=(",", ":"))
     lo = (today - timedelta(days=SHOW_DAYS)).isoformat()
     matcher, scorer = Matcher(con, today), Scorer(con)
     anon = privacy.load()                # the anonymised runners: their rows by licence, the unmatched ones by name
@@ -833,7 +855,8 @@ def build(con, out: Path, today: date) -> int:
         body = {k: race[k] for k in ("key", "date_iso", "name", "place", "org", "org_code", "terrain", "epreuve", "cn", "site",
                                       "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done")}
         body["docs"] = out_docs
-        (d / f"{race['key']}.json").write_text(json.dumps(body, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        (d / f"{race['key']}.json").write_text(dump(body), encoding="utf-8")
+        (pub / f"{race['key']}.json").write_text(dump(public_copy(body)), encoding="utf-8")
         written += 1
         index.append({k: race[k] for k in ("key", "date_iso", "name", "place", "org", "terrain", "epreuve", "cn", "ffco_id",
                                            "last_check", "next_check", "done")} |
@@ -852,13 +875,16 @@ def build(con, out: Path, today: date) -> int:
                for b in con.execute("SELECT * FROM prov_blocked ORDER BY last_seen DESC").fetchall()]
     (d / "blocked.json").write_text(json.dumps({"generated": _now(), "sites": blocked}, ensure_ascii=False, separators=(",", ":")),
                                     encoding="utf-8")
-    (d / "index.json").write_text(json.dumps({"generated": _now(), "races": index, "runs": store.meta_get(con, "runs", [])[-12:],
-                                              "due": len(races.due(con, today, _now()))}, ensure_ascii=False, separators=(",", ":")),
-                                  encoding="utf-8")
+    whole = {"generated": _now(), "races": index, "runs": store.meta_get(con, "runs", [])[-12:],
+             "due": len(races.due(con, today, _now()))}
+    (d / "index.json").write_text(dump(whole), encoding="utf-8")
+    (pub / "index.json").write_text(dump(whole | {"races": [{k: v for k, v in r.items() if k not in PUB_INDEX_DROP} for r in index]}),
+                                    encoding="utf-8")
     keep = {f"{r['key']}.json" for r in index} | {"index.json", "blocked.json"}
-    for old in d.glob("*.json"):
-        if old.name not in keep:
-            old.unlink()
+    for folder in (d, pub):
+        for old in folder.glob("*.json"):
+            if old.name not in keep:
+                old.unlink()
     return written
 
 

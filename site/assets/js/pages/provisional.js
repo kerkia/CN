@@ -36,7 +36,7 @@ const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padS
   Math.round(s % 60) ? `:${String(Math.round(s % 60)).padStart(2, "0")}` : ""}`);
 
 export const getProv = async (path) => {
-  const r = await fetch(`data/prov/${path}`, { credentials: "same-origin", cache: "no-store" });
+  const r = await fetch(`${auth.provDir()}${path}`, { credentials: "same-origin", cache: "no-store" });
   return r.ok && (r.headers.get("content-type") || "").includes("json") ? r.json() : null;
 };
 export const clock = (s) => {

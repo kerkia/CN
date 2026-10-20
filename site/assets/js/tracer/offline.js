@@ -10,6 +10,7 @@ import * as S from "./store.js";
 import { FONT_CSS } from "./fonts.js";
 import { PDFLIB, FFLATE, FONTKIT, PDFJS, PDFJS_WORKER, PROJ4, FONT_PKG } from "../vendor.js";
 import { t, tn } from "./lang.js";
+import { provDir } from "../auth.js";
 
 const CACHE = "ocn-offline-v1";
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -23,7 +24,7 @@ const LIBS = [PDFLIB, FFLATE, FONTKIT, PDFJS, PDFJS_WORKER, PROJ4,
   `${FONT_PKG["Roboto Condensed"]}/files/roboto-condensed-latin-400-normal.woff`, `${FONT_PKG["Roboto Condensed"]}/files/roboto-condensed-latin-700-normal.woff`,
   ...FONT_CSS];
 const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/js/i18n/fr.js", "/assets/js/i18n/en.js", "/assets/js/i18n/tracer.fr.js",
-  "/assets/js/i18n/tracer.en.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json", "/data/prov/index.json"];
+  "/assets/js/i18n/tracer.en.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json"];
 
 /** The service worker and the page's files, for opening the Tracer without the network. */
 async function prepareSite() {
@@ -34,7 +35,8 @@ async function prepareSite() {
   const loaded = performance.getEntriesByType("resource").map((e) => e.name)
     .filter((u) => { try { const x = new URL(u); return x.origin === location.origin && (x.pathname.startsWith("/assets/") || /^\/data\/(meta|runners|competitions)\.json$/.test(x.pathname)); } catch (e) { return false; } })
     .filter((u) => !u.includes("/assets/build.txt"));
-  const urls = [...new Set([...PAGES.map((p) => location.origin + p), ...TRACER.map((p) => location.origin + p), ...LIBS, ...loaded])];
+  // (the provisional index this account reads: the full one or the copy without CNs)
+  const urls = [...new Set([...[...PAGES, `/${provDir()}index.json`].map((p) => location.origin + p), ...TRACER.map((p) => location.origin + p), ...LIBS, ...loaded])];
   const c = await caches.open(CACHE);
   tell(reg, true);
   let ok = 0;
