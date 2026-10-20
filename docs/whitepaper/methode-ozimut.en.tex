@@ -32,7 +32,7 @@
 \maketitle
 
 \begin{abstract}
-Starting from the same results as the French orienteering federation (Fédération française de course d'orientation, FFCO), the Ozimut site calculates an alternative national ranking, the Ozimut method, and compares it with the official ranking over fifteen seasons. The Ozimut method keeps FFCO's race score and ordinary means: anyone can work out a score or an index by hand. It changes only what matters: the best races kept, filling six places; a share of the field, set for each discipline, to measure how hard the courses are; a continuous rescaling; and, since 19 October 2026, juniors' races that count less and less as they age.
+Starting from the same results as the French orienteering federation (Fédération française de course d'orientation, FFCO), the Ozimut site calculates an alternative national ranking, the Ozimut method, and compares it with the official ranking over fifteen seasons. The Ozimut method keeps FFCO's race score and ordinary means: anyone can work out a score or an index by hand. It changes only what matters: the best races kept, filling six places; a share of the field, set for each discipline, to measure how hard the courses are; a continuous rescaling; and juniors' races that count less and less as they age.
 
 Over the 2012 to 2024 seasons, which were not used to tune the method, the Ozimut index picks the right winner in \NaccFtop\% of duels between two runners on the same course in forest, against \NaccFoff\% for the official \CN; in sprint, \NaccStop\% against \NaccSoff\%.
 \end{abstract}
@@ -49,6 +49,7 @@ The alternative method had to:
   \item count the French championships and the national races, which the official method often leaves out;
   \item not penalise a runner for running one more race, once their best races are in place;
   \item remove the jump on 1~January, so that a runner can be followed over several seasons;
+  \item keep up with juniors who progress fast: their races of ten months ago describe a slower runner, and an index lagging behind ranks them too low and makes the courses they run look easier;
   \item predict results better, and prove it with a reliable measure;
   \item stay simple: ordinary means and one common rule. When a more sophisticated variant gains only a few hundredths of a point, the simple rule wins.
 \end{itemize}
@@ -59,7 +60,7 @@ The alternative method had to:
 
 \paragraph{The \CN.} The official \CN{} is the mean of the scores of the last twelve months, leaving out the best 10\% and the worst 40\% (since 2026). Every 1~January, the \CN s of a discipline are all multiplied by the same number, so that the mean of the best 20\% is 5,600.
 
-\paragraph{What it does well, and less well.} The official ranking is the authoritative one: it alone counts for selections. Its rule is public and simple, and it measures the usual level well. Without its work collecting the results, neither Ozimut nor this study would exist. But it leaves out the best 10\% of races, often the championships and the national races; for a well-ranked runner, one more race often lowers the \CN; all races weigh the same; and the jump on 1~January makes it impossible to compare \CN s from one year to the next.
+\paragraph{What it does well, and less well.} The official ranking is the authoritative one: it alone counts for selections. Its rule is public and simple, and it measures the usual level well. Without its work collecting the results, neither Ozimut nor this study would exist. But it leaves out the best 10\% of races, often the championships and the national races; for a well-ranked runner, one more race often lowers the \CN; all races weigh the same; juniors progress faster than their \CN, in which a race of ten months ago counts as much as the last one; and the jump on 1~January makes it impossible to compare \CN s from one year to the next.
 
 \section{How to judge a ranking}
 
@@ -163,6 +164,6 @@ These figures cover \NcompsF{} forest competitions and \NcompsS{} sprint ones, e
 
 All the variants tried lie within a few tenths of a point of one another in duels called right, and the best within a few hundredths. At that level, a gain no longer shows in a ranking, but a complicated rule shows in every explanation. The method chosen therefore keeps FFCO's score and ordinary means, and changes only what really matters: the best races kept, filling six places; a share of the field set for each discipline to value the courses (90\% in forest, two thirds in sprint, 75\% in MTB and ski); a continuous rescaling; and juniors' races that count less and less as they age. It gains more than two points of duels over the official \CN, in forest as in sprint.
 
-This method has been online on the Ozimut site since 16 October 2026, at first under the name ``Top''; juniors' races have counted less and less in it as they age since 19 October. The official ranking remains the only authoritative reference there. The data come from FFCO's national ranking site: a race that is missing, entered wrongly or corrected later may explain a difference. The methods calculated by the site start from the \CN s of 2010, and their first months mostly reflect that starting point.
+On the Ozimut site, the official ranking remains the only authoritative reference. The data come from FFCO's national ranking site: a race that is missing, entered wrongly or corrected later may explain a difference. The methods calculated by the site start from the \CN s of 2010, and their first months mostly reflect that starting point.
 
 \end{document}

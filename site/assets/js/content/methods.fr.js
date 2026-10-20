@@ -158,8 +158,7 @@ export function build(X) {
         <th class="r">Meilleurs scores regardés</th><th class="r">Coureurs qui mesurent le circuit</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "les 12 derniers mois" : `les ${fmt(Math.round(w / 365))} dernières années`}</td>
           <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">Cette méthode est en ligne depuis le 16 octobre 2026, sous le nom de méthode « Top » jusqu'au 19 octobre ; depuis le
-        19 octobre, les courses des jeunes y comptent de moins en moins avec le temps (plus bas). Les raisons de chaque choix, les variantes essayées et
+      <p style="margin-top:14px">Les raisons de chaque choix, les variantes essayées et
         les mesures qui les justifient sont dans
         <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>.</p>
     </section>
@@ -295,7 +294,7 @@ export function build(X) {
       ["Compte les championnats et les nationales", (m) => (m === "official" ? NO("souvent écartés") : YES("ils pèsent plus"))],
       ["Une course de plus ne fait pas baisser le CN", (m) => (m === "official" ? NO("souvent si") : PART("pour un adulte, une fois les 6 places remplies"))],
       ["Reflète le niveau dans les grandes compétitions", (m) => (m === "official" ? NO("sans les 10 % meilleures") : YES("les meilleures courses"))],
-      ["Suit vite la progression des jeunes", (m) => (m === "official" ? NO("une course d'il y a un an compte autant") : YES("leurs anciennes courses s'effacent"))],
+      ["Suit la progression rapide des jeunes", (m) => (m === "official" ? NO("leur CN retarde : une course d'il y a un an compte autant") : YES("leurs anciennes courses s'effacent, dans l'indice comme dans la mesure des circuits"))],
       ["Stable d'une année à l'autre", (m) => (m === "official" ? NO("saut au 1er janvier") : YES("recalage progressif"))],
       ["Simple à expliquer", (m) => (m === "official" ? YES() : YES("des moyennes ordinaires"))],
       ["Fait foi pour les sélections", (m) => (m === "official" ? YES("seul classement officiel") : NO("calcul d'analyse"))],
@@ -314,7 +313,7 @@ export function build(X) {
           <p class="mx-kicker">L'étude</p>
           <h2>Un indice simple à comprendre, qui compte vos meilleures courses et prédit mieux les résultats</h2>
           <p class="mx-lead">Ce chapitre explique pourquoi la méthode Ozimut a été créée, comment elle a été évaluée, quelles idées ont été essayées et
-            lesquelles ont été retenues. Il aboutit à la méthode en ligne depuis le 16 octobre 2026 : la plus simple de celles qui prédisent le mieux.</p>
+            lesquelles ont été retenues. Il aboutit à la méthode Ozimut : la plus simple de celles qui prédisent le mieux.</p>
           ${hf && hs ? html`<div class="mx-stats">
             <div class="mx-stat"><b>${lvl(hf, "acc", "official")} % puis ${lvl(hf, "acc", "top6w")} %</b><span>des duels bien prédits en forêt par le CN
               officiel, puis par l'indice Ozimut. Un duel, ce sont deux coureurs d'un même circuit ; il est bien prédit quand celui qui avait la meilleure valeur
@@ -352,6 +351,9 @@ export function build(X) {
             <li><span><b>Ne pas pénaliser le coureur qui court une course de plus</b> : une fois ses meilleures courses en place, une course de plus ne
               doit pas faire baisser son CN.</span></li>
             <li><span><b>Supprimer le saut du 1<sup>er</sup> janvier</b>, pour pouvoir suivre un coureur sur plusieurs saisons.</span></li>
+            <li><span><b>Suivre les jeunes qui progressent vite</b> : le niveau d'un jeune monte d'une saison à l'autre, et ses courses
+              d'il y a dix mois décrivent un coureur plus lent. Son indice doit suivre sa progression, sinon il le classe trop bas et fait paraître
+              plus faciles les circuits où il court.</span></li>
             <li><span><b>Mieux prédire les résultats</b>, et le prouver par une mesure fiable.</span></li>
             <li><span><b>Rester simple à expliquer</b> : des moyennes ordinaires, une règle commune, pas un modèle ajusté coureur par coureur. Quand
               une variante plus savante ne gagne que quelques centièmes de point, la règle simple l'emporte.</span></li>
@@ -383,6 +385,8 @@ export function build(X) {
               <li><span><b>Un saut chaque 1<sup>er</sup> janvier</b>, et des règles qui ont changé au fil des saisons : on ne peut pas comparer les CN d'une
                 année à l'autre.</span></li>
               <li><span><b>Toutes les courses pèsent pareil</b>, d'un championnat de France à une régionale.</span></li>
+              <li><span><b>Les jeunes progressent plus vite que leur CN.</b> Une course d'il y a dix mois compte autant que celle de la semaine
+                dernière : le CN d'un jeune qui progresse retarde sur son niveau, le classe trop bas et fait paraître plus faciles les circuits où il court.</span></li>
             </ul></div>
           </div>
         </section>
@@ -493,8 +497,7 @@ export function build(X) {
             <li><span>Chaque variante est recalculée depuis 2010 sur une copie de la base de données, avec son propre recalage. Les CN de 15 jours avant la
               course sont ceux qu'elle aurait publiés.</span></li>
           </ul>
-          <p class="muted" style="font-size:13px">Jusqu'au 14 octobre 2026, chaque circuit comptait une fois dans la mesure, quel que soit son nombre de
-            coureurs. Toutes les mesures de l'étude ont été refaites en pesant chaque circuit par son nombre de coureurs ; aucun choix n'a changé. Les tableaux
+          <p class="muted" style="font-size:13px">Les tableaux
             datés du 6 et du 7 octobre, repliés dans les chapitres suivants, viennent de la mise au point : chaque duel y comptait une fois, sans intervalle.</p>
         </section>`,
 
@@ -542,8 +545,7 @@ export function build(X) {
           <p class="mx-kicker">Les courses des jeunes</p>
           <h2>Un jeune progresse vite : ses anciennes courses comptent de moins en moins</h2>
           <p>Le CN d'un jeune retarde sur son niveau. Un an et demi plus tard, le niveau habituel d'un jeune a monté de 22 % en forêt, celui d'un adulte
-            de 11 % (la montée générale de l'échelle comprise) : ses courses d'il y a dix mois décrivent un coureur plus lent. Depuis le 19 octobre 2026,
-            une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte dans la moyenne pour 1 − son âge ÷ la fenêtre, les courses des adultes
+            de 11 % (la montée générale de l'échelle comprise) : ses courses d'il y a dix mois décrivent un coureur plus lent. Une course courue en catégorie jeune (H et D jusqu'à 20 ans) compte dans la moyenne pour 1 − son âge ÷ la fenêtre, les courses des adultes
             gardant leur poids ; dans le niveau habituel, qui mesure les circuits, comme dans l'indice Ozimut.</p>
           <ul class="mx-list">
             <li><span><b>Forêt</b> : ${pts(S.jeunes.J.For.holdout)} de 2012 à 2024, mieux dans ${S.jeunes.J.For.better} saisons sur ${S.jeunes.J.For.seasons},
@@ -638,8 +640,7 @@ export function build(X) {
               moyenne ordinaire se refait à la main : pour quelques centièmes de point, la règle simple l'emporte. Ce qui faisait la différence entre les
               méthodes, c'était la part du peloton qui mesure le circuit, pas la façon d'en faire la moyenne.</span></li>
             <li><span><b>Rendre le retard plus cher</b> (le temps élevé à une puissance, 7 octobre 2026) : un gain jusqu'à la puissance 2, puis plus rien ;
-              c'était en fait changer les moyennes du circuit et du niveau habituel, comme la variante précédente. La version publiée du 7 au 13 octobre
-              utilisait une moyenne quadratique pour le CN ; elle bousculait les classements et ne corrigeait pas le vrai défaut, la part du peloton.</span></li>
+              c'était en fait changer les moyennes du circuit et du niveau habituel, comme la variante précédente.</span></li>
             <li><span><b>Une règle propre à chaque circuit pour traduire le temps en score</b>, estimée sur le circuit lui-même : moins bien
               (${pts(S?.onecn?.For?.all_holdout?.IK_t)} en forêt, ${pts(S?.onecn?.Spr?.all_holdout?.IK_t)} en sprint) ; sur une vingtaine de coureurs,
               l'estimation est trop incertaine.</span></li>
@@ -723,8 +724,7 @@ export function build(X) {
       conclusion: () => html`
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">La méthode retenue</p>
-          <h2>En ligne depuis le 16 octobre 2026</h2>
-          <p>Les courses des jeunes y comptent de moins en moins avec le temps depuis le 19 octobre 2026.</p>
+          <h2>Les règles en bref</h2>
           <ul class="mx-list">
             <li><span><b>Niveau habituel</b> : pour chaque coureur, 15 jours avant la course, la moyenne pondérée de ses ${pctOf(pf.eligible_fraction)} meilleurs
               scores Ozimut des 12 derniers mois, chacun selon son poids, sans limite de places (en VTT et en ski : 70 % des scores, sur deux et trois ans), une

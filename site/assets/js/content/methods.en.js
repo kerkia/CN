@@ -158,8 +158,7 @@ export function build(X) {
         <th class="r">Best scores considered</th><th class="r">Runners who measure the course</th></tr></thead>
         <tbody>${windows.map(([tr, w, f, sf]) => html`<tr><td>${t(`terrain.${tr}`)}</td><td>${w === 365 ? "the last 12 months" : `the last ${fmt(Math.round(w / 365))} years`}</td>
           <td class="r">the best ${pctOf(f)}</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
-      <p style="margin-top:14px">This method has been online since 16 October 2026, under the name “Top” method until 19 October; since
-        19 October, juniors' races count less and less in it as they age (below). The reasons for each choice, the variants tried and the
+      <p style="margin-top:14px">The reasons for each choice, the variants tried and the
         measurements that support them are in
         <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">the study</a>.</p>
     </section>
@@ -295,7 +294,7 @@ export function build(X) {
       ["Counts championships and national races", (m) => (m === "official" ? NO("often left out") : YES("they weigh more"))],
       ["One more race does not lower the CN", (m) => (m === "official" ? NO("often it does") : PART("for an adult, once the 6 places are filled"))],
       ["Reflects the level in major competitions", (m) => (m === "official" ? NO("without the best 10%") : YES("the best races"))],
-      ["Follows juniors' progress quickly", (m) => (m === "official" ? NO("a race of a year ago counts as much") : YES("their older races fade"))],
+      ["Follows juniors' fast progress", (m) => (m === "official" ? NO("their CN lags: a race of a year ago counts as much") : YES("their older races fade, in the index and in measuring the courses"))],
       ["Stable from one year to the next", (m) => (m === "official" ? NO("jump on 1 January") : YES("gradual rescaling"))],
       ["Simple to explain", (m) => (m === "official" ? YES() : YES("ordinary means"))],
       ["Authoritative for selections", (m) => (m === "official" ? YES("the only official ranking") : NO("an analysis calculation"))],
@@ -314,7 +313,7 @@ export function build(X) {
           <p class="mx-kicker">The study</p>
           <h2>An index that is simple to understand, counts your best races and predicts results better</h2>
           <p class="mx-lead">This chapter explains why the Ozimut method was created, how it was evaluated, which ideas were tried and which
-            were kept. It ends with the method online since 16 October 2026: the simplest of those that predict best.</p>
+            were kept. It ends with the Ozimut method: the simplest of those that predict best.</p>
           ${hf && hs ? html`<div class="mx-stats">
             <div class="mx-stat"><b>${lvl(hf, "acc", "official")}% then ${lvl(hf, "acc", "top6w")}%</b><span>of duels called right in forest by the official
               CN, then by the Ozimut index. A duel is two runners on the same course; it is called right when the one with the higher value
@@ -352,6 +351,9 @@ export function build(X) {
             <li><span><b>Not penalise the runner who runs one more race</b>: once their best races are in place, one more race must not
               lower their CN.</span></li>
             <li><span><b>Remove the jump on 1 January</b>, so that a runner can be followed over several seasons.</span></li>
+            <li><span><b>Keep up with juniors who progress fast</b>: a junior's level rises from one season to the next, and their races
+              of ten months ago describe a slower runner. Their index must follow their progress, or it ranks them too low and makes the
+              courses they run look easier.</span></li>
             <li><span><b>Predict results better</b>, and prove it with a reliable measure.</span></li>
             <li><span><b>Stay simple to explain</b>: ordinary means, one common rule, not a model fitted runner by runner. When
               a more sophisticated variant gains only a few hundredths of a point, the simple rule wins.</span></li>
@@ -383,6 +385,8 @@ export function build(X) {
               <li><span><b>A jump every 1 January</b>, and rules that have changed over the seasons: CNs cannot be compared from one
                 year to the next.</span></li>
               <li><span><b>All races weigh the same</b>, from a French championship to a regional race.</span></li>
+              <li><span><b>Juniors progress faster than their CN.</b> A race of ten months ago counts as much as last week's: the CN of a
+                junior who is progressing lags behind their level, ranks them too low and makes the courses they run look easier.</span></li>
             </ul></div>
           </div>
         </section>
@@ -493,8 +497,7 @@ export function build(X) {
             <li><span>Each variant is recalculated from 2010 on a copy of the database, with its own rescaling. The CNs of 15 days before the
               race are the ones it would have published.</span></li>
           </ul>
-          <p class="muted" style="font-size:13px">Until 14 October 2026, each course counted once in the measure, whatever its number of
-            runners. All the study's measures were redone weighting each course by its number of runners; no choice changed. The tables
+          <p class="muted" style="font-size:13px">The tables
             dated 6 and 7 October, folded away in the following chapters, come from the tuning: each duel counted once there, without an interval.</p>
         </section>`,
 
@@ -542,7 +545,7 @@ export function build(X) {
           <p class="mx-kicker">Juniors' races</p>
           <h2>A junior improves fast: their older races count less and less</h2>
           <p>A junior's CN lags behind their level. A year and a half later, a junior's usual level has risen by 22% in forest, an adult's by 11% (the
-            general rise of the scale included): their races of ten months ago describe a slower runner. Since 19 October 2026, a race run in a junior
+            general rise of the scale included): their races of ten months ago describe a slower runner. A race run in a junior
             class (M and W up to 20) counts in the mean for 1 − its age ÷ the window, adults' races keeping their weight; in the usual level, which
             measures the courses, as in the Ozimut index.</p>
           <ul class="mx-list">
@@ -638,8 +641,7 @@ export function build(X) {
               mean can be redone by hand: for a few hundredths of a point, the simple rule wins. What made the difference between the methods was the
               share of the field that measures the course, not the way of averaging it.</span></li>
             <li><span><b>Making a slow time cost more</b> (the time raised to a power, 7 October 2026): a gain up to the power 2, then nothing more;
-              it actually amounted to changing the means of the course and of the usual level, like the previous variant. The version published from 7 to
-              13 October used a quadratic mean for the CN; it shook up the rankings and did not fix the real flaw, the share of the field.</span></li>
+              it actually amounted to changing the means of the course and of the usual level, like the previous variant.</span></li>
             <li><span><b>A rule specific to each course for turning time into score</b>, estimated on the course itself: worse
               (${pts(S?.onecn?.For?.all_holdout?.IK_t)} in forest, ${pts(S?.onecn?.Spr?.all_holdout?.IK_t)} in sprint); with twenty or so runners,
               the estimate is too uncertain.</span></li>
@@ -723,8 +725,7 @@ export function build(X) {
       conclusion: () => html`
         <section class="mx-slide" style="${cvar("top6w")}">
           <p class="mx-kicker">The method retained</p>
-          <h2>Online since 16 October 2026</h2>
-          <p>Juniors' races have counted less and less in it as they age since 19 October 2026.</p>
+          <h2>The rules in brief</h2>
           <ul class="mx-list">
             <li><span><b>Usual level</b>: for each runner, 15 days before the race, the weighted mean of their best ${pctOf(pf.eligible_fraction)} of
               Ozimut scores from the last 12 months, each according to its weight, with no limit on places (in MTB and ski: 70% of the scores, over two and three years),
