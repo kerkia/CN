@@ -1061,6 +1061,7 @@ export default {
   "sh.org.col.org": "Organisateur", "sh.org.col.status": "Analyse multi", "sh.org.status.none": "pas encore ouverte", "sh.org.status.n": "ouverte · {n} circuit(s)",
   "sh.org.filter": "Chercher", "sh.org.filter.ph": "course, club, lieu…",
   "sh.org.noclub": "Votre club n'est pas connu (aucune course récente à votre licence) : les pages des organisateurs montrent les compétitions de votre club.",
+  "sh.org.noCountry": "Ozimut ne connaît encore les compétitions que des pays dont il lit l'agenda et les résultats, la France pour l'instant : celles de votre club apparaîtront ici dès que votre pays le sera. En attendant, « Entraînements », « Direct » et « Tracer » servent à tous les clubs.",
   "sh.org.race.none": "Aucune compétition de votre club ({club}) dans les 60 derniers jours.", "sh.org.club.none": "Vous n'avez pas encore créé d'entraînement.",
   "sh.org.notOrg": "Seuls les organisateurs de cette analyse peuvent la gérer.",
   "sh.err.not organiser": "Seuls les membres du club organisateur peuvent ouvrir l'analyse multi de cette compétition.",

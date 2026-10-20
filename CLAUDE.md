@@ -1182,10 +1182,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   without `values`; the index without `PUB_INDEX_DROP` — `lics`, `rlics`, `matched`); `auth.provDir()` picks the folder (the
   pages through `provisional.getProv`, the Tracer's offline copy). Names, clubs, categories, times and splits stay: what the
   organisers publish (owner, 2026-10-20: as open as possible).
-  **The pages by profile** (step 4): `app.FR_ROUTES` (the rankings and all they hold, « IA », the organisers' pages tied
-  to a French competition) give an account without France `pages/needcountry.js` (what joining France opens, a link to
-  Réglages › Mes pays); its menus leave them and the « Classement » group out, it has no method switch and lands on the
-  agenda (`homeOf`). Résultats and En direct drop their CN, score, expected-place and « matched » columns and tile without
+  **The pages by profile** (step 4): `app.FR_ROUTES` (the rankings and all they hold, « IA ») give an account without France
+  `pages/needcountry.js` (what joining France opens, a link to Réglages › Mes pays) in their place (`r.from`: the page keeps
+  its group and menu row, `menuKey`); the « Classement » group stays in the bar, it has no method switch and lands on the
+  agenda (`homeOf`). **Gate by data, not by page** (owner, 2026-10-20, after « Organisation » opened on the join-France page
+  and its pages looked locked): the organisers' pages are everyone's, their lists hold the competitions of the countries
+  Ozimut reads (empty without France: `sh.org.noCountry`). A group's tab follows its memory (`ocn.nav.<group>`, the browser's,
+  shared by every account signed in on it) only to a page of its own menu. Test a profile as a regular account
+  (`pages-dev-user`: an administrator sees every organiser's list) and through the group tabs, after a session of another profile. Résultats and En direct drop their CN, score, expected-place and « matched » columns and tile without
   France; the Tracer's winning times need France. **The site's country** (`country.js`, owner, 2026-10-20: one global
   choice beside the language rather than a filter per page): the countries with data are `meta.json` `countries` (France
   alone when absent); the menu shows only once there are two; default the first accepted membership with data

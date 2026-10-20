@@ -1600,6 +1600,7 @@ export default {
   "sh.org.filter": "Search",
   "sh.org.filter.ph": "race, club, place…",
   "sh.org.noclub": "Your club isn't known (no recent race under your licence): the organisers' pages show your club's competitions.",
+  "sh.org.noCountry": "Ozimut only knows the competitions of the countries whose calendar and results it reads, France for now: your club's will appear here once your country is covered. Meanwhile “Training sessions”, “Live feed” and “Course setting” work for every club.",
   "sh.org.race.none": "No competitions by your club ({club}) in the last 60 days.",
   "sh.org.club.none": "You haven't created a training session yet.",
   "sh.org.notOrg": "Only this analysis's organisers can manage it.",

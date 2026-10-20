@@ -47,7 +47,7 @@ export async function render(main, { query = {} } = {}) {
         <td class="muted">${r.org || "—"}</td>
         <td>${r.docs ? html`${t("or.now", { n: r.runners || 0 })}${r.splits ? ` · ${t("or.splits")}` : ""} <span class="muted">(${(r.sources || []).map((s) => SOURCE[s] || s).join(", ")})</span>` : html`<span class="muted">${t("or.nothing")}</span>`}</td>
         <td class="r"><a class="btn btn-sm btn-primary" href="#/orga-resultats?course=${encodeURIComponent(r.key)}">${t("or.deposit")}</a></td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${club || me?.admin ? t("or.none", { club: club || "—" }) : t("sh.org.noclub")}</div>`;
+      : html`<div class="empty">${club || me?.admin ? t("or.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
   };
   draw();
   $("#or-filter")?.addEventListener("input", (e) => draw(e.target.value));

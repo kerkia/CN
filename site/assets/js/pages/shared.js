@@ -137,7 +137,7 @@ async function orgListPage(main, kind) {
             <td class="muted">${x.org || "—"}</td>
             <td>${a ? t("sh.org.status.n", { n: a.courses }) : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
             <td class="r">${a ? html`<a class="btn btn-sm" href="${ORG_ROUTE.race}?id=${a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`; })}</tbody></table>`
-        : html`<div class="empty">${club || me?.admin ? t("sh.org.race.none", { club: club || "—" }) : t("sh.org.noclub")}</div>`;
+        : html`<div class="empty">${club || me?.admin ? t("sh.org.race.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
       $$("[data-activate]").forEach((b) => b.addEventListener("click", async () => {
         const x = mine.find((r) => r.key === b.dataset.activate);
         b.disabled = true;

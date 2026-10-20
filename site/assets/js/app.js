@@ -69,7 +69,7 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
 // tied to a French competition. An account that has not joined France sees « needCountry » instead (the login gate refuses
 // the data anyway: _middleware.js `needsFrance`); its menus leave them out.
 const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
-  "ask", "orgRace", "orgResults", "orgStarts", "deposit"]);
+  "ask"]);
 /** Where a signed-in account lands: its own page, else the ranking with France, else the agenda. */
 const homeOf = (me) => (me.lic && auth.sees("FR") ? link.runner(me.lic) : auth.sees("FR") ? link.ranking() : "#/agenda");
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
@@ -85,8 +85,8 @@ const allowsAllTerrains = (r) => r.route === "network" && ALL_TERRAIN_VIEWS.has(
 /** The discipline of such a view: "For", "Spr", "VTT", "Ski", or "" for all of them. */
 export const viewTerrain = (query) => (store.TERRAINS.includes(query.t) ? query.t : "");
 
-function parseHash() {
-  const h = location.hash.replace(/^#/, "") || "/";
+function parseHash(hash = location.hash) {
+  const h = hash.replace(/^#/, "") || "/";
   const [path, qs] = h.split("?");
   const query = Object.fromEntries(new URLSearchParams(qs || ""));
   const parts = path.split("/").filter(Boolean);
@@ -301,6 +301,14 @@ function drawContours(retry = 2) {
 }
 let contoursBound = false;
 
+/** The menu entry a route belongs to; a page shown in another's place (the join-France page) keeps that page's (r.from). */
+function menuKey(r) {
+  const at = r.from || r.route;
+  return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
+    : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
+    : at === "splits" ? "provisional" : at;
+}
+
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
@@ -336,18 +344,20 @@ function renderHeader(r) {
     // setting, Purple Pen's way), every one for every account (owner, 2026-10-15)
     ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
-  ].filter(([g]) => fr || g !== "cn").map(([g, label, items]) => [g, label, fr ? items : items.filter(([k]) => !FR_ROUTES.has(k))])
-    : [];                                     // logged out, the home page (the login) is the whole site
-  const current = route === "course" ? "courses" : route === "club" || route === "clubcompare" || route === "relays" ? "clubs"
-    : route === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
-    : route === "splits" ? "provisional" : route;
+  ] : [];                                     // logged out, the home page (the login) is the whole site
+  const current = menuKey(r);
   const group = groups.find(([, , items]) => items.some(([k]) => k === current));
   // a group's tab leads back to the page last seen in it — a list or a view, never one of the tools that reopen their work (the
   // analyses, « Direct », « Tracer »), and never a tab of its own's address (?fen=1, full window without the menus): the memory is
   // shared by the tabs, and « Courses » reopened « Analyse solo » at its calibration in full window, the menus gone (owner, 2026-10-17)
   const TOOL_PAGES = /^#\/(analyse|analyse-competition|analyse-solo|analyse-perso|analyse-club|orga-direct|orga-tracer)(?:[?/]|$)/;
   const navMemo = (h) => (h && !TOOL_PAGES.test(h) && !/[?&]fen=1(?:&|$)/.test(h) ? h : null);
-  const lastIn = (g, items) => { try { return navMemo(localStorage.getItem(`ocn.nav.${g}`)) || items[0][1]; } catch (e) { return items[0][1]; } };
+  // the memory counts only for a page of this group's menu (it is the browser's, shared by the accounts signed in on it)
+  const lastIn = (g, items) => {
+    let h = null;
+    try { h = navMemo(localStorage.getItem(`ocn.nav.${g}`)); } catch (e) { /* none kept */ }
+    return h && items.some(([k]) => k === menuKey(parseHash(h))) ? h : items[0][1];
+  };
   if (group && navMemo(location.hash)) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash); } catch (e) {} }
   document.body.dataset.group = group?.[0] || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
@@ -617,7 +627,7 @@ async function route_() {
     if (my !== token) return;
     movedNotice();
   }
-  if (me && FR_ROUTES.has(r.route) && !auth.sees("FR")) r = { ...r, route: "needCountry" };
+  if (me && FR_ROUTES.has(r.route) && !auth.sees("FR")) r = { ...r, route: "needCountry", from: r.route };
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there

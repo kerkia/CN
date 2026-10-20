@@ -62,7 +62,7 @@ export async function render(main, { query = {} } = {}) {
         <td class="r num">${x.e.reg?.count ? fmt(x.e.reg.count) : ""}</td>
         <td>${status(x)}</td>
         <td class="r"><a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${t("os.deposit")}</a></td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${club || me?.admin ? t("os.none", { club: club || "—", n: ORG_DAYS }) : t("sh.org.noclub")}</div>`;
+      : html`<div class="empty">${club || me?.admin ? t("os.none", { club: club || "—", n: ORG_DAYS }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
   };
   draw();
   $("#os-filter")?.addEventListener("input", (e) => draw(e.target.value));
