@@ -1111,6 +1111,7 @@ export default {
   "ac.reg.err.id": "Enter a valid licence number (digits only).",
   "ac.reg.err.country": "This country is not offered, or it appears twice.",
   "ac.reg.err.robot": "The anti-robot check failed. Try again; if it keeps failing, reload the page.",
+  "ac.reg.err.robotLoad": "The anti-robot check does not load (code {code}). Reload the page; if it keeps failing, write to us.",
   "ac.reg.err.robotWait": "Wait for the anti-robot check just above the button to finish, then try again.",
   "ac.verify.title": "Email address confirmation",
   "ac.verify.ok": "Address confirmed: your account is active. You can log in.",

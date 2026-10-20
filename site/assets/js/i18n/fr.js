@@ -758,6 +758,7 @@ export default {
   "ac.reg.err.id": "Indiquez un numéro de licence valide (chiffres seulement).",
   "ac.reg.err.country": "Ce pays n'est pas proposé, ou il figure deux fois.",
   "ac.reg.err.robot": "La vérification anti-robot a échoué. Réessayez ; si cela persiste, rechargez la page.",
+  "ac.reg.err.robotLoad": "La vérification anti-robot ne se charge pas (code {code}). Rechargez la page ; si cela persiste, écrivez-nous.",
   "ac.reg.err.robotWait": "Patientez le temps de la vérification anti-robot, juste au-dessus du bouton, puis réessayez.",
   "ac.verify.title": "Confirmation de l'adresse e-mail",
   "ac.verify.ok": "Adresse confirmée : votre compte est actif. Vous pouvez vous connecter.",

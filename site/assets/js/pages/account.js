@@ -93,7 +93,12 @@ async function register(main) {
   if (siteKey) {
     loadTurnstile().then((ts) => {
       tsWidget = ts.render("#reg-ts", { sitekey: siteKey, language: lang(), action: "register",
-        callback: (tok) => { tsToken = tok; }, "expired-callback": () => { tsToken = ""; }, "error-callback": () => { tsToken = ""; } });
+        callback: (tok) => { tsToken = tok; }, "expired-callback": () => { tsToken = ""; }, "error-callback": (code) => {
+          // the widget cannot run (a wrong site key, a hostname not allowed, the script blocked): said, not left blank
+          tsToken = "";
+          const box = $(".notice", form);
+          if (box.hidden) show(box, t("ac.reg.err.robotLoad", { code: String(code || "") }));
+        } });
     }).catch(() => { /* the server answers « robot »: said below */ });
   }
   bind(form, t("ac.reg.submit"), async (f) => {
