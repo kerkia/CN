@@ -1,13 +1,13 @@
 // The privacy policy and legal notices, in English — a translation for information; the French version (privacy.fr.js)
 // prevails. Keep the two in step.
-export const body = (SITE) => `
+// world: registration open to every orienteer (privacy.fr.js, which prevails).
+export const body = (SITE, { world = false } = {}) => `
       <p class="muted"><i>This English version is provided for information; the French version prevails.</i></p>
       <p>${SITE} is an independent site, not affiliated with the French orienteering federation (FFCO). It is published on a
         personal, non-commercial basis by <b>Yann Le Helloco</b>, controller of the personal data described below within the
         meaning of Regulation (EU) 2016/679 (GDPR). Contact: <b>contact@ozimut.com</b>.</p>
       <h2 style="font-size:16px">Terms of use</h2>
-      <p>${SITE} runs on free, limited resources shared by all its users. It is meant to be consulted personally by licence
-        holders, with a web browser. Unless the publisher has agreed beforehand, the following are therefore forbidden: automated
+      <p>${SITE} runs on free, limited resources shared by all its users. It is meant to be consulted personally by ${world ? "its users" : "licence holders"}, with a web browser. Unless the publisher has agreed beforehand, the following are therefore forbidden: automated
         collection (robots, scripts, scraping of pages or data files), mass downloads, reuse of the data for other purposes, and any
         use likely to overload the site at the expense of other users. An account that breaks these rules may be suspended.</p>
       <p>For a particular need (a study, the needs of a club or a region, data meant for another tool), you can write to the
@@ -20,8 +20,11 @@ export const body = (SITE) => `
         by the organisers themselves (on their website, liveresultat, WinSplits, Helga, etc.) or uploaded to ${SITE}, matched to
         licences by name and club.</p>
       <p>This processing is based on the publisher's legitimate interest in informing licence holders and analysing the national
-        ranking from results already published. On ${SITE}, this data is only accessible to logged-in accounts, which are reserved
-        for licence holders, whose registration is checked against their name and licence number. The one exception: the publisher
+        ranking from results already published. ${world ? `On ${SITE}, this data is only accessible to logged-in accounts that have
+        joined France, whose FFCO licence number is checked against their name. The other accounts, open to every orienteer, see the
+        results published by the organisers (name, club, class, time), with no licence number, CN or score, and no access to the
+        rankings, histories or statistics.` : `On ${SITE}, this data is only accessible to logged-in accounts, which are reserved
+        for licence holders, whose registration is checked against their name and licence number.`} The one exception: the publisher
         may open, for a limited time, a demo account for an orienteering body (federation, league, club) that wants to see the
         site; it is tied to no licence, can't change or upload anything and stops working on the date set. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
         the source remains the FFCO's website.</p>
@@ -62,13 +65,12 @@ export const body = (SITE) => `
         questions to improve its products); the key stays in your browser and is never sent to Ozimut.</p>
       <h2 style="font-size:16px">Your account's data</h2>
       <ul>
-        <li><b>Data kept:</b> the email address; the first name, surname and licence number entered, checked at registration against
-          the results published by the FFCO; the password, in an irreversibly encrypted form; the dates of registration and last
+        <li><b>Data kept:</b> the email address; the first name and surname entered; the countries joined, each with the club and
+          member number given, and for France the licence number, checked against the results published by the FFCO; the password, in an irreversibly encrypted form; the dates of registration and last
           login; the language chosen for the site and the emails; the alert settings (regions chosen) and the list of races already announced by email; for the relay simulator, the
           runners added (name, class, estimated CN) and those marked unavailable, visible to you alone. Only add people who agree to
           it.</li>
-        <li><b>Purposes and legal bases:</b> performing the service requested when the account is created (reserving access to FFCO
-          licence holders, confirming the email address, resetting the password); the publisher's legitimate interest in detecting
+        <li><b>Purposes and legal bases:</b> performing the service requested when the account is created (reserving ${world ? "the FFCO's data to its licence holders" : "access to FFCO licence holders"}, confirming the email address, resetting the password); the publisher's legitimate interest in detecting
           several accounts for the same licence; your consent for alerts by email or notification, which you can withdraw at any time in Settings.</li>
         <li><b>Retention period:</b> until the account is deleted, which you can do at any time in Settings. An email waiting to be
           sent is erased as soon as it is sent.</li>

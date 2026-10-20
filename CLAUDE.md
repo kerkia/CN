@@ -1199,6 +1199,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   licence check and the new-account mail skip accounts without a licence (the mail lists the countries). An account without a
   licence is in no Tracer team (`"".split(",")` gave `[""]`: the event list showed demo accounts every team-less event's
   title). Tracer teams are by licence, so a non-France account cannot yet be added to a team.
+  **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
+  (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
+  of `WORLD_OPEN`; the countries kept are listed either way.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff

@@ -217,8 +217,10 @@ async function privacy(main) {
   // below up to date when what the site keeps changes
   // the text, one module per language (content/privacy.fr.js prevails; privacy.en.js, a translation)
   const { body } = await import(`../content/privacy.${lang()}.js`);
+  let world = false;                          // registration open to every orienteer: the texts about who sees what follow it
+  try { world = !!(await (await fetch("api/account/status")).json()).world; } catch (e) { /* as before */ }
   main.innerHTML = html`<section class="card account-card" style="max-width:760px"><div class="card-head"><h1 style="font-size:20px;margin:0">${t("pv.title")}</h1></div>
-    <div class="card-body prose">${raw(body(SITE))}
+    <div class="card-body prose">${raw(body(SITE, { world }))}
       <p><a href="#/">← ${t("ac.toLogin")}</a></p>
     </div></section>`.toString();
   return { title: t("pv.title") };

@@ -66,7 +66,8 @@ function leg(L, i) {
 }
 
 /** The section, under the hero. counts: meta.json's { runners, competitions, results }. */
-export function tourHtml(counts = {}) {
+/** `world`: registration open to every orienteer (WORLD_OPEN): the pledge about who sees the results follows it. */
+export function tourHtml(counts = {}, { world = false } = {}) {
   const fig = (v, k) => (v ? html`<div class="tour-fig"><b>${fmt(v)}</b><span>${t(k)}</span></div>` : "");
   const tick = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 12.5l3.2 3L17 8.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   return html`<section class="tour" aria-labelledby="tour-title">
@@ -79,9 +80,10 @@ export function tourHtml(counts = {}) {
       ${LEGS.map(leg)}
       <section class="tour-leg tour-finish" id="tour-finish">
         <svg class="tour-ctrl tour-ctrl-finish" viewBox="0 0 45 45" aria-hidden="true"><circle cx="22.5" cy="22.5" r="20" stroke="currentColor" stroke-width="3"/><circle cx="22.5" cy="22.5" r="13" fill="none" stroke="currentColor" stroke-width="3"/></svg>
-        <div class="tour-leg-head"><div><div class="tour-eyebrow">${t("tour.finish.eyebrow")}</div><h2>${t("tour.finish.title")}</h2></div></div>
+        <div class="tour-leg-head"><div><div class="tour-eyebrow">${t("tour.finish.eyebrow")}</div><h2>${t(world ? "tour.finish.title.world" : "tour.finish.title")}</h2></div></div>
         <div class="tour-finish-band">
-          <ul class="tour-pledge">${[1, 2, 3, 4, 5].map((i) => html`<li>${raw(tick)}<span><b>${t(`tour.pledge.${i}.b`)}</b> ${t(`tour.pledge.${i}`)}</span></li>`)}</ul>
+          <ul class="tour-pledge">${[1, 2, 3, 4, 5].map((i) => { const w = world && i === 1 ? ".world" : "";
+            return html`<li>${raw(tick)}<span><b>${t(`tour.pledge.${i}.b${w}`)}</b> ${t(`tour.pledge.${i}${w}`)}</span></li>`; })}</ul>
           <div class="tour-cta"><h3>${t("tour.cta.title")}</h3><p>${t("tour.cta.text")}</p>
             <div class="tour-cta-row"><a class="btn btn-primary" href="#/compte/inscription">${t("tour.cta.register")}</a></div>
             <p class="tour-cta-mail"><span>${t("tour.cta.mail")}</span> <b id="tour-mail">${MAIL}</b>

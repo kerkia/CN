@@ -1,13 +1,15 @@
 // The privacy policy and legal notices, in French — the version that prevails (pages/account.js « privacy »; the GDPR's
 // information, articles 13 and 14, and the legal notices, LCEN article 6; reviewed 2026-10-15: keep the date up to date
 // when what the site keeps changes, and the English version, privacy.en.js, in step).
-export const body = (SITE) => `
+// world: registration open to every orienteer (WORLD_OPEN, /api/account/status; owner, 2026-10-20): the texts about who may
+// see what follow it, so that the page says what is true on either side of the switch.
+export const body = (SITE, { world = false } = {}) => `
       <p>${SITE} est un site indépendant, sans lien avec la Fédération française de course d'orientation (FFCO). Il est édité à titre
         personnel et non commercial par <b>Yann Le Helloco</b>, responsable du traitement des données personnelles décrites ci-dessous
         au sens du règlement (UE) 2016/679 (RGPD). Contact : <b>contact@ozimut.com</b>.</p>
       <h2 style="font-size:16px">Conditions d'utilisation</h2>
       <p>${SITE} fonctionne avec des ressources gratuites et limitées, partagées entre tous ses utilisateurs. Il est destiné à être
-        consulté personnellement par les licenciés, au moyen d'un navigateur. Sauf accord préalable de l'éditeur, sont en conséquence
+        consulté personnellement par ${world ? "ses utilisateurs" : "les licenciés"}, au moyen d'un navigateur. Sauf accord préalable de l'éditeur, sont en conséquence
         interdits : la collecte automatisée (robots, scripts, aspiration des pages ou des fichiers de données), les téléchargements
         massifs, la réutilisation des données à d'autres fins et tout usage de nature à surcharger le site au détriment des autres
         utilisateurs. Un compte qui ne respecte pas ces règles peut être suspendu.</p>
@@ -21,8 +23,11 @@ export const body = (SITE) => `
         60 derniers jours, les résultats publiés par les organisateurs eux-mêmes (sur leur site, liveresultat, WinSplits, Helga, etc.)
         ou déposés sur ${SITE}, rapprochés des licences d'après le nom et le club.</p>
       <p>Ce traitement repose sur l'intérêt légitime de l'éditeur à informer les licenciés et à analyser le classement national à
-        partir de résultats déjà publiés. Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés, réservés aux
-        licenciés, dont l'inscription est vérifiée d'après le nom et le numéro de licence. Seule exception : l'éditeur peut ouvrir,
+        partir de résultats déjà publiés. ${world ? `Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés qui ont
+        rejoint la France, dont le numéro de licence FFCO est vérifié d'après le nom. Les autres comptes, ouverts à tout orienteur,
+        voient les résultats publiés par les organisateurs (nom, club, catégorie, temps), sans numéro de licence, sans CN ni score, et
+        sans accès aux classements, aux historiques ni aux statistiques.` : `Sur ${SITE}, ces données ne sont accessibles qu'aux comptes
+        connectés, réservés aux licenciés, dont l'inscription est vérifiée d'après le nom et le numéro de licence.`} Seule exception : l'éditeur peut ouvrir,
         pour une durée limitée, un compte de démonstration à un organisme de course d'orientation (fédération, ligue, club) qui
         souhaite découvrir le site ; ce compte n'est rattaché à aucune licence, ne peut rien modifier ni déposer et cesse de
         fonctionner à la date fixée. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
@@ -68,14 +73,14 @@ export const body = (SITE) => `
         produits) ; la clé reste dans votre navigateur et n'est jamais transmise à Ozimut.</p>
       <h2 style="font-size:16px">Données de votre compte</h2>
       <ul>
-        <li><b>Données conservées :</b> l'adresse e-mail ; les prénom, nom et numéro de licence saisis, vérifiés lors de l'inscription
-          d'après les résultats publiés par la FFCO ; le mot de passe, sous une forme chiffrée irréversible ; les dates d'inscription et
+        <li><b>Données conservées :</b> l'adresse e-mail ; les prénom et nom saisis ; les pays rejoints, avec pour chacun le club et le
+          numéro de membre indiqués, et pour la France le numéro de licence, vérifié d'après les résultats publiés par la FFCO ; le mot de passe, sous une forme chiffrée irréversible ; les dates d'inscription et
           de dernière connexion ; la langue choisie pour le site et les e-mails ; les réglages d'alertes (régions choisies) et la liste des
           courses déjà annoncées par e-mail ; pour le
           simulateur de relais, les coureurs ajoutés (nom, catégorie, CN estimé) et ceux marqués indisponibles, visibles de vous seul.
           N'y ajoutez que des personnes qui y consentent.</li>
-        <li><b>Finalités et bases légales :</b> l'exécution du service demandé lors de la création du compte (réserver l'accès aux
-          licenciés de la FFCO, confirmer l'adresse e-mail, réinitialiser le mot de passe) ; l'intérêt légitime de l'éditeur à détecter
+        <li><b>Finalités et bases légales :</b> l'exécution du service demandé lors de la création du compte (réserver ${world
+          ? "les données de la FFCO à ses licenciés" : "l'accès aux licenciés de la FFCO"}, confirmer l'adresse e-mail, réinitialiser le mot de passe) ; l'intérêt légitime de l'éditeur à détecter
           les comptes multiples pour une même licence ; votre consentement pour les alertes par e-mail ou par notification, que vous pouvez retirer à tout
           moment dans Réglages.</li>
         <li><b>Durée de conservation :</b> jusqu'à la suppression du compte, que vous pouvez effectuer à tout moment dans Réglages. Un

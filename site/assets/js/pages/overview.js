@@ -47,6 +47,9 @@ const LANDSCAPE = `<svg class="home-landscape" viewBox="0 0 1440 640" preserveAs
 </svg>`;
 
 export async function render(main) {
+  // registration open to every orienteer (WORLD_OPEN): the tour's pledge about who sees the results follows it
+  let world = false;
+  try { world = !!(await (await fetch("api/account/status")).json()).world; } catch (e) { /* as before */ }
   main.innerHTML = html`
     <section class="home-hero">
       ${raw(LANDSCAPE)}
@@ -77,7 +80,7 @@ export async function render(main) {
         </div>
       </div>
     </section>
-    ${raw(tourHtml(data.meta()?.counts))}`;
+    ${raw(tourHtml(data.meta()?.counts, { world }))}`;
 
   mountReel(main);
   mountTour(main);
