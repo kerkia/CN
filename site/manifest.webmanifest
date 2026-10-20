@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Ozimut — La course d'orientation, en cartes et en chiffres",
   "short_name": "Ozimut",
-  "description": "Classement national de course d'orientation : classements, résultats, horaires de départ, analyses.",
+  "description": "La course d'orientation, en cartes et en chiffres : résultats, horaires de départ, traces GPS, entraînement, classements.",
   "lang": "fr",
   "dir": "ltr",
   "start_url": "/",
