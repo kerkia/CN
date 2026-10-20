@@ -618,6 +618,11 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   .topbar-inner .search input { width: 140px; }
   .topbar-inner .search-results { width: calc(100vw - 32px); right: -60px; }
   h1 { font-size: 22px; }
+  /* phones: the tools on the left, the menu button then the logo at the top right (owner, 2026-10-20) */
+  .topbar-tools { order: 0; margin-left: 0; margin-right: auto; }
+  .menu-btn { order: 1; }
+  .brand { order: 2; }
+  .user-menu .nav-menu, .theme-menu .nav-menu, .lang-menu .nav-menu { left: 0; right: auto; }
 }
 @media (max-width: 520px) {
   .topbar-inner .search { display: none; }
