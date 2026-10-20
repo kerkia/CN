@@ -1202,6 +1202,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
   (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
   of `WORLD_OPEN`; the countries kept are listed either way.
+- **Admin › « Consommation »** (owner, 2026-10-20; `functions/api/admin/consumption.js`, `?onglet=consommation`): the free
+  plans' use against their limits (`LIMITS`, checked by hand — change them there), the last 30 days as bars under the limit.
+  E-mails and accounts from D1 (`mail_log` is never pruned); the rest from Cloudflare's GraphQL analytics and REST API —
+  `workersInvocationsAdaptive` + `pagesFunctionsInvocationsAdaptiveGroups` (requests), `durableObjectsInvocationsAdaptiveGroups`,
+  `aiInferenceAdaptiveGroups` (neurons), `d1AnalyticsAdaptiveGroups`, `r2OperationsAdaptiveGroups` (class A/B by action),
+  `r2StorageAdaptiveGroups`, the D1 list's `file_size`, the Pages deployments of the month — each asked on its own, a failing
+  one shown « indisponible » with its error. Needs the Pages secret `CF_ANALYTICS_TOKEN` (read-only: Account Analytics, D1 and
+  Pages: Read; the owner's), optionally `CF_ACCOUNT_ID`; without it only D1's figures show. The dataset and field names were
+  written from Cloudflare's documentation and not yet run against a real token.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff

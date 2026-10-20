@@ -5,7 +5,7 @@
 // and per page. « Démo » (2026-10-18): the demo accounts — read-only, tied to no licence, for a set time — made for a
 // federation, a league or a club that wants to see the site. The server enforces the role; this page only reads and acts.
 
-import { html, raw, $, $$, normalise, fmt, fmtDate } from "../util.js";
+import { html, raw, $, $$, normalise, fmt, fmtDate, pctN } from "../util.js";
 import { t, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -43,7 +43,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { inscrits: "members", utilisation: "usage", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", consommation: "conso", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede" id="page-lede"></p></div>
@@ -113,21 +113,82 @@ export async function render(main, { query = {} } = {}) {
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
+    </div>
+    <div data-panel="conso" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.co.lede")}</p>
+      <div id="co-note"></div>
+      <section class="card"><div class="table-wrap" id="co-list"><div class="empty">${t("misc.loading")}</div></div></section>
     </div>`;
 
   function showTab() {
-    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["uploads", t("ad.tab.uploads")],
+    $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["conso", t("ad.tab.conso")], ["uploads", t("ad.tab.uploads")],
       ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
     setLede(t(`ad.lede.${tab}`));       // the head says what the tab shows (one line: the tabs' own paragraphs say more)
-    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, conso: { onglet: "consommation" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
     if (tab === "sites") drawSites();
     if (tab === "anon") drawAnon();
     if (tab === "demo") drawDemo();
+    if (tab === "conso") drawConso();
+  }
+
+  // « Consommation » (owner, 2026-10-20): the site's use of its free plans, each measure against its limit, the last 30 days
+  // drawn as bars under a dashed line at the limit (functions/api/admin/consumption.js)
+  const bytes = (n) => (n >= 1024 ** 3 ? `${fmt(n / 1024 ** 3, 2)} ${t("ad.co.gb")}` : `${fmt(n / 1024 ** 2, 1)} ${t("ad.co.mb")}`);
+  function spark(values, limit) {
+    const w = 150, h = 34, max = Math.max(limit || 0, ...values, 1), bw = w / values.length;
+    const y = (v) => h - (v / max) * (h - 2);
+    return html`<svg class="co-spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+      ${values.map((v, i) => raw(`<rect x="${(i * bw + 0.5).toFixed(1)}" y="${y(v).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${(h - y(v)).toFixed(1)}" fill="${limit && v >= limit * 0.8 ? "var(--bad)" : "var(--accent)"}" opacity=".75"></rect>`))}
+      ${limit ? raw(`<line x1="0" x2="${w}" y1="${y(limit).toFixed(1)}" y2="${y(limit).toFixed(1)}" stroke="var(--muted)" stroke-dasharray="3 3"></line>`) : ""}</svg>`;
+  }
+  const level = (v, limit) => {
+    if (!limit) return "";
+    const p = (100 * v) / limit;
+    return html`<span class="co-pct" style="color:${raw(p >= 100 ? "var(--bad)" : p >= 80 ? "var(--warn, #c77700)" : "var(--good)")}">${pctN(p, p < 10 ? 1 : 0)}</span>`;
+  };
+  let consoLoaded = false;
+  async function drawConso() {
+    if (consoLoaded) return;
+    consoLoaded = true;
+    const r = await fetch("api/admin/consumption", { credentials: "same-origin", cache: "no-store" });
+    const d = r.ok ? await r.json() : null;
+    if (!d) { $("#co-list").innerHTML = html`<div class="empty">${t("err.load")}</div>`; consoLoaded = false; return; }
+    const L = d.limits, cf = d.cloudflare || {}, lastOf = (a) => (Array.isArray(a) ? a[a.length - 1] : null);
+    const rows = [];
+    const row = (key, value, limit, { daily = null, fmtv = fmt, note = "", error = null } = {}) =>
+      rows.push({ key, value, limit, daily, fmtv, note, error });
+    row("mail", lastOf(d.mail.daily), d.mail.dayLimit, { daily: d.mail.daily,
+      note: t("ad.co.mail.note", { month: fmt(d.mail.month), monthLimit: fmt(d.mail.monthLimit), queued: fmt(d.mail.queued) }) });
+    const cfRow = (key, v, limit, opts = {}) => (v?.error ? row(key, null, limit, { error: v.error }) : row(key, opts.value ? opts.value(v) : lastOf(v), limit, { daily: Array.isArray(v) ? v : null, ...opts }));
+    if (!cf.error) {
+      cfRow("requests", cf.requests, L.requests, { note: cf.requestsNote ? t("ad.co.partial", { e: cf.requestsNote }) : "" });
+      cfRow("durable", cf.durable, L.durable);
+      cfRow("neurons", cf.neurons, L.neurons);
+      if (cf.d1?.error) row("d1Read", null, L.d1Read, { error: cf.d1.error });
+      else { cfRow("d1Read", cf.d1.read, L.d1Read); cfRow("d1Write", cf.d1.written, L.d1Write); }
+      if (cf.d1size?.error) row("d1Size", null, L.d1Size, { error: cf.d1size.error });
+      else for (const db of cf.d1size) row("d1Size", db.bytes, L.d1Size, { fmtv: bytes, note: db.name });
+      cfRow("r2Size", cf.r2size, L.r2Size, { fmtv: bytes });
+      if (cf.r2ops?.error) row("r2A", null, L.r2A, { error: cf.r2ops.error });
+      else { row("r2A", cf.r2ops.a, L.r2A, { note: t("ad.co.thisMonth") }); row("r2B", cf.r2ops.b, L.r2B, { note: t("ad.co.thisMonth") }); }
+      if (cf.deploys?.error) row("deploys", null, L.deploys, { error: cf.deploys });
+      else row("deploys", cf.deploys, L.deploys, { note: t("ad.co.thisMonth") });
+    }
+    row("accounts", d.accounts.confirmed, null, { note: t("ad.co.accounts.note", { n: fmt(d.accounts.recent) }) });
+    $("#co-note").innerHTML = cf.error ? html`<div class="notice info" style="margin-bottom:12px">${t(cf.error === "no token" ? "ad.co.noToken" : "ad.co.cfError", { e: cf.error })}</div>` : "";
+    $("#co-list").innerHTML = html`<table class="data compact"><thead><tr><th>${t("ad.co.col.what")}</th><th class="r">${t("ad.co.col.now")}</th>
+      <th class="r">${t("ad.co.col.limit")}</th><th class="r">${t("ad.co.col.share")}</th><th>${t("ad.co.col.days", { n: d.days.length })}</th></tr></thead>
+      <tbody>${rows.map((x) => html`<tr>
+        <td><b>${t(`ad.co.${x.key}`)}</b>${x.note ? html`<div class="muted" style="font-size:12px">${x.note}</div>` : ""}</td>
+        <td class="r num">${x.error ? html`<span class="muted" title="${x.error}">${t("ad.co.unavailable")}</span>` : x.value == null ? "—" : x.fmtv(x.value)}</td>
+        <td class="r num">${x.limit ? x.fmtv(x.limit) : "—"}</td>
+        <td class="r num">${x.error || x.value == null ? "" : level(x.value, x.limit)}</td>
+        <td>${x.daily ? spark(x.daily, x.fmtv === fmt ? x.limit : x.limit) : ""}</td></tr>`)}</tbody></table>`;
   }
 
   // « Démo »: the demo accounts. A password is shown once, when made or renewed: to be sent with the address and the site's link
