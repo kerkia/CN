@@ -9,12 +9,14 @@ import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
 import * as pwa from "../pwa.js";
+import { name as countryName, membershipFields, bindMembershipFields, readMembership } from "../country.js";
 
 // The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
 // needs the administrator's right (users.alerts_allowed) and is not offered at all without it; no `mail`: by notification only.
+// `lic`: tied to one's FFCO licence (one's own results and start times), offered once France is joined
 const ALERTS = [
-  { key: "results", mail: "notify", push: "pushResults" },
-  { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true },
+  { key: "results", mail: "notify", push: "pushResults", lic: true },
+  { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true, lic: true },
   { key: "agenda", mail: "agendaAlert", push: "pushAgenda", gated: true },
   { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", gated: true },
 ];
@@ -42,7 +44,7 @@ function demoPage(main, user) {
   return { title: t("st.title") };
 }
 
-export async function render(main) {
+export async function render(main, { query = {} } = {}) {
   const me = auth.session();
   if (!me.email) {                                  // signed in with name + licence: no account behind it
     main.innerHTML = html`<div class="page-head"><div><h1>${t("st.title")}</h1></div></div>
@@ -59,16 +61,23 @@ export async function render(main) {
     <div class="stack" style="max-width:640px">
       <section class="card"><div class="card-head"><h2>${t("st.account")}</h2></div><div class="card-body stack" style="gap:10px">
         <div><span class="muted">${t("ac.email")}</span><br><b>${user.email}</b></div>
-        <div><span class="muted">${t("st.licensee")}</span><br><a href="${link.runner(user.lic)}">${displayName(user.nom)}</a> · ${t("rn.licence")} ${user.lic}</div>
+        ${user.lic ? html`<div><span class="muted">${t("st.licensee")}</span><br><a href="${link.runner(user.lic)}">${displayName(user.nom)}</a> · ${t("rn.licence")} ${user.lic}</div>`
+          : html`<div><span class="muted">${t("st.name")}</span><br><b>${user.nom}</b></div>`}
         ${OPEN || user.admin ? html`<label class="field"><span>${t("st.lang")}</span><select id="st-lang" style="max-width:220px">
           ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${l === lang() ? "selected" : ""}>${LANG_NAMES[l]}</option>`)}</select>
           <span class="muted" style="font-size:12.5px">${t("st.lang.hint")}</span></label>` : ""}
       </div></section>
 
+      <section class="card" id="st-countries"><div class="card-head"><h2>${t("st.cty.title")}</h2></div><div class="card-body stack" style="gap:12px">
+        <p class="soft" style="margin:0">${t("st.cty.hint")}</p>
+        <div id="cty-list" class="stack" style="gap:8px"></div>
+        <form id="cty-add" class="stack" style="gap:10px"></form>
+      </div></section>
+
       <section class="card"><div class="card-head"><h2>${t("st.alerts.title")}</h2></div><div class="card-body stack" style="gap:10px">
         <table class="alerts-table">
           <thead><tr><th></th><th>${t("st.alerts.mail")}</th><th>${t("st.alerts.push")}</th></tr></thead>
-          <tbody>${ALERTS.map((a) => html`<tr>
+          <tbody>${ALERTS.filter((a) => !a.lic || user.lic).map((a) => html`<tr>
             <td><b>${t(`st.alerts.${a.key}`)}</b><br><span class="muted">${t(`st.alerts.${a.key}.hint`)}</span></td>
             <td>${!a.mail ? html`<span class="muted" title="${t("st.alerts.pushOnly")}">—</span>`
               : a.gated && !user.agendaAllowed ? ""
@@ -116,6 +125,55 @@ export async function render(main) {
     </div>`;
 
   const flash = (el, text, ok) => { el.textContent = text; el.className = `notice${ok ? " ok" : ""}`; el.hidden = false; };
+
+  // « Mes pays » (owner, 2026-10-20): the countries joined — club, member id, checked or declared —, each changed or left;
+  // another joined. France is checked against FFCO's licensees with the account's own first name and surname. A change
+  // of country changes what the site may show: the page starts again (the data loaded for France, or without it, goes).
+  const countries = user.countries || [];
+  const errText = (r) => (r.status === 429 ? t("ac.err.rate") : r.data?.error === "mismatch" ? t("st.cty.err.mismatch")
+    : r.data?.error === "id" ? t("ac.reg.err.id") : r.data?.error === "country" ? t("ac.reg.err.country") : t("ac.err.generic"));
+  const restart = async () => { await auth.refresh(); data.dropPrivate(); location.hash = "#/reglages?onglet=pays"; location.reload(); };
+  function drawCountries(editing = null) {
+    $("#cty-list").innerHTML = countries.length ? countries.map((c) => (c.cc === editing
+      ? html`<form class="cty-row stack" style="gap:8px" data-edit="${c.cc}">${membershipFields("e", { row: c, fixed: true })}
+          <div class="notice" hidden></div>
+          <div class="row" style="gap:8px"><button class="btn btn-primary btn-sm" type="submit">${t("st.cty.save")}</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-cancel>${t("st.cty.cancel")}</button></div></form>`
+      : html`<div class="cty-row row" style="gap:10px;flex-wrap:wrap;align-items:center">
+          <b>${countryName(c.cc)}</b>
+          <span class="muted">${[c.club, c.id && (c.cc === "FR" ? `${t("rn.licence")} ${c.id}` : c.id)].filter(Boolean).join(" · ")}</span>
+          <span class="tag">${t(`st.cty.status.${c.status === "ok" ? (c.cc === "FR" ? "checked" : "declared") : c.status}`)}</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-ghost btn-sm" type="button" data-edit-cc="${c.cc}">${t("st.cty.edit")}</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-leave="${c.cc}" style="color:var(--bad)">${t("st.cty.leave")}</button></div>`)).join("")
+      : html`<p class="muted" style="margin:0">${t("st.cty.none")}</p>`.toString();
+    $("#cty-add").innerHTML = html`<b style="font-size:13.5px">${t("st.cty.addTitle")}</b>
+      ${membershipFields("a", { allowNone: true, except: countries.map((c) => c.cc) })}
+      <div class="notice" hidden></div>
+      <div><button class="btn btn-primary btn-sm" type="submit">${t("st.cty.join")}</button></div>`;
+    bindMembershipFields($("#st-countries"));
+    $$("[data-edit-cc]").forEach((b) => b.addEventListener("click", () => drawCountries(b.dataset.editCc)));
+    $("[data-cancel]")?.addEventListener("click", () => drawCountries());
+    $$("[data-leave]").forEach((b) => b.addEventListener("click", async () => {
+      const cc = b.dataset.leave;
+      if (!confirm(t(cc === "FR" ? "st.cty.leaveFR" : "st.cty.leaveOne", { country: countryName(cc) }))) return;
+      b.disabled = true;
+      const res = await auth.api("api/account/countries", { country: cc, leave: true });
+      if (res.ok) restart(); else { b.disabled = false; alert(errText(res)); }
+    }));
+    $("[data-edit]")?.addEventListener("submit", (e) => send(e, "e"));
+    $("#cty-add").onsubmit = (e) => send(e, "a");
+  }
+  async function send(e, prefix) {
+    e.preventDefault();
+    const form = e.target, m = readMembership(form, prefix), err = $(".notice", form), btn = $("button[type=submit]", form);
+    if (!m) { flash(err, t("st.cty.pick")); return; }
+    btn.disabled = true;
+    const res = await auth.api("api/account/countries", m);
+    if (res.ok) restart(); else { btn.disabled = false; flash(err, errText(res)); }
+  }
+  drawCountries();
+  if (query.onglet === "pays") $("#st-countries").scrollIntoView({ block: "start" });
 
   // the language: on the account (its e-mails), then on this device, the page drawn again in it
   $("#st-lang")?.addEventListener("change", (e) => {

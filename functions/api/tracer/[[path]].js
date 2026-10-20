@@ -109,7 +109,7 @@ export const onRequest = withUser(async (ctx, user) => {
       const out = [];
       for (const o of await listAll(env, META)) {
         const m = o.customMetadata || {};
-        const mine = Number(m.owner) === user.id, member = (m.team || "").split(",").includes(String(user.licence));
+        const mine = Number(m.owner) === user.id, member = !!user.licence && (m.team || "").split(",").includes(String(user.licence));   // (no licence: in no team; "".split gives [""])
         if (!mine && !member) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, ownerName: m.ownerName, mine, encrypted: !!m.enc, updated: m.updated });
       }

@@ -44,3 +44,56 @@ export function menu() {
     <div class="nav-menu" role="menu">${ok.map((cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${name(cc)}</button>`)}</div>
   </div>`;
 }
+
+// The IOF's member countries (2026), as functions/_lib/countries.js `COUNTRIES` — keep the two in step.
+export const MEMBERS = ["FR",
+  "AR", "AT", "AU", "AZ", "BA", "BE", "BG", "BR", "BY", "CA", "CH", "CL", "CN", "CO", "CY", "CZ", "DE", "DK", "EC", "EE",
+  "ES", "FI", "GB", "GE", "GR", "HK", "HR", "HU", "IE", "IL", "IN", "IS", "IT", "JP", "KE", "KR", "KZ", "LT", "LU", "LV",
+  "MA", "MD", "ME", "MK", "MN", "MT", "MX", "MY", "NL", "NO", "NZ", "PH", "PK", "PL", "PT", "RO", "RS", "RU", "SE", "SG",
+  "SI", "SK", "TH", "TN", "TR", "TW", "UA", "US", "UY", "UZ", "VN", "XK", "ZA"];
+/** The member countries by name in the site's language, France first; `except` left out. */
+export const sortedMembers = (except = []) => ["FR", ...MEMBERS.slice(1).sort((a, b) => name(a).localeCompare(name(b), lang()))]
+  .filter((cc) => !except.includes(cc));
+
+/**
+ * One membership's fields (registration, Réglages › Mes pays): country, club, member id — the id is France's FFCO licence
+ * (required, checked), elsewhere optional. `fixed`: the country cannot be changed (registration while only France is open,
+ * a membership being edited). `row`: { cc, club, id }.
+ */
+export function membershipFields(prefix, { row = {}, fixed = false, except = [], allowNone = false } = {}) {
+  const cc = row.cc || (allowNone ? "" : "FR");
+  return html`<div class="cty-fields" data-cty="${prefix}">
+    <label class="field"><span>${t("cty.field.country")}</span>
+      <select name="${prefix}-cc" ${fixed ? "disabled" : ""}>
+        ${allowNone ? html`<option value="" ${cc ? "" : "selected"}>${t("cty.field.none")}</option>` : ""}
+        ${sortedMembers(except.filter((x) => x !== cc)).map((c) => html`<option value="${c}" ${c === cc ? "selected" : ""}>${name(c)}</option>`)}
+      </select></label>
+    <div class="row cty-more" style="gap:12px;flex-wrap:wrap" ${cc ? "" : "hidden"}>
+      <label class="field" style="flex:1;min-width:160px"><span>${t("cty.field.club")}</span>
+        <input name="${prefix}-club" type="text" maxlength="80" value="${row.club || ""}" autocomplete="off"></label>
+      <label class="field" style="flex:1;min-width:160px"><span class="cty-id-label">${t(cc === "FR" ? "cty.field.id.FR" : "cty.field.id")}</span>
+        <input name="${prefix}-id" type="text" maxlength="30" value="${row.id || ""}" autocomplete="off" ${cc === "FR" ? 'inputmode="numeric" required' : ""}></label>
+    </div>
+  </div>`;
+}
+/** Wire the fields drawn by `membershipFields` inside `root`: the id's label and need follow the country. */
+export function bindMembershipFields(root) {
+  for (const box of root.querySelectorAll("[data-cty]")) {
+    const sel = box.querySelector("select"), more = box.querySelector(".cty-more"), id = box.querySelector(`[name$="-id"]`);
+    const sync = () => {
+      const fr = sel.value === "FR";
+      more.hidden = !sel.value;
+      box.querySelector(".cty-id-label").textContent = t(fr ? "cty.field.id.FR" : "cty.field.id");
+      id.required = fr && !!sel.value;
+      if (fr) id.setAttribute("inputmode", "numeric"); else id.removeAttribute("inputmode");
+    };
+    sel.addEventListener("change", sync);
+    sync();
+  }
+}
+/** The membership a form holds under `prefix`: { country, club, id }, or null when no country is chosen. */
+export function readMembership(form, prefix) {
+  const cc = form.querySelector(`[name="${prefix}-cc"]`)?.value;
+  if (!cc) return null;
+  return { country: cc, club: form.querySelector(`[name="${prefix}-club"]`)?.value || "", id: form.querySelector(`[name="${prefix}-id"]`)?.value || "" };
+}

@@ -397,14 +397,15 @@ export async function render(main, { query = {} } = {}) {
     const rows = users.filter((u) => (!onlyDups || (dups.has(u.licence) && u.email_verified))
       && (!qn || normalise(`${u.email} ${u.first_name} ${u.last_name} ${u.licence}`).includes(qn)));
     $("#ad-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
-      <th>${t("ad.col.email")}</th><th>${t("ad.col.name")}</th><th>${t("ad.col.lic")}</th><th>${t("ad.col.status")}</th>
+      <th>${t("ad.col.email")}</th><th>${t("ad.col.name")}</th><th>${t("ad.col.lic")}</th><th>${t("ad.col.countries")}</th><th>${t("ad.col.status")}</th>
       <th>${t("ad.col.created")}</th><th>${t("ad.col.login")}</th><th>${t("ad.col.notify")}</th>
       <th title="${t("ad.col.alerts.hint")}">${t("ad.col.alerts")}</th>
       <th>${t("ad.col.actions")}</th></tr></thead>
       <tbody>${rows.map((u) => html`<tr>
         <td>${u.email}</td>
-        <td><a href="${link.runner(u.licence)}">${u.display_name}</a><div class="muted" style="font-size:12px">${u.first_name} ${u.last_name}</div></td>
-        <td class="num">${u.licence}${dups.has(u.licence) && u.email_verified ? html` <span class="tag" style="color:var(--bad)">${t("ad.dup")}</span>` : ""}</td>
+        <td>${u.licence ? html`<a href="${link.runner(u.licence)}">${u.display_name}</a>` : u.display_name}<div class="muted" style="font-size:12px">${u.first_name} ${u.last_name}</div></td>
+        <td class="num">${u.licence || "—"}${u.licence && dups.has(u.licence) && u.email_verified ? html` <span class="tag" style="color:var(--bad)">${t("ad.dup")}</span>` : ""}</td>
+        <td>${(u.countries || []).map((c) => html`<span class="tag" title="${c.status}"${raw(c.status === "ok" ? "" : ' style="opacity:.6"')}>${c.cc}</span> `)}</td>
         <td>${status(u)}</td>
         <td class="num">${fmtDate(u.created_at.slice(0, 10), "short")}</td>
         <td class="num">${u.last_login ? fmtDate(u.last_login.slice(0, 10), "short") : "—"}</td>

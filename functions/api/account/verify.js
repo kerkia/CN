@@ -6,6 +6,7 @@ import { adminEmails, json, readBody } from "../../_lib/api.js";
 import { sha256hex } from "../../_lib/crypto.js";
 import { sendOrQueue } from "../../_lib/mail.js";
 import { duplicateAlert, newUserMail } from "../../_lib/templates.js";
+import { memberships } from "../../_lib/countries.js";
 
 export async function onRequestPost({ request, env }) {
   const b = await readBody(request);
@@ -19,7 +20,10 @@ export async function onRequestPost({ request, env }) {
     env.DB.prepare("UPDATE users SET email_verified = 1 WHERE id = ?").bind(user.id),
     env.DB.prepare("UPDATE tokens SET used = 1 WHERE token_hash = ?").bind(hash),
   ]);
-  const { results } = await env.DB.prepare("SELECT * FROM users WHERE licence = ? AND email_verified = 1 ORDER BY id").bind(user.licence).all();
+  // (an account without France has no licence: nothing to compare)
+  const { results } = user.licence
+    ? await env.DB.prepare("SELECT * FROM users WHERE licence = ? AND email_verified = 1 ORDER BY id").bind(user.licence).all()
+    : { results: [] };
   if (results.length > 1 && env.ALERT_EMAIL) {
     const to = await env.DB.prepare("SELECT lang FROM users WHERE email = ?").bind(env.ALERT_EMAIL).first().catch(() => null);
     await sendOrQueue(env, { to: env.ALERT_EMAIL, ...duplicateAlert(env, user.licence, results, to?.lang), kind: "alert", priority: 1 });
@@ -37,5 +41,6 @@ async function signupAlert(env, user) {
      AND email IN (${admins.map(() => "?").join(", ")})`).bind(...admins).all();
   if (!to.length) return;
   const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE email_verified = 1").first();
-  for (const a of to) await sendOrQueue(env, { to: a.email, ...newUserMail(env, user, total.n, a.lang), kind: "alert", priority: 1 });
+  const countries = (await memberships(env, user.id)).map((c) => [c.country, c.club].filter(Boolean).join(" "));
+  for (const a of to) await sendOrQueue(env, { to: a.email, ...newUserMail(env, user, total.n, a.lang, countries), kind: "alert", priority: 1 });
 }

@@ -1,7 +1,7 @@
 // The countries the logged-in account has joined (migration 0014; owner, 2026-10-20).
 //   GET                              -> { countries }
 //   POST   { country, club, id }     -> join a country, or change one's club or id there; France checks the name + licence
-//   DELETE { country }               -> leave it
+//   DELETE { country }               -> leave it (also POST { country, leave: true }: the site's api() posts)
 // POST and DELETE answer the account's view with a fresh session cookie: the session's countries (`cc`) change at once.
 // France's membership is the account's licence (users.licence): joining sets it, leaving clears it, and with it everything
 // the site reads by licence (one's page, the results alerts, the organiser's rights); relay runners added are dropped.
@@ -22,6 +22,7 @@ export const onRequestGet = withUser(async ({ env }, user) => json({ countries: 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   if (!b) return json({ error: "bad request" }, 400);
+  if (b.leave === true) return leave(env, user, b);
   if (!(await allow(env, `cty:${user.id}`, 12, 3600))) return json({ error: "rate" }, 429);
   const chk = await checkMembership(env, request, b, user.first_name, user.last_name);
   if (!chk.ok) return json({ error: chk.error }, 422);
@@ -33,8 +34,9 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   return answer(env, user.id);
 });
 
-export const onRequestDelete = withUser(async ({ request, env }, user) => {
-  const b = await readBody(request);
+export const onRequestDelete = withUser(async ({ request, env }, user) => leave(env, user, await readBody(request)));
+
+async function leave(env, user, b) {
   const cc = cleanCountry(b?.country);
   if (!cc) return json({ error: "bad request" }, 400);
   const steps = [env.DB.prepare("DELETE FROM user_countries WHERE user_id = ? AND country = ?").bind(user.id, cc)];
@@ -44,4 +46,4 @@ export const onRequestDelete = withUser(async ({ request, env }, user) => {
   await env.DB.batch(steps);
   if (cc === "FR") { try { await env.DB.prepare("DELETE FROM relay_runners WHERE user_id = ?").bind(user.id).run(); } catch (e) { /* no table */ } }
   return answer(env, user.id);
-});
+}

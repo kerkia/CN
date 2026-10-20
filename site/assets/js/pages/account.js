@@ -5,6 +5,7 @@ import { html, raw, $, esc } from "../util.js";
 import { t, lang, setLang, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import { SITE } from "../app.js";
+import { membershipFields, bindMembershipFields, readMembership } from "../country.js";
 
 const VIEWS = {
   inscription: register, verifier: verify, "mot-de-passe": forgot, reinitialiser: reset,
@@ -35,7 +36,8 @@ function bind(form, label, go) {
 // ---- sign-up ---------------------------------------------------------------------------------
 // What is typed, passwords apart, kept for the tab while the form is open: a change of language redraws the page
 // (the form's own choice or the menu beside the theme) and finds it again; gone once the account is created.
-const DRAFT = "ocn.reg.draft", KEPT = ["first", "last", "licence", "email"];
+const DRAFT = "ocn.reg.draft", KEPT = ["first", "last", "email", "c0-club", "c0-id"];
+const MAX_COUNTRIES = 5;
 const readDraft = () => { try { return JSON.parse(sessionStorage.getItem(DRAFT) || "{}"); } catch (e) { return {}; } };
 const keepDraft = (form) => {
   try { sessionStorage.setItem(DRAFT, JSON.stringify(Object.fromEntries(KEPT.map((k) => [k, form.elements[k]?.value || ""])))); } catch (e) { /* not kept */ }
@@ -54,14 +56,16 @@ const loadTurnstile = () => turnstileLoad || (turnstileLoad = new Promise((ok, k
 }));
 
 async function register(main) {
-  let open = true, siteKey = null;
+  // world: registration open to every orienteer (WORLD_OPEN; owner, 2026-10-20) — countries to join, none required; until
+  // then France alone, its licence checked as always
+  let open = true, siteKey = null, world = false;
   try {
     const st = await (await fetch("api/account/status")).json();
-    open = st.registration; siteKey = st.turnstile || null;
+    open = st.registration; siteKey = st.turnstile || null; world = !!st.world;
   } catch (e) { open = false; }
   main.innerHTML = card(t("ac.reg.title"), !open
     ? html`<div class="notice info">${t("ac.reg.closed")}</div><a class="btn" href="#/" style="justify-content:center">${t("ac.toLogin")}</a>`
-    : html`<p class="soft" style="margin:0">${t("ac.reg.lede")}</p>
+    : html`<p class="soft" style="margin:0">${t(world ? "ac.reg.lede.world" : "ac.reg.lede")}</p>
       <form id="reg" class="stack" style="gap:12px" autocomplete="on">
         <label class="field"><span>${t("ac.reg.lang")}</span><select name="lang" id="reg-lang">
           ${LANGS.map((l) => html`<option value="${l}" lang="${l}" ${raw(l === lang() ? "selected" : "")}>${LANG_NAMES[l]}</option>`)}</select>
@@ -70,12 +74,16 @@ async function register(main) {
           <label class="field" style="flex:1"><span>${t("ac.reg.first")}</span><input name="first" type="text" autocomplete="given-name" required maxlength="60"></label>
           <label class="field" style="flex:1"><span>${t("ac.reg.last")}</span><input name="last" type="text" autocomplete="family-name" required maxlength="60"></label>
         </div>
-        <label class="field"><span>${t("ac.reg.licence")}</span><input name="licence" type="text" inputmode="numeric" autocomplete="off" required maxlength="12"></label>
+        <fieldset class="cty-set"><legend>${t(world ? "ac.reg.countries" : "ac.reg.country")}</legend>
+          ${world ? html`<p class="muted" style="margin:0 0 6px;font-size:12.5px">${t("ac.reg.countries.hint")}</p>` : ""}
+          <div id="reg-cty">${membershipFields("c0", { fixed: !world, allowNone: world, row: world ? {} : { cc: "FR" } })}</div>
+          ${world ? html`<button type="button" class="btn btn-ghost btn-sm" id="reg-cty-add">${t("cty.add")}</button>` : ""}
+        </fieldset>
         <label class="field"><span>${t("ac.email")}</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
         <label class="field"><span>${t("ac.password")} <span class="muted">· ${t("ac.password.hint")}</span></span><input name="password" type="password" autocomplete="new-password" required minlength="6" maxlength="200"></label>
         <label class="field"><span>${t("ac.password2")}</span><input name="password2" type="password" autocomplete="new-password" required minlength="6" maxlength="200"></label>
         <div class="hp" aria-hidden="true"><label>Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
-        <label class="check"><input name="consent" type="checkbox" required><span>${t("ac.reg.consent")}
+        <label class="check"><input name="consent" type="checkbox" required><span>${t(world ? "ac.reg.consent.world" : "ac.reg.consent")}
           <a href="#/compte/confidentialite">${t("ac.reg.privacy")}</a></span></label>
         ${siteKey ? html`<div id="reg-ts" class="reg-ts"></div>` : ""}
         <div class="notice" hidden></div>
@@ -87,6 +95,17 @@ async function register(main) {
   const draft = readDraft();
   for (const k of KEPT) if (draft[k] && form.elements[k]) form.elements[k].value = draft[k];
   form.addEventListener("input", () => keepDraft(form));
+  // the countries: one row, more by « Ajouter un pays » (each country once)
+  bindMembershipFields(form);
+  let rows = 1;
+  $("#reg-cty-add")?.addEventListener("click", (e) => {
+    const taken = [...form.querySelectorAll("[data-cty] select")].map((s) => s.value).filter(Boolean);
+    const box = document.createElement("div");
+    box.innerHTML = membershipFields(`c${rows}`, { allowNone: true, except: taken }).toString();
+    $("#reg-cty").append(box);
+    bindMembershipFields(box);
+    if (++rows >= MAX_COUNTRIES) e.target.hidden = true;
+  });
   // the language: the page drawn again in it (what is typed comes back), the account created in it
   $("#reg-lang").addEventListener("change", (e) => { keepDraft(form); setLang(e.target.value); });
   // the robot check: its token is used once, so a refused registration asks for a new one
@@ -107,7 +126,8 @@ async function register(main) {
     if (siteKey && !tsToken) return t("ac.reg.err.robotWait");
     const r = await auth.api("api/account/register", {
       email: f.get("email"), password: f.get("password"), first: f.get("first"), last: f.get("last"),
-      countries: [{ country: "FR", id: f.get("licence") }], consent: f.get("consent") === "on", website: f.get("website"),
+      countries: Array.from({ length: rows }, (_, i) => readMembership(form, `c${i}`)).filter(Boolean),
+      consent: f.get("consent") === "on", website: f.get("website"),
       lang: lang(), turnstile: tsToken,
     });
     if (!r.ok && tsWidget !== null) { try { window.turnstile.reset(tsWidget); } catch (e) { /* gone */ } tsToken = ""; }

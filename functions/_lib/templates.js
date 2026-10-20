@@ -62,13 +62,17 @@ export function resetMail(env, token, lang) {
   };
 }
 
-/** To an administrator who asked for it (in their language): an account was just confirmed. total: confirmed accounts now. */
-export function newUserMail(env, user, total, lang) {
+/**
+ * To an administrator who asked for it (in their language): an account was just confirmed. total: confirmed accounts now;
+ * countries: its memberships as "FR O'BUGEY" (migration 0014).
+ */
+export function newUserMail(env, user, total, lang, countries = []) {
   const url = `${siteUrl(env)}/#/admin`;
   const who = `${user.first_name} ${user.last_name}`;
   const day = String(user.created_at).slice(0, 10);
   if (L(lang) === "en") {
-    const lines = [`Email: ${user.email}`, `Licence: ${user.licence} (${user.display_name})`, `Registered on: ${day}`, `Confirmed accounts: ${total}`];
+    const lines = [`Email: ${user.email}`, ...(user.licence ? [`Licence: ${user.licence} (${user.display_name})`] : []),
+      `Countries: ${countries.join(", ") || "none"}`, `Registered on: ${day}`, `Confirmed accounts: ${total}`];
     return {
       subject: `New account: ${who} — Ozimut`,
       html: wrap(env, `New account: ${who}`, `<p>A new account has just been confirmed.</p>
@@ -80,8 +84,8 @@ ${lines.join("\n")}
 Administration (to turn this alert off): ${url}`,
     };
   }
-  const lines = [`E-mail : ${user.email}`, `Licence : ${user.licence} (${user.display_name})`,
-    `Inscrit le : ${day}`, `Comptes confirmés : ${total}`];
+  const lines = [`E-mail : ${user.email}`, ...(user.licence ? [`Licence : ${user.licence} (${user.display_name})`] : []),
+    `Pays : ${countries.join(", ") || "aucun"}`, `Inscrit le : ${day}`, `Comptes confirmés : ${total}`];
   return {
     subject: `Nouveau compte : ${who} — Ozimut`,
     html: wrap(env, `Nouveau compte : ${who}`, `<p>Un nouveau compte vient d'être confirmé.</p>

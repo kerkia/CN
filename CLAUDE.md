@@ -1191,6 +1191,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   alone when absent); the menu shows only once there are two; default the first accepted membership with data
   (`localStorage ocn.country` once picked); the Agenda's and Résultats' lists keep the current country's (`country.of`: an
   item's `country`, France when it has none).
+  **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
+  up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
+  Réglages › « Mes pays » (`#/reglages?onglet=pays`, the card `#st-countries`) lists, edits, leaves (POST `leave: true`) and
+  joins; France checked with the account's own name; a change restarts the page (the data loaded goes). The licence alerts
+  (results, start times) show only with a licence. **Admin** (step 6): « Comptes » has a Countries column; the duplicate
+  licence check and the new-account mail skip accounts without a licence (the mail lists the countries). An account without a
+  licence is in no Tracer team (`"".split(",")` gave `[""]`: the event list showed demo accounts every team-less event's
+  title). Tracer teams are by licence, so a non-France account cannot yet be added to a team.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff
