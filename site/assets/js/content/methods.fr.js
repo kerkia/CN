@@ -989,7 +989,7 @@ export function build(X) {
             avec sa carte. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
             OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les licenciés qu'il ajoute, comme traceur,
+            <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les personnes qui la rejoignent par un lien d'invitation, comme traceur,
               contrôleur ou lecteur. Pas les administrateurs du site : les circuits restent secrets jusqu'à la course.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Enregistré tout seul</h3><p>Quelques secondes après chaque changement ; une version est gardée toutes les
               30 minutes de travail, et on peut en garder une sous un nom (${W("version-save")}).</p></div>
@@ -1288,7 +1288,7 @@ export function build(X) {
           <p class="mx-kicker">${K}</p>
           <h2>En équipe et sur le terrain</h2>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} L'équipe</h3><p>${W("team")} : ajoutez des licenciés par leur numéro.
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} L'équipe</h3><p>${W("team")} : créez un lien d'invitation pour un rôle et transmettez-le ; qui l'ouvre connecté rejoint l'équipe, licencié FFCO ou non.
               Le traceur et le contrôleur modifient, le lecteur lit et commente. Un seul modifie à la fois ; les autres peuvent « prendre la main ».</p></div>
             <div class="mx-box" style="--c:var(--s2)"><h3>${ic("comment", 18)} Commentaires</h3><p>${W("comments")} : un commentaire épinglé à un
               endroit de la carte, des réponses, et « Fait » quand c'est réglé ; le nombre de ceux encore ouverts s'affiche sur l'onglet.</p></div>

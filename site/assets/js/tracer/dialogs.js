@@ -707,7 +707,7 @@ async function team(E) {
   const render = (box) => {
     box.innerHTML = `<table class="tr-table"><thead><tr><th>${esc(t("trc.dlg.member"))}</th><th>${esc(t("trc.dlg.role"))}</th><th></th></tr></thead><tbody>
       <tr><td>${esc(meta.ownerName)}${meta.ownerLic ? ` <small>(${esc(meta.ownerLic)})</small>` : ""}</td><td>${esc(t("trc.dlg.creator"))}</td><td></td></tr>
-      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")} <small>(${esc(m.lic || (m.email || t("trc.dlg.byAccount")))})</small></td><td>${owner ? sel(`r${i}`, roles, m.role) : esc(roleName(m.role))}</td>
+      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")}${m.lic ? ` <small>(${esc(m.lic)})</small>` : ""}</td><td>${owner ? sel(`r${i}`, roles, m.role) : esc(roleName(m.role))}</td>
       <td>${owner ? `<button type="button" class="btn btn-sm" data-rm="${i}">${esc(t("trc.dlg.remove"))}</button>` : ""}</td></tr>`).join("")}</tbody></table>`;
     box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { rows.splice(Number(b.dataset.rm), 1); render(box); }));
     box.querySelectorAll("select").forEach((s2) => s2.addEventListener("change", () => { rows[Number(s2.name.slice(1))].role = s2.value; }));
@@ -715,30 +715,47 @@ async function team(E) {
   const v = await modal(E, { title: t("trc.dlg.team"), wide: true, ok: owner ? t("trc.dlg.save") : t("trc.dlg.close"), cancel: owner ? t("trc.dlg.cancel") : null, body: `
     <p>${esc(t("trc.dlg.teamIntro"))}</p>
     <div id="tr-team"></div>
-    ${owner ? `<div class="tr-row">${field(t("trc.dlg.licenceOrEmail"), '<input id="tr-lic" size="28" autocomplete="off">')}<button type="button" class="btn btn-sm" id="tr-add">${esc(t("trc.dlg.add"))}</button></div>
-      <p><small>${esc(t("trc.dlg.licenceOrEmailHint"))}</small></p>` : ""}`,
+    ${owner ? `<h3>${esc(t("trc.dlg.invite"))}</h3><p><small>${esc(t("trc.dlg.inviteHint"))}</small></p>
+      <div class="tr-row">${field(t("trc.dlg.role"), sel("inv-role", roles, "controller"))}<button type="button" class="btn btn-sm" id="tr-invite">${esc(t("trc.dlg.inviteMake"))}</button></div>
+      <div id="tr-new-link"></div><div id="tr-links"></div>` : ""}`,
   onOpen: (f) => {
     const box = f.querySelector("#tr-team");
     render(box);
-    f.querySelector("#tr-add")?.addEventListener("click", async () => {
-      // an FFCO licence, or the e-mail of an Ozimut account (anyone: owner, 2026-10-20)
-      const lic = f.querySelector("#tr-lic").value.trim();
-      if (lic.includes("@")) {
-        const r = await S.api(`/${meta.id}/member?email=${encodeURIComponent(lic)}`).catch(() => null);
-        if (!r?.uid) { E.toast(t("trc.dlg.emailNotFound")); return; }
-        if (rows.some((m) => Number(m.uid) === r.uid) || r.uid === Number(meta.owner)) return;
-        rows.push({ uid: r.uid, email: lic.toLowerCase(), name: r.name, role: "controller" }); render(box); f.querySelector("#tr-lic").value = "";
-        return;
-      }
-      if (!/^\d{1,8}$/.test(lic)) { E.toast(t("trc.dlg.needLicence")); return; }
-      if (rows.some((m) => m.lic === lic)) return;
-      const r = await S.api(`/${meta.id}/member?lic=${encodeURIComponent(lic)}`).catch(() => null);
-      if (!r?.name) { E.toast(t("trc.dlg.licenceNotFound")); return; }
-      rows.push({ lic, name: r.name, role: "controller" }); render(box); f.querySelector("#tr-lic").value = "";
+    // invitation links (owner, 2026-10-20: the one way to join, for everyone): made for a role, passed on by hand, revocable
+    const links = f.querySelector("#tr-links");
+    const linkOf = (token) => `${location.origin}/#/orga-tracer?id=${encodeURIComponent(meta.id)}&invite=${encodeURIComponent(token)}`;
+    const until = (ms) => new Date(ms).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+    const drawLinks = async () => {
+      if (!links) return;
+      const r = await S.api(`/${meta.id}/invites`).catch(() => null);
+      const list = r?.invites || [];
+      links.innerHTML = list.length ? `<table class="tr-table"><thead><tr><th>${esc(t("trc.dlg.inviteCol"))}</th><th>${esc(t("trc.dlg.role"))}</th><th>${esc(t("trc.dlg.inviteUntil"))}</th><th></th></tr></thead><tbody>
+        ${list.map((x) => `<tr><td>#${x.n}${x.by ? ` <small>${esc(t("trc.dlg.inviteBy", { name: x.by }))}</small>` : ""}</td><td>${esc(roleName(x.role))}</td><td>${esc(until(x.expires))}</td>
+          <td><button type="button" class="btn btn-sm" data-revoke="${x.n}">${esc(t("trc.dlg.inviteRevoke"))}</button></td></tr>`).join("")}</tbody></table>` : "";
+      links.querySelectorAll("[data-revoke]").forEach((b) => b.addEventListener("click", async () => {
+        b.disabled = true;
+        await S.api(`/${meta.id}/invites?n=${encodeURIComponent(b.dataset.revoke)}`, { method: "DELETE" }).catch(() => null);
+        drawLinks();
+      }));
+    };
+    drawLinks();
+    f.querySelector("#tr-invite")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const r = await S.api(`/${meta.id}/invites`, { method: "POST", body: { role: f.querySelector('[name="inv-role"]').value } }).catch((err) => ({ error: err.code || "x" }));
+      e.target.disabled = false;
+      const box = f.querySelector("#tr-new-link");
+      if (!r?.token) { E.toast(t(r?.error === "too many invites" ? "trc.dlg.inviteTooMany" : "trc.dlg.inviteFailed")); return; }
+      const url = linkOf(r.token);
+      box.innerHTML = `<div class="tr-row"><input id="tr-link" readonly size="44" value="${esc(url)}"><button type="button" class="btn btn-sm" id="tr-copy">${esc(t("trc.dlg.inviteCopy"))}</button></div>
+        <p><small>${esc(t("trc.dlg.inviteOnce", { role: roleName(r.role), date: until(r.expires) }))}${meta.encrypted ? ` ${esc(t("trc.dlg.inviteEncrypted"))}` : ""}</small></p>`;
+      box.querySelector("#tr-copy").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(url); E.toast(t("trc.dlg.inviteCopied")); } catch (err) { box.querySelector("#tr-link").select(); }
+      });
+      drawLinks();
     });
   } });
   if (!v || !owner) return;
-  const r = await S.api(`/${meta.id}`, { method: "PUT", body: { team: rows.map((m) => (m.uid ? { uid: m.uid, role: m.role } : { lic: m.lic, name: m.name, role: m.role })) } });
+  const r = await S.api(`/${meta.id}`, { method: "PUT", body: { team: rows.map((m) => (m.uid ? { uid: m.uid, role: m.role } : { lic: m.lic, role: m.role })) } });
   E.meta = r.event;
   E.toast(t("trc.dlg.teamSaved"));
 }

@@ -8,10 +8,11 @@
 //   tracer/<id>/field            the field statuses of the controls (set, checked, collected)
 //   tracer/<id>/photo/<pid>      the field mode's photos of the controls
 //   tracer/<id>/lock             who is editing (refreshed every minute; others open the event read-only)
-// Courses are secret until the race (owner, 2026-10-15): only the event's team opens it — its creator and the people
-// the creator adds, by FFCO licence or, for anyone (owner, 2026-10-20: the Tracer is not for FFCO licensees only), by
-// their Ozimut account's e-mail (a member { lic?, uid?, name, role }; « setter » edits, « controller » edits and comments,
-// « viewer » reads and comments); not the
+// Courses are secret until the race (owner, 2026-10-15): only the event's team opens it — its creator and the people who
+// joined it by an invitation link (owner, 2026-10-20: for everyone, FFCO licensees included; nobody is looked up by name,
+// licence or e-mail): the owner or a setter makes a link for a role and passes it on as they like; whoever opens it signed
+// in joins under their own account's name (a member { uid, lic?, name, role }; members added by licence before keep their
+// place). « setter » edits, « controller » edits and comments, « viewer » reads and comments; not the
 // administrators. A competition's event is created by a member of the race's organising club (_lib/club.js); a
 // training event by any account. With encryption, the server never sees the courses: it stores bytes.
 //
@@ -28,11 +29,13 @@
 //   GET|PUT /api/tracer/<id>/comments, …/field
 //   GET|PUT|DELETE /api/tracer/<id>/photo/<pid>   a control's photo (field mode; editors put and delete)
 //   POST|DELETE /api/tracer/<id>/lock        take (or refresh) / release the editing lock
-//   GET    /api/tracer/<id>/member?lic=…     the licensee's name, before adding them to the team
-//   GET    /api/tracer/<id>/member?email=…   an account's id and name (confirmed, active, not a demo), likewise
+//   GET    /api/tracer/<id>/invites          owners and setters: the links still valid (no token: only its hash is kept)
+//   POST   /api/tracer/<id>/invites          { role, days? } -> { token, n, expires }: a new link (7 days by default, 30 at most)
+//   DELETE /api/tracer/<id>/invites?n=…      revoke one
+//   POST   /api/tracer/<id>/join             { token } -> { role, joined }: any signed-in account (but a demo one) joins the team
 
-import { allow, isAdmin, json, readBody, withUser, nowIso, cleanLicence } from "../../_lib/api.js";
-import { randomBytes } from "../../_lib/crypto.js";
+import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
+import { newToken, randomBytes, sha256hex } from "../../_lib/crypto.js";
 import { clubOf, orgCode, raceOf } from "../../_lib/club.js";
 
 const META = "tracer-meta/", DATA = "tracer/";
@@ -71,18 +74,14 @@ function roleOf(meta, user) {
   return m ? m.role : null;
 }
 const canEdit = (r) => r === "owner" || r === "setter" || r === "controller";
-/** An account that may join a team: confirmed, active, not a demo. */
-const accountById = (env, id) => (Number.isInteger(id) && id > 0 ? env.DB.prepare(
-  "SELECT id, display_name, licence FROM users WHERE id = ? AND email_verified = 1 AND status = 'active' AND demo_until IS NULL").bind(id).first() : null);
-/** The licensee's display name from the licensee index (never served to browsers). */
-async function licenseeName(env, request, lic) {
-  if (!/^\d+$/.test(lic)) return null;
-  try {
-    const res = await env.ASSETS.fetch(new URL(`/auth/${Math.floor(Number(lic) / 100)}.json`, request.url));
-    const entry = res.ok ? (await res.json())[lic] : null;
-    return entry ? entry[1] : null;
-  } catch (e) { return null; }
+const MAX_INVITES = 20, INVITE_DAYS = 7;
+/** An event's invitation links: [{ n, h (sha-256 of the token), role, by, created, expires }], the expired ones dropped. */
+async function loadInvites(env, base) {
+  const o = await env.BUCKET.get(`${base}invites`);
+  const list = o ? await o.json().catch(() => []) : [];
+  return (Array.isArray(list) ? list : []).filter((x) => x.expires > Date.now());
 }
+const saveInvites = (env, base, list) => env.BUCKET.put(`${base}invites`, JSON.stringify(list), { httpMetadata: { contentType: "application/json" } });
 /** A competition of the agenda (site/data/agenda.json) by its id, or null. */
 async function agendaRace(env, request, id) {
   try {
@@ -157,9 +156,23 @@ export const onRequest = withUser(async (ctx, user) => {
   const meta = await loadMeta(env, id);
   if (!meta) return json({ error: "not found" }, 404);
   const role = roleOf(meta, user);
-  if (!role) return json({ error: "forbidden" }, 403);
   const sub = parts[1] || "";
   const base = `${DATA}${id}/`;
+  // an invitation link: whoever opens it signed in joins with the link's role (one already in the team keeps theirs)
+  if (sub === "join" && method === "POST") {
+    if (!(await allow(env, `trjoin:${user.id}`, 30, 3600))) return json({ error: "too many" }, 429);
+    const b = await readBody(request);
+    const h = b?.token ? await sha256hex(String(b.token).slice(0, 100)) : "";
+    const inv = (await loadInvites(env, base)).find((x) => x.h === h);
+    if (!inv) return json({ error: "invite" }, 410);
+    if (role) return json({ ok: true, role, joined: false });
+    meta.team.push({ uid: user.id, ...(user.licence ? { lic: String(user.licence) } : {}), name: user.display_name || "", role: inv.role,
+      joined: nowIso() });
+    meta.updated = nowIso();
+    await saveMeta(env, meta);
+    return json({ ok: true, role: inv.role, joined: true });
+  }
+  if (!role) return json({ error: "forbidden" }, 403);
 
   if (!sub) {
     if (method === "GET") {
@@ -174,22 +187,13 @@ export const onRequest = withUser(async (ctx, user) => {
       if (b.title != null) { const t = clean(b.title, 140); if (t.length < 3) return json({ error: "fields" }, 400); meta.title = t; }
       if (b.date != null) { if (!DAY.test(String(b.date))) return json({ error: "fields" }, 400); meta.date = String(b.date); }
       if (b.team != null) {
-        if (!Array.isArray(b.team) || b.team.length > 40) return json({ error: "team" }, 400);
-        const team = [];
-        for (const x of b.team) {
-          const role = ROLES.includes(x?.role) ? x.role : "viewer";
-          if (x?.uid != null) {                  // an account added by its e-mail: its name and licence from the accounts
-            const u = await accountById(env, Number(x.uid));
-            if (!u || u.id === Number(meta.owner) || team.some((y) => Number(y.uid) === u.id || (u.licence && y.lic === u.licence))) continue;
-            team.push({ uid: u.id, ...(u.licence ? { lic: u.licence } : {}), name: u.display_name, role });
-            continue;
-          }
-          const lic = cleanLicence(x?.lic);
-          if (!/^\d{1,8}$/.test(lic) || team.some((y) => y.lic === lic) || lic === meta.ownerLic) continue;
-          const name = (await licenseeName(env, request, lic)) || clean(x?.name, 80);
-          team.push({ lic, name, role });
-        }
-        meta.team = team;
+        // the members already in the team, their role changed or left out (removed); nobody added here: by invitation alone
+        if (!Array.isArray(b.team) || b.team.length > 60) return json({ error: "team" }, 400);
+        const same = (x, y) => (x.uid != null && y.uid != null ? Number(x.uid) === Number(y.uid) : !!x.lic && String(x.lic) === String(y.lic || ""));
+        meta.team = meta.team.flatMap((m) => {
+          const x = b.team.find((y) => y && same(m, y));
+          return x ? [{ ...m, role: ROLES.includes(x.role) ? x.role : m.role }] : [];
+        });
       }
       if (b.encrypted !== undefined) {
         // the team's passphrase check (salt, iterations, an encrypted known text), set when the event's data is
@@ -214,17 +218,28 @@ export const onRequest = withUser(async (ctx, user) => {
     return json({ error: "method" }, 405);
   }
 
-  if (sub === "member" && method === "GET") {
+  if (sub === "invites") {
     if (role !== "owner" && role !== "setter") return json({ error: "forbidden" }, 403);
-    if (!(await allow(env, `trmember:${user.id}`, 60, 3600))) return json({ error: "too many" }, 429);
-    const q = new URL(request.url).searchParams;
-    if (q.get("email")) {
-      const u = await env.DB.prepare(`SELECT id, display_name FROM users WHERE email = ? AND email_verified = 1 AND status = 'active'
-        AND demo_until IS NULL`).bind(String(q.get("email")).trim().toLowerCase().slice(0, 254)).first();
-      return json(u ? { uid: u.id, name: u.display_name } : { uid: null, name: null });
+    const list = await loadInvites(env, base);
+    const shown = (x) => ({ n: x.n, role: x.role, by: x.byName || "", created: x.created, expires: x.expires });
+    if (method === "GET") return json({ invites: list.map(shown) });
+    if (method === "POST") {
+      const b = await readBody(request);
+      if (!b || !ROLES.includes(b.role)) return json({ error: "bad request" }, 400);
+      if (!(await allow(env, `trinvite:${user.id}`, 40, 86400))) return json({ error: "too many" }, 429);
+      if (list.length >= MAX_INVITES) return json({ error: "too many invites" }, 409);
+      const token = newToken(), days = Math.min(30, Math.max(1, Number(b.days) || INVITE_DAYS));
+      const x = { n: Math.max(0, ...list.map((y) => y.n)) + 1, h: await sha256hex(token), role: b.role, by: user.id,
+        byName: user.display_name || "", created: Date.now(), expires: Date.now() + days * 864e5 };
+      await saveInvites(env, base, [...list, x]);
+      return json({ token, ...shown(x) });
     }
-    const lic = cleanLicence(q.get("lic"));
-    return json({ lic, name: await licenseeName(env, request, lic) });
+    if (method === "DELETE") {
+      const n = Number(new URL(request.url).searchParams.get("n"));
+      await saveInvites(env, base, list.filter((x) => x.n !== n));
+      return json({ ok: true });
+    }
+    return json({ error: "method" }, 405);
   }
 
   if (sub === "event") {

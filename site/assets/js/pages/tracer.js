@@ -36,7 +36,11 @@ export async function render(main, r) {
   // the editor at once, empty; the beta notice over it (beta.js; owner, 2026-10-16); then the event a link names, else the start screen
   const notice = betaNotice("tracer");
   await openBlank();
-  notice.then(() => { if (leaving) return; if (r.query.id) openEvent(r.query.id); else startScreen(); });
+  notice.then(async () => {
+    if (leaving) return;
+    if (r.query.id && r.query.invite) await joinByInvite(r.query.id, r.query.invite);
+    if (r.query.id) openEvent(r.query.id); else startScreen();
+  });
   return { title: t("trc.page.title"), cleanup: () => { leaving = true; document.querySelector(".tr-start")?.remove(); window.__tracer?.close?.(); leaveFull(); } };
 }
 
@@ -409,6 +413,18 @@ async function openLocal(id, onClose) {
 function alertBox(text) { return modal({ title: t("trc.page.title"), body: `<p>${escA(text)}</p>`, cancel: null }); }
 
 // ---- opening ----------------------------------------------------------------------------------------------------------------
+/** An invitation link (« Équipe et partage »): join the event's team, then the address keeps only the event. */
+async function joinByInvite(id, token) {
+  try {
+    const r = await S.api(`/${id}/join`, { method: "POST", body: { token } });
+    if (r?.joined) toastJoin(t("trc.page.joined"));
+  } catch (e) {
+    await alertBox(e.status === 410 ? t("trc.page.inviteGone") : e.status === 403 ? t("trc.page.inviteDemo") : t("trc.page.openErr", { err: e.code || e.message }));
+  }
+  history.replaceState(null, "", `${listHash()}${listHash().includes("?") ? "&" : "?"}id=${encodeURIComponent(id)}`);
+}
+const toastJoin = (text) => { const n = document.createElement("div"); n.className = "tr-loading"; n.innerHTML = `<p>${escA(text)}</p>`; document.body.appendChild(n); setTimeout(() => n.remove(), 2200); };
+
 async function openEvent(id, { align = false } = {}) {
   const loading = document.createElement("div");
   loading.className = "tr-loading"; loading.innerHTML = `<div class="spinner"></div><p>${escA(t("trc.page.opening"))}</p>`;

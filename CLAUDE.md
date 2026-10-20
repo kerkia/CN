@@ -1199,10 +1199,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   licence check and the new-account mail skip accounts without a licence (the mail lists the countries). An account without a
   licence is in no Tracer team (`"".split(",")` gave `[""]`: the event list showed demo accounts every team-less event's
   title).
-  **Tracer teams by account** (owner, 2026-10-20: the Tracer is not for FFCO licensees only): a member is `{ lic?, uid?,
-  name, role }`, added by FFCO licence or by the e-mail of a confirmed Ozimut account (`/member?email=`, owners and setters
-  only, 60 an hour; the name and licence then come from the account); `roleOf` and the list match either (R2 custom
-  metadata `team` = licences, `uids` = account ids); account deletion hands an event to a uid member too.
+  **Tracer teams by invitation** (owner, 2026-10-20: for everyone, FFCO licensees included; no lookup by name, licence or
+  e-mail — an e-mail lookup told whether an address had an account, names have homonyms): « Équipe et partage » makes a link for
+  a role (`POST /api/tracer/<id>/invites`, 7 days, 20 at most, only its token's sha-256 kept in R2 `tracer/<id>/invites`;
+  listed and revoked there); `#/orga-tracer?id=…&invite=…` opened signed in posts `/join` and the account joins under its own
+  name (`{ uid, lic?, name, role, joined }`). The team's PUT only changes roles or removes members (nobody is added there);
+  members added by licence before keep their place (`roleOf` and the list match uid or licence; R2 custom metadata `team` =
+  licences, `uids` = account ids); account deletion hands an event to a uid member too. An encrypted event's passphrase is
+  passed on separately.
   **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
   (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
   of `WORLD_OPEN`; the countries kept are listed either way.

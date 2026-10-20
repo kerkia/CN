@@ -48,8 +48,8 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Course setting</h2>
       <p>An event of the “Course setting” page (its courses, its map, its versions, the team's comments and the states of the
         controls noted in field mode) is kept in the site's storage (Cloudflare) and is only accessible to its team: its creator and
-        the people they add, by FFCO licence number or by the email address of their Ozimut account (the creator then learns whether
-        a confirmed account has that address, and its name); their name and licence or account are recorded with their role.
+        the people who join it by an invitation link the team gave them (nobody is looked up by name, licence or email address);
+        their name, their account and, for an FFCO licence holder, the licence are recorded with their role.
         Versions, comments and control
         states carry their author's name. In field mode, the state noted on a control also records the phone's position at that
         moment (to compare it with the map), visible to the team, and the team can attach photos of the controls (they may show

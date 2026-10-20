@@ -988,7 +988,7 @@ export function build(X) {
             saved, with its map (a file saved earlier as .ocnt opens the same way); a Purple Pen file (.ppen) with its map. If the map given is not the file's own (a PDF instead of the OCAD
             map, for example), you then align the controls in two clicks.</p>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>Who sees it</h3><p>Its team only: its creator and the licence holders they add, as course setter,
+            <div class="mx-box" style="--c:var(--s1)"><h3>Who sees it</h3><p>Its team only: its creator and the people who join it by an invitation link, as course setter,
               controller or viewer. Not the site's administrators: the courses stay secret until the race.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Saved automatically</h3><p>A few seconds after each change; a version is kept every
               30 minutes of work, and you can keep one under a name (${W("version-save")}).</p></div>
@@ -1287,7 +1287,7 @@ export function build(X) {
           <p class="mx-kicker">${K}</p>
           <h2>Teamwork and the field</h2>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} The team</h3><p>${W("team")}: add licence holders by their number.
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("team", 18)} The team</h3><p>${W("team")}: make an invitation link for a role and pass it on; whoever opens it signed in joins, FFCO licence holder or not.
               The course setter and the controller edit, the viewer reads and comments. Only one edits at a time; the others can “take over”.</p></div>
             <div class="mx-box" style="--c:var(--s2)"><h3>${ic("comment", 18)} Comments</h3><p>${W("comments")}: a comment pinned to a
               spot on the map, replies, and “Done” when it is settled; the number still open is shown on the tab.</p></div>
