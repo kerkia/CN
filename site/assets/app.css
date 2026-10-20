@@ -596,6 +596,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 }
 @media (max-width: 1120px) {             /* the navigation fits beside the brand and the tools above this */
   .menu-btn { display: inline-grid; }
+  .brand { order: -1; }                  /* the logo first, the menu button just right of it (owner, 2026-10-20) */
   .nav {
     display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column; z-index: 5;   /* over the search bar */
     background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 14px;
