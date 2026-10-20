@@ -706,8 +706,8 @@ async function team(E) {
   const roleName = (r) => roles.find(([k]) => k === r)?.[1] || r;
   const render = (box) => {
     box.innerHTML = `<table class="tr-table"><thead><tr><th>${esc(t("trc.dlg.member"))}</th><th>${esc(t("trc.dlg.role"))}</th><th></th></tr></thead><tbody>
-      <tr><td>${esc(meta.ownerName)} <small>(${esc(meta.ownerLic || "")})</small></td><td>${esc(t("trc.dlg.creator"))}</td><td></td></tr>
-      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")} <small>(${esc(m.lic)})</small></td><td>${owner ? sel(`r${i}`, roles, m.role) : esc(roleName(m.role))}</td>
+      <tr><td>${esc(meta.ownerName)}${meta.ownerLic ? ` <small>(${esc(meta.ownerLic)})</small>` : ""}</td><td>${esc(t("trc.dlg.creator"))}</td><td></td></tr>
+      ${rows.map((m, i) => `<tr><td>${esc(m.name || "?")} <small>(${esc(m.lic || (m.email || t("trc.dlg.byAccount")))})</small></td><td>${owner ? sel(`r${i}`, roles, m.role) : esc(roleName(m.role))}</td>
       <td>${owner ? `<button type="button" class="btn btn-sm" data-rm="${i}">${esc(t("trc.dlg.remove"))}</button>` : ""}</td></tr>`).join("")}</tbody></table>`;
     box.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { rows.splice(Number(b.dataset.rm), 1); render(box); }));
     box.querySelectorAll("select").forEach((s2) => s2.addEventListener("change", () => { rows[Number(s2.name.slice(1))].role = s2.value; }));
@@ -715,12 +715,21 @@ async function team(E) {
   const v = await modal(E, { title: t("trc.dlg.team"), wide: true, ok: owner ? t("trc.dlg.save") : t("trc.dlg.close"), cancel: owner ? t("trc.dlg.cancel") : null, body: `
     <p>${esc(t("trc.dlg.teamIntro"))}</p>
     <div id="tr-team"></div>
-    ${owner ? `<div class="tr-row">${field(t("trc.dlg.licence"), '<input id="tr-lic" inputmode="numeric" size="9">')}<button type="button" class="btn btn-sm" id="tr-add">${esc(t("trc.dlg.add"))}</button></div>` : ""}`,
+    ${owner ? `<div class="tr-row">${field(t("trc.dlg.licenceOrEmail"), '<input id="tr-lic" size="28" autocomplete="off">')}<button type="button" class="btn btn-sm" id="tr-add">${esc(t("trc.dlg.add"))}</button></div>
+      <p><small>${esc(t("trc.dlg.licenceOrEmailHint"))}</small></p>` : ""}`,
   onOpen: (f) => {
     const box = f.querySelector("#tr-team");
     render(box);
     f.querySelector("#tr-add")?.addEventListener("click", async () => {
+      // an FFCO licence, or the e-mail of an Ozimut account (anyone: owner, 2026-10-20)
       const lic = f.querySelector("#tr-lic").value.trim();
+      if (lic.includes("@")) {
+        const r = await S.api(`/${meta.id}/member?email=${encodeURIComponent(lic)}`).catch(() => null);
+        if (!r?.uid) { E.toast(t("trc.dlg.emailNotFound")); return; }
+        if (rows.some((m) => Number(m.uid) === r.uid) || r.uid === Number(meta.owner)) return;
+        rows.push({ uid: r.uid, email: lic.toLowerCase(), name: r.name, role: "controller" }); render(box); f.querySelector("#tr-lic").value = "";
+        return;
+      }
       if (!/^\d{1,8}$/.test(lic)) { E.toast(t("trc.dlg.needLicence")); return; }
       if (rows.some((m) => m.lic === lic)) return;
       const r = await S.api(`/${meta.id}/member?lic=${encodeURIComponent(lic)}`).catch(() => null);
@@ -729,7 +738,7 @@ async function team(E) {
     });
   } });
   if (!v || !owner) return;
-  const r = await S.api(`/${meta.id}`, { method: "PUT", body: { team: rows.map((m) => ({ lic: m.lic, name: m.name, role: m.role })) } });
+  const r = await S.api(`/${meta.id}`, { method: "PUT", body: { team: rows.map((m) => (m.uid ? { uid: m.uid, role: m.role } : { lic: m.lic, name: m.name, role: m.role })) } });
   E.meta = r.event;
   E.toast(t("trc.dlg.teamSaved"));
 }

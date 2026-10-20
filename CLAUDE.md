@@ -1164,8 +1164,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   hourly check. France's membership is `users.licence` (joining sets it with FFCO's display name, leaving clears it and drops
   the relay runners). `/api/account/countries` GET / POST `{ country, club, id }` / DELETE `{ country }`; `/api/account/me`
   and the login return `countries`. A club typed by the user grants nothing; only clubs of an accepted country do. Registration
-  takes `countries: [...]` (`licence` alone = France); `WORLD_OPEN` (wrangler.toml, "0") keeps France required until the
-  access rules follow the countries. **Cloudflare Turnstile** on registration (`_lib/turnstile.js`; the form loads
+  takes `countries: [...]` (`licence` alone = France); `WORLD_OPEN` (wrangler.toml) "1" since 2026-10-20 evening (owner):
+  registration open to every orienteer, no country required ("0" would require France again). **Cloudflare Turnstile** on registration (`_lib/turnstile.js`; the form loads
   challenges.cloudflare.com's script, the one script from another host, there only and only when `/api/account/status` gives a
   site key): `TURNSTILE_SITE_KEY` in wrangler.toml, `TURNSTILE_SECRET` a Pages secret (the owner's); either missing = no check.
   Locally, Cloudflare's always-pass test keys in `.dev.vars`.
@@ -1198,7 +1198,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (results, start times) show only with a licence. **Admin** (step 6): « Comptes » has a Countries column; the duplicate
   licence check and the new-account mail skip accounts without a licence (the mail lists the countries). An account without a
   licence is in no Tracer team (`"".split(",")` gave `[""]`: the event list showed demo accounts every team-less event's
-  title). Tracer teams are by licence, so a non-France account cannot yet be added to a team.
+  title).
+  **Tracer teams by account** (owner, 2026-10-20: the Tracer is not for FFCO licensees only): a member is `{ lic?, uid?,
+  name, role }`, added by FFCO licence or by the e-mail of a confirmed Ozimut account (`/member?email=`, owners and setters
+  only, 60 an hour; the name and licence then come from the account); `roleOf` and the list match either (R2 custom
+  metadata `team` = licences, `uids` = account ids); account deletion hands an event to a uid member too.
   **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
   (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
   of `WORLD_OPEN`; the countries kept are listed either way.

@@ -8,8 +8,10 @@
 //   tracer/<id>/field            the field statuses of the controls (set, checked, collected)
 //   tracer/<id>/photo/<pid>      the field mode's photos of the controls
 //   tracer/<id>/lock             who is editing (refreshed every minute; others open the event read-only)
-// Courses are secret until the race (owner, 2026-10-15): only the event's team opens it — its creator and the licences
-// the creator adds (« setter » edits, « controller » edits and comments, « viewer » reads and comments); not the
+// Courses are secret until the race (owner, 2026-10-15): only the event's team opens it — its creator and the people
+// the creator adds, by FFCO licence or, for anyone (owner, 2026-10-20: the Tracer is not for FFCO licensees only), by
+// their Ozimut account's e-mail (a member { lic?, uid?, name, role }; « setter » edits, « controller » edits and comments,
+// « viewer » reads and comments); not the
 // administrators. A competition's event is created by a member of the race's organising club (_lib/club.js); a
 // training event by any account. With encryption, the server never sees the courses: it stores bytes.
 //
@@ -27,6 +29,7 @@
 //   GET|PUT|DELETE /api/tracer/<id>/photo/<pid>   a control's photo (field mode; editors put and delete)
 //   POST|DELETE /api/tracer/<id>/lock        take (or refresh) / release the editing lock
 //   GET    /api/tracer/<id>/member?lic=…     the licensee's name, before adding them to the team
+//   GET    /api/tracer/<id>/member?email=…   an account's id and name (confirmed, active, not a demo), likewise
 
 import { allow, isAdmin, json, readBody, withUser, nowIso, cleanLicence } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
@@ -41,7 +44,8 @@ const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz
 const LOCK_MS = 150e3;
 
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", orgClub: m.orgClub || "", owner: String(m.owner),
-  ownerName: m.ownerName || "", team: m.team.map((x) => x.lic).join(","), enc: m.encrypted ? "1" : "", updated: m.updated || "", version: String(m.version || 0) });
+  ownerName: m.ownerName || "", team: m.team.filter((x) => x.lic).map((x) => x.lic).join(","),
+  uids: m.team.filter((x) => x.uid).map((x) => x.uid).join(","), enc: m.encrypted ? "1" : "", updated: m.updated || "", version: String(m.version || 0) });
 async function loadMeta(env, id) {
   const o = await env.BUCKET.get(`${META}${id}.json`);
   if (!o) return null;
@@ -63,10 +67,13 @@ async function listAll(env, prefix, include = true) {
 /** One's role on an event: "owner", "setter", "controller", "viewer", or null. */
 function roleOf(meta, user) {
   if (meta.owner === user.id) return "owner";
-  const m = meta.team.find((x) => x.lic && String(x.lic) === String(user.licence));
+  const m = meta.team.find((x) => (x.uid && Number(x.uid) === user.id) || (x.lic && user.licence && String(x.lic) === String(user.licence)));
   return m ? m.role : null;
 }
 const canEdit = (r) => r === "owner" || r === "setter" || r === "controller";
+/** An account that may join a team: confirmed, active, not a demo. */
+const accountById = (env, id) => (Number.isInteger(id) && id > 0 ? env.DB.prepare(
+  "SELECT id, display_name, licence FROM users WHERE id = ? AND email_verified = 1 AND status = 'active' AND demo_until IS NULL").bind(id).first() : null);
 /** The licensee's display name from the licensee index (never served to browsers). */
 async function licenseeName(env, request, lic) {
   if (!/^\d+$/.test(lic)) return null;
@@ -109,7 +116,9 @@ export const onRequest = withUser(async (ctx, user) => {
       const out = [];
       for (const o of await listAll(env, META)) {
         const m = o.customMetadata || {};
-        const mine = Number(m.owner) === user.id, member = !!user.licence && (m.team || "").split(",").includes(String(user.licence));   // (no licence: in no team; "".split gives [""])
+        // (by licence or by account; no licence matches no team member: "".split gives [""])
+        const mine = Number(m.owner) === user.id, member = (!!user.licence && (m.team || "").split(",").includes(String(user.licence)))
+          || (m.uids || "").split(",").includes(String(user.id));
         if (!mine && !member) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, ownerName: m.ownerName, mine, encrypted: !!m.enc, updated: m.updated });
       }
@@ -168,10 +177,17 @@ export const onRequest = withUser(async (ctx, user) => {
         if (!Array.isArray(b.team) || b.team.length > 40) return json({ error: "team" }, 400);
         const team = [];
         for (const x of b.team) {
+          const role = ROLES.includes(x?.role) ? x.role : "viewer";
+          if (x?.uid != null) {                  // an account added by its e-mail: its name and licence from the accounts
+            const u = await accountById(env, Number(x.uid));
+            if (!u || u.id === Number(meta.owner) || team.some((y) => Number(y.uid) === u.id || (u.licence && y.lic === u.licence))) continue;
+            team.push({ uid: u.id, ...(u.licence ? { lic: u.licence } : {}), name: u.display_name, role });
+            continue;
+          }
           const lic = cleanLicence(x?.lic);
           if (!/^\d{1,8}$/.test(lic) || team.some((y) => y.lic === lic) || lic === meta.ownerLic) continue;
           const name = (await licenseeName(env, request, lic)) || clean(x?.name, 80);
-          team.push({ lic, name, role: ROLES.includes(x?.role) ? x.role : "viewer" });
+          team.push({ lic, name, role });
         }
         meta.team = team;
       }
@@ -199,8 +215,15 @@ export const onRequest = withUser(async (ctx, user) => {
   }
 
   if (sub === "member" && method === "GET") {
-    const lic = cleanLicence(new URL(request.url).searchParams.get("lic"));
+    if (role !== "owner" && role !== "setter") return json({ error: "forbidden" }, 403);
     if (!(await allow(env, `trmember:${user.id}`, 60, 3600))) return json({ error: "too many" }, 429);
+    const q = new URL(request.url).searchParams;
+    if (q.get("email")) {
+      const u = await env.DB.prepare(`SELECT id, display_name FROM users WHERE email = ? AND email_verified = 1 AND status = 'active'
+        AND demo_until IS NULL`).bind(String(q.get("email")).trim().toLowerCase().slice(0, 254)).first();
+      return json(u ? { uid: u.id, name: u.display_name } : { uid: null, name: null });
+    }
+    const lic = cleanLicence(q.get("lic"));
     return json({ lic, name: await licenseeName(env, request, lic) });
   }
 

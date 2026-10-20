@@ -54,7 +54,9 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Tracé des circuits</h2>
       <p>Un événement de la page « Tracer » (ses circuits, sa carte, ses versions, les commentaires de l'équipe et les états des
         postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :
-        son créateur et les licenciés qu'il y ajoute, dont le nom et le numéro de licence sont enregistrés avec leur rôle. Les
+        son créateur et les personnes qu'il y ajoute, par leur numéro de licence FFCO ou par l'adresse e-mail de leur compte Ozimut
+        (le créateur apprend alors si un compte confirmé existe à cette adresse, et son nom) ; leur nom et leur licence ou leur
+        compte sont enregistrés avec leur rôle. Les
         versions, les commentaires et les états des postes portent le nom de leur auteur. En mode terrain, l'état noté sur un poste
         enregistre aussi la position du téléphone à cet instant (pour la comparer à la carte), visible de l'équipe, et l'équipe
         peut y joindre des photos des postes (elles peuvent montrer des personnes : évitez-le), effacées avec l'événement ; la position

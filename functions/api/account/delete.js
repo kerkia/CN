@@ -47,15 +47,19 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
           if (!meta) continue;
           let heir = null;
           for (const role of ["setter", "controller"]) for (const m of meta.team || []) {
-            if (heir || m.role !== role || String(m.lic) === String(user.licence)) continue;
-            const u = await env.DB.prepare("SELECT id, display_name, licence FROM users WHERE licence = ? AND id != ? AND status = 'active' LIMIT 1").bind(String(m.lic), user.id).first();
+            if (heir || m.role !== role || Number(m.uid) === user.id || (m.lic && String(m.lic) === String(user.licence))) continue;
+            // a member added by account (uid), else by licence
+            const u = m.uid
+              ? await env.DB.prepare("SELECT id, display_name, licence FROM users WHERE id = ? AND status = 'active'").bind(Number(m.uid)).first()
+              : m.lic ? await env.DB.prepare("SELECT id, display_name, licence FROM users WHERE licence = ? AND id != ? AND status = 'active' LIMIT 1").bind(String(m.lic), user.id).first() : null;
             if (u) heir = { u, m };
           }
           if (heir) {
-            Object.assign(meta, { owner: heir.u.id, ownerName: heir.u.display_name || heir.m.name || "", ownerLic: String(heir.u.licence || heir.m.lic) });
+            Object.assign(meta, { owner: heir.u.id, ownerName: heir.u.display_name || heir.m.name || "", ownerLic: String(heir.u.licence || heir.m.lic || "") });
             meta.team = meta.team.filter((x) => x !== heir.m);
             await env.BUCKET.put(o.key, JSON.stringify(meta), { httpMetadata: { contentType: "application/json" },
-              customMetadata: { ...(o.customMetadata || {}), owner: String(meta.owner), ownerName: meta.ownerName, team: meta.team.map((x) => x.lic).join(",") } });
+              customMetadata: { ...(o.customMetadata || {}), owner: String(meta.owner), ownerName: meta.ownerName,
+                team: meta.team.filter((x) => x.lic).map((x) => x.lic).join(","), uids: meta.team.filter((x) => x.uid).map((x) => x.uid).join(",") } });
           } else {
             const keys = [o.key];
             let c2;
