@@ -38,8 +38,8 @@ export function jsonList(s) {
   try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
 
-/** What the browser needs to know about the logged-in user. */
-export const publicUser = (env, u) => ({
+/** What the browser needs to know about the logged-in user; `countries` its memberships (_lib/countries.js `memberships`). */
+export const publicUser = (env, u, countries = []) => ({
   uid: u.id, lic: u.licence, nom: u.display_name, email: u.email, notify: !!u.notify, admin: isAdmin(env, u),
   agendaAlert: !!u.agenda_alert, agendaRegions: jsonList(u.agenda_regions), deadlineAlert: !!u.deadline_alert,
   // rights granted on the admin page, administrators included (an admin may uncheck one to see the site as others do)
@@ -51,6 +51,8 @@ export const publicUser = (env, u) => ({
   pushDeadline: u.push_deadline === 1,
   // a demo account (admin page, « Démo »): read-only, tied to no licence, valid until that day
   demo: u.demo_until || null,
+  // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data
+  countries: countries.map((c) => ({ cc: c.country, club: c.club, id: c.member_id, status: c.status })),
 });
 /** An account's language, "fr" or "en" (users.lang, migration 0009; French before it). */
 export const userLang = (u) => (u?.lang === "en" ? "en" : "fr");
@@ -62,11 +64,12 @@ export const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZon
 /** A demo account past its last day (users.demo_until, migration 0012). */
 export const demoExpired = (u) => !!u?.demo_until && u.demo_until < parisToday();
 
-export async function sessionCookie(env, user) {
+/** `cc`: the countries whose data the session may see (accepted memberships, _lib/countries.js `acceptedCountries`). */
+export async function sessionCookie(env, user, cc = []) {
   // a demo account's session: marked (the login gate refuses its changes) and never longer than the account
   const until = user.demo_until ? Date.parse(`${user.demo_until}T23:59:59+01:00`) : Infinity;
   const exp = Math.min(Date.now() + SESSION_DAYS * 86400e3, until);
-  const token = await signSession({ uid: user.id, lic: user.licence, exp, chk: Date.now(), ...(user.demo_until ? { demo: 1 } : {}) },
+  const token = await signSession({ uid: user.id, lic: user.licence, cc, exp, chk: Date.now(), ...(user.demo_until ? { demo: 1 } : {}) },
     env.SESSION_SECRET);
   return `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
 }
@@ -96,7 +99,8 @@ export async function checkLicensee(env, request, first, last, licence) {
   if (!lic || !key || lic.length > 12) return null;
   const bucket = /^\d+$/.test(lic) ? Math.floor(Number(lic) / 100) : 999999;
   const res = await env.ASSETS.fetch(new URL(`/auth/${bucket}.json`, request.url));
-  const entry = (res.ok ? await res.json() : {})[lic];                // [sha256(nameKey), display name]
+  // a licence of no bucket: the file server answers the app's page, not JSON
+  const entry = (res.ok ? await res.json().catch(() => ({})) : {})[lic];   // [sha256(nameKey), display name]
   return entry && entry[0] === await sha256hex(key) ? entry[1] : null;
 }
 

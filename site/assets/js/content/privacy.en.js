@@ -99,7 +99,8 @@ export const body = (SITE) => `
       <p>The following providers process data on the publisher's behalf:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (United States) hosts the site, its account database and its file storage, and runs the language
-          model of the “AI” page. Transfers to the United States rely on the EU-US Data Privacy Framework, to which Cloudflare has
+          model of the “AI” page; at registration, its Turnstile service checks that the form is filled in by a person rather
+          than a robot, by examining the browser, with no advertising cookie and no tracking from one site to another. Transfers to the United States rely on the EU-US Data Privacy Framework, to which Cloudflare has
           signed up.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., United States) sends the site's emails, which involves the recipient's address and
           the content of the message. Transfers are covered by the European Commission's standard contractual clauses.</li>
@@ -132,5 +133,5 @@ export const body = (SITE) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 18 October 2026.</p>
+      <p class="muted">Last updated: 20 October 2026.</p>
 `;

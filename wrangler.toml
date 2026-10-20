@@ -55,6 +55,11 @@ ALERT_EMAIL = "contact@ozimut.com"
 ADMIN_EMAILS = "ocn@kerkia.com, admin@ozimut.com"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"
+# "1": registration without France (the countries, migration 0014); "0" until the site's access follows the countries
+WORLD_OPEN = "0"
+# Cloudflare Turnstile on registration (_lib/turnstile.js): the widget's public site key; its secret is the Pages secret
+# TURNSTILE_SECRET. Empty (or no secret): no check
+TURNSTILE_SITE_KEY = ""
 # the repository whose workflow an upload starts
 GH_REPO = "kerkia/CN"
 # Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day

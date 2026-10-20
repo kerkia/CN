@@ -1,6 +1,7 @@
 // POST /api/account/login { email, password } -> the user and a session cookie.
 
-import { allow, cleanEmail, clientIp, demoExpired, json, nowIso, pause, publicUser, readBody, sessionCookie } from "../../_lib/api.js";
+import { allow, cleanEmail, clientIp, demoExpired, json, nowIso, pause, readBody } from "../../_lib/api.js";
+import { accountView } from "../../_lib/countries.js";
 import { checkPassword, defaultIterations, hashPassword } from "../../_lib/crypto.js";
 
 export async function onRequestPost({ request, env }) {
@@ -23,5 +24,6 @@ export async function onRequestPost({ request, env }) {
     await env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, pw_iter = ? WHERE id = ?").bind(pw.hash, pw.salt, pw.iter, user.id).run();
   }
   await env.DB.prepare("UPDATE users SET last_login = ? WHERE id = ?").bind(nowIso(), user.id).run();
-  return json(publicUser(env, user), 200, { "Set-Cookie": await sessionCookie(env, user) });
+  const view = await accountView(env, user);
+  return json(view.body, 200, { "Set-Cookie": view.cookie });
 }

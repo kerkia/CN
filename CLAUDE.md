@@ -1153,6 +1153,22 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   days), today and day by day; visits are counted since 2026-10-07 (the window complete from 2026-10-27); a deleted
   account leaves no trace.
   Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
+- **Countries** (owner, 2026-10-20: Ozimut open to every orienteer; the plan in nine steps — data model, access by path in
+  `_middleware.js`, a CN-free copy of the provisional results, the front end by profile, registration and Réglages « Mes pays »,
+  admin, texts, an admin « Consommation » tab, a global country selector): an account joins countries (D1 `user_countries`,
+  migration 0014: ISO alpha-2 code, club as typed, member id, status `ok` / `pending` / `refused`; every account of before
+  backfilled as France). `functions/_lib/countries.js`: the IOF's member countries (`COUNTRIES`), each one's policy — France
+  `ffco` (name + licence against the licensee index, `checkLicensee`), the others `open` (declared) —, `checkMembership`,
+  `memberships` (in the order joined: the first accepted is the user's default country), `accountView` (the user and a fresh
+  cookie). The session cookie carries `cc`, the accepted countries (a demo account: France), refreshed by the login gate's
+  hourly check. France's membership is `users.licence` (joining sets it with FFCO's display name, leaving clears it and drops
+  the relay runners). `/api/account/countries` GET / POST `{ country, club, id }` / DELETE `{ country }`; `/api/account/me`
+  and the login return `countries`. A club typed by the user grants nothing; only clubs of an accepted country do. Registration
+  takes `countries: [...]` (`licence` alone = France); `WORLD_OPEN` (wrangler.toml, "0") keeps France required until the
+  access rules follow the countries. **Cloudflare Turnstile** on registration (`_lib/turnstile.js`; the form loads
+  challenges.cloudflare.com's script, the one script from another host, there only and only when `/api/account/status` gives a
+  site key): `TURNSTILE_SITE_KEY` in wrangler.toml, `TURNSTILE_SECRET` a Pages secret (the owner's); either missing = no check.
+  Locally, Cloudflare's always-pass test keys in `.dev.vars`.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff

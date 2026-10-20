@@ -1,10 +1,14 @@
-// POST /api/account/register { email, password, first, last, licence, consent, website, lang }
+// POST /api/account/register { email, password, first, last, countries: [{ country, club, id }], consent, website, lang,
+//   turnstile } — `licence` alone (the form of before) stands for France.
 //
-// Accepts the registration only if (first name, last name, licence) matches a licensee in
-// the FFCO index (the same check as the historic login) and the visitor declares being one.
-// The account then waits for the e-mail confirmation; it cannot log in before.
+// Every country asked is checked by its policy (_lib/countries.js): France's only if (first name, last name, licence)
+// matches a licensee in the FFCO index, as registration always required; a mismatch refuses the whole registration, so
+// that one does not end up without the country one meant. Until WORLD_OPEN is "1" France is required (the site's access
+// does not follow the countries yet). The account then waits for the e-mail confirmation; it cannot log in before.
 
-import { allow, cleanEmail, cleanLicence, checkLicensee, clientIp, json, nowIso, pause, readBody, validEmail } from "../../_lib/api.js";
+import { allow, cleanEmail, clientIp, json, nowIso, pause, readBody, validEmail } from "../../_lib/api.js";
+import { checkMembership, cleanCountry, saveMembership } from "../../_lib/countries.js";
+import { turnstileOk } from "../../_lib/turnstile.js";
 import { hashPassword, newToken, sha256hex } from "../../_lib/crypto.js";
 import { sendOrQueue } from "../../_lib/mail.js";
 import { verifyMail } from "../../_lib/templates.js";
@@ -34,18 +38,30 @@ export async function onRequestPost({ request, env }) {
   if (!b) return json({ error: "bad request" }, 400);
   if (b.website) return json({ ok: true });                              // honeypot: bots fill every field
   if (!(await allow(env, `reg:${clientIp(request)}`, 8, 3600))) return json({ error: "rate" }, 429);
+  if (!(await turnstileOk(env, b.turnstile, clientIp(request)))) return json({ error: "robot" }, 422);
 
   const email = cleanEmail(b.email);
   const first = String(b.first || "").trim().slice(0, 60), last = String(b.last || "").trim().slice(0, 60);
-  const licence = cleanLicence(b.licence);
+  const asked = Array.isArray(b.countries) ? b.countries.slice(0, 10) : b.licence ? [{ country: "FR", id: b.licence }] : [];
   const password = String(b.password || "");
   if (!validEmail(email)) return json({ error: "email" }, 422);
   if (password.length < 6 || password.length > 200 || password.toLowerCase() === email) return json({ error: "password" }, 422);
-  if (!first || !last || !licence) return json({ error: "fields" }, 422);
+  if (!first || !last) return json({ error: "fields" }, 422);
+  if (new Set(asked.map((c) => cleanCountry(c?.country))).size !== asked.length) return json({ error: "country" }, 422);
+  if (env.WORLD_OPEN !== "1" && !asked.some((c) => cleanCountry(c?.country) === "FR")) return json({ error: "fields" }, 422);
   if (b.consent !== true) return json({ error: "consent" }, 422);
 
-  const display = await checkLicensee(env, request, first, last, licence);
-  if (!display) { await pause(600); return json({ error: "mismatch" }, 422); }
+  const rows = [];
+  let display = `${first} ${last}`, licence = "";
+  for (const c of asked) {
+    const chk = await checkMembership(env, request, c || {}, first, last);
+    if (!chk.ok) {
+      if (chk.error === "mismatch") await pause(600);
+      return json({ error: chk.error, country: cleanCountry(c?.country) }, 422);
+    }
+    rows.push(chk.row);
+    if (chk.row.country === "FR") { display = chk.display; licence = chk.row.member_id; }
+  }
 
   const existing = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
   if (existing?.email_verified) return json({ error: "email_taken" }, 409);
@@ -58,6 +74,7 @@ export async function onRequestPost({ request, env }) {
     `INSERT INTO users (email, pw_hash, pw_salt, pw_iter, first_name, last_name, licence, display_name, consent_at, created_at, lang)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), b.lang === "en" ? "en" : "fr").first();
+  if (rows.length) await env.DB.batch(rows.map((r) => saveMembership(env, row.id, r)));
   const mail = await sendVerification(env, row);
   return json({ ok: true, mail });
 }

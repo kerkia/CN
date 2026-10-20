@@ -42,9 +42,22 @@ const keepDraft = (form) => {
 };
 const dropDraft = () => { try { sessionStorage.removeItem(DRAFT); } catch (e) { /* nothing kept */ } };
 
+// Cloudflare Turnstile (owner, 2026-10-20; functions/_lib/turnstile.js): the one script the site loads from another host, on
+// this form only and only when the server has its keys — it cannot be served by the site itself (it is Cloudflare's check).
+const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+let turnstileLoad = null;
+const loadTurnstile = () => turnstileLoad || (turnstileLoad = new Promise((ok, ko) => {
+  const s = document.createElement("script");
+  s.src = TURNSTILE; s.async = true; s.onload = () => ok(window.turnstile); s.onerror = () => { turnstileLoad = null; ko(new Error("turnstile")); };
+  document.head.append(s);
+}));
+
 async function register(main) {
-  let open = true;
-  try { open = (await (await fetch("api/account/status")).json()).registration; } catch (e) { open = false; }
+  let open = true, siteKey = null;
+  try {
+    const st = await (await fetch("api/account/status")).json();
+    open = st.registration; siteKey = st.turnstile || null;
+  } catch (e) { open = false; }
   main.innerHTML = card(t("ac.reg.title"), !open
     ? html`<div class="notice info">${t("ac.reg.closed")}</div><a class="btn" href="#/" style="justify-content:center">${t("ac.toLogin")}</a>`
     : html`<p class="soft" style="margin:0">${t("ac.reg.lede")}</p>
@@ -63,6 +76,7 @@ async function register(main) {
         <div class="hp" aria-hidden="true"><label>Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
         <label class="check"><input name="consent" type="checkbox" required><span>${t("ac.reg.consent")}
           <a href="#/compte/confidentialite">${t("ac.reg.privacy")}</a></span></label>
+        ${siteKey ? html`<div id="reg-ts" class="reg-ts"></div>` : ""}
         <div class="notice" hidden></div>
         <button class="btn btn-primary" type="submit" style="height:40px;justify-content:center">${t("ac.reg.submit")}</button>
       </form>
@@ -74,12 +88,23 @@ async function register(main) {
   form.addEventListener("input", () => keepDraft(form));
   // the language: the page drawn again in it (what is typed comes back), the account created in it
   $("#reg-lang").addEventListener("change", (e) => { keepDraft(form); setLang(e.target.value); });
+  // the robot check: its token is used once, so a refused registration asks for a new one
+  let tsToken = "", tsWidget = null;
+  if (siteKey) {
+    loadTurnstile().then((ts) => {
+      tsWidget = ts.render("#reg-ts", { sitekey: siteKey, language: lang(), action: "register",
+        callback: (tok) => { tsToken = tok; }, "expired-callback": () => { tsToken = ""; }, "error-callback": () => { tsToken = ""; } });
+    }).catch(() => { /* the server answers « robot »: said below */ });
+  }
   bind(form, t("ac.reg.submit"), async (f) => {
     if (f.get("password") !== f.get("password2")) return t("ac.reg.err.password2");
+    if (siteKey && !tsToken) return t("ac.reg.err.robotWait");
     const r = await auth.api("api/account/register", {
       email: f.get("email"), password: f.get("password"), first: f.get("first"), last: f.get("last"),
-      licence: f.get("licence"), consent: f.get("consent") === "on", website: f.get("website"), lang: lang(),
+      countries: [{ country: "FR", id: f.get("licence") }], consent: f.get("consent") === "on", website: f.get("website"),
+      lang: lang(), turnstile: tsToken,
     });
+    if (!r.ok && tsWidget !== null) { try { window.turnstile.reset(tsWidget); } catch (e) { /* gone */ } tsToken = ""; }
     if (r.ok) {
       dropDraft();
       form.outerHTML = html`<div class="notice ok">${t("ac.reg.done")} <b>${f.get("email")}</b>.</div>

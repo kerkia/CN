@@ -5,6 +5,7 @@
 // Only the fields sent are changed. The agenda alerts need the right the administrator grants. The language is the one
 // the account's e-mails are written in, and the one a login on another device takes.
 import { alertsAllowed, json, publicUser, readBody, withUser } from "../../_lib/api.js";
+import { memberships } from "../../_lib/countries.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
@@ -31,5 +32,5 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!sets.length) return json({ error: "bad request" }, 400);
   await env.DB.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, user.id).run();
   const fresh = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(user.id).first();
-  return json(publicUser(env, fresh));
+  return json(publicUser(env, fresh, await memberships(env, fresh.id)));
 });

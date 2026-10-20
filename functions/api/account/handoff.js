@@ -6,7 +6,8 @@
 // The token travels in the part of the address after « # », which no server receives; a token seen once is refused
 // (D1 handoffs, migration 0013).
 
-import { allow, clientIp, currentUser, demoExpired, json, publicUser, readBody, sessionCookie } from "../../_lib/api.js";
+import { allow, clientIp, currentUser, demoExpired, json, readBody } from "../../_lib/api.js";
+import { accountView } from "../../_lib/countries.js";
 import { oldHosts, readToken, signSession } from "../../_middleware.js";
 
 const LIFE_MS = 60e3;
@@ -31,5 +32,6 @@ export async function onRequestPost({ request, env }) {
   await env.DB.prepare("DELETE FROM handoffs WHERE used_at < ?").bind(Date.now() - 86400e3).run();
   const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(p.uid).first();
   if (!user || user.status !== "active" || !user.email_verified || demoExpired(user)) return json({ error: "disabled" }, 403);
-  return json(publicUser(env, user), 200, { "Set-Cookie": await sessionCookie(env, user) });
+  const view = await accountView(env, user);
+  return json(view.body, 200, { "Set-Cookie": view.cookie });
 }

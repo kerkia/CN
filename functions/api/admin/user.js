@@ -21,6 +21,7 @@ export const onRequestPost = withUser(async ({ request, env }, admin) => {
   if (b.action === "delete") {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM notified WHERE user_id = ?").bind(id),
+      env.DB.prepare("DELETE FROM user_countries WHERE user_id = ?").bind(id),
       env.DB.prepare("DELETE FROM tokens WHERE user_id = ?").bind(id),
       env.DB.prepare("DELETE FROM usage_daily WHERE user_id = ?").bind(id),
       env.DB.prepare("DELETE FROM mail_queue WHERE to_email = ?").bind(target.email),

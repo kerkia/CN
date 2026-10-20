@@ -108,7 +108,8 @@ export async function onRequest(context) {
     });
   }
   // Accounts (cookie carries a uid): at most once an hour, check the account still exists and
-  // is not disabled (nor a demo account past its day), then re-sign the cookie.
+  // is not disabled (nor a demo account past its day), then re-sign the cookie with its countries of now (`cc`, the
+  // accepted memberships of user_countries; a demo account sees France; migration 0014 not applied: none read).
   let refreshed = null;
   if (env.DB && Date.now() - (s.chk || 0) > RECHECK_MS) {
     const u = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(s.uid).first();
@@ -118,7 +119,13 @@ export async function onRequest(context) {
           "Set-Cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax` },
       });
     }
-    const token = await signSession({ ...s, chk: Date.now() }, env.SESSION_SECRET);
+    let cc = s.cc || [];
+    try {
+      const { results } = await env.DB.prepare("SELECT country FROM user_countries WHERE user_id = ? AND status = 'ok' ORDER BY added_at, rowid")
+        .bind(s.uid).all();
+      cc = u.demo_until ? ["FR"] : (results || []).map((r) => r.country);
+    } catch (e) { /* no table yet: the cookie's own */ }
+    const token = await signSession({ ...s, lic: u.licence, cc, chk: Date.now() }, env.SESSION_SECRET);
     refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
   }
   // the sites to follow up with (admin page, « Sites »): administrators only

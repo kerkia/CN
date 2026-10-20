@@ -108,7 +108,8 @@ export const body = (SITE) => `
       <p>Les prestataires suivants traitent des données pour le compte de l'éditeur :</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son espace de stockage de fichiers, et exécute
-          le modèle de langage de la page « IA ». Les
+          le modèle de langage de la page « IA » ; à l'inscription, son service Turnstile vérifie que le formulaire est rempli par une
+          personne et non par un robot, en examinant le navigateur sans cookie publicitaire ni suivi d'un site à l'autre. Les
           transferts vers les États-Unis reposent sur le cadre de protection des données UE-États-Unis (Data Privacy Framework),
           auquel Cloudflare a adhéré.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., États-Unis) assure l'envoi des e-mails du site, ce qui implique l'adresse du
@@ -145,5 +146,5 @@ export const body = (SITE) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 18 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 20 octobre 2026.</p>
 `;
