@@ -1211,7 +1211,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   a country's agenda, results and live races are open to every account, without CN (they are not ranked there); default the
   first accepted membership with data (`localStorage ocn.country` once picked); the Agenda's, Résultats' and En direct's lists
   keep the current country's (`country.of`: an item's `country`, France when it has none); En direct lists the other countries
-  racing live under its list, a click makes one the site's country, « Tous les pays » shows them all for the visit.
+  racing live beside its search (under the list on a phone), a click makes one the site's country; a search looks in every
+  country (no « Tous les pays » toggle since 2026-10-21).
   **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
   up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
   Réglages › « Mes pays » (`#/reglages?onglet=pays`, the card `#st-countries`) lists, edits, leaves (POST `leave: true`) and
