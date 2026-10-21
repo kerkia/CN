@@ -1143,6 +1143,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   --remote` (owner's go-ahead) before deploying code that needs them.
   New-account alert: when an account is confirmed (`api/account/verify.js`), each administrator whose
   `users.signup_alert` is on (default; their own checkbox on the admin page, `api/admin/prefs`) gets an e-mail.
+  **Welcome e-mail** (owner, 2026-10-21): the confirmed account gets one too (`templates.welcomeMail`, in its language: the
+  site's four groups — the ranking's line only with France, else how a federation's rankings open —, the alerts by
+  notification, an invitation to reply or to write through « Nous écrire »), once, priority 0, an account e-mail (the alert
+  right does not apply); sent only while `WELCOME_MAIL` (wrangler.toml) is "1" — "0" until the owner approves its text.
   « En direct » (`#/direct`, `pages/live.js`; menu « Courses »: Agenda, Résultats, En direct) for every account since
   2026-10-15 (the `users.live` right before: migration 0007; its admin page checkbox removed 2026-10-16, the column kept
   unread): liveresultat's races from O'CN's live relay (`live/`, Worker `ocn-live`), through O'CN's own Functions — `/api/live/list` (kept in the edge cache for the directory's lifetime, 2 min)

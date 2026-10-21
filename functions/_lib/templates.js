@@ -453,3 +453,56 @@ export function startMail(env, user, s, changed) {
     text: `Bonjour ${user.first_name},\n\n${text}\n\n${url}\n\nPour ne plus recevoir ces messages : ${settings}`,
   };
 }
+
+/**
+ * To a new account, once its address is confirmed (api/account/verify.js; owner, 2026-10-21, sent only while WELCOME_MAIL is
+ * "1"): what the site does, and an invitation to say what works and what does not, by replying or through « Nous écrire ».
+ * fr: the account has joined France (its rankings are open to it); else a word on how a federation's rankings open.
+ */
+export function welcomeMail(env, user, { fr = false } = {}) {
+  const site = siteUrl(env), en = L(user.lang) === "en", NB = " ";
+  const W = en ? {
+    subject: "Welcome to Ozimut",
+    hello: "Hello",
+    intro: "Your account is active. Ozimut gathers in one place what surrounds an orienteering race:",
+    items: [
+      ["Races", "the calendar of competitions, the results as soon as the organiser publishes them, the split times, and live results."],
+      fr ? ["Ranking", "your runner's page, the official national ranking and the Ozimut index, clubs, comparisons and statistics."]
+        : ["Rankings", "a federation's rankings open to its licence holders, from Settings › My countries."],
+      ["Training", "your GPS track replayed on the race's map, orienteering games, and a VMA calculator."],
+      ["Organising", "post results and start times, broadcast live results, set courses, and share a GPS analysis with your runners."],
+    ],
+    alerts: "In Settings, choose your alerts: one of your races online, your start time, new races in your regions — as notifications on your phone or computer. Ozimut also installs as an app.",
+    feedback: ["Ozimut is young and changes every week. An idea, a mistake, a page that is unclear? Just reply to this message, or write to us from the ", "Contact us", " page. Every message is read."],
+    open: "Open Ozimut",
+    sign: "See you soon on the courses,",
+    colon: ": ",
+  } : {
+    subject: "Bienvenue sur Ozimut",
+    hello: "Bonjour",
+    intro: `Votre compte est activé. Ozimut rassemble en un seul endroit ce qui entoure une course d'orientation${NB}:`,
+    items: [
+      ["Courses", "l'agenda des compétitions, les résultats dès que l'organisateur les publie, les temps intermédiaires et le direct."],
+      fr ? ["Classement", "votre page de coureur, le classement national officiel et l'indice Ozimut, les clubs, les comparaisons et les statistiques."]
+        : ["Classements", "ceux d'une fédération s'ouvrent à ses licenciés, depuis Réglages › Mes pays."],
+      ["Entraînement", "votre trace GPS rejouée sur la carte de la course, des jeux d'orientation et un calculateur de VMA."],
+      ["Organisation", "déposer résultats et horaires, diffuser un direct, tracer des circuits, partager une analyse GPS avec vos coureurs."],
+    ],
+    alerts: `Dans Réglages, choisissez vos alertes${NB}: une de vos courses en ligne, votre heure de départ, les nouvelles courses de vos régions — par notification sur votre téléphone ou votre ordinateur. Ozimut s'installe aussi comme une application.`,
+    feedback: [`Ozimut est jeune et évolue chaque semaine. Une idée, une erreur, une page peu claire${NB}? Répondez simplement à ce message, ou écrivez-nous depuis la page «${NB}`, "Nous écrire", `${NB}». Chaque message est lu.`],
+    open: "Ouvrir Ozimut",
+    sign: "À bientôt sur les circuits,",
+    colon: `${NB}: `,
+  };
+  const hello = `${W.hello}${user.first_name ? ` ${user.first_name}` : ""},`;
+  const contact = `${site}/#/contact`, home = `${site}/#/agenda`;
+  const [f0, fLink, f1] = W.feedback;
+  const html = `<p>${esc(hello)}</p><p>${esc(W.intro)}</p>
+<ul style="padding-left:20px;margin:0 0 12px">${W.items.map(([k, v]) => `<li style="margin:0 0 6px"><b>${esc(k)}</b>${esc(W.colon)}${esc(v)}</li>`).join("")}</ul>
+<p>${esc(W.alerts)}</p>${button(home, W.open, user.lang)}
+<p>${esc(f0)}<a href="${esc(contact)}">${esc(fLink)}</a>${esc(f1)}</p>
+<p>${esc(W.sign)}<br>Ozimut</p>`;
+  const text = [hello, "", W.intro, ...W.items.map(([k, v]) => `- ${k}${W.colon}${v}`), "", W.alerts, "", `${W.open}${W.colon}${home}`, "",
+    `${f0}${fLink}${f1}`, `${fLink}${W.colon}${contact}`, "", W.sign, "Ozimut"].join("\n");
+  return { subject: W.subject, html: wrap(env, W.subject, html, user.lang), text };
+}
