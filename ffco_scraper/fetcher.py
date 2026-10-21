@@ -37,9 +37,17 @@ class LoginWallError(Exception):
 
 
 def _cache_path(cache_dir: Path, url_path: str) -> Path:
+    # Sharded by page kind and thousands of id (circuit/037/…): one flat
+    # folder of 30 000+ files made the PC's backups fail.
     slug = re.sub(r"[^A-Za-z0-9]+", "_", url_path).strip("_") or "root"
     digest = hashlib.sha1(url_path.encode("utf-8")).hexdigest()[:10]
-    return cache_dir / f"{slug}_{digest}.html"
+    m = re.match(r"([A-Za-z]+)_(\d+)", slug)
+    sub = Path(m[1], f"{int(m[2]) // 1000:03d}") if m else Path("misc")
+    return cache_dir / sub / f"{slug}_{digest}.html"
+
+
+def _legacy_cache_path(cache_dir: Path, url_path: str) -> Path:
+    return cache_dir / _cache_path(cache_dir, url_path).name
 
 
 @dataclass
@@ -136,6 +144,10 @@ class Fetcher:
         retry budget with backoff before failing.
         """
         cache_file = _cache_path(self.cache_dir, url_path)
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        legacy = _legacy_cache_path(self.cache_dir, url_path)
+        if not cache_file.exists() and legacy.exists():
+            legacy.replace(cache_file)
         if use_cache and cache_file.exists():
             await self.stats.incr("cache_hits")
             return cache_file.read_text(encoding="utf-8")
