@@ -476,6 +476,7 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     feedback: ["Ozimut is young and changes every week. An idea, a mistake, a page that is unclear? Just reply to this message, or write to us from the ", "Contact us", " page. Every message is read."],
     open: "Open Ozimut",
     sign: "See you soon on the courses,",
+    team: "The Ozimut team",
     colon: ": ",
   } : {
     subject: "Bienvenue sur Ozimut",
@@ -492,6 +493,7 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     feedback: [`Ozimut est jeune et évolue chaque semaine. Une idée, une erreur, une page peu claire${NB}? Répondez simplement à ce message, ou écrivez-nous depuis la page «${NB}`, "Nous écrire", `${NB}». Chaque message est lu.`],
     open: "Ouvrir Ozimut",
     sign: "À bientôt sur les circuits,",
+    team: "L'équipe Ozimut",
     colon: `${NB}: `,
   };
   const hello = `${W.hello}${user.first_name ? ` ${user.first_name}` : ""},`;
@@ -501,8 +503,8 @@ export function welcomeMail(env, user, { fr = false } = {}) {
 <ul style="padding-left:20px;margin:0 0 12px">${W.items.map(([k, v]) => `<li style="margin:0 0 6px"><b>${esc(k)}</b>${esc(W.colon)}${esc(v)}</li>`).join("")}</ul>
 <p>${esc(W.alerts)}</p>${button(home, W.open, user.lang)}
 <p>${esc(f0)}<a href="${esc(contact)}">${esc(fLink)}</a>${esc(f1)}</p>
-<p>${esc(W.sign)}<br>Ozimut</p>`;
+<p>${esc(W.sign)}<br>${esc(W.team)}</p>`;
   const text = [hello, "", W.intro, ...W.items.map(([k, v]) => `- ${k}${W.colon}${v}`), "", W.alerts, "", `${W.open}${W.colon}${home}`, "",
-    `${f0}${fLink}${f1}`, `${fLink}${W.colon}${contact}`, "", W.sign, "Ozimut"].join("\n");
+    `${f0}${fLink}${f1}`, `${fLink}${W.colon}${contact}`, "", W.sign, W.team].join("\n");
   return { subject: W.subject, html: wrap(env, W.subject, html, user.lang), text };
 }

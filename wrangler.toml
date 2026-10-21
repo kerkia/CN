@@ -53,9 +53,9 @@ MAIL_FROM_NAME = "Ozimut"
 # who gets the duplicate-licence alerts, and which accounts see the admin page
 ALERT_EMAIL = "contact@ozimut.com"
 ADMIN_EMAILS = "ocn@kerkia.com, admin@ozimut.com"
-# "1": the welcome e-mail, once an account's address is confirmed (_lib/templates.js welcomeMail; owner, 2026-10-21: "0"
-# until its text is approved)
-WELCOME_MAIL = "0"
+# "1": the welcome e-mail, once an account's address is confirmed (_lib/templates.js welcomeMail; its text approved by the
+# owner on 2026-10-21); "0" stops it
+WELCOME_MAIL = "1"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"
 # "1": registration without France (the countries, migration 0014); "0" until the site's access follows the countries
