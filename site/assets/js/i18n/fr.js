@@ -809,7 +809,7 @@ export default {
   "st.del.title": "Supprimer mon compte",
   "st.del.lede": "Votre adresse e-mail, votre mot de passe et vos réglages sont effacés définitivement. Les résultats publiés par les organisateurs et les fédérations, publics, ne sont pas concernés.",
   "st.del.submit": "Supprimer mon compte", "st.del.confirm": "Supprimer définitivement votre compte ?",
-"ad.col.alerts": "Agenda", "ad.col.alerts.hint": "Peut s'abonner aux alertes de l'agenda (nouvelles courses, clôture des inscriptions)", "ad.alert.new": "nouvelles courses", "ad.alert.deadline": "clôtures",
+"ad.col.alerts": "E-mails", "ad.col.alerts.hint": "Peut recevoir les alertes par e-mail (courses en ligne, heures de départ, nouvelles courses, clôtures des inscriptions) ; les notifications restent ouvertes à tous", "ad.alert.new": "nouvelles courses", "ad.alert.deadline": "clôtures",
   "st.ag.regions": "Régions suivies", "st.ag.all": "Tout cocher", "st.ag.clear": "Tout décocher",
   "st.ag.none": "Cochez au moins une région pour recevoir l'alerte.",
   "st.legacy": "Vous êtes connecté(e) avec la connexion historique (nom + licence) : créez un compte pour accéder aux réglages.",

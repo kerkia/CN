@@ -12,10 +12,12 @@ import * as pwa from "../pwa.js";
 import { name as countryName, membershipFields, bindMembershipFields, readMembership } from "../country.js";
 
 // The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
-// needs the administrator's right (users.alerts_allowed) and is not offered at all without it; no `mail`: by notification only.
+// needs the administrator's right (users.alerts_allowed) and is not offered at all without it — every alert's e-mail since
+// 2026-10-21 (owner: the right allows or refuses all the alert e-mails, the account's own e-mails apart); no `mail`: by
+// notification only.
 // `lic`: tied to one's FFCO licence (one's own results and start times), offered once France is joined
 const ALERTS = [
-  { key: "results", mail: "notify", push: "pushResults", lic: true },
+  { key: "results", mail: "notify", push: "pushResults", gated: true, lic: true },
   { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true, lic: true },
   { key: "agenda", mail: "agendaAlert", push: "pushAgenda", gated: true },
   { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", gated: true },

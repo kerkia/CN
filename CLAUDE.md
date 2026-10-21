@@ -802,8 +802,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   départ est publiée » (`starts_alert`, migration 0011, off / `push_starts`, on; the e-mail `startMail`, once per race and again
   when the time changes, as the push), « nouvelle course dans mes régions » (`agenda_alert` / `push_agenda`) and
   « la clôture des inscriptions approche » (`deadline_alert` / `push_deadline`; push off until ticked) — goes by e-mail, push or
-  both. The e-mails of the start time and of the agenda are a right the administrator grants (🔒 otherwise; the Resend quota);
-  push is open to everyone; one list of regions for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
+  both. Every alert's e-mail is a right the administrator grants (`users.alerts_allowed`, the admin page's « E-mails » column;
+  the results' too since 2026-10-21, owner: the right allows or refuses all the alert e-mails, the account's own e-mails —
+  registration, password — apart; without it the e-mail box is not offered; the Resend quota); push is open to everyone; one list of regions for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
   WebCrypto — checked against Mozilla's `http_ece` and FCM, which answers 410 to an unknown token and 403 to a wrong key; only
   the browsers' push services are posted to, `validSubscription`). Keys: `VAPID_PUBLIC_KEY` in wrangler.toml, `VAPID_PRIVATE_KEY`
   a Pages secret (and `.dev.vars`), made by `tools/vapid.mjs` (the private key kept in `C:\kerkia\cn-data\vapid-private.txt`,

@@ -2,7 +2,8 @@
 //
 // Every alert goes by e-mail, by push notification (functions/_lib/push.js; 2026-10-18), or both, as each account chose
 // (users.notify / push_results, agenda_alert / push_agenda, deadline_alert / push_deadline; the start times by push only,
-// push_starts). Push needs a device (push_subs); the agenda e-mails need the administrator's right.
+// push_starts). Push needs a device (push_subs); every alert e-mail needs the administrator's right (users.alerts_allowed;
+// the results' too since 2026-10-21, owner: the right allows or refuses all of them).
 //
 //   GET  /api/notify            -> { licences: [...] } licences with at least one account told of its results (e-mail
 //        or push), `push`: those with the start times by push
@@ -43,8 +44,9 @@ async function authorised(request, env) {
 
 const ACTIVE = "u.email_verified = 1 AND u.status = 'active'";
 const HAS_PUSH = "EXISTS (SELECT 1 FROM push_subs s WHERE s.user_id = u.id)";
-// told of their results: by e-mail, or by push on a device
-const subscribed = (env) => (pushReady(env) ? `${ACTIVE} AND (u.notify = 1 OR (u.push_results = 1 AND ${HAS_PUSH}))` : `${ACTIVE} AND u.notify = 1`);
+// told of their results: by e-mail (a right the administrator grants), or by push on a device
+const MAIL_RESULTS = "(u.notify = 1 AND u.alerts_allowed = 1)";
+const subscribed = (env) => (pushReady(env) ? `${ACTIVE} AND (${MAIL_RESULTS} OR (u.push_results = 1 AND ${HAS_PUSH}))` : `${ACTIVE} AND ${MAIL_RESULTS}`);
 // told of their start times: by push on a device, or by e-mail (a right the administrator grants, users.starts_alert)
 const startsWho = (env) => `${ACTIVE} AND ((u.starts_alert = 1 AND u.alerts_allowed = 1)${pushReady(env) ? ` OR (u.push_starts = 1 AND ${HAS_PUSH})` : ""})`;
 
@@ -231,7 +233,7 @@ export async function onRequestPost({ request, env }) {
         for (const r of fresh) for (const x of [r.id, ...r.alias]) {
           marks.push(env.DB.prepare("INSERT OR IGNORE INTO notified (user_id, course_id) VALUES (?, ?)").bind(u.id, x));
         }
-        if (fresh.length && u.notify) stmts.push(queueStatement(env, { to: u.email, ...digestMail(env, u, fresh), kind: "digest", priority: 0 }));
+        if (fresh.length && u.notify && alertsAllowed(env, u)) stmts.push(queueStatement(env, { to: u.email, ...digestMail(env, u, fresh), kind: "digest", priority: 0 }));
         if (fresh.length && u.push_results && u.has_push && pushReady(env)) pushes.push(queuePush(env, u.id, "results", resultsPush(u.lang, fresh), { hours: 72 }));
       });
       for (let i = 0; i < marks.length; i += 80) await env.DB.batch(marks.slice(i, i + 80));
