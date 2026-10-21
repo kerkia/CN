@@ -7,7 +7,7 @@ import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat } from "../util.js";
 import { t, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
-import { nameKey, sees, session } from "../auth.js";
+import { nameKey, sees, session, myClub } from "../auth.js";
 import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
@@ -30,7 +30,8 @@ export async function render(main, { path = "", query = {} } = {}) {
 
 // ---- the races ----------------------------------------------------------------------------------------------------
 // the site's country's races (country.js, the header's menu; owner, 2026-10-21: the page's own « Pays » field repeated it),
-// then a line of the other countries racing live, each a click to make it the site's country, and « all countries »
+// the other countries racing live beside the search (under the list on a phone), each a click to make it the site's country
+// (owner, 2026-10-21: no « all countries » toggle); a search looks in every country
 const countryName = (() => {
   let dn = null;
   try { dn = new Intl.DisplayNames([lang()], { type: "region" }); } catch (e) { /* codes then */ }
@@ -38,13 +39,14 @@ const countryName = (() => {
 })();
 
 async function list(main, query) {
-  let q = query.q || "", all = false;
+  let q = query.q || "";
   const cur = country.current();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
-    <div class="filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label>
+      <div class="lv-else lv-else-top" data-lv-else></div></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
-    <div class="lv-else" id="lv-else"></div>
+    <div class="lv-else lv-else-end" data-lv-else></div>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [];
   try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
@@ -69,23 +71,21 @@ async function list(main, query) {
   const draw = () => {
     replaceQuery({ q: q || null });
     const n = normalise(q);
-    const kept = comps.filter((c) => (all || (c[5] || "?") === cur) && (!n || normalise(`${c[1]} ${c[2]}`).includes(n)))
+    const kept = comps.filter((c) => (n ? normalise(`${c[1]} ${c[2]}`).includes(n) : (c[5] || "?") === cur))
       .sort((a, b) => (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
-      <tbody>${kept.map(([id, name, org, date]) => html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
-        <td><a href="#/direct/${id}">${name}</a></td><td style="font-size:12.5px">${org}</td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !all && !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
-    $("#lv-else").innerHTML = !counts.size ? "" : html`<span class="muted">${t(all ? "lv.country.allShown" : "lv.elsewhere")}</span>
-      ${all ? "" : order.map(([c, k]) => html`<button type="button" class="chip" data-lv-country="${c}">${countryName(c)} <span class="muted">${k}</span></button>`)}
-      <button type="button" class="chip" data-lv-all="${all ? 0 : 1}">${all ? t("lv.country.only", { c: countryName(cur) }) : t("lv.country.all")}</button>`;
+      <tbody>${kept.map(([id, name, org, date, , cc]) => html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
+        <td><a href="#/direct/${id}">${name}</a></td><td style="font-size:12.5px">${org}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
+    const other = !order.length ? "" : html`<span class="muted">${t("lv.elsewhere")}</span>
+      ${order.map(([c, k]) => html`<button type="button" class="chip" data-lv-country="${c}">${countryName(c)} <span class="muted">${k}</span></button>`)}`;
+    $$("[data-lv-else]", main).forEach((el) => { el.innerHTML = other; });
   };
   draw();
   $("#lv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  $("#lv-else").addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    if (b.dataset.lvCountry) { country.pick(b.dataset.lvCountry); location.reload(); return; }   // the site's country, everywhere
-    all = b.dataset.lvAll === "1"; draw();
+  main.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-lv-country]");
+    if (b) { country.pick(b.dataset.lvCountry); location.reload(); }   // the site's country, everywhere
   });
   return { title: t("lv.title") };
 }
@@ -111,18 +111,28 @@ const terrainOf = (name, cls) => {
   return /\b(vtt|mtbo|mtb)\b/.test(s) ? "VTT" : /\bski\b/.test(s) ? "Ski" : /sprint/.test(s) ? "Spr" : "For";
 };
 
+// the latest punches: the filter kept on the device (all, one's club's runners, the course shown, hidden)
+const PASS_VIEW = "~passages";                    // the picker's entry that shows them as a list in place of a course
+const passPref = { get: () => { try { return localStorage.getItem("ocn.live.pass") || "all"; } catch (e) { return "all"; } },
+  set: (v) => { try { localStorage.setItem("ocn.live.pass", v); } catch (e) { /* this visit only */ } } };
+// a class named as a category (« H21 », « D16 », « M45 »): its runners' category says nothing more
+const CAT_CLASS = /^\s*[HDMW]\s?\d{2}/i;
+
 async function race(main, id, wanted) {
-  const st = { info: null, classes: [], cls: wanted, data: null, justIn: new Map(), pass: [], ws: null, up: false, tries: 0, gone: false, cn: {}, terrain: null };
-  // the head (owner, 2026-10-21: compact on a phone): the race's name once, the status and the method as one button on a
-  // line; the latest punches, then the course picker (phones; the side list elsewhere), then the table
-  main.innerHTML = html`<div class="page-head lv-head"><div><h1 id="lv-title">…</h1><p class="lede" id="lv-sub"></p></div>
-      <div class="lv-bar"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span></div></div>
+  const st = { info: null, classes: [], cls: wanted === PASS_VIEW ? null : wanted, view: wanted === PASS_VIEW ? "pass" : "cls",
+    data: null, justIn: new Map(), pass: [], seen: new Set(), counts: {}, ws: null, up: false, tries: 0, gone: false, cn: {}, terrain: null,
+    pf: passPref.get() };
+  // the page (owner, 2026-10-21: compact on a phone, one scrollbar): the race's name, organiser and day on the left, the
+  // status and the ranking's button on the right, two lines; the latest punches on one line that scrolls sideways (or as a
+  // list, the picker's first entry); the course picker with each course's finishers; the table, every runner on two lines
+  main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><h1 id="lv-title">…</h1><div class="lv-sub" id="lv-sub"></div></div>
+      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span></div></div>
     <div class="lv-layout">
-      <aside class="lv-side"><div class="lv-side-title">${t("prov.circuit")}</div><div class="lv-list" id="lv-chips"></div></aside>
+      <aside class="lv-side"><div class="lv-list" id="lv-chips"></div></aside>
       <div class="lv-main">
         <div id="lv-pass"></div>
-        <label class="field lv-pick"><span>${t("prov.circuit")}</span><select id="lv-sel"></select></label>
-        <section class="card"><div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
+        <label class="lv-pick"><select id="lv-sel" aria-label="${t("prov.circuit")}"></select></label>
+        <section class="card lv-card"><div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
       </div>
     </div>`;
 
@@ -140,6 +150,10 @@ async function race(main, id, wanted) {
     const code = String(club || "").match(/\b(\d{4})/)?.[1];
     return c.find((r) => code && String(r.club || "").startsWith(code)) || null;
   };
+  // one's club's runners, by name (the punches carry no club): France's data only
+  const mine = myClub();
+  const mates = mine ? new Set(data.runners().list.filter((r) => data.clubParts(r.club).code === mine).map((r) => nameKey(r.nom))) : null;
+  if (st.pf === "club" && !mates) st.pf = "all";
   // the CNs shown and used: the official one 15 days before the race (as FFCO uses it; the monthly snapshot before
   // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
   // without France (owner, 2026-10-20): the race as liveresultat gives it, no CN, score or expected place
@@ -150,7 +164,7 @@ async function race(main, id, wanted) {
     if (!el || !FR) return;
     const ms = store.available(), cur = store.get().method, next = ms[(ms.indexOf(cur) + 1) % ms.length];
     el.innerHTML = ms.length < 2 ? "" : html`<button type="button" class="btn btn-sm lv-mbtn" data-lv-method="${next}"
-      title="${t("lv.method.tip", { m: methodShort(next) })}">${t("msw.label")} ${methodShort(cur)} <span aria-hidden="true">⇄</span></button>`;
+      title="${t("lv.method.tip", { m: methodShort(next) })}"><span class="lv-wide">${t("msw.label")} </span>${methodShort(cur)} <span aria-hidden="true">⇄</span></button>`;
   }
   methodBtn();
   async function cnFor(terrain) {
@@ -196,38 +210,56 @@ async function race(main, id, wanted) {
     if (Date.now() - (st.pinged || 0) > 25000) { st.pinged = Date.now(); try { ws.send("ping"); } catch (e) { /* closing */ } }
     if (Date.now() - (st.heard || Date.now()) > 65000) { ws.onclose = null; ws.close(); st.up = false; status(); connect(); }
   }
+  // the punches the relay sends (its last 30) added up over the visit, the newest first
+  function addPass(items) {
+    const fresh = (items || []).filter((p) => { const k = p.slice(0, 4).join("|"); return !st.seen.has(k) && st.seen.add(k); });
+    st.pass = [...fresh, ...st.pass].slice(0, 300);
+  }
   function on(m) {
     if (m.t === "hello") {
-      st.info = m.info; st.classes = m.classes;
+      st.info = m.info; st.classes = m.classes; st.counts = m.counts || st.counts;
       $("#lv-title").textContent = m.info?.name || id;
       $("#lv-sub").textContent = [m.info?.organizer, m.info?.date && fmtDate(m.info.date)].filter(Boolean).join(" · ");
-      if (m.pass) { st.pass = m.pass; ticker(); }
+      if (m.pass) addPass(m.pass);
       // no class asked for: the one of the latest arrival, else the first
-      const latest = m.pass?.map((x) => x[2]).find((c) => st.classes.includes(c));
-      if (!st.cls || !st.classes.includes(st.cls)) pick(latest || st.classes[0]);
-      chips();
+      const latest = st.pass.map((x) => x[2]).find((c) => st.classes.includes(c));
+      if (!st.cls || !st.classes.includes(st.cls)) pick(latest || st.classes[0], true);
+      chips(); ticker();
       if (!st.classes.length) $("#lv-rows").innerHTML = html`<div class="empty">${t("lv.noClasses")}</div>`;
-    } else if (m.t === "classes") { st.classes = m.classes; if (!st.cls) pick(st.classes[0]); chips(); }
+    } else if (m.t === "classes") { st.classes = m.classes; if (!st.cls) pick(st.classes[0], true); chips(); }
+    else if (m.t === "counts") { st.counts = m.counts || {}; chips(); }
     else if (m.t === "class" && m.c === st.cls) {
       if (st.data) {
         const before = new Set(st.data.rows.filter((r) => r[3] != null && r[4] === 0).map((r) => `${r[1]}|${r[2]}`));
         for (const r of m.rows) if (r[3] != null && r[4] === 0 && !before.has(`${r[1]}|${r[2]}`)) st.justIn.set(`${r[1]}|${r[2]}`, Date.now());
       }
       st.data = m; rows();
-    } else if (m.t === "pass") { st.pass = m.items; ticker(); status(); }
+    } else if (m.t === "pass") { addPass(m.items); ticker(); status(); }
   }
-  function pick(c) {
+  const address = () => history.replaceState(null, "", `#/direct/${id}/${encodeURIComponent(st.view === "pass" ? PASS_VIEW : st.cls || "")}`);
+  // a course chosen (keep: the punches' list stays shown, the course behind it — the one its filter « this course » means)
+  function pick(c, keep) {
     if (!c) return;
-    st.cls = c; st.data = null; st.justIn.clear();
+    if (!keep) st.view = "cls";
+    if (c !== st.cls) {
+      st.cls = c; st.data = null; st.justIn.clear();
+      if (st.ws?.readyState === 1) st.ws.send(JSON.stringify({ sub: c }));
+    }
     replaceQuery({});
-    history.replaceState(null, "", `#/direct/${id}/${encodeURIComponent(c)}`);
-    $("#lv-rows").innerHTML = html`<div class="empty">${t("lv.loading")}</div>`;
-    if (st.ws?.readyState === 1) st.ws.send(JSON.stringify({ sub: c }));
-    chips();
+    address();
+    chips(); ticker();
+    if (st.view === "cls") { if (st.data) rows(); else $("#lv-rows").innerHTML = html`<div class="empty">${t("lv.loading")}</div>`; }
   }
+  function showPass() { st.view = "pass"; address(); chips(); ticker(); }
+  const countTxt = (c) => { const n = st.counts[c]; return n ? `${n[0]}/${n[1]}` : ""; };
   function chips() {
-    $("#lv-chips").innerHTML = html`${st.classes.map((c) => html`<button type="button" class="lv-item${c === st.cls ? " on" : ""}" aria-pressed="${c === st.cls}" data-c="${c}">${fmtCat(c)}</button>`)}`;
-    $("#lv-sel").innerHTML = html`${st.classes.map((c) => html`<option value="${c}" ${raw(c === st.cls ? "selected" : "")}>${fmtCat(c)}</option>`)}`;
+    const passOn = st.view === "pass";
+    $("#lv-chips").innerHTML = html`<button type="button" class="lv-item lv-item-pass${passOn ? " on" : ""}" aria-pressed="${passOn}" data-lv-view="pass">${t("lv.passView")}</button>
+      <div class="lv-side-title">${t("prov.circuit")} <span class="muted" title="${t("lv.count.hint")}">${t("lv.count.head")}</span></div>
+      ${st.classes.map((c) => { const on = !passOn && c === st.cls; return html`<button type="button" class="lv-item${on ? " on" : ""}" aria-pressed="${on}" data-c="${c}">
+        <span>${fmtCat(c)}</span><span class="lv-cnt">${countTxt(c)}</span></button>`; })}`;
+    $("#lv-sel").innerHTML = html`<option value="${PASS_VIEW}" ${raw(passOn ? "selected" : "")}>${t("lv.passView")}</option>
+      <optgroup label="${t("prov.circuit")} · ${t("lv.count.head")}">${st.classes.map((c) => html`<option value="${c}" ${raw(!passOn && c === st.cls ? "selected" : "")}>${fmtCat(c)}${countTxt(c) ? ` · ${countTxt(c)}` : ""}</option>`)}</optgroup>`;
     $("#lv-chips .on")?.scrollIntoView({ block: "nearest" });
   }
   function status() {
@@ -241,17 +273,41 @@ async function race(main, id, wanted) {
     el.className = `lv-status${live ? " live" : ""}`;
     el.textContent = live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
   }
+  // the punches the filter keeps
+  const kept = () => st.pass.filter(([, name, cls]) => st.pf === "all" || (st.pf === "club" ? mates?.has(nameKey(name)) : st.pf === "cls" ? cls === st.cls : false));
+  const ctlOf = (ctl, ctlName) => (ctl === 1000 ? t("lv.finish") : ctlName || ctl);
+  const filterSel = () => html`<select class="lv-pf" id="lv-pf" aria-label="${t("lv.pf.label")}" title="${t("lv.pf.label")}">
+    ${[["all", t("lv.pf.all")], ...(mates ? [["club", t("lv.pf.club")]] : []), ...(st.cls ? [["cls", t("lv.pf.cls", { c: fmtCat(st.cls) })]] : []),
+      ...(st.view === "pass" ? [] : [["off", t("lv.pf.off")]])].map(([v, l]) => html`<option value="${v}" ${raw(v === st.pf ? "selected" : "")}>${l}</option>`)}</select>`;
   function ticker() {
-    const items = st.pass.slice(0, 4);
-    $("#lv-pass").innerHTML = items.length ? html`<div class="lv-pass"><span class="muted">${t("lv.last")}</span>
-      ${items.map(([at, name, cls, ctl, ctlName, time]) => html`<button type="button" class="chip" data-c="${cls}"><b>${name}</b> · ${cls} · ${ctl === 1000 ? t("lv.finish") : ctlName || ctl} ${time}</button>`)}</div>` : "";
+    const el = $("#lv-pass");
+    if (!el) return;
+    if (st.view === "pass") { el.innerHTML = ""; passList(); return; }
+    if (!st.pass.length) { el.innerHTML = ""; return; }
+    const items = st.pf === "off" ? [] : kept().slice(0, 30);
+    el.innerHTML = html`<div class="lv-pass">${filterSel()}
+      ${st.pf === "off" ? "" : html`<div class="lv-strip">${items.length ? items.map(([at, name, cls, ctl, ctlName, time]) => html`<button type="button" class="lv-pi" data-c="${cls}"
+        title="${at}"><b>${name}</b> · ${fmtCat(cls)} · ${ctlOf(ctl, ctlName)} ${time}</button>`) : html`<span class="muted">${t("lv.pf.none")}</span>`}</div>
+      <button type="button" class="btn btn-sm lv-pexp" data-lv-view="pass" title="${t("lv.passView.tip")}" aria-label="${t("lv.passView.tip")}">▾</button>`}</div>`;
+  }
+  // the punches as a list, in place of a course's results (the picker's first entry, or ▾ beside the line)
+  function passList() {
+    if (st.pf === "off") st.pf = "all";
+    const items = kept();
+    $("#lv-rows").innerHTML = html`<div class="lv-plhead"><label>${t("lv.pf.label")} ${filterSel()}</label><span class="muted">${t("lv.passList.hint")}</span></div>
+      ${items.length ? html`<table class="data compact lv-table lv-plist"><thead><tr><th>${t("lv.at")}</th><th>${t("prov.name")}</th><th>${t("prov.circuit")}</th>
+        <th>${t("lv.ctl")}</th><th class="r">${t("prov.time")}</th></tr></thead><tbody>
+        ${items.map(([at, name, cls, ctl, ctlName, time]) => html`<tr class="lv-prow" data-c="${cls}"><td class="num muted">${String(at || "").replace(/^(\d+:\d\d):\d\d$/, "$1")}</td>
+          <td><b>${name}</b></td><td>${fmtCat(cls)}</td><td>${ctlOf(ctl, ctlName)}</td><td class="r num">${time}</td></tr>`)}</tbody></table>`
+        : html`<div class="empty">${t("lv.pf.none")}</div>`}`;
   }
 
   async function rows() {
     const d = st.data;
-    if (!d) return;
+    if (!d || st.view !== "cls") return;
     st.terrain = terrainOf(st.info?.name || "", st.cls);
     const cn = await cnFor(st.terrain);
+    if (st.view !== "cls" || d !== st.data) return;
     const now = nowAt(st.info);
     const ctl = d.controls || [];
     const enriched = d.rows.map((r) => {
@@ -275,37 +331,37 @@ async function race(main, id, wanted) {
     groups.fin.sort((a, b) => (a.r[0] ?? 1e9) - (b.r[0] ?? 1e9));
     groups.run.sort((a, b) => (a.r[7] ?? 0) - (b.r[7] ?? 0));
     groups.wait.sort((a, b) => (b.cn ?? -1) - (a.cn ?? -1));
+    // the runner's category when the class does not say it (a course: « Circuit A »), from their latest race in the data
+    const withCat = !CAT_CLASS.test(st.cls) && enriched.some((x) => x.me?.cat);
+    const two = (a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
     const line = (x, k) => {
       const [place, name, club, result, status, timeplus, , start, splits] = x.r;
       const just = k === "fin" && Date.now() - (st.justIn.get(`${name}|${club}`) || 0) < JUST_IN_MS;
       let time = "", sub = "";
-      if (k === "fin") time = html`<b>${hs(result)}</b>`;
+      if (k === "fin") { time = html`<b>${hs(result)}</b>`; sub = timeplus ? `+${hs(timeplus)}` : ""; }
       else if (k === "run") {
         const last = splits ? splits.map((s, i) => (s ? [i, s] : null)).filter(Boolean).pop() : null;
         time = html`<span class="muted" data-start="${start}">${hs(now - start)}</span>`;
         if (last) sub = t("lv.atControl", { c: ctl[last[0]]?.[1] || "", p: last[1][1] ?? "–", d: last[1][2] ? `+${hs(last[1][2])}` : "+0:00" });
       } else if (k === "wait") time = html`<span class="muted">${start != null ? hs(start).replace(/^(\d+):(\d\d):\d\d$/, "$1:$2") : ""}</span>`;
       else time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
-      return html`<tr${raw(just ? ' class="lv-just"' : "")}>
-        <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b></td>
-        <td>${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}${just ? html` <span class="tag" style="color:var(--good)">${t("lv.justIn")}</span>` : ""}
-          <div class="muted lv-m" style="font-size:12px">${club}</div>
-          ${sub ? html`<div class="muted" style="font-size:12px">${sub}</div>` : ""}</td>
-        <td class="lv-d" style="font-size:12.5px">${club}</td>
-        <td class="r num">${time}${k === "fin" && timeplus ? html`<div class="muted lv-m" style="font-size:12px">+${hs(timeplus)}</div>` : ""}</td>
-        <td class="r num lv-d">${k === "fin" && timeplus ? `+${hs(timeplus)}` : ""}</td>
-        ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>
-        <td class="r num">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>
-        <td class="r num">${x.expected ?? ""}</td>` : ""}</tr>`;
+      return html`<tr${raw(just ? ` class="lv-just" title="${t("lv.justIn")}"` : "")}>
+        <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${withCat && x.me?.cat ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
+        <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+        <td class="lv-c"><div class="lv-clamp">${club}</div></td>
+        ${withCat ? html`<td class="lv-cat lv-d">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>` : ""}
+        <td class="r num lv-t">${two(time, sub)}</td>
+        ${FR ? html`<td class="r num">${two(x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`, x.expected ? String(x.expected) : "")}</td>
+        <td class="r num lv-sc">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>` : ""}</tr>`;
     };
-    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${FR ? 8 : 5}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const cols = 4 + (withCat ? 1 : 0) + (FR ? 2 : 0);
+    const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${cols}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
+    const m = store.get().method;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
-      <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
-      ${FR ? html`<th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),
-        store.get().method === "official" ? "J-15" : t("lv.today"))}</th>
-      <th class="r" title="${t("lv.score.hint")}">${subHead(scoreLabel(store.get().method), t("lv.estGap"))}</th>
-      <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>` : ""}</tr></thead>
+      <th>${t("prov.club")}</th>${withCat ? html`<th class="lv-d" title="${t("prov.catCn")}">${t("prov.cat")}</th>` : ""}<th class="r">${subHead(t("prov.time"), t("lv.behind"))}</th>
+      ${FR ? html`<th class="r" title="${cnLabel(m)} — ${m === "official" ? `${t("lv.cnJ15.hint")} — ` : ""}${t("lv.expected.hint")}">${subHead(t(`cn.${m}.S`), t("lv.expected"))}</th>
+      <th class="r" title="${scoreLabel(m)} — ${t("lv.score.hint")}">${subHead(t("lv.score"), t("lv.gap"))}</th>` : ""}</tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`
       : html`<div class="empty">${t("lv.empty")}</div>`;
   }
@@ -313,9 +369,14 @@ async function race(main, id, wanted) {
   main.addEventListener("click", (e) => {
     const m = e.target.closest("[data-lv-method]");
     if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); rows(); return; }
+    if (e.target.closest("[data-lv-view]")) { showPass(); window.scrollTo({ top: 0 }); return; }
+    if (e.target.closest("a, select")) return;
     const b = e.target.closest("[data-c]"); if (b) pick(b.dataset.c);
   });
-  main.addEventListener("change", (e) => { if (e.target.id === "lv-sel") pick(e.target.value); });
+  main.addEventListener("change", (e) => {
+    if (e.target.id === "lv-sel") { if (e.target.value === PASS_VIEW) showPass(); else pick(e.target.value); }
+    else if (e.target.id === "lv-pf") { st.pf = e.target.value; passPref.set(st.pf); ticker(); }
+  });
   const tick = setInterval(() => {
     if (!main.isConnected) { cleanup(); return; }
     status();

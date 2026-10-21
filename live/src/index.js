@@ -15,6 +15,11 @@ const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, re
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
 const RECHECK_MS = 90000;                        // a watched class is re-read at least this often (passings list is short)
 const MAX_READS = 30;                            // liveresultat reads per wake-up, at most (subrequest limit: 50)
+// the pages' course picker shows each class's finishers (owner, 2026-10-21): the classes nobody watches are read for their
+// counts only, a few per wake-up — those just punched first (at most every 30 s), then those never read, then each every
+// 15 min — and only the two numbers are kept
+const COUNT_READS = 3, COUNT_MOVED_MS = 30000, COUNT_STALE_MS = 900000;
+const PASS_KEPT = 30;                            // the last passings kept and sent (the pages add them up over a visit)
 
 const api = (env) => env.LR_API || "https://liveresultat.orientering.se/api.php";
 
@@ -32,6 +37,9 @@ async function lr(env, params) {
   const s = await r.text();
   try { return JSON.parse(s); } catch (e) { return JSON.parse(s.replace(/[\t\r\n]+/g, " ").replace(/\\(?!["\\/bfnrtu])/g, "\\\\")); }
 }
+
+// a class's finishers and runners (non-starters apart), for the course picker
+const countOf = (rows) => [rows.filter((r) => r[4] === 0 && r[3] != null).length, rows.filter((r) => r[4] !== 1 && r[4] !== 11).length];
 
 // a class's results, compact: [place, name, club, result, status, timeplus, progress, start, splits]
 function compact(k) {
@@ -58,6 +66,8 @@ export class LiveRace extends DurableObject {
     this.m = s.get("head") || { comp: null, info: null, classes: [], classesHash: "", passHash: "", hashes: {}, read: {}, lastChange: 0, classesAt: 0 };
     this.m.data = s.get("data") || {};
     if (this.m.pushed) for (const [k, v] of await this.ctx.storage.list({ prefix: "c:" })) this.m.data[k.slice(2)] = v;
+    this.m.counts ||= {}; this.m.counted ||= {}; this.m.chash ||= {};       // (objects of before the counts)
+    if (this.m.pushed) for (const [k, v] of Object.entries(this.m.data)) this.m.counts[k] = countOf(v.rows || []);
     return this.m;
   }
 
@@ -83,7 +93,7 @@ export class LiveRace extends DurableObject {
       const [client, server] = Object.values(new WebSocketPair());
       this.ctx.acceptWebSocket(server);
       this.send(server, { t: "hello", info: m.info || { name: "Diffusion en attente", timezone: "Europe/Paris" }, classes: m.classes,
-        at: m.lastChange, pass: m.pass || null });
+        at: m.lastChange, pass: m.pass || null, counts: m.counts });
       return new Response(null, { status: 101, webSocket: client });
     }
     if (!m.info) {
@@ -103,7 +113,7 @@ export class LiveRace extends DurableObject {
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     // the last passings come with the hello: a page opened between two arrivals is not left empty
-    this.send(server, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null });
+    this.send(server, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null, counts: m.counts });
     if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + 2000);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -153,6 +163,7 @@ export class LiveRace extends DurableObject {
       const before = new Set((prev?.rows || []).filter((r) => r[4] === 0 && r[3] != null).map((r) => `${r[1]}|${r[2]}`));
       for (const r of next.rows) if (r[4] === 0 && r[3] != null && !before.has(`${r[1]}|${r[2]}`)) arrivals.push([r[1], name, r[3]]);
       m.data[name] = { ...next, at: now };
+      m.counts[name] = countOf(next.rows);
       changed.push(name);
     }
     const order = Array.isArray(p.order) ? p.order.filter((c) => typeof c === "string" && m.data[c]) : null;
@@ -166,12 +177,13 @@ export class LiveRace extends DurableObject {
       // the time written out, as liveresultat sends it in its passings (« 41:40 », « 1:05:12 »)
       const out = (h) => { const x = Math.floor(h / 100), mm = String(Math.floor(x / 60) % 60).padStart(2, "0"), ss = String(x % 60).padStart(2, "0");
         return x >= 3600 ? `${Math.floor(x / 3600)}:${mm}:${ss}` : `${Math.floor(x / 60)}:${ss}`; };
-      m.pass = [...arrivals.slice(-10).reverse().map(([n, k, t]) => [clock, n, k, 1000, "Arrivée", out(t)]), ...(m.pass || [])].slice(0, 10);
+      m.pass = [...arrivals.slice(-PASS_KEPT).reverse().map(([n, k, t]) => [clock, n, k, 1000, "Arrivée", out(t)]), ...(m.pass || [])].slice(0, PASS_KEPT);
       m.lastChange = now;
     }
     const sockets = this.ctx.getWebSockets();
-    if (infoChanged || first) for (const ws of sockets) this.send(ws, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null });
+    if (infoChanged || first) for (const ws of sockets) this.send(ws, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null, counts: m.counts });
     else if (classesChanged) for (const ws of sockets) this.send(ws, { t: "classes", classes: m.classes });
+    if (changed.length && !infoChanged && !first) for (const ws of sockets) this.send(ws, { t: "counts", counts: m.counts });
     if (arrivals.length && !first) for (const ws of sockets) this.send(ws, { t: "pass", items: m.pass, at: m.lastChange });
     for (const ws of sockets) {
       const sub = ws.deserializeAttachment()?.sub;
@@ -200,7 +212,7 @@ export class LiveRace extends DurableObject {
     if (p.status !== "OK") return false;
     if (m.passHash) m.lastChange = Date.now();       // (the first read is no news: passings may be hours old)
     m.passHash = p.hash;
-    m.pass = (p.passings || []).slice(0, 10).map((x) => [x.passtime, x.runnerName, x.class, x.control, x.controlName || "", x.time]);
+    m.pass = (p.passings || []).slice(0, PASS_KEPT).map((x) => [x.passtime, x.runnerName, x.class, x.control, x.controlName || "", x.time]);
     return true;
   }
 
@@ -211,7 +223,19 @@ export class LiveRace extends DurableObject {
     if (k.status !== "OK") return false;
     m.hashes[name] = k.hash;
     m.data[name] = { ...compact(k), at: Date.now() };
+    m.counts[name] = countOf(m.data[name].rows);
     return true;
+  }
+
+  /** Reads one class for its counts only (nobody watches it); true when they changed. */
+  async readCount(m, name) {
+    const k = await lr(this.env, { method: "getclassresults", comp: m.comp, class: name, unformattedTimes: "true", last_hash: m.chash[name] || "" });
+    m.counted[name] = Date.now();
+    if (k.status !== "OK") return false;
+    m.chash[name] = k.hash;
+    const c = countOf(compact(k).rows), same = JSON.stringify(c) === JSON.stringify(m.counts[name]);
+    m.counts[name] = c;
+    return !same;
   }
 
   async alarm() {
@@ -226,7 +250,7 @@ export class LiveRace extends DurableObject {
       const sub = ws.deserializeAttachment()?.sub;
       if (sub != null) (watched.get(sub) || watched.set(sub, []).get(sub)).push(ws);
     }
-    let reads = 0, changed = false;
+    let reads = 0, changed = false, counted = false;
     try {
       reads++;
       const moved = new Set();
@@ -244,14 +268,25 @@ export class LiveRace extends DurableObject {
         if (!moved.has(name) && m.data[name] && Date.now() - (m.read[name] || 0) < RECHECK_MS) continue;
         reads++;
         if (await this.readClass(m, name)) {
-          changed = true;
+          changed = counted = true;
           for (const ws of socks) this.send(ws, { t: "class", c: name, ...m.data[name] });
         }
+      }
+      const now = Date.now();
+      const due = m.classes.filter((c) => !watched.has(c))
+        .map((c) => [c, moved.has(c) ? 0 : m.counts[c] ? 2 : 1, m.counted[c] || 0])
+        .filter(([, p, at]) => p === 1 || now - at > (p === 0 ? COUNT_MOVED_MS : COUNT_STALE_MS))
+        .sort((a, b) => a[1] - b[1] || a[2] - b[2]).slice(0, COUNT_READS);
+      for (const [name] of due) {
+        if (reads >= MAX_READS) break;
+        reads++;
+        if (await this.readCount(m, name)) counted = true;
       }
     } catch (e) {
       // liveresultat slow or down: try again at the next wake-up
       console.error(`race ${m.comp}: ${e.message || e}`);
     }
+    if (counted) for (const ws of everyone) this.send(ws, { t: "counts", counts: m.counts });
     // the next wake-up first, whatever happens to the save: a failed save must not stop the pages' updates
     const active = Date.now() - m.lastChange < 120000;
     await this.ctx.storage.setAlarm(Date.now() + (active ? ACTIVE_MS : QUIET_MS));

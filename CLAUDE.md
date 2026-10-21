@@ -1148,7 +1148,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   and `/ws/<race>` (the WebSocket handed to the race's object) —, signed-in accounts only: the login gate passes the 101
   handshake on untouched (`_middleware.js`); each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top
-  CN predicts (« Attendu »). `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
+  CN predicts (« Attendu »). The race page (owner, 2026-10-21, phone first): name, organiser and day beside the status and
+  one ranking button; the latest punches on one line scrolling sideways, filtered (all, one's club's runners by name, the
+  course shown, hidden; `localStorage ocn.live.pass`), or as a list — the picker's first entry « Derniers passages »
+  (`#/direct/<race>/~passages`); the picker gives each course's finishers / starters (the relay reads the classes nobody
+  watches for their counts only, a few per wake-up: message `counts`; it keeps the last 30 punches, the page adds them up);
+  the table has no scrollbar of its own, every runner on two lines (name | club | time/gap | CN/expected | score/gap), the
+  runner's category (from the data) when the class is not one, under the place on a phone. The list page: the other
+  countries racing live beside the search (under the list on a phone), a click makes one the site's country; a search
+  looks in every country. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
   account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so. The

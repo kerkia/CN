@@ -1507,33 +1507,68 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
 .sh-e-list { margin: 8px 0 0; padding-left: 22px; font-size: 13px; max-height: 30vh; overflow-y: auto; }
 @media (max-width: 900px) { .sh-layout, .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; } }
 /* « En direct » */
-.lv-head { margin-bottom: 10px; }
-.lv-bar { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+/* the race (owner, 2026-10-21): name and day | status and ranking, two lines; the punches on one line scrolling sideways;
+   no scrollbar of the table's own (the page's only: a course holds a few dozen runners); every runner on two lines */
+.lv-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; margin-bottom: 10px; }
+.lv-hl { min-width: 0; }
+.lv-head h1 { margin: 0; font-size: 22px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lv-sub { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.lv-hr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .lv-mbtn { white-space: nowrap; }
-.lv-status { font-size: 13.5px; color: var(--ink-3); align-self: center; white-space: nowrap; }
+.lv-status { font-size: 13.5px; color: var(--ink-3); text-align: right; }
 .lv-status.live { color: var(--bad); font-weight: 650; }
 .lv-status.live::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
 .lv-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
 .lv-side { position: sticky; top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; max-height: calc(100vh - 24px); overflow-y: auto; }
 .lv-side-title { font-size: 12px; font-weight: 650; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px 6px; }
 .lv-list { display: flex; flex-direction: column; gap: 2px; }
-.lv-item { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+.lv-item { display: flex; justify-content: space-between; gap: 8px; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
+.lv-item-pass { margin-bottom: 6px; font-weight: 600; }
+.lv-cnt { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .lv-item:hover { background: var(--surface-3); }
 .lv-item.on { background: var(--accent-wash); font-weight: 650; box-shadow: inset 3px 0 0 var(--focus); }
 .lv-pick { display: none; }
-.lv-m { display: none; }
+.lv-table .lv-m { display: none; }
+#lv-rows { max-height: none; }
+table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-align: top; }
+.lv-table .lv-2 { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.lv-table .lv-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.lv-table .lv-c { font-size: 12.5px; color: var(--ink-2); }
+.lv-table .lv-cat { font-size: 12.5px; white-space: nowrap; }
+.lv-table .lv-t { white-space: nowrap; }
+.lv-table .lv-sc .gap { display: block; margin: 0; min-width: 0; }
+.lv-plhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px; font-size: 12.5px; }
+.lv-plist { font-size: 13px; }
+.lv-plist tr.lv-prow { cursor: pointer; }
+.lv-plist tr.lv-prow:hover td { background: var(--surface-3); }
 @media (max-width: 760px) {
   .lv-layout { grid-template-columns: minmax(0, 1fr); }
   .lv-side { display: none; }
-  .lv-pick { display: flex; margin: 0 0 10px; }
-  .lv-bar { justify-content: space-between; }
+  .lv-pick { display: flex; margin: 0 0 8px; }
   .lv-pick select { width: 100%; height: 40px; font-size: 15px; }
+  .lv-head h1 { font-size: 18px; }
+  .lv-wide { display: none; }
+  table.data.lv-table th, table.data.lv-table td { padding: 4px 3px; }
   .lv-table .lv-d { display: none; }
-  .lv-m { display: block; }
-  .lv-pass .chip { display: block; width: 100%; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: auto; padding-block: 4px; }
+  .lv-table .lv-m { display: block; }
+  .lv-table td.lv-n { min-width: 20vw; }
+  .lv-table .lv-t .lv-2 { white-space: normal; max-width: 15vw; margin-left: auto; }
+  .lv-table td.lv-c { min-width: 13vw; max-width: 24vw; font-size: 11.5px; }
+  .lv-status { font-size: 12.5px; max-width: 34vw; }
+  .lv-pf { width: 104px; }
 }
-.lv-else { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 2px 0; font-size: 13px; }
-.lv-pass { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 2px 12px; font-size: 13px; }
+.lv-else { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.lv-filters { align-items: flex-end; }
+.lv-else-top { flex: 1 1 300px; padding-bottom: 4px; }
+.lv-else-end { display: none; margin: 10px 2px 0; }
+@media (max-width: 760px) { .lv-else-top { display: none; } .lv-else-end { display: flex; } }
+.lv-pass { display: flex; gap: 6px; align-items: center; margin: 0 0 8px; font-size: 12.5px; min-width: 0; }
+.lv-pf { flex: none; width: 128px; height: 30px; font-size: 12.5px; }
+.lv-strip { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.lv-pi { flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px;
+  font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; }
+.lv-pi:hover { background: var(--surface-3); }
+.lv-pexp { flex: none; }
 table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }
 table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var(--surface-2); }
 /* forest plots (Méthodes · analyses): an estimate and its 95 % interval against zero */
