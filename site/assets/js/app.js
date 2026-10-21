@@ -70,8 +70,8 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
 // the data anyway: _middleware.js `needsFrance`); its menus leave them out.
 const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
   "ask"]);
-/** Where a signed-in account lands: its own page, else the ranking with France, else the agenda. */
-const homeOf = (me) => (me.lic && auth.sees("FR") ? link.runner(me.lic) : auth.sees("FR") ? link.ranking() : "#/agenda");
+/** Where a signed-in account lands: the agenda, for every account (owner, 2026-10-21; before, one's own page or the ranking). */
+const homeOf = () => "#/agenda";
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -312,12 +312,19 @@ function menuKey(r) {
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
-  // logged in, the home page (the login page) is not needed: the brand leads to one's own page
-  // two groups (owner, 2026-10-12): the national ranking's analyses, and the races — coming, run, live. The bar shows
+  // logged in, the home page (the login page) is not needed: the brand leads to the agenda
+  // the groups (owner, 2026-10-12; « Courses » first since 2026-10-21): the races — coming, run, live —, the national
+  // ranking's analyses, training, organising. The bar shows
   // the groups, the row under it the current group's pages (and the runner search); the documentation, settings,
   // contact and logout are under one's name
   const fr = auth.sees("FR");
   const groups = me ? [
+    ["races", t("nav.g.races"), [
+      ["agenda", "#/agenda", t("nav.agenda")],
+      ["provisional", "#/resultats", t("nav.recent")],
+      ["live", "#/direct", t("nav.live")],
+      ["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")],
+    ]],
     ["cn", t("nav.g.cn"), [
       ["runner", "#/coureur", t("nav.runner")],
       ["ranking", "#/classement", t("nav.ranking")],
@@ -328,12 +335,6 @@ function renderHeader(r) {
       ["network", "#/reseau", t("nav.network")],
       // « IA » (2026-10-15): questions on the data in plain French; every account since 2026-10-16 (owner)
       ["ask", "#/ia", t("nav.ask")],
-    ]],
-    ["races", t("nav.g.races"), [
-      ["agenda", "#/agenda", t("nav.agenda")],
-      ["provisional", "#/resultats", t("nav.recent")],
-      ["live", "#/direct", t("nav.live")],
-      ["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")],
     ]],
     // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, the VMA page, the
     // analyses of one's training; every page for every account since 2026-10-15 (owner)
@@ -615,8 +616,7 @@ async function route_() {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
-  // logged in, the home page leads to one's own page (a demo account, tied to no licence: to the ranking; an account without
-  // France: to the agenda)
+  // logged in, the home page leads to the agenda (homeOf)
   if (me && r.route === "overview") {
     history.replaceState(null, "", homeOf(me));
     r = parseHash();
@@ -721,7 +721,7 @@ export async function signedIn(s) {
   if (s.lic) store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
-  // one's own page; a demo account, tied to no licence, lands on the ranking; an account without France on the agenda
+  // the page asked for before the login, else the agenda (homeOf)
   location.hash = next && next.startsWith("#/") && next !== "#/" ? next : homeOf(s);
   pushBoot();
   movedNotice();

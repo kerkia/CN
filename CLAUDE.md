@@ -478,9 +478,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
-- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15): the bar shows the groups as tabs — « Classement » (« Classement national » until 2026-10-15; Coureur, Classement, Courses
-  classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`) and « Courses » (Agenda, formerly « Bientôt »;
-  Résultats, formerly « Récemment »; En direct); a group's tab leads back to the page last seen in it
+- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as
+  every signed-in account's landing page since 2026-10-21, `app.homeOf`, the brand's link too): the bar shows the groups as tabs —
+  « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »; En direct), « Classement » (« Classement national »
+  until 2026-10-15; Coureur, Classement, Courses classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`), « Entrainement »,
+  « Organisation »; a group's tab leads back to the page last seen in it
   (`localStorage ocn.nav.<group>`) — a list or a view, never a tool that reopens its work (the analyses, « Direct », « Tracer »:
   `TOOL_PAGES`) nor a `?fen=1` address (owner, 2026-10-17: the memory is shared by the tabs, and « Courses » reopened « Analyse
   solo » at its calibration in full window, the menus gone; a stale memory is ignored when read). The row under it shows the current group's pages. The runner search sits at the right
@@ -1122,7 +1124,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   longer than the account) and the login gate refuses every method but GET/HEAD/OPTIONS except `/api/track` and `/api/ask`
   (`DEMO_WRITES`, 403 `demo`); past its day the login says « disabled », `currentUser` and the gate's hourly check refuse it. Kept
   out of « Comptes » and « Inscrits ». In the app (`session.demo`): no « Ma page », the brand and the home page lead to
-  « Classement », an orange line under the bar (`demo.strip`), Réglages reduced to what the account is and the language, no
+  the agenda (every account's since 2026-10-21), an orange line under the bar (`demo.strip`), Réglages reduced to what the account is and the language, no
   push offer. The privacy page names the exception to « accounts reserved to licensees ».
 - **Privacy and legal notices** (`#/compte/confidentialite`, `pages/account.js` `privacy`, public; reviewed 2026-10-15): the
   GDPR's information (controller Yann Le Helloco, legal bases, licensees without an account and their right to object,
@@ -1185,7 +1187,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **The pages by profile** (step 4): `app.FR_ROUTES` (the rankings and all they hold, « IA ») give an account without France
   `pages/needcountry.js` (what joining France opens, a link to Réglages › Mes pays) in their place (`r.from`: the page keeps
   its group and menu row, `menuKey`); the « Classement » group stays in the bar, it has no method switch and lands on the
-  agenda (`homeOf`). **Gate by data, not by page** (owner, 2026-10-20, after « Organisation » opened on the join-France page
+  agenda (`homeOf`, every account's landing since 2026-10-21). **Gate by data, not by page** (owner, 2026-10-20, after « Organisation » opened on the join-France page
   and its pages looked locked): the organisers' pages are everyone's, their lists hold the competitions of the countries
   Ozimut reads (empty without France: `sh.org.noCountry`). A group's tab follows its memory (`ocn.nav.<group>`, the browser's,
   shared by every account signed in on it) only to a page of its own menu. Test a profile as a regular account
