@@ -143,8 +143,6 @@ export async function render(main, { query }) {
         ${sees("FR") && fr ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
       </div>
       <div class="frow">
-        <label class="field"><span>${t("cty.field.country")}</span><select id="f-country">
-          ${country.withData().map((cc) => html`<option value="${cc}" ${raw(cc === country.current() ? "selected" : "")}>${country.name(cc)}</option>`)}</select></label>
         <label class="field"><span>${t("agd.from")}</span><input type="date" id="f-from" value="${st.from}"></label>
         <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
@@ -168,7 +166,6 @@ export async function render(main, { query }) {
     const el = e.target;
     if (el.dataset.kind) { el.checked ? st.kinds.add(el.dataset.kind) : st.kinds.delete(el.dataset.kind); }
     else if (el.id === "cn-only") st.cnOnly = el.checked;
-    else if (el.id === "f-country") { country.pick(el.value); location.reload(); return; }     // the site's country (country.js)
     else if (el.id === "f-from") { st.from = el.value || today; if (st.to && st.to < st.from) st.to = st.from; }
     else if (el.id === "f-to") st.to = el.value;
     else if (el.id === "f-spec") st.spec = el.value;

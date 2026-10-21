@@ -20,7 +20,7 @@ const NEW = "https://ozimut.com";
 const ACTIVE = true;
 const MARK = "#oz=";
 // what is carried over: preferences and the work kept in this browser, nothing that names a secret or a server
-const KEEP = [/^cnx\.(theme|state)$/, /^ocn\.lang$/, /^ocn\.nav\./, /^ocn\.(vma|relay|games\.best|liveCountry|push\.later)$/,
+const KEEP = [/^cnx\.(theme|state)$/, /^ocn\.lang$/, /^ocn\.nav\./, /^ocn\.(vma|relay|games\.best|push\.later)$/,
   /^ocn\.(an|sh|tr)\.prefs$/, /^ocn\.an\.cal/, /^ocn\.tr\.beta$/, /^ocn\.beta\.(multi|direct)$/, /^ocn\.tr\.field\./];
 // never, whatever KEEP says: another server for « En direct » (a crafted link could point it anywhere), an AI provider's key
 const NEVER = [/^ocn\.liveBase$/, /^ocn\.ia\.byok$/, /^cnx\.session$/];

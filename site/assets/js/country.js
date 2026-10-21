@@ -1,9 +1,10 @@
 // The site's country (owner, 2026-10-20): one choice for the whole site, beside the language, as the method is. The pages
-// that depend on a country (Agenda, Résultats, the organisers' pickers; the rankings once another country has data) show
-// that country's: the header's menu and the Agenda's « Pays » field — the countries whose data the site reads (meta.json
-// `countries`; France alone until then) and those the account has joined, whose competitions their organisers declare
-// (functions/api/declared.js). Default: the first country the account joined successfully, else the first with data. Kept on
-// the device (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
+// that depend on a country (Agenda, Résultats, En direct, the organisers' pickers; the rankings once another country has data)
+// show that country's. One place to choose it, the header's menu (owner, 2026-10-21: the Agenda's « Pays » field and En direct's
+// repeated it): first the countries whose data the site reads (meta.json `countries`; France alone until then) and those the
+// account has joined, whose competitions their organisers declare (functions/api/declared.js), then every other IOF member —
+// liveresultat carries races of many (« En direct »). Default: the first country the account joined successfully, else the
+// first with data. Kept on the device (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
 
 import { html } from "./util.js";
 import { t, lang } from "./i18n.js";
@@ -26,7 +27,7 @@ export function current() {
   const ok = withData();
   let kept = null;
   try { kept = localStorage.getItem(KEY); } catch (e) { /* none */ }
-  if (ok.includes(kept)) return kept;
+  if (ok.includes(kept) || MEMBERS.includes(kept)) return kept;
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
   return mine.find((cc) => ok.includes(cc)) || ok[0];
 }
@@ -36,16 +37,17 @@ export function pick(cc) {
 /** An event or race of a country (the data's `country`; France when it has none, as everything before 2026-10-20). */
 export const of = (x) => x?.country || "FR";
 
-/** The header's menu, beside the language's (France alone for now: it says whose data the pages show). */
+/** The header's menu, beside the language's: the countries with data or joined, then every other member country. */
 export function menu() {
   const ok = withData();
   const cur = current();
+  const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${name(cc)}</button>`;
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu" role="menu">${ok.map((cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${name(cc)}</button>`)}</div>
+    <div class="nav-menu cty-menu" role="menu">${ok.map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
   </div>`;
 }
 

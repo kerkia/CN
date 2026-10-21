@@ -159,6 +159,9 @@ export async function onRequest(context) {
   const out = new Response(res.body, res);
   // (the API endpoints set their own no-store: a cached /api/account/me showed stale settings)
   if (!path.startsWith("/api/")) out.headers.set("Cache-Control", "private, max-age=300");
-  if (refreshed) out.headers.append("Set-Cookie", refreshed);
+  // the hourly re-signed cookie, unless the handler issued its own: a cookie it signs after a change (a country joined or
+  // left: /api/account/countries) is newer, and the gate's, appended after it, overwrote it with the countries of before
+  // (owner, 2026-10-21: « adding a country logs me out »)
+  if (refreshed && !(res.headers.get("Set-Cookie") || "").includes(`${COOKIE}=`)) out.headers.append("Set-Cookie", refreshed);
   return out;
 }

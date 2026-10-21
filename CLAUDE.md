@@ -491,7 +491,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **One method at a time** (owner, 2026-10-12): `store.method` (default `official`; `store.methods` = `[method]` for the
   pages that read a list), chosen with the switch at the right of the header's second row (`ui.methodSwitch`: « Calcul du
   CN » then Officiel | Top, each with a one-line tooltip `m.<method>.tip` — owner, 2026-10-13: the buttons alone did not say
-  what they chose —, a list of every available method for analysts; `?m=` in a link sets it); no page has a method choice of its own
+  what they chose —, a list of every available method for analysts; `?m=` in a link sets it; « En direct »'s race page draws no switch in the bar but one button
+  beside its status, owner 2026-10-21: compact on a phone — the race's name once, the latest punches one line each, the course
+  picker, then the table with no heading of its own); no page has a method choice of its own
   (the former `methodChips`/`methodSeg` draw nothing). After a switch the runner's CN chart shows the previous method as a
   faint grey line (`store.prevMethod`, this visit only). The results tables (Courses classées, Résultats, En direct, the
   runner's race history) show one CN column and the score with its gap; En direct: the official CN at J-15, the others'
@@ -1176,7 +1178,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   evaluation, validation, `prov/pub/`) — deny by default, list a new file there only if it holds nothing personal of France —
   and the APIs of `FR_API` (`ffco-cn`, `ffco-history`, `ask`, `account/relay`). A cookie without `cc` (issued before) is
   checked at once. The Functions' own `env.ASSETS` reads (`_lib/club.js`) do not go through the gate. In the browser
-  `auth.sees(cc)` (the session keeps `uid` and `countries`; one without a licence stays signed in), and
+  `auth.sees(cc)` (the session keeps `uid` and `countries`; one without a licence stays signed in; only a 401 signs out —
+  `data.getJson`, Réglages, `app.route_`'s private boot —, never a refused or failed read, owner 2026-10-21; the gate keeps a
+  handler's own session cookie instead of appending its hourly re-signed one, which overwrote a country just joined), and
   `data.bootPrivate({ fr })` leaves the runners empty without France. The pages are not yet adapted (step 4): until then
   `WORLD_OPEN` stays "0".
   **The provisional results without France** (step 3): `prov.run.build` writes beside each file a copy in `prov/pub/`
@@ -1194,9 +1198,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`pages-dev-user`: an administrator sees every organiser's list) and through the group tabs, after a session of another profile. Résultats and En direct drop their CN, score, expected-place and « matched » columns and tile without
   France; the Tracer's winning times need France. **The site's country** (`country.js`, owner, 2026-10-20: one global
   choice beside the language rather than a filter per page): the countries with data are `meta.json` `countries` (France
-  alone when absent); the menu shows only once there are two; default the first accepted membership with data
-  (`localStorage ocn.country` once picked); the Agenda's and Résultats' lists keep the current country's (`country.of`: an
-  item's `country`, France when it has none).
+  alone when absent); the header's menu is the one place to choose it (owner, 2026-10-21: the Agenda's « Pays » field and En
+  direct's own selector are gone) and offers every IOF member after the countries with data or joined — anyone may race abroad:
+  a country's agenda, results and live races are open to every account, without CN (they are not ranked there); default the
+  first accepted membership with data (`localStorage ocn.country` once picked); the Agenda's, Résultats' and En direct's lists
+  keep the current country's (`country.of`: an item's `country`, France when it has none); En direct lists the other countries
+  racing live under its list, a click makes one the site's country, « Tous les pays » shows them all for the visit.
   **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
   up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
   Réglages › « Mes pays » (`#/reglages?onglet=pays`, the card `#st-countries`) lists, edits, leaves (POST `leave: true`) and

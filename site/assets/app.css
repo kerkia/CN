@@ -240,6 +240,9 @@ p { margin: 0; }
 .lang-menu .lang-code { font-size: 12.5px; font-weight: 650; letter-spacing: .02em; }
 .lang-menu .nav-menu { left: auto; right: 0; min-width: 140px; }
 .lang-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
+.cty-menu { max-height: min(70vh, 520px); overflow-y: auto; }
+.nav-menu .nav-menu-head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 8px 10px 4px;
+  border-top: 1px solid var(--border); margin-top: 4px; }
 .swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-strong); flex: none; }
 .user-btn { padding: 4px 8px; }
 .user-btn .user-name { display: flex; flex-direction: column; align-items: flex-start; font-weight: 620; font-size: 14px; line-height: 1.2; color: var(--ink); max-width: 150px; }
@@ -1529,6 +1532,7 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
   .lv-m { display: block; }
   .lv-pass .chip { display: block; width: 100%; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: auto; padding-block: 4px; }
 }
+.lv-else { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 2px 0; font-size: 13px; }
 .lv-pass { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 2px 12px; font-size: 13px; }
 table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }
 table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var(--surface-2); }

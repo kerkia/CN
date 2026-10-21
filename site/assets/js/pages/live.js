@@ -11,6 +11,7 @@ import { nameKey, sees, session } from "../auth.js";
 import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
+import * as country from "../country.js";
 
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
 // server (localStorage « ocn.liveBase »)
@@ -28,9 +29,8 @@ export async function render(main, { path = "", query = {} } = {}) {
 }
 
 // ---- the races ----------------------------------------------------------------------------------------------------
-// the country chosen last (France by default: this site's runners race there)
-const pref = { get: () => { try { return localStorage.getItem("ocn.liveCountry") ?? "FR"; } catch (e) { return "FR"; } },
-  set: (v) => { try { localStorage.setItem("ocn.liveCountry", v); } catch (e) { /* this visit only */ } } };
+// the site's country's races (country.js, the header's menu; owner, 2026-10-21: the page's own « Pays » field repeated it),
+// then a line of the other countries racing live, each a click to make it the site's country, and « all countries »
 const countryName = (() => {
   let dn = null;
   try { dn = new Intl.DisplayNames([lang()], { type: "region" }); } catch (e) { /* codes then */ }
@@ -38,12 +38,13 @@ const countryName = (() => {
 })();
 
 async function list(main, query) {
-  let q = query.q || "", country = query.pays ?? pref.get();
+  let q = query.q || "", all = false;
+  const cur = country.current();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
-    <div class="filters"><label class="field"><span>${t("lv.country")}</span><select id="lv-country"></select></label>
-      <label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    <div class="filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
+    <div class="lv-else" id="lv-else"></div>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [];
   try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
@@ -61,26 +62,31 @@ async function list(main, query) {
     } catch (e) { /* none shown */ }
   }
   const today = new Date().toLocaleDateString("sv-SE");
-  // the countries of the list, the most races first (France first)
+  // the other countries racing live, the most races first
   const counts = new Map();
-  for (const c of comps) counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
-  const order = [...counts].sort((a, b) => (a[0] === "FR" ? -1 : b[0] === "FR" ? 1 : 0) || b[1] - a[1]);
-  if (country && !counts.has(country) && country !== "FR") country = "FR";
-  $("#lv-country").innerHTML = html`<option value="">${t("lv.country.all")} (${comps.length})</option>
-    ${(counts.has("FR") ? order : [["FR", 0], ...order]).map(([c, n]) => html`<option value="${c}" ${raw(c === country ? "selected" : "")}>${countryName(c)} (${n})</option>`)}`;
+  for (const c of comps) if ((c[5] || "?") !== cur) counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
+  const order = [...counts].filter(([c]) => c !== "?").sort((a, b) => b[1] - a[1]);
   const draw = () => {
-    replaceQuery({ q: q || null, pays: country === pref.get() ? null : country });
+    replaceQuery({ q: q || null });
     const n = normalise(q);
-    const kept = comps.filter((c) => (!country || (c[5] || "?") === country) && (!n || normalise(`${c[1]} ${c[2]}`).includes(n)))
+    const kept = comps.filter((c) => (all || (c[5] || "?") === cur) && (!n || normalise(`${c[1]} ${c[2]}`).includes(n)))
       .sort((a, b) => (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
       <tbody>${kept.map(([id, name, org, date]) => html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
         <td><a href="#/direct/${id}">${name}</a></td><td style="font-size:12.5px">${org}</td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : country && !n ? "lv.noneCountry" : "lv.none", { c: countryName(country) })}</div>`;
+      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !all && !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
+    $("#lv-else").innerHTML = !counts.size ? "" : html`<span class="muted">${t(all ? "lv.country.allShown" : "lv.elsewhere")}</span>
+      ${all ? "" : order.map(([c, k]) => html`<button type="button" class="chip" data-lv-country="${c}">${countryName(c)} <span class="muted">${k}</span></button>`)}
+      <button type="button" class="chip" data-lv-all="${all ? 0 : 1}">${all ? t("lv.country.only", { c: countryName(cur) }) : t("lv.country.all")}</button>`;
   };
   draw();
   $("#lv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  $("#lv-country").addEventListener("change", (e) => { country = e.target.value; pref.set(country); draw(); });
+  $("#lv-else").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.lvCountry) { country.pick(b.dataset.lvCountry); location.reload(); return; }   // the site's country, everywhere
+    all = b.dataset.lvAll === "1"; draw();
+  });
   return { title: t("lv.title") };
 }
 

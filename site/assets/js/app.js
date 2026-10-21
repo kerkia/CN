@@ -473,6 +473,7 @@ function renderHeader(r) {
     closeMenus();
     if (b.dataset.countryPick === country.current()) return;
     country.pick(b.dataset.countryPick);
+    lastRoute = null;             // a page that follows its address (the Agenda) is built again, not just told its query
     route_();
   }));
   // the installable app (pwa.js): the item shows once the browser offers to install
@@ -622,7 +623,12 @@ async function route_() {
     r = parseHash();
   }
   if (me && !data.isPrivateLoaded()) {
-    try { await data.bootPrivate({ fr: auth.sees("FR") }); } catch (e) { return signedOut(); }
+    // only a session the server refuses (401, data.getJson) signs out; anything else is shown as a failed load
+    try { await data.bootPrivate({ fr: auth.sees("FR") }); } catch (e) {
+      if (/HTTP 401/.test(e.message)) return signedOut();
+      $("#main").innerHTML = html`<div class="card"><div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
+      return;
+    }
     await auth.refresh();                     // rights granted or withdrawn since the login
     if (my !== token) return;
     movedNotice();

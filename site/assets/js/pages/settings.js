@@ -53,7 +53,9 @@ export async function render(main, { query = {} } = {}) {
   }
   const r = await fetch("api/account/me", { credentials: "same-origin", cache: "no-store" });
   const user = r.ok ? await r.json() : null;
-  if (!user) { window.dispatchEvent(new Event("cnx:unauthorised")); return null; }
+  // only an expired session signs out (owner, 2026-10-21: any failure did, a busy server included)
+  if (r.status === 401) { window.dispatchEvent(new Event("cnx:unauthorised")); return null; }
+  if (!user) throw new Error(`api/account/me: HTTP ${r.status}`);
   if (user.demo) return demoPage(main, user);
 
   main.innerHTML = html`
