@@ -1504,6 +1504,9 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
 .sh-e-list { margin: 8px 0 0; padding-left: 22px; font-size: 13px; max-height: 30vh; overflow-y: auto; }
 @media (max-width: 900px) { .sh-layout, .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; } }
 /* « En direct » */
+.lv-head { margin-bottom: 10px; }
+.lv-bar { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.lv-mbtn { white-space: nowrap; }
 .lv-status { font-size: 13.5px; color: var(--ink-3); align-self: center; white-space: nowrap; }
 .lv-status.live { color: var(--bad); font-weight: 650; }
 .lv-status.live::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
@@ -1520,10 +1523,11 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
   .lv-layout { grid-template-columns: minmax(0, 1fr); }
   .lv-side { display: none; }
   .lv-pick { display: flex; margin: 0 0 10px; }
+  .lv-bar { justify-content: space-between; }
   .lv-pick select { width: 100%; height: 40px; font-size: 15px; }
   .lv-table .lv-d { display: none; }
   .lv-m { display: block; }
-  .lv-pass .chip { white-space: normal; height: auto; padding-block: 4px; }
+  .lv-pass .chip { display: block; width: 100%; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: auto; padding-block: 4px; }
 }
 .lv-pass { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 2px 12px; font-size: 13px; }
 table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }

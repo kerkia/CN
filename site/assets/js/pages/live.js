@@ -107,15 +107,16 @@ const terrainOf = (name, cls) => {
 
 async function race(main, id, wanted) {
   const st = { info: null, classes: [], cls: wanted, data: null, justIn: new Map(), pass: [], ws: null, up: false, tries: 0, gone: false, cn: {}, terrain: null };
-  main.innerHTML = html`<div class="crumbs"><a href="#/direct">${t("lv.title")}</a><span>›</span><span id="lv-name">…</span></div>
-    <div class="page-head"><div><h1 id="lv-title">…</h1><p class="lede" id="lv-sub"></p></div><div class="lv-status" id="lv-status">${t("lv.connecting")}</div></div>
+  // the head (owner, 2026-10-21: compact on a phone): the race's name once, the status and the method as one button on a
+  // line; the latest punches, then the course picker (phones; the side list elsewhere), then the table
+  main.innerHTML = html`<div class="page-head lv-head"><div><h1 id="lv-title">…</h1><p class="lede" id="lv-sub"></p></div>
+      <div class="lv-bar"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span></div></div>
     <div class="lv-layout">
       <aside class="lv-side"><div class="lv-side-title">${t("prov.circuit")}</div><div class="lv-list" id="lv-chips"></div></aside>
       <div class="lv-main">
-        <label class="field lv-pick"><span>${t("prov.circuit")}</span><select id="lv-sel"></select></label>
         <div id="lv-pass"></div>
-        <section class="card"><div class="card-head"><div><h2 id="lv-class"></h2><div class="hint">${t("lv.hint")}</div></div></div>
-          <div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
+        <label class="field lv-pick"><span>${t("prov.circuit")}</span><select id="lv-sel"></select></label>
+        <section class="card"><div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
       </div>
     </div>`;
 
@@ -137,6 +138,15 @@ async function race(main, id, wanted) {
   // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
   // without France (owner, 2026-10-20): the race as liveresultat gives it, no CN, score or expected place
   const FR = sees("FR");
+  // the method: one button naming the ranking shown, a click shows the other (the header's switch is not drawn here)
+  function methodBtn() {
+    const el = $("#lv-method");
+    if (!el || !FR) return;
+    const ms = store.available(), cur = store.get().method, next = ms[(ms.indexOf(cur) + 1) % ms.length];
+    el.innerHTML = ms.length < 2 ? "" : html`<button type="button" class="btn btn-sm lv-mbtn" data-lv-method="${next}"
+      title="${t("lv.method.tip", { m: methodShort(next) })}">${t("msw.label")} ${methodShort(cur)} <span aria-hidden="true">⇄</span></button>`;
+  }
+  methodBtn();
   async function cnFor(terrain) {
     if (!FR) return { shown: new Map(), valuer: new Map(), monthJ15: null };
     const m = store.get().method, k = `${terrain}|${m}`;
@@ -183,7 +193,7 @@ async function race(main, id, wanted) {
   function on(m) {
     if (m.t === "hello") {
       st.info = m.info; st.classes = m.classes;
-      $("#lv-title").textContent = $("#lv-name").textContent = m.info?.name || id;
+      $("#lv-title").textContent = m.info?.name || id;
       $("#lv-sub").textContent = [m.info?.organizer, m.info?.date && fmtDate(m.info.date)].filter(Boolean).join(" · ");
       if (m.pass) { st.pass = m.pass; ticker(); }
       // no class asked for: the one of the latest arrival, else the first
@@ -223,7 +233,7 @@ async function race(main, id, wanted) {
     if (age != null && (age < -60 || age > 12 * 3600)) age = null;
     const live = age != null && age < 300;
     el.className = `lv-status${live ? " live" : ""}`;
-    el.textContent = live ? `${t("lv.on")} · ${t("lv.ago", { s: Math.max(0, Math.round(age)) })}` : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
+    el.textContent = live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
   }
   function ticker() {
     const items = st.pass.slice(0, 4);
@@ -284,7 +294,6 @@ async function race(main, id, wanted) {
     };
     const block = (k) => (groups[k].length ? html`<tr class="lv-sec"><td colspan="${FR ? 8 : 5}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
       ${groups[k].map((x) => line(x, k))}` : "");
-    $("#lv-class").textContent = `${fmtCat(st.cls)} · ${t("lv.terrain")} ${t(`terrain.${st.terrain}`)}`;
     $("#lv-rows").innerHTML = d.rows.length ? html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       <th class="lv-d">${t("prov.club")}</th><th class="r">${t("prov.time")}</th><th class="r lv-d">${t("lv.behind")}</th>
       ${FR ? html`<th class="r" ${raw(store.get().method === "official" ? `title="${t("lv.cnJ15.hint")}"` : "")}>${subHead(cnLabel(store.get().method),
@@ -295,7 +304,11 @@ async function race(main, id, wanted) {
       : html`<div class="empty">${t("lv.empty")}</div>`;
   }
 
-  main.addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (b) pick(b.dataset.c); });
+  main.addEventListener("click", (e) => {
+    const m = e.target.closest("[data-lv-method]");
+    if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); rows(); return; }
+    const b = e.target.closest("[data-c]"); if (b) pick(b.dataset.c);
+  });
   main.addEventListener("change", (e) => { if (e.target.id === "lv-sel") pick(e.target.value); });
   const tick = setInterval(() => {
     if (!main.isConnected) { cleanup(); return; }

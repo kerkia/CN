@@ -407,7 +407,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry"].includes(route) || !fr ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live"].includes(route) || !fr ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   // a demo account (admin page, « Démo »): said on every page, with its last day
