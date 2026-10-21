@@ -410,8 +410,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   automatic under reduced motion); phones keep the short text (`.home-text`).
 - **The site in pictures** (owner, 2026-10-19; first made as a brochure for Swiss Orienteering): the home page, under the hero,
   presents the whole site (`site/assets/js/tour.js`, rendered by `pages/overview.js`; texts `tour.*` in both catalogues; styles
-  `.tour-*`): a course drawn down the page — the start triangle, eight numbered controls (runner, ranking, the CN Top with its
-  duel figures, races, training, clubs, organisers, phones), the finish (privacy pledges, « Créer mon compte », the demo-account
+  `.tour-*`): a course drawn down the page — the start triangle, nine numbered controls in the menu's order (owner, 2026-10-21:
+  races, the GPS analysis — a computer's picture beside a phone's, `dp` —, runner, ranking, the CN Top with its duel figures,
+  clubs, training, organisers, phones; a phone among screenshots kept to a phone's size, `.tour-g-3 .tour-phone`), the finish (privacy pledges, « Créer mon compte », the demo-account
   offer) —, screenshots that enlarge on click, two drawn mockups (« En direct », the phone's notifications), the live counts of
   `meta.json`. **Its screenshots show nobody's real results** (the page is public): `site/assets/tour/<fr|en>/*.webp` were taken
   on a **scrambled copy of the data** — the R2 database copied to `C:\kerkia\cn-data\synth`, scrambled by the scratch `synth.py`
@@ -420,7 +421,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `update.migrate` + the provisional build on it (scratch `build_synth.py`, into `synth/out/data`), and the screenshots by
   puppeteer-core + headless Edge (from PowerShell: the Bash sandbox blocks the browser) on the local dev server with every
   `/data/` request served from that copy and the account shown as « Camille Martin » (scratch `shots/lib.mjs`, `OCN_SYNTH`). Never
-  replace them with screenshots of the real data. « Analyse GPS » and « Tracé » reuse the reel's invented images.
+  replace them with screenshots of the real data. « Analyse GPS » and « Tracé » reuse the reel's invented images;
+  `tour/<lang>/phone-analysis.webp` (2026-10-21) is the same invented run (`site/data/_trtest/carte.kmz` + `trace.gpx`) in « Analyse
+  solo » on a phone, full window, 280 × 606 at 2×, dark theme, by headless Edge (scripts kept with the session's scratch).
   **Keep `synth/`** (owner, 2026-10-20: the data to redo the docs, slides and pictures stays). The sessions' scratch folders
   were emptied on 2026-10-20; their scripts (`synth.py`, `build_synth.py`, `shots/`, `reelgps/`, `shot_tracer2.mjs`, the
   studies' scripts…) were kept in `C:\kerkia\cn-data\scratch-scripts\<project>\<session>\scratchpad\`. Study database

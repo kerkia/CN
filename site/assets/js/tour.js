@@ -3,17 +3,20 @@
 // numbered controls (the sections), to the finish. The screenshots (assets/tour/<lang>/*.webp) were taken on a scrambled
 // copy of the data — invented names, licences and clubs, times shifted — so this public page shows nobody's real results
 // (the public page never shows real results or names); « En direct » and the notifications are drawn mockups.
+// The sections follow the menu (owner, 2026-10-21): Courses (then the analyses, its last pages), Classement, Entrainement,
+// Organisation. The analysis's phone picture (phone-analysis) is the invented run of assets/reel-trace.webp on a phone.
 
 import { html, raw, $, $$, fmt } from "./util.js";
 import { t, lang } from "./i18n.js";
 
 const LEGS = [
+  { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "settings"] },
+  { id: "analysis", who: ["r", "c", "o"], dp: ["@trace", "phone-analysis"] },
   { id: "runner", who: ["r"], main: "runner-calc", side: ["dark-progress", "compare"], row: ["runner-map", "runner-network", "runner-seasons"] },
   { id: "ranking", who: ["r", "c"], main: "ranking", side: ["categories", "courses"], strip: ["stats-territories", "stats-ages", "stats-participation", "stats-leaders"] },
   { id: "method", who: ["r", "l"], duel: true, pair: ["docs", "docs-top"] },
-  { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "settings"] },
-  { id: "training", who: ["r", "c"], main: "@trace", side: ["game-forestroute", "vma"], strip: ["game-photo", "game-contour", "game-rapid", "game-maze"] },
   { id: "clubs", who: ["c", "l"], main: "relays", side: ["club", "clubcompare"], pair: ["clubs", "ia"] },
+  { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["vma", "game-photo"], row: ["game-contour", "game-rapid", "game-maze"] },
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "results"] },
   { id: "phones", who: ["all"], phones: ["phone-ranking", "phone-agenda", "phone-race", "phone-settings", "phone-runner"] },
 ];
@@ -62,7 +65,10 @@ function leg(L, i) {
   const pair = L.pair ? html`<div class="tour-g-2">${L.pair.map((s) => shot(s))}</div>` : "";
   const phones = L.phones ? html`<div class="tour-g-5">${L.phones.map((s) => html`<figure><div class="tour-phone"><img src="${src(s)}"
       alt="${t(`tour.cap.${s}.b`)}" loading="lazy" decoding="async" tabindex="0" title="${t("tour.zoom")}"></div><figcaption><b>${t(`tour.cap.${s}.b`)}</b></figcaption></figure>`)}</div>` : "";
-  return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${main}${row}${strip}${pair}${phones}</section>`;
+  // a computer's picture beside the same page on a phone
+  const dp = L.dp ? html`<div class="tour-g-dp">${shot(L.dp[0])}<figure><div class="tour-phone"><img src="${src(L.dp[1])}"
+      alt="${t(`tour.cap.${L.dp[1]}.b`)}" loading="lazy" decoding="async" tabindex="0" title="${t("tour.zoom")}"></div>${cap(L.dp[1])}</figure></div>` : "";
+  return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${main}${dp}${row}${strip}${pair}${phones}</section>`;
 }
 
 /** The section, under the hero. counts: meta.json's { runners, competitions, results }. */
