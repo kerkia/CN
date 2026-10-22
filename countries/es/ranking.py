@@ -35,15 +35,22 @@ def update(root: Path, prov_db: Path = paths.DB, budget_s: float = 900, db: Path
         from . import fedo, official
         stats["official"] = official.refresh(con, http)            # FEDO's ranking files: the current season, past ones once
         stats["fedo"] = fedo.import_all(con, http, budget_s=max(60, budget_s / 3 - (time.monotonic() - t0)))
+        from . import agenda_current, refresh_agenda
+        if not agenda_current(root):                    # an older agenda would bring the totals back to « Résultats »
+            stats["agenda"] = refresh_agenda(root)
+        if agenda_current(root):
+            stats["overall"] = archive.drop_overall(con, prov_db, http)     # once
         left = max(60, budget_s - (time.monotonic() - t0))
         stats["oreplay"] = archive.backfill_oreplay(con, http, budget_s=left, since=since_oreplay)
+    stats["dedupe"] = archive.dedupe(con)               # a race FEDO's file and another source both hold: FEDO's kept
     lic = identity.Licensees([dict(r) for r in con.execute("SELECT licence, name, club, card FROM es_licensees")]) \
         if con.execute("SELECT 1 FROM sqlite_master WHERE name = 'es_licensees'").fetchone() else None
     stats["pruned"] = archive.prune(con)                # races the rules now leave out
     stats["club_keys"] = clubs.canonical(con)           # before who is who: the club tells namesakes apart
     stats["identity"] = identity.resolve(con, lic)
     stats["clubs"] = clubs.assign(con)
-    changed = stats["identity"]["rows"] > 0 or stats["from_prov"] or stats["oreplay"]["read"] or stats["fedo"]["read"]
+    changed = stats["identity"]["rows"] > 0 or stats["from_prov"] or stats["oreplay"]["read"] or stats["fedo"]["read"] \
+        or stats["dedupe"]["duplicates"] or (stats.get("overall") or {}).get("archive")
     con.close()
     if not changed and (COUNTRY.data_dir(root) / "meta.json").exists() == publish:
         stats["built"] = False

@@ -20,6 +20,8 @@ MONTHS = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 
           "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12}
 FORMAT = [("Sprint", r"sprint"), ("MD", r"media"), ("LD", r"larga"), ("Nuit", r"noche|nocturna")]
 SKIP = re.compile(r"globales|parciales|relevo|\bko\b|-ko-|clasificacion|semifinal|final|mosc|equipos", re.I)
+# the readers' version: a file they could not read is tried again once they improve (2: OE12's PDFs in Spanish, 2026-10-22)
+READER = 2
 
 
 def _fold(s: str) -> str:
@@ -101,7 +103,8 @@ def import_all(con, http, budget_s: float = 600, seasons: set[int] | None = None
     import time
     from ffco_scraper.prov.run import parse_any
     t0 = time.monotonic()
-    done = {r[0] for r in con.execute("SELECT sid FROM es_sources WHERE source = 'fedo'")}
+    done = {r[0] for r in con.execute("SELECT sid FROM es_sources WHERE source = 'fedo' AND (course_id != 0 OR sha = ?)",
+                                      (f"unread:{READER}",))}
     got = left = 0
     for season, page in season_pages(http):
         if seasons and season not in seasons:
@@ -124,8 +127,8 @@ def import_all(con, http, budget_s: float = 600, seasons: set[int] | None = None
                     "league": "Liga Española"}
             if doc and day and store_race(con, "fedo", r["url"], meta, doc) is not None:
                 got += 1
-            else:                                   # unreadable or empty: not asked for again
-                con.execute("INSERT OR IGNORE INTO es_sources (source, sid, course_id, sha, read_at) VALUES ('fedo', ?, 0, NULL, ?)",
-                            (r["url"], date.today().isoformat()))
+            else:                                   # unreadable or empty: not asked for again until the readers improve
+                con.execute("INSERT OR REPLACE INTO es_sources (source, sid, course_id, sha, read_at) VALUES ('fedo', ?, 0, ?, ?)",
+                            (r["url"], f"unread:{READER}", date.today().isoformat()))
             con.commit()
     return {"read": got, "left": left, "seconds": round(time.monotonic() - t0)}

@@ -430,7 +430,7 @@ def _countries(args) -> None:
         try:
             st = ranking.update(args.out, prov_db=args.db, budget_s=float(os.environ.get("COUNTRY_BUDGET", "900")))
             print(f"{m.COUNTRY.code}: {st}")
-            if st.get("built"):
+            if st.get("built") or st.get("agenda"):
                 countries.write_index(args.out)
                 DEPLOY_PENDING.touch()
         except Exception as e:

@@ -25,7 +25,8 @@ COUNTRY = Country(
     code="ES", federation="FEDO", access="all", db=paths.DATA_DIR / "es.sqlite3",
     time_zones=("Europe/Madrid", "Atlantic/Canary"), official="fedo_leo",
 )
-AGENDA_VERSION = 1
+# the agenda's version: a new one rebuilds it whole (2: O-Replay's multi-day totals, « Overall » stages, left out, 2026-10-22)
+AGENDA_VERSION = 2
 BACK_DAYS = 65            # the races of the last weeks stay in the agenda's file: the provisional results look for their results
 FRESH_DAYS = 3            # an event older than this is not read again (its page no longer changes)
 

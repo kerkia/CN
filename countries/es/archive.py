@@ -111,14 +111,13 @@ def store_race(con, source: str, sid: str, meta: dict, doc: dict, sha: str | Non
     if not any(c["runners"] for c in circuits) or NOT_RANKED.search(f"{meta.get('name') or ''} {doc.get('title') or ''}"):
         return None
     row = con.execute("SELECT course_id, sha FROM es_sources WHERE source = ? AND sid = ?", (source, sid)).fetchone()
+    if row and (row["sha"] or "").startswith("dup:"):
+        return None                                     # the federation's own file has this race (dedupe)
     if row and sha and row["sha"] == sha:
         return row["course_id"]
-    if row:
+    if row and row["course_id"]:                        # (0: a file that could not be read before)
         cid = row["course_id"]
-        for (circ,) in con.execute("SELECT circuit_id FROM circuits WHERE course_id = ?", (cid,)).fetchall():
-            con.execute("DELETE FROM results WHERE circuit_id = ?", (circ,))
-        con.execute("DELETE FROM circuits WHERE course_id = ?", (cid,))
-        con.execute("DELETE FROM competitions WHERE course_id = ?", (cid,))
+        _drop_course(con, cid)
     else:
         cid = (con.execute("SELECT MAX(course_id) FROM competitions").fetchone()[0] or 0) + 1
     day = meta.get("date") or doc.get("date")
@@ -153,6 +152,13 @@ def store_race(con, source: str, sid: str, meta: dict, doc: dict, sha: str | Non
     con.execute("INSERT OR REPLACE INTO es_sources (source, sid, course_id, sha, read_at) VALUES (?,?,?,?,?)",
                 (source, sid, cid, sha, _now()))
     return cid
+
+
+def _drop_course(con, cid: int) -> None:
+    for (circ,) in con.execute("SELECT circuit_id FROM circuits WHERE course_id = ?", (cid,)).fetchall():
+        con.execute("DELETE FROM results WHERE circuit_id = ?", (circ,))
+    con.execute("DELETE FROM circuits WHERE course_id = ?", (cid,))
+    con.execute("DELETE FROM competitions WHERE course_id = ?", (cid,))
 
 
 def _now() -> str:
@@ -237,7 +243,8 @@ def backfill_oreplay(con, http, budget_s: float, since: str = "2024-01-01", toda
                 complete = False
                 break
             org = ev.get("organizer") or {}
-            meta = {"name": st["name"], "date": st["date"], "org": org.get("name"), "place": None,
+            # the day the runners started, else the stage's (guessed from the stages' order when it gives none)
+            meta = {"name": st["name"], "date": (doc or {}).get("date") or st["date"], "org": org.get("name"), "place": None,
                     "epreuve": fmt_of(st.get("stage"), ev.get("description")),
                     # O-Replay's scope: a national race weighs as the Liga Española's (cn.title_weight)
                     "league": "Liga Nacional" if ev.get("scope") in ("nat", "int") else (org.get("region") or None)}
@@ -263,10 +270,103 @@ def prune(con) -> int:
     gone = 0
     for cid, title in con.execute("SELECT course_id, title FROM competitions").fetchall():
         if NOT_RANKED.search(title or ""):
-            for (circ,) in con.execute("SELECT circuit_id FROM circuits WHERE course_id = ?", (cid,)).fetchall():
-                con.execute("DELETE FROM results WHERE circuit_id = ?", (circ,))
-            con.execute("DELETE FROM circuits WHERE course_id = ?", (cid,))
-            con.execute("DELETE FROM competitions WHERE course_id = ?", (cid,))
+            _drop_course(con, cid)
             gone += 1
     con.commit()
     return gone
+
+
+def _signature(con, cid: int) -> set:
+    """A race's finishers as (name's words, time): the same race read from two sources gives the same pairs, whatever the
+    name order or the title; two races of one weekend share runners, never their times."""
+    from countries.identity import words
+    return {(frozenset(words(nom)), temps) for nom, temps in con.execute(
+        "SELECT r.nom, r.temps FROM results r JOIN circuits c ON c.circuit_id = r.circuit_id "
+        "WHERE c.course_id = ? AND r.temps LIKE '%:%'", (cid,))}
+
+
+def dedupe(con, days: int = 3) -> dict:
+    """A race both FEDO's file and another source hold (O-Replay, the provisional results — sometimes both, or O-Replay
+    twice: « Sprint » and « Sprint-Test »): FEDO's kept (the federation's own), every other copy gone and noted
+    (« dup:<course> »), so that it is not imported again. Same race: at least half of the smaller one's finishers with the
+    same name and time, 10 or more, within `days` of each other."""
+    rows = con.execute("""SELECT c.course_id, c.date_iso, EXISTS (SELECT 1 FROM es_sources s WHERE s.course_id = c.course_id
+                          AND s.source = 'fedo') AS fedo FROM competitions c""").fetchall()
+    fedo = [r for r in rows if r["fedo"]]
+    others = [r for r in rows if not r["fedo"]]
+    sig: dict[int, set] = {}
+
+    def s(cid):
+        if cid not in sig:
+            sig[cid] = _signature(con, cid)
+        return sig[cid]
+
+    gone = 0
+    for f in fedo:
+        d = date.fromisoformat(f["date_iso"])
+        a = s(f["course_id"])
+        for o in list(others):
+            if abs((date.fromisoformat(o["date_iso"]) - d).days) > days:
+                continue
+            b = s(o["course_id"])
+            n = min(len(a), len(b))
+            if n < 10 or len(a & b) < 0.5 * n:
+                continue
+            _drop_course(con, o["course_id"])
+            con.execute("UPDATE es_sources SET course_id = 0, sha = ? WHERE course_id = ?", (f"dup:{f['course_id']}", o["course_id"]))
+            others.remove(o)
+            gone += 1
+    con.commit()
+    return {"duplicates": gone}
+
+
+def drop_overall(con, prov_db: Path, http) -> dict:
+    """Once: the multi-day totals (O-Replay's « Overall » stages: « Totales », « Total Trofeo… ») read as races before they
+    were left out (2026-10-22) — gone from the archive and from the provisional results (a race of its own: the race and
+    its documents; a race of the agenda the total was linked to: the link and the total's document)."""
+    from ffco_scraper.prov.sources.oreplay import OReplay, is_overall
+    if meta_get(con, "overall_dropped"):
+        return {}
+    stage = re.compile(r"([0-9a-f-]{36}/[0-9a-f-]{36})")
+    mine = {r[0]: r[1] for r in con.execute("SELECT sid, course_id FROM es_sources WHERE source = 'oreplay'")}
+    p = sqlite3.connect(prov_db)
+    p.row_factory = sqlite3.Row
+    try:
+        races = p.execute("SELECT key, links FROM prov_races WHERE country = 'ES'").fetchall()
+    except sqlite3.OperationalError:
+        races = []
+    docs = p.execute("SELECT race_key, url FROM prov_docs WHERE source = 'oreplay'").fetchall()
+    seen = set(mine) | {json.loads(r["links"] or "{}").get("oreplay") for r in races} | \
+        {m.group(1) for d in docs if (m := stage.search(d["url"]))}
+    o = OReplay(http)
+    overall = set()
+    for ev in sorted({s.split("/")[0] for s in seen if s}):
+        overall |= {f"{ev}/{st['id']}" for st in (o.detail(ev) or {}).get("stages") or [] if is_overall(st)}
+    out = {"archive": 0, "prov_races": 0, "prov_docs": 0}
+    for sid in overall & set(mine):
+        cid = mine[sid]
+        if cid:
+            _drop_course(con, cid)
+            con.execute("UPDATE es_sources SET course_id = 0, sha = 'overall' WHERE course_id = ?", (cid,))
+            out["archive"] += 1
+    for d in docs:
+        m = stage.search(d["url"])
+        if m and m.group(1) in overall:
+            p.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (d["race_key"], d["url"]))
+            out["prov_docs"] += 1
+    for r in races:
+        links = json.loads(r["links"] or "{}")
+        if links.get("oreplay") not in overall:
+            continue
+        if r["key"].startswith("eso"):                  # the total itself, from O-Replay alone
+            p.execute("DELETE FROM prov_docs WHERE race_key = ?", (r["key"],))
+            p.execute("DELETE FROM prov_races WHERE key = ?", (r["key"],))
+            out["prov_races"] += 1
+        else:
+            links.pop("oreplay")
+            p.execute("UPDATE prov_races SET links = ? WHERE key = ?", (json.dumps(links) if links else None, r["key"]))
+    p.commit()
+    p.close()
+    meta_set(con, "overall_dropped", True)
+    con.commit()
+    return out

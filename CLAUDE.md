@@ -1317,10 +1317,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   900 s) runs `countries.es.ranking.update`: SICO's licensees (`licensees.py`, monthly, ~263 requests: name, club, regional
   federation, card, licence — never published), FEDO's ranking files (`official.py`, every season 2017 on: licence, category,
   total, M1/M2/M3, points race by race — Spain's « official »: M1 else M2), the Liga Española's results (`fedo.py`, OE12 HTML
-  else PDF, the file's print date as the race's day), the provisional results' Spanish races (`archive.from_prov`), O-Replay's
+  else PDF — the PDF reader knows OE12's Spanish columns since 2026-10-22, the Spanish championships are often PDFs only; a file
+  unread is tried again when `fedo.READER` goes up —, the file's print date as the race's day), the provisional results' Spanish races (`archive.from_prov`), O-Replay's
   past events (`archive.backfill_oreplay`, 2024 on, a budget per run until done). The archive: `CN_DATA_DIR/es.sqlite3` in
   France's tables (`archive.py`: a race = a competition, classes with the same controls = one circuit, `categorie` normalised by
-  `categories.py` with `cat_src` kept, `NOT_RANKED`/`prune` leave out score-O, rogaines, relays, phone orienteering); who is who
+  `categories.py` with `cat_src` kept, `NOT_RANKED`/`prune` leave out score-O, rogaines, relays, phone orienteering; O-Replay's
+  multi-day totals, stage type « Overall », are not races — `oreplay.is_overall`, left out of the stages, the agenda and the
+  archive, those read before dropped once by `archive.drop_overall`; a race FEDO's file and another source both hold keeps
+  FEDO's only, owner 2026-10-22 — `archive.dedupe`: half the finishers with the same name and time, the copies noted
+  « dup:<course> » and never imported again); who is who
   (`countries/identity.py`: names word by word in any order, particles aside, a first name cut to 3 letters; a licensee by card
   or by the one name that fits, the club deciding; else a person of its own by name and club; `persons` / `person_keys`, stable
   numbers = the runners' ids, es<n>); clubs (`clubs.py`: `canonical` — a town before the club, « Independiente », regions'

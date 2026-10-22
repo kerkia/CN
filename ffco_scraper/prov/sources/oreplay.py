@@ -75,7 +75,8 @@ class OReplay:
         """An event's stages as competitions: [{id: "<event>/<stage>", name, date, event}]. A stage's day: its own start,
         else the event's days in order (one stage a day), else the event's first day."""
         d = self.detail(ev["id"]) or {}
-        st = d.get("stages") or []
+        # a multi-day event's totals (stage type « Overall »: « Totales », « Total Trofeo… ») are not a race
+        st = [s for s in d.get("stages") or [] if not is_overall(s)]
         first = ev.get("initial_date")
         last = ev.get("final_date") or first
         span = (date.fromisoformat(last) - date.fromisoformat(first)).days + 1 if first and last else 1
@@ -111,6 +112,10 @@ class OReplay:
             return None
         title = ev.get("description")
         return doc("oreplay", out, by="category", title=title, date=day)
+
+
+def is_overall(stage: dict) -> bool:
+    return ((stage.get("stage_type") or {}).get("description") or "").lower() == "overall"
 
 
 def _local(iso: str | None, tz) -> datetime | None:

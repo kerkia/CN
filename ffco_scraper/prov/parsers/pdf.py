@@ -555,6 +555,9 @@ _OE_LABELS = {
     "cat": "cat", "catg": "cat", "categ": "cat", "categorie": "cat",
     "temps": "time", "time": "time",
     "diff": "diff", "ecart": "diff", "retard": "diff", "behind": "diff",
+    # OE12 in Spanish (FEDO's PDFs): « Pos Dorsal Nombre Club Tiempo Diff. »
+    "pos": "place", "puesto": "place", "dorsal": "bib", "nombre": "name", "ano": "birth", "sexo": "sex",
+    "clase": "cat", "categoria": "cat", "tiempo": "time", "dif": "diff",
 }
 _OE_TEXT = ("name", "club", "cat")                # left-aligned text columns that run until the next column
 
@@ -668,7 +671,7 @@ def _oe_class_line(l: Line, time_col: _Col) -> tuple | None:
     rest = " ".join(w.text for w in ws[ci + 1:])
     km = re.search(r"(\d+(?:[.,]\d+)?)\s*km\b", rest)
     climb = re.search(r"km\s+(\d+)\s*m\b", rest)
-    npc = re.search(r"\b(\d+)\s*P\b", rest)
+    npc = re.search(r"\b(\d+)\s*[PC]\b", rest)                    # « 27 P » (postes), « 25 C » (controles)
     return (name, round(float(km.group(1).replace(",", ".")) * 1000) if km else None,
             int(climb.group(1)) if climb else None, int(npc.group(1)) if npc else None,
             "suite" in model.plain(rest))
@@ -681,7 +684,7 @@ def _oe_ctrl_line(l: Line) -> list[tuple[int | None, str | None, float]] | None:
         m = _CTRL.match(w.text)
         if m:
             out.append((int(m.group(1)), m.group(2), w.x1))
-        elif model.plain(w.text).strip(" .") in ("arr", "arrivee", "finish", "a"):
+        elif model.plain(w.text).strip(" .") in ("arr", "arrivee", "finish", "a", "meta", "llegada"):
             out.append((None, None, w.x1))
         else:
             junk += 1
