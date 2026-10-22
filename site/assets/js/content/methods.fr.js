@@ -1517,6 +1517,29 @@ export function build(X) {
               coureurs ou parmi ceux que l'on compare.</span></li>
             <li><span>Les <b>groupes</b> repèrent les coureurs qui passent aux mêmes postes à quelques secondes d'intervalle, poste après poste.</span></li>
           </ul>
+        </section>
+        <section class="mx-slide">
+          <p class="mx-kicker">Temps intermédiaires</p>
+          <h2>Passages, lièvres et suiveurs, régularité, contrôle des temps</h2>
+          <ul class="mx-list">
+            <li><span>Le <b>graphique des passages</b> place chaque coureur à l'heure où il pointe chaque poste (son heure de départ plus son temps cumulé) :
+              des lignes qui se rejoignent sont des coureurs ensemble, une ligne plus raide est un coureur qui en rattrape d'autres.</span></li>
+            <li><span><b>Lièvre / suiveur</b> : sur chaque tronçon, deux coureurs du circuit partis du même poste à moins de 20 secondes d'intervalle sont
+              comparés tout du long, chacun supposé avancer à vitesse régulière entre les deux postes. À moins de 7 secondes l'un de l'autre, ils courent
+              ensemble ; de 7 à 20 secondes, de moins en moins. Celui qui passe le second suit l'autre. L'indice suiveur est le temps couru derrière moins
+              le temps couru devant, rapporté au temps de course : positif pour un suiveur, négatif pour un lièvre. Suivre fait gagner du temps (l'autre
+              lit la carte et ouvre le chemin), d'où l'intérêt de le repérer ; les deux seuils se règlent.</span></li>
+            <li><span><b>Régularité</b> : sur chaque tronçon, l'indice de performance est le temps de référence (la moyenne du meilleur quart des temps)
+              divisé par le temps du coureur, 100 % pour aller aussi vite que les meilleurs. L'irrégularité est l'écart type de ces indices, chaque tronçon
+              pesant son temps de référence, rapporté à l'indice moyen du coureur : un coureur régulier garde le même rythme d'un tronçon à l'autre, un
+              coureur irrégulier alterne bons tronçons et hésitations. La dispersion d'un tronçon, le niveau de chacun mis à part, montre ceux où tout le
+              monde a varié : les tronçons piégeux. Seuls les coureurs arrivés avec tous leurs temps comptent.</span></li>
+            <li><span>Le <b>contrôle des temps</b> lit les temps intermédiaires eux-mêmes. Un tronçon couru en temps négatif au même poste pour au moins deux
+              coureurs trahit un boîtier mal mis à l'heure (celui de ce poste ou du précédent) : il décale tous ceux qui y pointent. Un tronçon négatif
+              isolé trahit une carte non effacée, qui garde les poinçons d'une course précédente. Un coureur classé sans un poste que les autres ont pointé
+              l'a sans doute pointé avant son départ, et le logiciel a écarté ce poinçon. L'organisateur le voit en déposant ses résultats, avant de les
+              publier ; le lecteur, au-dessus des analyses, et les cases concernées sont encadrées dans le tableau.</span></li>
+          </ul>
         </section>`,
       relais: () => html`
         <section class="mx-slide">

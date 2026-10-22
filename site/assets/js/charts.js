@@ -513,6 +513,34 @@ export function xyChart(el, { series, xName, yName, xMin = null }) {
   return c;
 }
 
+/**
+ * Runners' passages against the clock (« Temps intermédiaires › Passages »): x the time of day in seconds, y the
+ * control's position (0 the start … the finish last, labelled by `yLabels`). series: [{ name, color, faint, data:
+ * [[clock, pos]] }]; faint lines are drawn thin and behind. tip(series, value) gives a point's tooltip.
+ */
+export function passChart(el, { series, yLabels, fmtX, tip }) {
+  const th = theme();
+  const c = init(el);
+  c.setOption({
+    animationDuration: 300,
+    grid: { left: 64, right: 40, top: 30, bottom: 36 },
+    tooltip: baseTooltip(th, { trigger: "item", formatter: (p) => tip(series[p.seriesIndex], p.value) }),
+    xAxis: { type: "value", scale: true, ...axisCommon(th), splitLine: { show: false },
+      axisLabel: { color: th.ink3, fontSize: 12, formatter: fmtX } },
+    yAxis: { type: "value", min: 0, max: yLabels.length - 1, interval: 1, ...axisCommon(th),
+      axisLabel: { color: th.ink3, fontSize: 11, formatter: (v) => yLabels[v] ?? "" } },
+    ...zoomable(th, { y: true }),
+    series: series.map((s) => ({
+      name: s.name, type: "line", data: s.data, symbol: "circle", symbolSize: s.faint ? 3 : 6, showSymbol: true,
+      lineStyle: { width: s.faint ? 1 : 2, color: s.color, opacity: s.faint ? 0.45 : 1 },
+      itemStyle: { color: s.color, opacity: s.faint ? 0.6 : 1 },
+      emphasis: { focus: "series", lineStyle: { width: 2.5, opacity: 1 } },
+      z: s.faint ? 1 : 3,
+    })),
+  });
+  return c;
+}
+
 /** Ordinary least squares on [[x, y]]: { a, b, r2, n } for y = a + b·x, or null if undefined. */
 export function linreg(pts) {
   const n = pts.length;

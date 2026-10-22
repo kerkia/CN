@@ -15,6 +15,7 @@ import { readFile } from "../localparse.js";
 import { publishCard, mb } from "./upload.js";
 import { getProv, clock, STATUS } from "./provisional.js";
 import { replaceQuery } from "../app.js";
+import { checkDoc, issueText } from "../splitcheck.js";
 
 const MAX = 30 * 1024 * 1024;
 const EXT = /\.(xml|html?|pdf|zip|gz|txt)$/i;
@@ -112,6 +113,7 @@ export async function render(main, { query = {}, organiser = null } = {}) {
           <td class="r num">${fmt(rs.filter((r) => r.splits).length)}</td><td class="r num">${fmt(rs.filter((r) => r.start_s != null).length)}</td></tr>`; })}</tbody></table></div>` : ""}
       ${notes.length ? html`<div class="card-body">${notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}</div>` : ""}
     </section>
+    ${checks(docs)}
     ${docs.length ? html`<div class="filters" id="dep-pick" style="margin-top:16px"></div>
       <section class="card"><div class="card-head"><div><h2 id="dep-class-title"></h2><div class="hint" id="dep-class-hint"></div></div></div>
         <div class="table-wrap" id="dep-class"></div></section>` : ""}
@@ -123,6 +125,22 @@ export async function render(main, { query = {}, organiser = null } = {}) {
     $("#dep-pub-open").addEventListener("click", openPublish);
     if (docs.length) results(docs);
     if (publishing || !docs.length) openPublish();
+  }
+
+  // what the split times say about the timing (splitcheck.js): a unit off the right time, a card not cleared, a punch
+  // before the start — for the organiser to look at before publishing
+  function checks(docs) {
+    const found = docs.flatMap((d) => checkDoc(d).map((c) => ({ d, ...c })));
+    if (!found.length) return docs.some((d) => d.classes.some((k) => k.runners.some((r) => r.splits)))
+      ? html`<div class="muted" style="font-size:13px;margin:10px 2px 0">${t("chk.none")}</div>` : "";
+    const names = (rs) => (rs.length > 6 ? `${rs.slice(0, 6).map((r) => r.name).join(", ")}… (+${rs.length - 6})` : rs.map((r) => r.name).join(", "));
+    return html`<section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("chk.title")}</h2>
+        <div class="hint">${t("chk.hint")}</div></div></div>
+      <div class="table-wrap"><table class="data compact"><thead><tr>${docs.length > 1 ? html`<th>${t("dep.doc")}</th>` : ""}<th>${t("prov.circuit")}</th>
+        <th>${t("chk.what")}</th><th>${t("prov.runners")}</th></tr></thead>
+      <tbody>${found.flatMap(({ d, k, issues }) => issues.map((x) => html`<tr>${docs.length > 1 ? html`<td style="font-size:12.5px">${d.title || d.url}</td>` : ""}
+        <td>${k.name}</td><td style="white-space:normal;min-width:280px">${issueText(k, x)}</td>
+        <td style="font-size:12.5px;white-space:normal;min-width:180px">${names(x.runners)}</td></tr>`))}</tbody></table></div></section>`;
   }
 
   function results(docs) {

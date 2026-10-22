@@ -13,7 +13,14 @@
 //   of the document, on the same leg (same pair of control codes) — who left a control and reached the next one within
 //   a few seconds of each other ran that leg together; the one who punched first was in front. Needs the start times
 //   (WinSplits' .spl files, liveresultat, IOF XML);
-// - Bilan: one row per runner (legs won, mean leg rank, mistakes, time lost, usual pace, regularity, duels won).
+// - Bilan: one row per runner (legs won, mean leg rank, mistakes, time lost, usual pace, regularity, duels won);
+// - Passages: each runner's passages against the clock, control by control — packs and catch-ups show as lines that meet;
+// - Lièvre / suiveur: within a circuit, who ran behind whom, leg by leg, each one's progress taken as steady between two
+//   controls (splitstats.followers; the followed legs are also marked in Tableau);
+// - Régularité: each leg's performance index (the leg's reference time ÷ the runner's) and its spread, per runner and per
+//   leg (splitstats.regularity; 2026-10-22, the last three after MeOSDjango's analyses).
+// Above the views, what the split times say about the timing itself (splitcheck.js): a unit off the right time, a card
+// not cleared, a punch before the start; the cells concerned are marked in Tableau.
 //
 // Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — their
 // "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios (negative: a leg run better than
@@ -21,9 +28,11 @@
 // WinSplits' "time loss", not a judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
 // « Sans temps perdu » takes it off: the table, the ranks and the gaps then show the race without the mistakes.
 
-import { html, raw, $, $$, fmt, fmtDate, pctN } from "../util.js";
+import { html, raw, esc, $, $$, fmt, fmtDate, pctN } from "../util.js";
 import { t } from "../i18n.js";
-import { lineChart, columnChart, slotColor, css } from "../charts.js";
+import { lineChart, columnChart, passChart, slotColor, css } from "../charts.js";
+import { checkClass, issueText, markText } from "../splitcheck.js";
+import { followers, regularity } from "../splitstats.js";
 import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import { getProv, clock } from "./provisional.js";
@@ -33,7 +42,11 @@ import * as local from "../local.js";
 // Résultats » — the organisers' alone (2026-10-15)
 const depositLink = () => { let c = ""; try { c = sessionStorage.getItem("ocn.dep.course") || ""; } catch (e) { /* none */ } return c ? `#/orga-resultats?course=${encodeURIComponent(c)}` : "#/orga-resultats"; };
 
-const VIEWS = ["table", "gaps", "legs", "profile", "h2h", "groups", "summary"];
+const VIEWS = ["table", "gaps", "clock", "legs", "profile", "h2h", "groups", "follow", "regular", "summary"];
+const FOLLOW_DEFAULT = { t1: 7, t2: 20 };   // seconds apart: together (t1), then less and less up to t2
+// the time of day, from seconds after midnight
+const hm = (s, sec = false) => { s = Math.round(s); const h = Math.floor(s / 3600) % 24, m = Math.floor((s % 3600) / 60);
+  return `${h}:${String(m).padStart(2, "0")}${sec ? `:${String(s % 60).padStart(2, "0")}` : ""}`; };
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const GRAPHS = ["gap", "pos", "legpos"];
@@ -59,6 +72,7 @@ export async function render(main, { query = {} } = {}) {
     <div id="sp-tabs"></div>
     <div class="filters" id="sp-pick"></div>
     <div class="filters" id="sp-views"></div>
+    <div id="sp-check"></div>
     <div id="sp-body"></div>`;
   if (!withSplits.length) {
     $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${query.course === local.LOCAL
@@ -74,6 +88,10 @@ export async function render(main, { query = {} } = {}) {
   // perdu »): a time lost on the leg of N % of the leg's time and of N seconds, both
   let errPct = Number(query.ep) >= 0 && query.ep != null && query.ep !== "" ? Number(query.ep) : ERR_DEFAULT.pct;
   let errS = Number(query.es) >= 0 && query.es != null && query.es !== "" ? Number(query.es) : ERR_DEFAULT.s;
+  // « Lièvre / suiveur »: together within t1 seconds, less and less up to t2
+  let ft1 = Number(query.f1) >= 0 && query.f1 ? Number(query.f1) : FOLLOW_DEFAULT.t1;
+  let ft2 = Number(query.f2) > 0 && query.f2 ? Number(query.f2) : FOLLOW_DEFAULT.t2;
+  let passAll = query.pa !== "0";             // « Passages »: every runner faint behind the runners compared
 
   async function loadRace() {
     race = key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
@@ -106,7 +124,12 @@ export async function render(main, { query = {} } = {}) {
         <input type="number" id="sp-ep" min="0" max="500" step="1" value="${errPct}" style="width:64px" aria-label="${t("spl.err.pct")}"><span class="muted">${t("spl.err.pctUnit")}</span>
         <span class="muted">${t("spl.err.and")}</span>
         <input type="number" id="sp-es" min="0" max="3600" step="1" value="${errS}" style="width:64px" aria-label="${t("spl.err.s")}"><span class="muted">s</span></div></div>` : ""}
-      ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}`;
+      ${view === "groups" ? html`<label class="field"><span>${t("spl.grp.tol")}</span><select id="sp-tol">${TOLS.map((s) => html`<option value="${s}" ${raw(s === tol ? "selected" : "")}>${s} s</option>`)}</select></label>` : ""}
+      ${view === "follow" ? html`<div class="field"><span>${t("spl.fol.thr")}</span><div class="row" style="gap:6px;align-items:center">
+        <input type="number" id="sp-f1" min="0" max="120" step="1" value="${ft1}" style="width:64px" aria-label="${t("spl.fol.t1")}"><span class="muted">${t("spl.fol.t1u")}</span>
+        <input type="number" id="sp-f2" min="1" max="300" step="1" value="${ft2}" style="width:64px" aria-label="${t("spl.fol.t2")}"><span class="muted">${t("spl.fol.t2u")}</span></div></div>` : ""}
+      ${view === "clock" ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spa", [["all", t("spl.clk.all")], ["sel", t("spl.clk.sel")]], passAll ? "all" : "sel")}</div>` : ""}`;
+    $("#sp-views").style.display = $("#sp-views").children.length ? "" : "none";     // no empty bar for the views without settings
     $("#sp-race")?.addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
@@ -119,6 +142,10 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-tol")?.addEventListener("change", (e) => { tol = Number(e.target.value); draw(); });
     $("#sp-ep")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0) { errPct = v; draw(); } });
     $("#sp-es")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0) { errS = v; draw(); } });
+    // t1 ≤ t2: the weight falls from 1 at t1 to 0 at t2
+    $("#sp-f1")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0 && v < ft2) { ft1 = v; draw(); } });
+    $("#sp-f2")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v > ft1) { ft2 = v; draw(); } });
+    $$('[data-seg="spa"]').forEach((b) => b.addEventListener("click", () => { passAll = b.dataset.value === "all"; pickers(); draw(); }));
   }
   // the mistake rule in words, for the hints
   const errRule = () => t("spl.err.rule", { p: fmt(errPct), s: fmt(errS) });
@@ -135,7 +162,8 @@ export async function render(main, { query = {} } = {}) {
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
       ref: gapView && graph === "gap" && ref !== "cum" ? ref : null, rr: gapView && graph === "gap" && ref === "runner" ? refName : null,
-      tol: view === "groups" && tol !== 10 ? tol : null, ep: errPct === ERR_DEFAULT.pct ? null : errPct, es: errS === ERR_DEFAULT.s ? null : errS, em: null, ev: null });
+      tol: view === "groups" && tol !== 10 ? tol : null, ep: errPct === ERR_DEFAULT.pct ? null : errPct, es: errS === ERR_DEFAULT.s ? null : errS, em: null, ev: null,
+      f1: ft1 === FOLLOW_DEFAULT.t1 ? null : ft1, f2: ft2 === FOLLOW_DEFAULT.t2 ? null : ft2, pa: view === "clock" && !passAll ? "0" : null });
     const n = k.controls?.length || Math.max(...k.runners.map((r) => r.splits?.length || 0));
     const codes = k.controls || Array.from({ length: n }, (_, i) => String(i + 1));
     // cumulative times with the finish as the last "control"; legs between them
@@ -199,6 +227,20 @@ export async function render(main, { query = {} } = {}) {
     const body = $("#sp-body");
     let redraw = () => {};
 
+    // what the split times say about the timing (splitcheck.js), above every view
+    const chk = checkClass(k);
+    const who = (rs) => (rs.length > 5 ? `${rs.slice(0, 5).map((r) => r.name).join(", ")}… (+${rs.length - 5})` : rs.map((r) => r.name).join(", "));
+    const issueLi = (x) => html`<li>${issueText(k, x)}${x.runners.length ? html` <span style="opacity:.8">— ${who(x.runners)}</span>` : ""}</li>`;
+    $("#sp-check").innerHTML = !chk.issues.length ? "" : html`<div class="notice" style="display:block">
+      <strong>${t("chk.banner")}</strong>
+      <ul style="margin:6px 0 0;padding-left:18px">${chk.issues.slice(0, 4).map(issueLi)}</ul>
+      ${chk.issues.length > 4 ? html`<details><summary style="cursor:pointer">${t("chk.more", { n: fmt(chk.issues.length - 4) })}</summary>
+        <ul style="margin:6px 0 0;padding-left:18px">${chk.issues.slice(4).map(issueLi)}</ul></details>` : ""}
+      <div style="font-size:12.5px;margin-top:6px">${chk.issues.some((x) => x.kind !== "dup") ? html`${t("chk.banner.hint")} ` : ""}${t("chk.banner.marks")}</div></div>`;
+    // who ran behind whom (splitstats.followers): its view, and the followed legs marked in Tableau
+    const timedR = R.filter((x) => x.r.start_s != null);
+    const fol = ["table", "follow"].includes(view) && timedR.length > 1 ? followers(timedR, { t1: ft1, t2: ft2 }) : null;
+
     if (view === "table") {
       body.innerHTML = html`
         <section class="card"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2>
@@ -218,12 +260,18 @@ export async function render(main, { query = {} } = {}) {
               // on hover (an estimate, not a measure): the time lost or gained against the runner's own pace
               // (« Sans temps perdu »: the time taken off); two lines a runner, so that more runners fit on the screen
               const d = asIdeal ? (x.lost[i] >= 0.5 ? x.lost[i] : null) : x.delta[i] != null && Math.abs(x.delta[i]) >= 0.5 ? x.delta[i] : null;
-              const tip = d == null ? "" : `${t(asIdeal ? "spl.lost.off" : "spl.lost.leg")} : ${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`;
-              return html`<td class="r num" style="${raw(slow ? BAD : "")}" title="${tip}">
+              // the timing's anomalies (amber frame) and the legs run behind somebody (a bar on the left)
+              const mk = chk.marks.get(x.r)?.get(i);
+              const f = fol?.get(x);
+              const behindOf = f && f.follow[i] >= 0.5 ? f.behind[i] : null;
+              const shadow = [mk ? "inset 0 0 0 2px var(--amber)" : "", behindOf ? "inset 3px 0 0 var(--s3)" : ""].filter(Boolean).join(",");
+              const tip = [d == null ? "" : `${t(asIdeal ? "spl.lost.off" : "spl.lost.leg")} : ${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`,
+                mk ? `⚠ ${markText(mk)}` : "", behindOf ? t("spl.fol.cell", { who: behindOf.r.name }) : ""].filter(Boolean).join("\n");
+              return html`<td class="r num" style="${raw([slow ? BAD : "", shadow ? `box-shadow:${shadow}` : ""].filter(Boolean).join(";"))}" title="${tip}">
                 ${v == null ? "—" : html`<span style="${raw(isBest ? "color:var(--good);font-weight:650" : slow ? "color:var(--bad);font-weight:650" : "")}">${clock(v)}</span> <span class="muted" style="font-size:11px">${x.legRank[i]}</span>`}
                 <div class="muted" style="font-size:11px">${x.vCum[i] == null ? "" : html`${clock(x.vCum[i])} (${x.cumRank[i]})`}</div></td>`;
             })}</tr>`)}</tbody></table></div></section>
-        <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.def")}</p>`;
+        <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${chk.marks.size ? html`${t("spl.table.marks")} ` : ""}${fol ? html`${t("spl.table.followed")} ` : ""}${t("spl.def")}</p>`;
     }
 
     if (view === "gaps") {
@@ -434,6 +482,115 @@ export async function render(main, { query = {} } = {}) {
             { key: "mates", label: t("spl.grp.with"), sort: (r) => r.mates.length,
               render: (r) => (r.mates.length ? html`<div style="font-size:12px;min-width:220px">${r.mates.slice(0, 4).map((m) => html`<div>${m.name}${m.cls ? html` <span class="muted">(${m.cls})</span>` : ""} <span class="muted">· ${t("spl.grp.ctl")} ${m.span}</span></div>`)}
                 ${r.mates.length > 4 ? html`<div class="muted">+ ${r.mates.length - 4}</div>` : ""}</div>` : html`<span class="muted">—</span>`) },
+          ],
+        });
+      }
+    }
+
+    const empty = (text) => html`<div class="card"><div class="empty">${text}</div></div>`;
+
+    if (view === "clock") {
+      // each runner's passages against the clock: lines that meet are runners together, a steeper line catches up
+      const timed = R.filter((x) => x.r.start_s != null);
+      const yLabels = [t("spl.startAbbr"), ...Array.from({ length: n }, (_, i) => String(i + 1)), t("spl.finishAbbr")];
+      body.innerHTML = !timed.length ? empty(t("spl.clk.none"))
+        : html`${chartCard({ id: "sp-clk", title: t("spl.clk.title"), hint: t("spl.clk.hint"), tall: true })}${chooser()}
+          <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.clk.def", { n: fmt(timed.length), of: fmt(R.length) })}</p>`;
+      if (timed.length) {
+        bindChartCard(main, "sp-clk");
+        const pts = (x) => [[x.r.start_s, 0], ...x.cum.map((c, i) => (c == null ? null : [x.r.start_s + c, i + 1])).filter(Boolean)];
+        const tip = (s, [c, pos]) => `<b>${esc(s.name)}</b><div style="margin-top:3px">${esc(pos === n + 1 ? t("spl.finish") : pos ? label(pos - 1) : t("spl.start"))} · ${hm(c, true)}${pos ? ` · ${clock(c - s.start)}` : ""}</div>`;
+        redraw = () => {
+          const xs = sel().filter((x) => x.r.start_s != null), mine = new Set(xs);
+          const series = [...(passAll ? timed.filter((x) => !mine.has(x)).map((x) => ({ name: x.r.name, start: x.r.start_s, color: css("--ink-3"), faint: true, data: pts(x) })) : []),
+            ...xs.map((x, i) => ({ name: x.r.name, start: x.r.start_s, color: slotColor(i), data: pts(x) }))];
+          $("#sp-clk-legend").innerHTML = legend(xs.map((x, i) => ({ label: x.r.name, color: slotColor(i) })));
+          passChart($("#sp-clk"), { series, yLabels, fmtX: (v) => hm(v), tip });
+          $("#sp-clk-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
+            <tbody>${xs.map((x) => html`<tr><td style="white-space:nowrap">${x.r.name}</td><td class="r num">${hm(x.r.start_s, true)}</td>${x.cum.map((c) => html`<td class="r num">${c == null ? "—" : hm(x.r.start_s + c, true)}</td>`)}</tr>`)}</tbody></table>`;
+        };
+      }
+    }
+
+    if (view === "follow") {
+      const rows = shown.filter((x) => fol?.has(x) && fol.get(x).total).map((x) => {
+        const f = fol.get(x);
+        return { x, f, place: x.r.place, index: f.index, followT: f.followT, leadT: f.leadT,
+          nf: f.legsFollowed.length, nl: f.legsLed.length, of: f.follow.filter((v) => v != null).length };
+      });
+      body.innerHTML = !fol ? empty(t("spl.fol.none")) : html`
+        <section class="card"><div class="card-head"><div><h2>${t("spl.fol.title")} · ${k.name}</h2>
+          <div class="hint">${t("spl.fol.hint", { t1: fmt(ft1), t2: fmt(ft2) })}</div></div></div><div id="sp-fol"></div></section>
+        <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.fol.def")}</p>`;
+      const share = (s, x) => (x.f.total ? html` <span class="muted" style="font-size:11.5px">${pctN((100 * s) / x.f.total, 0)}</span>` : "");
+      // legs in a row said once: « D → 12, 14 → 15 »
+      const legList = (js) => {
+        const runs = [];
+        for (const j of [...js].sort((a, b) => a - b)) {
+          const last = runs[runs.length - 1];
+          if (last && last[1] === j - 1) last[1] = j; else runs.push([j, j]);
+        }
+        return runs.map(([a, b]) => `${a ? a : t("spl.startAbbr")} → ${b === n ? t("spl.finishAbbr") : b + 1}`).join(", ");
+      };
+      if (fol) {
+        dataTable($("#sp-fol"), {
+          compact: true, sortKey: "index", sortDir: -1, rows,
+          columns: [
+            { key: "place", label: t("prov.place"), align: "r num", sort: (r) => r.place, defaultDir: 1, render: (r) => r.place ?? "" },
+            { key: "name", label: t("prov.name"), sort: (r) => r.x.r.name, defaultDir: 1,
+              render: (r) => html`<span style="white-space:nowrap">${name(r.x)}</span><div class="muted" style="font-size:11.5px">${r.x.r.club || ""}</div>` },
+            { key: "index", label: t("spl.fol.index"), align: "r num", sort: (r) => r.index,
+              render: (r) => html`<span style="${raw(r.index >= 10 ? "color:var(--s3);font-weight:650" : "")}" title="${t("spl.fol.index.hint")}">${pct(r.index)}</span>` },
+            { key: "followT", label: t("spl.fol.behindT"), align: "r num", sort: (r) => r.followT, render: (r) => html`${r.followT >= 1 ? clock(r.followT) : "—"}${r.followT >= 1 ? share(r.followT, r) : ""}` },
+            { key: "leadT", label: t("spl.fol.aheadT"), align: "r num", sort: (r) => r.leadT, render: (r) => html`${r.leadT >= 1 ? clock(r.leadT) : "—"}${r.leadT >= 1 ? share(r.leadT, r) : ""}` },
+            { key: "nf", label: t("spl.fol.legsBehind"), align: "r num", sort: (r) => r.nf,
+              render: (r) => html`<span title="${legList(r.f.legsFollowed)}">${fmt(r.nf)}</span> <span class="muted" style="font-size:11.5px">/ ${fmt(r.of)}</span>` },
+            { key: "nl", label: t("spl.fol.legsAhead"), align: "r num", sort: (r) => r.nl, render: (r) => html`<span title="${legList(r.f.legsLed)}">${fmt(r.nl)}</span>` },
+            { key: "main", label: t("spl.fol.main"), sort: (r) => (r.f.main ? r.f.main[1].follow + r.f.main[1].lead : 0),
+              render: (r) => {
+                if (!r.f.main) return html`<span class="muted">—</span>`;
+                const [p, q] = r.f.main;
+                return html`<div style="font-size:12px;min-width:200px">${p.r.name}<div class="muted">${[q.follow >= 1 ? t("spl.fol.wasBehind", { t: clock(q.follow) }) : "",
+                  q.lead >= 1 ? t("spl.fol.wasAhead", { t: clock(q.lead) }) : ""].filter(Boolean).join(" · ")}${q.legs.length ? ` · ${legList([...new Set(q.legs)])}` : ""}</div></div>`;
+              } },
+          ],
+        });
+      }
+    }
+
+    if (view === "regular") {
+      const reg = regularity(R);
+      const mine = new Set(shown);
+      const rows = reg.runners.filter((y) => mine.has(y.x)).map((y) => {
+        const order = y.idx.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+        return { ...y, place: y.x.r.place, time: y.x.r.time_s, worst: order[0], best: order[order.length - 1] };
+      });
+      body.innerHTML = !reg.runners.length ? empty(t("spl.reg.none")) : html`
+        ${chartCard({ id: "sp-reg", title: t("spl.reg.chart"), hint: t("spl.reg.chartHint") })}
+        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.reg.title")} · ${k.name}</h2>
+          <div class="hint">${t("spl.reg.hint", { n: fmt(reg.runners.length), of: fmt(R.length) })}</div></div></div><div id="sp-reg-list"></div></section>
+        <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("spl.reg.def")}</p>`;
+      if (reg.runners.length) {
+        bindChartCard(main, "sp-reg");
+        columnChart($("#sp-reg"), { categories: legLabels,
+          series: [{ name: t("spl.reg.spread"), color: css("--s3"), data: reg.legs.map((l) => (l.sd == null ? null : Math.round(l.sd * 1000) / 10)) }], yName: t("spl.reg.pts"), digits: 1 });
+        $("#sp-reg-legend").innerHTML = "";
+        $("#sp-reg-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("spl.leg")}</th><th class="r">${t("spl.reg.ref")}</th>
+          <th class="r">${t("spl.reg.legMean")}</th><th class="r">${t("spl.reg.spread")}</th></tr></thead>
+          <tbody>${reg.legs.map((l, i) => html`<tr><td>${legLabels[i]}</td><td class="r num">${clock(l.ref)}</td>
+            <td class="r num">${l.mean == null ? "—" : pctN(l.mean * 100, 0)}</td><td class="r num">${l.sd == null ? "—" : fmt(l.sd * 100, 1)}</td></tr>`)}</tbody></table>`;
+        const legCell = ([v, i]) => html`${label(i)} <span class="muted" style="font-size:11.5px">${pctN(v * 100, 0)}</span>`;
+        dataTable($("#sp-reg-list"), {
+          compact: true, sortKey: "sd", sortDir: 1, rows,
+          columns: [
+            { key: "place", label: t("prov.place"), align: "r num", sort: (r) => r.place, defaultDir: 1, render: (r) => r.place ?? "" },
+            { key: "name", label: t("prov.name"), sort: (r) => r.x.r.name, defaultDir: 1,
+              render: (r) => html`<span style="white-space:nowrap">${name(r.x)}</span><div class="muted" style="font-size:11.5px">${r.x.r.club || ""}</div>` },
+            { key: "time", label: t("prov.time"), align: "r num", sort: (r) => r.time, defaultDir: 1, render: (r) => clock(r.time) },
+            { key: "mean", label: t("spl.reg.mean"), align: "r num", sort: (r) => r.mean, render: (r) => pctN(r.mean * 100, 0) },
+            { key: "sd", label: t("spl.reg.sd"), align: "r num", sort: (r) => r.sd, defaultDir: 1, render: (r) => pctN(r.sd * 100, 1) },
+            { key: "best", label: t("spl.reg.bestLeg"), sort: (r) => r.best[0], render: (r) => legCell(r.best) },
+            { key: "worst", label: t("spl.reg.worstLeg"), sort: (r) => r.worst[0], defaultDir: 1, render: (r) => legCell(r.worst) },
           ],
         });
       }

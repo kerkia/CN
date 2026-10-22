@@ -343,7 +343,18 @@ menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still w
 « Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
-WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared. By hand: `python -m ffco_scraper.prov --db <db>
+WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared. **After MeOSDjango** (2026-10-22;
+ideas only, its GPL code never copied): the **timing check** (`splitcheck.js`, pure: a class in, findings out — a negative leg at one
+control for ≥ 2 runners = its unit or the previous one off the right time, alone = a card not cleared, a finisher without a control
+the others punched = punched before the start, one code twice with one time = the source's fault, that control left out) on
+« Déposer » step 2 (a card « Contrôle des temps ») and above every view of « Temps intermédiaires » (the cells framed in Tableau;
+`provisional.clock` writes negative times « −11:17 »); three views (`splitstats.js`): « Passages » (clock time × control,
+`charts.passChart`), « Lièvre / suiveur » (pairs leaving a control within T2 = 20 s, compared along the leg with each one's progress
+steady between controls: weight 1 under T1 = 7 s, falling to 0 at T2, both adjustable `?f1=&f2=`; the one passing later follows;
+index = time behind − time in front over the race time; followed legs barred in Tableau), « Régularité » (index = the leg's mean of
+its best quarter ÷ the runner's time; irregularity = its standard deviation weighted by the reference times over the runner's
+mean index — the absolute one favoured slow runners; a leg's spread with each runner's level taken out; finishers with every split).
+By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 
 ## Changing a method: migrations

@@ -1515,6 +1515,29 @@ export function build(X) {
               runners or among those being compared.</span></li>
             <li><span>The <b>groups</b> spot the runners who pass the same controls a few seconds apart, control after control.</span></li>
           </ul>
+        </section>
+        <section class="mx-slide">
+          <p class="mx-kicker">Splits</p>
+          <h2>Passings, leaders and followers, regularity, timing check</h2>
+          <ul class="mx-list">
+            <li><span>The <b>passing times chart</b> places each runner at the time of day they punched each control (their start time plus their
+              cumulative time): lines that meet are runners together, a steeper line is a runner catching others up.</span></li>
+            <li><span><b>Leader / follower</b>: on each leg, two runners of the course who left the same control less than 20 seconds apart are compared
+              all along it, each assumed to move at a steady speed between the two controls. Less than 7 seconds apart, they run together; from 7 to 20
+              seconds, less and less. The one who passes second follows the other. The follower index is the time run behind minus the time run in front,
+              as a share of the race time: positive for a follower, negative for a leader. Following saves time (the other reads the map and opens the
+              way), hence the interest in spotting it; both thresholds can be adjusted.</span></li>
+            <li><span><b>Regularity</b>: on each leg, the performance index is the reference time (the mean of the best quarter of times) divided by the
+              runner's time, 100% for going as fast as the best. Irregularity is the standard deviation of these indices, each leg weighing its reference
+              time, relative to the runner's mean index: a steady runner keeps the same pace from one leg to the next, an irregular one alternates good
+              legs and hesitations. A leg's spread, with each runner's level set aside, shows the legs where everyone varied: the tricky legs. Only the
+              runners who finished with all their times count.</span></li>
+            <li><span>The <b>timing check</b> reads the split times themselves. A leg run in negative time at the same control for at least two runners
+              betrays a unit set to the wrong time (this control's or the previous one's): it shifts everyone who punches it. An isolated negative leg
+              betrays a card not cleared, which keeps the punches of an earlier race. A runner ranked without a control the others punched probably
+              punched it before their start, and the software discarded that punch. The organiser sees it when depositing their results, before
+              publishing them; readers see it above the analyses, and the cells concerned are framed in the table.</span></li>
+          </ul>
         </section>`,
       relais: () => html`
         <section class="mx-slide">
