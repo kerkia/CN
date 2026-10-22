@@ -1165,6 +1165,8 @@ export default {
   "trc.rep.crossBoundary": "La ligne droite de l'interposte traverse une limite infranchissable.",
   "trc.rep.forbiddenRoute": "L'interposte passe sur un passage interdit.",
   "trc.rep.throughCircle": "L'interposte passe dans le cercle du poste {code}.",
+  "trc.rep.sameFirst": "Ces circuits partent vers le même premier poste : les coureurs de l'un guident ceux de l'autre dès le départ.",
+  "trc.rep.firstSameWay": "Les premiers postes de ces circuits partent du même départ dans presque la même direction ({deg}°) : les coureurs se suivent au début.",
   "trc.rep.dogLeg": "Aller-retour au poste ({deg}° entre l'arrivée et le départ) : les coureurs qui en repartent montrent le poste à ceux qui arrivent.",
   "trc.rep.moreTitle": "Autres vérifications (Ozimut)",
   "trc.rep.moreText": "Des contrôles au-delà de ceux de Purple Pen : à juger sur le terrain, certains sont voulus.",

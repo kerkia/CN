@@ -16,6 +16,7 @@
 // PDF; STARTS_MAX at most) for a coming race of the agenda or of the list, until its day, by its organisers only; it is
 // published at once and replaces the start lists the site would find elsewhere (ffco_scraper/prov/sources/upload.py).
 // GET /api/upload?race=<key>&kind=startlist — that race's start lists deposited and still published (its organisers);
+// with &id=<id> one of them, the file itself (2026-10-22: the page checks it again and makes the start's O Checklist file);
 // DELETE /api/upload { id } — one of them taken off (its organisers, or an administrator): as the admin page does it.
 // A competition declared by its organiser (« d<id> », functions/api/declared.js; outside France) takes all three kinds, from
 // the account that declared it; meta.json then carries the competition (`declared`), so the run can add it if it is new.
@@ -138,6 +139,14 @@ export const onRequestGet = withUser(async ({ request, env }, user) => {
   const race = await findRace(env, request, key);
   if (!race) return json({ error: "unknown race" }, 400);
   if (!(await organises(env, request, user, race))) return json({ error: "not organiser" }, 403);
+  const one = Number(q.get("id"));
+  if (one) {
+    const up = await env.DB.prepare("SELECT id, filename, r2_key FROM uploads WHERE id = ? AND race_key = ? AND status = 'active'").bind(one, key).first();
+    const o = up?.r2_key && (await metaOf(env, up.id))?.kind === "startlist" ? await env.BUCKET.get(up.r2_key) : null;
+    if (!o) return json({ error: "not found" }, 404);
+    return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "application/octet-stream",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(up.filename)}`, "Cache-Control": "no-store" } });
+  }
   const { results } = await env.DB.prepare(
     "SELECT id, user_id, filename, size, created_at FROM uploads WHERE race_key = ? AND status = 'active' ORDER BY id DESC LIMIT 20")
     .bind(key).all();

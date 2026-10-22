@@ -827,7 +827,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `sources/upload.py` reads it into a « startlist » document (the race's latest deposit by any organiser supersedes) and lists the
   race in `prov_meta` `org_starts`: liveresultat and the club's site are no longer read for its start list, and `run.build`
   publishes the organiser's alone, up to `ORG_START_DAYS` (90) ahead. The runners get their start time by push (below); by
-  e-mail later (owner: the Resend plan is too small).
+  e-mail later (owner: the Resend plan is too small). **Draw checks and O Checklist** (2026-10-22, ideas of MeOSDjango's checker and
+  « Vérifie moi » export, none of its GPL code): `startchecks.js` `check` warns of two runners of a club one after the other on a
+  circuit (a category in a list by category), a start minute shared, a category in several blocks on its circuit, runners without a
+  start time, a card number (when the file has them) or a circuit, and informs of the interval and its vacant places; the table marks
+  the runners (« À vérifier »). `oChecklist` writes the start's file for the Android app O Checklist (Stigning's format, checked on
+  stigning.se/startclock/template.html: UTF-8 without BOM, commas, Name, Club, Class, Bib, StartTime hh:mm:ss, Card, StartName, a
+  « // » comment line as header, sorted by start), the class a runner's category or the circuit, a start's name per circuit if typed;
+  for a file just read, and for the race's deposit (« Vérifier et exporter »: `GET /api/upload?race=&kind=startlist&id=` returns the
+  file to its organisers). `localstart.js` keeps card numbers and bibs (IOF `ControlCard` / `BibNumber`, « Puce », « SI », « Dossard »
+  columns, OE's chip in PDFs) and a table's rows without a start time (`nostart`), the browser's only: the server drops them. A race's
+  published start list on « Résultats » gives its organisers (and administrators) the same file, without card numbers.
 - **Alerts by e-mail and/or push** (owner, 2026-10-18): every alert of Réglages › Alertes (`pages/settings.js` `ALERTS`, a table
   E-mail | Notification) — « une de mes courses est en ligne » (`notify` / `push_results`, both on by default), « mon heure de
   départ est publiée » (`starts_alert`, migration 0011, off / `push_starts`, on; the e-mail `startMail`, once per race and again
@@ -886,7 +896,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   RouteGadget; `relay.js` Purple Pen's relay variations with .NET's seeded random generator (seed 8713527: the same teams as
   Purple Pen; checked `Random(0)` = 1559595546); `reports.js` its five reports (summary, leg lengths, cross-reference, load,
   event audit) plus O'CN's checks (IOF distances per discipline, out-of-bounds areas and boundaries crossed, legs through another
-  circle, dog-legs, short legs, codes < 31 or read upside down), shown, printed or as CSV (« ; », UTF-8 BOM). The editor
+  circle, dog-legs, short legs, codes < 31 or read upside down, courses that leave one start for the same first control, and as a
+  reminder for first controls in nearly the same direction, under 15° — 2026-10-22), shown, printed or as CSV (« ; », UTF-8 BOM). The editor
   (`editor.js`, `actions.js`, `panes.js`, `dialogs.js`) is drawn in the page under the site's menus, as the analyses are (owner,
   2026-10-15: the former full-window overlay left no obvious way back to the site): `.tr-app` in `#main` (`ctx.container`), its
   height fitted to the window (`fitHeight`), `body.tr-open` widens the page and hides the footer. **The page opens the editor at

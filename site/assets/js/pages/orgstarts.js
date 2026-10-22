@@ -6,20 +6,25 @@
 // circuit by circuit, with what deserves a look; 3. consent, then functions/api/upload.js ({ kind: "startlist" }): the next
 // collection run publishes it (ffco_scraper/prov/sources/upload.py) on the race's page and in the agenda, and it replaces
 // the start lists the site would find elsewhere. A deposit replaces the previous one; « Retirer » takes it off.
+// The draw is checked (2026-10-22, startchecks.js: a club's runners one after the other, a start minute shared, a category
+// in several blocks on its circuit, what is missing, the interval and its gaps), and the list, read or deposited, gives the
+// start's O Checklist file.
 
-import { html, $, fmt, fmtDate, fmtCat, addDays } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtCat, addDays } from "../util.js";
 import { t, tn } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
 import * as declare from "../declare.js";
 import { parse as readStarts } from "../localstart.js";
+import { check as drawChecks, oChecklist, saveOChecklist } from "../startchecks.js";
 
 const ORG_DAYS = 90;                     // as far ahead as the collection publishes an organiser's start list
 const MAX = 10 * 1024 * 1024;            // functions/api/upload.js STARTS_MAX
 const EXT = /\.(xml|html?|pdf|csv|txt)$/i;
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 const isRelay = (e) => /relais|relay/i.test(`${e.name || ""} ${e.epr || ""}`);
+const MAX_ITEMS = 8;                     // a check's first items listed, the others folded
 const hm = (s) => (s == null ? "" : `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}${s % 60 ? `:${String(s % 60).padStart(2, "0")}` : ""}`);
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 
@@ -106,6 +111,8 @@ async function deposit(main, race) {
       <span>${t("col.circuit")}</span><select id="os-circuit"></select></label></div>
       <div class="card-body"><div class="tiles tiles-compact" id="os-tiles" style="margin-bottom:12px"></div><div id="os-warn"></div></div>
       <div class="table-wrap" id="os-table" style="max-height:420px"></div></section>
+    <section class="card" id="os-oc" style="margin-bottom:16px" hidden><div class="card-head"><div><h2>${t("os.oc.title")}</h2>
+      <div class="hint">${t("os.oc.hint")}</div></div></div><div class="card-body" id="os-oc-body"></div></section>
     <section class="card" id="os-send" hidden><div class="card-head"><h2>${t("os.step3")}</h2></div><div class="card-body">
       <label class="check"><input type="checkbox" id="os-consent"> ${t("os.consent")}</label>
       <div class="row" style="margin-top:10px;gap:10px;align-items:center"><button type="button" class="btn btn-primary" id="os-publish" disabled>${t("os.publish")}</button>
@@ -121,10 +128,20 @@ async function deposit(main, race) {
     const found = race.p?.startlist && !(race.p.sources || []).includes("upload");
     box.innerHTML = ups.length ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.yours", { date: fmtDate(ups[0].created.slice(0, 10)), file: ups[0].filename })}
         <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a>
-        <button type="button" class="btn btn-sm" id="os-remove" style="margin-left:8px">${t("os.remove")}</button>
+        <button type="button" class="btn btn-sm" id="os-recheck" style="margin-left:8px">${t("os.now.check")}</button>
+        <button type="button" class="btn btn-sm" id="os-remove" style="margin-left:4px">${t("os.remove")}</button>
         <div class="muted" style="font-size:12.5px;margin-top:4px">${t("os.now.replace")}</div></div>`
       : found ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.found")}
         <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a></div>` : "";
+    // the deposited file read again: its checks and its O Checklist file (nothing to publish)
+    $("#os-recheck")?.addEventListener("click", async (ev) => {
+      ev.target.disabled = true;
+      const x = await fetch(`api/upload?race=${encodeURIComponent(race.key)}&kind=startlist&id=${ups[0].id}`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+      ev.target.disabled = false;
+      if (!x?.ok) return err(t("up.err.other"));
+      await take(new File([await x.arrayBuffer()], ups[0].filename), ups[0].filename, true);
+      $("#os-check").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     $("#os-remove")?.addEventListener("click", async () => {
       if (!confirm(t("os.remove.confirm"))) return;
       const x = await fetch("api/upload", { method: "DELETE", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -135,7 +152,7 @@ async function deposit(main, race) {
   current();
 
   const err = (msg) => { $("#os-err").innerHTML = msg ? html`<div class="notice" style="margin-top:10px">${msg}</div>` : ""; };
-  async function take(f, label) {
+  async function take(f, label, deposited = false) {
     err("");
     if (f.size > MAX) return err(t("os.err.big"));
     if (!EXT.test(f.name)) return err(t("os.err.type"));
@@ -143,11 +160,12 @@ async function deposit(main, race) {
     let d = null;
     try { d = await readStarts(new Uint8Array(await f.arrayBuffer()), f.name); } catch (x) { d = null; }
     if (!d) {
-      $("#os-check").hidden = true; $("#os-send").hidden = true;
+      $("#os-check").hidden = true; $("#os-send").hidden = true; $("#os-oc").hidden = true;
       return err(/\.pdf$/i.test(f.name) ? t("os.err.pdf") : t("os.err.read"));
     }
-    file = f; read = d;
+    file = deposited ? null : f; read = d;
     check();
+    $("#os-send").hidden = deposited;
   }
   $("#os-file").addEventListener("change", (ev) => ev.target.files[0] && take(ev.target.files[0]));
   const drop = $("#os-drop");
@@ -182,30 +200,80 @@ async function deposit(main, race) {
       <div class="tile"><div class="tile-label">${t("os.t.last")}</div><div class="tile-value">${hm(starts.at(-1))}</div></div>`;
     const warn = [];
     const seen = new Map();
+    const C = drawChecks(d);
     for (const r of all) { const k = norm(r.name).split(" ").sort().join(" "); seen.set(k, [...(seen.get(k) || []), r.name]); }
     const twice = [...seen.values()].filter((v) => v.length > 1).map((v) => v[0]);
     if (twice.length) warn.push(t("os.w.twice", { list: twice.slice(0, 5).join(", ") + (twice.length > 5 ? "…" : "") }));
-    if (d.classes.some((k) => k.name === "?")) warn.push(t("os.w.noclass"));
     if (d.date && d.date !== e.date) warn.push(t("os.w.date", { file: fmtDate(d.date), race: fmtDate(e.date) }));
     if (e.reg?.count && Math.abs(e.reg.count - all.length) > Math.max(3, 0.15 * e.reg.count)) warn.push(t("os.w.reg", { reg: fmt(e.reg.count), file: fmt(all.length) }));
-    const sameTime = d.classes.flatMap((k) => { const c = new Map(); for (const r of k.runners) c.set(r.start_s, (c.get(r.start_s) || 0) + 1);
-      return [...c.entries()].filter(([s, n]) => s != null && n > 1).map(([s]) => `${k.name} ${hm(s)}`); });
-    if (sameTime.length) warn.push(t("os.w.same", { list: sameTime.slice(0, 4).join(", ") + (sameTime.length > 4 ? "…" : "") }));
-    $("#os-warn").innerHTML = warn.length ? html`<div class="notice">${t("os.w.title")}<ul style="margin:6px 0 0;padding-left:18px">${warn.map((w) => html`<li>${w}</li>`)}</ul></div>`
-      : html`<div class="notice info">${t("os.w.none")}</div>`;
+    const lines = (list, pre = "os.w") => list.map((c) => html`<li>${t(`${pre}.${c.code}`, { n: fmt(c.items.length) })}${raw(items(c))}</li>`).join("");
+    $("#os-warn").innerHTML = (warn.length || C.warn.length ? html`<div class="notice">${t("os.w.title")}<ul style="margin:6px 0 0;padding-left:18px">${warn.map((w) => html`<li>${w}</li>`)}${raw(lines(C.warn))}</ul></div>`
+      : html`<div class="notice info">${t("os.w.none")}</div>`)
+      + (C.info.length ? html`<div class="notice info" style="margin-top:8px"><div>${t("os.i.title")}<ul style="margin:6px 0 0;padding-left:18px">${raw(lines(C.info, "os.i"))}</ul></div></div>` : "");
+    const cards = all.some((r) => r.card), bibs = all.some((r) => r.bib);
     $("#os-circuit").innerHTML = d.classes.map((k, i) => html`<option value="${i}">${k.name} (${fmt(k.runners.length)})</option>`).join("");
     const table = () => {
       const k = d.classes[Number($("#os-circuit").value) || 0];
       $("#os-table").innerHTML = html`<table class="data compact"><thead><tr><th class="r">${t("os.c.start")}</th><th>${t("rk.col.name")}</th>
-        <th>${t("rk.col.club")}</th><th>${t("rk.col.cat")}</th></tr></thead>
+        <th>${t("rk.col.club")}</th><th>${t("rk.col.cat")}</th>${bibs ? html`<th class="r">${t("os.c.bib")}</th>` : ""}${cards ? html`<th class="r">${t("os.c.card")}</th>` : ""}
+        <th>${t("os.c.check")}</th></tr></thead>
         <tbody>${[...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9)).map((r) => html`<tr><td class="r num">${hm(r.start_s)}</td>
-          <td>${r.name}</td><td class="muted">${r.club ? data.clubName(r.club) : ""}</td><td>${fmtCat(r.category)}</td></tr>`)}</tbody></table>`;
+          <td>${r.name}</td><td class="muted">${r.club ? data.clubName(r.club) : ""}</td><td>${fmtCat(r.category)}</td>
+          ${bibs ? html`<td class="r num">${r.bib || ""}</td>` : ""}${cards ? html`<td class="r num">${r.card || ""}</td>` : ""}
+          <td>${(C.flags.get(r) || []).map((f) => html`<span class="tag tag-warn">${t(`os.f.${f}`)}</span> `)}</td></tr>`)}</tbody></table>`;
     };
     $("#os-circuit").onchange = table;
     table();
+    ocCard(d);
     $("#os-consent").checked = false;
     $("#os-publish").disabled = true;
     $("#os-msg").innerHTML = "";
+  }
+  // a check's items: the runners concerned, a class at a time for what is missing
+  const who = (rs) => rs.map((r) => r.name).join(", ");
+  const dur = (s) => (s % 60 ? (s >= 60 ? t("os.dur.minsec", { m: Math.floor(s / 60), s: s % 60 }) : t("os.dur.sec", { s })) : t("os.dur.min", { m: s / 60 }));
+  const clubOf = (c) => (/^\d{4}$/.test(String(c || "")) ? data.clubName(c) : c || "");
+  function items(c) {
+    let rows;
+    if (["nostart", "nocard", "noclass"].includes(c.code)) {
+      const by = new Map();
+      for (const x of c.items) by.set(x.cls, [...(by.get(x.cls) || []), ...x.runners]);
+      rows = [...by].map(([cls, rs]) => t("os.it.one", { cls, names: who(rs) }));
+    } else {
+      rows = c.items.map((x) => ({
+        club: () => t("os.it.at", { cls: x.cls, time: hm(x.s), names: `${who(x.runners)} (${clubOf(x.club)})` }),
+        minute: () => t("os.it.at", { cls: x.cls, time: hm(x.s), names: who(x.runners) }),
+        blocks: () => t("os.it.one", { cls: x.cls, names: x.cats.map((c) => t("os.it.blocks", { cat: fmtCat(c.cat), n: c.n })).join(", ") }),
+        uneven: () => t("os.it.uneven", { cls: x.cls, step: dur(x.step), n: x.n }),
+        gaps: () => t("os.it.gaps", { cls: x.cls, step: dur(x.step), list: x.holes.slice(0, 6).map((h) => t("os.it.gap", { time: hm(h.s), gap: dur(h.gap) })).join(", ")
+          + (x.holes.length > 6 ? "…" : "") }),
+      })[c.code]());
+    }
+    const li = (xs) => xs.map((x) => html`<li>${x}</li>`).join("");
+    return html`<ul class="muted" style="margin:2px 0 4px;padding-left:16px;font-size:12.5px">${raw(li(rows.slice(0, MAX_ITEMS)))}</ul>
+      ${rows.length > MAX_ITEMS ? html`<details style="font-size:12.5px"><summary>${t("os.more", { n: fmt(rows.length - MAX_ITEMS) })}</summary>
+        <ul class="muted" style="margin:2px 0 4px;padding-left:16px">${raw(li(rows.slice(MAX_ITEMS)))}</ul></details>` : ""}`;
+  }
+
+  // the start's O Checklist file: each runner's class (their category, or the list's), a start's name per class if wished
+  function ocCard(d) {
+    const cats = d.by !== "category" && d.classes.some((k) => k.runners.some((r) => r.category));
+    $("#os-oc").hidden = false;
+    $("#os-oc-body").innerHTML = html`
+      ${cats ? html`<label class="field" style="margin-bottom:10px;max-width:320px"><span>${t("os.oc.class")}</span><select id="os-oc-class">
+        <option value="category">${t("os.oc.class.cat")}</option><option value="list">${t("os.oc.class.circuit")}</option></select></label>` : ""}
+      <details style="margin-bottom:12px"><summary>${t("os.oc.starts")}</summary>
+        <p class="muted" style="font-size:12.5px;margin:6px 0">${t("os.oc.starts.hint")}</p>
+        <div class="table-wrap" style="max-height:260px"><table class="data compact"><thead><tr><th>${t(d.by === "category" ? "rk.col.cat" : "col.circuit")}</th>
+          <th>${t("os.oc.startName")}</th></tr></thead><tbody>${d.classes.map((k, i) => html`<tr><td>${k.name}</td>
+          <td><input data-oc="${i}" placeholder="${t("os.oc.startName.ph")}" style="width:160px"></td></tr>`)}</tbody></table></div></details>
+      <button type="button" class="btn btn-sm btn-primary" id="os-oc-dl">${t("os.oc.dl")}</button>
+      <p class="muted" style="font-size:12px;margin:8px 0 0">${t(d.classes.some((k) => k.runners.some((r) => r.card)) ? "os.oc.note" : "os.oc.note.nocard")}</p>`;
+    $("#os-oc-dl").addEventListener("click", () => {
+      const starts = {};
+      $$("[data-oc]").forEach((x) => { if (x.value.trim()) starts[d.classes[Number(x.dataset.oc)].name] = x.value.trim(); });
+      saveOChecklist(e.name, oChecklist(d, { cls: $("#os-oc-class")?.value || "category", starts, club: (r) => clubOf(r.club) }));
+    });
   }
   $("#os-consent").addEventListener("change", (ev) => { $("#os-publish").disabled = !ev.target.checked || !file; });
 

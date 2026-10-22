@@ -2,7 +2,9 @@
 // A port of the server's ffco_scraper/prov/parsers/startlist.py — keep them in step: IOF XML StartList, CSV (our own
 // layout, OE's, MeOS', a Google Sheets export), HTML tables (lists and grids of circuits side by side), and the PDFs of OE
 // and MeOS (pdf.js, the words' positions, as pdfplumber gives them to the server). -> { by, title, date, head, classes:
-// [{ name, runners: [{ name, club, club_code, category, start_s }] }] } or null.
+// [{ name, runners: [{ name, club, club_code, category, start_s, card, bib }] }], nostart: [{ name, cls }] } or null.
+// The browser alone keeps the card numbers and bibs, and the rows of a table that have a name but no start time (2026-10-22:
+// the draw's checks and the start's O Checklist file, startchecks.js); the server drops them, nothing of them is published.
 
 import { plain } from "./localparse.js";
 
@@ -23,15 +25,16 @@ const category = (text) => {
 };
 const clubCode = (club) => { const m = /^\s*(\d{4})(?:[A-Z]{0,3})?\b/.exec(String(club || "")); return m ? m[1] : null; };
 const klass = (name) => ({ name, runners: [] });
-const runner = (name, { club = null, category: cat = null, start_s = null } = {}) =>
-  ({ name: String(name ?? "").replace(/\s+/g, " ").trim(), club: club || null, club_code: clubCode(club), category: cat, start_s });
+const runner = (name, { club = null, category: cat = null, start_s = null, card = null, bib = null } = {}) =>
+  ({ name: String(name ?? "").replace(/\s+/g, " ").trim(), club: club || null, club_code: clubCode(club), category: cat, start_s,
+    card: /^\d{3,9}$/.test(String(card ?? "").trim()) ? String(card).trim() : null, bib: String(bib ?? "").trim() || null });
 
-function finish(classes, title, date) {
+function finish(classes, title, date, nostart = []) {
   classes = classes.filter((k) => k.runners.some((r) => r.start_s != null));
   if (!classes.length || classes.reduce((s, k) => s + k.runners.length, 0) < 3) return null;
   const by = classes.filter((k) => category(k.name)).length >= 0.6 * classes.length ? "category" : "circuit";
   if (by === "category") for (const k of classes) for (const r of k.runners) r.category = r.category || category(k.name);
-  return { kind: "startlist", by, title: title || null, date: date || null, classes };
+  return { kind: "startlist", by, title: title || null, date: date || null, classes, nostart };
 }
 
 export async function parse(bytes, name = "") {
@@ -75,7 +78,8 @@ function xml(text) {
       const org = kid(ps, "Organisation") || kid(ps, "Club");
       const st = kid(ps, "Start");
       k.runners.push(runner(nm, { club: org ? txt(org, "Name") || txt(org, "ShortName") : null, category: category(txt(ps, "Class", "Name")),
-        start_s: st ? tclock(txt(st, "StartTime") || txt(st, "StartTime", "Clock")) : null }));
+        start_s: st ? tclock(txt(st, "StartTime") || txt(st, "StartTime", "Clock")) : null,
+        card: st ? txt(st, "ControlCard") || txt(st, "CCard", "CCardId") : null, bib: st ? txt(st, "BibNumber") : null }));
     }
     classes.push(k);
   }
@@ -90,6 +94,8 @@ const HEAD = {
   club: ["club", "equipe", "organisation", "ligue", "n club", "no club", "num club", "numero club", "numero de club", "code club", "city", "ville", "cl name"],
   course: ["circuit", "parcours", "course"],
   cat: ["cat", "categorie", "class", "classe"],
+  card: ["puce", "n puce", "no puce", "numero puce", "num puce", "si", "si card", "sicard", "si nr", "card", "chip", "bricka", "badge"],    // the browser's only
+  bib: ["dossard", "doss", "n dossard", "no dossard", "bib"],
 };
 const EXACT = { short: "cat", long: "cat" };
 /** What a heading names (see startlist._key): time, first, name, club, course, cat, or null. */
@@ -134,8 +140,9 @@ function columns(head) {
   return "time" in cols && "name" in cols ? cols : {};
 }
 
-/** One table's rows (cells, merged ones expanded): its classes (see startlist._read_table). */
-function readTable(rows, label, lead) {
+/** One table's rows (cells, merged ones expanded): its classes (see startlist._read_table); `miss` gets the rows of a
+ * table with headings that name a runner but give no start time. */
+function readTable(rows, label, lead, miss = []) {
   let cur = klass(label || "?");
   const out = [], groups = new Map();
   let cols = {}, g = null;
@@ -173,6 +180,7 @@ function readTable(rows, label, lead) {
       if (cell(c, cols.first)) nm = `${cell(c, cols.first)} ${nm}`.trim();
       club = cell(c, cols.club); cat = cell(c, cols.cat);
       grp = cell(c, cols.course) || (!("course" in cols) ? cat : "") || null;
+      if (start == null && wordy(nm) && nm.length <= 60 && !key(nm)) { miss.push({ name: nm.replace(/\s+/g, " ").trim(), cls: grp || cur.name }); continue; }
     } else {
       const ti = c.findIndex((x) => clock(x) != null);
       if (ti < 0) continue;
@@ -182,7 +190,8 @@ function readTable(rows, label, lead) {
       start = clock(c[ti]); nm = c[after[0]]; club = after.length > 1 ? c[after[1]] : null; cat = null;
     }
     if (start == null || !wordy(nm) || nm.length > 60) continue;
-    const r = runner(nm, { club: club4(club), category: category((cat || "").split(" ")[0]), start_s: start });
+    const r = runner(nm, { club: club4(club), category: category((cat || "").split(" ")[0]), start_s: start,
+      card: Object.keys(cols).length ? cell(c, cols.card) : null, bib: Object.keys(cols).length ? cell(c, cols.bib) : null });
     (grp ? group(grp) : cur).runners.push(r);
   }
   if (cur.runners.length) out.push(cur);
@@ -209,19 +218,19 @@ function cellsOf(tr) {
 function html(text) {
   const doc = new DOMParser().parseFromString(text.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " "), "text/html");
   const title = (doc.querySelector("title")?.textContent || "").replace(/\s+/g, " ").trim() || null;
-  const classes = [], lead = [];
+  const classes = [], lead = [], miss = [];
   let label = "";
   for (const el of doc.body ? doc.body.querySelectorAll("table, h1, h2, h3, h4, h5, h6, caption, b, strong") : []) {
     if (el.tagName === "TABLE") {
       if (el.parentElement?.closest("table")) continue;         // a table inside another one: read with it
       const rows = [...el.querySelectorAll("tr")].filter((tr) => tr.closest("table") === el).map(cellsOf);
-      classes.push(...readTable(rows, label.replace(/\s*\(\d+\)\s*$/, ""), lead));
+      classes.push(...readTable(rows, label.replace(/\s*\(\d+\)\s*$/, ""), lead, miss));
       label = "";
     } else if (!el.closest("table")) {
       label = (el.textContent || "").replace(/\s+/g, " ").trim();
     }
   }
-  const d = finish(merge(classes), title, null);
+  const d = finish(merge(classes), title, null, miss);
   if (d) d.head = [title || "", ...lead].join(" ").slice(0, 300).trim();
   return d;
 }
@@ -254,8 +263,8 @@ function csv(u8) {
   const text = decode(u8);
   const sample = text.slice(0, 8000);
   const delim = [";", ",", "\t"].reduce((a, b) => (sample.split(b).length > sample.split(a).length ? b : a));
-  const lead = [];
-  const d = finish(merge(readTable(csvRows(text, delim), "", lead)), lead.length ? lead[0].slice(0, 120) : null, null);
+  const lead = [], miss = [];
+  const d = finish(merge(readTable(csvRows(text, delim), "", lead, miss)), lead.length ? lead[0].slice(0, 120) : null, null, miss);
   if (d) d.head = lead.join(" ").slice(0, 300).trim();
   return d;
 }
@@ -388,7 +397,8 @@ async function pdf(u8) {
     const start = clock(l.words.find((w) => isClock(w) && Math.abs(w.x0 - tx) <= 4).text);
     const cls = vals.class || curClass || "?";
     if (!classes.has(cls)) classes.set(cls, klass(cls));
-    classes.get(cls).runners.push(runner(nm, { club: vals.club || curClub, category: category((vals.cat || "").split(" ")[0]), start_s: start }));
+    classes.get(cls).runners.push(runner(nm, { club: vals.club || curClub, category: category((vals.cat || "").split(" ")[0]), start_s: start,
+      card: l.words.find((w) => CHIP.test(w.text))?.text }));
   }
   const title = lines.slice(0, 4).map((l) => l.text).find((t) => !BANNER.test(t) && !pdfDate(t)) || null;
   const d = finish([...classes.values()], title, pdfDate(headText));

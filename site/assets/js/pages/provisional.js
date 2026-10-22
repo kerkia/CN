@@ -12,6 +12,7 @@ import { available, get as storeGet } from "../store.js";
 import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
+import { oChecklist, saveOChecklist } from "../startchecks.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live" };
@@ -315,6 +316,12 @@ async function detail(main, idx, query) {
   let cnNow = null;
   async function startTable(k) {
     $("#pv-class-hint").innerHTML = html`${t(CN ? "prov.start.hint" : "prov.start.hintPlain")}`;
+    // its organisers (and the administrators) take the whole list as the start's O Checklist file (2026-10-22)
+    const club = auth.myClub(), org = /^\s*(\d{3,4})\b/.exec(String(race.org || ""));
+    if (auth.session()?.admin || (club && org && org[1].padStart(4, "0") === club)) {
+      $("#pv-class-hint").insertAdjacentHTML("beforeend", html` <button type="button" class="btn btn-sm" id="pv-oc" title="${t("prov.oc.hint")}">${t("prov.oc")}</button>`);
+      $("#pv-oc").addEventListener("click", () => saveOChecklist(race.name, oChecklist(docs[di], { club: (r) => r.club || "" })));
+    }
     const FR = CN;                              // without France, or another country's race: start times only
     if (!cnNow && !FR) cnNow = new Map();
     if (!cnNow) {

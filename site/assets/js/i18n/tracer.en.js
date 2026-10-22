@@ -1165,6 +1165,8 @@ export default {
   "trc.rep.crossBoundary": "The leg's straight line crosses an uncrossable boundary.",
   "trc.rep.forbiddenRoute": "The leg runs over a forbidden route.",
   "trc.rep.throughCircle": "The leg passes through the circle of control {code}.",
+  "trc.rep.sameFirst": "The courses leave for the same first control: runners of one lead those of the other from the start.",
+  "trc.rep.firstSameWay": "These courses' first controls leave the same start in almost the same direction ({deg}°): runners follow each other at first.",
   "trc.rep.dogLeg": "Dog-leg at the control ({deg}° between the way in and the way out): runners leaving it show the control to those arriving.",
   "trc.rep.moreTitle": "Further checks (Ozimut)",
   "trc.rep.moreText": "Checks beyond Purple Pen's: judge them on the ground, some are intended.",

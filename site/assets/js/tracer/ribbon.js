@@ -873,7 +873,7 @@ function issueRows(rep) {
     else if (id === "missing") { for (const r of s.rows) out.push({ text: t("trc.rib.issColon", { a: r[0], b: r[2].replace(/\s*\(.*\)/, "") }), warn: r.tag === "climb" || r.tag === "load" }); }
     else if (id === "repeated") { for (const r of s.rows) out.push({ text: t("trc.rib.issRepeated", { course: r[0], control: r[1], text: r[2] }) }); }
     else if (id === "descr") { for (const r of s.rows) out.push({ text: t("trc.rib.issDescr", { control: r[0], text: r[2] }), warn: true }); }
-    else if (id === "more") { for (const r of s.rows) out.push({ text: r[0] ? t("trc.rib.issMore", { course: r[0], obj: r[1], text: r[2] }) : t("trc.rib.issColon", { a: r[1], b: r[2] }), warn: r.tag === "short" || r.tag === "dog-leg" }); }
+    else if (id === "more") { for (const r of s.rows) out.push({ text: r[0] ? t("trc.rib.issMore", { course: r[0], obj: r[1], text: r[2] }) : t("trc.rib.issColon", { a: r[1], b: r[2] }), warn: r.tag === "short" || r.tag === "dog-leg" || r.tag === "first-dir" }); }
     else for (const r of s.rows) out.push({ text: r.filter(Boolean).join(" · "), warn: true });
   }
   // « Circuit A : la dénivelée… »: the audit's sentences go on after a colon (« : » in French, ":" in English)

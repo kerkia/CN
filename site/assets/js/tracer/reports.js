@@ -289,6 +289,38 @@ export function audit(ev) {
       }
     }
   }
+  // courses that leave one start for the same first control (runners of one course lead those of the other), or for first
+  // controls in nearly the same direction (2026-10-22, after MeOSDjango's draw checker; a reminder)
+  const firsts = new Map();                 // start -> first control -> the courses
+  for (const c of courses) {
+    if (ev.courses[c].kind === "score") continue;
+    for (const d of designators(ev, c)) {
+      const ctl = M.ccIds(ev, d.cd).map((id) => ev.courseControls[id].control);
+      const i = ctl.findIndex((x) => ev.controls[x].kind === "normal");
+      if (i < 0) continue;
+      const st = i > 0 && ev.controls[ctl[i - 1]].kind === "start" ? ctl[i - 1] : null;
+      if (!firsts.has(st)) firsts.set(st, new Map());
+      const m = firsts.get(st);
+      if (!m.has(ctl[i])) m.set(ctl[i], []);
+      if (!m.get(ctl[i]).includes(c)) m.get(ctl[i]).push(c);
+    }
+  }
+  for (const [st, m] of firsts) {
+    for (const [x, cs] of m) if (cs.length > 1) more.push(tagged([cs.map(name).join(", "), ctrlName(ev, x), t("trc.rep.sameFirst")], "first"));
+    if (st == null) continue;
+    const s0 = [ev.controls[st].x, ev.controls[st].y], dirs = [...m.keys()].map((x) => {
+      const pts = M.legPoints(ev, st, x), q = pts[1] || [ev.controls[x].x, ev.controls[x].y];
+      return { x, a: Math.atan2(q[1] - s0[1], q[0] - s0[0]) };
+    });
+    for (let i = 0; i < dirs.length; i++) for (let j = i + 1; j < dirs.length; j++) {
+      let diff = Math.abs(dirs[i].a - dirs[j].a) * 180 / Math.PI; if (diff > 180) diff = 360 - diff;
+      if (diff >= 15) continue;
+      const set = new Set([...m.get(dirs[i].x), ...m.get(dirs[j].x)]);
+      if (set.size < 2) continue;                       // one course's variations
+      const cs = [...set].map(name).join(", ");
+      more.push(tagged([cs, `${ctrlName(ev, dirs[i].x)}, ${ctrlName(ev, dirs[j].x)}`, t("trc.rep.firstSameWay", { deg: Math.round(diff) })], "first-dir"));
+    }
+  }
   if (more.length) sections.push({ id: "more", title: t("trc.rep.moreTitle"), text: t("trc.rep.moreText"), head: [t("trc.rep.course"), t("trc.rep.object"), t("trc.rep.remark")], align: "lll", rows: more });
   return { title: t("trc.rep.auditTitle"), intro: sections.length ? "" : t("trc.rep.noProblem"), sections };
 }

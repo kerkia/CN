@@ -1270,7 +1270,7 @@ export function build(X) {
             <li><b>Control and leg load</b>: the number of competitors expected at each control, to put several control units where they are needed;</li>
             <li><b>Event audit</b>: unused controls, incomplete descriptions, codes below 31 or that read upside down, controls too close to one
               another (at least 30 m between two controls in forest, 15 m in sprint, and clearly different features within 60 m, 30 m in sprint), legs that
-              cross an out-of-bounds area or an uncrossable boundary, or pass through another control's circle, dog-legs, legs that are too short.</li>
+              cross an out-of-bounds area or an uncrossable boundary, or pass through another control's circle, dog-legs, legs that are too short, courses that leave the same start for the same first control or in almost the same direction.</li>
           </ul>
           <p>The audit runs by itself after each change: the number of problems found is shown on the Check tab — in red, or in orange when only
             reminders are left, such as a climb not yet filled in — and the first ones in the tab itself; a click opens the full audit. The

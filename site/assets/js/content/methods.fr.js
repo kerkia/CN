@@ -1271,7 +1271,7 @@ export function build(X) {
             <li><b>Charge des postes et des interpostes</b> : le nombre de concurrents attendus à chaque poste, pour placer plusieurs boîtiers là où il le faut ;</li>
             <li><b>Contrôle de l'événement</b> : postes inutilisés, définitions incomplètes, codes inférieurs à 31 ou lisibles à l'envers, postes trop près les uns des
               autres (au moins 30 m entre deux postes en forêt, 15 m en sprint, et des détails nettement différents à moins de 60 m, 30 m en sprint), interpostes qui
-              traversent une zone interdite ou une limite infranchissable, qui passent dans le cercle d'un autre poste, allers-retours, interpostes trop courts.</li>
+              traversent une zone interdite ou une limite infranchissable, qui passent dans le cercle d'un autre poste, allers-retours, interpostes trop courts, circuits qui partent du même départ vers le même premier poste ou dans presque la même direction.</li>
           </ul>
           <p>Le contrôle tourne tout seul après chaque changement : le nombre de problèmes trouvés s'affiche sur l'onglet Vérifier — en rouge, en orange quand il
             ne reste que des rappels, une dénivelée pas encore renseignée par exemple —, et les premiers dans l'onglet même ; un clic ouvre le contrôle complet. Le
