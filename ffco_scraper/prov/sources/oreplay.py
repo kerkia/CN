@@ -129,9 +129,9 @@ def _klass(c: dict, rows: list[dict], tz) -> tuple[dict, str | None]:
     for r in rows:
         s = r.get("stage") or {}
         if s.get("status_code") == "0":
-            seqs[tuple(x["control"]["station"] for x in sorted(s.get("splits") or [], key=lambda x: x.get("order_number") or 0)
-                       if not x.get("is_intermediate"))] += 1
-    controls = list(seqs.most_common(1)[0][0]) if seqs else None
+            seqs[tuple((x.get("control") or {}).get("station") for x in sorted(s.get("splits") or [], key=lambda x: x.get("order_number") or 0)
+                       if not x.get("is_intermediate"))] += 1         # a split without its control (a reading lost): None
+    controls = [c for c in seqs.most_common(1)[0][0] if c] or None if seqs else None
     day = None
     runners = []
     for r in rows:
