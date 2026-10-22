@@ -289,7 +289,12 @@ circuit, then a « name, club » pair per circuit, the circuits' names above (or
 O'Bugey, SpOC) — is read one circuit per column pair (`startlist._grid`; merged cells expanded by `_cells`, « Hour » and
 « N° Club » headings, a club number's lost zero restored), and its title lines are the file's `head`; a start list naming
 another format or weekday is not the race's (`run.not_this_race`, as for results) and one kept earlier is removed; a weekend's files go by the days they print and their
-first lines (`races.owners`, « SPRINT1 » split). The result pass leaves start lists alone; they rank after results. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
+first lines (`races.owners`, « SPRINT1 » split). The result pass leaves start lists alone; they rank after results. An organiser's new start list under another
+name (« …-V2-… », 2026-10-22: the old one, a runner longer, ranked first and gave its old times to the race page and the
+alerts) replaces the older one when it names 80 % of its runners, and a file a complete look at the site no longer finds
+goes (`run.supersede_starts`). The agenda also keeps the list's rows of the last `RECENT_DAYS` (3) days (`recent`):
+`races.sync` applies them, so a race-day change (CN or not, name, place, format, date) reaches the race once the agenda
+has dropped it. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
 Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones

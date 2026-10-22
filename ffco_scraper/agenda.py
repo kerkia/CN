@@ -60,6 +60,9 @@ AGENDA_VERSION = 4     # bump when the content of agenda.json changes shape: the
 #   4 (2026-10-10): registrants per circuit (reg.circuits)
 ANN_VERSION = 2        # what is read from an announcement; 2 (2026-10-11): its circuits' table too — each read again once
 REG_DAYS = 21          # races whose registrants are counted circuit by circuit (one page each, once a day)
+RECENT_DAYS = 3        # the list's rows of the last days' courses too (« recent »): a change made on the race's day, after
+                       # the morning's run (CN or not, name, place, format), still reaches its provisional results
+                       # (prov.races.sync) once the agenda has dropped the race (2026-10-22)
 SPEC_ORDER = ["Pédestre", "VTT", "Ski", "Précision", "Raid Orientation", "Raid Multisport", "Pédestre + VTT"]   # as on FFCO
 
 
@@ -391,7 +394,10 @@ def circuit_counts(reg_id: int) -> list[list] | None:
 # ---- assemble --------------------------------------------------------------------------------------------------------
 def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
     du = du or date.today().isoformat()
-    courses = list_courses(du)
+    # one list from a few days back: the past days' rows cost no more request than a page of the list
+    listed = list_courses((date.fromisoformat(du) - timedelta(days=RECENT_DAYS)).isoformat())
+    recent = [c for c in listed if c.get("date") and c["date"] < du]
+    courses = [c for c in listed if not c.get("date") or c["date"] >= du]
     cancelled = {(_iso(x["date"]), _clean(x["nom"])) for x in read_csv("cou", du) if "annul" in x["validation"].lower()}
     regs = registrations()
 
@@ -437,6 +443,7 @@ def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
         "depts": depts,
         "regions": regions,
         "events": events,
+        "recent": recent,
     }
 
 

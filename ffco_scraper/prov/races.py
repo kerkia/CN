@@ -400,9 +400,9 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
             code = org_code(e.get("org"))
             site = e.get("site") or club_site(con, code)
             cur = con.execute("SELECT key FROM prov_races WHERE key = ?", (key,)).fetchone()
-            if cur:
-                con.execute("UPDATE prov_races SET name=?, place=?, org=?, org_code=?, terrain=?, epreuve=?, cn=?, site=COALESCE(?, site) WHERE key=?",
-                            (e["name"], e.get("place"), e.get("org"), code, terrain_of(e), e.get("epr"), int(bool(e.get("cn"))), site, key))
+            if cur:                                   # what the organiser changed since overwrites what was kept
+                con.execute("UPDATE prov_races SET date_iso=?, name=?, place=?, org=?, org_code=?, terrain=?, epreuve=?, cn=?, site=COALESCE(?, site) WHERE key=?",
+                            (e["date"], e["name"], e.get("place"), e.get("org"), code, terrain_of(e), e.get("epr"), int(bool(e.get("cn"))), site, key))
             else:
                 con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site, agenda_id,
                     first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -414,6 +414,13 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
             if e.get("annCircuits") and e.get("annSrc"):
                 save_circuits_doc(con, key, e["annSrc"], "announcement", "Annonce de course : circuits et catégories",
                                   "les catégories de chaque circuit (annonce de course)", e["annCircuits"], stamp)
+        # the last days' races, gone from the events: the list's own fields, changed on the race's day after the
+        # morning's run (2026-10-22: a race no longer counting for the CN kept « CN » for good)
+        for e in a.get("recent", []):
+            if e.get("id") and e.get("date") and e.get("name"):
+                con.execute("UPDATE prov_races SET date_iso=?, name=?, place=COALESCE(?, place), terrain=COALESCE(?, terrain), "
+                            "epreuve=?, cn=? WHERE key=?", (e["date"], e["name"], e.get("place") or None, terrain_of(e),
+                                                            e.get("epr") or None, int(bool(e.get("cn"))), f"a{e['id']}"))
     # the agenda export's races (x…) and the uploads' (u…) are linked to FFCO's results like the agenda's own: agenda_id 0
     con.execute("UPDATE prov_races SET agenda_id = 0 WHERE (key LIKE 'x%' OR key LIKE 'u%') AND agenda_id IS NULL")
     # FFCO's competitions of the period: link the agenda's races, add the others (the past month's pilot)

@@ -690,6 +690,26 @@ def save_announcements(con, race, found: dict, f: Fetcher, rivals) -> int:
     return changed
 
 
+def supersede_starts(con, key: str, kept: set[str]) -> int:
+    """An organiser's start list replaced by a new file under another name (2026-10-22: « Departs-par-clubs-V2-22-octobre »
+    beside the first one, which still ranked first — a runner more — and gave its old start times to the race page and
+    the alerts): a list of the organiser's site goes when a newer one names most of its runners, or when a full look at
+    the site found start lists of the race but no longer that one (`kept`). Returns the documents dropped."""
+    docs = con.execute(f"""SELECT url, kind, parsed, found_at FROM prov_docs WHERE race_key = ? AND source = 'site'
+                           AND kind IN ({",".join("?" * len(START_KINDS))}) ORDER BY found_at DESC""", (key, *START_KINDS)).fetchall()
+    names = {x["url"]: {_name_key(r["name"]) for k in json.loads(x["parsed"])["classes"] for r in k["runners"] if r.get("name")}
+             for x in docs if x["kind"] == "startlist" and x["parsed"]}
+    gone = []
+    for i, x in enumerate(docs):
+        mine = names.get(x["url"])
+        newer = [names[y["url"]] for y in docs[:i] if y["url"] in names and y["found_at"] > x["found_at"] and y["url"] not in gone]
+        if kept and x["url"] not in kept or mine and any(len(mine & n) >= 0.8 * len(mine) for n in newer):
+            gone.append(x["url"])
+    for url in gone:
+        con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND source = 'site'", (key, url))
+    return len(gone)
+
+
 def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     """The start lists and entry lists organisers post on their own sites before the race (« horaires de départ »):
     the races of today and the next START_DAYS days, START_SITES a run, each at most every START_EVERY hours. A list
@@ -721,9 +741,11 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
         rivals = con.execute("SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ?",
                              ((day - timedelta(days=1)).isoformat(), (day + timedelta(days=1)).isoformat(),
                               race["org_code"], race["key"])).fetchall()
+        kept: set[str] = set()                        # the files this look found (all of them, once it ends)
         for url, text, via in found["docs"]:
             if f.out_of_time():
                 break
+            kept.add(url)                             # still linked (a file not ours is dropped below all the same)
             a = f.get(download_url(url), conditional=False)
             if a.status != 200:
                 continue
@@ -752,6 +774,8 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             # O'Bugey's sheet, read anew, was kept as first read because its content had not changed)
             changed += save(con, race["key"], url, "site", d, kind=None if d else "startfile", sha=f"{a.sha}|p{PARSER_VERSION}" if a.sha else None,
                             note=SITE_STARTLIST if d else f"{SITE_STARTLIST} · {text}".strip(" ·"))
+        else:
+            changed += supersede_starts(con, race["key"], kept)
         # the announcement on the organiser's site: its circuits' table, when it has one
         changed += save_announcements(con, race, found, f, rivals)
     store.meta_set(con, "startsites", {k: v for k, v in seen.items() if v >= (now - timedelta(days=START_DAYS + 2)).isoformat()})
