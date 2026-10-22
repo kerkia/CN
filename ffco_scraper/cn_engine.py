@@ -68,12 +68,14 @@ K_BY_YEAR: dict[int, float] = {2022: 0.95}
 DEFAULT_K = 1.0
 
 
-def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: float = 1000.0, days: int = 365) -> dict:
+def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: float = 1000.0, days: int | None = 365) -> dict:
     """A method computed for a country without official CNs: no runner has a level its first circuits could be valued
     from. First pass: everyone starts at the same `level` for the archive's first `days` in each ranking family (a
     circuit's value is then its runners' common pace); each next pass: everyone starts from their own first computed
     level — the first season valued by the levels it shows, as France's first season is by the CN its runners held then.
-    The recalage brings the scale to its usual level afterwards."""
+    The recalage brings the scale to its usual level afterwards. `days=None`: the seeds never expire — a runner without a
+    CN of their own still values a circuit at their first level (a country whose archive has gaps longer than the window:
+    without it, nobody holds a CN after one and no circuit is valued again)."""
     firsts = {fam: d for fam, d in (
         (family(t), d) for t, d in engine.conn.execute(
             """SELECT comp.terrain, MIN(comp.date_iso) FROM competitions comp WHERE comp.date_iso IS NOT NULL
@@ -81,7 +83,7 @@ def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: fl
     start = min(firsts.values()) if firsts else None
     if not start:
         return {"passes": 0}
-    engine.seed_until_override = (date.fromisoformat(start) + timedelta(days=days)).isoformat()
+    engine.seed_until_override = (date.fromisoformat(start) + timedelta(days=days)).isoformat() if days else "9999-12-31"
     who = engine.conn.execute(
         """SELECT DISTINCT r.licence, comp.terrain FROM results r JOIN circuits c ON c.circuit_id = r.circuit_id
            JOIN competitions comp ON comp.course_id = c.course_id WHERE r.licence IS NOT NULL""").fetchall()

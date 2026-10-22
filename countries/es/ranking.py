@@ -32,14 +32,18 @@ def update(root: Path, prov_db: Path = paths.DB, budget_s: float = 900, db: Path
         stats["licensees"] = licensees.refresh(con, http, budget_s=min(300, budget_s / 3))
         from . import agenda_path
         stats["from_prov"] = archive.from_prov(con, prov_db, agenda_path(root))
+        from . import fedo, official
+        stats["official"] = official.refresh(con, http)            # FEDO's ranking files: the current season, past ones once
+        stats["fedo"] = fedo.import_all(con, http, budget_s=max(60, budget_s / 3 - (time.monotonic() - t0)))
         left = max(60, budget_s - (time.monotonic() - t0))
         stats["oreplay"] = archive.backfill_oreplay(con, http, budget_s=left, since=since_oreplay)
     lic = identity.Licensees([dict(r) for r in con.execute("SELECT licence, name, club, card FROM es_licensees")]) \
         if con.execute("SELECT 1 FROM sqlite_master WHERE name = 'es_licensees'").fetchone() else None
+    stats["pruned"] = archive.prune(con)                # races the rules now leave out
     stats["club_keys"] = clubs.canonical(con)           # before who is who: the club tells namesakes apart
     stats["identity"] = identity.resolve(con, lic)
     stats["clubs"] = clubs.assign(con)
-    changed = stats["identity"]["rows"] > 0 or stats["from_prov"] or stats["oreplay"]["read"]
+    changed = stats["identity"]["rows"] > 0 or stats["from_prov"] or stats["oreplay"]["read"] or stats["fedo"]["read"]
     con.close()
     if not changed and (COUNTRY.data_dir(root) / "meta.json").exists() == publish:
         stats["built"] = False

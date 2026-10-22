@@ -255,3 +255,18 @@ def backfill_oreplay(con, http, budget_s: float, since: str = "2024-01-01", toda
     meta_set(con, "oreplay_events", sorted(finished))
     con.commit()
     return {"read": got, "left": left, "requests": http.requests, "seconds": round(time.monotonic() - t0)}
+
+
+def prune(con) -> int:
+    """Races the rules now leave out (NOT_RANKED), imported before them: gone, with their circuits and results; their
+    sources stay noted, so that they are not read again."""
+    gone = 0
+    for cid, title in con.execute("SELECT course_id, title FROM competitions").fetchall():
+        if NOT_RANKED.search(title or ""):
+            for (circ,) in con.execute("SELECT circuit_id FROM circuits WHERE course_id = ?", (cid,)).fetchall():
+                con.execute("DELETE FROM results WHERE circuit_id = ?", (circ,))
+            con.execute("DELETE FROM circuits WHERE course_id = ?", (cid,))
+            con.execute("DELETE FROM competitions WHERE course_id = ?", (cid,))
+            gone += 1
+    con.commit()
+    return gone
