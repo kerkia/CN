@@ -1292,6 +1292,25 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (`link.runner`, `data.parseId` / `fullId` / `localId`; a bare number, the links of before, is France's; a runner of another
   country in the address makes it the site's); the files keep the number alone. `auth.myId()`: one's own number in the
   loaded country (France's licence).
+- **Spain** (`countries/es`, owner 2026-10-22; open to every account: its results are all public). **Agenda**
+  (`countries/es/__init__.py` `refresh_agenda`, the daily agenda run; `site/data/es/agenda.json` in France's agenda shape with
+  Spain's communities and provinces — INE numbers, `countries/es/places.py`): SICO (`countries/es/sico.py`, sico.fedo.org: the
+  calendar from today on and, by its month filter kept in the session, the past months; an event's page: stages « Pruebas »,
+  registration window, website, announcement PDF, the public entries counted by stage and category — names not kept, IBANs
+  struck from the notes) merged with O-Replay's events of Spain (`ffco_scraper/prov/sources/oreplay.py`; country, else its
+  time zone), one row per stage — a race SICO lists once per league (« FEMADO: E1 … / solo Madrid », « NACIONAL: E1 … ») is
+  one (`merge_stages`) —, ids `es<SICO id>[-<stage>]` or `eso<O-Replay stage>`, `src` the event's pages (« Voir sur SICO /
+  O-Replay »); past events are not read again (`FRESH_DAYS`); ~110 requests a day. SICO's home page also lists Spain's licensees
+  (name, club, regional federation, SportIdent, licence; ~260 pages): not read yet (runner identity, plan step 5).
+  **Résultats**: `races.sync_country` makes the agenda's races (`prov_races.country` ES, key = the agenda's id, `links` the
+  O-Replay stage the agenda names; trail-O, rogaines, raids left out: `races.TIMED`); `run.look` reads `links["oreplay"]`
+  (classes one by one — a whole stage times out —, status codes 0 ok, 1 dns, 2 dnf, 3 mp…, splits by control code from the
+  readings, start times in the event's time zone; `tzdata` in requirements for Windows), liveresultat in the race's country's
+  time zones (`run.time_zones`); the organisers' sites are not searched outside France (French words). A runner's SportIdent
+  card (`model.runner` `card`, and `sex`, kept only when a source gives them) is never published (`build` drops it). OE12 HTML
+  in Spanish (FEDO's « Pos / Nombre / Club / Tiempo », « Error en tarj. », « Abandona »: `oe_html._COLS`,
+  `model.STATUS_WORDS`). The pages: Agenda's places, CN column, FFCO link and the « pending » filter follow the country;
+  Résultats has no runner filter outside France.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

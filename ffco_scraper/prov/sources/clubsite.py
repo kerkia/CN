@@ -52,7 +52,8 @@ SHARED_HOSTS = ("blogspot.", "wixsite.com", "wordpress.com", "e-monsite.com", "o
 FILE_HOSTS = ("res.cloudinary.com", "dl.dropboxusercontent.com", "www.dropbox.com", "dropbox.com", "1drv.ms",
               "docs.google.com", "drive.google.com")
 PLATFORMS = {"liveresultat.orientering.se": "liveresultat", "obasen.orientering.se": "winsplits", "livelox.com": "livelox",
-             "helga-o.com": "helga", "helga-o.live": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries"}
+             "helga-o.com": "helga", "helga-o.live": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries",
+             "oreplay.es": "oreplay"}
 
 
 _HEADING = re.compile(r"(?is)<(h[1-6]|strong|b|th|dt|caption|legend)\b[^>]*>(.*?)</\1>")

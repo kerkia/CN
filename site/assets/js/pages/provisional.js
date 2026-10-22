@@ -71,18 +71,22 @@ export async function render(main, { query = {} } = {}) {
 function list(main, idx, query) {
   let filter = ["all", "found", "missing", "pending"].includes(query.f) ? query.f : "all", q = query.q || "";
   let spec = SPECS.includes(query.t) ? query.t : "all", reg = query.reg || "";
-  // races a runner took part in (a runner recognised in the results): the logged-in one unless another is chosen
-  const me = auth.session()?.lic;
-  let runner = query.r || me, who = query.who === "all" || !runner ? "all" : "runner";     // the logged-in runner's races by default
-  const regions = [...new Set(idx.races.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+  // races a runner took part in (a runner recognised in the results): the logged-in one unless another is chosen — France's
+  // runners only, the ones the lists are matched to (another country's lists are not: no runner, no « pending » at FFCO)
+  const fr = country.current() === "FR";
+  const me = fr ? auth.myId() : null;
+  let runner = fr ? query.r || me : null, who = query.who === "all" || !runner ? "all" : "runner";     // the logged-in runner's races by default
+  if (!fr && filter === "pending") filter = "all";
+  const here = idx.races.filter((r) => country.of(r) === country.current());
+  const regions = [...new Set(here.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     ${filterFold(html`<div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
       <div class="field"><span>${t("f.terrain")}</span><div id="pv-t"></div></div>
-      <label class="field"><span>${t("prov.region")}</span><select id="pv-reg"><option value="">${t("f.all")}</option>
-        ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>
-      <div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>
+      ${regions.length ? html`<label class="field"><span>${t("prov.region")}</span><select id="pv-reg"><option value="">${t("f.all")}</option>
+        ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>` : ""}
+      ${fr ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>` : ""}
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>`)}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
@@ -122,6 +126,7 @@ function list(main, idx, query) {
         <div class="tile-sub">${t("prov.matched.hint")}</div></div>` : ""}`;
   };
   function drawWho() {
+    if (!$("#pv-who")) return;               // (another country's lists: no runner to follow)
     $("#pv-who").innerHTML = html`${seg("pvwho", [["all", t("f.allm")], ["runner", t("prov.oneRunner")]], who)}
       ${who === "runner" ? html`<span class="pill">${runner ? html`<a href="${link.runner(runner)}">${displayName(data.runner(runner)?.nom || runner)}</a>` : "—"}</span>
         ${runnerSearch("pv-runner", t("rn.change"))}` : ""}`;
@@ -134,7 +139,8 @@ function list(main, idx, query) {
     const ffcoMine = one ? ffcoSet(runner) : null;
     replaceQuery({ f: filter === "all" ? null : filter, t: spec === "all" ? null : spec, reg: reg || null,
       who: who === "all" ? "all" : null, r: one && runner !== me ? runner : null, q: q || null });
-    $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")], ["pending", t("prov.f.pending")]], filter);
+    $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")],
+      ...(fr ? [["pending", t("prov.f.pending")]] : [])], filter);
     $$('[data-seg="pvf"]').forEach((b) => b.addEventListener("click", () => { filter = b.dataset.value; draw(); }));
     $("#pv-t").innerHTML = seg("pvt", [["all", t("f.all")], ...SPECS.map((s) => [s, t(`terrain.${s}`)])], spec);
     $$('[data-seg="pvt"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
@@ -154,7 +160,7 @@ function list(main, idx, query) {
           : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
-        <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn || !FR ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
+        <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn || !FR || country.of(r) !== "FR" ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
           : r.ffco_id ? html`<span class="muted">—</span>` : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
           ${r.site === false && country.of(r) === "FR" ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
@@ -166,7 +172,7 @@ function list(main, idx, query) {
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
   $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  $("#pv-reg").addEventListener("change", (e) => { reg = e.target.value; draw(); });
+  $("#pv-reg")?.addEventListener("change", (e) => { reg = e.target.value; draw(); });
   drawWho();
   draw();
   return { title: t("prov.title") };

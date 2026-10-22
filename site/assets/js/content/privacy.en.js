@@ -15,8 +15,12 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Independence and sources</h2>
       <p>${SITE} is independent, unofficial and free, not affiliated with any federation or organiser. Its sources: for France, the results,
         the national ranking (CN) and the calendar published by the French orienteering federation (FFCO) on cn.ffcorientation.fr
-        and ffcorientation.fr, which remain the reference; for every race, the results and start times the organisers publish
-        (their website, liveresultat, WinSplits, Helga, Orientation Data) or upload to ${SITE}.</p>
+        and ffcorientation.fr, which remain the reference; for Spain, the calendar and entries published by the Spanish federation
+        (FEDO) on sico.fedo.org, and the results published on O-Replay (oreplay.es); for every race, the results and start times
+        the organisers publish (their website, liveresultat, WinSplits, Helga, Orientation Data, O-Replay) or upload to ${SITE}.</p>
+      <p>For Spain, ${SITE} takes the races' public results (name, club, category, time, split times) and the number of entries per
+        category; it shows no licence or SportIdent card number. These results being public, every signed-in account can see them.
+        Anyone concerned may ask no longer to be identified in them (see “Your rights”).</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the
         name, club, class, licence number, time and place of each ranked licence holder, whether or not they have an account on
@@ -144,5 +148,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 20 October 2026.</p>
+      <p class="muted">Last updated: 22 October 2026.</p>
 `;

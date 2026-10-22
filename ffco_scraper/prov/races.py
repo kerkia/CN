@@ -22,6 +22,38 @@ from .model import plain
 WATCH_DAYS = 14
 HOURLY_DAYS = 3
 EPREUVE_TERRAIN = {"Sprint": "Sprint", "MD": "Forêt", "LD": "Forêt", "Nuit": "Forêt", "Relais": None}
+TIMED = ("Pédestre", "VTT", "Ski")      # the disciplines raced against the clock (not trail-O, rogaines, raids)
+
+
+def sync_country(con, agenda_path: Path, today: date, back_days: int, country: str) -> dict:
+    """Another country's agenda (countries/<cc>: site/data/<cc>/agenda.json) -> its races of the last `back_days` days and
+    the coming ones, keyed by the agenda's own ids (they name the country: « es20162444-2 »), `country` set, and the
+    platform competitions the agenda already knows (`links`, from its `src`). France's rules (FFCO's competitions, club
+    numbers, the merging of duplicates) do not apply."""
+    lo = (today - timedelta(days=back_days)).isoformat()
+    added = 0
+    if not agenda_path.exists():
+        return {"added": 0}
+    stamp = now_iso()
+    for e in json.loads(agenda_path.read_text(encoding="utf-8")).get("events", []):
+        if e.get("kind") != "c" or not e.get("id") or e.get("date", "") < lo or e.get("cancelled") or e.get("spec") not in TIMED \
+                or is_relay(e.get("name"), e.get("epr")):
+            continue
+        key = str(e["id"])
+        links = {k: v for k, v in (e.get("src") or {}).items() if k != "sico"} or None
+        vals = (e["date"], e["name"], e.get("place"), e.get("org"), e.get("terrain") or terrain_of(e), e.get("epr"), e.get("site"),
+                json.dumps(links) if links else None)
+        if con.execute("SELECT 1 FROM prov_races WHERE key = ?", (key,)).fetchone():
+            con.execute("UPDATE prov_races SET date_iso=?, name=?, place=?, org=?, terrain=?, epreuve=?, site=COALESCE(?, site), "
+                        "links=COALESCE(?, links) WHERE key=?", (*vals, key))
+        else:
+            con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, terrain, epreuve, site, links, cn, country,
+                first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?)""", (key, *vals, country, stamp, stamp))
+            added += 1
+    con.commit()
+    return {"added": added}
+
+
 SPEC_TERRAIN = {"VTT": "VTT", "Ski": "Ski"}
 
 

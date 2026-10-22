@@ -12,13 +12,19 @@ from pathlib import Path
 
 from .base import ACCESS, SITE_DATA, Country
 
-__all__ = ["ACCESS", "SITE_DATA", "Country", "registry", "get", "write_index", "move_legacy_layout"]
+__all__ = ["ACCESS", "SITE_DATA", "Country", "modules", "registry", "get", "write_index", "move_legacy_layout"]
+
+
+def modules() -> list:
+    """Every country's module (countries/fr, countries/es…), France first: its COUNTRY, and what it can do —
+    refresh_agenda(root), agenda_path(root)…"""
+    from . import es, fr
+    return [fr, es]
 
 
 def registry() -> list[Country]:
     """Every country, France first (its default)."""
-    from . import fr
-    return [fr.COUNTRY]
+    return [m.COUNTRY for m in modules()]
 
 
 def get(code: str) -> Country:

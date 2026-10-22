@@ -304,17 +304,22 @@ def main() -> None:
                 print("code changed since the last deploy: to be published")
                 DEPLOY_PENDING.touch()
         if args.deploy_only:
-            if not france.agenda_current(args.out):            # missing, or built by an older version of the scraper
-                france.refresh_agenda(args.out)
-                countries.write_index(args.out)
-                print("agenda: rebuilt")
+            for m in countries.modules():                       # missing, or built by an older version of its scraper
+                if hasattr(m, "refresh_agenda") and not m.agenda_current(args.out):
+                    _agenda(m, args.out)
+                    countries.write_index(args.out)
+                    print(f"agenda {m.COUNTRY.code}: rebuilt")
             ok = deploy(args.db)
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
             sys.exit(0 if ok else 1)
         if args.agenda_only:
-            changed = france.refresh_agenda(args.out)
-            print(f"agenda: {'updated' if changed else 'unchanged'} in {time.monotonic() - t0:.0f}s")
+            changed = False
+            for m in countries.modules():                       # each country's calendar (France's: FFCO's; Spain's: SICO…)
+                if hasattr(m, "refresh_agenda"):
+                    got = _agenda(m, args.out)
+                    print(f"agenda {m.COUNTRY.code}: {'updated' if got else 'unchanged'} in {time.monotonic() - t0:.0f}s")
+                    changed = changed or got
             if changed:
                 countries.write_index(args.out)
                 DEPLOY_PENDING.touch()
@@ -398,6 +403,15 @@ def apply_privacy(db: Path, out: Path, root: Path) -> bool:
     DEPLOY_PENDING.touch()
     print(f"privacy: done in {time.monotonic() - t0:.0f}s")
     return True
+
+
+def _agenda(module, root: Path) -> bool:
+    """A country's agenda refreshed; a failure (its source down) never stops the others' nor the run."""
+    try:
+        return bool(module.refresh_agenda(root))
+    except Exception as e:
+        print(f"agenda {module.COUNTRY.code}: failed — {type(e).__name__}: {e}")
+        return False
 
 
 def _provisional(args) -> None:

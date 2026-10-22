@@ -61,7 +61,9 @@ export async function render(main, { query }) {
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || depOrder(a.dep) - depOrder(b.dep)
       || String(a.name || "").localeCompare(String(b.name || ""), "fr"));
   const byKey = new Map(events.map((e) => [e.key, e]));
-  const fr = country.current() === "FR";        // France's regions, départements and CN: its agenda's
+  const fr = country.current() === "FR";        // France's CN and FFCO's own pages
+  // the country's places, when its agenda has them (France: regions and départements; Spain: communities and provinces)
+  const places = (A.regions || []).length > 0;
   const deptName = (c) => A.depts[c] || c;
   const regionOfDept = new Map(A.regions.flatMap((r) => r.depts.map((d) => [d, r.name])));
   const allDepts = A.regions.flatMap((r) => r.depts);
@@ -147,9 +149,9 @@ export async function render(main, { query }) {
         <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
-        ${fr ? html`<div class="field field-wide"><span>${t("agd.region")}</span>${multi("m-regions", regionSummary(),
+        ${places ? html`<div class="field field-wide"><span>${t(fr ? "agd.region" : "agd.region.other")}</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
-        <div class="field field-wide"><span>${t("agd.dept")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
+        <div class="field field-wide"><span>${t(fr ? "agd.dept" : "agd.dept.other")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
             ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}
         <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
@@ -210,10 +212,10 @@ export async function render(main, { query }) {
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
-        <th>${t("agd.col.date")}</th>${sees("FR") ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
+        <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
-        ${sees("FR") ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
+        ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
         <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
@@ -287,7 +289,7 @@ export async function render(main, { query }) {
         ${row(t("agd.reg.close"), r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
         ${row(t("agd.reg.mods"), r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
         ${row(t("agd.reg.count"), r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${tn("agd.reg.teams", r.teams)})</span>` : ""}` : "")}
-        ${row(t("agd.reg.byCircuit"), r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
+        ${row(t(fr ? "agd.reg.byCircuit" : "agd.reg.byCat"), r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
       </dl>` : html`<div class="dim">${t("agd.reg.noDates")}</div>`}
 
       <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">${t("agd.reg.link")}</a></p>
@@ -315,6 +317,14 @@ export async function render(main, { query }) {
     </div>`;
   }
 
+  // where an event of another country comes from: its federation's page (Spain: SICO), its results platform (O-Replay)
+  const SOURCES = { sico: ["SICO", (v) => v], oreplay: ["O-Replay", (v) => `https://www.oreplay.es/competitions/${v.split("/")[0]}`] };
+  const sourceLinks = (e) => {
+    const out = Object.entries(e.src || {}).filter(([k, v]) => SOURCES[k] && v)
+      .map(([k, v]) => html`<a class="btn btn-sm" href="${SOURCES[k][1](v)}" target="_blank" rel="noopener">${t("agd.src", { site: SOURCES[k][0] })}</a>`);
+    return out.length ? html`<p class="row" style="margin:0;gap:8px;flex-wrap:wrap">${out}</p>` : "";
+  };
+
   function drawDetail() {
     const e = st.selected && byKey.get(st.selected);
     const box = $("#detail");
@@ -326,7 +336,7 @@ export async function render(main, { query }) {
       <div class="card-head"><div><h2>${e.name}</h2>
         <div class="hint">${longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
-        <div class="row" style="gap:6px">${!sees("FR") ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
+        <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
         ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
         ${startBox(e)}
@@ -334,6 +344,7 @@ export async function render(main, { query }) {
         ${accessBox(e)}
         <dl>
           ${row(t("agd.d.manif"), e.manif)}
+          ${row(t("agd.d.league"), e.league)}
           ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
           ${row(t("agd.d.region"), region)}
           ${row(t("agd.d.spec"), fmtFormat(e.spec))}
@@ -351,7 +362,8 @@ export async function render(main, { query }) {
           ${(e.extra || []).map(([l, v]) => row(l, v))}
           ${row(t("agd.d.obs"), e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
-        ${e.id != null && !e.declared ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
+        ${fr && e.id != null && !e.declared ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
+        ${sourceLinks(e)}
         <div class="detail-nav">${backBtn}</div>
       </div>`;
   }

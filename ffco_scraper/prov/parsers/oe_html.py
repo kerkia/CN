@@ -23,17 +23,20 @@ KIND = "oe_html"
 
 _SIGNS = ("sportsoftware", "stephan kr", "oe2010", "oe12", "oe2003", "oe11", "oe2013")
 _CONTROL = re.compile(r"^(\d+)\s*\(\s*(\w+)\s*\)$")
-_FINISH = ("arr", "arr.", "arrivee", "ziel", "finish", "f")
+_FINISH = ("arr", "arr.", "arrivee", "ziel", "finish", "f", "meta", "llegada", "arribada", "chegada")
 
-# OE column titles (plain()) -> field; French, English and German installs
+# OE column titles (plain()) -> field; French, English and German installs, Spanish (FEDO's Liga Española, 2026-10-22),
+# Catalan and Portuguese
 _COLS = {
     "pl": "place", "pl.": "place", "place": "place", "rang": "place", "platz": "place",
-    "nom": "name", "name": "name", "nom prenom": "name",
-    "doss.": "bib", "doss": "bib", "stno": "bib", "bib": "bib", "startnr": "bib",
-    "ne": "birth", "yb": "birth", "jg": "birth", "an": "birth",
-    "club": "club", "verein": "club",
-    "catg.": "category", "cat.": "category", "class": "category", "kat.": "category",
-    "temps": "time", "time": "time", "zeit": "time",
+    "pos": "place", "pos.": "place", "puesto": "place", "lloc": "place", "class.": "place",
+    "nom": "name", "name": "name", "nom prenom": "name", "nombre": "name", "nome": "name",
+    "doss.": "bib", "doss": "bib", "stno": "bib", "bib": "bib", "startnr": "bib", "dorsal": "bib",
+    "ne": "birth", "yb": "birth", "jg": "birth", "an": "birth", "ano": "birth", "any": "birth",
+    "club": "club", "verein": "club", "clube": "club",
+    "catg.": "category", "cat.": "category", "class": "category", "kat.": "category", "categoria": "category",
+    "clase": "category", "classe": "category",
+    "temps": "time", "time": "time", "zeit": "time", "tiempo": "time", "tempo": "time",
 }
 
 

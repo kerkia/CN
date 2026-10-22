@@ -32,6 +32,7 @@ from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
 from .sources import declared, upload
 from .sources.liveresultat import API as LR_API, LiveResultat
+from .sources.oreplay import OReplay
 from .parsers import VERSION as PARSER_VERSION, coursedata
 from .sources.winsplits import BASE as WS_BASE, WinSplits
 
@@ -53,9 +54,24 @@ MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 # is then kept once, whether matched automatically or linked from the organiser's site.
 PLATFORM_URL = {"liveresultat": "https://liveresultat.orientering.se/followfull.php?comp={}",
                 "winsplits": WS_BASE + "/classes.asp?databaseId={}", "heyries": HY_BASE + "/competition/{}/",
-                "helga": HG_BASE + "/splitsbrowser.php?lauf={}"}
+                "helga": HG_BASE + "/splitsbrowser.php?lauf={}", "oreplay": "https://www.oreplay.es/competitions/{}"}
 PLATFORM_ID = {"liveresultat": r"liveresultat\.orientering\.se/.*[?&]comp=(\d+)", "winsplits": r"[?&]databaseId=(\d+)",
-               "heyries": r"/competition/(\d+)", "helga": r"helga-o\.live/splits/\w+\.php\?lauf=(\d+)"}
+               "heyries": r"/competition/(\d+)", "helga": r"helga-o\.live/splits/\w+\.php\?lauf=(\d+)",
+               "oreplay": r"oreplay\.es/competitions/([0-9a-f-]{36}/[0-9a-f-]{36})"}
+# the time zones of a race's country, for liveresultat's competitions (a race in France reads only Paris's): the others
+# are their country module's (countries/<cc>), any time zone for a country without one
+TZ = {None: ("Europe/Paris",), "FR": ("Europe/Paris",)}
+
+
+def time_zones(country: str | None) -> tuple[str, ...] | None:
+    if country in TZ:
+        return TZ[country]
+    try:
+        import countries
+        TZ[country] = countries.get(country).time_zones or None
+    except (KeyError, ImportError):
+        TZ[country] = None
+    return TZ[country]
 
 
 def platform_id(kind: str, url: str) -> str | None:
@@ -67,7 +83,7 @@ def canonical_docs(con) -> int:
     """Platform documents saved under another spelling of their address: renamed, or dropped when the race already
     has that document (and Helga notes that name no event: its home page, its lists)."""
     n = 0
-    for row in con.execute("SELECT race_key, url, source FROM prov_docs WHERE source IN ('liveresultat', 'winsplits', 'heyries', 'helga')").fetchall():
+    for row in con.execute("SELECT race_key, url, source FROM prov_docs WHERE source IN ('liveresultat', 'winsplits', 'heyries', 'helga', 'oreplay')").fetchall():
         pid = platform_id(row["source"], row["url"])
         if pid is None:
             if row["source"] == "helga" and "lauf=" not in row["url"]:
@@ -175,8 +191,10 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
     """links: the platform competitions assigned to this race ({'liveresultat': id, 'winsplits': id, …})."""
     changed = site_docs(con, race, f, lr, ws, hy, cs, reread, hg)
     matched = []
-    # liveresultat and WinSplits: the competition of that day assigned to this race (races.assign)
-    if links.get("liveresultat") and not f.out_of_time() and (lr.info(links["liveresultat"]).get("timezone") or "Europe/Paris") == "Europe/Paris":
+    # liveresultat and WinSplits: the competition of that day assigned to this race (races.assign); liveresultat's of the
+    # race's country only (by its time zone)
+    tzs = time_zones(race["country"])
+    if links.get("liveresultat") and not f.out_of_time() and (tzs is None or (lr.info(links["liveresultat"]).get("timezone") or "Europe/Paris") in tzs):
         url = PLATFORM_URL["liveresultat"].format(links["liveresultat"])
         matched.append(url)                   # kept even if emptied since: live results are cleared after the event
         d = lr.read(links["liveresultat"])
@@ -203,6 +221,14 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
             changed += save(con, race["key"], url, "heyries", d, note=MATCHED)
         elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
             save(con, race["key"], url, "heyries", None, kind="empty", note=MATCHED)     # matched, nothing (left) to read
+    if links.get("oreplay") and not f.out_of_time():           # the competition the race's agenda names (O-Replay, Spain)
+        url = PLATFORM_URL["oreplay"].format(links["oreplay"])
+        matched.append(url)
+        d = OReplay(f).read(links["oreplay"])
+        if d and d["classes"]:
+            changed += save(con, race["key"], url, "oreplay", d, note=MATCHED)
+        elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
+            save(con, race["key"], url, "oreplay", None, kind="empty", note=MATCHED)     # nothing uploaded (yet)
     if links.get("helga") and hg and not f.out_of_time():
         url = PLATFORM_URL["helga"].format(links["helga"])
         matched.append(url)
@@ -258,6 +284,10 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
     """The organiser's website: its result files, and the platform competitions it links to."""
     changed = 0
     sites = [s for s in dict.fromkeys([race["site"], races.club_site(con, race["org_code"])]) if s]
+    # another country's race: its organiser's pages are in another language, which the search's words (« résultats »,
+    # French days and months) do not read — the platforms only, until its own words are taught (2026-10-22)
+    if race["country"] not in (None, "FR"):
+        sites = []
     # files a looser search took earlier that name another day or season (a club's « all our races » page): not this race's
     day = date.fromisoformat(race["date_iso"])
     for row in con.execute(f"""SELECT url, note FROM prov_docs WHERE race_key = ? AND source = 'site'
@@ -344,8 +374,8 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 if url in seen:
                     continue
                 seen.add(url)
-                reader = {"liveresultat": lr, "winsplits": ws, "heyries": hy, "helga": hg}[kind]
-                d = reader.read(int(pid))
+                reader = {"liveresultat": lr, "winsplits": ws, "heyries": hy, "helga": hg}.get(kind) or OReplay(f)
+                d = reader.read(pid if kind == "oreplay" else int(pid))
                 if d and d["classes"] and date_ok(d, race):
                     changed += save(con, race["key"], url, kind, d)
             elif kind == "helga" and "lauf=" not in url:
@@ -393,7 +423,7 @@ def region_of(org_code: str | None) -> str | None:
 # The order a race's documents are shown in (the first one opens): the organiser's own files (or a file sent to
 # Ozimut) are the reference; liveresultat comes last — live results are not corrected afterwards. A document missing
 # half the runners of the fullest one loses its rank; then a list by circuit (scored), with splits, the most runners.
-SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "helga": 3, "liveresultat": 1}
+SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "oreplay": 4, "helga": 3, "liveresultat": 1}
 
 
 # The copy for the accounts that have not joined France (prov/pub/; owner, 2026-10-20: names and times for everyone, as
@@ -719,8 +749,9 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     seen = store.meta_get(con, "startsites", {})
     now = datetime.now(timezone.utc)
     org = set(store.meta_get(con, "org_starts", []) or [])          # their organiser gave it: nothing to look for
-    due = [r for r in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? ORDER BY date_iso",
-                                  (today.isoformat(), hi)).fetchall()
+    # (France's races: the search reads French words, site_docs)
+    due = [r for r in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? AND COALESCE(country, 'FR') = 'FR' "
+                                  "ORDER BY date_iso", (today.isoformat(), hi)).fetchall()
            if r["key"] not in org and (not seen.get(r["key"]) or now - datetime.fromisoformat(seen[r["key"]]) >= timedelta(hours=START_EVERY))]
     due.sort(key=lambda r: seen.get(r["key"], ""))
     changed = 0
@@ -850,6 +881,7 @@ def build(con, out: Path, today: date) -> int:
                         if r["lic"] and r["lic"] in ffco:
                             r["ffco"] = ffco[r["lic"]]
                         privacy.anonymise_row(anon, r)
+                        r.pop("card", None)              # a SportIdent number tells runners apart (the matching), never shown
                     if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and not foreign:
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):
@@ -929,6 +961,15 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         agenda = agenda or (out / "fr" / "agenda.json")     # France's (site/data/fr since 2026-10-22)
         races.refresh_clubs(con, agenda)
         stats = races.sync(con, agenda, today, days)
+        # the other countries' agendas (countries/<cc>: Spain's from 2026-10-22): their races, keyed by their own ids
+        try:
+            import countries
+            for m in countries.modules():
+                if m.COUNTRY.code != "FR" and hasattr(m, "agenda_path"):
+                    got = races.sync_country(con, m.agenda_path(out), today, days, m.COUNTRY.code)
+                    stats[f"added_{m.COUNTRY.key}"] = got["added"]
+        except Exception:
+            log.exception("provisional: another country's agenda failed")
         stats["renamed"] = canonical_docs(con)
         try:
             stats["club_dir"] = races.read_directory(con, f)
@@ -1007,7 +1048,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
             f.race = race["key"]
             try:
                 links = {"liveresultat": lr_map.get(race["key"]), "winsplits": ws_map.get(race["key"]), "heyries": hy_map.get(race["key"]),
-                         "helga": hg_map.get(race["key"])}
+                         "helga": hg_map.get(race["key"]), **json.loads(race["links"] or "{}")}
                 changed += look(con, race, f, lr, ws, hy, cs, links, reread, hg)
             except Exception:                         # one race's odd page must not stop the others
                 log.exception("provisional: %s failed", race["key"])

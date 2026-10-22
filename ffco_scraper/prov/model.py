@@ -22,6 +22,8 @@ A parsed document (one results or split-times file, one liveresultat competition
               "time_s":    float | None,                # total time in seconds (None when not classified)
               "status":    "ok" | "mp" | "dnf" | "dsq" | "ot" | "dns" | "nc",
               "splits":    [float | None, …] | None,    # cumulative seconds at each control of `controls`
+              "sex":       "F" | "M" | None,             # when the source gives it (O-Replay)
+              "card":      str | None,                  # the SportIdent card, when the source gives it
           }, …],
       }, …],
     }
@@ -39,11 +41,14 @@ STATUSES = ("ok", "mp", "dnf", "dsq", "ot", "dns", "nc")
 
 # Words organisers print instead of a time, by status (lower-case, accents stripped)
 STATUS_WORDS = {
-    "mp": ("pm", "p.m.", "mp", "poincon manquant", "poinc. manquant", "missing punch", "mispunch", "manquant"),
-    "dnf": ("ab", "abandon", "abd", "dnf", "abandonne", "aband", "forfait"),
-    "dsq": ("disq", "disq.", "dsq", "disqualifie", "disqualifiee", "dq"),
-    "ot": ("hd", "hors delai", "hors-delai", "h.d.", "h. delai", "ot", "over time", "temps max", "depassement"),
-    "dns": ("np", "non partant", "dns", "absent", "abs"),
+    # (French and English, then Spanish: OE12 and MeOS in Spanish, « Error en tarj. », « Abandona », « No sale »)
+    "mp": ("pm", "p.m.", "mp", "poincon manquant", "poinc. manquant", "missing punch", "mispunch", "manquant",
+           "error en tarj", "error en tarjeta", "error tarjeta", "tarjeta erronea", "falta baliza", "error"),
+    "dnf": ("ab", "abandon", "abd", "dnf", "abandonne", "aband", "forfait", "abandona", "retirado", "retirada"),
+    "dsq": ("disq", "disq.", "dsq", "disqualifie", "disqualifiee", "dq", "desc", "desc.", "descalificado", "descalificada"),
+    "ot": ("hd", "hors delai", "hors-delai", "h.d.", "h. delai", "ot", "over time", "temps max", "depassement",
+           "fuera de tiempo", "f. tiempo", "fuera tiempo"),
+    "dns": ("np", "non partant", "dns", "absent", "abs", "no sale", "no salio", "no presentado", "n/p"),
     "nc": ("nc", "n.c.", "hc", "hors concours", "hors course", "non classe", "nl"),
 }
 
@@ -118,12 +123,16 @@ def runner(name: str, **kw) -> dict:
     """A runner row with every key present."""
     r = {"place": None, "name": re.sub(r"\s+", " ", str(name or "")).strip(), "club": None, "club_code": None,
          "category": None, "birth": None, "bib": None, "time_s": None, "status": "ok", "splits": None,
-         "start_s": None}                           # start, seconds after midnight (local): who ran with whom
+         "start_s": None,                           # start, seconds after midnight (local): who ran with whom
+         "sex": None, "card": None}                 # (O-Replay gives both; the others rarely)
     r.update({k: v for k, v in kw.items() if k in r})
     if r["club"] and not r["club_code"]:
         r["club_code"] = club_code(r["club"])
     if r["status"] == "ok" and r["time_s"] is None:
         r["status"] = "dnf"
+    for k in ("sex", "card"):                      # only when a source gives them: the published rows stay as they were
+        if r[k] is None:
+            del r[k]
     return r
 
 

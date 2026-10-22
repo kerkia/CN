@@ -18,9 +18,14 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Indépendance et sources</h2>
       <p>${SITE} est indépendant, non officiel et gratuit, sans lien avec aucune fédération ni aucun organisateur. Ses sources : pour la France,
         les résultats, le classement national (CN) et l'agenda publiés par la Fédération française de course d'orientation (FFCO)
-        sur cn.ffcorientation.fr et ffcorientation.fr, qui restent la référence ; pour toutes les courses, les résultats et les
-        horaires que publient les organisateurs (leur site, liveresultat, WinSplits, Helga, Orientation Data) ou qu'ils déposent sur
-        ${SITE}.</p>
+        sur cn.ffcorientation.fr et ffcorientation.fr, qui restent la référence ; pour l'Espagne, le calendrier et les inscriptions
+        publiés par la Fédération espagnole (FEDO) sur sico.fedo.org, et les résultats publiés sur O-Replay (oreplay.es) ; pour
+        toutes les courses, les résultats et les horaires que publient les organisateurs (leur site, liveresultat, WinSplits, Helga,
+        Orientation Data, O-Replay) ou qu'ils déposent sur ${SITE}.</p>
+      <p>Pour l'Espagne, ${SITE} reprend les résultats publics des courses (nom, club, catégorie, temps, temps intermédiaires) et le
+        nombre d'inscrits par catégorie ; il n'affiche aucun numéro de licence ni de puce SportIdent. Ces résultats étant publics, ils
+        sont visibles par tous les comptes connectés. Toute personne concernée peut demander à ne plus y être identifiée (voir
+        « Vos droits »).</p>
       <h2 style="font-size:16px">Données des résultats, y compris celles des licenciés sans compte</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr : nom,
         club, catégorie, numéro de licence, temps et place de chaque licencié classé, qu'il dispose ou non d'un compte sur ${SITE}, y
@@ -161,5 +166,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 20 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 22 octobre 2026.</p>
 `;
