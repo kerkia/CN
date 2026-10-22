@@ -6,7 +6,9 @@
 db.sqlite3.zst       the database (paths.DB)
 site-state.tar.zst   what an incremental rebuild starts from: site/data and
                      site/auth, the club-names cache, and the "deploy pending"
-                     marker of a rebuilt site that could not be published yet
+                     marker of a rebuilt site that could not be published yet;
+                     and the other countries' databases (countries/<cc>: Spain's
+                     es.sqlite3, 2026-10-22), far smaller than France's
 
 Python 3.14's own zstd support is used, so the same script runs on Windows
 (the first upload) and on the runner.
@@ -34,6 +36,12 @@ NOTIFY_PENDING = paths.DATA_DIR / "notify.pending.json"
 NOTIFY_DONE = paths.DATA_DIR / "notify.catchup"
 
 
+def other_dbs() -> list[Path]:
+    """The other countries' databases that exist (France's is db.sqlite3.zst)."""
+    import countries
+    return [c.db for c in countries.registry() if c.code != "FR" and c.db.exists()]
+
+
 def pack(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.monotonic()
@@ -49,6 +57,8 @@ def pack(out: Path) -> None:
         for f in (NOTIFY_PENDING, NOTIFY_DONE):
             if f.exists():
                 tar.add(f, arcname=f.name)
+        for db in other_dbs():
+            tar.add(db, arcname=f"db/{db.name}")
     sizes = ", ".join(f"{p.name} {p.stat().st_size / 2**20:.0f} MiB" for p in (out / DB_FILE, out / SITE_FILE))
     print(f"packed in {time.monotonic() - t0:.0f}s: {sizes}")
 
@@ -62,6 +72,9 @@ def unpack(src: Path) -> None:
         for m in tar.getmembers():
             if m.name.startswith("site/"):
                 tar.extract(m, ROOT, filter="data")
+            elif m.name.startswith("db/"):           # another country's database: into the data folder
+                m.name = m.name[3:]
+                tar.extract(m, paths.DATA_DIR, filter="data")
             else:                                   # cache/…, deploy.pending
                 tar.extract(m, paths.DATA_DIR, filter="data")
     print(f"unpacked in {time.monotonic() - t0:.0f}s into {ROOT / 'site'} and {paths.DATA_DIR}")

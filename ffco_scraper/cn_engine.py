@@ -68,6 +68,41 @@ K_BY_YEAR: dict[int, float] = {2022: 0.95}
 DEFAULT_K = 1.0
 
 
+def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: float = 1000.0, days: int = 365) -> dict:
+    """A method computed for a country without official CNs: no runner has a level its first circuits could be valued
+    from. First pass: everyone starts at the same `level` for the archive's first `days` in each ranking family (a
+    circuit's value is then its runners' common pace); each next pass: everyone starts from their own first computed
+    level — the first season valued by the levels it shows, as France's first season is by the CN its runners held then.
+    The recalage brings the scale to its usual level afterwards."""
+    firsts = {fam: d for fam, d in (
+        (family(t), d) for t, d in engine.conn.execute(
+            """SELECT comp.terrain, MIN(comp.date_iso) FROM competitions comp WHERE comp.date_iso IS NOT NULL
+               GROUP BY comp.terrain"""))}
+    start = min(firsts.values()) if firsts else None
+    if not start:
+        return {"passes": 0}
+    engine.seed_until_override = (date.fromisoformat(start) + timedelta(days=days)).isoformat()
+    who = engine.conn.execute(
+        """SELECT DISTINCT r.licence, comp.terrain FROM results r JOIN circuits c ON c.circuit_id = r.circuit_id
+           JOIN competitions comp ON comp.course_id = c.course_id WHERE r.licence IS NOT NULL""").fetchall()
+    engine.seeds_override = {(lic, family(t)): (level, None) for lic, t in who}
+    stats = {}
+    for i in range(passes):
+        for table in ("scores", "cn_history", "circuit_values", "rescale_factors", "normalisation"):
+            engine.conn.execute(f"DELETE FROM {table} WHERE method = ?", (spec.name,))
+        engine.conn.commit()
+        stats = engine.run_method(spec)
+        if i + 1 < passes:
+            first: dict = {}
+            for lic, t, raw in engine.conn.execute(
+                    """SELECT licence, terrain, cn_raw FROM cn_history WHERE method = ? AND cn_raw IS NOT NULL
+                       ORDER BY date_iso""", (spec.name,)):
+                first.setdefault((lic, family(t)), (raw, None))
+            mean = sum(v for v, _ in first.values()) / len(first) if first else level
+            engine.seeds_override = {k: first.get(k, (mean, None)) for k in engine.seeds_override}
+    return {"passes": passes, **stats}
+
+
 def family(terrain: str | None) -> str:
     """The official ranking a terrain's CN J-15 belongs to: forest and sprint shared
     one pedestrian CN until 2026; VTT and ski always had their own."""
@@ -313,6 +348,11 @@ def build_methods() -> dict[str, MethodSpec]:
     }
 
 class CnEngine:
+    # A country without official CNs (Spain, 2026-10-22): nothing seeds its first circuits. The caller's seeds and their
+    # end replace FFCO's (load_seeds, params.seed_until): `bootstrap` starts everyone equal, then from their own level.
+    seeds_override: dict | None = None
+    seed_until_override: str | None = None
+
     def __init__(self, db_path: Path) -> None:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
@@ -502,10 +542,11 @@ class CnEngine:
         and the computation resumes from there — exact, because a circuit only
         ever depends on races before it."""
         p = spec.params
-        seeds = self.load_seeds(f"{min(seasons)}-01-01" if seasons else None, p.lag_days)
+        seeds = self.seeds_override if self.seeds_override is not None else             self.load_seeds(f"{min(seasons)}-01-01" if seasons else None, p.lag_days)
+        seed_until = self.seed_until_override or p.seed_until
 
         def seed(licence: str, terrain: str, as_of: date):
-            if p.seed_until and as_of.isoformat() >= p.seed_until:
+            if seed_until and as_of.isoformat() >= seed_until:
                 return None
             s = seeds.get((licence, family(terrain)))
             return s[0] if s and (s[1] is None or as_of >= s[1]) else None

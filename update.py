@@ -344,6 +344,9 @@ def main() -> None:
         # Published only when something new was found: a mere "looked again" must not cost a deploy.
         if not args.dry_run:
             _provisional(args)
+        # 4c. the other countries' rankings (Spain's: its archive, who is who, the engine), once a day, in the full run
+        if not args.dry_run and not args.new_only:
+            _countries(args)
         if args.deploy and DEPLOY_PENDING.exists() and deploy(args.db):
             DEPLOY_PENDING.unlink(missing_ok=True)
         # 5. e-mail the subscribers (only once nothing is waiting to be published) and drain the mail queue
@@ -412,6 +415,26 @@ def _agenda(module, root: Path) -> bool:
     except Exception as e:
         print(f"agenda {module.COUNTRY.code}: failed — {type(e).__name__}: {e}")
         return False
+
+
+def _countries(args) -> None:
+    """Each other country's daily update (countries/<cc>/ranking.py); a failure never stops the run."""
+    for m in countries.modules():
+        if m.COUNTRY.code == "FR":
+            continue
+        try:
+            import importlib
+            ranking = importlib.import_module(f"countries.{m.COUNTRY.key}.ranking")
+        except ImportError:
+            continue
+        try:
+            st = ranking.update(args.out, prov_db=args.db, budget_s=float(os.environ.get("COUNTRY_BUDGET", "900")))
+            print(f"{m.COUNTRY.code}: {st}")
+            if st.get("built"):
+                countries.write_index(args.out)
+                DEPLOY_PENDING.touch()
+        except Exception as e:
+            print(f"{m.COUNTRY.code}: failed — {type(e).__name__}: {e}")
 
 
 def _provisional(args) -> None:

@@ -119,6 +119,8 @@ jobs:
           # known (kept in the database by update.sync_privacy) is used
           aws s3 cp "$BUCKET/privacy/anonymized.json" "$CN_DATA_DIR/privacy/anonymized.json" --endpoint-url "$R2" --only-show-errors || echo "no anonymised runners list"
           echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
+          # the other countries' databases (Spain's es.sqlite3…), saved in the site state
+          echo "OTHERS_BEFORE=$(for f in "$CN_DATA_DIR"/*.sqlite3; do case "$f" in *ffco_results*) ;; *) [ -f "$f" ] && cat "$f" ;; esac; done | sha256sum | cut -c1-64)" >> "$GITHUB_ENV"
           echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
           # every country's agenda (site/data/<cc>/agenda.json: France's, Spain's…)
           echo "AGENDA_BEFORE=$(cat site/data/*/agenda.json 2>/dev/null | sha256sum | cut -c1-64)" >> "$GITHUB_ENV"
@@ -148,7 +150,8 @@ jobs:
           after=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)
           pending=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)
           agenda=$(cat site/data/*/agenda.json 2>/dev/null | sha256sum | cut -c1-64)
-          if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ] && [ "$agenda" = "$AGENDA_BEFORE" ]; then
+          others=$(for f in "$CN_DATA_DIR"/*.sqlite3; do case "$f" in *ffco_results*) ;; *) [ -f "$f" ] && cat "$f" ;; esac; done | sha256sum | cut -c1-64)
+          if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ] && [ "$agenda" = "$AGENDA_BEFORE" ] && [ "$others" = "$OTHERS_BEFORE" ]; then
             echo "nothing changed — state left as it is"; exit 0
           fi
           python ci/state.py pack "$STATE"

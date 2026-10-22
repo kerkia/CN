@@ -19,7 +19,8 @@ export const body = (SITE, { world = false } = {}) => `
         (FEDO) on sico.fedo.org, and the results published on O-Replay (oreplay.es); for every race, the results and start times
         the organisers publish (their website, liveresultat, WinSplits, Helga, Orientation Data, O-Replay) or upload to ${SITE}.</p>
       <p>For Spain, ${SITE} takes the races' public results (name, club, category, time, split times) and the number of entries per
-        category; it shows no licence or SportIdent card number. These results being public, every signed-in account can see them.
+        category; to recognise the same runner from one race to the next, it also reads the FEDO's public list of licence holders
+        (name, club, regional federation, licence and card numbers), of which it shows no number. These results being public, every signed-in account can see them.
         Anyone concerned may ask no longer to be identified in them (see “Your rights”).</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the

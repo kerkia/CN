@@ -513,15 +513,19 @@ def main(out: Path | None = None) -> None:
     years = meta["seasons"]
     comps = load(OUT / "competitions.json")["rows"]
     print("extras:")
-    elite_rows = elite(comps)
+    # France's own (meta `country`, build_site --country): FFCO's elite levels, the Coupe de France des clubs, the methods
+    # measured against the official CN on France's seasons; another country's are its own study's
+    fr = meta.get("country", "FR") == "FR"
+    elite_rows = elite(comps) if fr else []
     club_files(years, elite_rows)
     age_curves(years)
     network(comps)
     pyramid(comps)
-    validation(comps)
-    cfc(comps)
-    import site_eval
-    site_eval.evaluation(comps, out=OUT)
+    if fr:
+        validation(comps)
+        cfc(comps)
+        import site_eval
+        site_eval.evaluation(comps, out=OUT)
     import site_ask
     try:                                        # « IA »'s tables: never a reason for the site's update to fail
         site_ask.build(OUT)

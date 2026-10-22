@@ -201,6 +201,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out", type=Path, default=None, help="output folder (default site/data)")
     ap.add_argument("--db", type=Path, default=None)
     ap.add_argument("--auth", type=Path, default=None, help="the login index's folder (default site/auth)")
+    ap.add_argument("--country", default="FR", help="the country built (countries/<cc>): its names, its rules")
     ap.add_argument("--anon", type=Path, default=None,
                     help="the anonymised runners' list (default: privacy.FILE, copied from R2 by the workflow)")
     args = ap.parse_args(argv)
@@ -238,10 +239,16 @@ def main(argv: list[str] | None = None) -> None:
 
     # the anonymised runners (privacy.py): every licence read below goes through anon.lic, so that their pseudonym,
     # never their licence, is in the files; their names are replaced in runners.json, the only file that has names
-    anon = privacy.load(args.anon)
+    # France's list (the admin page's « Anonymisés »); another country's runners have their own numbers: none listed yet
+    fr = args.country.upper() == "FR"
+    anon = privacy.load(args.anon) if fr else privacy.Anon([])
     if anon:
         print(f"anonymised runners: {len(anon.by_lic)}")
-    names = reference_names(conn)
+    if fr:
+        names = reference_names(conn)
+    else:                                      # the country's own: its clubs' numbers and regions (countries/<cc>/clubs.py)
+        import importlib
+        names = importlib.import_module(f"countries.{args.country.lower()}.clubs").names(conn)
     print(f"names: {len(names['clubs'])} clubs, {len(names['ligues'])} ligues, "
           f"{len(names['depts'])} depts")
 
@@ -369,6 +376,9 @@ def main(argv: list[str] | None = None) -> None:
     for (lic, cid), r in by_method["official"].items():
         per_runner[lic].append((r["date_iso"], cid))
     names_by_lic = {lic: privacy.label(lic) if privacy.is_pseudo(lic) else r["nom"] for (lic, cid), r in raw_res.items()}
+    # a country whose runners Ozimut tells apart itself (countries/identity.py): the name its persons table keeps
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'persons'").fetchone():
+        names_by_lic.update({str(i): n for i, n in conn.execute("SELECT id, name FROM persons")})
 
     runners = []
     attrs_timeline = {}              # licence -> [(date, cat, club)]
@@ -386,7 +396,8 @@ def main(argv: list[str] | None = None) -> None:
         runners.append([lic, names_by_lic.get(lic, ""), sexe, lst[0][0], lst[-1][0],
                         len(lst), *per_t.values(), last[1], last[2]])
     runners.sort(key=lambda x: x[1])
-    write_auth_index(runners, list(real_names.values()))
+    if fr:                                    # the registration's check of an FFCO licence (functions/_lib/api.js)
+        write_auth_index(runners, list(real_names.values()))
     dump(OUT / "runners.json", {
         "cols": ["licence", "nom", "sexe", "first", "last", "n", *(f"n{t}" for t in TERRAIN_CODES), "cat", "club"],
         "rows": runners,
@@ -630,10 +641,13 @@ def main(argv: list[str] | None = None) -> None:
             "anchor_target": norm_cfg.target, "anchor_lag_months": norm_cfg.lag_months}
 
     COLOR = {"fair": 2, "top6w": 4}      # palette slots, as in the browser (charts.METHOD_SLOT)
-    methods_meta = {"official": {"color": 1},
+    # the official ranking, when the country's federation publishes values Ozimut has (France's CN; Spain's: none yet)
+    has_official = bool(off_events) or any(o["score"] is not None for o in by_method["official"].values())
+    methods_meta = {**({"official": {"color": 1}} if has_official else {}),
                     **{n: {"color": COLOR[n], "params": params_meta(PARAMS[n])} for n in COMPUTED}}
     meta = {
         "built": date.today().isoformat(),
+        "country": args.country.upper(),
         "min_season": min_season or None,
         "seasons": years,
         "months": [m.isoformat() for m in months if m.year >= min_season],

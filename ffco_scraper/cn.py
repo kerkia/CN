@@ -64,19 +64,21 @@ def _plain(text: str | None) -> str:
 TITLE_WEIGHTS = {"cdf": 2.0, "national": 1.5, "other": 1.0}
 
 
-def title_weight(title: str | None) -> float:
-    """Weight from the competition's name: a championnat de France 2, a national
-    race (O'France, Nationale ...) 1.5, anything else 1."""
+def title_weight(title: str | None, league: str | None = None) -> float:
+    """Weight from the competition's name: a national championship 2, a national race 1.5, anything else 1. France: a
+    championnat de France, O'France or a Nationale (in the name). Spain (2026-10-22; the league from SICO's calendar, in
+    `groupe`): a Campeonato de España, the Liga Española's races."""
     t = _plain(title)
-    if "championnat de france" in t:
+    lg = _plain(league)
+    if "championnat de france" in t or "campeonato de espana" in t or "campeonato de espana" in lg:
         return TITLE_WEIGHTS["cdf"]
-    if "o'france" in t or re.search(r"\bnationale\b", t):
+    if "o'france" in t or re.search(r"\bnationale\b", t) or "liga espanola" in lg or re.search(r"\bliga nacional\b", lg):
         return TITLE_WEIGHTS["national"]
     return TITLE_WEIGHTS["other"]
 
 
 def race_weight(groupe: str | None, title: str | None, params: "CnParams") -> float:
-    return title_weight(title) if params.weighting == "title" else group_weight(groupe)
+    return title_weight(title, groupe) if params.weighting == "title" else group_weight(groupe)
 
 
 @dataclass(frozen=True)

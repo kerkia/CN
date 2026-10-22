@@ -23,7 +23,8 @@ export const body = (SITE, { world = false } = {}) => `
         toutes les courses, les résultats et les horaires que publient les organisateurs (leur site, liveresultat, WinSplits, Helga,
         Orientation Data, O-Replay) ou qu'ils déposent sur ${SITE}.</p>
       <p>Pour l'Espagne, ${SITE} reprend les résultats publics des courses (nom, club, catégorie, temps, temps intermédiaires) et le
-        nombre d'inscrits par catégorie ; il n'affiche aucun numéro de licence ni de puce SportIdent. Ces résultats étant publics, ils
+        nombre d'inscrits par catégorie ; pour reconnaître un même coureur d'une course à l'autre, il lit aussi la liste publique
+        des licenciés de la FEDO (nom, club, fédération régionale, numéro de licence et de puce), dont il n'affiche aucun numéro. Ces résultats étant publics, ils
         sont visibles par tous les comptes connectés. Toute personne concernée peut demander à ne plus y être identifiée (voir
         « Vos droits »).</p>
       <h2 style="font-size:16px">Données des résultats, y compris celles des licenciés sans compte</h2>
