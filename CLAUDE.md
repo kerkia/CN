@@ -225,7 +225,7 @@ newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by 
 Online (sequential event ids scanned forward; HTML split tables, start times from the event's .spl file, an
 undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
 event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
-and are not read — the owner is telling Helga's developer), Orientation Data (heyries), and the organiser's site
+and are not read — the owner is telling Helga's developer), MeOSDjango sites (2026-10-22, `sources/meosdjango.py`: a MeOS results site any club installs — Orientation Data, `heyries`, is one, COCS 73's jolatomme.alwaysdata.net another; each course read once from its JSON `/api/<cid>/course/<hash>/live/`, start times and splits by control code, the coming races' start lists too; `KNOWN` plus the sites met on a club's site — a `/competition/<n>/` link probed, or a page with its signature —, kept in `prov_meta` « meosdjango »; a course re-read only when the competition page's « classés / partants » change), and the organiser's site
 (a short link text gets the heading it sits under — « Résultats SI » under « Régionale LIFCO, le 11/10/2026 » —, links
 without an extension on file hosts or saying « Résultats / départs / Annonce » are read to find out, Cloudinary's addresses
 kept in their stable form; WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other

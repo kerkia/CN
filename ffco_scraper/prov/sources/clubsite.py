@@ -13,6 +13,7 @@ its place or words of its name), or when it was uploaded after the race on a Wor
 else. Links to platforms (liveresultat, WinSplits, Livelox, Helga) are reported too: WinSplits and
 liveresultat ids found here are read directly, and so are Helga's SplitsBrowser links (sources.helga); Helga's
 results pages are only noted (they are not open to robots), Livelox's left out (GPS tracks sent, not results).
+A link to /competition/<n>/ on another host may be a MeOSDjango site's: reported, and probed (sources.meosdjango).
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ FILE_HOSTS = ("res.cloudinary.com", "dl.dropboxusercontent.com", "www.dropbox.co
 PLATFORMS = {"liveresultat.orientering.se": "liveresultat", "obasen.orientering.se": "winsplits", "livelox.com": "livelox",
              "helga-o.com": "helga", "helga-o.live": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries",
              "oreplay.es": "oreplay"}
+MEOSDJANGO_PATH = re.compile(r"^/competition/\d+(?:/|$)")
 
 
 _HEADING = re.compile(r"(?is)<(h[1-6]|strong|b|th|dt|caption|legend)\b[^>]*>(.*?)</\1>")
@@ -263,6 +265,7 @@ class ClubSite:
         # nothing of the race
         hosts = [_host(s).replace(".", " ") for s in sites]
         words = {w for w in race_words(race) if not any(w in h for h in hosts)}
+        own = {_host(s) for s in sites}
         found: dict[str, tuple[str, str]] = {}
         platforms: dict[str, str] = {}
         announcements: dict[str, str] = {}             # the race's announcement: its circuits' table
@@ -281,6 +284,11 @@ class ClubSite:
                     if names_race or posted_after:
                         platforms[url] = kind
                     return
+            # a competition's page on another site of the shape MeOSDjango gives them (/competition/<n>/): probed once
+            # (sources.meosdjango), read as a platform when it is one
+            if MEOSDJANGO_PATH.match(urllib.parse.urlsplit(url).path) and host not in own and (names_race or posted_after):
+                platforms[url] = "meosdjango"
+                return
             # (a file on the race's own page may sit in an older upload folder: WordPress keeps a replaced file's
             # first address — Fougères' October results in /uploads/2026/09/; its printed date decides then)
             if other_day(urllib.parse.unquote(url), d) or (not start and uploaded_before(url, d) and not (on_race_page or weekend_page)) or \
