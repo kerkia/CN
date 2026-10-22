@@ -22,7 +22,11 @@ const defaults = {
   clubs: [],              // [{code, slot}] — clubs being compared, same slot rule
   pageSize: 50,           // ranking list: 25 | 50 | 100 | "all"
   lastRunner: null,       // the current runner: last one opened, centred on or added anywhere
+  cc: null,               // the country whose runners and clubs the three above name (their numbers are that country's)
+  byCountry: {},          // the same three of the other countries, kept for a return to them: { ES: { compare, clubs, lastRunner } }
 };
+// what names a country's own runners and clubs (their numbers in its files, data.js): kept per country
+const PER_COUNTRY = ["compare", "clubs", "lastRunner"];
 
 let state = load();
 const listeners = new Set();
@@ -54,6 +58,22 @@ export function set(patch) {
   state = { ...state, ...patch };
   save();
   listeners.forEach((fn) => fn(state));
+}
+/**
+ * Another country's data loaded (data.useCountry): its own selection of runners and clubs comes back, the one left is
+ * kept for later. A selection saved before the countries is France's.
+ */
+export function useCountry(cc) {
+  const from = state.cc || "FR";
+  if (from === cc) {
+    if (!state.cc) set({ cc });
+    return;
+  }
+  const keep = Object.fromEntries(PER_COUNTRY.map((k) => [k, state[k]]));
+  const back = state.byCountry?.[cc] || {};
+  const byCountry = { ...(state.byCountry || {}), [from]: keep };
+  delete byCountry[cc];
+  set({ cc, byCountry, compare: back.compare || [], clubs: back.clubs || [], lastRunner: back.lastRunner || null });
 }
 export function subscribe(fn) {
   listeners.add(fn);

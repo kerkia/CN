@@ -24,7 +24,7 @@ const LIBS = [PDFLIB, FFLATE, FONTKIT, PDFJS, PDFJS_WORKER, PROJ4,
   `${FONT_PKG["Roboto Condensed"]}/files/roboto-condensed-latin-400-normal.woff`, `${FONT_PKG["Roboto Condensed"]}/files/roboto-condensed-latin-700-normal.woff`,
   ...FONT_CSS];
 const PAGES = ["/", "/assets/js/pages/tracer.js", "/assets/js/i18n/fr.js", "/assets/js/i18n/en.js", "/assets/js/i18n/tracer.fr.js",
-  "/assets/js/i18n/tracer.en.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/agenda.json"];
+  "/assets/js/i18n/tracer.en.js", "/assets/tracer/symbols.json", "/assets/tracer/symbol-texts.json", "/assets/tracer/crs.json", "/data/fr/agenda.json"];
 
 /** The service worker and the page's files, for opening the Tracer without the network. */
 async function prepareSite() {

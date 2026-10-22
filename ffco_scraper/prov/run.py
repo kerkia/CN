@@ -926,8 +926,9 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         budget_s *= CATCH_UP
     f = Fetcher(con, budget_s=budget_s)
     try:
-        races.refresh_clubs(con, agenda or (out / "agenda.json"))
-        stats = races.sync(con, agenda or (out / "agenda.json"), today, days)
+        agenda = agenda or (out / "fr" / "agenda.json")     # France's (site/data/fr since 2026-10-22)
+        races.refresh_clubs(con, agenda)
+        stats = races.sync(con, agenda, today, days)
         stats["renamed"] = canonical_docs(con)
         try:
             stats["club_dir"] = races.read_directory(con, f)

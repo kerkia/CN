@@ -13,7 +13,9 @@
 const CACHE = "ocn-offline-v1";                 // the Tracer's copy (offline.js makes and drops it)
 const SHELL = "ocn-shell-v2";                   // the offline page
 const OFFLINE = "/offline";                     // Pages serves offline.html there (its .html address redirects)
-const DATA = ["/data/meta.json", "/data/runners.json", "/data/competitions.json", "/data/agenda.json", "/data/prov/index.json"];
+// (France's files in /data/fr/ since 2026-10-22; the countries' index and the provisional results at the root)
+const DATA = ["/data/meta.json", "/data/fr/meta.json", "/data/fr/runners.json", "/data/fr/competitions.json", "/data/fr/agenda.json",
+  "/data/prov/index.json"];
 
 self.addEventListener("install", (e) => e.waitUntil((async () => {
   const c = await caches.open(SHELL);

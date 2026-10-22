@@ -66,7 +66,8 @@ commit results, personal data, secrets or credentials.
   values (`DEV_ECHO=1` echoes mails instead of sending, `REGISTRATION_OPEN=1`, `SITE_URL=http://localhost:8788`,
   local `SESSION_SECRET`/`NOTIFY_SECRET`). Create a local test account through the register flow.
 - Site data for the dev server comes from `site/data/`, built locally: `python -c "import build_site;
-  build_site.main(['--out','site/data','--db', <db>])"`. Test engine changes on a **copy** of
+  build_site.main(['--out','site/data/fr','--db', <db>, '--auth', <a folder>])"` (France's folder; `--auth` keeps a test
+  build's login index away from `site/auth`), then `python -c "import countries; countries.write_index()"`. Test engine changes on a **copy** of
   `C:\kerkia\cn-data\ffco_results.sqlite3`, never on the original.
 - To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
@@ -1222,10 +1223,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   challenges.cloudflare.com's script, the one script from another host, there only and only when `/api/account/status` gives a
   site key): `TURNSTILE_SITE_KEY` in wrangler.toml, `TURNSTILE_SECRET` a Pages secret (the owner's); either missing = no check.
   Locally, Cloudflare's always-pass test keys in `.dev.vars`.
-  **Access by country** (step 2): the login gate refuses France's data to a session without France (403 `{ error: "country",
-  need: "FR" }`, `_middleware.js` `needsFrance`): every path under `/data/` but `DATA_FOR_ALL` (meta, competitions, agenda,
-  evaluation, validation, `prov/pub/`) — deny by default, list a new file there only if it holds nothing personal of France —
-  and the APIs of `FR_API` (`ffco-cn`, `ffco-history`, `ask`, `account/relay`). A cookie without `cc` (issued before) is
+  **Access by country** (step 2; by each country's folder since 2026-10-22, « Countries as modules »): the login gate refuses
+  a country's data to a session its rule does not let in (403 `{ error: "country", need: "<cc>" }`, `_middleware.js` `needs`):
+  `/data/<cc>/…` follows `_lib/access.js` `DATA_ACCESS` (France "members", Spain "all"; a country without a rule: nobody),
+  but for `DATA_FOR_ALL` (a country's competitions, agenda, evaluation, validation; `prov/pub/`) and the public `meta.json`
+  files; anything else under `/data/` (the provisional results' full files) is France's — deny by default, list a new file
+  there only if it holds nothing personal — and so are the APIs of `FR_API` (`ffco-cn`, `ffco-history`, `ask`, `account/relay`). A cookie without `cc` (issued before) is
   checked at once. The Functions' own `env.ASSETS` reads (`_lib/club.js`) do not go through the gate. In the browser
   `auth.sees(cc)` (the session keeps `uid` and `countries`; one without a licence stays signed in; only a 401 signs out —
   `data.getJson`, Réglages, `app.route_`'s private boot —, never a refused or failed read, owner 2026-10-21; the gate keeps a
@@ -1273,6 +1276,22 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **Texts** (step 7): the privacy page (`content/privacy.*.js` `body(SITE, { world })`) and the home page's tour
   (`tourHtml(counts, { world })`, `tour.*.world`) read `/api/account/status` `world`: they say what is true on either side
   of `WORLD_OPEN`; the countries kept are listed either way.
+- **Countries as modules** (owner, 2026-10-22: Spain the first after France, other countries to follow; plan
+  `~/.claude/plans/happy-wobbling-lantern.md`): `countries/` — `base.py` (`Country`: code, federation, access rule, database,
+  time zones, the federation's ranking), one module per country (`countries/fr`: FFCO's fetch `fetch(args)`, its agenda
+  `refresh_agenda`), `registry()`, `write_index` (`site/data/meta.json` = `{ v: 2, countries: { FR: { access, federation, agenda,
+  ranking, methods, seasons, counts… } } }`, public). **Each country's files in `site/data/<cc>/`**, the same names in every
+  country (France's moved there once by `countries.move_legacy_layout`, run by `update.py`: a rename, retried — Windows' antivirus
+  locks a folder of thousands of new files a while —, else copied); the countries' index and the provisional results
+  (`site/data/prov/`) at the root. `update.py --out` is the root; `build_site`, `site_extras`, `site_eval`, `site_ask` take a
+  country's folder (France's by default). The browser: `data.js` reads the loaded country's folder (`root()`,
+  `loadedCountry()`, `useCountry(cc)` on a change of country: its own files, and `store.useCountry` swaps the per-country
+  selection — compare, clubs, lastRunner), `data.site()` the index; `country.info/access/ranks`; `auth.sees(cc)` by the
+  country's rule; the ranking pages (`app.FR_ROUTES`) need a country that ranks and that the account sees (`ranksHere`), else
+  `needCountry` (« no ranking yet » for a country without one). **Runner ids** carry their country: `#/coureur/fr1234567`
+  (`link.runner`, `data.parseId` / `fullId` / `localId`; a bare number, the links of before, is France's; a runner of another
+  country in the address makes it the site's); the files keep the number alone. `auth.myId()`: one's own number in the
+  loaded country (France's licence).
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

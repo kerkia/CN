@@ -33,15 +33,19 @@ export function session() {
   return null;
 }
 /**
- * May the signed-in account see a country's data (an accepted membership, migration 0014; a demo account sees France)?
- * The login gate refuses the rest (_middleware.js `needsFrance`). A session kept before the countries: its licence is France.
+ * May the signed-in account see a country's data? By the country's rule (data/meta.json `countries`, functions/_lib/access.js):
+ * "all" — every account (Spain) —, else an accepted membership (migration 0014; a demo account sees France). The login gate
+ * refuses the rest (_middleware.js `needs`). A session kept before the countries: its licence is France.
  */
 export function sees(cc) {
   const s = session();
   if (!s) return false;
+  if (data.site()?.countries?.[cc]?.access === "all") return true;
   if (s.demo) return cc === "FR";
   return Array.isArray(s.countries) ? s.countries.some((c) => c.cc === cc && c.status === "ok") : cc === "FR" && !!s.lic;
 }
+/** The signed-in runner's number in the loaded country's files (their FFCO licence in France), or null. */
+export const myId = () => (data.loadedCountry() === "FR" && session()?.lic) || null;
 /**
  * The provisional results' folder for this account: the full files for France's members, else the copy without CNs, scores
  * or licences (prov/pub/, ffco_scraper/prov/run.py `public_copy`; the login gate serves the full ones to France only).

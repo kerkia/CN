@@ -32,7 +32,7 @@ const inSentence = (name) => (name === name.toUpperCase() ? name : name.toLowerC
 
 export async function render(main, { arg, query }) {
   // #/coureur alone opens the runner last looked at, else the logged-in runner
-  const lic = arg || store.get().lastRunner || auth.session()?.lic;
+  const lic = arg || store.get().lastRunner || auth.myId();
   if (!lic) return pickRunner(main);
   const person = data.runner(lic);
   if (!person) { main.innerHTML = errorBox(t("err.notfound")); return; }
@@ -756,7 +756,7 @@ export async function render(main, { arg, query }) {
     if (!a || e.defaultPrevented || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const [path, qs] = a.getAttribute("href").split("?");
     const other = decodeURIComponent(path.split("/")[2] || "");
-    if (!other || other === lic) return;
+    if (!other || (data.localId(other) ?? other) === lic) return;
     e.preventDefault();
     goInPlace(sameView(other, Object.fromEntries(new URLSearchParams(qs || ""))));
   };

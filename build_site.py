@@ -56,7 +56,7 @@ from site_io import WRITES, dump, prune
 ROOT = Path(__file__).parent
 import paths  # noqa: E402
 DB = paths.DB
-OUT = ROOT / "site" / "data"
+OUT = ROOT / "site" / "data" / "fr"           # a country's folder (--out): France's by default
 NAMES_CACHE = paths.CACHE / "reference_names.json"
 TERRAINS = {"Forêt": "For", "Sprint": "Spr", "VTT": "VTT", "Ski": "Ski"}
 TERRAIN_CODES = list(TERRAINS.values())
@@ -155,6 +155,9 @@ def name_key(name: str | None) -> str:
     return " ".join(sorted(re.sub(r"[^a-z0-9]+", " ", s).split()))
 
 
+AUTH = ROOT / "site" / "auth"      # the login index: never under site/data (France's files are in site/data/fr since 2026-10-22)
+
+
 def write_auth_index(runners: list, real: list | None = None) -> None:
     """Credentials index for the server-side login (never served publicly):
     auth/{licence // 100}.json -> {licence: [sha256(name key), name]}. An anonymised runner is in it under their real
@@ -166,7 +169,7 @@ def write_auth_index(runners: list, real: list | None = None) -> None:
             continue
         b = int(lic) // 100 if lic.isdigit() else 999999
         buckets[b][lic] = [hashlib.sha256(name_key(nom).encode()).hexdigest(), nom]
-    folder = OUT.parent / "auth"
+    folder = AUTH
     for b, content in buckets.items():
         dump(folder / f"{b}.json", content)
     prune(folder, {f"{b}.json" for b in buckets})
@@ -185,7 +188,7 @@ def club_parts(club: str | None) -> tuple[str | None, str | None, str | None]:
 
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> None:
-    global OUT, DB
+    global OUT, DB, AUTH
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-season", type=int, default=None,
                     help="Only export seasons >= this (e.g. 2024 for the open seasons).")
@@ -197,6 +200,7 @@ def main(argv: list[str] | None = None) -> None:
                          "earlier seasons' snapshots are kept as they are.")
     ap.add_argument("--out", type=Path, default=None, help="output folder (default site/data)")
     ap.add_argument("--db", type=Path, default=None)
+    ap.add_argument("--auth", type=Path, default=None, help="the login index's folder (default site/auth)")
     ap.add_argument("--anon", type=Path, default=None,
                     help="the anonymised runners' list (default: privacy.FILE, copied from R2 by the workflow)")
     args = ap.parse_args(argv)
@@ -204,6 +208,8 @@ def main(argv: list[str] | None = None) -> None:
         OUT = args.out
     if args.db:
         DB = args.db
+    if args.auth:
+        AUTH = args.auth
     for k in WRITES:
         WRITES[k] = 0
 

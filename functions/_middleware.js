@@ -9,26 +9,42 @@
 // Needs one secret in the Pages project settings: SESSION_SECRET (any long
 // random string). Changing it logs everyone out.
 
+import { DATA_ACCESS } from "./_lib/access.js";
+
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
 // (/api/notify checks its own bearer secret; the /api/account and /api/admin endpoints check the session themselves)
-const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/, /^\/api\/logout$/,
+// (/data/meta.json: the countries the site reads; /data/<cc>/meta.json: a country's headline figures, for the login page)
+const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/,
+  /^\/data\/[a-z]{2}\/meta\.json$/, /^\/api\/logout$/,
   /^\/sw(-push)?\.js$/, /^\/manifest(\.en)?\.webmanifest$/, /^\/offline(\.html)?$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/];
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
 const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];
 const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
-// What a session may read by its countries (`cc`, the accepted memberships; owner, 2026-10-20). Everything under /data/ is
-// France's data — its licensees' names, results and CNs — except these, open to every account: the headline figures, the
-// list of competitions and the agenda (public on FFCO's site), the study's aggregates (the Documentation), and the
-// provisional results' copy without CN, scores or licences (prov/pub/). Deny by default: a new file is France's until listed.
-const DATA_FOR_ALL = [/^\/data\/(meta|competitions|agenda|evaluation|validation)\.json$/, /^\/data\/prov\/pub\//];
+// What a session may read by its countries (`cc`, the accepted memberships; owner, 2026-10-20). Each country's data sits in
+// /data/<cc>/ (2026-10-22) and follows that country's rule (_lib/countries.js DATA_ACCESS): "members" — France: its
+// licensees' names, results and CNs, the FFCO's older seasons being members-only on its own site —, or "all" — Spain:
+// every result is public, so is what is computed from them (owner, 2026-10-22). Open to every account whatever the rule:
+// a country's list of competitions and agenda, the study's aggregates (the Documentation), and the provisional results'
+// copy without CN, scores or licences (prov/pub/). Deny by default: a country folder without a rule is nobody's, and
+// anything else under /data/ (the provisional results' full files) is France's.
+const DATA_FOR_ALL = [/^\/data\/[a-z]{2}\/(competitions|agenda|evaluation|validation)\.json$/, /^\/data\/prov\/pub\//];
 // the endpoints that serve France's data: FFCO's own pages, « IA » (it queries the French tables), the relay's added runners
 const FR_API = [/^\/api\/ffco-(cn|history)$/, /^\/api\/ask$/, /^\/api\/account\/relay$/];
-/** Does a path need France? */
-export const needsFrance = (path) => (path.startsWith("/data/") && !DATA_FOR_ALL.some((re) => re.test(path)))
-  || FR_API.some((re) => re.test(path));
+/**
+ * What reading a path needs: null (any signed-in account), a country's code (an accepted membership of it), or "none".
+ */
+export function needs(path) {
+  if (FR_API.some((re) => re.test(path))) return "FR";
+  if (!path.startsWith("/data/") || DATA_FOR_ALL.some((re) => re.test(path))) return null;
+  const m = /^\/data\/([a-z]{2})\//.exec(path);
+  if (!m) return "FR";
+  const cc = m[1].toUpperCase();
+  const rule = DATA_ACCESS[cc];
+  return !rule ? "none" : rule === "all" ? null : cc;
+}
 
 /**
  * The path as the file server will resolve it: percent-decoding undone
@@ -139,8 +155,9 @@ export async function onRequest(context) {
     const token = await signSession({ ...s, lic: u.licence, cc, chk: Date.now() }, env.SESSION_SECRET);
     refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
   }
-  if (needsFrance(path) && !(cc || []).includes("FR")) {
-    return new Response(JSON.stringify({ error: "country", need: "FR" }), {
+  const need = needs(path);
+  if (need && !(cc || []).includes(need)) {
+    return new Response(JSON.stringify({ error: "country", need }), {
       status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
     });
   }

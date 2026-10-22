@@ -24,9 +24,10 @@ const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits
 const mmss = (s) => { if (!Number.isFinite(s)) return ""; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
 const hhmm = (s) => { if (!Number.isFinite(s)) return ""; const m = Math.round(s / 60); return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
 const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(circuit|parcours)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-// (the provisional results from this account's folder: without France, the copy without CNs — auth.provDir)
+// (the provisional results from this account's folder: without France, the copy without CNs — auth.provDir; the rest is
+// France's: its agenda, competitions and races, in data/fr/ since 2026-10-22)
 const getData = async (path) => {
-  const r = await fetch(path.startsWith("prov/") ? `${provDir()}${path.slice(5)}` : `data/${path}`, { credentials: "same-origin", cache: "no-store" });
+  const r = await fetch(path.startsWith("prov/") ? `${provDir()}${path.slice(5)}` : `data/fr/${path}`, { credentials: "same-origin", cache: "no-store" });
   return r.ok ? r.json().catch(() => null) : null;
 };
 const courseList = (ev) => M.courseIds(ev, false).filter((id) => ev.courses[id].kind !== "score");

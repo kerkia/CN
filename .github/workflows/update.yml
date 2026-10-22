@@ -2,7 +2,7 @@
 #
 #   every hour         quick run: new competitions of the last 2 months only
 #   03:00 Paris time   full run: the last ~3 months, corrections included
-#   06:00 Paris time   agenda run: upcoming events, registrations (site/data/agenda.json)
+#   06:00 Paris time   agenda run: upcoming events, registrations (site/data/fr/agenda.json)
 #   Sat/Sun evenings   provisional-results run every 20 min (organisers publish results
 #                      on the evening of the race; live results are complete by then)
 #   push to main       publish the site's new code (site/, functions/) with the
@@ -120,7 +120,7 @@ jobs:
           aws s3 cp "$BUCKET/privacy/anonymized.json" "$CN_DATA_DIR/privacy/anonymized.json" --endpoint-url "$R2" --only-show-errors || echo "no anonymised runners list"
           echo "DB_BEFORE=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)" >> "$GITHUB_ENV"
           echo "PENDING_BEFORE=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)" >> "$GITHUB_ENV"
-          echo "AGENDA_BEFORE=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"
+          echo "AGENDA_BEFORE=$(sha256sum site/data/fr/agenda.json 2>/dev/null | cut -c1-64)" >> "$GITHUB_ENV"
 
       - name: Update and publish
         env:
@@ -146,7 +146,7 @@ jobs:
         run: |
           after=$(sha256sum "$CN_DATA_DIR/ffco_results.sqlite3" | cut -c1-64)
           pending=$([ -f "$CN_DATA_DIR/deploy.pending" ] && echo 1 || echo 0)
-          agenda=$(sha256sum site/data/agenda.json 2>/dev/null | cut -c1-64)
+          agenda=$(sha256sum site/data/fr/agenda.json 2>/dev/null | cut -c1-64)
           if [ "$after" = "$DB_BEFORE" ] && [ "$pending" = "$PENDING_BEFORE" ] && [ "$agenda" = "$AGENDA_BEFORE" ]; then
             echo "nothing changed — state left as it is"; exit 0
           fi

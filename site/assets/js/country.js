@@ -15,7 +15,8 @@ import { flag } from "./vendor.js";
 const KEY = "ocn.country";
 /** The countries the site offers: those whose data it holds, then those the account has joined (their organisers' competitions). */
 export function withData() {
-  const read = Array.isArray(data.meta()?.countries) && data.meta().countries.length ? data.meta().countries : ["FR"];
+  const read = Object.keys(data.site()?.countries || {});
+  if (!read.length) read.push("FR");
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
   return [...new Set([...read, ...mine])];
 }
@@ -37,6 +38,12 @@ export function pick(cc) {
 }
 /** An event or race of a country (the data's `country`; France when it has none, as everything before 2026-10-20). */
 export const of = (x) => x?.country || "FR";
+/** What the site has of a country (data/meta.json `countries`): { access, federation, ranking, agenda, methods… }, or null. */
+export const info = (cc = current()) => data.site()?.countries?.[cc] || null;
+/** Who may read a country's data: "members" (France) or "all" (Spain); a country the site has no data for: null. */
+export const access = (cc) => info(cc)?.access || null;
+/** Does the site rank a country's runners (its runners, ranking, clubs… pages)? */
+export const ranks = (cc = current()) => !!info(cc)?.ranking;
 
 /** The header's menu, beside the language's: the countries with data or joined, then every other member country. */
 /** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */

@@ -94,7 +94,7 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
       return json({ error: "race" }, 400);
     }
     if (newRace.org_code) {                     // the club's name, from the site's own list
-      const res = await env.ASSETS.fetch(new URL("/data/meta.json", request.url));
+      const res = await env.ASSETS.fetch(new URL("/data/fr/meta.json", request.url));
       const name = res.ok ? (await res.json()).names?.clubs?.[newRace.org_code] : null;
       newRace.org = name ? `${newRace.org_code} - ${name}` : newRace.org_code;
     }

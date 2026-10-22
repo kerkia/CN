@@ -34,7 +34,6 @@ default run needs it.
 from __future__ import annotations
 
 import argparse
-import asyncio
 import hashlib
 import json
 import logging
@@ -44,17 +43,15 @@ import sqlite3
 import subprocess
 import sys
 import time
-from datetime import date, datetime
 from pathlib import Path
 
 from ffco_scraper.cn_engine import CnEngine, build_methods
-from ffco_scraper.fetcher import Fetcher
-from ffco_scraper.updater import run_update
 
 ROOT = Path(__file__).parent
+import countries  # noqa: E402  (the countries read: their sources, databases and site data folders)
+import countries.fr as france  # noqa: E402
 import notify  # noqa: E402  (digest e-mails for subscribed accounts)
 import paths  # noqa: E402  (the data folder, outside the project folder)
-REPORTS = ROOT / "exports" / "updates"
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
 # Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
@@ -99,7 +96,8 @@ COMPUTED = ("fair", "top6w")   # in this order: the Ozimut method (top6w) is der
 
 
 def migrate(db: Path, out: Path) -> bool:
-    """One-off recomputation after a method change; True when the site data was rebuilt."""
+    """One-off recomputation after a method change; True when the site data was rebuilt. `db` and `out`: a country's
+    database and site data folder (site/data/fr)."""
     con = sqlite3.connect(db)
     con.execute("CREATE TABLE IF NOT EXISTS engine_meta (key TEXT PRIMARY KEY, value TEXT)")
     meta = dict(con.execute("SELECT key, value FROM engine_meta").fetchall())
@@ -245,7 +243,8 @@ def recompute(db: Path, since: str) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", type=Path, default=paths.DB)
-    ap.add_argument("--out", type=Path, default=ROOT / "site" / "data")
+    ap.add_argument("--out", type=Path, default=ROOT / "site" / "data",
+                    help="the site data root (France's files in its fr/ folder, the provisional results in prov/)")
     ap.add_argument("--cache-dir", type=Path, default=paths.CACHE)
     ap.add_argument("--recent-days", type=int, default=None,
                     help="how far back results can still appear or change "
@@ -291,37 +290,38 @@ def main() -> None:
     except FileExistsError:
         print("another update is running — skipped")
         sys.exit(0)
+    fr_out = france.COUNTRY.data_dir(args.out)                  # site/data/fr
     try:
         if not args.dry_run:
+            if countries.move_legacy_layout(args.out):          # once (2026-10-22): France's files into site/data/fr
+                DEPLOY_PENDING.touch()
             sync_privacy(args.db)                               # before any build: the anonymised runners' list
-            migrate(args.db, args.out)                          # no-op once done
-            apply_privacy(args.db, args.out)                    # no-op unless the anonymised runners changed
+            migrate(args.db, fr_out)                            # no-op once done
+            apply_privacy(args.db, fr_out, args.out)            # no-op unless the anonymised runners changed
+            if countries.write_index(args.out):                 # site/data/meta.json: the countries and what they have
+                DEPLOY_PENDING.touch()
             if args.deploy and code_changed(args.db):
                 print("code changed since the last deploy: to be published")
                 DEPLOY_PENDING.touch()
         if args.deploy_only:
-            import ffco_scraper.agenda as agenda
-            try:
-                current = json.loads((args.out / "agenda.json").read_text(encoding="utf-8")).get("v", 1) >= agenda.AGENDA_VERSION
-            except (OSError, ValueError):
-                current = False
-            if not current:                                    # missing, or built by an older version of the scraper
-                agenda.refresh(args.out / "agenda.json")
+            if not france.agenda_current(args.out):            # missing, or built by an older version of the scraper
+                france.refresh_agenda(args.out)
+                countries.write_index(args.out)
                 print("agenda: rebuilt")
             ok = deploy(args.db)
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
             sys.exit(0 if ok else 1)
         if args.agenda_only:
-            import ffco_scraper.agenda as agenda
-            changed = agenda.refresh(args.out / "agenda.json")
+            changed = france.refresh_agenda(args.out)
             print(f"agenda: {'updated' if changed else 'unchanged'} in {time.monotonic() - t0:.0f}s")
             if changed:
+                countries.write_index(args.out)
                 DEPLOY_PENDING.touch()
             if args.deploy and DEPLOY_PENDING.exists() and deploy(args.db):
                 DEPLOY_PENDING.unlink(missing_ok=True)
             if args.deploy and not DEPLOY_PENDING.exists():       # the courses are online: alert the subscribers
-                notify.run_agenda(args.out / "agenda.json")
+                notify.run_agenda(france.agenda_path(args.out))
             sys.exit(0)
         if args.prov_only:
             _provisional(args)
@@ -333,6 +333,7 @@ def main() -> None:
             sys.exit(0)
         rebuilt = _run(args, since, t0)
         if rebuilt:
+            countries.write_index(args.out)
             DEPLOY_PENDING.touch()
         # 4b. provisional results (an admin pilot): what organisers publish before FFCO does (ffco_scraper/prov).
         # Published only when something new was found: a mere "looked again" must not cost a deploy.
@@ -368,9 +369,10 @@ def sync_privacy(db: Path) -> None:
     con.close()
 
 
-def apply_privacy(db: Path, out: Path) -> bool:
+def apply_privacy(db: Path, out: Path, root: Path) -> bool:
     """The anonymised runners (privacy.py) changed since the site data was built: rebuild all of it once — the earlier
-    seasons' snapshots too, which an incremental build keeps — and the provisional results' files, then publish."""
+    seasons' snapshots too, which an incremental build keeps — and the provisional results' files, then publish.
+    `out`: France's site data folder; `root`: the site data root (the provisional results)."""
     import privacy
     anon = privacy.load()
     con = sqlite3.connect(db)
@@ -386,7 +388,7 @@ def apply_privacy(db: Path, out: Path) -> bool:
     build_site.main(["--out", str(out), "--db", str(db)])
     try:
         import ffco_scraper.prov.run as prov
-        prov.main(["--db", str(db), "--out", str(out), "--build-only"])
+        prov.main(["--db", str(db), "--out", str(root), "--build-only"])
     except Exception as e:                       # the pilot must never stop the update; its next run rebuilds the files
         print(f"privacy: provisional results not rebuilt — {type(e).__name__}: {e}")
     con = sqlite3.connect(db)
@@ -402,7 +404,8 @@ def _provisional(args) -> None:
     """Provisional results (an admin pilot, ffco_scraper/prov); marks a deploy when something new was found."""
     try:
         import ffco_scraper.prov.run as prov
-        st = prov.run(args.db, args.out, budget_s=float(os.environ.get("PROV_BUDGET", "240")))
+        st = prov.run(args.db, args.out, agenda=france.agenda_path(args.out),
+                      budget_s=float(os.environ.get("PROV_BUDGET", "240")))
         print(f"provisional: {st}")
         if st.get("changed") or st.get("added") or st.get("reshaped"):
             DEPLOY_PENDING.touch()
@@ -421,49 +424,20 @@ def day_point_due(out: Path) -> bool:
 
 
 def _run(args, since, t0) -> bool:
-    """Steps 1-3; True when the site data was rebuilt."""
+    """Steps 1-3 for France; True when the site data was rebuilt."""
+    out = france.COUNTRY.data_dir(args.out)
     # ---- 1. fetch & compare -------------------------------------------------------
     if not args.no_fetch:
-        async def fetch():
-            async with Fetcher(base_url="https://cn.ffcorientation.fr", cache_dir=args.cache_dir,
-                               concurrency=args.concurrency, min_interval=0.05,
-                               session_cookie=os.environ.get("FFCO_SESSIONID") or None) as f:
-                return await run_update(f, args.db, seasons=args.seasons, recent_days=args.recent_days,
-                                        audit_every=args.audit_every, full=args.full, use_stamps=args.use_stamps,
-                                        new_only=args.new_only, dry_run=args.dry_run)
-        report = asyncio.run(fetch())
-        REPORTS.mkdir(parents=True, exist_ok=True)
-        path = REPORTS / f"update_{datetime.now():%Y%m%d-%H%M%S}{'_new' if args.new_only else ''}{'_dry' if args.dry_run else ''}.json"
-        path.write_text(report.to_json(), encoding="utf-8")
-        s = report.summary()
-        print(f"1. fetch: {report.requests} requests in {report.seconds}s — seasons {report.seasons_checked}, "
-              f"{report.competitions_read} competitions / {report.circuits_read} circuits read, "
-              f"{report.competitions_skipped_by_stamp} unchanged by upload stamp ({report.audit_slice})")
-        for line in report.pending:
-            print(f"   pending: {line}")
-        for line in report.seasons_not_checked:
-            print(f"   not checked: {line}")
-        for c in report.changes[:40]:
-            print(f"   {c.kind:<15} {c.date_iso}  {c.course_id:>5}  {c.title[:55]}  {c.detail}")
-        if len(report.changes) > 40:
-            print(f"   … {len(report.changes) - 40} more (see {path.name})")
-        for f in report.failures:
-            print(f"   FAILED {f}")
-        if report.new_runners and os.environ.get("GITHUB_ACTIONS"):
-            print(f"   new runners: {len(report.new_runners)}")     # the repository's logs are public
-        elif report.new_runners:
-            print(f"   new runners ({len(report.new_runners)}): " + ", ".join(report.new_runners[:12])
-                  + (" …" if len(report.new_runners) > 12 else ""))
-        print(f"   changes: {s['changes'] or 'none'}; earliest {s['earliest']}; report {path.relative_to(ROOT)}")
+        earliest, changes = france.fetch(args)
         if not args.dry_run:
-            notify.remember(report.changes)         # announced by main() once the site is deployed
-        if report.earliest:
-            since = min(since, report.earliest) if since else report.earliest
+            notify.remember(changes)                # announced by main() once the site is deployed
+        if earliest:
+            since = min(since, earliest) if since else earliest
         if args.dry_run:
             return False
 
     if not since:
-        if args.no_site or not day_point_due(args.out):
+        if args.no_site or not day_point_due(out):
             print(f"nothing changed — done in {time.monotonic() - t0:.0f}s")
             return False
         # nothing new, but a new day: the rankings' latest point (a junior's CN fades by the day) moves to today -
@@ -471,7 +445,7 @@ def _run(args, since, t0) -> bool:
         import build_site
         today = build_site.paris_today().isoformat()
         print(f"3. nothing changed; the rankings' latest point moves to {today}")
-        build_site.main(["--since", today, "--out", str(args.out), "--db", str(args.db)])
+        build_site.main(["--since", today, "--out", str(out), "--db", str(args.db)])
         print(f"done in {time.monotonic() - t0:.0f}s")
         return True
 
@@ -483,7 +457,7 @@ def _run(args, since, t0) -> bool:
     if not args.no_site:
         print(f"3. site data from {since}")
         import build_site
-        build_site.main(["--since", since, "--out", str(args.out), "--db", str(args.db)])
+        build_site.main(["--since", since, "--out", str(out), "--db", str(args.db)])
     print(f"done in {time.monotonic() - t0:.0f}s")
     return not args.no_site
 

@@ -30,7 +30,7 @@ function categories(circuit) {
 
 export async function render(main, { arg, query }) {
   if (arg && !query.id) query = { ...query, id: arg };      // old #/course/<id> links
-  const me = auth.session();
+  const myLic = auth.myId();            // one's own number in the loaded country's files
   // a race asked for by id (the e-mail digest's link, a runner's race) brings its own discipline, so that the list beside it is
   // that discipline's and holds it (owner, 2026-10-17: a sprint's link opened beside the forest list, the race not in it)
   const asked = query.id ? data.comp(query.id) : null;
@@ -40,7 +40,7 @@ export async function render(main, { arg, query }) {
   const seasons = [...meta.seasons].map(String).reverse();
   const st = {
     mode: MODES.includes(query.mode) ? query.mode : "all",
-    runner: query.r || store.get().lastRunner || me?.lic,
+    runner: query.r || store.get().lastRunner || myLic,
     club: query.club || auth.myClub(),
     // a race asked for by id brings its own season, so it is in the list
     season: query.s === "all" ? "" : (seasons.includes(query.s) ? query.s
@@ -98,7 +98,7 @@ export async function render(main, { arg, query }) {
   function sync() {
     replaceQuery({
       mode: st.mode === "all" ? null : st.mode,
-      r: st.mode === "runner" && st.runner !== me?.lic ? st.runner : null,
+      r: st.mode === "runner" && st.runner !== myLic ? st.runner : null,
       club: st.mode === "club" && st.club !== auth.myClub() ? st.club : null,
       s: st.season === seasons[0] ? null : (st.season || "all"), level: st.level || null, q: st.q || null,
       id: st.course, circ: st.circuit, cats: st.cats.size ? [...st.cats].join(",") : null,
@@ -206,8 +206,8 @@ export async function render(main, { arg, query }) {
     let rank = 0;
     const rows = shown.map((r) => ({ r, rank: r[C.place] ? ++rank : null }));
     const hl = (r) => [
-      r[C.lic] === me?.lic ? "me" : "",
-      st.mode === "runner" && r[C.lic] === st.runner && st.runner !== me?.lic ? "selected" : "",
+      r[C.lic] === myLic ? "me" : "",
+      st.mode === "runner" && r[C.lic] === st.runner && st.runner !== myLic ? "selected" : "",
       st.mode === "club" && data.clubParts(r[C.club]).code === st.club ? "selected" : "",
     ].join(" ");
     // the circuit's results, then its two charts, as tabs (the one chosen stays from circuit to circuit)
@@ -344,7 +344,7 @@ export async function render(main, { arg, query }) {
       // a race without a circuit: the runner's circuit in runner mode, else the one the signed-in user ran (the digest's link
       // is about one's own new result), else the busiest
       const f = await loadCourse(st.course);
-      const who = st.mode === "runner" ? st.runner : me?.lic;
+      const who = st.mode === "runner" ? st.runner : myLic;
       const ran = who ? f?.circuits.find((c) => c.rows.some((r) => r[C.lic] === who)) : null;
       const busiest = f?.circuits.reduce((b, c) => (!b || c.rows.length > b.rows.length ? c : b), null);
       st.circuit = ran ? String(ran.id) : busiest ? String(busiest.id) : null;

@@ -10,7 +10,7 @@ export async function clubOf(env, request, licence) {
   const lic = String(licence || "");
   if (!/^\d+$/.test(lic)) return null;
   try {
-    const res = await env.ASSETS.fetch(new URL(`/data/r/${Math.floor(Number(lic) / 10)}.json`, request.url));
+    const res = await env.ASSETS.fetch(new URL(`/data/fr/r/${Math.floor(Number(lic) / 10)}.json`, request.url));
     const rows = res.ok ? (await res.json())[lic] || [] : [];
     let best = null;
     for (const r of rows) if (r && typeof r[4] === "string" && (!best || r[4] > best[4])) best = r;
@@ -33,12 +33,12 @@ export async function raceOf(env, request, key) {
   } catch (e) { return null; }
 }
 
-/** A competition of the agenda (site/data/agenda.json) by its race key « a<id> », shaped as a race of the list; or null. */
+/** A competition of the agenda (site/data/fr/agenda.json) by its race key « a<id> », shaped as a race of the list; or null. */
 export async function agendaRace(env, request, key) {
   const m = /^a(\d+)$/.exec(String(key || ""));
   if (!m) return null;
   try {
-    const res = await env.ASSETS.fetch(new URL("/data/agenda.json", request.url));
+    const res = await env.ASSETS.fetch(new URL("/data/fr/agenda.json", request.url));
     const e = res.ok ? (await res.json()).events?.find((x) => x.kind === "c" && String(x.id) === m[1] && !x.cancelled) : null;
     return e ? { key: `a${e.id}`, name: e.name, date_iso: e.date, org: e.org, place: e.place } : null;
   } catch (e) { return null; }

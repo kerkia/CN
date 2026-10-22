@@ -24,7 +24,7 @@ HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
 D = json.load(open(ROOT / "site" / "assets" / "study.json", encoding="utf-8"))
 L = D["lineaire"]
-EV = json.load(open(ROOT / "site" / "data" / "evaluation.json", encoding="utf-8"))
+EV = json.load(open(ROOT / "site" / "data" / "fr" / "evaluation.json", encoding="utf-8"))
 FIG = HERE / "fig" / "en" if EN else HERE / "fig"
 FIG.mkdir(exist_ok=True)
 plt.rcParams.update({"font.family": "serif", "font.size": 9, "axes.titlesize": 10, "axes.labelsize": 9, "legend.fontsize": 8,

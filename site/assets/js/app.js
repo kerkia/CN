@@ -65,11 +65,14 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
-// The pages of France's data (owner, 2026-10-20): the rankings and everything they hold, « IA », and the organisers' pages
-// tied to a French competition. An account that has not joined France sees « needCountry » instead (the login gate refuses
-// the data anyway: _middleware.js `needsFrance`); its menus leave them out.
+// The pages of a country's ranked data (owner, 2026-10-20; by country since 2026-10-22): the rankings and everything they
+// hold, and « IA ». They show the site's country's (data.js reads its folder); an account that may not read it (France:
+// not a member) or a country the site does not rank yet gets « needCountry » instead (the login gate refuses the data
+// anyway: _middleware.js `needs`).
 const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
   "ask"]);
+/** May the account open the site's country's ranking pages? */
+const ranksHere = () => country.ranks() && auth.sees(country.current());
 /** Where a signed-in account lands: the agenda, for every account (owner, 2026-10-21; before, one's own page or the ranking). */
 const homeOf = () => "#/agenda";
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
@@ -131,7 +134,8 @@ function parseHash(hash = location.hash) {
 export const link = {
   home: () => "#/",
   ranking: (q) => "#/classement" + qstr(q),
-  runner: (lic, q) => (lic ? `#/coureur/${encodeURIComponent(lic)}` : "#/coureur") + qstr(q),
+  // a runner of the loaded country (their number in its files); the address names the country: #/coureur/fr1234567
+  runner: (lic, q) => (lic ? `#/coureur/${encodeURIComponent(data.parseId(lic) && /^[a-z]{2}\d/i.test(lic) ? lic : data.fullId(lic))}` : "#/coureur") + qstr(q),
   compare: () => "#/comparer",
   /** A race in the Courses tab; q may add circ, mode, r, club. */
   course: (id, q) => "#/courses" + qstr({ id, t: data.comp(id)?.terrain, ...q }),   // t: the race's discipline
@@ -317,7 +321,7 @@ function renderHeader(r) {
   // ranking's analyses, training, organising. The bar shows
   // the groups, the row under it the current group's pages (and the runner search); the documentation, settings,
   // contact and logout are under one's name
-  const fr = auth.sees("FR");
+  const fr = ranksHere();             // the site's country's rankings: the method switch
   const groups = me ? [
     ["races", t("nav.g.races"), [
       ["agenda", "#/agenda", t("nav.agenda")],
@@ -474,7 +478,9 @@ function renderHeader(r) {
     if (b.dataset.countryPick === country.current()) return;
     country.pick(b.dataset.countryPick);
     lastRoute = null;             // a page that follows its address (the Agenda) is built again, not just told its query
-    route_();
+    // a runner named in the address is the other country's: the runner page opens on this country's own (store.useCountry)
+    if (parseHash().route === "runner" && parseHash().arg) history.replaceState(null, "", "#/coureur");
+    data.useCountry(country.current()).then(() => { renderFooter(); route_(); });
   }));
   // the installable app (pwa.js): the item shows once the browser offers to install
   $("#install-btn")?.addEventListener("click", () => { closeMenus(); pwa.install(); });
@@ -573,11 +579,11 @@ function bindSearch() {
 }
 
 function renderFooter() {
-  const m = data.meta();
+  const c = data.meta()?.counts;           // the site's country's figures (none for a country it does not rank)
   // the site's independence and its sources are said in the rules, not on every page (owner, 2026-10-20)
   $("#footer").innerHTML = html`<div class="footer-inner">
     <span><a href="#/compte/confidentialite">${t("footer.rules")}</a></span>
-    <span class="num">${fmt(m.counts.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(m.counts.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(m.counts.results)} ${t("ov.results").toLowerCase()}</span>
+    ${c ? html`<span class="num">${fmt(c.runners)} ${t("ov.runners").toLowerCase()} · ${fmt(c.competitions)} ${t("ov.comps").toLowerCase()} · ${fmt(c.results)} ${t("ov.results").toLowerCase()}</span>` : ""}
   </div>`;
 }
 
@@ -622,9 +628,19 @@ async function route_() {
     history.replaceState(null, "", homeOf(me));
     r = parseHash();
   }
+  // a runner named by their id (#/coureur/es10000123): their country becomes the site's; a bare number is France's (2026-10-22)
+  if (r.route === "runner" && r.arg) {
+    const id = data.parseId(r.arg);
+    if (id && id.cc !== country.current() && country.withData().includes(id.cc)) {
+      country.pick(id.cc);
+      await data.useCountry(id.cc);
+      renderFooter();
+    }
+    if (id && id.cc === country.current()) r = { ...r, arg: id.n };
+  }
   if (me && !data.isPrivateLoaded()) {
     // only a session the server refuses (401, data.getJson) signs out; anything else is shown as a failed load
-    try { await data.bootPrivate({ fr: auth.sees("FR") }); } catch (e) {
+    try { await data.bootPrivate({ open: auth.sees(data.loadedCountry()) }); } catch (e) {
       if (/HTTP 401/.test(e.message)) return signedOut();
       $("#main").innerHTML = html`<div class="card"><div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
       return;
@@ -633,7 +649,7 @@ async function route_() {
     if (my !== token) return;
     movedNotice();
   }
-  if (me && FR_ROUTES.has(r.route) && !auth.sees("FR")) r = { ...r, route: "needCountry", from: r.route };
+  if (me && FR_ROUTES.has(r.route) && !ranksHere()) r = { ...r, route: "needCountry", from: r.route };
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there
@@ -723,8 +739,8 @@ window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOu
 
 /** Called by the login page once the credentials are accepted: land on one's own page. */
 export async function signedIn(s) {
-  await data.bootPrivate({ fr: auth.sees("FR") });
-  if (s.lic) store.set({ lastRunner: s.lic });
+  await data.bootPrivate({ open: auth.sees(data.loadedCountry()) });
+  if (s.lic && data.loadedCountry() === "FR") store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
   // the page asked for before the login, else the agenda (homeOf)

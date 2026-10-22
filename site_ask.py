@@ -23,7 +23,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-OUT = Path("site/data")
+OUT = Path("site/data/fr")                   # a country's folder: France's by default
 TERRAIN = {"For": "For", "Spr": "Spr", "VTT": "VTT", "Ski": "Ski"}
 
 

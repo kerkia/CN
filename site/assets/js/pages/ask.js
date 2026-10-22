@@ -7,6 +7,7 @@
 import { html, raw, $, fmt, fmtDate, fmtTime, downloadCsv, normalise, pct, fmtCat } from "../util.js";
 import { t, tn, lang } from "../i18n.js";
 import * as auth from "../auth.js";
+import * as data from "../data.js";
 import * as store from "../store.js";
 import { timeChart, columnChart, slotColor } from "../charts.js";
 import { dataTable } from "../ui.js";
@@ -43,7 +44,7 @@ async function duck() {
 
 async function manifest() {
   if (memo.manifest) return memo.manifest;
-  const r = await fetch("data/ask/manifest.json", { credentials: "same-origin", cache: "no-cache" });
+  const r = await fetch(`${data.root()}ask/manifest.json`, { credentials: "same-origin", cache: "no-cache" });
   if (!r.ok || !(r.headers.get("content-type") || "").includes("json")) throw new Error(t("ia.noData"));
   return (memo.manifest = await r.json());
 }
@@ -56,7 +57,7 @@ async function ensureTables(sql, say) {
   for (const tb of need) {
     const mb = fmt((m.tables?.[tb]?.bytes || 0) / 1e6, 1);
     say(t("ia.loadingTable", { tb, mb }));
-    const r = await fetch(`data/ask/${tb}.parquet`, { credentials: "same-origin", cache: "no-cache" });
+    const r = await fetch(`${data.root()}ask/${tb}.parquet`, { credentials: "same-origin", cache: "no-cache" });
     if (!r.ok || (r.headers.get("content-type") || "").includes("html")) throw new Error(t("ia.tableFailed", { tb, status: r.status }));
     await db.registerFileBuffer(`${tb}.parquet`, new Uint8Array(await r.arrayBuffer()));
     await conn.query(`CREATE OR REPLACE VIEW ${tb} AS SELECT * FROM '${tb}.parquet'`);

@@ -1,14 +1,28 @@
 // Data layer: fetches the static JSON, caches it, and answers the questions
 // the pages ask ("who is ranked, with what CN, at this month-end?").
 
-import { TERRAINS } from "./store.js";
+import { TERRAINS, useCountry as storeCountry } from "./store.js";
+import * as country from "./country.js";
 
-const BASE = "data/";
+// Each country's files sit in its own folder, data/<cc>/ (countries/base.py; 2026-10-22: France's in data/fr/), with the
+// same names in every country; the countries' index (data/meta.json) and the provisional results (data/prov/) are the
+// site's. The pages read the country loaded — the site's country (country.js) — through getJson.
+let LOADED = null;                       // the country whose data is loaded ("FR")
+const dirOf = (cc) => `data/${String(cc).toLowerCase()}/`;
+/** The loaded country's folder: "data/fr/". */
+export const root = () => dirOf(loadedCountry());
+export const loadedCountry = () => LOADED || country.current();
 const cache = new Map();
 
-async function getJson(path) {
+/** A file of the loaded country's folder. */
+const getJson = (path) => fetchJson(root() + path);
+/** A file of the site's own (data/meta.json…). */
+export const getSiteJson = (path) => fetchJson("data/" + path);
+
+async function fetchJson(url) {
+  const path = url;
   if (cache.has(path)) return cache.get(path);
-  const p = fetch(BASE + path, { credentials: "same-origin" }).then((r) => {
+  const p = fetch(url, { credentials: "same-origin" }).then((r) => {
     if (!r.ok) {
       if (r.status === 404) return null;
       // the session expired or was never valid on the server: back to the login page
@@ -47,26 +61,47 @@ export const C_SCORE = { official: C.offScore, fair: C.fScore, top6w: C.t6Score 
 export const C_CNJ15 = { official: C.offCnj15, fair: C.fCnj15, top6w: C.t6Cnj15 };
 
 // ---- core datasets ---------------------------------------------------------
-let META, RUNNERS, COMPS;
+let SITE, META, RUNNERS, COMPS;
 
-/** What the login page needs: the public statistics. */
+/** What the login page needs: the countries the site reads (data/meta.json) and the site's country's figures. */
 export async function bootPublic() {
-  META = await getJson("meta.json");
+  SITE = await getSiteJson("meta.json");
+  LOADED = country.current();
+  storeCountry(LOADED);
+  META = await getJson("meta.json").catch(() => null);
   return META;
+}
+/** The countries' index: { countries: { FR: { access, federation, ranking, agenda, methods, seasons, counts… } } }. */
+export const site = () => SITE;
+/**
+ * Another country becomes the site's: its own files replace the loaded ones (the next page boots them again).
+ * -> true when the data changed.
+ */
+export async function useCountry(cc) {
+  if (cc === LOADED) return false;
+  for (const k of [...cache.keys()]) if (!k.startsWith("data/meta.json") && !k.startsWith("data/prov/")) cache.delete(k);
+  RUNNERS = null;
+  COMPS = null;
+  LOADED = cc;
+  storeCountry(cc);
+  META = await getJson("meta.json").catch(() => null);
+  return true;
 }
 export const isPrivateLoaded = () => !!RUNNERS;
 
 /**
- * Everything else — only readable once logged in. `fr`: the account sees France's data; without it the login gate refuses
- * the runners (_middleware.js), so the list stays empty and nobody is recognised by name.
+ * Everything else — only readable once logged in. `open`: the account may read the loaded country's runners (its rule,
+ * auth.sees); without it the login gate refuses them (_middleware.js `needs`), so the list stays empty and nobody is
+ * recognised by name. A country without a ranking has neither file: both empty.
  */
-export async function bootPrivate({ fr = true } = {}) {
+export async function bootPrivate({ open = true } = {}) {
   if (RUNNERS) return;
-  // (refused all the same — France left on another device, this one not told yet —: the empty list too)
+  // (refused all the same — the country left on another device, this one not told yet —: the empty list too)
   const none = { cols: [], rows: [] };
+  const ranks = !!SITE?.countries?.[loadedCountry()]?.ranking;
   const [runners, comps] = await Promise.all([
-    fr ? getJson("runners.json").catch((e) => (/HTTP 403/.test(e.message) ? none : Promise.reject(e))) : none,
-    getJson("competitions.json")]);
+    open && ranks ? getJson("runners.json").catch((e) => (/HTTP 403/.test(e.message) ? none : Promise.reject(e))) : none,
+    ranks ? getJson("competitions.json").then((c) => c || { rows: {} }) : { rows: {} }]);
   const cols = runners.cols;
   const ix = Object.fromEntries(cols.map((c, i) => [c, i]));
   const byLic = new Map();
@@ -90,11 +125,27 @@ export async function bootPrivate({ fr = true } = {}) {
 export function dropPrivate() {
   RUNNERS = null;
   COMPS = null;
-  for (const k of [...cache.keys()]) if (k !== "meta.json") cache.delete(k);
+  for (const k of [...cache.keys()]) if (!k.endsWith("meta.json")) cache.delete(k);
 }
 export const meta = () => META;
 export const runners = () => RUNNERS;
 export const runner = (lic) => RUNNERS.byLic.get(String(lic));
+
+// ---- runner ids --------------------------------------------------------------
+// On the site a runner is their country's code and that country's own number (countries/base.py): fr1234567 (an FFCO
+// licence), es10000123. The files of a country carry the number alone. A bare number (a link of before 2026-10-22) is France's.
+/** "fr1234567" -> { cc: "FR", n: "1234567" }; a bare number is France's; null when not an id. */
+export function parseId(id) {
+  const m = /^([a-z]{2})?(\d+)$/i.exec(String(id ?? "").trim());
+  return m ? { cc: (m[1] || "fr").toUpperCase(), n: m[2] } : null;
+}
+/** A runner's id on the site, from their number in the loaded country's files. */
+export const fullId = (lic, cc = loadedCountry()) => `${String(cc).toLowerCase()}${lic}`;
+/** The number in the loaded country's files of a runner's id, or null when the id is another country's. */
+export function localId(id) {
+  const p = parseId(id);
+  return p && p.cc === loadedCountry() ? p.n : null;
+}
 /** An anonymised runner's pseudonym (privacy.py: 8 digits from 90000001; real licences have at most 7): its name is
  *  « Coureur anonyme N », and no licence is shown nor looked up on FFCO's site. */
 export const isAnon = (lic) => /^9\d{7}$/.test(String(lic ?? ""));

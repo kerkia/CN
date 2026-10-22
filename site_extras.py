@@ -40,7 +40,7 @@ from site_io import dump, prune
 from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
-OUT = ROOT / "site" / "data"
+OUT = ROOT / "site" / "data" / "fr"           # a country's folder (main(out)): France's by default
 
 # Points for the first ten of a category, Formula-1 style: a win is worth a
 # lot more than a 10th place, but depth still counts.
@@ -521,7 +521,7 @@ def main(out: Path | None = None) -> None:
     validation(comps)
     cfc(comps)
     import site_eval
-    site_eval.evaluation(comps)
+    site_eval.evaluation(comps, out=OUT)
     import site_ask
     try:                                        # « IA »'s tables: never a reason for the site's update to fail
         site_ask.build(OUT)

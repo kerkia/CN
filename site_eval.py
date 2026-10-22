@@ -41,7 +41,7 @@ from site_io import dump
 from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
-OUT = ROOT / "site" / "data"
+OUT = ROOT / "site" / "data" / "fr"           # a country's folder: France's by default
 
 METHODS = ("official", "fair", "top6w")
 CNJ15 = (7, 9, 11)                  # c/ row columns: each method's CN 15 days before the race
@@ -180,7 +180,10 @@ def summarise(F: np.ndarray, rng) -> dict | None:
     return res
 
 
-def evaluation(comps: dict | None = None, force: bool = False) -> None:
+def evaluation(comps: dict | None = None, force: bool = False, out: Path | None = None) -> None:
+    global OUT
+    if out is not None:                          # a country's folder (site_extras passes its own)
+        OUT = out
     if (OUT / "evaluation.json").exists() and not force:
         return
     t0 = time.monotonic()

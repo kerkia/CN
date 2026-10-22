@@ -1,4 +1,4 @@
-"""The FFCO agenda of upcoming events, as one JSON file for the site (site/data/agenda.json).
+"""The FFCO agenda of upcoming events, as one JSON file for the site (site/data/fr/agenda.json).
 
 Sources (all public, no login):
   * api.ffcorientation.fr/iframe/agenda/liste/      the courses, with the id of each one
@@ -12,7 +12,7 @@ Sources (all public, no login):
                                                      races of the next REG_DAYS days (the names are members-only:
                                                      not read)
 
-Run it by hand:   py -3 -m ffco_scraper.agenda --out site/data/agenda.json
+Run it by hand:   py -3 -m ffco_scraper.agenda --out site/data/fr/agenda.json
 update.py calls refresh() once a day (06:00 Paris time on GitHub).
 """
 
@@ -508,7 +508,7 @@ def refresh(out: Path, du: str | None = None) -> bool:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", type=Path, default=Path("site/data/agenda.json"))
+    ap.add_argument("--out", type=Path, default=Path("site/data/fr/agenda.json"))
     ap.add_argument("--from", dest="du", default=None, help="first day (yyyy-mm-dd), default today")
     args = ap.parse_args()
     t0 = time.monotonic()
