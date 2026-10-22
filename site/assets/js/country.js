@@ -10,6 +10,7 @@ import { html } from "./util.js";
 import { t, lang } from "./i18n.js";
 import * as data from "./data.js";
 import * as auth from "./auth.js";
+import { flag } from "./vendor.js";
 
 const KEY = "ocn.country";
 /** The countries the site offers: those whose data it holds, then those the account has joined (their organisers' competitions). */
@@ -38,13 +39,17 @@ export function pick(cc) {
 export const of = (x) => x?.country || "FR";
 
 /** The header's menu, beside the language's: the countries with data or joined, then every other member country. */
+/** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */
+export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
+  ? html`<img class="${cls}" src="${flag(cc)}" alt="" width="18" height="13" loading="lazy" decoding="async">` : "");
+
 export function menu() {
   const ok = withData();
   const cur = current();
-  const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${name(cc)}</button>`;
+  const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>
+      ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
     <div class="nav-menu cty-menu" role="menu">${ok.map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
@@ -69,11 +74,11 @@ export const sortedMembers = (except = []) => ["FR", ...MEMBERS.slice(1).sort((a
 export function membershipFields(prefix, { row = {}, fixed = false, except = [], allowNone = false } = {}) {
   const cc = row.cc || (allowNone ? "" : "FR");
   return html`<div class="cty-fields" data-cty="${prefix}">
-    <label class="field"><span>${t("cty.field.country")}</span>
+    <label class="field"><span>${t("cty.field.country")}</span><span class="cty-pick"><span class="cty-pick-flag">${flagImg(cc)}</span>
       <select name="${prefix}-cc" ${fixed ? "disabled" : ""}>
         ${allowNone ? html`<option value="" ${cc ? "" : "selected"}>${t("cty.field.none")}</option>` : ""}
         ${sortedMembers(except.filter((x) => x !== cc)).map((c) => html`<option value="${c}" ${c === cc ? "selected" : ""}>${name(c)}</option>`)}
-      </select></label>
+      </select></span></label>
     <div class="row cty-more" style="gap:12px;flex-wrap:wrap" ${cc ? "" : "hidden"}>
       <label class="field" style="flex:1;min-width:160px"><span>${t("cty.field.club")}</span>
         <input name="${prefix}-club" type="text" maxlength="80" value="${row.club || ""}" autocomplete="off"></label>
@@ -88,6 +93,7 @@ export function bindMembershipFields(root) {
     const sel = box.querySelector("select"), more = box.querySelector(".cty-more"), id = box.querySelector(`[name$="-id"]`);
     const sync = () => {
       const fr = sel.value === "FR";
+      box.querySelector(".cty-pick-flag").innerHTML = flagImg(sel.value);
       more.hidden = !sel.value;
       box.querySelector(".cty-id-label").textContent = t(fr ? "cty.field.id.FR" : "cty.field.id");
       id.required = fr && !!sel.value;

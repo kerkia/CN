@@ -9,7 +9,7 @@ import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
 import * as pwa from "../pwa.js";
-import { name as countryName, membershipFields, bindMembershipFields, readMembership } from "../country.js";
+import { name as countryName, membershipFields, bindMembershipFields, readMembership, flagImg } from "../country.js";
 
 // The alerts of the table: the user's field for each channel (publicUser, /api/account/settings); `gated`: the e-mail
 // needs the administrator's right (users.alerts_allowed) and is not offered at all without it — every alert's e-mail since
@@ -144,7 +144,7 @@ export async function render(main, { query = {} } = {}) {
           <div class="row" style="gap:8px"><button class="btn btn-primary btn-sm" type="submit">${t("st.cty.save")}</button>
             <button class="btn btn-ghost btn-sm" type="button" data-cancel>${t("st.cty.cancel")}</button></div></form>`
       : html`<div class="cty-row row" style="gap:10px;flex-wrap:wrap;align-items:center">
-          <b>${countryName(c.cc)}</b>
+          <b>${flagImg(c.cc)}${countryName(c.cc)}</b>
           <span class="muted">${[c.club, c.id && (c.cc === "FR" ? `${t("rn.licence")} ${c.id}` : c.id)].filter(Boolean).join(" · ")}</span>
           <span class="tag">${t(`st.cty.status.${c.status === "ok" ? (c.cc === "FR" ? "checked" : "declared") : c.status}`)}</span>
           <span style="flex:1"></span>

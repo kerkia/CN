@@ -57,42 +57,56 @@ async function list(main, query) {
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
     <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label>
       <div class="lv-else lv-else-top" data-lv-else></div></div>
+    <div id="lv-now"></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
     <div class="lv-else lv-else-end" data-lv-else></div>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
-  let comps = [];
-  try { comps = (await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()).comps; } catch (e) { /* shown empty */ }
+  let comps = [], liveS = 1800, own = [];
+  try { ({ comps, liveS = 1800 } = await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()); } catch (e) { /* shown empty */ }
+  // live now (owner, 2026-10-22): a race whose last punch is under liveS old (the relay's directory reads today's races'
+  // last passings: c[6], the age in seconds), a broadcast that sent something in that time
+  const isLive = (c) => c[6] != null && c[6] <= liveS;
+  const ago = (s) => (s < 60 ? t("lv.now.just") : t("lv.now.ago", { m: Math.round(s / 60) }));
   // the races organisers feed from their timing software (« Organisation › Direct »), of the last 3 days: those that sent
   // something, and one's own before their first send (every one to administrators)
   {
     try {
-      const own = ((await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || [])
+      own = ((await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || [])
         .filter((b) => b.date >= new Date(Date.now() - 3 * 86400e3).toLocaleDateString("sv-SE") && (b.last || b.mine || session()?.admin));
       if (own.length) $("#lv-org").innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("lv.org.title")}</h2>
         <div class="hint">${t("lv.org.hint")}</div></div></div>
         <div class="table-wrap"><table class="data compact"><tbody>${own.map((b) => html`<tr><td>${fmtDate(b.date)}</td>
-          <td><a href="#/direct/${b.id}">${b.name}</a></td><td class="muted">${b.organizer || ""}</td>
+          <td><a href="#/direct/${b.id}">${b.name}</a>${b.last && Date.now() - b.last <= liveS * 1000 ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td class="muted">${b.organizer || ""}</td>
           <td class="muted">${b.last ? t("lv.org.last", { t: new Date(b.last).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) }) : t("lv.org.none")}</td></tr>`)}</tbody></table></div></section>`;
     } catch (e) { /* none shown */ }
   }
   const today = new Date().toLocaleDateString("sv-SE");
-  // the other countries racing live, the most races first
-  const counts = new Map();
-  for (const c of comps) if ((c[5] || "?") !== cur) counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
-  const order = [...counts].filter(([c]) => c !== "?").sort((a, b) => b[1] - a[1]);
+  // the other countries racing live, the most races first; how many of them are live now
+  const counts = new Map(), lives = new Map();
+  for (const c of comps) if ((c[5] || "?") !== cur) {
+    counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
+    if (isLive(c)) lives.set(c[5] || "?", (lives.get(c[5] || "?") || 0) + 1);
+  }
+  const order = [...counts].filter(([c]) => c !== "?").sort((a, b) => (lives.get(b[0]) || 0) - (lives.get(a[0]) || 0) || b[1] - a[1]);
   const draw = () => {
     replaceQuery({ q: q || null });
     const n = normalise(q);
     const kept = comps.filter((c) => (n ? normalise(`${c[1]} ${c[2]}`).includes(n) : (c[5] || "?") === cur))
-      .sort((a, b) => (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
+      .sort((a, b) => isLive(b) - isLive(a) || (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
+    // the box on top: the races live now (the country's, or the search's), the latest punch first
+    const now = kept.filter(isLive).sort((a, b) => a[6] - b[6]);
+    $("#lv-now").innerHTML = now.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("lv.now.title")}</h2>
+        <div class="hint">${t("lv.now.hint", { m: Math.round(liveS / 60) })}</div></div></div>
+      <div class="lv-now-list">${now.map(([id, name, org, , , cc, age]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
+        <span class="muted">${org}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span><span class="lv-now-ago">${ago(age)}</span></a>`)}</div></section>` : "";
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
-      <tbody>${kept.map(([id, name, org, date, , cc]) => html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
-        <td><a href="#/direct/${id}">${name}</a></td><td style="font-size:12.5px">${org}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`)}</tbody></table>`
+      <tbody>${kept.map((c) => { const [id, name, org, date, , cc] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
+        <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
       : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
     const other = !order.length ? "" : html`<span class="muted">${t("lv.elsewhere")}</span>
       ${order.map(([c, k]) => html`<button type="button" class="chip lv-cc" data-lv-country="${c}"><img class="lv-flag" src="${flag(c)}" alt="" width="16" height="12"
-        loading="lazy" decoding="async">${countryName(c)} <span class="muted">${k}</span></button>`)}`;
+        loading="lazy" decoding="async">${countryName(c)} <span class="muted">${k}</span>${lives.get(c) ? html`<span class="lv-cc-live" title="${t("lv.now.n", { n: lives.get(c) })}">● ${lives.get(c)}</span>` : ""}</button>`)}`;
     $$("[data-lv-else]", main).forEach((el) => { el.innerHTML = other; });
   };
   draw();

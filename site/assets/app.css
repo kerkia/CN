@@ -241,6 +241,15 @@ p { margin: 0; }
 .lang-menu .nav-menu { left: auto; right: 0; min-width: 140px; }
 .lang-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
 .cty-menu { max-height: min(70vh, 520px); overflow-y: auto; }
+/* a country's flag beside its name (owner, 2026-10-22): the header's menu, the country fields, one's countries */
+.cty-flag { width: 18px; height: 13px; border-radius: 2px; object-fit: cover; vertical-align: -2px; margin-right: 7px; flex: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); }
+.cty-menu button { display: flex; align-items: center; }
+.icon-btn .cty-flag { margin-right: 0; }
+.cty-pick { display: flex; align-items: center; gap: 8px; }
+.cty-pick select { flex: 1; min-width: 0; }
+.cty-pick-flag:empty { display: none; }
+.cty-pick-flag .cty-flag { margin-right: 0; width: 22px; height: 16px; }
 .nav-menu .nav-menu-head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 8px 10px 4px;
   border-top: 1px solid var(--border); margin-top: 4px; }
 .swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-strong); flex: none; }
@@ -1555,6 +1564,21 @@ table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
 .lv-ev-fin { color: var(--good); }
 .lv-ev-radio { color: var(--course, #a626a4); }
 .lv-cc { height: 26px; padding: 0 9px; gap: 5px; font-size: 12px; }
+.lv-cc-live { color: var(--bad); font-weight: 700; font-size: 11.5px; }
+/* the races live now (owner, 2026-10-22): a box on top, a mark in the list */
+.lv-now { border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); margin-bottom: 14px; }
+.lv-now h2 { display: flex; align-items: center; gap: 8px; color: var(--bad); }
+.lv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 60%, transparent);
+  animation: lv-pulse 1.6s ease-out infinite; flex: none; }
+@keyframes lv-pulse { to { box-shadow: 0 0 0 8px transparent; } }
+@media (prefers-reduced-motion: reduce) { .lv-dot { animation: none; } }
+.lv-now-list { display: grid; gap: 2px; padding: 4px 8px 10px; }
+.lv-now-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; padding: 8px; border-radius: 8px; color: var(--ink); text-decoration: none; }
+.lv-now-item:hover { background: var(--surface-3); }
+.lv-now-item .muted { grid-column: 1; font-size: 12.5px; }
+.lv-now-ago { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 12.5px; color: var(--bad); font-weight: 600; white-space: nowrap; }
+.lv-badge { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--bad);
+  border-radius: 4px; padding: 1px 5px; vertical-align: 1px; }
 .lv-flag { width: 16px; height: 12px; border-radius: 2px; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); flex: none; }
 .lv-table .lv-m { display: none; }
 #lv-rows { max-height: none; }

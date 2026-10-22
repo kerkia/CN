@@ -357,7 +357,23 @@ const TZ_COUNTRY = {
 const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
 const LIST_MS = 240000;                 // liveresultat's list read at most this often
 const TZ_VERSION = 2;
-const MAX_INFO = 40;                    // races looked up per call (subrequest limit: 50); the rest at the next call
+const MAX_INFO = 30;                    // races looked up per call (subrequest limit: 50); the rest at the next call
+// which races are live now (owner, 2026-10-22: « identify clearly which competitions are truly live »): each race of its own
+// today has its last passings read (with liveresultat's hash: an unchanged list costs a few bytes), at most every PROBE_MS
+// and MAX_PROBE a call, only when the list is asked for; a race is live while its last punch is under LIVE_S old
+const PROBE_MS = 180000, MAX_PROBE = 15, LIVE_S = 1800;
+// a time of day now in a race's time zone (else liveresultat's offset from Swedish time), in seconds
+function localSeconds(tz, timediff) {
+  const at = (zone) => {
+    const p = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const v = (k) => p.find((x) => x.type === k)?.value;
+    return { s: Number(v("hour")) * 3600 + Number(v("minute")) * 60 + Number(v("second")), day: `${v("year")}-${v("month")}-${v("day")}` };
+  };
+  try { if (tz) return at(tz); } catch (e) { /* an unknown zone */ }
+  const x = at("Europe/Stockholm");
+  return { s: (x.s + (timediff || 0) * 3600 + 86400) % 86400, day: x.day };
+}
 
 /** The races of the last 3 and next 7 days with their country: liveresultat's whole list (~1 MB, read with a regular
  *  expression: some names hold unescaped quotes that break it as JSON), each new race's time zone read once and kept. */
@@ -403,20 +419,49 @@ export class Directory extends DurableObject {
           c.push(c[0] in known ? countryOf(known[c[0]]) : "?");
         }
         pending = out.some((c) => !(c[0] in known));
+        // the races of their own today: their last punch, read now for the oldest checked (each at most every PROBE_MS)
+        const probes = (await this.ctx.storage.get("probes")) || {};
+        const today = out.filter((c) => c[3] === localSeconds(known[c[0]], c[4]).day);
+        const due = today.filter((c) => now - (probes[c[0]]?.checked || 0) >= PROBE_MS)
+          .sort((a, b) => (probes[a[0]]?.checked || 0) - (probes[b[0]]?.checked || 0)).slice(0, MAX_PROBE);
+        for (const c of due) {
+          const p = probes[c[0]] || {};
+          try {
+            const r = await (await fetch(`${api(this.env)}?method=getlastpassings&comp=${c[0]}&last_hash=${encodeURIComponent(p.hash || "")}`,
+              { headers: { "User-Agent": UA } })).json();
+            if (r.status === "OK") { p.hash = r.hash; p.last = r.passings?.[0]?.passtime || null; }
+            if (r.status === "OK" || r.status === "NOT MODIFIED") p.checked = now;
+          } catch (e) { /* next time */ }
+          probes[c[0]] = p;
+        }
+        // the age of each race's last punch, in seconds (null: none known, or another day)
+        for (const c of out) {
+          const p = probes[c[0]], m = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(p?.last || "");
+          let age = null;
+          if (m && today.includes(c)) {
+            age = localSeconds(known[c[0]], c[4]).s - (Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]));
+            if (age < -300) age = null;                 // (a clock off, or yesterday's punches)
+          }
+          c.push(age);
+        }
+        // the record keeps today's races only
+        await this.ctx.storage.put("probes", Object.fromEntries(today.filter((c) => probes[c[0]]).map((c) => [c[0], probes[c[0]]])));
         if (added) {
           // only the window's races are kept, so the record stays small
           await this.ctx.storage.put("tz", Object.fromEntries(out.filter((c) => c[0] in known).map((c) => [c[0], known[c[0]]])));
         }
         out.sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
         // (races still without a country: read again soon)
-        last = { at: pending ? now - LIST_MS + 30000 : now, comps: out };
+        // (races still without a country: read again soon; while some race is live, every PROBE_MS)
+        const anyLive = out.some((c) => c[6] != null && c[6] <= LIVE_S);
+        last = { at: pending ? now - LIST_MS + 30000 : anyLive ? now - LIST_MS + PROBE_MS : now, comps: out, liveS: LIVE_S };
         await this.ctx.storage.put("last", last);
       } else {
         console.error(`directory: no list from liveresultat (${s.slice(0, 60)})`);
         pending = true;
       }
     }
-    return new Response(JSON.stringify({ at: last?.at || now, comps: last?.comps || [] }), {
+    return new Response(JSON.stringify({ at: last?.at || now, comps: last?.comps || [], liveS: LIVE_S }), {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${pending || !last ? 30 : 120}` },
     });
   }

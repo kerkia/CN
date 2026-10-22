@@ -1187,7 +1187,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   on Derniers passages » report); on a phone they and the search are 16 px (a phone zooms into smaller fields). Local test:
   launch configs `lr-mock` (8795, a recording kept outside the repository; `--live --speed 1 --from <min>` replays it on today's clock) + `ocn-live-mock` (the relay reading it) +
   `pages-dev-games`. The list page: the other countries racing live beside the search (under the list on a phone), with their
-  flag (flag-icons, vendored), a click makes one the site's country; a search looks in every country. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
+  flag (flag-icons, vendored) and how many of their races are live now (● n), a click makes one the site's country; a search
+  looks in every country. **Live now** (owner, 2026-10-22: « identify clearly which competitions are truly live »): the
+  relay's `Directory`, when the list is asked for, reads the last passings of the races of their own today (with liveresultat's
+  hash, at most every `PROBE_MS` 3 min a race and `MAX_PROBE` 15 a call; `probes` kept for today's races only) and adds to each
+  race the age of its last punch in seconds (`comps[i][6]`, from the race's time zone, else liveresultat's offset from Swedish
+  time); a race is live under `LIVE_S` (30 min). The page puts them in a box « En direct maintenant » on top (the latest
+  punch first, « dernier passage il y a n min »), marks them « direct » in the list and sorts them first; a broadcast that
+  sent something in that time is marked too. **Flags beside every country choice** (owner, 2026-10-22): `country.flagImg` in
+  the header's menu (its button shows the site's country's flag), the registration's and Réglages' country fields (the flag
+  of the country chosen beside the select: an option cannot hold an image) and the list of one's countries. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
   account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so. The
