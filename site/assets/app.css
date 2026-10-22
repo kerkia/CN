@@ -1527,11 +1527,35 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
 .lv-side-title { font-size: 12px; font-weight: 650; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px 6px; }
 .lv-list { display: flex; flex-direction: column; gap: 2px; }
 .lv-item { display: flex; justify-content: space-between; gap: 8px; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font: inherit; font-size: 14px; color: var(--ink); cursor: pointer; }
-.lv-item-pass { margin-bottom: 6px; font-weight: 600; }
 .lv-cnt { color: var(--ink-3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .lv-item:hover { background: var(--surface-3); }
 .lv-item.on { background: var(--accent-wash); font-weight: 650; box-shadow: inset 3px 0 0 var(--focus); }
-.lv-pick { display: none; }
+/* the three selectors (course, club, punches; the one in use outlined), the search under them */
+.lv-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; }
+.lv-pk select { width: 100%; height: 36px; font-size: 14px; }
+.lv-pk.on select { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); font-weight: 600; }
+.lv-pk-c { display: none; }
+.lv-find { position: relative; margin: 0 0 8px; }
+.lv-find input { width: 100%; height: 36px; font-size: 14px; }
+.lv-find-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-pop); max-height: min(60vh, 420px); overflow-y: auto; padding: 4px; }
+.lv-find-head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 6px 8px 2px; }
+.lv-find-item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: 6px; font: inherit;
+  font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.lv-find-item:hover, .lv-find-item:focus-visible { background: var(--surface-3); }
+.lv-find-empty { padding: 8px; font-size: 13px; }
+.lv-note { font-size: 12.5px; margin: 0 2px 8px; }
+.lv-link { border: 0; background: none; padding: 0; font: inherit; color: var(--link, var(--accent)); cursor: pointer; text-align: left; }
+.lv-table .lv-st { white-space: nowrap; font-size: 12.5px; color: var(--ink-2); }
+table.data tr.lv-mark td { background: color-mix(in srgb, var(--flag) 22%, transparent); }
+table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
+.lv-ptable tr.lv-prow { cursor: pointer; }
+.lv-ptable tr.lv-prow:hover td { background: var(--surface-3); }
+.lv-ev { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.lv-ev-fin { color: var(--good); }
+.lv-ev-radio { color: var(--course, #a626a4); }
+.lv-cc { height: 26px; padding: 0 9px; gap: 5px; font-size: 12px; }
+.lv-flag { width: 16px; height: 12px; border-radius: 2px; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); flex: none; }
 .lv-table .lv-m { display: none; }
 #lv-rows { max-height: none; }
 table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-align: top; }
@@ -1541,15 +1565,14 @@ table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-alig
 .lv-table .lv-cat { font-size: 12.5px; white-space: nowrap; }
 .lv-table .lv-t { white-space: nowrap; }
 .lv-table .lv-sc .gap { display: block; margin: 0; min-width: 0; }
-.lv-plhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px; font-size: 12.5px; }
-.lv-plist { font-size: 13px; }
-.lv-plist tr.lv-prow { cursor: pointer; }
-.lv-plist tr.lv-prow:hover td { background: var(--surface-3); }
 @media (max-width: 760px) {
   .lv-layout { grid-template-columns: minmax(0, 1fr); }
   .lv-side { display: none; }
-  .lv-pick { display: flex; margin: 0 0 8px; }
-  .lv-pick select { width: 100%; height: 40px; font-size: 15px; }
+  .lv-picks { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+  .lv-pk-c { display: block; }
+  /* 16 px: a phone zooms into a field or selector written smaller when it is tapped */
+  .lv-pk select { height: 40px; font-size: 16px; padding-left: 6px; padding-right: 18px; }
+  .lv-find input { font-size: 16px; height: 40px; }
   .lv-head h1 { font-size: 18px; }
   .lv-wide { display: none; }
   table.data.lv-table th, table.data.lv-table td { padding: 4px 3px; }
@@ -1559,15 +1582,13 @@ table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-alig
   .lv-table .lv-t .lv-2 { white-space: normal; max-width: 15vw; margin-left: auto; }
   .lv-table td.lv-c { min-width: 13vw; max-width: 24vw; font-size: 11.5px; }
   .lv-status { font-size: 12.5px; max-width: 34vw; }
-  .lv-pf { width: 104px; }
 }
-.lv-else { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.lv-else { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 12.5px; }
 .lv-filters { align-items: flex-end; }
 .lv-else-top { flex: 1 1 300px; padding-bottom: 4px; }
 .lv-else-end { display: none; margin: 10px 2px 0; }
 @media (max-width: 760px) { .lv-else-top { display: none; } .lv-else-end { display: flex; } }
 .lv-pass { display: flex; gap: 6px; align-items: center; margin: 0 0 8px; font-size: 12.5px; min-width: 0; }
-.lv-pf { flex: none; width: 128px; height: 30px; font-size: 12.5px; }
 .lv-strip { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
 .lv-pi { flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px;
   font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; }

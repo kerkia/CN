@@ -1157,15 +1157,27 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   and `/ws/<race>` (the WebSocket handed to the race's object) —, signed-in accounts only: the login gate passes the 101
   handshake on untouched (`_middleware.js`); each runner recognised by name (+ club number) and linked, their CN Top and
   official in the race's discipline (guessed from the names: sprint, VTT, ski, else forest) and the place their Top
-  CN predicts (« Attendu »). The race page (owner, 2026-10-21, phone first): name, organiser and day beside the status and
-  one ranking button; the latest punches on one line scrolling sideways, filtered (all, one's club's runners by name, the
-  course shown, hidden; `localStorage ocn.live.pass`), or as a list — the picker's first entry « Derniers passages »
-  (`#/direct/<race>/~passages`); the picker gives each course's finishers / starters (the relay reads the classes nobody
-  watches for their counts only, a few per wake-up: message `counts`; it keeps the last 30 punches, the page adds them up);
-  the table has no scrollbar of its own, every runner on two lines (name | club | time/gap | CN/expected | score/gap), the
-  runner's category (from the data) when the class is not one, under the place on a phone. The list page: the other
-  countries racing live beside the search (under the list on a phone), a click makes one the site's country; a search
-  looks in every country. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
+  CN predicts (« Attendu »). The race page (owner, 2026-10-21/22, phone first): name, organiser and day beside the status and
+  one ranking button; the latest punches on one line scrolling sideways (no filter there; ▾ opens them as a table); three
+  selectors side by side, the one in use outlined — a course (each with its finishers / starters: the relay reads the classes
+  nobody watches for their counts only, a few per wake-up, message `counts`), a club (« Mon club » first: France's runners of
+  one's club recognised, the club names the race writes for them, else the club typed in one's countries; « Encore en
+  course », everyone still out; then every club; `#/direct/<race>/~club/<key>`), the punches (all, or one's club's;
+  `~passages/<all|mine>`); one search under them for a runner (opens their course, the row marked and scrolled to the middle)
+  or a club. The club and punches views, the club list and the search watch the **whole race**: the page subscribes `"*"`,
+  the relay then reads every class as a watched one (those just punched first, at most `MAX_READS` a wake-up; `ALL_NOW` at
+  once when asked) and sends them all; it keeps every class under its own storage key (`c:<class>`, the former single
+  « data » value migrated at the first save). Every table has the start time; no scrollbar of its own (the last columns may
+  scroll sideways), every runner on two lines (place | name | [course] | club | start | time/gap | CN/expected | score/gap),
+  the runner's category (from the data) when the class is not one, under the place on a phone; the punches' table: time of
+  day, the event (radio control ○ / finish ◎), runner and club, course and category, time and gap, place, start — the place
+  and gap at that control from the course's results. A runner's state is liveresultat's status first (9 started, 10 not
+  started), then the start time against the clock. **The selectors are redrawn only when they change and never while one is
+  open** (2026-10-22: an update arriving while a phone's selector was open replaced it, and the choice was lost — the « stuck
+  on Derniers passages » report); on a phone they and the search are 16 px (a phone zooms into smaller fields). Local test:
+  launch configs `lr-mock` (8795, a recording kept outside the repository) + `ocn-live-mock` (the relay reading it) +
+  `pages-dev-games`. The list page: the other countries racing live beside the search (under the list on a phone), with their
+  flag (flag-icons, vendored), a click makes one the site's country; a search looks in every country. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new
   browser session = a visit) into D1 `usage_daily` (account, Paris day, page, views; 13 months, deleted with the
   account); the admin page's « Utilisation » tab reads `/api/admin/usage` for any period. The privacy page says so. The
@@ -1282,7 +1294,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Pages: Read; the owner's), optionally `CF_ACCOUNT_ID`; without it only D1's figures show. The dataset and field names were
   written from Cloudflare's documentation and not yet run against a real token.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
-  public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, DuckDB-WASM (its browser module bundled with
+  public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, the countries' flags (flag-icons' 4:3 SVGs, `vendor.flag`;
+  `python tools/vendor.py build <package>` rebuilds one package alone), DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff
   files the Tracer reads) live in `site/assets/vendor/<name>@<version>/` with their licences, built from npm by `tools/vendor.py`
   (`build`; nothing of a package's install scripts runs); files over Cloudflare Pages' 25 MiB are split in two parts that

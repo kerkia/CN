@@ -3,13 +3,14 @@ CDN such as cdn.jsdelivr.net, which Safari reports as a tracker; they also keep 
 
     python tools/vendor.py check    # each package's pinned version against npm's latest
     python tools/vendor.py build    # download the pinned versions from npm and rebuild site/assets/vendor/
+    python tools/vendor.py build flag-icons    # one package only, the others left as they are
 
 To update a library: change its version in PACKAGES, run `build`, then the version in site/assets/js/vendor.js (the paths the
 code loads) and in site/index.html (ECharts' two <script> tags); check the pages that use it (vendor.js says which), commit.
 Each package keeps its own file layout under <name>@<version>/, with its LICENSE. Files over 25 MiB (Cloudflare Pages' limit
 per file) are split in two parts the browser joins (DuckDB's engine). Nothing here runs a package's install scripts.
 """
-import io, json, re, shutil, subprocess, sys, tarfile, tempfile, urllib.request
+import fnmatch, io, json, re, shutil, subprocess, sys, tarfile, tempfile, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,6 +34,8 @@ PACKAGES = {
     "@fontsource/noto-sans-jp": ("5.0.19", "fontsource/noto-sans-jp", ["400", "700"]),
     "@fontsource/noto-sans-tc": ("5.0.19", "fontsource/noto-sans-tc", ["400", "700"]),
     "@fontsource/noto-sans-hk": ("5.0.19", "fontsource/noto-sans-hk", ["400", "700"]),
+    # the countries' flags (« En direct »'s other countries; 2026-10-22): one 4:3 SVG per ISO code
+    "flag-icons": ("7.5.0", "flag-icons", ["flags/4x3/*.svg"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 
@@ -99,10 +102,17 @@ def bundle_duckdb(ver, dest):
         write(dest / "LICENSE-apache-arrow", (d / "node_modules" / "apache-arrow" / "LICENSE.txt").read_bytes())
 
 
-def build():
-    if VENDOR.exists():
+def build(only=None):
+    if only:
+        if only not in PACKAGES:
+            sys.exit(f"unknown package {only}")
+        ver, folder, _ = PACKAGES[only]
+        shutil.rmtree(VENDOR / f"{folder}@{ver}", ignore_errors=True)
+    elif VENDOR.exists():
         shutil.rmtree(VENDOR)
     for name, (ver, folder, files) in PACKAGES.items():
+        if only and name != only:
+            continue
         dest = VENDOR / f"{folder}@{ver}"
         tar = tarball(name, ver)
         if name.startswith("@fontsource/"):
@@ -116,7 +126,13 @@ def build():
                     write(dest / f, member(tar, f))
         else:
             for f in files:
-                write(dest / f, member(tar, f))
+                if "*" in f:                    # a pattern: every file of the package it matches
+                    for m in tar.getmembers():
+                        p = m.name.removeprefix("package/")
+                        if m.isfile() and fnmatch.fnmatch(p, f):
+                            write(dest / p, member(tar, p))
+                else:
+                    write(dest / f, member(tar, f))
         licence(tar, dest)
         if name == "@duckdb/duckdb-wasm":
             bundle_duckdb(ver, dest)
@@ -126,4 +142,8 @@ def build():
 
 
 if __name__ == "__main__":
-    {"check": check, "build": build}.get(sys.argv[1] if len(sys.argv) > 1 else "", lambda: print(__doc__))()
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "build":
+        build(sys.argv[2] if len(sys.argv) > 2 else None)
+    else:
+        {"check": check}.get(cmd, lambda: print(__doc__))()

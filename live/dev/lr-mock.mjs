@@ -59,7 +59,7 @@ function passings(c) {
     }
   }
   const clock = (h) => { const s = Math.floor(h / 100); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((x) => String(x).padStart(2, "0")).join(":"); };
-  return out.sort((a, b) => b.at - a.at).slice(0, 3).map(({ at, ...p }) => ({ passtime: clock(at), ...p, time: clock(p.time).replace(/^00:/, "") }));
+  return out.sort((a, b) => b.at - a.at).slice(0, 30).map(({ at, ...p }) => ({ passtime: clock(at), ...p, time: clock(p.time).replace(/^00:/, "") }));
 }
 
 function answer(q) {

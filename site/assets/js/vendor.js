@@ -7,6 +7,7 @@
 //   PROJ4      — the Tracer's georeferencing from OCAD / Mapper files
 //   DUCKDB     — « IA »
 //   FONTSOURCE — the Tracer's fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK)
+//   FLAGS      — the countries' flags (« En direct »)
 const V = "/assets/vendor";
 export const PDFJS = `${V}/pdfjs-dist@4.10.38/build/pdf.min.mjs`;
 export const PDFJS_WORKER = `${V}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
@@ -16,6 +17,8 @@ export const FFLATE = `${V}/fflate@0.8.2/umd/index.js`;
 export const PROJ4 = `${V}/proj4@2.12.1/dist/proj4.js`;
 export const DUCKDB_DIR = `${V}/duckdb-wasm@1.32.0/dist`;
 export const FONTSOURCE = `${V}/fontsource`;
+/** A country's flag (ISO alpha-2), a 4:3 SVG. */
+export const flag = (cc) => `${V}/flag-icons@7.5.0/flags/4x3/${String(cc).toLowerCase()}.svg`;
 export const FONT_PKG = {
   Roboto: `${FONTSOURCE}/roboto@5.0.8`, "Roboto Condensed": `${FONTSOURCE}/roboto-condensed@5.0.8`,
   "Noto Sans JP": `${FONTSOURCE}/noto-sans-jp@5.0.19`, "Noto Sans TC": `${FONTSOURCE}/noto-sans-tc@5.0.19`,

@@ -20,6 +20,10 @@ const MAX_READS = 30;                            // liveresultat reads per wake-
 // 15 min — and only the two numbers are kept
 const COUNT_READS = 3, COUNT_MOVED_MS = 30000, COUNT_STALE_MS = 900000;
 const PASS_KEPT = 30;                            // the last passings kept and sent (the pages add them up over a visit)
+// A page may watch the whole race (sub "*", owner 2026-10-22: a club's runners across the courses, everyone still out,
+// the punches with their places, the runner search): then every class is read as a watched one, and sent to it. Up to
+// ALL_NOW missing classes are read at once when it asks, the others at the next wake-ups.
+const ALL = "*", ALL_NOW = 12;
 
 const api = (env) => env.LR_API || "https://liveresultat.orientering.se/api.php";
 
@@ -64,16 +68,24 @@ export class LiveRace extends DurableObject {
     if (this.m) return this.m;
     const s = await this.ctx.storage.get(["head", "data"]);
     this.m = s.get("head") || { comp: null, info: null, classes: [], classesHash: "", passHash: "", hashes: {}, read: {}, lastChange: 0, classesAt: 0 };
-    this.m.data = s.get("data") || {};
-    if (this.m.pushed) for (const [k, v] of await this.ctx.storage.list({ prefix: "c:" })) this.m.data[k.slice(2)] = v;
+    // each class under its own key (2026-10-22: one value for every class of a big race outgrew the storage's limit); the
+    // former single « data » value is read once and written out class by class at the next save
+    const old = s.get("data");
+    this.m.data = old || {};
+    this.legacy = old ? Object.keys(old) : null;
+    for (const [k, v] of await this.ctx.storage.list({ prefix: "c:" })) this.m.data[k.slice(2)] = v;
     this.m.counts ||= {}; this.m.counted ||= {}; this.m.chash ||= {};       // (objects of before the counts)
     if (this.m.pushed) for (const [k, v] of Object.entries(this.m.data)) this.m.counts[k] = countOf(v.rows || []);
     return this.m;
   }
 
-  async save(dataChanged) {
+  /** The head, and the classes named (those that changed) under their own keys. */
+  async save(names = []) {
     const { data, ...head } = this.m;
-    await this.ctx.storage.put(dataChanged ? { head, data } : { head });
+    const all = [...new Set([...names, ...(this.legacy || [])])].filter((c) => data[c]);
+    const puts = [["head", head], ...all.map((c) => [`c:${c}`, data[c]])];
+    for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
+    if (this.legacy) { this.legacy = null; await this.ctx.storage.delete("data"); }
   }
 
   send(ws, msg) {
@@ -104,11 +116,11 @@ export class LiveRace extends DurableObject {
       } catch (e) {
         return new Response("liveresultat unavailable", { status: 502 });
       }
-      await this.save(false);
+      await this.save();
     }
     if (!m.pass) {                              // a race relayed before passings were kept: read them once
       m.passHash = "";
-      try { if (await this.readPassings(m)) await this.save(false); } catch (e) { /* the next wake-up */ }
+      try { if (await this.readPassings(m)) await this.save(); } catch (e) { /* the next wake-up */ }
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
@@ -125,9 +137,20 @@ export class LiveRace extends DurableObject {
     if (typeof q.sub !== "string" || q.sub.length > 200) return;
     ws.serializeAttachment({ sub: q.sub });
     const m = await this.load();
+    if (q.sub === ALL) {
+      // the whole race: every class held, then the missing ones, read now (a few) or at the next wake-ups
+      for (const c of m.classes) if (m.data[c]) this.send(ws, { t: "class", c, ...m.data[c] });
+      if (m.pushed) return;
+      const read = [];
+      for (const c of m.classes.filter((x) => !m.data[x]).slice(0, ALL_NOW)) {
+        try { if (await this.readClass(m, c)) { read.push(c); this.send(ws, { t: "class", c, ...m.data[c] }); } } catch (e) { break; }
+      }
+      if (read.length) { await this.save(read); this.send(ws, { t: "counts", counts: m.counts }); }
+      return;
+    }
     if (!m.classes.includes(q.sub)) return this.send(ws, { t: "class", c: q.sub, missing: true });
     if (!m.data[q.sub] && !m.pushed) {
-      try { if (await this.readClass(m, q.sub)) await this.save(true); } catch (e) { /* sent at the next wake-up */ }
+      try { if (await this.readClass(m, q.sub)) await this.save([q.sub]); } catch (e) { /* sent at the next wake-up */ }
     }
     if (m.data[q.sub]) this.send(ws, { t: "class", c: q.sub, ...m.data[q.sub] });
   }
@@ -187,7 +210,7 @@ export class LiveRace extends DurableObject {
     if (arrivals.length && !first) for (const ws of sockets) this.send(ws, { t: "pass", items: m.pass, at: m.lastChange });
     for (const ws of sockets) {
       const sub = ws.deserializeAttachment()?.sub;
-      if (sub != null && changed.includes(sub)) this.send(ws, { t: "class", c: sub, ...m.data[sub] });
+      for (const c of changed) if (sub === c || sub === ALL) this.send(ws, { t: "class", c, ...m.data[c] });
     }
     // each changed class under its own key, the head apart
     const { data, ...head } = m;
@@ -244,13 +267,15 @@ export class LiveRace extends DurableObject {
     const m = await this.load();
     if (m.pushed) return;                        // an organiser's race: nothing to read, its pushes carry the news
     const watched = new Map();                   // class -> its sockets
-    const everyone = [];
+    const everyone = [], whole = [];             // whole: the pages watching every class
     for (const ws of sockets) {
       everyone.push(ws);
       const sub = ws.deserializeAttachment()?.sub;
-      if (sub != null) (watched.get(sub) || watched.set(sub, []).get(sub)).push(ws);
+      if (sub === ALL) whole.push(ws);
+      else if (sub != null) (watched.get(sub) || watched.set(sub, []).get(sub)).push(ws);
     }
-    let reads = 0, changed = false, counted = false;
+    let reads = 0, counted = false;
+    const changed = [];
     try {
       reads++;
       const moved = new Set();
@@ -262,18 +287,21 @@ export class LiveRace extends DurableObject {
         reads++;
         if (await this.readClasses(m)) for (const ws of everyone) this.send(ws, { t: "classes", classes: m.classes });
       }
-      for (const [name, socks] of watched) {
+      // the classes watched (every one when a page watches the whole race) that moved, were never read or are stale: those
+      // just punched first, then those never read, then the oldest
+      const due0 = (whole.length ? m.classes : [...watched.keys()].filter((c) => m.classes.includes(c)))
+        .filter((c) => moved.has(c) || !m.data[c] || Date.now() - (m.read[c] || 0) >= RECHECK_MS)
+        .sort((a, b) => (moved.has(b) - moved.has(a)) || (!!m.data[a] - !!m.data[b]) || (m.read[a] || 0) - (m.read[b] || 0));
+      for (const name of due0) {
         if (reads >= MAX_READS) break;
-        if (!m.classes.includes(name)) continue;
-        if (!moved.has(name) && m.data[name] && Date.now() - (m.read[name] || 0) < RECHECK_MS) continue;
         reads++;
         if (await this.readClass(m, name)) {
-          changed = counted = true;
-          for (const ws of socks) this.send(ws, { t: "class", c: name, ...m.data[name] });
+          changed.push(name); counted = true;
+          for (const ws of [...(watched.get(name) || []), ...whole]) this.send(ws, { t: "class", c: name, ...m.data[name] });
         }
       }
       const now = Date.now();
-      const due = m.classes.filter((c) => !watched.has(c))
+      const due = (whole.length ? [] : m.classes.filter((c) => !watched.has(c)))
         .map((c) => [c, moved.has(c) ? 0 : m.counts[c] ? 2 : 1, m.counted[c] || 0])
         .filter(([, p, at]) => p === 1 || now - at > (p === 0 ? COUNT_MOVED_MS : COUNT_STALE_MS))
         .sort((a, b) => a[1] - b[1] || a[2] - b[2]).slice(0, COUNT_READS);
