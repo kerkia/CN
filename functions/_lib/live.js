@@ -9,3 +9,9 @@ export async function broadcasts(env) {
   const r = await liveDir(env).fetch("https://ocn-live/broadcasts");
   return (await r.json()).broadcasts || [];
 }
+
+/** A broadcast's MeOS password (MeOS's online results, /api/live/mop): 16 letters and digits, none mistaken for another. */
+export function newMopKey() {
+  const ALPH = "abcdefghjkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(16));
+  return [...r].map((x) => ALPH[x % ALPH.length]).join("");
+}

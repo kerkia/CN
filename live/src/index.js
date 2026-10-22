@@ -10,6 +10,7 @@
 // The WebSocket Hibernation API keeps idle connections free; only what changed is written to storage.
 
 import { DurableObject } from "cloudflare:workers";
+import * as mop from "./mop.js";
 
 const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, relayed to its spectators)";
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
@@ -35,6 +36,7 @@ const api = (env) => env.LR_API || "https://liveresultat.orientering.se/api.php"
 const PUSHED_FROM = 900000000;
 const isPushed = (comp) => Number(comp) >= PUSHED_FROM;
 const MAX_PUT = 100;                             // keys per storage.put (the limit is 128)
+const MOP_MAX = 16 * 1024 * 1024;                // a MeOS message, at most (Ozimut's Function checks it too)
 async function lr(env, params) {
   const r = await fetch(`${api(env)}?${new URLSearchParams(params)}`, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`liveresultat ${r.status}`);
@@ -95,6 +97,7 @@ export class LiveRace extends DurableObject {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/push" && request.method === "POST") return this.push(request, url.searchParams.get("comp") || "");
+    if (url.pathname === "/mop" && request.method === "POST") return this.mop(request, url.searchParams.get("comp") || "");
     if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket expected", { status: 426 });
     const comp = url.pathname.split("/").filter(Boolean).pop();
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
@@ -165,6 +168,68 @@ export class LiveRace extends DurableObject {
     if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return new Response("Not an organiser's race", { status: 400 });
     let p;
     try { p = await request.json(); } catch (e) { return new Response("Bad JSON", { status: 400 }); }
+    return new Response(JSON.stringify(await this.update(comp, p)), { headers: { "Content-Type": "application/json" } });
+  }
+
+  /** MeOS's online results (internal, from Ozimut's /api/live/mop): a <MOPComplete> or <MOPDiff>, perhaps zipped, applied to
+   *  the race's MOP state (mop.js), the classes it touched rebuilt in the compact form and passed on as a push; the
+   *  broadcast's name, date and organiser come in X-Info. Answers { status: MeOS's word, … }. */
+  async mop(request, comp) {
+    const out = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return out({ status: "BADCMP" }, 400);
+    let bytes = new Uint8Array(await request.arrayBuffer());
+    if (!bytes.length) return out({ status: "NODATA" }, 400);
+    if (bytes.length > MOP_MAX) return out({ status: "ERROR", error: "too large" }, 413);
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+      try { bytes = await mop.unzipFirst(bytes); } catch (e) { return out({ status: "NOZIP", error: e.message }, 415); }
+    }
+    const doc = mop.parseXml(mop.decodeXml(bytes));
+    if (!doc || (doc.name !== "MOPComplete" && doc.name !== "MOPDiff")) return out({ status: "BADXML" }, 400);
+    const complete = doc.name === "MOPComplete";
+    let h = complete ? null : await this.ctx.storage.get("mop:h");
+    const fresh = !h;
+    h ||= mop.emptyHead();
+    const states = new Map();
+    const getCls = async (id) => {
+      if (!states.has(id)) states.set(id, (!fresh && (await this.ctx.storage.get(`mop:c:${id}`))) || mop.emptyClass());
+      return states.get(id);
+    };
+    const { touched, removed, all, runners } = await mop.apply(doc, h, getCls);
+    const ids = all || fresh ? Object.keys(h.cls) : [...touched].filter((id) => h.cls[id]);
+    const classes = {};
+    for (const id of ids) {
+      const k = await getCls(id);
+      h.cnt[id] = Object.keys(k.r).length + Object.keys(k.t).length;
+    }
+    for (const id of removed) { delete h.cnt[id]; delete h.nm[id]; }
+    // the names shown: MeOS's, made unique in its order
+    const order = mop.classOrder(h), used = new Set();
+    for (const id of order) {
+      let n = h.cls[id].n || `#${id}`;
+      while (used.has(n)) n += " ";
+      used.add(n);
+      h.nm[id] = n;
+    }
+    for (const id of ids) if (h.cnt[id] > 0) classes[h.nm[id]] = mop.compactClass(h, id, await getCls(id));
+    let info = null;
+    try { info = JSON.parse(decodeURIComponent(request.headers.get("X-Info") || "")); } catch (e) { /* MeOS's own then */ }
+    info = { name: info?.name || h.comp?.name || "", organizer: info?.organizer || h.comp?.organizer || "", date: info?.date || h.comp?.date || null };
+    const r = await this.update(comp, { info, order: order.map((id) => h.nm[id]), classes }, { prune: true });
+    // MeOS's state: a complete race starts afresh; the head, then the classes touched under their own keys
+    if (complete) {
+      const old = [...(await this.ctx.storage.list({ prefix: "mop:" })).keys()];
+      for (let i = 0; i < old.length; i += 128) await this.ctx.storage.delete(old.slice(i, i + 128));
+    }
+    const puts = [["mop:h", h], ...[...states].filter(([id]) => h.cls[id] || h.cnt[id]).map(([id, k]) => [`mop:c:${id}`, k])];
+    for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
+    if (removed.size) await this.ctx.storage.delete([...removed].map((id) => `mop:c:${id}`));
+    return out({ status: "OK", kind: complete ? "complete" : "diff", runners: Object.keys(h.who).length + Object.keys(h.team).length,
+      sent: runners, ...r });
+  }
+
+  /** The classes that changed, in the compact form (from the organiser's page or from MeOS), stored and pushed to the pages
+   *  watching; `prune`: the classes not in `order` are dropped (MeOS sends the whole race's list). */
+  async update(comp, p, { prune = false } = {}) {
     const m = await this.load();
     const first = !m.pushed;
     m.comp = comp;
@@ -182,17 +247,28 @@ export class LiveRace extends DurableObject {
       const next = { controls: Array.isArray(k.controls) ? k.controls.slice(0, 200) : [], rows: k.rows };
       const prev = m.data[name];
       if (prev && JSON.stringify({ controls: prev.controls, rows: prev.rows }) === JSON.stringify(next)) continue;
-      // the runners who finished since the last push, for the ticker of arrivals
-      const before = new Set((prev?.rows || []).filter((r) => r[4] === 0 && r[3] != null).map((r) => `${r[1]}|${r[2]}`));
-      for (const r of next.rows) if (r[4] === 0 && r[3] != null && !before.has(`${r[1]}|${r[2]}`)) arrivals.push([r[1], name, r[3]]);
+      // the runners who finished, and the radio controls passed, since the last push, for the ticker of punches:
+      // [name, class, control code (1000: the finish), its name, time, start]
+      const was = new Map((prev?.rows || []).map((r) => [`${r[1]}|${r[2]}`, r]));
+      for (const r of next.rows) {
+        const o = was.get(`${r[1]}|${r[2]}`);
+        // a runner seen for the first time is no news (MeOS sends a whole race in chunks of 64: its first send spans several pushes)
+        if (!o) continue;
+        if (r[4] === 0 && r[3] != null && !(o && o[4] === 0 && o[3] != null)) arrivals.push([r[1], name, 1000, "", r[3], r[7]]);
+        (r[8] || []).forEach((s, i) => {
+          if (s && !o?.[8]?.[i]) arrivals.push([r[1], name, next.controls[i]?.[0] ?? i + 1, next.controls[i]?.[1] ?? "", s[0], r[7]]);
+        });
+      }
       m.data[name] = { ...next, at: now };
       m.counts[name] = countOf(next.rows);
       changed.push(name);
     }
     const order = Array.isArray(p.order) ? p.order.filter((c) => typeof c === "string" && m.data[c]) : null;
-    const classes = order && order.length ? order : [...new Set([...m.classes, ...changed])];
+    const classes = order && (order.length || prune) ? order : [...new Set([...m.classes, ...changed])];
     const classesChanged = JSON.stringify(classes) !== JSON.stringify(m.classes);
     m.classes = classes;
+    const dropped = prune ? Object.keys(m.data).filter((c) => !classes.includes(c)) : [];
+    for (const c of dropped) { delete m.data[c]; delete m.counts[c]; }
     // the first push is no news (the file may already hold hours of results): no arrivals then
     if (arrivals.length && !first) {
       const clock = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", second: "2-digit",
@@ -200,7 +276,12 @@ export class LiveRace extends DurableObject {
       // the time written out, as liveresultat sends it in its passings (« 41:40 », « 1:05:12 »)
       const out = (h) => { const x = Math.floor(h / 100), mm = String(Math.floor(x / 60) % 60).padStart(2, "0"), ss = String(x % 60).padStart(2, "0");
         return x >= 3600 ? `${Math.floor(x / 3600)}:${mm}:${ss}` : `${Math.floor(x / 60)}:${ss}`; };
-      m.pass = [...arrivals.slice(-PASS_KEPT).reverse().map(([n, k, t]) => [clock, n, k, 1000, "Arrivée", out(t)]), ...(m.pass || [])].slice(0, PASS_KEPT);
+      // each at its time of day (the start + its time) when the start is known, else now; the latest first
+      const tod = (h) => { const x = Math.floor(h / 100) % 86400; return [Math.floor(x / 3600), Math.floor(x / 60) % 60, x % 60].map((v) => String(v).padStart(2, "0")).join(":"); };
+      const items = arrivals.map(([n, k, c, cn, t, st]) => [st != null ? tod(st + t) : clock, n, k, c, c === 1000 ? "Arrivée" : cn, out(t), st != null ? st + t : Infinity])
+        .sort((a, b) => b[6] - a[6]).slice(0, PASS_KEPT).map((x) => x.slice(0, 6));
+      // by time of day, the latest first (split times read at the finish come after later punches)
+      m.pass = [...items, ...(m.pass || [])].sort((a, b) => (b[0].padStart(8, "0") > a[0].padStart(8, "0") ? 1 : -1)).slice(0, PASS_KEPT);
       m.lastChange = now;
     }
     const sockets = this.ctx.getWebSockets();
@@ -216,8 +297,8 @@ export class LiveRace extends DurableObject {
     const { data, ...head } = m;
     const puts = [["head", head], ...changed.map((c) => [`c:${c}`, m.data[c]])];
     for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
-    return new Response(JSON.stringify({ ok: true, classes: m.classes.length, changed: changed.length, arrivals: first ? 0 : arrivals.length,
-      viewers: sockets.length }), { headers: { "Content-Type": "application/json" } });
+    if (dropped.length) await this.ctx.storage.delete(dropped.map((c) => `c:${c}`));
+    return { ok: true, classes: m.classes.length, changed: changed.length, arrivals: first ? 0 : arrivals.length, viewers: sockets.length };
   }
 
   async readClasses(m) {
@@ -467,7 +548,9 @@ export class Directory extends DurableObject {
   }
 
   /** The organisers' broadcasts (internal, from Ozimut): GET lists them, the newest first; POST { op: "new", name, date,
-   *  organizer, key, by } opens one and answers its number; POST { op: "touch", id } records a push. */
+   *  organizer, key, mop, by } opens one and answers its number; POST { op: "mop", id, mop } sets its MeOS password (MeOS's
+   *  online results, /api/live/mop); POST { op: "touch", id, via, runners } records a push (via "mop": MeOS's, with the
+   *  number of runners it holds). */
   async broadcasts(request) {
     const all = (await this.ctx.storage.get("broadcasts")) || [];
     const out = (body) => new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
@@ -477,13 +560,23 @@ export class Directory extends DurableObject {
     if (b.op === "new") {
       const id = (await this.ctx.storage.get("bnext")) || PUSHED_FROM;
       all.unshift({ id, name: String(b.name || "").slice(0, 160), date: b.date || null, organizer: String(b.organizer || "").slice(0, 160),
-        key: b.key ? String(b.key).slice(0, 40) : null, by: b.by ?? null, created: Date.now(), last: null });
+        key: b.key ? String(b.key).slice(0, 40) : null, mop: b.mop ? String(b.mop).slice(0, 64) : null, by: b.by ?? null,
+        created: Date.now(), last: null });
       await this.ctx.storage.put({ bnext: id + 1, broadcasts: all.slice(0, 200) });
       return out({ id });
     }
+    if (b.op === "mop") {
+      const x = all.find((y) => y.id === Number(b.id));
+      if (x) { x.mop = b.mop ? String(b.mop).slice(0, 64) : null; await this.ctx.storage.put("broadcasts", all); }
+      return out({ ok: !!x });
+    }
     if (b.op === "touch") {
       const x = all.find((y) => y.id === Number(b.id));
-      if (x) { x.last = Date.now(); await this.ctx.storage.put("broadcasts", all); }
+      if (x) {
+        x.last = Date.now();
+        if (b.via === "mop") { x.mopAt = x.last; x.mopRunners = Number(b.runners) || 0; }
+        await this.ctx.storage.put("broadcasts", all);
+      }
       return out({ ok: !!x });
     }
     return new Response("Bad operation", { status: 400 });

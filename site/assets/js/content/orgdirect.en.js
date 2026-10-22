@@ -1,6 +1,19 @@
 // "Organising › Live feed" (pages/orgdirect.js): how it works, in English; orgdirect.fr.js is the reference.
 export const steps = `
-  <h3 style="margin:0 0 6px">Before the race</h3>
+  <h3 style="margin:0 0 6px">With MeOS: online results</h3>
+  <ol class="od-steps">
+    <li>Choose the race below, or create it. The “From MeOS” card then gives three values: the address, the competition number and
+      its password.</li>
+    <li>In MeOS, <b>Services</b> tab, add the <b>Online Results</b> service. Tick “Send to the web” and copy the address (URL), the
+      “Competition ID number” and the “Password”. Export format: “MeOS Online Protocol XML 2.0”. An interval of 10 to 15 seconds
+      is fine.</li>
+    <li>Under “Controls”, tick the radio controls: their times arrive live. Also tick <b>“Send all punches after card
+      readout”</b>: at each finish, all the runner's split times are published.</li>
+    <li>Click “Start”. MeOS first sends the whole race, then only what changes. The “From MeOS” card shows when it last received
+      something. Nothing needs to stay open on Ozimut: only MeOS must stay connected to the internet.</li>
+    <li>Test it the day before with the race being prepared: the runners appear in “Live” even before the start.</li>
+  </ol>
+  <h3 style="margin:14px 0 6px">With other software: before the race</h3>
   <ol class="od-steps">
     <li>In your timing software, set up an <b>automatic export of the results list</b> to a file, every 15 to 30 seconds,
       always to the same place and under the same name.

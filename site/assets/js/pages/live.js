@@ -414,19 +414,44 @@ async function race(main, id, wanted, arg) {
     }
   }
 
+  // a class's usual times (2026-10-22): the finishers' median time and, at each radio control, the median of those finishers
+  // who passed it — from 3 finishers on; a runner still out is expected at the finish at their time at the last radio control
+  // scaled by them (the median time when they passed none)
+  const usual = new WeakMap();
+  function usualOf(d) {
+    if (usual.has(d)) return usual.get(d);
+    const fin = d.rows.filter((r) => r[4] === 0 && r[3] != null);
+    const med = (a) => { const s = a.filter((v) => v > 0).sort((p, q) => p - q); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
+    const u = fin.length >= 3 ? { fin: med(fin.map((r) => r[3])), at: (d.controls || []).map((_, i) => med(fin.map((r) => r[8]?.[i]?.[0]))) } : null;
+    usual.set(d, u);
+    return u;
+  }
+  function eta(x) {
+    const u = usualOf(x.d), start = x.r[7], splits = x.r[8];
+    if (!u?.fin || start == null) return null;
+    const last = splits ? splits.map((s, i) => (s && u.at[i] ? [i, s[0]] : null)).filter(Boolean).pop() : null;
+    return start + Math.round((last ? last[1] / u.at[last[0]] : 1) * u.fin);
+  }
+
   // one runner's line: place, name, [course,] [club,] [category,] start, time and gap, CN and expected place, score and gap
   function line(x, k, now, o) {
-    const [place, name, club, result, status, timeplus, , start, splits] = x.r;
+    const [place, name, club, result, status, timeplus, , start, splits, prel] = x.r;
     const rc = k === "fin" || k === "run" ? recent(lastAt(x.r), now) : "";
     const ctl = x.d.controls || [];
     let time = "", sub = "";
-    if (k === "fin") { time = html`<b>${hs(result)}</b>`; sub = timeplus ? `+${hs(timeplus)}` : ""; }
-    else if (k === "run") {
+    if (k === "fin") {
+      time = html`<b>${hs(result)}</b>`;
+      // a finish a radio control recorded, before the card is read (MeOS's online results)
+      sub = html`${timeplus ? `+${hs(timeplus)}` : ""}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}`;
+    } else if (k === "run") {
       const last = splits ? splits.map((s, i) => (s ? [i, s] : null)).filter(Boolean).pop() : null;
       time = html`<span class="muted" data-start="${start}">${now >= start ? hs(now - start) : ""}</span>`;
-      if (last) sub = t("lv.atControl", { c: ctl[last[0]]?.[1] || "", p: last[1][1] ?? "–", d: last[1][2] ? `+${hs(last[1][2])}` : "+0:00" });
+      const e = eta(x);
+      sub = html`${last ? t("lv.atControl", { c: ctl[last[0]]?.[1] || "", p: last[1][1] ?? "–", d: last[1][2] ? `+${hs(last[1][2])}` : "+0:00" }) : ""}${
+        e != null && e > now ? html`${last ? " · " : ""}<span class="lv-eta" title="${t("lv.eta.tip")}">${t("lv.eta", { t: tod(e) })}</span>` : ""}`;
     } else if (k === "out") time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
-    const two = (a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
+    if (sub && sub.s === "") sub = "";
+    const two =(a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
     const cls = [rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>

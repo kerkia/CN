@@ -1,6 +1,20 @@
 // « Organisation › Direct » (pages/orgdirect.js): how it works, in French; orgdirect.en.js in step.
 export const steps = `
-  <h3 style="margin:0 0 6px">Avant la course</h3>
+  <h3 style="margin:0 0 6px">Avec MeOS : les résultats en ligne</h3>
+  <ol class="od-steps">
+    <li>Choisissez la course ci-dessous, ou créez-la. La carte « Depuis MeOS » donne alors trois valeurs : l'adresse, le numéro de la
+      compétition et son mot de passe.</li>
+    <li>Dans MeOS, onglet <b>Services</b>, ajoutez le service <b>Résultats en ligne</b>. Cochez « Envoyer sur le web » et recopiez
+      l'adresse (URL), l'« Identifiant de la compétition » et le « Mot de passe ». Format d'export : « MeOS Online Protocol XML 2.0 ».
+      Un intervalle de 10 à 15 secondes convient.</li>
+    <li>Sous « Postes », cochez les postes radio : leurs temps arrivent en direct. Cochez aussi <b>« Envoyer tous les poinçons après
+      lecture de la puce »</b> : à chaque arrivée, tous les temps intermédiaires du coureur sont publiés.</li>
+    <li>Cliquez sur « Démarrer ». MeOS envoie d'abord toute la course, puis seulement ce qui change. La carte « Depuis MeOS » indique la
+      dernière réception. Il n'y a rien à laisser ouvert sur Ozimut : seul MeOS doit rester connecté à internet.</li>
+    <li>Faites un essai la veille, avec la course en préparation : les coureurs apparaissent dans « En direct » avant même le
+      départ.</li>
+  </ol>
+  <h3 style="margin:14px 0 6px">Avec un autre logiciel : avant la course</h3>
   <ol class="od-steps">
     <li>Dans votre logiciel de chronométrage, programmez un <b>export automatique de la liste des résultats</b> vers un fichier,
       toutes les 15 à 30 secondes, toujours au même endroit et sous le même nom.

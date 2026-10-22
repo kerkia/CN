@@ -18,7 +18,8 @@ export const COOKIE = "cnx_session";
 const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/,
   /^\/data\/[a-z]{2}\/meta\.json$/, /^\/api\/logout$/,
   /^\/sw(-push)?\.js$/, /^\/manifest(\.en)?\.webmanifest$/, /^\/offline(\.html)?$/,
-  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/];
+  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/,
+  /^\/api\/live\/mop$/];          // MeOS's online results: no session, the broadcast's MeOS password (api/live/mop.js)
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
 const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];

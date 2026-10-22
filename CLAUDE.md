@@ -21,7 +21,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
-| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js` and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
+| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -704,6 +704,28 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   `pages-dev-user` (8792, ADMIN_EMAILS overridden). The live relay
   (`live/`) is deployed by hand. Local test: launch configs `ocn-live-dev` (8786) and `pages-dev-games` (8790; the local Pages
   dev binds to the running relay); `iofLive` / `toLive` are exported for checks.
+  **MeOS pushes itself** (2026-10-22, after reading MeOSDjango — GPL, ideas only; MeOS's own `onlineresults.cpp` /
+  `infoserver.cpp` read for the protocol): MeOS's service « Résultats en ligne » (« Online Results », tab « Services ») posts the
+  MeOS Online Protocol (MOP 2.0: `<MOPComplete>` then `<MOPDiff>`, in chunks of 64 elements, zipped above 1 KB by default) to
+  `/api/live/mop` (`functions/api/live/mop.js`, public in `_middleware.js`: no session) with headers `competition` (the broadcast's
+  number; another number, 0 or empty: found by the password alone) and `pwd` (the broadcast's MeOS password, `mop`: 16 letters,
+  made at creation or by « Nouveau mot de passe », POST `{ op: "mopkey", id }`; GET gives it to the opener and administrators only).
+  Answers `<MOPStatus status="OK|BADCMP|BADPWD|NODATA|NOZIP|BADXML|ERROR">`. The body goes unread to the race's object (`/mop`),
+  which reads it (`live/src/mop.js`: a small XML reader, the zip's first file by DecompressionStream), keeps MeOS's state —
+  head `mop:h` (competition, controls, classes with their radio controls per leg, clubs, each runner's and team's class), each
+  class's runners and teams under `mop:c:<id>`; card numbers not kept — and passes the classes touched, in the compact form, to the
+  same `update` as the page's push (`prune`: classes MeOS no longer has go). MeOS status codes → liveresultat's (1 OK, 3 PM, 4
+  DNF, 5 DSQ, 6 OT, 20/21 DNS, 2/15/99 NC; 0 = out when `competing` or a punch, else the start time decides); `prel="true"` (a
+  radio finish before the card is read) is the row's 10th field, « provisoire » on « En direct ». Split times: the class's
+  `radio` list (the controls ticked in the service); with « Envoyer tous les poinçons après lecture de la puce » it is the whole
+  course and every split comes at the card's readout. The relay's ticker holds radio punches too (each at start + time), a
+  runner seen for the first time being no news (the first send spans several pushes). The page's card « 2. Depuis MeOS »: the
+  address, number and password with copy buttons, MeOS's last message (`mopAt`, `mopRunners`, from the directory's `touch` with
+  `via: "mop"`). Tested locally with a simulated MeOS (scratch `mop_test.mjs`: chunks, zip, prel → readout, MP, deletion, a
+  renamed class, a relay team, wrong password and number).
+  **« En direct » estimates** (2026-10-22): a runner still out shows « arr. ≈ hh:mm » — start + their time at the last radio
+  control ÷ the finishers' median there × the finishers' median time (the median time without a punch; 3 finishers at least;
+  `live.js` `usualOf`, `eta`).
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; administrators only the first
   day, **every account since 2026-10-16** — 15 questions a day per account on the free model, administrators apart, `PER_DAY`
   in `api/ask.js`; the other Workers AI models of the menu are the administrators' tests): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**

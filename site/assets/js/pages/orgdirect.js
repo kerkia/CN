@@ -1,5 +1,7 @@
 // « Organisation › Direct » (#/orga-direct; every account since 2026-10-15, owner): an organiser feeds « En direct »
-// from their timing software, without liveresultat. The software exports its result list to a file every few seconds;
+// from their timing software, without liveresultat. MeOS posts its online results itself (2026-10-22: MOP, to
+// /api/live/mop with the race's number and MeOS password, both shown in card 2; nothing to keep open). Else the software
+// exports its result list to a file every few seconds;
 // this page, open on the arena PC in Chrome or Edge (the File System Access API keeps the file: it is chosen once), re-reads
 // it, reads it here — IOF XML 3.0 with its own reader below, which keeps the runners still out and their split times; the
 // OE / MeOS HTML lists with localparse.js — and sends only the classes that changed (functions/api/live/push.js, then the
@@ -9,7 +11,7 @@
 // so a reload asks one click to read it again. A broadcast is fed by the account that opened it (or an administrator):
 // the page lists one's own broadcasts only (all of them to administrators).
 
-import { html, raw, $, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmtDate } from "../util.js";
 import { t, lang, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -159,9 +161,15 @@ export async function render(main) {
     <section class="card"><div class="card-head"><h2>${t("od.how")}</h2></div><div class="card-body">${raw(steps)}</div></section>
     <section class="card"><div class="card-head"><div><h2>${t("od.race")}</h2><div class="hint">${t("od.race.hint")}</div></div></div>
       <div class="card-body" id="od-race"><div class="empty">${t("misc.loading")}</div></div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("od.meos")}</h2><div class="hint">${t("od.meos.hint")}</div></div></div>
+      <div class="card-body" id="od-meos"></div></section>
     <section class="card"><div class="card-head"><div><h2>${t("od.file")}</h2><div class="hint">${t("od.file.hint")}</div></div></div>
       <div class="card-body" id="od-file"></div></section>
     <style>
+      .od-meos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; align-items: center; max-width: 720px }
+      .od-meos code { font-size: 14px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; user-select: all; overflow-wrap: anywhere }
+      .od-meos .od-val { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+      @media (max-width: 560px) { .od-meos { grid-template-columns: minmax(0, 1fr) } }
       .od-steps { margin: 0; padding-left: 22px; line-height: 1.55 }
       .od-steps li { margin: 4px 0 }
       .od-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px }
@@ -217,7 +225,44 @@ export async function render(main) {
       st.id = d.id; pref.set({ id: st.id });
       await loadList(); drawRace(); drawFile();
     });
+    drawMeos();
     drawFile();
+  }
+
+  // ---- 2. MeOS's online results: MeOS posts to /api/live/mop itself (functions/api/live/mop.js), with the race's number and
+  // its MeOS password; this card gives them, and says when MeOS last sent something (the list is read again every 15 s)
+  function drawMeos() {
+    const el = $("#od-meos"), b = current();
+    if (!b) { el.innerHTML = html`<div class="muted">${t("od.pickRace")}</div>`; return; }
+    const copy = (v) => html`<button type="button" class="btn btn-sm" data-copy="${v}">${t("od.meos.copy")}</button>`;
+    const url = `${location.origin}/api/live/mop`;
+    el.innerHTML = html`<div class="od-meos">
+        <span class="muted">${t("od.meos.url")}</span><span class="od-val"><code>${url}</code>${copy(url)}</span>
+        <span class="muted">${t("od.meos.comp")}</span><span class="od-val"><code>${b.id}</code>${copy(String(b.id))}</span>
+        <span class="muted">${t("od.meos.pwd")}</span><span class="od-val">${b.mop ? html`<code>${b.mop}</code>${copy(b.mop)}` : ""}
+          <button type="button" class="btn btn-sm" id="od-mopkey">${b.mop ? t("od.meos.newPwd") : t("od.meos.makePwd")}</button></span>
+      </div>
+      <p class="muted od-log" id="od-meos-status"></p>`;
+    meosStatus();
+    $$("[data-copy]", el).forEach((x) => x.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(x.dataset.copy); x.textContent = t("od.meos.copied"); setTimeout(() => { x.textContent = t("od.meos.copy"); }, 1500); }
+      catch (e) { /* the value can be selected by hand */ }
+    }));
+    $("#od-mopkey").addEventListener("click", async () => {
+      if (b.mop && !confirm(t("od.meos.newPwdConfirm"))) return;
+      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "mopkey", id: b.id }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.mop) { $("#od-meos-status").textContent = t("od.meos.failed", { e: d.error || r.status }); return; }
+      b.mop = d.mop;
+      drawMeos();
+    });
+  }
+  function meosStatus() {
+    const el = $("#od-meos-status"), b = current();
+    if (!el || !b) return;
+    el.textContent = b.mopAt ? t("od.meos.last", { t: `${Math.max(0, Math.round((Date.now() - b.mopAt) / 1000))} s`, n: b.mopRunners ?? 0 })
+      : t("od.meos.none");
   }
 
   // ---- 2. the file and the reads -------------------------------------------------------------------------------------
@@ -337,6 +382,12 @@ export async function render(main) {
   if (st.id && !list.some((b) => b.id === st.id)) st.id = null;
   drawRace();
   await restoreHandle();
-  const tick = setInterval(() => { if (!main.isConnected) { clearInterval(tick); stop(); ticker.terminate(); } else if (st.running) drawStatus(); }, 5000);
+  let n = 0;
+  const tick = setInterval(async () => {
+    if (!main.isConnected) { clearInterval(tick); stop(); ticker.terminate(); return; }
+    if (st.running) drawStatus();
+    // MeOS's last message: the broadcasts read again every 15 s while one is chosen
+    if (st.id && ++n % 3 === 0 && !document.hidden) { await loadList(); meosStatus(); } else meosStatus();
+  }, 5000);
   return { title: t("nav.orgDirect") };
 }
