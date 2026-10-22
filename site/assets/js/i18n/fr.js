@@ -1006,8 +1006,6 @@ export default {
   "lv.elsewhere": "En direct ailleurs :",
   "lv.now.title": "En direct maintenant",
   "lv.now.hint": "Les courses dont un poste ou l'arrivée a enregistré un passage ces {m} dernières minutes.",
-  "lv.now.ago": "dernier passage il y a {m} min",
-  "lv.now.just": "passage à l'instant",
   "lv.now.n": "{n} en direct maintenant",
   "lv.badge": "direct",
   "lv.org": "Organisateur",

@@ -60,14 +60,12 @@ async function list(main, query) {
     <div id="lv-now"></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
-    <div class="lv-else lv-else-end" data-lv-else></div>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [], liveS = 1800, own = [];
   try { ({ comps, liveS = 1800 } = await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()); } catch (e) { /* shown empty */ }
   // live now (owner, 2026-10-22): a race whose last punch is under liveS old (the relay's directory reads today's races'
   // last passings: c[6], the age in seconds), a broadcast that sent something in that time
   const isLive = (c) => c[6] != null && c[6] <= liveS;
-  const ago = (s) => (s < 60 ? t("lv.now.just") : t("lv.now.ago", { m: Math.round(s / 60) }));
   // the races organisers feed from their timing software (« Organisation › Direct »), of the last 3 days: those that sent
   // something, and one's own before their first send (every one to administrators)
   {
@@ -98,8 +96,8 @@ async function list(main, query) {
     const now = kept.filter(isLive).sort((a, b) => a[6] - b[6]);
     $("#lv-now").innerHTML = now.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("lv.now.title")}</h2>
         <div class="hint">${t("lv.now.hint", { m: Math.round(liveS / 60) })}</div></div></div>
-      <div class="lv-now-list">${now.map(([id, name, org, , , cc, age]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
-        <span class="muted">${org}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span><span class="lv-now-ago">${ago(age)}</span></a>`)}</div></section>` : "";
+      <div class="lv-now-list">${now.map(([id, name, org, , , cc]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
+        <span class="muted">${org}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span></a>`)}</div></section>` : "";
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
       <tbody>${kept.map((c) => { const [id, name, org, date, , cc] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
         <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`

@@ -1531,8 +1531,6 @@ export default {
   "lv.elsewhere": "Live elsewhere:",
   "lv.now.title": "Live now",
   "lv.now.hint": "Races where a control or the finish recorded a punch in the last {m} minutes.",
-  "lv.now.ago": "last punch {m} min ago",
-  "lv.now.just": "punch just now",
   "lv.now.n": "{n} live now",
   "lv.badge": "live",
   "lv.org": "Organiser",
