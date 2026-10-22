@@ -495,7 +495,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   brings its discipline (the site-wide one switches, so the list beside it holds it, opened and marked) and, without `circ=`,
   opens on the circuit the signed-in user ran (in runner mode the runner's), else the busiest.
 - Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
-  (owner, 2026-10-12: every long table); put new tables in one. The race results tables — Courses classées, Résultats, En direct —
+  (owner, 2026-10-12: every long table); put new tables in one. **It fits in the window** (owner, 2026-10-22: a table running below the window put its
+  scrollbars beside the page's, the horizontal one out of sight — Temps intermédiaires): `fit.js` (`watchTables`, started by
+  `app.start`; a MutationObserver on `#main` and the window's width) gives every such box (`.table-wrap`, `.table-scroll`,
+  `.scroll-box`, `.agenda-table`) `--table-fit`, the room from its top to the window's bottom with the page at its top, else
+  (under ~220 px left) the window less the site's bar, so that it fits once the page is scrolled to it; `--table-max` stays an
+  upper bound. A box that overflows gets `fit-over` (a frame, its scrollbars on a track, inset in its card); a box holding
+  another gets `fit-outer` and grows (one scrollbar). A box whose page sets `max-height: none` (« En direct ») is left to the
+  page's single scrollbar. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
 - Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as

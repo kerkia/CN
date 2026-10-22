@@ -435,7 +435,7 @@ select { padding-right: 28px; }
 .list-charts > * { min-width: 0; }
 .list-charts .side { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 1080px) { .list-charts { grid-template-columns: minmax(0, 1fr); } }
-.scroll-box { max-height: 640px; overflow: auto; }
+.scroll-box { max-height: min(640px, var(--table-fit, 640px)); overflow: auto; }
 .key { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex: none; }
 .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
 .checkline { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-2); height: 34px; cursor: pointer; }
@@ -470,7 +470,15 @@ select { padding-right: 28px; }
 }
 /* a long table scrolls within the page's height, its header row frozen at the top (th: position sticky); the shadow at
    the bottom says it goes on (2026-10-14: a club's roster was taken to end at the last row in view) */
-.table-wrap { max-height: var(--table-max, calc(100vh - 110px)); overflow-y: auto; }
+.table-wrap { max-height: min(var(--table-max, 100vh), var(--table-fit, calc(100vh - 110px))); overflow-y: auto; }
+/* --table-fit: the room left on screen under the box (fit.js; owner, 2026-10-22: a table running below the window put
+   its scrollbars beside the page's, the horizontal one out of sight). One that scrolls is framed, its scrollbars on a
+   track, so that its edges and its own scrollbars read apart from the page's */
+.fit-over { box-shadow: inset 0 0 0 1px var(--border); border-radius: 6px;
+  scrollbar-color: color-mix(in srgb, var(--ink) 40%, transparent) color-mix(in srgb, var(--ink) 7%, transparent); }
+.fit-over::-webkit-scrollbar-track { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.card > .fit-over, .card > * > .fit-over { margin: 0 10px 10px; }
+:is(.table-wrap, .table-scroll, .scroll-box, .agenda-table).fit-outer { max-height: none; overflow: visible; background: none; }
 /* its scrollbar always shown (owner, 2026-10-14): a styled scrollbar is a classic one, not the overlay kind Windows and
    macOS hide until the pointer moves; the standard properties for Firefox and Chrome, the WebKit ones for Safari */
 .table-wrap, .scroll-box, .agenda-table, .tree { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink) 35%, transparent) transparent; }
@@ -1069,7 +1077,7 @@ table.data tbody tr.me .name { font-weight: 700; }
 .agenda-filters { display: flex; flex-direction: column; gap: 14px; padding: 14px 18px 16px; }
 .agenda-filters .frow { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end; }
 .agenda-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(340px, 1fr); gap: 16px; align-items: start; margin-top: 16px; }
-.agenda-table { max-height: calc(100vh - 230px); min-height: 320px; overflow: auto; }
+.agenda-table { max-height: var(--table-fit, calc(100vh - 230px)); min-height: 320px; overflow: auto; }
 .agenda-table table { width: 100%; border-collapse: collapse; }
 .agenda-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; box-shadow: 0 1px 0 var(--border); }
 .agenda-table tbody tr { cursor: pointer; }
@@ -1126,7 +1134,7 @@ table.data tbody tr.me .name { font-weight: 700; }
 @media (max-width: 1100px) { .territory-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* tables scroll vertically instead of paging; the header stays in view */
-.table-scroll { max-height: var(--table-max, 70vh); overflow: auto; }
+.table-scroll { max-height: min(var(--table-max, 100vh), var(--table-fit, 70vh)); overflow: auto; }
 .table-more { padding: 6px 14px; font-size: 12.5px; }
 .table-more:empty { display: none; }
 
@@ -1187,7 +1195,7 @@ table.data tbody tr.found .name { font-weight: 700; }
 
 /* history as on the FFCO site: the races leaving the calculation are struck out */
 .struck, .struck a { text-decoration: line-through; color: var(--ink-3); }   /* an exit, in the CN histories */
-.calc-table .table-scroll { max-height: var(--table-max, 480px); }
+.calc-table .table-scroll { max-height: min(var(--table-max, 480px), var(--table-fit, 480px)); }
 
 /* the calculation tables fit their card: fixed columns, the competition shortened (full name in its tooltip) */
 .calc { display: flex; flex-wrap: wrap; gap: 16px; }

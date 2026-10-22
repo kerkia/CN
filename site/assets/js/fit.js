@@ -1,0 +1,53 @@
+/* Tables that scroll fit in the window (owner, 2026-10-22: a table taller than the space left under it scrolled inside the
+   page's own scroll — two vertical scrollbars side by side, and its horizontal one out of sight until the page was
+   scrolled down). Each box a table scrolls in gets, as --table-fit, the height from its top to the window's bottom when
+   the page is at its top; one too low on the page for that gets the window less the site's bar (it then fits once the
+   page is scrolled to it). A box that overflows is marked fit-over: a frame and a visible scrollbar track. A box whose
+   page lets it grow (max-height: none, as « En direct ») keeps the page's single scrollbar. */
+
+const SEL = ".table-wrap, .table-scroll, .scroll-box, .agenda-table";
+const GAP = 14;                            // px kept under a box, so that its lower edge shows
+
+function fitAll() {
+  const main = document.getElementById("main");
+  if (!main) return;
+  const vh = window.innerHeight, bar = document.querySelector(".topbar")?.offsetHeight || 0;
+  const min = Math.min(220, vh * 0.35);    // (some six rows: below that the page is scrolled to the table instead)
+  const boxes = [...main.querySelectorAll(SEL)].filter((el) => el.offsetParent);           // (hidden ones apart)
+  // a box holding another (the runner's history around its table) lets it scroll alone: one scrollbar, not two
+  for (const el of boxes) el.classList.toggle("fit-outer", boxes.some((b) => b !== el && el.contains(b)));
+  for (const el of boxes) {
+    if (el.classList.contains("fit-outer")) continue;
+    const cs = getComputedStyle(el);
+    if (cs.maxHeight === "none" || !/auto|scroll/.test(cs.overflowY)) continue;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const room = vh - top - GAP;
+    const h = Math.round(room >= min ? room : vh - bar - GAP - 10);
+    if (el.dataset.fit !== String(h)) { el.dataset.fit = h; el.style.setProperty("--table-fit", `${h}px`); }
+    el.classList.toggle("fit-over", el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1);
+  }
+}
+
+let queued = false;
+/** A fit at the next frame (a page drawn, a tab shown, rows added). */
+export function fitTables() {
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; fitAll(); });
+}
+
+/** Watches the page: what is drawn into #main, and the window's size (a phone's address bar showing or hiding changes
+ *  the height by a few tens of pixels: not refitted for that). */
+export function watchTables() {
+  const main = document.getElementById("main");
+  if (!main) return;
+  new MutationObserver((list) => {
+    // (the fit's own changes — a box's style, data-fit and class — are not news)
+    if (list.some((m) => !(m.type === "attributes" && m.target.matches?.(SEL)))) fitTables();
+  }).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden", "style", "open"] });
+  let w = window.innerWidth, h = window.innerHeight;
+  window.addEventListener("resize", () => {
+    if (window.innerWidth === w && Math.abs(window.innerHeight - h) < 100) return;
+    w = window.innerWidth; h = window.innerHeight; fitTables();
+  });
+}

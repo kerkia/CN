@@ -11,6 +11,7 @@ import * as auth from "./auth.js";
 import * as bridge from "./bridge.js";
 import * as pwa from "./pwa.js";
 import * as country from "./country.js";
+import { watchTables } from "./fit.js";
 
 export const SITE = "Ozimut";
 
@@ -762,6 +763,7 @@ window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.rel
 async function start() {
   // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
   if ((await bridge.arrive()) || (await bridge.leave())) return;
+  watchTables();                                   // tables that scroll fit in the window
   pwa.boot();                                      // the service worker, the manifest's language, files opened with the app
   // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
