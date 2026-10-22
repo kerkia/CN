@@ -1,6 +1,8 @@
 // A local stand-in for liveresultat's API (dev only): replays recorded, finished competitions as if they were running
 // now, faster than real time — runners start, pass the radio controls and finish as the simulated clock moves on.
-//   node live/dev/lr-mock.mjs <recording.json>… [--port 8790] [--speed 20]
+//   node live/dev/lr-mock.mjs <recording.json>… [--port 8790] [--speed 20] [--from -2] [--live]
+// --from: where the replay starts, in minutes after the first start (-2 by default); --live: the times shifted to today's
+// clock (Europe/Paris), so that the page's « 3 min ago » and « still out » read right (use it with --speed 1)
 // Recordings: { info, classes: { <class>: getclassresults answer } } (unformattedTimes=true). They hold real results:
 // keep them outside the repository.
 import { createServer } from "node:http";
@@ -9,17 +11,22 @@ import { createHash } from "node:crypto";
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? Number(args.splice(i, 2)[1]) : d; };
-const port = opt("--port", 8790), speed = opt("--speed", 20);
+const port = opt("--port", 8790), speed = opt("--speed", 20), from = opt("--from", -2);
+const live = args.includes("--live") && !!args.splice(args.indexOf("--live"), 1);
+// the time of day now in Paris, in hundredths
+const parisNow = () => { const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  hourCycle: "h23" }).formatToParts(new Date()); const v = (k) => Number(p.find((x) => x.type === k).value); return (v("hour") * 3600 + v("minute") * 60 + v("second")) * 100; };
 const comps = new Map();
 for (const f of args) {
   const rec = JSON.parse(readFileSync(f, "utf8"));
   const runners = Object.values(rec.classes).flatMap((c) => c.results);
   const first = Math.min(...runners.map((r) => r.start).filter((s) => s > 0));
-  comps.set(String(rec.info.id), { ...rec, first });
+  // the shift added to every time of day sent (--live: the replay's clock is today's)
+  comps.set(String(rec.info.id), { ...rec, first, shift: live ? parisNow() - (first + from * 6000) : 0 });
 }
 const t0 = Date.now();
-// the simulated time of day, in hundredths: the first start 2 minutes in, then `speed` times faster than real time
-const simNow = (c) => c.first - 12000 + ((Date.now() - t0) / 10) * speed;
+// the simulated time of day, in hundredths: `from` minutes after the first start, then `speed` times faster than real time
+const simNow = (c) => c.first + from * 6000 + ((Date.now() - t0) / 10) * speed;
 const md5 = (s) => createHash("md5").update(s).digest("hex");
 
 function classAt(c, name) {
@@ -44,7 +51,8 @@ function classAt(c, name) {
     at.forEach((r, i) => { r.splits[`${sc.code}_place`] = i + 1; r.splits[`${sc.code}_timeplus`] = r.splits[sc.code] - at[0].splits[sc.code]; });
   }
   rows.sort((a, b) => (a.status === 0) - (b.status === 0) || 0);
-  return { status: "OK", className: name, splitcontrols: k.splitcontrols, results: [...ok, ...rows.filter((r) => r.status !== 0)] };
+  return { status: "OK", className: name, splitcontrols: k.splitcontrols,
+    results: [...ok, ...rows.filter((r) => r.status !== 0)].map((r) => ({ ...r, start: r.start + c.shift })) };
 }
 
 function passings(c) {
@@ -59,7 +67,7 @@ function passings(c) {
     }
   }
   const clock = (h) => { const s = Math.floor(h / 100); return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((x) => String(x).padStart(2, "0")).join(":"); };
-  return out.sort((a, b) => b.at - a.at).slice(0, 30).map(({ at, ...p }) => ({ passtime: clock(at), ...p, time: clock(p.time).replace(/^00:/, "") }));
+  return out.sort((a, b) => b.at - a.at).slice(0, 30).map(({ at, ...p }) => ({ passtime: clock(at + c.shift), ...p, time: clock(p.time).replace(/^00:/, "") }));
 }
 
 function answer(q) {

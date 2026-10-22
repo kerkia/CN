@@ -1569,6 +1569,10 @@ table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-alig
   .lv-layout { grid-template-columns: minmax(0, 1fr); }
   .lv-side { display: none; }
   .lv-picks { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+  /* the selector in use gets more of the row (its choice shown whole) */
+  .lv-picks[data-on="c"] { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .lv-picks[data-on="k"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr); }
+  .lv-picks[data-on="p"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr); }
   .lv-pk-c { display: block; }
   /* 16 px: a phone zooms into a field or selector written smaller when it is tapped */
   .lv-pk select { height: 40px; font-size: 16px; padding-left: 6px; padding-right: 18px; }
@@ -1594,7 +1598,15 @@ table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-alig
   font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer; }
 .lv-pi:hover { background: var(--surface-3); }
 .lv-pexp { flex: none; }
-table.data tr.lv-just td { background: color-mix(in srgb, var(--good) 12%, transparent); }
+/* the recent ones (owner, 2026-10-22): green within 3 min, yellow within 9 */
+table.data tr.lv-r3 td { background: color-mix(in srgb, var(--good) 20%, transparent); }
+table.data tr.lv-r9 td { background: color-mix(in srgb, #e7b416 20%, transparent); }
+.lv-pi.lv-r3 { border-color: var(--good); background: color-mix(in srgb, var(--good) 16%, var(--surface)); }
+.lv-pi.lv-r9 { border-color: #c99a0c; background: color-mix(in srgb, #e7b416 16%, var(--surface)); }
+.lv-pwin { font-size: 12px; padding: 6px 8px 2px; }
+.lv-buzz { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin: 0 2px 2px; }
+.lv-buzz input { width: 20px; height: 20px; }
+.lv-buzz-hint { font-size: 12px; margin: 0 2px 8px 30px; }
 table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var(--surface-2); }
 /* forest plots (Méthodes · analyses): an estimate and its 95 % interval against zero */
 .ev-forest { display: grid; gap: 3px; }

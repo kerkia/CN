@@ -1169,13 +1169,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   once when asked) and sends them all; it keeps every class under its own storage key (`c:<class>`, the former single
   « data » value migrated at the first save). Every table has the start time; no scrollbar of its own (the last columns may
   scroll sideways), every runner on two lines (place | name | [course] | club | start | time/gap | CN/expected | score/gap),
-  the runner's category (from the data) when the class is not one, under the place on a phone; the punches' table: time of
-  day, the event (radio control ○ / finish ◎), runner and club, course and category, time and gap, place, start — the place
-  and gap at that control from the course's results. A runner's state is liveresultat's status first (9 started, 10 not
+  the runner's category (from the data) when the class is not one, under the place on a phone; the punches' table (« Passages »,
+  owner 2026-10-22): **every punch of the last 15 minutes**, derived from the courses' results (each radio control passed and
+  each finish at start + its time; the relay's last 30 only for a course not held yet), else the latest 20 — time of day, the
+  event (radio control ○ / finish ◎), runner and club, course and category, time and gap, place, start. **Recent ones
+  coloured** in every table and on the punches' line: green within 3 min, yellow within 9 (a runner's last event: the finish,
+  else the last radio control; redrawn every 30 s). « Passages de mon club » can **vibrate and beep** at each new punch
+  (`localStorage ocn.live.buzz`; the sound starts from the box's tap, a test ring; silent until every course has arrived,
+  then only for punches under 2 min; the screen kept on by the Wake Lock while ticked; no vibration on an iPhone). A runner's state is liveresultat's status first (9 started, 10 not
   started), then the start time against the clock. **The selectors are redrawn only when they change and never while one is
   open** (2026-10-22: an update arriving while a phone's selector was open replaced it, and the choice was lost — the « stuck
   on Derniers passages » report); on a phone they and the search are 16 px (a phone zooms into smaller fields). Local test:
-  launch configs `lr-mock` (8795, a recording kept outside the repository) + `ocn-live-mock` (the relay reading it) +
+  launch configs `lr-mock` (8795, a recording kept outside the repository; `--live --speed 1 --from <min>` replays it on today's clock) + `ocn-live-mock` (the relay reading it) +
   `pages-dev-games`. The list page: the other countries racing live beside the search (under the list on a phone), with their
   flag (flag-icons, vendored), a click makes one the site's country; a search looks in every country. `localStorage["ocn.liveBase"]` points it at another server for tests (unset: this site).
   Usage: the app posts each page view of a logged-in account to `/api/track` (route, Réseau views apart; a new

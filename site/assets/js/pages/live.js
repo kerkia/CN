@@ -22,7 +22,18 @@ const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: 
 const ST_LABEL = { dns: t("status.dns"), dnf: t("status.abandon"), mp: t("status.pm"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), nc: t("status.nc") };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
 const VALUER = { official: "official", top6w: "fair", fair: "fair" };
-const JUST_IN_MS = 90000;
+// how recent a finish or a punch is (owner, 2026-10-22): green within 3 min, yellow within 9; the punches' table lists 15 min
+const R3 = 3 * 6000, R9 = 9 * 6000, WINDOW = 15 * 6000, AHEAD = 6000;          // hundredths
+const recent = (at, now) => (at == null || now == null || now - at < -AHEAD ? "" : now - at <= R3 ? "lv-r3" : now - at <= R9 ? "lv-r9" : "");
+const parseTod = (s) => { const m = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(String(s || "")); return m ? (Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3])) * 100 : null; };
+// a runner's last event, as a time of day: the finish, else the last radio control passed
+const lastAt = (r) => {
+  const [, , , result, status, , , start, splits] = r;
+  if (start == null) return null;
+  if (status === 0 && result != null) return start + result;
+  const s = splits?.filter(Boolean).pop();
+  return s ? start + s[0] : null;
+};
 
 export async function render(main, { path = "", query = {} } = {}) {
   const parts = path.split("/").filter(Boolean).slice(1);          // #/direct/<race>/<class> | ~club/<club> | ~passages/<all|mine>
@@ -133,7 +144,8 @@ const FINISH_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden
 
 async function race(main, id, wanted, arg) {
   const st = { info: null, classes: [], counts: {}, all: new Map(), cn: {}, view: "cls", cls: null, club: "mine", pf: "all",
-    sub: null, pass: [], seen: new Set(), justIn: new Map(), mark: null, markScroll: false, ws: null, up: false, tries: 0, gone: false };
+    sub: null, pass: [], seen: new Set(), mark: null, markScroll: false, ws: null, up: false, tries: 0, gone: false,
+    buzz: (() => { try { return localStorage.getItem("ocn.live.buzz") === "1"; } catch (e) { return false; } })(), buzzSeen: null };
   if (wanted === PASS_VIEW) { st.view = "pass"; st.pf = arg === "mine" ? "mine" : "all"; }
   else if (wanted === CLUB_VIEW) { st.view = "club"; st.club = arg || "mine"; }
   else st.cls = wanted;
@@ -147,6 +159,7 @@ async function race(main, id, wanted, arg) {
         <div class="lv-find"><input type="search" id="lv-find" autocomplete="off" placeholder="${t("lv.find")}" aria-label="${t("lv.find.label")}">
           <div class="lv-find-list" id="lv-find-list" hidden></div></div>
         <div class="lv-note muted" id="lv-note" hidden></div>
+        <div id="lv-buzzbar"></div>
         <section class="card lv-card"><div class="table-wrap" id="lv-rows"><div class="empty">${t("lv.loading")}</div></div></section>
       </div>
     </div>`;
@@ -282,11 +295,6 @@ async function race(main, id, wanted, arg) {
     } else if (m.t === "classes") { st.classes = m.classes; if (!st.cls) st.cls = st.classes[0] || null; subscribe(); soon(); }
     else if (m.t === "counts") { st.counts = m.counts || {}; pickers(); }
     else if (m.t === "class" && !m.missing) {
-      const prev = st.all.get(m.c);
-      if (prev) {
-        const before = new Set(prev.rows.filter((r) => r[3] != null && r[4] === 0).map((r) => `${r[1]}|${r[2]}`));
-        for (const r of m.rows) if (r[3] != null && r[4] === 0 && !before.has(`${r[1]}|${r[2]}`)) st.justIn.set(`${r[1]}|${r[2]}`, Date.now());
-      }
       st.all.set(m.c, m);
       if (st.view !== "cls" || m.c === st.cls) soon();
       if (st.finding) findList();
@@ -333,7 +341,9 @@ async function race(main, id, wanted, arg) {
     // redrawn only when it changed, and never while one of them is open (owner, 2026-10-22: a selector opened on the phone
     // was replaced by the next update — counts, a class read — and the choice made in it was lost)
     const el = $("#lv-picks");
-    if (picks !== st.picksHtml && !el.contains(document.activeElement)) { el.innerHTML = picks; st.picksHtml = picks; }
+    if (picks !== st.picksHtml && !el.contains(document.activeElement)) {
+      el.innerHTML = picks; st.picksHtml = picks; el.dataset.on = { cls: "c", club: "k", pass: "p" }[st.view];
+    }
     else if (picks !== st.picksHtml) st.picksLate = true;
     const side = html`<div class="lv-side-title">${t("prov.circuit")} <span class="muted" title="${t("lv.count.hint")}">${t("lv.count.head")}</span></div>
       ${st.classes.map((c) => { const on = st.view === "cls" && c === st.cls; return html`<button type="button" class="lv-item${on ? " on" : ""}" aria-pressed="${on}" data-c="${c}">
@@ -351,13 +361,14 @@ async function race(main, id, wanted, arg) {
     el.className = `lv-status${live ? " live" : ""}`;
     el.textContent = live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
   }
-  const ctlOf = (ctl, ctlName) => (ctl === 1000 ? t("lv.ev.finish") : t("lv.ev.radio", { c: ctlName || ctl }));
+  const ctlOf = (ctl, ctlName) => (Number(ctl) === 1000 ? t("lv.ev.finish") : t("lv.ev.radio", { c: ctlName || ctl }));
   // the latest punches on one line, scrolling sideways; ▾ opens them as a table
   function ticker() {
     const el = $("#lv-pass");
     if (!el) return;
     if (st.view === "pass" || !st.pass.length) { el.innerHTML = ""; return; }
-    el.innerHTML = html`<div class="lv-pass"><div class="lv-strip">${st.pass.slice(0, 30).map(([at, name, cls, ctl, ctlName, time]) => html`<button type="button" class="lv-pi"
+    const now = nowAt(st.info);
+    el.innerHTML = html`<div class="lv-pass"><div class="lv-strip">${st.pass.slice(0, 30).map(([at, name, cls, ctl, ctlName, time]) => html`<button type="button" class="lv-pi ${recent(parseTod(at), now)}"
       data-go="${cls}" data-name="${name}" title="${at}"><b>${name}</b> · ${fmtCat(cls)} · ${ctlOf(ctl, ctlName)} ${time}</button>`)}</div>
       <button type="button" class="btn btn-sm lv-pexp" data-lv-view="pass" title="${t("lv.passView.tip")}" aria-label="${t("lv.passView.tip")}">▾</button></div>`;
   }
@@ -371,7 +382,7 @@ async function race(main, id, wanted, arg) {
   let drawing = 0;
   async function draw() {
     const my = ++drawing;
-    pickers(); ticker(); note();
+    pickers(); ticker(); note(); buzzBar();
     let out;
     if (st.view === "cls") out = await courseTable();
     else if (st.view === "club") out = await clubTable();
@@ -387,7 +398,7 @@ async function race(main, id, wanted, arg) {
   // one runner's line: place, name, [course,] [club,] [category,] start, time and gap, CN and expected place, score and gap
   function line(x, k, now, o) {
     const [place, name, club, result, status, timeplus, , start, splits] = x.r;
-    const just = k === "fin" && Date.now() - (st.justIn.get(x.key) || 0) < JUST_IN_MS;
+    const rc = k === "fin" || k === "run" ? recent(lastAt(x.r), now) : "";
     const ctl = x.d.controls || [];
     let time = "", sub = "";
     if (k === "fin") { time = html`<b>${hs(result)}</b>`; sub = timeplus ? `+${hs(timeplus)}` : ""; }
@@ -397,8 +408,8 @@ async function race(main, id, wanted, arg) {
       if (last) sub = t("lv.atControl", { c: ctl[last[0]]?.[1] || "", p: last[1][1] ?? "–", d: last[1][2] ? `+${hs(last[1][2])}` : "+0:00" });
     } else if (k === "out") time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
     const two = (a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
-    const cls = [just ? "lv-just" : "", st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
-    return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}${raw(just ? ` title="${t("lv.justIn")}"` : "")}>
+    const cls = [rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
+    return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
       <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
       ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button></td>` : ""}
@@ -458,31 +469,94 @@ async function race(main, id, wanted, arg) {
     g.out.sort(byClass);
     return table(g, now, { course: true, club: st.club === "run" || st.club === "mine" && !mine, cat: rows.some((x) => x.me?.cat) });
   }
+  // every punch the race's results hold — each radio control passed and each finish, at its time of day — and those of the
+  // relay's last 30 whose course is not held yet; the newest first (owner, 2026-10-22: all of the last 15 minutes, which the
+  // relay's last 30 did not cover at a busy start)
+  function events() {
+    const out = [], have = new Set();
+    for (const c of st.classes) {
+      const d = st.all.get(c);
+      if (!d) continue;
+      for (const r of d.rows) {
+        const start = r[7];
+        if (start == null) continue;
+        (r[8] || []).forEach((s, i) => {
+          if (s) out.push({ at: start + s[0], cls: c, r, ctl: d.controls?.[i]?.[0], ctlName: d.controls?.[i]?.[1] || "", time: hs(s[0]), place: s[1], gap: s[2] });
+        });
+        if (r[4] === 0 && r[3] != null) out.push({ at: start + r[3], cls: c, r, ctl: 1000, ctlName: "", time: hs(r[3]), place: r[0], gap: r[5] });
+      }
+    }
+    for (const e of out) have.add(`${e.cls}|${e.r[1]}|${Number(e.ctl) === 1000 ? 1000 : e.ctl}`);
+    for (const [at, name, cls, ctl, ctlName, time] of st.pass) {
+      if (!have.has(`${cls}|${name}|${Number(ctl) === 1000 ? 1000 : ctl}`)) out.push({ at: parseTod(at), cls, name, ctl, ctlName, time, r: null });
+    }
+    return out.sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+  }
+  const evKey = (e) => `${e.cls}|${e.r ? e.r[1] : e.name}|${e.ctl}`;
   // the punches as a table: time of day, what (radio control or finish), runner and club, course and category, the time
-  // there and the gap, the place there, the start — from the course's results when they are held (the whole race is watched)
+  // there and the gap, the place there, the start
   async function passTable() {
-    const all = await everyone(), byKey = new Map();
+    const all = await everyone(), byKey = new Map(), now = nowAt(st.info);
     for (const x of all) byKey.set(`${x.cls}|${x.r[1]}`, x);
-    const items = st.pass.map((p) => ({ p, x: byKey.get(`${p[2]}|${p[1]}`) }))
-      .filter(({ p, x }) => st.pf === "all" || (x ? isMine(x) : mates.has(nameKey(p[1]))));
-    if (!items.length) return html`<div class="empty">${t("lv.pf.none")}</div>`;
-    return html`<table class="data compact lv-table lv-ptable"><thead><tr><th>${t("lv.at")}</th><th>${t("lv.ev")}</th><th>${t("prov.name")}</th>
+    const evs = events().map((e) => ({ ...e, x: e.r ? byKey.get(`${e.cls}|${e.r[1]}`) : null }))
+      .filter((e) => st.pf === "all" || (e.x ? isMine(e.x) : mates.has(nameKey(e.r ? e.r[1] : e.name))));
+    const inWindow = evs.filter((e) => e.at != null && now - e.at <= WINDOW && now - e.at >= -AHEAD);
+    if (st.pf === "mine") buzzOn(inWindow);
+    const shown = inWindow.length ? inWindow : evs.slice(0, 20);
+    if (!shown.length) return html`<div class="empty">${t("lv.pf.none")}</div>`;
+    return html`<div class="lv-pwin muted">${t(inWindow.length ? "lv.pass.window" : "lv.pass.quiet")}</div>
+      <table class="data compact lv-table lv-ptable"><thead><tr><th>${t("lv.at")}</th><th>${t("lv.ev")}</th><th>${t("prov.name")}</th>
       <th>${t("prov.circuit")}</th><th class="r">${subHead(t("prov.time"), t("lv.behind"))}</th><th class="r">${t("prov.place")}</th><th class="r">${t("lv.start")}</th></tr></thead>
-      <tbody>${items.map(({ p: [at, name, cls, ctl, ctlName, time], x }) => {
-        let place = "", gap = "";
-        if (x && ctl === 1000 && x.r[4] === 0) { place = x.r[0] ?? ""; gap = x.r[5] ? `+${hs(x.r[5])}` : ""; }
-        else if (x && ctl !== 1000) {
-          const i = (x.d.controls || []).findIndex(([code]) => String(code) === String(ctl)), s = i >= 0 ? x.r[8]?.[i] : null;
-          if (s) { place = s[1] ?? ""; gap = s[2] ? `+${hs(s[2])}` : s[1] === 1 ? "+0:00" : ""; }
-        }
-        return html`<tr class="lv-prow" data-go="${cls}" data-name="${name}">
-          <td class="num muted">${String(at || "").replace(/^(\d+:\d\d):\d\d$/, "$1")}</td>
-          <td><span class="lv-ev ${ctl === 1000 ? "lv-ev-fin" : "lv-ev-radio"}">${raw(ctl === 1000 ? FINISH_ICON : RADIO_ICON)} ${ctlOf(ctl, ctlName)}</span></td>
-          <td class="lv-n"><div class="lv-clamp"><b>${name}</b></div>${x?.r[2] ? html`<div class="lv-2">${x.r[2]}</div>` : ""}</td>
-          <td class="lv-c"><div>${fmtCat(cls)}</div>${x?.me?.cat && !CAT_CLASS.test(cls) ? html`<div class="lv-2">${fmtCat(x.me.cat)}</div>` : ""}</td>
-          <td class="r num"><div><b>${time}</b></div>${gap ? html`<div class="lv-2">${gap}</div>` : ""}</td>
-          <td class="r num">${place}</td><td class="r num">${x ? tod(x.r[7]) : ""}</td></tr>`;
+      <tbody>${shown.map((e) => {
+        const name = e.r ? e.r[1] : e.name, fin = Number(e.ctl) === 1000;
+        const gap = e.gap ? `+${hs(e.gap)}` : e.place === 1 ? "+0:00" : "";
+        return html`<tr class="lv-prow ${recent(e.at, now)}" data-go="${e.cls}" data-name="${name}">
+          <td class="num muted">${tod(e.at)}</td>
+          <td><span class="lv-ev ${fin ? "lv-ev-fin" : "lv-ev-radio"}">${raw(fin ? FINISH_ICON : RADIO_ICON)} ${ctlOf(e.ctl, e.ctlName)}</span></td>
+          <td class="lv-n"><div class="lv-clamp"><b>${name}</b></div>${e.r?.[2] ? html`<div class="lv-2">${e.r[2]}</div>` : ""}</td>
+          <td class="lv-c"><div>${fmtCat(e.cls)}</div>${e.x?.me?.cat && !CAT_CLASS.test(e.cls) ? html`<div class="lv-2">${fmtCat(e.x.me.cat)}</div>` : ""}</td>
+          <td class="r num"><div><b>${e.time}</b></div>${gap ? html`<div class="lv-2">${gap}</div>` : ""}</td>
+          <td class="r num">${e.place ?? ""}</td><td class="r num">${e.r ? tod(e.r[7]) : ""}</td></tr>`;
       })}</tbody></table>`;
+  }
+
+  // ---- the alert at each punch of one's club (owner, 2026-10-22): the phone vibrates (where it can: not an iPhone) and
+  // beeps, while « Passages de mon club » is shown and the box ticked; the screen is kept on meanwhile (Wake Lock) ----
+  function buzzBar() {
+    const want = st.view === "pass" && st.pf === "mine";
+    const bar = want ? html`<label class="lv-buzz"><input type="checkbox" id="lv-buzz" ${raw(st.buzz ? "checked" : "")}> ${t("lv.buzz")}</label>
+      <div class="muted lv-buzz-hint">${t("lv.buzz.hint")}</div>` : "";
+    if (bar !== st.buzzHtml) { $("#lv-buzzbar").innerHTML = bar; st.buzzHtml = bar; }
+    wake(want && st.buzz && !document.hidden);
+  }
+  function buzzOn(evs) {
+    const keys = evs.map(evKey);
+    // the first look, and while the courses are still arriving one by one: what is there is not news
+    const ready = st.classes.every((c) => st.all.has(c));
+    if (!st.buzz || !st.buzzSeen || !ready) { st.buzzSeen = new Set([...(st.buzzSeen || []), ...keys]); return; }
+    const now = nowAt(st.info);
+    const fresh = evs.filter((e) => !st.buzzSeen.has(evKey(e)) && now - e.at <= 2 * 6000);
+    for (const k of keys) st.buzzSeen.add(k);
+    if (fresh.length) ring();
+  }
+  function ring() {
+    try { navigator.vibrate?.([220, 100, 220]); } catch (e) { /* no vibration here */ }
+    const ac = st.ac;
+    if (!ac) return;
+    ac.resume?.();
+    [0, 0.22].forEach((d, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + d;
+      o.frequency.value = i ? 1175 : 880; o.connect(g); g.connect(ac.destination);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      o.start(t0); o.stop(t0 + 0.2);
+    });
+  }
+  async function wake(on) {
+    if (on && !st.lock && navigator.wakeLock) {
+      st.lock = "asking";
+      try { st.lock = await navigator.wakeLock.request("screen"); st.lock.addEventListener?.("release", () => { st.lock = null; }); }
+      catch (e) { st.lock = null; }
+    } else if (!on && st.lock && st.lock !== "asking") { try { await st.lock.release(); } catch (e) { /* gone */ } st.lock = null; }
   }
 
   // ---- the search: a runner (their course, the row marked and scrolled to the middle) or a club ----
@@ -526,6 +600,13 @@ async function race(main, id, wanted, arg) {
     if (e.target.id === "lv-sel") { st.mark = null; show("cls", v); }
     else if (e.target.id === "lv-club") show("club", v);
     else if (e.target.id === "lv-pf") show("pass", v);
+    else if (e.target.id === "lv-buzz") {
+      st.buzz = e.target.checked;
+      try { localStorage.setItem("ocn.live.buzz", st.buzz ? "1" : "0"); } catch (x) { /* this visit only */ }
+      // the sound needs a tap to start (browsers' rule): this one; a first ring says it works
+      if (st.buzz) { try { st.ac ||= new (window.AudioContext || window.webkitAudioContext)(); } catch (x) { st.ac = null; } st.buzzSeen = null; ring(); }
+      buzzBar(); soon();
+    }
   });
   // the club list and the search need every course: the whole race is watched from then on
   main.addEventListener("focusin", (e) => {
@@ -544,17 +625,19 @@ async function race(main, id, wanted, arg) {
   });
   const away = (e) => { if (!e.target.closest(".lv-find")) closeFind(); };
   document.addEventListener("pointerdown", away);
+  let ticks = 0;
   const tick = setInterval(() => {
     if (!main.isConnected) { cleanup(); return; }
     status();
     heartbeat();
+    if (++ticks % 30 === 0) soon();                   // the colours of the recent ones fade, the 15 minutes move on
     const now = nowAt(st.info);
     $$("[data-start]", main).forEach((el) => { const s = Number(el.dataset.start); el.textContent = now >= s ? hs(now - s) : ""; });
   }, 1000);
-  const vis = () => { if (!document.hidden && (!st.ws || st.ws.readyState > 1)) connect(); };
+  const vis = () => { if (!document.hidden && (!st.ws || st.ws.readyState > 1)) connect(); buzzBar(); };
   document.addEventListener("visibilitychange", vis);
   function cleanup() {
-    st.gone = true; clearInterval(tick); clearTimeout(later);
+    st.gone = true; clearInterval(tick); clearTimeout(later); wake(false); st.ac?.close?.();
     document.removeEventListener("visibilitychange", vis);
     document.removeEventListener("pointerdown", away);
     st.ws?.close();
