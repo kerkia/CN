@@ -1311,6 +1311,25 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   in Spanish (FEDO's « Pos / Nombre / Club / Tiempo », « Error en tarj. », « Abandona »: `oe_html._COLS`,
   `model.STATUS_WORDS`). The pages: Agenda's places, CN column, FFCO link and the « pending » filter follow the country;
   Résultats has no runner filter outside France.
+- **Spain's rankings** (plan steps 4-7, 2026-10-22; computed daily, **not published** until the owner has seen the method
+  measured on Spain's races: `countries/es/ranking.py` `PUBLISH`). `update._countries` (the daily full run, `COUNTRY_BUDGET`
+  900 s) runs `countries.es.ranking.update`: SICO's licensees (`licensees.py`, monthly, ~263 requests: name, club, regional
+  federation, card, licence — never published), FEDO's ranking files (`official.py`, every season 2017 on: licence, category,
+  total, M1/M2/M3, points race by race — Spain's « official »: M1 else M2), the Liga Española's results (`fedo.py`, OE12 HTML
+  else PDF, the file's print date as the race's day), the provisional results' Spanish races (`archive.from_prov`), O-Replay's
+  past events (`archive.backfill_oreplay`, 2024 on, a budget per run until done). The archive: `CN_DATA_DIR/es.sqlite3` in
+  France's tables (`archive.py`: a race = a competition, classes with the same controls = one circuit, `categorie` normalised by
+  `categories.py` with `cat_src` kept, `NOT_RANKED`/`prune` leave out score-O, rogaines, relays, phone orienteering); who is who
+  (`countries/identity.py`: names word by word in any order, particles aside, a first name cut to 3 letters; a licensee by card
+  or by the one name that fits, the club deciding; else a person of its own by name and club; `persons` / `person_keys`, stable
+  numbers = the runners' ids, es<n>); clubs (`clubs.py`: `canonical` — a town before the club, « Independiente », regions'
+  teams —, then a number and the regional federation's letters, « 0026FADO »; `names` for the build). The engine: `bootstrap`
+  (`cn_engine.py`: everyone equal for the first season, then from their own first level; `days=None` keeps the seeds — an
+  archive with gaps longer than the window starves otherwise), `title_weight` reads the league (`groupe`: Campeonato de España
+  2, Liga Española / nacional 1.5). `build_site --country ES` (names from the country module, no anonymisation list or login
+  index, `official` only when the country has values, meta `country`); `site_extras` keeps France's elite, cfc and evaluation
+  to France. CI keeps the other countries' databases in the site state (`ci/state.py` `other_dbs`, `OTHERS_BEFORE`). The
+  measurement: the scratch `es_eval.py` (the duels against FEDO's previous-season level).
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la
