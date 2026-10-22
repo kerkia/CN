@@ -1022,6 +1022,7 @@ export default {
   "lv.sel.club": "Club",
   "lv.sel.clubs": "Clubs",
   "lv.club.mine": "Mon club",
+  "lv.side.views": "Suivre",
   "lv.club.run": "Encore en course",
   "lv.pass.all": "Tous les passages",
   "lv.pass.mine": "Passages de mon club",

@@ -357,7 +357,14 @@ async function race(main, id, wanted, arg) {
       el.innerHTML = picks; st.picksHtml = picks; el.dataset.on = { cls: "c", club: "k", pass: "p" }[st.view];
     }
     else if (picks !== st.picksHtml) st.picksLate = true;
-    const side = html`<div class="lv-side-title">${t("prov.circuit")} <span class="muted" title="${t("lv.count.hint")}">${t("lv.count.head")}</span></div>
+    // a wide screen's list: the views the phone's selectors offer first (owner, 2026-10-22: « Mon club » was missed there),
+    // then the courses
+    const vw = (view, v, k) => { const on = st.view === view && (view === "club" ? st.club : st.pf) === v;
+      return html`<button type="button" class="lv-item${on ? " on" : ""}" aria-pressed="${on}" data-lv-v="${view}:${v}"><span>${t(k)}</span></button>`; };
+    const side = html`<div class="lv-side-title">${t("lv.side.views")}</div>
+      ${hasClub() ? vw("club", "mine", "lv.club.mine") : ""}${vw("club", "run", "lv.club.run")}
+      ${vw("pass", "all", "lv.pass.all")}${hasClub() ? vw("pass", "mine", "lv.pass.mine") : ""}
+      <div class="lv-side-title lv-side-sep">${t("prov.circuit")} <span class="muted" title="${t("lv.count.hint")}">${t("lv.count.head")}</span></div>
       ${st.classes.map((c) => { const on = st.view === "cls" && c === st.cls; return html`<button type="button" class="lv-item${on ? " on" : ""}" aria-pressed="${on}" data-c="${c}">
         <span>${fmtCat(c)}</span><span class="lv-cnt">${countTxt(c)}</span></button>`; })}`;
     if (side !== st.sideHtml) { $("#lv-chips").innerHTML = side; st.sideHtml = side; $("#lv-chips .on")?.scrollIntoView({ block: "nearest" }); }
@@ -598,6 +605,8 @@ async function race(main, id, wanted, arg) {
     const m = e.target.closest("[data-lv-method]");
     if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); draw(); return; }
     if (e.target.closest("[data-lv-view]")) { show("pass", "all"); window.scrollTo({ top: 0 }); return; }
+    const sv = e.target.closest("[data-lv-v]");
+    if (sv) { const [view, v] = sv.dataset.lvV.split(":"); st.mark = null; show(view, v); return; }
     const fc = e.target.closest("[data-club]");
     if (fc) { closeFind(); $("#lv-find").value = ""; show("club", fc.dataset.club); return; }
     const go = e.target.closest("[data-go]");

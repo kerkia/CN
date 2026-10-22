@@ -1169,7 +1169,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   nobody watches for their counts only, a few per wake-up, message `counts`), a club (« Mon club » first: France's runners of
   one's club recognised, the club names the race writes for them, else the club typed in one's countries; « Encore en
   course », everyone still out; then every club; `#/direct/<race>/~club/<key>`), the punches (all, or one's club's;
-  `~passages/<all|mine>`); one search under them for a runner (opens their course, the row marked and scrolled to the middle)
+  `~passages/<all|mine>`); on a wide screen the course selector is the list at the left, headed by the same views
+  (« Suivre »: Mon club, Encore en course, Tous les passages, Passages de mon club; owner, 2026-10-22); one search under them for a runner (opens their course, the row marked and scrolled to the middle)
   or a club. The club and punches views, the club list and the search watch the **whole race**: the page subscribes `"*"`,
   the relay then reads every class as a watched one (those just punched first, at most `MAX_READS` a wake-up; `ALL_NOW` at
   once when asked) and sends them all; it keeps every class under its own storage key (`c:<class>`, the former single

@@ -1547,6 +1547,7 @@ export default {
   "lv.sel.club": "Club",
   "lv.sel.clubs": "Clubs",
   "lv.club.mine": "My club",
+  "lv.side.views": "Follow",
   "lv.club.run": "Still on course",
   "lv.pass.all": "All punches",
   "lv.pass.mine": "My club's punches",
