@@ -206,7 +206,10 @@ async function deposit(main, race) {
     if (twice.length) warn.push(t("os.w.twice", { list: twice.slice(0, 5).join(", ") + (twice.length > 5 ? "…" : "") }));
     if (d.date && d.date !== e.date) warn.push(t("os.w.date", { file: fmtDate(d.date), race: fmtDate(e.date) }));
     if (e.reg?.count && Math.abs(e.reg.count - all.length) > Math.max(3, 0.15 * e.reg.count)) warn.push(t("os.w.reg", { reg: fmt(e.reg.count), file: fmt(all.length) }));
-    const lines = (list, pre = "os.w") => list.map((c) => html`<li>${t(`${pre}.${c.code}`, { n: fmt(c.items.length) })}${raw(items(c))}</li>`).join("");
+    // the categories in several blocks folded: most races mix them on a circuit on purpose
+    const lines = (list, pre = "os.w") => list.map((c) => (c.code === "blocks"
+      ? html`<li><details><summary>${t(`${pre}.${c.code}`, { n: fmt(c.items.length) })}</summary>${raw(items(c))}</details></li>`
+      : html`<li>${t(`${pre}.${c.code}`, { n: fmt(c.items.length) })}${raw(items(c))}</li>`)).join("");
     $("#os-warn").innerHTML = (warn.length || C.warn.length ? html`<div class="notice">${t("os.w.title")}<ul style="margin:6px 0 0;padding-left:18px">${warn.map((w) => html`<li>${w}</li>`)}${raw(lines(C.warn))}</ul></div>`
       : html`<div class="notice info">${t("os.w.none")}</div>`)
       + (C.info.length ? html`<div class="notice info" style="margin-top:8px"><div>${t("os.i.title")}<ul style="margin:6px 0 0;padding-left:18px">${raw(lines(C.info, "os.i"))}</ul></div></div>` : "");

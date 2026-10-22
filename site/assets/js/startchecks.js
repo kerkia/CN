@@ -34,7 +34,8 @@ export function check(d) {
   }
   add(warn, "minute", minute);
 
-  // a category's starts in several blocks on its circuit, another category's in between (lists by circuit only)
+  // a category's starts in several blocks on its circuit, another category's in between (lists by circuit only): for information
+  // only, and last - most races mix their categories on a circuit on purpose, a championship keeps each in one block (owner)
   const blocks = [];
   if (d.by !== "category") {
     for (const { k, rs } of timed) {
@@ -45,7 +46,6 @@ export function check(d) {
       if (split.length) blocks.push({ cls: k.name, cats: split.map(([cat, n]) => ({ cat, n })), runners: seq.filter((r) => runs.get(r.category) > 1) });
     }
   }
-  add(warn, "blocks", blocks);
 
   // what is missing: a start time, a card number (when the file gives them), a circuit
   const noStart = [...d.classes.flatMap((k) => k.runners.filter((r) => r.start_s == null).map((r) => ({ cls: k.name, runners: [r] }))),
@@ -78,6 +78,7 @@ export function check(d) {
   }
   add(info, "uneven", uneven);
   add(info, "gaps", gaps);
+  add(info, "blocks", blocks);
   return { warn, info, flags };
 }
 

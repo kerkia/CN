@@ -840,9 +840,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   publishes the organiser's alone, up to `ORG_START_DAYS` (90) ahead. The runners get their start time by push (below); by
   e-mail later (owner: the Resend plan is too small). **Draw checks and O Checklist** (2026-10-22, ideas of MeOSDjango's checker and
   « Vérifie moi » export, none of its GPL code): `startchecks.js` `check` warns of two runners of a club one after the other on a
-  circuit (a category in a list by category), a start minute shared, a category in several blocks on its circuit, runners without a
-  start time, a card number (when the file has them) or a circuit, and informs of the interval and its vacant places; the table marks
-  the runners (« À vérifier »). `oChecklist` writes the start's file for the Android app O Checklist (Stigning's format, checked on
+  circuit (a category in a list by category), a start minute shared, runners without a
+  start time, a card number (when the file has them) or a circuit, and informs of the interval and its vacant places, and last, folded,
+  of the categories in several blocks on their circuit (owner: most races mix them on purpose, championships keep one each); the
+  table marks the runners (« À vérifier »). `oChecklist` writes the start's file for the Android app O Checklist (Stigning's format, checked on
   stigning.se/startclock/template.html: UTF-8 without BOM, commas, Name, Club, Class, Bib, StartTime hh:mm:ss, Card, StartName, a
   « // » comment line as header, sorted by start), the class a runner's category or the circuit, a start's name per circuit if typed;
   for a file just read, and for the race's deposit (« Vérifier et exporter »: `GET /api/upload?race=&kind=startlist&id=` returns the
