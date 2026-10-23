@@ -3,47 +3,36 @@
 // each opening the analysis (pages/splits.js, #/analyse-course?course=<race>). On top, the races live now whose live results
 // give split times (livesplits.js: rare — most lives give the finish only), analysed on the times received so far.
 
-import { html, raw, $, $$, fmt, fmtDate, normalise, fmtFormat } from "../util.js";
+import { html, $, fmt, fmtDate, fmtFormat } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as country from "../country.js";
-import { seg, filterFold } from "../ui.js";
-import { replaceQuery } from "../app.js";
+import { raceFilters } from "../racefilters.js";
 import { getProv } from "./provisional.js";
 import { LIVE, LIVE_KEY, probe } from "../livesplits.js";
 
-const SPECS = ["For", "Spr", "VTT", "Ski"];
-const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]     // i18n-ignore
-  || (r.epreuve === "Sprint" ? "Spr" : ["MD", "LD", "Nuit"].includes(r.epreuve) ? "For" : null);
 const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
 const MAX_PROBE = 6;                       // live races looked at, at most (each a short connection to the relay)
 export const analysisLink = (key, q = "") => `#/analyse-course?course=${encodeURIComponent(key)}${q}`;
 
 export async function render(main, { query = {} } = {}) {
-  let q = query.q || "", spec = SPECS.includes(query.t) ? query.t : "all";
   const me = country.current() === "FR" ? auth.myId() : null;
-  let mine = !!me && query.mes === "1";
-  main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("nav.raceAnalysis")}</h1><p class="lede">${t("ra.lede")}</p></div></div>
-    <div id="ra-live"></div>
-    ${filterFold(html`<div class="filters"><div class="field"><span>${t("f.terrain")}</span><div id="ra-t"></div></div>
-      ${me ? html`<label class="field"><span>${t("prov.runner")}</span><span class="row" style="gap:6px;align-items:center;min-height:32px">
-        <input type="checkbox" id="ra-mine" ${raw(mine ? "checked" : "")}> ${t("ra.mine")}</span></label>` : ""}
-      <label class="field"><span>${t("prov.search")}</span><input type="search" id="ra-q" value="${q}" style="width:200px"></label></div>`)}
-    ${country.hint()}
-    <section class="card"><div class="table-wrap" id="ra-table"><div class="empty">${t("lv.loading")}</div></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ra.def")}</p>`;
-  liveNow();
+  if (query.mes === "1" && me && !query.r) query = { ...query, r: me };      // « Mes courses seulement », before the filters
   const idx = await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.splits && !r.soon && country.of(r) === country.current())
     .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name));
+  // the filters (racefilters.js, as on Résultats)
+  const F = await raceFilters({ id: "ra", query, races, onChange: () => draw() });
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("nav.raceAnalysis")}</h1><p class="lede">${t("ra.lede")}</p></div></div>
+    <div id="ra-live"></div>
+    ${F.html}
+    ${country.hint()}
+    <section class="card"><div class="table-wrap" id="ra-table"></div></section>
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ra.def")}</p>`;
+  liveNow();
   const draw = () => {
-    replaceQuery({ q: q || null, t: spec === "all" ? null : spec, mes: mine ? "1" : null });
-    $("#ra-t").innerHTML = seg("rat", [["all", t("f.all")], ...SPECS.filter((s) => races.some((r) => specOf(r) === s)).map((s) => [s, t(`terrain.${s}`)])], spec);
-    $$('[data-seg="rat"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
-    const qn = normalise(q);
-    const rows = races.filter((r) => (spec === "all" || specOf(r) === spec) && (!mine || (r.lics || []).includes(me))
-      && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
+    const rows = races.filter(F.keep);
     // the format with the place and the organiser, under the name: one column less, for a phone
     $("#ra-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th>
         <th class="r ra-n">${t("prov.runners")}</th></tr></thead>
@@ -55,9 +44,8 @@ export async function render(main, { query = {} } = {}) {
         <td class="r num ra-n">${r.runners ? fmt(r.runners) : "—"}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(races.length ? "ra.emptyFilter" : "ra.empty")}</div>`;
   };
+  F.bind();
   draw();
-  $("#ra-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  $("#ra-mine")?.addEventListener("change", (e) => { mine = e.target.checked; draw(); });
   return { title: t("nav.raceAnalysis") };
 }
 

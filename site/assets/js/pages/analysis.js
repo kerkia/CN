@@ -21,6 +21,7 @@ import { html, raw, $, $$, fmt, fmtDate, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
+import { raceFilters } from "../racefilters.js";
 import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
 import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
@@ -148,10 +149,13 @@ export async function render(main, { query = {}, route } = {}) {
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
+  // the race's list narrowed by the lists of races' filters (racefilters.js, as on Résultats); the address is the race's own
+  const RF = perso || !races.length ? null : await raceFilters({ id: "anf", races, address: false, onChange: () => pickers() });
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="an-brief" id="an-brief" hidden></div>
+    <div id="an-rf">${RF ? RF.html : ""}</div>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
     <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
@@ -174,6 +178,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
     return { title: t("an.title") };
   }
+  RF?.bind();
 
   // ---- state
   // the race, circuit and runner of the last visit (the menu's link carries no query): the tab's session remembers them
@@ -273,7 +278,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (perso) { $("#an-pick").hidden = true; return; }
     const k = klass();
     $("#an-pick").innerHTML = html`
-      <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
+      <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.filter((r) => r.key === key || !RF || RF.keep(r)).map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
       ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="an-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent((d.url || "").split("/").pop())}</option>`)}</select></label>` : ""}
       ${docs.length ? html`<label class="field"><span>${t("prov.circuit")}</span><select id="an-c">${docs[di].classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("prov.runner")}</span><select id="an-r" style="max-width:300px">${k.runners.map((r, i) => html`<option value="${i}" ${raw(i === ri ? "selected" : "")}>${r.place ? `${r.place}. ` : ""}${r.name}${r.club ? ` (${r.club})` : ""}${r.splits ? "" : ` — ${t("an.noSplitsShort")}`}</option>`)}</select></label>`
@@ -520,12 +525,12 @@ export async function render(main, { query = {}, route } = {}) {
   window.addEventListener("resize", onWinResize);
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
   function showPanels(on) {
-    $("#an-pick").hidden = perso || !on; $("#an-files").hidden = !on;
+    $("#an-pick").hidden = $("#an-rf").hidden = perso || !on; $("#an-files").hidden = !on;
     const brief = $("#an-brief");
     brief.hidden = on;
     // during the playback the race's line sits in the map's top left corner, so that the site's menus can stay as on
     // every page (owner, 2026-10-15: the second row hidden and a tab turned into a menu confused); back above after
-    if (on) { $("#an-pick").before(brief); return; }
+    if (on) { $("#an-rf").before(brief); return; }
     $(".an-map").prepend(brief);
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
@@ -535,7 +540,7 @@ export async function render(main, { query = {}, route } = {}) {
     // calibration (its inputs changed) — the display itself has nothing to recalibrate (owner, 2026-10-14)
     $("#an-brief-edit").addEventListener("click", (e) => {
       const open = $("#an-files").hidden;
-      $("#an-pick").hidden = perso || !open; $("#an-files").hidden = !open;
+      $("#an-pick").hidden = $("#an-rf").hidden = perso || !open; $("#an-files").hidden = !open;
       e.currentTarget.setAttribute("aria-expanded", String(open));
       e.currentTarget.textContent = `${t("an.brief.edit")} ${open ? "▴" : "▾"}`;
       fitHeight();

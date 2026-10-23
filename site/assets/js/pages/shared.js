@@ -17,6 +17,8 @@ import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
+import * as country from "../country.js";
+import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, fitSimilarity } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
@@ -82,29 +84,47 @@ export async function render(main, r) {
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
   betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
   if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
-  return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind);
+  return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind, r.query);
 }
 
 // ---- the list ----------------------------------------------------------------------------------------------------
-async function listPage(main, kind) {
+async function listPage(main, kind, query = {}) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(`sh.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
     ${raw(betaNote("multi"))}
+    <div id="sh-filters"></div>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} <a href="${ORG_ROUTE[kind]}">${t("nav.g.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")} →</a></p>`;
   let data;
   try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.${kind}.title`) }; }
   const races = kind === "race" ? ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso)) : [];
-  const raceName = (k) => races.find((x) => x.key === k)?.name || "";
-  const rows = data.analyses.filter((a) => a.courses > 0);          // ready: the organiser has set its maps and circuits
-  $("#sh-list").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th>
-      ${kind === "race" ? html`<th>${t("prov.race")}</th>` : ""}<th>${t("sh.col.owner")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th></tr></thead>
-    <tbody>${rows.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td>
-      <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.organiser ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
-      ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName || "—"}</td>
-      <td>${t(`sh.vis.${a.vis}`)}${a.access === "locked" ? " 🔒" : ""}</td><td class="r num">${a.courses}</td></tr>`)}</tbody></table>`
-    : html`<div class="empty">${t(`sh.${kind}.none`)}</div>`;
+  const raceOf = (k) => races.find((x) => x.key === k) || null;
+  const raceName = (k) => raceOf(k)?.name || "";
+  const ready = data.analyses.filter((a) => a.courses > 0);          // ready: the organiser has set its maps and circuits
+  // a competition's analyses: the filters of the lists of races (racefilters.js, as on Résultats), on the race each is tied to;
+  // those of the site's country (a race not on « Résultats » any more: kept, France's)
+  let F = null;
+  const draw = () => {
+    const rows = F ? ready.filter(F.keep) : ready;
+    $("#sh-list").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th>
+        ${kind === "race" ? html`<th>${t("prov.race")}</th>` : ""}<th>${t("sh.col.owner")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th></tr></thead>
+      <tbody>${rows.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td>
+        <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.organiser ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
+        ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName || "—"}</td>
+        <td>${t(`sh.vis.${a.vis}`)}${a.access === "locked" ? " 🔒" : ""}</td><td class="r num">${a.courses}</td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t(ready.length ? "ra.emptyFilter" : `sh.${kind}.none`)}</div>`;
+  };
+  if (kind === "race") {
+    const here = ready.filter((a) => country.of(raceOf(a.race) || {}) === country.current());
+    ready.splice(0, ready.length, ...here);
+    F = await raceFilters({ id: "sh", query, races: ready, onChange: () => draw(),
+      facts: (a) => { const r = raceOf(a.race); const x = r ? provFacts(r) : { spec: null, region: "", lics: [], text: "" };
+        return { ...x, text: `${a.title} ${x.text} ${a.ownerName || ""}` }; } });
+    $("#sh-filters").innerHTML = html`${F.html}${country.hint()}`;
+    F.bind();
+  }
+  draw();
   return { title: t(`sh.${kind}.title`) };
 }
 

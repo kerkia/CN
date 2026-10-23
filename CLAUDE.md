@@ -1369,7 +1369,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   country (no « Tous les pays » toggle since 2026-10-21). **Whose list** (owner, 2026-10-23): above the lists of Agenda,
   Résultats, En direct and Analyse de course a line gives the country's flag and name and « Choisir un autre pays », which opens
   the header's menu (`country.hint`, keys `cty.hint.*`); on a wide screen the header's two buttons say « Pays » and « Langue »
-  (`.tool-label`, hidden under 640 px: both show a code, « FR » twice for a French reader).
+  (`.tool-label`, hidden under 640 px: both show a code, « FR » twice for a French reader). **One filter bar for the lists of
+  races** (owner, 2026-10-23; `racefilters.js` `raceFilters`): Résultats, En direct, Analyse de course, Analyse solo (its race
+  selector) and Analyse multi — Résultats' « Afficher » (its own), Spécialité, Région, Coureur, Rechercher (name, place,
+  organiser), each field only when the page's races carry it, the state in the address (`f t reg r who q`; Analyse solo keeps
+  its own address: `address: false`). The runner is chosen by a search (France's runners, France's lists), shown with a ✕
+  that removes them, « Mes courses » when none: no link to their page any more. Résultats alone opens on one's own races. En
+  direct's region and runners come from the same race on « Résultats » (same day, same name words: `live.js` `sameRace`).
   **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
   up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
   Réglages › « Mes pays » (`#/reglages?onglet=pays`, the card `#st-countries`) lists, edits, leaves (POST `leave: true`) and

@@ -4,12 +4,13 @@
 // The data (site/data/prov/) is served to the accounts that joined France; the others read its copy without CNs, scores or
 // licences (prov/pub/, auth.provDir).
 
-import { html, raw, $, $$, fmt, fmtDate, normalise, displayName, fmtFormat, pctN, fmtCat } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtFormat, pctN, fmtCat } from "../util.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available, get as storeGet } from "../store.js";
-import { methodShort, seg, runnerSearch, bindRunnerSearch, filterFold, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
+import { methodShort, seg, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
+import { raceFilters } from "../racefilters.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
@@ -51,10 +52,6 @@ export const clock = (s) => {
 };
 // "Sprint · Sprint" (the format and the terrain) said once
 const parts = (...xs) => [...new Set(xs.filter(Boolean))].join(" · ");
-// the specialité: the CN terrain, or for a race outside the CN its format
-const SPECS = ["For", "Spr", "VTT", "Ski"];
-const specOf = (r) => ({ "Forêt": "For", Sprint: "Spr", VTT: "VTT", Ski: "Ski" })[r.terrain]     // i18n-ignore
-  || (r.epreuve === "Sprint" ? "Spr" : ["MD", "LD", "Nuit"].includes(r.epreuve) ? "For" : null);
 const runLine = (x) => `${when(x.at)}, ${x.looked} ${t("prov.run.of")} ${x.due}${x.cut ? ` (${t("prov.run.cut")})` : ""}`;
 const when = (iso) => (iso ? new Date(iso).toLocaleString(locale(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
@@ -70,37 +67,8 @@ export async function render(main, { query = {} } = {}) {
 }
 
 // ---- the races -------------------------------------------------------------------------------------------------
-function list(main, idx, query) {
-  let filter = ["all", "found", "missing", "pending"].includes(query.f) ? query.f : "all", q = query.q || "";
-  let spec = SPECS.includes(query.t) ? query.t : "all", reg = query.reg || "";
-  // races a runner took part in (a runner recognised in the results): the logged-in one unless another is chosen — France's
-  // runners only, the ones the lists are matched to (another country's lists are not: no runner, no « pending » at FFCO)
-  const fr = country.current() === "FR";
-  const me = fr ? auth.myId() : null;
-  let runner = fr ? query.r || me : null, who = query.who === "all" || !runner ? "all" : "runner";     // the logged-in runner's races by default
-  if (!fr && filter === "pending") filter = "all";
-  const here = idx.races.filter((r) => country.of(r) === country.current());
-  const regions = [...new Set(here.map((r) => r.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
-  main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
-    <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
-    ${filterFold(html`<div class="filters"><div class="field"><span>${t("prov.show")}</span><div id="pv-f"></div></div>
-      <div class="field"><span>${t("f.terrain")}</span><div id="pv-t"></div></div>
-      ${regions.length ? html`<label class="field"><span>${t("prov.region")}</span><select id="pv-reg"><option value="">${t("f.all")}</option>
-        ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>` : ""}
-      ${fr ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>` : ""}
-      <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>`)}
-    ${country.hint()}
-    <section class="card"><div class="table-wrap" id="pv-table"></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
-    ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
-        ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
-      <div class="table-wrap" style="margin-top:6px;max-width:640px"><table class="data compact"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
-        <th class="r">${t("prov.run.changed")}</th><th class="r">${t("prov.run.requests")}</th><th class="r">${t("prov.run.seconds")}</th><th></th></tr></thead>
-      <tbody>${[...idx.runs].reverse().map((x) => html`<tr><td class="num">${when(x.at)}</td><td class="r num">${fmt(x.looked)} / ${fmt(x.due)}</td>
-        <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
-        <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
-  // the races run so far (today's too): a coming race's start list is reached from « Bientôt »
+async function list(main, idx, query) {
+  // the races run so far (today's too): a coming race's start list is reached from « Agenda »
   const R = idx.races.filter((r) => !r.soon && country.of(r) === country.current());     // the site's country's (country.js)
   // a runner's races published by FFCO (their results are « Courses classées »'s): one's own races are those where one is
   // recognised in an organiser's list or in FFCO's (owner, 2026-10-17: the race of the day FFCO had published, with no
@@ -113,6 +81,26 @@ function list(main, idx, query) {
       () => { ffcoOf.set(lic, new Set()); }).then(() => { if (document.contains(table)) draw(); });
     return null;
   };
+  // the filters (racefilters.js, as on En direct and the analyses); « Afficher » is this page's, « pas encore publiées
+  // officiellement » France's (another country's lists have no FFCO); the logged-in runner's races by default
+  const fr = country.current() === "FR";
+  const F = await raceFilters({ id: "pv", query, races: R, mine: true, onChange: () => draw(),
+    show: [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")], ...(fr ? [["pending", t("prov.f.pending")]] : [])],
+    ranBy: (r, lic) => { const s = ffcoSet(lic); return !!(s && r.ffco_id && s.has(String(r.ffco_id))); } });
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
+    <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
+    ${F.html}
+    ${country.hint()}
+    <section class="card"><div class="table-wrap" id="pv-table"></div></section>
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
+    ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
+        ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
+      <div class="table-wrap" style="margin-top:6px;max-width:640px"><table class="data compact"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
+        <th class="r">${t("prov.run.changed")}</th><th class="r">${t("prov.run.requests")}</th><th class="r">${t("prov.run.seconds")}</th><th></th></tr></thead>
+      <tbody>${[...idx.runs].reverse().map((x) => html`<tr><td class="num">${when(x.at)}</td><td class="r num">${fmt(x.looked)} / ${fmt(x.due)}</td>
+        <td class="r num">${fmt(x.changed)}</td><td class="r num">${fmt(x.requests)}</td><td class="r num">${fmt(x.seconds)} / ${fmt(x.budget)}</td>
+        <td>${x.cut ? html`<span class="tag">${t("prov.run.cut")}</span>` : ""}${x.failed ? html` <span class="tag">${fmt(x.failed)} ${t("prov.run.failed")}</span>` : ""}</td></tr>`)}</tbody></table></div></details>` : ""}`;
   const has = (r) => r.docs || r.ffco_id;              // results, an organiser's or FFCO's
   // an account without France reads the copy without licences (auth.provDir): nothing recognised, no CN (owner, 2026-10-20)
   const FR = auth.sees("FR");
@@ -128,29 +116,11 @@ function list(main, idx, query) {
       ${FR ? html`<div class="tile"><div class="tile-label">${t("prov.matched")}</div><div class="tile-value">${n ? pctN((100 * m) / n) : "—"}</div>
         <div class="tile-sub">${t("prov.matched.hint")}</div></div>` : ""}`;
   };
-  function drawWho() {
-    if (!$("#pv-who")) return;               // (another country's lists: no runner to follow)
-    $("#pv-who").innerHTML = html`${seg("pvwho", [["all", t("f.allm")], ["runner", t("prov.oneRunner")]], who)}
-      ${who === "runner" ? html`<span class="pill">${runner ? html`<a href="${link.runner(runner)}">${displayName(data.runner(runner)?.nom || runner)}</a>` : "—"}</span>
-        ${runnerSearch("pv-runner", t("rn.change"))}` : ""}`;
-    $$('[data-seg="pvwho"]').forEach((b) => b.addEventListener("click", () => { who = b.dataset.value; drawWho(); draw(); }));
-    if (who === "runner") bindRunnerSearch($("#pv-runner"), { onPick: (l) => { runner = l; drawWho(); draw(); } });
-  }
   const table = $("#pv-table");
   function draw() {
-    const one = who === "runner" && runner;
-    const ffcoMine = one ? ffcoSet(runner) : null;
-    replaceQuery({ f: filter === "all" ? null : filter, t: spec === "all" ? null : spec, reg: reg || null,
-      who: who === "all" ? "all" : null, r: one && runner !== me ? runner : null, q: q || null });
-    $("#pv-f").innerHTML = seg("pvf", [["all", t("prov.f.all")], ["found", t("prov.f.found")], ["missing", t("prov.f.missing")],
-      ...(fr ? [["pending", t("prov.f.pending")]] : [])], filter);
-    $$('[data-seg="pvf"]').forEach((b) => b.addEventListener("click", () => { filter = b.dataset.value; draw(); }));
-    $("#pv-t").innerHTML = seg("pvt", [["all", t("f.all")], ...SPECS.map((s) => [s, t(`terrain.${s}`)])], spec);
-    $$('[data-seg="pvt"]').forEach((b) => b.addEventListener("click", () => { spec = b.dataset.value; draw(); }));
-    const qn = normalise(q);
-    const kept = R.filter((r) => (spec === "all" || specOf(r) === spec) && (!reg || r.region === reg)
-      && (!one || (r.lics || []).includes(runner) || (ffcoMine && r.ffco_id && ffcoMine.has(String(r.ffco_id))))
-      && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
+    const one = F.runner();
+    const filter = F.shown;
+    const kept = R.filter(F.keep);
     drawTiles(kept.filter((r) => !r.soon));         // a coming race's start list is not a result
     const rows = kept.filter((r) => filter === "all" || (filter === "found" ? has(r) : filter === "missing" ? !has(r) : !r.ffco_id));
     $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
@@ -159,7 +129,7 @@ function list(main, idx, query) {
       <th>${t("prov.official")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(has(r) ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
-        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>`
+        <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(one)}` : ""}">${r.name}</a>`
           : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
@@ -175,9 +145,7 @@ function list(main, idx, query) {
           : r.soon ? "" : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
   }
-  $("#pv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  $("#pv-reg")?.addEventListener("change", (e) => { reg = e.target.value; draw(); });
-  drawWho();
+  F.bind();
   draw();
   return { title: t("prov.title") };
 }

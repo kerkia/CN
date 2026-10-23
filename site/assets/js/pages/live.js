@@ -13,6 +13,8 @@ import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
 import { LIVE_KEY, hasSplits } from "../livesplits.js";
+import { raceFilters, provFacts } from "../racefilters.js";
+import { getProv } from "./provisional.js";
 
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
 // server (localStorage « ocn.liveBase »)
@@ -44,25 +46,45 @@ export async function render(main, { path = "", query = {} } = {}) {
 // ---- the races ----------------------------------------------------------------------------------------------------
 // the site's country's races (country.js, the header's menu; owner, 2026-10-21: the page's own « Pays » field repeated it);
 // a line says whose they are and opens that menu (owner, 2026-10-23: the other countries' chips here, which Agenda and
-// Résultats did not have, are gone); a search looks in every country
+// Résultats did not have, are gone); a search looks in every country. The filters are the lists of races' (racefilters.js, owner,
+// 2026-10-23); a live race's region and runners are those of the same race on « Résultats » (its start list or results), when
+// it is there — same day, same name words
 const countryName = (() => {
   let dn = null;
   try { dn = new Intl.DisplayNames([lang()], { type: "region" }); } catch (e) { /* codes then */ }
   return (c) => (c === "?" ? t("lv.country.unknown") : dn?.of(c) || c);
 })();
 
+const nameWords = (s) => normalise(String(s || "")).split(/[^a-z0-9]+/).filter(Boolean);
+/** Two names of one race: one's words all in the other's (two words at least, unless a name has one). */
+function sameRace(a, b) {
+  const x = nameWords(a), y = nameWords(b);
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length > 0 && short.length >= Math.min(2, long.length) && short.every((w) => long.includes(w));
+}
+
 async function list(main, query) {
-  let q = query.q || "";
   const cur = country.current();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
-    <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    <div id="lv-filters"></div>
     ${country.hint()}
     <div id="lv-now"></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [], liveS = 1800, own = [];
-  try { ({ comps, liveS = 1800 } = await (await fetch(`${LIVE}/api/live/list`, { cache: "no-cache" })).json()); } catch (e) { /* shown empty */ }
+  const [, idx] = await Promise.all([
+    fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).then((j) => { ({ comps = [], liveS = 1800 } = j); }).catch(() => { /* shown empty */ }),
+    getProv("index.json").catch(() => null)]);
+  const prov = idx?.races || [];
+  const twins = new Map(comps.map((c) => [c[0], prov.find((r) => r.date_iso === c[3] && sameRace(r.name, c[1])) || null]));
+  const facts = (c) => {
+    const r = twins.get(c[0]);
+    const x = r ? provFacts(r) : { region: "", lics: [] };
+    return { ...x, spec: (r && x.spec) || terrainOf(c[1], ""), text: `${c[1]} ${c[2]} ${c[7] || ""}` };
+  };
+  const F = await raceFilters({ id: "lv", query, races: comps.filter((c) => (c[5] || "?") === cur), facts, onChange: () => draw() });
+  $("#lv-filters").innerHTML = F.html;
   // live now (owner, 2026-10-22): a race whose last punch is under liveS old (the relay's directory reads today's races'
   // last passings: c[6], the age in seconds), a broadcast that sent something in that time
   const isLive = (c) => c[6] != null && c[6] <= liveS;
@@ -81,9 +103,8 @@ async function list(main, query) {
   }
   const today = new Date().toLocaleDateString("sv-SE");
   const draw = () => {
-    replaceQuery({ q: q || null });
-    const n = normalise(q);
-    const kept = comps.filter((c) => (n ? normalise(`${c[1]} ${c[2]}`).includes(n) : (c[5] || "?") === cur))
+    const n = F.searching();
+    const kept = comps.filter((c) => (n || (c[5] || "?") === cur) && F.keep(c))
       .sort((a, b) => isLive(b) - isLive(a) || (a[3] === today ? -1 : b[3] === today ? 1 : 0) || Math.abs(Date.parse(a[3]) - Date.parse(today)) - Math.abs(Date.parse(b[3]) - Date.parse(today)));
     // the box on top: the races live now (the country's, or the search's), the latest punch first
     const now = kept.filter(isLive).sort((a, b) => a[6] - b[6]);
@@ -94,10 +115,10 @@ async function list(main, query) {
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
       <tbody>${kept.map((c) => { const [id, name, org, date, , cc, , via] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
         <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${via ? html` <span class="muted">· ${via}</span>` : ""}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
-      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
+      : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : n ? "lv.none" : F.filtered() ? "rf.emptyLive" : "lv.noneCountry", { c: countryName(cur) })}</div>`;
   };
+  F.bind();
   draw();
-  $("#lv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
   return { title: t("lv.title") };
 }
 
