@@ -60,7 +60,7 @@ export function menu() {
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu cty-menu" role="menu">${ok.map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
+    <div class="nav-menu cty-menu" role="menu">${byName(ok).map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
   </div>`;
 }
 
@@ -98,9 +98,11 @@ export const MEMBERS = ["FR",
   "ES", "FI", "GB", "GE", "GR", "HK", "HR", "HU", "IE", "IL", "IN", "IS", "IT", "JP", "KE", "KR", "KZ", "LT", "LU", "LV",
   "MA", "MD", "ME", "MK", "MN", "MT", "MX", "MY", "NL", "NO", "NZ", "PH", "PK", "PL", "PT", "RO", "RS", "RU", "SE", "SG",
   "SI", "SK", "TH", "TN", "TR", "TW", "UA", "US", "UY", "UZ", "VN", "XK", "ZA"];
+/** Countries by their name in the site's language, France first (owner, 2026-10-23: the header's menu listed the countries
+ *  with data by code, Switzerland among the C's). */
+const byName = (ccs) => [...ccs].sort((a, b) => (b === "FR") - (a === "FR") || name(a).localeCompare(name(b), lang()));
 /** The member countries by name in the site's language, France first; `except` left out. */
-export const sortedMembers = (except = []) => ["FR", ...MEMBERS.slice(1).sort((a, b) => name(a).localeCompare(name(b), lang()))]
-  .filter((cc) => !except.includes(cc));
+export const sortedMembers = (except = []) => byName(MEMBERS).filter((cc) => !except.includes(cc));
 
 /**
  * One membership's fields (registration, Réglages › Mes pays): country, club, member id — the id is France's FFCO licence
