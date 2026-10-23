@@ -9,6 +9,7 @@ import { replaceQuery } from "../app.js";
 import { getProv } from "./provisional.js";
 import * as country from "../country.js";
 import { sees } from "../auth.js";
+import { LIVE } from "../livesplits.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -48,9 +49,15 @@ export async function render(main, { query }) {
   // the coming races whose organiser has published a start list (shown on « Récemment »): agenda id -> race key; and the
   // competitions declared by their organisers outside France (functions/api/declared.js), published with the provisional results
   const starts = new Map(), declared = [];
+  // the live competitions tied to an event (the provisional index's `live`: liveresultat's number, a broadcast's, a
+  // MeOSDjango site's « host/<n> »), and the event of a race key (the organisers' broadcasts name their competition's)
+  const liveIds = new Map(), eventOf = new Map();
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
-      if (r.startlist && r.date_iso >= today) starts.set(String(r.agenda_id || r.key.replace(/^a/, "")), r.key);
+      const id = String(r.agenda_id || r.key.replace(/^a/, ""));
+      eventOf.set(r.key, id);
+      if (r.live) liveIds.set(id, r.live);
+      if (r.startlist && r.date_iso >= today) starts.set(id, r.key);
       if (/^d/.test(r.key) && r.date_iso >= today) declared.push(declaredEvent(r));
     }
   } catch (e) { /* no start lists then */ }
@@ -217,7 +224,7 @@ export async function render(main, { query }) {
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
   }
@@ -262,6 +269,36 @@ export async function render(main, { query }) {
     if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(r.dataset.key); }
   });
 
+  // ---- live results -------------------------------------------------------------------------------------------
+  // The events under way today with a live competition the relay lists (liveresultat, a MeOSDjango site) or an organiser's
+  // broadcast tied to them: event id -> { id: the « En direct » number, now: a punch within the relay's « live » time }.
+  // Read once the list is drawn; nothing when none is today.
+  const lives = new Map();
+  async function findLive() {
+    const on = events.filter((e) => e.date <= today && (e.end || e.date) >= today && !e.cancelled);
+    if (!on.length) return;
+    const ids = new Set(on.map((e) => String(e.id)));
+    const set = (ev, id, now) => { const o = lives.get(ev); if (ids.has(ev) && (!o || (now && !o.now))) lives.set(ev, { id, now }); };
+    const [list, bc] = await Promise.all([
+      fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/live/broadcasts", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({}))]);
+    const liveS = list.liveS || 1800;
+    // the relay numbers a MeOSDjango site's races from 800 000 000 (its site's address last in the row)
+    const keyOfComp = (c) => (c[0] >= 8e8 && c[0] < 9e8 ? `${c[7]}/${c[0] % 1e6}` : c[0]);
+    const comps = new Map((list.comps || []).map((c) => [keyOfComp(c), c]));
+    for (const [ev, xs] of liveIds) for (const x of xs) {
+      const c = comps.get(x);
+      if (c) set(ev, c[0], c[6] != null && c[6] <= liveS);
+    }
+    for (const b of bc.broadcasts || []) {
+      const ev = b.race && (eventOf.get(b.race) || b.race.replace(/^a/, ""));
+      if (ev && b.last) set(ev, b.id, Date.now() - b.last <= liveS * 1000);
+    }
+    if (!lives.size) return;
+    drawTable();
+    if (st.selected) drawDetail();
+  }
+
   // ---- details ------------------------------------------------------------------------------------------------
   const link = (u, label) => (safeUrl(u) ? html`<a href="${u}" target="_blank" rel="noopener">${label || u}</a>` : (u || ""));
   const row = (label, value) => (value ? html`<dt>${label}</dt><dd>${value}</dd>` : "");
@@ -276,6 +313,13 @@ export async function render(main, { query }) {
     return key ? html`<div class="reg open"><div class="reg-title">${t("agd.startList")}</div>
       <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.startTimes")}</a>
       ${sees("FR") && !e.declared ? html`<span class="dim" style="font-size:12px">${t("agd.startHint")}</span>` : ""}</p></div>` : "";
+  }
+
+  // the event's live results (« En direct »): today's race whose live competition the relay lists
+  function liveBox(e) {
+    const l = lives.get(String(e.id));
+    return l ? html`<div class="reg lv-reg"><div class="reg-title">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t(l.now ? "agd.live.now" : "agd.live")}</div>
+      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/direct/${l.id}">${t("agd.live.go")}</a></p></div>` : "";
   }
 
   function registration(e) {
@@ -344,6 +388,7 @@ export async function render(main, { query }) {
         <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
         ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
+        ${liveBox(e)}
         ${startBox(e)}
         ${registration(e)}
         ${accessBox(e)}
@@ -376,6 +421,7 @@ export async function render(main, { query }) {
 
   drawFilters();
   drawTable();
+  findLive();
   if (st.selected) {
     // a linked event outside the default filters (past date, other kind) must still be visible
     const e = byKey.get(st.selected);

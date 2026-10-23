@@ -63,6 +63,26 @@ PLATFORM_ID = {"liveresultat": r"liveresultat\.orientering\.se/.*[?&]comp=(\d+)"
                "heyries": r"/competition/(\d+)", "helga": r"helga-o\.live/splits/\w+\.php\?lauf=(\d+)",
                "oreplay": r"oreplay\.es/competitions/([0-9a-f-]{36}/[0-9a-f-]{36})",
                "meosdjango": r"https?://([^/?#]+/competition/\d+)"}
+# The live competitions tied to a race, as the live relay numbers them (its /api/live/list): liveresultat's number, an
+# organiser's broadcast (« direct:<number> »), a MeOSDjango site's « host/<n> » (the relay numbers those itself). The
+# Agenda links a race live now to its « En direct » page (owner, 2026-10-23).
+LIVE_IDS = ((re.compile(r"liveresultat\.orientering\.se/.*[?&]comp=(\d+)"), lambda m: int(m[1])),
+            (re.compile(r"^direct:(\d+)"), lambda m: int(m[1])),
+            (re.compile(r"^https?://([^/?#]+)/competition/(\d+)"), lambda m: f"{m[1]}/{m[2]}"))
+
+
+def live_ids(con, key: str) -> list | None:
+    out = []
+    for (url,) in con.execute("SELECT url FROM prov_docs WHERE race_key = ? AND source IN "
+                              "('liveresultat', 'direct', 'meosdjango', 'heyries')", (key,)).fetchall():
+        for rx, conv in LIVE_IDS:
+            m = rx.search(url or "")
+            if m and conv(m) not in out:
+                out.append(conv(m))
+                break
+    return out or None
+
+
 # the time zones of a race's country, for liveresultat's competitions (a race in France reads only Paris's): the others
 # are their country module's (countries/<cc>), any time zone for a country without one
 TZ = {None: ("Europe/Paris",), "FR": ("Europe/Paris",)}
@@ -1021,6 +1041,7 @@ def build(con, out: Path, today: date) -> int:
                       "results": results or None, "rlics": sorted(rlics) if results and rlics != lics else None,
                       # the race under way: its lists are partial (the runners out or yet to start); notify.py waits
                       "ongoing": on,
+                      "live": live_ids(con, race["key"]) if race["date_iso"] >= (today - timedelta(days=1)).isoformat() else None,
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})} |
                      ({"url": race["site"]} if race["key"].startswith("d") and race["site"] else {}))
     names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}

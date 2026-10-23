@@ -583,6 +583,18 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 /* « Analyse de course » on a live race: partial results, when the times came, « Actualiser » once newer ones did */
 .notice.ra-live { align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent-wash); color: var(--ink-2); }
 @media (max-width: 600px) { .ra-n { display: none; } }          /* the list's runner counts: not on a phone */
+/* « Analyse de course », compact (owner, 2026-10-23): the race's name with « Résultats → » beside it; the circuit and the club,
+   common to every view, above the tabs as two bare selects; a view's settings on one light line, not a card */
+.sp-title { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.sp-title h1 { margin: 0; }
+.sp-pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+.sp-pick select { flex: 0 1 auto; max-width: 320px; }
+.filters.sp-views { background: none; border: 0; box-shadow: none; padding: 0; margin: 0 0 12px; gap: 8px 18px; align-items: center; }
+.sp-views .field { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .sp-head .lede { font-size: 12.5px; margin-top: 2px; }
+  .sp-pick select { flex: 1 1 140px; }
+}
 
 .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
 .calc-card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
@@ -1605,6 +1617,9 @@ table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
   animation: lv-pulse 1.6s ease-out infinite; flex: none; }
 @keyframes lv-pulse { to { box-shadow: 0 0 0 8px transparent; } }
 @media (prefers-reduced-motion: reduce) { .lv-dot { animation: none; } }
+/* the Agenda's box of an event with live results (pages/agenda.js liveBox) */
+.reg.lv-reg { border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); }
+.lv-reg .lv-dot { display: inline-block; margin-right: 8px; vertical-align: 0; }
 .lv-now-list { display: grid; gap: 2px; padding: 4px 8px 10px; }
 .lv-now-item { display: grid; gap: 0 12px; padding: 8px; border-radius: 8px; color: var(--ink); text-decoration: none; }
 .lv-now-item:hover { background: var(--surface-3); }

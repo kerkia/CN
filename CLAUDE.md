@@ -296,7 +296,7 @@ under half the runners of the fullest one drops. A split list without start time
 document of the race (`run.share_starts`, for « Groupes »). **Start lists** (2026-10-10): for the races of the next 7 days, the liveresultat
 competition assigned to each is read every 6 h (`run.start_lists`, `LiveResultat.read(startlist=True)`: status
 "start"); a coming race is not listed on « Résultats » (index `soon`, `startlist`, `agenda_id`): its start list is reached from « Agenda », and its page
-shows start time, current CN Top / official and the expected place; « Agenda » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). FFCO's public registration
+shows start time, current CN Top / official and the expected place; « Agenda » shows a « Liste de départ publiée » box and a « départs » tag (today's races too). **Live results from the Agenda** (owner, 2026-10-23): the index gives a race of the last day on its `live` ids (`run.live_ids`: liveresultat's number, a broadcast's, a MeOSDjango site's « host/<n> »); an event under way whose live competition the relay lists, or whose tied broadcast sent something, gets a « Résultats en direct » box (« En direct en ce moment » and a « direct » tag in the list when its last punch is under the relay's `liveS`), linking to « En direct ». FFCO's public registration
 list gives only the number of registrants per circuit (`agenda.circuit_counts`, races of the next 21 days, `reg.circuits`):
 the names are members-only and not read. Organisers' sites too (`run.site_start_lists`,
 `ClubSite.find(mode="start")`: files named départ / horaires / liste de départ / inscrits, posted in the 3 weeks before;
@@ -361,12 +361,12 @@ menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still w
 `#/analyse-course`, route `splits`, menu « Courses » after « En direct »; `#/temps-inter` still opens it): without `course=` it
 lists the site's country's races of `prov/index.json` with split times, the latest first (`pages/racelist.js`: discipline,
 « Mes courses seulement », search; « ma course » where one is recognised), each opening the analysis (`splits.js`: the race's
-name as title, no link back to the list — the menu is it (owner) —, « Résultats de la course → »; no race selector any more); « Voir » on « Résultats »
+name as title, no link back to the list — the menu is it (owner) —, « Résultats → » beside it; no race selector any more; compact (owner, 2026-10-23): the circuit and club selects above the view tabs, a view's settings on one bare line, its explanations merged into one paragraph under it — `foot`; the list has no « Voir » column); « Voir » on « Résultats »
 and the race page's buttons lead there. **Live races** (`course=direct-<race>`, `livesplits.js`): the live relay's classes
 (`/ws/<race>`, subscribed `"*"`) read as one document of the provisional shape in the browser (`toDoc`: status 0 → ok, 9/10 →
 « run », shown « en course »; the radio controls are the controls, code % 1000 when unnamed; nothing stored); drawn once the
 class asked for has come, then new times of the course shown offer « Actualiser » (no redraw under the reader's eyes; the others'
-are taken quietly). « En direct »'s race page shows « Analyse des temps → » once a split time has come, and the list's box « En
+are taken quietly). « En direct »'s race page shows « Analyse de course → » once a split time has come, and the list's box « En
 direct, avec temps intermédiaires » lists the site's country's races live now whose live gives splits (`probe`: the relay's hello
 — a last passing at a radio control — else one class read; 6 races at most, each connection closed at once). Its analysis — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps

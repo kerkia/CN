@@ -46,14 +46,13 @@ export async function render(main, { query = {} } = {}) {
       && (!qn || normalise(`${r.name} ${r.place || ""} ${r.org || ""}`).includes(qn)));
     // the format with the place and the organiser, under the name: one column less, for a phone
     $("#ra-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th>
-        <th class="r ra-n">${t("prov.runners")}</th><th>${t("nav.recent")}</th></tr></thead>
+        <th class="r ra-n">${t("prov.runners")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr><td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td class="pv-race"><a href="${analysisLink(r.key)}">${r.name}</a>
           ${me && (r.lics || []).includes(me) ? html` <span class="tag" title="${t("ra.mine.tip")}">${t("ra.mine.tag")}</span>` : ""}
           ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[parts(fmtFormat(r.epreuve), fmtFormat(r.terrain)), r.place, r.org].filter(Boolean).join(" · ")}</div></td>
-        <td class="r num ra-n">${r.runners ? fmt(r.runners) : "—"}</td>
-        <td><a href="#/resultats?course=${encodeURIComponent(r.key)}">${t("prov.seeSplits")}</a></td></tr>`)}</tbody></table>`
+        <td class="r num ra-n">${r.runners ? fmt(r.runners) : "—"}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(races.length ? "ra.emptyFilter" : "ra.empty")}</div>`;
   };
   draw();
