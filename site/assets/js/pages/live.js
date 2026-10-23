@@ -12,7 +12,6 @@ import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
-import { flag } from "../vendor.js";
 import { LIVE_KEY, hasSplits } from "../livesplits.js";
 
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
@@ -43,9 +42,9 @@ export async function render(main, { path = "", query = {} } = {}) {
 }
 
 // ---- the races ----------------------------------------------------------------------------------------------------
-// the site's country's races (country.js, the header's menu; owner, 2026-10-21: the page's own « Pays » field repeated it),
-// the other countries racing live beside the search (under the list on a phone), each a click to make it the site's country
-// (owner, 2026-10-21: no « all countries » toggle); a search looks in every country
+// the site's country's races (country.js, the header's menu; owner, 2026-10-21: the page's own « Pays » field repeated it);
+// a line says whose they are and opens that menu (owner, 2026-10-23: the other countries' chips here, which Agenda and
+// Résultats did not have, are gone); a search looks in every country
 const countryName = (() => {
   let dn = null;
   try { dn = new Intl.DisplayNames([lang()], { type: "region" }); } catch (e) { /* codes then */ }
@@ -56,8 +55,8 @@ async function list(main, query) {
   let q = query.q || "";
   const cur = country.current();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
-    <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label>
-      <div class="lv-else lv-else-top" data-lv-else></div></div>
+    <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
+    ${country.hint("cty.hint.live")}
     <div id="lv-now"></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>
@@ -81,13 +80,6 @@ async function list(main, query) {
     } catch (e) { /* none shown */ }
   }
   const today = new Date().toLocaleDateString("sv-SE");
-  // the other countries racing live, the most races first; how many of them are live now
-  const counts = new Map(), lives = new Map();
-  for (const c of comps) if ((c[5] || "?") !== cur) {
-    counts.set(c[5] || "?", (counts.get(c[5] || "?") || 0) + 1);
-    if (isLive(c)) lives.set(c[5] || "?", (lives.get(c[5] || "?") || 0) + 1);
-  }
-  const order = [...counts].filter(([c]) => c !== "?").sort((a, b) => (lives.get(b[0]) || 0) - (lives.get(a[0]) || 0) || b[1] - a[1]);
   const draw = () => {
     replaceQuery({ q: q || null });
     const n = normalise(q);
@@ -103,17 +95,9 @@ async function list(main, query) {
       <tbody>${kept.map((c) => { const [id, name, org, date, , cc, , via] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
         <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${via ? html` <span class="muted">· ${via}</span>` : ""}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
       : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
-    const other = !order.length ? "" : html`<span class="muted">${t("lv.elsewhere")}</span>
-      ${order.map(([c, k]) => html`<button type="button" class="chip lv-cc" data-lv-country="${c}"><img class="lv-flag" src="${flag(c)}" alt="" width="16" height="12"
-        loading="lazy" decoding="async">${countryName(c)} <span class="muted">${k}</span>${lives.get(c) ? html`<span class="lv-cc-live" title="${t("lv.now.n", { n: lives.get(c) })}">● ${lives.get(c)}</span>` : ""}</button>`)}`;
-    $$("[data-lv-else]", main).forEach((el) => { el.innerHTML = other; });
   };
   draw();
   $("#lv-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
-  main.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-lv-country]");
-    if (b) { country.pick(b.dataset.lvCountry); location.reload(); }   // the site's country, everywhere
-  });
   return { title: t("lv.title") };
 }
 

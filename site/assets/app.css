@@ -240,6 +240,10 @@ p { margin: 0; }
 .lang-menu .lang-code { font-size: 12.5px; font-weight: 650; letter-spacing: .02em; }
 .lang-menu .nav-menu { left: auto; right: 0; min-width: 140px; }
 .lang-menu .nav-menu button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
+/* both show a code (« FR » twice for a French reader): on a wide screen each says what it chooses (owner, 2026-10-23);
+   a phone has no room for it */
+.lang-menu .tool-label { font-size: 12.5px; font-weight: 500; color: var(--ink-3); }
+@media (max-width: 640px) { .lang-menu .tool-label { display: none; } }
 .cty-menu { max-height: min(70vh, 520px); overflow-y: auto; }
 /* a country's flag beside its name (owner, 2026-10-22): the header's menu, the country fields, one's countries */
 .cty-flag { width: 18px; height: 13px; border-radius: 2px; object-fit: cover; vertical-align: -2px; margin-right: 7px; flex: none;
@@ -250,6 +254,12 @@ p { margin: 0; }
 .cty-pick select { flex: 1; min-width: 0; }
 .cty-pick-flag:empty { display: none; }
 .cty-pick-flag .cty-flag { margin-right: 0; width: 22px; height: 16px; }
+/* whose list a page shows, and the way to another country's (country.hint; owner, 2026-10-23) */
+.cty-hint { margin: 10px 2px; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.cty-hint b { color: var(--ink-2); font-weight: 620; margin-right: 4px; }
+.cty-hint button { border: 0; padding: 0; margin-left: 6px; background: none; font: inherit; color: var(--accent); cursor: pointer; }
+.cty-hint button:hover { text-decoration: underline; }
+.cty-hint + .agenda-layout { margin-top: 0; }
 .nav-menu .nav-menu-head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); padding: 8px 10px 4px;
   border-top: 1px solid var(--border); margin-top: 4px; }
 .swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--border-strong); flex: none; }
@@ -1166,7 +1176,8 @@ table.data tbody tr.found .name { font-weight: 700; }
   .filters-fold .badge { background: var(--focus); color: #fff; border-radius: 999px; font-size: 12px; padding: 0 8px; line-height: 20px; }
   .agenda-layout { margin-top: 8px; }
   .agenda-page:not(.detail-open) .agenda-detail { display: none; }
-  .agenda-page.detail-open #list-card, .agenda-page.detail-open .page-head, .agenda-page.detail-open .filters-fold { display: none; }
+  .agenda-page.detail-open #list-card, .agenda-page.detail-open .page-head, .agenda-page.detail-open .filters-fold,
+  .agenda-page.detail-open .cty-hint { display: none; }
   .detail-nav { display: block; padding: 12px 16px 0; }
   .detail-nav:last-child { padding: 4px 0 0; }
   .agenda-table { max-height: none; min-height: 0; overflow: visible; }
@@ -1587,8 +1598,6 @@ table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
 .lv-ev { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 12px; font-weight: 600; }
 .lv-ev-fin { color: var(--good); }
 .lv-ev-radio { color: var(--course, #a626a4); }
-.lv-cc { height: 26px; padding: 0 9px; gap: 5px; font-size: 12px; }
-.lv-cc-live { color: var(--bad); font-weight: 700; font-size: 11.5px; }
 /* the races live now (owner, 2026-10-22): a box on top, a mark in the list */
 .lv-now { border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); margin-bottom: 14px; }
 .lv-now h2 { display: flex; align-items: center; gap: 8px; color: var(--bad); }
@@ -1602,7 +1611,6 @@ table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
 .lv-now-item .muted { grid-column: 1; font-size: 12.5px; }
 .lv-badge { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--bad);
   border-radius: 4px; padding: 1px 5px; vertical-align: 1px; }
-.lv-flag { width: 16px; height: 12px; border-radius: 2px; object-fit: cover; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); flex: none; }
 .lv-table .lv-m { display: none; }
 #lv-rows { max-height: none; }
 table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-align: top; }
@@ -1637,16 +1645,9 @@ table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-alig
   .lv-table td.lv-c { min-width: 13vw; max-width: 24vw; font-size: 11.5px; }
   .lv-status { font-size: 12.5px; max-width: 34vw; }
 }
-.lv-else { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 12.5px; }
 .lv-filters { align-items: flex-end; }
-/* the other countries above the list whatever the country chosen (owner, 2026-10-22: under a long list, out of sight, they
-   left no way back); on a phone one line scrolling sideways; the list itself has no scrollbar of its own */
-.lv-else-top { flex: 1 1 300px; padding-bottom: 4px; }
+/* the list has no scrollbar of its own */
 #lv-list { max-height: none; }
-@media (max-width: 760px) {
-  .lv-else-top { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 6px; }
-  .lv-else-top > * { flex: none; }
-}
 .lv-pass { display: flex; gap: 6px; align-items: center; margin: 0 0 8px; font-size: 12.5px; min-width: 0; }
 .lv-strip { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
 .lv-pi { flex: none; white-space: nowrap; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px;

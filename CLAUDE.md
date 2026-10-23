@@ -1299,10 +1299,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   open** (2026-10-22: an update arriving while a phone's selector was open replaced it, and the choice was lost — the « stuck
   on Derniers passages » report); on a phone they and the search are 16 px (a phone zooms into smaller fields). Local test:
   launch configs `lr-mock` (8795, a recording kept outside the repository; `--live --speed 1 --from <min>` replays it on today's clock) + `ocn-live-mock` (the relay reading it) +
-  `pages-dev-games`. The list page: the other countries racing live beside the search, above the list whatever the country chosen (one line
-  scrolling sideways on a phone; 2026-10-22: under a long list they left no way back from Sweden), with their
-  flag (flag-icons, vendored) and how many of their races are live now (● n), a click makes one the site's country; a search
-  looks in every country. **Live now** (owner, 2026-10-22: « identify clearly which competitions are truly live »): the
+  `pages-dev-games`. The list page: the site's country's races, a search looks in every country (the other countries' chips
+  beside the search, 2026-10-21/22, are gone since 2026-10-23: Agenda and Résultats had none; `country.hint` says whose list it is
+  and opens the header's menu). **Live now** (owner, 2026-10-22: « identify clearly which competitions are truly live »): the
   relay's `Directory`, when the list is asked for, reads the last passings of the races of their own today (with liveresultat's
   hash, at most every `PROBE_MS` 3 min a race and `MAX_PROBE` 15 a call; `probes` kept for today's races only) and adds to each
   race the age of its last punch in seconds (`comps[i][6]`, from the race's time zone, else liveresultat's offset from Swedish
@@ -1366,9 +1365,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   direct's own selector are gone) and offers every IOF member after the countries with data or joined — anyone may race abroad:
   a country's agenda, results and live races are open to every account, without CN (they are not ranked there); default the
   first accepted membership with data (`localStorage ocn.country` once picked); the Agenda's, Résultats' and En direct's lists
-  keep the current country's (`country.of`: an item's `country`, France when it has none); En direct lists the other countries
-  racing live beside its search (under the list on a phone), a click makes one the site's country; a search looks in every
-  country (no « Tous les pays » toggle since 2026-10-21).
+  keep the current country's (`country.of`: an item's `country`, France when it has none); a search on En direct looks in every
+  country (no « Tous les pays » toggle since 2026-10-21). **Whose list** (owner, 2026-10-23): above the lists of Agenda,
+  Résultats, En direct and Analyse de course a line gives the country's flag and name and « Choisir un autre pays », which opens
+  the header's menu (`country.hint`, keys `cty.hint.*`); on a wide screen the header's two buttons say « Pays » and « Langue »
+  (`.tool-label`, hidden under 640 px: both show a code, « FR » twice for a French reader).
   **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
   up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
   Réglages › « Mes pays » (`#/reglages?onglet=pays`, the card `#st-countries`) lists, edits, leaves (POST `leave: true`) and

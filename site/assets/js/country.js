@@ -56,12 +56,33 @@ export function menu() {
   const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
+      <span class="tool-label" aria-hidden="true">${t("cty.menu")}</span>
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
     <div class="nav-menu cty-menu" role="menu">${ok.map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
   </div>`;
 }
+
+/** A line above a list of the site's country's (Agenda, Résultats, En direct, Analyse de course): whose list it is, and a
+ *  button that opens the header's menu for another country (owner, 2026-10-23: one place to choose, said where it is,
+ *  rather than a page's own choice of countries). `key`: the page's words, « Agenda de ce pays »… */
+export function hint(key) {
+  const cur = current();
+  return html`<p class="cty-hint">${flagImg(cur)}<b>${name(cur)}</b><span>· ${t(key)}</span>
+    <button type="button" data-cty-open title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button></p>`;
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest?.("[data-cty-open]")) return;
+  const b = document.querySelector('.nav-group[data-group="country"] > .nav-top');
+  if (!b) return;
+  window.scrollTo({ top: 0 });
+  // after this click has run its course: the document's own listener (app.js) closes the menus on a click outside them
+  setTimeout(() => {
+    if (!b.parentElement.classList.contains("open")) b.click();
+    b.focus({ preventScroll: true });
+  });
+});
 
 // The IOF's member countries (2026), as functions/_lib/countries.js `COUNTRIES` — keep the two in step.
 export const MEMBERS = ["FR",
