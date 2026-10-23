@@ -66,12 +66,20 @@ export function menu() {
 
 /** A line above a list of the site's country's (Agenda, Résultats, En direct, Analyse de course): whose list it is, and a
  *  button that opens the header's menu for another country (owner, 2026-10-23: one place to choose, said where it is,
- *  rather than a page's own choice of countries). `key`: the page's words, « Agenda de ce pays »… */
-export function hint(key) {
+ *  rather than a page's own choice of countries): « Courses en 🇫🇷 France · Choisir un autre pays » (owner, 2026-10-23). */
+export function hint() {
   const cur = current();
-  return html`<p class="cty-hint">${flagImg(cur)}<b>${name(cur)}</b><span>· ${t(key)}</span>
+  return html`<p class="cty-hint">${t("cty.hint.races", { in: t(`cty.in.${prepOf(cur)}`) })} ${flagImg(cur)}<b>${name(cur)}</b>
     <button type="button" data-cty-open title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button></p>`;
 }
+// « in » before a country's name, by the IOF members' names in each language: French « en France », « au Portugal », « aux
+// Pays-Bas », « à Malte »; English « in France », « in the Netherlands » (cty.in.* in the catalogues)
+const PREP = {
+  fr: { au: ["BR", "CA", "CL", "DK", "JP", "KE", "KZ", "LU", "MA", "ME", "MX", "PK", "PT", "GB", "UY", "VN", "XK"],
+    aux: ["US", "NL", "PH"], a: ["SG", "MT", "CY", "TW"] },
+  en: { aux: ["US", "NL", "PH", "GB"] },
+};
+const prepOf = (cc) => Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
 document.addEventListener("click", (e) => {
   if (!e.target.closest?.("[data-cty-open]")) return;
   const b = document.querySelector('.nav-group[data-group="country"] > .nav-top');

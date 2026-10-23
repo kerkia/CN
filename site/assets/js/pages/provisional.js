@@ -90,7 +90,7 @@ function list(main, idx, query) {
         ${regions.map((x) => html`<option value="${x}" ${raw(x === reg ? "selected" : "")}>${x}</option>`)}</select></label>` : ""}
       ${fr ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row" style="gap:8px" id="pv-who"></div></div>` : ""}
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="pv-q" value="${q}" style="width:200px"></label></div>`)}
-    ${country.hint("cty.hint.results")}
+    ${country.hint()}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
     ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}

@@ -56,7 +56,7 @@ async function list(main, query) {
   const cur = country.current();
   main.innerHTML = html`<div class="page-head"><div><h1>${t("lv.title")}</h1><p class="lede">${t("lv.lede")}</p></div></div>
     <div class="filters lv-filters"><label class="field"><span>${t("prov.search")}</span><input type="search" id="lv-q" value="${q}" style="width:240px"></label></div>
-    ${country.hint("cty.hint.live")}
+    ${country.hint()}
     <div id="lv-now"></div>
     <div id="lv-org"></div>
     <section class="card"><div class="table-wrap" id="lv-list"><div class="empty">${t("lv.loading")}</div></div></section>

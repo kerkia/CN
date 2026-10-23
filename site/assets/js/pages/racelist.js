@@ -30,7 +30,7 @@ export async function render(main, { query = {} } = {}) {
       ${me ? html`<label class="field"><span>${t("prov.runner")}</span><span class="row" style="gap:6px;align-items:center;min-height:32px">
         <input type="checkbox" id="ra-mine" ${raw(mine ? "checked" : "")}> ${t("ra.mine")}</span></label>` : ""}
       <label class="field"><span>${t("prov.search")}</span><input type="search" id="ra-q" value="${q}" style="width:200px"></label></div>`)}
-    ${country.hint("cty.hint.splits")}
+    ${country.hint()}
     <section class="card"><div class="table-wrap" id="ra-table"><div class="empty">${t("lv.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ra.def")}</p>`;
   liveNow();

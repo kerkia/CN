@@ -85,7 +85,7 @@ export async function render(main, { query }) {
       <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
       <section class="card agenda-filters" id="filters"></section>
     </details>
-    ${country.hint("cty.hint.agenda")}
+    ${country.hint()}
     <div class="agenda-layout">
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       <section class="card agenda-detail" id="detail"></section>
