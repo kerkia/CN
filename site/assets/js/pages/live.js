@@ -96,11 +96,11 @@ async function list(main, query) {
     const now = kept.filter(isLive).sort((a, b) => a[6] - b[6]);
     $("#lv-now").innerHTML = now.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("lv.now.title")}</h2>
         <div class="hint">${t("lv.now.hint", { m: Math.round(liveS / 60) })}</div></div></div>
-      <div class="lv-now-list">${now.map(([id, name, org, , , cc]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
-        <span class="muted">${org}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span></a>`)}</div></section>` : "";
+      <div class="lv-now-list">${now.map(([id, name, org, , , cc, , via]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
+        <span class="muted">${org}${via ? ` · ${via}` : ""}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span></a>`)}</div></section>` : "";
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
-      <tbody>${kept.map((c) => { const [id, name, org, date, , cc] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
-        <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
+      <tbody>${kept.map((c) => { const [id, name, org, date, , cc, , via] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
+        <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${via ? html` <span class="muted">· ${via}</span>` : ""}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
       : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : !n ? "lv.noneCountry" : "lv.none", { c: countryName(cur) })}</div>`;
     const other = !order.length ? "" : html`<span class="muted">${t("lv.elsewhere")}</span>
       ${order.map(([c, k]) => html`<button type="button" class="chip lv-cc" data-lv-country="${c}"><img class="lv-flag" src="${flag(c)}" alt="" width="16" height="12"

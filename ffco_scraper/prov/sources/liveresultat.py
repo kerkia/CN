@@ -14,7 +14,7 @@ import json
 import logging
 import re
 
-from ..model import club_code, category, doc, klass, plain, runner
+from ..model import club_code, category, doc, klass, live_state, plain, runner
 
 log = logging.getLogger(__name__)
 MIN_CONTROLS = 4
@@ -104,6 +104,7 @@ class LiveResultat:
         if a.status != 200:
             return None
         classes = []
+        out, nxt, last = 0, None, None               # the race under way (model.live_state): runners out or to start
         for c in _json(a.content).get("classes", []):
             if self.f.out_of_time():
                 break
@@ -124,6 +125,12 @@ class LiveResultat:
             rows = []
             for x in data.get("results", []):
                 st = STATUS.get(int(x.get("status", 0)), None)
+                start = x.get("start")                      # hundredths of a second after midnight
+                start = int(start) / 100 if str(start).isdigit() and int(start) > 0 else None
+                if st is None and int(x.get("status", 0)) in (9, 10):
+                    out += 1
+                    if int(x.get("status", 0)) == 10 and start and (nxt is None or start < nxt):
+                        nxt = start
                 if st is None:                       # not started yet / still running
                     if not startlist:
                         continue
@@ -134,11 +141,12 @@ class LiveResultat:
                 splits = [(int(sp[k]) / 100 if str(sp.get(k, "")).lstrip("-").isdigit() and int(sp[k]) > 0 else None)
                           for k in codes] if full else None
                 place = x.get("place")
-                start = x.get("start")                      # hundredths of a second after midnight
+                if st == "ok" and t and start:
+                    last = max(last or 0, start + t)
                 rows.append(runner(x.get("name", ""), place=int(place) if str(place).isdigit() else None,
                                    club=x.get("club"), club_code=club_code(x.get("club")), time_s=t, status=st,
                                    category=category(name), splits=splits if splits and any(splits) else None,
-                                   start_s=int(start) / 100 if str(start).isdigit() and int(start) > 0 else None))
+                                   start_s=start))
             classes.append(klass(name, rows, controls=controls))
         # (a few classes of another kind — « Open bleu », « B » — do not make a list by category one by circuit)
         by = "category" if classes and sum(1 for c in classes if category(c["name"])) >= 0.6 * len(classes) else "circuit"
@@ -147,4 +155,6 @@ class LiveResultat:
                 date=info.get("date"))
         if startlist and d:
             d["kind"] = "startlist"
+        elif d and (live := live_state(out, nxt, last)):
+            d["live"] = live
         return d

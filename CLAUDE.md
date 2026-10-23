@@ -282,7 +282,13 @@ with the races concerned, for the owner to contact the sites' owners. Livelox li
 only the runners who sent their GPS track, and closed to robots): neither a document nor on that list. WinSplits rows with
 no time, no status word and no punch are non-starters (« dns »), with punches mispunches. A platform competition is stored under one address
 whatever a club's page spells (`run.PLATFORM_URL`, `canonical_docs`: « …?lang=fr&comp=… » made duplicates); Helga links
-that name no event are dropped. liveresultat's splits are kept when a class's « splitcontrols » cover the course (4 or more: MeOS feeds every
+that name no event are dropped. **A race under way** (2026-10-23, the Pélussin City Race: a MeOSDjango read at mid-race was
+listed as complete): a list read from liveresultat or a MeOSDjango site while runners are still out or yet to start carries
+`live` (`model.live_state`: how many, the next start, the latest finish; MeOSDjango's own `race_state` « finished » clears it);
+`run.build` marks the race `ongoing` (index and race file: the number of runners out) while it is today, no organiser's file
+(upload, the club's site) is there and the latest finish is under 90 min old or a start is still to come (`run.ongoing`,
+`ONGOING_QUIET_S`) — the list tags it « en cours », its page says the results are partial, and `notify` holds the « mise en
+ligne » alert until it is over. liveresultat's splits are kept when a class's « splitcontrols » cover the course (4 or more: MeOS feeds every
 control, code 1000 + number, repeats 101031…; a radio control or two are not kept). A race's documents are
 shown in the order `run.doc_priority` gives (`prio`, both sites follow it): uploads and the organiser's files, then
 WinSplits / Orientation Data, Helga, liveresultat last (live results are not corrected afterwards); a document with
@@ -756,6 +762,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **« En direct » estimates** (2026-10-22): a runner still out shows « arr. ≈ hh:mm » — start + their time at the last radio
   control ÷ the finishers' median there × the finishers' median time (the median time without a punch; 3 finishers at least;
   `live.js` `usualOf`, `eta`).
+  **MeOSDjango races** (2026-10-23, owner: the Pélussin City Race was live there and not on « En direct »): the relay lists the
+  races of the MeOSDjango sites (`live/src/meosdjango.js`, `HOSTS` — append only: a race's number is 800 000 000 + the site's
+  place × 1 000 000 + its competition number) of the last 3 and next 7 days beside liveresultat's, today's probed for their last
+  punch (a few courses a call, `MD_LIST` requests at most; `MAX_INFO` lowered to 25 for the subrequest limit), the site's
+  address named in the list. The race's object reads every course's JSON while someone watches (20 s while punches come, 60 s
+  quiet, 5 min once the site says « finished »), one class per `class_name`, MeOS's « FAMILY, Given » turned round, and passes
+  them to `update` as a broadcast's push. In `update`, a card read at the finish (the finish and over two splits new at once:
+  MeOSDjango, MeOS's « all punches ») puts its finish on the punches' line, not every control.
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; administrators only the first
   day, **every account since 2026-10-16** — 15 questions a day per account on the free model, administrators apart, `PER_DAY`
   in `api/ask.js`; the other Workers AI models of the menu are the administrators' tests): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**

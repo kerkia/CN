@@ -145,3 +145,13 @@ def klass(name: str, runners: list[dict] | None = None, **kw) -> dict:
 
 def doc(kind: str, classes: list[dict], by: str = "unknown", title: str | None = None, date: str | None = None) -> dict:
     return {"kind": kind, "by": by, "title": title, "date": date, "classes": [c for c in classes if c["runners"]]}
+
+
+def live_state(out: int, nxt: float | None, last: float | None, state: str | None = None) -> dict | None:
+    """A list read while the race is under way (a live platform: liveresultat, a MeOSDjango site) — kept on the document as
+    `live`: `out` runners still out or yet to start (left out of the list), the next start and the latest finish (seconds
+    after midnight, the race's time), the platform's own word when it gives one. run.build decides from it, at each build,
+    whether the race is still on (`ongoing`)."""
+    if state == "finished" or (not out and state != "live"):
+        return None
+    return {"out": out, "next": nxt, "last": last, "state": state}

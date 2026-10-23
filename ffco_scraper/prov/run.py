@@ -18,6 +18,7 @@ import time
 import urllib.parse
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import privacy
@@ -880,6 +881,21 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     return changed
 
 
+ONGOING_QUIET_S = 5400         # a race still counts as under way this long after its latest finish (runners left « out »)
+
+
+def ongoing(lives: list[dict], final: bool, now_s: float) -> int | None:
+    """A race of today still under way, from what its live lists said when read (model.live_state): the number of
+    runners out or yet to start, else None. Not when a list without that mark is published (the organiser's file,
+    `final`), nor once the latest finish is ONGOING_QUIET_S old with no start to come (the runners a platform still
+    shows « out » never came back: an organiser does not always mark them)."""
+    if final:
+        return None
+    on = [x for x in lives if x.get("out") and (x.get("last") is None or now_s - x["last"] < ONGOING_QUIET_S
+                                                  or (x.get("next") or 0) > now_s)]
+    return max(x["out"] for x in on) if on else None
+
+
 def build(con, out: Path, today: date) -> int:
     """site/data/prov/: index.json and one file per race of the last SHOW_DAYS days, and the coming races with a start
     list (« soon »)."""
@@ -894,6 +910,8 @@ def build(con, out: Path, today: date) -> int:
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     far = (today + timedelta(days=ORG_START_DAYS)).isoformat()
     org_starts = set(store.meta_get(con, "org_starts", []) or [])
+    clock = datetime.now(ZoneInfo("Europe/Paris"))           # (a race's live lists: its times of day)
+    now_s = clock.hour * 3600 + clock.minute * 60 + clock.second
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
                                  (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key AND d.kind IN ('startlist', 'startfile')))
                                  OR (date_iso <= ? AND EXISTS (SELECT 1 FROM prov_docs d WHERE d.race_key = prov_races.key
@@ -912,6 +930,7 @@ def build(con, out: Path, today: date) -> int:
         foreign = (race["country"] or "FR") != "FR"
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's
+        lives, final = [], False               # the lists read while the race was under way; the organiser's own file
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
         # the course setter's data (« Organisation › Tracer »): no list of results; the uploads first, the newest first.
         # Courses are secret until the race (the setters' own pages): used from the race's day (results come after the
@@ -972,6 +991,10 @@ def build(con, out: Path, today: date) -> int:
                 if parsed.get("kind") not in ("startlist", "registration", "announcement") and runners:
                     results = True
                     rlics.update(r["lic"] for r in runners if r["lic"])
+                    if parsed.get("live") and race["date_iso"] == clock.date().isoformat():
+                        lives.append(parsed["live"])
+                    elif doc["source"] in ("upload", "site"):
+                        final = True               # the organiser's own file: the race is over
             out_docs.append(entry)
         most = max((sum(len(k["runners"]) for k in e.get("classes") or []) for e in out_docs), default=0)
         for e in out_docs:
@@ -979,6 +1002,9 @@ def build(con, out: Path, today: date) -> int:
         out_docs.sort(key=lambda e: -e["prio"])
         body = {k: race[k] for k in ("key", "date_iso", "name", "place", "org", "org_code", "terrain", "epreuve", "cn", "site",
                                       "agenda_id", "ffco_id", "first_seen", "last_check", "next_check", "done", "country")}
+        on = ongoing(lives, final, now_s)
+        if on:
+            body["ongoing"] = on
         body["docs"] = out_docs
         (d / f"{race['key']}.json").write_text(dump(body), encoding="utf-8")
         (pub / f"{race['key']}.json").write_text(dump(public_copy(body)), encoding="utf-8")
@@ -993,6 +1019,8 @@ def build(con, out: Path, today: date) -> int:
                       "lics": sorted(lics),
                       # a list of results among them (notify.py: « mise en ligne »), and its runners when they differ from lics
                       "results": results or None, "rlics": sorted(rlics) if results and rlics != lics else None,
+                      # the race under way: its lists are partial (the runners out or yet to start); notify.py waits
+                      "ongoing": on,
                       "sources": sorted({x["source"] for x in out_docs if x.get("classes")})} |
                      ({"url": race["site"]} if race["key"].startswith("d") and race["site"] else {}))
     names = {r["key"]: {"key": r["key"], "name": r["name"], "date": r["date_iso"]} for r in index}

@@ -5,7 +5,7 @@
 // licences (prov/pub/, auth.provDir).
 
 import { html, raw, $, $$, fmt, fmtDate, normalise, displayName, fmtFormat, pctN, fmtCat } from "../util.js";
-import { t, locale } from "../i18n.js";
+import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available, get as storeGet } from "../store.js";
@@ -15,7 +15,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
-  helga: "Helga", olive: "O'Live" };
+  helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango" };
 const KIND = Object.fromEntries(["empty", "refused", "platform", "unparsed", "startlist", "startfile", "registration", "announcement", "coursedata"]
   .map((k) => [k, t(`kind.${k}`)]));
 export const STATUS = { ok: "", mp: t("status.pm"), dnf: t("status.abandon"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), dns: t("status.dns"), nc: t("status.nc"), start: "" };
@@ -161,6 +161,7 @@ function list(main, idx, query) {
         <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(runner)}` : ""}">${r.name}</a>`
           : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
+          ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn || !FR || country.of(r) !== "FR" ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
@@ -224,6 +225,7 @@ async function detail(main, idx, query) {
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
+    ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
       ${CN ? html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}

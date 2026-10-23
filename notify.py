@@ -88,7 +88,8 @@ def _prov_by_licence(races: list[dict], licences: set[str]) -> dict[str, list[di
     first = (today - timedelta(days=PROV_DAYS)).isoformat()
     out: dict[str, list[dict]] = {}
     for r in races:
-        if not r.get("results") or r.get("soon") or not first <= (r.get("date_iso") or "") <= today.isoformat():
+        # (a race still under way waits until it is over: its lists are partial — run.build's `ongoing`)
+        if not r.get("results") or r.get("soon") or r.get("ongoing") or not first <= (r.get("date_iso") or "") <= today.isoformat():
             continue
         fid = r.get("ffco_id")
         item = {"id": str(fid) if fid else r["key"], "alias": [r["key"]] if fid else [], "prov": r["key"],
@@ -151,7 +152,7 @@ def run(db: Path, out: Path | None = None) -> None:
         items: list[dict] = []
         prov = _prov_races(out)
         first = (date.today() - timedelta(days=PROV_DAYS)).isoformat()
-        recent = [r for r in prov if r.get("results") and not r.get("soon") and (r.get("date_iso") or "") >= first]
+        recent = [r for r in prov if r.get("results") and not r.get("soon") and not r.get("ongoing") and (r.get("date_iso") or "") >= first]
         n_prov = 0
         if ids or recent:
             got = _call("GET")

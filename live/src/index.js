@@ -11,6 +11,7 @@
 
 import { DurableObject } from "cloudflare:workers";
 import * as mop from "./mop.js";
+import * as md from "./meosdjango.js";
 
 const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, relayed to its spectators)";
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
@@ -37,6 +38,11 @@ const PUSHED_FROM = 900000000;
 const isPushed = (comp) => Number(comp) >= PUSHED_FROM;
 const MAX_PUT = 100;                             // keys per storage.put (the limit is 128)
 const MOP_MAX = 16 * 1024 * 1024;                // a MeOS message, at most (Ozimut's Function checks it too)
+// Races held on a MeOSDjango site (2026-10-23, meosdjango.js): numbers from 800 000 000, read from the site's course JSON while
+// someone watches — every course at each wake-up (a course gives all its classes), the result passed to `update` as a push
+const MD_ACTIVE_MS = 20000, MD_QUIET_MS = 60000, MD_DONE_MS = 300000;   // while punches keep coming / quiet / race over
+const MD_PAGE_MS = 300000;                       // the competition's page (its courses) read again at most this often
+const MD_MAX = 24;                               // course reads per wake-up, at most
 async function lr(env, params) {
   const r = await fetch(`${api(env)}?${new URLSearchParams(params)}`, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`liveresultat ${r.status}`);
@@ -103,6 +109,17 @@ export class LiveRace extends DurableObject {
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
     const m = await this.load();
     m.comp = comp;
+    if (md.isMd(comp)) {
+      // a MeOSDjango race: read once when nothing is held, then by the alarm while someone watches
+      if (!m.info) {
+        try { await this.readMd(m); } catch (e) { return new Response("MeOSDjango unavailable", { status: 502 }); }
+      }
+      const [client, server] = Object.values(new WebSocketPair());
+      this.ctx.acceptWebSocket(server);
+      this.send(server, { t: "hello", info: m.info, classes: m.classes, at: m.lastChange, pass: m.pass || null, counts: m.counts });
+      if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + MD_ACTIVE_MS);
+      return new Response(null, { status: 101, webSocket: client });
+    }
     if (isPushed(comp)) {
       // an organiser's race: what they sent so far (perhaps nothing yet), no liveresultat, no alarm
       const [client, server] = Object.values(new WebSocketPair());
@@ -254,10 +271,12 @@ export class LiveRace extends DurableObject {
         const o = was.get(`${r[1]}|${r[2]}`);
         // a runner seen for the first time is no news (MeOS sends a whole race in chunks of 64: its first send spans several pushes)
         if (!o) continue;
-        if (r[4] === 0 && r[3] != null && !(o && o[4] === 0 && o[3] != null)) arrivals.push([r[1], name, 1000, "", r[3], r[7]]);
-        (r[8] || []).forEach((s, i) => {
-          if (s && !o?.[8]?.[i]) arrivals.push([r[1], name, next.controls[i]?.[0] ?? i + 1, next.controls[i]?.[1] ?? "", s[0], r[7]]);
-        });
+        const finished = r[4] === 0 && r[3] != null && !(o[4] === 0 && o[3] != null);
+        if (finished) arrivals.push([r[1], name, 1000, "", r[3], r[7]]);
+        const fresh = (r[8] || []).map((s, i) => (s && !o[8]?.[i] ? i : -1)).filter((i) => i >= 0);
+        // a card read at the finish brings every split at once (MeOS's « all punches », a MeOSDjango site): the finish is the news
+        if (finished && fresh.length > 2) continue;
+        for (const i of fresh) arrivals.push([r[1], name, next.controls[i]?.[0] ?? i + 1, next.controls[i]?.[1] ?? "", r[8][i][0], r[7]]);
       }
       m.data[name] = { ...next, at: now };
       m.counts[name] = countOf(next.rows);
@@ -299,6 +318,33 @@ export class LiveRace extends DurableObject {
     for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
     if (dropped.length) await this.ctx.storage.delete(dropped.map((c) => `c:${c}`));
     return { ok: true, classes: m.classes.length, changed: changed.length, arrivals: first ? 0 : arrivals.length, viewers: sockets.length };
+  }
+
+  /** A MeOSDjango race: its courses read (the competition's page now and then for their list), the classes passed to
+   *  `update` as a push (`prune`: the whole race each time). Throws when a read fails: nothing half read is passed on. */
+  async readMd(m) {
+    const { host, cid } = md.site(m.comp);
+    if (!host) throw new Error("unknown MeOSDjango site");
+    const base = `https://${host}`;
+    m.md ||= { at: 0, courses: [], info: null, state: null, age: null };
+    if (!m.md.courses.length || Date.now() - m.md.at >= MD_PAGE_MS) {
+      const page = await md.get(`${base}/competition/${cid}/`);
+      m.md.courses = md.courses(page, cid);
+      m.md.at = Date.now();
+      if (!m.md.info) {
+        const card = md.cards(await md.get(`${base}/?months=3`)).find((c) => c.cid === cid);
+        const title = /<title>([^<]*)<\/title>/i.exec(page)?.[1]?.trim() || "";
+        m.md.info = { name: card?.name || title, organizer: card?.organizer || "", date: card?.date || null };
+      }
+    }
+    const list = [];
+    for (const h of m.md.courses.slice(0, MD_MAX)) list.push(await md.get(`${base}/api/${cid}/course/${h}/live/`, true));
+    m.md.state = list.find((d) => d.race_state)?.race_state || null;
+    const ages = list.map(md.lastAge).filter((a) => a != null);
+    m.md.age = ages.length ? Math.min(...ages) : null;
+    const date = m.md.info.date || list.find((d) => d.competition_date)?.competition_date || null;
+    const { order, classes } = md.compact(list);
+    return this.update(m.comp, { info: { ...m.md.info, date }, order, classes }, { prune: true });
   }
 
   async readClasses(m) {
@@ -346,6 +392,13 @@ export class LiveRace extends DurableObject {
     const sockets = this.ctx.getWebSockets();
     if (!sockets.length) return;                 // nobody watching: no more reads until someone comes back
     const m = await this.load();
+    if (md.isMd(m.comp)) {
+      // a MeOSDjango race: every course read (update sends what changed), sooner while punches keep coming
+      try { await this.readMd(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
+      const wait = m.md?.state === "finished" ? MD_DONE_MS : m.md?.age != null && m.md.age < 300 ? MD_ACTIVE_MS : MD_QUIET_MS;
+      await this.ctx.storage.setAlarm(Date.now() + wait);
+      return;
+    }
     if (m.pushed) return;                        // an organiser's race: nothing to read, its pushes carry the news
     const watched = new Map();                   // class -> its sockets
     const everyone = [], whole = [];             // whole: the pages watching every class
@@ -438,11 +491,14 @@ const TZ_COUNTRY = {
 const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
 const LIST_MS = 240000;                 // liveresultat's list read at most this often
 const TZ_VERSION = 2;
-const MAX_INFO = 30;                    // races looked up per call (subrequest limit: 50); the rest at the next call
+const MAX_INFO = 25;                    // races looked up per call (subrequest limit: 50, MeOSDjango's MD_LIST too); the rest next call
 // which races are live now (owner, 2026-10-22: « identify clearly which competitions are truly live »): each race of its own
 // today has its last passings read (with liveresultat's hash: an unchanged list costs a few bytes), at most every PROBE_MS
 // and MAX_PROBE a call, only when the list is asked for; a race is live while its last punch is under LIVE_S old
 const PROBE_MS = 180000, MAX_PROBE = 15, LIVE_S = 1800;
+// the MeOSDjango sites' races (meosdjango.js): each site's list at most every LIST_MS, today's races probed for their last
+// punch (the competition's page now and then, then a few courses a call in turn), MD_LIST requests a call at most
+const MD_LIST = 8, MD_PROBE_COURSES = 3, MD_HASHES_MS = 1800000;
 // a time of day now in a race's time zone (else liveresultat's offset from Swedish time), in seconds
 function localSeconds(tz, timediff) {
   const at = (zone) => {
@@ -542,8 +598,60 @@ export class Directory extends DurableObject {
         pending = true;
       }
     }
-    return new Response(JSON.stringify({ at: last?.at || now, comps: last?.comps || [], liveS: LIVE_S }), {
+    let mdComps = [];
+    try { mdComps = await this.mdComps(now); } catch (e) { console.error(`directory: MeOSDjango: ${e.message || e}`); }
+    const comps = [...(last?.comps || []), ...mdComps].sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
+    return new Response(JSON.stringify({ at: last?.at || now, comps, liveS: LIVE_S }), {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${pending || !last ? 30 : 120}` },
+    });
+  }
+
+  /** The MeOSDjango sites' races of the last 3 and next 7 days, in the list's form [id, name, organiser, date, 0, "FR", age, host]:
+   *  each site's cards at most every LIST_MS (kept when a site does not answer), today's races' last punch (seconds) read a
+   *  few courses a call in turn, at most every PROBE_MS a race. */
+  async mdComps(now) {
+    const s = (await this.ctx.storage.get("md")) || { at: 0, comps: [], probes: {} };
+    let budget = MD_LIST, changed = false;
+    if (now - s.at >= LIST_MS) {
+      const day = (d) => new Date(now + d * 86400e3).toISOString().slice(0, 10);
+      const lo = day(-3), hi = day(7), out = [];
+      for (const [i, host] of md.HOSTS.entries()) {
+        let cards = null;
+        if (budget > 0) { budget--; try { cards = md.cards(await md.get(`https://${host}/?months=3`)); } catch (e) { /* kept below */ } }
+        if (cards) out.push(...cards.filter((c) => c.date >= lo && c.date <= hi).map((c) => [md.raceId(i, c.cid), c.name, c.organizer, c.date, 0, "FR", null]));
+        else out.push(...s.comps.filter((c) => md.site(c[0]).host === host));
+      }
+      s.comps = out; s.at = now; changed = true;
+    }
+    const today = localSeconds("Europe/Paris", 0).day;
+    const races = s.comps.filter((c) => c[3] === today);
+    s.probes = Object.fromEntries(races.filter((c) => s.probes[c[0]]).map((c) => [c[0], s.probes[c[0]]]));
+    for (const c of races.sort((a, b) => (s.probes[a[0]]?.checked || 0) - (s.probes[b[0]]?.checked || 0))) {
+      const p = s.probes[c[0]] ||= { hashes: [], hashesAt: 0, next: 0, ages: {}, checked: 0 };
+      if (budget <= 0 || now - p.checked < PROBE_MS) continue;
+      const { host, cid } = md.site(c[0]), base = `https://${host}`;
+      try {
+        if (!p.hashes.length || now - p.hashesAt >= MD_HASHES_MS) {
+          budget--;
+          p.hashes = md.courses(await md.get(`${base}/competition/${cid}/`), cid);
+          p.hashesAt = now;
+        }
+        for (let k = 0; k < Math.min(MD_PROBE_COURSES, p.hashes.length) && budget > 0; k++) {
+          const h = p.hashes[p.next++ % p.hashes.length];
+          budget--;
+          const a = md.lastAge(await md.get(`${base}/api/${cid}/course/${h}/live/`, true));
+          p.ages[h] = a == null ? null : [a, now];
+        }
+        p.checked = now;
+      } catch (e) { /* next time */ }
+      changed = true;
+    }
+    if (changed) await this.ctx.storage.put("md", s);
+    // the age of each race's last punch now: its courses' youngest, carried forward since read
+    return s.comps.map((c) => {
+      const ages = Object.values(s.probes[c[0]]?.ages || {}).filter(Boolean).map(([a, at]) => a + Math.round((now - at) / 1000));
+      // (the site's address last: the page names it beside the organiser)
+      return [...c.slice(0, 6), c[3] === today && ages.length ? Math.min(...ages) : null, md.site(c[0]).host];
     });
   }
 

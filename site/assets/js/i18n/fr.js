@@ -923,6 +923,9 @@ export default {
   "prov.circuitCats": "Catégories du circuit : {c}",
   "prov.circuitOf": "Catégorie du circuit {c} (scores calculés sur tout le circuit)",
   "prov.soon": "à venir · liste de départ", "prov.start": "Départ",
+  "prov.ongoing": "en cours", "prov.ongoing.tip": "Course en cours : les résultats sont partiels",
+  "prov.ongoingNote.one": "Course en cours : un coureur est encore en course ou pas encore parti. Ces résultats sont partiels et changeront jusqu'à la fin de la course.",
+  "prov.ongoingNote.other": "Course en cours : {n} coureurs sont encore en course ou pas encore partis. Ces résultats sont partiels et changeront jusqu'à la fin de la course.",
   "prov.start.hint": "La liste de départ publiée par l'organisateur (liveresultat), avant la course ; CN : ceux d'aujourd'hui dans la discipline de la course ; attendu : la place que l'indice Ozimut donne parmi les coureurs du circuit",
   "prov.start.hintPlain": "La liste de départ publiée par l'organisateur, avant la course",
   "prov.notCn": "hors CN", "prov.noResult": "aucun résultat trouvé", "prov.noSite": "site du club inconnu", "prov.noSite.hint": "Ni l'agenda ni les courses du club ne donnent son site : ses fichiers de résultats ne peuvent pas être cherchés",
@@ -1081,11 +1084,11 @@ export default {
 
   // results uploaded by organisers (« Récemment »)
   "lv.title": "En direct",
-  "lv.lede": "Les courses en cours ou toutes proches publiées en direct sur liveresultat, dans le pays choisi en haut de la page. Pour chaque coureur reconnu : son {cnLow} et la place qu'il laisse attendre.",
+  "lv.lede": "Les courses en cours ou toutes proches publiées en direct sur liveresultat ou sur un site MeOSDjango, dans le pays choisi en haut de la page. Pour chaque coureur reconnu : son {cnLow} et la place qu'il laisse attendre.",
   "lv.loading": "Chargement…",
   "lv.none": "Aucune course ne correspond.",
   "lv.unavailable": "Liste indisponible pour l'instant.",
-  "lv.source": "Résultats en direct publiés par les organisateurs sur liveresultat, relayés par Ozimut.",
+  "lv.source": "Résultats en direct publiés par les organisateurs sur liveresultat ou sur un site MeOSDjango, relayés par Ozimut.",
   "lv.country.unknown": "Pays inconnu",
   "lv.noneCountry": "Aucune course en direct en ce moment dans ce pays ({c}).",
   "lv.elsewhere": "En direct ailleurs :",

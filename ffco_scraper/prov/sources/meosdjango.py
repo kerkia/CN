@@ -30,7 +30,7 @@ import re
 import urllib.parse
 from datetime import date, timedelta
 
-from ..model import category, doc, klass, runner
+from ..model import category, doc, klass, live_state, runner
 from ..parsers import meos_html
 from ..store import meta_get, meta_set
 
@@ -111,6 +111,7 @@ class Site:
         if not hashes:
             return self._read_html(cid) if not startlist else None
         classes, day, starts = [], None, set()
+        out, nxt, last, state = 0, None, None, None     # the race under way (model.live_state): runners out or to start
         for h in hashes:
             if self.f.out_of_time():
                 return None                                  # never a part of a race: the next run reads it whole
@@ -125,6 +126,16 @@ class Site:
                 return None
             k = course(data, startlist)
             day = day or data.get("competition_date")
+            state = state or data.get("race_state")
+            now = data.get("server_now_abs") or 0
+            for x in data.get("runners") or []:
+                st = x.get("st_abs", x.get("st")) or 0
+                if not x.get("stat") and st > 0:
+                    out += 1
+                    if st > now and (nxt is None or st / 10 < nxt):
+                        nxt = st / 10
+                elif x.get("stat") == 1 and st > 0 and (x.get("rt") or 0) > 0:
+                    last = max(last or 0, (st + x["rt"]) / 10)
             starts |= {r["start_s"] for r in k["runners"] if r.get("start_s")}
             classes.append(k)
         if startlist and len(starts) < 2:
@@ -132,6 +143,8 @@ class Site:
         d = doc(self.kind, classes, by="circuit", title=self.title(cid), date=day)
         if startlist and d["classes"]:
             d["kind"] = "startlist"
+        elif not startlist and (live := live_state(out, nxt, last, state)):
+            d["live"] = live
         return d if d["classes"] else None
 
     def _read_html(self, cid: int) -> dict | None:
