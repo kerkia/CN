@@ -177,7 +177,7 @@ export async function render(main, { query = {} } = {}) {
   }
   // a live race's line: partial results, the runners still out, when the times were received; « Actualiser » once newer ones came
   function liveBar() {
-    if (!live) return;
+    if (!live || !$("#sp-live")) return;
     const k = docs[di]?.classes[ci];
     const out = k ? k.runners.filter((x) => x.status === "run" && x.splits).length : 0;
     const at = new Date(shownAt).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });

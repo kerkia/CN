@@ -57,7 +57,9 @@ export function watch(id, onChange) {
       else if (m.t === "class" && !m.missing) { st.all.set(m.c, m); st.at = Date.now(); onChange(st, "class", m.c); }
     };
     ws.onclose = () => {
-      st.up = false; onChange(st, "close");
+      st.up = false;
+      if (st.gone) return;                 // closed by the page that left
+      onChange(st, "close");
       if (!st.gone && !document.hidden) setTimeout(connect, [1000, 2000, 5000, 10000, 30000][Math.min(st.tries++, 4)]);
     };
   }
