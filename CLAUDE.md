@@ -790,8 +790,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   its category over all of France at that month (percent_rank: the share of the category's ranked runners with a lower CN;
   100 = the best; `data.fmtPct` shows whole numbers), before any filter; « Classement » shows it as « Centile cat. » and the
   club page's « Membres » too, both sortable. The PM rate (`data.pmRate`: the share of « pm » among a runner's races of the
-  discipline in the 12 months to the latest data) is the members' « PM 12 mois » column (read from their race files once the
-  table is shown, filled in place) and the runner page's « PM sur 12 mois » tile (beside « Courses sur 12 mois »).
+  discipline in the 12 months to the latest data) is the members' « PM 12 mois » column (since 2026-10-23 from the club's own
+  file, `pm` {licence: {terrain: [n, pm]}} by `site_extras.member_pm` — it read every member's race file, up to a hundred
+  requests a club; a member the file does not list still from their race file — filled in place) and the runner page's « PM sur 12 mois » tile (beside « Courses sur 12 mois »).
 - **Catégories** (`#/categories`, `pages/categories.js`, menu « Classement » after « Classement »; owner, 2026-10-18, after a
   mockup on real data): at a month-end (`?date=`), for the site's method and discipline, each class's CN spread on one axis —
   a band from the 10th to the 90th percentile, the middle half darker, the median (white tick) and the mean (◆) —, women and
@@ -1438,7 +1439,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   runner (« Ma page » → `fr<licence>`, the « me » row, « Mon club ») only in France's data (`auth.myId`). The Documentation
   says what differs (`doc.country.ES`). **Files packed** (Pages takes 20 000 files a deployment; France ~14k): meta `bucket`
   (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
-  `club_packs` (64: club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
+  `club_packs` (67, a prime: 64 left 10 files empty and one with 162 clubs; club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
   Spain ~1,250 files instead of ~7,500.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages

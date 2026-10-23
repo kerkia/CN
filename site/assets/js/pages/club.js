@@ -18,7 +18,10 @@ import { link, replaceQuery, terrainField } from "../app.js";
 
 export async function render(main, { arg: code, query }) {
   const meta = data.meta();
-  const series = (await data.clubSeries(code))?.monthly;
+  const clubFile = await data.clubSeries(code);
+  const series = clubFile?.monthly;
+  // the members' races and mispunches of the last 12 months, per discipline (site_extras.member_pm; files built before: none)
+  const pmPre = clubFile?.pm || null;
   const name = meta.names.clubs[code];
   if (!series && !name) { main.innerHTML = errorBox(t("err.notfound")); return; }
   let range = query.range || "all";
@@ -231,6 +234,9 @@ export async function render(main, { arg: code, query }) {
   async function loadPm(list, terrain) {
     const month = data.latestMonth();
     await Promise.all(list.filter((r) => !pmCache.has(`${r.lic}|${terrain}`)).map(async (r) => {
+      // from the club's file, a member at a time; one it does not list (another club at the season's end) from their races
+      const pre = pmPre?.[r.lic];
+      if (pre) { const [n, pm] = pre[terrain] || [0, 0]; pmCache.set(`${r.lic}|${terrain}`, { n, pm }); return; }
       const races = await data.runnerRaces(r.lic).catch(() => []);
       pmCache.set(`${r.lic}|${terrain}`, data.pmRate(races, terrain, month));
     }));

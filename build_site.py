@@ -56,7 +56,7 @@ from site_io import COURSE_GROUP, WRITES, club_pack, course_file, dump, prune, r
 ROOT = Path(__file__).parent
 import paths  # noqa: E402
 DB = paths.DB
-CLUB_PACKS = 64
+CLUB_PACKS = 67                  # a prime: club codes share their endings, 64 left files empty (54 of 64 used)
 OUT = ROOT / "site" / "data" / "fr"           # a country's folder (--out): France's by default
 NAMES_CACHE = paths.CACHE / "reference_names.json"
 TERRAINS = {"Forêt": "For", "Sprint": "Spr", "VTT": "VTT", "Ski": "Ski"}

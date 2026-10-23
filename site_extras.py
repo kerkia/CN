@@ -156,8 +156,10 @@ def club_files(years: list[int], elite_rows: dict) -> None:
             grouped[(code, terrain, g)].append(v)
         for (code, terrain, g), v in grouped.items():
             pts_out[code][terrain].setdefault(str(season), {})[g] = summarise(v)
+    pm_out = member_pm(years)
     codes = set(series) | set(years_out) | set(pts_out)
-    one = lambda code: {"monthly": series.get(code, {}), "years": years_out.get(code, {}), "pts": pts_out.get(code, {})}
+    one = lambda code: {"monthly": series.get(code, {}), "years": years_out.get(code, {}), "pts": pts_out.get(code, {}),
+                        "pm": pm_out.get(code, {})}
     packs = load(OUT / "meta.json").get("club_packs")
     if packs:                                    # a country's clubs packed (build_site CLUB_PACKS)
         by = defaultdict(dict)
@@ -170,6 +172,35 @@ def club_files(years: list[int], elite_rows: dict) -> None:
         for code in codes:
             dump(OUT / "club" / f"{code}.json", one(code))
     print(f"  {len(codes)} club files")
+
+
+def member_pm(years: list[int]) -> dict:
+    """The club page's « PM 12 mois »: per club, its members' races and mispunches (« pm ») of the 12 months to the latest
+    month, per discipline — {club: {licence: {terrain: [n, pm]}}}, as data.pmRate counts them; the page read every member's
+    race file for it (up to a hundred requests a club; the packing study of 2026-10-23). A member is of their club of the
+    last season's attributes."""
+    from datetime import date as _d, timedelta
+    months = load(OUT / "meta.json").get("months") or []
+    if not months or not years:
+        return {}
+    last = months[-1]
+    since = (_d.fromisoformat(last) - timedelta(days=365)).isoformat()
+    attr = load(OUT / "snap" / f"attr_{years[-1]}.json")
+    out = defaultdict(dict)
+    for f in (OUT / "r").glob("*.json"):
+        for lic, races in load(f).items():
+            a = attr.get(lic)
+            code = club_code(a[1]) if a else None
+            if not code:
+                continue
+            per = defaultdict(lambda: [0, 0])
+            for r in races:
+                if since < r[4] <= last:                 # R.date, R.terrain, R.status
+                    per[r[5]][0] += 1
+                    per[r[5]][1] += r[13] == "pm"
+            if per:
+                out[code][lic] = dict(per)
+    return out
 
 
 # -- elite results ---------------------------------------------------------------
