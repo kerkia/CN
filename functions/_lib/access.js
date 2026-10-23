@@ -6,3 +6,6 @@
 //              2026-10-22).
 // (Its own module: the login gate imports it, and countries.js imports api.js, which imports the gate.)
 export const DATA_ACCESS = { FR: "members", ES: "all" };
+// the countries whose agenda alone the site reads (countries/agenda.py, 2026-10-23): open to everyone, as their calendars are
+for (const cc of ["AT", "BE", "BG", "BR", "BY", "CH", "CZ", "DE", "DK", "EE", "GB", "HK", "IL", "IT", "JP", "KR", "LT", "RO",
+  "RS", "TR", "UA", "ZA"]) DATA_ACCESS[cc] = "all";

@@ -15,11 +15,17 @@ from .base import ACCESS, SITE_DATA, Country
 __all__ = ["ACCESS", "SITE_DATA", "Country", "modules", "registry", "get", "write_index", "move_legacy_layout"]
 
 
+# the countries whose agenda alone Ozimut reads (countries/agenda.py; 2026-10-23: the IOF members with a clean source)
+AGENDA_ONLY = ("at", "be", "bg", "br", "by", "ch", "cz", "de", "dk", "ee", "gb", "hk", "il", "it", "jp", "kr", "lt", "ro",
+               "rs", "tr", "ua", "za")
+
+
 def modules() -> list:
-    """Every country's module (countries/fr, countries/es…), France first: its COUNTRY, and what it can do —
+    """Every country's module (countries/fr, countries/es, countries/ch…), France first: its COUNTRY, and what it can do —
     refresh_agenda(root), agenda_path(root)…"""
+    import importlib
     from . import es, fr
-    return [fr, es]
+    return [fr, es] + [importlib.import_module(f"{__name__}.{k}") for k in AGENDA_ONLY]
 
 
 def registry() -> list[Country]:

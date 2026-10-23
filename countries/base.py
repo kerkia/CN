@@ -35,6 +35,8 @@ class Country:
     extras: tuple[str, ...] = field(default_factory=tuple)   # site_extras parts only this country has (cfc, elite…)
     # the Ozimut method's parameters tuned for the country, over France's (cn_engine.build_methods `overrides`)
     method_params: dict = field(default_factory=dict)
+    lang: str = "en"                   # the languages asked of its sites (Accept-Language), its own first: "sv,en;q=0.5"
+    results: bool = True               # its races go to the provisional results (« Résultats »); False: its agenda only
 
     def methods(self):
         from ffco_scraper.cn_engine import build_methods

@@ -102,7 +102,7 @@ export async function render(main, { query }) {
     const places = everyPlace();
     return events.filter((e) => {
       if (!st.kinds.has(e.kind)) return false;
-      if (e.date < st.from || (st.to && e.date > st.to)) return false;
+      if ((e.end || e.date) < st.from || (st.to && e.date > st.to)) return false;      // a multi-day event under way stays
       if (st.cnOnly && !e.cn) return false;
       if (st.spec && e.spec !== st.spec) return false;
       if (!places) {                                        // some places are unchecked
@@ -151,9 +151,9 @@ export async function render(main, { query }) {
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
         ${places ? html`<div class="field field-wide"><span>${t(fr ? "agd.region" : "agd.region.other")}</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
-        <div class="field field-wide"><span>${t(fr ? "agd.dept" : "agd.dept.other")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
+        ${allDepts.length ? html`<div class="field field-wide"><span>${t(fr ? "agd.dept" : "agd.dept.other")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
-            ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}
+            ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}` : ""}
         <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
       </div>
       ${groupsPresent.length ? html`<div class="frow"><div class="field"><span>${t("agd.group")}</span>
@@ -214,7 +214,7 @@ export async function render(main, { query }) {
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th><th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
-        <td class="num nowrap d">${fmtDate(e.date, "short")}</td>
+        <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
         <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}</td>
         <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
@@ -280,6 +280,8 @@ export async function render(main, { query }) {
   function registration(e) {
     if (e.kind !== "c" || e.declared) return "";                // a declared competition: its organiser's own registration
     const r = e.reg;
+    // (an agenda read from a calendar that does not tell the entries — `sources`, the other countries' — says nothing)
+    if (!r && A.sources) return "";
     if (!r) return html`<div class="reg closed"><div class="reg-title">${t("agd.reg")}</div><div class="dim">${t("agd.reg.none")}</div></div>`;
     const closed = r.closed || (r.close && r.close < today);
     const dates = r.close || r.mods || r.count != null;
@@ -318,9 +320,11 @@ export async function render(main, { query }) {
   }
 
   // where an event of another country comes from: its federation's page (Spain: SICO), its results platform (O-Replay)
-  const SOURCES = { sico: ["SICO", (v) => v], oreplay: ["O-Replay", (v) => `https://www.oreplay.es/competitions/${v.split("/")[0]}`] };
+  // (the other countries' agendas name their sources in the file, `sources`: key -> the site's name, the value a link)
+  const SOURCES = { sico: ["SICO", (v) => v], oreplay: ["O-Replay", (v) => `https://www.oreplay.es/competitions/${v.split("/")[0]}`],
+    ...Object.fromEntries(Object.entries(A.sources || {}).map(([k, name]) => [k, [name, (v) => (safeUrl(v) ? v : "")]])) };
   const sourceLinks = (e) => {
-    const out = Object.entries(e.src || {}).filter(([k, v]) => SOURCES[k] && v)
+    const out = Object.entries(e.src || {}).filter(([k, v]) => SOURCES[k] && v && SOURCES[k][1](v))
       .map(([k, v]) => html`<a class="btn btn-sm" href="${SOURCES[k][1](v)}" target="_blank" rel="noopener">${t("agd.src", { site: SOURCES[k][0] })}</a>`);
     return out.length ? html`<p class="row" style="margin:0;gap:8px;flex-wrap:wrap">${out}</p>` : "";
   };
@@ -334,7 +338,7 @@ export async function render(main, { query }) {
     box.innerHTML = html`
       <div class="detail-nav">${backBtn}</div>
       <div class="card-head"><div><h2>${e.name}</h2>
-        <div class="hint">${longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
+        <div class="hint">${e.end ? t("agd.range", { a: longDate(e.date), b: longDate(e.end) }) : longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
         <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
@@ -345,6 +349,7 @@ export async function render(main, { query }) {
         <dl>
           ${row(t("agd.d.manif"), e.manif)}
           ${row(t("agd.d.league"), e.league)}
+          ${row(t("agd.d.level"), e.level)}
           ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
           ${row(t("agd.d.region"), region)}
           ${row(t("agd.d.spec"), fmtFormat(e.spec))}

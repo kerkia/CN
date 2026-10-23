@@ -1031,7 +1031,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         try:
             import countries
             for m in countries.modules():
-                if m.COUNTRY.code != "FR" and hasattr(m, "agenda_path"):
+                if m.COUNTRY.code != "FR" and m.COUNTRY.results and hasattr(m, "agenda_path"):
                     got = races.sync_country(con, m.agenda_path(out), today, days, m.COUNTRY.code)
                     stats[f"added_{m.COUNTRY.key}"] = got["added"]
         except Exception:

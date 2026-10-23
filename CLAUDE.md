@@ -1441,6 +1441,33 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
   `club_packs` (67, a prime: 64 left 10 files empty and one with 162 clubs; club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
   Spain ~1,250 files instead of ~7,500.
+- **Agendas of 22 more countries** (2026-10-23; the agenda only, the owner's request: « for every IOF country, its calendar
+  where a clean way exists »). The study (six research agents, every IOF member, each source fetched with our user agent; samples
+  kept in the session's scratch): a clean source is a public API, an export (CSV, iCal) or a stable server-rendered list, read
+  without a login or a key, never behind a bot challenge. **Read**: AT (ANNE's JSON API, anne-api.oefol.at), BE (O'Punch's JSON
+  list, both federations; NL/LU clubs on it left out; its clubs' contacts and bank details never kept), BG (bgof.org's list), BR
+  (CBO's JSON service, a month a request), BY (orient.by's year table), CH (o-l.ch's CSV), CZ (ORIS's JSON API), DE (OManager's
+  CSV, upcoming only), DK (DOF's « Stævnekalender », upcoming only), EE (EOL's month view over the window), GB (British
+  Orienteering's finder, ~40 pages a day), HK (OAHK's public Google Calendar, iCal), IL (ISOA's grid), IT (FISO's CSV: the year's
+  filter is set in the session first), JP (Japan-O-entrY's list), KR (KOF's board), LT (the calendar page's embedded JSON), RO
+  (FRO's JSON API), RS (OSS's ORIS year table), TR (TOF's FullCalendar JSON in its home page), UA (FSOU's month form, POST), ZA
+  (SAOF's yearly TablePress page). **Not read**: SE, NO, AU, IOF Eventor, Eventor World (HK), PT (OriOasis), CA's federation
+  (Cloudflare challenges; Eventor's API needs a federation's key — the clean way, ask them), NZ (SiteGround captcha), MD (403),
+  HU (mtfsz.hu resets the connection), RU and KZ (orgeo.ru, rufso.ru unreachable), FI (IRMA, a Vaadin app; Navisport has an open API
+  but holds the clubs' training series, not the calendar), LV (lof.lv: a private base64 RPC, robots « Disallow: / »); partial,
+  left for later: US (OUSA's Google Calendar, national races only; EventReg), CA (WhyJustRun, a dozen clubs), PL (PZOS's year page,
+  clean HTML), SI (OZS's WordPress calendar), SK (SZOŠ IS, a pager and Crawl-delay 10), IE (one fixtures page, upcoming only), NL
+  (a hand-edited page), CY, CO, AZ, TW (a PDF), HR / MK / GE (OrienteeringOnline.net's postback search: an entry platform, a part of
+  each calendar); nothing found for MX, AR, CL, EC, UY, MT, GR, BA, ME, XK, UZ, SG, MY, TH, PH, VN, IN, PK, MN, KE, MA, TN, IS.
+  **Code**: one module a country, `countries/<cc>.py` (`COUNTRY` with `results=False`: its races are not taken into the provisional
+  results, `prov/run.py`; `read(http, today[, prev])`), on `countries/agenda.py` (`event()` the agenda's row — discipline and format
+  read from names in a score of languages, Cyrillic, Japanese, Chinese and Hebrew included, the cancelled words taken out —, `ics()`,
+  `abroad()`, `hooks()` = `refresh_agenda`, `agenda_path`, `agenda_current`, the file's `sources` naming the « Voir sur … » links);
+  `countries.AGENDA_ONLY` lists them, `functions/_lib/access.js` opens their folders to every account. Sources that list only the
+  coming events (DE, BE, DK, GB, JP, IL) keep the last weeks' from the previous file. The Agenda page: an event's `end` (dates
+  « du … au … », kept in the list while under way), `level` (« Niveau »: the source's own level or series), no « no online entry »
+  box when a source gives no entries, no second place filter when the regions have no subdivisions. About 300 requests a day for
+  all 22, ~3 min (the 06:00 agenda run); each agenda's own `AGENDA_VERSION` rebuilds it.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

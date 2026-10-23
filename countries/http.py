@@ -49,8 +49,8 @@ class Http:
     def get(self, url: str, conditional: bool = False, params: dict | None = None) -> Answer:
         return self._send("GET", url, params=params)
 
-    def post(self, url: str, data: dict) -> Answer:
-        return self._send("POST", url, data=data)
+    def post(self, url: str, data: dict | None = None, json=None) -> Answer:
+        return self._send("POST", url, data=data, json=json)
 
     def _send(self, method: str, url: str, **kw) -> Answer:
         self._wait(url)
