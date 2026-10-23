@@ -556,6 +556,14 @@ const PROBE_MS = 180000, MAX_PROBE = 15, LIVE_S = 1800;
 // the MeOSDjango sites' races (meosdjango.js): each site's list at most every LIST_MS, today's races probed for their last
 // punch (the competition's page now and then, then a few courses a call in turn), MD_LIST requests a call at most
 const MD_LIST = 8, MD_PROBE_COURSES = 3, MD_HASHES_MS = 1800000;
+// two names of one race: the same words, accents and punctuation aside, or one's words all in the other's
+const nameWords = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+function sameName(a, b) {
+  const x = nameWords(a), y = nameWords(b);
+  if (!x.length || !y.length) return false;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.every((w) => long.includes(w)) && short.length >= Math.min(2, long.length);
+}
 // a time of day now in a race's time zone (else liveresultat's offset from Swedish time), in seconds
 function localSeconds(tz, timediff) {
   const at = (zone) => {
@@ -657,7 +665,12 @@ export class Directory extends DurableObject {
     }
     let mdComps = [];
     try { mdComps = await this.mdComps(now); } catch (e) { console.error(`directory: MeOSDjango: ${e.message || e}`); }
-    const comps = [...(last?.comps || []), ...mdComps].sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
+    // a race on both (2026-10-23: OE 42 opened « Pélussin City Race » on liveresultat, never fed it, and ran its live on its
+    // MeOSDjango site — listed twice, one empty): one entry, the MeOSDjango one unless only liveresultat's has punches
+    const twin = (c) => mdComps.find((m) => m[3] === c[3] && sameName(m[1], c[1]));
+    const lr = (last?.comps || []).filter((c) => { const m = twin(c); return !m || (c[6] != null && m[6] == null); });
+    const md2 = mdComps.filter((m) => !lr.some((c) => c[3] === m[3] && sameName(m[1], c[1])));
+    const comps = [...lr, ...md2].sort((a, b) => b[3].localeCompare(a[3]) || a[1].localeCompare(b[1]));
     return new Response(JSON.stringify({ at: last?.at || now, comps, liveS: LIVE_S }), {
       headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": `public, max-age=${pending || !last ? 30 : 120}` },
     });
