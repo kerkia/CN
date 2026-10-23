@@ -169,7 +169,7 @@ function list(main, idx, query) {
           ${r.site === false && country.of(r) === "FR" ? html`<div class="muted" style="font-size:11.5px" title="${t("prov.noSite.hint")}">${t("prov.noSite")}</div>` : ""}</td>
         <td class="r num">${r.runners ? fmt(r.runners) : "—"}</td>
         ${FR ? html`<td class="r num">${r.runners ? pctN((100 * r.matched) / r.runners) : "—"}</td>` : ""}
-        <td class="c">${r.splits ? html`<a href="#/temps-inter?course=${encodeURIComponent(r.key)}" title="${t("spl.title")}">${t("prov.seeSplits")}</a>` : ""}</td>
+        <td class="c">${r.splits ? html`<a href="#/analyse-course?course=${encodeURIComponent(r.key)}" title="${t("nav.raceAnalysis")}">${t("prov.seeSplits")}</a>` : ""}</td>
         <td>${r.ffco_id ? html`<a href="https://cn.ffcorientation.fr/course/${r.ffco_id}/" target="_blank" rel="noopener">${t("prov.published")}</a>`
           : r.soon ? "" : html`<span class="muted">${t("prov.waiting")}</span>`}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(one ? "prov.emptyRunner" : "prov.empty")}</div>`;
@@ -214,13 +214,13 @@ async function detail(main, idx, query) {
   const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   const splitsLink = (d, c) => {
     const i = withSplits.indexOf(d);
-    return `#/temps-inter?course=${encodeURIComponent(race.key)}${i > 0 ? `&doc=${i}` : ""}${i >= 0 && c ? `&c=${c}` : ""}`;
+    return `#/analyse-course?course=${encodeURIComponent(race.key)}${i > 0 ? `&doc=${i}` : ""}${i >= 0 && c ? `&c=${c}` : ""}`;
   };
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
-      <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}
+      <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("nav.raceAnalysis")} →</a>` : ""}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}

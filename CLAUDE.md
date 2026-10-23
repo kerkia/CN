@@ -357,7 +357,18 @@ the race's lists the length, climb and controls they lack (« #3 » placeholders
 circuit, class assignment or identical codes (a name so identified holds in the other lists; a category view takes its
 circuit's values); nothing of it is used before the race's day, its courses listed from the day after. pages « Résultats » (`#/resultats`, « Récemment » until 2026-10-12, in the
 menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still work) listing the last 60 days' races (`run.SHOW_DAYS`; 30 until 2026-10-08), and
-« Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
+« Temps intermédiaires », now **« Analyse de course »** (owner, 2026-10-23: the analysis was buried under a race's page;
+`#/analyse-course`, route `splits`, menu « Courses » after « En direct »; `#/temps-inter` still opens it): without `course=` it
+lists the site's country's races of `prov/index.json` with split times, the latest first (`pages/racelist.js`: discipline,
+« Mes courses seulement », search; « ma course » where one is recognised), each opening the analysis (`splits.js`: the race's
+name as title, « ‹ Analyse de course » back, « Résultats de la course → »; no race selector any more); « Voir » on « Résultats »
+and the race page's buttons lead there. **Live races** (`course=direct-<race>`, `livesplits.js`): the live relay's classes
+(`/ws/<race>`, subscribed `"*"`) read as one document of the provisional shape in the browser (`toDoc`: status 0 → ok, 9/10 →
+« run », shown « en course »; the radio controls are the controls, code % 1000 when unnamed; nothing stored); drawn once the
+class asked for has come, then new times of the course shown offer « Actualiser » (no redraw under the reader's eyes; the others'
+are taken quietly). « En direct »'s race page shows « Analyse des temps → » once a split time has come, and the list's box « En
+direct, avec temps intermédiaires » lists the site's country's races live now whose live gives splits (`probe`: the relay's hello
+— a last passing at a radio control — else one class read; 6 races at most, each connection closed at once). Its analysis — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
 WinSplits) — on a screen without hover a third line in every cell (`.touch-only`, `@media (hover: none)`; owner, 2026-10-23),
@@ -525,7 +536,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
 - Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as
   every signed-in account's landing page since 2026-10-21, `app.homeOf`, the brand's link too): the bar shows the groups as tabs —
-  « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »; En direct), « Classement » (« Classement national »
+  « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »; En direct; Analyse de course, 2026-10-23), « Classement » (« Classement national »
   until 2026-10-15; Coureur, Classement, Courses classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`), « Entrainement »,
   « Organisation »; a group's tab leads back to the page last seen in it
   (`localStorage ocn.nav.<group>`) — a list or a view, never a tool that reopens its work (the analyses, « Direct », « Tracer »:

@@ -570,6 +570,9 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   background: var(--warn-bg); color: var(--warn-ink); font-size: 13.5px; margin-bottom: 14px;
 }
 .notice.info { background: var(--accent-wash); color: var(--ink-2); }
+/* « Analyse de course » on a live race: partial results, when the times came, « Actualiser » once newer ones did */
+.notice.ra-live { align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--accent-wash); color: var(--ink-2); }
+@media (max-width: 600px) { .ra-n { display: none; } }          /* the list's runner counts: not on a phone */
 
 .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
 .calc-card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }

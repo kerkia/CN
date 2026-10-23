@@ -13,6 +13,7 @@ import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
 import { flag } from "../vendor.js";
+import { LIVE_KEY, hasSplits } from "../livesplits.js";
 
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
 // server (localStorage « ocn.liveBase »)
@@ -162,7 +163,8 @@ async function race(main, id, wanted, arg) {
   else if (wanted === CLUB_VIEW) { st.view = "club"; st.club = arg || "mine"; }
   else st.cls = wanted;
   main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><h1 id="lv-title">…</h1><div class="lv-sub" id="lv-sub"></div></div>
-      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span></div></div>
+      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span>
+        <a class="btn btn-sm" id="lv-an" hidden title="${t("lv.analyse.tip")}">${t("lv.analyse")} →</a></div></div>
     <div class="lv-layout">
       <aside class="lv-side"><div class="lv-list" id="lv-chips"></div></aside>
       <div class="lv-main">
@@ -398,10 +400,20 @@ async function race(main, id, wanted, arg) {
     if (show) el.textContent = t("lv.loadingAll", { n: held, total: st.classes.length });
   }
 
+  // the split-time analysis (« Analyse de course », 2026-10-23) once a split time has come: the course shown, else the first
+  function analyseLink() {
+    const el = $("#lv-an");
+    if (!el) return;
+    const any = [...st.all.values()].some(hasSplits) || st.pass.some((p) => Number(p[3]) !== 1000);
+    el.hidden = !any;
+    const i = st.view === "cls" ? st.classes.indexOf(st.cls) : -1;
+    if (any) el.href = `#/analyse-course?course=${LIVE_KEY}${id}${i > 0 ? `&c=${i}` : ""}`;
+  }
+
   let drawing = 0;
   async function draw() {
     const my = ++drawing;
-    pickers(); ticker(); note(); buzzBar();
+    pickers(); ticker(); note(); buzzBar(); analyseLink();
     let out;
     if (st.view === "cls") out = await courseTable();
     else if (st.view === "club") out = await clubTable();

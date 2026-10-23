@@ -33,7 +33,7 @@ const PAGES = {
   contact: () => import("./pages/contact.js"),
   admin: () => import("./pages/admin.js"),
   provisional: () => import("./pages/provisional.js"),   // « Résultats »: the organisers' results of the last 60 days
-  splits: () => import("./pages/splits.js"),
+  splits: () => import("./pages/splits.js"),        // « Analyse de course »: the races with split times, then one's analysis (2026-10-23)
   live: () => import("./pages/live.js"),           // « En direct »: live results
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
   analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's
@@ -62,7 +62,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
-  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
@@ -79,7 +79,7 @@ const homeOf = () => "#/agenda";
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
-  || (r.route === "provisional" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
+  || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
@@ -116,7 +116,7 @@ function parseHash(hash = location.hash) {
     : head === "contact" ? "contact"
     : head === "admin" ? "admin"
     : head === "resultats" || head === "recemment" || head === "provisoires" ? "provisional"     // #/recemment, #/provisoires: old addresses
-    : head === "temps-inter" ? "splits"
+    : head === "analyse-course" || head === "temps-inter" ? "splits"     // « Analyse de course » (« Temps intermédiaires » until 2026-10-23)
     : head === "direct" ? "live"
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
@@ -311,7 +311,7 @@ function menuKey(r) {
   const at = r.from || r.route;
   return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
     : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
-    : at === "splits" ? "provisional" : at;
+    : at;
 }
 
 function renderHeader(r) {
@@ -328,6 +328,7 @@ function renderHeader(r) {
       ["agenda", "#/agenda", t("nav.agenda")],
       ["provisional", "#/resultats", t("nav.recent")],
       ["live", "#/direct", t("nav.live")],
+      ["splits", "#/analyse-course", t("nav.raceAnalysis")],
       ["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")],
     ]],
     ["cn", t("nav.g.cn"), [
@@ -413,7 +414,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live"].includes(route) || !fr || store.available().length < 2 ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live", "splits"].includes(route) || !fr || store.available().length < 2 ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   // a demo account (admin page, « Démo »): said on every page, with its last day

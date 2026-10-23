@@ -28,15 +28,16 @@
 // WinSplits' "time loss", not a judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
 // « Sans temps perdu » takes it off: the table, the ranks and the gaps then show the race without the mistakes.
 
-import { html, raw, esc, $, $$, fmt, fmtDate, pctN } from "../util.js";
-import { t } from "../i18n.js";
+import { html, raw, esc, $, $$, fmt, fmtDate, fmtFormat, pctN } from "../util.js";
+import { t, tn, locale } from "../i18n.js";
 import { lineChart, columnChart, passChart, slotColor, css } from "../charts.js";
 import { checkClass, issueText, markText } from "../splitcheck.js";
 import { followers, regularity } from "../splitstats.js";
 import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs } from "../ui.js";
-import { link, replaceQuery } from "../app.js";
+import { link, replaceQuery, SITE } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
+import { liveId, toDoc, watch } from "../livesplits.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
 // Résultats » — the organisers' alone (2026-10-15)
@@ -58,28 +59,37 @@ const signed = (s) => (s == null ? "" : `${s >= 0 ? "+" : "−"}${clock(Math.abs
 const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : null; };
 const behind = (ratio) => (ratio == null ? null : (ratio - 1) * 100);           // % behind the best
 const pct = (v, d = 0) => (v == null ? "—" : `${v > 0 && d >= 0 ? "+" : ""}${pctN(v, d)}`);
+// a runner still out on a live race (livesplits.js) has no status word of their own
+const stLabel = (s) => (s === "run" ? t("ra.running") : s.toUpperCase());
+const LANDING = "#/analyse-course";
 const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
 export async function render(main, { query = {} } = {}) {
-  // the results file read on « Déposer », not published: it alone (local.js)
+  // no race named: « Analyse de course »'s list of the races with split times (owner, 2026-10-23)
+  if (!query.course) return (await import("./racelist.js")).render(main, { query });
+  // the results file read on « Déposer », not published: it alone (local.js); a live race (« En direct »): the times received
+  // so far, read from the live relay (livesplits.js)
   const mine = query.course === local.LOCAL ? local.race() : null;
-  const idx = mine || query.course === local.LOCAL ? null : await getProv("index.json");
-  const withSplits = mine ? (mine.splits ? [mine] : []) : (idx?.races || []).filter((r) => r.splits);
+  const live = liveId(query.course);
+  const idx = mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
+  const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : (idx?.races || []).filter((r) => r.splits);
   main.innerHTML = html`
     <div id="sp-back"></div>
-    <div class="page-head"><div><h1>${t("spl.title")}</h1><p class="lede">${t("spl.lede")}</p></div></div>
+    <div class="page-head"><div><h1 id="sp-title">${t("spl.title")}</h1><p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div>
+      <div class="row" style="gap:8px" id="sp-acts"></div></div>
+    <div id="sp-live"></div>
     <div id="sp-tabs"></div>
     <div class="filters" id="sp-pick"></div>
     <div class="filters" id="sp-views"></div>
     <div id="sp-check"></div>
     <div id="sp-body"></div>`;
-  if (!withSplits.length) {
+  if (!withSplits.some((r) => r.key === query.course)) {
     $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${query.course === local.LOCAL
-      ? html`${t("dep.gone")} <a href="${depositLink()}">${t("dep.title")}</a>` : t("spl.none")}</div></div>`;
+      ? html`${t("dep.gone")} <a href="${depositLink()}">${t("dep.title")}</a>` : html`${t("ra.gone")} <a href="${LANDING}">${t("nav.raceAnalysis")}</a>`}</div></div>`;
     return { title: t("spl.title") };
   }
-  let key = withSplits.some((r) => r.key === query.course) ? query.course : withSplits[0].key;
+  let key = query.course;
   let race = null, docs = [], di = Number(query.doc) || 0, ci = Number(query.c) || 0, picked = null, ideal = query.v === "ideal";
   let view = VIEWS.includes(query.vw) ? query.vw : "table", club = query.cl || "";
   let graph = GRAPHS.includes(query.g) ? query.g : "gap", ref = REFS.includes(query.ref) ? query.ref : "cum", refName = query.rr || "";
@@ -93,8 +103,12 @@ export async function render(main, { query = {} } = {}) {
   let ft2 = Number(query.f2) > 0 && query.f2 ? Number(query.f2) : FOLLOW_DEFAULT.t2;
   let passAll = query.pa !== "0";             // « Passages »: every runner faint behind the runners compared
 
+  // a live race: its classes as they arrive (shownAt: when the times drawn came); « Actualiser » once the course shown has newer ones
+  let w = null, pending = false, shownAt = 0, loadedAt = 0;
   async function loadRace() {
-    race = key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
+    if (live) loadedAt = w.st.at || Date.now();
+    race = live ? { name: w.st.info?.name || "", docs: [toDoc(w.st.info, w.st.classes, w.st.all)] }
+      : key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
     docs = (race?.docs || []).filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   }
   function pickers() {
@@ -102,13 +116,9 @@ export async function render(main, { query = {} } = {}) {
     const k = docs[di].classes[ci];
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
-    // the one way back the menu does not give: the race's results (or the deposit the file came from)
-    $("#sp-back").innerHTML = key === local.LOCAL
-      ? html`<a class="back-link" href="${depositLink()}">‹ ${t("dep.title")}</a>`
-      : html`<a class="back-link" href="#/resultats?course=${encodeURIComponent(key)}">‹ ${r?.name || key}</a>`;
+    head(r);
     $("#sp-pick").innerHTML = html`
-      ${key === local.LOCAL ? html`<div class="field"><span>${t("dep.file")}</span><span class="pill">${r?.name || ""}</span></div>`
-        : html`<label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>`}
+      ${key === local.LOCAL ? html`<div class="field"><span>${t("dep.file")}</span><span class="pill">${r?.name || ""}</span></div>` : ""}
       ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="sp-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select></label>` : ""}
       <label class="field"><span>${t("prov.circuit")}</span><select id="sp-c">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("spl.club")}</span><select id="sp-club" style="max-width:260px"><option value="">${t("f.allm")}</option>
@@ -129,7 +139,6 @@ export async function render(main, { query = {} } = {}) {
         <input type="number" id="sp-f2" min="1" max="300" step="1" value="${ft2}" style="width:64px" aria-label="${t("spl.fol.t2")}"><span class="muted">${t("spl.fol.t2u")}</span></div></div>` : ""}
       ${view === "clock" ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spa", [["all", t("spl.clk.all")], ["sel", t("spl.clk.sel")]], passAll ? "all" : "sel")}</div>` : ""}`;
     $("#sp-views").style.display = $("#sp-views").children.length ? "" : "none";     // no empty bar for the views without settings
-    $("#sp-race")?.addEventListener("change", async (e) => { key = e.target.value; di = 0; ci = 0; picked = null; await loadRace(); fixIndexes(); pickers(); draw(); });
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
     $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
@@ -145,6 +154,46 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-f1")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0 && v < ft2) { ft1 = v; draw(); } });
     $("#sp-f2")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v > ft1) { ft2 = v; draw(); } });
     $$('[data-seg="spa"]').forEach((b) => b.addEventListener("click", () => { passAll = b.dataset.value === "all"; pickers(); draw(); }));
+  }
+  // the race's name as the title (the races are chosen on « Analyse de course »), its day, place and organiser beside it; the
+  // one way back the menu does not give: the list (or the deposit the file came from); the race's results or its live page
+  function head(r) {
+    if (key === local.LOCAL) {
+      $("#sp-back").innerHTML = html`<a class="back-link" href="${depositLink()}">‹ ${t("dep.title")}</a>`;
+      return;
+    }
+    $("#sp-back").innerHTML = html`<a class="back-link" href="${LANDING}">‹ ${t("nav.raceAnalysis")}</a>`;
+    if (live) {
+      const info = w.st.info || {};
+      $("#sp-title").innerHTML = html`${info.name || live} <span class="lv-badge">${t("lv.badge")}</span>`;
+      $("#sp-lede").textContent = [info.date && fmtDate(info.date), info.organizer].filter(Boolean).join(" · ");
+      $("#sp-acts").innerHTML = html`<a class="btn btn-sm" href="#/direct/${live}">${t("ra.toLive")} →</a>`;
+    } else {
+      $("#sp-title").textContent = r?.name || key;
+      $("#sp-lede").textContent = [fmtDate(r?.date_iso), r?.place, r?.org, ...new Set([fmtFormat(r?.epreuve), fmtFormat(r?.terrain)])].filter(Boolean).join(" · ");
+      $("#sp-acts").innerHTML = html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("ra.toResults")} →</a>`;
+    }
+    if (live) document.title = `${w.st.info?.name || live} — ${SITE}`;      // known once the relay said hello, after the page was drawn
+  }
+  // a live race's line: partial results, the runners still out, when the times were received; « Actualiser » once newer ones came
+  function liveBar() {
+    if (!live) return;
+    const k = docs[di]?.classes[ci];
+    const out = k ? k.runners.filter((x) => x.status === "run" && x.splits).length : 0;
+    const at = new Date(shownAt).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    $("#sp-live").innerHTML = html`<div class="notice ra-live"><span>${out ? tn("ra.live.partial", out) : t("ra.live.done")}
+      ${t("ra.live.at", { t: at })}${w.st.up ? "" : html` <b>${t("ra.live.off")}</b>`}</span>
+      ${pending ? html`<button type="button" class="btn btn-sm btn-primary" id="sp-refresh">${t("ra.live.refresh")}</button>` : ""}</div>`;
+    $("#sp-refresh")?.addEventListener("click", refresh);
+  }
+  async function refresh() {
+    const name = docs[di]?.classes[ci]?.name;
+    await loadRace();
+    if (!docs.length) return;
+    const i = docs[0].classes.findIndex((k) => k.name === name);
+    di = 0; ci = i >= 0 ? i : ci;
+    fixIndexes();
+    keepPlace(() => { pickers(); draw(); });
   }
   // « Réel » / « Sans temps perdu » redraws the view without moving it (owner, 2026-10-23): the table's own scroll
   // positions are put back, and the window's so that the table stays where it was on screen (the hint above it changes)
@@ -240,6 +289,8 @@ export async function render(main, { query = {} } = {}) {
       <div class="card-body" style="max-height:200px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px 16px">${byPlace(shown).map((x) => html`<label style="white-space:nowrap;font-size:13px">
         <input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")}> ${x.r.place ? `${x.r.place}. ` : ""}${x.r.name}</label>`)}</div></section>`;
     const body = $("#sp-body");
+    pending = false; shownAt = loadedAt;  // (a live race: what is drawn is the latest received)
+    liveBar();
     let redraw = () => {};
 
     // what the split times say about the timing (splitcheck.js), above every view
@@ -267,7 +318,7 @@ export async function render(main, { query = {} } = {}) {
           <tbody>${byPlace(shown).map((x) => html`<tr>
             <td class="r num">${x.place ?? ""}${asIdeal && x.r.place ? html`<div class="muted" style="font-size:11px" title="${t("spl.real")}">${x.r.place}</div>` : ""}</td>
             <td style="white-space:nowrap">${name(x)}<div class="muted" style="font-size:11.5px">${x.r.club || ""}</div></td>
-            <td class="r num">${x.r.status !== "ok" ? x.r.status.toUpperCase() : asIdeal
+            <td class="r num">${x.r.status !== "ok" ? stLabel(x.r.status) : asIdeal
               ? html`${clock(x.vCum[n])}<div class="muted" style="font-size:11px" title="${t("spl.real")}">${clock(x.r.time_s)}</div>` : clock(x.r.time_s)}</td>
             <td class="r num">${x.lostTotal ? clock(x.lostTotal) : "—"}</td>
             ${x.vLegs.map((v, i) => {
@@ -643,7 +694,7 @@ export async function render(main, { query = {} } = {}) {
           { key: "name", label: t("prov.name"), sort: (r) => r.x.r.name, defaultDir: 1,
             render: (r) => html`<span style="white-space:nowrap">${name(r.x)}</span><div class="muted" style="font-size:11.5px">${r.x.r.club || ""}</div>` },
           { key: "time", label: t("prov.time"), align: "r num", sort: (r) => r.time, defaultDir: 1,
-            render: (r) => (r.time == null ? r.x.r.status.toUpperCase() : clock(r.time)) },
+            render: (r) => (r.time == null ? stLabel(r.x.r.status) : clock(r.time)) },
           ...(km ? [{ key: "perKm", label: t("spl.kmPace"), align: "r num", sort: (r) => r.perKm, defaultDir: 1, render: (r) => (r.perKm == null ? "—" : clock(r.perKm)) }] : []),
           { key: "won", label: t("spl.won"), align: "r num", sort: (r) => r.won, render: (r) => fmt(r.won) },
           { key: "avgRank", label: t("spl.avgRank"), align: "r num", sort: (r) => r.avgRank, defaultDir: 1, render: (r) => fmt(r.avgRank, 1) },
@@ -677,10 +728,49 @@ export async function render(main, { query = {} } = {}) {
     redraw();
   }
 
+  if (live) return liveStart();
   await loadRace();
   if (!docs.length) { $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${t("spl.none")}</div></div>`; return { title: t("spl.title") }; }
   fixIndexes();
   pickers();
   draw();
-  return { title: t("spl.title") };
+  return { title: key === local.LOCAL ? t("spl.title") : race?.name || withSplits.find((x) => x.key === key)?.name || t("nav.raceAnalysis") };
+
+  // a live race: drawn once its classes have come (the one in the address, or 4 s after the relay's hello), then a new time
+  // only offers « Actualiser » (a redraw under the reader's eyes would lose what they look at); without any split time yet,
+  // a word, and the analysis as soon as one comes
+  function liveStart() {
+    let ready = false, helloAt = 0, timer = null;
+    const want = Number(query.c) || 0;
+    $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${t("ra.live.wait")}</div></div>`;
+    const start = async () => {
+      clearTimeout(timer);
+      if (ready || !w.st.info) return;
+      await loadRace();
+      if (!docs.length) {
+        head();
+        $("#sp-body").innerHTML = html`<div class="card"><div class="empty">${t("ra.live.noSplits")}</div></div>`;
+        return;
+      }
+      ready = true;
+      fixIndexes();
+      pickers();
+      draw();
+    };
+    w = watch(live, (st, what, c) => {
+      if (what === "hello" && !helloAt) { helloAt = Date.now(); head(); timer = setTimeout(start, 4000); }
+      if (what === "class") {
+        if (!ready) { if (c === st.classes[want] || Date.now() - helloAt > 4000) start(); }
+        else {
+          // the other courses' new times are taken quietly (they show at the next change of course or view); the course shown
+          // offers « Actualiser »
+          const cur = docs[di]?.classes[ci]?.name;
+          loadRace();
+          if (c === cur) { pending = true; liveBar(); }
+        }
+      }
+      if (ready && what === "close") liveBar();
+    });
+    return { title: t("nav.raceAnalysis"), cleanup: () => { clearTimeout(timer); w.close(); } };
+  }
 }
