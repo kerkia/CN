@@ -82,7 +82,8 @@ TOP6W_CN_VERSION = 5
 #                   the window in the CN's mean, junior_fade); the race files' CN J-15 is computed on its own day
 #  13 (2026-10-19): the geometric pair ("fair3", "top6w3") removed (owner): its data dropped, the site's race files
 #                   rebuilt without its columns; "top6w" is published as the Ozimut method
-ENGINE_VERSION = 13
+#  14 (2026-10-23): 2 races for a CN instead of 3 (owner): every runner with 2 races in the window is ranked
+ENGINE_VERSION = 14
 # Same for the second-stage datasets (site_extras.py): the next run rebuilds them once, nothing recomputed.
 #   1 (2026-10-06): age pyramid / territory counts (pyramid/), co-runners per discipline (net/)
 #   2 (2026-10-06): validation.json, the methods' head-to-head accuracy, for the Méthodes page

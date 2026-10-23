@@ -320,7 +320,12 @@ def build_methods(overrides: dict | None = None) -> dict[str, MethodSpec]:
         # all say the same thing — do not publish a number computed
         # from too little evidence.
         min_ranked=4,            # a circuit needs >3 ranked runners
-        min_scores_for_cn=3,     # a runner needs >=3 races for a CN
+        # a runner needs 2 races for a CN (owner, 2026-10-23; 3 until then): on the 2026-10-09 database, every result's
+        # index read on its day, 2012-2024, the results with an index +7 % in forest, +71 % in sprint (+35 % since July
+        # 2025), +13 % in VTT, the newly ranked still called better than by their official CN (Ozimut - official forest
+        # +2.47 against +2.31, sprint +2.73 against +2.28), at a small cost on the runners ranked either way (forest
+        # +0.05, sprint -0.09 ns, since July 2025 -0.23 [-0.43, -0.07], VTT -0.14). Spain measured +0.67 in sprint.
+        min_scores_for_cn=2,
         new_entrant_rescue=False,  # only real CN holders score a circuit
         # VTT (~30 competitions a season) and ski (2-4, on one or two weekends):
         # a longer window and a larger share of the scores, so enough runners

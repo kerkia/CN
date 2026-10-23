@@ -51,7 +51,8 @@ NOT_RANKED = re.compile(r"\bscore\b|\brogain|\brelevos?\b|\brelleus?\b|\bo-?m[o�
                         r"|\bescolar(es)?\b", re.I)
 # the non-competitive classes (« OPEN NARANJA », « Familiar », « Iniciación »): their runners are « nc », out of everything, even
 # on a course they share with ranked classes (2026-10-22: a 5-runner « OPEN ROJO F » put a runner at 12 602)
-OPEN_CLASS = re.compile(r"\bopen\b|iniciaci[oó]n|promoci[oó]n|familiar|\bnovel|\bocio\b|\bpopular\b", re.I)
+OPEN_CLASS = re.compile(r"open|^o\.\s|^op[\s.\-]|iniciaci[oó]n|^ini[\s\-]|promoci[oó]n|familiar|\bnovel|\bocio\b|\bpopular\b"
+                        r"|\bandaina\b", re.I)
 # a runner's second run of the same race (O-Replay: « Isaac Mujal Faure #2 »): not a result
 REPEAT = re.compile(r"\s#\d+\s*$")
 # a finish under this share of its circuit's median time (4 finishers or more) is a run cut short, not a race: « nc »
@@ -293,6 +294,10 @@ def prune(con) -> int:
         if OPEN_CLASS.search(cat):
             con.execute("UPDATE results SET place = 'nc' WHERE id = ?", (rid,))
             gone += 1
+    # the categories read again from the printed class (categories.normalise improves: « M-18E », « INF MAS », « M-Vet 45 »)
+    fix = [(cat, rid) for rid, src, sex, old in con.execute("SELECT id, cat_src, sex, categorie FROM results WHERE cat_src IS NOT NULL")
+           if (cat := normalise(src, sex)) != old]
+    con.executemany("UPDATE results SET categorie = ? WHERE id = ?", fix)
     # a run cut short (a time far below the circuit's): « nc », out of everything as FFCO's « non classé »
     times = defaultdict(list)
     for rid, circ, t in con.execute("SELECT id, circuit_id, temps FROM results WHERE place NOT IN ('', 'nc') AND temps LIKE '%:%'"):

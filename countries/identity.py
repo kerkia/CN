@@ -131,9 +131,18 @@ def resolve(con, licensees: Licensees | None) -> dict:
         else:
             con.execute("UPDATE persons SET last_seen = MAX(COALESCE(last_seen, ''), ?), club = COALESCE(?, club), "
                         "sex = COALESCE(sex, ?) WHERE id = ?", (r["date_iso"], r["club"], sex, pid))
+            # a name first met with letters a file could not hold (OE2010's windows-1252 exports: « Micha? Olejnik »): the
+            # same runner's spelling from a source that kept them
+            if not lic and "?" not in (r["nom"] or ""):
+                con.execute("UPDATE persons SET name = ? WHERE id = ? AND licence IS NULL AND name LIKE '%?%'",
+                            (display(r["nom"]), pid))
         if lic:
             stats["licensed"] += 1
         con.execute("UPDATE results SET licence = ?, person_key = ? WHERE id = ?", (str(pid), key, r["id"]))
+    for pid, in con.execute("SELECT id FROM persons WHERE licence IS NULL AND name LIKE '%?%'").fetchall():
+        good = con.execute("SELECT nom FROM results WHERE licence = ? AND nom NOT LIKE '%?%' LIMIT 1", (str(pid),)).fetchone()
+        if good:
+            con.execute("UPDATE persons SET name = ? WHERE id = ?", (display(good[0]), pid))
     con.commit()
     stats["persons"] = con.execute("SELECT COUNT(*) FROM persons").fetchone()[0]
     return stats

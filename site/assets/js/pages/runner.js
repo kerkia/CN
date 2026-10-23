@@ -316,7 +316,7 @@ export async function render(main, { arg, query }) {
     const days = p.window_days ?? 365;
     const power = p.cn_power ?? 1, meanKey = power === 3 ? "calc.mean.c" : power === 2 ? "calc.mean.q" : "calc.mean.l";
     return { pct, rest: 100 - pct, win: days > 365 ? t("calc.winYears", { n: Math.round(days / 365) }) : t("calc.win12"),
-      Mean: t(meanKey), mean: t(meanKey).toLowerCase() };
+      Mean: t(meanKey), mean: t(meanKey).toLowerCase(), min: p.min_scores ?? 2 };
   }
   function roleLabel(role, m) {
     // green: kept; yellow: the "best" scores that are not kept (10 % best, or the 60 % best beyond the 6); grey: the rest

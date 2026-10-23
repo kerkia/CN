@@ -111,7 +111,8 @@ columns and chart axes use `col.cn` / `chart.cn`; never « CN » written in the 
 2. **`fair`, « Méthode CN « Fit »** — the **usual level** (analysis method; it values the circuits). CN = weighted mean of
    the best 60 % of the window's scores (`top6_weighted` with an unlimited number of places). Weights by competition **name**
    (`cn.title_weight`): "Championnat de France" 2, "O'France" or "Nationale" 1.5, anything else 1 (Sélection races and
-   Championnats de Ligue included, FFCO's A/B/C/D level not used). ≥ 3 races for a CN, a circuit needs ≥ 4 ranked CN holders.
+   Championnats de Ligue included, FFCO's A/B/C/D level not used). ≥ 2 races for a CN (3 until 2026-10-23, ENGINE 14), a
+   circuit needs ≥ 4 ranked CN holders.
 3. **`top6w`, « Méthode CN « Top »** — **the method published since 2026-10-16** (owner: a method everyone can follow by
    hand, at a cost of a few hundredths of a point; ENGINE 11). **Derived from `fair`** (`CnEngine.derive`): same race scores,
    circuit values and recalage factors; the best 60 % scores fill **6 weight places** from the best down, the last race only
@@ -207,7 +208,13 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
 - Rejected after testing: Top with 10 places (6 works once circuits use Fit), best 70/80 % pools for forest
   and sprint (re-measured 2026-10-06: −0.4 to −1 point), 5 races minimum (fewer circuit valuers, worse),
   2 races minimum (2026-10-07: +11 % ranked in forest, +38 % in sprint, and those runners' Fit CN still beats
-  their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3), feedback on the
+  their official one, but −0.1 to −0.4 point on the pairs already ranked; the owner kept 3 — **adopted on 2026-10-23**
+  (owner, after Spain's study: +0.67 there in sprint): re-measured on the method of 2026-10-19, the 2026-10-09 database,
+  every result's index read on its day, 2012-2024, the results with an index +7 % forest, +71 % sprint (+35 % since July
+  2025), +13 % VTT, the newly ranked still called better than by their official CN (Ozimut − official forest +2.47 against
+  +2.31, sprint +2.73 against +2.28), on the runners ranked either way forest +0.05 [0.04, 0.07], sprint −0.09 ns (since July
+  2025 −0.23 [−0.43, −0.07]), VTT −0.14 (−0.43); the scratch `fr_min2.py`, `C:\kerkia\cn-data\study\min2\eval_min2.json`),
+  feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
   **Leaving out the runners far from the circuit's line** (study of 2026-10-18, private artifact
   https://claude.ai/artifact/WS7C7tMKsj7h7ZzezNCLvE; scratch `ovar.py`, 28 rules: by residual from the score line or a fitted
@@ -1398,8 +1405,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Spain's choice: the seeds never expire — FEDO's files have no sprint from 2020 to 2024, after which nobody held a sprint index
   to value a circuit again and the sprint and VTT indexes stopped), `title_weight` reads the league
   (`groupe`: Campeonato de España 2, Liga Española / nacional 1.5). **Spain's own parameters** (`Country.method_params`,
-  `cn_engine.build_methods(overrides)`, also used by `build_site`): forest circuits valued on the fastest two-thirds and 2 races
-  for an index. The measure (2026-10-22, July 2025 - October 2026, the same runners, the scratch `es_eval.py` / `es_cmp.py` /
+  `cn_engine.build_methods(overrides)`, also used by `build_site`): forest circuits valued on the fastest two-thirds; 2 races
+  for an index, measured here first, France's rule too since 2026-10-23. The measure (2026-10-22, July 2025 - October 2026, the same runners, the scratch `es_eval.py` / `es_cmp.py` /
   `es_prior.py` kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\4475af57-627e-4f46-9da2-48f0d9da2385\scratchpad`): two-thirds +0.41 forest, 2 races
   +0.67 sprint, both with the category start +0.52 forest [0.32, 0.71] and +1.70 sprint [1.04, 2.38] over France's settings; the
   category start costs nothing (forest +0.35, sprint −0.55 ns); a 24-month window −1.1 to −1.6; against FEDO's rule on the day
@@ -1407,7 +1414,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   2024-2026 archive, and with everything above on the archive from 2018 (`final`) +5.0 forest [4.5, 5.4], +5.4 sprint [4.3, 6.5]; against
   FEDO's published previous-season M1 +12 (most of it the ranking's age). **Known limit**: the veterans' level against H21
   drifts up over the seasons (the archive from 2018: H65 0.89 of H21's median in 2026, France 0.72; H55 0.90, France 0.82; a
-  70-year-old third in sprint; France's settings alike) — the ranking across categories, not the duels within a circuit: to fix. Every runner of Spain's races is ranked,
+  70-year-old third in sprint; France's settings alike) — the ranking across categories, not the duels within a circuit. Not an
+  error the races show (2026-10-23, the scratch `es_bias.py`): on circuits where they meet H/D 21-34, the share of duels the
+  index gives the veterans minus the share they win: forest 35-50 +3.6 [−0.7, 7.2], 55+ +5.1 [−6.6, 11.1], sprint +0.8, −2.0, none
+  significant (France's juniors +2.3 to +3.9) — Spain's « H21 » holds the recreational B classes, which lower its median. Left as it is.
+  Categories read from the printed class (`categories.normalise`, again over the whole archive by `prune`): « M-18E », « INF
+  MAS », « CAD FEM », « M-Vet 45 », « M-SE », school years (« F-3ºESO »); still unknown: course letters (« A », « B »), « U-10 »
+  without the runner's sex, colour courses (9 % of the rows). A name first met with letters its file could not hold (OE2010's
+  windows-1252 exports: « Micha? Olejnik ») takes the same runner's spelling from another source (`identity.resolve`). Every runner of Spain's races is ranked,
   visitors included (the top of the 2026 forest list: veterans of the Maximus O Meeting, who beat Spain's own by minutes).
   `build_site --country ES` (names from the country module, no anonymisation list or login
   index, `official` only when the country has values, meta `country`); `site_extras` keeps France's elite, cfc and evaluation

@@ -172,6 +172,7 @@ export async function render(main, { query }) {
     const sel = store.get().compare, methods = store.get().methods;
     $("#sum-hint").textContent = `${t(`terrain.${terrain}`)} · ${periodLabel()}`;
     const { rows } = await loadRanking(methods, terrain, end);
+    if (!main.isConnected || !$("#summary")) return;      // the page was left (or redrawn) meanwhile
     const byLic = new Map(rows.map((r) => [r.lic, r]));
     const items = sel.map((c) => {
       const races = (racesOf.get(c.lic) || []).filter((x) => x[R.terrain] === terrain && inWindow(x[R.date]));
@@ -287,6 +288,7 @@ export async function render(main, { query }) {
     const sel = store.get().compare, methods = store.get().methods;
     if (!sel.length) { $("#prog").innerHTML = html`<div class="empty">${t("cp.empty")}</div>`; $("#prog-legend").innerHTML = ""; return; }
     ac = ac || await data.ageCurves();
+    if (!main.isConnected || !$("#prog")) return;
     const series = [];
     for (const c of sel) for (const m of methods) {
       const p = monthlyProgress(m, racesOf.get(c.lic) || [], terrain, meta, ac);

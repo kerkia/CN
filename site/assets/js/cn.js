@@ -69,7 +69,7 @@ const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.pa
 /** Best `topN` races taken from the best `frac` of the window, group-weighted; `power` 2 = quadratic mean, 3 = cubic.
  *  `fade` (cn.fade_factors): each race's factor in the mean - a junior's race fading with its age -, its places
  *  still taken by its weight. */
-export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 3, power = 1, fade = null } = {}) {
+export function topWeighted(values, weights, { topN = 6, frac = 0.6, minScores = 2, power = 1, fade = null } = {}) {
   const n = values.length;
   if (n < minScores) return { cn: null, roles: values.map(() => null), used: values.map(() => 0), nKept: 0 };
   // topN is a number of slots: from the best score down, each race fills as many as its weight, the last

@@ -25,10 +25,9 @@ COUNTRY = Country(
     code="ES", federation="FEDO", access="all", db=paths.DATA_DIR / "es.sqlite3",
     time_zones=("Europe/Madrid", "Atlantic/Canary"), official="fedo_leo",
     # tuned on Spain's races (owner, 2026-10-22; scratch es_eval.py / es_cmp.py, July 2025 - October 2026, the same runners):
-    # forest circuits valued on the fastest two-thirds (+0.41 [0.26, 0.55] point of duels over 90 %), 2 races for an index
-    # (sprint +0.67 [0.26, 1.03], forest level); both +0.62 forest, +1.31 sprint; against FEDO's rule on the day
-    # (winner / time x 100, best 6 of 12 months) +3.8 forest, +4.9 sprint. A 24-month window lost 1.1-1.6.
-    method_params={"min_scores_for_cn": 2, "by_terrain": {"Forêt": {"sample_fraction": 2 / 3}}},
+    # forest circuits valued on the fastest two-thirds (+0.41 [0.26, 0.55] point of duels over 90 %); 2 races for an index
+    # (sprint +0.67 [0.26, 1.03], forest level), France's rule too since 2026-10-23. A 24-month window lost 1.1-1.6.
+    method_params={"by_terrain": {"Forêt": {"sample_fraction": 2 / 3}}},
 )
 # the agenda's version: a new one rebuilds it whole (2: O-Replay's multi-day totals, « Overall » stages, left out, 2026-10-22)
 AGENDA_VERSION = 2
