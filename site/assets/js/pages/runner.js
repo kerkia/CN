@@ -26,6 +26,7 @@ import { loadRanking, AGES } from "./ranking.js";
 import { monthlyProgress, seasonEnds, curveKey } from "../progress.js";
 import { link, replaceQuery, terrainField, goInPlace } from "../app.js";
 import * as auth from "../auth.js";
+import * as country from "../country.js";
 
 /** A discipline's name inside a sentence: « forêt », « sprint », but « VTT » (owner, 2026-10-13). */
 const inSentence = (name) => (name === name.toUpperCase() ? name : name.toLowerCase());
@@ -46,7 +47,9 @@ export async function render(main, { arg, query }) {
   let range = query.range || "all";
   let calcDate = query.d || null;
   let histMethod = null, ref = "all";
-  const tabs = TABS.map(([k, l]) => [k, t(l)]);
+  // France's runner: FFCO's licence, its départements' map, FFCO's pages; another country's numbers are Ozimut's own
+  const fr = data.loadedCountry() === "FR";
+  const tabs = TABS.filter(([k]) => fr || k !== "carte").map(([k, l]) => [k, t(l)]);
   const tab = tabFrom(tabs, { ...query, onglet: OLD_TABS[query.onglet] || query.onglet });
   if (OLD_TABS[query.onglet]) replaceQuery({ onglet: tab });                   // the address says the tab's current name
 
@@ -60,7 +63,7 @@ export async function render(main, { arg, query }) {
   main.innerHTML = html`
     <div class="page-head">
       <div>
-        <h1>${name} ${data.isAnon(lic) ? "" : html`<span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span>`}</h1>
+        <h1>${name} ${data.isAnon(lic) || !fr ? "" : html`<span class="tag licence-tag num">${t("rn.licenceNo")} ${lic}</span>`}</h1>
         <div class="lede meta">
           <span>${fmtCat(last?.[R.cat] || person.cat)}</span>
           ${cp.code ? html`<span><a href="${link.club(cp.code)}">${data.clubName(club)}</a></span>` : ""}
@@ -123,6 +126,8 @@ export async function render(main, { arg, query }) {
     </div>
     <div data-panel="saisons">
     <section class="card"><div class="card-head"><h2>${t("rn.seasons")}</h2></div><div id="seasons"></div></section>
+    <section class="card" id="fed-card" hidden style="margin-top:16px"><div class="card-head"><div><h2 id="fed-head"></h2>
+      <div class="hint" id="fed-hint"></div></div></div><div id="fed-seasons"></div></section>
     </div>
     <div data-panel="carte">
     ${chartCard({ id: "rmap", title: t("rn.map"), hint: t("rn.map.hint"), tall: true, tools: html`<span id="rmap-tools"></span>` })}
@@ -652,11 +657,43 @@ export async function render(main, { arg, query }) {
         key: `a_${m}`, align: "r", cls: "num", sort: (x) => x.r[CNAFTER_COL[m]], label: subHead(cnLabel(m), t("rn.after")),
         render: (x) => (x.r[CNAFTER_COL[m]] ? fmt(x.r[CNAFTER_COL[m]]) : html`<span class="dim">—</span>`),
       }]),
-      { key: "ext", label: "", render: (x) => html`<a class="dim" href="${data.officialCircuitUrl(x.r[R.cid])}" target="_blank" rel="noopener" title="${t("rn.officialFfco")}">↗</a>` },
+      fr && { key: "ext", label: "", render: (x) => html`<a class="dim" href="${data.officialCircuitUrl(x.r[R.cid])}" target="_blank" rel="noopener" title="${t("rn.officialFfco")}">↗</a>` },
     ];
-    dataTable($("#history"), { columns: cols, rows, sortKey: "date", sortDir: -1 });
+    dataTable($("#history"), { columns: cols.filter(Boolean), rows, sortKey: "date", sortDir: -1 });
   }
   $("#season").addEventListener("change", drawHistory);
+
+  /** The runner's standing in their federation's own ranking, season by season (Spain's FEDO: official.json). */
+  async function drawFedSeasons() {
+    const info = country.info(data.loadedCountry());
+    if (!info?.official_table) return;
+    const file = await data.officialTable().catch(() => null);
+    const rows = [];
+    for (const [season, byT] of Object.entries(file?.seasons || {})) {
+      for (const [terr, tab] of Object.entries(byT)) {
+        for (const r of tab.rows) if (String(r[0]) === String(lic)) rows.push({ season, terr, cat: r[3], rank: r[4], total: r[5], n: r[6], m1: r[7], m2: r[8],
+          of: tab.rows.filter((x) => x[3] === r[3]).length });
+      }
+    }
+    if (!rows.length) return;
+    $("#fed-card").hidden = false;
+    $("#fed-head").textContent = t("rk.tab.fed", { f: info.federation });
+    $("#fed-hint").innerHTML = html`<a href="${link.ranking({ onglet: "federation" })}">${t("rn.fed.all")}</a>`;
+    const num = (v) => (v == null ? html`<span class="dim">—</span>` : fmt(v, 2));
+    dataTable($("#fed-seasons"), {
+      rows, sortKey: "season", sortDir: -1,
+      columns: [
+        { key: "season", label: t("fed.season"), sort: (x) => x.season + x.terr },
+        { key: "terr", label: t("f.terrain"), render: (x) => t(`terrain.${x.terr}`) },
+        { key: "cat", label: t("rk.col.cat") },
+        { key: "rank", label: t("rk.col.rank"), align: "r", cls: "num", render: (x) => (x.rank ? t("rn.fed.rank", { r: ord(x.rank), n: fmt(x.of) }) : "—") },
+        { key: "total", label: t("fed.col.total"), align: "r", cls: "num", render: (x) => num(x.total) },
+        { key: "n", label: t("fed.col.n"), align: "r", cls: "num" },
+        { key: "m1", label: html`<span title="${t("fed.m1.tip")}">M1</span>`, align: "r", cls: "num", render: (x) => num(x.m1) },
+        { key: "m2", label: html`<span title="${t("fed.m2.tip")}">M2</span>`, align: "r", cls: "num", render: (x) => num(x.m2) },
+      ],
+    });
+  }
 
   function drawSeasons() {
     const methods = store.get().methods;
@@ -741,6 +778,7 @@ export async function render(main, { arg, query }) {
     drawProgress();
     drawHistory();
     drawSeasons();
+    drawFedSeasons();
   }
   drawFilters();
   drawAll();

@@ -67,7 +67,7 @@ let SITE, META, RUNNERS, COMPS;
 export async function bootPublic() {
   SITE = await getSiteJson("meta.json");
   LOADED = country.current();
-  storeCountry(LOADED);
+  storeCountry(LOADED, SITE?.countries?.[LOADED]?.methods);
   META = await getJson("meta.json").catch(() => null);
   return META;
 }
@@ -83,7 +83,7 @@ export async function useCountry(cc) {
   RUNNERS = null;
   COMPS = null;
   LOADED = cc;
-  storeCountry(cc);
+  storeCountry(cc, SITE?.countries?.[cc]?.methods);
   META = await getJson("meta.json").catch(() => null);
   return true;
 }
@@ -216,9 +216,14 @@ export function monthYearBefore(monthIso) {
 }
 
 // ---- per-entity files ------------------------------------------------------
+// r/ and net/: a runner's number // the country's bucket (meta.bucket: France 10, a country of sequential numbers 100);
+// club/ and club_courses/: one file a club, or packed by a hash of its code (meta.club_packs; site_io.club_pack)
+const bucketOf = (n) => (/^\d+$/.test(n) ? Math.floor(Number(n) / (META?.bucket || 10)) : 999999);
+const clubPack = (code) => [...String(code)].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 0) % META.club_packs;
+const clubFile = async (dir, code) => (META?.club_packs ? (await getJson(`${dir}/p${clubPack(code)}.json`))?.[code] : getJson(`${dir}/${code}.json`));
 export async function runnerRaces(lic) {
   const n = String(lic);
-  const bucket = /^\d+$/.test(n) ? Math.floor(Number(n) / 10) : 999999;
+  const bucket = bucketOf(n);
   const b = await getJson(`r/${bucket}.json`);
   return (b && b[n]) || [];
 }
@@ -232,8 +237,8 @@ export function pmRate(races, terrain, month) {
 /** A percentile (0-100, 100 = the best) as shown: whole numbers, the top only for the best. */
 export const fmtPct = (p) => (p == null ? "—" : String(p >= 100 ? 100 : Math.floor(p)));
 /** Competitions (course ids) a club took part in. */
-export const clubCourses = async (code) => (await getJson(`club_courses/${code}.json`)) || [];
-export const clubSeries = (code) => getJson(`club/${code}.json`);
+export const clubCourses = async (code) => (await clubFile("club_courses", code)) || [];
+export const clubSeries = (code) => clubFile("club", code);
 // club monthly aggregate layout (see site_extras.py)
 export const CLUB = { n: 0, median: 1, max: 2, sum: 3, top5: 4 };
 
@@ -243,12 +248,14 @@ export const CLUB = { n: 0, median: 1, max: 2, sum: 3, top5: 4 };
  */
 export async function coRunners(lic, terrain = "") {
   const n = String(lic);
-  const bucket = /^\d+$/.test(n) ? Math.floor(Number(n) / 10) : 999999;
-  const v = (await getJson(`net/${bucket}.json`))?.[n];
+  const v = (await getJson(`net/${bucketOf(n)}.json`))?.[n];
   if (!v) return [];
   const own = v[terrain || "*"];                  // "*": the only discipline raced, same list
   return (own === "*" ? v["*"] : own) || [];
 }
+/** Another country's federation ranking as it publishes it (Spain's FEDO: build_site official.json): { federation, seasons:
+ *  { "2026": { For: { as_of, races: [[column, name]], rows: [[id, name, club, cat, rank, total, n, m1, m2, [points]]] } } } }. */
+export const officialTable = () => getJson("official.json");
 export const ageCurves = () => getJson("agecurve.json");
 /** Per season: [[club, terrain, competitors, results]] (site_extras.pyramid). */
 export const participation = async () => (await getJson("participation.json"))?.seasons || {};

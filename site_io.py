@@ -20,6 +20,22 @@ def dump(path: Path, obj) -> int:
     return len(data)
 
 
+def runner_bucket(lic, size: int = 10) -> int:
+    """The file of r/ and net/ a runner's rows are in: their number // `size` (meta `bucket`: France 10; a country of
+    sequential numbers 100, so that its files stay few — Pages takes 20 000 files a deployment)."""
+    s = str(lic)
+    return int(s) // size if s.isdigit() else 999999
+
+
+def club_pack(code: str, packs: int) -> int:
+    """The file of club/ and club_courses/ a club is in when a country packs them (meta `club_packs`): a hash of its code,
+    as data.js clubPack computes it."""
+    h = 0
+    for ch in code:
+        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+    return h % packs
+
+
 def prune(folder: Path, keep: set[str], pattern: str = "*.json") -> None:
     """Delete files a build no longer produces (a competition removed, …)."""
     for f in folder.glob(pattern):

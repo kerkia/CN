@@ -57,6 +57,12 @@ const tickDec = (x) => (x >= 1 ? 0 : x >= 0.1 && Number.isInteger(Math.round(x *
 const est = (a) => a && (a[1] > 0 || a[2] < 0);
 const star = (a) => (est(a) ? "*" : "");
 
+/** Another country's ranking: what differs from France's, whose study the page tells (i18n doc.country.<cc>). */
+function countryNote() {
+  const cc = data.loadedCountry(), key = `doc.country.${cc}`;
+  return cc !== "FR" && t(key) !== key ? html`<div class="notice info" style="margin-bottom:16px">${raw(t(key))}</div>` : "";
+}
+
 export async function render(main, { query = {} } = {}) {
   const meta = data.meta();
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
@@ -139,6 +145,7 @@ export async function render(main, { query = {} } = {}) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
       <p class="lede">${C.lede}</p></div></div>
+    ${countryNote()}
     <nav class="mx-tabs" role="tablist">${TABS.map(([k, label], i) => html`<button type="button" role="tab" data-tab="${k}"
       aria-selected="false"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
     ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}

@@ -5,8 +5,11 @@
 // (fair) only values the circuits, shown to nobody. Old links and saved choices naming them open the Ozimut method.
 export const METHODS = ["official", "top6w"];
 const RENAMED = { top6w2: "top6w", fair2: "top6w", top6w3: "top6w", fair3: "top6w", fair: "top6w" };
+// the loaded country's methods (data/meta.json `countries.<cc>.methods`; Spain's Ozimut index alone, its federation's
+// ranking being a table of its own): set by useCountry; the method saved stays the visitor's for the countries that have it
+let AVAIL = METHODS;
 /** The methods this visitor may see and pick. */
-export const available = () => METHODS;
+export const available = () => AVAIL;
 // Disciplines offered by the site-wide selector: forest, sprint, mountain bike, ski.
 export const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 export const MAX_COMPARE = 8;
@@ -48,7 +51,8 @@ function load() {
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
 }
-export const get = () => state;
+/** The state, its method the one chosen when the loaded country has it, else that country's first. */
+export const get = () => (AVAIL.includes(state.method) ? state : { ...state, method: AVAIL[0], methods: [AVAIL[0]] });
 /** Re-read after another tab changed the saved state. */
 export function reload() {
   state = load();
@@ -63,7 +67,9 @@ export function set(patch) {
  * Another country's data loaded (data.useCountry): its own selection of runners and clubs comes back, the one left is
  * kept for later. A selection saved before the countries is France's.
  */
-export function useCountry(cc) {
+export function useCountry(cc, methods) {
+  const ms = (methods || METHODS).filter((m) => METHODS.includes(m));
+  AVAIL = ms.length ? ms : METHODS;
   const from = state.cc || "FR";
   if (from === cc) {
     if (!state.cc) set({ cc });

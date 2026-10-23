@@ -1364,16 +1364,22 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   in Spanish (FEDO's « Pos / Nombre / Club / Tiempo », « Error en tarj. », « Abandona »: `oe_html._COLS`,
   `model.STATUS_WORDS`). The pages: Agenda's places, CN column, FFCO link and the « pending » filter follow the country;
   Résultats has no runner filter outside France.
-- **Spain's rankings** (plan steps 4-7, 2026-10-22; computed daily, **not published** until the owner has seen the method
-  measured on Spain's races: `countries/es/ranking.py` `PUBLISH`). `update._countries` (the daily full run, `COUNTRY_BUDGET`
-  900 s) runs `countries.es.ranking.update`: SICO's licensees (`licensees.py`, monthly, ~263 requests: name, club, regional
+- **Spain's rankings** (plan steps 4-11, 2026-10-22; computed daily, **published** since the owner saw the method measured
+  on Spain's races: `countries/es/ranking.py` `PUBLISH`). `update._countries` (the daily full run, `COUNTRY_BUDGET`
+  900 s; O-Replay's history an hour a night, `BACKFILL_BUDGET`, until `oreplay_backfilled`) runs
+  `countries.es.ranking.update`: SICO's licensees (`licensees.py`, monthly, ~263 requests: name, club, regional
   federation, card, licence — never published), FEDO's ranking files (`official.py`, every season 2017 on: licence, category,
   total, M1/M2/M3, points race by race — Spain's « official »: M1 else M2), the Liga Española's results (`fedo.py`, OE12 HTML
   else PDF — the PDF reader knows OE12's Spanish columns since 2026-10-22, the Spanish championships are often PDFs only; a file
   unread is tried again when `fedo.READER` goes up —, the file's print date as the race's day), the provisional results' Spanish races (`archive.from_prov`), O-Replay's
   past events (`archive.backfill_oreplay`, 2024 on, a budget per run until done). The archive: `CN_DATA_DIR/es.sqlite3` in
   France's tables (`archive.py`: a race = a competition, classes with the same controls = one circuit, `categorie` normalised by
-  `categories.py` with `cat_src` kept, `NOT_RANKED`/`prune` leave out score-O, rogaines, relays, phone orienteering; O-Replay's
+  `categories.py` with `cat_src` kept, `NOT_RANKED`/`prune` leave out score-O, rogaines, relays, phone orienteering, training
+  camps and sessions (« Entrenamiento », « PNTD », « Tecnificación », « Concentración »: the national team's camp put a runner at
+  25 440), school leagues (« Liga escolar »: children racing among themselves, outside the federation's races, as France's CN
+  leaves school sport out), a runner's second run (« Name #2 », `REPEAT`) and, as « nc », a finish under a quarter of its
+  circuit's median (`TOO_FAST`: a run cut short) and the non-competitive classes (`OPEN_CLASS`: « OPEN NARANJA », « Familiar »,
+  « Iniciación »…, 6 % of the rows, even on a course shared with ranked classes: a 5-runner « OPEN ROJO F » gave 12 602); O-Replay's
   multi-day totals, stage type « Overall », are not races — `oreplay.is_overall`, left out of the stages, the agenda and the
   archive, those read before dropped once by `archive.drop_overall`; a race FEDO's file and another source both hold keeps
   FEDO's only, owner 2026-10-22 — `archive.dedupe`: half the finishers with the same name and time, the copies noted
@@ -1382,12 +1388,40 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   or by the one name that fits, the club deciding; else a person of its own by name and club; `persons` / `person_keys`, stable
   numbers = the runners' ids, es<n>); clubs (`clubs.py`: `canonical` — a town before the club, « Independiente », regions'
   teams —, then a number and the regional federation's letters, « 0026FADO »; `names` for the build). The engine: `bootstrap`
-  (`cn_engine.py`: everyone equal for the first season, then from their own first level; `days=None` keeps the seeds — an
-  archive with gaps longer than the window starves otherwise), `title_weight` reads the league (`groupe`: Campeonato de España
-  2, Liga Española / nacional 1.5). `build_site --country ES` (names from the country module, no anonymisation list or login
+  (`cn_engine.py`: the first season from each runner's first category's usual level against H21 as measured in France,
+  `prior` = `ranking.category_level` / `CATEGORY_LEVEL` — an equal start left every category on one level, a 12-year-old above
+  the elites, since Spain's categories mostly race on courses of their own —, then from their own first level; `days=None`,
+  Spain's choice: the seeds never expire — FEDO's files have no sprint from 2020 to 2024, after which nobody held a sprint index
+  to value a circuit again and the sprint and VTT indexes stopped), `title_weight` reads the league
+  (`groupe`: Campeonato de España 2, Liga Española / nacional 1.5). **Spain's own parameters** (`Country.method_params`,
+  `cn_engine.build_methods(overrides)`, also used by `build_site`): forest circuits valued on the fastest two-thirds and 2 races
+  for an index. The measure (2026-10-22, July 2025 - October 2026, the same runners, the scratch `es_eval.py` / `es_cmp.py` /
+  `es_prior.py` kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\4475af57-627e-4f46-9da2-48f0d9da2385\scratchpad`): two-thirds +0.41 forest, 2 races
+  +0.67 sprint, both with the category start +0.52 forest [0.32, 0.71] and +1.70 sprint [1.04, 2.38] over France's settings; the
+  category start costs nothing (forest +0.35, sprint −0.55 ns); a 24-month window −1.1 to −1.6; against FEDO's rule on the day
+  (winner / time × 100 within the category, the best 6 of 12 months) +3.8 forest [3.4, 4.3], +4.0 sprint [2.9, 4.9] on the
+  2024-2026 archive, and with everything above on the archive from 2018 (`final`) +5.0 forest [4.5, 5.4], +5.4 sprint [4.3, 6.5]; against
+  FEDO's published previous-season M1 +12 (most of it the ranking's age). **Known limit**: the veterans' level against H21
+  drifts up over the seasons (the archive from 2018: H65 0.89 of H21's median in 2026, France 0.72; H55 0.90, France 0.82; a
+  70-year-old third in sprint; France's settings alike) — the ranking across categories, not the duels within a circuit: to fix. Every runner of Spain's races is ranked,
+  visitors included (the top of the 2026 forest list: veterans of the Maximus O Meeting, who beat Spain's own by minutes).
+  `build_site --country ES` (names from the country module, no anonymisation list or login
   index, `official` only when the country has values, meta `country`); `site_extras` keeps France's elite, cfc and evaluation
-  to France. CI keeps the other countries' databases in the site state (`ci/state.py` `other_dbs`, `OTHERS_BEFORE`). The
-  measurement: the scratch `es_eval.py` (the duels against FEDO's previous-season level).
+  to France. CI keeps the other countries' databases in the site state (`ci/state.py` `other_dbs`, `OTHERS_BEFORE`).
+  **FEDO's ranking** is not a method but a table of its own (`official.site_table` → `site/data/es/official.json`, meta
+  `official_table`, the index's `official_table`): each season's and discipline's table as FEDO publishes it — its race columns
+  in its order, named from its legend by the longest code a column starts with (« CEOM » → « CEO ») —, each runner linked when
+  Ozimut knows the licence; shown in Classement's tab « Classement FEDO » (`pages/fedranking.js`) and the runner's « Saisons »
+  card. So Spain's method switch has Ozimut alone (`store.available` is the loaded country's `methods`, `useCountry(cc,
+  methods)`; `store.get().method` falls back to it without overwriting the saved choice; the switch is hidden with one method).
+  **The pages outside France** (`data.loadedCountry() !== "FR"`): no licence column or badge (Spain's numbers are Ozimut's), clubs
+  by name not number, « Fédération régionale » for France's « Ligue », no départements, no « Carte » tab, no FFCO links, no
+  relay simulator, no « Points nationaux », no Statistiques › « Territoires », no « IA » (France's tables, `FR_API`); one's own
+  runner (« Ma page » → `fr<licence>`, the « me » row, « Mon club ») only in France's data (`auth.myId`). The Documentation
+  says what differs (`doc.country.ES`). **Files packed** (Pages takes 20 000 files a deployment; France ~14k): meta `bucket`
+  (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
+  `club_packs` (64: club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
+  Spain ~1,250 files instead of ~7,500.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

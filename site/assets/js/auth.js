@@ -18,8 +18,7 @@ export function nameKey(name) {
 }
 /** The club number (4 digits) of the logged-in runner, from their latest race. */
 export function myClub() {
-  const s = session();
-  const r = s && data.isPrivateLoaded() ? data.runner(s.lic) : null;
+  const r =myId() && data.isPrivateLoaded() ? data.runner(myId()) : null;     // France's licence, in France's data
   return r ? data.clubParts(r.club).code : null;
 }
 export const cleanLicence = (lic) => String(lic || "").replace(/\s+/g, "").replace(/^0+(?=\d)/, "");

@@ -8,12 +8,13 @@ import * as store from "../store.js";
 import * as auth from "../auth.js";
 import { link } from "../app.js";
 import { setLede } from "../ui.js";
+import * as data from "../data.js";
 
 const MODES = ["leaders", "territories", "stats", "ages"];
 
 /** current: "ego" | "leaders" | "territories" | "stats" | "ages" — the page's tabs (ui.pageTabs' look). */
 export const modeSwitch = (current) => html`<nav class="page-tabs" role="tablist" aria-label="${t("nw.mode")}">
-  ${MODES.map((m) => html`<button type="button" role="tab" data-net-mode="${m}" aria-selected="${m === current}">${t(`nw.mode.${m}`)}</button>`)}</nav>`;
+  ${MODES.filter((m) => m !== "territories" || data.loadedCountry() === "FR").map((m) => html`<button type="button" role="tab" data-net-mode="${m}" aria-selected="${m === current}">${t(`nw.mode.${m}`)}</button>`)}</nav>`;
 
 /** A view's text, shown beside the page's title (network.render's head); nothing in the view itself. */
 export const netHead = (current, title, lede) => { setLede(lede); return ""; };

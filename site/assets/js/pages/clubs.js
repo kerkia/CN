@@ -19,7 +19,7 @@ import { myClub } from "../auth.js";
 /** The four selectors shared by the club pages; withOrg adds the organised-competitions base; without withMeasure,
  *  the measure is chosen by sorting the table on its column. */
 export function clubSelectors(sel, { withOrg = false, withMeasure = true } = {}) {
-  const bases = withOrg ? [...BASES, "org"] : BASES;
+  const bases = (withOrg ? [...BASES, "org"] : BASES).filter((b) => b !== "pts" || isFr());
   return html`
     <div class="field"><span>${t("cb.base")}</span>${seg("base", bases.map((b) => [b, baseLabel(b)]), sel.base)}</div>
     ${withMeasure ? html`<div class="field"><span>${t("cb.measure")}</span>${seg("measure", measuresOf(sel.base).map((m) => [m, measureLabel(m, sel.base)]), sel.measure)}</div>` : ""}
@@ -37,7 +37,7 @@ export function bindClubSelectors(root, sel, onChange) {
   }
 }
 export const selFromQuery = (q, { withOrg = false } = {}) => {
-  const base = BASES.includes(q.base) || (withOrg && q.base === "org") ? q.base : "cn";
+  const base = (BASES.includes(q.base) && (q.base !== "pts" || isFr())) || (withOrg && q.base === "org") ? q.base : "cn";
   return {
     base,
     measure: measuresOf(base).includes(q.by) ? q.by : defaultMeasure(base),
@@ -57,6 +57,10 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
 // switched in place (the address follows), as on Statistiques: #/clubs, #/clubs?onglet=ligues, #/comparer-clubs,
 // #/relais and #/club/<code> all open it.
 const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
+// France's: FFCO's club numbers, its ligues, its national races' points and its relay formats; another country's clubs are
+// keyed by Ozimut (countries/<cc>/clubs.py) and its regions are its regional federations
+const isFr = () => data.loadedCountry() === "FR";
+const ligueWord = () => (isFr() ? t("f.ligue") : t("f.region"));
 async function view(el, v, query) {
   setLede(t("cl.lede"));
   if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });
@@ -69,7 +73,8 @@ export async function render(main, { route, arg, query }) {
   const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : route === "club" ? `club:${arg}`
     : query.onglet === "ligues" ? "ligues" : "clubs";
   // the views: the four, one's own club, and the club whose page is open when it is another one
-  const views = VIEWS.map(([k, href]) => [k, href, t(`cl.view.${k}`)]);
+  const views = VIEWS.filter(([k]) => isFr() || k !== "relays")
+    .map(([k, href]) => [k, href, k === "ligues" && !isFr() ? t("cl.view.regions") : t(`cl.view.${k}`)]);
   if (mine) views.push([`club:${mine}`, link.club(mine), t("cl.myClub")]);
   if (route === "club" && arg && arg !== mine) views.push([v, link.club(arg), clubName(arg)]);
   main.innerHTML = html`
@@ -116,7 +121,7 @@ async function listView(main, query, mode) {
     </div>
     <div ${raw(mode === "ligues" ? "" : "hidden")}>
     <section class="card">
-      <div class="card-head"><h2>${t("cl.ligues")}</h2></div>
+      <div class="card-head"><h2>${isFr() ? t("cl.ligues") : t("cl.view.regions")}</h2></div>
       <div id="ligues"></div>
     </section>
     </div>`;
@@ -128,7 +133,7 @@ async function listView(main, query, mode) {
     $("#filters").innerHTML = html`${terrainField()}
       ${dateControls(month)}
       ${clubSelectors(sel, { withOrg: true, withMeasure: false })}
-      <label class="field"><span>${t("f.ligue")}</span><select id="lg"><option value="">${t("f.all")}</option>
+      <label class="field"><span>${ligueWord()}</span><select id="lg"><option value="">${t("f.all")}</option>
         ${ls.map(([c, n]) => html`<option value="${c}" ${raw(c === ligue ? "selected" : "")}>${n}</option>`)}</select></label>`;
     bindDateControls(main, (m) => { month = m; drawFilters(); load(); });
     bindClubSelectors(main, sel, (k) => {
@@ -205,12 +210,12 @@ async function listView(main, query, mode) {
       columns: [
         { key: "rownum", label: t("col.n"), cls: "rank num", render: (g, i) => i + 1 },
         { key: "sel", label: "", cls: "c", render: (g) => html`<input type="checkbox" data-club="${g.code}" ${raw(store.inClubs(g.code) ? "checked" : "")} aria-label="${clubName(g.code)}">` },
-        { key: "code", label: t("col.code"), cls: "num dim", sort: (g) => g.code, defaultDir: 1, render: (g) => g.code },
+        isFr() && { key: "code", label: t("col.code"), cls: "num dim", sort: (g) => g.code, defaultDir: 1, render: (g) => g.code },
         { key: "name", label: t("col.name"), sort: (g) => clubName(g.code), defaultDir: 1,
           render: (g) => html`<a class="name" href="${link.club(g.code)}">${clubName(g.code)}</a>` },
-        { key: "lg", label: t("f.ligue"), sort: (g) => data.ligueName(g.ligue) || null, defaultDir: 1, render: (g) => data.ligueName(g.ligue) },
+        { key: "lg", label: ligueWord(), sort: (g) => data.ligueName(g.ligue) || null, defaultDir: 1, render: (g) => data.ligueName(g.ligue) },
         ...valCols(), ...(sel.base === "org" ? [] : [bestCol]),
-      ],
+      ].filter(Boolean),
       onRender(el) {
         $$("[data-club]", el).forEach((cb) => cb.addEventListener("change", () => {
           if (!store.toggleClub(cb.dataset.club)) { cb.checked = false; alert(t("cm.max")); }
@@ -223,8 +228,8 @@ async function listView(main, query, mode) {
       rows: res.ligues.filter((g) => g.rank || g.org.members), sortKey: sel.measure, sortDir: -1,
       columns: [
         { key: "rownum", label: t("col.n"), cls: "rank num", render: (g, i) => i + 1 },
-        { key: "name", label: t("f.ligue"), sort: (g) => data.ligueName(g.code), defaultDir: 1,
-          render: (g) => html`<span class="name">${data.ligueName(g.code)}</span> <span class="dim">${g.code}</span>` },
+        { key: "name", label: ligueWord(), sort: (g) => data.ligueName(g.code), defaultDir: 1,
+          render: (g) => html`<span class="name">${data.ligueName(g.code)}</span>${isFr() ? html` <span class="dim">${g.code}</span>` : ""}` },
         { key: "clubs", label: t("nav.clubs"), align: "r", cls: "num", sort: (g) => g.clubs, render: (g) => fmt(g.clubs) },
         ...valCols(),
       ],

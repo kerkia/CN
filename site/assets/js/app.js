@@ -339,7 +339,8 @@ function renderHeader(r) {
       ["clubs", "#/clubs", t("nav.clubs")],
       ["network", "#/reseau", t("nav.network")],
       // « IA » (2026-10-15): questions on the data in plain French; every account since 2026-10-16 (owner)
-      ["ask", "#/ia", t("nav.ask")],
+      // (France's tables only: /api/ask is France's, _middleware.js FR_API)
+      ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
     ]],
     // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, the VMA page, the
     // analyses of one's training; every page for every account since 2026-10-15 (owner)
@@ -398,7 +399,7 @@ function renderHeader(r) {
           <span class="user-name">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</span>
           <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
         <div class="nav-menu">
-          ${me.lic ? html`<a href="${link.runner(me.lic)}" ${raw(route === "runner" && parseHash().arg === me.lic ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
+          ${me.lic ? html`<a href="${link.runner(`fr${me.lic}`)}" ${raw(route === "runner" && [me.lic, `fr${me.lic}`].includes(parseHash().arg) ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
           <a href="#/methodes" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           ${me.demo ? "" : html`<button type="button" id="install-btn" ${raw(pwa.installState() === "ready" ? "" : "hidden")}>${t("pwa.menu")}</button>`}
@@ -412,7 +413,7 @@ function renderHeader(r) {
   ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
       ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
         : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live"].includes(route) || !fr ? "" : methodSwitch()}
+      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live"].includes(route) || !fr || store.available().length < 2 ? "" : methodSwitch()}
 
     </div></div>` : ""}`;
   // a demo account (admin page, « Démo »): said on every page, with its last day
@@ -650,7 +651,7 @@ async function route_() {
     if (my !== token) return;
     movedNotice();
   }
-  if (me && FR_ROUTES.has(r.route) && !ranksHere()) r = { ...r, route: "needCountry", from: r.route };
+  if (me && FR_ROUTES.has(r.route) && (!ranksHere() || (r.route === "ask" && country.current() !== "FR"))) r = { ...r, route: "needCountry", from: r.route };
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there

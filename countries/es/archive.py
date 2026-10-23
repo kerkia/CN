@@ -18,6 +18,7 @@ import json
 import re
 import sqlite3
 import time
+from collections import defaultdict
 
 from datetime import date
 from pathlib import Path
@@ -41,7 +42,20 @@ CREATE TABLE IF NOT EXISTS es_meta (k TEXT PRIMARY KEY, v TEXT);
 RESULT_EXTRA = ("cat_src", "card", "sex", "birth", "club_src", "club_key", "person_key")
 # not a race against the clock between individuals: score-O and rogaines (points), relays (a team's time), orienteering on
 # a phone app, team games
-NOT_RANKED = re.compile(r"\bscore\b|\brogain|\brelevos?\b|\brelleus?\b|\bo-?m[oó]vil\b|\bpollo sin cabeza\b|\bequipos\b", re.I)
+NOT_RANKED = re.compile(r"\bscore\b|\brogain|\brelevos?\b|\brelleus?\b|\bo-?m[oó]vil\b|\bpollo sin cabeza\b|\bequipos\b"
+                        # training camps and sessions (2026-10-22: the national team's « PNTD REYES — Entrenamiento 8 », the
+                        # federations' « Concentración Técnica », « Tecnificación »): exercises, not races
+                        r"|\bentrenamientos?\b|\bpntd\b|\btecnificaci[oó]n\b|\bconcentraci[oó]n\b"
+                        # school leagues (« Liga escolar »): children racing among themselves, outside the federation's
+                        # races, as France's CN leaves school sport out
+                        r"|\bescolar(es)?\b", re.I)
+# the non-competitive classes (« OPEN NARANJA », « Familiar », « Iniciación »): their runners are « nc », out of everything, even
+# on a course they share with ranked classes (2026-10-22: a 5-runner « OPEN ROJO F » put a runner at 12 602)
+OPEN_CLASS = re.compile(r"\bopen\b|iniciaci[oó]n|promoci[oó]n|familiar|\bnovel|\bocio\b|\bpopular\b", re.I)
+# a runner's second run of the same race (O-Replay: « Isaac Mujal Faure #2 »): not a result
+REPEAT = re.compile(r"\s#\d+\s*$")
+# a finish under this share of its circuit's median time (4 finishers or more) is a run cut short, not a race: « nc »
+TOO_FAST = 0.25
 STATUS_WORD = {"mp": "pm", "dnf": "abandon", "dsq": "disqualifié", "ot": "hors délai"}
 
 
@@ -138,13 +152,13 @@ def store_race(con, source: str, sid: str, meta: dict, doc: dict, sha: str | Non
                     (circ, cid, " / ".join(c["names"])[:200], (c["length_m"] or 0) / 1000 or None))
         for r in c["runners"]:
             st = r.get("status") or "ok"
-            if st == "dns":
+            if st == "dns" or REPEAT.search(r.get("name") or ""):
                 continue
             temps = _hms(r.get("time_s")) if st in ("ok", "nc") else STATUS_WORD.get(st)
             if not temps:
                 continue
-            place = "nc" if st == "nc" else (str(r["place"]) if r.get("place") else "")
             cat_src = r.get("category") or r["_class"]
+            place = "nc" if st == "nc" or OPEN_CLASS.search(cat_src or "") else (str(r["place"]) if r.get("place") else "")
             con.execute("""INSERT INTO results (circuit_id, place, nom, licence, categorie, club, temps, cat_src, card, sex,
                            birth, club_src, club_key) VALUES (?,?,?,NULL,?,NULL,?,?,?,?,?,?,?)""",
                         (circ, place, r["name"], normalise(cat_src, r.get("sex")), temps,
@@ -260,6 +274,8 @@ def backfill_oreplay(con, http, budget_s: float, since: str = "2024-01-01", toda
             left += 1
     meta_set(con, "oreplay_empty", sorted(tried))
     meta_set(con, "oreplay_events", sorted(finished))
+    if not left:                                           # the whole history read once: the nightly budget goes back to normal
+        meta_set(con, "oreplay_backfilled", True)
     con.commit()
     return {"read": got, "left": left, "requests": http.requests, "seconds": round(time.monotonic() - t0)}
 
@@ -272,6 +288,23 @@ def prune(con) -> int:
         if NOT_RANKED.search(title or ""):
             _drop_course(con, cid)
             gone += 1
+    gone += con.execute("DELETE FROM results WHERE nom LIKE '%#%' AND nom GLOB '*#[0-9]*'").rowcount
+    for rid, cat in con.execute("SELECT id, cat_src FROM results WHERE place != 'nc' AND cat_src IS NOT NULL").fetchall():
+        if OPEN_CLASS.search(cat):
+            con.execute("UPDATE results SET place = 'nc' WHERE id = ?", (rid,))
+            gone += 1
+    # a run cut short (a time far below the circuit's): « nc », out of everything as FFCO's « non classé »
+    times = defaultdict(list)
+    for rid, circ, t in con.execute("SELECT id, circuit_id, temps FROM results WHERE place NOT IN ('', 'nc') AND temps LIKE '%:%'"):
+        h, m, sec = (int(x) for x in t.split(":"))
+        times[circ].append((rid, h * 3600 + m * 60 + sec))
+    for circ, v in times.items():
+        if len(v) >= 4:
+            med = sorted(x for _, x in v)[len(v) // 2]
+            for rid, x in v:
+                if x < TOO_FAST * med:
+                    con.execute("UPDATE results SET place = 'nc' WHERE id = ?", (rid,))
+                    gone += 1
     con.commit()
     return gone
 

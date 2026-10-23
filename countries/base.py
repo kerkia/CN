@@ -33,6 +33,12 @@ class Country:
     time_zones: tuple[str, ...] = ()   # where its races are timed (liveresultat's competitions, the race clock)
     official: str | None = None        # its federation's own ranking, as the site names the method "official"
     extras: tuple[str, ...] = field(default_factory=tuple)   # site_extras parts only this country has (cfc, elite…)
+    # the Ozimut method's parameters tuned for the country, over France's (cn_engine.build_methods `overrides`)
+    method_params: dict = field(default_factory=dict)
+
+    def methods(self):
+        from ffco_scraper.cn_engine import build_methods
+        return build_methods(self.method_params or None)
 
     def __post_init__(self):
         if self.access not in ACCESS:

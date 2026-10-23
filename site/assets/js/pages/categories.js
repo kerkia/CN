@@ -59,7 +59,7 @@ export async function render(main, { query }) {
     ref: query.ref !== "0", club: query.club === "1",
   };
   const terrain = store.get().terrain;
-  const me = auth.session();
+  const me = auth.myId() ? auth.session() : null;      // one's own row: France's licence, in France's ranking only
   const myClub = auth.myClub();
   let all = null, cls = [], outs = [], table = null;
   // the runners' dots as drawn (x, y in the chart's units, which are pixels): the pointer takes the nearest within HIT, so a

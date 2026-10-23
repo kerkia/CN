@@ -51,11 +51,12 @@ from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, fade_factors
 from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
 import privacy
 import site_extras
-from site_io import WRITES, dump, prune
+from site_io import WRITES, club_pack, dump, prune, runner_bucket
 
 ROOT = Path(__file__).parent
 import paths  # noqa: E402
 DB = paths.DB
+CLUB_PACKS = 64
 OUT = ROOT / "site" / "data" / "fr"           # a country's folder (--out): France's by default
 NAMES_CACHE = paths.CACHE / "reference_names.json"
 TERRAINS = {"Forêt": "For", "Sprint": "Spr", "VTT": "VTT", "Ski": "Ski"}
@@ -229,7 +230,8 @@ def main(argv: list[str] | None = None) -> None:
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    methods = build_methods()
+    import countries
+    methods = countries.get(args.country).methods()   # France's parameters, or the country's own (Country.method_params)
     COMPUTED = list(methods)                       # fair, top6w
     PARAMS: dict[str, CnParams] = {n: methods[n].params for n in COMPUTED}
     BASE = {n: methods[n].derived_from or n for n in COMPUTED}   # whose scores and recalage a method uses
@@ -242,6 +244,9 @@ def main(argv: list[str] | None = None) -> None:
     # France's list (the admin page's « Anonymisés »); another country's runners have their own numbers: none listed yet
     fr = args.country.upper() == "FR"
     anon = privacy.load(args.anon) if fr else privacy.Anon([])
+    # the files' packing (Pages takes 20 000 files a deployment): France's runners ten to a file of r/ and net/, one file
+    # a club; another country's sequential numbers a hundred to a file, its clubs in CLUB_PACKS files
+    RB, PACKS = (10, 0) if fr else (100, CLUB_PACKS)
     if anon:
         print(f"anonymised runners: {len(anon.by_lic)}")
     if fr:
@@ -434,7 +439,7 @@ def main(argv: list[str] | None = None) -> None:
                 # fair + top6w (see method_cols; the geometric pair's columns, appended here, went on 2026-10-19)
                 *method_cols(lic, cid, terr_full, d, "fair", "top6w"),
             ])
-        buckets[int(lic) // 10 if str(lic).isdigit() else 999999][lic] = races
+        buckets[runner_bucket(lic, RB)][lic] = races
     for b, content in buckets.items():
         dump(OUT / "r" / f"{b}.json", content)
     prune(OUT / "r", {f"{b}.json" for b in buckets})
@@ -482,9 +487,17 @@ def main(argv: list[str] | None = None) -> None:
                 code = club_parts(row[5])[0]
                 if code:
                     club_courses[code].add(course_id)
-    for code, ids in club_courses.items():
-        dump(OUT / "club_courses" / f"{code}.json", sorted(ids))
-    prune(OUT / "club_courses", {f"{code}.json" for code in club_courses})
+    if PACKS:
+        packs = defaultdict(dict)
+        for code, ids in club_courses.items():
+            packs[club_pack(code, PACKS)][code] = sorted(ids)
+        for k, v in packs.items():
+            dump(OUT / "club_courses" / f"p{k}.json", v)
+        prune(OUT / "club_courses", {f"p{k}.json" for k in packs})
+    else:
+        for code, ids in club_courses.items():
+            dump(OUT / "club_courses" / f"{code}.json", sorted(ids))
+        prune(OUT / "club_courses", {f"{code}.json" for code in club_courses})
     print(f"{len(by_course):,} competition files")
     # listing columns: + number of results and of circuits
     comps_out = {cid: [*v, sum(len(r) for r in by_course.get(cid, {}).values()), len(by_course.get(cid, {}))]
@@ -648,6 +661,8 @@ def main(argv: list[str] | None = None) -> None:
     meta = {
         "built": date.today().isoformat(),
         "country": args.country.upper(),
+        "bucket": RB,                    # r/ and net/: a runner's number // bucket
+        **({"club_packs": PACKS} if PACKS else {}),   # club/ and club_courses/: p<club_pack(code)>.json
         "min_season": min_season or None,
         "seasons": years,
         "months": [m.isoformat() for m in months if m.year >= min_season],
@@ -662,6 +677,19 @@ def main(argv: list[str] | None = None) -> None:
         "levels": levels,
         "agreement": agree,
     }
+    # another country's federation ranking as it publishes it (Spain: FEDO's season tables, countries/es/official.py)
+    if not fr:
+        import importlib
+        try:
+            off_mod = importlib.import_module(f"countries.{args.country.lower()}.official")
+        except ModuleNotFoundError:
+            off_mod = None
+        table = off_mod.site_table(conn) if off_mod and hasattr(off_mod, "site_table") else {}
+        if table:
+            dump(OUT / "official.json", {"federation": countries.get(args.country).federation, "seasons": table})
+            meta["official_table"] = sorted(table)
+        else:
+            prune(OUT, set(), "official.json")
     dump(OUT / "meta.json", meta)
     site_extras.main(OUT)
     total = sum(f.stat().st_size for f in OUT.rglob("*.json"))

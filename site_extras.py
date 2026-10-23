@@ -36,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from site_io import dump, prune
+from site_io import club_pack, dump, prune, runner_bucket
 from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
@@ -156,9 +156,18 @@ def club_files(years: list[int], elite_rows: dict) -> None:
         for (code, terrain, g), v in grouped.items():
             pts_out[code][terrain].setdefault(str(season), {})[g] = summarise(v)
     codes = set(series) | set(years_out) | set(pts_out)
-    for code in codes:
-        dump(OUT / "club" / f"{code}.json", {"monthly": series.get(code, {}), "years": years_out.get(code, {}),
-                                              "pts": pts_out.get(code, {})})
+    one = lambda code: {"monthly": series.get(code, {}), "years": years_out.get(code, {}), "pts": pts_out.get(code, {})}
+    packs = load(OUT / "meta.json").get("club_packs")
+    if packs:                                    # a country's clubs packed (build_site CLUB_PACKS)
+        by = defaultdict(dict)
+        for code in codes:
+            by[club_pack(code, packs)][code] = one(code)
+        for k, v in by.items():
+            dump(OUT / "club" / f"p{k}.json", v)
+        prune(OUT / "club", {f"p{k}.json" for k in by})
+    else:
+        for code in codes:
+            dump(OUT / "club" / f"{code}.json", one(code))
     print(f"  {len(codes)} club files")
 
 
@@ -258,6 +267,7 @@ def network(comps: dict) -> None:
     Per runner: {"*": every discipline, "For": forest, "Spr": sprint, "VTT",
     "Ski"}; a discipline is "*" when it is the only one the runner raced (same
     list), and absent when they never raced it."""
+    size = load(OUT / "meta.json").get("bucket", 10)
     lic_ix: dict[str, int] = {}
     lics: list[str] = []
     circ_idx, circ_place, circ_day, circ_terr = [], [], [], []
@@ -321,8 +331,7 @@ def network(comps: dict) -> None:
                 if own:
                     out[terrain] = own
         lic = lics[a]
-        bucket = int(lic) // 10 if lic.isdigit() else 999999
-        buckets[bucket][lic] = out
+        buckets[runner_bucket(lic, size)][lic] = out
     for bucket, rows in buckets.items():
         dump(OUT / "net" / f"{bucket}.json", rows)
     print(f"  network: {sum(len(v) for v in buckets.values()):,} runners in {len(buckets):,} files")
@@ -516,7 +525,7 @@ def main(out: Path | None = None) -> None:
     # France's own (meta `country`, build_site --country): FFCO's elite levels, the Coupe de France des clubs, the methods
     # measured against the official CN on France's seasons; another country's are its own study's
     fr = meta.get("country", "FR") == "FR"
-    elite_rows = elite(comps) if fr else []
+    elite_rows = elite(comps) if fr else {}
     club_files(years, elite_rows)
     age_curves(years)
     network(comps)

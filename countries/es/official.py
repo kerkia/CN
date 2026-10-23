@@ -137,3 +137,36 @@ def refresh(con, http, seasons: set[int] | None = None) -> dict:
         con.commit()
         got += 1
     return {"files": got}
+
+
+def site_table(con) -> dict:
+    """FEDO's ranking as the site shows it (site/data/es/official.json, build_site): each season's and discipline's table as
+    FEDO publishes it — the races' columns in FEDO's order with their names, then per runner their Ozimut id when Ozimut
+    knows the licence (persons.licence), else FEDO's name, the club, the category, the rank, the total, the races counted,
+    M1, M2 and the points race by race (None where they did not run it)."""
+    if not con.execute("SELECT 1 FROM sqlite_master WHERE name = 'es_fedo_ranking'").fetchone():
+        return {}
+    ids = {lic: pid for pid, lic in con.execute("SELECT id, licence FROM persons WHERE licence IS NOT NULL")}
+    names = {(y, d, c): n for y, d, c, n in con.execute("SELECT season, discipline, code, name FROM es_fedo_races")}
+    out: dict = {}
+    for season, disc in con.execute("SELECT DISTINCT season, discipline FROM es_fedo_ranking ORDER BY 1, 2").fetchall():
+        rows = con.execute("""SELECT category, licence, name, club, rank, total, n, m1, m2, points, as_of FROM es_fedo_ranking
+                              WHERE season = ? AND discipline = ? ORDER BY category, rank""", (season, disc)).fetchall()
+        cols: dict[str, None] = {}
+        for r in rows:
+            cols.update(dict.fromkeys(json.loads(r[9] or "{}")))
+        cols_l = list(cols)
+
+        def race_name(col):                   # « CC1 », « CEOM »: the race « CC », « CEO » — its longest code the column starts with
+            for k in range(len(col), 0, -1):
+                if (season, disc, col[:k]) in names:
+                    return names[(season, disc, col[:k])]
+            return ""
+        table = []
+        for cat, lic, name, club, rank, total, n, m1, m2, pts, _ in rows:
+            p = json.loads(pts or "{}")
+            pid = ids.get(lic)
+            table.append([pid, None if pid else name, club, cat, rank, total, n, m1, m2, [p.get(c) for c in cols_l]])
+        out.setdefault(str(season), {})[disc] = {"as_of": rows[0][10] if rows else None,
+                                                 "races": [[c, race_name(c)] for c in cols_l], "rows": table}
+    return out

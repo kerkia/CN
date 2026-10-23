@@ -52,6 +52,8 @@ def summary(c: Country, root: Path = SITE_DATA) -> dict | None:
     if meta:
         out.update({"built": meta.get("built"), "methods": [m for m in meta.get("methods", {}) if m in SHOWN],
                     "seasons": meta.get("seasons", []), "counts": meta.get("counts", {})})
+        if meta.get("official_table"):           # the federation's ranking as a table of its own (Spain's FEDO)
+            out["official_table"] = meta["official_table"]
     if c.official:
         out["official"] = c.official
     return out

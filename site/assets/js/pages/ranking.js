@@ -13,6 +13,7 @@ import {
 } from "../ui.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
+import * as country from "../country.js";
 
 export const AGES = ["10", "12", "14", "16", "18", "20", "21", "35", "40", "45", "50", "55", "60", "65", "70", "75", "80", "85", "90"];
 const BIN = 250;
@@ -193,7 +194,7 @@ export async function render(main, { query }) {
     ligue: query.ligue || "", q: query.q || "", podium: query.podium === "1",
   };
   const terrain = st.terrain;
-  const me = auth.session();
+  const me = auth.myId() ? auth.session() : null;      // one's own row: France's licence, in France's ranking only
   // the list is ranked by one method: the first selected, or the one whose column was clicked
   let sortMethod = st.method;
   let loaded = null, table = null, foundLic = null;       // foundLic: the runner picked in the search box
@@ -206,7 +207,12 @@ export async function render(main, { query }) {
     });
   }
 
-  const tabs = [["classement", t("rk.tab.list")], ["repartition", t("rk.tab.dist")], ["progres", t("rk.tab.progress")]];
+  // France's licences and FFCO's club numbers; another country's runner numbers and club keys are Ozimut's own: not shown
+  const fr = data.loadedCountry() === "FR";
+  const fedName = country.info(data.loadedCountry())?.federation || "";
+  const tabs = [["classement", t("rk.tab.list")], ["repartition", t("rk.tab.dist")], ["progres", t("rk.tab.progress")],
+    // a country whose federation's ranking is a table of its own (Spain's FEDO; France's is the official CN, a method)
+    ...(country.info(data.loadedCountry())?.official_table ? [["federation", t("rk.tab.fed", { f: fedName })]] : [])];
   const tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="page-head">
@@ -236,6 +242,7 @@ export async function render(main, { query }) {
       </div>
       ${chartCard({ id: "cdf", title: t("rk.cdf"), hint: t("rk.cdf.hint") })}
     </div>
+    <div data-panel="federation"><div id="fed"></div></div>
     <div data-panel="progres">
       <section class="card"><div class="card-head"><div><h2>${t("ov.progress")}</h2><div class="hint" id="prog-hint"></div></div></div>
         <div id="prog"></div></section>
@@ -257,17 +264,17 @@ export async function render(main, { query }) {
       <label class="field"><span>${t("f.cat")}</span>
         <select id="f-cat"><option value="">${t("f.all")}</option>${AGES.map((a) => html`<option value="${a}" ${raw(a === f.cat ? "selected" : "")}>${a}</option>`)}</select></label>
       <label class="field"><span>${t("f.club")}</span>
-        <select id="f-club" style="max-width:230px"><option value="">${t("f.allm")}</option>${clubOpts.map(([c, n]) => html`<option value="${c}" ${raw(c === f.club ? "selected" : "")}>${c} - ${n}</option>`)}</select></label>
-      <label class="field"><span>${t("f.dept")}</span>
-        <select id="f-dept" style="max-width:170px"><option value="">${t("f.allm")}</option>${depts.map((d) => html`<option value="${d}" ${raw(d === f.dept ? "selected" : "")}>${d} - ${data.deptName(d)}</option>`)}</select></label>
-      <label class="field"><span>${t("f.ligue")}</span>
+        <select id="f-club" style="max-width:230px"><option value="">${t("f.allm")}</option>${clubOpts.map(([c, n]) => html`<option value="${c}" ${raw(c === f.club ? "selected" : "")}>${fr ? `${c} - ${n}` : n}</option>`)}</select></label>
+      ${fr && depts.length ? html`<label class="field"><span>${t("f.dept")}</span>
+        <select id="f-dept" style="max-width:170px"><option value="">${t("f.allm")}</option>${depts.map((d) => html`<option value="${d}" ${raw(d === f.dept ? "selected" : "")}>${d} - ${data.deptName(d)}</option>`)}</select></label>` : ""}
+      <label class="field"><span>${fr ? t("f.ligue") : t("f.region")}</span>
         <select id="f-ligue" style="max-width:170px"><option value="">${t("f.all")}</option>${ligues.map((l) => html`<option value="${l}" ${raw(l === f.ligue ? "selected" : "")}>${l} - ${data.ligueName(l)}</option>`)}</select></label>
       <label class="field"><span>${t("f.name")}</span><input type="search" id="f-q" value="${f.q}" style="width:150px"></label>
       <label class="checkline"><input type="checkbox" id="f-podium" ${raw(f.podium ? "checked" : "")}>${t("f.podiums")}</label>
       <button class="btn btn-ghost" type="button" id="f-reset">${t("f.reset")}</button>`;
     bindDateControls(main, (m) => { f.month = m; reload(); });
     for (const k of ["sexe", "cat", "club", "dept", "ligue"]) {
-      $(`#f-${k}`).addEventListener("change", (e) => { f[k] = e.target.value; refresh(); });
+      $(`#f-${k}`)?.addEventListener("change", (e) => { f[k] = e.target.value; refresh(); });
     }
     $("#f-q").addEventListener("input", debounce((e) => { f.q = e.target.value; refresh(); }, 180));
     $("#f-podium").addEventListener("change", (e) => { f.podium = e.target.checked; refresh(); });
@@ -334,13 +341,15 @@ export async function render(main, { query }) {
       })),
       { key: "delta", label: t("rk.col.delta"), align: "r", cls: "num", sort: (r) => r.delta[sortMethod],
         render: (r) => { const d = r.delta[sortMethod]; return d == null ? html`<span class="dim">—</span>` : html`<span class="${d > 0 ? "delta-up" : d < 0 ? "delta-down" : ""}">${fmtSigned(d)}</span>`; } },
-      { key: "lic", label: t("rk.col.licence"), cls: "num dim", sort: (r) => Number(r.lic) || 0, defaultDir: 1, render: (r) => r.lic },
+      ...(fr ? [{ key: "lic", label: t("rk.col.licence"), cls: "num dim", sort: (r) => Number(r.lic) || 0, defaultDir: 1, render: (r) => r.lic }] : []),
       { key: "cat", label: t("rk.col.cat"), sort: (r) => r.cat, defaultDir: 1 },
       { key: "pct", label: t("rk.col.pct"), align: "r", cls: "num", sort: (r) => r.pct[sortMethod],
         render: (r) => (r.pct[sortMethod] == null ? html`<span class="dim">—</span>`
           : html`<span title="${t("rk.pct.tip", { p: data.fmtPct(r.pct[sortMethod]), cat: fmtCat(r.cat) })}">${data.fmtPct(r.pct[sortMethod])}</span>`) },
-      { key: "club", label: t("rk.col.club"), cls: "num", sort: (r) => r.clubCode, defaultDir: 1,
-        render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "" },
+      fr ? { key: "club", label: t("rk.col.club"), cls: "num", sort: (r) => r.clubCode, defaultDir: 1,
+        render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}" title="${data.clubName(r.club)}">${r.clubCode}</a>` : "" }
+        : { key: "club", label: t("rk.col.club"), sort: (r) => data.clubName(r.club), defaultDir: 1,
+          render: (r) => r.clubCode ? html`<a href="${link.club(r.clubCode)}">${data.clubName(r.club)}</a>` : "" },
     ];
     const opts = {
       columns: cols, rows: ranked, sortKey: "pos", sortDir: 1,
@@ -386,8 +395,8 @@ export async function render(main, { query }) {
     updateCompareBtn();
 
     $("#export").onclick = () => downloadCsv(`cn_${terrain}_${f.month}.csv`,
-      ["place", "nom", "licence", "categorie", "club", ...methods.map((m) => `cn_${m}`)],
-      table.rows().map((r) => [r.pos ?? "", r.nom, r.lic, r.cat, r.club, ...methods.map((m) => r.cn[m] ?? "")]));
+      ["place", "nom", ...(fr ? ["licence"] : []), "categorie", "club", ...methods.map((m) => `cn_${m}`)],
+      table.rows().map((r) => [r.pos ?? "", r.nom, ...(fr ? [r.lic] : []), r.cat, fr ? r.club : data.clubName(r.club), ...methods.map((m) => r.cn[m] ?? "")]));
   }
   function updateCompareBtn() {
     const n = store.get().compare.length;
@@ -418,6 +427,17 @@ export async function render(main, { query }) {
   }
 
   await reload();
-  const showTab = bindPageTabs(main, tabs, tab);
+  // the federation's table, drawn when its tab is first shown
+  let fedDrawn = false;
+  const showTab = bindPageTabs(main, tabs, tab, async (k) => {
+    // the federation's table has its own choices: the Ozimut list's filters and figures give way to it
+    for (const sel of ["#filters", "#stats", "#notice"]) {
+      const el = $(sel)?.closest(".filters-fold") || $(sel);
+      if (el) el.hidden = k === "federation";
+    }
+    if (k !== "federation" || fedDrawn) return;
+    fedDrawn = true;
+    (await import("./fedranking.js")).drawFederation($("#fed"), query);
+  });
   return { title: t("rk.title"), onRunnerPick: (lic) => { showTab("classement"); return pick(lic); } };
 }

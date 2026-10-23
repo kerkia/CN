@@ -68,14 +68,18 @@ K_BY_YEAR: dict[int, float] = {2022: 0.95}
 DEFAULT_K = 1.0
 
 
-def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: float = 1000.0, days: int | None = 365) -> dict:
+def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: float = 1000.0, days: int | None = 365,
+              prior=None) -> dict:
     """A method computed for a country without official CNs: no runner has a level its first circuits could be valued
     from. First pass: everyone starts at the same `level` for the archive's first `days` in each ranking family (a
     circuit's value is then its runners' common pace); each next pass: everyone starts from their own first computed
     level — the first season valued by the levels it shows, as France's first season is by the CN its runners held then.
     The recalage brings the scale to its usual level afterwards. `days=None`: the seeds never expire — a runner without a
     CN of their own still values a circuit at their first level (a country whose archive has gaps longer than the window:
-    without it, nobody holds a CN after one and no circuit is valued again)."""
+    without it, nobody holds a CN after one and no circuit is valued again). `prior(category) -> float`: the first pass
+    starts each runner at `level` x their first category's usual level against H21 instead of all equal — groups that
+    never share a circuit (children, veterans racing among themselves) otherwise come out on one level each (Spain,
+    2026-10-22: every category's median near the same value, a 12-year-old above the elites)."""
     firsts = {fam: d for fam, d in (
         (family(t), d) for t, d in engine.conn.execute(
             """SELECT comp.terrain, MIN(comp.date_iso) FROM competitions comp WHERE comp.date_iso IS NOT NULL
@@ -87,7 +91,15 @@ def bootstrap(engine: "CnEngine", spec: "MethodSpec", passes: int = 2, level: fl
     who = engine.conn.execute(
         """SELECT DISTINCT r.licence, comp.terrain FROM results r JOIN circuits c ON c.circuit_id = r.circuit_id
            JOIN competitions comp ON comp.course_id = c.course_id WHERE r.licence IS NOT NULL""").fetchall()
-    engine.seeds_override = {(lic, family(t)): (level, None) for lic, t in who}
+    first_cat: dict = {}
+    if prior:
+        for lic, t, cat in engine.conn.execute(
+                """SELECT r.licence, comp.terrain, r.categorie FROM results r JOIN circuits c ON c.circuit_id = r.circuit_id
+                   JOIN competitions comp ON comp.course_id = c.course_id
+                   WHERE r.licence IS NOT NULL AND r.categorie IS NOT NULL ORDER BY comp.date_iso"""):
+            first_cat.setdefault((lic, family(t)), cat)
+    engine.seeds_override = {(lic, family(t)): (level * (prior(first_cat.get((lic, family(t)))) if prior else 1.0), None)
+                             for lic, t in who}
     stats = {}
     for i in range(passes):
         for table in ("scores", "cn_history", "circuit_values", "rescale_factors", "normalisation"):
@@ -274,7 +286,9 @@ class MethodSpec:
     description: str = ""
 
 
-def build_methods() -> dict[str, MethodSpec]:
+def build_methods(overrides: dict | None = None) -> dict[str, MethodSpec]:
+    """The computed methods. `overrides`: a country's own parameters (countries/<cc>, `Country.method_params`), applied to
+    the usual level and so to the Ozimut method derived from it; `by_terrain` merged discipline by discipline."""
     # The method published since 2026-10-16 (owner: a method everyone can follow, at a cost of a few hundredths of a point):
     # FFCO's score with the ARITHMETIC mean of CN J-15 x time over the fastest share of the ranked CN holders, the usual
     # level (fair) and the Top (top6w) both plain weighted means. The share of the field per discipline was chosen by one
@@ -324,6 +338,12 @@ def build_methods() -> dict[str, MethodSpec]:
         # usual level unchanged, lost 0.08. In both steps, so that the circuits' values follow.
         junior_fade=1.0,
     )
+    if overrides:
+        o = dict(overrides)
+        bt = {t: dict(v) for t, v in fair.by_terrain.items()}
+        for t, v in (o.pop("by_terrain", None) or {}).items():
+            bt.setdefault(t, {}).update(v)
+        fair = dataclasses.replace(fair, by_terrain=bt, **o)
     # The recalage (2026-10-13, made for the geometric pair, shared by the linear one since 2026-10-16): each month a
     # factor brings the mean of the best 20 % of the index - the cohort the published method's 6 places give - to 5600,
     # the drift of the raw scale over ten years corrected, counted in calendar months, carried 10 months (7 left the forest
