@@ -30,7 +30,7 @@ export async function render(main, { query = {}, organiser = null } = {}) {
   let di = 0, ci = 0, publishing = query.publier === "1", sessionNote = "";
 
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/orga-resultats">${t("or.title")}</a><span>›</span><span>${organiser?.name || t("dep.title")}</span></div>
+    ${organiser ? html`<a class="back-link" href="#/orga-resultats?course=${encodeURIComponent(organiser.key)}">‹ ${organiser.name}</a>` : ""}
     <div class="page-head"><div><h1>${t("dep.title")}</h1><p class="lede">${t("dep.lede")}</p></div></div>
     <ol class="dep-steps" id="dep-steps"></ol>
     <div id="dep-body"></div>

@@ -67,7 +67,7 @@ export async function render(main, { query = {} } = {}) {
   const idx = mine || query.course === local.LOCAL ? null : await getProv("index.json");
   const withSplits = mine ? (mine.splits ? [mine] : []) : (idx?.races || []).filter((r) => r.splits);
   main.innerHTML = html`
-    <div class="crumbs" id="sp-crumbs"></div>
+    <div id="sp-back"></div>
     <div class="page-head"><div><h1>${t("spl.title")}</h1><p class="lede">${t("spl.lede")}</p></div></div>
     <div id="sp-tabs"></div>
     <div class="filters" id="sp-pick"></div>
@@ -102,11 +102,10 @@ export async function render(main, { query = {} } = {}) {
     const k = docs[di].classes[ci];
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
-    $("#sp-crumbs").innerHTML = key === local.LOCAL
-      ? html`<a href="#/orga-resultats">${t("or.title")}</a><span>›</span><a href="${depositLink()}">${t("dep.title")}</a><span>›</span>
-        <span>${r?.name || ""}</span><span>›</span><span>${t("spl.title")}</span>`
-      : html`<a href="#/resultats">${t("prov.title")}</a><span>›</span>
-      <a href="#/resultats?course=${encodeURIComponent(key)}">${r?.name || key}</a><span>›</span><span>${t("spl.title")}</span>`;
+    // the one way back the menu does not give: the race's results (or the deposit the file came from)
+    $("#sp-back").innerHTML = key === local.LOCAL
+      ? html`<a class="back-link" href="${depositLink()}">‹ ${t("dep.title")}</a>`
+      : html`<a class="back-link" href="#/resultats?course=${encodeURIComponent(key)}">‹ ${r?.name || key}</a>`;
     $("#sp-pick").innerHTML = html`
       ${key === local.LOCAL ? html`<div class="field"><span>${t("dep.file")}</span><span class="pill">${r?.name || ""}</span></div>`
         : html`<label class="field"><span>${t("prov.race")}</span><select id="sp-race" style="max-width:420px">${withSplits.map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}</option>`)}</select></label>`}

@@ -200,13 +200,12 @@ async function eventPage(main, kind, id, org = false) {
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
   catch (e) {
     if (e.code === "locked") return unlockPage(main, kind, id);
-    main.innerHTML = html`<div class="crumbs"><a href="${home}">${homeTitle}</a></div><div class="card"><div class="empty">${errText(e)}</div></div>`;
+    main.innerHTML = html`<div class="card"><div class="empty">${errText(e)}</div></div>`;
     return { title: homeTitle };
   }
   const A = data.analysis, organiser = data.you.organiser;
   if (org && !organiser) {
-    main.innerHTML = html`<div class="crumbs"><a href="${home}">${homeTitle}</a></div>
-      <div class="card"><div class="empty">${t("sh.org.notOrg")} <a href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")} →</a></div></div>`;
+    main.innerHTML = html`<div class="card"><div class="empty">${t("sh.org.notOrg")} <a href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")} →</a></div></div>`;
     return { title: homeTitle };
   }
   let race = null;
@@ -257,8 +256,7 @@ async function eventPage(main, kind, id, org = false) {
 }
 
 function unlockPage(main, kind, id) {
-  main.innerHTML = html`<div class="crumbs"><a href="${ROUTE[kind]}">${t(`sh.${kind}.title`)}</a></div>
-    <section class="card account-card" style="max-width:460px"><div class="card-body">
+  main.innerHTML = html`<section class="card account-card" style="max-width:460px"><div class="card-body">
       <p>${t("sh.locked")}</p>
       <label class="field"><span>${t("sh.pw")}</span><input type="password" id="sh-unlock-pw" autocomplete="off"></label>
       <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn btn-primary" id="sh-unlock">${t("sh.unlock")}</button><span class="muted" id="sh-unlock-note"></span></div></div></section>`;

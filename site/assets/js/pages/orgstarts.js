@@ -45,8 +45,7 @@ export async function render(main, { query = {} } = {}) {
   if (query.course) {
     const race = mine.find((x) => x.key === query.course);
     if (!race) {
-      main.innerHTML = html`<div class="crumbs"><a href="#/orga-horaires">${t("os.title")}</a></div>
-        <div class="card"><div class="empty">${t("os.notMine")}</div></div>`;
+      main.innerHTML = html`<div class="card"><div class="empty">${t("os.notMine")}</div></div>`;
       return { title: t("os.title") };
     }
     return deposit(main, race);
@@ -86,7 +85,6 @@ async function deposit(main, race) {
   const e = race.e;
   let file = null, read = null;
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/orga-horaires">${t("os.title")}</a></div>
     <div class="page-head"><div><h1>${e.name}</h1>
       <p class="lede meta"><span>${fmtDate(e.date)}</span>${e.place ? html`<span>${e.place}</span>` : ""}${e.org ? html`<span>${e.org}</span>` : ""}
         ${e.reg?.count ? html`<span>${tn("os.reg", e.reg.count, { n: fmt(e.reg.count) })}</span>` : ""}</p></div></div>

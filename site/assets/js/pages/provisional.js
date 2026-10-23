@@ -218,8 +218,6 @@ async function detail(main, idx, query) {
   };
 
   main.innerHTML = html`
-    <div class="crumbs">${race.date_iso > new Date().toISOString().slice(0, 10)
-      ? html`<a href="#/agenda${race.agenda_id ? `?id=${race.agenda_id}` : /^d/.test(race.key) ? `?id=${race.key}` : ""}">${t("nav.agenda")}</a>` : html`<a href="#/resultats">${t("prov.title")}</a>`}<span>›</span><span>${race.name}</span></div>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("spl.title")} →</a>` : ""}

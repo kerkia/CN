@@ -33,8 +33,7 @@ export async function render(main, { query = {} } = {}) {
   if (query.course) {
     const race = mine.find((r) => r.key === query.course);
     if (!race) {
-      main.innerHTML = html`<div class="crumbs"><a href="#/orga-resultats">${t("or.title")}</a></div>
-        <div class="card"><div class="empty">${t("or.notMine")}</div></div>`;
+      main.innerHTML = html`<div class="card"><div class="empty">${t("or.notMine")}</div></div>`;
       return { title: t("or.title") };
     }
     const dep = await import("./deposit.js");

@@ -331,8 +331,9 @@ p { margin: 0; }
 .net-sub .lede { margin-top: 0; flex: 1 1 320px; }
 .net-sub > .seg { flex: none; }
 @media (max-width: 960px) { .net-sub { flex-wrap: wrap; } .net-sub > .seg { margin-left: auto; } }
-.crumbs { font-size: 13px; color: var(--ink-3); margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-.crumbs a { color: var(--ink-2); }
+/* no breadcrumbs (owner, 2026-10-23: they repeated the menu and the title); a page reached from another one that the menu
+   does not lead back to has one link to it above its head */
+.back-link { display: inline-block; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
 .boot { display: grid; place-items: center; gap: 12px; padding: 120px 0; color: var(--ink-3); }
 .spinner {
   width: 28px; height: 28px; border-radius: 50%;

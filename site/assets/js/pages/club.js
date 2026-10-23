@@ -34,7 +34,6 @@ export async function render(main, { arg: code, query }) {
   const tabs = [["resultats", t("cl.tab.week")], ["evolution", t("cl.tab.evolution")], ["elite", t("cl.tab.elite")], ["membres", t("cl.tab.roster")]];
   const tab = tabFrom(tabs, query);
   main.innerHTML = html`
-    <div class="crumbs"><a href="#/clubs">${t("nav.clubs")}</a><span>›</span><span>${name || code}</span></div>
     <div class="page-head">
       <div><h1>${name || code}</h1>
         <div class="lede meta"><span class="num">${t("col.code")} ${code}</span>
