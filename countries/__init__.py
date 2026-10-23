@@ -15,9 +15,10 @@ from .base import ACCESS, SITE_DATA, Country
 __all__ = ["ACCESS", "SITE_DATA", "Country", "modules", "registry", "get", "write_index", "move_legacy_layout"]
 
 
-# the countries whose agenda alone Ozimut reads (countries/agenda.py; 2026-10-23: the IOF members with a clean source)
-AGENDA_ONLY = ("at", "be", "bg", "br", "by", "ch", "cz", "de", "dk", "ee", "gb", "hk", "il", "it", "jp", "kr", "lt", "ro",
-               "rs", "tr", "ua", "za")
+# the countries whose agenda alone Ozimut reads (countries/agenda.py; 2026-10-23: the IOF members with a clean source;
+# GE, HR, MK from OrienteeringOnline, countries/oonline.py)
+AGENDA_ONLY = ("at", "be", "bg", "br", "by", "ch", "cz", "de", "dk", "ee", "gb", "ge", "hk", "hr", "ie", "il", "it", "jp",
+               "kr", "lt", "mk", "pl", "ro", "rs", "si", "sk", "tr", "ua", "za")
 
 
 def modules() -> list:

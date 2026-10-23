@@ -38,18 +38,23 @@ FORMATS = [
     (NIGHT, r"\bnight\b|\bnacht\b|\bnatt\b|\bnat\b|\byö\b|\bnoční\b|\bnočn|\bnotturn|\bnocn|\béjszakai\b|\böö\b|ナイト|夜間|\bнощ|\bночн|\bнічн"),
     (SPRINT, r"\bsprint|\bknock-?out\b|\bk\.?o\.?\b|\bcity race\b|スプリント|短距離|\bспринт|ספרינט"),
     (MIDDLE, r"\bmiddle\b|\bmiddel\b|\bmitteldistanz|\bmedel\b|\bmellom|\bkeskimatka\b|\bkrátk|\bmittel\b|\bmedia\b|\bmd\b|\bsrednj|\bśredni|\bstredn|ミドル|中距離|\bсредн|\bсередн"),
-    (LONG, r"\blong\b|\blangdistanz|\blång\b|\blang\b|\bpitkä|\bklasick|\bdlouh|\blunga\b|\bld\b|\bdolg|\bdług|\bdlh|ロング|長距離|\bдълг|свръхдълг|\bдлинн|\bудлин|\bдовг|\bклассик"),
+    (LONG, r"\blong\b|\blangdistanz|\blång\b|\blang\b|\bpitkä|\bklasick|\bdlouh|\blunga\b|\bld\b|\bdolg|\bdług|\bdlh|\bduge? staz|\bдолг|ロング|長距離|\bдълг|свръхдълг|\bдлинн|\bудлин|\bдовг|\bклассик"),
 ]
 SPECS = [
     (MTBO, r"\bmtb-?o\b|\bmtbo\b|\bbike-?o\b|\bcykel-?o|\bsykkel-?o|\bmtb\b|\bpp-?o\b|\brasteilysuunnistus\b|\bmountain ?bike\b|\bbtt\b|\bмт[бв]о\b|\bвело"),
     (SKI, r"\bski-?o\b|\bskio\b|\bski\b|\bskid-?o|\bhiihtosuunnistus\b|\blyž|\bsci-?o\b|\bski orienteering\b|\bски\b|\bлыж"),
-    (TRAIL, r"\btrail-?o\b|\bprecision\b|\bpre-?o\b|\btempo-?o\b|沿徑|トレイルo"),
+    (TRAIL, r"\btrail-?o\b|\bprecision\b|\bpre-?o\b|\btempo-?o\b|\btemp-o\b|沿徑|トレイルo"),
 ]
+
+
+def _low(s: str | None) -> str:
+    # (fold takes Japanese kana's marks off: both spellings; « open_sprint »: the underscore a space)
+    return f"{fold(s)} {unicodedata.normalize('NFKC', s or '').lower()}".replace("_", " ")
 
 
 def fmt_of(*texts: str | None) -> str:
     for s in texts:
-        low = f"{fold(s)} {unicodedata.normalize('NFKC', s or '').lower()}"     # (fold takes Japanese kana's marks off)
+        low = _low(s)
         got = next((f for f, rx in FORMATS if re.search(rx, low)), "")
         if got:
             return got
@@ -58,7 +63,9 @@ def fmt_of(*texts: str | None) -> str:
 
 def spec_of(*texts: str | None, default: str = FOOT) -> str:
     for s in texts:
-        low = f"{fold(s)} {unicodedata.normalize('NFKC', s or '').lower()}"
+        if re.search(r"\bTempO\b", s or ""):          # (written so: « tempo » alone is a word in Italian, Spanish…)
+            return TRAIL
+        low = _low(s)
         got = next((f for f, rx in SPECS if re.search(rx, low)), "")
         if got:
             return got
@@ -99,10 +106,12 @@ def event(cc: str, id_, day: str, name: str, *, kind: str = "c", end: str | None
     return {k: v for k, v in row.items() if v not in (None, "", [], {})} | {"cn": False}
 
 
-def hooks(country, read, version: int, *, sources: dict | None = None, regions: list | None = None, depts: dict | None = None):
+def hooks(country, read, version: int, *, sources: dict | None = None, regions: list | None = None, depts: dict | None = None,
+          pause: float = 1.0):
     """The three functions update.py calls on a country's module: refresh_agenda(root), agenda_path(root),
     agenda_current(root). `read(http, today, prev)` returns the events (`prev`: the last file, or None; `read` may take
-    `(http, today)` only); `regions`: [{name, depts: [...]}] and `depts` {code: name} when the source places its events."""
+    `(http, today)` only); `regions`: [{name, depts: [...]}] and `depts` {code: name} when the source places its events;
+    `pause`: the seconds between two requests to one host (a robots.txt's Crawl-delay)."""
     import inspect
     wants_prev = len(inspect.signature(read).parameters) >= 3
 
@@ -125,7 +134,7 @@ def hooks(country, read, version: int, *, sources: dict | None = None, regions: 
             prev = None
         if prev and prev.get("v") != version:
             prev = None
-        with Http(pause=1.0, lang=country.lang) as http:
+        with Http(pause=pause, lang=country.lang) as http:
             events = read(http, today, prev) if wants_prev else read(http, today)
             n = http.requests
         since = (today - timedelta(days=BACK_DAYS)).isoformat()

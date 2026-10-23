@@ -1467,7 +1467,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
   `club_packs` (67, a prime: 64 left 10 files empty and one with 162 clubs; club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
   Spain ~1,250 files instead of ~7,500.
-- **Agendas of 22 more countries** (2026-10-23; the agenda only, the owner's request: « for every IOF country, its calendar
+- **Agendas of 29 more countries** (2026-10-23; the agenda only, the owner's request: « for every IOF country, its calendar
   where a clean way exists »). The study (six research agents, every IOF member, each source fetched with our user agent; samples
   kept in the session's scratch): a clean source is a public API, an export (CSV, iCal) or a stable server-rendered list, read
   without a login or a key, never behind a bot challenge. **Read**: AT (ANNE's JSON API, anne-api.oefol.at), BE (O'Punch's JSON
@@ -1481,10 +1481,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (Cloudflare challenges; Eventor's API needs a federation's key — the clean way, ask them), NZ (SiteGround captcha), MD (403),
   HU (mtfsz.hu resets the connection), RU and KZ (orgeo.ru, rufso.ru unreachable), FI (IRMA, a Vaadin app; Navisport has an open API
   but holds the clubs' training series, not the calendar), LV (lof.lv: a private base64 RPC, robots « Disallow: / »); partial,
-  left for later: US (OUSA's Google Calendar, national races only; EventReg), CA (WhyJustRun, a dozen clubs), PL (PZOS's year page,
-  clean HTML), SI (OZS's WordPress calendar), SK (SZOŠ IS, a pager and Crawl-delay 10), IE (one fixtures page, upcoming only), NL
-  (a hand-edited page), CY, CO, AZ, TW (a PDF), HR / MK / GE (OrienteeringOnline.net's postback search: an entry platform, a part of
-  each calendar); nothing found for MX, AR, CL, EC, UY, MT, GR, BA, ME, XK, UZ, SG, MY, TH, PH, VN, IN, PK, MN, KE, MA, TN, IS.
+  left for later: US (OUSA's Google Calendar, national races only; EventReg), CA (WhyJustRun, a dozen clubs), NL (a hand-edited
+  page), CY, CO, AZ, TW (a PDF); nothing found for MX, AR, CL, EC, UY, MT, GR, BA, ME, XK, UZ, SG, MY, TH, PH, VN, IN, PK, MN, KE, MA, TN, IS.
   **Code**: one module a country, `countries/<cc>.py` (`COUNTRY` with `results=False`: its races are not taken into the provisional
   results, `prov/run.py`; `read(http, today[, prev])`), on `countries/agenda.py` (`event()` the agenda's row — discipline and format
   read from names in a score of languages, Cyrillic, Japanese, Chinese and Hebrew included, the cancelled words taken out —, `ics()`,
@@ -1494,6 +1492,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   « du … au … », kept in the list while under way), `level` (« Niveau »: the source's own level or series), no « no online entry »
   box when a source gives no entries, no second place filter when the regions have no subdivisions. About 300 requests a day for
   all 22, ~3 min (the 06:00 agenda run); each agenda's own `AGENDA_VERSION` rebuilds it.
+  **Seven more the same day** (the owner: « add the partial sources too »): PL (PZOS's year page, one row a competition, the
+  stages' disciplines by their icons; « WRE zagraniczne », World Ranking races abroad, left out), SI (OZS's year calendar: the
+  icon gives the discipline and the level, « _1 » the league, « _2 » a national championship; « drugo » events and races abroad
+  left out; « ODPOVEDANO », « PRESTAVLJENO » struck through), SK (SZOŠ IS's year list, 30 rows a page, its robots.txt's
+  Crawl-delay of 10 s kept: `hooks(…, pause=10.0)`, ~1 min), IE (Orienteering Ireland's fixtures, upcoming only; club-closed
+  events left out), and HR, MK, GE from OrienteeringOnline.net (`countries/oonline.py`: the search form's GET then POST with
+  the country's number and the window, the date pickers' `$State` JSON needed; a full page of 30 cut in two; each competition's
+  page read once, when first seen — last day, organiser, place, website, entry deadline; its e-mail never kept —, then taken
+  from the previous file; only the competitions taking entries there). About 30 more requests a day.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la
