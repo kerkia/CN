@@ -1518,11 +1518,11 @@ export function build(X) {
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Splits</p>
-          <h2>Passings, leaders and followers, regularity, timing check</h2>
+          <h2>Passings, autonomy, regularity, timing check</h2>
           <ul class="mx-list">
             <li><span>The <b>passing times chart</b> places each runner at the time of day they punched each control (their start time plus their
               cumulative time): lines that meet are runners together, a steeper line is a runner catching others up.</span></li>
-            <li><span><b>Leader / follower</b>: on each leg, two runners of the course who left the same control less than 20 seconds apart are compared
+            <li><span><b>Autonomy</b>, who followed whom: on each leg, two runners of the course who left the same control less than 20 seconds apart are compared
               all along it, each assumed to move at a steady speed between the two controls. Less than 7 seconds apart, they run together; from 7 to 20
               seconds, less and less. The one who passes second follows the other. The follower index is the time run behind minus the time run in front,
               as a share of the race time: positive for a follower, negative for a leader. Following saves time (the other reads the map and opens the

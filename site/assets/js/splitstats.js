@@ -2,7 +2,7 @@
 // [{ r, cum }] — r a runner of prov/model.py's shape (start_s: the start, seconds after midnight), cum the cumulative
 // times at each control then the finish (null when unknown) — the results out.
 
-/** « Lièvre / suiveur »: who ran behind whom. On each leg, two runners who left its first control within `t2` seconds of
+/** « Autonomie » (« Lièvre / suiveur » until 2026-10-23): who ran behind whom. On each leg, two runners who left its first control within `t2` seconds of
  * each other are compared all along it, each one's progress taken as steady between the two controls: where the time
  * between them is under `t1` they ran together (weight 1), from `t1` to `t2` less and less (weight down to 0); the one
  * passing later is behind — following. A runner's leg is followed (or led) for the share of it run so behind (or in

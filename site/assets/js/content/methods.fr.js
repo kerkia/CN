@@ -1520,11 +1520,11 @@ export function build(X) {
         </section>
         <section class="mx-slide">
           <p class="mx-kicker">Temps intermédiaires</p>
-          <h2>Passages, lièvres et suiveurs, régularité, contrôle des temps</h2>
+          <h2>Passages, autonomie, régularité, contrôle des temps</h2>
           <ul class="mx-list">
             <li><span>Le <b>graphique des passages</b> place chaque coureur à l'heure où il pointe chaque poste (son heure de départ plus son temps cumulé) :
               des lignes qui se rejoignent sont des coureurs ensemble, une ligne plus raide est un coureur qui en rattrape d'autres.</span></li>
-            <li><span><b>Lièvre / suiveur</b> : sur chaque tronçon, deux coureurs du circuit partis du même poste à moins de 20 secondes d'intervalle sont
+            <li><span><b>Autonomie</b>, qui a suivi qui : sur chaque tronçon, deux coureurs du circuit partis du même poste à moins de 20 secondes d'intervalle sont
               comparés tout du long, chacun supposé avancer à vitesse régulière entre les deux postes. À moins de 7 secondes l'un de l'autre, ils courent
               ensemble ; de 7 à 20 secondes, de moins en moins. Celui qui passe le second suit l'autre. L'indice suiveur est le temps couru derrière moins
               le temps couru devant, rapporté au temps de course : positif pour un suiveur, négatif pour un lièvre. Suivre fait gagner du temps (l'autre

@@ -15,7 +15,7 @@
 //   (WinSplits' .spl files, liveresultat, IOF XML);
 // - Bilan: one row per runner (legs won, mean leg rank, mistakes, time lost, usual pace, regularity, duels won);
 // - Passages: each runner's passages against the clock, control by control — packs and catch-ups show as lines that meet;
-// - Lièvre / suiveur: within a circuit, who ran behind whom, leg by leg, each one's progress taken as steady between two
+// - Autonomie (« Lièvre / suiveur » until 2026-10-23): within a circuit, who ran behind whom, leg by leg, each one's progress taken as steady between two
 //   controls (splitstats.followers; the followed legs are also marked in Tableau);
 // - Régularité: each leg's performance index (the leg's reference time ÷ the runner's) and its spread, per runner and per
 //   leg (splitstats.regularity; 2026-10-22, the last three after MeOSDjango's analyses).
@@ -98,7 +98,7 @@ export async function render(main, { query = {} } = {}) {
   // perdu »): a time lost on the leg of N % of the leg's time and of N seconds, both
   let errPct = Number(query.ep) >= 0 && query.ep != null && query.ep !== "" ? Number(query.ep) : ERR_DEFAULT.pct;
   let errS = Number(query.es) >= 0 && query.es != null && query.es !== "" ? Number(query.es) : ERR_DEFAULT.s;
-  // « Lièvre / suiveur »: together within t1 seconds, less and less up to t2
+  // « Autonomie »: together within t1 seconds, less and less up to t2
   let ft1 = Number(query.f1) >= 0 && query.f1 ? Number(query.f1) : FOLLOW_DEFAULT.t1;
   let ft2 = Number(query.f2) > 0 && query.f2 ? Number(query.f2) : FOLLOW_DEFAULT.t2;
   let passAll = query.pa !== "0";             // « Passages »: every runner faint behind the runners compared
@@ -155,14 +155,14 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-f2")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v > ft1) { ft2 = v; draw(); } });
     $$('[data-seg="spa"]').forEach((b) => b.addEventListener("click", () => { passAll = b.dataset.value === "all"; pickers(); draw(); }));
   }
-  // the race's name as the title (the races are chosen on « Analyse de course »), its day, place and organiser beside it; the
-  // one way back the menu does not give: the list (or the deposit the file came from); the race's results or its live page
+  // the race's name as the title (the races are chosen on « Analyse de course »), its day, place and organiser beside it, and
+  // the race's results or its live page; no link back to the list: the menu's « Analyse de course » is it (owner, 2026-10-23).
+  // A file under deposit keeps its way back to the deposit, which the menu does not give
   function head(r) {
     if (key === local.LOCAL) {
       $("#sp-back").innerHTML = html`<a class="back-link" href="${depositLink()}">‹ ${t("dep.title")}</a>`;
       return;
     }
-    $("#sp-back").innerHTML = html`<a class="back-link" href="${LANDING}">‹ ${t("nav.raceAnalysis")}</a>`;
     if (live) {
       const info = w.st.info || {};
       $("#sp-title").innerHTML = html`${info.name || live} <span class="lv-badge">${t("lv.badge")}</span>`;

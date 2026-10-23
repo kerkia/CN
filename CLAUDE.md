@@ -361,7 +361,7 @@ menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still w
 `#/analyse-course`, route `splits`, menu « Courses » after « En direct »; `#/temps-inter` still opens it): without `course=` it
 lists the site's country's races of `prov/index.json` with split times, the latest first (`pages/racelist.js`: discipline,
 « Mes courses seulement », search; « ma course » where one is recognised), each opening the analysis (`splits.js`: the race's
-name as title, « ‹ Analyse de course » back, « Résultats de la course → »; no race selector any more); « Voir » on « Résultats »
+name as title, no link back to the list — the menu is it (owner) —, « Résultats de la course → »; no race selector any more); « Voir » on « Résultats »
 and the race page's buttons lead there. **Live races** (`course=direct-<race>`, `livesplits.js`): the live relay's classes
 (`/ws/<race>`, subscribed `"*"`) read as one document of the provisional shape in the browser (`toDoc`: status 0 → ok, 9/10 →
 « run », shown « en course »; the radio controls are the controls, code % 1000 when unnamed; nothing stored); drawn once the
@@ -378,7 +378,7 @@ control for ≥ 2 runners = its unit or the previous one off the right time, alo
 the others punched = punched before the start, one code twice with one time = the source's fault, that control left out) on
 « Déposer » step 2 (a card « Contrôle des temps ») and above every view of « Temps intermédiaires » (the cells framed in Tableau;
 `provisional.clock` writes negative times « −11:17 »); three views (`splitstats.js`): « Passages » (clock time × control,
-`charts.passChart`), « Lièvre / suiveur » (pairs leaving a control within T2 = 20 s, compared along the leg with each one's progress
+`charts.passChart`), « Autonomie » (« Lièvre / suiveur » until 2026-10-23, owner; pairs leaving a control within T2 = 20 s, compared along the leg with each one's progress
 steady between controls: weight 1 under T1 = 7 s, falling to 0 at T2, both adjustable `?f1=&f2=`; the one passing later follows;
 index = time behind − time in front over the race time; followed legs barred in Tableau), « Régularité » (index = the leg's mean of
 its best quarter ÷ the runner's time; irregularity = its standard deviation weighted by the reference times over the runner's
