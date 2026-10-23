@@ -37,7 +37,7 @@ from pathlib import Path
 
 import numpy as np
 
-from site_io import dump
+from site_io import Courses, dump
 from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
@@ -101,15 +101,16 @@ def circuit_stats(rows: list) -> dict | None:
 def collect(comps: dict) -> dict:
     """Per competition: its season, terrain, scopes, date and summed circuit quantities."""
     out = {}
+    courses = Courses(OUT)
     for cid, c in comps.items():
         terrain, season = c[6], int(c[7])
         if terrain not in TERRAINS or season < FIRST - 1:
             continue
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists():
+        res = courses.get(cid)
+        if res is None:
             continue
         acc = None
-        for circ in load(path)["circuits"]:
+        for circ in res["circuits"]:
             s = circuit_stats(circ["rows"])
             if s is None:
                 continue

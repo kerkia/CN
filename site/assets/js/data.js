@@ -227,7 +227,14 @@ export async function runnerRaces(lic) {
   const b = await getJson(`r/${bucket}.json`);
   return (b && b[n]) || [];
 }
-export const course = (id) => getJson(`c/${id}.json`);
+// c/: five competitions to a file by their id (meta.c_group, site_io.course_file: g<id // c_group>.json = {id: results}),
+// else one a competition (data built before 2026-10-23)
+export const course = async (id) => {
+  const k = META?.c_group;
+  if (!k) return getJson(`c/${id}.json`);
+  const name = /^\d+$/.test(String(id)) ? `g${Math.floor(Number(id) / k)}` : String(id);
+  return (await getJson(`c/${name}.json`))?.[id] ?? null;
+};
 /** A runner's races of the 12 months to `month` in a discipline, and how many were mispunched (« pm »): { n, pm }. */
 export function pmRate(races, terrain, month) {
   const from = new Date(Date.parse(month) - 365 * 86400e3).toISOString().slice(0, 10);

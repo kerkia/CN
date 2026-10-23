@@ -166,10 +166,19 @@ async function winners(format) {
   const cutoff = new Date(Date.now() - 2 * 365 * 864e5).toISOString().slice(0, 10);
   const ids = Object.entries(comps.rows).filter(([, r]) => r[col.terrain] === terrain && r[col.epreuve] === format && r[col.date] >= cutoff && r[col.n] >= 40)
     .sort((a, b) => b[1][col.date].localeCompare(a[1][col.date])).slice(0, 90).map(([id]) => id);
+  // c/: five competitions to a file by their id (meta.c_group; data.js course), each file read once
+  const k = (await getData("meta.json"))?.c_group;
+  const fileOf = (id) => (k ? `c/g${Math.floor(Number(id) / k)}.json` : `c/${id}.json`);
+  const names = [...new Set(ids.map(fileOf))];
+  const read = new Map();
+  for (let i = 0; i < names.length; i += 10) {
+    const part = names.slice(i, i + 10);
+    (await Promise.all(part.map((n) => getData(n)))).forEach((f, j) => read.set(part[j], f));
+  }
   const out = [];
-  for (let i = 0; i < ids.length; i += 10) {
-    const files = await Promise.all(ids.slice(i, i + 10).map((id) => getData(`c/${id}.json`)));
-    for (const f of files) for (const c of f?.circuits || []) {
+  for (const id of ids) {
+    const f = k ? read.get(fileOf(id))?.[id] : read.get(fileOf(id));
+    for (const c of f?.circuits || []) {
       const w = c.rows?.[0];
       if (!c.dist || !w || w[1] !== 1 || w[3] !== "ok" || !(w[2] > 0) || c.rows.length < 5) continue;
       const pace = w[2] / c.dist;

@@ -18,7 +18,7 @@ laid out so each page loads only what it shows.
     site/data/snap/attr_{Y}.json   runner category & club as of each year
     site/data/snap/{m}_{t}_{Y}.json  CN at each month-end of year Y
     site/data/r/{bucket}.json      race-by-race detail, 10 runners per file
-    site/data/c/{course}.json      full results of one competition
+    site/data/c/g{id // 5}.json    full results of the competitions, five to a file by id
     site/data/club/{code}.json     monthly club aggregates (via site_extras.py)
 
 Month-end CNs for the computed methods are *recomputed* here from the stored
@@ -51,7 +51,7 @@ from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, fade_factors
 from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
 import privacy
 import site_extras
-from site_io import WRITES, club_pack, dump, prune, runner_bucket
+from site_io import COURSE_GROUP, WRITES, club_pack, course_file, dump, prune, runner_bucket
 
 ROOT = Path(__file__).parent
 import paths  # noqa: E402
@@ -461,6 +461,7 @@ def main(argv: list[str] | None = None) -> None:
                 lic, None, o["temps_s"], "nc", o["categorie"], o["club"],
                 None, o["cn_j15"], *([None, None] * len(COMPUTED)),
             ])
+    c_files = defaultdict(dict)                 # c/: five competitions a file (site_io.course_file)
     for course_id, circ in by_course.items():
         out = []
         for cid, rows in circ.items():
@@ -476,8 +477,10 @@ def main(argv: list[str] | None = None) -> None:
                 "value": value, "rows": rows,
             })
         out.sort(key=lambda c: c["name"] or "")
-        dump(OUT / "c" / f"{course_id}.json", {"course": course_id, "circuits": out})
-    prune(OUT / "c", {f"{cid}.json" for cid in by_course})
+        c_files[course_file(course_id)][str(course_id)] = {"course": course_id, "circuits": out}
+    for name, group in c_files.items():
+        dump(OUT / "c" / name, dict(sorted(group.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else 0)))
+    prune(OUT / "c", set(c_files))
 
     # which competitions each club took part in (the "Courses" tab, club mode)
     club_courses = defaultdict(set)
@@ -667,6 +670,7 @@ def main(argv: list[str] | None = None) -> None:
         "seasons": years,
         "months": [m.isoformat() for m in months if m.year >= min_season],
         "split_year": SPLIT_YEAR,
+        "c_group": COURSE_GROUP,         # c/: a competition's results in g<id // c_group>.json
         "methods": methods_meta,
         # the knots of the daily factor: a straight line between them
         "normalisation": {t: [[d.isoformat(), round(f, 6)] for d, f in k] for t, k in knots.items()},

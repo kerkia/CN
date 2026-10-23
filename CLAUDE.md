@@ -37,7 +37,11 @@ commit results, personal data, secrets or credentials.
   from `alert@ozimut.com` through Resend (its SPF and bounce address on the `send` subdomain), replies to `REPLY_TO`
   (contact@); one DMARC record for both. **D1** database `ocn` (accounts, sessions, mail queue). **R2** bucket `cn-state` (the
   SQLite database and site data between CI runs). Free plans only: ~10 ms CPU per request (hence the light,
-  peppered PBKDF2), 20 000 files per deployment (site/data is ~13k files), Resend 100 mails/day.
+  peppered PBKDF2), 20 000 files per deployment (France's data ~11k files since `c/` was grouped on 2026-10-23: the competitions five to a
+  file by id, `c/g<id // 5>.json` = {id: results}, meta `c_group`, `site_io.course_file` / `Courses`, `data.course`; a race
+  opened reads ~15 KB instead of ~3. `r/` and `net/` stay ten runners' numbers a file: the runner page, Comparer, a club's
+  members and the « Réseau » tab — 21 lists — each read several, and at //100 that tab would load 306 KB instead of 53),
+  Resend 100 mails/day.
 - Pages secrets (set by the owner with `wrangler pages secret put`): `SESSION_SECRET`, `RESEND_API_KEY`,
   `NOTIFY_SECRET`. GitHub repo secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
   `R2_SECRET_ACCESS_KEY`, `NOTIFY_SECRET`. Never ask for or print their values.

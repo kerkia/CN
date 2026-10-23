@@ -42,3 +42,38 @@ def prune(folder: Path, keep: set[str], pattern: str = "*.json") -> None:
         if f.name not in keep:
             f.unlink()
             WRITES["deleted"] += 1
+
+
+# c/: the competitions' results five to a file by their id (meta `c_group`; 2026-10-23: France's 3 846 files, one a
+# competition, were a quarter of a deployment's 20 000 — a race opened reads ~15 KB instead of ~3)
+COURSE_GROUP = 5
+
+
+def course_file(cid, size: int = COURSE_GROUP) -> str:
+    """The file of c/ a competition is in, as data.js course() reads it: g<id // size>.json, {id: its results}."""
+    s = str(cid)
+    return f"g{int(s) // size}.json" if s.isdigit() else f"{s}.json"
+
+
+class Courses:
+    """The competitions' results files of a site data folder, read a group at a time (the last few kept); a folder
+    built before the groups (one file a competition) is read too."""
+
+    def __init__(self, out: Path, size: int = COURSE_GROUP):
+        self.dir, self.size, self.kept = out / "c", size, {}
+
+    def _file(self, name: str):
+        if name not in self.kept:
+            if len(self.kept) >= 16:
+                self.kept.pop(next(iter(self.kept)))
+            p = self.dir / name
+            self.kept[name] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
+        return self.kept[name]
+
+    def get(self, cid):
+        """A competition's results, {"course", "circuits"}, or None."""
+        group = self._file(course_file(cid, self.size)) or {}
+        if str(cid) in group:
+            return group[str(cid)]
+        one = self._file(f"{cid}.json")
+        return one if one and "circuits" in one else None

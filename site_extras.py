@@ -36,11 +36,12 @@ from pathlib import Path
 
 import numpy as np
 
-from site_io import club_pack, dump, prune, runner_bucket
+from site_io import Courses, club_pack, dump, prune, runner_bucket
 from ffco_scraper.cn import title_weight
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "site" / "data" / "fr"           # a country's folder (main(out)): France's by default
+COURSES = Courses(OUT)
 
 # Points for the first ten of a category, Formula-1 style: a win is worth a
 # lot more than a 10th place, but depth still counts.
@@ -185,11 +186,11 @@ def elite(comps: dict) -> dict:
         d, title, _, _, groupe, _, terrain, season, *_ = c
         if groupe not in ELITE_LEVELS:
             continue
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists():
+        res = COURSES.get(cid)
+        if res is None:
             continue
         coeff = CHAMPIONSHIP_COEFF if "championnat de france" in fold(title) else 1
-        circuits = load(path)["circuits"]
+        circuits = res["circuits"]
         count = defaultdict(lambda: defaultdict(int))        # cat -> circuit index -> n
         for k, circ in enumerate(circuits):
             for r in circ["rows"]:
@@ -272,12 +273,12 @@ def network(comps: dict) -> None:
     lics: list[str] = []
     circ_idx, circ_place, circ_day, circ_terr = [], [], [], []
     for cid, c in comps.items():
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists():
+        res = COURSES.get(cid)
+        if res is None:
             continue
         day = date.fromisoformat(c[0]).toordinal()
         terrain = c[6]
-        for circ in load(path)["circuits"]:
+        for circ in res["circuits"]:
             ix, pl = [], []
             for r in circ["rows"]:
                 lic = r[0]
@@ -352,12 +353,12 @@ def pyramid(comps: dict) -> None:
     per = defaultdict(dict)                  # season | "all" -> licence -> [date, cat, club, flags]
     results = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))   # season -> licence -> terrain -> n
     for cid, c in comps.items():
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists():
+        res = COURSES.get(cid)
+        if res is None:
             continue
         day, terrain, season = c[0], c[6], c[7]
         flag = PYR_FLAG[terrain]
-        for circ in load(path)["circuits"]:
+        for circ in res["circuits"]:
             for r in circ["rows"]:
                 results[season][r[0]][terrain] += 1
                 for key in (season, "all"):
@@ -404,11 +405,11 @@ CFC_FOOT = ("For", "Spr")
 def cfc(comps: dict) -> None:
     per = defaultdict(lambda: {"foot": [], "other": [], "last": ("", None, None)})      # (season, lic) -> scores, last race
     for cid, c in comps.items():
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists() or c[6] not in TERRAINS:
+        res = COURSES.get(cid)
+        if res is None or c[6] not in TERRAINS:
             continue
         season, day, foot = str(c[7]), c[0], c[6] in CFC_FOOT
-        for circ in load(path)["circuits"]:
+        for circ in res["circuits"]:
             for r in circ["rows"]:
                 if r[3] == "nc" or r[6] is None:
                     continue
@@ -467,14 +468,14 @@ def validation(comps: dict) -> None:
     acc = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0] * (1 + nm))))   # [pairs, right per method]
     bias = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: [0] * (2 + nm))))  # [pairs, ahead, pred per method]
     for cid, c in comps.items():
-        path = OUT / "c" / f"{cid}.json"
-        if not path.exists():
+        res = COURSES.get(cid)
+        if res is None:
             continue
         terrain, season = c[6], str(c[7])
         if season != VAL_SEASON:
             continue
         scopes = ("all", "nat") if title_weight(c[1]) > 1 else ("all",)
-        for circ in load(path)["circuits"]:
+        for circ in res["circuits"]:
             rows = [r for r in circ["rows"] if r[3] == "ok" and r[2] and all(r[k] for k in VAL_CNJ15)]
             if len(rows) < 2:
                 continue
@@ -514,9 +515,10 @@ def validation(comps: dict) -> None:
 
 
 def main(out: Path | None = None) -> None:
-    global OUT
+    global OUT, COURSES
     if out is not None:
         OUT = out
+    COURSES = Courses(OUT)                      # the competitions' results (c/), read a group at a time
     t0 = time.monotonic()
     meta = load(OUT / "meta.json")
     years = meta["seasons"]
