@@ -38,6 +38,12 @@ const PUSHED_FROM = 900000000;
 const isPushed = (comp) => Number(comp) >= PUSHED_FROM;
 const MAX_PUT = 100;                             // keys per storage.put (the limit is 128)
 const MOP_MAX = 16 * 1024 * 1024;                // a MeOS message, at most (Ozimut's Function checks it too)
+// A broadcast tied to a competition (« Organisation › Direct », 2026-10-23) is saved to Ozimut's R2 bucket as
+// broadcasts/<number>.json — its competition's key, its name and day, every class in the compact form — at most every
+// SNAP_MS while it changes (by the alarm, which an organiser's race uses for nothing else), and at once when the organiser
+// asks (/snapshot) or ties it to another competition. The workflow copies the folder and « Résultats » reads it
+// (ffco_scraper/prov/sources/broadcast.py): the race's results, split times and start list stay after the race.
+const SNAP_MS = 120000, SNAP_PREFIX = "broadcasts/";
 // Races held on a MeOSDjango site (2026-10-23, meosdjango.js): numbers from 800 000 000, read from the site's course JSON while
 // someone watches — every course at each wake-up (a course gives all its classes), the result passed to `update` as a push
 const MD_ACTIVE_MS = 20000, MD_QUIET_MS = 60000, MD_DONE_MS = 300000;   // while punches keep coming / quiet / race over
@@ -49,6 +55,9 @@ async function lr(env, params) {
   const s = await r.text();
   try { return JSON.parse(s); } catch (e) { return JSON.parse(s.replace(/[\t\r\n]+/g, " ").replace(/\\(?!["\\/bfnrtu])/g, "\\\\")); }
 }
+
+// a competition's key as Ozimut names it (« a12345 », « d… », « es… »), or null
+const raceOf = (s) => (/^[a-z][a-z0-9-]{1,40}$/.test(String(s || "")) ? String(s) : null);
 
 // a class's finishers and runners (non-starters apart), for the course picker
 const countOf = (rows) => [rows.filter((r) => r[4] === 0 && r[3] != null).length, rows.filter((r) => r[4] !== 1 && r[4] !== 11).length];
@@ -104,6 +113,7 @@ export class LiveRace extends DurableObject {
     const url = new URL(request.url);
     if (url.pathname === "/push" && request.method === "POST") return this.push(request, url.searchParams.get("comp") || "");
     if (url.pathname === "/mop" && request.method === "POST") return this.mop(request, url.searchParams.get("comp") || "");
+    if (url.pathname === "/snapshot" && request.method === "POST") return this.snapshotNow(url.searchParams.get("comp") || "", url.searchParams);
     if (request.headers.get("Upgrade") !== "websocket") return new Response("WebSocket expected", { status: 426 });
     const comp = url.pathname.split("/").filter(Boolean).pop();
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
@@ -185,7 +195,8 @@ export class LiveRace extends DurableObject {
     if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return new Response("Not an organiser's race", { status: 400 });
     let p;
     try { p = await request.json(); } catch (e) { return new Response("Bad JSON", { status: 400 }); }
-    return new Response(JSON.stringify(await this.update(comp, p)), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(await this.update(comp, p, { race: raceOf(request.headers.get("X-Race")) })),
+      { headers: { "Content-Type": "application/json" } });
   }
 
   /** MeOS's online results (internal, from Ozimut's /api/live/mop): a <MOPComplete> or <MOPDiff>, perhaps zipped, applied to
@@ -231,7 +242,7 @@ export class LiveRace extends DurableObject {
     let info = null;
     try { info = JSON.parse(decodeURIComponent(request.headers.get("X-Info") || "")); } catch (e) { /* MeOS's own then */ }
     info = { name: info?.name || h.comp?.name || "", organizer: info?.organizer || h.comp?.organizer || "", date: info?.date || h.comp?.date || null };
-    const r = await this.update(comp, { info, order: order.map((id) => h.nm[id]), classes }, { prune: true });
+    const r = await this.update(comp, { info, order: order.map((id) => h.nm[id]), classes }, { prune: true, race: raceOf(request.headers.get("X-Race")) });
     // MeOS's state: a complete race starts afresh; the head, then the classes touched under their own keys
     if (complete) {
       const old = [...(await this.ctx.storage.list({ prefix: "mop:" })).keys()];
@@ -245,12 +256,15 @@ export class LiveRace extends DurableObject {
   }
 
   /** The classes that changed, in the compact form (from the organiser's page or from MeOS), stored and pushed to the pages
-   *  watching; `prune`: the classes not in `order` are dropped (MeOS sends the whole race's list). */
-  async update(comp, p, { prune = false } = {}) {
+   *  watching; `prune`: the classes not in `order` are dropped (MeOS sends the whole race's list); `race`: the competition
+   *  the broadcast is tied to (null: none; undefined: unknown, as before). */
+  async update(comp, p, { prune = false, race } = {}) {
     const m = await this.load();
     const first = !m.pushed;
     m.comp = comp;
     m.pushed = true;
+    let raceChanged = false;
+    if (race !== undefined && (m.race || null) !== race) { m.race = race; raceChanged = true; }
     const now = Date.now();
     let infoChanged = false;
     if (p.info && typeof p.info === "object") {
@@ -312,11 +326,18 @@ export class LiveRace extends DurableObject {
       const sub = ws.deserializeAttachment()?.sub;
       for (const c of changed) if (sub === c || sub === ALL) this.send(ws, { t: "class", c, ...m.data[c] });
     }
+    // a broadcast tied to a competition (or that was): saved for « Résultats » by the alarm, SNAP_MS after its first change
+    let snapDue = false;
+    if (this.env.BUCKET && (m.race || m.snapped) && (changed.length || dropped.length || infoChanged || raceChanged)) {
+      snapDue = !m.dirty;
+      m.dirty = true;
+    }
     // each changed class under its own key, the head apart
     const { data, ...head } = m;
     const puts = [["head", head], ...changed.map((c) => [`c:${c}`, m.data[c]])];
     for (let i = 0; i < puts.length; i += MAX_PUT) await this.ctx.storage.put(Object.fromEntries(puts.slice(i, i + MAX_PUT)));
     if (dropped.length) await this.ctx.storage.delete(dropped.map((c) => `c:${c}`));
+    if (snapDue && !(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(now + SNAP_MS);
     return { ok: true, classes: m.classes.length, changed: changed.length, arrivals: first ? 0 : arrivals.length, viewers: sockets.length };
   }
 
@@ -388,10 +409,47 @@ export class LiveRace extends DurableObject {
     return !same;
   }
 
+  /** The broadcast as « Résultats » reads it, written to R2 (broadcasts/<number>.json); the head records it. */
+  async snapshot(m) {
+    if (!this.env.BUCKET || !isPushed(m.comp)) return false;
+    const body = { format: 1, id: Number(m.comp), race: m.race || null, info: m.info || null, saved: Date.now(), order: m.classes,
+      classes: m.classes.filter((c) => m.data[c]).map((c) => ({ name: c, controls: m.data[c].controls, rows: m.data[c].rows })) };
+    await this.env.BUCKET.put(`${SNAP_PREFIX}${m.comp}.json`, JSON.stringify(body), { httpMetadata: { contentType: "application/json" } });
+    m.dirty = false;
+    m.snapped = body.saved;
+    const { data, ...head } = m;
+    await this.ctx.storage.put("head", head);
+    return true;
+  }
+
+  /** Internal, from Ozimut (functions/api/live/broadcasts.js): the broadcast saved now — the organiser asked, or tied it to
+   *  a competition (`race`: its key, empty for none). Answers { ok, saved, classes }. */
+  async snapshotNow(comp, q) {
+    const out = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    if (!/^\d{9}$/.test(comp) || !isPushed(comp)) return out({ ok: false, error: "not a broadcast" }, 400);
+    const m = await this.load();
+    m.comp = comp;
+    if (q.has("race")) m.race = raceOf(q.get("race"));
+    if (!m.race && !m.snapped) return out({ ok: true, saved: false, classes: m.classes.length });
+    try { await this.snapshot(m); } catch (e) { return out({ ok: false, error: String(e.message || e) }, 500); }
+    return out({ ok: true, saved: true, classes: m.classes.length });
+  }
+
   async alarm() {
+    const m = await this.load();
+    if (m.pushed && isPushed(m.comp)) {
+      // an organiser's race: its pushes carry the news, the alarm only saves it for « Résultats » (a MeOSDjango race, also
+      // passed through `update`, is read by the alarm below)
+      if (m.dirty) {
+        try { await this.snapshot(m); } catch (e) {
+          console.error(`race ${m.comp}: snapshot failed: ${e.message || e}`);
+          await this.ctx.storage.setAlarm(Date.now() + SNAP_MS);
+        }
+      }
+      return;
+    }
     const sockets = this.ctx.getWebSockets();
     if (!sockets.length) return;                 // nobody watching: no more reads until someone comes back
-    const m = await this.load();
     if (md.isMd(m.comp)) {
       // a MeOSDjango race: every course read (update sends what changed), sooner while punches keep coming
       try { await this.readMd(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
@@ -399,7 +457,6 @@ export class LiveRace extends DurableObject {
       await this.ctx.storage.setAlarm(Date.now() + wait);
       return;
     }
-    if (m.pushed) return;                        // an organiser's race: nothing to read, its pushes carry the news
     const watched = new Map();                   // class -> its sockets
     const everyone = [], whole = [];             // whole: the pages watching every class
     for (const ws of sockets) {
@@ -656,7 +713,8 @@ export class Directory extends DurableObject {
   }
 
   /** The organisers' broadcasts (internal, from Ozimut): GET lists them, the newest first; POST { op: "new", name, date,
-   *  organizer, key, mop, by } opens one and answers its number; POST { op: "mop", id, mop } sets its MeOS password (MeOS's
+   *  organizer, key, mop, by, race } opens one and answers its number; POST { op: "link", id, race, name, date, organizer }
+   *  ties it to a competition (race: its key, null for none); POST { op: "mop", id, mop } sets its MeOS password (MeOS's
    *  online results, /api/live/mop); POST { op: "touch", id, via, runners } records a push (via "mop": MeOS's, with the
    *  number of runners it holds). */
   async broadcasts(request) {
@@ -669,9 +727,20 @@ export class Directory extends DurableObject {
       const id = (await this.ctx.storage.get("bnext")) || PUSHED_FROM;
       all.unshift({ id, name: String(b.name || "").slice(0, 160), date: b.date || null, organizer: String(b.organizer || "").slice(0, 160),
         key: b.key ? String(b.key).slice(0, 40) : null, mop: b.mop ? String(b.mop).slice(0, 64) : null, by: b.by ?? null,
-        created: Date.now(), last: null });
+        race: raceOf(b.race), created: Date.now(), last: null });
       await this.ctx.storage.put({ bnext: id + 1, broadcasts: all.slice(0, 200) });
       return out({ id });
+    }
+    if (b.op === "link") {
+      // the competition the broadcast is tied to (null: none), with its name, day and organiser as the competition gives them
+      const x = all.find((y) => y.id === Number(b.id));
+      if (x) {
+        x.race = raceOf(b.race);
+        for (const k of ["name", "organizer"]) if (b[k]) x[k] = String(b[k]).slice(0, 160);
+        if (/^\d{4}-\d\d-\d\d$/.test(b.date || "")) x.date = b.date;
+        await this.ctx.storage.put("broadcasts", all);
+      }
+      return out({ ok: !!x });
     }
     if (b.op === "mop") {
       const x = all.find((y) => y.id === Number(b.id));

@@ -15,6 +15,12 @@ class_name = "LiveRace"
 name = "DIR"
 class_name = "Directory"
 
+# Ozimut's R2 bucket: an organiser's broadcast tied to a competition is saved there (broadcasts/<number>.json) every couple
+# of minutes, for « Résultats » (the workflow copies the folder; ffco_scraper/prov/sources/broadcast.py)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "cn-state"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["LiveRace"]

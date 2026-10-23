@@ -115,6 +115,8 @@ jobs:
           aws s3 sync "$BUCKET/uploads/" "$CN_DATA_DIR/uploads/" --endpoint-url "$R2" --only-show-errors || echo "no uploads"
           # the competitions organisers declared outside France (functions/api/declared.js; ffco_scraper/prov/sources/declared.py)
           aws s3 sync "$BUCKET/declared/" "$CN_DATA_DIR/declared/" --endpoint-url "$R2" --only-show-errors || echo "no declared competitions"
+          # the organisers' live broadcasts tied to a competition, saved by the live relay (live/; ffco_scraper/prov/sources/broadcast.py)
+          aws s3 sync "$BUCKET/broadcasts/" "$CN_DATA_DIR/broadcasts/" --endpoint-url "$R2" --only-show-errors || echo "no broadcasts"
           # the anonymised runners (admin page « Anonymisés », functions/api/admin/anonymized.js; privacy.py): missing, the last list
           # known (kept in the database by update.sync_privacy) is used
           aws s3 cp "$BUCKET/privacy/anonymized.json" "$CN_DATA_DIR/privacy/anonymized.json" --endpoint-url "$R2" --only-show-errors || echo "no anonymised runners list"

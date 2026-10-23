@@ -60,7 +60,7 @@ export async function render(main, { query = {} } = {}) {
     if (!x.p?.startlist) return html`<span class="muted">${t("os.st.none")}</span>`;
     const src = x.p.sources || [];
     return src.includes("upload") ? html`<span class="tag">${t("os.st.yours")}</span>`
-      : html`${t("os.st.found")}${src.length ? html` <span class="muted">(${src.map((s) => (s === "site" ? t("src.site") : s)).join(", ")})</span>` : ""}`;
+      : html`${t("os.st.found")}${src.length ? html` <span class="muted">(${src.map((s) => (s === "site" ? t("src.site") : s === "direct" ? t("src.direct") : s)).join(", ")})</span>` : ""}`;
   };
   const draw = (q = "") => {
     const list = q ? mine.filter((x) => norm(`${x.e.name} ${x.e.org || ""} ${x.e.place || ""}`).includes(norm(q))) : mine;

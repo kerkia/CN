@@ -236,7 +236,7 @@ newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by 
 Online (sequential event ids scanned forward; HTML split tables, start times from the event's .spl file, an
 undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
 event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
-and are not read — the owner is telling Helga's developer), MeOSDjango sites (2026-10-22, `sources/meosdjango.py`: a MeOS results site any club installs — Orientation Data, `heyries`, is one, COCS 73's jolatomme.alwaysdata.net another; each course read once from its JSON `/api/<cid>/course/<hash>/live/`, start times and splits by control code, the coming races' start lists too; `KNOWN` plus the sites met on a club's site — a `/competition/<n>/` link probed, or a page with its signature —, kept in `prov_meta` « meosdjango »; a course re-read only when the competition page's « classés / partants » change), and the organiser's site
+and are not read — the owner is telling Helga's developer), MeOSDjango sites (2026-10-22, `sources/meosdjango.py`: a MeOS results site any club installs — Orientation Data, `heyries`, is one, COCS 73's jolatomme.alwaysdata.net another; each course read once from its JSON `/api/<cid>/course/<hash>/live/`, start times and splits by control code, the coming races' start lists too; `KNOWN` plus the sites met on a club's site — a `/competition/<n>/` link probed, or a page with its signature —, kept in `prov_meta` « meosdjango »; a course re-read only when the competition page's « classés / partants » change), an organiser's own broadcast (« Organisation › Direct » tied to the competition: `sources/broadcast.py`), and the organiser's site
 (a short link text gets the heading it sits under — « Résultats SI » under « Régionale LIFCO, le 11/10/2026 » —, links
 without an extension on file hosts or saying « Résultats / départs / Annonce » are read to find out, Cloudinary's addresses
 kept in their stable form; WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
@@ -773,6 +773,27 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **« En direct » estimates** (2026-10-22): a runner still out shows « arr. ≈ hh:mm » — start + their time at the last radio
   control ÷ the finishers' median there × the finishers' median time (the median time without a punch; 3 finishers at least;
   `live.js` `usualOf`, `eta`).
+  **A broadcast published in « Résultats »** (owner, 2026-10-23: Ozimut's own answer to MeOSDjango's results sites, the
+  dependency gone — a club sending MeOS to Ozimut keeps its results, splits and start list after the race; no public page,
+  every account sees them, the CN columns for France's members as elsewhere): a broadcast is tied to a competition — at its
+  creation (« Compétition »: the club's of France's agenda from yesterday to a week ahead, an administrator's all, or one
+  declared outside France) or later (POST `{ op: "link", id, race }`, null unties) — by its organisers only
+  (`api/live/broadcasts.js` `raceFor`: `_lib/club.js` `findRace` + `organises`, 403 « not organiser »); the directory keeps
+  `race` and the competition's name, day and organiser. `mop.js` and `push.js` pass it to the race's object (`X-Race`), which
+  saves the broadcast to R2 (relay binding `BUCKET` → `cn-state`, `live/wrangler.toml`) as `broadcasts/<number>.json` — the
+  competition's key, its info, every class in the compact form — by its alarm, `SNAP_MS` (2 min) after a change (a pushed
+  race's alarm serves nothing else), and at once on « Publier maintenant » (POST `{ op: "publish", id }`: the object's
+  `/snapshot`, then a `prov` run by `upload.startRun`) or a relink. The workflow copies `broadcasts/` to
+  `$CN_DATA_DIR/broadcasts`; `ffco_scraper/prov/sources/broadcast.py` makes each a document of its competition, source
+  « direct » (`SOURCE_RANK` 5, as the organiser's site; « Diffusion en direct de l'organisateur » on the race page): its
+  results once someone has finished (url `direct:<number>`; the runners still out counted in `live`, so the race shows « en
+  cours » and the « mise en ligne » alert waits; with nobody out it counts as the organiser's final file), before that its
+  start list (`direct:<number>/start`, kind « startlist »: the agenda's box, the start-time alerts; an organiser's deposit
+  under « Horaires » wins); split times only for a class of 4 controls or more (MeOS's « all punches », or an export with
+  them). An untied or retied broadcast takes its documents away from the former competition; a competition not yet in
+  `prov_races` is tried at the next run. Tested locally end to end (scratch `e2e.mjs`: creation with a race, MeOS entries →
+  start list, finishes → results with one runner out, publish, untie, relink, the page's own push, the alarm's save; the source
+  and `run.build` on a test database) — not yet with a real MeOS.
   **MeOSDjango races** (2026-10-23, owner: the Pélussin City Race was live there and not on « En direct »): the relay lists the
   races of the MeOSDjango sites (`live/src/meosdjango.js`, `HOSTS` — append only: a race's number is 800 000 000 + the site's
   place × 1 000 000 + its competition number) of the last 3 and next 7 days beside liveresultat's, today's probed for their last

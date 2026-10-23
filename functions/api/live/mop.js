@@ -32,7 +32,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
   let r;
   try {
     r = await race.fetch(`https://ocn-live/mop?comp=${b.id}`, { method: "POST", body: request.body,
-      headers: { "X-Info": encodeURIComponent(JSON.stringify({ name: b.name, organizer: b.organizer, date: b.date })) } });
+      headers: { "X-Info": encodeURIComponent(JSON.stringify({ name: b.name, organizer: b.organizer, date: b.date })),
+        "X-Race": b.race || "" } });
   } catch (e) {
     return reply("ERROR", 502);
   }

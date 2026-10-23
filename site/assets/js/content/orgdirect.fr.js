@@ -2,8 +2,9 @@
 export const steps = `
   <h3 style="margin:0 0 6px">Avec MeOS : les résultats en ligne</h3>
   <ol class="od-steps">
-    <li>Choisissez la course ci-dessous, ou créez-la. La carte « Depuis MeOS » donne alors trois valeurs : l'adresse, le numéro de la
-      compétition et son mot de passe.</li>
+    <li>Choisissez la course ci-dessous, ou créez-la en choisissant la <b>compétition de votre club</b> : la diffusion est alors
+      aussi publiée dans « Résultats » (voir « Après la course »). La carte « Depuis MeOS » donne trois valeurs : l'adresse, le
+      numéro de la compétition et son mot de passe.</li>
     <li>Dans MeOS, onglet <b>Services</b>, ajoutez le service <b>Résultats en ligne</b>. Cochez « Envoyer sur le web » et recopiez
       l'adresse (URL), l'« Identifiant de la compétition » et le « Mot de passe ». Format d'export : « MeOS Online Protocol XML 2.0 ».
       Un intervalle de 10 à 15 secondes convient.</li>
@@ -12,7 +13,7 @@ export const steps = `
     <li>Cliquez sur « Démarrer ». MeOS envoie d'abord toute la course, puis seulement ce qui change. La carte « Depuis MeOS » indique la
       dernière réception. Il n'y a rien à laisser ouvert sur Ozimut : seul MeOS doit rester connecté à internet.</li>
     <li>Faites un essai la veille, avec la course en préparation : les coureurs apparaissent dans « En direct » avant même le
-      départ.</li>
+      départ, et leurs heures de départ dans l'« Agenda ».</li>
   </ol>
   <h3 style="margin:14px 0 6px">Avec un autre logiciel : avant la course</h3>
   <ol class="od-steps">
@@ -34,13 +35,25 @@ export const steps = `
       pas à une page de relire un fichier toute seule.</li>
     <li>Connectez-vous à Ozimut avec le compte qui crée la diffusion : seul ce compte peut ensuite l'alimenter. Vous pouvez la
       créer la veille, d'ici ou d'un autre ordinateur.</li>
-    <li>Choisissez la course ci-dessous, ou créez-la : son nom, sa date et l'organisateur suffisent.</li>
+    <li>Choisissez la course ci-dessous, ou créez-la : choisissez la compétition de votre club, ou donnez son nom, sa date et
+      l'organisateur.</li>
     <li>Choisissez le fichier exporté, <b>une seule fois</b>. Le navigateur demande l'autorisation de le lire.</li>
     <li>Cliquez sur « Démarrer ». La page relit le fichier toute seule, toutes les 15 secondes par défaut, et n'envoie que ce qui a
       changé.</li>
     <li>Laissez la page ouverte, de préférence dans sa propre fenêtre, et l'ordinateur allumé, sans mise en veille. Si la page est
       rechargée, un clic sur « Reprendre » suffit.</li>
   </ol>
+  <h3 style="margin:14px 0 6px">Après la course : « Résultats »</h3>
+  <ul class="od-steps">
+    <li>Une diffusion liée à une compétition de votre club est enregistrée toutes les quelques minutes et publiée dans
+      <b>Courses › Résultats</b> : les résultats, les temps intermédiaires (dans « Analyse de course ») et, avant le départ, la liste
+      de départ. Les coureurs reçoivent l'alerte « une de mes courses est en ligne » une fois la course finie.</li>
+    <li>« Publier maintenant » enregistre la diffusion tout de suite, sans attendre la mise à jour suivante.</li>
+    <li>Un fichier de résultats déposé ensuite sous <b>Organisation › Résultats</b> passe avant la diffusion, de même que la liste de
+      départ déposée sous « Horaires ».</li>
+    <li>Une diffusion créée sans compétition peut y être liée plus tard, ici même : seuls les membres du club organisateur le
+      peuvent.</li>
+  </ul>
   <h3 style="margin:14px 0 6px">Ce qu'il n'y a pas à faire</h3>
   <ul class="od-steps">
     <li>Les circuits, les catégories, les postes et les coureurs n'ont pas à être déclarés : ils viennent du fichier, et un circuit qui

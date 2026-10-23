@@ -31,7 +31,7 @@ from .model import plain
 from .sources.clubsite import ClubSite, address_other_day, download_url, other_day, other_year, uploaded_before
 from .sources.heyries import BASE as HY_BASE, Heyries
 from .sources.helga import BASE as HG_BASE, Helga
-from .sources import declared, upload
+from .sources import broadcast, declared, upload
 from .sources.liveresultat import API as LR_API, LiveResultat
 from .sources.meosdjango import MeOSDjango, is_meosdjango
 from .sources.oreplay import OReplay
@@ -463,7 +463,7 @@ def region_of(org_code: str | None) -> str | None:
 # The order a race's documents are shown in (the first one opens): the organiser's own files (or a file sent to
 # Ozimut) are the reference; liveresultat comes last — live results are not corrected afterwards. A document missing
 # half the runners of the fullest one loses its rank; then a list by circuit (scored), with splits, the most runners.
-SOURCE_RANK = {"upload": 6, "site": 5, "winsplits": 4, "heyries": 4, "meosdjango": 4, "oreplay": 4, "helga": 3, "liveresultat": 1}
+SOURCE_RANK = {"upload": 6, "site": 5, "direct": 5, "winsplits": 4, "heyries": 4, "meosdjango": 4, "oreplay": 4, "helga": 3, "liveresultat": 1}
 
 
 # The copy for the accounts that have not joined France (prov/pub/; owner, 2026-10-20: names and times for everyone, as
@@ -993,8 +993,8 @@ def build(con, out: Path, today: date) -> int:
                     rlics.update(r["lic"] for r in runners if r["lic"])
                     if parsed.get("live") and race["date_iso"] == clock.date().isoformat():
                         lives.append(parsed["live"])
-                    elif doc["source"] in ("upload", "site"):
-                        final = True               # the organiser's own file: the race is over
+                    elif doc["source"] in ("upload", "site", "direct"):
+                        final = True               # the organiser's own file (or broadcast, nobody out): the race is over
             out_docs.append(entry)
         most = max((sum(len(k["runners"]) for k in e.get("classes") or []) for e in out_docs), default=0)
         for e in out_docs:
@@ -1088,13 +1088,15 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         uploaded = upload.apply(con, Path(db).parent / "uploads", save, parse_any,
                                 reread=store.meta_get(con, "parser_version") != PARSER_VERSION)
         stats["uploads"] = uploaded
+        # the organisers' live broadcasts tied to a competition (sources.broadcast): their results or start list
+        stats["broadcasts"] = broadcast.apply(con, Path(db).parent / "broadcasts", save)
         ws = WinSplits(f, con)
         # a share of the budget only (2-3 s per WinSplits page): a long catch-up never leaves the races unlooked at
         stats["winsplits_new"] = len(ws.discover(limit=max(30, int(budget_s / 6))))
         lr, cs, hy, hg, md = LiveResultat(f), ClubSite(f), Heyries(f), Helga(f, con), MeOSDjango(f, con)
         stats["helga_new"] = hg.discover(limit=max(20, int(budget_s / 4)))
         looked = failed = 0
-        changed = uploaded + stats["declared"]
+        changed = uploaded + stats["declared"] + stats["broadcasts"]
         # a new parser version reads again the documents already seen (an unchanged file is otherwise skipped)
         reread = store.meta_get(con, "parser_version") != PARSER_VERSION
         recollect = store.meta_get(con, "collect_version", None) != COLLECT_VERSION

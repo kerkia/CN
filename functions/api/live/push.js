@@ -19,7 +19,9 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   const body = await request.text();
   if (body.length > MAX_BODY) return json({ error: "too large" }, 413);
   const race = env.LIVE_RACE.get(env.LIVE_RACE.idFromName(id));
-  const r = await race.fetch(`https://ocn-live/push?comp=${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  // (the competition it is tied to: the race's object saves it for « Résultats »)
+  const r = await race.fetch(`https://ocn-live/push?comp=${id}`, { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Race": b.race || "" }, body });
   if (r.ok) {
     waitUntil(liveDir(env).fetch("https://ocn-live/broadcasts", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ op: "touch", id: Number(id) }) }).catch(() => {}));

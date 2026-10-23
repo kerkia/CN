@@ -10,12 +10,16 @@
 // Worker paces the reads (a hidden tab's own timers are slowed to once a minute); the file's handle is kept in IndexedDB,
 // so a reload asks one click to read it again. A broadcast is fed by the account that opened it (or an administrator):
 // the page lists one's own broadcasts only (all of them to administrators).
+// A broadcast tied to a competition of one's club (2026-10-23: the agenda's, from yesterday to a week ahead, or one declared
+// outside France) is also published in « Résultats »: the live relay saves it every couple of minutes and the results runs
+// read it (ffco_scraper/prov/sources/broadcast.py) — its results, split times and start list stay after the race.
 
-import { html, raw, $, $$, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmtDate, addDays } from "../util.js";
 import { t, lang, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { parseBytes } from "../localparse.js";
+import * as declare from "../declare.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 
 const PREF = "ocn.direct";                        // the broadcast chosen and the interval, on this computer
@@ -24,6 +28,7 @@ const LIVE_STATUS = { ok: 0, finished: 0, missingpunch: 3, mispunch: 3, disquali
 const LOCAL_STATUS = { ok: 0, mp: 3, dsq: 4, dnf: 2, ot: 5, dns: 1, nc: 12 };               // localparse -> liveresultat's
 const OUT = 9;                                    // still out (or not started yet): « En direct » tells them by the start time
 const INTERVALS = [10, 15, 30, 60];
+const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 
 const pref = {
   get: () => { try { return JSON.parse(localStorage.getItem(PREF) || "{}"); } catch (e) { return {}; } },
@@ -170,6 +175,7 @@ export async function render(main) {
       .od-meos code { font-size: 14px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; user-select: all; overflow-wrap: anywhere }
       .od-meos .od-val { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
       @media (max-width: 560px) { .od-meos { grid-template-columns: minmax(0, 1fr) } }
+      .od-link { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line) }
       .od-steps { margin: 0; padding-left: 22px; line-height: 1.55 }
       .od-steps li { margin: 4px 0 }
       .od-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px }
@@ -185,15 +191,32 @@ export async function render(main) {
     try { list = (await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || []; } catch (e) { list = []; }
     list = list.filter((b) => b.mine || me?.admin);
   }
-  let agenda = [];
+  let agenda = [], comps = [];
   try {
     const a = await data.agenda();
     const lo = new Date(Date.now() - 86400e3).toLocaleDateString("sv-SE"), hi = new Date(Date.now() + 2 * 86400e3).toLocaleDateString("sv-SE");
     agenda = (a?.events || []).filter((e) => e.date >= lo && e.date <= hi);
+    // the competitions a broadcast may be tied to: the club's of France's agenda (an administrator's: all), from yesterday
+    // to a week ahead — the server checks the account is one of their organisers (functions/api/live/broadcasts.js)
+    if ((data.loadedCountry() || "FR") === "FR") {
+      const club = auth.myClub(), hi7 = addDays(today, 7);
+      comps = (a?.events || []).filter((e) => e.kind === "c" && e.id && !e.cancelled && e.date >= lo && e.date <= hi7
+        && (me?.admin || (club && orgCode(e.org) === club))).map((e) => ({ key: `a${e.id}`, name: e.name, date: e.date, org: e.org || "" }));
+    }
   } catch (e) { /* free entry only */ }
+  try {
+    const lo = addDays(today, -1), hi7 = addDays(today, 7);
+    comps.push(...(await declare.load()).competitions.filter((d) => d.status !== "removed" && d.date >= lo && d.date <= hi7)
+      .map((d) => ({ key: d.key, name: d.name, date: d.date, org: d.club || "" })));
+  } catch (e) { /* none declared */ }
+  comps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
+  const compLabel = (c) => `${fmtDate(c.date)} · ${c.name}${c.org ? ` · ${c.org}` : ""}`;
+  const errWord = (e) => (e === "not organiser" ? t("od.notOrganiser") : e);
   const current = () => list.find((b) => b.id === st.id) || null;
   function drawRace() {
     const b = current();
+    // a broadcast's competition, even one gone from the choices (its day past)
+    const choices = b?.race && !comps.some((c) => c.key === b.race) ? [{ key: b.race, name: b.name, date: b.date, org: b.organizer || "" }, ...comps] : comps;
     $("#od-race").innerHTML = html`
       ${list.length ? html`<label class="field" style="max-width:520px"><span>${t("od.existing")}</span>
         <select id="od-pick"><option value="">${t("od.newRace")}</option>
@@ -201,8 +224,26 @@ export async function render(main) {
         </select></label>` : ""}
       ${b ? html`<p style="margin:10px 0 0"><b>${b.name}</b> · ${fmtDate(b.date)}${b.organizer ? ` · ${b.organizer}` : ""}<br>
           <span class="muted">${t("od.lastSent", { t: b.last ? new Date(b.last).toLocaleString(locale()) : t("od.never") })}</span>
-          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>`
+          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>
+        <div class="od-link">
+          <p style="margin:0">${b.race ? html`${t("od.linked")} <a href="#/resultats?course=${encodeURIComponent(b.race)}">${t("od.resultsLink")}</a>`
+            : html`<span class="muted">${t("od.linked.none")}</span>`}</p>
+          <div class="filters">
+            <label class="field"><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
+              <option value="">${t("od.comp.none")}</option>
+              ${choices.map((c) => html`<option value="${c.key}" ${raw(c.key === b.race ? "selected" : "")}>${compLabel(c)}</option>`)}</select></label>
+            <button type="button" class="btn btn-sm" id="od-relink-go" disabled>${t("od.link")}</button>
+            ${b.race ? html`<button type="button" class="btn btn-sm" id="od-publish">${t("od.publish")}</button>` : ""}
+          </div>
+          <div class="muted" id="od-link-msg" style="font-size:12.5px"></div>
+        </div>`
       : html`<div class="filters" style="margin-top:10px">
+          <label class="field"><span>${t("od.comp")}</span><select id="od-comp" style="max-width:420px">
+            <option value="">${t("od.comp.none")}</option>
+            ${comps.map((c) => html`<option value="${c.key}">${compLabel(c)}</option>`)}</select></label>
+        </div>
+        <div class="muted" style="font-size:12.5px">${comps.length ? t("od.comp.hint") : t("od.comp.empty")}</div>
+        <div class="filters" style="margin-top:10px">
           <label class="field"><span>${t("od.name")}</span><input id="od-name" list="od-agenda" style="width:300px" placeholder="${t("od.namePh")}"></label>
           <datalist id="od-agenda">${agenda.map((e) => html`<option value="${e.name}">${fmtDate(e.date)} · ${e.org || ""}</option>`)}</datalist>
           <label class="field"><span>${t("od.date")}</span><input id="od-date" type="date" value="${today}"></label>
@@ -211,17 +252,42 @@ export async function render(main) {
         </div><div class="muted" id="od-race-msg" style="font-size:12.5px"></div>`}`;
     $("#od-pick")?.addEventListener("change", (e) => { stop(); st.id = e.target.value ? Number(e.target.value) : null; st.sent.clear(); st.order = "";
       st.handle = null; pref.set({ id: st.id }); drawRace(); restoreHandle(); });
+    // a competition chosen: its name, day and organiser, as the agenda gives them
+    $("#od-comp")?.addEventListener("change", (e) => {
+      const c = comps.find((x) => x.key === e.target.value);
+      for (const id of ["#od-name", "#od-date", "#od-org"]) $(id).disabled = !!c;
+      if (c) { $("#od-name").value = c.name; $("#od-date").value = c.date; $("#od-org").value = c.org; }
+    });
+    $("#od-relink")?.addEventListener("change", (e) => { $("#od-relink-go").disabled = (e.target.value || null) === (b?.race || null); });
+    $("#od-relink-go")?.addEventListener("click", async () => {
+      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "link", id: b.id, race: $("#od-relink").value || null }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { $("#od-link-msg").textContent = t("od.link.failed", { e: errWord(d.error || r.status) }); return; }
+      await loadList(); drawRace();
+      $("#od-link-msg").textContent = d.race ? t("od.link.ok") : t("od.link.off");
+    });
+    $("#od-publish")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "publish", id: b.id }) });
+      const d = await r.json().catch(() => ({}));
+      e.target.disabled = false;
+      $("#od-link-msg").textContent = !r.ok ? t("od.publish.failed", { e: errWord(d.error || r.status) })
+        : !d.saved ? t("od.publish.empty") : d.run ? t("od.publish.ok") : t("od.publish.queued");
+    });
     $("#od-name")?.addEventListener("change", (e) => {
       const ev = agenda.find((x) => x.name === e.target.value);
       if (ev) { $("#od-date").value = ev.date; if (!$("#od-org").value) $("#od-org").value = ev.org || ""; }
     });
     $("#od-create")?.addEventListener("click", async () => {
       const name = $("#od-name").value.trim(), date = $("#od-date").value, organizer = $("#od-org").value.trim();
-      if (!name || !date) { $("#od-race-msg").textContent = t("od.needName"); return; }
+      const race = $("#od-comp")?.value || null;
+      if (!race && (!name || !date)) { $("#od-race-msg").textContent = t("od.needName"); return; }
       const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, date, organizer }) });
+        body: JSON.stringify(race ? { race, organizer } : { name, date, organizer }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.id) { $("#od-race-msg").textContent = t("od.createFailed", { e: d.error || r.status }); return; }
+      if (!r.ok || !d.id) { $("#od-race-msg").textContent = t("od.createFailed", { e: errWord(d.error || r.status) }); return; }
       st.id = d.id; pref.set({ id: st.id });
       await loadList(); drawRace(); drawFile();
     });

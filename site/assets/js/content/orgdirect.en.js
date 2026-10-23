@@ -2,8 +2,9 @@
 export const steps = `
   <h3 style="margin:0 0 6px">With MeOS: online results</h3>
   <ol class="od-steps">
-    <li>Choose the race below, or create it. The “From MeOS” card then gives three values: the address, the competition number and
-      its password.</li>
+    <li>Choose the race below, or create it by choosing <b>your club's competition</b>: the broadcast is then also published in
+      “Results” (see “After the race”). The “From MeOS” card gives three values: the address, the competition number and its
+      password.</li>
     <li>In MeOS, <b>Services</b> tab, add the <b>Online Results</b> service. Tick “Send to the web” and copy the address (URL), the
       “Competition ID number” and the “Password”. Export format: “MeOS Online Protocol XML 2.0”. An interval of 10 to 15 seconds
       is fine.</li>
@@ -33,12 +34,22 @@ export const steps = `
       page re-read a file on its own.</li>
     <li>Log in to Ozimut with the account that creates the broadcast: only that account can feed it afterwards. You can create it
       the day before, from here or from another computer.</li>
-    <li>Choose the race below, or create it: its name, its date and the organiser are enough.</li>
+    <li>Choose the race below, or create it: choose your club's competition, or give its name, its date and the organiser.</li>
     <li>Choose the exported file, <b>once only</b>. The browser asks for permission to read it.</li>
     <li>Click “Start”. The page re-reads the file on its own, every 15 seconds by default, and only sends what has changed.</li>
     <li>Leave the page open, preferably in its own window, and the computer on, without sleep mode. If the page is reloaded,
       one click on “Resume” is enough.</li>
   </ol>
+  <h3 style="margin:14px 0 6px">After the race: “Results”</h3>
+  <ul class="od-steps">
+    <li>A broadcast tied to a competition of your club is saved every few minutes and published in <b>Races › Results</b>: the
+      results, the split times (in “Race analysis”) and, before the start, the start list. Runners get the “one of my races is
+      online” alert once the race is over.</li>
+    <li>“Publish now” saves the broadcast at once, without waiting for the next update.</li>
+    <li>A results file deposited later under <b>Organising › Results</b> comes before the broadcast, as does a start list
+      deposited under “Start times”.</li>
+    <li>A broadcast created without a competition can be tied to it later, here: only members of the organising club can.</li>
+  </ul>
   <h3 style="margin:14px 0 6px">What you don't need to do</h3>
   <ul class="od-steps">
     <li>Courses, classes, controls and runners don't need to be declared: they come from the file, and a course that appears during

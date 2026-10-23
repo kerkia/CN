@@ -15,14 +15,14 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
-  helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango" };
+  helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", direct: t("src.direct") };
 const KIND = Object.fromEntries(["empty", "refused", "platform", "unparsed", "startlist", "startfile", "registration", "announcement", "coursedata"]
   .map((k) => [k, t(`kind.${k}`)]));
 export const STATUS = { ok: "", mp: t("status.pm"), dnf: t("status.abandon"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), dns: t("status.dns"), nc: t("status.nc"), start: "" };
 /** A results source as readers see it: who published it, and what it gives (« avec temps intermédiaires »). */
 const sourceName = (d) => {
   const who = { site: t("src.siteLong"), upload: t("src.uploadLong"), liveresultat: t("src.liveLong"), winsplits: "WinSplits",
-    heyries: "Orientation Data", helga: "Helga" }[d.source] || SOURCE[d.source] || d.source;
+    heyries: "Orientation Data", helga: "Helga", direct: t("src.directLong") }[d.source] || SOURCE[d.source] || d.source;
   const what = d.kind === "startlist" ? t("kind.startlist") : d.classes?.some((k) => k.runners.some((r) => r.splits)) ? t("kind.splits")
     : d.by === "category" ? t("kind.byCategory") : t("kind.byCircuit");
   return `${who} · ${what}`;
@@ -232,7 +232,7 @@ async function detail(main, idx, query) {
         <th class="r">${t("prov.classes")}</th><th>${t("prov.found")}</th><th>${t("prov.changed")}</th></tr></thead>
       <tbody>${race.docs.map((d) => html`<tr${raw(d.classes?.length ? "" : ' style="opacity:.65"')}>
         <td><span class="tag">${SOURCE[d.source] || d.source}</span></td>
-        <td style="max-width:420px;overflow-wrap:anywhere">${d.source === "upload" ? html`<span>${d.title || d.url.split("/").pop()}</span>`
+        <td style="max-width:420px;overflow-wrap:anywhere">${d.source === "upload" || d.source === "direct" ? html`<span>${d.title || d.url.split("/").pop()}</span>`
           : html`<a href="${d.url}" target="_blank" rel="noopener">${d.title || d.note || decodeURIComponent(d.url.split("/").pop() || d.url)}</a>`}
           ${d.note && d.title ? html`<div class="muted" style="font-size:12px">${d.note}</div>` : ""}</td>
         <td>${KIND[d.kind] || d.kind}${d.by ? html` <span class="muted">· ${t(`prov.by.${d.by}`)}</span>` : ""}</td>
