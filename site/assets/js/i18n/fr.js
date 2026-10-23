@@ -962,6 +962,8 @@ export default {
   "spl.behind": "Retard", "spl.lost": "Perdu", "spl.lost.hint": "Temps perdu estimé : la somme, sur les inter-postes où le coureur a fait une erreur, du temps au-delà de son rythme habituel",
   "spl.table.hint": "Chaque case : le temps de l'inter-poste et son rang, le temps cumulé (rang), en survolant la case, l'écart à son rythme habituel (+ : temps perdu, − : mieux que d'habitude). En vert : le meilleur temps ; en rouge : une erreur ({rule}).",
   "spl.table.hint.ideal": "Sans temps perdu : le temps perdu sur chaque erreur est retiré, l'inter-poste ramené au rythme habituel du coureur ; les autres inter-postes ne changent pas. Temps, cumuls et rangs sont recalculés. Sous la place et le temps, en gris, les valeurs réelles ; en survolant une case, le temps retiré.",
+  "spl.table.hint.touch": "Chaque case : le temps de l'inter-poste et son rang, le temps cumulé (rang), puis l'écart à son rythme habituel (+ : temps perdu, − : mieux que d'habitude). En vert : le meilleur temps ; en rouge : une erreur ({rule}).",
+  "spl.table.hint.ideal.touch": "Sans temps perdu : le temps perdu sur chaque erreur est retiré, l'inter-poste ramené au rythme habituel du coureur ; les autres inter-postes ne changent pas. Temps, cumuls et rangs sont recalculés. Sous la place et le temps, en gris, les valeurs réelles ; en dernière ligne d'une case, en rouge, le temps retiré.",
   "spl.err": "Erreur si le temps perdu atteint", "spl.err.s": "Temps perdu, en secondes", "spl.err.pct": "Temps perdu, en % de l'inter-poste",
   "spl.err.pctUnit": "% de l'inter-poste", "spl.err.and": "et",
   "spl.err.rule": "un temps perdu d'au moins {p} % du temps de l'inter-poste et d'au moins {s} s",

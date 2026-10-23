@@ -135,7 +135,7 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
     $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
     $$("#sp-tabs [data-ptab]").forEach((b) => b.addEventListener("click", () => { view = b.dataset.ptab; pickers(); draw(); }));
-    $$('[data-seg="spv"]').forEach((b) => b.addEventListener("click", () => { ideal = b.dataset.value === "ideal"; pickers(); draw(); }));
+    $$('[data-seg="spv"]').forEach((b) => b.addEventListener("click", () => keepPlace(() => { ideal = b.dataset.value === "ideal"; pickers(); draw(); })));
     $("#sp-graph")?.addEventListener("change", (e) => { graph = e.target.value; pickers(); draw(); });
     $("#sp-ref")?.addEventListener("change", (e) => { ref = e.target.value; pickers(); draw(); });
     $("#sp-rr")?.addEventListener("change", (e) => { refName = e.target.value; draw(); });
@@ -146,6 +146,22 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-f1")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v >= 0 && v < ft2) { ft1 = v; draw(); } });
     $("#sp-f2")?.addEventListener("input", (e) => { const v = Number(e.target.value); if (e.target.value !== "" && v > ft1) { ft2 = v; draw(); } });
     $$('[data-seg="spa"]').forEach((b) => b.addEventListener("click", () => { passAll = b.dataset.value === "all"; pickers(); draw(); }));
+  }
+  // « Réel » / « Sans temps perdu » redraws the view without moving it (owner, 2026-10-23): the table's own scroll
+  // positions are put back, and the window's so that the table stays where it was on screen (the hint above it changes)
+  function keepPlace(fn) {
+    const body = $("#sp-body"), box0 = $(".table-wrap", body);
+    const top0 = box0?.getBoundingClientRect().top, sx = box0?.scrollLeft, sy = box0?.scrollTop, y = window.scrollY;
+    body.style.minHeight = `${body.offsetHeight}px`;
+    fn();
+    const restore = () => {
+      const box = $(".table-wrap", body);
+      if (box && box0) { box.scrollLeft = sx; box.scrollTop = sy; }
+      window.scrollTo(0, y + (box && box0 ? box.getBoundingClientRect().top - top0 : 0));
+    };
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(() => { restore(); body.style.minHeight = ""; }, 300);
   }
   // the mistake rule in words, for the hints
   const errRule = () => t("spl.err.rule", { p: fmt(errPct), s: fmt(errS) });
@@ -244,7 +260,8 @@ export async function render(main, { query = {} } = {}) {
     if (view === "table") {
       body.innerHTML = html`
         <section class="card"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2>
-          <div class="hint">${t(asIdeal ? "spl.table.hint.ideal" : "spl.table.hint", { rule: errRule() })}</div></div></div>
+          <div class="hint"><span class="hover-only">${t(asIdeal ? "spl.table.hint.ideal" : "spl.table.hint", { rule: errRule() })}</span><span
+            class="touch-only">${t(asIdeal ? "spl.table.hint.ideal.touch" : "spl.table.hint.touch", { rule: errRule() })}</span></div></div></div>
           <div class="table-wrap"><table class="data compact splits"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
             <th class="r">${t("prov.time")}</th><th class="r" title="${t("spl.lost.hint")}">${t("spl.lost")}</th>
             ${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
@@ -269,7 +286,11 @@ export async function render(main, { query = {} } = {}) {
                 mk ? `⚠ ${markText(mk)}` : "", behindOf ? t("spl.fol.cell", { who: behindOf.r.name }) : ""].filter(Boolean).join("\n");
               return html`<td class="r num" style="${raw([slow ? BAD : "", shadow ? `box-shadow:${shadow}` : ""].filter(Boolean).join(";"))}" title="${tip}">
                 ${v == null ? "—" : html`<span style="${raw(isBest ? "color:var(--good);font-weight:650" : slow ? "color:var(--bad);font-weight:650" : "")}">${clock(v)}</span> <span class="muted" style="font-size:11px">${x.legRank[i]}</span>`}
-                <div class="muted" style="font-size:11px">${x.vCum[i] == null ? "" : html`${clock(x.vCum[i])} (${x.cumRank[i]})`}</div></td>`;
+                <div class="muted" style="font-size:11px">${x.vCum[i] == null ? "" : html`${clock(x.vCum[i])} (${x.cumRank[i]})`}</div>
+                ${/* on a touch screen, no hover (owner, 2026-10-23): the gap as a third line, kept in every cell so that both
+                    views have the same row heights */ ""}
+                <div class="touch-only spl-d" style="${raw(slow || (asIdeal && d != null) ? "color:var(--bad)" : "")}">${d == null ? raw("&nbsp;")
+                  : `${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`}</div></td>`;
             })}</tr>`)}</tbody></table></div></section>
         <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${chk.marks.size ? html`${t("spl.table.marks")} ` : ""}${fol ? html`${t("spl.table.followed")} ` : ""}${t("spl.def")}</p>`;
     }

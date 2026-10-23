@@ -354,7 +354,8 @@ menu « Courses » after « Agenda »; `#/recemment` and `#/provisoires` still w
 « Temps intermédiaires » (`#/temps-inter`), linked from it — WinSplits' time loss (the leg against the runner's
 usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
-WinSplits); Écarts against the superman (best legs) of everyone or of the runners compared. **After MeOSDjango** (2026-10-22;
+WinSplits) — on a screen without hover a third line in every cell (`.touch-only`, `@media (hover: none)`; owner, 2026-10-23),
+and « Réel / Sans temps perdu » redraws without moving the table or the page (`keepPlace`); Écarts against the superman (best legs) of everyone or of the runners compared. **After MeOSDjango** (2026-10-22;
 ideas only, its GPL code never copied): the **timing check** (`splitcheck.js`, pure: a class in, findings out — a negative leg at one
 control for ≥ 2 runners = its unit or the previous one off the right time, alone = a card not cleared, a finisher without a control
 the others punched = punched before the start, one code twice with one time = the source's fault, that control left out) on

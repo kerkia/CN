@@ -1420,6 +1420,8 @@ export default {
   "spl.lost.hint": "Estimated time lost: the sum, over the legs where the runner made a mistake, of the time beyond their usual pace",
   "spl.table.hint": "Each cell: the leg time and its rank, the cumulative time (rank); hovering over the cell, the gap to the runner's usual pace (+: time lost, −: better than usual). In green: the best time; in red: a mistake ({rule}).",
   "spl.table.hint.ideal": "Without time lost: the time lost on each mistake is removed, the leg brought back to the runner's usual pace; the other legs do not change. Times, cumulative times and ranks are recalculated. Under the place and the time, in grey, the real values; hovering over a cell, the time removed.",
+  "spl.table.hint.touch": "Each cell: the leg time and its rank, the cumulative time (rank), then the gap to the runner's usual pace (+: time lost, −: better than usual). In green: the best time; in red: a mistake ({rule}).",
+  "spl.table.hint.ideal.touch": "Without time lost: the time lost on each mistake is removed, the leg brought back to the runner's usual pace; the other legs do not change. Times, cumulative times and ranks are recalculated. Under the place and the time, in grey, the real values; on a cell's last line, in red, the time removed.",
   "spl.err": "Mistake if time lost reaches",
   "spl.err.s": "Time lost, in seconds",
   "spl.err.pct": "Time lost, as a % of the leg",
