@@ -13,6 +13,7 @@ import { DurableObject } from "cloudflare:workers";
 import * as mop from "./mop.js";
 import * as md from "./meosdjango.js";
 import * as ol from "./olive.js";
+import * as si from "./sportident.js";
 
 const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, relayed to its spectators)";
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
@@ -57,6 +58,11 @@ const OL_ACTIVE_MS = 20000, OL_QUIET_MS = 60000, OL_DONE_MS = 300000;   // runne
 const OL_PAGE_MS = 300000;                       // the race's page (its circuits) read again at most this often
 const OL_MAX = 24, OL_CARDS = 15;                // circuit pages and cards per wake-up, at most (subrequest limit: 50)
 const OL_BULK = 10;                              // cards to read on a circuit from which its split times page is read instead
+// SPORTident Center's events (2026-10-24, sportident.js): numbers from 600 000 000 (+ the event's id), the results file read
+// again while someone watches, conditionally (its ETag: a 304 costs nothing), the classes passed to `update` as a push; the
+// event's file (its guid) is the directory's (/si)
+const SI_ACTIVE_MS = 20000, SI_QUIET_MS = 60000, SI_DONE_MS = 300000;   // the file changed in the last 5 min / runners out or to start / all through
+const SI_RECENT_MS = 300000;
 async function lr(env, params) {
   const r = await fetch(`${api(env)}?${new URLSearchParams(params)}`, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`liveresultat ${r.status}`);
@@ -127,11 +133,12 @@ export class LiveRace extends DurableObject {
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
     const m = await this.load();
     m.comp = comp;
-    if (md.isMd(comp) || ol.isOl(comp)) {
-      // a MeOSDjango or O'Live race: read once when nothing is held, then by the alarm while someone watches
+    if (md.isMd(comp) || ol.isOl(comp) || si.isSi(comp)) {
+      // a MeOSDjango, O'Live or SPORTident Center race: read once when nothing is held, then by the alarm while someone watches
       if (!m.info) {
-        try { await (ol.isOl(comp) ? this.readOl(m) : this.readMd(m)); } catch (e) {
-          return new Response(ol.isOl(comp) ? "O'Live unavailable" : "MeOSDjango unavailable", { status: 502 });
+        try { await (si.isSi(comp) ? this.readSi(m) : ol.isOl(comp) ? this.readOl(m) : this.readMd(m)); } catch (e) {
+          return new Response(si.isSi(comp) ? "SPORTident Center unavailable" : ol.isOl(comp) ? "O'Live unavailable" : "MeOSDjango unavailable",
+            { status: 502 });
         }
       }
       const [client, server] = Object.values(new WebSocketPair());
@@ -278,8 +285,10 @@ export class LiveRace extends DurableObject {
     const now = Date.now();
     let infoChanged = false;
     if (p.info && typeof p.info === "object") {
+      // (a time zone only from a relayed platform that gives one: SPORTident Center's events abroad)
+      const tz = typeof p.info.timezone === "string" && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/.test(p.info.timezone) ? p.info.timezone : "Europe/Paris";
       const info = { name: String(p.info.name || "").slice(0, 160), organizer: String(p.info.organizer || "").slice(0, 160),
-        date: /^\d{4}-\d\d-\d\d$/.test(p.info.date || "") ? p.info.date : null, timezone: "Europe/Paris", timediff: 0 };
+        date: /^\d{4}-\d\d-\d\d$/.test(p.info.date || "") ? p.info.date : null, timezone: tz, timediff: 0 };
       if (JSON.stringify(info) !== JSON.stringify(m.info)) { m.info = info; infoChanged = true; }
     }
     const changed = [], arrivals = [];
@@ -378,6 +387,28 @@ export class LiveRace extends DurableObject {
     const date = m.md.info.date || list.find((d) => d.competition_date)?.competition_date || null;
     const { order, classes } = md.compact(list);
     return this.update(m.comp, { info: { ...m.md.info, date }, order, classes }, { prune: true });
+  }
+
+  /** A SPORTident Center event: its results file read again when it changed (ETag), the classes passed to `update` as a push
+   *  (`prune`: the file holds the whole event). The event's file and details come from the directory's list (/si). Throws
+   *  when the read fails: nothing half read is passed on. */
+  async readSi(m) {
+    m.si ||= { ev: null, etag: null, modified: null, out: false, wait: false };
+    if (!m.si.ev) {
+      const r = await this.env.DIR.get(this.env.DIR.idFromName("directory")).fetch(`https://dir/si?id=${si.eventOf(m.comp)}`);
+      if (!r.ok) throw new Error("unknown SPORTident Center event");
+      m.si.ev = await r.json();
+    }
+    const f = await si.results(m.si.ev.guid, m.info ? m.si.etag : null);
+    m.si.modified = f.modified ?? m.si.modified;
+    if (f.status === 304) return null;
+    m.si.etag = f.etag;
+    const { order, classes, info } = si.compact(si.decode(f.bytes));
+    m.si.out = si.anyOut(classes);
+    m.si.wait = si.anyWaiting(classes);
+    const ev = m.si.ev;
+    return this.update(m.comp, { info: { name: ev.name || info.name, organizer: ev.organizer || "", date: ev.date || info.date,
+      timezone: ev.timezone }, order, classes }, { prune: true });
   }
 
   /** An O'Live race: its circuits' pages read (the race's page now and then for their list), then the cards of the runners
@@ -547,6 +578,14 @@ export class LiveRace extends DurableObject {
     }
     const sockets = this.ctx.getWebSockets();
     if (!sockets.length) return;                 // nobody watching: no more reads until someone comes back
+    if (si.isSi(m.comp)) {
+      // a SPORTident Center event: its file read again (a 304 when unchanged), sooner while it keeps changing
+      try { await this.readSi(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
+      const recent = m.si?.modified != null && Date.now() - m.si.modified < SI_RECENT_MS;
+      const wait = recent ? SI_ACTIVE_MS : m.si?.out || m.si?.wait ? SI_QUIET_MS : SI_DONE_MS;
+      await this.ctx.storage.setAlarm(Date.now() + wait);
+      return;
+    }
     if (ol.isOl(m.comp)) {
       // an O'Live race: every circuit read (update sends what changed), sooner while runners are out or cards wait
       try { await this.readOl(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
@@ -652,7 +691,7 @@ const TZ_COUNTRY = {
 const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
 const LIST_MS = 240000;                 // liveresultat's list read at most this often
 const TZ_VERSION = 2;
-const MAX_INFO = 21;                    // races looked up per call (subrequest limit: 50, MD_LIST and OL_LIST too); the rest next call
+const MAX_INFO = 17;                    // races looked up per call (subrequest limit: 50, MD_LIST, OL_LIST and SI_LIST too); the rest next call
 // which races are live now (owner, 2026-10-22: « identify clearly which competitions are truly live »): each race of its own
 // today has its last passings read (with liveresultat's hash: an unchanged list costs a few bytes), at most every PROBE_MS
 // and MAX_PROBE a call, only when the list is asked for; a race is live while its last punch is under LIVE_S old
@@ -663,6 +702,9 @@ const MD_LIST = 8, MD_PROBE_COURSES = 3, MD_HASHES_MS = 1800000;
 // O'Live's races (olive.js): its list at most every LIST_MS, today's races probed in turn, OL_PROBE circuits a call, a race's
 // age the time since someone was seen out on it (« Run. »); OL_LIST requests a call at most
 const OL_LIST = 4, OL_PROBE = 2;
+// SPORTident Center's events (sportident.js): its list (every country) at most every LIST_MS, today's events probed in turn
+// (a HEAD of the results file: the age is the time since it last changed); SI_LIST requests a call at most
+const SI_LIST = 4;
 // two names of one race: the same words, accents and punctuation aside, or one's words all in the other's
 const nameWords = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 function sameName(a, b) {
@@ -688,7 +730,9 @@ function localSeconds(tz, timediff) {
  *  expression: some names hold unescaped quotes that break it as JSON), each new race's time zone read once and kept. */
 export class Directory extends DurableObject {
   async fetch(request) {
-    if (new URL(request.url).pathname === "/broadcasts") return this.broadcasts(request);
+    const url = new URL(request.url);
+    if (url.pathname === "/broadcasts") return this.broadcasts(request);
+    if (url.pathname === "/si") return this.siEvent(url.searchParams.get("id"));
     // liveresultat's list, read at most every LIST_MS; an answer without it (overloaded: « Connect failed: Too many
     // connections », sent with a 200) changes nothing — the last good list is served meanwhile, never an empty one
     const now = Date.now();
@@ -773,6 +817,7 @@ export class Directory extends DurableObject {
     let mdComps = [];
     try { mdComps = await this.mdComps(now); } catch (e) { console.error(`directory: MeOSDjango: ${e.message || e}`); }
     try { mdComps.push(...await this.olComps(now)); } catch (e) { console.error(`directory: O'Live: ${e.message || e}`); }
+    try { mdComps.push(...await this.siComps(now)); } catch (e) { console.error(`directory: SPORTident: ${e.message || e}`); }
     // a race on both (2026-10-23: OE 42 opened « Pélussin City Race » on liveresultat, never fed it, and ran its live on its
     // MeOSDjango site — listed twice, one empty): one entry, the MeOSDjango (or O'Live) one unless only liveresultat's has punches
     const twin = (c) => mdComps.find((m) => m[3] === c[3] && sameName(m[1], c[1]));
@@ -878,6 +923,43 @@ export class Directory extends DurableObject {
       const p = s.probes[c[0]];
       return [...c.slice(0, 6), c[3] === today && p?.out ? Math.round((now - p.out) / 1000) : null, ol.site(c[0]).host];
     });
+  }
+
+  /** SPORTident Center's orienteering events of the last 3 and next 7 days, every country, in the list's form [id, name,
+   *  organiser, date, 0, country, age, host]: the list at most every LIST_MS (kept when the Center does not answer), each
+   *  event's file and time zone kept for its race's object (/si), today's events (in their own time zone) probed in turn, at
+   *  most every PROBE_MS an event; the age is the time since the results file last changed. */
+  async siComps(now) {
+    const s = (await this.ctx.storage.get("si")) || { at: 0, events: [], probes: {} };
+    let budget = SI_LIST, changed = false;
+    if (now - s.at >= LIST_MS) {
+      const day = (d) => new Date(now + d * 86400e3).toISOString().slice(0, 10);
+      budget--;
+      try { s.events = await si.events(day(-3), day(7)); } catch (e) { /* the last list kept */ }
+      s.at = now; changed = true;
+    }
+    const today = (e) => e.date === localSeconds(e.timezone, 0).day;
+    s.probes = Object.fromEntries(s.events.filter((e) => today(e) && s.probes[e.id]).map((e) => [e.id, s.probes[e.id]]));
+    for (const e of s.events.filter(today).sort((a, b) => (s.probes[a.id]?.checked || 0) - (s.probes[b.id]?.checked || 0))) {
+      const p = s.probes[e.id] ||= { checked: 0, modified: null };
+      if (budget <= 0 || now - p.checked < PROBE_MS) continue;
+      budget--;
+      try { p.modified = await si.lastChange(e.guid); p.checked = now; } catch (e2) { /* next time */ }
+      changed = true;
+    }
+    if (changed) await this.ctx.storage.put("si", s);
+    return s.events.map((e) => {
+      const p = s.probes[e.id];
+      return [si.raceId(e.id), e.name, e.organizer, e.date, 0, e.country || "?",
+        today(e) && p?.modified ? Math.max(0, Math.round((now - p.modified) / 1000)) : null, si.HOST];
+    });
+  }
+
+  /** One SPORTident Center event of the list, for its race's object: { id, name, organizer, date, country, timezone, guid }. */
+  async siEvent(id) {
+    const s = (await this.ctx.storage.get("si")) || { events: [] };
+    const e = s.events.find((x) => String(x.id) === String(id));
+    return e ? new Response(JSON.stringify(e), { headers: { "Content-Type": "application/json" } }) : new Response("Not found", { status: 404 });
   }
 
   /** The organisers' broadcasts (internal, from Ozimut): GET lists them, the newest first; POST { op: "new", name, date,

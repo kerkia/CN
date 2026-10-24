@@ -13,7 +13,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `update.py` | The one entry point for updates: fetch → recompute → rebuild site data → deploy → mail digests. Also holds the one-off **migrations** |
 | `build_site.py`, `site_extras.py`, `site_io.py` | Turn the database into the static JSON under `site/data/` (runner buckets `r/`, races `c/`, month-end snapshots `snap/`, clubs, network, `meta.json`) |
 | `site_ask.py` | The Parquet tables « IA » queries in the browser (`site/data/ask/`: runners, clubs, races, results, cn), rebuilt by every build from the published data |
-| `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
+| `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, O'Live, SPORTident Center, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2), `api/tracer/[[path]].js` (the Tracer's course-setting events, in R2) |
@@ -21,7 +21,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
-| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango or O'Live race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
+| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango, O'Live or SPORTident Center race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -241,7 +241,15 @@ co-live.fr, a live results site French organisers feed from their timing softwar
 circuit's results page and split times page, read again only when the results pages moved; it lists only current races, so a
 race is read on its day or soon after; a link to its home page on the organiser's site, « Résultats provisoires », gets the
 O'Live race of that day whose name fits, or one of whose name's own words the linking page gives: `clubsite` keeps such a link
-with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2), an organiser's own broadcast (« Organisation › Direct » tied to the competition: `sources/broadcast.py`), and the organiser's site
+with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2), SPORTident Center (2026-10-24, `sources/sportident.py`: center.sportident.com, where
+SPORTident's Orienteering App, its Reader, OE12 and SiTiming publish, live and after; its public events list
+`/api/rest/v1/public-events` by country and dates, each event's results file `/event-files/<guid>/results/r.1.latest.bin`, a
+protobuf read by its field numbers — taken from its page's script, none of its code —: classes, courses and their sections,
+entries with club, bib, birth year, card, each entry's result by section; asked again conditionally, 304 when unchanged; the
+Center writes the local clock as if it were UTC; one list by course, `SOURCE_RANK` 4; a country's events matched to its own
+races; « SPORTident … » or « Not assigned » as organiser counts as none — « SPORTident France » took a « Coupe de France »;
+pid « <slug>?event=<id> », its page `…/results/orienteering/<slug>`; a club's link to it or to si.events read too; in France
+mostly club trainings, 41 public events in 2026, a few league championships; the relay's `live/src/sportident.js`), an organiser's own broadcast (« Organisation › Direct » tied to the competition: `sources/broadcast.py`), and the organiser's site
 (a short link text gets the heading it sits under — « Résultats SI » under « Régionale LIFCO, le 11/10/2026 » —, links
 without an extension on file hosts or saying « Résultats / départs / Annonce » are read to find out, Cloudinary's addresses
 kept in their stable form; WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
@@ -870,6 +878,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   import (frozen up to a minute): their start while waiting (« 12 h 46 »; « 00 h 00 » none) or their card's replaces it. « Arr »
   (finished, card unread) is a provisional result, « Arr? » not classified. 20 s while runners are out or cards wait, 60 s with
   only starts to come, 5 min after. The Agenda maps both ranges to « host/<n> » (`keyOfComp`, `run.LIVE_IDS`).
+  **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
+  next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's
+  probed by a HEAD of the results file (`SI_LIST` requests a call; `MAX_INFO` lowered to 17), the age being the time since the
+  file last changed. The race's object asks the directory for the event's file (`/si?id=`), then reads it again with its ETag
+  (a 304 costs nothing): 20 s while it changed in the last 5 min, 60 s with runners out or to start, 5 min after; one class per
+  SPORTident class, splits and places at every control, « finished » not yet evaluated shown provisional; the event's time zone
+  passed to `update` (`info.timezone`, otherwise Europe/Paris). The Agenda maps 600 000 000-699 999 999 too.
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; administrators only the first
   day, **every account since 2026-10-16** — 15 questions a day per account on the free model, administrators apart, `PER_DAY`
   in `api/ask.js`; the other Workers AI models of the menu are the administrators' tests): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**

@@ -54,7 +54,7 @@ FILE_HOSTS = ("res.cloudinary.com", "dl.dropboxusercontent.com", "www.dropbox.co
               "docs.google.com", "drive.google.com")
 PLATFORMS = {"liveresultat.orientering.se": "liveresultat", "obasen.orientering.se": "winsplits", "livelox.com": "livelox",
              "helga-o.com": "helga", "helga-o.live": "helga", "co-live.fr": "olive", "routegadget": "routegadget", "heyries.alwaysdata.net": "heyries",
-             "oreplay.es": "oreplay"}
+             "oreplay.es": "oreplay", "center.sportident.com": "sportident", "si.events": "sportident"}
 MEOSDJANGO_PATH = re.compile(r"^/competition/\d+(?:/|$)")
 
 
