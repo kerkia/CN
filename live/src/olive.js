@@ -35,10 +35,15 @@ export async function get(url, form = null) {
   return { text: await r.text(), at: Number.isFinite(at) ? at : Date.now() };
 }
 
-const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", eacute: "é", egrave: "è", ecirc: "ê", euml: "ë", agrave: "à",
-  acirc: "â", auml: "ä", ccedil: "ç", icirc: "î", iuml: "ï", ocirc: "ô", ouml: "ö", ugrave: "ù", ucirc: "û", uuml: "ü", Eacute: "É",
-  Egrave: "È", Ccedil: "Ç", deg: "°", oelig: "œ", aelig: "æ", ntilde: "ñ" };
-export const unent = (s) => String(s || "").replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] !== "#" ? ENT[e] ?? m
+// HTML's named entities: an accented letter is its letter and its mark (« &aacute; », « &Scaron; »: 2026-10-24, « EGRI
+// M&aacute;ty&aacute;s » was shown as written), the others listed
+const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", deg: "°", szlig: "ß", oslash: "ø", Oslash: "Ø",
+  aelig: "æ", AElig: "Æ", oelig: "œ", OElig: "Œ", eth: "ð", ETH: "Ð", thorn: "þ", THORN: "Þ", laquo: "«", raquo: "»",
+  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", ndash: "–", mdash: "—", hellip: "…", middot: "·", euro: "€" };
+const MARK = { grave: "̀", acute: "́", circ: "̂", tilde: "̃", uml: "̈", ring: "̊", cedil: "̧",
+  caron: "̌" };
+const named = (e) => ENT[e] ?? ((m) => m && (m[1] + MARK[m[2]]).normalize("NFC"))(/^([a-zA-Z])(grave|acute|circ|tilde|uml|ring|cedil|caron)$/.exec(e));
+export const unent = (s) => String(s || "").replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] !== "#" ? named(e) || m
   : String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1)))));
 
 /** The races on offer: [{ id, name, date, type }] (type « Course Individuelle », « Relais »…). */

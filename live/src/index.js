@@ -421,8 +421,9 @@ export class LiveRace extends DurableObject {
     const read = new Set(m.ol.read), rid = (r) => r.bib || ol.keyOf(r);
     const due = [];
     for (const [c, list] of Object.entries(byCircuit)) for (const r of list) {
-      if (!r.card || !ol.final(r) || read.has(rid(r))) continue;
       const k = known[ol.keyOf(r)];
+      // (a card read under another spelling of the name — an entity decoded since, 2026-10-24 — is read again)
+      if (!r.card || !ol.final(r) || (read.has(rid(r)) && k)) continue;
       due.push({ c, r, news: !!k && (k.was === 9 || k.was === 10 || !!k.prel), first: !m.ol.ctrls[c] && r.status === 0 });
     }
     due.sort((a, b) => b.news - a.news || b.first - a.first);
