@@ -29,6 +29,7 @@ import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, v
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
 import { paceRange, paceColour, paceLegend } from "../trace/pacecolour.js";
+import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
@@ -593,7 +594,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy })); } catch (e) { /* not kept */ } };
+  let showStrip = prefs.strip !== false;                   // the runners' paces under the map
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy, strip: showStrip })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
@@ -601,10 +603,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     <div class="sh-layout" id="sh-layout">
       <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
       <aside class="sh-panel" id="sh-left"></aside>
-      <div class="sh-map"><canvas id="sh-canvas"></canvas>
+      <div class="sh-mapcol"><div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button></div>
         <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
+        <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <aside class="sh-panel" id="sh-right"></aside></div>
     <section class="card sh-views" id="sh-views" style="margin-top:12px"></section>`;
   const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
@@ -763,7 +766,41 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (x1 - x0 > (w - 160) / k || y1 - y0 > (h - 160) / k) mv.fitBox(x0, y0, x1, y1, 80, 4);
     else mv.centerOn((x0 + x1) / 2, (y0 + y1) / 2);
   }
-  function frame() { followView(); mv.draw(); hud(); drawOwn(); saveUrl(); }
+  function frame() { followView(); mv.draw(); hud(); drawOwn(); drawStrip(); saveUrl(); }
+
+  // ---- the runners' paces under the map (trace/pacestrip.js): over the replay's own time axis, smoothed over a few
+  // seconds to half a minute (a leg's short view, the whole race), recomputed only when the axis or the runners change
+  let stripCache = null;
+  function stripSeries() {
+    const cv = $("#sh-strip"), K = stripSamples(cv), shown = runners.filter((r) => r.visible);
+    const sig = [K, T0, T1, mode, fromK, leg, shown.map((r) => r.uid).join(",")].join("|");
+    if (stripCache?.sig === sig) return stripCache.series;
+    const half = Math.max(3, Math.min(15, (T1 - T0) / 80));
+    const series = shown.map((r) => {
+      const vals = new Array(K).fill(null), end = r.finish ?? r.tr.dur;
+      for (let k = 0; k < K; k++) {
+        const s = sAt(r, T0 + (k / (K - 1)) * (T1 - T0));
+        if (s == null || s < r.start - 1 || s > end + 1) continue;
+        const a = Math.max(r.start, s - half), b = Math.min(end, s + half);
+        if (b - a >= 2) vals[k] = (cumAt(r.tr, b) - cumAt(r.tr, a)) / (b - a);
+      }
+      return { r, vals };
+    });
+    stripCache = { sig, series };
+    return series;
+  }
+  function drawStrip() {
+    const cv = $("#sh-strip");
+    if (!cv || cv.hidden || !cv.clientWidth) return;
+    const span = Math.max(1, T1 - T0), f = (x) => (x - T0) / span;
+    const fmtT = (x) => (mode === "clock" && !leg ? hms(x).slice(0, 5) : x < 0 ? `−${clock(-x)}` : clock(x));
+    const step = [30, 60, 120, 300, 600, 900, 1800, 3600].find((s) => span / s <= Math.max(2, cv.clientWidth / 90)) || 3600;
+    const ticks = [];
+    for (let x = Math.ceil(T0 / step) * step; x <= T1; x += step) ticks.push({ f: f(x), label: fmtT(x) });
+    // in the waiting mode, every control is a moment of the axis; in a leg's view, its two ends
+    const marks = !leg && mode === "wait" ? waits.slice(1, -1).map((w, j) => ({ f: f(w), label: ctrlLabel(j + 1) })) : [];
+    drawPaceStrip(cv, { series: stripSeries().map(({ r, vals }) => ({ colour: r.colour, vals, bold: r === sel })), cursor: f(T), ticks, marks });
+  }
   // ---- the replay's state in the address (owner's study of 2DRerun, 2026-10-23: a link reopens the same view): the circuit,
   // mode, time, leg, runners shown, followed runner, duel reference and view; written once the replay has been still 0.4 s
   let urlTimer = 0;
@@ -947,7 +984,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
           <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.map((c) => html`<option value="${c}" ${raw(c === colourBy ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
-          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div></details>`;
+          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
+          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
@@ -964,6 +1002,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
+    $("#sh-strip-on").addEventListener("change", (e) => { showStrip = e.target.checked; savePrefs(); $("#sh-strip").hidden = !showStrip; drawStrip(); });
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -1036,6 +1075,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   window.addEventListener("resize", fit);
   $("#sh-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
+  // the strip: a click or a drag seeks
+  const strip = $("#sh-strip");
+  const scrub = (e) => { stop(); T = T0 + stripFraction(strip, e.clientX - strip.getBoundingClientRect().left) * (T1 - T0); frame(); };
+  strip.addEventListener("pointerdown", (e) => { scrub(e); try { strip.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } strip.dataset.down = "1"; });
+  strip.addEventListener("pointermove", (e) => { if (strip.dataset.down) scrub(e); });
+  const stripUp = () => { delete strip.dataset.down; };
+  strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
+  const stripRo = new ResizeObserver(() => drawStrip());
+  stripRo.observe(strip);
   $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); fitRoutes(); mv.draw(); });
   $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); mv.fitAll(); mv.draw(); });
   window.scrollTo(0, 0);
@@ -1048,5 +1096,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { stop(); mv.destroy(); ownRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { stop(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

@@ -1447,6 +1447,7 @@ export default {
   "sh.gaps.hint": "L'écart de chaque coureur affiché avec la référence, poste par poste ; plus bas, plus en retard. Le premier et le superman sont pris {src}. Cliquez un point : le replay s'y place et suit ce coureur.",
   "sh.duel.hint": "Inter-poste par inter-poste, le temps gagné (en haut, en vert) ou perdu (en bas, en rouge) par {a} face à {b}. Cliquez une barre pour voir l'inter-poste.",
   "sh.duel.won": "{a} gagne {d}", "sh.duel.lost": "{a} perd {d}",
+  "sh.strip.show": "Allure sous la carte",
   "sh.fitTip": "Conseil : déposez de préférence le fichier FIT de votre montre plutôt qu'un GPX ou un TCX : seules ses positions et ses heures sont envoyées, mais il reste sur cet appareil pour « Mes courbes », avec tous ses indicateurs de course (fréquence cardiaque, cadence, puissance…), quand un GPX ou un TCX en perd souvent.", "an.drop.hint": "la carte (image, PDF ou KMZ) et la trace (GPX, TCX ou FIT) ; si vous les avez, le fichier de calage de la carte (.jgw/.pgw/.wld + .prj, KML) et le fichier de parcours (IOF XML de Purple Pen, OCAD ou Condes)",
   "an.role.map": "Carte", "an.role.map.none": "image (PNG, JPEG, WebP…), PDF (sa première page) ou KMZ",
   "an.role.trace": "Trace", "an.role.trace.none": "GPX, TCX ou FIT, avec les heures",

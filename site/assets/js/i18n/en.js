@@ -2073,6 +2073,7 @@ export default {
   "sh.gaps.hint": "Each runner shown, their gap to the reference control by control; lower is further behind. The leader and the superman are taken {src}. Click a point: the replay goes there and follows that runner.",
   "sh.duel.hint": "Leg by leg, the time {a} gained (up, in green) or lost (down, in red) against {b}. Click a bar to see the leg.",
   "sh.duel.won": "{a} gains {d}", "sh.duel.lost": "{a} loses {d}",
+  "sh.strip.show": "Pace under the map",
   "sh.fitTip": "Tip: upload your watch's FIT file rather than a GPX or TCX if you can: only its positions and times are sent, but it stays on this device for “My graphs”, with all its race metrics (heart rate, cadence, power…), which a GPX or TCX often loses.",
   "an.drop.hint": "the map (image, PDF or KMZ) and the track (GPX, TCX or FIT); if you have them, the map's georeferencing file (.jgw/.pgw/.wld + .prj, KML) and the course file (IOF XML from Purple Pen, OCAD or Condes)",
   "an.role.map": "Map",
