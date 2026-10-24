@@ -665,7 +665,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const passes = pub?.passes || guess;
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
     const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
-    return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
+    return { uid: rec.uid, name: rec.name, lic: rec.lic, test: !!rec.test, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
       published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
@@ -784,7 +784,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
       if (shown.length > 1 || r === sel) {
-        const label = r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3);
+        const label = r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3);   // a test runner: its number
         g.font = `700 ${lw(11)}px system-ui, sans-serif`; g.textBaseline = "middle";
         g.strokeStyle = "#fff"; g.lineWidth = lw(3); g.strokeText(label, x + lw(9), y); g.fillStyle = r.colour; g.fillText(label, x + lw(9), y);
       }
@@ -937,7 +937,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
           <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
-          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
+          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}${r.test ? html` <span class="tag">${t("sh.test.tag")}</span>` : ""}</span>
           <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
@@ -948,6 +948,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
         <input type="file" id="sh-file" accept=".gpx,.tcx,.fit" hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
+      ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
+        <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
+        ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
+        <input type="file" id="sh-test-file" accept=".gpx,.tcx,.fit" multiple hidden>
+        <p class="hint" style="margin:6px 0 0">${t("sh.test.hint")}</p></div>` : ""}
       <div id="sh-upload"></div>`;
     const shownChanged = () => {
       saveVis();
@@ -978,6 +983,33 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-add").addEventListener("click", () => $("#sh-file").click());
     $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
+    $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
+    $("#sh-test-file")?.addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) uploadTests(fs); });
+    $("#sh-test-rm")?.addEventListener("click", async () => {
+      if (!confirm(t("sh.test.remove.confirm", { n: myTests().length }))) return;
+      try { await api(`/${id}/trace/${course.n}/tests`, { method: "DELETE", key: keyOf(id) }); reload(); } catch (e) { alert(errText(e)); }
+    });
+  }
+  // an administrator's test traces: uid 1e9 + account × 1000 + k (api/analyses), each file a runner « <name> #k »
+  function myTests() { return runners.filter((r) => r.uid > 1e9 && Math.floor((r.uid - 1e9) / 1000) === you.uid); }
+  async function uploadTests(files) {
+    const boxU = $("#sh-upload"), errs = [];
+    let k = Math.max(0, ...myTests().map((r) => (r.uid - 1e9) % 1000)), ok = 0;
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    for (const [i, file] of files.entries()) {
+      boxU.innerHTML = html`<div class="notice">${t("sh.test.progress", { i: i + 1, n: files.length })}</div>`;
+      try {
+        const tr = parseTrace(file.name, await file.arrayBuffer());
+        const crop = cropToMap(tr, course.geo, course.map.w, course.map.h);
+        if (!crop) throw Object.assign(new Error(t("sh.trace.offMap")), { local: true });
+        if (k >= 999) throw Object.assign(new Error(t("sh.test.full")), { local: true });
+        await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, test: ++k, trace: encodeTrace(tr, crop[0], crop[1]) }, key: keyOf(id) });
+        ok++;
+      } catch (e) { errs.push(`${file.name} : ${e.code ? errText(e) : e.local ? e.message : t(e.message === "time" ? "an.err.time" : "an.err.gpx")}`); }
+    }
+    if (ok) reload();
+    else boxU.innerHTML = "";
+    if (errs.length) alert([t("sh.test.done", { ok, n: files.length }), ...errs].join("\n"));
   }
   async function upload(file) {
     const boxU = $("#sh-upload");

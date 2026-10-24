@@ -20,7 +20,9 @@
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
-//   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin)
+//   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin); an admin's
+//                                                      PUT { test: k } adds a test runner « <name> #k », DELETE …/tests
+//                                                      removes that admin's test traces of circuit n
 //   PUT    /api/analyses/<id>/extras/<n>               the organiser: what circuit n's runners share besides its map and
 //                                                      controls — { variants } the route choices grouped by leg (each
 //                                                      runner's own edits stay on their device), { exercises } a
@@ -38,6 +40,10 @@ const MAX_MAP = 80 * 1024 * 1024, MAX_TRACE = 3 * 1024 * 1024, MAX_POINTS = 4000
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+// an administrator's test traces (several « runners » from one account, to try the replay): uid 1e9 + account × 1000 + k
+const TEST_BASE = 1e9, TEST_MAX = 999;
+const testUid = (account, k) => TEST_BASE + account * 1000 + k;
+const testOwner = (uid) => (uid > TEST_BASE ? Math.floor((uid - TEST_BASE) / 1000) : null);
 const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
 
 async function hmacKey(env) {
@@ -369,12 +375,24 @@ export const onRequest = withUser(async (ctx, user) => {
       if (b?.consent !== true) return json({ error: "consent" }, 400);
       const tr = cleanTrace(b?.trace);
       if (!tr) return json({ error: "trace" }, 400);
-      // the runner is the account: no trace in someone else's name
-      const rec = { ...tr, uid: user.id, name: user.display_name || "", lic: user.licence || "", course: n, updated: nowIso() };
-      await env.BUCKET.put(`${DATA}${id}/trace-${n}-${user.id}.json`, JSON.stringify(rec), {
+      // the runner is the account: no trace in someone else's name — but an administrator's test traces (`test`: 1-999),
+      // each a runner of its own named after the administrator, « <name> #k », without a licence
+      const k = b.test;
+      if (k != null && !(isAdmin(env, user) && Number.isInteger(k) && k >= 1 && k <= TEST_MAX)) return json({ error: "forbidden" }, 403);
+      const uid = k != null ? testUid(user.id, k) : user.id;
+      const name = (user.display_name || "") + (k != null ? ` #${k}` : "");
+      const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}) };
+      await env.BUCKET.put(`${DATA}${id}/trace-${n}-${uid}.json`, JSON.stringify(rec), {
         httpMetadata: { contentType: "application/json" },
-        customMetadata: { uid: String(user.id), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated } });
-      return json({ ok: true });
+        customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}) } });
+      return json({ ok: true, uid });
+    }
+    if (method === "DELETE" && parts[3] === "tests") {                        // an administrator's test traces on circuit n
+      if (!isAdmin(env, user)) return json({ error: "forbidden" }, 403);
+      const keys = (await listAll(env, `${DATA}${id}/trace-${n}-`, false)).map((o) => o.key)
+        .filter((key) => testOwner(Number(key.slice(key.lastIndexOf("-") + 1, -5))) === user.id);
+      for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+      return json({ ok: true, removed: keys.length });
     }
     if (method === "DELETE") {
       const uid = parts[3] != null ? Number(parts[3]) : user.id;

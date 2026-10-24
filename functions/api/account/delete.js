@@ -6,14 +6,18 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
   if (!(await allow(env, `pwchange:${user.id}`, 8, 600))) return json({ error: "rate" }, 429);
   if (!(await checkPassword(String(b?.password || ""), user, env))) return json({ error: "invalid" }, 401);
-  // the account's traces on shared analyses (R2: analyses/<id>/trace-<n>-<uid>.json)
+  // the account's traces on shared analyses (R2: analyses/<id>/trace-<n>-<uid>.json), an administrator's test traces too
+  // (uid 1e9 + account × 1000 + k: api/analyses)
   if (env.BUCKET) {
     try {
       const keys = [];
       let cursor;
       do {
         const r = await env.BUCKET.list({ prefix: "analyses/", cursor, limit: 1000 });
-        for (const o of r.objects) if (o.key.includes("/trace-") && o.key.endsWith(`-${user.id}.json`)) keys.push(o.key);
+        for (const o of r.objects) {
+          const m = /\/trace-\d+-(\d+)\.json$/.exec(o.key), uid = m ? Number(m[1]) : null;
+          if (uid === user.id || (uid > 1e9 && Math.floor((uid - 1e9) / 1000) === user.id)) keys.push(o.key);
+        }
         cursor = r.truncated ? r.cursor : undefined;
       } while (cursor);
       for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));

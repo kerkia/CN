@@ -1275,6 +1275,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Passes: `coursePasses` (first visit within 25 m after the previous control, its closest point; start = departure,
   finish = arrival). Tested 2026-10-14 with four local test accounts (local D1 only) and synthetic traces: access rules,
   ownership, every mode; a search around a control is timed at its first approach (published splits would be better).
+  **An administrator's test traces** (owner, 2026-10-24: one account could show one runner): under the runners' list,
+  « Traces de test (administrateur) » takes several GPX/TCX/FIT files at once, each a runner « <admin's name> #k » (PUT
+  `{ test: k }`, uid 1e9 + account × 1000 + k, no licence, `test` in the record; labelled #k on the map, tagged « test »),
+  « Retirer mes traces de test » removes them (DELETE `…/trace/<n>/tests`); account deletion removes them too. Invented tracks
+  for the « Entrainement Gif » test event (scanned map, invented georeferencing, routes over the map's colours, variants and
+  mistakes): `C:\kerkia\cn-data\Test files\fake-tracks\gen_tracks.py`.
   **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
   mienne »), ⌖ follows one runner; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
   **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
