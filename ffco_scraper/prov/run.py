@@ -1221,6 +1221,10 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         # the platforms' competitions, assigned to the races of the period one-to-one (races.assign)
         period = con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ?",
                              ((today - timedelta(days=KEEP_DAYS)).isoformat(), today.isoformat())).fetchall()
+        # a cancelled race takes no platform's competition (2026-10-24: WinSplits' « Sprint-labyrinthe Le Bessat, NOSE », the
+        # replacement's, went to the cancelled CF Sprint final by its organiser and day): its replacement, when there is one, does
+        cancelled = set(store.meta_get(con, "cancelled", []) or [])
+        period = [r for r in period if r["key"] not in cancelled]
         lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
         lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo])
         ws_events = store.meta_get(con, "winsplits", {"events": {}})["events"]
