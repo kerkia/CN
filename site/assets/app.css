@@ -1212,6 +1212,8 @@ table.data tbody tr.found .name { font-weight: 700; }
   .agenda-table table.data td { display: block; padding: 0; border: 0; white-space: normal; min-width: 0; }
   .agenda-table table.data td:nth-child(3) { min-width: 0; }
   .agenda-table table.data td.d { grid-area: d; font-weight: 650; font-size: 13px; white-space: nowrap; }
+  /* a multi-day event's last day under its first (2026-10-24: on one line it ran over the event's name) */
+  .agenda-table table.data td.d .d-end { display: block; font-weight: 500; font-size: 12px; }
   .agenda-table table.data td.n { grid-area: n; font-weight: 620; font-size: 14.5px; }
   .agenda-table table.data td.c { grid-area: c; font-size: 12.5px; }
   .agenda-table table.data td.p { grid-area: p; color: var(--ink-2); font-size: 13px; }
