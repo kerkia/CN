@@ -28,6 +28,8 @@ import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geo
 import { detectCourse } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
+import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
+import { bestLegs, usualRatio, legLoss } from "../trace/legs.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
@@ -35,7 +37,6 @@ import { takeInbox } from "../pwa.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
-const ERR = { pct: 20, s: 10 };                        // the split-times page's mistake rule
 const TOL = 20;                                        // metres: a control is "reached" within this of the trace
 const CAL_KEY = "ocn.an.cal";                          // localStorage: the positions, per race / circuit / runner / image
 const TRACE = "#3b0764";                               // the trace's default colour: a dark purple (owner, 2026-10-14)
@@ -874,17 +875,17 @@ export async function render(main, { query = {}, route } = {}) {
       const cumOf = (x) => Array.from({ length: n }, (_, i) => (i < n - 1 ? x.splits?.[i] ?? null : x.status === "ok" ? x.time_s : null));
       const legsOf = (x) => { const c = cumOf(x); return c.map((v, i) => (v != null && (i === 0 || c[i - 1] != null) ? v - (i ? c[i - 1] : 0) : null)); };
       all = k.runners.filter((x) => x.splits).map(legsOf);
-      best = Array.from({ length: n }, (_, i) => { const v = all.map((l) => l[i]).filter((x) => x != null && x > 0); return v.length ? Math.min(...v) : null; });
+      best = bestLegs(all, n);
       mine = legsOf(r);
-      const ratios = mine.map((v, i) => (v != null && best[i] ? v / best[i] : null)).filter((x) => x != null).sort((a, b) => a - b);
-      med = ratios.length ? ratios[Math.floor((ratios.length - 1) / 2)] : null;
+      med = usualRatio(mine, best);
     } else mine = times.slice(1).map((v, i) => (v != null && times[i] != null ? v - times[i] : null));     // per leg
     legs = [];
+    const loss = taus ? legLoss(mine, best) : [];
     for (let i = 0; i < n; i++) {
       const from = targets[i], to = targets[i + 1], t0 = times[i], t1 = times[i + 1];
       const leg = { n: i + 1, code: to.code || "", label: to.label, t0, t1, time: mine[i], best: best[i] ?? null, rank: null, lost: null, mistake: false, dist: null, straight: null, v: null, hr: null, cad: null, estimated: !taus };
       if (taus && leg.time != null) leg.rank = 1 + all.filter((l) => l[i] != null && l[i] < leg.time).length;
-      if (taus && leg.time != null && best[i] && med) { leg.lost = leg.time - best[i] * med; leg.mistake = leg.lost >= ERR.s && leg.lost >= (ERR.pct / 100) * leg.time; }
+      if (taus && leg.time != null && best[i] && med) { leg.lost = loss[i].lost; leg.mistake = loss[i].mistake; }
       if (fit && t0 != null && t1 != null && offset != null) {
         leg.dist = cumAt(track, offset + t1) - cumAt(track, offset + t0);
         const a = from.pos ? toM(fit, ...from.pos) : posAt(track, offset + t0), b = to.pos ? toM(fit, ...to.pos) : posAt(track, offset + t1);
@@ -1260,12 +1261,8 @@ export async function render(main, { query = {}, route } = {}) {
   const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); });
   themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
-  // the pace colours: from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
-  const PACE_COLOURS = ["#1c5fd6", "#19a0c9", "#1aa34a", "#8bc34a", "#f2c200", "#f28a00", "#e23a1f", "#8e0f1f"];
-  function paceScale() {
-    const vs = Array.from(track.v).filter((v) => v > 0.3).sort((a, b) => a - b);
-    vLo = vs[Math.floor(vs.length * 0.1)] || 0; vHi = vs[Math.floor(vs.length * 0.9)] || 1;
-  }
+  // the pace colours (trace/pacecolour.js): from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
+  function paceScale() { [vLo, vHi] = paceRange(track.v); }
   /** The legend of the trace coloured by pace (owner, 2026-10-15: the colours said nothing without it): the colours
    *  from the fastest to the slowest, each with the pace it starts at, in the map's bottom right corner. */
   function paceLegend() {
@@ -1274,13 +1271,9 @@ export async function render(main, { query = {}, route } = {}) {
     el.hidden = !(calibrated && colour === "speed");
     if (el.hidden) return;
     if (!vHi || vHi === 1) paceScale();
-    const n = PACE_COLOURS.length, at = (k) => vHi - (k / n) * (vHi - vLo);         // the speed where colour k starts
-    el.innerHTML = html`<div class="an-legend-title">${t("an.legend.pace")}</div>
-      <div class="an-legend-bar">${PACE_COLOURS.map((c) => html`<span style="background:${c}"></span>`)}</div>
-      <div class="an-legend-ticks"><span>${pace(at(0))}</span><span>${pace(at(n / 2))}</span><span>${pace(at(n))}</span></div>
-      <div class="an-legend-ends muted"><span>${t("an.legend.fast")}</span><span>${t("an.legend.slow")}</span></div>`;
+    el.innerHTML = paceLegendHtml(vLo, vHi);
   }
-  const paceColour = (v) => PACE_COLOURS[Math.max(0, Math.min(PACE_COLOURS.length - 1, Math.floor(((vHi - v) / (vHi - vLo || 1)) * PACE_COLOURS.length)))];
+  const paceColour = (v) => paceColourOf(v, vLo, vHi);
 
   function draw() {
     if (!map) return;

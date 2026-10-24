@@ -28,6 +28,8 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
+import { paceRange, paceColour, paceLegend } from "../trace/pacecolour.js";
+import { views as bottomViews, TABS } from "./sharedviews.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 
@@ -51,6 +53,7 @@ const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
+const COLOUR_BY = ["runner", "pace"];
 const TOL = 25;                                           // metres: a control reached
 const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × 2 px
@@ -584,8 +587,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   let curvesOpen = prefs.curvesOpen === true;              // one's own curves: folded to the left by default (owner, 2026-10-15)
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen })); } catch (e) { /* not kept */ } };
-  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null, ref = null;
+  let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy })); } catch (e) { /* not kept */ } };
+  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
@@ -593,9 +597,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       <div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button></div>
-        <div class="an-hud" id="sh-hud"></div></div>
+        <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
       <aside class="sh-panel" id="sh-right"></aside></div>
-    <section class="card" id="sh-splits" style="margin-top:12px"></section>`;
+    <section class="card sh-views" id="sh-views" style="margin-top:12px"></section>`;
   const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
   let image;
@@ -662,10 +666,35 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   T = T0;
 
   // ---- drawing
+  // the pace colours: one scale for every runner shown (their races' 10-90 % of speeds), so that colours compare
+  let vLo = 0, vHi = 1;
+  function paceScale() {
+    const shown = runners.filter((r) => r.visible);
+    [vLo, vHi] = paceRange(...shown.map((r) => r.tr.v.subarray(indexAt(r.tr, r.start), indexAt(r.tr, r.finish ?? r.tr.dur) + 1)));
+  }
+  function legend() {
+    const el = $("#sh-legend");
+    if (!el) return;
+    el.hidden = colourBy !== "pace";
+    if (!el.hidden) el.innerHTML = paceLegend(vLo, vHi);
+  }
+  /** Runner r's route from index a to b: one colour, or each step by its pace. */
+  function stroke(g, r, a, b, lwPx, alpha, head = null) {
+    if (b <= a) return;
+    if (colourBy === "pace") {
+      g.lineWidth = lwPx; g.globalAlpha = alpha;
+      for (let i = a + 1; i <= b; i++) { g.strokeStyle = paceColour(r.tr.v[i], vLo, vHi); g.beginPath(); g.moveTo(r.pxs[i - 1], r.pys[i - 1]); g.lineTo(r.pxs[i], r.pys[i]); g.stroke(); }
+      if (head) { g.beginPath(); g.moveTo(r.pxs[b], r.pys[b]); g.lineTo(head[0], head[1]); g.stroke(); }
+      return;
+    }
+    g.strokeStyle = r.colour; g.lineWidth = lwPx; g.globalAlpha = alpha;
+    g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]);
+    if (head) g.lineTo(head[0], head[1]);
+    g.stroke();
+  }
   function drawOver(g, view, lw) {
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
-    const path = (r, a, b) => { g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]); };
     g.lineCap = "round"; g.lineJoin = "round";
     for (const r of shown) {
       const s = sAt(r, T);
@@ -674,12 +703,11 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       // the route still to run, faint, to its finish (or the leg's end) — hidden by default
       if (future === "faint") {
         const a = indexAt(r.tr, leg ? r.passes[leg - 1] : r.start), b = indexAt(r.tr, leg ? r.passes[leg] ?? r.tr.dur : r.finish ?? r.tr.dur);
-        if (b > a) { g.strokeStyle = r.colour; g.lineWidth = lw(2 * width); g.globalAlpha = 0.3 * ta; path(r, a, b); g.stroke(); }
+        stroke(g, r, a, b, lw(2 * width), 0.3 * ta);
       }
       if (mode === "clock" && !leg && s < r.start - 1) continue;           // not started yet
-      g.strokeStyle = r.colour; g.lineWidth = lw((r === sel ? 2.8 : 2) * width); g.globalAlpha = (r === sel || !sel ? 1 : 0.75) * ta;
-      if (to > from) { path(r, from, to); const [mx, my] = posAt(r.tr, s); const [x, y] = toPx(r.fit, mx, my); g.lineTo(x, y); g.stroke(); }
       const [mx, my] = posAt(r.tr, s), [x, y] = toPx(r.fit, mx, my);
+      stroke(g, r, from, to, lw((r === sel ? 2.8 : 2) * width), (r === sel || !sel ? 1 : 0.75) * ta, [x, y]);
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
       if (shown.length > 1 || r === sel) {
@@ -794,7 +822,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       const was = [T0, T1];
       [T0, T1] = range();
       if (T < T0 || T > T1 || (was[0] === T && T0 !== T)) T = Math.min(T1, Math.max(T0, T));
-      left(); right(); frame(); splits();
+      paceScale(); legend();
+      left(); right(); frame(); bottom.draw();
     };
     $$(".sh-runner").forEach((el) => el.addEventListener("click", (e) => {
       if (e.target.closest("[data-follow]")) return;
@@ -859,6 +888,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
+          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.map((c) => html`<option value="${c}" ${raw(c === colourBy ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div></details>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
@@ -875,6 +905,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
+    $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -893,7 +924,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       mv.fitBox(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), 40, 4);
       if (follow === "all") follow = "none";
     } else fitRoutes();
-    left(); right(); frame();
+    left(); right(); frame(); bottom.draw();
   }
   function fitRoutes() {
     const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y);
@@ -914,23 +945,13 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   }
   function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; }
 
-  // ---- the splits table, against a reference (the duel)
-  function splits() {
-    const R = runners.filter((r) => r.visible);
-    if (!R.length || legsN < 1) { $("#sh-splits").innerHTML = ""; return; }
-    const best = Array.from({ length: legsN }, (_, j) => Math.min(...R.map((r) => legTime(r, j + 1) ?? 1e9)));
-    const rankOf = (r, j) => { const v = legTime(r, j); return v == null ? null : 1 + R.filter((x) => (legTime(x, j) ?? 1e9) < v).length; };
-    $("#sh-splits").innerHTML = html`<div class="card-head"><div><h2>${t("spl.title")}</h2><div class="hint">${t("sh.splits.hint")}</div></div>
-      <label class="field" style="margin-left:auto"><span>${t("sh.ref")}</span><select id="sh-ref"><option value="">—</option>${R.map((r) => html`<option value="${r.uid}" ${raw(r === ref ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
-      <div class="table-wrap"><table class="data compact sh-splits"><thead><tr><th>${t("prov.name")}</th>${Array.from({ length: legsN }, (_, j) => html`<th class="r" data-legh="${j + 1}" style="cursor:pointer">${ctrlLabel(j + 1)}</th>`)}<th class="r">${t("an.total")}</th></tr></thead>
-      <tbody>${R.map((r) => html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}</td>
-        ${Array.from({ length: legsN }, (_, j) => { const v = legTime(r, j + 1), c = r.passes[j + 1] != null ? r.passes[j + 1] - r.start : null, rv = ref && ref !== r ? legTime(ref, j + 1) : null;
-          return html`<td class="r num${v != null && v === best[j] ? " sh-best" : ""}">${v != null ? html`${clock(v)} <span class="muted">(${rankOf(r, j + 1)})</span>` : "—"}
-            <div class="sh-sub muted">${c != null ? clock(c) : ""}${v != null && rv != null ? html` <span class="${v > rv ? "delta-down" : "delta-up"}">${signed(v - rv)}</span>` : ""}</div></td>`; })}
-        <td class="r num"><b>${total(r) != null ? clock(total(r)) : "—"}</b>${ref && ref !== r && total(r) != null && total(ref) != null ? html`<div class="sh-sub ${total(r) > total(ref) ? "delta-down" : "delta-up"}">${signed(total(r) - total(ref))}</div>` : ""}</td></tr>`)}</tbody></table></div>`;
-    $("#sh-ref").addEventListener("change", (e) => { ref = runners.find((r) => r.uid === Number(e.target.value)) || null; splits(); });
-    $$("[data-legh]").forEach((th) => th.addEventListener("click", () => setLeg(Number(th.dataset.legh))));
-  }
+  // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
+  const state = { tab: TABS[0], ref: null, legsOf: null, get sel() { return sel; } };
+  const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
+    // the field a leg time is ranked in, and its best legs: every runner with a trace
+    fieldLegs: () => ({ source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) }),
+    refChanged: () => bottom.draw(), changed: () => {} };
+  const bottom = bottomViews($("#sh-views"), X);
 
   // ---- the layout: the window's height below the top line
   const fit = () => { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 14))}px`; };
@@ -943,7 +964,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   fit();
   mv.setAlpha(mapAlpha / 100);
   mv.setImage(image);
-  left(); right(); splits();
+  paceScale(); legend();
+  left(); right(); bottom.draw();
   fitRoutes();
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
