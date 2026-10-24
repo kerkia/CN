@@ -33,6 +33,7 @@ import { views as bottomViews, TABS } from "./sharedviews.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
+import { replaceQuery } from "../app.js";
 
 const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -55,6 +56,7 @@ const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
 const COLOUR_BY = ["runner", "pace"];
+const MODES = ["clock", "mass", "from", "wait"], FOLLOWS = ["all", "sel", "none"];
 const TOL = 25;                                           // metres: a control reached
 const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × 2 px
@@ -87,8 +89,8 @@ export async function render(main, r) {
   const org = r.route === "orgRace" || r.route === "orgTraining";
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
   betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
-  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
-  return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind, r.query);
+  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true, r.query) : orgListPage(main, kind);
+  return r.query.id ? eventPage(main, kind, r.query.id, false, r.query) : listPage(main, kind, r.query);
 }
 
 // ---- the list ----------------------------------------------------------------------------------------------------
@@ -217,7 +219,7 @@ function createForm(box, kind, races, club) {
 }
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
-async function eventPage(main, kind, id, org = false) {
+async function eventPage(main, kind, id, org = false, query = {}) {
   const home = org ? ORG_ROUTE[kind] : ROUTE[kind], homeTitle = t(org ? `sh.org.${kind}.title` : `sh.${kind}.title`);
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
@@ -234,7 +236,8 @@ async function eventPage(main, kind, id, org = false) {
   }
   let race = null;
   if (kind === "race" && A.race) race = await getProv(`${encodeURIComponent(A.race)}.json`);
-  let courseN = A.courses[0]?.n ?? null, viewer = null;
+  // the circuit, and the replay's state, from the address (a link reopens the same view)
+  let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
     <div class="sh-top">
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
@@ -258,7 +261,8 @@ async function eventPage(main, kind, id, org = false) {
       $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(org ? "sh.noCourse.org" : "sh.notReady")}</div></div>`;
       return;
     }
-    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
+    const init = initial; initial = {};                    // the address's state for the first circuit opened only
+    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
       data = await api(`/${id}`, { key: keyOf(id) }); openViewer(); } });
   };
   const reloadAll = async () => {
@@ -577,7 +581,7 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0) {
 }
 
 // ---- the replay --------------------------------------------------------------------------------------------------
-async function replay(box, { A, id, course, race, traces, you, reload }) {
+async function replay(box, { A, id, course, race, init = {}, traces, you, reload }) {
   document.body.classList.add("an-theatre");
   const ctrls = course.controls, legsN = ctrls.length - 1;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
@@ -590,7 +594,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy })); } catch (e) { /* not kept */ } };
-  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null;
+  const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
+  let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
+  let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
@@ -652,6 +658,11 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   const visKey = `ocn.an.vis.${id}.${course.n}`;
   try { const hidden = JSON.parse(sessionStorage.getItem(visKey) || "[]"); runners.forEach((r) => { r.visible = !hidden.includes(r.uid); }); } catch (e) { /* all shown */ }
   const saveVis = () => { try { sessionStorage.setItem(visKey, JSON.stringify(runners.filter((r) => !r.visible).map((r) => r.uid))); } catch (e) { /* this visit only */ } };
+  // the address's runners shown and followed win over the visit's
+  const uidsOf = (v) => String(v || "").split(",").map(Number).filter((n) => Number.isInteger(n));
+  if (init.show != null) { const show = uidsOf(init.show); runners.forEach((r) => { r.visible = show.includes(r.uid); }); }
+  sel = runners.find((r) => r.uid === Number(init.sel)) || null;
+  if (sel) sel.visible = true;
   runners.sort((a, b) => (total(a) ?? 1e9) - (total(b) ?? 1e9));
   runners.forEach((r, i) => { r.colour = COLOURS[i % COLOURS.length]; r.rank = total(r) != null ? i + 1 : null; });
 
@@ -687,7 +698,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     return Math.max(r.tr.t[0], Math.min(r.tr.dur, s));
   }
   let [T0, T1] = range();
-  T = T0;
+  T = init.t != null && Number.isFinite(Number(init.t)) ? Math.min(T1, Math.max(T0, Number(init.t))) : T0;
 
   // ---- drawing
   // the pace colours: one scale for every runner shown (their races' 10-90 % of speeds), so that colours compare
@@ -752,7 +763,30 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     if (x1 - x0 > (w - 160) / k || y1 - y0 > (h - 160) / k) mv.fitBox(x0, y0, x1, y1, 80, 4);
     else mv.centerOn((x0 + x1) / 2, (y0 + y1) / 2);
   }
-  function frame() { followView(); mv.draw(); hud(); drawOwn(); }
+  function frame() { followView(); mv.draw(); hud(); drawOwn(); saveUrl(); }
+  // ---- the replay's state in the address (owner's study of 2DRerun, 2026-10-23: a link reopens the same view): the circuit,
+  // mode, time, leg, runners shown, followed runner, duel reference and view; written once the replay has been still 0.4 s
+  let urlTimer = 0;
+  function saveUrl() {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => {
+      if (!box.isConnected) return;
+      const q = { id };
+      if (A.courses.length > 1 || course.n !== A.courses[0]?.n) q.c = course.n;
+      if (mode !== "mass") q.m = mode;
+      if (mode === "from") q.from = fromK;
+      if (leg) q.leg = leg;
+      if (Math.round(T) !== Math.round(T0)) q.t = Math.round(T);
+      if (runners.some((r) => !r.visible)) q.show = runners.filter((r) => r.visible).map((r) => r.uid).join(",");
+      if (sel) q.sel = sel.uid;
+      if (follow !== "all") q.f = follow;
+      if (state.ref) q.ref = state.ref.uid;
+      if (state.tab !== TABS[0]) q.v = state.tab;
+      if (state.legsOf != null) q.lo = state.legsOf;
+      Object.assign(q, X.extraQuery?.() || {});
+      replaceQuery(q);
+    }, playing ? 1500 : 400);
+  }
 
   // ---- one's own curves: from one's own file, kept on this device (the server keeps positions and times only, and
   // the others never see them); the panel folded to the left by default, a tab to open it
@@ -901,9 +935,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       <div class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></div>
       <div class="an-opts" style="margin-top:8px">
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
-        ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${["clock", "mass", "from", "wait"].map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
+        ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${MODES.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <label><span>${t("sh.follow")}</span><select id="sh-follow">${["all", "sel", "none"].map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
+        <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
       <p class="hint" style="margin-top:8px">${t(`sh.mode.${leg ? "leg" : mode}.hint`)}</p>
       <details class="an-settings" open><summary>${t("an.display")}</summary>
         <div class="an-opts">
@@ -967,10 +1001,10 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     }, 40);
     const b = $("#sh-play"); if (b) b.textContent = "⏸";
   }
-  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; }
+  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; saveUrl(); }
 
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
-  const state = { tab: TABS[0], ref: null, legsOf: null, get sel() { return sel; } };
+  const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null), get sel() { return sel; } };
   const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
     // the field a leg time is ranked in, and its best legs: the class's published split times (every runner of the circuit),
     // else every runner with a trace
@@ -980,7 +1014,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       if (all.filter((l) => l.some((v) => v != null)).length >= 2) return { source: "published", all };
       return { source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) };
     },
-    refChanged: () => bottom.draw(), changed: () => {} };
+    refChanged: () => { bottom.draw(); saveUrl(); }, changed: () => saveUrl() };
   const bottom = bottomViews($("#sh-views"), X);
 
   // ---- the layout: the window's height below the top line
@@ -996,7 +1030,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   mv.setImage(image);
   paceScale(); legend();
   left(); right(); bottom.draw();
-  fitRoutes();
+  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else fitRoutes();
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
