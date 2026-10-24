@@ -33,11 +33,9 @@ export async function allow(env, key, max, windowSec) {
 
 export const adminEmails = (env) => String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
 export const isAdmin = (env, user) => !!user.email_verified && adminEmails(env).includes(user.email);
-// the features a few accounts try before everyone (owner, 2026-10-24): the Pages secret PREVIEW_ACCOUNTS lists them, by
-// account id or verified e-mail — never in the repository, which is public; each sees every feature of PREVIEW_FEATURES
-const PREVIEW_FEATURES = ["live1line"];      // « En direct »: one line per runner
-export const previewOf = (env, user) => (String(env.PREVIEW_ACCOUNTS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean)
-  .some((a) => a === String(user.id) || (!!user.email_verified && a === user.email)) ? PREVIEW_FEATURES : []);
+// the features a few accounts try before everyone (owner, 2026-10-24): users.preview (migration 0015), their names separated
+// by commas, set by hand in D1 — « live1line »: « En direct », one line per runner
+export const previewOf = (user) => String(user.preview || "").split(/[\s,;]+/).filter(Boolean);
 
 export function jsonList(s) {
   try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
@@ -56,7 +54,7 @@ export const publicUser = (env, u, countries = []) => ({
   pushDeadline: u.push_deadline === 1,
   // a demo account (admin page, « Démo »): read-only, tied to no licence, valid until that day
   demo: u.demo_until || null,
-  preview: previewOf(env, u),
+  preview: previewOf(u),
   // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data
   countries: countries.map((c) => ({ cc: c.country, club: c.club, id: c.member_id, status: c.status })),
 });

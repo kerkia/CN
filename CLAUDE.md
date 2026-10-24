@@ -1291,10 +1291,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   punches' time of day) frozen when a table scrolls sideways (owner, 2026-10-24: opaque, the row's tint `--lv-tint` drawn over
   it). **One line per runner, a preview** (owner, 2026-10-24): each two-line cell split into two columns (Temps | Écart, CN |
   Attendu, Score | Écart {cnTo}, Catégorie, in « Passages » Nom | Club and Circuit | Cat.), nothing wraps, the table scrolls
-  sideways (`live.js` `ONE`, `.lv-one`); shown only to the accounts the Pages secret `PREVIEW_ACCOUNTS` names (account ids or
-  verified e-mails, never in the repository: `_lib/api.js` `previewOf` → `preview: ["live1line"]` on `/api/account/me`, kept by
-  `auth.fromUser`); local test: launch configs `ocn-live-1line` (the mock and the relay in one) + `pages-dev-1line` (8791,
-  binding `PREVIEW_ACCOUNTS` = the local test account; start it once the relay is up, or the WebSocket fails); the punches' table (« Passages »,
+  sideways (`live.js` `ONE`, `.lv-one`); shown only to the accounts whose D1 `users.preview` (migration 0015, features
+  separated by commas, set by hand: `UPDATE users SET preview = 'live1line' WHERE id IN (…)`) names it (`_lib/api.js` `previewOf` →
+  `preview: ["live1line"]` on `/api/account/me`, kept by `auth.fromUser`); local test: launch configs `ocn-live-1line` (the mock
+  and the relay in one) + `pages-dev-1line` (8791; the flag set on the local test account in the local D1; start it once the relay
+  is up, or the WebSocket fails); the punches' table (« Passages »,
   owner 2026-10-22): **every punch of the last 15 minutes**, derived from the courses' results (each radio control passed and
   each finish at start + its time; the relay's last 30 only for a course not held yet), else the latest 20 — time of day, the
   event (radio control ○ / finish ◎), runner and club, course and category, time and gap, place, start. **Recent ones

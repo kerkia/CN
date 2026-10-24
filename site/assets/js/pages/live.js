@@ -209,7 +209,7 @@ async function race(main, id, wanted, arg) {
   // without France (owner, 2026-10-20): the race as liveresultat gives it, no CN, score or expected place
   const FR = sees("FR");
   // one line per runner, the table scrolling sideways (owner, 2026-10-24: a preview for the accounts the server names, see
-  // _lib/api.js previewOf; everyone else keeps two lines a runner): each two-line cell split into two columns
+  // users.preview, _lib/api.js previewOf; everyone else keeps two lines a runner): each two-line cell split into two columns
   const ONE = (session()?.preview || []).includes("live1line");
   const two = (a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
   // a pair of values: one cell of two lines, or two cells (the second's class `cls2`)
