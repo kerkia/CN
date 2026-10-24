@@ -241,7 +241,13 @@ co-live.fr, a live results site French organisers feed from their timing softwar
 circuit's results page and split times page, read again only when the results pages moved; it lists only current races, so a
 race is read on its day or soon after; a link to its home page on the organiser's site, « Résultats provisoires », gets the
 O'Live race of that day whose name fits, or one of whose name's own words the linking page gives: `clubsite` keeps such a link
-with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2), SPORTident Center (2026-10-24, `sources/sportident.py`: center.sportident.com, where
+with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2; **a cancelled race** (2026-10-24: FFCO's calendar still listed both CF Sprint races, cancelled on the organiser's
+site and replaced by « Sprint Labyrinthe - Le Bessat », and both took its results): a race whose organiser's pages hold a sentence
+with « annul… », its name — brackets and « - WRE » apart — and its day (« samedi 24/10 » too) is marked cancelled
+(`ClubSite.cancelled`, `run.mark_cancelled`, prov_meta « cancelled ») and left off « Résultats » while it has no results of its
+own; an O'Live race its page leads to by the page's words only becomes the replacement, a race of its own « ol<id> » with the
+cancelled race's day, organiser, site and discipline, O'Live's name and the place after its « - » (`run.replacement`), and the
+cancelled race drops an O'Live document the replacement holds), SPORTident Center (2026-10-24, `sources/sportident.py`: center.sportident.com, where
 SPORTident's Orienteering App, its Reader, OE12 and SiTiming publish, live and after; its public events list
 `/api/rest/v1/public-events` by country and dates, each event's results file `/event-files/<guid>/results/r.1.latest.bin`, a
 protobuf read by its field numbers — taken from its page's script, none of its code —: classes, courses and their sections,

@@ -123,23 +123,23 @@ class OLive:
                           for r in races(self._get("") or "") if r["date"] and not re.search(r"relais", r["type"], re.I)]
         return self._list
 
-    def of_day(self, race, context: str = "", named: bool = True) -> int | None:
+    def of_day(self, race, context: str = "", named: bool = True) -> tuple[int | None, str | None]:
         """A link to O'Live naming no race (« Résultats provisoires » -> its home page): the race of that day whose name
         fits the race's best; else the one alone of the day with a word of its name (a place, not « sprint ») on the page
         holding the link (2026-10-24: the CF Sprint, cancelled, replaced by « Sprint Labyrinthe - Le Bessat », its page
         « Sprint Forêt … Fléchage depuis l'entrée du village du Bessat »); else, when the link itself names the race
-        (`named`), the day's only one."""
+        (`named`), the day's only one. Answers (its id, how: "name", "page" or "only"), (None, None) when none fits."""
         from ..races import GENERIC, QUALIFIERS, _words, match_score
         day = [c for c in self.competitions() if c["date"] == race["date_iso"]]
         best = sorted(((match_score(race, c["name"], ""), c["id"]) for c in day), reverse=True)
         if best and best[0][0] >= 1.0 and (len(best) == 1 or best[1][0] < best[0][0]):
-            return best[0][1]
+            return best[0][1], "name"
         page = set(_words(re.sub(r"<[^>]+>", " ", htmllib.unescape(context or ""))))
         own = lambda c: {w for w in _words(c["name"]) if len(w) >= 4 and w not in GENERIC and w not in QUALIFIERS and not w.isdigit()}
         said = [c["id"] for c in day if own(c) & page]
         if len(said) == 1:
-            return said[0]
-        return day[0]["id"] if named and len(day) == 1 else None
+            return said[0], "page"
+        return (day[0]["id"], "only") if named and len(day) == 1 else (None, None)
 
     def _circuits(self, cid: int) -> dict[str, list[dict]] | None:
         page = self._get(f"Action=ChoixCircuits&IdCourse={cid}")

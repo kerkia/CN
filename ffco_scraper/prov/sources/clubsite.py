@@ -233,6 +233,25 @@ class ClubSite:
         self.pages: dict[str, str | None] = {}            # url -> html, within one run
         self.bases: dict[str, str] = {}                   # url -> where its html came from (a refresh's target)
 
+    def cancelled(self, race) -> bool:
+        """Do the pages read for this race say it is cancelled? A sentence holding « annul… », the race's name (its brackets
+        and « - WRE » apart: « Championnat de France de Sprint ») and its day (« samedi 24/10 » too). 2026-10-24: FFCO's
+        calendar still listed both CF Sprint races, which the organiser's page announced cancelled, replaced by a labyrinth
+        sprint at Le Bessat."""
+        base = plain(re.split(r"\s+-\s+", re.sub(r"\(.*?\)", " ", race["name"] or ""))[0])
+        if len(base.split()) < 2:
+            return False
+        d = date.fromisoformat(race["date_iso"])
+        short = re.compile(rf"(?<!\d)0?{d.day}\s*/\s*0?{d.month}(?!\d)")
+        for text in self.pages.values():
+            if not text or "annul" not in text.lower():
+                continue
+            words = plain(htmllib.unescape(re.sub(r"<[^>]+>", " ", text)))
+            for sentence in re.split(r"[.!?…]+\s", words):
+                if "annul" in sentence and base in sentence and (names_day(sentence, d) or short.search(sentence)):
+                    return True
+        return False
+
     def page(self, url: str) -> str | None:
         if url not in self.pages:
             a = self.f.get(url, conditional=False)

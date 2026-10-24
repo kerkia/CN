@@ -341,8 +341,19 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 other_year(f"{name} {row['note'] or ''}", day):
             con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], row["url"]))
             changed += 1
+    gone = False
     if sites and not f.out_of_time():
         found = cs.find(race, sites)
+        # a race its organiser's pages say is cancelled (FFCO's calendar may still list it, as the CF Sprint of 2026-10-24):
+        # kept off « Résultats » while it has no results of its own (build), and an O'Live race its page leads to is its
+        # replacement, a race of its own (`replacement`)
+        gone = cs.cancelled(race)
+        if not f.out_of_time():
+            mark_cancelled(con, race["key"], gone)
+        if gone:
+            # (an O'Live document its replacement holds is not the cancelled race's: given to it before 2026-10-24's fix)
+            changed += con.execute("""DELETE FROM prov_docs WHERE race_key = ? AND source = 'olive' AND url IN
+                                      (SELECT url FROM prov_docs WHERE race_key LIKE 'ol%')""", (race["key"],)).rowcount
         # unreadable files a looser search took earlier (a club's pages taken for results lists): gone once a full
         # look no longer finds them
         if not f.out_of_time():
@@ -429,13 +440,20 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                 # O'Live: the race the link names, else (« Résultats provisoires » -> its home page) the race of that day
                 # the link or the page holding it names (clubsite: `contexts`)
                 page, named = found.get("contexts", {}).get(url, (None, True))
-                pid = platform_id(kind, url) or (ol.of_day(race, (cs.page(page) or "") if page else "", named)
-                                                 if ol and not f.out_of_time() else None)
+                pid, how = (platform_id(kind, url), "link") if platform_id(kind, url) else \
+                    ol.of_day(race, (cs.page(page) or "") if page else "", named) if ol and not f.out_of_time() else (None, None)
+                # the race cancelled, an O'Live race its page leads to but whose name is not the race's is its replacement
+                target = race
+                if pid and gone and how in ("page", "only"):
+                    target = replacement(con, race, ol, pid) or race
+                    if target is not race:
+                        changed += con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?",
+                                               (race["key"], PLATFORM_URL[kind].format(pid))).rowcount
                 d = ol.read(pid) if pid and ol and PLATFORM_URL[kind].format(pid) not in seen and not f.out_of_time() else None
                 if d and d["classes"] and date_ok(d, race) and (not d.get("date") or d["date"] == race["date_iso"]):
                     seen.add(PLATFORM_URL[kind].format(pid))
                     con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ? AND kind = 'platform'", (race["key"], url))
-                    changed += save(con, race["key"], PLATFORM_URL[kind].format(pid), kind, d)
+                    changed += save(con, target["key"], PLATFORM_URL[kind].format(pid), kind, d)
                     continue
                 if not named:
                     continue                          # (a link of the club's pages, about another race)
@@ -468,6 +486,35 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
                                 note={"helga": "Helga : pages de résultats fermées aux robots",
                                       "olive": "O'Live : résultats en direct", "routegadget": "RouteGadget"}[kind])
     return changed
+
+
+def mark_cancelled(con, key: str, gone: bool) -> None:
+    """The races their organiser's pages say are cancelled (prov_meta 'cancelled', their keys), as the last look found."""
+    keys = set(store.meta_get(con, "cancelled", []) or [])
+    if gone != (key in keys):
+        store.meta_set(con, "cancelled", sorted(keys | {key} if gone else keys - {key}))
+
+
+def replacement(con, race, ol: OLive, pid):
+    """The race an O'Live competition stands for when the race whose page leads to it is cancelled: a race of its own,
+    « ol<id> », on the cancelled race's day, of its organiser, site and discipline, under O'Live's name and the place that
+    name gives (« Sprint Labyrinthe - Le Bessat » -> « Le Bessat »). None when O'Live no longer lists it."""
+    key = f"ol{pid}"
+    row = con.execute("SELECT * FROM prov_races WHERE key = ?", (key,)).fetchone()
+    if row:
+        return row
+    comp = next((c for c in ol.competitions() if c["id"] == int(pid)), None)
+    if not comp:
+        return None
+    parts = re.split(r"\s+-\s+", comp["name"])
+    now = races.now_iso()
+    # (agenda_id 0, as an upload's race: FFCO's results of it, if they come, are linked to it rather than added twice)
+    con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site, agenda_id,
+                   first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (key, race["date_iso"], comp["name"], parts[-1] if len(parts) > 1 else race["place"], race["org"], race["org_code"],
+                 race["terrain"], race["epreuve"], race["cn"], race["site"], 0, now, now))
+    log.info("provisional: %s is cancelled; O'Live's « %s » is its replacement, %s", race["key"], comp["name"], key)
+    return con.execute("SELECT * FROM prov_races WHERE key = ?", (key,)).fetchone()
 
 
 def platform_doc(con, race, md: MeOSDjango, pid: str | None) -> int:
@@ -964,6 +1011,7 @@ def build(con, out: Path, today: date) -> int:
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     far = (today + timedelta(days=ORG_START_DAYS)).isoformat()
     org_starts = set(store.meta_get(con, "org_starts", []) or [])
+    cancelled = set(store.meta_get(con, "cancelled", []) or [])     # (site_docs: its organiser's pages say so)
     clock = datetime.now(ZoneInfo("Europe/Paris"))           # (a race's live lists: its times of day)
     now_s = clock.hour * 3600 + clock.minute * 60 + clock.second
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
@@ -986,6 +1034,10 @@ def build(con, out: Path, today: date) -> int:
         rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's
         lives, final = [], False               # the lists read while the race was under way; the organiser's own file
         all_parsed = [json.loads(doc["parsed"]) if doc["parsed"] else None for doc in docs]
+        # a cancelled race (its organiser's pages say so) is not listed while it has no results of its own
+        if race["key"] in cancelled and not any(p and p.get("classes") and p.get("kind") not in (*START_KINDS, "registration", "announcement", coursedata.KIND)
+                                                for p in all_parsed):
+            continue
         # the course setter's data (« Organisation › Tracer »): no list of results; the uploads first, the newest first.
         # Courses are secret until the race (the setters' own pages): used from the race's day (results come after the
         # runners' finish), its courses listed from the day after
