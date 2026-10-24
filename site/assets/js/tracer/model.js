@@ -9,8 +9,23 @@
 // The event is plain data (JSON): `ev.controls`, `ev.courses`, `ev.courseControls`, `ev.legs`, `ev.specials` map ids to
 // objects; `ev.next` holds the last id of each. The functions below read it (queries) or change it in place (changes);
 // the editor snapshots it for undo.
+//
+// The advanced level (owner, 2026-10-24, after the Condes study; administrators for now) adds what a .ppen cannot hold, all
+// optional, absent in an event that does not use it (ppen.js ppenLosses lists what an export leaves out):
+// - diamond (phi) loops: a fork of two branches from an entry X to an exit Y, run one after the other with a branch back from Y
+//   to X between them (Condes's « diamond »): X.phi, X.phiMid = the course control of Y's first passage, whose next starts the
+//   way back (its last course control's next is 0: it returns to the other branch's head);
+// - random-order sections: course controls marked rnd, taken in any order (no leg lines to, between or from them);
+// - a course's form (course.form "string" | "trail", legLines), discipline (course.discipline, else ev.discipline: "foot",
+//   "mtbo", "ski", "trail"), rogaine scoring (course.rogaine: points = code / 10) and « all controls » (course.allControls),
+//   a finish drawn on the start (the finish control's atStart: the start control it follows);
+// - classes as data (ev.classes: name, course, expected entries), control units and locks (control.units, control.locked),
+//   trail-O flags and answers (control.trail), a second symbol in a box (control.dual), several routes per leg (leg.alts);
+// - more maps (ev.maps, a course part's map: course.partMaps) and more special objects (MTB-O symbols, enlarged sections,
+//   masks); see the modules that draw them.
 
-export const VERSION = 1;
+/** The event model's version: 2 since 2026-10-24 (the advanced level's fields; nothing to convert from 1). */
+export const VERSION = 2;
 
 // ---- geometry, in map millimetres --------------------------------------------------------------------------------
 export const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -98,9 +113,10 @@ export function newEvent({ title = "", map = { kind: "none", scale: 10000 }, sta
     next: { control: 0, course: 0, courseControl: 0, leg: 0, special: 0 },
   };
 }
-const STORE = { control: "controls", course: "courses", courseControl: "courseControls", leg: "legs", special: "specials" };
+const STORE = { control: "controls", course: "courses", courseControl: "courseControls", leg: "legs", special: "specials", class: "classes", map: "maps" };
 export function addObj(ev, kind, obj) {
-  const id = ++ev.next[kind];
+  ev[STORE[kind]] = ev[STORE[kind]] || {};
+  const id = (ev.next[kind] = (ev.next[kind] || 0) + 1);
   ev[STORE[kind]][id] = obj;
   return id;
 }
@@ -168,6 +184,20 @@ function enumToJoin(ev, cd, start, join, choices, ignoreFirstSplit, state, frac)
   while (id && id !== join && guard++ < 10000) {
     let cc = ev.courseControls[id];
     if (!cc) break;
+    // a diamond (phi) loop: one branch to the exit, the way back, the other branch to the exit (the choice: the branch run first)
+    if (cc.split && cc.phi && !(first && ignoreFirstSplit)) {
+      const heads = cc.splitCCs, end = cc.splitEnd;
+      let a = heads[0];
+      if (choices && choices.length) a = choices.shift();
+      const b = heads.find((h) => h !== a) || heads[0];
+      out.push(...enumToJoin(ev, cd, a, end, choices, true, state, frac));
+      for (const x of phiBack(ev, cc)) if (cd.part < 0 || state.part === cd.part) out.push({ cc: x, frac });
+      out.push(...enumToJoin(ev, cd, b, end, choices, true, state, frac));
+      id = end;
+      if (!id || id === join) break;
+      first = false;
+      continue;
+    }
     if (cc.split && !(first && ignoreFirstSplit)) {
       if (choices && choices.length) {
         id = choices.shift();
@@ -195,6 +225,35 @@ function enumToJoin(ev, cd, start, join, choices, ignoreFirstSplit, state, frac)
   return out;
 }
 export const ccIds = (ev, cd) => enumCC(ev, cd).map((x) => x.cc);
+/** A diamond loop's way back: the exit's first passage (phiMid), then the course controls that lead back to the entry. */
+export function phiBack(ev, cc) {
+  const out = [];
+  let id = cc?.phiMid || 0, guard = 0;
+  while (id && ev.courseControls[id] && guard++ < 1000) { out.push(id); id = ev.courseControls[id].next || 0; }
+  return out;
+}
+/** The course controls that end a diamond loop's way back, each with the entry it returns to: Map(ccId -> entry head). */
+export function phiReturns(ev, courseId) {
+  const out = new Map();
+  for (const id of ccIds(ev, cdCourse(courseId))) {
+    const cc = ev.courseControls[id];
+    if (!cc.phi || id !== cc.splitCCs[0]) continue;
+    const back = phiBack(ev, cc);
+    if (back.length) out.set(back[back.length - 1], id);
+  }
+  return out;
+}
+/** The course controls of a course's random-order sections: [[ccIds]] (runs of rnd course controls, in order). */
+export function randomSections(ev, cd) {
+  const out = [];
+  let cur = null;
+  for (const id of ccIds(ev, cd)) {
+    if (ev.courseControls[id]?.rnd) { if (!cur) out.push(cur = []); cur.push(id); } else cur = null;
+  }
+  return out;
+}
+/** A course's discipline: its own, else the event's ("foot" by default; "mtbo", "ski", "trail"). */
+export const disciplineOf = (ev, courseId) => (courseId && ev.courses[courseId]?.discipline) || ev.discipline || "foot";
 export const ctrlOf = (ev, ccId) => ev.controls[ev.courseControls[ccId]?.control];
 export const kindOfCC = (ev, ccId) => ctrlOf(ev, ccId)?.kind;
 
@@ -222,7 +281,9 @@ export function allVariations(ev, courseId) {
   const letters = variantLetters(ev, courseId), visited = new Set();
   const vars = variationsFrom(ev, ev.courses[courseId].first || 0, visited);
   if (vars.length === 1 && !vars[0].length) return [];
-  return vars.map((path) => ({ code: path.map((s) => letters.get(s) || "").join(""), path }))
+  // a diamond loop's choice says both branches, in the order run: « AB » or « BA »
+  const code = (s) => { const cc = ev.courseControls[s]; if (!cc?.phi) return letters.get(s) || ""; const o = cc.splitCCs.find((h) => h !== s); return (letters.get(s) || "") + (letters.get(o) || ""); };
+  return vars.map((path) => ({ code: path.map(code).join(""), path }))
     .sort((a, b) => a.code.localeCompare(b.code, "en", { sensitivity: "base" }));
 }
 function variationsFrom(ev, start, visited) {
@@ -230,6 +291,11 @@ function variationsFrom(ev, start, visited) {
   let id = start, guard = 0;
   while (id && guard++ < 10000) {
     const cc = ev.courseControls[id];
+    if (cc.split && cc.phi) {
+      // either branch first, then the course on from the exit
+      for (const s of cc.splitCCs) for (const tail of variationsFrom(ev, cc.splitEnd, visited)) out.push([s, ...tail]);
+      break;
+    }
     if (cc.split) {
       let allLoops = true;
       if (cc.loop) for (let i = 1; i < cc.splitCCs.length; i++) if (!visited.has(cc.splitCCs[i])) allLoops = false;
@@ -289,6 +355,22 @@ export function legPoints(ev, c1, c2) {
   return [[a.x, a.y], ...(leg?.bends || []), [b.x, b.y]];
 }
 export const legLengthM = (ev, c1, c2) => pathLength(legPoints(ev, c1, c2)) * ev.map.scale / 1000;
+/** A leg's routes: the expected one (leg.route) and the others drawn (leg.alts: [{ pts, name }]), each as points from c1 to c2. */
+export function legRoutes(ev, c1, c2) {
+  const leg = ev.legs[findLeg(ev, c1, c2)], a = ev.controls[c1], b = ev.controls[c2];
+  const out = [];
+  if (leg?.route?.length) out.push({ name: "", pts: [[a.x, a.y], ...leg.route, [b.x, b.y]], main: true });
+  for (const r of leg?.alts || []) if (r.pts?.length) out.push({ name: r.name || "", pts: [[a.x, a.y], ...r.pts, [b.x, b.y]] });
+  return out;
+}
+/** A leg's length for a course: along the shortest route drawn when the course is measured so (course.lengthBy "route", the
+ *  default for MTB-O, where riders follow the tracks), else as Purple Pen measures it (straight, through its bends). */
+export function legLengthFor(ev, courseId, c1, c2) {
+  const course = courseId ? ev.courses[courseId] : null;
+  const byRoute = course && (course.lengthBy === "route" || (!course.lengthBy && disciplineOf(ev, courseId) === "mtbo"));
+  if (byRoute) { const rs = legRoutes(ev, c1, c2); if (rs.length) return Math.min(...rs.map((r) => pathLength(r.pts))) * ev.map.scale / 1000; }
+  return legLengthM(ev, c1, c2);
+}
 export const mmToM = (ev, mm) => mm * ev.map.scale / 1000;
 /** The leg's flagging (QueryEvent.GetLegFlagging): "none", "all", "begin", "end", "issue-middle". */
 export function legFlagging(ev, c1, c2) {
@@ -314,9 +396,10 @@ export function flaggedLengthM(ev, c1, c2) {
 export function enumLegs(ev, cd) {
   if (!cd.course || isScore(ev, cd.course)) return [];
   const out = [];
+  const returns = phiReturns(ev, cd.course);
   enumCC(ev, cd).forEach(({ cc, frac }, i) => {
-    const c = ev.courseControls[cc];
-    if (i === 0 || cd.part < 0 || !c.exchange) if (c.next) out.push({ cc1: cc, cc2: c.next, frac });
+    const c = ev.courseControls[cc], next = c.next || returns.get(cc);
+    if (i === 0 || cd.part < 0 || !c.exchange) if (next) out.push({ cc1: cc, cc2: next, frac });
   });
   return out;
 }
@@ -378,14 +461,18 @@ function standardView(ev, cd) {
 function allVariationsView(ev, cd) {
   const course = ev.courses[cd.course];
   const v = blankView("variations", course.name);
+  const returns = phiReturns(ev, cd.course), mids = new Set();
+  for (const id of ccIds(ev, cd)) { const cc = ev.courseControls[id]; if (cc.phi && cc.phiMid) mids.add(cc.phiMid); }
   for (const id of ccIds(ev, cd)) {
     const cc = ev.courseControls[id];
     if (cc.split && v.controls.some((x) => x.ccs.includes(id))) continue;
     const cv = { ordinal: -1, control: cc.control, ccs: cc.split ? cc.splitCCs.slice() : [id], legTo: null, join: -1 };
+    if (mids.has(id)) cv.ghost = true;                   // a diamond's exit passed the first time: drawn once, at the exit
     if (cc.split) {
       if (cc.next) cv.legTo = cv.ccs.map((s) => ev.courseControls[s].next);
       cv.join = cc.loop ? id : cc.splitEnd;
     } else if (cc.next) cv.legTo = [cc.next];
+    else if (returns.has(id)) cv.legTo = [returns.get(id)];  // the way back's last leg, to the entry
     if (cc.exchange) cv.exchangeStart = true;
     v.controls.push(cv);
   }
@@ -425,8 +512,11 @@ function finishView(ev, cd, v) {
     if (!cv.legTo) continue;
     cv.legLen = [];
     cv.legTo = cv.legTo.map((ccId) => {
-      const j = v.controls.findIndex((x) => x.ccs.includes(ccId));
-      cv.legLen.push(j >= 0 ? legLengthM(ev, cv.control, v.controls[j].control) : 0);
+      // the first occurrence after this one (a control met twice: a butterfly's centre, a diamond's entry and exit)
+      const i0 = v.controls.indexOf(cv);
+      let j = v.controls.findIndex((x, k) => k > i0 && x.ccs.includes(ccId));
+      if (j < 0) j = v.controls.findIndex((x) => x.ccs.includes(ccId));
+      cv.legLen.push(j >= 0 ? legLengthFor(ev, cd.course, cv.control, v.controls[j].control) : 0);
       return j;
     });
     if (cv.join > 0) cv.join = v.controls.findIndex((x) => x.ccs.includes(cv.join));
@@ -556,10 +646,11 @@ export function addCourseControl(ev, controlId, courseId, cc1, cc2, loc = "norma
   if (loc === "presplit") {
     const before = ev.courseControls[cc1], ids = before.splitCCs.slice(), idx = ids.indexOf(cc1);
     const fresh = ids.map((s) => addObj(ev, "courseControl", newCC(controlId, ev.courseControls[s].next || 0)));
-    for (const f of fresh) Object.assign(ev.courseControls[f], { split: true, loop: !!before.loop, splitCCs: fresh.slice(), splitEnd: before.splitEnd });
+    for (const f of fresh) Object.assign(ev.courseControls[f], { split: true, loop: !!before.loop, splitCCs: fresh.slice(), splitEnd: before.splitEnd,
+      ...(before.phi ? { phi: true, phiMid: before.phiMid } : {}) });
     const head = ev.courseControls[ids[0]];
     Object.assign(head, { split: false, loop: false, next: fresh[0] });
-    delete head.splitCCs; delete head.splitEnd;
+    delete head.splitCCs; delete head.splitEnd; delete head.phi; delete head.phiMid;
     for (let i = 1; i < ids.length; i++) { repoint(ev, courseId, ids[i], ids[0]); delete ev.courseControls[ids[i]]; }
     return fresh[idx];
   }
@@ -607,6 +698,12 @@ export function addFinish(ev, controlId, courseId, others = false) {
 /** Remove one course control from a course (and what a removed split orphans). Returns the controls it used. */
 export function removeCourseControl(ev, courseId, rm) {
   const course = ev.courses[courseId];
+  // a diamond loop's entry or exit, or its exit passed the first time: the diamond goes first (its branches stay as a fork's)
+  for (const id of ccIds(ev, cdCourse(courseId))) {
+    const cc = ev.courseControls[id];
+    if (cc?.phi && id === cc.splitCCs[0] && (cc.splitCCs.includes(rm) || cc.splitEnd === rm || cc.phiMid === rm)) { deleteVariation(ev, cdCourse(courseId), id); break; }
+  }
+  if (!ev.courseControls[rm]) return [];
   const all = ccIds(ev, cdCourse(courseId));
   const ccRm = ev.courseControls[rm], kindRm = ev.controls[ccRm.control]?.kind;
   let after = ccRm.next || 0;
@@ -649,7 +746,13 @@ export function moveControl(ev, controlId, pt) {
     setLegGaps(ev, l.c1, l.c2, moveGaps(l.gaps, oldPath, legPoints(ev, l.c1, l.c2)));
   }
 }
-function vacuous(l) { return (!l.flagging || l.flagging === "none") && !l.bends?.length && !l.gaps?.length && !l.route?.length; }
+function vacuous(l) { return (!l.flagging || l.flagging === "none") && !l.bends?.length && !l.gaps?.length && !l.route?.length && !l.alts?.length; }
+/** The other routes drawn on a leg (the advanced level): [{ pts (between the controls), name }], or null to clear. */
+export function setLegAlts(ev, c1, c2, alts) {
+  const [id, leg] = legFor(ev, c1, c2);
+  if (alts?.length) leg.alts = alts.map((r) => ({ name: r.name || "", pts: r.pts.map((p) => p.slice()) })); else delete leg.alts;
+  putLeg(ev, id, leg);
+}
 function legFor(ev, c1, c2) {
   const id = findLeg(ev, c1, c2);
   return id ? [id, ev.legs[id]] : [0, { c1, c2, flagging: "none" }];
@@ -839,6 +942,7 @@ export function deleteCourse(ev, courseId) {
   const ccs = ccIds(ev, cdCourse(courseId));
   delete ev.courses[courseId];
   for (const id of ccs) delete ev.courseControls[id];
+  for (const k of Object.values(ev.classes || {})) if (k.course === courseId) k.course = 0;
   for (const [sid, sp] of Object.entries(ev.specials)) {
     if (sp.all || !sp.courses.some((x) => x.course === courseId)) continue;
     sp.courses = sp.courses.filter((x) => x.course !== courseId);
@@ -859,6 +963,7 @@ export function duplicateCourse(ev, courseId, name) {
     if (cc.next) cc.next = map.get(cc.next);
     if (cc.splitEnd) cc.splitEnd = map.get(cc.splitEnd);
     if (cc.splitCCs) cc.splitCCs = cc.splitCCs.map((x) => map.get(x));
+    if (cc.phiMid) cc.phiMid = map.get(cc.phiMid);
     ev.courseControls[map.get(id)] = cc;
   }
   for (const sp of Object.values(ev.specials)) {
@@ -868,14 +973,42 @@ export function duplicateCourse(ev, courseId, name) {
   }
   return newId;
 }
-/** Can a variation start at this course control? "" if so, else why not (QueryEvent.CanAddVariation). */
-export function variationProblem(ev, cd, ccId) {
+/** Can a variation start at this course control? "" if so, else why not (QueryEvent.CanAddVariation). kind "phi": a diamond
+ *  loop also needs a normal control next (its exit), outside any other variation. */
+export function variationProblem(ev, cd, ccId, kind = "") {
   if (!cd.course) return "all";
   if (isScore(ev, cd.course)) return "score";
   if (!ccId) return "none";
   if (kindOfCC(ev, ccId) === "finish" || lastCC(ev, cd.course, false) === ccId) return "finish";
   if (ev.courseControls[ccId].split) return "exists";
+  if (inPhi(ev, cd.course, ccId)) return "phi";
+  if (kind === "phi") {
+    const nx = ev.courseControls[ccId].next;
+    if (!nx || kindOfCC(ev, nx) !== "normal") return "exit";
+    if (!ccIds(ev, cdCourse(cd.course)).every((id) => !ev.courseControls[id].split || ev.courseControls[id].splitEnd !== nx || id === ccId)) return "exit";
+  }
   return "";
+}
+/** Is a course control inside a diamond loop (on a branch or the way back)? No other variation goes there. */
+function inPhi(ev, courseId, ccId) {
+  for (const id of ccIds(ev, cdCourse(courseId))) {
+    const cc = ev.courseControls[id];
+    if (!cc.phi || id !== cc.splitCCs[0]) continue;
+    if (phiBack(ev, cc).includes(ccId)) return true;
+    for (const h of cc.splitCCs) { let x = ev.courseControls[h].next, g = 0; while (x && x !== cc.splitEnd && g++ < 1000) { if (x === ccId) return true; x = ev.courseControls[x]?.next; } }
+  }
+  return false;
+}
+/** A diamond (phi) loop from a course control X to the next one (its exit Y): two branches X → Y, run one after the other with
+ *  the way back Y → X between them (Condes's « diamond »). The branches and the way back are filled by adding controls to them. */
+export function addPhi(ev, cd, ccId) {
+  if (variationProblem(ev, cd, ccId, "phi")) return false;
+  const base = ev.courseControls[ccId], exit = base.next;
+  const mid = addObj(ev, "courseControl", { control: ev.courseControls[exit].control, next: 0 });
+  Object.assign(base, { split: true, loop: false, phi: true, splitEnd: exit, phiMid: mid });
+  const other = addObj(ev, "courseControl", JSON.parse(JSON.stringify(base)));
+  for (const id of [ccId, other]) ev.courseControls[id].splitCCs = [ccId, other];
+  return true;
 }
 /** A fork (n branches) or a loop (n loops) from a course control (ChangeEvent.AddVariation). */
 export function addVariation(ev, cd, ccId, loop, n) {
@@ -892,8 +1025,15 @@ export function addVariation(ev, cd, ccId, loop, n) {
   return true;
 }
 export function deleteVariation(ev, cd, ccId) {
-  const cc = ev.courseControls[ccId];
+  let cc = ev.courseControls[ccId];
   if (!cc?.split) return;
+  if (cc.phi) {
+    // a diamond loop: its way back goes, then its second branch as a fork's
+    const head = ev.courseControls[cc.splitCCs[0]];
+    for (const x of phiBack(ev, head)) delete ev.courseControls[x];
+    for (const h of cc.splitCCs) if (ev.courseControls[h]) { delete ev.courseControls[h].phi; delete ev.courseControls[h].phiMid; }
+    ccId = cc.splitCCs[0]; cc = ev.courseControls[ccId];
+  }
   for (const s of cc.splitCCs.slice(1)) if (ev.courseControls[s]) removeCourseControl(ev, cd.course, s);
 }
 
@@ -936,6 +1076,7 @@ export function transformAll(ev, m) {
   for (const l of Object.values(ev.legs)) {
     if (l.bends) l.bends = l.bends.map(T);
     if (l.route) l.route = l.route.map(T);
+    if (l.alts) for (const r of l.alts) r.pts = r.pts.map(T);
     if (l.flag) l.flag = T(l.flag);
     if (l.gaps) l.gaps = l.gaps.map(([s, len]) => [s * scale, len * scale]);
   }
@@ -1023,13 +1164,48 @@ export function viewBounds(ev, v) {
   return [Math.min(...xs) - 10, Math.min(...ys) - 10, Math.max(...xs) + 10, Math.max(...ys) + 10];
 }
 
+// ---- what follows from other data (the advanced level): kept in step after every change (editor.js change) ----------------
+/** Classes of a course, from ev.classes: [{ id, name, est }] in the order they were added. */
+export const classesOf = (ev, courseId) => Object.entries(ev.classes || {}).filter(([, k]) => k.course === courseId)
+  .map(([id, k]) => ({ id: Number(id), ...k })).sort((a, b) => (a.order ?? a.id) - (b.order ?? b.id));
+/** Rogaine points (Condes's convention): the code rounded down to the ten (47 → 40). */
+export const rogainePoints = (code) => (/^\d+$/.test(code || "") ? Math.floor(Number(code) / 10) * 10 : 0);
+export function syncDerived(ev) {
+  for (const [sid, course] of Object.entries(ev.courses)) {
+    const id = Number(sid);
+    // a score course « with all controls »: every normal control of the event in it
+    if (course.kind === "score" && course.allControls) {
+      const have = new Set(ccIds(ev, cdCourse(id)).map((x) => ev.courseControls[x].control));
+      for (const [cid, c] of Object.entries(ev.controls)) {
+        if (c.kind !== "normal" || have.has(Number(cid))) continue;
+        const p = insertionPoint(ev, cdCourse(id));
+        addCourseControl(ev, Number(cid), id, p.cc1, p.cc2, p.loc);
+      }
+    }
+    if (course.kind === "score" && course.rogaine) for (const x of ccIds(ev, cdCourse(id))) {
+      const cc = ev.courseControls[x], c = ev.controls[cc.control];
+      if (c?.kind === "normal") cc.points = rogainePoints(c.code);
+    }
+    // classes as data: the course's class list (its secondary title, which .ppen and IOF XML carry) and its expected entries
+    if (ev.classes && Object.values(ev.classes).some((k) => k.course === id)) {
+      const ks = classesOf(ev, id);
+      course.secondary = ks.map((k) => k.name).join(", ");
+      if (ks.some((k) => k.est >= 0)) course.load = ks.reduce((s, k) => s + Math.max(0, k.est || 0), 0);
+    }
+  }
+  // a finish drawn on its start: it stays there
+  for (const c of Object.values(ev.controls)) if (c.kind === "finish" && c.atStart && ev.controls[c.atStart]) { c.x = ev.controls[c.atStart].x; c.y = ev.controls[c.atStart].y; }
+  return ev;
+}
+
 // ---- checks of an event read from a file (EventDB.Validate, lenient: fixes what can be fixed) -----------------------------
 export function sanitize(ev) {
   for (const [id, cc] of Object.entries(ev.courseControls)) if (!ev.controls[cc.control]) delete ev.courseControls[id];
   for (const [id, l] of Object.entries(ev.legs)) if (!ev.controls[l.c1] || !ev.controls[l.c2]) delete ev.legs[id];
   for (const c of Object.values(ev.courses)) if (c.first && !ev.courseControls[c.first]) c.first = 0;
+  for (const k of Object.values(ev.classes || {})) if (k.course && !ev.courses[k.course]) k.course = 0;
   const orders = new Set();
   for (const id of courseIds(ev)) { const c = ev.courses[id]; while (!(c.order > 0) || orders.has(c.order)) c.order = (c.order > 0 ? c.order : 0) + 1; orders.add(c.order); }
-  for (const k of Object.keys(STORE)) ev.next[k] = Math.max(ev.next[k] || 0, ...Object.keys(ev[STORE[k]]).map(Number), 0);
+  for (const k of Object.keys(STORE)) ev.next[k] = Math.max(ev.next[k] || 0, ...Object.keys(ev[STORE[k]] || {}).map(Number), 0);
   return ev;
 }

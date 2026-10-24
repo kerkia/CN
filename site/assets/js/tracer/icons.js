@@ -138,25 +138,3 @@ export const ACT_ICON = {
 };
 /** A menu entry's icon (an empty slot of the same width when it has none, so the labels line up). */
 export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) : `<span class="tr-mi-none" style="width:${s}px"></span>`);
-
-/** The editor's menus, the « Purple Pen mode » (the ribbon of ribbon-data.js is the « Ozimut mode », by default): { label, icon, items: [action, label] or "-" }. */
-export const MENUS = [
-  { label: t("trc.ico.menuFile"), icon: "file", items: [["start-new", t("trc.ico.startNew")], ["start-open", t("trc.ico.startOpen")], ["start-import", t("trc.ico.startImport")], "-",
-    ["save", t("trc.ico.save")], ["version-save", t("trc.ico.versionSave")], ["versions", t("trc.ico.versions")], "-",
-    ["export-ocn", t("trc.ico.exportOcn")], ["export-ppen", t("trc.ico.exportPpen")], ["import-ppen", t("trc.ico.importPpen")], "-",
-    ["pdf-courses", t("trc.ico.pdfCourses")], ["pdf-descriptions", t("trc.ico.pdfDescriptions")], ["pdf-punch", t("trc.ico.pdfPunch")], "-",
-    ["export-iof3", t("trc.ico.exportIof3")], ["export-iof2", "IOF XML 2.0.3"], ["export-gpx", t("trc.ico.exportGpx")], ["export-kml", t("trc.ico.exportKml")],
-    ["export-images", t("trc.ico.exportImages")], ["export-ocad", t("trc.ico.exportOcad")], ["export-routegadget", t("trc.ico.exportRoutegadget")], ["export-csv", t("trc.ico.exportCsv")], "-",
-    ["publish", t("trc.ico.publish")], ["send-results", t("trc.ico.sendResults")], ["map-change", t("trc.ico.mapChange")], "-", ["offline", t("trc.ico.offline")]] },
-  { label: t("trc.ico.menuEvent"), icon: "event", items: [["event-props", t("trc.ico.eventProps")], ["appearance", t("trc.ico.appearance")], ["standards", t("trc.ico.standards")], ["numbering", t("trc.ico.numbering")],
-    ["codes", t("trc.ico.codes")], ["renumber", t("trc.ico.renumber")], ["remove-unused", t("trc.ico.removeUnused")], ["calage", t("trc.ico.calage")], ["move-all", t("trc.ico.moveAll")],
-    ["custom-text", t("trc.ico.customText")], ["punch", t("trc.ico.punch")], ["load", t("trc.ico.load")], ["georef", t("trc.ico.georef")], "-", ["team", t("trc.ico.team")], ["encryption", t("trc.ico.encryption")]] },
-  { label: t("trc.ico.menuCourse"), icon: "course", items: [["course-new", t("trc.ico.courseNew")], ["course-props", t("trc.ico.courseProps")], ["course-dup", t("trc.ico.courseDup")], ["course-delete", t("trc.ico.courseDelete")],
-    ["course-order", t("trc.ico.courseOrder")], "-", ["var-fork", t("trc.ico.varFork")], ["var-loop", t("trc.ico.varLoop")], ["var-delete", t("trc.ico.varDelete")], ["relay", t("trc.ico.relay")], "-",
-    ["print-area", t("trc.ico.printArea")], ["part-options", t("trc.ico.partOptions")]] },
-  { label: t("trc.ico.menuReports"), icon: "reports", items: [["rep-summary", t("trc.ico.repSummary")], ["rep-legs", t("trc.ico.repLegs")], ["rep-cross", t("trc.ico.repCross")], ["rep-load", t("trc.ico.repLoad")],
-    ["rep-audit", t("trc.ico.repAudit")], "-", ["rep-climb", t("trc.ico.repClimb")], ["rep-times", t("trc.ico.repTimes")], ["rep-pickup", t("trc.ico.repPickup")], ["rep-after", t("trc.ico.repAfter")], "-", ["comments", t("trc.ico.comments")], ["field", t("trc.ico.field")]] },
-  { label: t("trc.ico.menuView"), icon: "view", items: [["view-course", t("trc.ico.viewCourse")], ["view-map", t("trc.ico.viewMap")], ["view-all", t("trc.ico.viewAll")], ["view-printarea", t("trc.ico.viewPrintarea")],
-    ["view-others", t("trc.ico.viewOthers")], "-", ["import-course", t("trc.ico.importCourse")], ["save-to", t("trc.ico.saveTo")], "-",
-    ["ui-ribbon", t("trc.ico.uiRibbon")]] },
-];

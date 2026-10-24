@@ -335,9 +335,51 @@ function gapsToBits(gaps) {
 }
 const ids = (o) => Object.keys(o).map(Number).sort((a, z) => a - z);
 
-/** The event as a .ppen text. mapPath: the absolute path to write (Purple Pen falls back to it). */
+// ---- what a .ppen cannot hold: the advanced level (model.js; owner, 2026-10-24) ------------------------------------------------
+/** The special objects Purple Pen knows. */
+export const PP_SPECIALS = new Set(["first-aid", "water", "optional-crossing-point", "forbidden-route", "registration-mark", "boundary", "line",
+  "out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "text", "descriptions", "image", "rectangle", "ellipse"]);
+/** What an export to .ppen leaves out: [{ key, n }] (key: a catalogue entry trc.pp.<key>, n: how many). */
+export function ppenLosses(ev) {
+  const out = [], add = (key, n) => { if (n > 0) out.push({ key, n }); };
+  const ccs = Object.values(ev.courseControls), cs = Object.values(ev.controls), cos = Object.values(ev.courses), legs = Object.values(ev.legs);
+  add("phi", ccs.filter((c) => c.phi && c.phiMid).length / 2);
+  add("random", ccs.filter((c) => c.rnd).length);
+  add("form", cos.filter((c) => c.form).length);
+  add("discipline", cos.filter((c) => c.discipline && c.discipline !== "foot").length + (ev.discipline && ev.discipline !== "foot" ? 1 : 0));
+  add("classes", Object.keys(ev.classes || {}).length);
+  add("units", cs.filter((c) => c.units?.length).length);
+  add("trail", cs.filter((c) => c.trail).length);
+  add("dual", cs.filter((c) => c.dual && Object.keys(c.dual).length).length);
+  add("symbols", Object.keys(ev.symbols || {}).length);
+  add("routes", legs.filter((l) => l.route?.length || l.alts?.length).length);
+  add("maps", Object.keys(ev.maps || {}).length);
+  add("specials", Object.values(ev.specials).filter((s) => !PP_SPECIALS.has(s.kind)).length);
+  add("teams", cos.filter((c) => c.relay?.table?.length || c.relay?.couple?.length).length);
+  add("locks", cs.filter((c) => c.locked).length);
+  return out;
+}
+/** A copy of the event as Purple Pen can hold it: diamonds become forks, random-order sections ordinary controls, and what
+ *  it has no place for left out. */
+export function ppenFlatten(ev) {
+  const x = JSON.parse(JSON.stringify(ev));
+  for (const [id, cc] of Object.entries(x.courseControls)) {
+    if (cc.phi && cc.phiMid && Number(id) === cc.splitCCs?.[0]) {
+      let m = cc.phiMid, g = 0;
+      while (m && x.courseControls[m] && g++ < 1000) { const n = x.courseControls[m].next; delete x.courseControls[m]; m = n; }
+    }
+  }
+  for (const cc of Object.values(x.courseControls)) { delete cc.phi; delete cc.phiMid; delete cc.rnd; }
+  for (const [id, s] of Object.entries(x.specials)) if (!PP_SPECIALS.has(s.kind)) delete x.specials[id];
+  for (const s of Object.values(x.specials)) if (s.kind === "text") delete s.angle;
+  return x;
+}
+
+/** The event as a .ppen text. mapPath: the absolute path to write (Purple Pen falls back to it). Only what Purple Pen knows is
+ *  written (ppenFlatten; ppenLosses says what is left out). */
 export function writePpen(ev, { mapPath = "" } = {}) {
-  if (fileOffset(ev).some(Boolean)) ev = shiftToFile(JSON.parse(JSON.stringify(ev)));     // an OCAD or Mapper map: its own mm
+  ev = ppenFlatten(ev);
+  if (fileOffset(ev).some(Boolean)) ev = shiftToFile(ev);     // an OCAD or Mapper map: its own mm
   const w = new Writer(), ap = ev.appearance;
   w.el("course-scribe-event", {}, () => {
     w.el("event", { id: "1" }, () => {

@@ -792,10 +792,10 @@ export function build(X) {
   function tracerDoc() {
     const CHAPTERS = [["principe", "Getting started"], ["carte", "The map"], ["ecran", "The screen"], ["postes", "Controls"], ["circuits", "Courses"],
       ["definitions", "Descriptions"], ["speciaux", "Special items"], ["sorties", "Printing and exporting"], ["verifier", "Checking"],
-      ["outils", "Teamwork and the field"], ["apres", "After the race"], ["ruban", "The ribbon"], ["menus", "Purple Pen mode"], ["calculs", "The calculations"]];
+      ["outils", "Teamwork and the field"], ["apres", "After the race"], ["ruban", "The ribbon"], ["calculs", "The calculations"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Course setting";
-    // where a command is in the ribbon (the Ozimut mode, by default): « Carte › Position › Caler les postes »
+    // where a command is in the ribbon: « Carte › Position › Caler les postes »
     const W = (act) => TRD.ribbonAt(act);
     // the tools of the editor's bar, with the letter that picks them
     const TOOLS = [
@@ -876,9 +876,8 @@ export function build(X) {
       "view-printarea": "Show the print area's frame.", "view-others": "Show other courses in pale blue under the current one.",
       "import-course": "Read the circles, the start and the finish printed on a map (a PDF, a photo) and turn them into controls.",
       "save-to": "When a command creates several files: write them into a chosen folder, or into a single .zip.",
-      "ui-ribbon": "Back to the ribbon, the Ozimut mode.",
     };
-    // the editor's screen in the Ozimut mode, drawn: its zones numbered as in the list under it
+    // the editor's screen, drawn: its zones numbered as in the list under it
     const screenFig = () => {
       const P = "#a7179b", ink2 = "var(--ink-2)", line = "var(--border-strong)";
       const mark = (n, x, y) => `<g><circle cx="${x}" cy="${y}" r="11" fill="${P}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:#fff">${n}</text></g>`;
@@ -905,7 +904,7 @@ export function build(X) {
         : `<circle cx="${x}" cy="${y}" r="12" ${k === 3 ? 'stroke="#0a84ff" stroke-width="3"' : ""}/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${k === 3 ? "#0a84ff" : P}">${k}</text>`)).join("");
       const rows = [["", "", "Start: hilltop"], ["1", "31", "Boulder, north side"], ["2", "45", "Depression"], ["3", "52", "Path, crossing"], ["4", "38", "Clearing"]];
       const sheet = rows.map(([n, c, t], i) => `${i === 3 ? `<rect x="12" y="${182 + i * 20}" width="210" height="20" fill="#fff59d"/>` : ""}<text x="22" y="${196 + i * 20}" font-size="11" font-weight="700" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${n}</text><text x="38" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${c}</text><text x="64" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#333" : "var(--ink-2)"}">${t}</text><line x1="12" y1="${202 + i * 20}" x2="222" y2="${202 + i * 20}" stroke="${line}"/>`).join("");
-      return `<svg viewBox="0 0 760 486" role="img" aria-label="The course-setting screen in Ozimut mode, its areas numbered">
+      return `<svg viewBox="0 0 760 486" role="img" aria-label="The course-setting screen, its areas numbered">
         <rect x="0.5" y="0.5" width="759" height="485" rx="9" fill="var(--surface)" stroke="${line}"/>
         <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/>${icon("folder", 13, 11, 0.55)}${txt(32, 22, "Events", 'style="fill:var(--ink)"')}
         <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Training</text>
@@ -1052,7 +1051,7 @@ export function build(X) {
           <div class="mx-steps" style="--c:#a7179b">
             <div class="mx-step"><b>The top bar</b>“Events” brings back the three choices (open another event, create or import one); the title;
               the quick-access bar: undo, redo, the PDF of the current course, the event audit, the course properties. On the right, the command search, the save status, ▭ (the
-              ribbon's display, Purple Pen mode), ⤢ (full window) and ↗ (a separate tab).</div>
+              ribbon's display), ⤢ (full window) and ↗ (a separate tab).</div>
             <div class="mx-step"><b>The ribbon's tabs</b>File, then one tab per stage of the work: Course setting, Courses, Map, Check, Print, Team and
               race. A number on Check: the problems found; on Team and race: the comments still open.</div>
             <div class="mx-step"><b>The ribbon</b>The tab's commands, in groups: large buttons for the most common ones, small ones stacked in threes,
@@ -1073,7 +1072,7 @@ export function build(X) {
             seldom needed: the event's information, new, open, import, save and the versions, each file to export with what it is for,
             sharing, offline and the options.</p>
           <p>A greyed-out button says why in its tooltip (“Choose a course first”, “from the day of the race”…): you never come across a command that
-            refuses. Each button's tooltip also says what it does, its key, and where it is in Purple Pen mode; F1 opens the guide at its chapter.
+            refuses. Each button's tooltip also says what it does and its key; F1 opens the guide at its chapter.
             Some settings are made in the ribbon itself, with immediate effect: the print scale, the standard and language of the descriptions, the size of the
             circles, lines and numbers, how the purple sits on the map and a leg's flagging, each shown in miniature.</p>
           <h3>The selected object's tab</h3>
@@ -1098,11 +1097,6 @@ export function build(X) {
             when the window is less than 800 pixels high (a laptop screen), and reduced to its tabs in full window (⤢), where the map takes all the
             room; File › Options sets both cases. When the window is narrow, the groups fold up by themselves, starting from the right, each into a
             button that opens it.</p>
-          <h3>Purple Pen mode</h3>
-          <p>Those who know Purple Pen can keep its menus: File › Options, or the ▭ button › Purple Pen mode, replaces the ribbon with the File,
-            Event, Course, Reports and View menus and the toolbar. View › Ozimut mode, or the “Ribbon” button at the top right, brings the ribbon back. The
-            two modes do the same things, and the choice is kept on this browser; the chapter “Purple Pen mode” gives, for each command of the menus, its
-            place in the ribbon.</p>
           <h3>Moving around the map</h3>
           <p>The wheel zooms around the mouse; dragging where there is nothing (or right-dragging) moves the map; so do the arrow keys. Map › View › Entire
             course and Entire map reframe it. Zooming far into an OCAD, Mapper or PDF map redraws it sharp.</p>
@@ -1339,7 +1333,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
           <h2>The ribbon, tab by tab</h2>
-          <p>Every command of the Ozimut mode, the default interface, with the icon it carries in the course-setting tool: the tabs, those of the selected object, then the File page.</p>
+          <p>Every command of the ribbon, with the icon it carries in the course-setting tool: the tabs, those of the selected object, then the File page.</p>
           ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
           <h3 class="tr-doc-mh">${ic("select", 20)}<span>The selected object's tabs</span></h3>
           ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
@@ -1347,19 +1341,10 @@ export function build(X) {
           ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
             sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
               : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Info</span></dt><dd>The event: its map, its courses, your role, the encryption; its properties, its team.</dd>`
-                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Ozimut mode (the ribbon) or Purple Pen mode (the menus); the full ribbon, on one line or its tabs alone; multiple files.</dd>`
+                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>The full ribbon, on one line or its tabs alone; the quick-access bar; multiple files.</dd>`
                   : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
         </section>`;
       },
-      menus: () => html`
-        <section class="mx-slide" id="tr-menus">
-          <p class="mx-kicker">${K}</p>
-          <h2>Purple Pen mode, menu by menu</h2>
-          <p>In Purple Pen mode (File › Options, or the ▭ button at the top right), the ribbon gives way to the menus and the toolbar, as in
-            Purple Pen. Every command of the five menus, with the icon it carries, and its place in the ribbon.</p>
-          ${TR.MENUS.map((m) => html`<h3 class="tr-doc-mh">${ic(m.icon, 20)}<span>${m.label}</span></h3>
-            <dl class="tr-doc-menu">${m.items.filter((it) => it !== "-").map(([a, label]) => html`<dt>${raw(TR.actIcon(a, 16))}<span>${label}</span></dt><dd>${MENU_HELP[a] || ""}${W(a) && !W(a).startsWith(m.label + " ›") ? html` <span class="tr-doc-where">Ribbon: ${W(a)}</span>` : ""}</dd>`)}</dl>`)}
-        </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
           <p class="mx-kicker">Course setting</p>

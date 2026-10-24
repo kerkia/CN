@@ -792,10 +792,10 @@ export function build(X) {
   function tracerDoc() {
     const CHAPTERS = [["principe", "Pour commencer"], ["carte", "La carte"], ["ecran", "L'écran"], ["postes", "Les postes"], ["circuits", "Les circuits"],
       ["definitions", "Les définitions"], ["speciaux", "Objets spéciaux"], ["sorties", "Imprimer et exporter"], ["verifier", "Vérifier"],
-      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["menus", "Le mode Purple Pen"], ["calculs", "Ses calculs"]];
+      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["calculs", "Ses calculs"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Le tracé";
-    // where a command is in the ribbon (the Ozimut mode, by default): « Carte › Position › Caler les postes »
+    // where a command is in the ribbon: « Carte › Position › Caler les postes »
     const W = (act) => TRD.ribbonAt(act);
     // the tools of the editor's bar, with the letter that picks them
     const TOOLS = [
@@ -876,9 +876,8 @@ export function build(X) {
       "view-printarea": "Montrer le cadre de la zone d'impression.", "view-others": "Montrer d'autres circuits en bleu pâle sous celui en cours.",
       "import-course": "Lire les cercles, le départ et l'arrivée imprimés sur une carte (un PDF, une photo) et en faire des postes.",
       "save-to": "Quand une commande crée plusieurs fichiers : les écrire dans un dossier choisi, ou en un seul .zip.",
-      "ui-ribbon": "Revenir au ruban, le mode Ozimut.",
     };
-    // the editor's screen in the Ozimut mode, drawn: its zones numbered as in the list under it
+    // the editor's screen, drawn: its zones numbered as in the list under it
     const screenFig = () => {
       const P = "#a7179b", ink2 = "var(--ink-2)", line = "var(--border-strong)";
       const mark = (n, x, y) => `<g><circle cx="${x}" cy="${y}" r="11" fill="${P}"/><text x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" style="fill:#fff">${n}</text></g>`;
@@ -905,7 +904,7 @@ export function build(X) {
         : `<circle cx="${x}" cy="${y}" r="12" ${k === 3 ? 'stroke="#0a84ff" stroke-width="3"' : ""}/><text x="${x + 15}" y="${y - 12}" font-size="15" stroke="none" style="fill:${k === 3 ? "#0a84ff" : P}">${k}</text>`)).join("");
       const rows = [["", "", "Départ : sommet"], ["1", "31", "Rocher, côté nord"], ["2", "45", "Dépression"], ["3", "52", "Chemin, croisement"], ["4", "38", "Clairière"]];
       const sheet = rows.map(([n, c, t], i) => `${i === 3 ? `<rect x="12" y="${182 + i * 20}" width="210" height="20" fill="#fff59d"/>` : ""}<text x="22" y="${196 + i * 20}" font-size="11" font-weight="700" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${n}</text><text x="38" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#111" : "var(--ink)"}">${c}</text><text x="64" y="${196 + i * 20}" font-size="10.5" style="fill:${i === 3 ? "#333" : "var(--ink-2)"}">${t}</text><line x1="12" y1="${202 + i * 20}" x2="222" y2="${202 + i * 20}" stroke="${line}"/>`).join("");
-      return `<svg viewBox="0 0 760 486" role="img" aria-label="L'écran du tracé en mode Ozimut, ses zones numérotées">
+      return `<svg viewBox="0 0 760 486" role="img" aria-label="L'écran du tracé, ses zones numérotées">
         <rect x="0.5" y="0.5" width="759" height="485" rx="9" fill="var(--surface)" stroke="${line}"/>
         <rect x="8" y="7" width="94" height="22" rx="5" fill="var(--surface-2)" stroke="${line}"/>${icon("folder", 13, 11, 0.55)}${txt(32, 22, "Événements", 'style="fill:var(--ink)"')}
         <text x="112" y="23" font-size="12.5" font-weight="700" style="fill:var(--ink)">Entraînement</text>
@@ -1053,7 +1052,7 @@ export function build(X) {
           <div class="mx-steps" style="--c:#a7179b">
             <div class="mx-step"><b>La barre du haut</b>« Événements » ramène les trois choix (ouvrir un autre événement, en créer ou en importer un) ; le titre ;
               la barre d'accès rapide : annuler, rétablir, le PDF du circuit en cours, le contrôle de l'événement, les propriétés du circuit. À droite, la recherche d'une commande, l'état de l'enregistrement, ▭ (l'affichage du
-              ruban, le mode Purple Pen), ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
+              ruban), ⤢ (toute la fenêtre) et ↗ (un onglet à part).</div>
             <div class="mx-step"><b>Les onglets du ruban</b>Fichier, puis un onglet par étape du travail : Tracer, Circuits, Carte, Vérifier, Imprimer, Équipe et
               course. Un chiffre sur Vérifier : les problèmes trouvés ; sur Équipe et course : les commentaires encore ouverts.</div>
             <div class="mx-step"><b>Le ruban</b>Les commandes de l'onglet, par groupes : de grands boutons pour les plus courantes, de petits empilés par trois, des
@@ -1074,7 +1073,7 @@ export function build(X) {
             rarement : les informations de l'événement, nouveau, ouvrir, importer, enregistrer et les versions, chaque fichier à exporter avec ce à quoi il sert,
             partager, hors ligne et les options.</p>
           <p>Un bouton grisé dit pourquoi dans sa bulle (« Choisissez d'abord un circuit », « à partir du jour de la course »…) : on ne tombe pas sur une commande qui
-            refuse. La bulle de chaque bouton dit aussi ce qu'il fait, sa touche, et où il se trouve dans le mode Purple Pen ; F1 ouvre le guide à son chapitre.
+            refuse. La bulle de chaque bouton dit aussi ce qu'il fait et sa touche ; F1 ouvre le guide à son chapitre.
             Certains réglages se font dans le ruban même, avec l'effet tout de suite : l'échelle d'impression, la norme et la langue des définitions, la taille des
             cercles, des traits et des numéros, la façon dont le violet se pose sur la carte et le balisage d'un interposte, chacune montrée en petit.</p>
           <h3>L'onglet de l'objet choisi</h3>
@@ -1099,11 +1098,6 @@ export function build(X) {
             quand la fenêtre a moins de 800 points de haut (un écran d'ordinateur portable), et réduit à ses onglets en plein écran (⤢), où la carte prend toute la
             place ; Fichier › Options règle les deux cas. Quand la fenêtre est étroite, les groupes se replient d'eux-mêmes, en commençant par la droite, chacun en un
             bouton qui l'ouvre.</p>
-          <h3>Le mode Purple Pen</h3>
-          <p>Ceux qui connaissent Purple Pen peuvent garder ses menus : Fichier › Options, ou le bouton ▭ › Mode Purple Pen, remplace le ruban par les menus Fichier,
-            Événement, Circuit, Rapports, Affichage et la barre d'outils. Affichage › Mode Ozimut, ou le bouton « Ruban » en haut à droite, ramène le ruban. Les
-            deux modes font les mêmes choses, et le choix est gardé sur ce navigateur ; le chapitre « Le mode Purple Pen » donne, pour chaque commande des menus, sa
-            place dans le ruban.</p>
           <h3>Se déplacer sur la carte</h3>
           <p>La molette zoome autour de la souris ; glisser là où il n'y a rien (ou clic droit glissé) déplace la carte ; les flèches aussi. Carte › Affichage › Tout
             le circuit et Toute la carte recadrent. Zoomer loin sur une carte OCAD, Mapper ou PDF la redessine nette.</p>
@@ -1340,7 +1334,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
           <h2>Le ruban, onglet par onglet</h2>
-          <p>Chaque commande du mode Ozimut, l'interface par défaut, avec l'icône qu'elle porte dans le tracé : les onglets, ceux de l'objet choisi, puis la page Fichier.</p>
+          <p>Chaque commande du ruban, avec l'icône qu'elle porte dans le tracé : les onglets, ceux de l'objet choisi, puis la page Fichier.</p>
           ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
           <h3 class="tr-doc-mh">${ic("select", 20)}<span>Les onglets de l'objet choisi</span></h3>
           ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
@@ -1348,19 +1342,10 @@ export function build(X) {
           ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
             sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
               : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Informations</span></dt><dd>L'événement : sa carte, ses circuits, votre rôle, le chiffrement ; ses propriétés, son équipe.</dd>`
-                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Le mode Ozimut (le ruban) ou le mode Purple Pen (les menus) ; le ruban complet, sur une ligne ou ses onglets seuls ; les fichiers multiples.</dd>`
+                : sec.id === "options" ? html`<dt>${ic("sliders", 16)}<span>Options</span></dt><dd>Le ruban complet, sur une ligne ou ses onglets seuls ; la barre d'accès rapide ; les fichiers multiples.</dd>`
                   : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
         </section>`;
       },
-      menus: () => html`
-        <section class="mx-slide" id="tr-menus">
-          <p class="mx-kicker">${K}</p>
-          <h2>Le mode Purple Pen, menu par menu</h2>
-          <p>Avec le mode Purple Pen (Fichier › Options, ou le bouton ▭ en haut à droite), le ruban laisse la place aux menus et à la barre d'outils, comme dans
-            Purple Pen. Chaque commande des cinq menus, avec l'icône qu'elle porte, et sa place dans le ruban.</p>
-          ${TR.MENUS.map((m) => html`<h3 class="tr-doc-mh">${ic(m.icon, 20)}<span>${m.label}</span></h3>
-            <dl class="tr-doc-menu">${m.items.filter((it) => it !== "-").map(([a, label]) => html`<dt>${raw(TR.actIcon(a, 16))}<span>${label}</span></dt><dd>${MENU_HELP[a] || ""}${W(a) && !W(a).startsWith(m.label + " ›") ? html` <span class="tr-doc-where">Ruban : ${W(a)}</span>` : ""}</dd>`)}</dl>`)}
-        </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
           <p class="mx-kicker">Le tracé</p>

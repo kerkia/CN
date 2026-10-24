@@ -1,9 +1,9 @@
-// The Tracer's ribbon — the « Ozimut mode », by default (owner, 2026-10-17; the menus stay as the « Purple Pen mode »). Drawn from
+// The Tracer's ribbon — its one interface (owner, 2026-10-17; the Purple Pen menus retired on 2026-10-24). Drawn from
 // ribbon-data.js: tabs in the order of the setter's work, contextual tabs that come with the selection (a control, a leg, an
 // object, a shape being drawn) and hold what applies to it, the « Fichier » page (backstage), a quick-access bar, a command
 // search (Alt+Q), key hints (Alt), live figures (the event audit's problems, open comments, the course's length and climb),
 // settings in place (print scale, standards, sizes, the purple's blend, a leg's flagging), tooltips that say what a command
-// does, why it is greyed and where it is in the Purple Pen mode. The ribbon shrinks with the window (groups fold into one
+// does and why it is greyed. The advanced level's items (ribbon-data.js isPro) are drawn for administrators only (E.pro). The ribbon shrinks with the window (groups fold into one
 // button each), can be a single line or only its tabs (Ctrl+F1; by default only its tabs in full window and one line on a short
 // screen). The arrow keys move through the tabs and the buttons (one Tab stop each). The quick-access bar of the title bar is
 // each user's (QAT_DEFAULT: what a setter is likely to use most; its ▾, or a right-click on any button, changes it). Every command
@@ -15,7 +15,7 @@ import * as S from "./store.js";
 import * as D from "./dialogs.js";
 import * as A from "./actions.js";
 import { svg, ACT_ICON } from "./icons.js";
-import { TABS, CONTEXT, BACKSTAGE, GALLERY, INFO, QAT_DEFAULT, QAT_CHOICES, commands, menuAt } from "./ribbon-data.js";
+import { TABS, CONTEXT, BACKSTAGE, GALLERY, INFO, QAT_DEFAULT, QAT_CHOICES, commands, isPro } from "./ribbon-data.js";
 import { ctxKind, applies as appliesTo } from "./context.js";
 import { PAGES, pageOf } from "./pdf.js";
 import * as FW from "../fullwin.js";
@@ -101,21 +101,24 @@ export function mountRibbon(E) {
   const disp = () => (wanted() === "full" && window.innerWidth <= 760 ? "line" : wanted());
 
   // ---- drawing -----------------------------------------------------------------------------------------------------------
-  function curTab() { return R.tab.startsWith("ctx:") ? CONTEXT[R.tab.slice(4)] : TABS.find((t) => t.id === R.tab); }
+  /** The advanced level's items, groups and tabs: drawn for administrators only (owner, 2026-10-24). */
+  const shown = (it) => E.pro || !isPro(it);
+  const tabs = () => TABS.filter(shown);
+  function curTab() { return R.tab.startsWith("ctx:") ? CONTEXT[R.tab.slice(4)] : tabs().find((t) => t.id === R.tab); }
   function curGroups() {
     const t = curTab();
     if (!t) return [];
-    if (!R.tab.startsWith("ctx:")) return t.groups;
-    // contextual: the items that apply to the selection only, and the groups left with something
-    const keep = (items) => items.map((it) => (it.t === "stack" ? { ...it, items: keep(it.items) } : it))
-      .filter((it) => (it.t === "stack" ? it.items.length : !it.act || appliesTo(E, it.act, R.ctx)));
-    return t.groups.map((g) => ({ ...g, items: keep(g.items) })).filter((g) => g.items.length);
+    const ctx = R.tab.startsWith("ctx:");
+    // the advanced level's items left out for the others; contextual: the items that apply to the selection only; the groups left with something
+    const keep = (items) => items.filter(shown).map((it) => (it.t === "stack" ? { ...it, items: keep(it.items) } : it))
+      .filter((it) => (it.t === "stack" ? it.items.length : !ctx || !it.act || appliesTo(E, it.act, R.ctx)));
+    return t.groups.filter(shown).map((g) => ({ ...g, items: keep(g.items) })).filter((g) => g.items.length);
   }
   const reg = (it, extra = {}) => { R.items.push({ ...it, ...extra }); return R.items.length - 1; };
   function button(it, size) {
     const w = why(it), p = pressed(it), label = labelOf(it), i = reg(it, { label, why: w });
     const b = it.badge ? badgeOf(it.badge) : null;
-    const attrs = `type="button" data-ri="${i}" ${it.act ? `data-ract="${esc(it.act)}"` : `data-rtool="${esc(it.tool)}"`} ${w ? 'aria-disabled="true"' : ""} ${p != null ? `aria-pressed="${p}"` : ""}`;
+    const attrs = `type="button" data-ri="${i}" ${it.act ? `data-ract="${esc(it.act)}"` : `data-rtool="${esc(it.tool)}"`} ${w ? 'aria-disabled="true"' : ""} ${p != null ? `aria-pressed="${p}"` : ""} ${isPro(it) ? 'data-pro="1"' : ""}`;
     const badge = b ? `<span class="tr-rbadge${softBadge(it.badge) ? " soft" : ""}">${b}</span>` : "";
     if (size === "big") {
       const caret = it.split ? `<span class="tr-rsplit" data-rsplit="${i}" role="button" aria-label="${esc(t("trc.rib.moreChoices"))}" title="${esc(t("trc.rib.moreChoices"))}">▾</span>` : "";
@@ -309,10 +312,9 @@ export function mountRibbon(E) {
       return `<button type="button" role="tab" class="tr-rtab${tb.backstage ? " file" : ""}" data-rtab="${tb.id}" aria-selected="${!tb.backstage && R.tab === tb.id}" ${E.blank && !tb.backstage && tb.id !== "home" ? 'data-blank="1"' : ""}>${esc(tb.label)}${b ? ` <span class="tr-rbadge${softBadge(tb.badge) ? " soft" : ""}" title="${esc(tb.badge === "issues" ? t("trc.rib.badgeIssues") : t("trc.rib.badgeComments"))}">${b}</span>` : ""}</button>`;
     };
     const ctx = R.ctx ? CONTEXT[R.ctx] : null;
-    return `${TABS.map(tab).join("")}${ctx ? `<span class="tr-rctx${R.pulse ? " new" : ""}"><span class="tr-rctx-h">${esc(ctx.head)}</span><button type="button" role="tab" class="tr-rtab" data-rtab="ctx:${R.ctx}" aria-selected="${R.tab === `ctx:${R.ctx}`}">${esc(ctx.label)}</button></span>` : ""}`;
+    return `${tabs().map(tab).join("")}${ctx ? `<span class="tr-rctx${R.pulse ? " new" : ""}"><span class="tr-rctx-h">${esc(ctx.head)}</span><button type="button" role="tab" class="tr-rtab" data-rtab="ctx:${R.ctx}" aria-selected="${R.tab === `ctx:${R.ctx}`}">${esc(ctx.label)}</button></span>` : ""}`;
   }
   function render() {
-    if (E.ui !== "ocn") return;
     hideTip();                                                   // its button may be drawn again
     if (!host.firstChild) host.innerHTML = `<div class="tr-rtabs" role="tablist" aria-label="${esc(t("trc.rib.ariaTabs"))}"></div><div class="tr-rbody" role="toolbar" aria-label="${esc(t("trc.rib.ariaCommands"))}"></div>`;
     host.dataset.display = disp();
@@ -400,7 +402,6 @@ export function mountRibbon(E) {
     switch (act) {
       case "special-more": D.specialMenu(E, btn || host); return;
       case "ribbon-full": case "ribbon-line": case "ribbon-folded": case "ribbon-auto": setDisplay(act.slice(7)); return;
-      case "ui-classic": E.setUi("pp"); return;
       case "keytips": keytips(1); return;
       case "guide": window.open(GUIDE(curTab()?.guide || ""), "_blank"); return;
       case "backstage": openBackstage(); return;
@@ -530,7 +531,7 @@ export function mountRibbon(E) {
 
   // ---- the quick-access bar: undo and redo (the title bar's own), then the user's commands, then ▾ to change them ------------------
   const qatEl = E.$("#tr-qatx"), qatMore = E.$("#tr-qatmore");
-  const qatList = () => { const l = loadPref("qat", null); return Array.isArray(l) ? l : QAT_DEFAULT; };
+  const qatList = () => { const l = loadPref("qat", null); return (Array.isArray(l) ? l : QAT_DEFAULT).filter((k) => E.pro || !isPro(k.startsWith("tool:") ? { tool: k.slice(5) } : { act: k })); };
   function setQat(list) { savePref("qat", list); renderQat(); }
   /** What a key of the bar is: an action, « tool:… » a tool, « undo », « redo ». */
   function qatInfo(k) {
@@ -574,8 +575,8 @@ export function mountRibbon(E) {
   /** ▾: the commands one is likely to want in the bar, ticked when they are in it; one click adds or removes. */
   function qatMenu() {
     const list = qatList(), r = (qatMore || qatEl).getBoundingClientRect();
-    const extra = list.filter((k) => !QAT_CHOICES.includes(k));
-    const items = [...QAT_CHOICES, ...extra].map((k) => [k, `${qatInfo(k).label}${list.includes(k) ? "  ✓" : ""}`]);
+    const extra = list.filter((k) => !QAT_CHOICES.includes(k)), choices = QAT_CHOICES.filter((k) => E.pro || !isPro({ act: k }));
+    const items = [...choices, ...extra].map((k) => [k, `${qatInfo(k).label}${list.includes(k) ? "  ✓" : ""}`]);
     D.popupMenu(E, Math.max(8, r.left - 120), r.bottom + 4, [...items, "-", ["qat-reset", t("trc.rib.qatDefaults")], ["qat-help", t("trc.rib.qatOther")]], (k) => {
       if (k === "qat-reset") { setQat(null); return; }
       if (k === "qat-help") { E.toast(t("trc.rib.qatHelp")); return; }
@@ -621,7 +622,7 @@ export function mountRibbon(E) {
     const r = dispBtn.getBoundingClientRect(), c = chosen(), on = (k) => ((c || "auto") === k ? " ✓" : "");
     D.popupMenu(E, r.right - 290, r.bottom + 4, [["ribbon-auto", `${t("trc.rib.dispAuto", { how: FW.isFull() ? t("trc.rib.dispAutoFw") : t("trc.rib.dispAutoPage") })}${on("auto")}`],
       ["ribbon-full", `${t("trc.rib.dispFull")}${on("full")}`], ["ribbon-line", `${t("trc.rib.dispLine")}${on("line")}`], ["ribbon-folded", `${t("trc.rib.dispFolded")}${on("folded")}`], "-",
-      ["ui-classic", t("trc.rib.uiPp")], "-", ["keytips", t("trc.rib.keytips")], ["guide", t("trc.rib.guide")]], (a) => run(a, dispBtn));
+      ["keytips", t("trc.rib.keytips")], ["guide", t("trc.rib.guide")]], (a) => run(a, dispBtn));
   });
 
   // ---- tooltips ----------------------------------------------------------------------------------------------------------------
@@ -633,11 +634,10 @@ export function mountRibbon(E) {
     hideTip(); tipFor = el;
     tipTimer = setTimeout(() => {
       if (!document.contains(el)) return;
-      const old = it.act ? menuAt(it.act) : it.tool ? t("trc.rib.toolbar") : "";
       tip = document.createElement("div");
       tip.className = "tr-rtip"; tip.setAttribute("role", "tooltip");
       tip.innerHTML = `<b><span>${esc(it.label)}</span>${it.key ? `<kbd>${esc(it.key)}</kbd>` : ""}</b>${it.tip ? `<p>${esc(it.tip)}</p>` : ""}${it.why ? `<p class="tr-rtip-why">${esc(it.why)}</p>` : ""}
-        ${old ? `<p class="tr-rtip-old">${esc(t("trc.rib.tipPp", { where: old }))}</p>` : ""}<p class="tr-rtip-more">${esc(t("trc.rib.tipF1"))}</p>`;
+        ${isPro(it) ? `<p class="tr-rtip-pro">${esc(t("trc.rib.tipPro"))}</p>` : ""}<p class="tr-rtip-more">${esc(t("trc.rib.tipF1"))}</p>`;
       document.body.appendChild(tip);
       const r = el.getBoundingClientRect();
       tip.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - tip.offsetWidth - 8))}px`;
@@ -676,8 +676,6 @@ export function mountRibbon(E) {
       const a = e.target.closest("[data-bs-run]");
       if (a?.dataset.bsRun === "qat-reset") { setQat(null); draw("options"); return; }
       if (a) { close(); run(a.dataset.bsRun, null); return; }
-      const ui = e.target.closest("[data-bs-ui]");
-      if (ui) { close(); E.setUi(ui.dataset.bsUi); return; }
       const d = e.target.closest("[data-bs-disp]");
       if (d) { const [where, k] = d.dataset.bsDisp.split(":"); setDisplay(k, where); draw("options"); }
     });
@@ -686,6 +684,8 @@ export function mountRibbon(E) {
     bs.querySelector("[aria-current='true']")?.focus({ preventScroll: true });
   }
   R.openBackstage = openBackstage;
+  // the « Fichier » page's commands of the advanced level: for administrators only
+  const bsItems = (list) => list.filter(([act]) => E.pro || !isPro({ act }));
   const card = ([act, t, d]) => `<button type="button" class="tr-bs-card" data-bs-run="${act}">${svg(ACT_ICON_OF(act), 22)}<b>${esc(t)}</b><span>${esc(d)}</span></button>`;
   function pageHtml(s) {
     const sec = BACKSTAGE.find((x) => x.id === s);
@@ -703,12 +703,9 @@ export function mountRibbon(E) {
         <div class="tr-bs-cards">${card(["event-props", t("trc.rib.bsProps"), t("trc.rib.bsPropsDesc")])}${card(["team", t("trc.rib.bsTeam"), t("trc.rib.bsTeamDesc")])}${card(["encryption", t("trc.rib.bsEncryptionCard"), t("trc.rib.bsEncryptionDesc")])}</div>`;
     }
     if (s === "options") {
-      const ui = (k, label, d) => `<button type="button" class="tr-bs-card${E.ui === k ? " on" : ""}" data-bs-ui="${k}">${svg(k === "ocn" ? "ribbon" : "menu", 22)}<b>${esc(label)}${E.ui === k ? " ✓" : ""}</b><span>${esc(d)}</span></button>`;
       const dp = (where, k, label, d) => { const on = (chosen(where) || "auto") === k; return `<button type="button" class="tr-bs-card${on ? " on" : ""}" data-bs-disp="${where}:${k}">${svg(k === "full" ? "ribbon" : k === "line" ? "minus" : k === "auto" ? "sliders" : "fit", 22)}<b>${esc(label)}${on ? " ✓" : ""}</b><span>${esc(d)}</span></button>`; };
       const qat = (loadPref("qat", null) || QAT_DEFAULT).map((k) => qatInfo(k).label).join(", ");
       return `<h3>${esc(t("trc.rib.optOptions"))}</h3><p class="tr-bs-sub">${esc(t("trc.rib.optKept"))}</p>
-        <h4>${esc(t("trc.rib.optInterface"))}</h4><div class="tr-bs-cards">${ui("ocn", t("trc.rib.uiOcn"), t("trc.rib.uiOcnDesc"))}
-          ${ui("pp", t("trc.rib.uiPp"), t("trc.rib.uiPpDesc"))}</div>
         <h4>${esc(t("trc.rib.optRibbonPage"))}</h4><div class="tr-bs-cards">${dp("ribbon", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoPageDesc"))}${dp("ribbon", "full", t("trc.rib.optFull"), t("trc.rib.optFullDesc"))}
           ${dp("ribbon", "line", t("trc.rib.optLine"), t("trc.rib.optLineDesc"))}${dp("ribbon", "folded", t("trc.rib.optFolded"), t("trc.rib.optFoldedDesc"))}</div>
         <h4>${esc(t("trc.rib.optRibbonFw"))}</h4><div class="tr-bs-cards">${dp("ribbonFw", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoFwDesc"))}${dp("ribbonFw", "full", t("trc.rib.optFull"), t("trc.rib.optFullFwDesc"))}${dp("ribbonFw", "line", t("trc.rib.optLine"), t("trc.rib.optLineFwDesc"))}</div>
@@ -716,8 +713,8 @@ export function mountRibbon(E) {
         <div class="tr-bs-cards">${card(["qat-reset", t("trc.rib.qatDefaults"), t("trc.rib.qatDefaultsDesc")])}</div>
         <h4>${esc(t("trc.rib.optFiles"))}</h4><div class="tr-bs-cards">${card(["save-to", t("trc.rib.optSeveralFiles"), t("trc.rib.optSeveralFilesDesc")])}</div>`;
     }
-    if (sec?.groups) return `<h3>${esc(sec.label)}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsEachFile"))}</p>${sec.groups.map(([title, items]) => `<h4>${esc(title)}</h4><div class="tr-bs-cards">${items.map(card).join("")}</div>`).join("")}`;
-    if (sec?.items) return `<h3>${esc(sec.label)}</h3><div class="tr-bs-cards">${sec.items.map(card).join("")}</div>`;
+    if (sec?.groups) return `<h3>${esc(sec.label)}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsEachFile"))}</p>${sec.groups.filter(([, items]) => bsItems(items).length).map(([title, items]) => `<h4>${esc(title)}</h4><div class="tr-bs-cards">${bsItems(items).map(card).join("")}</div>`).join("")}`;
+    if (sec?.items) return `<h3>${esc(sec.label)}</h3><div class="tr-bs-cards">${bsItems(sec.items).map(card).join("")}</div>`;
     return "";
   }
 
@@ -725,21 +722,19 @@ export function mountRibbon(E) {
   const search = E.$("#tr-rsearch"), res = E.$("#tr-rsearch-res");
   let found = [];
   function index() {
-    const out = commands().map((c) => ({ ...c, where: `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""}`, old: c.act ? menuAt(c.act) : "" }));
+    const out = commands().filter((c) => E.pro || !c.pro).map((c) => ({ ...c, where: `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""}` }));
     const specials = TABS[1].groups.find((g) => g.id === "specials")?.title || "";
-    for (const k of Object.keys(A.SPECIAL_NAME)) out.push({ tool: `special:${k}`, label: A.SPECIAL_NAME[k], icon: ACT_OF[k] || k, tip: SPECIAL_TIP(k), tab: TABS[1], group: { title: specials }, where: `${TABS[1].label} › ${specials}`, need: "edit", old: "" });
-    for (const s of BACKSTAGE) for (const [act, l, d] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!out.some((x) => x.act === act)) out.push({ act, label: l, tip: d, icon: ACT_ICON_OF(act), where: `${TABS[0].label} › ${s.label}`, backstage: true, old: menuAt(act) });
-    const options = BACKSTAGE.find((s) => s.id === "options")?.label || "";
-    out.push({ act: "ui-classic", label: t("trc.rib.searchUiPp"), tip: t("trc.rib.searchUiPpTip"), icon: "menu", where: `${TABS[0].label} › ${options}`, backstage: true, old: "" });
-    out.push({ act: "ribbon-line", label: t("trc.rib.searchLine"), tip: "", icon: "minus", where: t("trc.rib.searchDisplay"), backstage: true, old: "" });
-    out.push({ act: "ribbon-folded", label: t("trc.rib.searchFold"), tip: "Ctrl+F1", icon: "fit", where: t("trc.rib.searchDisplay"), backstage: true, old: "" });
+    for (const k of Object.keys(A.SPECIAL_NAME)) if (E.pro || !isPro({ tool: `special:${k}` })) out.push({ tool: `special:${k}`, label: A.SPECIAL_NAME[k], icon: ACT_OF[k] || k, tip: SPECIAL_TIP(k), tab: TABS[1], group: { title: specials }, where: `${TABS[1].label} › ${specials}`, need: "edit" });
+    for (const s of BACKSTAGE) for (const [act, l, d] of bsItems([...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])])) if (!out.some((x) => x.act === act)) out.push({ act, label: l, tip: d, icon: ACT_ICON_OF(act), where: `${TABS[0].label} › ${s.label}`, backstage: true });
+    out.push({ act: "ribbon-line", label: t("trc.rib.searchLine"), tip: "", icon: "minus", where: t("trc.rib.searchDisplay"), backstage: true });
+    out.push({ act: "ribbon-folded", label: t("trc.rib.searchFold"), tip: "Ctrl+F1", icon: "fit", where: t("trc.rib.searchDisplay"), backstage: true });
     return out;
   }
   function showResults() {
     const q = norm(search.value.trim());
     if (!q) { res.hidden = true; return; }
     const words = q.split(/\s+/);
-    found = index().filter((c) => { const h = norm(`${c.label} ${c.tip || ""} ${c.old || ""} ${c.where}`); return words.every((w) => h.includes(w)); });
+    found = index().filter((c) => { const h = norm(`${c.label} ${c.tip || ""} ${c.where}`); return words.every((w) => h.includes(w)); });
     // the names first, then the descriptions
     found.sort((a, b) => (norm(b.label).includes(words[0]) ? 1 : 0) - (norm(a.label).includes(words[0]) ? 1 : 0));
     found = found.filter((c, i) => found.findIndex((x) => (x.act || x.tool) === (c.act || c.tool) && x.ctx === c.ctx) === i).slice(0, 9);
@@ -780,7 +775,7 @@ export function mountRibbon(E) {
     if (wanted() === "folded" && level === 2) { R.floating = true; render(); }
     const put = (el, k) => { const r = el.getBoundingClientRect(), h = E.root.getBoundingClientRect(); if (!r.width) return; const s = document.createElement("span"); s.className = "tr-rkt"; s.textContent = k; s.style.left = `${r.left - h.left + r.width / 2}px`; s.style.top = `${r.bottom - h.top - 6}px`; E.root.appendChild(s); el.dataset.kt = k; };
     if (level === 1) {
-      host.querySelectorAll(".tr-rtabs [data-rtab]").forEach((b) => { const id = b.dataset.rtab; put(b, id.startsWith("ctx:") ? "Z" : TABS.find((t) => t.id === id)?.key || "?"); });
+      host.querySelectorAll(".tr-rtabs [data-rtab]").forEach((b) => { const id = b.dataset.rtab; put(b, id.startsWith("ctx:") ? "Z" : tabs().find((t) => t.id === id)?.key || "?"); });
       const s = E.$("#tr-rsearch"); if (s) put(s, "Q");
     } else {
       const used = new Set();
@@ -797,7 +792,7 @@ export function mountRibbon(E) {
   function hideKeytips() { R.keytips = 0; R.ktBuf = ""; E.root.querySelectorAll(".tr-rkt").forEach((x) => x.remove()); host.querySelectorAll("[data-kt]").forEach((b) => delete b.dataset.kt); }
   R.keytips = 0;
   const onKey = (e) => {
-    if (E.ui !== "ocn" || !document.body.contains(E.root)) return;
+    if (!document.body.contains(E.root)) return;
     if (document.querySelector(".tr-modal, .tr-start")) { if (R.keytips) hideKeytips(); return; }
     if (e.key === "Alt" && !e.ctrlKey && !e.shiftKey && !e.metaKey) { altAlone = true; if (e.type === "keydown") e.preventDefault(); return; }
     if (e.type === "keyup") return;
@@ -815,7 +810,7 @@ export function mountRibbon(E) {
     if (R.keytips === 1) {
       if (k === "Q") { hideKeytips(); search?.focus(); return; }
       if (k === "F") { hideKeytips(); openBackstage(); return; }
-      const t = k === "Z" ? (R.ctx ? `ctx:${R.ctx}` : null) : TABS.find((x) => x.key === k && !x.backstage)?.id;
+      const t = k === "Z" ? (R.ctx ? `ctx:${R.ctx}` : null) : tabs().find((x) => x.key === k && !x.backstage)?.id;
       if (!t) return;
       if (!t.startsWith("ctx:")) R.prevTab = t;
       R.tab = t; R.pulse = false; render(); keytips(2);
@@ -827,7 +822,7 @@ export function mountRibbon(E) {
     if (![...host.querySelectorAll("[data-kt]")].some((x) => x.dataset.kt.startsWith(R.ktBuf))) R.ktBuf = "";
   };
   const onKeyUp = (e) => {
-    if (E.ui !== "ocn" || !document.body.contains(E.root)) return;
+    if (!document.body.contains(E.root)) return;
     if (e.key === "Alt" && altAlone) { altAlone = false; e.preventDefault(); if (document.querySelector(".tr-modal, .tr-start")) return; if (R.keytips) hideKeytips(); else keytips(1); }
   };
   document.addEventListener("keydown", onKey, true);

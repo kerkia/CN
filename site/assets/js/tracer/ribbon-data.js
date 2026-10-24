@@ -1,12 +1,14 @@
-// The Tracer's ribbon, as data (owner, 2026-10-17: the « Ozimut mode », by default; the menus of icons.js stay as the « Purple Pen
-// mode »). Shared by the editor (ribbon.js draws it), the guide (pages/methods.js: « L'écran », « Le ruban ») and the messages
-// that name where a command is (where()). Tabs follow the setter's work; contextual tabs (CONTEXT) come with the selection.
+// The Tracer's ribbon, as data (owner, 2026-10-17; its only interface since 2026-10-24, the Purple Pen menus retired). Shared by the
+// editor (ribbon.js draws it), the guide (content/methods.*.js: « L'écran », « Le ruban ») and the messages that name where a
+// command is (where()). Tabs follow the setter's work; contextual tabs (CONTEXT) come with the selection. Two levels (owner,
+// 2026-10-24, after the Condes study): the essential one — what a .ppen file holds and Ozimut's own tools — for everyone, and
+// the advanced one (PRO: every command after Condes) for administrators for now; an item, a group or a tab marked pro: true is
+// drawn for them only, and dialogs.action refuses its act to the others.
 // An item: { t: "big" | "small", act (an action of dialogs.js, or one of ribbon.js) | tool (an editor tool), label, icon, key,
 // tip, need, split }. need: "edit" (not read-only), "course" (a course chosen), "vector" (an OCAD or Mapper map), "after" (from
 // the race day, for a competition). { t: "stack", items } piles up to three small ones; { t: "gallery" } the special objects;
 // { t: "field", id } a setting drawn by ribbon.js; { t: "chip", id } live figures; { t: "modes", id } choices with a preview.
 
-import { MENUS } from "./icons.js";
 import { t } from "./lang.js";
 
 const B = (act, label, icon, o = {}) => ({ t: "big", act, label, icon, ...o });
@@ -163,7 +165,7 @@ export const INFO = {
   gallery: t("trc.rd.gallery"),
 };
 
-/** The quick-access bar (the title bar, the Ozimut mode): what a setter is likely to use most, whatever the tab — undo and redo, the
+/** The quick-access bar (the title bar): what a setter is likely to use most, whatever the tab — undo and redo, the
  *  PDF of the course in hand to print a proof, the event audit, the course's properties (name, climb, scale) —; each user changes it
  *  (its ▾, or a right-click on any button of the ribbon), kept in ocn.tr.prefs « qat ». QAT_CHOICES: offered in its ▾ menu. */
 export const QAT_DEFAULT = ["undo", "redo", "pdf-course", "rep-audit", "course-props"];
@@ -248,18 +250,20 @@ export const BACKSTAGE = [
   { id: "options", label: t("trc.rd.bsOptions"), icon: "sliders" },
 ];
 
-// ---- where a command is: the messages name it in the interface the user has (ribbon or menus) ---------------------------------
-const PREF = "ocn.tr.prefs";
-/** The interface chosen on this browser: "ocn" (the ribbon, by default) or "pp" (Purple Pen's menus). */
-export function uiMode() { try { return JSON.parse(localStorage.getItem(PREF) || "{}").ui === "pp" ? "pp" : "ocn"; } catch (e) { return "ocn"; } }
-export function setUiMode(m) { try { const o = JSON.parse(localStorage.getItem(PREF) || "{}"); o.ui = m === "pp" ? "pp" : "ocn"; localStorage.setItem(PREF, JSON.stringify(o)); } catch (e) { /* this visit */ } }
+// ---- the advanced level (administrators for now) ------------------------------------------------------------------------------------
+/** Is the advanced level open in this editor? (E.pro: the account is an administrator; editor.js) */
+export const proOpen = (E) => !!E?.pro;
+/** The acts and tools of the advanced level, wherever they are drawn (ribbon, right-click menu, quick-access bar, search). */
+export const PRO = new Set();
+/** Is an item (or a group, a tab) for the advanced level only? */
+export const isPro = (it) => !!it?.pro || PRO.has(it?.act) || PRO.has(it?.tool);
 
-/** Every command of the ribbon: { act | tool, label, icon, tip, tab, group, ctx }. */
+/** Every command of the ribbon: { act | tool, label, icon, tip, tab, group, ctx }; pro: the advanced level's. */
 export function commands() {
   const out = [];
   const walk = (tab, group, items, ctx) => items.forEach((it) => {
     if (it.t === "stack") walk(tab, group, it.items, ctx);
-    else if (it.act || it.tool) out.push({ ...it, tab, group, ctx });
+    else if (it.act || it.tool) out.push({ ...it, tab, group, ctx, pro: isPro(it) || !!group?.pro || !!tab?.pro });
   });
   for (const tab of TABS) for (const g of tab.groups || []) walk(tab, g, g.items, null);
   for (const [k, c] of Object.entries(CONTEXT)) for (const g of c.groups) walk({ id: `ctx:${k}`, label: c.label }, g, g.items, k);
@@ -268,9 +272,8 @@ export function commands() {
 const RIBBON_AT = {};
 for (const c of commands()) if (c.act && !RIBBON_AT[c.act]) RIBBON_AT[c.act] = `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""} › ${c.label.replace(/…$/, "")}`;
 for (const s of BACKSTAGE) for (const [a, l] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!RIBBON_AT[a]) RIBBON_AT[a] = `${TABS[0].label} › ${s.label} › ${l}`;
-const MENU_AT = {};
-for (const m of MENUS) for (const it of m.items) if (it !== "-" && !MENU_AT[it[0]]) MENU_AT[it[0]] = `${m.label} › ${it[1].replace(/…$/, "")}`;
-/** Where a command is, in the interface in use: « Carte › Position › Caler les postes », or « Événement › Caler les postes sur la carte ». */
-export const where = (act, mode = uiMode()) => (mode === "pp" ? MENU_AT[act] || RIBBON_AT[act] : RIBBON_AT[act] || MENU_AT[act]) || "";
-export const ribbonAt = (act) => RIBBON_AT[act] || "";
-export const menuAt = (act) => MENU_AT[act] || "";
+// the advanced level's acts, from the items marked pro (their own mark, their group's or their tab's)
+for (const c of commands()) if (c.pro && (c.act || c.tool)) PRO.add(c.act || c.tool);
+/** Where a command is in the ribbon: « Carte › Position › Caler les postes ». */
+export const where = (act) => RIBBON_AT[act] || "";
+export const ribbonAt = where;

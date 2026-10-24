@@ -7,12 +7,12 @@ import * as M from "./model.js";
 import * as S from "./store.js";
 import { symbol, symbolName, loadSymbols, languages } from "./symbols.js";
 import { family, FAMILY_LABEL } from "./fonts.js";
-import { readPpen, writePpen } from "./ppen.js";
+import { readPpen, writePpen, ppenLosses } from "./ppen.js";
 import { writeOcn, EXT as OCN_EXT } from "./ocnfile.js";
 import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
-import { where } from "./ribbon-data.js";
+import { where, isPro } from "./ribbon-data.js";
 import { actIcon } from "./icons.js";
 import { t, tn, lang, locale } from "./lang.js";
 
@@ -129,7 +129,9 @@ export async function action(E, act, btn, at = {}) {
   // the start screen's three choices (pages/tracer.js), from the Fichier menu too
   if (act.startsWith("start-")) { E.onStart?.(act.slice(6)); return; }
   // no event open yet: only the start screen leads somewhere
-  if (E.blank && !["view-map", "view-course", "save-to", "ui-ribbon", "ui-classic"].includes(act)) { E.toast(t("trc.dlg.needEvent")); E.onStart?.(); return; }
+  if (E.blank && !["view-map", "view-course", "save-to"].includes(act)) { E.toast(t("trc.dlg.needEvent")); E.onStart?.(); return; }
+  // the advanced level: administrators only, for now (owner, 2026-10-24)
+  if (isPro({ act }) && !E.pro) { E.toast(t("trc.dlg.proOnly")); return; }
   switch (act) {
     case "save": await E.saveNow(true); break;
     case "export-ocn": exportOcn(E); break;
@@ -139,8 +141,6 @@ export async function action(E, act, btn, at = {}) {
     case "export-ppen": exportPpen(E); break;
     case "pdf-courses": (await lazy.pdf()).coursesDialog(E); break;
     case "pdf-course": if (needCourse(E)) (await lazy.pdf()).coursesDialog(E, { only: E.cd.course }); break;
-    case "ui-ribbon": E.setUi?.("ocn"); break;
-    case "ui-classic": E.setUi?.("pp"); break;
     case "pdf-descriptions": (await lazy.pdf()).descriptionsDialog(E); break;
     case "pdf-punch": (await lazy.pdf()).punchDialog(E); break;
     case "export-iof3": (await lazy.out()).iofXml(E, 3); break;
@@ -662,7 +662,14 @@ async function exportOcn(E) {
   download(`${fileName(E.ev.title)}${OCN_EXT}`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
   E.toast(map ? t("trc.dlg.ocnExportedMap") : t("trc.dlg.ocnExported"));
 }
-function exportPpen(E) {
+async function exportPpen(E) {
+  // the advanced level's data has no place in a .ppen: said first, left out of the file (ppen.js ppenLosses)
+  const losses = ppenLosses(E.ev);
+  if (losses.length) {
+    const v = await modal(E, { title: t("trc.dlg.ppenLossTitle"), ok: t("trc.dlg.ppenLossOk"), body: `<p>${esc(t("trc.dlg.ppenLossIntro"))}</p>
+      <ul>${losses.map((l) => `<li>${esc(tn(`trc.pp.${l.key}`, l.n))}</li>`).join("")}</ul><p class="tr-hint">${esc(t("trc.dlg.ppenLossHint"))}</p>` });
+    if (!v) return;
+  }
   download(`${fileName(E.ev.title)}.ppen`, writePpen(E.ev), "application/xml");
   E.toast(t("trc.dlg.ppenSaved", { map: E.ev.map.file || t("trc.dlg.mapPlaceholder") }), 7000);
 }

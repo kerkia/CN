@@ -3,7 +3,7 @@
 // for the spot clicked (« Ajouter un coude ici »), and knows the handle under the mouse (« Retirer ce coude »).
 
 import * as M from "./model.js";
-import { CONTEXT } from "./ribbon-data.js";
+import { CONTEXT, isPro } from "./ribbon-data.js";
 import { t } from "./lang.js";
 
 /** The kind of the selection's tab: "drawing" (a line, an area or a route under way), "control", "leg", "special", or null. */
@@ -79,8 +79,10 @@ export function menuItems(E, at = {}) {
   if (!kind) return [["view-course", t("trc.ctx.wholeCourse")], ["view-map", t("trc.ctx.wholeMap")]];
   const out = [];
   for (const g of CONTEXT[kind].groups) {
+    if (isPro(g) && !E.pro) continue;
     const here = [];
     const walk = (items) => items.forEach((it) => {
+      if (isPro(it) && !E.pro) return;                           // the advanced level: administrators only
       if (it.t === "stack") walk(it.items);
       else if (it.t === "modes" && it.id === "flag") here.push("-", ...FLAG_MENU);
       else if (it.act && applies(E, it.act, kind, { ...at, menu: true })) here.push([it.act, menuLabel(E, it.act, kind, it.label)]);
