@@ -1508,7 +1508,9 @@ export function build(X) {
           <h2>Time lost and mistakes</h2>
           <ul class="mx-list">
             <li><span>On each leg between two controls, the <b>time lost</b> is the gap between the runner's time and the time their usual pace
-              on this race would have predicted. It is negative when the runner goes faster than usual.</span></li>
+              on this race would have predicted. It is negative when the runner goes faster than usual. A leg's reference time is the mean of the
+              fastest times (the fastest sixth, the winner left out), and the usual pace the runner's time on the legs run without a mistake over their
+              reference times: a long leg counts more than a short one, as in MeOS.</span></li>
             <li><span>A <b>mistake</b> is a leg on which the runner lost at least 20% of the leg's time <b>and</b> at least 10 seconds; both thresholds
               can be adjusted. The “Lost” and “Without time lost” columns count only the mistakes.</span></li>
             <li><span>The <b>gaps</b> are measured against the “superman”, an imaginary runner with the best time on every leg, among all the

@@ -1510,7 +1510,9 @@ export function build(X) {
           <h2>Le temps perdu et les erreurs</h2>
           <ul class="mx-list">
             <li><span>Sur chaque tronçon entre deux postes, le <b>temps perdu</b> est l'écart entre le temps du coureur et le temps que son allure habituelle
-              sur cette course laissait prévoir. Il est négatif quand le coureur va plus vite que d'habitude.</span></li>
+              sur cette course laissait prévoir. Il est négatif quand le coureur va plus vite que d'habitude. Le temps de référence d'un tronçon est la
+              moyenne des temps les plus rapides (le sixième le plus rapide, sans le vainqueur), et l'allure habituelle le temps du coureur sur les tronçons
+              courus sans erreur rapporté à leurs temps de référence : un long tronçon y compte plus qu'un court, comme dans MeOS.</span></li>
             <li><span>Une <b>erreur</b> est un tronçon où le coureur a perdu au moins 20 % du temps du tronçon <b>et</b> au moins 10 secondes ; les deux seuils se
               règlent. Les colonnes « Perdu » et « Sans temps perdu » ne comptent que les erreurs.</span></li>
             <li><span>Les <b>écarts</b> se mesurent au « superman », un coureur imaginaire qui aurait le meilleur temps sur chaque tronçon, parmi tous les

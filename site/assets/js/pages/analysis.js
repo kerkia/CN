@@ -29,7 +29,7 @@ import { detectCourse } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
-import { bestLegs, usualRatio, legLoss } from "../trace/legs.js";
+import { bestLegs, refLegs, legLoss } from "../trace/legs.js";
 import { parisOffsetMs } from "../trace/published.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
@@ -872,22 +872,22 @@ export async function render(main, { query = {}, route } = {}) {
     total = tot ?? finT ?? Math.max(lastT ?? 0, track.dur - (offset || 0));
     const n = targets.length - 1;
     const taus = officialTaus();
-    let best = [], all = [], mine = [], med = null;
+    let best = [], ref = [], all = [], mine = [];
     if (taus) {
       const cumOf = (x) => Array.from({ length: n }, (_, i) => (i < n - 1 ? x.splits?.[i] ?? null : x.status === "ok" ? x.time_s : null));
       const legsOf = (x) => { const c = cumOf(x); return c.map((v, i) => (v != null && (i === 0 || c[i - 1] != null) ? v - (i ? c[i - 1] : 0) : null)); };
       all = k.runners.filter((x) => x.splits).map(legsOf);
       best = bestLegs(all, n);
+      ref = refLegs(all, n);                // (the time lost: trace/legs.js, as « Analyse de course »)
       mine = legsOf(r);
-      med = usualRatio(mine, best);
     } else mine = times.slice(1).map((v, i) => (v != null && times[i] != null ? v - times[i] : null));     // per leg
     legs = [];
-    const loss = taus ? legLoss(mine, best) : [];
+    const loss = taus ? legLoss(mine, ref) : [];
     for (let i = 0; i < n; i++) {
       const from = targets[i], to = targets[i + 1], t0 = times[i], t1 = times[i + 1];
       const leg = { n: i + 1, code: to.code || "", label: to.label, t0, t1, time: mine[i], best: best[i] ?? null, rank: null, lost: null, mistake: false, dist: null, straight: null, v: null, hr: null, cad: null, estimated: !taus };
       if (taus && leg.time != null) leg.rank = 1 + all.filter((l) => l[i] != null && l[i] < leg.time).length;
-      if (taus && leg.time != null && best[i] && med) { leg.lost = loss[i].lost; leg.mistake = loss[i].mistake; }
+      if (taus && leg.time != null && loss[i].lost != null) { leg.lost = loss[i].lost; leg.mistake = loss[i].mistake; }
       if (fit && t0 != null && t1 != null && offset != null) {
         leg.dist = cumAt(track, offset + t1) - cumAt(track, offset + t0);
         const a = from.pos ? toM(fit, ...from.pos) : posAt(track, offset + t0), b = to.pos ? toM(fit, ...to.pos) : posAt(track, offset + t1);

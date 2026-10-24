@@ -22,10 +22,12 @@
 // Above the views, what the split times say about the timing itself (splitcheck.js): a unit off the right time, a card
 // not cleared, a punch before the start; the cells concerned are marked in Tableau.
 //
-// Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — their
-// "ideal" is the best leg time × the median of their leg-time / best-leg-time ratios (negative: a leg run better than
-// usual). A leg lost by 20 % of its time and by 10 s at least (both thresholds adjustable) is a mistake. This is
-// WinSplits' "time loss", not a judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
+// Time lost on a leg: the runner's leg time less what it would have been at their own pace on their good legs — the leg's
+// reference time (MeOS's: the mean of the fastest sixth after the winner) × their usual pace, their time over the
+// reference times on the legs without a mistake (negative: a leg run better than usual; until 2026-10-24 the best leg time
+// × the median of their ratios to it, which came out smaller than the organisers' tickets). A leg lost by 20 % of its time
+// and by 10 s at least (both thresholds adjustable) is a mistake. This is WinSplits' and MeOS's "time loss", not a
+// judgement on route choice. The time lost (« Perdu ») is the mistakes' only, and
 // « Sans temps perdu » takes it off: the table, the ranks and the gaps then show the race without the mistakes.
 
 import { html, raw, esc, $, $$, fmt, fmtDate, fmtFormat, pctN } from "../util.js";
@@ -33,6 +35,7 @@ import { t, tn, locale } from "../i18n.js";
 import { lineChart, columnChart, passChart, slotColor, css } from "../charts.js";
 import { checkClass, issueText, markText } from "../splitcheck.js";
 import { followers, regularity } from "../splitstats.js";
+import { refLegs, legLoss } from "../trace/legs.js";
 import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs, freezeAttrs } from "../ui.js";
 import { link, replaceQuery, SITE } from "../app.js";
 import { getProv, clock } from "./provisional.js";
@@ -240,12 +243,21 @@ export async function render(main, { query = {} } = {}) {
     const bestLeg = (key) => Array.from({ length: L }, (_, i) => Math.min(...R.map((x) => x[key][i]).filter((v) => v != null && v > 0)));
     const rankOf = (vals, v) => (v == null ? null : 1 + vals.filter((x) => x != null && x < v).length);
     const realBest = bestLeg("legs");
+    // each leg's reference time (MeOS's: the mean of the fastest sixth after the winner) and each runner's usual pace (their
+    // time over the reference times on the legs without a mistake): trace/legs.js, shared with the GPS analyses
+    const refLeg = refLegs(R.map((x) => x.legs), L);
+    const err = { pct: errPct, s: errS };
     for (const x of R) {
       x.ratios = x.legs.map((v, i) => (v != null && isFinite(realBest[i]) ? v / realBest[i] : null));
-      x.ratio = median(x.ratios);
-      // the leg against the runner's own pace (negative: better than usual); a mistake when the loss passes both thresholds
-      x.delta = x.legs.map((v, i) => (v != null && x.ratio && isFinite(realBest[i]) ? v - realBest[i] * x.ratio : null));
-      x.mistake = x.legs.map((v, i) => x.delta[i] != null && v > 0 && x.delta[i] > 0 && x.delta[i] >= (errPct / 100) * v && x.delta[i] >= errS);
+      // the leg at the runner's usual pace, the leg against it (negative: better than usual), a mistake past both thresholds
+      const loss = legLoss(x.legs, refLeg, err);
+      x.expect = loss.map((l) => l.expect);
+      x.delta = loss.map((l) => l.lost);
+      x.mistake = loss.map((l) => l.mistake);
+      // the usual pace as the views show it, behind the best time: the legs without a mistake over their best times
+      let gv = 0, gb = 0;
+      x.legs.forEach((v, i) => { if (v > 0 && x.delta[i] != null && !x.mistake[i] && isFinite(realBest[i])) { gv += v; gb += realBest[i]; } });
+      x.ratio = gb ? gv / gb : median(x.ratios);
       // the time lost: the mistakes' only
       x.lost = x.delta.map((d, i) => (d == null ? null : x.mistake[i] ? d : 0));
       x.lostTotal = x.lost.reduce((s, v) => s + (v || 0), 0);
@@ -501,7 +513,7 @@ export async function render(main, { query = {} } = {}) {
             inGroup += x.legs[j];
             if (!front) {
               behindT += x.legs[j];
-              if (x.ratio && isFinite(realBest[j])) gain += realBest[j] * x.ratio - x.legs[j];
+              if (x.expect[j] != null) gain += x.expect[j] - x.legs[j];
             }
           }
           legs.push(mates.length ? { mates, front } : { mates });

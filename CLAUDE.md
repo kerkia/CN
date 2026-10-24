@@ -373,8 +373,12 @@ and the race page's buttons lead there. **Live races** (`course=direct-<race>`, 
 class asked for has come, then new times of the course shown offer « Actualiser » (no redraw under the reader's eyes; the others'
 are taken quietly). « En direct »'s race page shows « Analyse de course → » once a split time has come, and the list's box « En
 direct, avec temps intermédiaires » lists the site's country's races live now whose live gives splits (`probe`: the relay's hello
-— a last passing at a radio control — else one class read; 6 races at most, each connection closed at once). Its analysis — WinSplits' time loss (the leg against the runner's
-usual pace, signed); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
+— a last passing at a radio control — else one class read; 6 races at most, each connection closed at once). Its analysis — WinSplits' and MeOS's time loss (the leg against the runner's
+usual pace, signed; since 2026-10-24, owner, `trace/legs.js` `refLegs`/`usualPace`/`legLoss`, shared with the GPS analyses: the
+leg's reference is MeOS's — the mean of the fastest sixth after the winner, of the two best under 12 times, the best under 5 —
+and the usual pace the runner's time over the reference times on the legs without a mistake, found from the median ratio then
+refined three times; before, the best leg × the median ratio, which ran 7 % slower than MeOS's pace on the Le Bessat sprint and
+lost 2 640 min against 3 030 for MeOS, 2 870 now; the views' « Rythme habituel » is the same legs over their best times); a mistake = lost ≥ 20 % of the leg **and** ≥ 10 s (both adjustable); « Perdu » and « Sans temps
 perdu » count the mistakes only; the Tableau keeps two lines a runner, the gap on hover (owner, 2026-10-10: as
 WinSplits) — on a screen without hover a third line in every cell (`.touch-only`, `@media (hover: none)`; owner, 2026-10-23),
 and « Réel / Sans temps perdu » redraws without moving the table or the page (`keepPlace`); Écarts against the superman (best legs) of everyone or of the runners compared. **After MeOSDjango** (2026-10-22;

@@ -20,7 +20,7 @@ import { t } from "../i18n.js";
 import { clock } from "./provisional.js";
 import { cumAt } from "../trace/track.js";
 import { toM } from "../trace/geom.js";
-import { bestLegs, legLoss, cumOf, referenceCum } from "../trace/legs.js";
+import { bestLegs, refLegs, legLoss, cumOf, referenceCum } from "../trace/legs.js";
 import { gapChart, duelChart } from "../charts.js";
 import { variantKey } from "../trace/routes.js";
 import { pace } from "../trace/curves.js";
@@ -77,7 +77,7 @@ function legsView(el, X) {
   const who = R.find((r) => r.uid === X.state.legsOf) || X.state.sel || R.find((r) => r.mine) || R[0];
   const field = X.fieldLegs(), best = bestLegs(field.all, legsN);
   const mine = Array.from({ length: legsN }, (_, i) => legTime(who, i + 1));
-  const loss = legLoss(mine, best);
+  const loss = legLoss(mine, refLegs(field.all, legsN));
   const rows = mine.map((v, i) => {
     const j = i + 1, a = who.passes[j - 1], b = who.passes[j];
     const dist = v != null ? cumAt(who.tr, b) - cumAt(who.tr, a) : null;
