@@ -1757,6 +1757,7 @@ body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }
 .sh-vtabs { margin: 0 0 8px; border-bottom-color: var(--border); }
 .sh-vtabs button { font-size: 13.5px; font-weight: 550; padding: 7px 11px; }
 .sh-legs td { white-space: nowrap; }
+.sh-gap-tools { align-items: flex-end; margin: 0 0 6px; gap: 8px 14px; }
 @media (max-width: 900px) {
   .sh-layout.with-curves { grid-template-columns: 1fr; }
   .sh-curves-tab { writing-mode: horizontal-tb; transform: none; padding: 10px; height: auto; }

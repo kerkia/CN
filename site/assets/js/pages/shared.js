@@ -20,7 +20,7 @@ import * as declare from "../declare.js";
 import * as country from "../country.js";
 import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
-import { toPx, fitSimilarity } from "../trace/geom.js";
+import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
@@ -783,7 +783,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       if (state.ref) q.ref = state.ref.uid;
       if (state.tab !== TABS[0]) q.v = state.tab;
       if (state.legsOf != null) q.lo = state.legsOf;
-      Object.assign(q, X.extraQuery?.() || {});
+      Object.assign(q, X.extraQuery());
       replaceQuery(q);
     }, playing ? 1500 : 400);
   }
@@ -1004,7 +1004,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; saveUrl(); }
 
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
-  const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null), get sel() { return sel; } };
+  const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
+    gref: /^(superman|r\d+)$/.test(init.g || "") ? init.g : null, gx: init.gx === "dist" ? "dist" : null, gm: init.gm === "duel" ? "duel" : null, da: int(init.da, 0, 1e12, null),
+    get sel() { return sel; } };
   const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
     // the field a leg time is ranked in, and its best legs: the class's published split times (every runner of the circuit),
     // else every runner with a trace
@@ -1014,7 +1016,19 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       if (all.filter((l) => l.some((v) => v != null)).length >= 2) return { source: "published", all };
       return { source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) };
     },
-    refChanged: () => { bottom.draw(); saveUrl(); }, changed: () => saveUrl() };
+    refChanged: () => { bottom.draw(); saveUrl(); }, changed: () => saveUrl(),
+    // the course's distance at each control (km, the straight legs), for the gaps against the distance
+    courseKm: () => { const f = runners[0]?.fit; let acc = 0; return ctrls.map((p, i) => { if (i && f) { const a = toM(f, ctrls[i - 1].x, ctrls[i - 1].y), b = toM(f, p.x, p.y); acc += Math.hypot(a[0] - b[0], a[1] - b[1]) / 1000; } return acc; }); },
+    // a point of the gaps: the replay at that runner's pass at control j (a mass start, or the clock), the runner followed
+    jump: (r, j) => {
+      if (r.passes[j] == null) return;
+      stop(); leg = 0; if (mode !== "clock") mode = "mass";
+      r.visible = true; sel = r; follow = "sel";
+      [T0, T1] = range();
+      T = mode === "clock" ? r.abs0 + r.passes[j] : r.passes[j] - r.start;
+      left(); right(); frame(); saveUrl();
+    },
+    extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
   const bottom = bottomViews($("#sh-views"), X);
 
   // ---- the layout: the window's height below the top line

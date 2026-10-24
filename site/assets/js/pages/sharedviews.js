@@ -1,24 +1,28 @@
 // « Analyse multi »'s views under the replay (pages/shared.js), as tabs: the splits table against a chosen runner (the
 // duel), and one runner's legs as « Analyse solo » shows them — time, rank, the time lost by the split-times page's rule
 // (trace/legs.js), the route's length against the straight line, the pace. Only positions and times are shared: no heart
-// rate or cadence here for anyone (one's own stay in « Mes courbes », on one's device).
+// rate or cadence here for anyone (one's own stay in « Mes courbes », on one's device). « Écarts » (after SplitsBrowser
+// and 2DRerun's autOanalysis): each runner shown, their time behind a reference at each control — the leader there, the
+// « superman » of the best legs, or a runner —, against the controls or the course's distance; a click on a point puts
+// the replay there; and a duel, leg by leg, the time one runner gained or lost on another.
 //
 // X, the replay's context: runners (all, each { uid, name, colour, visible, passes, start, finish, tr, fit, mine }),
 // ctrls, legsN, ctrlLabel(i), legName(j), legTime(r, j), total(r), fieldLegs() (the field's leg times and their source),
 // state (tab, ref, legsOf: the replay's choices), setLeg(j), changed() (the address and the map follow).
 
-import { html, raw, $, $$, fmt, pctN } from "../util.js";
+import { html, raw, esc, $, $$, fmt, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import { clock } from "./provisional.js";
 import { cumAt } from "../trace/track.js";
 import { toM } from "../trace/geom.js";
-import { bestLegs, legLoss } from "../trace/legs.js";
+import { bestLegs, legLoss, cumOf, referenceCum } from "../trace/legs.js";
+import { gapChart, duelChart } from "../charts.js";
 import { pace } from "../trace/curves.js";
 
 export const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
 
-export const TABS = ["splits", "legs"];
+export const TABS = ["splits", "legs", "gaps"];
 
 /** The tabs and their panel in `el`; returns { draw() } — a full redraw (the runners shown, the leg, the reference changed). */
 export function views(el, X) {
@@ -31,6 +35,7 @@ export function views(el, X) {
     $$("[data-vtab]", el).forEach((b) => b.addEventListener("click", () => { X.state.tab = b.dataset.vtab; draw(); X.changed(); }));
     const body = $("#sh-vbody", el);
     if (X.state.tab === "legs") legsView(body, X);
+    else if (X.state.tab === "gaps") gapsView(body, X);
     else splitsView(body, X);
   }
   return { draw };
@@ -89,4 +94,48 @@ function legsView(el, X) {
     <p class="hint" style="margin:6px 2px 0">${t("sh.legs.rule")}</p>`;
   $("#sh-legs-of", el).addEventListener("change", (e) => { X.state.legsOf = Number(e.target.value); legsView(el, X); X.changed(); });
   $$("tr[data-leg]", el).forEach((tr) => tr.addEventListener("click", () => X.setLeg(Number(tr.dataset.leg))));
+}
+
+// ---- the gaps to a reference along the race, and a duel leg by leg
+export const GAP_REFS = ["leader", "superman"];
+function gapsView(el, X) {
+  const { legsN, ctrlLabel, legTime, state } = X;
+  const R = X.runners.filter((r) => r.visible && r.passes.some((p) => p != null));
+  if (!R.length || legsN < 1) { el.innerHTML = html`<div class="empty">${t("sh.noTraces")}</div>`; return; }
+  const legsOf = (r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1));
+  const duel = state.gm === "duel";
+  const refRunner = /^r\d+$/.test(state.gref || "") ? X.runners.find((r) => r.uid === Number(state.gref.slice(1))) : null;
+  const gref = refRunner ? state.gref : GAP_REFS.includes(state.gref) ? state.gref : "leader";
+  const A = R.find((r) => r.uid === state.da) || state.sel || R.find((r) => r.mine) || R[0];
+  const B = state.ref && state.ref !== A ? state.ref : R.find((r) => r !== A) || null;
+  const opts = (sel, list) => list.map((r) => html`<option value="${r.uid}" ${raw(r === sel ? "selected" : "")}>${r.name}</option>`);
+  el.innerHTML = html`<div class="filters sh-gap-tools">
+      <div class="seg" role="group">${["gaps", "duel"].map((m) => html`<button type="button" data-gm="${m}" aria-pressed="${(m === "duel") === duel}">${t(`sh.gm.${m}`)}</button>`)}</div>
+      ${duel ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sh-da">${opts(A, R)}</select></label>
+          <label class="field"><span>${t("sh.duel.vs")}</span><select id="sh-db">${opts(B, R.filter((r) => r !== A))}</select></label>`
+        : html`<label class="field"><span>${t("sh.gref")}</span><select id="sh-gref">${GAP_REFS.map((k) => html`<option value="${k}" ${raw(k === gref ? "selected" : "")}>${t(`sh.gref.${k}`)}</option>`)}
+            <optgroup label="${t("sh.gref.runner")}">${X.runners.map((r) => html`<option value="r${r.uid}" ${raw(`r${r.uid}` === gref ? "selected" : "")}>${r.name}</option>`)}</optgroup></select></label>
+          <label class="field"><span>${t("sh.gx")}</span><select id="sh-gx">${["ctrl", "dist"].map((k) => html`<option value="${k}" ${raw(k === (state.gx || "ctrl") ? "selected" : "")}>${t(`sh.gx.${k}`)}</option>`)}</select></label>`}</div>
+    <div class="chart" id="sh-gap-chart"></div>
+    <p class="hint" style="margin:6px 2px 0">${duel ? t("sh.duel.hint", { a: A.name, b: B?.name || "—" }) : t("sh.gaps.hint", { src: t(`sh.legs.src.${X.fieldLegs().source}`) })}</p>`;
+  $$("[data-gm]", el).forEach((b) => b.addEventListener("click", () => { state.gm = b.dataset.gm === "duel" ? "duel" : null; gapsView(el, X); X.changed(); }));
+  $("#sh-gref", el)?.addEventListener("change", (e) => { state.gref = e.target.value === "leader" ? null : e.target.value; gapsView(el, X); X.changed(); });
+  $("#sh-gx", el)?.addEventListener("change", (e) => { state.gx = e.target.value === "ctrl" ? null : e.target.value; gapsView(el, X); X.changed(); });
+  $("#sh-da", el)?.addEventListener("change", (e) => { state.da = Number(e.target.value); gapsView(el, X); X.changed(); });
+  $("#sh-db", el)?.addEventListener("change", (e) => { state.ref = X.runners.find((r) => r.uid === Number(e.target.value)) || null; gapsView(el, X); X.changed(); });
+  const labels = Array.from({ length: legsN + 1 }, (_, j) => ctrlLabel(j));
+  if (duel) {
+    if (!B) return;
+    const la = legsOf(A), lb = legsOf(B), values = la.map((v, i) => (v != null && lb[i] != null ? lb[i] - v : null));
+    duelChart($("#sh-gap-chart", el), { categories: labels.slice(1), values, fmtY: signed,
+      tip: (i) => `<b>${esc(labels[i + 1])}</b><br>${esc(A.name)} ${la[i] != null ? clock(la[i]) : "—"} · ${esc(B.name)} ${lb[i] != null ? clock(lb[i]) : "—"}${values[i] == null ? "" : `<br>${esc(t(values[i] >= 0 ? "sh.duel.won" : "sh.duel.lost", { a: A.name, d: clock(Math.abs(values[i])) }))}`}`,
+      onClick: (i) => X.setLeg(i + 1) });
+    return;
+  }
+  const field = X.fieldLegs().all;
+  const ref = refRunner ? referenceCum("runner", field, legsN, legsOf(refRunner)) : referenceCum(gref, field, legsN);
+  const dist = state.gx === "dist", xs = dist ? X.courseKm() : labels.map((_, j) => j);
+  const series = R.map((r) => { const c = cumOf(legsOf(r)); return { name: r.name, color: r.colour, bold: r === state.sel, data: c.map((v, j) => [xs[j], v != null && ref[j] != null ? v - ref[j] : null, j]) }; });
+  gapChart($("#sh-gap-chart", el), { series, xLabels: dist ? null : labels, xName: dist ? "km" : "", fmtX: (v) => fmt(v, 1), fmtY: signed,
+    onClick: (i, j) => X.jump(R[i], j) });
 }
