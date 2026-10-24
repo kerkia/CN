@@ -737,6 +737,42 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   dark ring, light, dark ring, light; 36 rays, half of them and three quarters of the circle), colour-blind — found at
   2 px, score 0.75. Shape alone is not unique on a forest map (texture, knolls' contours: up to 0.72 elsewhere on the
   same photo), so it is only looked for within 50 m of where the trace ends (`prepare`, the circuit editor's `auto`).
+  **3D view, a prototype** (2026-10-24, owner: after the study of World of O's 3DRerun; on branch `claude/solo-3d-view-*`, not
+  merged until the owner has reviewed it): « 3D » on the playback's map (`an-3d`) drapes the map over the ground. The heights:
+  `trace/terrain.js` lays a grid on the map image (its nodes at map pixels, so the image is the mesh's texture as it is; ~40 000
+  nodes, a step of 5 m at least, 320 a side at most: `gridPlan`), each node's lat/lon through the calibration (`pxLatLon`: the fit to
+  the trace's metres, then the trace's own lat0/lon0), from IGN's RGE ALTI in France (`elevation.json` POST, 5 000 points a request
+  at most, about one a second asked — three at a time here, no refusal seen; a 7 × 7 probe first sends a map mostly outside IGN's
+  model to the tiles; IGN's holes — Monaco, the sea, a border; values under −50 m are its sea — filled from the tiles: source
+  « ign+tiles ») else the AWS terrain tiles (Terrarium PNGs, ~30 m, zoom 15 at most); only the map's extent is sent, never the trace;
+  kept in IndexedDB `ocn-analyse` (keys `dem:v2:…`, the last 12). The view: `trace/view3d.js`, three.js 0.185.1 vendored
+  (`vendor.THREE`, loaded only when the view opens; no OrbitControls — its bare `import "three"` needs an import map — so a small
+  orbit of its own): the ground mesh lit softly from the north-west, the texture reduced to 4096 px on phones and small screens
+  (8192 elsewhere); the trace a ribbon whose two edges each sit on the ground (a level ribbon sank into steep slopes), coloured as in
+  2D, the part run, the tail, the part to come faint or hidden; the runner a dot the same size on screen, seen through hills; the
+  camera an orbit (drag, right/Shift-drag or two fingers to move, wheel or pinch) or, with « Suivre », a chase camera behind the
+  runner turning with their heading, never under the ground; vertical exaggeration × 1-3 (`ocn.an.prefs` `ex3d`). It runs on the
+  2D playback's clock (`clockNow`: interpolated between the timer's ticks), draws on requestAnimationFrame only when something
+  changed, and goes with ↗ (`d3=1`) and full window. The credit of the heights' source in the view. Measured 2026-10-24 (headless
+  Edge, Intel GPU, the invented test files): IGN grid 181 × 121 nodes at 5 m in 4.2-5.3 s (5 requests), 232 × 174 at 8.7 m in
+  12.6 s by Monaco (IGN + tiles), cached: at once; 60 fps at 1280 × 800 and on a 390 × 844 phone viewport (pixel ratio 1.5), under
+  1 ms of CPU a frame; three.js 751 KB (187 KB gzipped), the three modules 47 KB. `window.anDebug3d()` gives the grid and the
+  frame stats. **The map's own contours** (`trace/contours.js`, « Relief › + courbes de la carte (essai) », off by default; the
+  owner's question): a brown mask (red strongest, green about half, blue low and under green), thin lines only (course.js's
+  opening), pieces ≥ 12 m long and across; each piece's level from the model along it, tied to its neighbours (pieces crossed one
+  after the other along rows and columns step by what the model says: 0, ±1 or ±2 intervals; index contours, ~1.6 × wider, every
+  fifth interval), the offset from the model's own heights along the lines; the surface = the model + a correction exact on the
+  lines, a membrane between them solved coarse to fine. Measured on synthetic O-maps drawn from IGN's 2 m heights (5 m contours,
+  index lines, paths, text, boulders, overprint; scratch `site/data/_trtest/contour-exp/`, git-ignored), RMS error to IGN's model
+  with the mean bias removed: over the 30 m tiles, Vosges (250 m of relief) 4.36 → 2.52 m, Vercors (170 m) 7.03 → 4.61 m,
+  Fontainebleau (26 m) 3.93 → 3.84 m (unbroken lines: 1.61, 3.74, 3.51); over IGN at 5 m nothing gained (0.34 → 0.27, 0.33 → 0.96,
+  0.07 → 0.06) — in France the contours are mostly drawn from that same LiDAR; small features (knolls, re-entrants: the height
+  less its 40 m mean) never better than the model (the membrane terraces between lines, a level off by one makes a step). On real
+  maps (Purple Pen's OCAD tests rendered, against their own vector contours): Penistone Hill 97 % of the pixels read are contours,
+  87 % of the contours read; Clouds 80 / 81 %; Ft Casey (1:5000) 86 / 77 %; twice as many pieces as contour objects (paths and text
+  break them); Lake Sammamish's brown renders as rgb(128, 0, 0) and is not read. Not done: form lines (dashed half-interval lines,
+  read as full contours), a map's brown learnt from the map itself, vector sources (OCAD/OMAP through `tracer/vmap/`, symbols
+  101-103, or a PDF's brown paths: exact lines, the next step), Analyse multi.
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. The software exports
   its result list to a file every few seconds; the page, open on the arena PC in Chrome or Edge (File System Access API: the

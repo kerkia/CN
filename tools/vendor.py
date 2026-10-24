@@ -36,6 +36,8 @@ PACKAGES = {
     "@fontsource/noto-sans-hk": ("5.0.19", "fontsource/noto-sans-hk", ["400", "700"]),
     # the countries' flags (« En direct »'s other countries; 2026-10-22): one 4:3 SVG per ISO code
     "flag-icons": ("7.5.0", "flag-icons", ["flags/4x3/*.svg"]),
+    # the 3D view of « Analyse solo » (2026-10-24): the ES module and the core it imports
+    "three": ("0.185.1", "three", ["build/three.module.min.js", "build/three.core.min.js"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 

@@ -1507,6 +1507,21 @@ body.an-theatre .an-side { grid-area: side; height: auto; max-height: none; min-
 .an-legend-bar span { flex: 1; }
 .an-legend-ticks, .an-legend-ends { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .an-legend-ends { font-size: 10px; margin-top: 0; }
+/* the 3D view (prototype, 2026-10-24): over the map's box, the 2D canvas hidden; the button lit while it is on */
+.an-3d { position: absolute; inset: 0; }
+.an-3d[hidden], .an-map canvas[hidden] { display: none; }
+.an-map .an-3d-canvas { cursor: grab; }
+.an-map .an-3d-canvas:active { cursor: grabbing; }
+.an-tools .an-3d-btn { font-weight: 700; font-size: 12px; }
+.an-tools .an-3d-btn[aria-pressed="true"] { background: var(--flag-wash); border-color: var(--flag); color: var(--ink); }
+.an-3d-credit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; z-index: 2; max-width: calc(100% - 200px); font-size: 11px; padding: 2px 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-3d-credit[hidden] { display: none; }
+.an-3d-credit a { color: inherit; }
+.an-3d-head { font-size: 12px; font-weight: 650; color: var(--ink-3); margin: 10px 0 4px; }
+.an-3d-ex { display: inline-flex; align-items: center; gap: 6px; }
+.an-3d-info { font-size: 12px; margin: 6px 0 0; }
+@media (max-width: 640px) { .an-3d-credit { max-width: calc(100% - 110px); left: auto; right: 8px; transform: none; bottom: 40px; } }
 .an-side { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: min(76vh, 780px); overflow-y: auto; font-size: 13.5px; }
 .an-side .hint { font-size: 12.5px; color: var(--ink-3); margin: 0 0 8px; }
 .an-side-title { font-size: 12px; font-weight: 650; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }

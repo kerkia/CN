@@ -8,6 +8,7 @@
 //   DUCKDB     — « IA »
 //   FONTSOURCE — the Tracer's fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK)
 //   FLAGS      — the countries' flags (« En direct »)
+//   THREE      — « Analyse solo »'s 3D view (trace/view3d.js), loaded when the view opens
 const V = "/assets/vendor";
 export const PDFJS = `${V}/pdfjs-dist@4.10.38/build/pdf.min.mjs`;
 export const PDFJS_WORKER = `${V}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
@@ -17,6 +18,7 @@ export const FFLATE = `${V}/fflate@0.8.2/umd/index.js`;
 export const PROJ4 = `${V}/proj4@2.12.1/dist/proj4.js`;
 export const DUCKDB_DIR = `${V}/duckdb-wasm@1.32.0/dist`;
 export const FONTSOURCE = `${V}/fontsource`;
+export const THREE = `${V}/three@0.185.1/build/three.module.min.js`;
 /** A country's flag (ISO alpha-2), a 4:3 SVG. */
 export const flag = (cc) => `${V}/flag-icons@7.5.0/flags/4x3/${String(cc).toLowerCase()}.svg`;
 export const FONT_PKG = {
