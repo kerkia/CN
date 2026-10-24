@@ -792,7 +792,7 @@ export function build(X) {
   function tracerDoc() {
     const CHAPTERS = [["principe", "Pour commencer"], ["carte", "La carte"], ["ecran", "L'écran"], ["postes", "Les postes"], ["circuits", "Les circuits"],
       ["definitions", "Les définitions"], ["speciaux", "Objets spéciaux"], ["sorties", "Imprimer et exporter"], ["verifier", "Vérifier"],
-      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["calculs", "Ses calculs"]];
+      ["outils", "En équipe et sur le terrain"], ["apres", "Après la course"], ["ruban", "Le ruban"], ["avance", "Le niveau avancé"], ["calculs", "Ses calculs"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Le tracé";
     // where a command is in the ribbon: « Carte › Position › Caler les postes »
@@ -1329,7 +1329,7 @@ export function build(X) {
           if (it.t === "gallery") return html`<dt>${ic("special", 16)}<span>La galerie</span></dt><dd>${TRD.INFO.gallery}</dd>`;
           return html`<dt>${ic(it.icon, 16)}<span>${it.label}${it.key && it.key.length === 1 ? ` (${it.key})` : ""}</span></dt><dd>${it.tip || MENU_HELP[it.act] || ""}${it.split ? ` Le petit ▾ : ${it.split.map((x) => x[1]).join(", ")}.` : ""}</dd>`;
         };
-        const groups = (gs) => gs.map((g) => html`<h4 class="tr-doc-gh">${g.title || "—"}</h4><dl class="tr-doc-menu">${flat(g.items).map(entry)}</dl>`);
+        const groups = (gs) => gs.map((g) => html`<h4 class="tr-doc-gh">${g.title || "—"}${g.pro ? " — niveau avancé" : ""}</h4><dl class="tr-doc-menu">${flat(g.items).map(entry)}</dl>`);
         return html`
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
@@ -1346,6 +1346,66 @@ export function build(X) {
                   : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
         </section>`;
       },
+      avance: () => html`
+        <section class="mx-slide" id="tr-avance">
+          <p class="mx-kicker">${K}</p>
+          <h2>Le niveau avancé</h2>
+          <p>Le tracé a deux niveaux. Le niveau <b>essentiel</b>, pour tous, fait ce que fait un fichier Purple Pen, plus le travail en
+            équipe, le terrain, les vérifications et l'après-course d'Ozimut. Le niveau <b>avancé</b> ajoute ce que fait Condes, un autre
+            logiciel de tracé : il n'est ouvert, pour l'instant, qu'aux administrateurs du site. Ses boutons portent un petit point orange.
+            Un événement qui s'en sert s'ouvre, se dessine et s'imprime pour toute l'équipe ; seuls les administrateurs changent ce qui en
+            relève. Un fichier Purple Pen (.ppen) ne garde pas ces ajouts : l'export dit avant ce qu'il laisse de côté ; le fichier Ozimut
+            (.ozmt) garde tout.</p>
+          <h3>Venir d'un autre logiciel</h3>
+          <p>${W("import-courses")} reprend les postes, les circuits, les catégories et les équipes de relais d'un IOF XML (3.0 ou
+            2.0.3) exporté de Condes, d'OCAD, de Purple Pen ou d'un logiciel de chronométrage, ou les circuits d'une carte OCAD préparée
+            avec son module de traçage (lu d'après la description du format par OCAD : à vérifier sur un vrai fichier). Un IOF XML
+            déposé avec sa carte sur « Importer un événement » crée l'événement. Les variantes arrivent comme des circuits à part.</p>
+          <h3>Les catégories</h3>
+          <p>${W("classes")} : chaque catégorie, son circuit et ses concurrents attendus. La liste des catégories d'un circuit et ses
+            concurrents en découlent, et avec eux la charge des postes.</p>
+          <h3>Variantes et relais</h3>
+          <p>Le <b>losange</b> (${W("var-phi")}) part du poste choisi vers le suivant : deux branches courues l'une après l'autre, avec
+            un retour entre elles ; les variantes s'appellent AB et BA. On ajoute les postes de chaque branche et du retour en choisissant
+            la variante au-dessus de la carte. Une fourche ou des boucles peuvent avoir jusqu'à 20 branches. Dans ${W("relay")} :
+            remplir les équipes avec les mêmes variantes dans un autre ordre, coupler des fourches (« A=C » : qui court A court C sur le
+            même relais), cocher les relais où chaque branche est courue, et modifier les équipes à la main (dossard, nom, variante de
+            chaque relais), les cases qui rendent une équipe différente des autres en rouge.</p>
+          <h3>Formes et disciplines</h3>
+          <p>Les propriétés d'un circuit donnent sa <b>forme</b> — normale, circuit jalonné (le fil suivi le long des itinéraires
+            dessinés), trail-O —, les traits entre les postes ou non, sa <b>discipline</b> (VTT-O : longueurs le long des itinéraires ;
+            ski-O : un point au centre des cercles), le rogaine (points = code arrondi à la dizaine) et « tous les postes ». Un poste
+            peut être en <b>ordre libre</b> (${W("random-section")}) : pas de trait vers, entre ni depuis les postes de la section, et une
+            ligne dans les définitions. ${W("finish-at-start")} dessine l'arrivée sur le départ.</p>
+          <p>Les symboles du <b>VTT-O</b> (ISMTBOM 2022) sont dans les objets spéciaux : sens unique obligatoire, itinéraire interdit,
+            section dangereuse, obstacle sur la piste, passage interdit ; ils sont dessinés d'après la description de la norme, leurs
+            dimensions sont à vérifier.</p>
+          <h3>Postes et définitions</h3>
+          <p>Les propriétés d'un poste ajoutent ses autres boîtiers, un verrou (il ne bouge plus quand on le glisse) et, en trail-O, ses
+            balises (« A–E », en colonne B) et sa bonne réponse. Une case de définition peut porter un second symbole (cocher
+            « 2ᵉ symbole » en le choisissant) ; ${W("my-symbols")} ajoute des symboles à vous, tirés de dessins SVG ; les propriétés de
+            l'événement mettent sa date après le titre.</p>
+          <h3>Vérifier et mesurer</h3>
+          <p>${W("view-angles")} montre le virage à chaque poste (en rouge au-delà de 120°), ${W("view-nearest")} entoure les postes
+            trop proches ; ${W("rep-controls")} donne chaque poste avec ses boîtiers et le poste le plus proche, ${W("trail-answer")} les
+            bonnes réponses. Un interposte peut avoir plusieurs itinéraires (${W("routes-alt")}), la longueur prenant le plus court. Hors
+            de France, la dénivelée vient des tuiles de terrain ouvertes (SRTM, à 30 m environ).</p>
+          <h3>Mise en page et impression</h3>
+          <p>Les objets spéciaux ajoutent l'<b>agrandissement</b> (un cadre qui montre une autre partie de la carte, agrandie, avec le
+            circuit) et le <b>masque</b> (blanc, avec des trous). Le PDF des circuits ajoute : plusieurs circuits ou copies par feuille,
+            tous les circuits sur une même carte, le dos de chaque carte (nom, catégories, équipe et relais), des repères de calage avec
+            le décalage de l'imprimante, et des pages géoréférencées (Avenza Maps). Les définitions se placent au centième de millimètre,
+            et les cartons de contrôle peuvent être des cartons de secours.</p>
+          <h3>Autres formats</h3>
+          <p>${W("export-geotiff")}, SVG (chaque objet nommé), KMZ avec la carte, MapRun, le texte OCAD des circuits, IOF XML 2.0.3 avec
+            chaque variante comme un circuit, et un paquet pour la page d'import de Livelox (l'envoi direct à Livelox demande un accord avec
+            Livelox).</p>
+          <h3>Cartes</h3>
+          <p>${W("maps")} : d'autres cartes dans l'événement, calées sur la première (par leurs géoréférencements, le même cadre, ou deux
+            points sur chacune), et la carte de chaque partie d'un circuit. ${W("map-colors")} cache des couleurs d'une carte OCAD ou
+            Mapper ; ${W("map-templates")} montre les modèles d'une carte OCAD qu'on lui donne. ${W("field-states")} nomme les états des
+            postes en mode terrain.</p>
+        </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
           <p class="mx-kicker">Le tracé</p>

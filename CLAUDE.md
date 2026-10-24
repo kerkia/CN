@@ -1188,18 +1188,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   symbol « code.1 » and the arcs, as Purple Pen). Images placed on the map: OCAD 11+ layout images kept in the file (parameter
   27 with « F » = base 64), else files beside the course files as templates (OCAD 9-10: a PNG made a GIF; Mapper: in front of
   the map).
-- **The Tracer's two interfaces** (owner, 2026-10-17, after the ribbon study, private artifact
-  https://claude.ai/artifact/Hgd25Hv125DLJohzSyyoqQ): the **« O'CN mode »**, by default — a ribbon — and the **« Purple Pen mode »** —
-  the menus of `icons.js` `MENUS` and the tool bar, unchanged —, per browser (`ocn.tr.prefs` `ui`: "ocn" | "pp"; `E.ui`, `E.setUi`; Fichier ›
-  Options or the ▭ button › Mode Purple Pen, back by Affichage › Mode O'CN or the « Ruban » button). One title bar for both (`.tr-ocn` /
-  `.tr-pp` parts, `.tr-ui-ocn` / `.tr-ui-pp` on the root). The ribbon is data, `tracer/ribbon-data.js` (`TABS`: Fichier, Tracer, Circuits,
+- **The Tracer's ribbon** (owner, 2026-10-17, after the ribbon study, private artifact
+  https://claude.ai/artifact/Hgd25Hv125DLJohzSyyoqQ; **its only interface since 2026-10-24**: the « Purple Pen mode » — the menus
+  and the tool bar — was retired with the Condes study's decision, `MENUS`, `E.ui`/`E.setUi`, `.tr-ui-*` and the guide's « Le mode
+  Purple Pen » gone; an old `ocn.tr.prefs` `ui: "pp"` is ignored). The ribbon is data, `tracer/ribbon-data.js` (`TABS`: Fichier, Tracer, Circuits,
   Carte, Vérifier, Imprimer, Équipe et course; `CONTEXT`: Poste, Interposte, Objet, Tracé en cours, by the selection; `BACKSTAGE`: the
   « Fichier » page; `INFO`: what its settings and figures are; `where(act)`: a command's place in the interface in use, which the
   messages naming a command use), drawn by `tracer/ribbon.js` (`mountRibbon`; `E.ribbon.update()` after each refresh, tool change and
   drawing step). Every button runs the editor's own action (`dialogs.action`) or tool; the ribbon's own acts: `pdf-course` (the PDF of
   the course in hand with the last choices, `pdf.coursesDialog({ only })`; also the quick-access printer), `special-more`, `route-draw`,
   `finish-draw` / `cancel-draw` (`E.cancelPending`), `route-draw`, `overprint` — these in `dialogs.action` too —, `ribbon-full|line|folded|auto`,
-  `ui-classic`, and the commands that need a point (`PICK`: « Ajouter un coude », « Couper le cercle »…, `E.pickOnce`, which the canvas now
+  and the commands that need a point (`PICK`: « Ajouter un coude », « Couper le cercle »…, `E.pickOnce`, which the canvas now
   gives every click). **What applies to the selection** is one module, `tracer/context.js` (`ctxKind`, `applies`, `menuItems`): the
   contextual tabs and the **right-click menu** (`actions.contextMenu`) are both drawn from `CONTEXT`, the menu group by group and worded for
   the spot clicked (« Ajouter un coude ici », « Retirer ce coude » only over a bend's handle). A greyed button says
@@ -1210,8 +1209,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   preview (the purple's blend, a leg's flagging), a gallery of 8 special objects. Live figures: « Vérifier » counts the event audit's
   findings (`reports.audit`, 0.5 s after a change, `issueRows`: red for problems, amber for reminders only such as a climb not filled in)
   and lists the first three; « Équipe et course » counts open comments (`E.commentsData`, read once at opening). Tooltips: what it does,
-  its key, why it is greyed, its place in the Purple Pen mode, F1 for the guide's chapter. Search (Alt+Q) over every command, the
-  « Fichier » page and the old menu names: Entrée runs it and flashes its button. Key hints (Alt alone: tab letters, then button letters).
+  its key, why it is greyed, « Niveau avancé » for the advanced level's, F1 for the guide's chapter. Search (Alt+Q) over every command
+  and the « Fichier » page: Entrée runs it and flashes its button. Key hints (Alt alone: tab letters, then button letters).
   Display (`ocn.tr.prefs` `ribbon` in the page, `ribbonFw` in full window; unset = automatic: tabs only in full window, one line under
   800 px of window height, else full): full, one line (labels dropped when too long), tabs only (Ctrl+F1, opens over the map); groups fold
   from the right into one button when the width is short; one line on a phone. **Keyboard**: one Tab stop for the tabs and one for the
@@ -1221,12 +1220,45 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   ▾ ticks `QAT_CHOICES`, a right-click on any ribbon button adds it, one in the bar removes it, Fichier › Options resets it. **Dialogs
   remember** their last choices (`dialogs.modal` `remember`: the exports — course and description PDFs, images, OCAD/Mapper files, the
   O'CN file —; `ocn.tr.prefs` `dialogs`, the courses ticked `c<id>`, files and passwords not kept). « Papier » in Circuits › Impression
-  (paper × portrait / landscape / « selon le circuit », on the course's or part's print area). In the O'CN mode the left pane's object details give way to
+  (paper × portrait / landscape / « selon le circuit », on the course's or part's print area). The left pane's object details give way to
   the contextual tab (`#tr-info` hidden while something is chosen). The guide (« Le tracé »): « L'écran » drawn with the ribbon, « Le
-  ruban » (every tab, group and command from the data), « Le mode Purple Pen » (the menus, each command's place in the ribbon), and every
+  ruban » (every tab, group and command from the data, the advanced level's groups tagged), « Le niveau avancé », and every
   « Menu › Commande » of its text as the ribbon's place (`W(act)` = `ribbonAt`). The home page's « Tracé » slide was taken again with the
   ribbon (`reel-tracer.webp`, same local demonstration event, scratch `shot_tracer2.mjs`: the beta notice acknowledged and the ribbon set
   in the headless profile, the left pane widened to 470 px so that the map fills the width with the whole course in view).
+- **The Tracer's advanced level** (owner, 2026-10-24, after the Condes study, private artifact
+  https://claude.ai/artifact/MfUEJDFRoYi1J4TYTa2FcV — 33 gaps against Condes, the plan decided): one tool at two levels. The
+  **essential** level — what a .ppen holds and Ozimut's own tools — for everyone, unchanged; the **advanced** level — every Condes gap —
+  **for administrators only for now** (`E.pro` = `auth.session().admin`, editor.js). `ribbon-data.js`: an item, group or tab marked
+  `pro: true`; `PRO` = the acts and tools whose every place is pro (plus `special:<kind>` of `PRO_SPECIALS`), `isPro`; ribbon.js
+  draws them for `E.pro` only (tabs, groups, the quick-access bar, the search, the « Fichier » page), context.js the right-click menu,
+  `dialogs.action` refuses them to others (`trc.dlg.proOnly`); their buttons carry an orange dot (`[data-pro]`); dialogs show an
+  « Niveau avancé » block of fields (`.tr-pro-h`) to `E.pro` only. An event using the advanced level opens, draws and prints for its
+  whole team; only administrators change those parts. **The model** is version 2 (`model.js` VERSION, nothing to convert): diamond
+  (phi) loops (`cc.phi`, `cc.phiMid`: the exit's first passage, whose `next` starts the way back, its last `next` 0 — `phiBack`,
+  `phiReturns`, `addPhi`; variations AB/BA; relay.js counts them as a loop of two), random-order controls (`cc.rnd`, `randomSections`:
+  no leg lines, a line in the descriptions in the event's language), course `form` ("string" | "trail") and `legLines`, `discipline`
+  (course, else `ev.discipline`: "mtbo" lengths along routes, "ski" a centre dot), `lengthBy`, `rogaine`, `allControls`, `partMaps`;
+  finish `atStart`; `ev.classes` (name, course, est → `secondary` and `load` by `syncDerived`, run by every `E.change`); control
+  `units`, `locked`, `trail` { flags, answer }, `dual` (a second symbol per box); `ev.symbols` (SVG-made symbols, ids `x:<n>`,
+  symbols.js `setCustomSymbols`); leg `alts` (other routes; `legLengthFor`); `ev.relayTeams` (imported, written back by the IOF
+  export); course `relay.strategy`, `couple`, `table`; `ev.maps` (other maps: { name, map, tf (event mm → its sheet mm), template,
+  hidden }); `ev.mapHidden`; `ev.fieldStates`; `ev.date`, `ev.dateInHeader`; specials `mtbo-*`, `inset` (src, factor), `mask`
+  (holes). **.ppen is lossy**: `ppen.js` `ppenLosses` (listed before the export) and `ppenFlatten` (diamonds become forks, the rest
+  left out); the .ozmt keeps everything, other maps as `maps/<n>/<file>`. **Modules**: `iofin.js` (IOF XML CourseData 3.0/2.0.3,
+  ClassList, OCAD course-setting strings from `vmap/ocad.js` `map.courseSetting` — read after OCAD's format description, **not yet
+  tried on a real OCAD course-setting file**; the start screen imports an IOF XML with its map), `classes.js`, `mysymbols.js` (SVG →
+  Purple Pen's symbol strokes), `advview.js` (attack angles, close controls), `layoutx.js` (insets, mask holes), `printx.js`
+  (imposition, backs, registration marks, ISO 32000 geospatial pages), `exportx.js` (GeoTIFF, SVG, KMZ with the map, MapRun, OCAD
+  text, IOF 2.0.3 by variation, the Livelox package), `maps.js` (other maps: storage `tracer/<id>/maps/<n>` — API `maps/<n>`
+  GET/PUT/DELETE —, placing by georeferencing, same frame or two points; editor and PDF drawing), `mapview.js` (hidden colours —
+  `vmap/map.js` `draw({ hide })`, `mapsrc` `setHidden`, `appear.syncMap` — and OCAD templates from `map.templates`, string type 8).
+  MTB-O's symbols are drawn after ISMTBOM 2022's descriptions (omapwiki refuses robots, the French PDF link is dead): **their sizes
+  are to be checked**. Climb outside France: `trace/terrain.js` `tileHeights` (advanced level only; IGN unchanged for everyone).
+  **Not built**: Condes's .wcd (closed format, needs Condes and sample files), a direct Livelox upload (needs Livelox's agreement:
+  the package stands in), more interface languages (with the site's), EPS and IOF XML 1.0. Local tests: launch configs
+  `pages-dev-tracer` (8781, the test account an administrator) and `pages-dev-tracer-user` (8782, not); the guide's chapter « Le niveau
+  avancé » (`?onglet=tracer&voir=avance`).
 - **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse

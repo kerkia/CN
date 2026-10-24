@@ -792,7 +792,7 @@ export function build(X) {
   function tracerDoc() {
     const CHAPTERS = [["principe", "Getting started"], ["carte", "The map"], ["ecran", "The screen"], ["postes", "Controls"], ["circuits", "Courses"],
       ["definitions", "Descriptions"], ["speciaux", "Special items"], ["sorties", "Printing and exporting"], ["verifier", "Checking"],
-      ["outils", "Teamwork and the field"], ["apres", "After the race"], ["ruban", "The ribbon"], ["calculs", "The calculations"]];
+      ["outils", "Teamwork and the field"], ["apres", "After the race"], ["ruban", "The ribbon"], ["avance", "The advanced level"], ["calculs", "The calculations"]];
     const ic = (k, s = 18) => raw(TR.svg(k, s));
     const K = "Course setting";
     // where a command is in the ribbon: « Carte › Position › Caler les postes »
@@ -1328,7 +1328,7 @@ export function build(X) {
           if (it.t === "gallery") return html`<dt>${ic("special", 16)}<span>The gallery</span></dt><dd>${TRD.INFO.gallery}</dd>`;
           return html`<dt>${ic(it.icon, 16)}<span>${it.label}${it.key && it.key.length === 1 ? ` (${it.key})` : ""}</span></dt><dd>${it.tip || MENU_HELP[it.act] || ""}${it.split ? ` The small ▾: ${it.split.map((x) => x[1]).join(", ")}.` : ""}</dd>`;
         };
-        const groups = (gs) => gs.map((g) => html`<h4 class="tr-doc-gh">${g.title || "—"}</h4><dl class="tr-doc-menu">${flat(g.items).map(entry)}</dl>`);
+        const groups = (gs) => gs.map((g) => html`<h4 class="tr-doc-gh">${g.title || "—"}${g.pro ? " — advanced level" : ""}</h4><dl class="tr-doc-menu">${flat(g.items).map(entry)}</dl>`);
         return html`
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
@@ -1345,6 +1345,60 @@ export function build(X) {
                   : [...(sec.items || []), ...(sec.groups || []).flatMap((x) => x[1])].map(([act, l, d]) => html`<dt>${raw(TR.actIcon(act, 16))}<span>${l}</span></dt><dd>${d}</dd>`)}</dl>`)}
         </section>`;
       },
+      avance: () => html`
+        <section class="mx-slide" id="tr-avance">
+          <p class="mx-kicker">${K}</p>
+          <h2>The advanced level</h2>
+          <p>Course setting has two levels. The <b>essential</b> level, for everyone, does what a Purple Pen file does, plus Ozimut's
+            teamwork, field mode, checks and after-race tools. The <b>advanced</b> level adds what Condes, another course-setting program,
+            does: for now it is open to the site's administrators only. Its buttons carry a small orange dot. An event that uses it opens,
+            draws and prints for the whole team; only administrators change what belongs to it. A Purple Pen file (.ppen) does not keep
+            these additions: the export says first what it leaves out; the Ozimut file (.ozmt) keeps everything.</p>
+          <h3>Coming from another program</h3>
+          <p>${W("import-courses")} takes the controls, courses, classes and relay teams of an IOF XML file (3.0 or 2.0.3) exported from
+            Condes, OCAD, Purple Pen or a timing program, or the courses of an OCAD map prepared with its course-setting module (read
+            after OCAD's description of its format: to be checked on a real file). An IOF XML dropped with its map on “Import an event”
+            creates the event. Variations arrive as courses of their own.</p>
+          <h3>Classes</h3>
+          <p>${W("classes")}: each class, its course and its expected entries. A course's class list and entries follow from them, and
+            with them the controls' loads.</p>
+          <h3>Variations and relays</h3>
+          <p>The <b>diamond</b> (${W("var-phi")}) goes from the chosen control to the next: two branches run one after the other, with a
+            way back between them; the variations are called AB and BA. Add each branch's controls and the way back's by choosing the
+            variation above the map. A fork or loops can have up to 20 branches. In ${W("relay")}: fill the teams with the same variations
+            in another order, couple forks (“A=C”: whoever runs A runs C on the same leg), tick the legs on which each branch is run, and
+            edit the teams by hand (bib, name, each leg's variation), the cells that make a team different from the others in red.</p>
+          <h3>Forms and disciplines</h3>
+          <p>A course's properties give its <b>form</b> — normal, string course (the string followed along the routes drawn), trail-O —,
+            lines between the controls or not, its <b>discipline</b> (MTB-O: lengths along the routes; ski-O: a dot in the circles'
+            centre), rogaine (points = the code rounded down to ten) and “all controls”. A control can be in <b>random order</b>
+            (${W("random-section")}): no lines to, between or from the section's controls, and a line in the descriptions.
+            ${W("finish-at-start")} draws the finish on the start.</p>
+          <p><b>MTB-O</b>'s symbols (ISMTBOM 2022) are among the special objects: one-way compulsory, forbidden route, dangerous section,
+            obstacle across the track, forbidden to pass; they are drawn after the specification's description, their sizes to be
+            checked.</p>
+          <h3>Controls and descriptions</h3>
+          <p>A control's properties add its other units, a lock (it no longer moves when dragged) and, in trail-O, its flags (“A–E”, in
+            column B) and right answer. A description box can carry a second symbol (tick “2nd symbol” when choosing it);
+            ${W("my-symbols")} adds symbols of your own, taken from SVG drawings; the event's properties put its date after the title.</p>
+          <h3>Checking and measuring</h3>
+          <p>${W("view-angles")} shows the turn at each control (in red beyond 120°), ${W("view-nearest")} rings the controls too close;
+            ${W("rep-controls")} gives each control with its units and its nearest control, ${W("trail-answer")} the right answers. A leg
+            can have several routes (${W("routes-alt")}), the length taking the shortest. Outside France, the climb comes from the open
+            terrain tiles (SRTM, about 30 m).</p>
+          <h3>Layout and printing</h3>
+          <p>The special objects add the <b>enlarged section</b> (a frame showing another part of the map, magnified, with the course) and
+            the <b>mask</b> (white, with holes). The courses' PDF adds: several courses or copies per sheet, all courses on one map, the
+            back of each map (name, classes, team and leg), registration marks with the printer's offset, and georeferenced pages (Avenza
+            Maps). Descriptions are placed to the hundredth of a millimetre, and control cards can be backup cards.</p>
+          <h3>Other formats</h3>
+          <p>${W("export-geotiff")}, SVG (each object named), KMZ with the map, MapRun, OCAD's text of the courses, IOF XML 2.0.3 with each
+            variation as a course, and a package for Livelox's import page (a direct upload to Livelox needs an agreement with Livelox).</p>
+          <h3>Maps</h3>
+          <p>${W("maps")}: other maps in the event, placed on the first (by their georeferencing, the same frame, or two points on each),
+            and the map of each part of a course. ${W("map-colors")} hides colours of an OCAD or Mapper map; ${W("map-templates")} shows the
+            templates of an OCAD map you give it. ${W("field-states")} names the controls' states in field mode.</p>
+        </section>`,
       calculs: () => html`
         <section class="mx-slide" id="tr-calculs">
           <p class="mx-kicker">Course setting</p>
