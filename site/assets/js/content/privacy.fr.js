@@ -22,6 +22,11 @@ export const body = (SITE, { world = false } = {}) => `
         publiés par la Fédération espagnole (FEDO) sur sico.fedo.org, et les résultats publiés sur O-Replay (oreplay.es) ; pour
         toutes les courses, les résultats et les horaires que publient les organisateurs (leur site, liveresultat, WinSplits, Helga,
         Orientation Data, O-Replay) ou qu'ils déposent sur ${SITE}.</p>
+      <p>L'agenda des autres pays reprend les calendriers que publient leurs fédérations, chacun nommé sous l'épreuve (« Voir
+        sur … »). La région et le département (ou leur équivalent) d'une épreuve sont retrouvés à partir de son lieu grâce aux
+        noms de lieux de GeoNames (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>), sous
+        licence <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">Creative Commons
+        Attribution 4.0</a>.</p>
       <p>Pour l'Espagne, ${SITE} reprend les résultats publics des courses (nom, club, catégorie, temps, temps intermédiaires) et le
         nombre d'inscrits par catégorie ; pour reconnaître un même coureur d'une course à l'autre, il lit aussi la liste publique
         des licenciés de la FEDO (nom, club, fédération régionale, numéro de licence et de puce), dont il n'affiche aucun numéro. Ces résultats étant publics, ils
@@ -167,5 +172,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 22 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 24 octobre 2026.</p>
 `;

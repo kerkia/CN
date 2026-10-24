@@ -18,6 +18,11 @@ export const body = (SITE, { world = false } = {}) => `
         and ffcorientation.fr, which remain the reference; for Spain, the calendar and entries published by the Spanish federation
         (FEDO) on sico.fedo.org, and the results published on O-Replay (oreplay.es); for every race, the results and start times
         the organisers publish (their website, liveresultat, WinSplits, Helga, Orientation Data, O-Replay) or upload to ${SITE}.</p>
+      <p>The other countries' calendars come from those their federations publish, each named under the event (“View on …”). An
+        event's region and county (or their equivalent) are found from its venue with GeoNames' place names
+        (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>), licensed under
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Attribution
+        4.0</a>.</p>
       <p>For Spain, ${SITE} takes the races' public results (name, club, category, time, split times) and the number of entries per
         category; to recognise the same runner from one race to the next, it also reads the FEDO's public list of licence holders
         (name, club, regional federation, licence and card numbers), of which it shows no number. These results being public, every signed-in account can see them.
@@ -149,5 +154,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 22 October 2026.</p>
+      <p class="muted">Last updated: 24 October 2026.</p>
 `;
