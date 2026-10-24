@@ -4,7 +4,10 @@
 // rate or cadence here for anyone (one's own stay in « Mes courbes », on one's device). « Écarts » (after SplitsBrowser
 // and 2DRerun's autOanalysis): each runner shown, their time behind a reference at each control — the leader there, the
 // « superman » of the best legs, or a runner —, against the controls or the course's distance; a click on a point puts
-// the replay there; and a duel, leg by leg, the time one runner gained or lost on another.
+// the replay there; and a duel, leg by leg, the time one runner gained or lost on another. « Variantes »: on a leg, the
+// runners' routes grouped by route choice (trace/routes.js), each variant's runners, best and median time and length;
+// the grouping can be changed by hand (a runner moved, variants merged, names), kept on the device, and the organiser's
+// shared with everyone.
 //
 // X, the replay's context: runners (all, each { uid, name, colour, visible, passes, start, finish, tr, fit, mine }),
 // ctrls, legsN, ctrlLabel(i), legName(j), legTime(r, j), total(r), fieldLegs() (the field's leg times and their source),
@@ -17,12 +20,13 @@ import { cumAt } from "../trace/track.js";
 import { toM } from "../trace/geom.js";
 import { bestLegs, legLoss, cumOf, referenceCum } from "../trace/legs.js";
 import { gapChart, duelChart } from "../charts.js";
+import { variantKey } from "../trace/routes.js";
 import { pace } from "../trace/curves.js";
 
 export const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
 
-export const TABS = ["splits", "legs", "gaps"];
+export const TABS = ["splits", "legs", "gaps", "variants"];
 
 /** The tabs and their panel in `el`; returns { draw() } — a full redraw (the runners shown, the leg, the reference changed). */
 export function views(el, X) {
@@ -36,6 +40,7 @@ export function views(el, X) {
     const body = $("#sh-vbody", el);
     if (X.state.tab === "legs") legsView(body, X);
     else if (X.state.tab === "gaps") gapsView(body, X);
+    else if (X.state.tab === "variants") variantsView(body, X);
     else splitsView(body, X);
   }
   return { draw };
@@ -138,4 +143,55 @@ function gapsView(el, X) {
   const series = R.map((r) => { const c = cumOf(legsOf(r)); return { name: r.name, color: r.colour, bold: r === state.sel, data: c.map((v, j) => [xs[j], v != null && ref[j] != null ? v - ref[j] : null, j]) }; });
   gapChart($("#sh-gap-chart", el), { series, xLabels: dist ? null : labels, xName: dist ? "km" : "", fmtX: (v) => fmt(v, 1), fmtY: signed,
     onClick: (i, j) => X.jump(R[i], j) });
+}
+
+// ---- route choices on a leg
+function variantsView(el, X) {
+  const { legsN, legName, legTime } = X;
+  if (!X.leg) {
+    el.innerHTML = html`<p class="hint" style="margin:4px 2px 8px">${t("sh.var.pick")}</p>
+      <label class="field"><span>${t("sh.leg")}</span><select id="sh-var-leg"><option value="0">—</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}">${legName(j + 1)}</option>`)}</select></label>`;
+    $("#sh-var-leg", el).addEventListener("change", (e) => { if (Number(e.target.value)) X.setLeg(Number(e.target.value)); });
+    return;
+  }
+  const j = X.leg, V = X.variants();
+  if (!V.items.length) { el.innerHTML = html`<div class="empty">${t("sh.noTraces")}</div>`; return; }
+  const col = (i) => X.VARIANT_COLOURS[i % X.VARIANT_COLOURS.length];
+  const byUid = new Map(X.runners.map((r) => [r.uid, r]));
+  // an edit freezes the leg's grouping as it stands, then changes it
+  const edit = (fn) => {
+    const tags = { th: V.th, names: Object.fromEntries(V.list.filter((v) => v.name).map((v) => [v.key, v.name])), assign: Object.fromEntries(V.of) };
+    fn(tags);
+    X.setTags(j, tags);
+  };
+  const freeKey = () => { const used = new Set(V.list.map((v) => v.key)); let i = 0; while (used.has(variantKey(i))) i++; return variantKey(i); };
+  el.innerHTML = html`<div class="filters sh-gap-tools">
+      <b>${legName(j)}</b>
+      <label class="field"><span>${t("sh.var.th")}</span><span class="row" style="gap:6px"><input type="range" id="sh-var-th" min="10" max="300" step="5" value="${V.th}"><b class="num" id="sh-var-thv">${V.th} m</b></span></label>
+      <label class="an-opt"><input type="checkbox" id="sh-var-colour" ${raw(X.colourBy() === "variant" ? "checked" : "")}> ${t("sh.var.colour")}</label>
+      ${V.manual || V.local ? html`<button type="button" class="btn btn-sm" id="sh-var-reset">${t(V.shared && V.local ? "sh.var.toShared" : "sh.var.auto")}</button>` : ""}
+      ${X.organiser && V.local ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-var-share">${t("sh.var.share")}</button>` : ""}</div>
+    <p class="hint" style="margin:0 2px 8px">${t(V.manual ? "sh.var.manual" : "sh.var.autoHint")} ${t(X.organiser ? "sh.var.where.org" : "sh.var.where")}${V.shared && !V.local ? ` ${t("sh.var.fromOrg")}` : ""}</p>
+    <div class="table-wrap"><table class="data compact sh-var"><thead><tr><th>${t("sh.var.col.variant")}</th><th class="r">${t("sh.var.col.n")}</th><th class="r">${t("an.col.best")}</th><th class="r">${t("sh.var.col.median")}</th><th class="r">${t("sh.var.col.len")}</th><th>${t("sh.var.col.merge")}</th></tr></thead>
+      <tbody>${V.list.map((v, i) => html`<tr><td><span class="sh-swatch" style="background:${col(i)}"></span> <b>${v.key}</b> <input class="sh-var-name" data-vname="${v.key}" value="${v.name}" placeholder="${t("sh.var.name.ph")}" maxlength="40"></td>
+        <td class="r num">${v.uids.length}</td><td class="r num">${clock(v.best)}</td><td class="r num">${clock(v.median)}</td><td class="r num">${fmt(v.len)} m</td>
+        <td>${V.list.length > 1 ? html`<select data-vmerge="${v.key}"><option value="">—</option>${V.list.filter((w) => w !== v).map((w) => html`<option value="${w.key}">${w.name || w.key}</option>`)}</select>` : ""}</td></tr>`)}</tbody></table></div>
+    <div class="table-wrap" style="margin-top:8px"><table class="data compact sh-var"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("an.col.time")}</th><th class="r">${t("an.col.trace")}</th><th>${t("sh.var.col.variant")}</th></tr></thead>
+      <tbody>${[...V.items].sort((a, b) => a.time - b.time).map((it) => { const r = byUid.get(it.uid), k = V.of.get(it.uid);
+        return html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}</td><td class="r num">${clock(legTime(r, j))}</td><td class="r num">${fmt(it.len)} m</td>
+          <td><select data-vrun="${it.uid}">${V.list.map((v) => html`<option value="${v.key}" ${raw(v.key === k ? "selected" : "")}>${v.name ? `${v.key} · ${v.name}` : v.key}</option>`)}<option value="+">${t("sh.var.new")}</option></select></td></tr>`; })}</tbody></table></div>`;
+  const th = $("#sh-var-th", el);
+  th.addEventListener("input", () => { $("#sh-var-thv", el).textContent = `${th.value} m`; });
+  th.addEventListener("change", () => {
+    const v = Number(th.value);
+    if (V.manual) edit((tags) => { tags.th = v; });                         // a frozen grouping: the threshold for new traces only
+    else X.setTags(j, { th: v, names: Object.fromEntries(V.list.filter((x) => x.name).map((x) => [x.key, x.name])) });
+  });
+  $("#sh-var-colour", el).addEventListener("change", (e) => X.setColourBy(e.target.checked ? "variant" : "runner"));
+  $("#sh-var-reset", el)?.addEventListener("click", () => X.setTags(j, null));
+  $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alert(err.message); } });
+  $$("[data-vname]", el).forEach((inp) => inp.addEventListener("change", () => edit((tags) => { if (inp.value.trim()) tags.names[inp.dataset.vname] = inp.value.trim(); else delete tags.names[inp.dataset.vname]; })));
+  $$("[data-vmerge]", el).forEach((s) => s.addEventListener("change", () => { const from = s.dataset.vmerge, into = s.value; if (!into) return;
+    edit((tags) => { for (const u of Object.keys(tags.assign)) if (tags.assign[u] === from) tags.assign[u] = into; delete tags.names[from]; }); }));
+  $$("[data-vrun]", el).forEach((s) => s.addEventListener("change", () => { const k = s.value === "+" ? freeKey() : s.value; edit((tags) => { tags.assign[s.dataset.vrun] = k; }); }));
 }

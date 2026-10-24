@@ -28,7 +28,8 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
-import { paceRange, paceColour, paceLegend } from "../trace/pacecolour.js";
+import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../trace/pacecolour.js";
+import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
@@ -56,7 +57,8 @@ const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
-const COLOUR_BY = ["runner", "pace"];
+const COLOUR_BY = ["runner", "pace", "legtime", "variant"];        // the last two in a leg's view only
+const LEG_ONLY = ["legtime", "variant"];
 const MODES = ["clock", "mass", "from", "wait"], FOLLOWS = ["all", "sel", "none"];
 const TOL = 25;                                           // metres: a control reached
 const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
@@ -546,7 +548,9 @@ async function editor(box, ctx) {
       }
       const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r,
         map: { w: st.image.width, h: st.image.height, type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo: st.geo,
-        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })) };
+        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })),
+        // what the runners share besides (the route choices…) goes on with the circuit
+        ...(course?.variants ? { variants: course.variants } : {}), ...(course?.exercises ? { exercises: course.exercises } : {}) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -710,22 +714,45 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const shown = runners.filter((r) => r.visible);
     [vLo, vHi] = paceRange(...shown.map((r) => r.tr.v.subarray(indexAt(r.tr, r.start), indexAt(r.tr, r.finish ?? r.tr.dur) + 1)));
   }
+  /** The colours in use: a leg's colours only in a leg's view. */
+  const cmode = () => (!leg && LEG_ONLY.includes(colourBy) ? "runner" : colourBy);
   function legend() {
     const el = $("#sh-legend");
     if (!el) return;
-    el.hidden = colourBy !== "pace";
-    if (!el.hidden) el.innerHTML = paceLegend(vLo, vHi);
+    const m = cmode();
+    el.hidden = m === "runner";
+    if (m === "pace") el.innerHTML = paceLegend(vLo, vHi);
+    else if (m === "legtime") {
+      const ts = legRanks().times;
+      el.hidden = !ts.length;
+      if (ts.length) el.innerHTML = rampLegend(t("sh.legend.legtime"), [clock(ts[0]), clock(ts[Math.floor((ts.length - 1) / 2)]), clock(ts[ts.length - 1])]);
+    } else if (m === "variant") {
+      const V = variantsOf(leg);
+      el.innerHTML = html`<div class="an-legend-title">${t("sh.legend.variant")}</div>${V.list.map((v, i) => html`<div class="sh-vleg"><span class="sh-swatch" style="background:${VARIANT_COLOURS[i % VARIANT_COLOURS.length]}"></span> ${v.name || v.key} <span class="muted">· ${v.uids.length} · ${clock(v.best)}</span></div>`)}`;
+    }
+  }
+  // a leg's times ranked among the runners shown: the ramp from the fastest to the slowest (owner's study of 2DRerun)
+  function legRanks() {
+    const shown = runners.filter((r) => r.visible && legTime(r, leg) != null), times = shown.map((r) => legTime(r, leg)).sort((a, b) => a - b);
+    return { times, f: (r) => { const v = legTime(r, leg); if (v == null || times.length < 2) return 0; return times.filter((x) => x < v).length / (times.length - 1); } };
+  }
+  /** Runner r's route colour in the current mode (the pace's is drawn step by step). */
+  function routeColour(r) {
+    const m = cmode();
+    if (m === "legtime") return rampColour(legRanks().f(r) * 0.999);
+    if (m === "variant") { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return i < 0 ? r.colour : VARIANT_COLOURS[i % VARIANT_COLOURS.length]; }
+    return r.colour;
   }
   /** Runner r's route from index a to b: one colour, or each step by its pace. */
   function stroke(g, r, a, b, lwPx, alpha, head = null) {
     if (b <= a) return;
-    if (colourBy === "pace") {
+    if (cmode() === "pace") {
       g.lineWidth = lwPx; g.globalAlpha = alpha;
       for (let i = a + 1; i <= b; i++) { g.strokeStyle = paceColour(r.tr.v[i], vLo, vHi); g.beginPath(); g.moveTo(r.pxs[i - 1], r.pys[i - 1]); g.lineTo(r.pxs[i], r.pys[i]); g.stroke(); }
       if (head) { g.beginPath(); g.moveTo(r.pxs[b], r.pys[b]); g.lineTo(head[0], head[1]); g.stroke(); }
       return;
     }
-    g.strokeStyle = r.colour; g.lineWidth = lwPx; g.globalAlpha = alpha;
+    g.strokeStyle = routeColour(r); g.lineWidth = lwPx; g.globalAlpha = alpha;
     g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]);
     if (head) g.lineTo(head[0], head[1]);
     g.stroke();
@@ -888,6 +915,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   ownRo.observe($("#sh-curves"));
 
   // ---- the panels
+  const routeVar = (r) => { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return { key: k, name: V.list[i]?.name || k, c: VARIANT_COLOURS[Math.max(0, i) % VARIANT_COLOURS.length] }; };
   function left() {
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
@@ -900,7 +928,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
           <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
-          <span class="sh-name">${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
+          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
           <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
@@ -983,7 +1011,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.map((c) => html`<option value="${c}" ${raw(c === colourBy ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
+          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
           <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
@@ -1021,7 +1049,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       mv.fitBox(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), 40, 4);
       if (follow === "all") follow = "none";
     } else fitRoutes();
-    left(); right(); frame(); bottom.draw();
+    legend(); left(); right(); frame(); bottom.draw();
   }
   function fitRoutes() {
     const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y);
@@ -1041,6 +1069,38 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const b = $("#sh-play"); if (b) b.textContent = "⏸";
   }
   function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; saveUrl(); }
+
+  // ---- route choices on a leg (trace/routes.js): the organiser's grouping shared on the server, with the circuit (every
+  // runner sees it); anyone's own edits kept on their device (localStorage, per analysis and circuit), over the
+  // organiser's — a runner's tags are theirs, need no right to write, and change nothing for the others
+  const VAR_KEY = `ocn.sh.var.${id}.${course.n}`;
+  let serverTags = course.variants && typeof course.variants === "object" ? course.variants : {};
+  let localTags = (() => { try { return JSON.parse(localStorage.getItem(VAR_KEY) || "{}") || {}; } catch (e) { return {}; } })();
+  const saveLocalTags = () => { try { localStorage.setItem(VAR_KEY, JSON.stringify(localTags)); } catch (e) { /* this visit only */ } };
+  const pxPerM = runners[0]?.fit.scale || 1;
+  const varCache = new Map();
+  function variantsOf(j) {
+    const tags = localTags[j] ?? serverTags[j] ?? null, ck = `${j}|${JSON.stringify(tags)}`;
+    if (varCache.has(ck)) return varCache.get(ck);
+    const a = ctrls[j - 1], b = ctrls[j], straight = Math.hypot(b.x - a.x, b.y - a.y) / pxPerM;
+    const auto = Math.round(Math.max(30, Math.min(120, 0.2 * straight)));
+    const items = runners.filter((r) => legTime(r, j) != null).map((r) => {
+      const i0 = indexAt(r.tr, r.passes[j - 1]), i1 = indexAt(r.tr, r.passes[j]);
+      return { uid: r.uid, time: legTime(r, j), len: cumAt(r.tr, r.passes[j]) - cumAt(r.tr, r.passes[j - 1]),
+        pts: resample(r.pxs, r.pys, i0, Math.max(i0, i1), 32).map(([x, y]) => [x / pxPerM, y / pxPerM]) };
+    });
+    const V = { ...legVariants(items, Number.isFinite(tags?.th) ? tags.th : auto, tags), auto, items, local: localTags[j] != null, shared: serverTags[j] != null };
+    V.list.forEach((v) => { const ls = items.filter((it) => v.uids.includes(it.uid)).map((it) => it.len); v.len = ls.reduce((s, x) => s + x, 0) / (ls.length || 1); });
+    varCache.set(ck, V);
+    return V;
+  }
+  async function shareVariants(j) {
+    const next = { ...serverTags };
+    if (localTags[j]) next[j] = localTags[j]; else delete next[j];
+    await api(`/${id}/extras/${course.n}`, { method: "PUT", body: { variants: next }, key: keyOf(id) });
+    serverTags = next; course.variants = next;
+    delete localTags[j]; saveLocalTags(); varCache.clear();
+  }
 
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
   const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
@@ -1067,6 +1127,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       T = mode === "clock" ? r.abs0 + r.passes[j] : r.passes[j] - r.start;
       left(); right(); frame(); saveUrl();
     },
+    get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
+    variants: () => (leg ? variantsOf(leg) : null),
+    setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
+    shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
+    colourBy: () => cmode(), setColourBy: (c) => { colourBy = c; savePrefs(); legend(); right(); mv.draw(); },
     extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
   const bottom = bottomViews($("#sh-views"), X);
 
