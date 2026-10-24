@@ -23,7 +23,8 @@
 //   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin)
 //   PUT    /api/analyses/<id>/extras/<n>               the organiser: what circuit n's runners share besides its map and
 //                                                      controls — { variants } the route choices grouped by leg (each
-//                                                      runner's own edits stay on their device)
+//                                                      runner's own edits stay on their device), { exercises } a
+//                                                      training's corridors and compass legs
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
@@ -124,11 +125,32 @@ function cleanVariants(v) {
   }
   return out;
 }
+/** A training's exercises: [{ id, kind: "corridor" | "compass", leg (0: the whole course), w (m), name, pts? (px) }] (or null). */
+function cleanExercises(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list) || list.length > 20) return null;
+  const out = [];
+  for (const e of list) {
+    const id = String(e?.id || ""), kind = e?.kind, leg = Number(e?.leg ?? 0), w = num(e?.w);
+    if (!/^[a-z0-9]{1,12}$/.test(id) || !["corridor", "compass"].includes(kind) || !Number.isInteger(leg) || leg < 0 || leg > 99 || w == null || w < 2 || w > 1000) return null;
+    const x = { id, kind, leg, w: Math.round(w * 10) / 10, name: clean(e.name, 60) };
+    if (kind === "corridor") {
+      if (!Array.isArray(e.pts) || e.pts.length < 2 || e.pts.length > 300) return null;
+      x.pts = e.pts.map((p) => [num(p?.[0]), num(p?.[1])]);
+      if (x.pts.some(([a, b]) => a == null || b == null)) return null;
+      x.pts = x.pts.map(([a, b]) => [Math.round(a * 10) / 10, Math.round(b * 10) / 10]);
+    } else if (!leg) return null;
+    out.push(x);
+  }
+  return out;
+}
 /** A circuit's shared extras, kept through the organiser's edits of its map and controls. */
 function cleanExtras(c) {
   const out = {};
   const v = cleanVariants(c?.variants);
   if (v && Object.keys(v).length) out.variants = v;
+  const x = cleanExercises(c?.exercises);
+  if (x?.length) out.exercises = x;
   return out;
 }
 
@@ -319,6 +341,12 @@ export const onRequest = withUser(async (ctx, user) => {
       const v = cleanVariants(b.variants);
       if (!v) return json({ error: "fields" }, 400);
       if (Object.keys(v).length) course.variants = v; else delete course.variants;
+    }
+    if (b.exercises !== undefined) {
+      if (meta.kind !== "club") return json({ error: "fields" }, 400);         // a training's
+      const x = cleanExercises(b.exercises);
+      if (!x) return json({ error: "fields" }, 400);
+      if (x.length) course.exercises = x; else delete course.exercises;
     }
     await saveMeta(env, meta);
     return json({ ok: true, course });

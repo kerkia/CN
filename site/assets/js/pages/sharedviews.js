@@ -7,7 +7,9 @@
 // the replay there; and a duel, leg by leg, the time one runner gained or lost on another. « Variantes »: on a leg, the
 // runners' routes grouped by route choice (trace/routes.js), each variant's runners, best and median time and length;
 // the grouping can be changed by hand (a runner moved, variants merged, names), kept on the device, and the organiser's
-// shared with everyone.
+// shared with everyone. « Exercices » (a training event's): corridors and compass legs set by the organiser, each
+// runner's share of their route inside, time outside, largest and mean deviation and, on a compass leg, the bearing error
+// (trace/corridor.js); the width changes the scores live.
 //
 // X, the replay's context: runners (all, each { uid, name, colour, visible, passes, start, finish, tr, fit, mine }),
 // ctrls, legsN, ctrlLabel(i), legName(j), legTime(r, j), total(r), fieldLegs() (the field's leg times and their source),
@@ -26,7 +28,7 @@ import { pace } from "../trace/curves.js";
 export const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
 
-export const TABS = ["splits", "legs", "gaps", "variants"];
+export const TABS = ["splits", "legs", "gaps", "variants", "exercises"];
 
 /** The tabs and their panel in `el`; returns { draw() } — a full redraw (the runners shown, the leg, the reference changed). */
 export function views(el, X) {
@@ -41,9 +43,10 @@ export function views(el, X) {
     if (X.state.tab === "legs") legsView(body, X);
     else if (X.state.tab === "gaps") gapsView(body, X);
     else if (X.state.tab === "variants") variantsView(body, X);
+    else if (X.state.tab === "exercises") exercisesView(body, X);
     else splitsView(body, X);
   }
-  return { draw };
+  return { draw, tab: () => X.state.tab };
 }
 
 // ---- the splits table, against a reference (the duel)
@@ -194,4 +197,64 @@ function variantsView(el, X) {
   $$("[data-vmerge]", el).forEach((s) => s.addEventListener("change", () => { const from = s.dataset.vmerge, into = s.value; if (!into) return;
     edit((tags) => { for (const u of Object.keys(tags.assign)) if (tags.assign[u] === from) tags.assign[u] = into; delete tags.names[from]; }); }));
   $$("[data-vrun]", el).forEach((s) => s.addEventListener("change", () => { const k = s.value === "+" ? freeKey() : s.value; edit((tags) => { tags.assign[s.dataset.vrun] = k; }); }));
+}
+
+// ---- corridor and compass exercises
+function exercisesView(el, X) {
+  const { legsN, legName, state } = X;
+  const list = X.exercises(), d = X.draft;
+  const legOpts = (sel, whole) => html`${whole ? html`<option value="0" ${raw(!sel ? "selected" : "")}>${t("sh.leg.all")}</option>` : ""}${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === sel ? "selected" : "")}>${legName(j + 1)}</option>`)}`;
+  if (d) {
+    el.innerHTML = html`<div class="filters sh-gap-tools">
+        <b>${t(`sh.ex.new.${d.kind}`)}</b>
+        <label class="field"><span>${t("sh.ex.name")}</span><input id="sh-ex-name" value="${d.name}" maxlength="60" style="width:200px"></label>
+        <label class="field"><span>${t("sh.leg")}</span><select id="sh-ex-leg">${legOpts(d.leg, d.kind === "corridor")}</select></label>
+        <label class="field"><span>${t("sh.ex.width")}</span><input type="number" id="sh-ex-w" min="2" max="1000" step="1" value="${d.w}" style="width:80px"></label></div>
+      ${d.kind === "corridor" ? html`<p class="hint" style="margin:0 2px 8px">${t("sh.ex.draw", { n: d.pts.length })}</p>` : html`<p class="hint" style="margin:0 2px 8px">${t("sh.ex.compass.hint")}</p>`}
+      <div class="row" style="gap:6px">${d.kind === "corridor" ? html`<button type="button" class="btn btn-sm" id="sh-ex-undo" ${raw(d.pts.length ? "" : "disabled")}>${t("an.cal.undo")}</button>` : ""}
+        <button type="button" class="btn btn-sm btn-primary" id="sh-ex-save" ${raw(d.kind === "corridor" && d.pts.length < 2 || d.kind === "compass" && !d.leg ? "disabled" : "")}>${t("sh.save")}</button>
+        <button type="button" class="btn btn-sm" id="sh-ex-cancel">${t("sh.cancel")}</button><span class="muted" id="sh-ex-note"></span></div>`;
+    $("#sh-ex-name", el).addEventListener("input", (e) => { d.name = e.target.value; });
+    $("#sh-ex-leg", el).addEventListener("change", (e) => { d.leg = Number(e.target.value); X.setDraft(d); if (d.leg) X.setLeg(d.leg); });
+    $("#sh-ex-w", el).addEventListener("input", (e) => { const w = Number(e.target.value); if (w >= 2 && w <= 1000) { d.w = w; X.redrawMap(); } });
+    $("#sh-ex-undo", el)?.addEventListener("click", () => { d.pts.pop(); X.setDraft(d); });
+    $("#sh-ex-cancel", el).addEventListener("click", () => X.setDraft(null));
+    $("#sh-ex-save", el).addEventListener("click", async () => {
+      const e = { id: Math.random().toString(36).slice(2, 10), kind: d.kind, leg: d.leg || 0, w: d.w, name: d.name.trim(), ...(d.kind === "corridor" ? { pts: d.pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]) } : {}) };
+      try { await X.saveExercises([...list, e]); state.ex = e.id; X.setDraft(null); X.changed(); } catch (err) { $("#sh-ex-note", el).textContent = err.message; }
+    });
+    return;
+  }
+  const ex = list.find((e) => e.id === state.ex) || list[0] || null;
+  if (ex && state.ex !== ex.id) state.ex = ex.id;
+  const exName = (e) => e.name || t(`sh.ex.kind.${e.kind}`);
+  const newDraft = (kind) => X.setDraft({ kind, leg: kind === "compass" ? X.leg || 1 : X.leg || 0, w: kind === "compass" ? 50 : 40, name: "", pts: [] });
+  el.innerHTML = html`<div class="filters sh-gap-tools">
+      ${list.length ? html`<div class="seg" role="group">${list.map((e) => html`<button type="button" data-ex="${e.id}" aria-pressed="${e === ex}">${exName(e)}</button>`)}</div>` : ""}
+      ${X.organiser ? html`<button type="button" class="btn btn-sm" id="sh-ex-corr">${t("sh.ex.new.corridor")}</button><button type="button" class="btn btn-sm" id="sh-ex-comp">${t("sh.ex.new.compass")}</button>` : ""}</div>
+    ${ex ? html`<div class="filters sh-gap-tools">
+        <span class="muted">${t(`sh.ex.kind.${ex.kind}`)} · ${ex.leg ? legName(ex.leg) : t("sh.leg.all")}</span>
+        <label class="field"><span>${t("sh.ex.width")}</span><span class="row" style="gap:6px"><input type="range" id="sh-ex-wr" min="5" max="200" step="1" value="${X.exWidth(ex)}"><b class="num" id="sh-ex-wv">${X.exWidth(ex)} m</b></span></label>
+        ${X.organiser ? html`<button type="button" class="btn btn-sm" id="sh-ex-del">${t("sh.remove")}</button>` : ""}</div>
+      <div id="sh-ex-table"></div>
+      <p class="hint" style="margin:6px 2px 0">${t(ex.kind === "compass" ? "sh.ex.rule.compass" : "sh.ex.rule")} ${t(X.organiser ? "sh.ex.width.org" : "sh.ex.width.you")}</p>`
+      : html`<p class="hint" style="margin:4px 2px 0">${t(X.organiser ? "sh.ex.none.org" : "sh.ex.none")}</p>`}`;
+  $$("[data-ex]", el).forEach((b) => b.addEventListener("click", () => X.pickExercise(list.find((e) => e.id === b.dataset.ex))));
+  $("#sh-ex-corr", el)?.addEventListener("click", () => newDraft("corridor"));
+  $("#sh-ex-comp", el)?.addEventListener("click", () => newDraft("compass"));
+  if (!ex) return;
+  const table = () => {
+    const rows = X.exScores(ex).sort((a, b) => (b.inside ?? -1) - (a.inside ?? -1));
+    $("#sh-ex-table", el).innerHTML = rows.length ? html`<div class="table-wrap"><table class="data compact sh-var"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("sh.ex.col.inside")}</th><th class="r">${t("sh.ex.col.out")}</th>
+        <th class="r">${t("sh.ex.col.max")}</th><th class="r">${t("sh.ex.col.mean")}</th>${ex.kind === "compass" ? html`<th class="r">${t("sh.ex.col.bearing")}</th>` : ""}</tr></thead>
+      <tbody>${rows.map((x) => html`<tr><td><span class="sh-swatch" style="background:${x.r.colour}"></span> ${x.r.name}</td><td class="r num"><b>${x.inside != null ? pctN(Math.round(100 * x.inside)) : "—"}</b></td>
+        <td class="r num">${clock(x.outS)}</td><td class="r num">${fmt(x.maxDev)} m</td><td class="r num">${x.meanDev != null ? `${fmt(x.meanDev)} m` : "—"}</td>
+        ${ex.kind === "compass" ? html`<td class="r num">${x.bearing != null ? `${x.bearing >= 0 ? "+" : "−"}${fmt(Math.abs(x.bearing), 1)}°` : "—"}</td>` : ""}</tr>`)}</tbody></table></div>`
+      : html`<div class="empty">${t("sh.noTraces")}</div>`;
+  };
+  table();
+  const wr = $("#sh-ex-wr", el);
+  wr.addEventListener("input", () => { $("#sh-ex-wv", el).textContent = `${wr.value} m`; X.setExWidth(ex, Number(wr.value), false); table(); });
+  if (X.organiser) wr.addEventListener("change", () => X.setExWidth(ex, Number(wr.value), true));
+  $("#sh-ex-del", el)?.addEventListener("click", async () => { if (!confirm(t("sh.ex.del.confirm"))) return; await X.saveExercises(list.filter((e) => e !== ex)); state.ex = null; X.changed(); });
 }

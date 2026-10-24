@@ -30,6 +30,7 @@ import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
 import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../trace/pacecolour.js";
 import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
+import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
@@ -614,7 +615,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <aside class="sh-panel" id="sh-right"></aside></div>
     <section class="card sh-views" id="sh-views" style="margin-top:12px"></section>`;
-  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y) => { if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
   let image;
   try { image = await createImageBitmap(await api(`/${id}/map/${course.n}?v=${course.map.v}`, { key: keyOf(id) })); }
@@ -758,6 +759,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     g.stroke();
   }
   function drawOver(g, view, lw) {
+    drawExercise(g, lw);
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
     g.lineCap = "round"; g.lineJoin = "round";
@@ -847,6 +849,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       if (state.ref) q.ref = state.ref.uid;
       if (state.tab !== TABS[0]) q.v = state.tab;
       if (state.legsOf != null) q.lo = state.legsOf;
+      if (state.ex && state.tab === "exercises") q.ex = state.ex;
       Object.assign(q, X.extraQuery());
       replaceQuery(q);
     }, playing ? 1500 : 400);
@@ -1102,8 +1105,55 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     delete localTags[j]; saveLocalTags(); varCache.clear();
   }
 
+  // ---- corridor and compass exercises (trace/corridor.js), a training event's: stored with the circuit on the server
+  // (the organiser's), a runner may try another width for themself (this visit only)
+  let exercises = A.kind === "club" && Array.isArray(course.exercises) ? course.exercises : [], draft = null;
+  const exW = {}, devCache = new Map();
+  const exOf = (id2) => exercises.find((e) => e.id === id2) || null;
+  const exWidth = (e) => exW[e.id] ?? e.w;
+  /** An exercise's line in metres (the map's px over its scale): a corridor's drawn line, a compass leg's two controls. */
+  const exLinePx = (e) => (e.kind === "compass" ? (e.leg && ctrls[e.leg] ? [[ctrls[e.leg - 1].x, ctrls[e.leg - 1].y], [ctrls[e.leg].x, ctrls[e.leg].y]] : []) : e.pts || []);
+  const exLine = (e) => exLinePx(e).map(([x, y]) => [x / pxPerM, y / pxPerM]);
+  /** Runner r's route for an exercise: its leg, else its whole race; metres and trace seconds. */
+  function exRoute(r, e) {
+    const a = e.leg ? r.passes[e.leg - 1] : r.start, b = e.leg ? r.passes[e.leg] : r.finish ?? r.tr.dur;
+    if (a == null || b == null || b <= a) return null;
+    const i0 = indexAt(r.tr, a), i1 = indexAt(r.tr, b), xs = [], ys = [], ts = [];
+    for (let i = i0; i <= i1; i++) { xs.push(r.pxs[i] / pxPerM); ys.push(r.pys[i] / pxPerM); ts.push(r.tr.t[i]); }
+    return xs.length >= 2 ? { xs, ys, ts } : null;
+  }
+  function exScores(e) {
+    const line = exLine(e), w = exWidth(e);
+    if (line.length < 2) return [];
+    return runners.map((r) => {
+      const ck = `${e.id}|${JSON.stringify(line)}|${e.leg}|${r.uid}`;
+      if (!devCache.has(ck)) { const rt = exRoute(r, e); devCache.set(ck, rt ? deviations(rt, line) : null); }
+      const D = devCache.get(ck);
+      if (!D) return null;
+      return { r, ...corridorScore(D, w), bearing: e.kind === "compass" ? bearingError(D.route, line[0], line[1]) : null };
+    }).filter(Boolean);
+  }
+  function drawExercise(g, lw) {
+    const e = draft || (bottom?.tab() === "exercises" ? exOf(state.ex) : null);
+    if (!e) return;
+    const L = exLinePx(e);
+    if (!L.length) return;
+    g.save(); g.strokeStyle = "#2b8a3e"; g.lineCap = "round"; g.lineJoin = "round";
+    if (L.length >= 2) {
+      g.globalAlpha = 0.2; g.lineWidth = exWidth(e) * pxPerM; g.beginPath(); L.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+      g.globalAlpha = 0.9; g.lineWidth = lw(1.5); g.setLineDash([lw(6), lw(4)]); g.beginPath(); L.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); g.setLineDash([]);
+    }
+    if (draft) { g.fillStyle = "#2b8a3e"; g.globalAlpha = 1; for (const [x, y] of L) { g.beginPath(); g.arc(x, y, lw(4), 0, 2 * Math.PI); g.fill(); } }
+    g.restore();
+  }
+  async function saveExercises(list) {
+    await api(`/${id}/extras/${course.n}`, { method: "PUT", body: { exercises: list }, key: keyOf(id) });
+    exercises = list; course.exercises = list; devCache.clear();
+  }
+
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
   const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
+    ex: /^[a-z0-9]{1,12}$/.test(init.ex || "") ? init.ex : null,
     gref: /^(superman|r\d+)$/.test(init.g || "") ? init.g : null, gx: init.gx === "dist" ? "dist" : null, gm: init.gm === "duel" ? "duel" : null, da: int(init.da, 0, 1e12, null),
     get sel() { return sel; } };
   const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
@@ -1128,6 +1178,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       left(); right(); frame(); saveUrl();
     },
     get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
+    tabOk: (k) => k !== "exercises" || A.kind === "club",
+    exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
+    setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
+    setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
+    saveExercises: async (list) => { await saveExercises(list); mv.draw(); bottom.draw(); },
+    pickExercise: (e) => { state.ex = e?.id || null; if (e?.leg && e.leg !== leg) setLeg(e.leg); else { mv.draw(); bottom.draw(); } saveUrl(); },
+    redrawMap: () => mv.draw(),
     variants: () => (leg ? variantsOf(leg) : null),
     setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
     shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
