@@ -21,6 +21,10 @@
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
 //   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin)
+//   PUT    /api/analyses/<id>/extras/<n>               the organiser: what circuit n's runners share besides its map and
+//                                                      controls — { variants } the route choices grouped by leg (each
+//                                                      runner's own edits stay on their device), { exercises } a
+//                                                      training's corridors and compass legs
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
@@ -100,8 +104,53 @@ function cleanCourses(list) {
     const m = c.map || {};
     out.push({ n, name: clean(c.name, 60) || `Circuit ${n + 1}`, circuit: clean(c.circuit, 80), r: num(c.r) || 20,
       map: { w: Math.round(num(m.w) || 0), h: Math.round(num(m.h) || 0), type: /^image\/(png|jpeg|webp)$/.test(m.type) ? m.type : "image/jpeg", v: Math.round(num(m.v) || 0) },
-      geo, controls: ctrls });
+      geo, controls: ctrls, ...cleanExtras(c) });
   }
+  return out;
+}
+
+const KEY = /^[A-Z]{1,2}$/;
+/** The route choices of a circuit, by leg: { "<leg>": { th, names: { key: name }, assign: { uid: key } } } (or null). */
+function cleanVariants(v) {
+  if (v == null) return {};
+  if (typeof v !== "object" || Array.isArray(v)) return null;
+  const out = {};
+  for (const [leg, x] of Object.entries(v).slice(0, 80)) {
+    if (!/^\d{1,2}$/.test(leg) || !x || typeof x !== "object") return null;
+    const e = {};
+    if (x.th != null) { const th = num(x.th); if (th == null || th < 5 || th > 1000) return null; e.th = Math.round(th); }
+    if (x.names != null) e.names = Object.fromEntries(Object.entries(x.names).slice(0, 60).filter(([k]) => KEY.test(k)).map(([k, n]) => [k, clean(n, 40)]).filter(([, n]) => n));
+    if (x.assign != null) e.assign = Object.fromEntries(Object.entries(x.assign).slice(0, 1000).filter(([u, k]) => /^\d{1,12}$/.test(u) && KEY.test(String(k))));
+    out[leg] = e;
+  }
+  return out;
+}
+/** A training's exercises: [{ id, kind: "corridor" | "compass", leg (0: the whole course), w (m), name, pts? (px) }] (or null). */
+function cleanExercises(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list) || list.length > 20) return null;
+  const out = [];
+  for (const e of list) {
+    const id = String(e?.id || ""), kind = e?.kind, leg = Number(e?.leg ?? 0), w = num(e?.w);
+    if (!/^[a-z0-9]{1,12}$/.test(id) || !["corridor", "compass"].includes(kind) || !Number.isInteger(leg) || leg < 0 || leg > 99 || w == null || w < 2 || w > 1000) return null;
+    const x = { id, kind, leg, w: Math.round(w * 10) / 10, name: clean(e.name, 60) };
+    if (kind === "corridor") {
+      if (!Array.isArray(e.pts) || e.pts.length < 2 || e.pts.length > 300) return null;
+      x.pts = e.pts.map((p) => [num(p?.[0]), num(p?.[1])]);
+      if (x.pts.some(([a, b]) => a == null || b == null)) return null;
+      x.pts = x.pts.map(([a, b]) => [Math.round(a * 10) / 10, Math.round(b * 10) / 10]);
+    } else if (!leg) return null;
+    out.push(x);
+  }
+  return out;
+}
+/** A circuit's shared extras, kept through the organiser's edits of its map and controls. */
+function cleanExtras(c) {
+  const out = {};
+  const v = cleanVariants(c?.variants);
+  if (v && Object.keys(v).length) out.variants = v;
+  const x = cleanExercises(c?.exercises);
+  if (x?.length) out.exercises = x;
   return out;
 }
 
@@ -279,6 +328,28 @@ export const onRequest = withUser(async (ctx, user) => {
       return json({ ok: true });
     }
     return json({ error: "method" }, 405);
+  }
+
+  if (sub === "extras") {
+    if (!course) return json({ error: "not found" }, 404);
+    if (method !== "PUT") return json({ error: "method" }, 405);
+    if (!organiser) return json({ error: "forbidden" }, 403);
+    if (Number(request.headers.get("Content-Length") || 0) > 512 * 1024) return json({ error: "too big" }, 413);
+    const b = await readBody(request);
+    if (!b) return json({ error: "bad request" }, 400);
+    if (b.variants !== undefined) {
+      const v = cleanVariants(b.variants);
+      if (!v) return json({ error: "fields" }, 400);
+      if (Object.keys(v).length) course.variants = v; else delete course.variants;
+    }
+    if (b.exercises !== undefined) {
+      if (meta.kind !== "club") return json({ error: "fields" }, 400);         // a training's
+      const x = cleanExercises(b.exercises);
+      if (!x) return json({ error: "fields" }, 400);
+      if (x.length) course.exercises = x; else delete course.exercises;
+    }
+    await saveMeta(env, meta);
+    return json({ ok: true, course });
   }
 
   if (sub === "traces" && method === "GET") {

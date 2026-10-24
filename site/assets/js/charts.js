@@ -630,3 +630,66 @@ export function scatterChart(el, { series, xName, yName, max }) {
   });
   return c;
 }
+
+/**
+ * Gaps to a reference along a race (« Analyse multi »'s Écarts, after SplitsBrowser and 2DRerun's autOanalysis): one line
+ * per runner, behind going down. series: [{ name, color, data: [[x, gap s, control index]] }]; x a control's index
+ * (labels: xLabels) or a distance (fmtX); onClick(series index, control index).
+ */
+export function gapChart(el, { series, xLabels = null, xName = "", fmtX = (v) => fmt(v), fmtY = (v) => fmt(v), onClick }) {
+  const th = theme();
+  const c = init(el);
+  const label = (x) => (xLabels ? xLabels[x] ?? "" : fmtX(x));
+  c.setOption({
+    animationDuration: 300,
+    grid: { left: 64, right: 24, top: 30, bottom: 40 },
+    tooltip: baseTooltip(th, {
+      trigger: "axis", axisPointer: { type: "line" },
+      formatter(params) {
+        const rows = params.filter((p) => p.value?.[1] != null).sort((a, b) => a.value[1] - b.value[1]);
+        if (!rows.length) return "";
+        return `<div style="color:${th.ink3};font-size:12px">${esc(label(rows[0].value[0]))}</div>` +
+          rows.map((p) => `<div style="display:flex;gap:8px;align-items:center;margin-top:3px">${keyLine(series[p.seriesIndex].color)}<b>${
+            esc(fmtY(p.value[1]))}</b><span style="color:${th.ink2}">${esc(series[p.seriesIndex].name)}</span></div>`).join("");
+      },
+    }),
+    xAxis: { type: "value", name: xName, nameLocation: "end", nameTextStyle: { color: th.ink3 }, min: 0, max: "dataMax", ...axisCommon(th),
+      interval: xLabels ? 1 : undefined, splitLine: { show: !!xLabels, lineStyle: { color: th.grid } },
+      axisLabel: { color: th.ink3, fontSize: 11, formatter: (v) => label(v) } },
+    yAxis: { type: "value", inverse: true, ...axisCommon(th), axisLabel: { color: th.ink3, formatter: (v) => fmtY(v) } },
+    ...zoomable(th),
+    series: series.map((s) => ({
+      name: s.name, type: "line", data: s.data, connectNulls: false, symbol: "circle", symbolSize: 7, showSymbol: true,
+      lineStyle: { width: s.bold ? 3 : 2, color: s.color }, itemStyle: { color: s.color, borderColor: th.surface, borderWidth: 2 },
+      emphasis: { focus: "series" }, z: s.bold ? 3 : 2,
+    })),
+  });
+  // a click anywhere picks the nearest point (within 30 px): the symbols are small targets
+  if (onClick) c.getZr().on("click", (e) => {
+    let best = null;
+    series.forEach((s, i) => s.data.forEach((d) => {
+      if (d[1] == null) return;
+      const [x, y] = c.convertToPixel({ gridIndex: 0 }, [d[0], d[1]]), dd = Math.hypot(x - e.offsetX, y - e.offsetY);
+      if (dd <= 30 && (!best || dd < best.dd)) best = { dd, i, j: d[2] };
+    }));
+    if (best) onClick(best.i, best.j);
+  });
+  return c;
+}
+
+/** A duel leg by leg: one bar per leg, the time runner A gained (up, --good) or lost (down, --bad). onClick(leg index). */
+export function duelChart(el, { categories, values, fmtY = (v) => fmt(v), tip, onClick }) {
+  const th = theme();
+  const c = init(el);
+  const good = css("--good") || "#2f9e44", bad = css("--bad") || "#c92a2a";
+  c.setOption({
+    animationDuration: 300,
+    grid: { left: 64, right: 16, top: 20, bottom: 36 },
+    tooltip: baseTooltip(th, { trigger: "item", formatter: (p) => tip(p.dataIndex) }),
+    xAxis: { type: "category", data: categories, ...axisCommon(th), splitLine: { show: false } },
+    yAxis: { type: "value", ...axisCommon(th), axisLabel: { color: th.ink3, formatter: (v) => fmtY(v) } },
+    series: [{ type: "bar", barMaxWidth: 28, data: values.map((v) => ({ value: v, itemStyle: { color: v == null ? th.ink3 : v >= 0 ? good : bad, borderRadius: v >= 0 ? [3, 3, 0, 0] : [0, 0, 3, 3] } })) }],
+  });
+  if (onClick) c.on("click", (p) => { if (p.componentType === "series") onClick(p.dataIndex); });
+  return c;
+}

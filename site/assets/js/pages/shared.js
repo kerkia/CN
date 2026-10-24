@@ -10,7 +10,11 @@
 // traces are replayed together as Livelox does: clock time, mass start, a mass start from any control, or waiting at
 // every control; follow everyone, one runner or no one; a leg view (every runner's route on one leg, with time,
 // distance, pace and rank) stepped leg by leg; the splits table, against a chosen runner (the duel). For a
-// competition, the runners' published results stand beside their traces. Stored by /api/analyses (R2).
+// competition, the runners' published results stand beside their traces, and their published split times give the
+// passes. After World of O's 2DRerun (2026-10-24): routes coloured by pace, leg time or route choice; the runners' paces
+// under the map; under the replay one runner's legs, the gaps along the race, the route choices of a leg, a training's
+// corridor and compass exercises (pages/sharedviews.js); a headcam video in step (pages/sharedvideo.js); the replay's
+// state in the address. Stored by /api/analyses (R2).
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
@@ -20,7 +24,7 @@ import * as declare from "../declare.js";
 import * as country from "../country.js";
 import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
-import { toPx, fitSimilarity } from "../trace/geom.js";
+import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
@@ -28,8 +32,16 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
+import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../trace/pacecolour.js";
+import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
+import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
+import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
+import { views as bottomViews, TABS } from "./sharedviews.js";
+import { videoPanel } from "./sharedvideo.js";
+import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
+import { replaceQuery } from "../app.js";
 
 const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -51,6 +63,9 @@ const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
+const COLOUR_BY = ["runner", "pace", "legtime", "variant"];        // the last two in a leg's view only
+const LEG_ONLY = ["legtime", "variant"];
+const MODES = ["clock", "mass", "from", "wait"], FOLLOWS = ["all", "sel", "none"];
 const TOL = 25;                                           // metres: a control reached
 const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × 2 px
@@ -83,8 +98,8 @@ export async function render(main, r) {
   const org = r.route === "orgRace" || r.route === "orgTraining";
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
   betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
-  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true) : orgListPage(main, kind);
-  return r.query.id ? eventPage(main, kind, r.query.id, false) : listPage(main, kind, r.query);
+  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true, r.query) : orgListPage(main, kind);
+  return r.query.id ? eventPage(main, kind, r.query.id, false, r.query) : listPage(main, kind, r.query);
 }
 
 // ---- the list ----------------------------------------------------------------------------------------------------
@@ -213,7 +228,7 @@ function createForm(box, kind, races, club) {
 }
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
-async function eventPage(main, kind, id, org = false) {
+async function eventPage(main, kind, id, org = false, query = {}) {
   const home = org ? ORG_ROUTE[kind] : ROUTE[kind], homeTitle = t(org ? `sh.org.${kind}.title` : `sh.${kind}.title`);
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
@@ -230,7 +245,8 @@ async function eventPage(main, kind, id, org = false) {
   }
   let race = null;
   if (kind === "race" && A.race) race = await getProv(`${encodeURIComponent(A.race)}.json`);
-  let courseN = A.courses[0]?.n ?? null, viewer = null;
+  // the circuit, and the replay's state, from the address (a link reopens the same view)
+  let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
     <div class="sh-top">
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
@@ -254,7 +270,8 @@ async function eventPage(main, kind, id, org = false) {
       $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(org ? "sh.noCourse.org" : "sh.notReady")}</div></div>`;
       return;
     }
-    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
+    const init = initial; initial = {};                    // the address's state for the first circuit opened only
+    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
       data = await api(`/${id}`, { key: keyOf(id) }); openViewer(); } });
   };
   const reloadAll = async () => {
@@ -537,7 +554,9 @@ async function editor(box, ctx) {
       }
       const entry = { n, name: $("#sh-e-name").value || st.circuit || t("sh.course.default", { n: n + 1 }), circuit: $("#sh-e-circuit")?.value || st.circuit || "", r: st.r,
         map: { w: st.image.width, h: st.image.height, type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo: st.geo,
-        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })) };
+        controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })),
+        // what the runners share besides (the route choices…) goes on with the circuit
+        ...(course?.variants ? { variants: course.variants } : {}), ...(course?.exercises ? { exercises: course.exercises } : {}) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -573,7 +592,7 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0) {
 }
 
 // ---- the replay --------------------------------------------------------------------------------------------------
-async function replay(box, { A, id, course, race, traces, you, reload }) {
+async function replay(box, { A, id, course, race, init = {}, traces, you, reload }) {
   document.body.classList.add("an-theatre");
   const ctrls = course.controls, legsN = ctrls.length - 1;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
@@ -584,19 +603,25 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   let curvesOpen = prefs.curvesOpen === true;              // one's own curves: folded to the left by default (owner, 2026-10-15)
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen })); } catch (e) { /* not kept */ } };
-  let mode = "mass", fromK = 1, leg = 0, T = 0, speed = 10, follow = "all", playing = false, timer = 0, last = 0, sel = null, ref = null;
+  let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
+  let showStrip = prefs.strip !== false;                   // the runners' paces under the map
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy, strip: showStrip })); } catch (e) { /* not kept */ } };
+  const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
+  let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
+  let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
       <aside class="sh-panel" id="sh-left"></aside>
-      <div class="sh-map"><canvas id="sh-canvas"></canvas>
+      <div class="sh-mapcol"><div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
-          <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button></div>
-        <div class="an-hud" id="sh-hud"></div></div>
+          <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
+          <button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
+        <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
+        <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <aside class="sh-panel" id="sh-right"></aside></div>
-    <section class="card" id="sh-splits" style="margin-top:12px"></section>`;
-  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+    <section class="card sh-views" id="sh-views" style="margin-top:12px"></section>`;
+  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y) => { if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
   let image;
   try { image = await createImageBitmap(await api(`/${id}/map/${course.n}?v=${course.map.v}`, { key: keyOf(id) })); }
@@ -604,26 +629,54 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   // the traces
   let recs = [];
   try { recs = await api(`/${id}/traces/${course.n}`, { key: keyOf(id) }); } catch (e) { recs = []; }
+  // a competition's published results: the runner's row — in the circuit's class with split times if there is one, else
+  // any with split times, else the first found — and a start time from any list of the race
+  const key = (n) => (n || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+  const isHim = (x, rec) => (x.lic && String(x.lic) === String(rec.lic)) || key(x.name) === key(rec.name);
   const official = (rec) => {
     if (!race) return null;
-    for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners) if ((x.lic && String(x.lic) === String(rec.lic)) || key(x.name) === key(rec.name)) return { time: x.time_s, place: x.place, status: x.status, circuit: k.name };
-    return null;
+    const hits = [];
+    for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners || []) if (isHim(x, rec)) hits.push({ x, k });
+    if (!hits.length) return null;
+    const h = hits.find((q) => q.k.name === course.circuit && q.x.splits?.length) || hits.find((q) => q.x.splits?.length) || hits[0];
+    const startS = hits.map((q) => q.x.start_s).find((v) => v != null) ?? null;
+    return { time: h.x.time_s, place: h.x.place, status: h.x.status, circuit: h.k.name, row: h.x, klass: h.k, startS };
   };
-  const key = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+  // the class whose split times rank the legs: the circuit's, else that of the first runner found with split times
+  const pubClass = (() => {
+    if (!race) return null;
+    const all = (race.docs || []).flatMap((d) => d.classes || []).filter((k) => k.runners?.some((x) => x.splits?.length));
+    return all.find((k) => k.name === course.circuit) || null;
+  })();
+  const splitsN = (k) => { const n = k?.runners?.map((x) => x.splits?.length || 0) || []; return n.length ? Math.max(...n) : 0; };
   let runners = recs.map((rec) => {
     const tr = decodeTrace(rec);
     if (!tr) return null;
     const fit = fitFromGeo(course.geo, tr), pxs = new Float32Array(tr.n), pys = new Float32Array(tr.n);
     for (let i = 0; i < tr.n; i++) { const [x, y] = toPx(fit, tr.x[i], tr.y[i]); pxs[i] = x; pys[i] = y; }
-    const passes = coursePasses(tr, fit, ctrls, TOL);
+    const guess = coursePasses(tr, fit, ctrls, TOL), off = official(rec);
+    // a competition's published split times (trace/published.js): the passes from them rather than the trace's 25 m guesses
+    let pub = null;
+    if (off?.row?.splits?.length) {
+      const map = matchControls(ctrls, off.klass.controls || [], off.row.splits.length);
+      const startT = off.startS != null && race?.date_iso ? startOnTrace(race.date_iso, off.startS, tr.ms0) : null;
+      pub = publishedPasses(map, publishedTaus(off.row), guess, startT, tr.dur);
+    }
+    const passes = pub?.passes || guess;
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
     const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
-    return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: official(rec), abs0: tr.ms0 / 1000 };
+    return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
+      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
   const visKey = `ocn.an.vis.${id}.${course.n}`;
   try { const hidden = JSON.parse(sessionStorage.getItem(visKey) || "[]"); runners.forEach((r) => { r.visible = !hidden.includes(r.uid); }); } catch (e) { /* all shown */ }
   const saveVis = () => { try { sessionStorage.setItem(visKey, JSON.stringify(runners.filter((r) => !r.visible).map((r) => r.uid))); } catch (e) { /* this visit only */ } };
+  // the address's runners shown and followed win over the visit's
+  const uidsOf = (v) => String(v || "").split(",").map(Number).filter((n) => Number.isInteger(n));
+  if (init.show != null) { const show = uidsOf(init.show); runners.forEach((r) => { r.visible = show.includes(r.uid); }); }
+  sel = runners.find((r) => r.uid === Number(init.sel)) || null;
+  if (sel) sel.visible = true;
   runners.sort((a, b) => (total(a) ?? 1e9) - (total(b) ?? 1e9));
   runners.forEach((r, i) => { r.colour = COLOURS[i % COLOURS.length]; r.rank = total(r) != null ? i + 1 : null; });
 
@@ -659,13 +712,62 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     return Math.max(r.tr.t[0], Math.min(r.tr.dur, s));
   }
   let [T0, T1] = range();
-  T = T0;
+  T = init.t != null && Number.isFinite(Number(init.t)) ? Math.min(T1, Math.max(T0, Number(init.t))) : T0;
 
   // ---- drawing
+  // the pace colours: one scale for every runner shown (their races' 10-90 % of speeds), so that colours compare
+  let vLo = 0, vHi = 1;
+  function paceScale() {
+    const shown = runners.filter((r) => r.visible);
+    [vLo, vHi] = paceRange(...shown.map((r) => r.tr.v.subarray(indexAt(r.tr, r.start), indexAt(r.tr, r.finish ?? r.tr.dur) + 1)));
+  }
+  /** The colours in use: a leg's colours only in a leg's view. */
+  const cmode = () => (!leg && LEG_ONLY.includes(colourBy) ? "runner" : colourBy);
+  function legend() {
+    const el = $("#sh-legend");
+    if (!el) return;
+    const m = cmode();
+    el.hidden = m === "runner";
+    if (m === "pace") el.innerHTML = paceLegend(vLo, vHi);
+    else if (m === "legtime") {
+      const ts = legRanks().times;
+      el.hidden = !ts.length;
+      if (ts.length) el.innerHTML = rampLegend(t("sh.legend.legtime"), [clock(ts[0]), clock(ts[Math.floor((ts.length - 1) / 2)]), clock(ts[ts.length - 1])]);
+    } else if (m === "variant") {
+      const V = variantsOf(leg);
+      el.innerHTML = html`<div class="an-legend-title">${t("sh.legend.variant")}</div>${V.list.map((v, i) => html`<div class="sh-vleg"><span class="sh-swatch" style="background:${VARIANT_COLOURS[i % VARIANT_COLOURS.length]}"></span> ${v.name || v.key} <span class="muted">· ${v.uids.length} · ${clock(v.best)}</span></div>`)}`;
+    }
+  }
+  // a leg's times ranked among the runners shown: the ramp from the fastest to the slowest (owner's study of 2DRerun)
+  function legRanks() {
+    const shown = runners.filter((r) => r.visible && legTime(r, leg) != null), times = shown.map((r) => legTime(r, leg)).sort((a, b) => a - b);
+    return { times, f: (r) => { const v = legTime(r, leg); if (v == null || times.length < 2) return 0; return times.filter((x) => x < v).length / (times.length - 1); } };
+  }
+  /** Runner r's route colour in the current mode (the pace's is drawn step by step). */
+  function routeColour(r) {
+    const m = cmode();
+    if (m === "legtime") return rampColour(legRanks().f(r) * 0.999);
+    if (m === "variant") { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return i < 0 ? r.colour : VARIANT_COLOURS[i % VARIANT_COLOURS.length]; }
+    return r.colour;
+  }
+  /** Runner r's route from index a to b: one colour, or each step by its pace. */
+  function stroke(g, r, a, b, lwPx, alpha, head = null) {
+    if (b <= a) return;
+    if (cmode() === "pace") {
+      g.lineWidth = lwPx; g.globalAlpha = alpha;
+      for (let i = a + 1; i <= b; i++) { g.strokeStyle = paceColour(r.tr.v[i], vLo, vHi); g.beginPath(); g.moveTo(r.pxs[i - 1], r.pys[i - 1]); g.lineTo(r.pxs[i], r.pys[i]); g.stroke(); }
+      if (head) { g.beginPath(); g.moveTo(r.pxs[b], r.pys[b]); g.lineTo(head[0], head[1]); g.stroke(); }
+      return;
+    }
+    g.strokeStyle = routeColour(r); g.lineWidth = lwPx; g.globalAlpha = alpha;
+    g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]);
+    if (head) g.lineTo(head[0], head[1]);
+    g.stroke();
+  }
   function drawOver(g, view, lw) {
+    drawExercise(g, lw);
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
-    const path = (r, a, b) => { g.beginPath(); g.moveTo(r.pxs[a], r.pys[a]); for (let i = a + 1; i <= b; i++) g.lineTo(r.pxs[i], r.pys[i]); };
     g.lineCap = "round"; g.lineJoin = "round";
     for (const r of shown) {
       const s = sAt(r, T);
@@ -674,12 +776,11 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       // the route still to run, faint, to its finish (or the leg's end) — hidden by default
       if (future === "faint") {
         const a = indexAt(r.tr, leg ? r.passes[leg - 1] : r.start), b = indexAt(r.tr, leg ? r.passes[leg] ?? r.tr.dur : r.finish ?? r.tr.dur);
-        if (b > a) { g.strokeStyle = r.colour; g.lineWidth = lw(2 * width); g.globalAlpha = 0.3 * ta; path(r, a, b); g.stroke(); }
+        stroke(g, r, a, b, lw(2 * width), 0.3 * ta);
       }
       if (mode === "clock" && !leg && s < r.start - 1) continue;           // not started yet
-      g.strokeStyle = r.colour; g.lineWidth = lw((r === sel ? 2.8 : 2) * width); g.globalAlpha = (r === sel || !sel ? 1 : 0.75) * ta;
-      if (to > from) { path(r, from, to); const [mx, my] = posAt(r.tr, s); const [x, y] = toPx(r.fit, mx, my); g.lineTo(x, y); g.stroke(); }
       const [mx, my] = posAt(r.tr, s), [x, y] = toPx(r.fit, mx, my);
+      stroke(g, r, from, to, lw((r === sel ? 2.8 : 2) * width), (r === sel || !sel ? 1 : 0.75) * ta, [x, y]);
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
       if (shown.length > 1 || r === sel) {
@@ -700,7 +801,65 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     if (x1 - x0 > (w - 160) / k || y1 - y0 > (h - 160) / k) mv.fitBox(x0, y0, x1, y1, 80, 4);
     else mv.centerOn((x0 + x1) / 2, (y0 + y1) / 2);
   }
-  function frame() { followView(); mv.draw(); hud(); drawOwn(); }
+  function frame() { followView(); mv.draw(); hud(); drawOwn(); drawStrip(); video?.sync(); saveUrl(); }
+
+  // ---- the runners' paces under the map (trace/pacestrip.js): over the replay's own time axis, smoothed over a few
+  // seconds to half a minute (a leg's short view, the whole race), recomputed only when the axis or the runners change
+  let stripCache = null;
+  function stripSeries() {
+    const cv = $("#sh-strip"), K = stripSamples(cv), shown = runners.filter((r) => r.visible);
+    const sig = [K, T0, T1, mode, fromK, leg, shown.map((r) => r.uid).join(",")].join("|");
+    if (stripCache?.sig === sig) return stripCache.series;
+    const half = Math.max(3, Math.min(15, (T1 - T0) / 80));
+    const series = shown.map((r) => {
+      const vals = new Array(K).fill(null), end = r.finish ?? r.tr.dur;
+      for (let k = 0; k < K; k++) {
+        const s = sAt(r, T0 + (k / (K - 1)) * (T1 - T0));
+        if (s == null || s < r.start - 1 || s > end + 1) continue;
+        const a = Math.max(r.start, s - half), b = Math.min(end, s + half);
+        if (b - a >= 2) vals[k] = (cumAt(r.tr, b) - cumAt(r.tr, a)) / (b - a);
+      }
+      return { r, vals };
+    });
+    stripCache = { sig, series };
+    return series;
+  }
+  function drawStrip() {
+    const cv = $("#sh-strip");
+    if (!cv || cv.hidden || !cv.clientWidth) return;
+    const span = Math.max(1, T1 - T0), f = (x) => (x - T0) / span;
+    const fmtT = (x) => (mode === "clock" && !leg ? hms(x).slice(0, 5) : x < 0 ? `−${clock(-x)}` : clock(x));
+    const step = [30, 60, 120, 300, 600, 900, 1800, 3600].find((s) => span / s <= Math.max(2, cv.clientWidth / 90)) || 3600;
+    const ticks = [];
+    for (let x = Math.ceil(T0 / step) * step; x <= T1; x += step) ticks.push({ f: f(x), label: fmtT(x) });
+    // in the waiting mode, every control is a moment of the axis; in a leg's view, its two ends
+    const marks = !leg && mode === "wait" ? waits.slice(1, -1).map((w, j) => ({ f: f(w), label: ctrlLabel(j + 1) })) : [];
+    drawPaceStrip(cv, { series: stripSeries().map(({ r, vals }) => ({ colour: r.colour, vals, bold: r === sel })), cursor: f(T), ticks, marks });
+  }
+  // ---- the replay's state in the address (owner's study of 2DRerun, 2026-10-23: a link reopens the same view): the circuit,
+  // mode, time, leg, runners shown, followed runner, duel reference and view; written once the replay has been still 0.4 s
+  let urlTimer = 0;
+  function saveUrl() {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => {
+      if (!box.isConnected) return;
+      const q = { id };
+      if (A.courses.length > 1 || course.n !== A.courses[0]?.n) q.c = course.n;
+      if (mode !== "mass") q.m = mode;
+      if (mode === "from") q.from = fromK;
+      if (leg) q.leg = leg;
+      if (Math.round(T) !== Math.round(T0)) q.t = Math.round(T);
+      if (runners.some((r) => !r.visible)) q.show = runners.filter((r) => r.visible).map((r) => r.uid).join(",");
+      if (sel) q.sel = sel.uid;
+      if (follow !== "all") q.f = follow;
+      if (state.ref) q.ref = state.ref.uid;
+      if (state.tab !== TABS[0]) q.v = state.tab;
+      if (state.legsOf != null) q.lo = state.legsOf;
+      if (state.ex && state.tab === "exercises") q.ex = state.ex;
+      Object.assign(q, X.extraQuery());
+      replaceQuery(q);
+    }, playing ? 1500 : 400);
+  }
 
   // ---- one's own curves: from one's own file, kept on this device (the server keeps positions and times only, and
   // the others never see them); the panel folded to the left by default, a tab to open it
@@ -765,6 +924,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   ownRo.observe($("#sh-curves"));
 
   // ---- the panels
+  const routeVar = (r) => { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return { key: k, name: V.list[i]?.name || k, c: VARIANT_COLOURS[Math.max(0, i) % VARIANT_COLOURS.length] }; };
   function left() {
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
@@ -777,7 +937,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
           <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
-          <span class="sh-name">${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
+          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}</span>
           <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
@@ -794,7 +954,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       const was = [T0, T1];
       [T0, T1] = range();
       if (T < T0 || T > T1 || (was[0] === T && T0 !== T)) T = Math.min(T1, Math.max(T0, T));
-      left(); right(); frame(); splits();
+      paceScale(); legend();
+      left(); right(); frame(); bottom.draw();
     };
     $$(".sh-runner").forEach((el) => el.addEventListener("click", (e) => {
       if (e.target.closest("[data-follow]")) return;
@@ -848,9 +1009,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       <div class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></div>
       <div class="an-opts" style="margin-top:8px">
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
-        ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${["clock", "mass", "from", "wait"].map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
+        ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${MODES.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <label><span>${t("sh.follow")}</span><select id="sh-follow">${["all", "sel", "none"].map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
+        <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
       <p class="hint" style="margin-top:8px">${t(`sh.mode.${leg ? "leg" : mode}.hint`)}</p>
       <details class="an-settings" open><summary>${t("an.display")}</summary>
         <div class="an-opts">
@@ -859,7 +1020,9 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div></details>`;
+          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
+          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
+          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
@@ -875,6 +1038,8 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
+    $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
+    $("#sh-strip-on").addEventListener("change", (e) => { showStrip = e.target.checked; savePrefs(); $("#sh-strip").hidden = !showStrip; drawStrip(); });
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -893,7 +1058,7 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
       mv.fitBox(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), 40, 4);
       if (follow === "all") follow = "none";
     } else fitRoutes();
-    left(); right(); frame();
+    legend(); left(); right(); frame(); bottom.draw();
   }
   function fitRoutes() {
     const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y);
@@ -912,41 +1077,158 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
     }, 40);
     const b = $("#sh-play"); if (b) b.textContent = "⏸";
   }
-  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; }
+  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; video?.sync(true); saveUrl(); }
 
-  // ---- the splits table, against a reference (the duel)
-  function splits() {
-    const R = runners.filter((r) => r.visible);
-    if (!R.length || legsN < 1) { $("#sh-splits").innerHTML = ""; return; }
-    const best = Array.from({ length: legsN }, (_, j) => Math.min(...R.map((r) => legTime(r, j + 1) ?? 1e9)));
-    const rankOf = (r, j) => { const v = legTime(r, j); return v == null ? null : 1 + R.filter((x) => (legTime(x, j) ?? 1e9) < v).length; };
-    $("#sh-splits").innerHTML = html`<div class="card-head"><div><h2>${t("spl.title")}</h2><div class="hint">${t("sh.splits.hint")}</div></div>
-      <label class="field" style="margin-left:auto"><span>${t("sh.ref")}</span><select id="sh-ref"><option value="">—</option>${R.map((r) => html`<option value="${r.uid}" ${raw(r === ref ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
-      <div class="table-wrap"><table class="data compact sh-splits"><thead><tr><th>${t("prov.name")}</th>${Array.from({ length: legsN }, (_, j) => html`<th class="r" data-legh="${j + 1}" style="cursor:pointer">${ctrlLabel(j + 1)}</th>`)}<th class="r">${t("an.total")}</th></tr></thead>
-      <tbody>${R.map((r) => html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}</td>
-        ${Array.from({ length: legsN }, (_, j) => { const v = legTime(r, j + 1), c = r.passes[j + 1] != null ? r.passes[j + 1] - r.start : null, rv = ref && ref !== r ? legTime(ref, j + 1) : null;
-          return html`<td class="r num${v != null && v === best[j] ? " sh-best" : ""}">${v != null ? html`${clock(v)} <span class="muted">(${rankOf(r, j + 1)})</span>` : "—"}
-            <div class="sh-sub muted">${c != null ? clock(c) : ""}${v != null && rv != null ? html` <span class="${v > rv ? "delta-down" : "delta-up"}">${signed(v - rv)}</span>` : ""}</div></td>`; })}
-        <td class="r num"><b>${total(r) != null ? clock(total(r)) : "—"}</b>${ref && ref !== r && total(r) != null && total(ref) != null ? html`<div class="sh-sub ${total(r) > total(ref) ? "delta-down" : "delta-up"}">${signed(total(r) - total(ref))}</div>` : ""}</td></tr>`)}</tbody></table></div>`;
-    $("#sh-ref").addEventListener("change", (e) => { ref = runners.find((r) => r.uid === Number(e.target.value)) || null; splits(); });
-    $$("[data-legh]").forEach((th) => th.addEventListener("click", () => setLeg(Number(th.dataset.legh))));
+  // ---- route choices on a leg (trace/routes.js): the organiser's grouping shared on the server, with the circuit (every
+  // runner sees it); anyone's own edits kept on their device (localStorage, per analysis and circuit), over the
+  // organiser's — a runner's tags are theirs, need no right to write, and change nothing for the others
+  const VAR_KEY = `ocn.sh.var.${id}.${course.n}`;
+  let serverTags = course.variants && typeof course.variants === "object" ? course.variants : {};
+  let localTags = (() => { try { return JSON.parse(localStorage.getItem(VAR_KEY) || "{}") || {}; } catch (e) { return {}; } })();
+  const saveLocalTags = () => { try { localStorage.setItem(VAR_KEY, JSON.stringify(localTags)); } catch (e) { /* this visit only */ } };
+  const pxPerM = runners[0]?.fit.scale || 1;
+  const varCache = new Map();
+  function variantsOf(j) {
+    const tags = localTags[j] ?? serverTags[j] ?? null, ck = `${j}|${JSON.stringify(tags)}`;
+    if (varCache.has(ck)) return varCache.get(ck);
+    const a = ctrls[j - 1], b = ctrls[j], straight = Math.hypot(b.x - a.x, b.y - a.y) / pxPerM;
+    const auto = Math.round(Math.max(30, Math.min(120, 0.2 * straight)));
+    const items = runners.filter((r) => legTime(r, j) != null).map((r) => {
+      const i0 = indexAt(r.tr, r.passes[j - 1]), i1 = indexAt(r.tr, r.passes[j]);
+      return { uid: r.uid, time: legTime(r, j), len: cumAt(r.tr, r.passes[j]) - cumAt(r.tr, r.passes[j - 1]),
+        pts: resample(r.pxs, r.pys, i0, Math.max(i0, i1), 32).map(([x, y]) => [x / pxPerM, y / pxPerM]) };
+    });
+    const V = { ...legVariants(items, Number.isFinite(tags?.th) ? tags.th : auto, tags), auto, items, local: localTags[j] != null, shared: serverTags[j] != null };
+    V.list.forEach((v) => { const ls = items.filter((it) => v.uids.includes(it.uid)).map((it) => it.len); v.len = ls.reduce((s, x) => s + x, 0) / (ls.length || 1); });
+    varCache.set(ck, V);
+    return V;
   }
+  async function shareVariants(j) {
+    const next = { ...serverTags };
+    if (localTags[j]) next[j] = localTags[j]; else delete next[j];
+    await api(`/${id}/extras/${course.n}`, { method: "PUT", body: { variants: next }, key: keyOf(id) });
+    serverTags = next; course.variants = next;
+    delete localTags[j]; saveLocalTags(); varCache.clear();
+  }
+
+  // ---- corridor and compass exercises (trace/corridor.js), a training event's: stored with the circuit on the server
+  // (the organiser's), a runner may try another width for themself (this visit only)
+  let exercises = A.kind === "club" && Array.isArray(course.exercises) ? course.exercises : [], draft = null;
+  const exW = {}, devCache = new Map();
+  const exOf = (id2) => exercises.find((e) => e.id === id2) || null;
+  const exWidth = (e) => exW[e.id] ?? e.w;
+  /** An exercise's line in metres (the map's px over its scale): a corridor's drawn line, a compass leg's two controls. */
+  const exLinePx = (e) => (e.kind === "compass" ? (e.leg && ctrls[e.leg] ? [[ctrls[e.leg - 1].x, ctrls[e.leg - 1].y], [ctrls[e.leg].x, ctrls[e.leg].y]] : []) : e.pts || []);
+  const exLine = (e) => exLinePx(e).map(([x, y]) => [x / pxPerM, y / pxPerM]);
+  /** Runner r's route for an exercise: its leg, else its whole race; metres and trace seconds. */
+  function exRoute(r, e) {
+    const a = e.leg ? r.passes[e.leg - 1] : r.start, b = e.leg ? r.passes[e.leg] : r.finish ?? r.tr.dur;
+    if (a == null || b == null || b <= a) return null;
+    const i0 = indexAt(r.tr, a), i1 = indexAt(r.tr, b), xs = [], ys = [], ts = [];
+    for (let i = i0; i <= i1; i++) { xs.push(r.pxs[i] / pxPerM); ys.push(r.pys[i] / pxPerM); ts.push(r.tr.t[i]); }
+    return xs.length >= 2 ? { xs, ys, ts } : null;
+  }
+  function exScores(e) {
+    const line = exLine(e), w = exWidth(e);
+    if (line.length < 2) return [];
+    return runners.map((r) => {
+      const ck = `${e.id}|${JSON.stringify(line)}|${e.leg}|${r.uid}`;
+      if (!devCache.has(ck)) { const rt = exRoute(r, e); devCache.set(ck, rt ? deviations(rt, line) : null); }
+      const D = devCache.get(ck);
+      if (!D) return null;
+      return { r, ...corridorScore(D, w), bearing: e.kind === "compass" ? bearingError(D.route, line[0], line[1]) : null };
+    }).filter(Boolean);
+  }
+  function drawExercise(g, lw) {
+    const e = draft || (bottom?.tab() === "exercises" ? exOf(state.ex) : null);
+    if (!e) return;
+    const L = exLinePx(e);
+    if (!L.length) return;
+    g.save(); g.strokeStyle = "#2b8a3e"; g.lineCap = "round"; g.lineJoin = "round";
+    if (L.length >= 2) {
+      g.globalAlpha = 0.2; g.lineWidth = exWidth(e) * pxPerM; g.beginPath(); L.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+      g.globalAlpha = 0.9; g.lineWidth = lw(1.5); g.setLineDash([lw(6), lw(4)]); g.beginPath(); L.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); g.setLineDash([]);
+    }
+    if (draft) { g.fillStyle = "#2b8a3e"; g.globalAlpha = 1; for (const [x, y] of L) { g.beginPath(); g.arc(x, y, lw(4), 0, 2 * Math.PI); g.fill(); } }
+    g.restore();
+  }
+  async function saveExercises(list) {
+    await api(`/${id}/extras/${course.n}`, { method: "PUT", body: { exercises: list }, key: keyOf(id) });
+    exercises = list; course.exercises = list; devCache.clear();
+  }
+
+  // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
+  const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
+    ex: /^[a-z0-9]{1,12}$/.test(init.ex || "") ? init.ex : null,
+    gref: /^(superman|r\d+)$/.test(init.g || "") ? init.g : null, gx: init.gx === "dist" ? "dist" : null, gm: init.gm === "duel" ? "duel" : null, da: int(init.da, 0, 1e12, null),
+    get sel() { return sel; } };
+  const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
+    // the field a leg time is ranked in, and its best legs: the class's published split times (every runner of the circuit),
+    // else every runner with a trace
+    fieldLegs: () => {
+      const k = pubClass || runners.find((r) => r.published)?.klass;
+      const all = k ? classLegs(k, matchControls(ctrls, k.controls || [], splitsN(k))) : [];
+      if (all.filter((l) => l.some((v) => v != null)).length >= 2) return { source: "published", all };
+      return { source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) };
+    },
+    refChanged: () => { bottom.draw(); saveUrl(); }, changed: () => saveUrl(),
+    // the course's distance at each control (km, the straight legs), for the gaps against the distance
+    courseKm: () => { const f = runners[0]?.fit; let acc = 0; return ctrls.map((p, i) => { if (i && f) { const a = toM(f, ctrls[i - 1].x, ctrls[i - 1].y), b = toM(f, p.x, p.y); acc += Math.hypot(a[0] - b[0], a[1] - b[1]) / 1000; } return acc; }); },
+    // a point of the gaps: the replay at that runner's pass at control j (a mass start, or the clock), the runner followed
+    jump: (r, j) => {
+      if (r.passes[j] == null) return;
+      stop(); leg = 0; if (mode !== "clock") mode = "mass";
+      r.visible = true; sel = r; follow = "sel";
+      [T0, T1] = range();
+      T = mode === "clock" ? r.abs0 + r.passes[j] : r.passes[j] - r.start;
+      left(); right(); frame(); saveUrl();
+    },
+    get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
+    tabOk: (k) => k !== "exercises" || A.kind === "club",
+    exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
+    setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
+    setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
+    saveExercises: async (list) => { await saveExercises(list); mv.draw(); bottom.draw(); },
+    pickExercise: (e) => { state.ex = e?.id || null; if (e?.leg && e.leg !== leg) setLeg(e.leg); else { mv.draw(); bottom.draw(); } saveUrl(); },
+    redrawMap: () => mv.draw(),
+    variants: () => (leg ? variantsOf(leg) : null),
+    setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
+    shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
+    colourBy: () => cmode(), setColourBy: (c) => { colourBy = c; savePrefs(); legend(); right(); mv.draw(); },
+    extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
+  const bottom = bottomViews($("#sh-views"), X);
 
   // ---- the layout: the window's height below the top line
   const fit = () => { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 14))}px`; };
   window.addEventListener("resize", fit);
   $("#sh-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
+  // a headcam video (sharedvideo.js): a file of this device, played in step with one runner's race
+  const video = videoPanel($(".sh-map", box), { runners, key: `ocn.sh.video.${id}.${course.n}`, playing: () => playing, speed: () => speed,
+    pick: () => sel || runners.find((r) => r.mine) || runners[0],
+    raceTime: (r) => { const s = sAt(r, T); return s == null ? null : s - r.start; } });
+  $("#sh-video-btn").addEventListener("click", () => $("#sh-video-file").click());
+  $("#sh-video-file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) { video.open(f); video.sync(true); } e.target.value = ""; });
+  // the strip: a click or a drag seeks
+  const strip = $("#sh-strip");
+  const scrub = (e) => { stop(); T = T0 + stripFraction(strip, e.clientX - strip.getBoundingClientRect().left) * (T1 - T0); frame(); };
+  strip.addEventListener("pointerdown", (e) => { scrub(e); try { strip.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } strip.dataset.down = "1"; });
+  strip.addEventListener("pointermove", (e) => { if (strip.dataset.down) scrub(e); });
+  const stripUp = () => { delete strip.dataset.down; };
+  strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
+  const stripRo = new ResizeObserver(() => drawStrip());
+  stripRo.observe(strip);
   $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); fitRoutes(); mv.draw(); });
   $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); mv.fitAll(); mv.draw(); });
   window.scrollTo(0, 0);
   fit();
   mv.setAlpha(mapAlpha / 100);
   mv.setImage(image);
-  left(); right(); splits();
-  fitRoutes();
+  paceScale(); legend();
+  left(); right(); bottom.draw();
+  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else fitRoutes();
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { stop(); mv.destroy(); ownRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { stop(); video.close(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }
