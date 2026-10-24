@@ -10,7 +10,7 @@ import { R, CNAFTER_COL } from "../data.js";
 import { timeChart, slotColor, METHOD_DASH } from "../charts.js";
 import {
   methodChips, bindMethodChips, chartCard, bindChartCard, dataTable, methodLabel, methodShort, seg, runnerSearch, bindRunnerSearch, dashKey, filterFold,
-  statusLabel, pageTabs, tabFrom, bindPageTabs, cnWords,
+  statusLabel, pageTabs, tabFrom, bindPageTabs, cnWords, freezeAttrs,
 } from "../ui.js";
 import { loadRanking, applyFilters, AGES } from "./ranking.js";
 import { monthlyProgress } from "../progress.js";
@@ -229,7 +229,7 @@ export async function render(main, { query }) {
       }
       return [w, n];
     };
-    $("#h2h").innerHTML = html`<div class="table-wrap"><table class="data compact h2h">
+    $("#h2h").innerHTML = html`<div class="table-wrap"><table class="data compact h2h"${raw(freezeAttrs(1, 1))}>
       <thead><tr><th></th>${sel.map((c) => html`<th class="c" title="${nameOf(c.lic)}"><span class="dot" style="background:${raw(slotColor(c.slot))};margin-right:4px"></span>${initials(data.runner(c.lic)?.nom)}</th>`)}</tr></thead>
       <tbody>${sel.map((a) => html`<tr><th scope="row"><span class="dot" style="background:${raw(slotColor(a.slot))};margin-right:6px"></span>${nameOf(a.lic)}</th>
         ${sel.map((b) => {

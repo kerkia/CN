@@ -538,7 +538,16 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   another gets `fit-outer` and grows (one scrollbar). A box whose page sets `max-height: none` (« En direct ») is left to the
   page's single scrollbar. The race results tables — Courses classées, Résultats, En direct —
   share one format (owner, 2026-10-12): Place, Coureur, Cat., Club, Temps, then per method the CN and the score with its
-  coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap).
+  coloured gap to that CN beside it (`ui.scoreCell`, `subHead`; the score column sorts by the gap). **Frozen columns** (owner,
+  2026-10-24: « freezing the right columns across the site »): the columns that say whose row it is stay in view when a wide table
+  scrolls sideways — on a computer the leading narrow ones (tick box, place, rank) and the name after them, on a phone the narrow
+  ones only (a table starting with a name keeps it on both, capped at a third of the screen; a runner's races: the day and the
+  competition, on a computer only). `table.data` with `data-freeze` / `data-freeze-phone` (app.css « Frozen columns », up to 3;
+  `ui.freezeAttrs(n, phone)`); `ui.dataTable` picks them from its columns' keys (`autoFreeze`: `rank|place|pos|rownum|sel|i`, then
+  `name|nom|comp|club|runner`; `freeze: [n, phone]` overrides); hand-written tables tag themselves (Analyse de course's Tableau 2 / 1,
+  its name-first views 1 / 1, Analyse multi's splits, Comparer's face-à-face, Résultats' list and start list); `fit.js` measures
+  where the second and third stick (`--fz2`, `--fz3`, from the header row's widths — a stuck cell's position moves with the
+  scroll). Opaque cells, the row's tint `--row-tint` over them, a line after the last; « En direct » keeps its own (`--lv-tint`).
 - Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as
   every signed-in account's landing page since 2026-10-21, `app.homeOf`, the brand's link too): the bar shows the groups as tabs —
   « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »; En direct; Analyse de course, 2026-10-23), « Classement » (« Classement national »

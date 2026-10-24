@@ -9,7 +9,7 @@ import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { available, get as storeGet } from "../store.js";
-import { methodShort, seg, dataTable, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
+import { methodShort, seg, dataTable, scoreCell, subHead, cnLabel, scoreLabel, freezeAttrs } from "../ui.js";
 import { raceFilters } from "../racefilters.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
@@ -124,7 +124,7 @@ async function list(main, idx, query) {
     const kept = R.filter(F.keep);
     drawTiles(kept.filter((r) => !r.soon));         // a coming race's start list is not a result
     const rows = kept.filter((r) => filter === "all" || (filter === "found" ? has(r) : filter === "missing" ? !has(r) : !r.ffco_id));
-    $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"><thead><tr>
+    $("#pv-table").innerHTML = rows.length ? html`<table class="data compact"${raw(freezeAttrs(2, 0))}><thead><tr>
       <th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("prov.kind")}</th><th>${t("prov.sources")}</th>
       <th class="r">${t("prov.runners")}</th>${FR ? html`<th class="r">${t("prov.matchedShort")}</th>` : ""}<th class="c pv-wrap">${t("prov.splits")}</th>
       <th>${t("prov.official")}</th></tr></thead>
@@ -307,7 +307,7 @@ async function detail(main, idx, query) {
     const rows = [...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9) || a.name.localeCompare(b.name, "fr"));
     const ranked = rows.filter((r) => cn(r)).sort((a, b) => cn(b) - cn(a));
     const expected = new Map(ranked.map((r, i) => [r, i + 1]));
-    $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"><thead><tr>
+    $("#pv-class").innerHTML = html`<div class="table-wrap"><table class="data compact"${raw(freezeAttrs(2, 1))}><thead><tr>
       <th class="r">${t("prov.start")}</th><th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.cat")}</th>
       ${FR ? html`<th class="r">${t("col.cn")}</th>
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>` : ""}</tr></thead>

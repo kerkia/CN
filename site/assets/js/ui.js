@@ -156,9 +156,26 @@ export function legend(items) {
  * columns: [{ key, label, align, sort: (row) => value, render: (row) => html, cls }]
  */
 const ALL_BELOW = 2500, CHUNK = 400;
+// The columns that say whose row it is stay in view when a wide table scrolls sideways (owner, 2026-10-24): a place or rank
+// and the name beside it on a computer, the place alone on a phone (a name column there is left to scroll, the place first);
+// a table starting with a name keeps it on both. `freeze: [computer, phone]` overrides; the offsets are measured by fit.js.
+const NARROW_COL = /^(rank|place|pos|rownum|sel|i)$/, NAME_COL = /^(name|nom|comp|club|runner)$/;
+function autoFreeze(cols) {
+  const key = (i) => cols[i]?.key || "";
+  let n = 0;                                                   // the narrow ones first (a tick box, a rank: two at most)
+  while (n < 2 && NARROW_COL.test(key(n))) n++;
+  if (NAME_COL.test(key(n))) return [n + 1, n || 1];
+  if (n) return [n, n];
+  if (key(0) === "date" && NAME_COL.test(key(1))) return [2, 0];   // a runner's races: the day and the competition
+  return [0, 0];
+}
+/** The attributes that freeze a table's first columns (app.css « Frozen columns »): `n` on a computer, `phone` on a phone. */
+export const freezeAttrs = (n, phone = 0) => (n || phone ? ` data-freeze="${n}" data-freeze-phone="${phone}"` : "");
+
 export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
-  rowClass, onRender, emptyText = "—", caption, onSort, maxHeight, compact = false }) {
+  rowClass, onRender, emptyText = "—", caption, onSort, maxHeight, compact = false, freeze }) {
   let key = sortKey, dir = sortDir, all = [], shown = 0;
+  const [fz, fzPhone] = freeze || autoFreeze(columns);
   function sorted() {
     const col = columns.find((c) => c.key === key);
     if (!col || !col.sort) return rows;
@@ -195,7 +212,7 @@ export function dataTable(container, { columns, rows, sortKey, sortDir = -1,
     shown = all.length <= ALL_BELOW ? all.length : CHUNK;
     container.innerHTML = html`
       <div class="table-wrap table-scroll" ${raw(maxHeight ? `style="--table-max:${maxHeight}"` : "")}>
-        <table class="data ${compact ? "compact" : ""}">
+        <table class="data ${compact ? "compact" : ""}"${raw(freezeAttrs(fz, fzPhone))}>
           ${caption ? html`<caption class="sr-only">${caption}</caption>` : ""}
           <thead><tr>${columns.map((c) => html`<th scope="col" class="${c.align || ""} ${c.sort ? "sortable" : ""} ${c.cls || ""}"
               data-key="${c.key}" ${raw(c.sort ? `aria-sort="${key === c.key ? (dir > 0 ? "ascending" : "descending") : "none"}"` : "")}>

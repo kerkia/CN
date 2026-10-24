@@ -8,9 +8,26 @@
 const SEL = ".table-wrap, .table-scroll, .scroll-box, .agenda-table";
 const GAP = 14;                            // px kept under a box, so that its lower edge shows
 
+// A table's frozen columns (app.css « Frozen columns », ui.freezeAttrs): the second and third stick where the ones before
+// them end, measured on the header row (owner, 2026-10-24)
+const FROZEN = "table[data-freeze]";
+function freezeOffsets(main) {
+  for (const tb of main.querySelectorAll(FROZEN)) {
+    if (!tb.offsetParent) continue;
+    const row = [...tb.rows].find((r) => ![...r.cells].some((c) => c.colSpan > 1));
+    if (!row || row.cells.length < 2) continue;
+    // (widths, not positions: a stuck cell's position moves with the scroll)
+    for (const i of [1, 2]) {
+      const v = row.cells[i] ? `${[...row.cells].slice(0, i).reduce((s, c) => s + c.getBoundingClientRect().width, 0)}px` : "";
+      if (tb.style.getPropertyValue(`--fz${i + 1}`) !== v) tb.style.setProperty(`--fz${i + 1}`, v);
+    }
+  }
+}
+
 function fitAll() {
   const main = document.getElementById("main");
   if (!main) return;
+  freezeOffsets(main);
   const vh = window.innerHeight, bar = document.querySelector(".topbar")?.offsetHeight || 0;
   const min = Math.min(220, vh * 0.35);    // (some six rows: below that the page is scrolled to the table instead)
   const boxes = [...main.querySelectorAll(SEL)].filter((el) => el.offsetParent);           // (hidden ones apart)
@@ -43,7 +60,7 @@ export function watchTables() {
   if (!main) return;
   new MutationObserver((list) => {
     // (the fit's own changes — a box's style, data-fit and class — are not news)
-    if (list.some((m) => !(m.type === "attributes" && m.target.matches?.(SEL)))) fitTables();
+    if (list.some((m) => !(m.type === "attributes" && m.target.matches?.(`${SEL}, ${FROZEN}`)))) fitTables();
   }).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "hidden", "style", "open"] });
   let w = window.innerWidth, h = window.innerHeight;
   window.addEventListener("resize", () => {

@@ -33,7 +33,7 @@ import { t, tn, locale } from "../i18n.js";
 import { lineChart, columnChart, passChart, slotColor, css } from "../charts.js";
 import { checkClass, issueText, markText } from "../splitcheck.js";
 import { followers, regularity } from "../splitstats.js";
-import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs } from "../ui.js";
+import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs, freezeAttrs } from "../ui.js";
 import { link, replaceQuery, SITE } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
@@ -313,7 +313,7 @@ export async function render(main, { query = {} } = {}) {
     if (view === "table") {
       body.innerHTML = html`
         <section class="card"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
-          <div class="table-wrap"><table class="data compact splits"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+          <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
             <th class="r">${t("prov.time")}</th><th class="r" title="${t("spl.lost.hint")}">${t("spl.lost")}</th>
             ${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
           <tbody>${byPlace(shown).map((x) => html`<tr>
@@ -389,7 +389,7 @@ export async function render(main, { query = {} } = {}) {
         lineChart($("#sp-gap"), { categories: graph === "gap" ? ["D", ...legLabels] : legLabels,
           series: graph === "gap" ? series.map((s) => ({ ...s, data: [0, ...s.data] })) : series,
           yName: t(`spl.graph.y.${graph}`), fmtY, inverse: true });
-        $("#sp-gap-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("prov.name")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
+        $("#sp-gap-table").innerHTML = html`<table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
           <tbody>${series.map((s) => html`<tr><td>${s.name}</td>${s.data.map((v) => html`<td class="r num">${v == null ? "—" : fmtY(v)}</td>`)}</tr>`)}</tbody></table>`;
       };
     }
@@ -456,7 +456,7 @@ export async function render(main, { query = {} } = {}) {
       body.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("spl.h2h")} · ${k.name}</h2></div></div><div class="table-wrap" id="sp-h2h"></div></section>${chooser()}${foot(t("spl.h2h.hint"))}`;
       redraw = () => {
         const xs = sel();
-        $("#sp-h2h").innerHTML = xs.length < 2 ? html`<div class="empty">${t("spl.h2h.few")}</div>` : html`<table class="data compact">
+        $("#sp-h2h").innerHTML = xs.length < 2 ? html`<div class="empty">${t("spl.h2h.few")}</div>` : html`<table class="data compact"${raw(freezeAttrs(1, 1))}>
           <thead><tr><th></th>${xs.map((_, j) => html`<th class="c">${j + 1}</th>`)}<th class="r" title="${t("spl.duels.hint")}">${t("spl.duels")}</th></tr></thead>
           <tbody>${xs.map((a, i) => {
             const all = R.filter((b) => b !== a).map((b) => duel(a, b));
@@ -531,7 +531,7 @@ export async function render(main, { query = {} } = {}) {
       body.innerHTML = !timed.length ? html`<div class="card"><div class="empty">${t("spl.grp.none")}</div></div>` : html`
         <section class="card"><div class="card-head"><div><h2>${t("spl.grp.title")} · ${k.name}</h2></div></div><div id="sp-grp"></div></section>
         <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.grp.map")}</h2></div></div>
-          <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.name")}</th>${legHead.map((h) => html`<th class="c" style="font-size:11px">${h}</th>`)}</tr></thead>
+          <div class="table-wrap"><table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th>${legHead.map((h) => html`<th class="c" style="font-size:11px">${h}</th>`)}</tr></thead>
           <tbody>${[...rows].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((g) => html`<tr><td style="white-space:nowrap">${g.place ? `${g.place}. ` : ""}${g.x.r.name}</td>
             ${g.legs.map((c) => (!c ? html`<td class="c muted">·</td>` : !c.mates.length ? html`<td></td>`
               : html`<td class="c num" style="${raw(c.front ? GOOD : BAD)}" title="${c.mates.map((o) => o.r.name + (o.cls === k.name ? "" : ` (${o.cls})`)).join(", ")}">${c.mates.length}</td>`))}</tr>`)}</tbody></table></div></section>
@@ -576,7 +576,7 @@ export async function render(main, { query = {} } = {}) {
             ...xs.map((x, i) => ({ name: x.r.name, start: x.r.start_s, color: slotColor(i), data: pts(x) }))];
           $("#sp-clk-legend").innerHTML = legend(xs.map((x, i) => ({ label: x.r.name, color: slotColor(i) })));
           passChart($("#sp-clk"), { series, yLabels, fmtX: (v) => hm(v), tip });
-          $("#sp-clk-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
+          $("#sp-clk-table").innerHTML = html`<table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
             <tbody>${xs.map((x) => html`<tr><td style="white-space:nowrap">${x.r.name}</td><td class="r num">${hm(x.r.start_s, true)}</td>${x.cum.map((c) => html`<td class="r num">${c == null ? "—" : hm(x.r.start_s + c, true)}</td>`)}</tr>`)}</tbody></table>`;
         };
       }

@@ -539,6 +539,47 @@ table.data .dim { color: var(--ink-3); }
   table.data td:not(.num):not(.r):not(.c), table.data th:not(.num):not(.r):not(.c) { white-space: normal !important; }
 }
 table.data input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--focus); cursor: pointer; }
+/* Frozen columns (owner, 2026-10-24): the columns that say whose row it is stay in view when a wide table scrolls sideways
+   — data-freeze on a computer, data-freeze-phone on a phone (ui.freezeAttrs; dataTable picks them, fit.js measures where the
+   second and third stick). Opaque, the row's hover or selection tint (--row-tint) drawn over them; a line after the last. */
+table.data tr { --row-tint: transparent; }
+table.data tbody tr:hover { --row-tint: var(--surface-2); }
+table.data tbody tr.selected { --row-tint: var(--accent-wash); }
+table.data > * > tr > :nth-child(2) { --fz-l: var(--fz2, 0px); }
+table.data > * > tr > :nth-child(3) { --fz-l: var(--fz3, 0px); }
+@media (min-width: 641px) {
+table.data:is([data-freeze="1"],[data-freeze="2"],[data-freeze="3"]) > * > tr > :nth-child(1):not([colspan]),
+table.data:is([data-freeze="2"],[data-freeze="3"]) > * > tr > :nth-child(2):not([colspan]),
+table.data:is([data-freeze="3"]) > * > tr > :nth-child(3):not([colspan]) {
+    position: sticky; left: var(--fz-l, 0px); z-index: 1; background-color: var(--surface);
+    background-image: linear-gradient(var(--row-tint), var(--row-tint)); }
+table.data[data-freeze="1"] > * > tr > :nth-child(1):not([colspan]),
+table.data[data-freeze="2"] > * > tr > :nth-child(2):not([colspan]),
+table.data[data-freeze="3"] > * > tr > :nth-child(3):not([colspan]) { box-shadow: inset -1px 0 0 var(--grid); }
+}
+@media (max-width: 640px) {
+table.data:is([data-freeze-phone="1"],[data-freeze-phone="2"],[data-freeze-phone="3"]) > * > tr > :nth-child(1):not([colspan]),
+table.data:is([data-freeze-phone="2"],[data-freeze-phone="3"]) > * > tr > :nth-child(2):not([colspan]),
+table.data:is([data-freeze-phone="3"]) > * > tr > :nth-child(3):not([colspan]) {
+    position: sticky; left: var(--fz-l, 0px); z-index: 1; background-color: var(--surface);
+    background-image: linear-gradient(var(--row-tint), var(--row-tint)); }
+table.data[data-freeze-phone="1"] > * > tr > :nth-child(1):not([colspan]),
+table.data[data-freeze-phone="2"] > * > tr > :nth-child(2):not([colspan]),
+table.data[data-freeze-phone="3"] > * > tr > :nth-child(3):not([colspan]) { box-shadow: inset -1px 0 0 var(--grid); }
+  /* a name kept in view on a phone takes no more than a third of the screen (it wraps) */
+  table.data[data-freeze-phone="1"] > * > tr > :first-child:not(.num):not(.r) { max-width: 34vw; }
+}
+/* a frozen column's heading stays over both the rows and the other headings */
+@media (min-width: 641px) {
+table.data:is([data-freeze="1"],[data-freeze="2"],[data-freeze="3"]) > thead > tr > th:nth-child(1):not([colspan]),
+table.data:is([data-freeze="2"],[data-freeze="3"]) > thead > tr > th:nth-child(2):not([colspan]),
+table.data:is([data-freeze="3"]) > thead > tr > th:nth-child(3):not([colspan]) { z-index: 3; }
+}
+@media (max-width: 640px) {
+table.data:is([data-freeze-phone="1"],[data-freeze-phone="2"],[data-freeze-phone="3"]) > thead > tr > th:nth-child(1):not([colspan]),
+table.data:is([data-freeze-phone="2"],[data-freeze-phone="3"]) > thead > tr > th:nth-child(2):not([colspan]),
+table.data:is([data-freeze-phone="3"]) > thead > tr > th:nth-child(3):not([colspan]) { z-index: 3; }
+}
 table.data .strike { color: var(--ink-3); text-decoration: line-through; }
 table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .kept { color: var(--good); font-weight: 700; }

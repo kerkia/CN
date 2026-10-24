@@ -24,6 +24,7 @@ import { bestLegs, legLoss, cumOf, referenceCum } from "../trace/legs.js";
 import { gapChart, duelChart } from "../charts.js";
 import { variantKey } from "../trace/routes.js";
 import { pace } from "../trace/curves.js";
+import { freezeAttrs } from "../ui.js";
 
 export const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
@@ -58,7 +59,7 @@ function splitsView(el, X) {
   const rankOf = (r, j) => { const v = legTime(r, j); return v == null ? null : 1 + R.filter((x) => (legTime(x, j) ?? 1e9) < v).length; };
   el.innerHTML = html`<div class="card-head"><div class="hint">${t("sh.splits.hint")}</div>
       <label class="field" style="margin-left:auto"><span>${t("sh.ref")}</span><select id="sh-ref"><option value="">—</option>${R.map((r) => html`<option value="${r.uid}" ${raw(r === ref ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
-    <div class="table-wrap"><table class="data compact sh-splits"><thead><tr><th>${t("prov.name")}</th>${Array.from({ length: legsN }, (_, j) => html`<th class="r" data-legh="${j + 1}" style="cursor:pointer">${ctrlLabel(j + 1)}</th>`)}<th class="r">${t("an.total")}</th></tr></thead>
+    <div class="table-wrap"><table class="data compact sh-splits"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th>${Array.from({ length: legsN }, (_, j) => html`<th class="r" data-legh="${j + 1}" style="cursor:pointer">${ctrlLabel(j + 1)}</th>`)}<th class="r">${t("an.total")}</th></tr></thead>
     <tbody>${R.map((r) => html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}${r.published ? html` <span class="tag" title="${t("sh.pub.tip")}">${t("sh.pub")}</span>` : ""}</td>
       ${Array.from({ length: legsN }, (_, j) => { const v = legTime(r, j + 1), c = r.passes[j + 1] != null ? r.passes[j + 1] - r.start : null, rv = ref && ref !== r ? legTime(ref, j + 1) : null;
         return html`<td class="r num${v != null && v === best[j] ? " sh-best" : ""}">${v != null ? html`${clock(v)} <span class="muted">(${rankOf(r, j + 1)})</span>` : "—"}
