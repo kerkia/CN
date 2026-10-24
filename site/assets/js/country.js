@@ -1,10 +1,10 @@
 // The site's country (owner, 2026-10-20): one choice for the whole site, beside the language, as the method is. The pages
 // that depend on a country (Agenda, Résultats, En direct, the organisers' pickers; the rankings once another country has data)
 // show that country's. One place to choose it, the header's menu (owner, 2026-10-21: the Agenda's « Pays » field and En direct's
-// repeated it): first the countries whose data the site reads (meta.json `countries`; France alone until then) and those the
-// account has joined, whose competitions their organisers declare (functions/api/declared.js), then every other IOF member —
-// liveresultat carries races of many (« En direct »). Default: the first country the account joined successfully, else the
-// first with data. Kept on the device (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
+// repeated it): the countries whose data the site reads (meta.json `countries`; France alone until then) and those the
+// account has joined, whose competitions their organisers declare (functions/api/declared.js) — no other (owner, 2026-10-24:
+// a country without data showed empty lists; « En direct »'s search still finds any country's live races). Default: the first
+// country the account joined successfully, else the first with data. Kept on the device (localStorage ocn.country). Countries are ISO alpha-2 codes, named in the reader's language by the browser.
 
 import { html } from "./util.js";
 import { t, lang } from "./i18n.js";
@@ -29,7 +29,7 @@ export function current() {
   const ok = withData();
   let kept = null;
   try { kept = localStorage.getItem(KEY); } catch (e) { /* none */ }
-  if (ok.includes(kept) || MEMBERS.includes(kept)) return kept;
+  if (ok.includes(kept)) return kept;
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
   return mine.find((cc) => ok.includes(cc)) || ok[0];
 }
@@ -45,7 +45,7 @@ export const access = (cc) => info(cc)?.access || null;
 /** Does the site rank a country's runners (its runners, ranking, clubs… pages)? */
 export const ranks = (cc = current()) => !!info(cc)?.ranking;
 
-/** The header's menu, beside the language's: the countries with data or joined, then every other member country. */
+/** The header's menu, beside the language's: the countries with data or joined. */
 /** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */
 export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
   ? html`<img class="${cls}" src="${flag(cc)}" alt="" width="18" height="13" loading="lazy" decoding="async">` : "");
@@ -60,7 +60,7 @@ export function menu() {
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu cty-menu" role="menu">${byName(ok).map(item)}<div class="nav-menu-head">${t("cty.others")}</div>${sortedMembers(ok).map(item)}</div>
+    <div class="nav-menu cty-menu" role="menu">${byName(ok).map(item)}</div>
   </div>`;
 }
 

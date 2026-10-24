@@ -1132,7 +1132,6 @@ export default {
   "ac.reg.err.robot": "The anti-robot check failed. Try again; if it keeps failing, reload the page.",
   "ac.reg.err.robotLoad": "The anti-robot check does not load (code {code}). Reload the page; if it keeps failing, write to us.",
   "cty.menu": "Country",
-  "cty.others": "Other countries",
   "cty.hint.other": "Choose another country", "cty.hint.tip": "The country is chosen at the top of the page, beside the language.",
   "cty.hint.races": "Races {in}", "cty.in.en": "in", "cty.in.au": "in", "cty.in.aux": "in the", "cty.in.a": "in",
   "cty.need.title": "For members in France",

@@ -778,7 +778,6 @@ export default {
   "ac.reg.err.robot": "La vérification anti-robot a échoué. Réessayez ; si cela persiste, rechargez la page.",
   "ac.reg.err.robotLoad": "La vérification anti-robot ne se charge pas (code {code}). Rechargez la page ; si cela persiste, écrivez-nous.",
   "cty.menu": "Pays",
-  "cty.others": "Autres pays",
   "cty.hint.other": "Choisir un autre pays", "cty.hint.tip": "Le pays se choisit en haut de la page, à côté de la langue.",
   "cty.hint.races": "Courses {in}", "cty.in.en": "en", "cty.in.au": "au", "cty.in.aux": "aux", "cty.in.a": "à",
   "cty.need.title": "Réservé aux membres de la France",
