@@ -11,13 +11,17 @@ export function build(X) {
     EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows,
     RACE6, r6, n0, more, fr = true } = X;
 
-  const TABS = [["officiel", "CN officiel"], ["top", "Méthode Ozimut"], ["etude", "L'étude"], ["calculs", "Les calculs du site"], ["tracer", "Le tracé"]].filter(([k]) => fr || k !== "officiel");
+  // the methods' tabs (the guide's — Le site, Courses, Entraînement, Organisation — are content/guide.*.js'; pages/methods.js orders
+  // them all); « L'étude » is no tab of the bar since 2026-10-24 (owner): the Ozimut method's tab leads to it (STUDY_TAB)
+  const TABS = [["officiel", "CN officiel"], ["top", "Méthode Ozimut"], ["calculs", "Coureurs et clubs"], ["tracer", "Le tracé"]]
+    .filter(([k]) => fr || (k !== "officiel" && k !== "calculs"));
+  const STUDY_TAB = ["etude", "L'étude"];
   const STUDY_CHAPTERS = [["objectifs", "Objectifs"], ["depart", "Le point de départ"], ["mesure", "La mesure"],
     ["choix", "Les choix et les variantes"], ["resultats", "Les résultats"], ["conclusion", "La méthode retenue"]];
-  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["resultats", fr ? "Résultats et temps intermédiaires" : "Temps intermédiaires"],
-    ["relais", "Relais"], ["limites", "Limites"]].filter(([k]) => fr || k === "resultats");
-  const lede = fr ? html`Les règles du classement officiel et de la méthode Ozimut, l'étude qui y a conduit, les autres calculs du site, et le tracé des circuits.`
-    : html`Les règles de la méthode Ozimut, l'étude qui l'a validée sur les résultats français, les temps intermédiaires et le tracé des circuits.`;
+  // (the results and split times moved to the guide's « Courses » on 2026-10-24: guide.*.js)
+  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["relais", "Relais"], ["limites", "Limites"]];
+  const lede = fr ? html`Comment se servir d'Ozimut, partie par partie, et comment il calcule : le classement officiel, la méthode Ozimut et l'étude qui l'a validée, les analyses, le tracé des circuits.`
+    : html`Comment se servir d'Ozimut, partie par partie, et comment il calcule : la méthode Ozimut et l'étude qui l'a validée sur les résultats français, les analyses, le tracé des circuits.`;
   const note = !fr ? "" : html`Seule la ${methodLabel("official")} reprend des valeurs publiées par la Fédération française de course d'orientation (FFCO) ; la méthode Ozimut est un calcul alternatif, fait par le site sur les mêmes résultats.`;
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const force = html`le niveau habituel des coureurs`;
@@ -143,6 +147,8 @@ export function build(X) {
       <h2>Un score Ozimut par course, un indice Ozimut par coureur</h2>
       <p class="mx-lead">La méthode Ozimut se lit en deux temps, comme le classement mondial de l'IOF. D'abord, chaque course rapporte un <b>score Ozimut</b> à
         chaque coureur. Ensuite, l'<b>indice Ozimut</b> d'un coureur résume ses meilleurs scores Ozimut des 12 derniers mois.</p>
+      <div class="notice info" style="margin:12px 0">Pourquoi ces choix, et ce qu'ils valent face au CN officiel : <a href="#/documentation?onglet=etude" data-tab-link="etude"><b>l'étude</b></a>,
+        qui a mesuré chaque variante sur les résultats français depuis 2012.</div>
       <div class="mx-grid">
         <div class="mx-box" style="--c:var(--s1)"><h3>Le score Ozimut d'une course</h3>
           <p>La difficulté du circuit se mesure sur le niveau habituel des coureurs présents, comme la FFCO le fait avec leur CN. Le score d'un coureur
@@ -776,7 +782,7 @@ export function build(X) {
             surtout ce point de départ. Ses indices ne remplacent en aucun cas le classement officiel.</p>
         </section>`,
     };
-    return buildChapters(STUDY_CHAPTERS, CH, "objectifs");
+    return html`<p style="margin:0 0 12px"><a href="#/documentation?onglet=top" data-tab-link="top">← Méthode Ozimut</a></p>${buildChapters(STUDY_CHAPTERS, CH, "objectifs")}`;
   }
 
   // ======================================================================================================
@@ -1486,63 +1492,6 @@ export function build(X) {
             <li><span><b>Âges</b> : la répartition des coureurs entre les catégories d'âge, dames à gauche, hommes à droite, en part de l'ensemble choisi.</span></li>
           </ul>
         </section>`,
-      resultats: () => html`${!fr ? "" : html`
-        <section class="mx-slide">
-          <p class="mx-kicker">Résultats</p>
-          <h2>Scores et CN provisoires</h2>
-          <p>Les organisateurs publient leurs résultats le jour de la course ou le lendemain, plusieurs jours avant la FFCO. Le site les collecte (plateformes
-            de résultats, site du club, fichiers déposés par les utilisateurs), reconnaît les coureurs par leur nom et leur club, et calcule des scores
-            provisoires avec les règles de chaque méthode.</p>
-          <ul class="mx-list">
-            <li><span><b>Officiel</b> : le CN officiel de chaque coureur reconnu, 15 jours avant la course, et la règle de la FFCO (moyenne ordinaire sur les deux
-              tiers les plus rapides).</span></li>
-            <li><span><b>Ozimut</b> : le niveau habituel de chaque coureur reconnu, 15 jours avant la course, la valeur Ozimut du circuit (la
-              moyenne des niveaux × temps des plus rapides : 90 % du peloton en forêt, deux tiers en sprint), et le facteur de recalage du jour. L'indice Ozimut provisoire après la course suit la règle des places.</span></li>
-            <li><span>Seules les listes <b>par circuit</b> sont notées. Une liste par catégorie l'est circuit par circuit une fois qu'on sait quelles catégories
-              couraient sur quel circuit (d'après les listes par circuit de la même course, la liste d'inscription de la FFCO ou l'annonce de course). Les
-              coureurs non reconnus restent sans CN.</span></li>
-            <li><span>Ces valeurs sont provisoires jusqu'à la publication par la FFCO : les valeurs définitives peuvent différer, si des résultats sont corrigés
-              ou des coureurs ajoutés.</span></li>
-          </ul>
-        </section>`}
-        <section class="mx-slide">
-          <p class="mx-kicker">Temps intermédiaires</p>
-          <h2>Le temps perdu et les erreurs</h2>
-          <ul class="mx-list">
-            <li><span>Sur chaque tronçon entre deux postes, le <b>temps perdu</b> est l'écart entre le temps du coureur et le temps que son allure habituelle
-              sur cette course laissait prévoir. Il est négatif quand le coureur va plus vite que d'habitude. Le temps de référence d'un tronçon est la
-              moyenne des temps les plus rapides (le sixième le plus rapide, sans le vainqueur), et l'allure habituelle le temps du coureur sur les tronçons
-              courus sans erreur rapporté à leurs temps de référence : un long tronçon y compte plus qu'un court, comme dans MeOS.</span></li>
-            <li><span>Une <b>erreur</b> est un tronçon où le coureur a perdu au moins 20 % du temps du tronçon <b>et</b> au moins 10 secondes ; les deux seuils se
-              règlent. Les colonnes « Perdu » et « Sans temps perdu » ne comptent que les erreurs.</span></li>
-            <li><span>Les <b>écarts</b> se mesurent au « superman », un coureur imaginaire qui aurait le meilleur temps sur chaque tronçon, parmi tous les
-              coureurs ou parmi ceux que l'on compare.</span></li>
-            <li><span>Les <b>groupes</b> repèrent les coureurs qui passent aux mêmes postes à quelques secondes d'intervalle, poste après poste.</span></li>
-          </ul>
-        </section>
-        <section class="mx-slide">
-          <p class="mx-kicker">Temps intermédiaires</p>
-          <h2>Passages, autonomie, régularité, contrôle des temps</h2>
-          <ul class="mx-list">
-            <li><span>Le <b>graphique des passages</b> place chaque coureur à l'heure où il pointe chaque poste (son heure de départ plus son temps cumulé) :
-              des lignes qui se rejoignent sont des coureurs ensemble, une ligne plus raide est un coureur qui en rattrape d'autres.</span></li>
-            <li><span><b>Autonomie</b>, qui a suivi qui : sur chaque tronçon, deux coureurs du circuit partis du même poste à moins de 20 secondes d'intervalle sont
-              comparés tout du long, chacun supposé avancer à vitesse régulière entre les deux postes. À moins de 7 secondes l'un de l'autre, ils courent
-              ensemble ; de 7 à 20 secondes, de moins en moins. Celui qui passe le second suit l'autre. L'indice suiveur est le temps couru derrière moins
-              le temps couru devant, rapporté au temps de course : positif pour un suiveur, négatif pour un lièvre. Suivre fait gagner du temps (l'autre
-              lit la carte et ouvre le chemin), d'où l'intérêt de le repérer ; les deux seuils se règlent.</span></li>
-            <li><span><b>Régularité</b> : sur chaque tronçon, l'indice de performance est le temps de référence (la moyenne du meilleur quart des temps)
-              divisé par le temps du coureur, 100 % pour aller aussi vite que les meilleurs. L'irrégularité est l'écart type de ces indices, chaque tronçon
-              pesant son temps de référence, rapporté à l'indice moyen du coureur : un coureur régulier garde le même rythme d'un tronçon à l'autre, un
-              coureur irrégulier alterne bons tronçons et hésitations. La dispersion d'un tronçon, le niveau de chacun mis à part, montre ceux où tout le
-              monde a varié : les tronçons piégeux. Seuls les coureurs arrivés avec tous leurs temps comptent.</span></li>
-            <li><span>Le <b>contrôle des temps</b> lit les temps intermédiaires eux-mêmes. Un tronçon couru en temps négatif au même poste pour au moins deux
-              coureurs trahit un boîtier mal mis à l'heure (celui de ce poste ou du précédent) : il décale tous ceux qui y pointent. Un tronçon négatif
-              isolé trahit une carte non effacée, qui garde les poinçons d'une course précédente. Un coureur classé sans un poste que les autres ont pointé
-              l'a sans doute pointé avant son départ, et le logiciel a écarté ce poinçon. L'organisateur le voit en déposant ses résultats, avant de les
-              publier ; le lecteur, au-dessus des analyses, et les cases concernées sont encadrées dans le tableau.</span></li>
-          </ul>
-        </section>`,
       relais: () => html`
         <section class="mx-slide">
           <p class="mx-kicker">Relais</p>
@@ -1651,5 +1600,5 @@ export function build(X) {
       })}</div>`;
     $$('[data-seg="evq"]').forEach((x) => x.addEventListener("click", () => { evPeriod = x.dataset.value; drawEval(); }));
   }
-  return { TABS, STUDY_CHAPTERS, SITE_CHAPTERS, lede, note, officiel, top, etude, calculs, tracerDoc, drawAgreement, drawEval };
+  return { TABS, STUDY_TAB, STUDY_CHAPTERS, SITE_CHAPTERS, lede, note, officiel, top, etude, calculs, tracerDoc, drawAgreement, drawEval };
 }

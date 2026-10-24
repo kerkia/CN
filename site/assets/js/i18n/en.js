@@ -1080,7 +1080,7 @@ export default {
   "me.norm.hint": "Factor applied to a race's score according to its day, by discipline",
   "err.load": "Couldn't load the data.",
   "err.notfound": "Not found.",
-  "page.methods": "Calculation methods",
+  "page.methods": "Documentation",
   "page.all": "Show all",
   "page.allRows": "All",
   "page.prev": "Previous",

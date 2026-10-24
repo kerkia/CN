@@ -11,13 +11,17 @@ export function build(X) {
     EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows,
     RACE6, r6, n0, more, fr = true } = X;
 
-  const TABS = [["officiel", "Official CN"], ["top", "Ozimut method"], ["etude", "The study"], ["calculs", "The site's calculations"], ["tracer", "Course setting"]].filter(([k]) => fr || k !== "officiel");
+  // the methods' tabs (the guide's — The site, Races, Training, Organising — are content/guide.*.js'; pages/methods.js orders
+  // them all); « The study » is no tab of the bar since 2026-10-24 (owner): the Ozimut method's tab leads to it (STUDY_TAB)
+  const TABS = [["officiel", "Official CN"], ["top", "Ozimut method"], ["calculs", "Runners and clubs"], ["tracer", "Course setting"]]
+    .filter(([k]) => fr || (k !== "officiel" && k !== "calculs"));
+  const STUDY_TAB = ["etude", "The study"];
   const STUDY_CHAPTERS = [["objectifs", "Objectives"], ["depart", "The starting point"], ["mesure", "The measure"],
     ["choix", "Choices and variants"], ["resultats", "The results"], ["conclusion", "The method adopted"]];
-  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Runners"], ["reseau", "Network"], ["resultats", fr ? "Results and split times" : "Split times"],
-    ["relais", "Relays"], ["limites", "Limitations"]].filter(([k]) => fr || k === "resultats");
-  const lede = fr ? html`The rules of the official ranking and of the Ozimut method, the study that led to it, the site's other calculations, and course setting.`
-    : html`The rules of the Ozimut method, the study that validated it on French results, split times and course setting.`;
+  // (the results and split times moved to the guide's « Races » on 2026-10-24: guide.*.js)
+  const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Runners"], ["reseau", "Network"], ["relais", "Relays"], ["limites", "Limitations"]];
+  const lede = fr ? html`How to use Ozimut, part by part, and how it calculates: the official ranking, the Ozimut method and the study that validated it, the analyses, course setting.`
+    : html`How to use Ozimut, part by part, and how it calculates: the Ozimut method and the study that validated it on French results, the analyses, course setting.`;
   const note = !fr ? "" : html`Only the ${methodLabel("official")} uses values published by the French orienteering federation (FFCO); the Ozimut method is an alternative calculation, made by the site on the same results.`;
   const pctOf = (x) => `${fmt(100 * x)}%`;
   const force = html`the runners' usual level`;
@@ -143,6 +147,8 @@ export function build(X) {
       <h2>An Ozimut score per race, an Ozimut index per runner</h2>
       <p class="mx-lead">The Ozimut method works in two steps, like the IOF World Ranking. First, each race gives every runner an <b>Ozimut score</b>.
         Then a runner's <b>Ozimut index</b> sums up their best Ozimut scores of the last 12 months.</p>
+      <div class="notice info" style="margin:12px 0">Why these choices, and how they compare with the official CN: <a href="#/documentation?onglet=etude" data-tab-link="etude"><b>the study</b></a>,
+        which measured every variant on French results since 2012.</div>
       <div class="mx-grid">
         <div class="mx-box" style="--c:var(--s1)"><h3>A race's Ozimut score</h3>
           <p>The difficulty of the course is measured on the usual level of the runners present, as FFCO does with their CN. A runner's score
@@ -776,7 +782,7 @@ export function build(X) {
             that starting point. Its indexes in no way replace the official ranking.</p>
         </section>`,
     };
-    return buildChapters(STUDY_CHAPTERS, CH, "objectifs");
+    return html`<p style="margin:0 0 12px"><a href="#/documentation?onglet=top" data-tab-link="top">← Ozimut method</a></p>${buildChapters(STUDY_CHAPTERS, CH, "objectifs")}`;
   }
 
   // ======================================================================================================
@@ -1484,63 +1490,6 @@ export function build(X) {
             <li><span><b>Ages</b>: how the runners are spread across the age classes, women on the left, men on the right, as a share of the chosen group.</span></li>
           </ul>
         </section>`,
-      resultats: () => html`${!fr ? "" : html`
-        <section class="mx-slide">
-          <p class="mx-kicker">Results</p>
-          <h2>Provisional scores and CNs</h2>
-          <p>Organisers publish their results on the day of the race or the day after, several days before FFCO. The site collects them (results
-            platforms, the club's website, files uploaded by users), recognises the runners by their name and club, and calculates provisional
-            scores with each method's rules.</p>
-          <ul class="mx-list">
-            <li><span><b>Official</b>: each recognised runner's official CN 15 days before the race, and FFCO's rule (an ordinary mean over the fastest
-              two thirds).</span></li>
-            <li><span><b>Ozimut</b>: each recognised runner's usual level 15 days before the race, the course's Ozimut value (the
-              mean of level × time over the fastest: 90% of the field in forest, two thirds in sprint), and the day's rescaling factor. The provisional Ozimut index after the race follows the rule of places.</span></li>
-            <li><span>Only lists <b>by course</b> are scored. A list by class is scored course by course once it is known which classes
-              ran on which course (from the same race's lists by course, FFCO's entry list or the race announcement). Runners
-              who are not recognised stay without a CN.</span></li>
-            <li><span>These values are provisional until FFCO publishes the results: the final values may differ if results are corrected
-              or runners added.</span></li>
-          </ul>
-        </section>`}
-        <section class="mx-slide">
-          <p class="mx-kicker">Splits</p>
-          <h2>Time lost and mistakes</h2>
-          <ul class="mx-list">
-            <li><span>On each leg between two controls, the <b>time lost</b> is the gap between the runner's time and the time their usual pace
-              on this race would have predicted. It is negative when the runner goes faster than usual. A leg's reference time is the mean of the
-              fastest times (the fastest sixth, the winner left out), and the usual pace the runner's time on the legs run without a mistake over their
-              reference times: a long leg counts more than a short one, as in MeOS.</span></li>
-            <li><span>A <b>mistake</b> is a leg on which the runner lost at least 20% of the leg's time <b>and</b> at least 10 seconds; both thresholds
-              can be adjusted. The “Lost” and “Without time lost” columns count only the mistakes.</span></li>
-            <li><span>The <b>gaps</b> are measured against the “superman”, an imaginary runner with the best time on every leg, among all the
-              runners or among those being compared.</span></li>
-            <li><span>The <b>groups</b> spot the runners who pass the same controls a few seconds apart, control after control.</span></li>
-          </ul>
-        </section>
-        <section class="mx-slide">
-          <p class="mx-kicker">Splits</p>
-          <h2>Passings, autonomy, regularity, timing check</h2>
-          <ul class="mx-list">
-            <li><span>The <b>passing times chart</b> places each runner at the time of day they punched each control (their start time plus their
-              cumulative time): lines that meet are runners together, a steeper line is a runner catching others up.</span></li>
-            <li><span><b>Autonomy</b>, who followed whom: on each leg, two runners of the course who left the same control less than 20 seconds apart are compared
-              all along it, each assumed to move at a steady speed between the two controls. Less than 7 seconds apart, they run together; from 7 to 20
-              seconds, less and less. The one who passes second follows the other. The follower index is the time run behind minus the time run in front,
-              as a share of the race time: positive for a follower, negative for a leader. Following saves time (the other reads the map and opens the
-              way), hence the interest in spotting it; both thresholds can be adjusted.</span></li>
-            <li><span><b>Regularity</b>: on each leg, the performance index is the reference time (the mean of the best quarter of times) divided by the
-              runner's time, 100% for going as fast as the best. Irregularity is the standard deviation of these indices, each leg weighing its reference
-              time, relative to the runner's mean index: a steady runner keeps the same pace from one leg to the next, an irregular one alternates good
-              legs and hesitations. A leg's spread, with each runner's level set aside, shows the legs where everyone varied: the tricky legs. Only the
-              runners who finished with all their times count.</span></li>
-            <li><span>The <b>timing check</b> reads the split times themselves. A leg run in negative time at the same control for at least two runners
-              betrays a unit set to the wrong time (this control's or the previous one's): it shifts everyone who punches it. An isolated negative leg
-              betrays a card not cleared, which keeps the punches of an earlier race. A runner ranked without a control the others punched probably
-              punched it before their start, and the software discarded that punch. The organiser sees it when depositing their results, before
-              publishing them; readers see it above the analyses, and the cells concerned are framed in the table.</span></li>
-          </ul>
-        </section>`,
       relais: () => html`
         <section class="mx-slide">
           <p class="mx-kicker">Relays</p>
@@ -1649,5 +1598,5 @@ export function build(X) {
       })}</div>`;
     $$('[data-seg="evq"]').forEach((x) => x.addEventListener("click", () => { evPeriod = x.dataset.value; drawEval(); }));
   }
-  return { TABS, STUDY_CHAPTERS, SITE_CHAPTERS, lede, note, officiel, top, etude, calculs, tracerDoc, drawAgreement, drawEval };
+  return { TABS, STUDY_TAB, STUDY_CHAPTERS, SITE_CHAPTERS, lede, note, officiel, top, etude, calculs, tracerDoc, drawAgreement, drawEval };
 }

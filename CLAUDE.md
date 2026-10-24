@@ -944,7 +944,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   documentation never says « Fit ». The results
   tables' headers, the runner page's tiles and cards (`rn.current`, `rn.best`, `rn.calc`, `rn.cnHistory` take `{cn}`), the
   switch's tooltips and the documentation use these words.
-- **Documentation** (`#/methodes`, `pages/methods.js`; owner, 2026-10-14): four tabs — « CN officiel » and « CN Top », each
+- **Documentation** (`#/documentation` since 2026-10-24, `#/methodes` before and still opened, rewritten; `pages/methods.js`, title
+  « Documentation », `page.methods`). **Since 2026-10-24 (owner: the page told the methods, not the site)** its tabs are « Le site »
+  (the menus, country and language, account and alerts, the phone), « Courses » (Agenda, Résultats — the provisional scores —,
+  En direct, Analyse de course — the split times' calculations —, the GPS analyses), « CN officiel » (France), « Méthode
+  Ozimut », « Coureurs et clubs » (the former « Les calculs du site » less the split times, France only), « Entraînement »
+  (Jeux, VMA, Analyse solo, Analyse multi), « Organisation » (who organises, Résultats, Horaires, Direct, GPS tracking, the
+  multi analyses, declared competitions, the course setting) and « Le tracé »; the guide's four are `content/guide.fr.js` /
+  `.en.js` (`build(X)`, the same chapters in step). « L'étude » has a panel but no button: the Ozimut method's tab leads to
+  it (a notice after its lead) and it leads back; `?onglet=etude` still opens it; `?onglet=calculs&voir=resultats` opens
+  « Courses › Analyse de course ». A country without a ranking of its own (Switzerland…) shows France's figures under a note
+  (`data.countryJson`, `doc.country.none`). Before 2026-10-24, four tabs — « CN officiel » and « CN Top », each
   method's rules and formulas, facts only; « L'étude », the white paper in ten chapters (objectives, the point of departure,
   the measure, the base choices, the score and its mean, the circuit's value, the recalage, the results, the alternatives
   discarded, the conclusion) with the figures that support each decision, drawn as SVG from `site/assets/study.json` (the

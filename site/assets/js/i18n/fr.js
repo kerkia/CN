@@ -739,7 +739,7 @@ export default {
   "chart.12m": "12 mois", "chart.3y": "3 ans", "chart.5y": "5 ans",
   "me.norm": "Recalage · Méthode Ozimut", "me.norm.hint": "Facteur appliqué au score d'une course selon son jour, par spécialité",
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
-  "page.methods": "Méthodes de calcul", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",
+  "page.methods": "Documentation", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",
   "misc.yes": "oui", "misc.no": "non", "misc.loading": "Chargement…",
 
   // accounts: e-mail + password

@@ -148,14 +148,20 @@ export async function render(main, { query = {} } = {}) {
     tickStep, tickDec, est, star, SEP, main, meta, pf, p6, M, analyst, tops, fmtW, own, TNAME, v, ev, study, season, VM, ref, entry,
     right, share, EVM, EV_UNIT, evRows, evSeasons, evFmt, pairLabel, evWins, lvl, hf, hs, hfn, hsn, dci, subTabs, windows, RACE6,
     r6, n0, more, fr });
-  const { TABS } = C;
+  // the guide to the site (owner, 2026-10-24: the page told the methods, not the site): its tabs first, then the methods';
+  // « L'étude » has a panel but no button — the Ozimut method's tab leads to it
+  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr });
+  const at = (k) => C.TABS.filter(([x]) => x === k);
+  const TABS = [["site", G.LABELS.site], ["courses", G.LABELS.courses], ...at("officiel"), ...at("top"), ...at("calculs"),
+    ["entrainement", G.LABELS.entrainement], ["orga", G.LABELS.orga], ...at("tracer")];
+  const PANELS = [...TABS, C.STUDY_TAB];
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
       <p class="lede">${C.lede}</p></div></div>
     ${countryNote(from)}
     <nav class="mx-tabs" role="tablist">${TABS.map(([k, label], i) => html`<button type="button" role="tab" data-tab="${k}"
       aria-selected="false"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
-    ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}
+    ${PANELS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}
     <p class="muted" style="font-size:13px;margin-top:8px">${C.note}</p>`;
 
   // ---- charts, drawn when their tab is first shown -------------------------------------------------------
@@ -178,7 +184,8 @@ export async function render(main, { query = {} } = {}) {
   function drawStudyFigures() {}            // the first study's SVG figures left with their chapters (2026-10-16)
   const DRAW = { top: drawNorm, etude: () => {} };
   const DRAW_CHAPTER = { resultats: () => { C.drawAgreement(); C.drawEval(); } };
-  const BUILD = { officiel: C.officiel, top: C.top, etude: C.etude, calculs: C.calculs, tracer: C.tracerDoc };
+  const BUILD = { site: G.site, courses: G.courses, entrainement: G.entrainement, orga: G.orga,
+    officiel: C.officiel, top: C.top, etude: C.etude, calculs: C.calculs, tracer: C.tracerDoc };
 
   // ---- tabs and chapters ------------------------------------------------------------------------------------
   const built = new Set();
@@ -223,7 +230,9 @@ export async function render(main, { query = {} } = {}) {
   }
   $$("[data-tab]", main).forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
   const OLD = { essentiel: "etude", detail: "top", analyses: "etude", autres: "calculs" };     // the tabs until 2026-10-14
-  const first = TABS.some(([k]) => k === query.onglet) ? query.onglet : OLD[query.onglet] || TABS[0][0];
+  // the results and split times were a chapter of « calculs » until 2026-10-24: now the guide's « Courses »
+  if (query.onglet === "calculs" && query.voir === "resultats") { query = { ...query, onglet: "courses", voir: "analyse" }; }
+  const first = PANELS.some(([k]) => k === query.onglet) ? query.onglet : OLD[query.onglet] || TABS[0][0];
   // the study's chapters until 2026-10-16, folded into « Les choix et les variantes »
   const OLD_CH = { score: "choix", circuit: "choix", recalage: "choix", ecartes: "choix" };
   show(first, OLD_CH[query.voir] || query.voir, true);
