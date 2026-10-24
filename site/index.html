@@ -19,8 +19,9 @@
     // system's own setting.
     let t = null;
     try { t = localStorage.getItem("cnx.theme"); } catch (e) {}
-    // the themes' first names, for a few hours on 2026-10-13
-    if (t === "paper") t = "clearing"; else if (t === "forest") t = "undergrowth"; else if (t === "dusk") t = "forest";
+    // the themes' first names, for a few hours on 2026-10-13 (« forest » was then Sous-bois, but it is Forêt's name since:
+    // renamed, it turned every saved Forêt into Sous-bois at each visit — 2026-10-24)
+    if (t === "paper") t = "clearing"; else if (t === "dusk") t = "forest";
     if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = t;
   </script>

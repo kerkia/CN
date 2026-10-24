@@ -460,6 +460,9 @@ function renderHeader(r) {
     if (next === document.documentElement.dataset.theme) return;
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("cnx.theme", next); } catch (e) {}
+    // the menu marks the new one itself: a page that follows its own address (the Agenda, the landing page) is not redrawn
+    // by route_, header included (2026-10-24: on a phone the menu kept marking Nuit, the default there)
+    $$("[data-theme-pick]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.themePick === next)));
     route_();                     // charts read colours at render time
   }));
   drawContours();
