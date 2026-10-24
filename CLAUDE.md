@@ -1207,6 +1207,39 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   editor; Cloudflare takes 100 MB a request). R2's free 10 GB (420 MB used on 2026-10-14: the database and the site
   state) hold some 2000 phone photos of 5 MB; the administrators see the bucket's use on the list pages
   (`/api/analyses?stats=1`).
+  **After 2DRerun** (study of 2026-10-23 against World of O's 2DRerun/3DRerun, from public write-ups; built 2026-10-24,
+  one commit each, live GPS tracking and QuickRoute import out of scope): the routes can be **coloured by pace** (one scale for
+  every runner shown, Solo's legend; `trace/pacecolour.js`, moved out of `analysis.js`), and in a leg's view by **leg time**
+  (fastest to slowest) or by **variant**. Under the replay, `pages/sharedviews.js` draws five tabs: « Temps intermédiaires » (the
+  splits against « Comparer à »), « Inter-postes » (one runner's legs as Solo: time, best and rank, time lost by the split-times
+  page's rule — `trace/legs.js`, moved out of `analysis.js` —, route against the straight line, pace; never heart rate: only
+  positions and times are shared), « Écarts » (each runner's gap to the leader at each control, the « superman » of best legs or a
+  runner, against the controls or the course's km, `charts.gapChart`; a click near a point puts the replay at that pass and follows
+  the runner; « Face-à-face »: time gained/lost leg by leg, `charts.duelChart`), « Variantes » (route choices, below) and
+  « Exercices » (a training's only, below). **A competition's published split times** (`trace/published.js`): the runner's row in
+  the circuit's class with splits (else any), the course matched to the class's controls by codes in order, else by count; the
+  trace's clock offset from the published start when it agrees with the trace's passes within 2 min, else the median shift to them
+  (passes over 60 s off dropped): passes, start and finish then come from the published times, and the legs, the leader and the
+  superman are taken over the whole class (« officiel » tag). **The replay's state in the address** (`replaceQuery`, written once
+  the replay is still 0.4 s, 1.5 s while playing): `c`, `m`, `from`, `t`, `leg`, `show` (uids shown), `sel`, `f`, `ref`, `v` (the
+  tab), `lo`, `g`/`gx`/`gm`/`da` (gaps), `ex`; `?fen=1` kept. **The pace strip** under the map (`trace/pacestrip.js`, « Allure sous
+  la carte », on by default): every runner shown as a line over the replay's own time axis, smoothed, the cursor; a click or drag
+  seeks. **Route choices** (`trace/routes.js`): on a leg, each route resampled to 32 points by length, the discrete Fréchet distance,
+  complete linkage under a threshold (a fifth of the straight leg, 30-120 m, a slider); variants lettered from the fastest, each with
+  runners, best and median time, mean length; a hand edit (runner moved, merge, name) freezes the leg, a later trace joins the
+  nearest variant within the threshold. Tags: the organiser's on the server with the circuit (shared with every runner,
+  « Partager avec les coureurs »), anyone's own in `localStorage ocn.sh.var.<id>.<n>`, over the organiser's — a runner's tags need
+  no right to write and change nothing for others. **Exercises** (`trace/corridor.js`, training analyses only): the organiser draws
+  a corridor (a line clicked on the map, a width) on the whole course or a leg, or makes a leg a compass leg (the straight line
+  between its controls); each runner's share of route inside (by distance), time outside, largest and mean deviation, and on a
+  compass leg the bearing error (to halfway, positive to the right); the width recounts live — the organiser's is saved, a
+  runner's is theirs for the visit. Both live in the circuit (`course.variants` {leg: {th, names, assign}}, `course.exercises`
+  [{id, kind, leg, w, name, pts}]) through `PUT /api/analyses/<id>/extras/<n>` (organiser only, R2 as the rest, no D1), kept
+  when the organiser edits the circuit. **A headcam video** (`pages/sharedvideo.js`, « 🎥 » in the map's tools): a local file
+  (object URL, never sent) in step with one runner's race, the offset typed or set by « Caler ici »; plays at the replay's rate up
+  to × 16, frame by frame beyond; runner and offset kept per analysis in `localStorage ocn.sh.video.<id>.<n>`. Tested locally
+  with synthetic traces on the reel's invented map (scratch `mkmulti.mjs`, `mkrace.mjs`: four accounts, a route variant, a
+  mistake loop, traces time-warped to a local race's published splits).
 - **Languages: French and English** (owner, 2026-10-17; open to everyone since 2026-10-18, `i18n.OPEN` true). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys

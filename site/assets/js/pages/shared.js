@@ -10,7 +10,11 @@
 // traces are replayed together as Livelox does: clock time, mass start, a mass start from any control, or waiting at
 // every control; follow everyone, one runner or no one; a leg view (every runner's route on one leg, with time,
 // distance, pace and rank) stepped leg by leg; the splits table, against a chosen runner (the duel). For a
-// competition, the runners' published results stand beside their traces. Stored by /api/analyses (R2).
+// competition, the runners' published results stand beside their traces, and their published split times give the
+// passes. After World of O's 2DRerun (2026-10-24): routes coloured by pace, leg time or route choice; the runners' paces
+// under the map; under the replay one runner's legs, the gaps along the race, the route choices of a leg, a training's
+// corridor and compass exercises (pages/sharedviews.js); a headcam video in step (pages/sharedvideo.js); the replay's
+// state in the address. Stored by /api/analyses (R2).
 
 import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
 import { t } from "../i18n.js";
