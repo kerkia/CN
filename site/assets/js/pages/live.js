@@ -395,7 +395,16 @@ async function race(main, id, wanted, arg) {
       <div class="lv-side-title lv-side-sep">${t("prov.circuit")} <span class="muted" title="${t("lv.count.hint")}">${t("lv.count.head")}</span></div>
       ${st.classes.map((c) => { const on = st.view === "cls" && c === st.cls; return html`<button type="button" class="lv-item${on ? " on" : ""}" aria-pressed="${on}" data-c="${c}">
         <span>${fmtCat(c)}</span><span class="lv-cnt">${countTxt(c)}</span></button>`; })}`;
-    if (side !== st.sideHtml) { $("#lv-chips").innerHTML = side; st.sideHtml = side; $("#lv-chips .on")?.scrollIntoView({ block: "nearest" }); }
+    if (side !== st.sideHtml) { $("#lv-chips").innerHTML = side; st.sideHtml = side; sideToOn(); }
+  }
+  // the course chosen brought into view within the list only (owner, 2026-10-24: scrollIntoView also scrolled the window, and
+  // the page came back from « Analyse de course » scrolled down when the course was low in a long list)
+  function sideToOn() {
+    const box = $(".lv-side"), on = $("#lv-chips .on");
+    if (!box || !on || box.scrollHeight <= box.clientHeight) return;
+    const b = box.getBoundingClientRect(), r = on.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop += r.top - b.top - 8;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom + 8;
   }
   function status() {
     const el = $("#lv-status");
