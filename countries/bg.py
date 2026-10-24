@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="BG", federation="BFO", access="all", db=paths.DATA_DIR / "bg.sqlite3",
                   time_zones=("Europe/Sofia",), lang="bg,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the oblast a name or a club names (countries/places, 2026-10-24)
 BASE = "https://www.bgof.org/"
 FEDERATION = "БФО"
 
@@ -58,4 +58,13 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"bfo": "BFO"})
+def place(e: dict) -> None:
+    """The oblast of the town a name gives (« Купа Троян »): the list gives no place. (Not the clubs' names: « Рила »,
+    « Компас » are villages too.)"""
+    e.pop("dep", None)
+    e["region"] = None
+    agenda.locate("BG", e, e.get("name"), region_only=True)
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"bfo": "BFO"},
+                                                           place=place)

@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="GB", federation="British Orienteering", access="all", db=paths.DATA_DIR / "gb.sqlite3",
                   time_zones=("Europe/London",), lang="en-GB,en;q=0.8", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the county from the place (countries/places, 2026-10-24)
 BASE = "https://www.britishorienteering.org.uk/"
 MAX_PAGES = 70
 ASSOC = {"EAOA": "East Anglia", "EMOA": "East Midlands", "NEOA": "North East", "NWOA": "North West", "SCOA": "South Central",
@@ -75,5 +75,13 @@ def read(http, today: date, prev: dict | None) -> list[dict]:
     return out
 
 
+def place(e: dict) -> None:
+    """The county (or unitary authority) of the event's nearest town, else of its venue (`dep`), under the calendar's
+    own association."""
+    parts = [x.strip() for x in (e.get("place") or "").split(",")]
+    nation = e.get("region") if e.get("region") in ("Scotland", "Wales", "Northern Ireland") else "England"
+    agenda.locate("GB", e, *dict.fromkeys(x for x in (parts[-1], e.get("place")) if x), keep_region=True, expect=nation)
+
+
 refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION,
-                                                           sources={"bof": "British Orienteering"})
+                                                           sources={"bof": "British Orienteering"}, place=place)

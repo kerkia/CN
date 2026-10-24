@@ -106,14 +106,76 @@ def event(cc: str, id_, day: str, name: str, *, kind: str = "c", end: str | None
     return {k: v for k, v in row.items() if v not in (None, "", [], {})} | {"cn": False}
 
 
+def locate(cc: str, e: dict, *texts, keep_region: bool = False, expect=None, region_only: bool = False) -> dict:
+    """Place an agenda row in its country's regions (countries/places.py): its `region` and `dep` from the first of
+    `texts` (its `place` by default) that names a known place. `keep_region`: the row's region is the calendar's own
+    (Switzerland's associations, Britain's): only the finer unit is added; `expect`: the region(s) the calendar's own
+    region allows."""
+    from countries import places
+    for text in texts or (e.get("place"),):
+        if not text or abroad_of(cc, text):
+            continue
+        r, d = places.locate(cc, text, expect=expect, region_only=region_only)
+        if r or d:
+            if r and not keep_region:
+                e["region"] = r
+            if d:
+                e["dep"] = d
+            return e
+    return e
+
+
+def _by_org(events: list[dict]) -> None:
+    """A row the calendar does not place takes the region where its organiser's other rows all are (a club races at
+    home): at least two of them, and no other region."""
+    import collections
+    seen = collections.defaultdict(collections.Counter)
+    for e in events:
+        if e.get("region") and e.get("org"):
+            seen[e["org"]][e["region"]] += 1
+    for e in events:
+        c = seen.get(e.get("org")) if not e.get("region") else None
+        if c and len(c) == 1 and sum(c.values()) >= 2:
+            e["region"] = next(iter(c))
+
+
+def places_of(cc: str, events: list[dict], order: list | None = None) -> tuple[list, dict]:
+    """The file's `regions` [{name, depts}] and `depts` {code: name} from its rows: the regions they name, each with the
+    finer units met in it (a unit under the region most of its rows give), sorted by name (or `order`)."""
+    import collections
+    from countries import places
+    names = places.dept_names(cc)
+    of = collections.defaultdict(collections.Counter)
+    regs = set()
+    for e in events:
+        if e.get("region"):
+            regs.add(e["region"])
+            if e.get("dep"):
+                of[e["dep"]][e["region"]] += 1
+    by_region = collections.defaultdict(list)
+    for d, c in of.items():
+        by_region[c.most_common(1)[0][0]].append(d)
+    rank = {r: i for i, r in enumerate(order or [])}
+    regions = [{"name": r, "depts": sorted(by_region.get(r, []), key=lambda d: fold(names.get(d, d)))}
+               for r in sorted(regs, key=lambda r: (rank.get(r, len(rank)), fold(r)))]
+    return regions, {d: names.get(d, d) for d in of}
+
+
 def hooks(country, read, version: int, *, sources: dict | None = None, regions: list | None = None, depts: dict | None = None,
-          pause: float = 1.0):
+          pause: float = 1.0, place=None, order: list | None = None):
     """The three functions update.py calls on a country's module: refresh_agenda(root), agenda_path(root),
     agenda_current(root). `read(http, today, prev)` returns the events (`prev`: the last file, or None; `read` may take
     `(http, today)` only); `regions`: [{name, depts: [...]}] and `depts` {code: name} when the source places its events;
-    `pause`: the seconds between two requests to one host (a robots.txt's Crawl-delay)."""
+    `pause`: the seconds between two requests to one host (a robots.txt's Crawl-delay). `place(e)`: sets an event's
+    `region` and `dep` (by default `locate` on its place when the country has a table of places: countries/places);
+    every row is placed again at each run, the rows kept from the last file too, so that a better table reaches them;
+    `order`: the regions' order (else by name)."""
     import inspect
+    from countries import places
     wants_prev = len(inspect.signature(read).parameters) >= 3
+    if place is None and (places.DIR / f"{country.key}.json.gz").exists():     # (the table is read only when placing)
+        def place(e):
+            locate(country.code, e)
 
     def agenda_path(root: Path) -> Path:
         return country.data_dir(root) / "agenda.json"
@@ -132,13 +194,18 @@ def hooks(country, read, version: int, *, sources: dict | None = None, regions: 
             prev = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             prev = None
-        if prev and prev.get("v") != version:
-            prev = None
         with Http(pause=pause, lang=country.lang) as http:
+            # (an earlier version's file still gives the past rows a calendar of coming events no longer lists)
             events = read(http, today, prev) if wants_prev else read(http, today)
             n = http.requests
+        if prev and prev.get("v") != version:
+            prev = None
         since = (today - timedelta(days=BACK_DAYS)).isoformat()
         events = [e for e in events if (e.get("end") or e["date"]) >= since]
+        if place:
+            for e in events:
+                place(e)
+            _by_org(events)
         if not events and prev and prev.get("events"):
             print(f"agenda {country.code}: nothing read (its source down?) — the last one kept")
             return False
@@ -147,11 +214,11 @@ def hooks(country, read, version: int, *, sources: dict | None = None, regions: 
             if e["id"] not in seen:
                 seen.add(e["id"])
                 uniq.append(e)
+        # the source's regions, else those its events name, each with the finer units met in it
+        found_regions, found_depts = places_of(country.code, uniq, order)
         new = {"v": version, "country": country.code, "from": since, "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-               "specs": sorted({e["spec"] for e in uniq if e.get("spec")}), "depts": depts or {},
-               # the source's regions, else those its events name (each without a finer level)
-               "regions": regions or [{"name": r, "depts": []} for r in sorted({e["region"] for e in uniq if e.get("region")})],
-               "sources": sources or {}, "events": uniq}
+               "specs": sorted({e["spec"] for e in uniq if e.get("spec")}), "depts": depts or found_depts,
+               "regions": regions or found_regions, "sources": sources or {}, "events": uniq}
         if prev and {k: v for k, v in prev.items() if k != "generated"} == {k: v for k, v in new.items() if k != "generated"}:
             return False
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,3 +279,45 @@ def abroad(place: str | None, home: str) -> bool:
     """Does a place name another country than `home` (English, lower case)? « Veszprém, Hungary », « Sweden »."""
     low = fold(place)
     return any(re.search(rf"(?:^|[\s,(]){re.escape(c)}(?:$|[\s,)])", low) for c in COUNTRY_NAMES if c != home and fold(c) != home)
+
+
+# the countries' names in the calendars' own languages (German, Czech, Russian…) and their IOF codes, by country: a place
+# naming another country's is not placed in the calendar's (« Godby (Finnland/Åland) », « Sopron (HUN) », « Швеция »)
+NAMES_OF = {
+    "AT": "österreich rakousko австрия AUT", "BE": "belgien belgique belgië BEL", "BG": "bulgarien българия BUL",
+    "BY": "weißrussland беларусь белоруссия BLR", "CH": "schweiz suisse svizzera švýcarsko SUI",
+    "CZ": "tschechien česko česká republika чехия CZE CZ", "DE": "deutschland německo niemcy германия GER",
+    "DK": "dänemark danmark DEN", "EE": "estland eesti эстония EST", "FI": "finnland suomi финляндия FIN",
+    "FR": "frankreich francie francja франция FRA", "HR": "kroatien hrvatska chorvatsko CRO",
+    "HU": "ungarn magyarország maďarsko węgry венгрия HUN", "IT": "italien italia itálie włochy италия ITA",
+    "LT": "litauen lietuva литва LTU", "LV": "lettland latvija латвия LAT", "NL": "niederlande nederland NED",
+    "NO": "norwegen norge норвегия NOR", "PL": "polen polska polsko польша POL", "RU": "russland россия RUS",
+    "SE": "schweden sverige švédsko szwecja швеция SWE", "SI": "slowenien slovenija slovinsko SLO",
+    "SK": "slowakei slovensko słowacja словакия SVK SK", "UA": "ukraine україна украина UKR",
+    "ES": "spanien españa испания ESP", "GB": "großbritannien britain GBR", "PT": "portugal POR",
+    "RO": "rumänien românia румыния ROU", "RS": "serbien srbija сербия SRB"}
+HOME = {"AT": "austria", "BE": "belgium", "BG": "bulgaria", "BY": "belarus", "CH": "switzerland", "CZ": "czechia",
+        "DE": "germany", "DK": "denmark", "EE": "estonia", "GB": "united kingdom", "GE": "georgia", "HK": "hong kong",
+        "HR": "croatia", "IE": "ireland", "IL": "israel", "IT": "italy", "JP": "japan", "KR": "korea", "LT": "lithuania",
+        "MK": "north macedonia", "PL": "poland", "RO": "romania", "RS": "serbia", "SI": "slovenia", "SK": "slovakia",
+        "TR": "türkiye", "UA": "ukraine", "ZA": "south africa"}
+HOME_ALSO = {"GB": {"great britain", "scotland", "wales", "england"}, "CZ": {"czech republic"}, "TR": {"turkey"},
+             "MK": {"macedonia"}}
+
+
+def abroad_of(cc: str, place: str | None) -> bool:
+    """Does a place of country `cc`'s calendar name another country (in English, in the calendar's language, by its code)?"""
+    home = HOME.get(cc, "")
+    if any(c != home and c not in HOME_ALSO.get(cc, ()) and re.search(rf"(?:^|[\s,(]){re.escape(c)}(?:$|[\s,)])", fold(place))
+           for c in COUNTRY_NAMES):
+        return True
+    words = set(re.findall(r"\b[A-Z]{2,3}\b", place or ""))
+    low = f" {fold(place)} "
+    for other, names in NAMES_OF.items():
+        if other == cc:
+            continue
+        for n in names.split():
+            if (n.isupper() and n in words and re.search(rf"[(/,]\s*{n}\s*(?:[)/,]|$)", place or "")) or \
+                    (not n.isupper() and f" {fold(n)} " in low):
+                return True
+    return False

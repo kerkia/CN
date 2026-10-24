@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="KR", federation="KOF", access="all", db=paths.DATA_DIR / "kr.sqlite3",
                   time_zones=("Asia/Seoul",), lang="ko,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 LIST = "https://kof.or.kr/competition"
 PAGES = 3
 DAYS = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})(?:\s*[-~]\s*(?:(\d{1,2})-)?(\d{1,2}))?")

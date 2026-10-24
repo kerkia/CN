@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="LT", federation="LOSF", access="all", db=paths.DATA_DIR / "lt.sqlite3",
                   time_zones=("Europe/Vilnius",), lang="lt,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 PAGE = "https://calendar.orienteering.lt/"
 SPEC = {"Bėgte": agenda.FOOT, "OSKD": agenda.MTBO, "OSS": agenda.SKI, "Takais": agenda.TRAIL, "Rogaining": "Rogaining"}
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from datetime import date, timedelta
 
 import paths
@@ -16,7 +17,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="CH", federation="Swiss Orienteering", access="all", db=paths.DATA_DIR / "ch.sqlite3",
                   time_zones=("Europe/Zurich",), lang="de-CH,de;q=0.8,fr;q=0.6,en;q=0.4", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the canton from the place (countries/places, 2026-10-24)
 BASE = "https://www.o-l.ch/cgi-bin/fixtures"
 SPEC = {"foot": agenda.FOOT, "bike": agenda.MTBO, "ski": agenda.SKI}
 # the regional associations (the CSV's codes)
@@ -46,4 +47,21 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"solv": "o-l.ch"})
+def place(e: dict) -> None:
+    """The canton of the event's place (`dep`, its two letters) under its regional association; the calendar's own
+    association settles a name met in two cantons, and a place elsewhere counts only when it is plainly a town there.
+    A canton's letters after the place, there or in the name, decide (« Cressier FR », « … Sprint Roveredo GR »)."""
+    from countries import places
+    of = places.dept_region("CH")
+    place = e.get("place") or ""
+    codes = "|".join(of)
+    m = re.search(rf"\s({codes})$", place) or (re.search(rf"\b{re.escape(place.split()[0])}\s+({codes})\b", e.get("name") or "")
+                                              if place.split() else None)
+    if m:
+        e["dep"], e["region"] = m.group(1), of[m.group(1)]
+        return
+    agenda.locate("CH", e, expect=e.get("region"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"solv": "o-l.ch"},
+                                                           place=place)

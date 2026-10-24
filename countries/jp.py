@@ -17,7 +17,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="JP", federation="JOA", access="all", db=paths.DATA_DIR / "jp.sqlite3",
                   time_zones=("Asia/Tokyo",), lang="ja,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the region (地方) over the prefecture (countries/places, 2026-10-24)
 LIST = "https://japan-o-entry.com/event/index/event"
 SPEC = {"OL": agenda.FOOT, "SKI": agenda.SKI, "ロゲ": "Rogaining"}
 COURSE = "講習"                                  # courses, notices
@@ -88,4 +88,21 @@ def read(http, today: date, prev: dict | None) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"joe": "Japan-O-entrY"})
+REGIONS = ["北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州・沖縄"]
+
+
+def place(e: dict) -> None:
+    """The prefecture the calendar gives (`dep`) under its region (地方); else the place, or the name, read."""
+    from countries import places
+    of = places.dept_region("JP")
+    pref = e.get("dep") or e.get("region")
+    pref = next((p for p in (pref, f"{pref}府", f"{pref}県", f"{pref}都") if p in of), None) if pref else None
+    if pref:
+        e["dep"], e["region"] = pref, of[pref]
+    else:
+        e["region"] = None
+        agenda.locate("JP", e, e.get("place"), e.get("name"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"joe": "Japan-O-entrY"},
+                                                           place=place, order=REGIONS)

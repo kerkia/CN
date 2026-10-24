@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="EE", federation="EOL", access="all", db=paths.DATA_DIR / "ee.sqlite3",
                   time_zones=("Europe/Tallinn",), lang="et,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 LIST = "https://orienteerumine.ee/kalender/kuu-ulevaade/"
 SPEC = {"OJ": agenda.FOOT, "SO": agenda.SKI, "RO": agenda.MTBO, "TO": agenda.TRAIL, "RG": "Rogaining"}
 FMT = {"Öine": agenda.NIGHT, "Teade": agenda.RELAY, "Öine teade": agenda.RELAY}

@@ -18,7 +18,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="TR", federation="TOF", access="all", db=paths.DATA_DIR / "tr.sqlite3",
                   time_zones=("Europe/Istanbul",), lang="tr,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 PAGE = "https://www.oryantiring.org.tr/"
 SPEC = {"running": agenda.FOOT, "biking": agenda.MTBO, "skiing": agenda.SKI, "walking": agenda.TRAIL}
 ABROAD_ORG = {"IOF", "SEEOA"}

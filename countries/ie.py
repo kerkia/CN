@@ -17,7 +17,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="IE", federation="Orienteering Ireland", access="all", db=paths.DATA_DIR / "ie.sqlite3",
                   time_zones=("Europe/Dublin",), lang="en", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the province over the county (countries/places, 2026-10-24)
 PAGE = "https://www.orienteering.ie/fixtures/"
 MONTHS = {m: i for i, m in enumerate(("january", "february", "march", "april", "may", "june", "july", "august",
                                       "september", "october", "november", "december"), 1)}
@@ -64,5 +64,14 @@ def read(http, today: date, prev: dict | None) -> list[dict]:
     return out
 
 
+def place(e: dict) -> None:
+    """The fixture's county (the calendar's « county », kept as `dep`) under its province."""
+    county = e.get("dep") or e.get("region")
+    e.pop("dep", None)
+    agenda.locate("IE", e, county, e.get("name"))
+    if not e.get("dep") and county:
+        e["region"] = county
+
+
 refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION,
-                                                           sources={"oi": "Orienteering Ireland"})
+                                                           sources={"oi": "Orienteering Ireland"}, place=place)

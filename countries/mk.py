@@ -9,7 +9,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="MK", federation="Macedonian Orienteering Federation", access="all", db=paths.DATA_DIR / "mk.sqlite3",
                   time_zones=("Europe/Skopje",), lang="mk,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 OO_COUNTRY = 123                                  # (the platform's number for North Macedonia)
 
 

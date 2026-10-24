@@ -18,7 +18,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="BE", federation="ABSO-BOSV", access="all", db=paths.DATA_DIR / "be.sqlite3",
                   time_zones=("Europe/Brussels",), lang="fr-BE,nl-BE;q=0.8,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and province from the town (countries/places, 2026-10-24)
 LIST = "https://www.opunch.org/event/list/"
 PAGE = "https://www.opunch.org/event/{}"
 BELGIUM = 249                             # O'Punch's country id
@@ -61,4 +61,17 @@ def read(http, today: date, prev: dict | None) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"opunch": "O'Punch"})
+FEDERATION_REGIONS = {"FRSO (Wallonie-Bruxelles)": ("Wallonie", "Bruxelles / Brussel"), "Orienteering Vlaanderen": ("Vlaanderen",)}
+
+
+def place(e: dict) -> None:
+    """The region (Bruxelles, Wallonie, Vlaanderen) and the province of the event's town; a federation's event left
+    unplaced is in its region when the federation has only one (Flanders')."""
+    regions = FEDERATION_REGIONS.get(e.get("region") or "")
+    if regions:
+        e["region"] = regions[0] if len(regions) == 1 else None
+    agenda.locate("BE", e, expect=regions or e.get("region"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"opunch": "O'Punch"},
+                                                           place=place)

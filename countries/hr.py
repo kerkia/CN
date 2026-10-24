@@ -9,7 +9,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="HR", federation="HOS", access="all", db=paths.DATA_DIR / "hr.sqlite3",
                   time_zones=("Europe/Zagreb",), lang="hr,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 OO_COUNTRY = 52                                  # (the platform's number for Croatia)
 
 

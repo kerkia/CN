@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="RS", federation="OSS", access="all", db=paths.DATA_DIR / "rs.sqlite3",
                   time_zones=("Europe/Belgrade",), lang="sr-Latn,sr;q=0.8,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 BASE = "http://oris.orijentiring.rs/"
 FMT = {"SP": agenda.SPRINT, "SR": agenda.MIDDLE, "D": agenda.LONG, "ŠT": agenda.RELAY, "ST": agenda.RELAY,
        "N": agenda.NIGHT, "NOĆ": agenda.NIGHT}

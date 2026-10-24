@@ -19,7 +19,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="SI", federation="OZS", access="all", db=paths.DATA_DIR / "si.sqlite3",
                   time_zones=("Europe/Ljubljana",), lang="sl,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 BASE = "https://www.orientacijska-zveza.si"
 SPEC = {"ot": agenda.FOOT, "mtb-o": agenda.MTBO, "ski-o": agenda.SKI, "pre-o": agenda.TRAIL}
 LEVEL = {"1": "Slovenska liga", "2": "Državno prvenstvo"}

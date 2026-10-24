@@ -19,7 +19,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="IT", federation="FISO", access="all", db=paths.DATA_DIR / "it.sqlite3",
                   time_zones=("Europe/Rome",), lang="it,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and province from the place (countries/places, 2026-10-24)
 BASE = "https://www.fiso.it"
 SPEC = {"CO": agenda.FOOT, "MTBO": agenda.MTBO, "SCIO": agenda.SKI, "TRAILO": agenda.TRAIL}
 # the regional committees (« Organo di appartenenza »); « FISO »: the federation's own races
@@ -68,4 +68,19 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"fiso": "FISO"})
+def place(e: dict) -> None:
+    """The province of the event's place, by the two letters FISO writes after it (« Val Canali (TN) »), and its region;
+    else the place read by name. (The organising committee is not the place's: a club races in other regions.)"""
+    from countries import places
+    m = re.search(r"\(([A-Z]{2})\)\s*$", e.get("place") or "")
+    regions = places.dept_region("IT")
+    if m and m.group(1) in regions:
+        e["dep"], e["region"] = m.group(1), regions[m.group(1)]
+        return
+    committee = {"Trentino": "Trentino-Alto Adige", "Alto Adige": "Trentino-Alto Adige"}.get(e.get("region"), e.get("region"))
+    e["region"] = committee
+    agenda.locate("IT", e, expect=committee)
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"fiso": "FISO"},
+                                                           place=place)

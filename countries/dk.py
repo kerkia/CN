@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="DK", federation="DOF", access="all", db=paths.DATA_DIR / "dk.sqlite3",
                   time_zones=("Europe/Copenhagen",), lang="da,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the kommune from the place (countries/places, 2026-10-24)
 PAGE = "https://do-f.dk/for-medlemmer/staevnekalender"
 REGION = {"Nord": "Nordkredsen", "Syd": "Sydkredsen", "Øst": "Østkredsen"}
 
@@ -49,4 +49,16 @@ def read(http, today: date, prev: dict | None) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"dof": "DOF"})
+# the regions (« regioner ») each district of DOF covers
+KREDS_REGIONS = {"Nordkredsen": ("Region Nordjylland", "Region Midtjylland"),
+                 "Sydkredsen": ("Region Syddanmark", "Region Midtjylland"),
+                 "Østkredsen": ("Region Hovedstaden", "Region Sjælland")}
+
+
+def place(e: dict) -> None:
+    """The kommune of the event's place (`dep`) under the calendar's own district (« kreds »)."""
+    agenda.locate("DK", e, keep_region=True, expect=KREDS_REGIONS.get(e.get("region") or ""))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"dof": "DOF"},
+                                                           place=place)

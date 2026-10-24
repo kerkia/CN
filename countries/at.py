@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="AT", federation="ÖFOL", access="all", db=paths.DATA_DIR / "at.sqlite3",
                   time_zones=("Europe/Vienna",), lang="de-AT,de;q=0.8,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: Land and Bezirk from the place (countries/places, 2026-10-24)
 API = "https://anne-api.oefol.at/v1/event"
 SPEC = {"footOrienteering": agenda.FOOT, "mountainbikeOrienteering": agenda.MTBO, "skiOrienteering": agenda.SKI,
         "trailOrienteering": agenda.TRAIL}
@@ -54,4 +54,10 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"anne": "ANNE"})
+def place(e: dict) -> None:
+    """The Land and the Bezirk of the event's place; the host's Land, when one hosts it, settles a name met in two."""
+    agenda.locate("AT", e, expect=e.get("region"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"anne": "ANNE"},
+                                                           place=place)

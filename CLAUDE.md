@@ -1536,6 +1536,36 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the country's number and the window, the date pickers' `$State` JSON needed; a full page of 30 cut in two; each competition's
   page read once, when first seen — last day, organiser, place, website, entry deadline; its e-mail never kept —, then taken
   from the previous file; only the competitions taking entries there). About 30 more requests a day.
+  **Regions and finer units** (owner, 2026-10-24: « the region/state/province/land… for all countries where this makes sense, even
+  a more granular level »; every agenda's `AGENDA_VERSION` 2, BR and UA unchanged): events carry `region` and `dep` as France's and
+  Spain's, the file `regions` [{name, depts}] and `depts` {code: name} of those met (`agenda.places_of`; `order` for JP's regions).
+  A town, forest or park is placed by `countries/places.py` `locate(cc, text, expect=, region_only=)` on a table a country,
+  `countries/places/<cc>.json.gz` (folded name → candidates [region, dept, log weight]), made **offline** from GeoNames (CC BY 4.0)
+  by `tools/gazetteer.py` (`fetch` into `$CN_DATA_DIR/geonames`, `build [cc…]`; the levels, local names and renames per country in
+  its `UNITS`/`RENAME`; names indexed in the calendar's script only; ~6 MB in all): no geocoding service at run time. The text is
+  read part by part (postcode + town kept, a street and number dropped, « обл. » / « р-н » / « St. » written out, another country
+  named → not placed: `agenda.abroad_of`), a whole part outweighing a word inside one, a bigger place a smaller; a name met in
+  several regions is settled by the calendar's own region (`expect`) or not placed. `hooks(place=…)` places every row at each run,
+  the past rows kept from the previous file too (even of an older version); a row still unplaced takes the region of all its
+  organiser's other rows (`_by_org`, two at least). Per country: **AT** Land / Bezirk (« Graz (Stadt) », « Innsbruck (Land) »), the
+  host's Land as `expect`; **BE** region (Bruxelles / Wallonie / Vlaanderen) / province, Flanders' federation → Vlaanderen when
+  unplaced; **BG** oblast from the event's name only (clubs' names are villages too); **BY** oblast / raion from the place, the
+  calendar's « Общереспубликанские » / « Международные » moved to `level`; **CH** the regional association (as the CSV) / canton by its
+  letters, letters after the place or after it in the name decide (« Roveredo GR »); **CZ** kraj / okres, ORIS's section → its kraje
+  as `expect` (one kraj: the region when unplaced); **DE** Land / Kreis (« Landkreis X » kept beside a city X); **DK** DOF's kreds (as the
+  calendar) / kommune; **EE** maakond / vald or linn; **GB** British Orienteering's association (as the calendar) / county or unitary
+  authority, the nation as `expect`; **HK** area (香港島, 九龍, 新界) / district, venue else name; **HR** županija / grad or općina; **IE**
+  province / county (the calendar's county); **IL** district only (subdistricts not in Hebrew); **IT** region / province by FISO's
+  « (TN) », else by name (the organising committee is not the place's); **JP** 地方 / prefecture (the calendar's); **KR** province /
+  si-gun-gu; **LT** apskritis only; **MK**, **SI** the municipality (their first level; Slovenia's statistical regions are not in
+  GeoNames); **PL** voivodeship of the organising club's town (« UKS Azymut 45, Gdynia »: the list gives no place), no finer unit;
+  **RO** development region / județ by its letters; **RS** statistical region / okrug; **SK** kraj / okres; **TR** geographical region
+  (Marmara, Ege…) / il; **ZA** province / district or metro; **GE** region only; **BR** state and **UA** oblast as the calendars give
+  them. Placed on 2026-10-24: AT 115/139 events (100 with a Bezirk), BE 189/211, CH 183/183 (117 cantons), CZ 232/307, DE 109/126,
+  GB 822/836 (747 counties), IT 162/162, JP 110/126, EE 100/128, IL 30/83, BG 12/34, PL 34/40, HK 12/54 (most without a venue).
+  The Agenda page: each country's level names (`agd.region.<CC>` / `agd.dept.<CC>`, else « Région » / « Province »), a unit whose
+  code is its name shown once, a short code in brackets, a name after « · », nothing when the place already says it (« (TN) »).
+  The filter bar's click handler took `<body data-group>` for a group chip: any click in the filters emptied the list (fixed).
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

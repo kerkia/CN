@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="BY", federation="BFO", access="all", db=paths.DATA_DIR / "by.sqlite3",
                   time_zones=("Europe/Minsk",), lang="ru,be;q=0.8,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: oblast and raion from the place (countries/places, 2026-10-24)
 BASE = "https://orient.by"
 SPAN = re.compile(r"(\d\d)\.(\d\d)(?:\.(\d{4}))?(?:-(\d\d)\.(\d\d)(?:\.(\d{4}))?)?")
 MAX_DAYS = 31                            # longer: a placeholder for the season
@@ -58,13 +58,27 @@ def read(http, today: date) -> list[dict]:
             name = re.sub(r"^отмена\W*", "", name, flags=re.I)
             cat, region, place = (x.text_content().strip() for x in (tds[1], tds[3], tds[4]))
             region = region.split(",")[0].strip()
+            scope = None
+            if region and not re.search(r"област|^г\. ?Минск|^Минск", region, re.I):
+                scope, region = region, None         # « Общереспубликанские », « Международные »: the calendar, not a place
             out.append(agenda.event(
                 "BY", eid.group(1) if eid else href.strip("/").split("/")[-1][:20], start.isoformat(), name,
                 end=end.isoformat() if end and end != start else None,
                 place=None if place in ("", "по назначению") else place, region=region or None, cancelled=cancelled,
                 spec="Rogaining" if re.search(r"рогейн", name, re.I) else None,
-                level=f"Категория {cat}" if cat else None, src={"orient": BASE + href}))
+                level=" · ".join(x for x in (f"Категория {cat}" if cat else None, scope) if x) or None,
+                src={"orient": BASE + href}))
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"orient": "orient.by"})
+def place(e: dict) -> None:
+    """The oblast and the raion of the event's place (« Лидский район », « г. Полоцк »); else the oblast the calendar
+    gives."""
+    region = e.get("region")
+    agenda.locate("BY", e, expect=region)
+    if not e.get("region") and region:
+        e["region"] = region
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"orient": "orient.by"},
+                                                           place=place)

@@ -17,7 +17,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="SK", federation="SZOŠ", access="all", db=paths.DATA_DIR / "sk.sqlite3",
                   time_zones=("Europe/Bratislava",), lang="sk,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 BASE = "https://is.orienteering.sk"
 SPEC = {"OB": agenda.FOOT, "LOB": agenda.SKI, "MTBO": agenda.MTBO, "TRAIL": agenda.TRAIL}
 PAGES = 12                                   # (a year has 3-4)

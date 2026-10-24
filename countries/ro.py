@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="RO", federation="FRO", access="all", db=paths.DATA_DIR / "ro.sqlite3",
                   time_zones=("Europe/Bucharest",), lang="ro,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 LIST = "https://www.fro.ro/api/events/public_events.php"
 CALENDAR = "https://www.fro.ro/app/"
 # a county's code after the town (« Hunedoara, HD »)

@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="HK", federation="OAHK", access="all", db=paths.DATA_DIR / "hk.sqlite3",
                   time_zones=("Asia/Hong_Kong",), lang="zh-HK,en;q=0.8", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: area and district from the venue (countries/places, 2026-10-24)
 ICS = ("https://calendar.google.com/calendar/ical/c_ersqpfme3gnrqgptnsu3qe66lo%40group.calendar.google.com/"
        "public/basic.ics")
 SITE = "https://www.oahk.org.hk/"
@@ -53,4 +53,10 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"oahk": "OAHK"})
+def place(e: dict) -> None:
+    """The area and the district of the event's venue, else of a place its name gives (« 大埔海濱公園 »)."""
+    agenda.locate("HK", e, e.get("place"), e.get("name"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"oahk": "OAHK"},
+                                                           place=place)

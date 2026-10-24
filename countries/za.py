@@ -16,7 +16,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="ZA", federation="SAOF", access="all", db=paths.DATA_DIR / "za.sqlite3",
                   time_zones=("Africa/Johannesburg",), lang="en-ZA,en;q=0.8", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 PAGE = "https://www.orienteering.co.za/{}-events/"
 MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november",
           "december"]

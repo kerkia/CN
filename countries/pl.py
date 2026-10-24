@@ -18,7 +18,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="PL", federation="PZOS", access="all", db=paths.DATA_DIR / "pl.sqlite3",
                   time_zones=("Europe/Warsaw",), lang="pl,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the voivodeship of the organiser's town (countries/places, 2026-10-24)
 BASE = "https://www.orienteering.org.pl"
 SPEC = {"BnO": agenda.FOOT, "MTBO": agenda.MTBO, "NBnO": agenda.SKI, "Trail-O": agenda.TRAIL}
 LEVEL = {"CTZ": "Centralny Terminarz Zawodów", "CTZ WRE polskie": "Centralny Terminarz Zawodów, WRE",
@@ -68,4 +68,18 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"pzos": "PZOS"})
+def place(e: dict) -> None:
+    """The voivodeship of the organising club's town (« UKS Azymut 45, Gdynia »): the list gives no place, and a club
+    races near home; no finer unit, which the club's town would not tell."""
+    e.pop("dep", None)
+    e["region"] = None
+    for org in (e.get("org") or "").split(";"):
+        if "," in org:
+            agenda.locate("PL", e, org.rsplit(",", 1)[1], region_only=True)
+            if e.get("region"):
+                return
+    agenda.locate("PL", e, e.get("name"), region_only=True)
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"pzos": "PZOS"},
+                                                           place=place)

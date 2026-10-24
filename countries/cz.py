@@ -14,7 +14,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="CZ", federation="ČSOS", access="all", db=paths.DATA_DIR / "cz.sqlite3",
                   time_zones=("Europe/Prague",), lang="cs,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: kraj and okres from the place (countries/places, 2026-10-24)
 API = "https://oris.orientacnisporty.cz/API/"
 EVENT = "https://oris.orientacnisporty.cz/Zavod?id={}"
 SPEC = {"1": agenda.FOOT, "2": agenda.SKI, "3": agenda.MTBO, "4": agenda.TRAIL}
@@ -55,4 +55,25 @@ def read(http, today: date) -> list[dict]:
     return out
 
 
-refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"oris": "ORIS"})
+# ORIS's regional sections and the kraje they cover (« ČR », « Čechy », « Morava »: the national calendars)
+SECTION = {"Pražská": ("Praha", "Středočeský kraj"), "Středočeská": ("Středočeský kraj", "Praha"),
+           "Ještědská": ("Liberecký kraj", "Ústecký kraj"), "Jihočeská": ("Jihočeský kraj",),
+           "Západočeská": ("Plzeňský kraj", "Karlovarský kraj"), "Východočeská": ("Královéhradecký kraj", "Pardubický kraj"),
+           "Vysočina": ("Kraj Vysočina",), "Jihomoravská": ("Jihomoravský kraj",), "Hanácká": ("Olomoucký kraj",),
+           "MS kraj": ("Moravskoslezský kraj",), "Valašská": ("Zlínský kraj",),
+           "Morava": ("Jihomoravský kraj", "Olomoucký kraj", "Moravskoslezský kraj", "Zlínský kraj", "Kraj Vysočina"),
+           "Čechy": ("Praha", "Středočeský kraj", "Jihočeský kraj", "Plzeňský kraj", "Karlovarský kraj", "Ústecký kraj",
+                     "Liberecký kraj", "Královéhradecký kraj", "Pardubický kraj")}
+
+
+def place(e: dict) -> None:
+    """The kraj and the okres of the event's place; ORIS's section (« Východočeská ») settles a name met in two kraje,
+    and places an event without a place when it covers one kraj only."""
+    kraje = SECTION.get(e.get("region") or "")
+    if kraje is not None or e.get("region") == "ČR":
+        e["region"] = kraje[0] if kraje and len(kraje) == 1 else None
+    agenda.locate("CZ", e, expect=kraje or e.get("region"))
+
+
+refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"oris": "ORIS"},
+                                                           place=place)

@@ -3,7 +3,7 @@
 // including the online-registration deadline and the number of registrants.
 
 import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat } from "../util.js";
-import { t, tn, locale } from "../i18n.js";
+import { t, tn, locale, has } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
 import { getProv } from "./provisional.js";
@@ -72,6 +72,13 @@ export async function render(main, { query }) {
   // the country's places, when its agenda has them (France: regions and départements; Spain: communities and provinces)
   const places = (A.regions || []).length > 0;
   const deptName = (c) => A.depts[c] || c;
+  // a unit's code and name (« 35 · Ille-et-Vilaine », « TI · Ticino »), its name alone where the name is its code
+  const deptLabel = (c) => (deptName(c) === c ? c : `${c} · ${deptName(c)}`);
+  // beside a place: a short code in brackets, a name after a dot; nothing when the place already says it (« Val Canali (TN) »)
+  const deptTag = (e) => (!e.dep || (e.place || "").includes(e.dep) ? "" : e.dep.length <= 3 ? `(${e.dep})` : `· ${deptName(e.dep)}`);
+  // the levels' names in the country (« Canton », « Bezirk »…), else the generic ones
+  const cc = country.current();
+  const levelName = (lvl) => (fr ? t(`agd.${lvl}`) : has(`agd.${lvl}.${cc}`) ? t(`agd.${lvl}.${cc}`) : t(`agd.${lvl}.other`));
   const regionOfDept = new Map(A.regions.flatMap((r) => r.depts.map((d) => [d, r.name])));
   const allDepts = A.regions.flatMap((r) => r.depts);
   const everyPlace = () => st.regions.size === A.regions.length && st.depts.size === allDepts.length;
@@ -157,11 +164,11 @@ export async function render(main, { query }) {
         <label class="field"><span>${t("agd.to")}</span><input type="date" id="f-to" value="${st.to}" min="${st.from}"></label>
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
-        ${places ? html`<div class="field field-wide"><span>${t(fr ? "agd.region" : "agd.region.other")}</span>${multi("m-regions", regionSummary(),
+        ${places ? html`<div class="field field-wide"><span>${levelName("region")}</span>${multi("m-regions", regionSummary(),
           A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
-        ${allDepts.length ? html`<div class="field field-wide"><span>${t(fr ? "agd.dept" : "agd.dept.other")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
+        ${allDepts.length ? html`<div class="field field-wide"><span>${levelName("dept")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
           A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
-            ${r.depts.map((d) => opt("m-depts", d, `${d} · ${deptName(d)}`, st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}` : ""}
+            ${r.depts.map((d) => opt("m-depts", d, deptLabel(d), st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}` : ""}
         <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
       </div>
       ${groupsPresent.length ? html`<div class="frow"><div class="field"><span>${t("agd.group")}</span>
@@ -193,7 +200,7 @@ export async function render(main, { query }) {
     drawFilters(); drawTable();
   });
   $("#filters").addEventListener("click", (e) => {
-    const g = e.target.closest("[data-group]");
+    const g = e.target.closest("button[data-group]");          // (not <body data-group>, the menu group's colour)
     if (g) { st.groups.has(g.dataset.group) ? st.groups.delete(g.dataset.group) : st.groups.add(g.dataset.group); drawFilters(); drawTable(); return; }
     const all = e.target.closest("[data-all]"), none = e.target.closest("[data-none]");
     if (all) { checkAllPlaces(); drawFilters(); drawTable(); return; }
@@ -225,7 +232,7 @@ export async function render(main, { query }) {
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
         <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}</td>
-        <td class="p">${e.place || ""}${e.dep ? html` <span class="dim">(${e.dep})</span>` : ""}</td>
+        <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
   }
   // Wide screen: list and details side by side. Phone: one at a time. Opening an event adds a history
@@ -396,7 +403,7 @@ export async function render(main, { query }) {
           ${row(t("agd.d.manif"), e.manif)}
           ${row(t("agd.d.league"), e.league)}
           ${row(t("agd.d.level"), e.level)}
-          ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${e.dep} · ${deptName(e.dep)})` : ""}` : "")}
+          ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${deptLabel(e.dep)})` : ""}` : e.dep ? deptLabel(e.dep) : "")}
           ${row(t("agd.d.region"), region)}
           ${row(t("agd.d.spec"), fmtFormat(e.spec))}
           ${row(t("agd.d.epr"), fmtFormat(e.epr))}

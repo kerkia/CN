@@ -15,7 +15,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="IL", federation="ISOA", access="all", db=paths.DATA_DIR / "il.sqlite3",
                   time_zones=("Asia/Jerusalem",), lang="he,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 BASE = "https://nivut.org.il/"
 TRAINING = "אימון"                  # « training »
 MTBO = "רכוב"                       # « mounted » (on a bike)

@@ -19,7 +19,7 @@ from countries.base import Country
 
 COUNTRY = Country(code="DE", federation="DOSV", access="all", db=paths.DATA_DIR / "de.sqlite3",
                   time_zones=("Europe/Berlin",), lang="de,en;q=0.5", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: region and finer unit from the place (countries/places, 2026-10-24)
 CSV_URL = "https://omanager.o-sport.de/service/f?p=105:5:0:CSV::::"
 LIST_URL = "https://omanager.o-sport.de/service/f?p=105:5"
 SPEC = {"OL": agenda.FOOT, "MTB-O": agenda.MTBO, "Ski-OL": agenda.SKI, "Trail-O": agenda.TRAIL}
