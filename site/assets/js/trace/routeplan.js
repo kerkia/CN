@@ -5,6 +5,7 @@
 import { html, raw, $, fmt } from "../util.js";
 import { t } from "../i18n.js";
 import { DEFAULTS } from "./routechoice.js";
+import { layers, VECTOR_ACCEPT } from "./vectorroutes.js";
 
 const PREFS = "ocn.rc.prefs";                        // the settings, kept on the device (the map's kind apart: the race's)
 const MAX_PX = 9e6;                                  // a larger map is read at a reduced size (memory, time)
@@ -26,11 +27,13 @@ function saveSettings(s) {
 export const isSprint = (race) => /sprint/i.test(`${race?.terrain || ""} ${race?.format || ""} ${race?.name || ""}`);
 
 /**
- * The planner of one map: image (an ImageBitmap or canvas), toM(px, py) the metres of a map pixel (any affine frame).
+ * The planner of one map: image (an ImageBitmap or canvas), toM(px, py) the metres of a map pixel (any affine frame); vector:
+ * an OCAD or Mapper map of it ({ v: trace/vectorroutes.js readVector's, T: the affine from its mm to the image's pixels }),
+ * whose symbols are read instead of the image's colours.
  * Returns { ready (Promise of the reading's facts), dem(grid), settings(s), leg(a, b), line(pts), picture(), destroy() };
  * points in the map's own pixels.
  */
-export function planner(image, toM) {
+export function planner(image, toM, vector = null) {
   const W0 = image.width, H0 = image.height, sc = W0 * H0 > MAX_PX ? Math.sqrt(MAX_PX / (W0 * H0)) : 1;
   const W = Math.round(W0 * sc), H = Math.round(H0 * sc);
   const o = toM(0, 0), ex = toM(1, 0), ey = toM(0, 1);
@@ -42,11 +45,19 @@ export function planner(image, toM) {
   worker.onmessage = (e) => { const p = waiting.get(e.data.id); if (!p) return; waiting.delete(e.data.id); if (e.data.ok) p.ok(e.data); else p.ko(new Error(e.data.error)); };
   worker.onerror = (e) => { for (const p of waiting.values()) p.ko(new Error(e.message || "worker")); waiting.clear(); };
   const ask = (op, body = {}, transfer = []) => new Promise((ok, ko) => { const id = ++seq; waiting.set(id, { ok, ko }); worker.postMessage({ id, op, ...body }, transfer); });
-  const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
-  const g = c.getContext("2d", { willReadFrequently: true });
-  g.drawImage(image, 0, 0, W, H);
-  const rgba = g.getImageData(0, 0, W, H).data.buffer;
-  const ready = ask("init", { rgba, w: W, h: H, J }, [rgba]);
+  let ready;
+  if (vector) {
+    const T = vector.T, L = layers(vector.v, { a: T.a * sc, b: T.b * sc, c: T.c * sc, d: T.d * sc, e: T.e * sc, f: T.f * sc }, W, H);
+    const bufs = ["area", "path", "blue", "block", "hand"].map((k) => L[k].buffer);
+    ready = ask("layers", { area: bufs[0], path: bufs[1], blue: bufs[2], block: bufs[3], hand: bufs[4], w: W, h: H, J }, bufs)
+      .then((r) => ({ ...r, vector: { counts: L.counts, ms: L.ms, name: vector.v.name } }));
+  } else {
+    const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(image, 0, 0, W, H);
+    const rgba = g.getImageData(0, 0, W, H).data.buffer;
+    ready = ask("init", { rgba, w: W, h: H, J }, [rgba]);
+  }
   const cache = new Map();
   let skey = "";
   const S = (p) => [p[0] * sc, p[1] * sc], U = (p) => [p[0] / sc, p[1] / sc];
@@ -92,15 +103,19 @@ export const minKm = (sPerM) => { const v = Math.round(sPerM * 1000); return `${
  * The settings panel (a <details> for the side panels). s: the settings; info: { status, pace (auto, s/m), picture }.
  * The panel's controls call onChange(s, what) after each change ("on", "picture", "pace" redraw only; others search again).
  */
-export function panelHtml(s, { on, picture, status = "", auto = null } = {}) {
+export function panelHtml(s, { on, picture, status = "", auto = null, vector = null } = {}) {
   const range = (id, v, lo, hi, step, label, unit = "") => html`<label><span>${label}</span><span class="rc-range"><input type="range" id="${id}" min="${lo}" max="${hi}" step="${step}" value="${v}"><b id="${id}-v">${v}${unit}</b></span></label>`;
   return html`<details class="an-settings rc-box" id="rc-box" open><summary>${t("rc.title")} <span class="pill rc-pill">${t("rc.admin")}</span></summary>
     <label class="rc-on"><input type="checkbox" id="rc-on" ${raw(on ? "checked" : "")}> ${t("rc.on")}</label>
     <div class="muted rc-status" id="rc-status">${status}</div>
     <div ${raw(on ? "" : "hidden")} id="rc-opts">
+      <div class="rc-vec"><label class="btn btn-sm" title="${t("rc.vec.hint")}">${t("rc.vec.pick")}<input type="file" id="rc-vec" accept="${VECTOR_ACCEPT}" hidden></label>
+        <span class="muted">${vector?.name ? html`<b>${vector.name}</b>${vector.detail ? ` · ${vector.detail}` : ""}` : t("rc.vec.none")}</span>
+        ${vector?.name && !vector.fixed ? html`<button type="button" class="btn btn-sm" id="rc-vec-clear" title="${t("rc.vec.clear")}">✕</button>` : ""}
+        ${vector?.note ? html`<div class="notice rc-vec-note">${vector.note}</div>` : ""}</div>
       <div class="an-opts">
         <label><span>${t("rc.map")}</span><select id="rc-map"><option value="forest" ${raw(s.map === "forest" ? "selected" : "")}>${t("rc.map.forest")}</option><option value="sprint" ${raw(s.map === "sprint" ? "selected" : "")}>${t("rc.map.sprint")}</option></select></label>
-        <label><span>${t("rc.black")}</span><select id="rc-black">${["auto", "paths", "neutral", "obstacles"].map((v) => html`<option value="${v}" ${raw(s.black === v ? "selected" : "")}>${t(`rc.black.${v}`)}</option>`)}</select></label>
+        <label ${raw(vector?.used ? "hidden" : "")}><span>${t("rc.black")}</span><select id="rc-black">${["auto", "paths", "neutral", "obstacles"].map((v) => html`<option value="${v}" ${raw(s.black === v ? "selected" : "")}>${t(`rc.black.${v}`)}</option>`)}</select></label>
         ${range("rc-risk", s.risk, 0, 100, 5, t("rc.risk"), " %")}
         ${range("rc-climb", s.climb, 0, 20, 1, t("rc.climb"), " m")}
         <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
@@ -119,6 +134,8 @@ export function bindPanel(root, s, onChange) {
   const set = (what) => { saveSettings(s); onChange(s, what); };
   $("#rc-on", box).addEventListener("change", (e) => { $("#rc-opts", box).hidden = !e.target.checked; onChange(s, e.target.checked ? "on" : "off"); });
   $("#rc-pic", box).addEventListener("change", (e) => onChange(s, e.target.checked ? "picture-on" : "picture-off"));
+  $("#rc-vec", box).addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) onChange(s, "vector", f); });
+  $("#rc-vec-clear", box)?.addEventListener("click", () => onChange(s, "vector-clear"));
   $("#rc-map", box).addEventListener("change", (e) => { s.map = e.target.value; set("map"); });
   $("#rc-black", box).addEventListener("change", (e) => { s.black = e.target.value; set("search"); });
   $("#rc-variants", box).addEventListener("change", (e) => { s.variants = Number(e.target.value); set("search"); });

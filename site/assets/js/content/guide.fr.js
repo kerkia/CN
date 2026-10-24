@@ -230,6 +230,22 @@ export function build(X) {
           <p>Limites connues : la zone interdite hachurée en violet est effacée avec le parcours ; une photo mal éclairée trouble les couleurs ; les
             falaises infranchissables fines, les murs et les clôtures sont des traits noirs comme les chemins (le réglage « Lignes noires fines » dit ce
             qu'ils sont).</p>`)}
+        ${slide("Courses · essai", "1 bis. Mieux : la carte OCAD ou Mapper", html`
+          <p>Le fichier de la carte elle-même — OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap) — dit le terrain sans deviner : Ozimut le lit
+            dans votre navigateur avec le moteur du tracé de circuits et dessine chaque symbole à sa place exacte.</p>
+          ${list([
+            html`Les <b>surfaces</b> d'après leur couleur de remplissage (ou de hachure : bleue pour un marais, olive ou violette pour une zone
+              interdite), couche par couche comme sur la carte — un vert posé sur un jaune l'emporte. La couleur plutôt que le numéro : l'ISOM 2000,
+              l'ISOM 2017 et l'ISSprOM ne numérotent pas pareil.`,
+            html`Les <b>lignes</b> d'après leur numéro : routes, pistes et sentiers (501 à 508) sont des chemins, continus même quand la carte les
+              dessine en tirets ; les falaises, murs et clôtures infranchissables (201, 515, 518 ; 521 et 524 en ISOM 2000) arrêtent la course, sauf
+              là où un chemin les traverse ; murs et clôtures franchissables et limites de végétation sont des lignes directrices ; les lignes
+              bleues des ruisseaux.`,
+            html`Courbes, symboles ponctuels, textes et parcours sont laissés de côté.`,
+          ])}
+          <p>Dans l'Analyse solo, un fichier OCAD ou Mapper déposé seul <b>est</b> la carte : dessinée ici, la trace calée par son
+            géoréférencement. Déposé avec une image de la carte — ou choisi dans la boîte « Itinéraires calculés », dans les deux analyses —, il
+            sert aux itinéraires, placé sur l'image par son géoréférencement : il doit en avoir un, et recouvrir la carte affichée.</p>`)}
         ${slide("Courses · essai", "2. Le temps d'un pas", html`
           <p>Le temps pour aller d'une case à sa voisine est la distance, multipliée par la lenteur du terrain et par celle de la pente :</p>
           ${list([

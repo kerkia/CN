@@ -26,6 +26,7 @@ import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
+import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
@@ -1201,7 +1202,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24): the leg shown's
   // fastest routes on the map as read, each runner's own route measured on the same model
   const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
-    plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", dem: null, info: null };
+    plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", dem: null, info: null,
+    vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only
   // the map's pixels to metres and to longitude and latitude, from its georeference
   const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
   const rcmFrame = runners[0]?.fit || (() => { const [lon, lat] = geoInv(image.width / 2, image.height / 2); return fitFromGeo(course.geo, frameAt(lat, lon)); })();
@@ -1210,8 +1212,21 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   function rcmPanel() {
     const host = $("#rc-host");
     if (!host) return;
-    host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, status: rcm.status, auto: rcm.auto[leg] }))}<div class="rc-leg" id="rc-leg"></div>`;
-    RC.bindPanel(host, rcm.s, (s, what) => {
+    const vt = rcmVector();
+    host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, status: rcm.status, auto: rcm.auto[leg],
+      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null }))}<div class="rc-leg" id="rc-leg"></div>`;
+    RC.bindPanel(host, rcm.s, async (s, what, file) => {
+      if (what === "vector" || what === "vector-clear") {
+        if (what === "vector") {
+          try { const v = await readVector(new Uint8Array(await file.arrayBuffer()), file.name); rcm.vec = { v, detail: `${v.format === "ocad" ? `OCAD ${v.version}` : "OpenOrienteering Mapper"} · 1:${fmt(v.scale)}` }; }
+          catch (e) { console.error(e); rcmStatus(t("rc.vec.failed")); return; }
+        } else rcm.vec = null;
+        // the map read again, from the symbols (or the image's colours)
+        rcm.token++; rcm.plan?.destroy(); rcm.plan = null; rcm.ready = null; rcm.pic = null; rcm.routes = []; rcm.mine = []; rcm.auto = [];
+        rcmPanel(); mv.draw();
+        if (rcm.on) rcmLeg();
+        return;
+      }
       if (what === "on" || what === "off") {
         rcm.on = what === "on";
         try { localStorage.setItem("ocn.rc.on", rcm.on ? "1" : "0"); } catch (e) { /* this visit */ }
@@ -1223,10 +1238,16 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     });
     rcmList();
   }
+  /** The OCAD or Mapper map placed on the analysis's map through both georeferences, or null. */
+  function rcmVector() {
+    if (!rcm.vec) return null;
+    const g = course.geo, T = throughGeo(rcm.vec.v, (lat, lon) => [g.a * lon + g.b * lat + g.c, g.d * lon + g.e * lat + g.f]);
+    return T && cover(rcm.vec.v, T, image.width, image.height) >= 0.2 ? { v: rcm.vec.v, T } : null;
+  }
   /** The map read and its heights, once. */
   function rcmPlan() {
     if (rcm.ready) return rcm.ready;
-    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y));
+    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), rcmVector());
     rcm.ready = (async () => {
       rcmStatus(t("rc.st.reading"));
       rcm.info = await rcm.plan.ready;
@@ -1270,7 +1291,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       }
       rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
       rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
-        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }));
+        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : ""));
       const p = $("#rc-pace"); if (p && rcm.auto[j]) p.placeholder = RC.minKm(rcm.auto[j]);
       if (rcm.picOn && !rcm.pic) rcmPicture();
       rcmList(); mv.draw();

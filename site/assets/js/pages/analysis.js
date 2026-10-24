@@ -24,7 +24,8 @@ import { getProv, clock } from "./provisional.js";
 import { raceFilters } from "../racefilters.js";
 import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
-import { fitSimilarity, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
+import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
+import { isVectorName, readVector, renderVector, latLonOf, ownImage, throughGeo, cover, VECTOR_ACCEPT } from "../trace/vectorroutes.js";
 import { detectCourse } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
@@ -96,7 +97,7 @@ function matchTimes(det, off, P = 120) {
 const parisDay = (ms) => new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 
 // ---- the files ------------------------------------------------------------------------------------------------------
-const ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.xml,.jgw,.pgw,.tfw,.gfw,.bpw,.wld,.prj,image/*,application/pdf";
+const ACCEPT = `.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.gpx,.tcx,.fit,.xml,.jgw,.pgw,.tfw,.gfw,.bpw,.wld,.prj,${VECTOR_ACCEPT},image/*,application/pdf`;
 
 // ---- the memory between visits ---------------------------------------------------------------------------------------
 // The files and the work stay while the site is open: a visit to another page and back finds the map, the trace and the
@@ -187,7 +188,9 @@ export async function render(main, { query = {}, route } = {}) {
   let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
-  const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null };     // { name, note, ... } per role
+  // { name, note, ... } per role; an OCAD or Mapper map is the map itself (files.map.vec) when no image of it is given, else read
+  // for the computed routes only (files.vector)
+  const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null, vector: null };
   let iofIndex = 0, northUp = true, restoredFiles = false;
   let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
@@ -307,7 +310,7 @@ export async function render(main, { query = {}, route } = {}) {
         <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
       <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>
-        ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}
+        ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
       <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
         ${files.map || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
@@ -327,6 +330,13 @@ export async function render(main, { query = {}, route } = {}) {
     drop.addEventListener("dragleave", () => drop.classList.remove("over"));
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
+  }
+  /** An image of the map replaces an OCAD or Mapper map shown: the vector map is kept for the computed routes. */
+  function keepVector() {
+    const m = files.map;
+    if (!m?.vec) return;
+    files.vector = { name: m.name, file: m.file, detail: m.detail.replace(/^\d+ × \d+ · /, ""), note: m.vec.v.geo ? "" : t("an.vec.noGeoRoutes"), vec: { v: m.vec.v } };
+    if (files.geo?.kind === "vector") files.geo = null;
   }
   async function take(list, { remember = true } = {}) {
     let newTrace = false;
@@ -349,7 +359,7 @@ export async function render(main, { query = {}, route } = {}) {
           if (!ovs.length) throw new Error("kmz");
           const ov = ovs[0], img = entries.find((e) => e.name.toLowerCase() === ov.href.toLowerCase().replace(/^\.\//, "")) || entries.find((e) => /\.(png|jpe?g|webp|gif)$/i.test(e.name));
           files.geo = { name, kind: "kmz", overlay: ov, note: "", detail: ov.quad ? "LatLonQuad" : `LatLonBox${ov.box.rot ? ` · ${fmt(ov.box.rot, 1)}°` : ""}` };
-          if (img) { map = await createImageBitmap(new Blob([img.data])); files.map = { name: `${name} › ${img.name}`, note: "", detail: `${map.width} × ${map.height}` }; courseCache = null; }
+          if (img) { keepVector(); map = await createImageBitmap(new Blob([img.data])); files.map = { name: `${name} › ${img.name}`, note: "", detail: `${map.width} × ${map.height}` }; courseCache = null; }
           else files.geo.note = t("an.kmz.noImage");
         } else if (low.endsWith(".kml")) {
           const ovs = parseKml(await f.text());
@@ -368,7 +378,23 @@ export async function render(main, { query = {}, route } = {}) {
           if (data) { files.iof = { name, data, note: data.courses.length ? "" : t("an.iof.noCourse"), detail: `${data.courses.length} ${t("an.iof.courses")} · ${data.controls.size} ${t("prov.controls")}${[...data.controls.values()].some((c) => c.lat != null) ? ` · ${t("an.iof.geo")}` : ""}` }; iofIndex = pickCourse(data); }
           else if (/<gpx[\s>]/.test(text)) { files.trace = { name, note: "" }; track = parseTrace(name, new TextEncoder().encode(text).buffer); files.trace.detail = `GPX · ${fmt(track.n)} ${t("an.points")}`; }
           else throw new Error("xml");
+        } else if (isVectorName(name)) {
+          const bytes = new Uint8Array(await f.arrayBuffer()), asMap = !map || !!files.map?.vec;
+          if (asMap) { files.map = { name, note: t("an.reading") }; filesCard(); }
+          const v = await readVector(bytes, name);
+          const kind = `${v.format === "ocad" ? `OCAD ${v.version}` : "OpenOrienteering Mapper"} · 1:${fmt(v.scale)}`;
+          if (asMap) {
+            const r = await renderVector(bytes, name);
+            map = r.image; courseCache = null;
+            files.map = { name, note: "", detail: `${map.width} × ${map.height} · ${kind}`, vec: { v, k: r.k } };
+            if (files.geo?.kind === "vector") files.geo = null;
+            // the map's own georeferencing: the image's corners on the globe
+            const ll = latLonOf(v);
+            if (ll && !files.geo && !files.world) files.geo = { name, kind: "vector", detail: v.geoName, corners: [[0, 0], [map.width, 0], [map.width, map.height], [0, map.height]].map(([x, y]) => ll(x / r.k, v.h - y / r.k)) };
+            if (!ll) files.map.note = t("an.vec.noGeo");
+          } else files.vector = { name, note: v.geo ? "" : t("an.vec.noGeoRoutes"), detail: kind, vec: { v } };
         } else if (isImage(f)) {
+          keepVector();
           files.map = { name, note: t("an.reading") }; filesCard();
           map = await readMap(f); courseCache = null;
           files.map = { name, note: "", detail: `${map.width} × ${map.height}` };
@@ -380,6 +406,7 @@ export async function render(main, { query = {}, route } = {}) {
         else if (low.endsWith(".kmz") || low.endsWith(".kml")) files.geo = { name, note: t(msg) };
         else if (isWorldFileName(name)) files.world = { name, note: t(msg) };
         else if (low.endsWith(".xml")) files.iof = { name, note: t(msg) };
+        else if (isVectorName(name)) { console.error(e); if (files.map?.name === name && !files.map.vec) { map = null; files.map = { name, note: t("rc.vec.failed") }; } else files.vector = { name, note: t("rc.vec.failed") }; }
         else { map = null; files.map = { name, note: t(msg) }; }
       }
       // the file itself, with its role (a KMZ gives both the map and its georeferencing)
@@ -635,6 +662,7 @@ export async function render(main, { query = {}, route } = {}) {
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
     if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
+    else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }
     else if (files.world?.wf) {
       const crs = files.prj?.crs || guessCrs(files.world.wf[4], files.world.wf[5], track.lon0);
       if (!crs) notes.push(t("an.geo.noCrs"));
@@ -1369,8 +1397,20 @@ export async function render(main, { query = {}, route } = {}) {
   function rcPanel() {
     const host = $("#rc-host");
     if (!host) return;
-    host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, status: rcs.status, auto: rcs.auto });
-    RC.bindPanel(host, rcs.s, (s, what) => {
+    const vr = rcVector(), vrec = files.map?.vec ? files.map : files.vector;
+    host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, status: rcs.status, auto: rcs.auto,
+      vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
+    RC.bindPanel(host, rcs.s, async (s, what, file) => {
+      if (what === "vector" || what === "vector-clear") {
+        if (what === "vector") {
+          // beside the map shown, for the routes only: no new calibration
+          try { const v = await readVector(new Uint8Array(await file.arrayBuffer()), file.name); files.vector = { name: file.name, file, note: v.geo ? "" : t("an.vec.noGeoRoutes"), detail: `${v.format === "ocad" ? `OCAD ${v.version}` : "OpenOrienteering Mapper"} · 1:${fmt(v.scale)}`, vec: { v } }; }
+          catch (e) { console.error(e); rcStatus(t("rc.vec.failed")); return; }
+        } else files.vector = null;
+        rememberFiles(); filesCard();
+        rcs.planFor = ""; rcPanel(); if (rcs.on) rcStart();
+        return;
+      }
       if (what === "on" || what === "off") {
         rcs.on = what === "on";
         try { localStorage.setItem("ocn.rc.on", rcs.on ? "1" : "0"); } catch (e) { /* this visit */ }
@@ -1381,14 +1421,24 @@ export async function render(main, { query = {}, route } = {}) {
       else { if (what === "map") rcs.mapSet = true; if (what === "reset") rcPanel(); rcRun(); }
     });
   }
+  /** The OCAD or Mapper map the routes read: the map shown (exactly placed), or one given beside its image, placed through its
+   *  georeferencing and the calibration; null without either. */
+  function rcVector() {
+    if (files.map?.vec) { const { v, k } = files.map.vec; return { v, T: ownImage(v, k) }; }
+    const v = files.vector?.vec?.v;
+    if (!v?.geo || !fit || !track) return null;
+    const T = throughGeo(v, (lat, lon) => toPx(fit, ...toLocal(track, lat, lon)));
+    return T && cover(v, T, map.width, map.height) >= 0.2 ? { v, T } : null;
+  }
   async function rcStart() {
     if (!rcs.on || !calibrated || !fit || !map) return;
     if (!rcs.mapSet) { rcs.s.map = !perso && RC.isSprint(race) ? "sprint" : "forest"; const sel = $("#rc-map"); if (sel) sel.value = rcs.s.map; }
     const my = ++rcs.token;
-    const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",");
+    const vr = rcVector();
+    const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",") + (vr ? `|${vr.v.name}` : "");
     if (!rcs.plan || rcs.planFor !== sig || rcs.planMap !== map) {
       rcs.plan?.destroy();
-      rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y)); rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
+      rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y), vr); rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
     }
     rcStatus(t("rc.st.reading"));
     try {
@@ -1439,7 +1489,7 @@ export async function render(main, { query = {}, route } = {}) {
       rcs.auto = RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
       rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
-        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }));
+        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : ""));
       const p = $("#rc-pace"); if (p && rcs.auto) p.placeholder = RC.minKm(rcs.auto);
       rcTable(); draw();
     } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }

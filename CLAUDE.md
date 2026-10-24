@@ -634,8 +634,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   KMZ/KML GroundOverlay with LatLonBox + rotation or gx:LatLonQuad; a world file + .prj, Lambert conformal conic and
   transverse Mercator inverted on GRS80, the system guessed from the numbers without .prj — Lambert 93, UTM) and an IOF
   XML 3.0 CourseData (Purple Pen, OCAD, Condes: the courses, the controls' codes and order, MapPosition in mm matched
-  to the circles found by `geom.registerPoints`, Position lat/lng when the map is georeferenced). OCAD/OMAP files
-  themselves are not read (vector maps: no renderer here; export the image with a world file or a KMZ).
+  to the circles found by `geom.registerPoints`, Position lat/lng when the map is georeferenced). OCAD and Mapper files
+  are read since 2026-10-24 (drawn by the Tracer's `tracer/vmap/`, georeferenced by their own grid; see « Computed route choices »).
   **Calibration, automatic** (owner, 2026-10-14: the clicks were too tedious, and split times are not always published):
   `trace/course.js` reads the course printed on the map — purple mask (hue 265-338°, saturated), control circles by a
   Hough vote at 20 radii on a 4 px grid, each peak refined by the share of the ring that is purple (tolerant score with
@@ -1356,8 +1356,19 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   « Voir le terrain tel que lu » draws the cells over the map. `window.anDebugRoutes()` on both pages. Measured 2026-10-24 on the
   reel's invented map (2160 × 1440, 0.42 m/px): the map read in ~2.5 s, a leg 0.5-2 s; on the local test analyses' scanned GIF
   the contours were first read as paved areas (fixed by each ink's own width). Documented in the guide (« Courses › Itinéraires
-  calculés », `content/guide.*.js` chapter `routes`, shown to administrators only). Not done: OCAD/Mapper vector maps (exact
-  symbols, `tracer/vmap/`), learning the speeds from the shared traces, purple out-of-bounds hatching (erased with the course).
+  calculés », `content/guide.*.js` chapter `routes`, shown to administrators only). **OCAD and Mapper maps** (owner, 2026-10-24):
+  `trace/vectorroutes.js` reads them with the Tracer's `tracer/vmap/` (`readVector`: the frame of `mapsrc.openVector`, its
+  `geoFromVector`) and draws the engine's layers on the image's pixels (`layers`; the worker's op `layers` instead of `init`, no
+  colours read): areas by their fill colour (hatching: blue marsh, olive/purple out of bounds; pattern green/black: slow), colour by
+  colour from the bottom of the colour table; lines by symbol number (501-508 paths drawn solid; 201, 515, 518, and 521/524 as
+  lines block — a path crossing them stays open, an out-of-bounds area never; 202, 415, 416, 513-523's passable ones handrails;
+  blue lines streams); contours, points, text and course left out. « Analyse solo »: a .ocd/.omap/.xmap dropped with no image is
+  the map (rendered by `mapsrc.openMap`, georeferenced by its own grid: `files.geo.corners`), else (or from the routes box) a
+  companion `files.vector` placed through its georeference and the calibration (`throughGeo`, refused under a fifth of the image
+  covered: `cover`); « Analyse multi »: the routes box's file, placed through `course.geo`, this visit only. Tested 2026-10-24 on
+  Purple Pen's samples (Clouds, Penistone Hill, Ft Casey, Lake Sammamish, SampleMap georeferenced in UTM 10 with a synthetic GPX;
+  Mapper's HG_Mar28 sprint): the layers in 0.1-1.5 s, the companion's placing equal to the map's own to the pixel. Not done: learning
+  the speeds from the shared traces, purple out-of-bounds hatching on an image map (erased with the course).
 - **Languages: French and English** (owner, 2026-10-17; open to everyone since 2026-10-18, `i18n.OPEN` true). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys

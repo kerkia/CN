@@ -21,6 +21,7 @@ export const N_CLASSES = 13;
 const UNKNOWN = 255;
 // pixel kinds: the areas are their class; the inks above them
 const I_PURPLE = 20, I_BLACK = 21, I_GREY = 22, I_BROWN = 23, I_BLUE = 24, I_OLIVE = 25;
+export const INK = { PURPLE: I_PURPLE, BLACK: I_BLACK, GREY: I_GREY, BROWN: I_BROWN, BLUE: I_BLUE, OLIVE: I_OLIVE };
 
 /** The default settings: speeds in % of white runnable forest's, the climb's cost in flat metres per metre up. */
 export const DEFAULTS = {
@@ -35,7 +36,8 @@ export const DEFAULTS = {
 };
 
 // ---- 1. pixels ---------------------------------------------------------------------------------------------------------
-function kindOf(r, g, b) {
+/** A colour's kind: an area (A.*) or an ink (INK.*). */
+export function kindOf(r, g, b) {
   const max = r > g ? (r > b ? r : b) : (g > b ? g : b), min = r < g ? (r < b ? r : b) : (g < b ? g : b), span = max - min;
   // the course's purple, as trace/course.js reads it (the dark plum of a photo included)
   if (max >= 40 && g === min && span) {
@@ -203,18 +205,22 @@ export function classify(rgba, w, h, mpp) {
 export function cells(px, w, h, cs) {
   const nx = Math.ceil(w / cs), ny = Math.ceil(h / cs), M = nx * ny;
   const cls = new Uint8Array(M), path = new Uint8Array(M), blue = new Uint8Array(M), count = new Int32Array(N_CLASSES);
+  // a vector map's own layers (trace/vectorroutes.js): lines that block, handrails
+  const vector = !!px.block, block = vector ? new Uint8Array(M) : null, hand = vector ? new Uint8Array(M) : null;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     count.fill(0);
-    let p = 0, b = 0, n = 0;
+    let p = 0, b = 0, n = 0, bl = 0, ha = 0;
     for (let y = j * cs; y < Math.min(h, (j + 1) * cs); y++) for (let x = i * cs; x < Math.min(w, (i + 1) * cs); x++) {
       const k = y * w + x;
       count[px.area[k]]++; p |= px.path[k]; b += px.blue[k]; n++;
+      if (vector) { bl |= px.block[k]; ha |= px.hand[k]; }
     }
     let best = 0;
     for (let c = 1; c < N_CLASSES; c++) if (count[c] > count[best]) best = c;
     // an impassable area wins only when it fills half the cell: a building's corner does not close a street
     const k = j * nx + i;
     cls[k] = best; path[k] = p; blue[k] = Math.round((255 * b) / Math.max(1, n));
+    if (vector) { block[k] = bl; hand[k] = ha; }
   }
   // a dashed path's gaps: a cell between two path cells is one
   const fill = [];
@@ -233,7 +239,7 @@ export function cells(px, w, h, cs) {
     if (s / n > 0.2 * 255 && blue[k] && cls[k] <= A.G3) marsh.push(k);
   }
   for (const k of marsh) cls[k] = A.MARSH;
-  return { cs, nx, ny, cls, path, blue };
+  return { cs, nx, ny, cls, path, blue, vector, block, hand };
 }
 
 // ---- 3. costs -------------------------------------------------------------------------------------------------------------
@@ -254,17 +260,18 @@ export function costs(G, s, mpc) {
   F[A.WHITE] = 1; F[A.OPEN] = inv(sp.open); F[A.ROUGH] = inv(sp.rough); F[A.G1] = inv(sp.g1); F[A.G2] = inv(sp.g2); F[A.G3] = inv(sp.g3);
   F[A.WATER] = Infinity; F[A.SHALLOW] = inv(sp.shallow); F[A.PAVED] = inv(sp.paved); F[A.OOB] = Infinity; F[A.BUILDING] = Infinity;
   F[A.GREY] = s.map === "sprint" ? Infinity : inv(sp.grey); F[A.MARSH] = inv(sp.marsh);
-  const bm = blackMode(s), fPath = inv(sp.path);
+  const bm = G.vector ? "paths" : blackMode(s), fPath = inv(sp.path);     // a vector map's paths are paths
   const f = new Float32Array(M), hand = new Uint8Array(M);
   for (let k = 0; k < M; k++) {
-    let v = F[cls[k]];
-    if (path[k]) { if (bm === "paths") v = Math.min(v, fPath); else if (bm === "obstacles") v = Infinity; }
+    let v = G.block?.[k] ? Infinity : F[cls[k]];
+    // a path crosses a wall or a fence (a gate), never an area out of bounds
+    if (path[k] && cls[k] !== A.OOB) { if (bm === "paths") v = Math.min(v, fPath); else if (bm === "obstacles") v = Infinity; }
     f[k] = v;
   }
   // the handrails: paths (or black lines), streams, the edges between areas seen differently, the banks of what blocks
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const k = j * nx + i;
-    if (path[k] || G.blue[k] > 25) { hand[k] = 1; continue; }
+    if (path[k] || G.blue[k] > 25 || G.hand?.[k] || G.block?.[k]) { hand[k] = 1; continue; }
     const g = GROUP[cls[k]];
     if ((i < nx - 1 && GROUP[cls[k + 1]] !== g) || (j < ny - 1 && GROUP[cls[k + nx]] !== g)) { hand[k] = 1; if (i < nx - 1) hand[k + 1] = 1; if (j < ny - 1) hand[k + nx] = 1; }
   }

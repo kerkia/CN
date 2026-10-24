@@ -225,6 +225,20 @@ export function build(X) {
           ])}
           <p>Known limits: out-of-bounds hatching in purple is erased with the course; a badly lit photo blurs the colours; thin impassable cliffs,
             walls and fences are black lines like paths (the "Thin black lines" setting says what they are).</p>`)}
+        ${slide("Races · trial", "1b. Better: the OCAD or Mapper map", html`
+          <p>The map's own file — OCAD (.ocd) or OpenOrienteering Mapper (.omap, .xmap) — tells the terrain without guessing: Ozimut reads it in
+            your browser with the course setter's engine and draws each symbol exactly where it is.</p>
+          ${list([
+            html`<b>Areas</b> by their fill colour (or hatching: blue for a marsh, olive or purple for out of bounds), layer by layer as on the map
+              — a green over a yellow wins. The colour rather than the number: ISOM 2000, ISOM 2017 and ISSprOM number differently.`,
+            html`<b>Lines</b> by their number: roads, tracks and paths (501 to 508) are paths, solid even where the map dashes them; impassable
+              cliffs, walls and fences (201, 515, 518; 521 and 524 in ISOM 2000) stop the runner, except where a path crosses them; passable walls
+              and fences and vegetation boundaries are handrails; blue lines are streams.`,
+            html`Contours, point symbols, text and the course are left out.`,
+          ])}
+          <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
+            with an image of the map — or chosen in the "Computed routes" box, in both analyses — it serves the routes, placed on the image by its
+            georeferencing: it must have one, and cover the map shown.</p>`)}
         ${slide("Races · trial", "2. The time of a step", html`
           <p>The time from one cell to the next is the distance, multiplied by the terrain's slowness and the slope's:</p>
           ${list([
