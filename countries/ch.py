@@ -17,7 +17,8 @@ from countries.base import Country
 
 COUNTRY = Country(code="CH", federation="Swiss Orienteering", access="all", db=paths.DATA_DIR / "ch.sqlite3",
                   time_zones=("Europe/Zurich",), lang="de-CH,de;q=0.8,fr;q=0.6,en;q=0.4", results=False)
-AGENDA_VERSION = 3                       # 2: the canton from the place (countries/places, 2026-10-24); 3: from the coordinates
+AGENDA_VERSION = 4                       # 2: the canton from the place (countries/places, 2026-10-24); 3: from the coordinates;
+                                         # 4: the CSV's region always kept
 BASE = "https://www.o-l.ch/cgi-bin/fixtures"
 SPEC = {"foot": agenda.FOOT, "bike": agenda.MTBO, "ski": agenda.SKI}
 # the regional associations (the CSV's codes)
@@ -66,11 +67,19 @@ def wgs84(x: str | None, y: str | None) -> list[float] | None:
 
 
 def place(e: dict) -> None:
-    """The canton of the event (`dep`, its two letters) under its regional association. First where the calendar puts
+    """The canton of the event (`dep`, its two letters) under its regional association — the CSV's, always (an association
+    races outside its cantons: Ticino's « Roveredo GR », Zentralschweiz's ski-O in Davos). First where the calendar puts
     it — its coordinates, read against the places around (`places.nearest`) —; else by name: a canton's letters after
     the place, there or in the name, decide (« Cressier FR », « … Sprint Roveredo GR »); else the place read, the
     calendar's own association settling a name met in two cantons, a place elsewhere counting only when it is plainly
     a town there."""
+    region = e.get("region")
+    _place(e)
+    if region:                      # the calendar's own region (its « region » column) is kept whatever the canton
+        e["region"] = region
+
+
+def _place(e: dict) -> None:
     from countries import places
     if e.get("gps"):
         r, d = places.nearest("CH", *e["gps"])

@@ -1613,7 +1613,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   organiser's other rows (`_by_org`, two at least). Per country: **AT** Land / Bezirk (« Graz (Stadt) », « Innsbruck (Land) »), the
   host's Land as `expect`; **BE** region (Bruxelles / Wallonie / Vlaanderen) / province, Flanders' federation → Vlaanderen when
   unplaced; **BG** oblast from the event's name only (clubs' names are villages too); **BY** oblast / raion from the place, the
-  calendar's « Общереспубликанские » / « Международные » moved to `level`; **CH** the regional association (as the CSV) / canton by its
+  calendar's « Общереспубликанские » / « Международные » moved to `level`; **CH** the regional association (the CSV's own « region » column, always kept, even when the canton is another
+  association's: Ticino's « Roveredo GR ») / canton by its
   letters: first from the CSV's own Swiss grid coordinates (`coord_x`/`coord_y`, LV03 or LV95, → `gps` by swisstopo's formulas,
   `ch.wgs84`; the CSV has no canton column, nor the event's page) against the table's `points` — every populated place's position
   and canton (`gazetteer.POINTS`), the 5 nearest within 8 km voting by 1/distance, `places.nearest`; 45 of 183 events on
