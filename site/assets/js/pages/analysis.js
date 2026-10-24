@@ -32,6 +32,7 @@ import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFrom
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 import { takeInbox } from "../pwa.js";
+import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -144,7 +145,8 @@ export async function render(main, { query = {}, route } = {}) {
   // not the browser copied this tab's session) and goes on with the playback instead of stopping on the files
   if (query.tag && /^[a-z0-9]{6,40}$/.test(query.tag)) { try { sessionStorage.setItem("ocn.an.tag", query.tag); } catch (e) { /* this visit */ } }
   let autoPlay = query.play === "1";
-  setTabParams(() => ({ tag: sessionTag(), play: document.body.classList.contains("an-theatre") ? "1" : null }));
+  setTabParams(() => ({ tag: sessionTag(), play: document.body.classList.contains("an-theatre") ? "1" : null, d3: v3on ? "1" : null }));
+  let autoV3 = query.d3 === "1";
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
@@ -165,10 +167,10 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-graphs-head"><button type="button" class="btn btn-sm an-collapse" id="an-collapse"></button><span class="an-graphs-title">${t("an.graphs")}</span><div class="an-chips" id="an-chips"></div></div>
           <canvas id="an-strip"></canvas></section>
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
-        <div class="an-map"><canvas id="an-canvas"></canvas>
-          <div class="an-tools"><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
+        <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
+          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
-          <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div></div>
+          <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
       </div>
@@ -202,13 +204,17 @@ export async function render(main, { query = {}, route } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) && !oldDefault ? prefs.chans : ["pace", ...Object.keys(CHANNEL_COLOUR)]);
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
+  // the 3D view (trace/view3d.js, a prototype): off at each visit; its vertical exaggeration and relief kept
+  let v3 = null, v3on = false, v3token = 0, v3grid = null, v3info = null, v3refined = {};
+  let v3relief = prefs.relief3d === "contours" ? "contours" : "dem", v3interval = prefs.interval3d === 2.5 ? 2.5 : 5;
+  let v3ex = Number.isFinite(prefs.ex3d) && prefs.ex3d >= 1 && prefs.ex3d <= 3 ? prefs.ex3d : 1.5;
   // the playback's layout (owner, 2026-10-14): the curves on the left (or under the map), collapsible; the panels'
   // sizes set by dragging the splitters
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
   let glayout = prefs.glayout === "left" || prefs.glayout === "below" ? prefs.glayout : (innerWidth >= 1100 ? "left" : "below");
   let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22))));
   let gh = px(prefs.gh, 80, 900, 200), sw = px(prefs.sw, 200, 600, 270), gcol = !!prefs.gcol;
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
@@ -477,6 +483,7 @@ export async function render(main, { query = {}, route } = {}) {
     prepare();
   }
   const hideResults = () => {
+    close3d(); $("#an-3d").hidden = true;
     $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
     $("#an-hud").textContent = ""; $("#an-legend").hidden = true; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
@@ -1019,7 +1026,7 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-        </div></details>
+        </div><div id="an-3d-opts" hidden></div></details>
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
@@ -1056,6 +1063,8 @@ export async function render(main, { query = {}, route } = {}) {
     paceLegend();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
+    $("#an-3d").hidden = false;
+    if (autoV3) { autoV3 = false; toggle3d(); }
   }
   /** A trace that ends before the race does — before the published time, or far from the finish placed on the map —
    *  was cut short (a file synced before the end, a watch stopped early): said plainly, nothing can show the rest. */
@@ -1241,10 +1250,11 @@ export async function render(main, { query = {}, route } = {}) {
   canvas.addEventListener("pointercancel", up);
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.offsetX, e.offsetY); }, { passive: false });
   canvas.addEventListener("dblclick", (e) => zoomBy(1.6, e.offsetX, e.offsetY));
-  $("#an-zin").addEventListener("click", () => zoomBy(1.4));
-  $("#an-zout").addEventListener("click", () => zoomBy(1 / 1.4));
-  $("#an-fit").addEventListener("click", () => { if (!map) return; if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
-  $("#an-map").addEventListener("click", () => { if (map) { fitView(); draw(); } });
+  $("#an-zin").addEventListener("click", () => (v3 ? v3.zoom(1.4) : zoomBy(1.4)));
+  $("#an-zout").addEventListener("click", () => (v3 ? v3.zoom(1 / 1.4) : zoomBy(1 / 1.4)));
+  $("#an-fit").addEventListener("click", () => { if (!map) return; if (v3) { setFollow(false); v3.setFollow(false); v3.fitTrace(); return; } if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
+  $("#an-map").addEventListener("click", () => { if (v3) { setFollow(false); v3.setFollow(false); v3.fitMap(); return; } if (map) { fitView(); draw(); } });
+  $("#an-3d").addEventListener("click", () => toggle3d());
   const ro = new ResizeObserver(() => {
     if (!map) return;
     const b = box();
@@ -1257,7 +1267,7 @@ export async function render(main, { query = {}, route } = {}) {
   });
   ro.observe(canvas); ro.observe(strip);
   let redrawChips = null;
-  const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); });
+  const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); v3?.theme(); });
   themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   // the pace colours: from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
@@ -1284,6 +1294,7 @@ export async function render(main, { query = {}, route } = {}) {
 
   function draw() {
     if (!map) return;
+    if (v3on) { sync3d(); return; }                    // the 3D view draws itself, on the same clock
     const dpr = window.devicePixelRatio || 1, { w, h } = box();
     if (calibrated && follow && fit) {               // the runner kept at the centre
       const [px, py] = toPx(fit, ...posAt(track, offset + tNow));
@@ -1351,6 +1362,112 @@ export async function render(main, { query = {}, route } = {}) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
+  // ---- the 3D view (a prototype, 2026-10-24): the map over the ground's heights, on the playback's own clock --------------
+  /** The trace's time now: between two ticks of the playback's timer the 3D view moves on smoothly. */
+  const clockNow = () => offset + (playing ? Math.min(total, tNow + ((performance.now() - last) / 1000) * speed) : tNow);
+  /** A map pixel's [lat, lon], through the calibration (the trace's metres): only the map's area is asked of the services. */
+  const pxLatLon = (px, py) => { const [mx, my] = toM(fit, px, py); return [track.lat0 - my / track.ky, track.lon0 + mx / track.kx]; };
+  /** The heights under the map (trace/terrain.js), kept for the visit and in IndexedDB. */
+  async function heights(onProgress) {
+    const W = map.width, H = map.height, plan = gridPlan(W, H, (a, b) => toM(fit, a, b));
+    const key = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => pxLatLon(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
+    if (v3grid?.key === key) return v3grid;
+    v3refined = {};
+    const g = await loadGrid({ key, ...plan, node: (i, j) => pxLatLon((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H), onProgress });
+    v3grid = { ...g, key, plan };
+    return v3grid;
+  }
+  const v3note = (text) => { const el = $("#an-3d-credit"); el.hidden = !text; el.innerHTML = text || ""; };
+  async function toggle3d() {
+    if (v3on) { close3d(); draw(); return; }
+    if (!fit || offset == null || !track) return;
+    const my = ++v3token;
+    v3on = true;
+    $("#an-3d").setAttribute("aria-pressed", "true");
+    $("#an-3d-host").hidden = false; canvas.hidden = true;
+    v3note(t("an.v3.loading"));
+    try {
+      const g = await heights((f) => { if (my === v3token) v3note(t("an.v3.loadingPct", { p: Math.round(100 * f) })); });
+      if (my !== v3token) return;
+      const { open3d } = await import("../trace/view3d.js");
+      if (my !== v3token) return;
+      const v = await open3d($("#an-3d-host"), { image: map, W: map.width, H: map.height, grid: g, toM: (x, y) => toM(fit, x, y), toPx: (x, y) => toPx(fit, x, y),
+        track, i0: indexAt(track, offset), i1: indexAt(track, offset + total), now: clockNow, onUserMove: () => setFollow(false) });
+      if (my !== v3token) { v.dispose(); return; }
+      v3 = v; v3info = g;
+      v3.setExaggeration(v3ex);
+      if (v3relief === "contours") applyRelief();
+      const c = CREDIT[g.source];
+      v3note(html`${t("an.v3.relief")} <a href="${c.url}" target="_blank" rel="noopener">${c.text}</a>`);
+      opts3d(); sync3d();
+    } catch (e) {
+      console.error(e);
+      if (my !== v3token) return;
+      close3d(); draw();
+      v3note(t(e.message === "webgl" ? "an.v3.noWebgl" : "an.v3.failed"));
+      setTimeout(() => { if (!v3on) v3note(""); }, 8000);
+    }
+  }
+  function close3d() {
+    v3token++;
+    if (v3) { v3.dispose(); v3 = null; }
+    if (!v3on) return;
+    v3on = false;
+    $("#an-3d").setAttribute("aria-pressed", "false");
+    $("#an-3d-host").hidden = true; canvas.hidden = false; v3note("");
+    const o = $("#an-3d-opts"); if (o) o.hidden = true;
+  }
+  /** The 2D's display settings passed on: the trace's colour or pace colours, width, the part to come, the tail. */
+  function sync3d() {
+    if (!v3) return;
+    if (!vHi || vHi === 1) paceScale();
+    const bySpeed = colour === "speed";
+    v3.setStyle({ colourOf: (i) => (bySpeed ? paceColour(track.v[i]) : traceColour), colourKey: bySpeed ? `speed:${vLo}:${vHi}` : traceColour, width, future, tail, mapAlpha });
+    v3.setFollow(follow);
+  }
+  /** The 3D view's own settings, under « Affichage »: the vertical exaggeration, the relief's source. */
+  function opts3d() {
+    const el = $("#an-3d-opts");
+    if (!el || !v3info) return;
+    const g = v3info;
+    el.hidden = false;
+    el.innerHTML = html`<div class="an-3d-head">${t("an.v3.title")}</div><div class="an-opts">
+      <label><span>${t("an.v3.ex")}</span><span class="an-3d-ex"><input type="range" id="an-ex" min="1" max="3" step="0.25" value="${v3ex}"><b id="an-ex-v">× ${fmt(v3ex, 2)}</b></span></label></div>
+      <label><span>${t("an.v3.relief.choice")}</span><select id="an-relief"><option value="dem" ${raw(v3relief === "dem" ? "selected" : "")}>${t("an.v3.relief.dem")}</option><option value="contours" ${raw(v3relief === "contours" ? "selected" : "")}>${t("an.v3.relief.contours")}</option></select></label>
+      <label id="an-interval-row" ${raw(v3relief === "contours" ? "" : "hidden")}><span>${t("an.v3.interval")}</span><select id="an-interval"><option value="5" ${raw(v3interval === 5 ? "selected" : "")}>5 m</option><option value="2.5" ${raw(v3interval === 2.5 ? "selected" : "")}>${fmt(2.5, 1)} m</option></select></label></div>
+      <p class="muted an-3d-info">${t(g.source === "tiles" ? "an.v3.info.tiles" : "an.v3.info.ign", { nx: g.nx, ny: g.ny, step: fmt(g.step, 1), s: g.cached ? t("an.v3.cached") : `${fmt(g.ms / 1000, 1)} s` })}</p>
+      <p class="muted an-3d-info" id="an-relief-info"></p>`;
+    $("#an-ex").addEventListener("input", (e) => { v3ex = Number(e.target.value); $("#an-ex-v").textContent = `× ${fmt(v3ex, 2)}`; v3?.setExaggeration(v3ex); savePrefs(); });
+    $("#an-relief").addEventListener("change", (e) => { v3relief = e.target.value; $("#an-interval-row").hidden = v3relief !== "contours"; savePrefs(); applyRelief(); });
+    $("#an-interval").addEventListener("change", (e) => { v3interval = Number(e.target.value); savePrefs(); applyRelief(); });
+    reliefInfo();
+  }
+  /** The relief the view shows: the model alone, or with the map's own contour lines (trace/contours.js, an experiment). */
+  async function applyRelief() {
+    if (!v3 || !v3grid) return;
+    if (v3relief !== "contours") { v3.setGrid(v3grid); reliefInfo(); return; }
+    let r = v3refined[v3interval];
+    if (r === undefined) {
+      const el = $("#an-relief-info"); if (el) el.textContent = t("an.v3.contours.reading");
+      await tick();
+      const { refineGrid } = await import("../trace/contours.js");
+      const mPerPx = Math.hypot(...[0, 1].map((k) => toM(fit, map.width, 0)[k] - toM(fit, 0, 0)[k])) / map.width;
+      try { r = refineGrid(map, v3grid, map.width, map.height, mPerPx, { interval: v3interval }); } catch (e) { console.error(e); r = null; }
+      v3refined[v3interval] = r;
+      if (!v3 || v3relief !== "contours") return;
+    }
+    v3.setGrid(r || v3grid);
+    reliefInfo();
+  }
+  function reliefInfo() {
+    const el = $("#an-relief-info");
+    if (!el) return;
+    const r = v3refined[v3interval];
+    el.textContent = v3relief !== "contours" ? "" : !r ? t("an.v3.contours.none")
+      : `${t("an.v3.contours.info", { n: r.contours.pieces, s: fmt(r.contours.ms / 1000, 1) })} ${t(v3grid?.source === "tiles" ? "an.v3.contours.tiles" : "an.v3.contours.ign")}`;
+  }
+  window.anDebug3d = () => ({ on: v3on, grid: v3info && { nx: v3info.nx, ny: v3info.ny, step: v3info.step, source: v3info.source, ms: v3info.ms, cached: v3info.cached, zoom: v3info.zoom, tiles: v3info.tiles }, view: v3?.stats(), contours: v3refined[v3interval]?.contours });
+
   // ---- the curves under the map: one row per curve chosen, the same time axis, the controls' passes when the sequence is known
   const stripRows = () => ["pace", ...Object.keys(CHANNEL_COLOUR)].filter((c) => chans.has(c) && (c === "pace" || track.ch[c]));
   function sizeStrip() {
@@ -1411,7 +1528,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
     themeWatch.disconnect();
-    stop(); ro.disconnect(); prepToken++;
+    stop(); ro.disconnect(); prepToken++; close3d();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
 }
