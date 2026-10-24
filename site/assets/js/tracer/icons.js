@@ -106,6 +106,26 @@ export const ICON = {
   launcher: '<path d="M7 17L17 7M10 17h7v-7"/>',
   ribbon: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 13h18"/><path d="M7 4v5M12 4v5"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  // the advanced level (owner, 2026-10-24, after the Condes study)
+  phi: '<circle cx="12" cy="3.8" r="1.8"/><circle cx="12" cy="20.2" r="1.8"/><path d="M10.7 5.2L4.5 12l6.2 6.8M13.3 5.2l6.2 6.8-6.2 6.8M12 5.6v12.8" />',
+  shuffle: '<path d="M3 7h4c4 0 6 10 10 10h4M3 17h4c4 0 6-10 10-10h4"/><path d="M18.5 4.5L21 7l-2.5 2.5M18.5 14.5L21 17l-2.5 2.5"/>',
+  string: '<path d="M3 18c2-6 5-6 6-2s4 4 5-2 4-8 7-6"/><circle cx="3" cy="18" r="1.4"/><circle cx="21" cy="8" r="1.4"/>',
+  trailo: '<path d="M5 21V5M5 5l5 2.5L5 10M12 21V8M12 8l5 2.5L12 13M19 21v-9M19 12l3 1.5-3 1.5"/>',
+  bike: '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h6l2 7M10 9l3 7h-7M14 6h3"/>',
+  ski: '<path d="M4 20L20 4M8 20L20 8"/><circle cx="16.5" cy="4.5" r="1.6"/>',
+  units: '<rect x="4" y="9" width="7" height="11" rx="1"/><rect x="13" y="9" width="7" height="11" rx="1"/><path d="M7.5 9V4h9v5"/>',
+  angle: '<path d="M4 20h16M4 20L17 6"/><path d="M10 20a6 6 0 0 0-1.8-4.3"/>',
+  nearest: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="7" r="3"/><path d="M8.3 15.1l7.4-6.2" stroke-dasharray="2 2"/>',
+  routes: '<path d="M4 19c4-1 5-8 9-9s5-5 7-6"/><path d="M4 19c6 0 8-3 10-6s3-7 6-9" stroke-dasharray="2.5 2"/>',
+  pages: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>',
+  backside: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 11h6M9 15h4"/><path d="M15 3v4h4"/>',
+  inset: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><circle cx="15" cy="9" r="3.2"/><path d="M17.3 11.3L20 14M4 14h7v7"/>',
+  mask: '<path d="M3 3h18v18H3z"/><circle cx="12" cy="12" r="5"/>',
+  geopdf: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M12 18s-3-2.8-3-5a3 3 0 0 1 6 0c0 2.2-3 5-3 5z"/>',
+  multimap: '<path d="M2 7l5-2 5 2 5-2v11l-5 2-5-2-5 2z"/><path d="M7 5v11M12 7v11M17 5v6"/><rect x="14" y="13" width="8" height="8" rx="1"/>',
+  colors: '<circle cx="8" cy="9" r="4.5"/><circle cx="16" cy="9" r="4.5"/><circle cx="12" cy="15.5" r="4.5"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  symbol: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l4-8 4 8M9.5 13h5"/>',
 };
 export const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ""}</svg>`;
 
@@ -135,6 +155,14 @@ export const ACT_ICON = {
   water: "water", "first-aid": "firstaid", "optional-crossing-point": "crossing", "forbidden-route": "forbidden", "registration-mark": "regmark",
   boundary: "boundary", "out-of-bounds": "oob", "dangerous-area": "danger", "temporary-construction": "construction", "white-out": "whiteout",
   line: "line", text: "text", image: "image", rectangle: "rect", ellipse: "ellipse", descriptions: "descr",
+  // the advanced level
+  "import-courses": "import", classes: "list", "var-phi": "phi", "random-section": "shuffle", "course-form": "string", "finish-at-start": "finish",
+  "relay-teams": "team", "control-units": "units", "control-lock": "lock", "trail-answer": "trailo", "dual-symbol": "symbol", "my-symbols": "symbol",
+  "view-angles": "angle", "view-nearest": "nearest", "routes-alt": "routes", "pdf-imposed": "pages", "pdf-back": "backside", "export-geopdf": "geopdf",
+  "export-geotiff": "image", "export-svg": "image", "export-kmz": "globe", "export-maprun": "phone", "export-ocadcsv": "table", "export-livelox": "share",
+  "maps": "multimap", "map-colors": "colors", "map-templates": "layers", "field-states": "flag", "pdf-cards": "punch", "pdf-overprint": "regmark",
+  "mtbo-oneway": "route", "mtbo-forbidden-route": "forbidden", "mtbo-obstacle": "stretch", "mtbo-forbidden-pass": "close", "mtbo-danger": "danger",
+  inset: "inset", mask: "mask", "event-discipline": "bike",
 };
 /** A menu entry's icon (an empty slot of the same width when it has none, so the labels line up). */
 export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) : `<span class="tr-mi-none" style="width:${s}px"></span>`);

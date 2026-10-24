@@ -150,9 +150,14 @@ export function readOcad(bytes) {
     for (const e of idx) {
       if ((version > 8 && e.status !== 1) || e.pos <= 0 || e.pos > r.length) continue;
       r.seek(e.pos);
-      try { createObject(e, readObject(r, version), ctx); } catch (err) { /* a damaged object is skipped */ }
+      try {
+        const o = readObject(r, version);
+        if (ctx.cs?.controls.length && o.coords?.length) (ctx.objPos ||= new Map()).set(e.objIndex, { x: coordX(o.coords[0]), y: coordY(o.coords[0]), sym: o.sym });
+        createObject(e, o, ctx);
+      } catch (err) { /* a damaged object is skipped */ }
     }
   }
+  map.courseSetting = courseSetting(ctx);
   // layout bitmaps (OCAD 11+: embedded in the parameter strings)
   for (const b of ctx.layoutBitmaps) {
     if (!b.data) continue;
@@ -165,6 +170,25 @@ export function readOcad(bytes) {
     map.add(bm);
   }
   return { map, version };
+}
+
+/** OCAD's course setting, read for the Tracer's import (iofin.js fromOcad): { controls: [{ code, kind, x, y }], courses: [{ name, climb,
+ *  parts: [[code letter, value]] }], classes: [{ name, course, runners }] } in the file's mm, or null. Read after OCAD's file format
+ *  description (« si_Course »: s start, c control, k crossing point, g map change, f finish, l/b/p and r/v/q variations); a
+ *  control's kind from its string's « Y » or, failing that, its object's course-setting symbol (701 start, 706 finish, 708 crossing). */
+function courseSetting(ctx) {
+  const cs = ctx.cs;
+  if (!cs || (!cs.controls.length && !cs.courses.length)) return null;
+  const KIND = { s: "start", c: "normal", f: "finish", k: "crossing", w: "crossing" };
+  const controls = [];
+  for (const p of cs.controls) {
+    const o = ctx.objPos?.get(p.objIndex), sym = o ? Math.floor(Math.abs(o.sym) / (ctx.version >= 9 ? 1000 : 10)) : 0;
+    const kind = KIND[(p.codes.Y || "")[0]] || (sym === 701 ? "start" : sym === 706 ? "finish" : sym === 708 ? "crossing" : "normal");
+    if (p.first) controls.push({ code: p.first.trim(), kind, x: o ? o.x : null, y: o ? o.y : null });
+  }
+  const courses = cs.courses.map((p) => ({ name: p.first, climb: p.codes.C ?? null, parts: p.parts || [] }));
+  const classes = cs.classes.map((p) => ({ name: p.first, course: p.codes.c || null, runners: pint(p, "r", 0) }));
+  return { controls, courses, classes };
 }
 
 // ---- string parameters (OCAD 8+: colours, scale, georeferencing, view, layout) ---------------------------------------------
@@ -193,11 +217,18 @@ function readParams(r, first, ctx) {
   const single = new Map(), multi = new Map();
   for (const e of list) {
     if (e.pos <= 0 || e.pos + e.len > r.length) continue;
-    const p = parseParam(decode8(r.u.subarray(e.pos, e.pos + e.len)), e.type);
+    const raw = decode8(r.u.subarray(e.pos, e.pos + e.len));
+    const p = parseParam(raw, e.type);
     p.objIndex = e.objIndex;
+    if (e.type <= 3 || e.type === 8) p.parts = raw.replace(/\0[\s\S]*$/, "").split("\t").slice(1).filter(Boolean).map((x) => [x[0], x.slice(1)]);
     if (e.type >= 1024) single.set(e.type, p);
     else { if (!multi.has(e.type)) multi.set(e.type, []); multi.get(e.type).push(p); }
   }
+  // course setting (OCAD's « Course Setting » project): its controls (type 1, tied to their objects), courses (2) and classes (3);
+  // the templates (8: si_BackgroundMap, the other files a map shows under it)
+  ctx.cs = { controls: multi.get(1) || [], courses: multi.get(2) || [], classes: multi.get(3) || [] };
+  map.templates = (multi.get(8) || []).map((p) => ({ file: p.first, visible: pint(p, "s", 1) !== 0, x: pnum(p, "x", 0), y: pnum(p, "y", 0), angle: pnum(p, "a", 0),
+    u: pnum(p, "u", 0), v: pnum(p, "v", 0), dim: pint(p, "d", 0) })).filter((x) => x.file);
   if (version >= 9) {
     const sc = single.get(1039);
     if (sc) {

@@ -35,19 +35,38 @@ export function layoutCourse(ev, cd, opts = {}) {
     for (let i = 0; i < v.controls.length; i++) if (ev.controls[v.controls[i].control].kind === "start") return angleOut(ev, v, i);
     return NaN;
   })();
+  // the advanced level: a course's form (a string course, trail-O: leg lines or not), random-order sections (no lines to,
+  // between or from their controls), a control met twice drawn once (a diamond's exit and entry), ski-O's centre dot
+  const course = cd.course ? ev.courses[cd.course] : null;
+  const legLines = !(course?.form && course.legLines === false);
+  const rnd = (cv) => cv.ccs.some((id) => ev.courseControls[id]?.rnd);
+  const drawn = new Set();
+  const ski = cd.course && M.disciplineOf(ev, cd.course) === "ski";
   // controls and legs
   v.controls.forEach((cv, i) => {
-    if (!cv.hidden) {
+    const key = `${cv.control}`;
+    if (!cv.hidden && !cv.ghost && !(drawn.has(key) && ev.controls[cv.control].kind === "normal")) {
       const o = pointObj(ev, v, cv, i, ratio, gapScale, lw, Z, std);
-      if (o) add(o);
+      if (o) { if (ski && o.t === "control" && !o.dot) o.dot = 0.3 * ratio; add(o); drawn.add(key); }
     }
-    if ((v.kind === "normal" || v.kind === "variations" || (v.kind === "score" && ev.controls[cv.control].kind === "map-issue")) && cv.legTo) {
+    if (legLines && (v.kind === "normal" || v.kind === "variations" || (v.kind === "score" && ev.controls[cv.control].kind === "map-issue")) && cv.legTo) {
       cv.legTo.forEach((j, k) => {
-        if (j < 0) return;
+        if (j < 0 || rnd(cv) || rnd(v.controls[j])) return;
         for (const o of legObjs(ev, v, cv, v.controls[j], cv.ccs[k] || cv.ccs[0], ratio, lw, startAngleOut)) add(o);
       });
     }
   });
+  // a string course: the string followed from the start to the finish, along the routes drawn (or straight between controls)
+  if (course?.form === "string" && v.kind === "normal") {
+    const pts = [];
+    for (let i = 0; i >= 0 && i < v.controls.length; i = M.nextIndex(v, i)) {
+      const j = M.nextIndex(v, i);
+      if (j < 0) break;
+      const seg = M.legRoutePoints(ev, v.controls[i].control, v.controls[j].control);
+      pts.push(...(pts.length ? seg.slice(1) : seg));
+    }
+    if (pts.length >= 2) objs.unshift({ t: "string", pts, lw: 0.5 * ratio * ap.lineWidth, ratio, cc: 0, control: 0 });
+  }
   for (const ccId of v.extra) {
     const cc = ev.courseControls[ccId];
     const o = pointObj(ev, v, { control: cc.control, ccs: [ccId], ordinal: -1 }, -1, ratio, gapScale, lw, Z, std);

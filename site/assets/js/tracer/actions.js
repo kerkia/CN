@@ -241,7 +241,8 @@ function placeDescriptions(E, topLeft, width) {
 }
 
 // ---- moving ----------------------------------------------------------------------------------------------------------------
-export const movable = (E, hit) => ["control", "number", "special"].includes(hit.kind);
+// a locked control (the advanced level: control.locked) stays where it is; its number still moves
+export const movable = (E, hit) => ["control", "number", "special"].includes(hit.kind) && !(hit.kind === "control" && E.ev.controls[hit.control]?.locked && (E.toast(t("trc.act.locked")), true));
 function moveGhost(E, d, p, e) {
   const dx = p[0] - d.start[0], dy = p[1] - d.start[1];
   if (d.kind === "handle") {

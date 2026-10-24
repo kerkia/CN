@@ -91,6 +91,8 @@ export function mountRibbon(E) {
       case "allControls": return !!E.opts.allControls;
       case "overprint": return !!E.ev.appearance?.ocadOverprint;
       case "exchange": return !!cc()?.exchange;
+      case "rnd": return !!cc()?.rnd;
+      case "lock": return !!ctl()?.locked;
       default: return null;
     }
   }

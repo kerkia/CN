@@ -67,7 +67,7 @@ function onClick(E, e, dbl = false) {
   const wasSelected = (E.sel?.kind === "control" && line.control === E.sel.control && (!line.cc || line.cc === E.sel.cc)) || (E.sel?.kind === "leg" && line.isLeg && line.cc === E.sel.cc1);
   if (hit.kind === "title") { if (!E.readOnly) D.eventTitle(E); return; }
   if (hit.kind === "secondary" || hit.kind === "header") { if (!E.readOnly && E.cd.course) D.courseProps(E, E.cd.course, hit.box === 2 ? "climb" : null); return; }
-  if (hit.kind === "text") { if (!E.readOnly && line.control) D.textLine(E, line); return; }
+  if (hit.kind === "text") { if (!E.readOnly && line.control && line.textKind !== "random") D.textLine(E, line); return; }
   if (line.isLeg) {
     const cc1 = line.cc, cc2 = line.cc2;
     E.select({ kind: "leg", c1: E.ev.courseControls[cc1]?.control, c2: E.ev.courseControls[cc2]?.control, cc1, cc2 });
@@ -136,7 +136,9 @@ function symbolPicker(E, controlId, box, cx, cy, typed = "") {
   const current = c.symbols[box - 2];
   const pop = document.createElement("div");
   pop.className = "tr-pop tr-sympop";
-  pop.innerHTML = `<div class="tr-pop-head"><strong>${esc(t("trc.pane.column", { col }))}</strong> <input type="search" placeholder="${esc(t("trc.pane.search"))}" class="tr-symsearch"></div>
+  // the advanced level: a second symbol in the same box (control.dual), chosen with this box ticked
+  const dualBox = E.pro && col !== "F" && current ? `<label class="tr-check tr-dualchk"><input type="checkbox" class="tr-dual" ${c.dual?.[box - 2] ? "checked" : ""}> ${esc(t("trc.pane.second"))}</label>` : "";
+  pop.innerHTML = `<div class="tr-pop-head"><strong>${esc(t("trc.pane.column", { col }))}</strong> <input type="search" placeholder="${esc(t("trc.pane.search"))}" class="tr-symsearch">${dualBox}</div>
     ${col === "F" ? `<label class="tr-dim">${esc(t("trc.pane.dimensions"))} <input class="tr-dimin" value="${esc(c.colF || "")}" placeholder="${esc(t("trc.pane.dimPlaceholder"))}"></label>` : ""}
     <div class="tr-symgrid">${[null, ...list].map((s) => `<button type="button" class="tr-sym ${s?.id === current ? "on" : ""}" data-id="${s ? esc(s.id) : ""}" title="${esc(s ? symbolName(s, lang()) : t("trc.pane.empty"))}">
       <canvas width="40" height="40"></canvas><span>${esc(s ? symbolName(s, lang()) : t("trc.pane.emptyBox"))}</span></button>`).join("")}</div>`;
@@ -148,9 +150,13 @@ function symbolPicker(E, controlId, box, cx, cy, typed = "") {
     if (s) drawItems(g, symbolPaths(s, 2, 2, 36, 36).map((p) => ({ t: "path", ...p, color: "black" })), (x, y) => [x, y], 1, { blend: "none" });
     else { g.strokeStyle = "#999"; g.strokeRect(4, 4, 32, 32); }
     b.addEventListener("click", () => {
+      const second = pop.querySelector(".tr-dual")?.checked;
       E.change((ev) => {
-        ev.controls[controlId].symbols[box - 2] = s ? s.id : null;
-        if (col === "F" && s) ev.controls[controlId].colF = null;
+        const k = ev.controls[controlId];
+        if (second) { k.dual = { ...(k.dual || {}) }; if (s) k.dual[box - 2] = s.id; else delete k.dual[box - 2]; if (!Object.keys(k.dual).length) delete k.dual; return; }
+        k.symbols[box - 2] = s ? s.id : null;
+        if (!s && k.dual) { delete k.dual[box - 2]; if (!Object.keys(k.dual).length) delete k.dual; }
+        if (col === "F" && s) k.colF = null;
       }, t("trc.pane.columnSet", { col }));
       pop.remove();
     });

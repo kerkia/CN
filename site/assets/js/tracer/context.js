@@ -30,7 +30,9 @@ export function applies(E, act, kind, at = {}) {
   switch (act) {
     case "control-props": return !!c && (c.kind === "normal" || c.kind === "start");
     case "toggle-exchange": return inCourse && c?.kind === "normal";
-    case "var-fork": case "var-loop": return kind !== "control" || inCourse;
+    case "var-fork": case "var-loop": case "var-phi": return kind !== "control" || inCourse;
+    case "random-section": return inCourse && c?.kind === "normal" && !M.isScore(ev, E.cd.course);
+    case "control-lock": return !!c;
     case "var-delete": return kind !== "control" || !!cc?.split;
     case "points": return inCourse && c?.kind === "normal" && M.isScore(ev, E.cd.course);
     case "text-before": case "text-after": return inCourse;
@@ -56,6 +58,9 @@ function menuLabel(E, act, kind, label) {
     case "toggle-exchange": return cc?.exchange ? t("trc.ctx.exchangeRemove") : t("trc.ctx.exchangeAdd");
     case "var-fork": return t("trc.ctx.fork");
     case "var-loop": return t("trc.ctx.loop");
+    case "var-phi": return t("trc.ctx.phi");
+    case "random-section": return E.sel?.cc && E.ev.courseControls[E.sel.cc]?.rnd ? t("trc.ctx.randomOff") : t("trc.ctx.randomOn");
+    case "control-lock": return E.ev.controls[E.sel?.control]?.locked ? t("trc.ctx.unlock") : t("trc.ctx.lock");
     case "text-before": return t("trc.ctx.textBefore");
     case "text-after": return t("trc.ctx.textAfter");
     case "gap-add-circle": return t("trc.ctx.gapCircle");

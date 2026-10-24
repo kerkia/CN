@@ -9,6 +9,15 @@ import { symbol, symbolPaths, symbolText } from "./symbols.js";
 import { textifier } from "./textify.js";
 import { textWidth, wrapText, CAP_HEIGHT, fontsReady } from "./fonts.js";
 
+// a random-order section's line, in the sheet's language (the event's description language, not the interface's; English else)
+const RANDOM = {                                                  // i18n-ignore-next 8
+  fr: "Postes {a} à {b} dans l'ordre de votre choix", en: "Controls {a}–{b} in any order", de: "Posten {a}–{b} in beliebiger Reihenfolge",
+  es: "Controles {a}–{b} en cualquier orden", it: "Lanterne {a}–{b} in qualsiasi ordine", sv: "Kontroller {a}–{b} i valfri ordning",
+  nb: "Poster {a}–{b} i valgfri rekkefølge", da: "Poster {a}–{b} i valgfri rækkefølge", fi: "Rastit {a}–{b} vapaassa järjestyksessä",
+  cs: "Kontroly {a}–{b} v libovolném pořadí", pl: "Punkty {a}–{b} w dowolnej kolejności", pt: "Pontos {a}–{b} por qualquer ordem",
+  hu: "{a}–{b}. pont tetszőleges sorrendben", ro: "Posturile {a}–{b} în orice ordine", et: "Punktid {a}–{b} vabas järjekorras",
+};
+const randomText = (lang, a, b) => (RANDOM[lang] || RANDOM[String(lang).split("-")[0]] || RANDOM.en).replace("{a}", a).replace("{b}", b);
 const km = (m) => `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 const lengthText = (min, max) => (Math.abs(max - min) < 50 ? km(min) : `${(min / 1000).toFixed(1).replace(".", ",")}–${km(max)}`);
 const round10 = (m) => `${Math.round(m / 10) * 10} m`;
@@ -22,7 +31,9 @@ export function describe(ev, cd, { purpose = "map", createKey = false, variation
   const kind = v.kind;
   const lines = [];
   const course = cd.course ? ev.courses[cd.course] : null;
-  for (const t of String(ev.title || "").split("|")) lines.push({ kind: "title", boxes: [t], textual: t });
+  // the event's date after its title (the advanced level: ev.dateInHeader, Condes's header)
+  const date = ev.dateInHeader && ev.date ? new Date(`${ev.date}T12:00:00`).toLocaleDateString(lang, { day: "numeric", month: "numeric", year: "numeric" }) : "";
+  String(ev.title || "").split("|").forEach((t, i, a) => { const s = date && i === a.length - 1 ? `${t} ${date}`.trim() : t; lines.push({ kind: "title", boxes: [s], textual: s }); });
   if (course?.secondary != null) for (const t of course.secondary.split("|")) lines.push({ kind: "secondary", boxes: [t], textual: t });
   const fullName = (() => {
     let n = course?.name || "";
@@ -52,8 +63,19 @@ export function describe(ev, cd, { purpose = "map", createKey = false, variation
     for (const t of text.split("|")) lines.push({ kind: "text", boxes: [t], textual: t, cc, control, textKind });
   };
   const ctl = (cv) => ev.controls[cv.control];
+  // random-order sections: a line before each, « Controls 3–6 in any order »
+  const sections = kind === "normal" ? M.randomSections(ev, cd) : [];
+  const sectionStart = new Map(sections.map((s) => [s[0], s]));
+  const form = course?.form || "";
   for (let i = 0; i < v.controls.length; i++) {
     const cv = v.controls[i], c = ctl(cv), cc = cv.ccs[0] ? ev.courseControls[cv.ccs[0]] : null;
+    if (cv.ghost) continue;                                       // a diamond's exit passed the first time: its line is the exit's
+    const sec = sectionStart.get(cv.ccs[0]);
+    if (sec) {
+      const ord = (id) => v.controls.find((x) => x.ccs[0] === id)?.ordinal ?? "";
+      const s = randomText(lang, ord(sec[0]), ord(sec[sec.length - 1]));
+      lines.push({ kind: "text", boxes: [s], textual: s, cc: cv.ccs[0], control: cv.control, textKind: "random" });
+    }
     const prev = i > 0 ? ctl(v.controls[i - 1]) : null, next = i < v.controls.length - 1 ? ctl(v.controls[i + 1]) : null;
     let show = true;
     if (kind === "normal" || kind === "variations") {
@@ -64,7 +86,7 @@ export function describe(ev, cd, { purpose = "map", createKey = false, variation
       textLines(c.before, cv.ccs[0], cv.control, "beforeControl");
       if (cc) textLines(cc.before, cv.ccs[0], cv.control, "beforeCourseControl");
       if (["finish", "crossing", "map-issue"].includes(c.kind)) lines.push(directiveLine(ev, tx, S, kind, v, i));
-      else lines.push(regularLine(ev, tx, S, kind, v.scoreColumn, cv, key, lang));
+      else lines.push(regularLine(ev, tx, S, kind, v.scoreColumn, cv, key, lang, form));
       if (cc) textLines(cc.after, cv.ccs[0], cv.control, "afterCourseControl");
       textLines(c.after, cv.ccs[0], cv.control, "afterControl");
     }
@@ -89,15 +111,20 @@ export function describe(ev, cd, { purpose = "map", createKey = false, variation
   if (createKey) for (const [id, text] of Object.entries(key)) lines.push({ kind: "key", boxes: [S(id), text], textual: text });
   return lines;
 }
-function regularLine(ev, tx, S, kind, scoreColumn, cv, key, lang) {
+function regularLine(ev, tx, S, kind, scoreColumn, cv, key, lang, form = "") {
   const c = ev.controls[cv.control], cc = cv.ccs[0] ? ev.courseControls[cv.ccs[0]] : null;
   const boxes = new Array(8).fill(null);
   if (c.kind === "start" || c.kind === "map-exchange") boxes[0] = S("start");
   else if (kind !== "all" && cv.ordinal > 0) boxes[0] = String(cv.ordinal);
   if (c.kind === "normal") boxes[1] = String(c.code ?? "");
+  // trail-O: column B gives the flags (« A–E ») rather than the code
+  if (form === "trail" && c.trail?.flags) boxes[1] = c.trail.flags.replace("-", "–");
   for (let i = 2; i < 8; i++) {
     const id = c.symbols[i - 2];
     const s = id && S(id);
+    // two symbols in one box (the advanced level: control.dual)
+    const s2 = c.dual?.[i - 2] && S(c.dual[i - 2]);
+    if (s && s2) { boxes[i] = { dual: [s, s2] }; continue; }
     if (s) {
       boxes[i] = s;
       if (ev.customKey?.[id] && ev.customText?.[id]?.some((x) => x.lang === lang)) key[id] = symbolText(s, lang, { custom: ev.customText[id] });
@@ -198,6 +225,8 @@ export function sheetItems(lines, descKind, cell, { columns = 1, columnHScore = 
     };
     const sym = (s, l, t, r, b) => {
       if (!s || typeof s !== "object") return;
+      // two symbols in one box: side by side, each in half the box, a thin slash between them
+      if (s.dual) { const m = (l + r) / 2, h = (b - t) / 4; sym(s.dual[0], l, t + h, m, b - h); sym(s.dual[1], m, t + h, r, b - h); seg(m + 8, t + 20, m - 8, b - 20, THIN); return; }
       for (const p of symbolPaths(s, X(l), Y(t), (r - l) * k, (b - t) * k)) items.push({ t: "path", ...p });
     };
     switch (line.kind) {

@@ -121,6 +121,7 @@ export function itemsFor(ev, layout, { selected = null, descLines = null } = {})
         push({ t: "text", text: o.text, x: o.ctr[0], y: o.ctr[1] - (CAP_HEIGHT * o.em) / 2, size: o.em, bold: o.bold, align: "center",
           color: o.upper || o.t === "code" ? "upper" : "lower", outline: o.outline, condensed: !!o.condensed, family: o.condensed ? "Roboto Condensed" : family(o.font) });
         break;
+      case "string": push({ t: "path", d: poly(o.pts, false), stroke: o.lw, cap: "round", join: "round", color: "lower" }); break;
       case "point": pointSpecial(o, push, ap); break;
       case "line": lineSpecial(o, push); break;
       case "area": areaSpecial(o, push); break;

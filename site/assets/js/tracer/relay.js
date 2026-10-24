@@ -45,7 +45,8 @@ export function relayPlan(ev, courseId, settings = null) {
     while (id && id !== join && guard++ < 10000) {
       const cc = ev.courseControls[id];
       if (cc.split) {
-        const f = { loop: !!cc.loop, code: ev.controls[cc.control]?.code || "", kind: ev.controls[cc.control]?.kind || "", numBranches: cc.loop ? cc.splitCCs.length - 1 : cc.splitCCs.length, codes: [], subForks: [], next: null,
+        // a diamond (phi) loop runs both its branches, in either order: as a butterfly's loops (codes « AB », « BA »)
+        const f = { loop: !!cc.loop || !!cc.phi, code: ev.controls[cc.control]?.code || "", kind: ev.controls[cc.control]?.kind || "", numBranches: cc.loop ? cc.splitCCs.length - 1 : cc.splitCCs.length, codes: [], subForks: [], next: null,
           numLegsHere: 0, numNonFixed: 0, fixedLegs: null, fixedBranches: null };
         if (!firstFork) firstFork = last = f; else { last.next = f; last = f; }
         allForks.push(f);
@@ -111,6 +112,10 @@ export function relayPlan(ev, courseId, settings = null) {
     return minUnique(f.next, leg, m * f.numNonFixed);
   };
   const minPaths = Array.from({ length: numberLegs }, (_, leg) => minUnique(firstFork, leg, 1));
+  // ---- coupled forks: pairs of branches run together on a leg ([["A", "C"], …], both ways)
+  const coupled = new Map();
+  for (const [a, b] of st.couple || []) { if (!a || !b) continue; (coupled.get(a) || coupled.set(a, new Set()).get(a)).add(b); (coupled.get(b) || coupled.set(b, new Set()).get(b)).add(a); }
+  const chosenOn = (team, leg) => { const out = []; for (const g of allForks) { const c = team.forks.get(g)[leg]; if (c && !g.loop) for (const b of c) out.push(g.codes[b]); } return out; };
   // ---- the teams
   const rnd = new DotNetRandom(8713527);
   const results = [];
@@ -145,7 +150,10 @@ export function relayPlan(ev, courseId, settings = null) {
       for (const sub of f.subForks) addFork(sub, leg, team);
     } else {
       let sel;
-      if (f.fixedLegs && f.fixedLegs[leg] >= 0) sel = f.fixedLegs[leg];
+      // coupled forks (the advanced level, Condes): a branch already run on this leg brings the branch coupled with it here
+      const forced = coupled.size ? f.codes.findIndex((code) => chosenOn(team, leg).some((x) => coupled.get(x)?.has(code))) : -1;
+      if (forced >= 0) sel = forced;
+      else if (f.fixedLegs && f.fixedLegs[leg] >= 0) sel = f.fixedLegs[leg];
       else {
         const pb = possibleBranches(f), legsF = team.forks.get(f);
         for (let i = 0; i < leg; i++) if ((!f.fixedLegs || f.fixedLegs[i] < 0) && legsF[i].length) { const k = pb.indexOf(legsF[i][0]); if (k >= 0) pb.splice(k, 1); }
@@ -212,8 +220,26 @@ export function relayPlan(ev, courseId, settings = null) {
     return s;
   };
   const vars = new Map(M.allVariations(ev, courseId).map((v) => [v.code, v.path]));
-  return { teams: results.map((t, i) => ({ team: first + i, legs: Array.from({ length: numberLegs }, (_, l) => codeFor(t, l)) })), warnings, totalPaths, paths: vars,
-    fixedChoices: allForks.filter((f) => !f.loop).map((f) => f.codes) };
+  let teams = results.map((t, i) => ({ team: first + i, legs: Array.from({ length: numberLegs }, (_, l) => codeFor(t, l)) }));
+  // the advanced level: « reuse » gives every team the first team's variations in another order (Condes's other way to fill the
+  // teams); a table edited by hand (st.table) is the course's teams as they are
+  if (st.strategy === "reuse" && teams.length) teams = teams.map((tm, i) => ({ team: tm.team, legs: teams[0].legs.map((_, l) => teams[0].legs[(l + i) % numberLegs]) }));
+  if (Array.isArray(st.table) && st.table.length) teams = st.table.map((r) => ({ team: r.team, bib: r.bib, name: r.name, legs: Array.from({ length: numberLegs }, (_, l) => r.legs?.[l] || "") }));
+  return { teams, warnings, totalPaths, paths: vars, fixedChoices: allForks.filter((f) => !f.loop).map((f) => f.codes), unfair: unfairCells(teams, numberLegs) };
+}
+/** The cells of a team table that break the fairness every team owes the others (Condes shows them in red): a team whose branches,
+ *  counted over its legs, are not the first team's, or a variation code the course does not have. Returns a Set of "team:leg". */
+function unfairCells(teams, numberLegs) {
+  const out = new Set();
+  if (!teams.length) return out;
+  const count = (tm) => { const m = new Map(); for (const code of tm.legs) for (const ch of code) m.set(ch, (m.get(ch) || 0) + 1); return m; };
+  const ref = count(teams[0]);
+  for (const tm of teams.slice(1)) {
+    const c = count(tm);
+    const same = ref.size === c.size && [...ref].every(([k, v]) => c.get(k) === v);
+    if (!same) for (let l = 0; l < numberLegs; l++) out.add(`${tm.team}:${l}`);
+  }
+  return out;
 }
 /** Fixed branches kept when consistent (RelayVariations.ValidateFixedBranches, without the messages). */
 function validateFixed(branches, firstFork, numberLegs) {
@@ -243,47 +269,90 @@ export function teamVariations(ev, courseId) {
 }
 export const relayAssignments = (ev, courseId) => relayPlan(ev, courseId).teams;
 
-/** Course › Relay team variations. */
+/** Course › Relay team variations. The advanced level (administrators for now) adds Condes's relay tools: how the teams are
+ *  filled (Purple Pen's spread, or every team the same variations in another order), coupled forks, a grid binding branches to
+ *  legs, and the team table edited by hand (bib, name, each leg's variation), its unfair cells in red. */
 export async function relayDialog(E) {
-  const { modal, field, num, download, fileName } = await import("./dialogs.js");
+  const { modal, field, num, download, fileName, sel } = await import("./dialogs.js");
   const ev = E.ev, id = E.cd.course, c = ev.courses[id];
   if (!M.hasVariations(ev, id)) { E.toast(t("trc.rel.noVariation")); return; }
   const st = { first: 1, teams: 0, legs: 1, branches: {}, ...(c.relay || {}) };
+  let table = Array.isArray(st.table) ? JSON.parse(JSON.stringify(st.table)) : null;
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
   const at = (w) => (w.control ? t("trc.rel.atControl", { code: esc(w.control) }) : w.kind === "start" ? t("trc.rel.atStart") : w.kind === "map-exchange" ? t("trc.rel.atExchange")
     : w.kind === "map-issue" ? t("trc.rel.atIssue") : t("trc.rel.atControl", { code: "" }));
+  const codes = M.allVariations(ev, id).map((v) => v.code);
+  const parseFixed = (s) => { const b = {}; for (const tok of String(s || "").trim().split(/[\s,;]+/).filter(Boolean)) { const m = /^([A-Za-z]):(\d+)$/.exec(tok); if (m) (b[m[1].toUpperCase()] ||= []).push(Number(m[2]) - 1); } return b; };
+  const parseCouple = (s) => String(s || "").trim().split(/[\s,;]+/).filter(Boolean).map((tok) => tok.toUpperCase().split(/[=+-]/)).filter((p) => p.length === 2 && p[0] && p[1]);
   const render = (box, s) => {
-    const plan = relayPlan(ev, id, s);
+    const plan = relayPlan(ev, id, { ...s, table });
+    const editing = !!table;
+    const cell = (tm, l, code) => editing
+      ? `<select data-tl="${tm}:${l}" ${plan.unfair.has(`${tm}:${l}`) ? 'class="tr-bad"' : ""}>${["", ...codes].map((x) => `<option ${x === code ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>`
+      : `<span ${plan.unfair.has(`${tm}:${l}`) ? 'class="tr-bad"' : ""}>${esc(code)}</span>`;
     box.innerHTML = `${plan.warnings.map((w) => `<p class="tr-hint">${t("trc.rel.branchWarn", { where: at(w), more: w.more.join(", "), nMore: w.nMore, less: w.less.join(", "), nLess: w.nLess })}</p>`).join("")}
-      <p class="tr-hint">${tn("trc.rel.paths", plan.totalPaths)}</p>
-      <div class="tr-report"><table class="tr-table"><thead><tr><th>${esc(t("trc.rel.team"))}</th>${Array.from({ length: s.legs }, (_, i) => `<th>${esc(t("trc.rel.legN", { n: i + 1 }))}</th>`).join("")}</tr></thead>
-      <tbody>${plan.teams.map((t) => `<tr><td class="r">${t.team}</td>${t.legs.map((l) => `<td>${esc(l)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+      <p class="tr-hint">${tn("trc.rel.paths", plan.totalPaths)}${plan.unfair.size ? ` <b class="tr-bad">${esc(t("trc.rel.unfair"))}</b>` : ""}</p>
+      <div class="tr-report"><table class="tr-table"><thead><tr><th>${esc(t("trc.rel.team"))}</th>${editing ? `<th>${esc(t("trc.rel.bib"))}</th><th>${esc(t("trc.rel.name"))}</th>` : ""}${Array.from({ length: s.legs }, (_, i) => `<th>${esc(t("trc.rel.legN", { n: i + 1 }))}</th>`).join("")}</tr></thead>
+      <tbody>${plan.teams.map((tm, r) => `<tr><td class="r">${tm.team}</td>${editing ? `<td><input data-tb="${r}" value="${esc(tm.bib ?? tm.team)}" size="4"></td><td><input data-tn="${r}" value="${esc(tm.name || "")}" size="12"></td>` : ""}
+        ${tm.legs.map((l, k) => `<td>${cell(tm.team, k, l)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
     return plan;
+  };
+  // the grid binding branches to legs (Condes's « leg fork »), written into the fixed branches' field
+  const grid = (s) => {
+    const letters = [...new Set(codes.join("").split(""))].sort();
+    return `<table class="tr-table tr-relgrid"><thead><tr><th></th>${Array.from({ length: s.legs }, (_, i) => `<th>${i + 1}</th>`).join("")}</tr></thead><tbody>
+      ${letters.map((b) => `<tr><th>${esc(b)}</th>${Array.from({ length: s.legs }, (_, i) => `<td><input type="checkbox" data-gb="${esc(b)}" data-gl="${i}" ${(s.branches[b] || []).includes(i) ? "checked" : ""}></td>`).join("")}</tr>`).join("")}</tbody></table>`;
   };
   let plan;
   const v = await modal(E, { title: t("trc.rel.title", { name: c.name }), wide: true, ok: E.readOnly ? null : t("trc.rel.save"), cancel: t("trc.rel.close"), body: `
     <div class="tr-grid2">${field(t("trc.rel.teams"), `<input name="teams" value="${st.teams}" inputmode="numeric">`)}${field(t("trc.rel.legs"), `<input name="legs" value="${st.legs}" inputmode="numeric">`)}
     ${field(t("trc.rel.first"), `<input name="first" value="${st.first}" inputmode="numeric">`)}
     ${field(t("trc.rel.fixed"), `<input name="fixed" value="${esc(Object.entries(st.branches).flatMap(([b, legs]) => legs.map((l) => `${b}:${l + 1}`)).join(" "))}">`, t("trc.rel.fixedHint"))}</div>
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${field(t("trc.rel.strategy"), sel("strategy", [["", t("trc.rel.stratSpread")], ["reuse", t("trc.rel.stratReuse")]], st.strategy || ""))}
+      ${field(t("trc.rel.couple"), `<input name="couple" value="${esc((st.couple || []).map((p) => p.join("=")).join(" "))}" placeholder="A=C B=D">`, t("trc.rel.coupleHint"))}</div>
+      <details><summary>${esc(t("trc.rel.gridTitle"))}</summary><p class="tr-hint">${esc(t("trc.rel.gridHint"))}</p><div id="tr-relay-grid"></div></details>` : '<input type="hidden" name="strategy" value=""><input type="hidden" name="couple" value="">'}
     <label class="tr-check"><input type="checkbox" name="hide" ${c.hideVariations ? "checked" : ""}> ${esc(t("trc.rel.hide"))}</label>
     <p><button type="button" class="btn btn-sm" id="tr-relay-go">${esc(t("trc.rel.assign"))}</button> <button type="button" class="btn btn-sm" id="tr-relay-csv">CSV</button>
-    <button type="button" class="btn btn-sm" id="tr-relay-xml">${esc(t("trc.rel.xml"))}</button></p><div id="tr-relay"></div>
+    <button type="button" class="btn btn-sm" id="tr-relay-xml">${esc(t("trc.rel.xml"))}</button>
+    ${E.pro ? `<button type="button" class="btn btn-sm" id="tr-relay-edit">${esc(table ? t("trc.rel.backToDraw") : t("trc.rel.editTeams"))}</button>` : ""}</p><div id="tr-relay"></div>
     <p class="tr-hint">${esc(t("trc.rel.hint"))}</p>`,
   onOpen: (f) => {
-    const read = () => {
-      const branches = {};
-      for (const tok of f.elements.fixed.value.trim().split(/[\s,;]+/).filter(Boolean)) { const m = /^([A-Za-z]):(\d+)$/.exec(tok); if (m) (branches[m[1].toUpperCase()] ||= []).push(Number(m[2]) - 1); }
-      return { teams: Math.max(0, Math.round(num(f.elements.teams.value)) || 0), legs: Math.max(1, Math.round(num(f.elements.legs.value)) || 1), first: Math.max(1, Math.round(num(f.elements.first.value)) || 1), branches };
-    };
-    const go = () => { plan = render(f.querySelector("#tr-relay"), read()); };
+    const read = () => ({ teams: Math.max(0, Math.round(num(f.elements.teams.value)) || 0), legs: Math.max(1, Math.round(num(f.elements.legs.value)) || 1), first: Math.max(1, Math.round(num(f.elements.first.value)) || 1),
+      branches: parseFixed(f.elements.fixed.value), strategy: f.elements.strategy.value || undefined, couple: parseCouple(f.elements.couple.value) });
+    const box = f.querySelector("#tr-relay"), gbox = f.querySelector("#tr-relay-grid");
+    const go = () => { plan = render(box, read()); if (gbox) gbox.innerHTML = grid(read()); };
     const csvFile = `${t("trc.rel.csvFile", { name: fileName(c.name) })}.csv`, xmlFile = `${t("trc.rel.xmlFile", { name: fileName(c.name) })}.xml`;
-    f.querySelector("#tr-relay-go").addEventListener("click", go);
-    f.querySelector("#tr-relay-csv").addEventListener("click", () => { go(); const s = read(); download(csvFile, `Team,${Array.from({ length: s.legs }, (_, i) => `Leg ${i + 1}`).join(",")}\r\n${plan.teams.map((t) => `${t.team},${t.legs.join(",")}`).join("\r\n")}\r\n`, "text/csv"); });
-    f.querySelector("#tr-relay-xml").addEventListener("click", async () => { go(); const { iofXmlText } = await import("./exports.js"); const saved = ev.courses[id].relay; ev.courses[id].relay = read(); const t = iofXmlText(ev, 3); ev.courses[id].relay = saved; download(xmlFile, t, "application/xml"); });
-    if (st.teams > 0) go();
+    f.querySelector("#tr-relay-go").addEventListener("click", () => { table = null; go(); const b = f.querySelector("#tr-relay-edit"); if (b) b.textContent = t("trc.rel.editTeams"); });
+    f.querySelector("#tr-relay-csv").addEventListener("click", () => { go(); const s = read(); download(csvFile, `Team,${Array.from({ length: s.legs }, (_, i) => `Leg ${i + 1}`).join(",")}\r\n${plan.teams.map((tm) => `${tm.team},${tm.legs.join(",")}`).join("\r\n")}\r\n`, "text/csv"); });
+    f.querySelector("#tr-relay-xml").addEventListener("click", async () => { go(); const { iofXmlText } = await import("./exports.js"); const saved = ev.courses[id].relay; ev.courses[id].relay = { ...read(), table }; const x = iofXmlText(ev, 3); ev.courses[id].relay = saved; download(xmlFile, x, "application/xml"); });
+    // the team table by hand: from the draw shown, then each cell a choice of the course's variations
+    f.querySelector("#tr-relay-edit")?.addEventListener("click", (e) => {
+      if (table) { table = null; e.target.textContent = t("trc.rel.editTeams"); }
+      else { go(); table = plan.teams.map((tm) => ({ team: tm.team, bib: tm.bib ?? tm.team, name: tm.name || "", legs: tm.legs.slice() })); e.target.textContent = t("trc.rel.backToDraw"); }
+      go();
+    });
+    box.addEventListener("change", (e) => {
+      if (!table) return;
+      const tl = e.target.dataset.tl;
+      if (tl) { const [tm, l] = tl.split(":").map(Number); const row = table.find((r) => r.team === tm); if (row) row.legs[l] = e.target.value; go(); }
+    });
+    box.addEventListener("input", (e) => {
+      if (!table) return;
+      if (e.target.dataset.tb != null) table[Number(e.target.dataset.tb)].bib = e.target.value;
+      if (e.target.dataset.tn != null) table[Number(e.target.dataset.tn)].name = e.target.value;
+    });
+    gbox?.addEventListener("change", () => {
+      const b = {};
+      gbox.querySelectorAll("[data-gb]").forEach((x) => { if (x.checked) (b[x.dataset.gb] ||= []).push(Number(x.dataset.gl)); });
+      f.elements.fixed.value = Object.entries(b).flatMap(([k, legs]) => legs.map((l) => `${k}:${l + 1}`)).join(" ");
+      go();
+    });
+    if (st.teams > 0 || table) go(); else if (gbox) gbox.innerHTML = grid(read());
   } });
   if (!v) return;
-  const branches = {};
-  for (const tok of v.fixed.trim().split(/[\s,;]+/).filter(Boolean)) { const m = /^([A-Za-z]):(\d+)$/.exec(tok); if (m) (branches[m[1].toUpperCase()] ||= []).push(Number(m[2]) - 1); }
-  E.change((x) => { x.courses[id].relay = { teams: Math.max(0, Math.round(num(v.teams)) || 0), legs: Math.max(1, Math.round(num(v.legs)) || 1), first: Math.max(1, Math.round(num(v.first)) || 1), branches }; x.courses[id].hideVariations = v.hide; }, t("trc.rel.undo"));
+  const relay = { teams: Math.max(0, Math.round(num(v.teams)) || 0), legs: Math.max(1, Math.round(num(v.legs)) || 1), first: Math.max(1, Math.round(num(v.first)) || 1), branches: parseFixed(v.fixed) };
+  if (E.pro) { if (v.strategy) relay.strategy = v.strategy; const cp = parseCouple(v.couple); if (cp.length) relay.couple = cp; if (table) relay.table = table; }
+  else for (const k of ["strategy", "couple", "table"]) if (c.relay?.[k]) relay[k] = c.relay[k];       // kept for those who set them
+  E.change((x) => { x.courses[id].relay = relay; x.courses[id].hideVariations = v.hide; }, t("trc.rel.undo"));
 }

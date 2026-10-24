@@ -38,7 +38,8 @@ export const TABS = [
     { id: "specials", title: t("trc.rd.gSpecials"), launcher: "special-more", items: [{ t: "gallery" }] },
     { id: "descr", title: t("trc.rd.gDescr"), guide: "definitions", launcher: "standards", items: [
       T("descr", t("trc.rd.descr"), "descr", { tip: t("trc.rd.descrTip") }),
-      stack({ t: "field", id: "descStandard" }, { t: "field", id: "lang" }, S("custom-text", t("trc.rd.customText"), "text", { need: "edit", tip: t("trc.rd.customTextTip") }))] },
+      stack({ t: "field", id: "descStandard" }, { t: "field", id: "lang" }, S("custom-text", t("trc.rd.customText"), "text", { need: "edit", tip: t("trc.rd.customTextTip") })),
+      stack(S("my-symbols", t("trc.rd.mySymbols"), "symbol", { need: "edit", pro: true, tip: t("trc.rd.mySymbolsTip") }))] },
   ] },
   { id: "courses", label: t("trc.rd.tabCourses"), key: "C", icon: "course", guide: "circuits", groups: [
     { id: "course", title: t("trc.rd.gCourse"), launcher: "course-props", items: [
@@ -47,12 +48,20 @@ export const TABS = [
       stack(S("course-dup", t("trc.rd.courseDup"), "copy", { need: "course", tip: t("trc.rd.courseDupTip") }),
         S("course-order", t("trc.rd.courseOrder"), "sort", { need: "edit", tip: t("trc.rd.courseOrderTip") }),
         S("course-delete", t("trc.rd.courseDelete"), "trash", { need: "course", tip: t("trc.rd.courseDeleteTip") }))] },
+    // the advanced level (administrators for now): courses from other programs, classes as data
+    { id: "exchange", title: t("trc.rd.gExchange"), pro: true, items: [
+      B("import-courses", t("trc.rd.importCourses"), "import", { need: "edit", tip: t("trc.rd.importCoursesTip") }),
+      B("classes", t("trc.rd.classes"), "list", { need: "edit", tip: t("trc.rd.classesTip") })] },
     { id: "variations", title: t("trc.rd.gVariations"), items: [
       B("var-fork", t("trc.rd.varFork"), "fork", { need: "course", tip: t("trc.rd.varForkTip") }),
       B("var-loop", t("trc.rd.varLoop"), "loop", { need: "course", tip: t("trc.rd.varLoopTip") }),
+      B("var-phi", t("trc.rd.varPhi"), "phi", { need: "course", pro: true, tip: t("trc.rd.varPhiTip") }),
       stack(S("relay", t("trc.rd.relay"), "relay", { need: "course", tip: t("trc.rd.relayTip") }),
         S("var-delete", t("trc.rd.varDelete"), "removecircle", { need: "course", tip: t("trc.rd.varDeleteTip") }),
         S("part-options", t("trc.rd.partOptions"), "parts", { need: "course", tip: t("trc.rd.partOptionsTip") }))] },
+    { id: "form", title: t("trc.rd.gForm"), pro: true, items: [stack(
+      S("random-section", t("trc.rd.randomSection"), "shuffle", { need: "course", toggle: "rnd", tip: t("trc.rd.randomSectionTip") }),
+      S("finish-at-start", t("trc.rd.finishAtStart"), "finish", { need: "course", tip: t("trc.rd.finishAtStartTip") }))] },
     { id: "print", title: t("trc.rd.gPrint"), guide: "sorties", launcher: "print-area", items: [
       B("print-area", t("trc.rd.printArea"), "frame", { tip: t("trc.rd.printAreaTip") }),
       stack({ t: "field", id: "printScale" }, { t: "field", id: "paper" }, S("view-printarea", t("trc.rd.viewPrintarea"), "frame", { toggle: "printArea", tip: t("trc.rd.viewPrintareaTip") }))] },
@@ -179,8 +188,12 @@ export const CONTEXT = {
       S("toggle-exchange", t("trc.rd.toggleExchange"), "exchange", { need: "edit", toggle: "exchange", tip: t("trc.rd.toggleExchangeTip") }))] },
     { id: "vars", title: t("trc.rd.gVars"), items: [B("var-fork", t("trc.rd.ctlVarFork"), "fork", { need: "edit", tip: t("trc.rd.ctlVarForkTip") }),
       B("var-loop", t("trc.rd.ctlVarLoop"), "loop", { need: "edit", tip: t("trc.rd.ctlVarLoopTip") }),
+      B("var-phi", t("trc.rd.ctlVarPhi"), "phi", { need: "edit", pro: true, tip: t("trc.rd.varPhiTip") }),
       stack(S("var-delete", t("trc.rd.varDelete"), "removecircle", { need: "edit", tip: t("trc.rd.ctlVarDeleteTip") }),
         S("points", t("trc.rd.points"), "hash", { need: "edit", tip: t("trc.rd.pointsTip") }))] },
+    { id: "ctlpro", title: t("trc.rd.gCtlPro"), pro: true, items: [stack(
+      S("random-section", t("trc.rd.randomSection"), "shuffle", { need: "edit", toggle: "rnd", tip: t("trc.rd.randomSectionTip") }),
+      S("control-lock", t("trc.rd.controlLock"), "lock", { need: "edit", toggle: "lock", tip: t("trc.rd.controlLockTip") }))] },
     { id: "lines", title: t("trc.rd.gLines"), items: [stack(S("text-before", t("trc.rd.textBefore"), "text", { need: "edit", tip: t("trc.rd.textBeforeTip") }),
       S("text-after", t("trc.rd.textAfter"), "text", { need: "edit", tip: t("trc.rd.textAfterTip") }))] },
     { id: "drawing", title: t("trc.rd.gDrawing"), items: [stack(S("gap-add-circle", t("trc.rd.gapAddCircle"), "gap", { need: "edit", tip: t("trc.rd.gapAddCircleTip") }),
@@ -223,6 +236,7 @@ export const BACKSTAGE = [
   { id: "import", label: t("trc.rd.bsImport"), icon: "import", items: [
     ["start-import", t("trc.rd.bsStartImport"), t("trc.rd.bsStartImportDesc")],
     ["import-ppen", t("trc.rd.bsImportPpen"), t("trc.rd.bsImportPpenDesc")],
+    ["import-courses", t("trc.rd.importCourses"), t("trc.rd.importCoursesTip")],
     ["map-change", t("trc.rd.bsMapChange"), t("trc.rd.bsMapChangeDesc")],
     ["import-course", t("trc.rd.bsImportCourse"), t("trc.rd.bsImportCourseDesc")],
     ["georef", t("trc.rd.bsGeoref"), t("trc.rd.bsGeorefDesc")]] },
@@ -272,8 +286,12 @@ export function commands() {
 const RIBBON_AT = {};
 for (const c of commands()) if (c.act && !RIBBON_AT[c.act]) RIBBON_AT[c.act] = `${c.tab.label}${c.group.title ? ` › ${c.group.title}` : ""} › ${c.label.replace(/…$/, "")}`;
 for (const s of BACKSTAGE) for (const [a, l] of [...(s.items || []), ...(s.groups || []).flatMap((g) => g[1])]) if (!RIBBON_AT[a]) RIBBON_AT[a] = `${TABS[0].label} › ${s.label} › ${l}`;
-// the advanced level's acts, from the items marked pro (their own mark, their group's or their tab's)
-for (const c of commands()) if (c.pro && (c.act || c.tool)) PRO.add(c.act || c.tool);
+// the advanced level's acts: those whose every place is marked pro (their own mark, their group's or their tab's)
+{
+  const seen = new Map();
+  for (const c of commands()) { const k = c.act || c.tool; if (k) seen.set(k, (seen.get(k) ?? true) && !!c.pro); }
+  for (const [k, pro] of seen) if (pro) PRO.add(k);
+}
 /** Where a command is in the ribbon: « Carte › Position › Caler les postes ». */
 export const where = (act) => RIBBON_AT[act] || "";
 export const ribbonAt = where;

@@ -40,16 +40,25 @@ export function languageStrings(lang) {
 }
 export const languages = () => DB?.languages || {};
 
+// the open event's own symbols (the advanced level: ev.symbols, drawn by the user — mysymbols.js), ids « x:<n> », in Purple
+// Pen's shape: { id, k (column), n: { lang: name }, t: { lang: [{ t }] }, g (strokes in -100…100, y up) }
+let CUSTOM = {};
+/** Set the event's own symbols (the editor, at each refresh). */
+export function setCustomSymbols(map) {
+  CUSTOM = {};
+  for (const [id, s] of Object.entries(map || {})) CUSTOM[`x:${id}`] = { ...s, id: `x:${id}`, custom: true };
+}
 /** The symbol with this id in a standard ("2004" or "2018"), or null. */
 export function symbol(id, standard = "2018") {
+  if (CUSTOM[id]) return CUSTOM[id];
   const list = DB?.byId[id];
   if (!list) return null;
   return list.find((s) => !s.std || s.std.includes(standard)) || null;
 }
 export const existsIn = (id, standard) => !!symbol(id, standard);
-/** Symbols offered for a column (C…H, or a directive letter), in the standard, in Purple Pen's order. */
+/** Symbols offered for a column (C…H, or a directive letter), in the standard, in Purple Pen's order; the event's own last. */
 export function symbolsFor(kind, standard = "2018") {
-  return (DB?.all || []).filter((s) => s.k === kind && (!s.std || s.std.includes(standard)));
+  return [...(DB?.all || []).filter((s) => s.k === kind && (!s.std || s.std.includes(standard))), ...Object.values(CUSTOM).filter((s) => s.k === kind)];
 }
 
 // ---- texts ---------------------------------------------------------------------------------------------------------

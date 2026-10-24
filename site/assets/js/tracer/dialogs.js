@@ -138,6 +138,8 @@ export async function action(E, act, btn, at = {}) {
     case "version-save": versionSave(E); break;
     case "versions": versions(E); break;
     case "import-ppen": if (!ro()) importPpen(E); break;
+    case "import-courses": if (!ro()) (await import("./iofin.js")).importDialog(E); break;
+    case "classes": if (!ro()) (await import("./classes.js")).classesDialog(E); break;
     case "export-ppen": exportPpen(E); break;
     case "pdf-courses": (await lazy.pdf()).coursesDialog(E); break;
     case "pdf-course": if (needCourse(E)) (await lazy.pdf()).coursesDialog(E, { only: E.cd.course }); break;
@@ -177,6 +179,20 @@ export async function action(E, act, btn, at = {}) {
     case "course-order": if (!ro()) courseOrder(E); break;
     case "var-fork": case "var-loop": if (!ro() && needCourse(E) && needSel(E, "control")) addVariation(E, act === "var-loop"); break;
     case "var-delete": if (!ro() && needCourse(E) && needSel(E, "control")) E.change((x) => M.deleteVariation(x, E.cd, s.cc), t("trc.dlg.varDeleted")); break;
+    // the advanced level: a diamond loop from the control chosen to the next; a random-order control; the finish on the start
+    case "var-phi": if (!ro() && needCourse(E) && needSel(E, "control")) {
+      const prob = M.variationProblem(ev, E.cd, s.cc, "phi");
+      if (prob) { E.toast({ all: t("trc.dlg.varNoAll"), score: t("trc.dlg.varNoScore"), none: t("trc.dlg.chooseControl"), finish: t("trc.dlg.varNoLast"), exists: t("trc.dlg.varExists"), phi: t("trc.dlg.inPhi"), exit: t("trc.dlg.phiExit") }[prob]); break; }
+      E.change((x) => M.addPhi(x, E.cd, s.cc), t("trc.dlg.phi"));
+      E.toast(t("trc.dlg.phiHow"), 9000);
+    } break;
+    case "random-section": if (!ro() && needCourse(E) && needSel(E, "control") && s.cc) {
+      if (M.isScore(ev, E.cd.course) || ev.controls[s.control]?.kind !== "normal") { E.toast(t("trc.dlg.randomNo")); break; }
+      E.change((x) => { const cc = x.courseControls[s.cc]; if (cc.rnd) delete cc.rnd; else cc.rnd = true; }, t("trc.dlg.random"));
+    } break;
+    case "finish-at-start": if (!ro() && needCourse(E)) finishAtStart(E); break;
+    case "control-lock": if (!ro() && s?.control) E.change((x) => { const k = x.controls[s.control]; if (k.locked) delete k.locked; else k.locked = true; }, t("trc.dlg.lock")); break;
+    case "my-symbols": if (!ro()) (await import("./mysymbols.js")).mySymbolsDialog(E); break;
     case "relay": if (needCourse(E)) (await lazy.relay()).relayDialog(E); break;
     case "print-area": (await lazy.pdf()).printAreaDialog(E); break;
     case "part-options": if (!ro() && needCourse(E)) partOptions(E); break;
@@ -258,7 +274,11 @@ async function eventProps(E) {
     ${ev.map.kind === "bitmap" ? field(t("trc.dlg.dpi"), `<input name="dpi" value="${ev.map.dpi}" inputmode="numeric">`, t("trc.dlg.dpiHint")) : ""}
     ${field(t("trc.dlg.acScale"), `<input name="acScale" value="${ev.allControls.printScale}" inputmode="numeric">`)}
     ${field(t("trc.dlg.descLang"), sel("lang", langChoices(ev.lang), ev.lang), t("trc.dlg.descLangHint"))}
-    ${field(t("trc.dlg.notes"), `<textarea name="notes" rows="3">${esc(ev.notes || "")}</textarea>`)}`,
+    ${field(t("trc.dlg.notes"), `<textarea name="notes" rows="3">${esc(ev.notes || "")}</textarea>`)}
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${field(t("trc.dlg.discipline"), sel("discipline", [["foot", t("trc.dlg.discFoot")], ["mtbo", t("trc.dlg.discMtbo")], ["ski", t("trc.dlg.discSki")], ["trail", t("trc.dlg.discTrail")]], ev.discipline || "foot"), t("trc.dlg.disciplineHint"))}
+      ${field(t("trc.dlg.eventDate"), `<input type="date" name="date" value="${esc(ev.date || E.meta?.date || "")}">`)}
+      <label class="tr-check"><input type="checkbox" name="dateInHeader" ${ev.dateInHeader ? "checked" : ""}> ${esc(t("trc.dlg.dateInHeader"))}</label></div>` : ""}`,
   validate: (o) => (!(num(o.scale) > 100) ? t("trc.dlg.badMapScale") : ev.map.kind === "bitmap" && !(num(o.dpi) > 10) ? t("trc.dlg.badDpi") : null) });
   if (!v) return;
   if (!["fr", "en"].includes(v.lang)) await (await import("./symbols.js")).loadAllTexts();
@@ -267,6 +287,11 @@ async function eventProps(E) {
     const scale = num(v.scale);
     if (x.map.kind === "bitmap") { const dpi = num(v.dpi); x.map.w = x.map.w * x.map.dpi / dpi; x.map.h = x.map.h * x.map.dpi / dpi; x.map.dpi = dpi; }
     x.map.scale = scale; x.allControls.printScale = num(v.acScale) || scale; x.lang = v.lang;
+    if (E.pro) {
+      if (v.discipline && v.discipline !== "foot") x.discipline = v.discipline; else delete x.discipline;
+      if (v.date) x.date = v.date; else delete x.date;
+      if (v.dateInHeader) x.dateInHeader = true; else delete x.dateInHeader;
+    }
   }, t("trc.dlg.eventProps"));
 }
 async function appearance(E) {
@@ -381,13 +406,24 @@ export async function courseProps(E, courseId, focus = null) {
     ${field(t("trc.dlg.firstNumber"), `<input name="first" value="${d.firstNumber}" inputmode="numeric">`)}
     ${field(t("trc.dlg.scoreColumn"), sel("scoreCol", [["0", "A"], ["1", "B"], ["7", "H"], ["-1", t("trc.dlg.scoreColNone")]], d.scoreColumn ?? 0))}
     ${field(t("trc.dlg.expected"), `<input name="load" value="${d.load >= 0 ? d.load : ""}" inputmode="numeric">`)}
-    <label class="tr-check"><input type="checkbox" name="hide" ${d.hideFromReports ? "checked" : ""}> ${esc(t("trc.dlg.testCourse"))}</label></div>`,
+    <label class="tr-check"><input type="checkbox" name="hide" ${d.hideFromReports ? "checked" : ""}> ${esc(t("trc.dlg.testCourse"))}</label></div>
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${field(t("trc.dlg.form"), sel("form", [["", t("trc.dlg.formNormal")], ["string", t("trc.dlg.formString")], ["trail", t("trc.dlg.formTrail")]], d.form || ""))}
+      <label class="tr-check"><input type="checkbox" name="legLines" ${d.legLines !== false ? "checked" : ""}> ${esc(t("trc.dlg.legLines"))}</label>
+      ${field(t("trc.dlg.discipline"), sel("discipline", [["", t("trc.dlg.discEvent")], ["foot", t("trc.dlg.discFoot")], ["mtbo", t("trc.dlg.discMtbo")], ["ski", t("trc.dlg.discSki")], ["trail", t("trc.dlg.discTrail")]], d.discipline || ""))}
+      ${field(t("trc.dlg.lengthBy"), sel("lengthBy", [["", t("trc.dlg.lengthByDefault")], ["route", t("trc.dlg.lengthByRoute")], ["straight", t("trc.dlg.lengthByStraight")]], d.lengthBy || ""), t("trc.dlg.lengthByHint"))}
+      <label class="tr-check"><input type="checkbox" name="rogaine" ${d.rogaine ? "checked" : ""}> ${esc(t("trc.dlg.rogaine"))}</label>
+      <label class="tr-check"><input type="checkbox" name="allControls" ${d.allControls ? "checked" : ""}> ${esc(t("trc.dlg.allControlsCourse"))}</label></div>` : ""}`,
   onOpen: (f) => { if (focus) f.elements[focus]?.focus(); },
   validate: (o) => (!o.name.trim() ? t("trc.dlg.needName") : !(num(o.ps) > 100) ? t("trc.dlg.badPrintScale") : o.climb && !(num(o.climb) >= 0) ? t("trc.dlg.badClimb") : o.length && !(num(o.length) > 0) ? t("trc.dlg.badLength") : null) });
   if (!v) return;
   const props = { name: v.name.trim(), kind: v.kind, secondary: v.secondary.trim() || null, climb: v.climb === "" ? -1 : num(v.climb), length: v.length === "" ? null : num(v.length),
     printScale: num(v.ps), descKind: v.descKind, labels: v.kind === "score" ? v.labels : ["sequence", "code", "sequence-and-code"].includes(v.labels) ? v.labels : "sequence",
     firstNumber: Math.max(1, Math.round(num(v.first)) || 1), scoreColumn: v.kind === "score" ? Number(v.scoreCol) : -1, hideFromReports: v.hide, load: v.load === "" ? -1 : Math.round(num(v.load)) };
+  // the advanced level's settings (absent: as before)
+  if (E.pro) Object.assign(props, { form: v.form || undefined, legLines: v.form ? v.legLines : undefined, discipline: v.discipline || undefined, lengthBy: v.lengthBy || undefined,
+    rogaine: v.kind === "score" && v.rogaine ? true : undefined, allControls: v.kind === "score" && v.allControls ? true : undefined });
+  for (const k of Object.keys(props)) if (props[k] === undefined) props[k] = null;
   if (isNew) {
     let id;
     E.change((x) => { id = M.createCourse(x, props); Object.assign(x.courses[id], props); }, t("trc.dlg.newCourse"));
@@ -414,10 +450,28 @@ async function courseOrder(E) {
 async function addVariation(E, loop) {
   const prob = M.variationProblem(E.ev, E.cd, E.sel.cc);
   if (prob) { E.toast({ all: t("trc.dlg.varNoAll"), score: t("trc.dlg.varNoScore"), none: t("trc.dlg.chooseControl"), finish: t("trc.dlg.varNoLast"), exists: t("trc.dlg.varExists") }[prob]); return; }
-  const v = await modal(E, { title: loop ? t("trc.dlg.loops") : t("trc.dlg.fork"), body: field(loop ? t("trc.dlg.nLoops") : t("trc.dlg.nBranches"), `<input name="n" type="number" min="2" max="8" value="${loop ? 2 : 2}">`,
+  // up to 20 branches at the advanced level (Condes), 8 as in Purple Pen otherwise
+  const max = E.pro ? 20 : 8;
+  const v = await modal(E, { title: loop ? t("trc.dlg.loops") : t("trc.dlg.fork"), body: field(loop ? t("trc.dlg.nLoops") : t("trc.dlg.nBranches"), `<input name="n" type="number" min="2" max="${max}" value="2">`,
     loop ? t("trc.dlg.loopsHint") : t("trc.dlg.forkHint")) });
   if (!v) return;
-  E.change((x) => M.addVariation(x, E.cd, E.sel.cc, loop, Math.max(2, Math.min(8, Math.round(num(v.n)) || 2))), loop ? t("trc.dlg.loops") : t("trc.dlg.fork"));
+  E.change((x) => M.addVariation(x, E.cd, E.sel.cc, loop, Math.max(2, Math.min(max, Math.round(num(v.n)) || 2))), loop ? t("trc.dlg.loops") : t("trc.dlg.fork"));
+}
+/** The course's finish drawn on its start (Condes: a course that ends where it began): the finish follows the start wherever it
+ *  goes. A finish other courses use elsewhere is left to them; this course gets one of its own. */
+function finishAtStart(E) {
+  const id = E.cd.course, ev = E.ev, st = M.findKind(ev, id, "start");
+  if (!st) { E.toast(t("trc.dlg.needStart")); return; }
+  const start = ev.courseControls[st].control, last = M.lastCC(ev, id, false);
+  const fin = last && M.kindOfCC(ev, last) === "finish" ? ev.courseControls[last].control : 0;
+  E.change((x) => {
+    const s = x.controls[start];
+    if (fin && x.controls[fin].atStart === start) { delete x.controls[fin].atStart; return; }   // a second time: undone
+    const shared = fin && M.coursesUsing(x, fin).some((c) => c !== id && M.findKind(x, c, "start") && x.courseControls[M.findKind(x, c, "start")].control !== start);
+    let f = fin;
+    if (!fin || shared) { f = M.addControl(x, "finish", [s.x, s.y]); M.addFinish(x, f, id); }
+    x.controls[f].atStart = start;
+  }, t("trc.dlg.finishAtStart"));
 }
 async function partOptions(E) {
   if (E.cd.part < 0) { E.toast(t("trc.dlg.choosePart")); return; }
@@ -473,6 +527,11 @@ export async function controlProps(E, controlId) {
     ${field(t("trc.dlg.colF"), `<input name="f" value="${esc(c.colF || "")}" placeholder="2.5, 3x4, 2/1">`)}
     ${field(t("trc.dlg.descTextShort"), `<textarea name="t" rows="2">${esc(c.descText || "")}</textarea>`)}
     ${field(t("trc.dlg.teamNotes"), `<textarea name="notes" rows="2">${esc(c.notes || "")}</textarea>`)}
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${c.kind === "normal" ? field(t("trc.dlg.units"), `<input name="units" value="${esc((c.units || []).join(", "))}" placeholder="131, 231">`, t("trc.dlg.unitsHint")) : '<input type="hidden" name="units" value="">'}
+      <label class="tr-check"><input type="checkbox" name="locked" ${c.locked ? "checked" : ""}> ${esc(t("trc.dlg.locked"))}</label>
+      ${c.kind === "normal" ? `${field(t("trc.dlg.trailFlags"), sel("flags", [["", "—"], ...["A", "A-B", "A-C", "A-D", "A-E", "A-F"].map((x) => [x, x.replace("-", "–")])], c.trail?.flags || ""))}
+      ${field(t("trc.dlg.trailAnswer"), sel("answer", [["", "—"], ...["Z", "A", "B", "C", "D", "E", "F"].map((x) => [x, x])], c.trail?.answer || ""), t("trc.dlg.trailAnswerHint"))}` : ""}</div>` : ""}
     <p class="tr-hint">${esc(t("trc.dlg.symbolsHint"))}</p>`,
   validate: (o) => { if (c.kind !== "normal") return null; const p = M.codeProblem(E.ev, o.code.trim()), other = M.findCode(E.ev, o.code.trim()); return p === "length" || p === "space" ? t("trc.dlg.codeFormatShort") : other && other !== controlId ? t("trc.dlg.codeTaken") : null; } });
   if (!v) return;
@@ -482,6 +541,12 @@ export async function controlProps(E, controlId) {
     k.colF = v.f.trim() || null; if (k.colF) k.symbols[3] = null;
     if (v.t.trim()) k.descText = v.t.trim(); else delete k.descText;
     if (v.notes.trim()) k.notes = v.notes.trim(); else delete k.notes;
+    if (E.pro) {
+      const units = String(v.units || "").split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+      if (units.length) k.units = units; else delete k.units;
+      if (v.locked) k.locked = true; else delete k.locked;
+      if (v.flags || v.answer) k.trail = { flags: v.flags || "", answer: v.answer || "" }; else delete k.trail;
+    }
   }, t("trc.dlg.controlChanged"));
 }
 async function rotateStretch(E, what) {

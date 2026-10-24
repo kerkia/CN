@@ -292,7 +292,7 @@ async function newEvent(main, files = null) {
 // ---- an imported event: an Ozimut file (.ozmt or .ocnt, which holds its map), or a Purple Pen file (.ppen) and its map, dropped together or one after the other
 async function importEvent(main, files = []) {
   const races = await clubRaces();
-  const st = { ppen: null, ocn: null, ev: null, map: null, mapFromOcn: false, notes: [] };
+  const st = { ppen: null, ocn: null, iof: false, ev: null, map: null, mapFromOcn: false, notes: [] };
   const v = await modal({ title: t("trc.page.importEvent"), wide: true, ok: t("trc.page.import"), body: `
     <p>${t("trc.page.importBody")}</p>
     ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `${OCN_ACCEPT},.ppen,.xml,${MAP_ACCEPT}`)}
@@ -331,8 +331,20 @@ async function importEvent(main, files = []) {
             if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || "";
           } catch (e) { st.notes.push(t("trc.page.fileErr", { name: escA(file.name), err: escA(e.message) })); }
         } else if (isPpenFile(file)) {
-          try { st.ev = readPpen(await file.text()); st.ppen = file; st.ocn = null; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
-          catch (e) { st.notes.push(t("trc.page.badPpen", { name: escA(file.name) })); }
+          const text = await file.text();
+          try { st.ev = readPpen(text); st.ppen = file; st.ocn = null; st.iof = false; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
+          catch (e) {
+            // an IOF XML CourseData (Condes, OCAD, MeOS…): the advanced level's import, for administrators for now
+            const iof = auth.session()?.admin && /\.xml$/i.test(file.name) ? await import("../tracer/iofin.js") : null;
+            const kind = iof?.iofKind(text);
+            if (kind === "coursedata3" || kind === "coursedata2") {
+              const data = iof.readIof(text), ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: data.scale || 10000 } });
+              ev.title = file.name.replace(/\.xml$/i, "");
+              iof.importInto(ev, data, { fileMm: false });
+              st.ev = ev; st.ppen = file; st.ocn = null; st.iof = true; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; }
+              if (f.elements.title && !f.elements.title.value) f.elements.title.value = ev.title;
+            } else st.notes.push(t("trc.page.badPpen", { name: escA(file.name) }));
+          }
         } else if (isMapFile(file)) { st.map = file; st.mapFromOcn = false; }
         else st.notes.push(t("trc.page.badFile", { name: escA(file.name) }));
       }
@@ -364,7 +376,9 @@ async function importEvent(main, files = []) {
   }
   // another file than the .ppen's own (an OCAD map's PDF or image, a scan): the controls are aligned on it once opened; an OCAD or
   // Mapper map for a .ppen made on one keeps the controls' coordinates (Purple Pen keeps the map file's own millimetres)
-  const vector = isVectorMap(file.name, bytes), ppenOcad = ev.map.kind === "ocad" || /\.(ocd|omap|xmap)$/i.test(ev.map.file || "");
+  // an IOF XML's positions: the map file's own mm on an OCAD or Mapper map (as OCAD, Condes and Purple Pen write them), the
+  // sheet's from its bottom left otherwise
+  const vector = isVectorMap(file.name, bytes), ppenOcad = st.iof ? vector : ev.map.kind === "ocad" || /\.(ocd|omap|xmap)$/i.test(ev.map.file || "");
   // an Ozimut file on another map than its own: aligned like a .ppen on another map (its coordinates are its own frame's)
   const differs = st.ocn ? true : vector ? !ppenOcad : ppenOcad || (!!ev.map.file && baseName(ev.map.file) !== baseName(file.name));
   let err = null;

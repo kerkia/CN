@@ -99,12 +99,21 @@ export function iofXmlText(ev, version = 3) {
     // relay teams (ExportRelayVariations3)
     for (const id of courses) {
       const c = ev.courses[id];
-      if (!M.hasVariations(ev, id) || !(c.relay?.teams > 0)) continue;
+      if (!M.hasVariations(ev, id) || !(c.relay?.teams > 0 || c.relay?.table?.length)) continue;
       for (const t of relayAssignments(ev, id)) {
-        out.push("    <TeamCourseAssignment>", `      <BibNumber>${t.team}</BibNumber>`, `      <TeamName>${t.team}</TeamName>`);
+        out.push("    <TeamCourseAssignment>", `      <BibNumber>${x(t.bib ?? t.team)}</BibNumber>`, `      <TeamName>${x(t.name || t.team)}</TeamName>`);
         t.legs.forEach((code, i) => out.push("      <TeamMemberCourseAssignment>", `        <Leg>${i + 1}</Leg>`, `        <CourseName>${x(`${c.name} ${code}`)}</CourseName>`, `        <CourseFamily>${x(c.name)}</CourseFamily>`, "      </TeamMemberCourseAssignment>"));
         out.push("    </TeamCourseAssignment>");
       }
+    }
+    // relay teams imported from another program (iofin.js), written back with the courses they name that are still there
+    const names = new Set(courses.flatMap((id) => (M.hasVariations(ev, id) ? M.allVariations(ev, id).map((vr) => `${ev.courses[id].name} ${vr.code}`) : [ev.courses[id].name])));
+    if (!courses.some((id) => M.hasVariations(ev, id) && (ev.courses[id].relay?.teams > 0 || ev.courses[id].relay?.table?.length))) for (const tm of ev.relayTeams || []) {
+      const legs = tm.legs.filter((l) => names.has(l.course));
+      if (!legs.length) continue;
+      out.push("    <TeamCourseAssignment>", `      <BibNumber>${x(tm.bib)}</BibNumber>`, `      <TeamName>${x(tm.name)}</TeamName>`);
+      for (const l of legs) out.push("      <TeamMemberCourseAssignment>", `        <Leg>${l.leg}</Leg>`, `        <CourseName>${x(l.course)}</CourseName>`, ...(l.family ? [`        <CourseFamily>${x(l.family)}</CourseFamily>`] : []), "      </TeamMemberCourseAssignment>");
+      out.push("    </TeamCourseAssignment>");
     }
     out.push("  </RaceCourseData>", "</CourseData>");
     return out.join("\n") + "\n";

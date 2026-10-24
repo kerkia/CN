@@ -11,7 +11,7 @@ import * as M from "./model.js";
 import { layoutCourse, distFrom } from "./layout.js";
 import { itemsFor, drawItems, tracePath, SCREEN, cmykToRgb } from "./draw.js";
 import * as S from "./store.js";
-import { loadSymbols, loadAllTexts, languageStrings } from "./symbols.js";
+import { loadSymbols, loadAllTexts, languageStrings, setCustomSymbols } from "./symbols.js";
 import { loadFonts, ensureText, setLanguage } from "./fonts.js";
 import * as OFF from "./offline.js";
 import * as FW from "../fullwin.js";
@@ -179,6 +179,7 @@ export async function openEditor(ctx) {
   /** Layout, items, panes, then the drawing. */
   function refresh() {
     fixSelection();
+    setCustomSymbols(E.ev.symbols);
     const cdDraw = E.cd.course && M.hasVariations(E.ev, E.cd.course) && E.variation ? { ...E.cd, path: E.variation.path } : E.cd;
     E.cdDraw = cdDraw;
     E.layout = layoutCourse(E.ev, cdDraw, { variationName: E.variation?.code || "" });
@@ -676,6 +677,8 @@ export async function openEditor(ctx) {
     if ((E.blank || ocn) && E.onStart) { E.onStart(ocn || files.some((f) => /\.(ppen|xml)$/i.test(f.name)) ? "import" : "new", files); return; }
     if (E.readOnly) { E.toast(t("trc.ed.readOnlyDot")); return; }
     const ppen = files.find((f) => /\.(ppen|xml)$/i.test(f.name)), map = files.find(isMapFile);
+    // an IOF XML of courses or classes (Condes, OCAD, MeOS…): the advanced level's import
+    if (ppen && E.pro && /\.xml$/i.test(ppen.name)) { const iof = await import("./iofin.js"); if (iof.iofKind(await ppen.text())) { iof.importDialog(E, ppen); return; } }
     if (ppen) D.importPpen(E, ppen);
     else if (map) (await import("./extras.js")).changeMap(E, map);
     else E.toast(t("trc.ed.dropWhat"));
