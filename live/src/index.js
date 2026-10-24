@@ -12,6 +12,7 @@
 import { DurableObject } from "cloudflare:workers";
 import * as mop from "./mop.js";
 import * as md from "./meosdjango.js";
+import * as ol from "./olive.js";
 
 const UA = "Ozimut-live/1.0 (+https://ozimut.com; one reader per competition, relayed to its spectators)";
 const ACTIVE_MS = 15000, QUIET_MS = 30000;       // polling interval while passings keep coming / when nothing moves
@@ -49,6 +50,13 @@ const SNAP_MS = 120000, SNAP_PREFIX = "broadcasts/";
 const MD_ACTIVE_MS = 20000, MD_QUIET_MS = 60000, MD_DONE_MS = 300000;   // while punches keep coming / quiet / race over
 const MD_PAGE_MS = 300000;                       // the competition's page (its courses) read again at most this often
 const MD_MAX = 24;                               // course reads per wake-up, at most
+// Races on O'Live (co-live.fr, 2026-10-24, olive.js): numbers from 700 000 000, read from its circuits' pages while someone
+// watches — every circuit at each wake-up (OL_MAX at most, the others in turn), then the cards of the runners finished since
+// (their splits and their start, OL_CARDS at most, those just finished first), passed to `update` as a push
+const OL_ACTIVE_MS = 20000, OL_QUIET_MS = 60000, OL_DONE_MS = 300000;   // runners out / only some to start / all through
+const OL_PAGE_MS = 300000;                       // the race's page (its circuits) read again at most this often
+const OL_MAX = 24, OL_CARDS = 15;                // circuit pages and cards per wake-up, at most (subrequest limit: 50)
+const OL_BULK = 10;                              // cards to read on a circuit from which its split times page is read instead
 async function lr(env, params) {
   const r = await fetch(`${api(env)}?${new URLSearchParams(params)}`, { headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`liveresultat ${r.status}`);
@@ -119,10 +127,12 @@ export class LiveRace extends DurableObject {
     if (!/^\d{1,9}$/.test(comp)) return new Response("Bad competition", { status: 400 });
     const m = await this.load();
     m.comp = comp;
-    if (md.isMd(comp)) {
-      // a MeOSDjango race: read once when nothing is held, then by the alarm while someone watches
+    if (md.isMd(comp) || ol.isOl(comp)) {
+      // a MeOSDjango or O'Live race: read once when nothing is held, then by the alarm while someone watches
       if (!m.info) {
-        try { await this.readMd(m); } catch (e) { return new Response("MeOSDjango unavailable", { status: 502 }); }
+        try { await (ol.isOl(comp) ? this.readOl(m) : this.readMd(m)); } catch (e) {
+          return new Response(ol.isOl(comp) ? "O'Live unavailable" : "MeOSDjango unavailable", { status: 502 });
+        }
       }
       const [client, server] = Object.values(new WebSocketPair());
       this.ctx.acceptWebSocket(server);
@@ -288,8 +298,10 @@ export class LiveRace extends DurableObject {
         const finished = r[4] === 0 && r[3] != null && !(o[4] === 0 && o[3] != null);
         if (finished) arrivals.push([r[1], name, 1000, "", r[3], r[7]]);
         const fresh = (r[8] || []).map((s, i) => (s && !o[8]?.[i] ? i : -1)).filter((i) => i >= 0);
-        // a card read at the finish brings every split at once (MeOS's « all punches », a MeOSDjango site): the finish is the news
-        if (finished && fresh.length > 2) continue;
+        // a card read at the finish brings every split at once (MeOS's « all punches », a MeOSDjango site): the finish is the news;
+        // a card read later (O'Live: a wake-up or more after the finish when many come at once) is no news at all, nor a
+        // mispunched or retired runner's
+        if (fresh.length > 2 && r[4] != null && r[4] !== 9 && r[4] !== 10 && (r[4] !== 0 || r[3] != null)) continue;
         for (const i of fresh) arrivals.push([r[1], name, next.controls[i]?.[0] ?? i + 1, next.controls[i]?.[1] ?? "", r[8][i][0], r[7]]);
       }
       m.data[name] = { ...next, at: now };
@@ -366,6 +378,90 @@ export class LiveRace extends DurableObject {
     const date = m.md.info.date || list.find((d) => d.competition_date)?.competition_date || null;
     const { order, classes } = md.compact(list);
     return this.update(m.comp, { info: { ...m.md.info, date }, order, classes }, { prune: true });
+  }
+
+  /** An O'Live race: its circuits' pages read (the race's page now and then for their list), then the cards of the runners
+   *  finished since (their splits and start), the classes passed to `update` as a push (`prune`: when every circuit was
+   *  read). Throws when a page fails: nothing half read is passed on. */
+  async readOl(m) {
+    const { host, id } = ol.site(m.comp);
+    if (!host) throw new Error("unknown O'Live site");
+    const base = ol.base(host), page = (q) => `${base}/resultats.php?${q}&IdCourse=${id}`;
+    m.ol ||= { at: 0, circuits: [], info: null, ctrls: {}, cats: {}, read: [], next: 0, out: false, wait: false, due: 0 };
+    if (!m.ol.circuits.length || Date.now() - m.ol.at >= OL_PAGE_MS) {
+      const s = (await ol.get(page("Action=ChoixCircuits"))).text;
+      m.ol.circuits = ol.circuits(s, id);
+      m.ol.at = Date.now();
+      if (!m.ol.info) {
+        const race = ol.races((await ol.get(`${base}/resultats.php`)).text).find((r) => r.id === id);
+        m.ol.info = { name: race?.name || ol.title(s), organizer: "", date: race?.date || null };
+      }
+    }
+    // every circuit when they are few, else OL_MAX of them in turn
+    const n = m.ol.circuits.length, all = n <= OL_MAX;
+    const todo = all ? m.ol.circuits : Array.from({ length: OL_MAX }, (_, k) => m.ol.circuits[(m.ol.next + k) % n]);
+    if (!all) m.ol.next = (m.ol.next + OL_MAX) % n;
+    const byCircuit = {};
+    for (const c of todo) {
+      const p = await ol.get(page(`Action=Result&Circuit=${encodeURIComponent(c)}`));
+      byCircuit[c] = ol.starts(ol.rows(p.text), p.at);
+      for (const r of byCircuit[c]) {
+        const a = (m.ol.cats[r.cat || c] ||= []);
+        if (!a.includes(c)) a.push(c);
+      }
+    }
+    // what the classes held know of each runner: their start, their splits once their card was read, their state
+    const known = {};
+    for (const k of Object.values(m.data)) for (const r of k.rows || []) {
+      known[`${r[1]}|${r[2]}`] = { start: r[7] != null ? r[7] / 100 : null, times: (r[8] || []).map((x) => (x ? x[0] / 100 : null)),
+        was: r[4], prel: r[9] };
+    }
+    // the cards of the runners through (their card read, or given up) not read yet: those just finished first (their splits
+    // then come with their finish), an OK card first on a circuit whose controls are not known yet
+    const read = new Set(m.ol.read), rid = (r) => r.bib || ol.keyOf(r);
+    const due = [];
+    for (const [c, list] of Object.entries(byCircuit)) for (const r of list) {
+      if (!r.card || !ol.final(r) || read.has(rid(r))) continue;
+      const k = known[ol.keyOf(r)];
+      due.push({ c, r, news: !!k && (k.was === 9 || k.was === 10 || !!k.prel), first: !m.ol.ctrls[c] && r.status === 0 });
+    }
+    due.sort((a, b) => b.news - a.news || b.first - a.first);
+    // a circuit with many cards to read (a race joined under way): its split times page instead, one a wake-up
+    const per = {};
+    for (const d of due) if (!d.news) per[d.c] = (per[d.c] || 0) + 1;
+    // (a page O'Live fails to make — 2026-10-24, A1 at Le Bessat: a PHP error on one runner's times — is not asked again:
+    // that circuit's cards are read one by one)
+    m.ol.broken ||= [];
+    const bulk = Object.keys(per).filter((c) => per[c] >= OL_BULK && !m.ol.broken.includes(c)).sort((a, b) => per[b] - per[a])[0];
+    if (bulk) {
+      const sp = ol.splitPage((await ol.get(page(`Action=Splits&Circuit=${encodeURIComponent(bulk)}`))).text);
+      if (!sp.codes.length) m.ol.broken.push(bulk);
+      if (!m.ol.ctrls[bulk] && sp.codes.length) m.ol.ctrls[bulk] = sp.codes;
+      const byKey = new Map(sp.rows.map((x) => [`${x.name}|${x.code}`, x]));
+      for (const d of due) {
+        const x = d.c === bulk && JSON.stringify(sp.codes) === JSON.stringify(m.ol.ctrls[bulk]) && byKey.get(`${d.r.name}|${d.r.code}`);
+        if (!x) continue;
+        known[ol.keyOf(d.r)] = { start: known[ol.keyOf(d.r)]?.start ?? d.r.start, times: x.times };
+        read.add(rid(d.r));
+        d.done = true;
+      }
+    }
+    let got = 0;
+    for (const { c, r } of due.filter((d) => !d.done).slice(0, OL_CARDS)) {
+      const k = ol.card((await ol.get(`${base}/bloc.php`, { Demande: "PointagesPuce", IdCourse: id, NumPuce: r.card })).text);
+      got++;
+      if (!m.ol.ctrls[c] && r.status === 0 && k.codes.length && k.codes.every(Boolean)) m.ol.ctrls[c] = k.codes;
+      if (!m.ol.ctrls[c]) continue;                          // (read again once an OK card gives the circuit's controls)
+      known[ol.keyOf(r)] = { start: k.start ?? known[ol.keyOf(r)]?.start ?? r.start, times: ol.align(k, m.ol.ctrls[c]) };
+      read.add(rid(r));
+    }
+    m.ol.read = [...read];
+    m.ol.due = due.filter((d) => !d.done).length - got;
+    const rows = Object.values(byCircuit).flat();
+    m.ol.out = rows.some((r) => r.status === 9);
+    m.ol.wait = rows.some((r) => r.status === 10);
+    const { order, classes } = ol.compact(byCircuit, m.ol.ctrls, known, m.ol.cats);
+    return this.update(m.comp, { info: m.ol.info, order: all ? order : null, classes }, { prune: all });
   }
 
   async readClasses(m) {
@@ -450,6 +546,13 @@ export class LiveRace extends DurableObject {
     }
     const sockets = this.ctx.getWebSockets();
     if (!sockets.length) return;                 // nobody watching: no more reads until someone comes back
+    if (ol.isOl(m.comp)) {
+      // an O'Live race: every circuit read (update sends what changed), sooner while runners are out or cards wait
+      try { await this.readOl(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
+      const wait = m.ol?.out || m.ol?.due > 0 ? OL_ACTIVE_MS : m.ol?.wait ? OL_QUIET_MS : OL_DONE_MS;
+      await this.ctx.storage.setAlarm(Date.now() + wait);
+      return;
+    }
     if (md.isMd(m.comp)) {
       // a MeOSDjango race: every course read (update sends what changed), sooner while punches keep coming
       try { await this.readMd(m); } catch (e) { console.error(`race ${m.comp}: ${e.message || e}`); }
@@ -548,7 +651,7 @@ const TZ_COUNTRY = {
 const countryOf = (tz) => (!tz ? "SE" : TZ_COUNTRY[tz] || (tz.startsWith("Australia/") ? "AU" : "?"));
 const LIST_MS = 240000;                 // liveresultat's list read at most this often
 const TZ_VERSION = 2;
-const MAX_INFO = 25;                    // races looked up per call (subrequest limit: 50, MeOSDjango's MD_LIST too); the rest next call
+const MAX_INFO = 21;                    // races looked up per call (subrequest limit: 50, MD_LIST and OL_LIST too); the rest next call
 // which races are live now (owner, 2026-10-22: « identify clearly which competitions are truly live »): each race of its own
 // today has its last passings read (with liveresultat's hash: an unchanged list costs a few bytes), at most every PROBE_MS
 // and MAX_PROBE a call, only when the list is asked for; a race is live while its last punch is under LIVE_S old
@@ -556,6 +659,9 @@ const PROBE_MS = 180000, MAX_PROBE = 15, LIVE_S = 1800;
 // the MeOSDjango sites' races (meosdjango.js): each site's list at most every LIST_MS, today's races probed for their last
 // punch (the competition's page now and then, then a few courses a call in turn), MD_LIST requests a call at most
 const MD_LIST = 8, MD_PROBE_COURSES = 3, MD_HASHES_MS = 1800000;
+// O'Live's races (olive.js): its list at most every LIST_MS, today's races probed in turn, OL_PROBE circuits a call, a race's
+// age the time since someone was seen out on it (« Run. »); OL_LIST requests a call at most
+const OL_LIST = 4, OL_PROBE = 2;
 // two names of one race: the same words, accents and punctuation aside, or one's words all in the other's
 const nameWords = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 function sameName(a, b) {
@@ -665,8 +771,9 @@ export class Directory extends DurableObject {
     }
     let mdComps = [];
     try { mdComps = await this.mdComps(now); } catch (e) { console.error(`directory: MeOSDjango: ${e.message || e}`); }
+    try { mdComps.push(...await this.olComps(now)); } catch (e) { console.error(`directory: O'Live: ${e.message || e}`); }
     // a race on both (2026-10-23: OE 42 opened « Pélussin City Race » on liveresultat, never fed it, and ran its live on its
-    // MeOSDjango site — listed twice, one empty): one entry, the MeOSDjango one unless only liveresultat's has punches
+    // MeOSDjango site — listed twice, one empty): one entry, the MeOSDjango (or O'Live) one unless only liveresultat's has punches
     const twin = (c) => mdComps.find((m) => m[3] === c[3] && sameName(m[1], c[1]));
     const lr = (last?.comps || []).filter((c) => { const m = twin(c); return !m || (c[6] != null && m[6] == null); });
     const md2 = mdComps.filter((m) => !lr.some((c) => c[3] === m[3] && sameName(m[1], c[1])));
@@ -722,6 +829,53 @@ export class Directory extends DurableObject {
       const ages = Object.values(s.probes[c[0]]?.ages || {}).filter(Boolean).map(([a, at]) => a + Math.round((now - at) / 1000));
       // (the site's address last: the page names it beside the organiser)
       return [...c.slice(0, 6), c[3] === today && ages.length ? Math.min(...ages) : null, md.site(c[0]).host];
+    });
+  }
+
+  /** O'Live's races of the last 3 and next 7 days (individual ones: a relay's pages show teams), in the list's form [id, name,
+   *  "", date, 0, "FR", age, host]: each site's list at most every LIST_MS (kept when a site does not answer), today's
+   *  races probed a few circuits a call in turn, at most every PROBE_MS a race; the age is the time since someone was seen
+   *  out on the race. */
+  async olComps(now) {
+    const s = (await this.ctx.storage.get("ol")) || { at: 0, comps: [], probes: {} };
+    let budget = OL_LIST, changed = false;
+    if (now - s.at >= LIST_MS) {
+      const day = (d) => new Date(now + d * 86400e3).toISOString().slice(0, 10);
+      const lo = day(-3), hi = day(7), out = [];
+      for (const [i, host] of ol.HOSTS.entries()) {
+        let list = null;
+        if (budget > 0) { budget--; try { list = ol.races((await ol.get(`${ol.base(host)}/resultats.php`)).text); } catch (e) { /* kept below */ } }
+        if (list) out.push(...list.filter((r) => ol.individual(r) && r.date && r.date >= lo && r.date <= hi).map((r) => [ol.raceId(i, r.id), r.name, "", r.date, 0, "FR", null]));
+        else out.push(...s.comps.filter((c) => ol.site(c[0]).host === host));
+      }
+      s.comps = out; s.at = now; changed = true;
+    }
+    const today = localSeconds("Europe/Paris", 0).day;
+    const races = s.comps.filter((c) => c[3] === today);
+    s.probes = Object.fromEntries(races.filter((c) => s.probes[c[0]]).map((c) => [c[0], s.probes[c[0]]]));
+    for (const c of races.sort((a, b) => (s.probes[a[0]]?.checked || 0) - (s.probes[b[0]]?.checked || 0))) {
+      const p = s.probes[c[0]] ||= { circuits: [], circuitsAt: 0, next: 0, out: 0, checked: 0 };
+      if (budget <= 0 || now - p.checked < PROBE_MS) continue;
+      const { host, id } = ol.site(c[0]), page = (q) => `${ol.base(host)}/resultats.php?${q}&IdCourse=${id}`;
+      try {
+        if (!p.circuits.length || now - p.circuitsAt >= MD_HASHES_MS) {
+          budget--;
+          p.circuits = ol.circuits((await ol.get(page("Action=ChoixCircuits"))).text, id);
+          p.circuitsAt = now;
+        }
+        for (let k = 0; k < Math.min(OL_PROBE, p.circuits.length) && budget > 0; k++) {
+          const ci = p.circuits[p.next++ % p.circuits.length];
+          budget--;
+          if (ol.anyOut(ol.rows((await ol.get(page(`Action=Result&Circuit=${encodeURIComponent(ci)}`))).text))) p.out = now;
+        }
+        p.checked = now;
+      } catch (e) { /* next time */ }
+      changed = true;
+    }
+    if (changed) await this.ctx.storage.put("ol", s);
+    return s.comps.map((c) => {
+      const p = s.probes[c[0]];
+      return [...c.slice(0, 6), c[3] === today && p?.out ? Math.round((now - p.out) / 1000) : null, ol.site(c[0]).host];
     });
   }
 

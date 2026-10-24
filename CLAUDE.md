@@ -21,7 +21,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
-| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct ») or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's list, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
+| `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango or O'Live race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
@@ -236,7 +236,12 @@ newly matched to it. Sources: liveresultat.orientering.se (JSON API, matched by 
 Online (sequential event ids scanned forward; HTML split tables, start times from the event's .spl file, an
 undocumented format decoded and checked against the tables — `winsplits._spl`), Helga (helga-o.live's SplitsBrowser:
 event titles by sequential number, the IOF XML list from `readsplits.php`; its `/webres/` pages answer robots "403"
-and are not read — the owner is telling Helga's developer), MeOSDjango sites (2026-10-22, `sources/meosdjango.py`: a MeOS results site any club installs — Orientation Data, `heyries`, is one, COCS 73's jolatomme.alwaysdata.net another; each course read once from its JSON `/api/<cid>/course/<hash>/live/`, start times and splits by control code, the coming races' start lists too; `KNOWN` plus the sites met on a club's site — a `/competition/<n>/` link probed, or a page with its signature —, kept in `prov_meta` « meosdjango »; a course re-read only when the competition page's « classés / partants » change), an organiser's own broadcast (« Organisation › Direct » tied to the competition: `sources/broadcast.py`), and the organiser's site
+and are not read — the owner is telling Helga's developer), MeOSDjango sites (2026-10-22, `sources/meosdjango.py`: a MeOS results site any club installs — Orientation Data, `heyries`, is one, COCS 73's jolatomme.alwaysdata.net another; each course read once from its JSON `/api/<cid>/course/<hash>/live/`, start times and splits by control code, the coming races' start lists too; `KNOWN` plus the sites met on a club's site — a `/competition/<n>/` link probed, or a page with its signature —, kept in `prov_meta` « meosdjango »; a course re-read only when the competition page's « classés / partants » change), O'Live (2026-10-24, `sources/olive.py`:
+co-live.fr, a live results site French organisers feed from their timing software, HTML only — the races on offer, each
+circuit's results page and split times page, read again only when the results pages moved; it lists only current races, so a
+race is read on its day or soon after; a link to its home page on the organiser's site, « Résultats provisoires », gets the
+O'Live race of that day whose name fits, or one of whose name's own words the linking page gives: `clubsite` keeps such a link
+with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2), an organiser's own broadcast (« Organisation › Direct » tied to the competition: `sources/broadcast.py`), and the organiser's site
 (a short link text gets the heading it sits under — « Résultats SI » under « Régionale LIFCO, le 11/10/2026 » —, links
 without an extension on file hosts or saying « Résultats / départs / Annonce » are read to find out, Cloudinary's addresses
 kept in their stable form; WordPress media/posts API — a `*.wordpress.com` site through public-api.wordpress.com, and the club's other
@@ -801,7 +806,20 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   address named in the list. The race's object reads every course's JSON while someone watches (20 s while punches come, 60 s
   quiet, 5 min once the site says « finished »), one class per `class_name`, MeOS's « FAMILY, Given » turned round, and passes
   them to `update` as a broadcast's push. In `update`, a card read at the finish (the finish and over two splits new at once:
-  MeOSDjango, MeOS's « all punches ») puts its finish on the punches' line, not every control.
+  MeOSDjango, MeOS's « all punches ») puts its finish on the punches' line, not every control; many splits new at once for a
+  runner already through (a card read later, a mispunch) put nothing there.
+  **O'Live races** (2026-10-24, owner: the CF Sprint, cancelled, replaced by « Sprint Labyrinthe - Le Bessat », live on
+  co-live.fr): the relay lists O'Live's individual races (`live/src/olive.js`, `HOSTS` append only, numbers 700 000 000 + the
+  site's place × 1 000 000 + its IdCourse; its address where the organiser goes: O'Live gives none), today's probed two circuits a
+  call (`OL_LIST` requests; `MAX_INFO` lowered to 21), a race live while someone was seen « Run. » under `LIVE_S` ago. HTML only,
+  no API: the race's object reads every circuit's results page (`OL_MAX` 24, the others in turn) — one class per category, a
+  category on several circuits one per circuit —, then the cards (bloc.php `PointagesPuce`: each punch's time of day, so the
+  exact start) of the runners through since, those just finished first (`OL_CARDS` 15 a wake-up), or for a backlog (a race
+  joined under way) the circuit's split times page at once (`OL_BULK`; a page O'Live fails to make — A1 at Le Bessat, a PHP
+  error — is not asked again). A runner out has a start estimated from their running time, which O'Live counts at its last
+  import (frozen up to a minute): their start while waiting (« 12 h 46 »; « 00 h 00 » none) or their card's replaces it. « Arr »
+  (finished, card unread) is a provisional result, « Arr? » not classified. 20 s while runners are out or cards wait, 60 s with
+  only starts to come, 5 min after. The Agenda maps both ranges to « host/<n> » (`keyOfComp`, `run.LIVE_IDS`).
 - **IA** (`#/ia`, `pages/ask.js`, menu « Classement » after Statistiques; owner, 2026-10-15; administrators only the first
   day, **every account since 2026-10-16** — 15 questions a day per account on the free model, administrators apart, `PER_DAY`
   in `api/ask.js`; the other Workers AI models of the menu are the administrators' tests): a question in plain French answered with a table, a chart or a few figures. A language model on **Workers AI**

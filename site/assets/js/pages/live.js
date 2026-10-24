@@ -111,10 +111,10 @@ async function list(main, query) {
     $("#lv-now").innerHTML = now.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("lv.now.title")}</h2>
         <div class="hint">${t("lv.now.hint", { m: Math.round(liveS / 60) })}</div></div></div>
       <div class="lv-now-list">${now.map(([id, name, org, , , cc, , via]) => html`<a class="lv-now-item" href="#/direct/${id}"><b>${name}</b>
-        <span class="muted">${org}${via ? ` · ${via}` : ""}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span></a>`)}</div></section>` : "";
+        <span class="muted">${[org, via].filter(Boolean).join(" · ")}${(cc || "?") !== cur ? ` · ${countryName(cc || "?")}` : ""}</span></a>`)}</div></section>` : "";
     $("#lv-list").innerHTML = kept.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("lv.org")}</th></tr></thead>
       <tbody>${kept.map((c) => { const [id, name, org, date, , cc, , via] = c; return html`<tr${raw(date === today ? ' class="selected"' : "")}><td class="num">${fmtDate(date, "short")}</td>
-        <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${via ? html` <span class="muted">· ${via}</span>` : ""}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
+        <td><a href="#/direct/${id}">${name}</a>${isLive(c) ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</td><td style="font-size:12.5px">${org}${via ? html` <span class="muted">${org ? "· " : ""}${via}</span>` : ""}${(cc || "?") !== cur ? html` <span class="muted">· ${countryName(cc || "?")}</span>` : ""}</td></tr>`; })}</tbody></table>`
       : html`<div class="empty">${t(!comps.length ? "lv.unavailable" : n ? "lv.none" : F.filtered() ? "rf.emptyLive" : "lv.noneCountry", { c: countryName(cur) })}</div>`;
   };
   F.bind();

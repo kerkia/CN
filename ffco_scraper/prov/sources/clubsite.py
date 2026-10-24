@@ -268,6 +268,7 @@ class ClubSite:
         own = {_host(s) for s in sites}
         found: dict[str, tuple[str, str]] = {}
         platforms: dict[str, str] = {}
+        contexts: dict[str, tuple] = {}                # an O'Live link: (the page holding it, whether it names the race)
         announcements: dict[str, str] = {}             # the race's announcement: its circuits' table
 
         def consider(url: str, text: str, via: str, posted_after: bool = False, on_race_page: bool = False,
@@ -280,9 +281,13 @@ class ClubSite:
             names_race = any(t in low for t in dt) or names_day(low, d) or any(w in low for w in words) or on_race_page
             for h, kind in PLATFORMS.items():
                 if h in host or h in url:
-                    # a club page lists its whole season's links: only those naming this race (or posted after it)
-                    if names_race or posted_after:
+                    # a club page lists its whole season's links: only those naming this race (or posted after it); an
+                    # O'Live link names no race (« Résultats provisoires » -> its home page) — kept with the page holding
+                    # it, whose words say which of the day's O'Live races it is, if any (sources.olive.OLive.of_day)
+                    if names_race or posted_after or (kind == "olive" and via.startswith("page ")):
                         platforms[url] = kind
+                    if kind == "olive" and url not in contexts:
+                        contexts[url] = (via[5:] if via.startswith("page ") else None, bool(names_race or posted_after))
                     return
             # a competition's page on another site of the shape MeOSDjango gives them (/competition/<n>/): probed once
             # (sources.meosdjango), read as a platform when it is one
@@ -445,7 +450,7 @@ class ClubSite:
             if not self.f.out_of_time():
                 wordpress(root)
         return {"docs": [(u, t, v) for u, (t, v) in found.items()], "platforms": sorted(platforms.items(), key=lambda x: x[1]),
-                "announcements": sorted(announcements.items())}
+                "announcements": sorted(announcements.items()), "contexts": contexts}
 
 
 def download_url(url: str) -> str:
