@@ -33,6 +33,7 @@ import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
+import { videoPanel } from "./sharedvideo.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
@@ -610,7 +611,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       <aside class="sh-panel" id="sh-left"></aside>
       <div class="sh-mapcol"><div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
-          <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button></div>
+          <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
+          <button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
         <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <aside class="sh-panel" id="sh-right"></aside></div>
@@ -795,7 +797,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (x1 - x0 > (w - 160) / k || y1 - y0 > (h - 160) / k) mv.fitBox(x0, y0, x1, y1, 80, 4);
     else mv.centerOn((x0 + x1) / 2, (y0 + y1) / 2);
   }
-  function frame() { followView(); mv.draw(); hud(); drawOwn(); drawStrip(); saveUrl(); }
+  function frame() { followView(); mv.draw(); hud(); drawOwn(); drawStrip(); video?.sync(); saveUrl(); }
 
   // ---- the runners' paces under the map (trace/pacestrip.js): over the replay's own time axis, smoothed over a few
   // seconds to half a minute (a leg's short view, the whole race), recomputed only when the axis or the runners change
@@ -1071,7 +1073,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     }, 40);
     const b = $("#sh-play"); if (b) b.textContent = "⏸";
   }
-  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; saveUrl(); }
+  function stop() { playing = false; clearInterval(timer); timer = 0; const b = $("#sh-play"); if (b) b.textContent = "▶"; video?.sync(true); saveUrl(); }
 
   // ---- route choices on a leg (trace/routes.js): the organiser's grouping shared on the server, with the circuit (every
   // runner sees it); anyone's own edits kept on their device (localStorage, per analysis and circuit), over the
@@ -1197,6 +1199,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   window.addEventListener("resize", fit);
   $("#sh-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
+  // a headcam video (sharedvideo.js): a file of this device, played in step with one runner's race
+  const video = videoPanel($(".sh-map", box), { runners, key: `ocn.sh.video.${id}.${course.n}`, playing: () => playing, speed: () => speed,
+    pick: () => sel || runners.find((r) => r.mine) || runners[0],
+    raceTime: (r) => { const s = sAt(r, T); return s == null ? null : s - r.start; } });
+  $("#sh-video-btn").addEventListener("click", () => $("#sh-video-file").click());
+  $("#sh-video-file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) { video.open(f); video.sync(true); } e.target.value = ""; });
   // the strip: a click or a drag seeks
   const strip = $("#sh-strip");
   const scrub = (e) => { stop(); T = T0 + stripFraction(strip, e.clientX - strip.getBoundingClientRect().left) * (T1 - T0); frame(); };
@@ -1218,5 +1226,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { stop(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { stop(); video.close(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }
