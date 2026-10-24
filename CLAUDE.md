@@ -1432,7 +1432,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   France; the Tracer's winning times need France. **The site's country** (`country.js`, owner, 2026-10-20: one global
   choice beside the language rather than a filter per page): the countries with data are `meta.json` `countries` (France
   alone when absent); the header's menu is the one place to choose it (owner, 2026-10-21: the Agenda's « Pays » field and En
-  direct's own selector are gone) and offers the countries with data or joined, sorted by name, France first (owner, 2026-10-24: the other IOF members showed empty lists; En direct's search still finds any country's live races) — anyone may race abroad:
+  direct's own selector are gone) and offers the countries with data or joined, sorted by name, France first (owner, 2026-10-24: the other IOF members showed empty lists; En direct's search still finds any country's live races) — the account's own countries first, then a line and the others (owner, 2026-10-24; `.cty-sep`) — anyone may race abroad:
   a country's agenda, results and live races are open to every account, without CN (they are not ranked there); default the
   first accepted membership with data (`localStorage ocn.country` once picked); the Agenda's, Résultats' and En direct's lists
   keep the current country's (`country.of`: an item's `country`, France when it has none); a search on En direct looks in every

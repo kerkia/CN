@@ -45,14 +45,17 @@ export const access = (cc) => info(cc)?.access || null;
 /** Does the site rank a country's runners (its runners, ranking, clubs… pages)? */
 export const ranks = (cc = current()) => !!info(cc)?.ranking;
 
-/** The header's menu, beside the language's: the countries with data or joined. */
 /** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */
 export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
   ? html`<img class="${cls}" src="${flag(cc)}" alt="" width="18" height="13" loading="lazy" decoding="async">` : "");
 
+/** The header's menu, beside the language's: the countries with data or joined — the account's own first, then a line and
+ *  the others (owner, 2026-10-24). */
 export function menu() {
   const ok = withData();
   const cur = current();
+  const mine = byName((auth.session()?.countries || []).filter((c) => c.status === "ok" && ok.includes(c.cc)).map((c) => c.cc));
+  const rest = byName(ok.filter((cc) => !mine.includes(cc)));
   const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
@@ -60,7 +63,7 @@ export function menu() {
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu cty-menu" role="menu">${byName(ok).map(item)}</div>
+    <div class="nav-menu cty-menu" role="menu">${mine.map(item)}${mine.length && rest.length ? html`<div class="cty-sep" role="separator"></div>` : ""}${rest.map(item)}</div>
   </div>`;
 }
 

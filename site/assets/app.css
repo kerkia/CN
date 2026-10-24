@@ -249,6 +249,8 @@ p { margin: 0; }
 .cty-flag { width: 18px; height: 13px; border-radius: 2px; object-fit: cover; vertical-align: -2px; margin-right: 7px; flex: none;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 15%, transparent); }
 .cty-menu button { display: flex; align-items: center; }
+/* one's own countries above the line, the others under it (owner, 2026-10-24) */
+.cty-menu .cty-sep { flex: none; height: 1px; margin: 4px 6px; background: var(--grid); }
 .icon-btn .cty-flag { margin-right: 0; }
 .cty-pick { display: flex; align-items: center; gap: 8px; }
 .cty-pick select { flex: 1; min-width: 0; }
