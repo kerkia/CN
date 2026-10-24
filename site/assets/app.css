@@ -1249,7 +1249,7 @@ table.data tbody tr.found .name { font-weight: 700; }
   .agenda-table table.data, .agenda-table table.data tbody { display: block; }
   .agenda-table table.data thead { display: none; }
   .agenda-table table.data tbody tr {
-    display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; grid-template-areas: "d n c" "d p t";
+    display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; grid-template-areas: "d n c" "d p t" "d r r";
     gap: 3px 10px; padding: 11px 14px; border-bottom: 1px solid var(--grid);
   }
   .agenda-table table.data td { display: block; padding: 0; border: 0; white-space: normal; min-width: 0; }
@@ -1260,6 +1260,9 @@ table.data tbody tr.found .name { font-weight: 700; }
   .agenda-table table.data td.n { grid-area: n; font-weight: 620; font-size: 14.5px; }
   .agenda-table table.data td.c { grid-area: c; font-size: 12.5px; }
   .agenda-table table.data td.p { grid-area: p; color: var(--ink-2); font-size: 13px; }
+  /* the region under the place (owner, 2026-10-24: Switzerland's association, beside the canton) */
+  .agenda-table table.data td.r { grid-area: r; color: var(--ink-3); font-size: 12.5px; text-align: left; }
+  .agenda-table table.data td.r:empty { display: none; }
   .agenda-table table.data td.t { grid-area: t; color: var(--ink-3); font-size: 12.5px; text-align: right; white-space: nowrap; }
   .agenda-detail dl { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .agenda-detail dt { margin-top: 10px; }

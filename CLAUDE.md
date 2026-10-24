@@ -1685,7 +1685,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   them. Placed on 2026-10-24: AT 115/139 events (100 with a Bezirk), BE 189/211, CH 183/183 (145 cantons), CZ 232/307, DE 109/126,
   GB 822/836 (747 counties), IT 162/162, JP 110/126, EE 100/128, IL 30/83, BG 12/34, PL 34/40, HK 12/54 (most without a venue).
   The Agenda page: each country's level names (`agd.region.<CC>` / `agd.dept.<CC>`, else « Région » / « Province »), a unit whose
-  code is its name shown once, a short code in brackets, a name after « · », nothing when the place already says it (« (TN) »).
+  code is its name shown once, a short code in brackets, a name after « · », nothing when the place already says it (« (TN) »);
+  the region its own column after the place, named as the country's level (« Association régionale » in Switzerland, the
+  calendar's own column, « Land »…), under the place on a phone (owner, 2026-10-24: shown even where no finer unit is known).
   The filter bar's click handler took `<body data-group>` for a group chip: any click in the filters emptied the list (fixed).
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
