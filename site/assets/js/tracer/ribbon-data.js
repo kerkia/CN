@@ -104,6 +104,11 @@ export const TABS = [
       B("rep-climb", t("trc.rd.repClimb"), "mountain", { tip: t("trc.rd.repClimbTip") }),
       B("rep-times", t("trc.rd.repTimes"), "stopwatch", { tip: t("trc.rd.repTimesTip") }),
       stack(S("load", t("trc.rd.load"), "bars", { need: "edit", tip: t("trc.rd.loadTip") }))] },
+    { id: "advchecks", title: t("trc.rd.gAdvChecks"), pro: true, items: [
+      B("view-angles", t("trc.rd.viewAngles"), "angle", { toggle: "angles", tip: t("trc.rd.viewAnglesTip") }),
+      B("view-nearest", t("trc.rd.viewNearest"), "nearest", { toggle: "nearest", tip: t("trc.rd.viewNearestTip") }),
+      stack(S("rep-controls", t("trc.rd.repControls"), "units", { tip: t("trc.rd.repControlsTip") }),
+        S("trail-answer", t("trc.rd.trailAnswer"), "trailo", { tip: t("trc.rd.trailAnswerTip") }))] },
     { id: "figures", title: t("trc.rd.gFigures"), items: [{ t: "chip", id: "course" }] },
   ] },
   { id: "out", label: t("trc.rd.tabOut"), key: "I", icon: "printer", guide: "sorties", groups: [
@@ -126,6 +131,13 @@ export const TABS = [
       S("export-ppen", "Purple Pen (.ppen)", "export", { tip: t("trc.rd.exportPpenTip") }))] },
     { id: "files", title: t("trc.rd.gFiles"), items: [stack(S("save-to", t("trc.rd.saveTo"), "folder",
       { tip: t("trc.rd.saveToTip") }))] },
+    // the advanced level: Condes's other formats
+    { id: "moreout", title: t("trc.rd.gMoreOut"), pro: true, items: [
+      stack(S("export-geotiff", "GeoTIFF", "image", { tip: t("trc.rd.exportGeotiffTip") }), S("export-svg", "SVG", "image", { tip: t("trc.rd.exportSvgTip") }),
+        S("export-kmz", t("trc.rd.exportKmz"), "globe", { tip: t("trc.rd.exportKmzTip") })),
+      stack(S("export-maprun", "MapRun", "phone", { tip: t("trc.rd.exportMaprunTip") }), S("export-ocadcsv", t("trc.rd.exportOcadText"), "table", { tip: t("trc.rd.exportOcadTextTip") }),
+        S("export-iof2-sep", t("trc.rd.exportIof2Sep"), "stopwatch", { tip: t("trc.rd.exportIof2SepTip") })),
+      stack(S("export-livelox", "Livelox", "share", { tip: t("trc.rd.exportLiveloxTip") }))] },
   ] },
   { id: "team", label: t("trc.rd.tabTeam"), key: "E", icon: "team", guide: "outils", badge: "comments", groups: [
     { id: "teamwork", title: t("trc.rd.gTeamwork"), items: [
@@ -137,7 +149,8 @@ export const TABS = [
     { id: "terrain", title: t("trc.rd.gTerrain"), items: [
       B("field", t("trc.rd.field"), "phone", { tip: t("trc.rd.fieldTip") }),
       stack(S("rep-pickup", t("trc.rd.repPickup"), "box", { tip: t("trc.rd.repPickupTip") }),
-        S("offline", t("trc.rd.offline"), "offline", { tip: t("trc.rd.offlineTip") }))] },
+        S("offline", t("trc.rd.offline"), "offline", { tip: t("trc.rd.offlineTip") }),
+        S("field-states", t("trc.rd.fieldStates"), "flag", { need: "edit", pro: true, tip: t("trc.rd.fieldStatesTip") }))] },
     { id: "after", title: t("trc.rd.gAfter"), guide: "apres", items: [
       B("publish", t("trc.rd.publish"), "share", { need: "after", tip: t("trc.rd.publishTip") }),
       B("send-results", t("trc.rd.sendResults"), "send", { need: "after", tip: t("trc.rd.sendResultsTip") }),
@@ -209,7 +222,9 @@ export const CONTEXT = {
       stack(S("bend-remove", t("trc.rd.bendRemove"), "bend", { need: "edit", tip: t("trc.rd.bendRemoveTip") }),
         S("gap-remove-leg", t("trc.rd.gapRemoveLeg"), "gap", { need: "edit", tip: t("trc.rd.gapRemoveLegTip") })),
       stack(S("route-draw", t("trc.rd.routeDraw"), "route", { need: "edit", tip: t("trc.rd.routeDrawTip") }),
-        S("route-clear", t("trc.rd.routeClear"), "trash", { need: "edit", tip: t("trc.rd.routeClearTip") }))] },
+        S("route-clear", t("trc.rd.routeClear"), "trash", { need: "edit", tip: t("trc.rd.routeClearTip") })),
+      stack(S("routes-alt", t("trc.rd.routesAlt"), "routes", { need: "edit", pro: true, tip: t("trc.rd.routesAltTip") }),
+        S("routes-alt-clear", t("trc.rd.routesAltClear"), "trash", { need: "edit", pro: true, tip: t("trc.rd.routesAltClearTip") }))] },
     { id: "flagging", title: t("trc.rd.gFlagging"), items: [{ t: "modes", id: "flag" }] },
     { id: "where", title: t("trc.rd.gWhereLeg"), items: [{ t: "chip", id: "leg" }] },
   ] },
@@ -219,6 +234,8 @@ export const CONTEXT = {
       stack(S("corner-add", t("trc.rd.cornerAdd"), "vertex", { need: "edit", tip: t("trc.rd.cornerAddTip") }),
         S("corner-remove", t("trc.rd.cornerRemove"), "vertex", { need: "edit", tip: t("trc.rd.cornerRemoveTip") })),
       stack(S("rotate", t("trc.rd.rotate"), "rotate", { need: "edit", tip: t("trc.rd.spRotateTip") }), S("stretch", t("trc.rd.stretch"), "stretch", { need: "edit", tip: t("trc.rd.spStretchTip") }))] },
+    { id: "maskx", title: t("trc.rd.gMask"), pro: true, items: [stack(S("mask-hole", t("trc.rd.maskHole"), "mask", { need: "edit", tip: t("trc.rd.maskHoleTip") }),
+      S("mask-holes-clear", t("trc.rd.maskHolesClear"), "trash", { need: "edit", tip: t("trc.rd.maskHolesClearTip") }))] },
     { id: "where", title: "", items: [{ t: "chip", id: "special" }] },
     { id: "remove", title: "", items: [B("delete", t("trc.rd.spDelete"), "trash", { need: "edit", key: t("trc.rd.keyDel"), tip: t("trc.rd.spDeleteTip") })] },
   ] },
@@ -253,7 +270,10 @@ export const BACKSTAGE = [
       ["export-images", t("trc.rd.bsImages"), t("trc.rd.bsImagesDesc")], ["export-routegadget", "RouteGadget", t("trc.rd.bsRoutegadgetDesc")]]],
     [t("trc.rd.bsForSoftware"), [["export-ocn", t("trc.rd.bsOcn"), t("trc.rd.bsOcnDesc")],
       ["export-ocad", t("trc.rd.bsOcad"), t("trc.rd.bsOcadDesc")], ["export-ppen", "Purple Pen (.ppen)", t("trc.rd.bsPpenDesc")],
-      ["export-csv", t("trc.rd.exportCsv"), t("trc.rd.bsCsvDesc")]]]] },
+      ["export-csv", t("trc.rd.exportCsv"), t("trc.rd.bsCsvDesc")]]],
+    [t("trc.rd.gMoreOut"), [["export-geotiff", "GeoTIFF", t("trc.rd.exportGeotiffTip")], ["export-svg", "SVG", t("trc.rd.exportSvgTip")], ["export-kmz", t("trc.rd.exportKmz"), t("trc.rd.exportKmzTip")],
+      ["export-maprun", "MapRun", t("trc.rd.exportMaprunTip")], ["export-ocadcsv", t("trc.rd.exportOcadText"), t("trc.rd.exportOcadTextTip")],
+      ["export-iof2-sep", t("trc.rd.exportIof2Sep"), t("trc.rd.exportIof2SepTip")], ["export-livelox", "Livelox", t("trc.rd.exportLiveloxTip")]]]] },
   { id: "share", label: t("trc.rd.bsShare"), icon: "team", items: [
     ["team", t("trc.rd.bsTeam"), t("trc.rd.bsTeamDesc")],
     ["encryption", t("trc.rd.bsEncryption"), t("trc.rd.bsEncryptionDesc")],
@@ -269,6 +289,9 @@ export const BACKSTAGE = [
 export const proOpen = (E) => !!E?.pro;
 /** The acts and tools of the advanced level, wherever they are drawn (ribbon, right-click menu, quick-access bar, search). */
 export const PRO = new Set();
+// the special objects of the advanced level (MTB-O's symbols, enlarged map sections, masks): their tools « special:<kind> »
+export const PRO_SPECIALS = ["mtbo-oneway", "mtbo-forbidden-route", "mtbo-danger", "mtbo-obstacle", "mtbo-forbidden-pass", "inset", "mask"];
+for (const k of PRO_SPECIALS) PRO.add(`special:${k}`);
 /** Is an item (or a group, a tab) for the advanced level only? */
 export const isPro = (it) => !!it?.pro || PRO.has(it?.act) || PRO.has(it?.tool);
 

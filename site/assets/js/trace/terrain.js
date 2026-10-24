@@ -129,6 +129,9 @@ async function fromTiles(pts, step, onProgress) {
   return { z: out, zoom: z, tiles: jobs.length };
 }
 
+/** The terrain tiles' heights at points [[lat, lon]…] (the Tracer's climb outside France, 2026-10-24): a Float32Array. */
+export async function tileHeights(pts, step = 10) { return (await fromTiles(pts, step)).z; }
+
 /** Holes (NaN) filled from their neighbours, repeatedly: a few nodes off IGN's model at a border. */
 function fillHoles(z, nx, ny) {
   for (let pass = 0; pass < 50; pass++) {

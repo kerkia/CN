@@ -19,7 +19,10 @@ const KIND_NAME = { normal: t("trc.act.kindNormal"), start: t("trc.act.kindStart
 export const SPECIAL_NAME = { "first-aid": t("trc.act.spFirstAid"), water: t("trc.act.spWater"), "optional-crossing-point": t("trc.act.spOptional"), "forbidden-route": t("trc.act.spForbidden"),
   "registration-mark": t("trc.act.spRegMark"), boundary: t("trc.act.spBoundary"), line: t("trc.act.spLine"), "out-of-bounds": t("trc.act.spOob"), "dangerous-area": t("trc.act.spDanger"),
   "temporary-construction": t("trc.act.spConstruction"), "white-out": t("trc.act.spWhiteOut"), text: t("trc.act.spText"), image: t("trc.act.spImage"), rectangle: t("trc.act.spRect"),
-  ellipse: t("trc.act.spEllipse"), descriptions: t("trc.act.spDescr") };
+  ellipse: t("trc.act.spEllipse"), descriptions: t("trc.act.spDescr"),
+  // the advanced level
+  "mtbo-oneway": t("trc.act.spMtboOneway"), "mtbo-forbidden-route": t("trc.act.spMtboForbiddenRoute"), "mtbo-danger": t("trc.act.spMtboDanger"),
+  "mtbo-obstacle": t("trc.act.spMtboObstacle"), "mtbo-forbidden-pass": t("trc.act.spMtboForbiddenPass"), inset: t("trc.act.spInset"), mask: t("trc.act.spMask") };
 const MOVE_WARN_M = 75;                                        // Purple Pen: moving a shared control further asks first
 
 // ---- adding --------------------------------------------------------------------------------------------------------------
@@ -164,13 +167,21 @@ export function finishPending(E) {
   if (pend.kind === "route") {
     E.pending = null; E.ghost = null;
     const inner = pts.slice(1);
+    // another route on the leg (the advanced level: leg.alts), beside the one expected
+    if (pend.alt) {
+      if (inner.length) E.change((ev) => { const leg = ev.legs[M.findLeg(ev, pend.c1, pend.c2)]; M.setLegAlts(ev, pend.c1, pend.c2, [...(leg?.alts || []), { pts: inner, name: "" }]); }, t("trc.act.altDrawn"));
+      E.setTool("select");
+      return;
+    }
     E.change((ev) => M.setLegRoute(ev, pend.c1, pend.c2, inner), inner.length ? t("trc.act.routeDrawn") : t("trc.act.routeCleared"));
     E.setTool("select");
     return;
   }
-  const min = M.AREA_SPECIALS.includes(pend.kind) ? 3 : 2;
+  const min = M.AREA_SPECIALS.includes(pend.kind) || pend.kind === "mask-hole" ? 3 : 2;
   E.pending = null; E.ghost = null;
   if (pts.length < min) { E.toast(t("trc.act.minPoints", { n: min })); E.redraw(); return; }
+  // a hole in a mask (the advanced level)
+  if (pend.kind === "mask-hole") { E.change((ev) => { const m = ev.specials[pend.mask]; if (m) m.holes = [...(m.holes || []), pts]; }, t("trc.act.maskHole")); E.select({ kind: "special", id: pend.mask }); E.setTool("select"); return; }
   if (pend.kind === "line") {
     D.lineAppearance(E, null, (look) => { let id; E.change((ev) => { id = M.addSpecial(ev, "line", pts, look); }, SPECIAL_NAME.line); E.select({ kind: "special", id }); E.setTool("select"); });
     return;
@@ -188,7 +199,7 @@ export function toolDown(E, p, sx, sy) {
     if (hit?.kind === "leg" || hit?.kind === "control") return { kind: "gap", hit, start: p };
     return null;
   }
-  if (t === "descr" || ["special:text", "special:image", "special:rectangle", "special:ellipse"].includes(t)) return { kind: "rect", tool: t, start: p };
+  if (t === "descr" || ["special:text", "special:image", "special:rectangle", "special:ellipse", "special:inset"].includes(t)) return { kind: "rect", tool: t, start: p };
   return null;
 }
 export function dragMove(E, d, p, sx, sy, e) {
@@ -209,6 +220,7 @@ export function dragEnd(E, d, p, sx, sy, e) {
     if (d.tool === "descr") { placeDescriptions(E, [l, t], r - l); return; }
     const kind = d.tool.slice(8);
     if (kind === "text") D.textProps(E, null, (look) => { let id; E.change((ev) => { id = M.addSpecial(ev, "text", [[l, t], [r, b]], look); }, SPECIAL_NAME.text); E.select({ kind: "special", id }); E.setTool("select"); });
+    else if (kind === "inset") import("./layoutx.js").then((X) => X.newInset(E, [l, b, r, t]));
     else if (kind === "image") D.imageFile(E, (image) => { let id; E.change((ev) => { id = M.addSpecial(ev, "image", [[l, t], [r, b]], image); }, SPECIAL_NAME.image); E.select({ kind: "special", id }); E.setTool("select"); });
     else D.lineAppearance(E, kind, (look) => { let id; E.change((ev) => { id = M.addSpecial(ev, kind, [[l, t], [r, b]], look); }, SPECIAL_NAME[kind]); E.select({ kind: "special", id }); E.setTool("select"); });
     return;

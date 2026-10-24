@@ -14,6 +14,7 @@ import { isPdf } from "./mapsrc.js";
 import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
 import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
 import { where } from "./ribbon-data.js";
+import { hasGeo as hasGeoEv } from "./geo.js";
 import { t } from "./lang.js";
 
 import { PDFLIB, FFLATE } from "../vendor.js";
@@ -107,7 +108,7 @@ function pathOps(L, ops, d, T) {
  * Draw items (map mm, y up) on a PDF page: T(x, y) gives points, s the points per map mm. multiply: the ExtGState name
  * for the Multiply blend (purple), or null. fonts: { reg, bold }. images: a cache of embedded images.
  */
-async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map(), purple: P = ev.appearance.purple || M.PURPLE }) {
+async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map(), purple: P = ev.appearance.purple || M.PURPLE, onInset = null }) {
   const ops = [];
   const flush = () => { if (ops.length) { page.pushOperators(...ops); ops.length = 0; } };
   for (const it of items) {
@@ -162,6 +163,8 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
         page.drawText(r.text, { x: xr, y, size, font: r.font, color: colorObj, ...(purple && multiply && !it.outline ? { blendMode: L.BlendMode.Multiply } : {}) });
         xr += ws[i];
       });
+    } else if (it.t === "inset") {
+      if (onInset) { flush(); await onInset(it); }
     } else if (it.t === "image" && it.image?.data) {
       flush();
       const key = it.image.data.slice(0, 64) + it.image.data.length;
@@ -248,16 +251,21 @@ async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part) {
   await t.finish();
 }
 
-/** One course designator on a page of the document. */
-async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null }) {
+/** One course designator on a page of the document. adv: the advanced level's options (printx.js: registration marks, the
+ *  printer's offset, georeferenced pages). combined: other designators drawn on the same map (« all on one map »). */
+async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null, adv = null, combined = null }) {
   const ev = E.ev;
   const layout = layoutCourse(ev, cd, { variationName, team, leg });
-  const items = itemsFor(ev, layout);
+  let items = itemsFor(ev, layout);
+  if (combined?.length) {
+    // the courses together on one map: their drawings one after the other, the print area around all of them
+    for (const d of combined) { const l2 = layoutCourse(ev, d.cd, { descriptions: false }); layout.objs.push(...l2.objs); items = items.concat(itemsFor(ev, l2)); }
+  }
   let last = null;
-  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images });
+  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images, adv });
   return last;
 }
-async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images }) {
+async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images, adv = null }) {
   const page = doc.addPage([pg.w * PT, pg.h * PT]);
   const s = k * PT;                                          // points per map mm
   const m = pg.margin * PT;
@@ -278,14 +286,35 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
     const gs = doc.context.obj({ Type: "ExtGState", BM: "Multiply" });
     multiply = page.node.newExtGState("GSmul", doc.context.register(gs));
   }
+  // an enlarged section (the advanced level): the map and the course again, magnified, in its frame
+  const onInset = async (it) => {
+    const { insetSrc } = await import("./layoutx.js");
+    const src = insetSrc(it), f = it.factor, [l, b, r, tt] = it.box;
+    const T2 = (x, y) => T(l + (x - src[0]) * f, b + (y - src[1]) * f);
+    const [px0, py0] = T(l, b), [px1, py1] = T(r, tt);
+    page.pushOperators(L.pushGraphicsState(), L.moveTo(px0, py0), L.lineTo(px1, py0), L.lineTo(px1, py1), L.lineTo(px0, py1), L.closePath(), L.clip(), L.endPath());
+    if (vector) await vectorMap(E, doc, L, page, src, T2, s * f, { fonts, rgb }, "all");
+    else if (withMap) {
+      const me = await mapEmbed(E, doc, L);
+      if (me?.kind === "pdf") page.drawPage(me.emb, { x: T2(0, 0)[0], y: T2(0, 0)[1], xScale: k * f, yScale: k * f });
+      else if (me?.kind === "bitmap") { const [x0, y0] = T2(0, 0); page.drawImage(me.img, { x: x0, y: y0, width: ev.map.w * s * f, height: ev.map.h * s * f }); }
+    }
+    await drawItemsPdf(L, doc, page, ev, items.filter((x) => !x.desc && x.t !== "inset" && !x.insetFrame), T2, s * f, { multiply, fonts, rgb, images, purple });
+    page.pushOperators(L.popGraphicsState());
+  };
   if (layer != null) {
     // « layer » mode (Purple Pen): the lower purple between the map's colours, opaque; the rest over the whole map
     const [lower, rest] = splitItems(items);
     await drawItemsPdf(L, doc, page, ev, lower, T, s, { fonts, rgb, images, purple });
     await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, "above");
-    await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple });
-  } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple });
+    await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple, onInset });
+  } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple, onInset });
   page.pushOperators(L.popGraphicsState());
+  if (adv) {
+    const X = await import("./printx.js");
+    if (adv.regmarks) X.registrationMarks(L, page, { margin: pg.margin, dx: adv.dx || 0, dy: adv.dy || 0 });
+    if (adv.geo) X.georeferencePage(L, doc, page, ev, { box, k, margin: pg.margin });
+  }
   // a tiled page says which: « 2/3 – 1/2 » (across, down) in the margin
   if (tile && fonts?.reg) page.drawText(`${tile[0]}/${tile[2]} – ${tile[1]}/${tile[3]}`, { x: m, y: Math.max(2, m / 2 - 3), size: 7, font: fonts.reg, color: L.rgb(0.4, 0.4, 0.4) });
   return page;
@@ -302,6 +331,13 @@ export async function coursesDialog(E, { only = null } = {}) {
     ${anyVars ? field(t("trc.pdf.variations"), sel("vars", [["all", t("trc.pdf.varsAll")], ["combined", t("trc.pdf.varsCombined")], ["teams", t("trc.pdf.varsTeams")]], "all")) : ""}
     ${field(t("trc.pdf.content"), sel("content", [["map", t("trc.pdf.contentMap")], ["course", t("trc.pdf.contentCourse")]], "map"))}
     ${field(t("trc.pdf.colours"), sel("color", [["cmyk", t("trc.pdf.cmyk")], ["rgb", t("trc.pdf.rgb")]], "cmyk"))}</div>
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${field(t("trc.pdf.layout"), sel("layout", [["page", t("trc.pdf.layoutPage")], ["each", t("trc.pdf.layoutEach")], ["fill", t("trc.pdf.layoutFill")], ["combined", t("trc.pdf.layoutCombined")]], "page"))}
+      ${field(t("trc.pdf.sheet"), sel("sheet", Object.keys(PAGES).map((p) => [p, p]), "A3"), t("trc.pdf.sheetHint"))}
+      ${field(t("trc.pdf.back"), sel("back", [["", t("trc.pdf.backNone")], ["name", t("trc.pdf.backName")], ["classes", t("trc.pdf.backClasses")], ["team", t("trc.pdf.backTeam")]], ""), t("trc.pdf.backHint"))}
+      <label class="tr-check"><input type="checkbox" name="regmarks"> ${esc(t("trc.pdf.regmarks"))}</label>
+      ${field(t("trc.pdf.offset"), '<input name="dx" value="0" size="4" inputmode="decimal"> × <input name="dy" value="0" size="4" inputmode="decimal">', t("trc.pdf.offsetHint"))}
+      <label class="tr-check"><input type="checkbox" name="geo" ${hasGeoEv(ev) ? "" : "disabled"}> ${esc(t("trc.pdf.geo"))}</label></div>` : ""}
     <p class="tr-hint">${t("trc.pdf.coursesHint", { where: where("print-area") })}</p>` });
   if (!v) return;
   E.status(t("trc.pdf.busy"), "busy");
@@ -326,14 +362,25 @@ export async function coursesDialog(E, { only = null } = {}) {
       }
     }
     if (!designators.length) { E.toast(t("trc.pdf.noCourse")); return; }
+    // the advanced level's options (printx.js)
+    const adv = E.pro ? { regmarks: !!v.regmarks, dx: num(v.dx) || 0, dy: num(v.dy) || 0, geo: !!v.geo } : null;
+    const layoutMode = E.pro ? v.layout || "page" : "page";
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
       doc.setTitle(t("trc.pdf.docCourses", { title: ev.title })); doc.setCreator("Ozimut"); doc.setProducer("Ozimut (pdf-lib)");
       const fonts = await makeFonts(doc, L);
       const images = new Map();
-      for (const d of list) await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg });
+      if (layoutMode === "combined") {
+        await coursePage(E, doc, L, list[0].cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: list[0].variation || "", adv, combined: list.slice(1) });
+      } else for (const d of list) {
+        const page = await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg, adv });
+        if (E.pro && v.back && page && layoutMode === "page") { const X = await import("./printx.js"); await X.backPage(L, doc, [page.getWidth(), page.getHeight()], X.backText(ev, d, v.back), fonts.bold); }
+      }
       E._mapEmbed = null;
-      return doc.save();
+      const bytes = await doc.save();
+      // several courses, or copies of one, on each sheet
+      if (layoutMode === "each" || layoutMode === "fill") { const X = await import("./printx.js"); return X.impose(L, bytes, { sheet: PAGES[v.sheet] || PAGES.A3, mode: layoutMode }); }
+      return bytes;
     };
     const base = fileName(ev.title);
     if (v.files === "one") download(`${t("trc.pdf.fileCourses", { name: base })}.pdf`, await build(designators), "application/pdf");
@@ -358,14 +405,19 @@ export async function descriptionsDialog(E) {
     ${field(t("trc.pdf.count"), '<input name="n" value="50" inputmode="numeric">')}
     ${field(t("trc.pdf.cell"), '<input name="cell" value="6" inputmode="decimal">', t("trc.pdf.cellHint"))}
     ${field(t("trc.pdf.descriptions"), sel("kind", [["course", t("trc.pdf.kindCourse")], ["symbols", t("trc.pdf.kindSymbols")], ["text", t("trc.pdf.kindText")], ["symbols-and-text", t("trc.pdf.kindSymbolsText")]], "course"))}
-    ${field(t("trc.pdf.paper"), sel("paper", Object.keys(PAGES).map((k) => [k, k]), "A4"))}</div>` ,
+    ${field(t("trc.pdf.paper"), sel("paper", Object.keys(PAGES).map((k) => [k, k]), "A4"))}</div>
+    ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
+      ${field(t("trc.pdf.gapX"), '<input name="gapx" value="4" inputmode="decimal">')}${field(t("trc.pdf.gapY"), '<input name="gapy" value="4" inputmode="decimal">')}
+      ${field(t("trc.pdf.pageMargin"), '<input name="pmargin" value="10" inputmode="decimal">', t("trc.pdf.spacingHint"))}</div>` : ""}` ,
   validate: (o) => (!(num(o.cell) >= 3 && num(o.cell) <= 10) ? t("trc.pdf.cellErr") : null) });
   if (!v) return;
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
   doc.setTitle(t("trc.pdf.docDescriptions", { title: ev.title })); doc.setCreator("Ozimut");
   const fonts = await makeFonts(doc, L);
-  const [PW, PH] = PAGES[v.paper], margin = 10, gap = 4, cell = num(v.cell);
+  // spacing to the hundredth of a millimetre (the advanced level: Condes's loose descriptions), else Purple Pen's
+  const r2 = (x, d) => (E.pro && Number.isFinite(num(x)) ? Math.max(0, Math.round(num(x) * 100) / 100) : d);
+  const [PW, PH] = PAGES[v.paper], margin = r2(v.pmargin, 10), gap = r2(v.gapy, 4), gapX = r2(v.gapx, 4), cell = num(v.cell);
   const sheets = [];
   for (const id of [0, ...ids]) {
     if (!v[`c${id}`]) continue;
@@ -379,7 +431,7 @@ export async function descriptionsDialog(E) {
   const newPage = () => { page = doc.addPage([PW * PT, PH * PT]); x = margin; y = margin; colW = 0; };
   const placeOne = async (sh) => {
     if (!page) newPage();
-    if (y + sh.size.h > PH - margin) { x += colW + gap; y = margin; colW = 0; }
+    if (y + sh.size.h > PH - margin) { x += colW + gapX; y = margin; colW = 0; }
     if (x + sh.size.w > PW - margin) newPage();
     const items = sheetItems(sh.lines, sh.kind, cell, { x0: x, y0: y, white: false });
     const T = (xx, yy) => [xx * PT, (PH - yy) * PT];
@@ -389,7 +441,7 @@ export async function descriptionsDialog(E) {
   for (const sh of sheets) {
     if (v.copies === "one") await placeOne(sh);
     else {
-      const perCol = Math.max(1, Math.floor((PH - 2 * margin + gap) / (sh.size.h + gap))), perRow = Math.max(1, Math.floor((PW - 2 * margin + gap) / (sh.size.w + gap)));
+      const perCol = Math.max(1, Math.floor((PH - 2 * margin + gap) / (sh.size.h + gap))), perRow = Math.max(1, Math.floor((PW - 2 * margin + gapX) / (sh.size.w + gapX)));
       const perPage = perCol * perRow, total = v.copies === "page" ? perPage : Math.max(1, Math.round(num(v.n)));
       newPage();
       for (let i = 0; i < total; i++) { if (i && i % perPage === 0) newPage(); await placeOne(sh); }
@@ -402,6 +454,10 @@ export async function descriptionsDialog(E) {
 // ---- punch cards ---------------------------------------------------------------------------------------------------------------
 export async function punchDialog(E) {
   const ev = E.ev, ids = M.courseIds(ev, false);
+  // the advanced level: blank backup cards (Condes's Emit/SI backup cards: the boxes numbered, no punch pattern)
+  let blank = false;
+  if (E.pro) { const v = await modal(E, { title: t("trc.pdf.punchTitle"), body: `<label class="tr-check"><input type="radio" name="k" value="" checked> ${esc(t("trc.pdf.punchPatterns"))}</label>
+    <label class="tr-check"><input type="radio" name="k" value="blank"> ${esc(t("trc.pdf.punchBlank"))}</label>` }); if (!v) return; blank = v.k === "blank"; }
   const L = await pdfLib();
   const doc = await L.PDFDocument.create();
   const font = await doc.embedFont(L.StandardFonts.Helvetica), bold = await doc.embedFont(L.StandardFonts.HelveticaBold);
@@ -423,7 +479,7 @@ export async function punchDialog(E) {
       page.drawRectangle({ x: P(x, yTop - box)[0], y: P(x, yTop - box)[1], width: box * PT, height: box * PT, borderColor: black, borderWidth: 0.8 });
       page.drawText(`${cv.ordinal}`, { x: (x + 1) * PT, y: (yTop - 4) * PT, size: 8, font: bold, color: black });
       page.drawText(`${ev.controls[cv.control].code}`, { x: (x + box - 6) * PT, y: (yTop - 4) * PT, size: 7, font, color: black });
-      const pp = ev.controls[cv.control].punch;
+      const pp = blank ? null : ev.controls[cv.control].punch;
       if (pp?.size) {
         const cellSize = (box - 6) / pp.size;
         for (let a = 0; a < pp.size; a++) for (let b = 0; b < pp.size; b++) if (pp.dots[a * pp.size + b] === "1")

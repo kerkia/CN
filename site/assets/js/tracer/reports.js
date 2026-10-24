@@ -325,6 +325,35 @@ export function audit(ev) {
   return { title: t("trc.rep.auditTitle"), intro: sections.length ? "" : t("trc.rep.noProblem"), sections };
 }
 
+// ---- the advanced level's reports (Condes's controls spreadsheet, the trail-O answers) --------------------------------------------
+/** Every control: its code, other units, lock, courses, its nearest control (Condes's « distance to nearest » column), trail-O flags. */
+export function controlsList(ev) {
+  const ids = Object.keys(ev.controls).map(Number).sort((a, b) => M.compareControls(ev, a, b));
+  const rows = ids.map((id) => {
+    const c = ev.controls[id];
+    let best = null, d = Infinity;
+    for (const o of ids) if (o !== id && ev.controls[o].kind === "normal") { const x = M.mmToM(ev, M.dist([c.x, c.y], [ev.controls[o].x, ev.controls[o].y])); if (x < d) { d = x; best = o; } }
+    return [ctrlName(ev, id), (c.units || []).join(", "), c.locked ? "✓" : "", M.coursesUsing(ev, id).map((x) => ev.courses[x].name).join(", "),
+      best ? `${nf(d)} m (${ctrlName(ev, best)})` : "", c.trail?.flags || "", c.trail?.answer || ""];
+  });
+  return { title: t("trc.rep.controlsTitle"), sections: [{ head: [t("trc.rep.control"), t("trc.rep.units"), t("trc.rep.locked"), t("trc.rep.courses"), t("trc.rep.nearest"), t("trc.rep.flags"), t("trc.rep.answer")], align: "lllllll", rows }] };
+}
+/** The trail-O courses' answers, control by control (for the jury, kept away from the maps). */
+export function trailAnswers(ev) {
+  const sections = [];
+  for (const id of sortedCourses(ev)) {
+    const c = ev.courses[id];
+    if (c.form !== "trail" && M.disciplineOf(ev, id) !== "trail") continue;
+    const v = M.view(ev, M.cdCourse(id), { specials: false, descriptions: false });
+    const rows = v.controls.filter((cv) => ev.controls[cv.control].kind === "normal")
+      .map((cv) => { const k = ev.controls[cv.control]; return [String(cv.ordinal > 0 ? cv.ordinal : ""), k.code, (k.trail?.flags || "").replace("-", "–"), k.trail?.answer || "?"]; });
+    sections.push({ title: c.name, head: [t("trc.rep.number"), t("trc.rep.control"), t("trc.rep.flags"), t("trc.rep.answer")], align: "rlll", rows });
+  }
+  return { title: t("trc.rep.trailTitle"), intro: sections.length ? "" : t("trc.rep.trailNone"), sections };
+}
+export const controlsReport = (E) => show(E, controlsList(E.ev), t("trc.rep.slugControls"));
+export const trailReport = (E) => show(E, trailAnswers(E.ev), t("trc.rep.slugTrail"));
+
 // ---- display and CSV ----------------------------------------------------------------------------------------------------------
 function html(rep) {
   return `${rep.intro ? rep.intro.split("\n").map((t) => `<p class="tr-hint">${esc(t)}</p>`).join("") : ""}${rep.sections.map((s) => `

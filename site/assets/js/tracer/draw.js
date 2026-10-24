@@ -128,6 +128,14 @@ export function itemsFor(ev, layout, { selected = null, descLines = null } = {})
       case "rect": rectSpecial(o, push); break;
       case "text": textSpecial(o, push); break;
       case "image": push({ t: "image", box: o.box, image: o.image }); break;
+      // an enlarged section: its white ground and frame here; the map and the course inside are drawn by the page (layoutx.js)
+      case "inset": {
+        const [l, b, r, t] = o.box;
+        push({ t: "path", d: poly([[l, b], [r, b], [r, t], [l, t]], true), fill: true, color: "white" });
+        push({ t: "inset", box: o.box, src: o.src, factor: o.factor });
+        push({ t: "path", d: poly([[l, b], [r, b], [r, t], [l, t]], true), stroke: 0.35, cap: "butt", join: "miter", color: "black", insetFrame: true });
+        break;
+      }
       case "descriptions": {
         const sp = ev.specials[o.special];
         const cd = o.cd.course ? o.cd : M.cdAll();
@@ -202,13 +210,45 @@ function pointSpecial(o, push) {
       push({ t: "path", d: poly(tr([[-2, 0], [2, 0]], 0, o.ctr, k), false), stroke: o.lw, cap: "butt", join: "miter", color: "upper" });
       push({ t: "path", d: poly(tr([[0, -2], [0, 2]], 0, o.ctr, k), false), stroke: o.lw, cap: "butt", join: "miter", color: "upper" });
       break;
+    // MTB-O (ISMTBOM 2022): an obstacle across the track, two short bars across it; forbidden to pass, one heavy bar with end ticks.
+    // The orientation is the track's direction; the bars lie across it.
+    case "mtbo-obstacle":
+      for (const dx of [-0.35, 0.35]) push({ t: "path", d: poly(tr([[dx, -1.0], [dx, 1.0]], o.orientation, o.ctr, k), false), stroke: 0.35 * k, cap: "butt", join: "miter", color: "upper" });
+      break;
+    case "mtbo-forbidden-pass":
+      push({ t: "path", d: poly(tr([[0, -1.25], [0, 1.25]], o.orientation, o.ctr, k), false), stroke: 0.7 * k, cap: "butt", join: "miter", color: "upper" });
+      for (const y of [-1.25, 1.25]) push({ t: "path", d: poly(tr([[-0.6, y], [0.6, y]], o.orientation, o.ctr, k), false), stroke: 0.35 * k, cap: "butt", join: "miter", color: "upper" });
+      break;
     default: break;
   }
 }
 const specialColor = (c) => (Array.isArray(c) ? c : c === "black" ? "black" : c === "lower-purple" ? "lower" : "upper");
 function lineSpecial(o, push) {
   if (o.kind === "boundary") { push({ t: "path", d: poly(o.pts, false), stroke: o.lw, cap: "butt", join: "miter", color: "lower" }); return; }
+  if (o.kind?.startsWith("mtbo-")) { mtboLine(o, push); return; }
   strokeKind(o.pts, false, o, push);
+}
+/** MTB-O's line symbols along a track: one-way compulsory (chevrons pointing the way, every 6 mm), forbidden route (a zigzag
+ *  along it), dangerous section (a cross-hatched band). Sizes in map mm at the print scale (k). */
+function mtboLine(o, push) {
+  const k = o.ratio, L = M.pathLength(o.pts);
+  const at = (s) => { const p = M.pointAt(o.pts, s), q = M.pointAt(o.pts, Math.min(L, s + 0.01)), r = M.pointAt(o.pts, Math.max(0, s - 0.01)); const a = Math.atan2(q[1] - r[1], q[0] - r[0]); return [p, a]; };
+  if (o.kind === "mtbo-oneway") {
+    const step = 6 * k, n = Math.max(1, Math.floor(L / step));
+    for (let i = 0; i < n; i++) {
+      const [p, a] = at((i + 0.5) * (L / n)), c = Math.cos(a), s = Math.sin(a), h = 0.9 * k, w = 0.8 * k;
+      push({ t: "path", d: poly([[p[0] - c * h - s * w, p[1] - s * h + c * w], [p[0], p[1]], [p[0] - c * h + s * w, p[1] - s * h - c * w]], false), stroke: 0.35 * k, cap: "round", join: "miter", color: "upper" });
+    }
+  } else if (o.kind === "mtbo-forbidden-route") {
+    const wl = 1.5 * k, amp = 0.7 * k, n = Math.max(2, Math.round(L / (wl / 2))), pts = [];
+    for (let i = 0; i <= n; i++) { const [p, a] = at((i * L) / n), sgn = i % 2 ? 1 : -1, off = i === 0 || i === n ? 0 : sgn * amp; pts.push([p[0] - Math.sin(a) * off, p[1] + Math.cos(a) * off]); }
+    push({ t: "path", d: poly(pts, false), stroke: 0.35 * k, cap: "butt", join: "miter", color: "upper" });
+  } else if (o.kind === "mtbo-danger") {
+    const w = 0.9 * k, left = offsetLine(o.pts, w), right = offsetLine(o.pts, -w);
+    const band = [...left, ...right.slice().reverse()];
+    push({ t: "hatch", d: poly(band, true), angles: [45, 135], width: 0.2 * k, spacing: 0.6 * k, color: "upper" });
+    for (const side of [left, right]) push({ t: "path", d: poly(side, false), stroke: 0.25 * k, cap: "butt", join: "miter", color: "upper" });
+  }
 }
 function strokeKind(pts, closed, o, push) {
   const color = specialColor(o.color);
@@ -240,6 +280,8 @@ function areaSpecial(o, push) {
       push({ t: "path", d, stroke: 0.1 * k, cap: "butt", join: "miter", color: "upper" });
       break;
     case "white-out": push({ t: "path", d, fill: true, color: "white" }); break;
+    // a mask: white outside its holes (even-odd), the map hidden where nothing of the course is (the advanced level)
+    case "mask": push({ t: "path", d: [...d, ...(o.holes || []).flatMap((h) => poly(h, true))], fill: true, color: "white" }); break;
     default: break;
   }
 }
@@ -286,7 +328,7 @@ export function cmykToRgb([c, m, y, k]) {
  * with the Multiply blend (black map features show through) unless blend is "none". highlight: the selected objects'
  * colour.
  */
-export function drawItems(ctx, items, T, px, { blend = "blend", purple = null, alpha = 1, highlight = "#0a84ff", dim = null } = {}) {
+export function drawItems(ctx, items, T, px, { blend = "blend", purple = null, alpha = 1, highlight = "#0a84ff", dim = null, onInset = null } = {}) {
   const colorOf = (c) => (Array.isArray(c) ? cmykToRgb(c) : c === "upper" || c === "lower" ? (purple || SCREEN.upper) : SCREEN[c] || "#000");
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -328,6 +370,9 @@ export function drawItems(ctx, items, T, px, { blend = "blend", purple = null, a
       ctx.textAlign = it.align === "center" ? "center" : "left"; ctx.textBaseline = "alphabetic";
       if (it.outline > 0) { ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = "#fff"; ctx.lineWidth = it.outline * px * 2; ctx.lineJoin = "round"; ctx.strokeText(it.text, x, y); }
       ctx.fillStyle = col; ctx.fillText(it.text, x, y);
+    } else if (it.t === "inset") {
+      // an enlarged section: the page draws the map and the course inside it (layoutx.js), then the frame that follows
+      if (onInset) { ctx.save(); ctx.globalCompositeOperation = "source-over"; onInset(it); ctx.restore(); }
     } else if (it.t === "image" && it.image?.data) {
       const img = imageOf(it.image);
       if (img.complete && img.naturalWidth) {

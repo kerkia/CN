@@ -1082,7 +1082,9 @@ export function transformAll(ev, m) {
   }
   for (const s of Object.values(ev.specials)) {
     s.pts = s.pts.map(T);
-    if (s.kind === "optional-crossing-point") s.orientation = (s.orientation || 0) + rot;
+    if (s.holes) s.holes = s.holes.map((h) => h.map(T));
+    if (s.src) { const [l, b, r, tt] = s.src, [cx, cy] = T([(l + r) / 2, (b + tt) / 2]), w = (r - l) * scale / 2, h = (tt - b) * scale / 2; s.src = [cx - w, cy - h, cx + w, cy + h]; }
+    if (ORIENTED_SPECIALS.includes(s.kind)) s.orientation = (s.orientation || 0) + rot;
   }
   for (const cc of Object.values(ev.courseControls)) if (cc.number) cc.number = [cc.number[0] * scale, cc.number[1] * scale];
   const moveArea = (pa) => {
@@ -1095,14 +1097,20 @@ export function transformAll(ev, m) {
 }
 
 // ---- specials ----------------------------------------------------------------------------------------------------------
-export const POINT_SPECIALS = ["first-aid", "water", "optional-crossing-point", "forbidden-route", "registration-mark"];
-export const LINE_SPECIALS = ["boundary", "line"];
-export const AREA_SPECIALS = ["out-of-bounds", "dangerous-area", "temporary-construction", "white-out"];
-export const RECT_SPECIALS = ["text", "descriptions", "image", "rectangle", "ellipse"];
+// the advanced level adds MTB-O's course symbols (obstacle across the track, forbidden to pass: points, turned to the track; one-way
+// compulsory, forbidden route, dangerous section: lines), enlarged map sections (« inset »: a frame) and masks (an area)
+export const MTBO_POINTS = ["mtbo-obstacle", "mtbo-forbidden-pass"];
+export const MTBO_LINES = ["mtbo-oneway", "mtbo-forbidden-route", "mtbo-danger"];
+export const POINT_SPECIALS = ["first-aid", "water", "optional-crossing-point", "forbidden-route", "registration-mark", ...MTBO_POINTS];
+export const LINE_SPECIALS = ["boundary", "line", ...MTBO_LINES];
+export const AREA_SPECIALS = ["out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "mask"];
+export const RECT_SPECIALS = ["text", "descriptions", "image", "rectangle", "ellipse", "inset"];
+/** Point specials turned by an orientation (rotate). */
+export const ORIENTED_SPECIALS = ["optional-crossing-point", ...MTBO_POINTS];
 export function addSpecial(ev, kind, pts, extra = {}) {
   const sp = { kind, pts: pts.map((p) => p.slice()), all: true, courses: [], ...extra };
   if (["text", "line", "rectangle", "ellipse"].includes(kind) && !sp.color) sp.color = "purple";
-  if (kind === "optional-crossing-point" && sp.orientation == null) sp.orientation = 0;
+  if (ORIENTED_SPECIALS.includes(kind) && sp.orientation == null) sp.orientation = 0;
   return addObj(ev, "special", sp);
 }
 /** Show a special on some course designators only ([] = « Tous les postes » only); all of them = every course. */

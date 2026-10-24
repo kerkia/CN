@@ -88,6 +88,25 @@ async function profile(latlon, lengthM, step = 10) {
   const j = await r.json();
   return (j.elevations || []).map((e) => (typeof e === "number" ? e : e.z)).filter((z) => Number.isFinite(z) && z > -1000);
 }
+/** The same profile from the open terrain tiles (SRTM's 30 m and the national models Mapzen gathered; the 3D view's source,
+ *  trace/terrain.js): outside France, where IGN has no model — the advanced level (owner, 2026-10-24). */
+async function tileProfile(latlon, lengthM, step = 10) {
+  const n = Math.max(2, Math.min(4000, Math.round(lengthM / step) + 1));
+  const cum = [0];
+  for (let i = 1; i < latlon.length; i++) {
+    const [a, b] = [latlon[i - 1], latlon[i]], k = Math.cos((a[0] * Math.PI) / 180);
+    cum.push(cum[i - 1] + Math.hypot(b[0] - a[0], (b[1] - a[1]) * k));
+  }
+  const total = cum[cum.length - 1] || 1, pts = [];
+  for (let s = 0, j = 1; s < n; s++) {
+    const d = (total * s) / (n - 1);
+    while (j < cum.length - 1 && cum[j] < d) j++;
+    const f = (d - cum[j - 1]) / Math.max(1e-12, cum[j] - cum[j - 1]), a = latlon[j - 1], b = latlon[j];
+    pts.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+  }
+  const { tileHeights } = await import("../trace/terrain.js");
+  return [...(await tileHeights(pts, step))].filter((z) => Number.isFinite(z) && z > -1000);
+}
 /** Climb of a profile: the rises, after a light smoothing that removes the model's noise (a 3-point median then mean). */
 function rises(z) {
   const m = z.map((_, i) => { const w = z.slice(Math.max(0, i - 1), i + 2).slice().sort((a, b) => a - b); return w[Math.floor(w.length / 2)]; });
@@ -113,6 +132,10 @@ export async function climb(E) {
   if (!ids.length) { E.toast(t("trc.race.noLineCourse")); return; }
   const rows = [], profiles = [];
   E.status(t("trc.race.ignBusy"), "busy");
+  // IGN's model in France; elsewhere (the advanced level) the open terrain tiles
+  const c0 = Object.values(ev.controls)[0], here = c0 ? G.toLatLon(ev, c0.x, c0.y) : null;
+  const { inFrance } = await import("../trace/terrain.js");
+  const tiles = E.pro && here && !inFrance(here[0], here[1]);
   try {
     for (const id of ids) {
       const des = M.hasVariations(ev, id) ? M.allVariations(ev, id).map((x) => ({ cd: M.cdCourse(id, -1, x.path), code: x.code })) : [{ cd: M.cdCourse(id), code: "" }];
@@ -121,7 +144,8 @@ export async function climb(E) {
         const pts = coursePolyline(ev, d.cd);
         if (pts.length < 2) continue;
         const len = M.mmToM(ev, M.pathLength(pts));
-        const z = await profile(pts.map((p) => G.toLatLon(ev, p[0], p[1])), len);
+        const ll = pts.map((p) => G.toLatLon(ev, p[0], p[1]));
+        const z = tiles ? await tileProfile(ll, len) : await profile(ll, len);
         if (z.length < 2) continue;
         const r = { ...rises(z), len, code: d.code };
         if (!best || r.up > best.up) best = r;
@@ -147,7 +171,7 @@ export async function climb(E) {
     ${rows.map((r) => `<tr><td><input type="checkbox" name="u${r.id}" checked aria-label="${esc(t("trc.race.copy"))}"></td><td>${esc(ev.courses[r.id].name)}${r.code ? ` <small>${t("trc.race.steepestVar", { code: esc(r.code) })}</small>` : ""}</td>
       <td class="r">${nf(r.len / 1000, 1)} km</td><td class="r">${Math.round(r.up)} m</td><td class="r">${Math.round(r.down)} m</td><td class="r">${nf(r.up / (r.len / 1000))}</td><td>${spark(r)}</td>
       <td class="r">${ev.courses[r.id].climb >= 0 ? `${ev.courses[r.id].climb} m` : "—"}</td><td class="r"><input name="c${r.id}" value="${Math.round(r.up / 5) * 5}" size="5" inputmode="numeric"> m</td></tr>`).join("")}</tbody></table></div>
-    <p class="tr-hint">${t("trc.race.ignCredit")}</p>` });
+    <p class="tr-hint">${tiles ? t("trc.race.tilesCredit") : t("trc.race.ignCredit")}</p>` });
   if (!v) return;
   E.change((x) => { for (const r of rows) if (v[`u${r.id}`]) { const c = Math.round(num(v[`c${r.id}`])); if (c >= 0) x.courses[r.id].climb = c; } }, t("trc.race.undoClimb"));
 }

@@ -22,6 +22,7 @@ import { syncMap, splitItems, itemBlend, purpleOverride } from "./appear.js";
 import { isMapFile } from "./mapsrc.js";
 import { isOcnFile } from "./ocnfile.js";
 import { svg } from "./icons.js";
+import { insetSrc } from "./layoutx.js";
 import { mountRibbon } from "./ribbon.js";
 import * as auth from "../auth.js";
 import { t, tn, locale } from "./lang.js";
@@ -249,7 +250,7 @@ export async function openEditor(ctx) {
     }
     if (E.otherCourseItems?.length) drawItems(g, E.otherCourseItems, T, v.k, { blend, purple: "#7b8fb3", alpha: 0.55 });
     if (E.others?.length) drawItems(g, E.others, T, v.k, { blend, purple: "#d9a6d4", alpha: 0.9 });
-    drawItems(g, items, T, v.k, { blend, purple });
+    drawItems(g, items, T, v.k, { blend, purple, onInset: (it) => drawInset(it, T, v.k, { blend, purple }) });
     if (E.opts.printArea) drawPrintArea(T);
     drawRoutes(T);
     for (const f of E.overlays) { try { f(g, T, v.k); } catch (err) { console.error(err); } }
@@ -280,16 +281,31 @@ export async function openEditor(ctx) {
     if (part !== "above" && E.opts.intensity < 1) { g.globalAlpha = 1; g.fillStyle = `rgba(255,255,255,${1 - E.opts.intensity})`; g.fillRect(v.ox, v.oy - E.ev.map.h * v.k, E.ev.map.w * v.k, E.ev.map.h * v.k); }
     g.restore();
   }
-  /** The routes drawn for the climb (Itinéraire), on the screen only: dashed, in the map's brown. */
+  /** An enlarged section of the map (the advanced level): the map and the course again, magnified, clipped to its frame. */
+  function drawInset(it, T, k, opts) {
+    const src = insetSrc(it), f = it.factor, [l, b, r, t] = it.box;
+    const T2 = (x, y) => T(l + (x - src[0]) * f, b + (y - src[1]) * f);
+    const [x0, y0] = T(l, t), [x1, y1] = T(r, b);
+    g.save(); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.clip();
+    if (E.map?.image) {
+      const [mx, my] = T2(0, E.ev.map.h), [mx2, my2] = T2(E.ev.map.w, 0);
+      g.globalAlpha = E.opts.intensity; g.drawImage(E.map.image, mx, my, mx2 - mx, my2 - my); g.globalAlpha = 1;
+    }
+    drawItems(g, E.items.filter((x) => !x.desc && x.t !== "inset" && !x.insetFrame), T2, k * f, opts);
+    g.restore();
+  }
+  /** The routes drawn for the climb (Itinéraire), on the screen only: dashed, in the map's brown; the other routes of a leg (the
+   *  advanced level) dotted in teal. */
   function drawRoutes(T) {
     const legs = (E.layout?.objs || []).filter((o) => o.t === "leg");
-    g.save(); g.strokeStyle = "#8b5a2b"; g.lineWidth = 1.6; g.setLineDash([6, 4]);
+    g.save(); g.lineWidth = 1.6;
     for (const o of legs) {
-      const r = E.ev.legs[M.findLeg(E.ev, o.control, o.control2)]?.route;
-      if (!r?.length) continue;
-      g.beginPath();
-      M.legRoutePoints(E.ev, o.control, o.control2).forEach((p, i) => { const [x, y] = T(...p); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-      g.stroke();
+      for (const r of M.legRoutes(E.ev, o.control, o.control2)) {
+        g.strokeStyle = r.main ? "#8b5a2b" : "#0d9488"; g.setLineDash(r.main ? [6, 4] : [2, 3]);
+        g.beginPath();
+        r.pts.forEach((p, i) => { const [x, y] = T(...p); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+        g.stroke();
+      }
     }
     g.restore();
   }

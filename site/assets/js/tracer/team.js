@@ -116,8 +116,11 @@ export async function comments(E, focus = null) {
 }
 
 // ---- field mode ----------------------------------------------------------------------------------------------------------------
-const STATES = [["set", t("trc.team.stSet"), "#2563eb"], ["checked", t("trc.team.stChecked"), "#16a34a"], ["collected", t("trc.team.stCollected"), "#6b7280"], ["problem", t("trc.team.stProblem"), "#dc2626"]];
-const stateOf = (k) => STATES.find((s) => s[0] === k);
+const BASE_STATES = [["set", t("trc.team.stSet"), "#2563eb"], ["checked", t("trc.team.stChecked"), "#16a34a"], ["collected", t("trc.team.stCollected"), "#6b7280"], ["problem", t("trc.team.stProblem"), "#dc2626"]];
+// the states named by the event (the advanced level: ev.fieldStates, Condes's five named flags), a fifth « extra » when named
+let NAMES = {};
+const states = () => [...BASE_states().map(([k, l, c]) => [k, NAMES[k] || l, c]), ...(NAMES.extra ? [["extra", NAMES.extra, "#9333ea"]] : [])];
+const stateOf = (k) => states().find((s) => s[0] === k);
 const queueKey = (E) => `ocn.tr.field.${E.meta.id}`;
 const readQueue = (E) => { try { return JSON.parse(localStorage.getItem(queueKey(E)) || "[]"); } catch (e) { return []; } };
 const writeQueue = (E, q) => { try { if (q.length) localStorage.setItem(queueKey(E), JSON.stringify(q)); else localStorage.removeItem(queueKey(E)); } catch (e) { /* this visit only */ } };
@@ -160,6 +163,7 @@ function mark(E, controlId, state, note = "") {
   sync(E);
 }
 function fieldOverlay(E) {
+  NAMES = E.ev.fieldStates || {};
   if (E.fieldOverlay) return;
   E.fieldOverlay = (g, T, k) => {
     if (!E.fieldOn) return;
@@ -203,10 +207,11 @@ function bearing(E, id) {
   return ((Math.atan2(y, x) / p) + 360) % 360;
 }
 function renderField(E) {
+  NAMES = E.ev.fieldStates || {};
   const box = E.fieldBox;
   if (!box) return;
   const tg = target(E), q = readQueue(E).length;
-  const counts = Object.fromEntries(STATES.map(([k]) => [k, 0]));
+  const counts = Object.fromEntries(states().map(([k]) => [k, 0]));
   for (const st of Object.values(E.fieldData?.controls || {})) if (counts[st.state] != null) counts[st.state]++;
   const total = Object.values(E.ev.controls).filter((c) => c.kind === "normal").length;
   const st = tg ? E.fieldData?.controls?.[tg.id] : null;
@@ -218,14 +223,15 @@ function renderField(E) {
       ${tg.d != null ? `<span>${Math.round(tg.d)} m · ${Math.round(bearing(E, tg.id))}°</span>` : ""} <small>${t(tg.chosen ? "trc.team.chosen" : "trc.team.nearest")}</small>
       ${st?.state ? `<small>${t("trc.team.stateBy", { state: esc(stateOf(st.state)?.[1] || ""), by: esc(st.by), when: when(st.at) })}${st.note ? ` — ${esc(st.note)}` : ""}</small>` : `<small>${t("trc.team.noState")}</small>`}
       ${st?.photos?.length ? `<small>${tn("trc.team.photos", st.photos.length)}</small>` : ""}</div>
-      <div class="tr-field-btns">${STATES.map(([k, label, col]) => `<button type="button" class="btn" data-f="${k}" style="border-color:${col}">${label}</button>`).join("")}</div>`
+      <div class="tr-field-btns">${states().map(([k, label, col]) => `<button type="button" class="btn" data-f="${k}" style="border-color:${col}">${label}</button>`).join("")}</div>`
     : `<p class="tr-hint">${t("trc.team.tapControl")}</p>`}
-    <div class="tr-field-foot"><small>${t("trc.team.counts", { list: STATES.map(([k, label]) => `${label} ${counts[k]}`).join(" · "), total })}${q ? ` · ${t("trc.team.waiting", { n: q })}` : ""}</small>
+    <div class="tr-field-foot"><small>${t("trc.team.counts", { list: states().map(([k, label]) => `${label} ${counts[k]}`).join(" · "), total })}${q ? ` · ${t("trc.team.waiting", { n: q })}` : ""}</small>
       ${G.hasGeo(E.ev) && E.gps ? `<button type="button" class="btn btn-sm" data-f="me">${t("trc.team.centre")}</button>` : ""}
       ${tg ? `<button type="button" class="btn btn-sm" data-f="photo">${t("trc.team.photo")}</button>` : ""}
       <button type="button" class="btn btn-sm" data-f="list">${t("trc.team.list")}</button></div>`;
 }
 export async function fieldMode(E) {
+  NAMES = E.ev.fieldStates || {};
   if (E.fieldOn) { stopField(E); return; }
   fieldOverlay(E);
   E.fieldOn = true;
@@ -292,6 +298,7 @@ function stopField(E) {
   E.redraw();
 }
 async function fieldList(E) {
+  NAMES = E.ev.fieldStates || {};
   const ids = Object.keys(E.ev.controls).map(Number).filter((id) => E.ev.controls[id].kind === "normal").sort((a, b) => M.compareControls(E.ev, a, b));
   const fd = E.fieldData?.controls || {};
   const gpsOff = (id) => {

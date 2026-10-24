@@ -157,12 +157,12 @@ export const ACT_ICON = {
   line: "line", text: "text", image: "image", rectangle: "rect", ellipse: "ellipse", descriptions: "descr",
   // the advanced level
   "import-courses": "import", classes: "list", "var-phi": "phi", "random-section": "shuffle", "course-form": "string", "finish-at-start": "finish",
-  "relay-teams": "team", "control-units": "units", "control-lock": "lock", "trail-answer": "trailo", "dual-symbol": "symbol", "my-symbols": "symbol",
+  "relay-teams": "team", "rep-controls": "units", "routes-alt-clear": "trash", "control-lock": "lock", "trail-answer": "trailo", "dual-symbol": "symbol", "my-symbols": "symbol",
   "view-angles": "angle", "view-nearest": "nearest", "routes-alt": "routes", "pdf-imposed": "pages", "pdf-back": "backside", "export-geopdf": "geopdf",
-  "export-geotiff": "image", "export-svg": "image", "export-kmz": "globe", "export-maprun": "phone", "export-ocadcsv": "table", "export-livelox": "share",
+  "export-geotiff": "image", "export-svg": "image", "export-kmz": "globe", "export-maprun": "phone", "export-ocadcsv": "table", "export-livelox": "share", "export-iof2-sep": "stopwatch",
   "maps": "multimap", "map-colors": "colors", "map-templates": "layers", "field-states": "flag", "pdf-cards": "punch", "pdf-overprint": "regmark",
   "mtbo-oneway": "route", "mtbo-forbidden-route": "forbidden", "mtbo-obstacle": "stretch", "mtbo-forbidden-pass": "close", "mtbo-danger": "danger",
-  inset: "inset", mask: "mask", "event-discipline": "bike",
+  inset: "inset", mask: "mask", "event-discipline": "bike", "mask-hole": "mask", "mask-holes-clear": "trash",
 };
 /** A menu entry's icon (an empty slot of the same width when it has none, so the labels line up). */
 export const actIcon = (act, s = 16) => (ACT_ICON[act] ? svg(ACT_ICON[act], s) : `<span class="tr-mi-none" style="width:${s}px"></span>`);

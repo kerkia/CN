@@ -38,13 +38,17 @@ export function applies(E, act, kind, at = {}) {
     case "text-before": case "text-after": return inCourse;
     case "gap-add-circle": return !!c && (c.kind === "normal" || c.kind === "finish");
     case "number-auto": return s?.kind === "number" || !!cc?.number;
-    case "rotate": case "stretch": return kind === "control" ? c?.kind === "crossing" : sp?.kind === "optional-crossing-point";
-    case "special-props": return !!sp && ["text", "line", "rectangle", "ellipse", "descriptions"].includes(sp.kind);
+    case "rotate": return kind === "control" ? c?.kind === "crossing" : M.ORIENTED_SPECIALS.includes(sp?.kind);
+    case "stretch": return kind === "control" ? c?.kind === "crossing" : sp?.kind === "optional-crossing-point";
+    case "special-props": return !!sp && ["text", "line", "rectangle", "ellipse", "descriptions", "inset"].includes(sp.kind);
+    case "mask-hole": return sp?.kind === "mask";
+    case "mask-holes-clear": return sp?.kind === "mask" && !!sp.holes?.length;
     case "corner-add": return !!corners;
     case "corner-remove": return !!corners && (!at.menu || at.handle?.type === "corner");
     case "bend-remove": return !!leg?.bends?.length && (!at.menu || at.handle?.type === "bend");
     case "gap-remove-leg": return !!leg?.gaps?.length;
     case "route-clear": return !!leg?.route?.length;
+    case "routes-alt-clear": return !!leg?.alts?.length;
     default: return true;
   }
 }

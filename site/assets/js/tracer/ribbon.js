@@ -78,7 +78,7 @@ export function mountRibbon(E) {
   function labelOf(it) {
     const c = ctl(), sp = special();
     if (it.act === "delete" && R.ctx === "control") return E.cd.course && E.sel?.cc ? t("trc.rib.removeFromCourse") : t("trc.rib.deleteControl");
-    if (it.act === "special-props" && sp) return sp.kind === "text" ? t("trc.rib.spText") : sp.kind === "descriptions" ? t("trc.rib.spColumns") : t("trc.rib.spAppearance");
+    if (it.act === "special-props" && sp) return sp.kind === "text" ? t("trc.rib.spText") : sp.kind === "descriptions" ? t("trc.rib.spColumns") : sp.kind === "inset" ? t("trc.rib.spInset") : t("trc.rib.spAppearance");
     if (it.act === "toggle-exchange" && cc()?.exchange) return t("trc.rib.removeExchange");
     if (it.count === "unused" && !E.blank) { const n = M.unusedControls(E.ev).length; return n ? `${it.label} (${n})` : it.label; }
     void c;
@@ -93,6 +93,8 @@ export function mountRibbon(E) {
       case "exchange": return !!cc()?.exchange;
       case "rnd": return !!cc()?.rnd;
       case "lock": return !!ctl()?.locked;
+      case "angles": return E.overlays.some((f) => f.key === "angles");
+      case "nearest": return E.overlays.some((f) => f.key === "nearest");
       default: return null;
     }
   }

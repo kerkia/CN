@@ -384,6 +384,14 @@ function specialObj(ev, sid, ratio, std, cd, opts) {
     case "text": return { t: "text", ...base, box: rectOf(sp.pts), text: M.expandText(ev, cd, sp.text || "", { variation: opts.variationName || "", team: opts.team, leg: opts.leg }),
       font: sp.font || { name: "Arial", bold: false, italic: false, height: -1 }, color: sp.color };
     case "image": return { t: "image", ...base, box: rectOf(sp.pts), image: sp.image, name: sp.text || "" };
+    // MTB-O's course symbols (the advanced level): drawn after ISMTBOM 2022's descriptions, upper purple
+    case "mtbo-obstacle": case "mtbo-forbidden-pass":
+      return { t: "point", kind: sp.kind, ...base, ctr: sp.pts[0], orientation: sp.orientation || 0, ratio: ratio * cs, radius: 1.5 * ratio * cs, apparent: 1.5 * ratio * cs };
+    // an enlarged section of the map (inset: its frame, the part of the map it shows, the factor) and a mask (white, with holes)
+    case "inset": return { t: "inset", ...base, box: rectOf(sp.pts), src: sp.src || null, factor: sp.factor || 2 };
+    case "mask": return { t: "area", kind: "mask", ...base, pts: sp.pts, holes: sp.holes || [], ratio, std };
+    case "mtbo-oneway": case "mtbo-forbidden-route": case "mtbo-danger":
+      return { t: "line", kind: sp.kind, ...base, pts: sp.pts, lw: 0.35 * ev.appearance.lineWidth * ratio, ratio: ratio * cs };
     default: return null;
   }
 }

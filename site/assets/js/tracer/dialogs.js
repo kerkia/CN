@@ -112,7 +112,9 @@ export function popupMenu(E, cx, cy, items, onPick) {
 export function specialMenu(E, btn) {
   const r = btn.getBoundingClientRect();
   const groups = [[t("trc.dlg.grpPoints"), ["water", "first-aid", "optional-crossing-point", "forbidden-route", "registration-mark"]],
-    [t("trc.dlg.grpLines"), ["boundary", "out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "line"]], [t("trc.dlg.grpFrames"), ["text", "image", "rectangle", "ellipse"]]];
+    [t("trc.dlg.grpLines"), ["boundary", "out-of-bounds", "dangerous-area", "temporary-construction", "white-out", "line"]], [t("trc.dlg.grpFrames"), ["text", "image", "rectangle", "ellipse"]],
+    // the advanced level: MTB-O's symbols, enlarged map sections and masks
+    ...(E.pro ? [[t("trc.dlg.grpMtbo"), ["mtbo-oneway", "mtbo-forbidden-route", "mtbo-danger", "mtbo-obstacle", "mtbo-forbidden-pass"]], [t("trc.dlg.grpLayout"), ["inset", "mask"]]] : [])];
   const items = [];
   for (const [, ks] of groups) { if (items.length) items.push("-"); for (const k of ks) items.push([k, SPECIAL_NAME[k]]); }
   popupMenu(E, r.left, r.bottom + 4, items, (k) => E.setTool(`special:${k}`));
@@ -152,6 +154,13 @@ export async function action(E, act, btn, at = {}) {
     case "export-images": (await lazy.out()).imagesDialog(E); break;
     case "export-ocad": (await import("./coursefiles.js")).courseFilesDialog(E); break;
     case "export-routegadget": (await lazy.out()).routeGadget(E); break;
+    case "export-geotiff": (await import("./exportx.js")).geotiffDialog(E); break;
+    case "export-svg": (await import("./exportx.js")).svgDialog(E); break;
+    case "export-kmz": (await import("./exportx.js")).kmzDialog(E); break;
+    case "export-maprun": (await import("./exportx.js")).maprunDialog(E); break;
+    case "export-ocadcsv": (await import("./exportx.js")).ocadTextFile(E); break;
+    case "export-iof2-sep": (await import("./exportx.js")).iof2Separate(E); break;
+    case "export-livelox": (await import("./exportx.js")).liveloxPackage(E); break;
     case "export-csv": (await lazy.rep()).csvAll(E); break;
     case "publish": (await lazy.more()).publish(E); break;
     case "send-results": (await lazy.more()).sendCourses(E); break;
@@ -207,6 +216,7 @@ export async function action(E, act, btn, at = {}) {
     case "rep-after": (await lazy.more()).afterRace(E); break;
     case "comments": (await lazy.more()).comments(E); break;
     case "field": (await lazy.more()).fieldMode(E); break;
+    case "field-states": if (!ro()) fieldStates(E); break;
     case "view-course": E.fitCourse(); break;
     case "view-map": E.fitMap(); break;
     case "view-all": E.opts.allControls = !E.opts.allControls; E.refresh(); E.toast(E.opts.allControls ? t("trc.dlg.allShown") : t("trc.dlg.othersHidden")); break;
@@ -237,11 +247,20 @@ export async function action(E, act, btn, at = {}) {
     case "gap-add-leg": if (!ro() && s?.kind === "leg" && at.p) { const pts = M.legPoints(ev, s.c1, s.c2), n = M.nearest(pts, at.p), w = 1.2 * (E.layout?.ratio || 1); E.change((x) => M.addLegGap(x, s.c1, s.c2, M.pointAt(pts, n.len - w), M.pointAt(pts, n.len + w)), t("trc.dlg.gap")); } break;
     case "gap-remove-leg": if (!ro() && s?.kind === "leg" && at.p) E.change((x) => M.removeLegGap(x, s.c1, s.c2, at.p), t("trc.dlg.gapClosed")); break;
     case "route-clear": if (!ro() && s?.kind === "leg") E.change((x) => M.setLegRoute(x, s.c1, s.c2, null), t("trc.dlg.routeCleared")); break;
+    case "routes-alt": if (!ro() && s?.kind === "leg") { E.setTool("route"); const a = ev.controls[s.c1]; E.pending = { kind: "route", alt: true, c1: s.c1, c2: s.c2, pts: [[a.x, a.y]] };
+      E.ghost = { pts: E.pending.pts.slice() }; E.help(t("trc.dlg.altHelp")); E.redraw(); } break;
+    case "routes-alt-clear": if (!ro() && s?.kind === "leg") E.change((x) => M.setLegAlts(x, s.c1, s.c2, null), t("trc.dlg.altsCleared")); break;
+    case "view-angles": (await import("./advview.js")).toggleAngles(E); break;
+    case "view-nearest": (await import("./advview.js")).toggleNearest(E); break;
+    case "rep-controls": (await lazy.rep()).controlsReport(E); break;
+    case "trail-answer": (await lazy.rep()).trailReport(E); break;
     case "flag-none": case "flag-all": case "flag-begin": case "flag-end": if (!ro() && s?.kind === "leg") E.change((x) => M.setFlagging(x, s.c1, s.c2, act.slice(5)), t("trc.dlg.flagging")); break;
     case "special-props": if (!ro() && s?.kind === "special") specialProps(E, s.id); break;
     case "corner-add": if (!ro() && s?.kind === "special" && at.p) E.change((x) => M.addSpecialCorner(x, s.id, at.p), t("trc.dlg.cornerAdded")); break;
     case "corner-remove": { const h = A.handleAt(E, at.sx, at.sy); if (!ro() && h?.type === "corner") E.change((x) => M.removeSpecialCorner(x, h.id, h.pt), t("trc.dlg.cornerRemoved")); break; }
     case "displayed-courses": if (!ro() && s?.kind === "special") displayedCourses(E, s.id); break;
+    case "mask-hole": if (!ro() && s?.kind === "special" && ev.specials[s.id]?.kind === "mask") (await import("./layoutx.js")).maskHole(E, s.id); break;
+    case "mask-holes-clear": if (!ro() && s?.kind === "special") E.change((x) => { delete x.specials[s.id].holes; }, t("trc.dlg.maskHolesCleared")); break;
     default: E.toast(t("trc.dlg.unknownAction", { act }));
   }
   void btn;
@@ -457,6 +476,15 @@ async function addVariation(E, loop) {
   if (!v) return;
   E.change((x) => M.addVariation(x, E.cd, E.sel.cc, loop, Math.max(2, Math.min(max, Math.round(num(v.n)) || 2))), loop ? t("trc.dlg.loops") : t("trc.dlg.fork"));
 }
+/** The field mode's states named by the event (the advanced level; Condes's five named flags): the four of the field mode, and a fifth. */
+async function fieldStates(E) {
+  const n = E.ev.fieldStates || {};
+  const v = await modal(E, { title: t("trc.dlg.fieldStates"), body: `<p>${esc(t("trc.dlg.fieldStatesIntro"))}</p><div class="tr-grid2">
+    ${[["set", t("trc.team.stSet")], ["checked", t("trc.team.stChecked")], ["collected", t("trc.team.stCollected")], ["problem", t("trc.team.stProblem")], ["extra", t("trc.dlg.fieldExtra")]]
+      .map(([k, d]) => field(d, `<input name="${k}" value="${esc(n[k] || "")}" placeholder="${esc(k === "extra" ? t("trc.dlg.fieldExtraPh") : d)}" maxlength="40">`)).join("")}</div>` });
+  if (!v) return;
+  E.change((x) => { const o = {}; for (const k of ["set", "checked", "collected", "problem", "extra"]) if (v[k].trim()) o[k] = v[k].trim(); if (Object.keys(o).length) x.fieldStates = o; else delete x.fieldStates; }, t("trc.dlg.fieldStates"));
+}
 /** The course's finish drawn on its start (Condes: a course that ends where it began): the finish follows the start wherever it
  *  goes. A finish other courses use elsewhere is left to them; this course gets one of its own. */
 function finishAtStart(E) {
@@ -552,7 +580,7 @@ export async function controlProps(E, controlId) {
 async function rotateStretch(E, what) {
   const s = E.sel;
   const obj = s?.kind === "special" ? E.ev.specials[s.id] : s?.control ? E.ev.controls[s.control] : null;
-  if (!obj || !(obj.kind === "crossing" || obj.kind === "optional-crossing-point")) { E.toast(t("trc.dlg.chooseCrossing")); return; }
+  if (!obj || !(obj.kind === "crossing" || M.ORIENTED_SPECIALS.includes(obj.kind))) { E.toast(t("trc.dlg.chooseCrossing")); return; }
   const v = await modal(E, { title: what === "rotate" ? t("trc.dlg.orientation") : t("trc.dlg.stretch"), body: what === "rotate"
     ? field(t("trc.dlg.orientationField"), `<input name="v" value="${Math.round(obj.orientation || 0)}">`)
     : field(t("trc.dlg.stretchField"), `<input name="v" value="${obj.stretch || 0}">`) });
@@ -561,6 +589,7 @@ async function rotateStretch(E, what) {
 }
 export async function specialProps(E, id) {
   const sp = E.ev.specials[id];
+  if (sp.kind === "inset") return (await import("./layoutx.js")).insetProps(E, id);
   if (sp.kind === "text") return textProps(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), t("trc.dlg.textChanged")));
   if (["line", "rectangle", "ellipse"].includes(sp.kind)) return lineAppearance(E, id, (look) => E.change((x) => Object.assign(x.specials[id], look), t("trc.dlg.appearance")));
   if (sp.kind === "descriptions") {
