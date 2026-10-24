@@ -1581,7 +1581,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   host's Land as `expect`; **BE** region (Bruxelles / Wallonie / Vlaanderen) / province, Flanders' federation → Vlaanderen when
   unplaced; **BG** oblast from the event's name only (clubs' names are villages too); **BY** oblast / raion from the place, the
   calendar's « Общереспубликанские » / « Международные » moved to `level`; **CH** the regional association (as the CSV) / canton by its
-  letters, letters after the place or after it in the name decide (« Roveredo GR »); **CZ** kraj / okres, ORIS's section → its kraje
+  letters: first from the CSV's own Swiss grid coordinates (`coord_x`/`coord_y`, LV03 or LV95, → `gps` by swisstopo's formulas,
+  `ch.wgs84`; the CSV has no canton column, nor the event's page) against the table's `points` — every populated place's position
+  and canton (`gazetteer.POINTS`), the 5 nearest within 8 km voting by 1/distance, `places.nearest`; 45 of 183 events on
+  2026-10-24, the coming ones mostly without coordinates yet —, else letters after the place or after it in the name
+  (« Roveredo GR »), else the name (131 of 183 with a canton; forest names such as « Bohärdli » are in no gazetteer); **CZ** kraj / okres, ORIS's section → its kraje
   as `expect` (one kraj: the region when unplaced); **DE** Land / Kreis (« Landkreis X » kept beside a city X); **DK** DOF's kreds (as the
   calendar) / kommune; **EE** maakond / vald or linn; **GB** British Orienteering's association (as the calendar) / county or unitary
   authority, the nation as `expect`; **HK** area (香港島, 九龍, 新界) / district, venue else name; **HR** županija / grad or općina; **IE**
@@ -1591,7 +1595,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   GeoNames); **PL** voivodeship of the organising club's town (« UKS Azymut 45, Gdynia »: the list gives no place), no finer unit;
   **RO** development region / județ by its letters; **RS** statistical region / okrug; **SK** kraj / okres; **TR** geographical region
   (Marmara, Ege…) / il; **ZA** province / district or metro; **GE** region only; **BR** state and **UA** oblast as the calendars give
-  them. Placed on 2026-10-24: AT 115/139 events (100 with a Bezirk), BE 189/211, CH 183/183 (117 cantons), CZ 232/307, DE 109/126,
+  them. Placed on 2026-10-24: AT 115/139 events (100 with a Bezirk), BE 189/211, CH 183/183 (131 cantons), CZ 232/307, DE 109/126,
   GB 822/836 (747 counties), IT 162/162, JP 110/126, EE 100/128, IL 30/83, BG 12/34, PL 34/40, HK 12/54 (most without a venue).
   The Agenda page: each country's level names (`agd.region.<CC>` / `agd.dept.<CC>`, else « Région » / « Province »), a unit whose
   code is its name shown once, a short code in brackets, a name after « · », nothing when the place already says it (« (TN) »).

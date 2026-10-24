@@ -68,6 +68,32 @@ ABBR = [(re.compile(r"\bобл\b\.?", re.I), "область"), (re.compile(r"\b
         (re.compile(r"\bSt\. ?(?=[A-ZÄÖÜ])"), "Sankt "), (re.compile(r"\bokr\. ", re.I), "okres ")]
 
 
+def nearest(cc: str, lat: float, lon: float, *, k: int = 5, max_km: float = 8.0) -> tuple[str | None, str | None]:
+    """The region and finer unit of a position, by the units of the `k` populated places nearest to it (a table with
+    `points`: tools/gazetteer.py POINTS), each weighing 1/distance; (None, None) beyond `max_km` of every place (abroad)."""
+    import math
+    t = table(cc)
+    pts = (t or {}).get("points")
+    if not pts:
+        return None, None
+    cos = math.cos(math.radians(lat))
+    near = []
+    for plat, plon, d in pts:
+        dy, dx = plat / 1e4 - lat, (plon / 1e4 - lon) * cos
+        near.append((dy * dy + dx * dx, d))
+    near = sorted(near)[:k]
+    km = [math.sqrt(q) * 111.2 for q, _ in near]
+    if not near or km[0] > max_km:
+        return None, None
+    votes = defaultdict(float)
+    for (_, d), dist in zip(near, km):
+        if dist <= max_km:
+            votes[d] += 1 / max(dist, 0.2)
+    d = max(votes, key=votes.get)
+    ri = t["depts"][d][2]
+    return (t["regions"][ri] if ri >= 0 else None), t["depts"][d][0]
+
+
 def _segments(text: str):
     """The parts of a place, an address's street left out: « Ursulinenhof, Landstraße 31, 4020 Linz » -> Ursulinenhof, Linz."""
     for rx, word in ABBR:

@@ -116,7 +116,7 @@ class Src:
                     key = (a1,) if fco == "ADM1" else (a1, a2) if fco == "ADM2" else (a1, a2, a3)
                     self.adm[key] = gid
                 if kept(fcl, fco):
-                    self.rows.append((gid, f[1], f[2], f[3], fcl, fco, a1, a2, a3, int(f[14] or 0)))
+                    self.rows.append((gid, f[1], f[2], f[3], fcl, fco, a1, a2, a3, int(f[14] or 0), float(f[4]), float(f[5])))
         self.geo_name = {r[0]: r[1] for r in self.rows}
         want = set(self.adm.values())
         self.alt = defaultdict(list)        # geonameid -> [(lang, name, preferred, short)]
@@ -442,6 +442,11 @@ def _by(n):
     return re.sub(r" райо$", " район", n)
 
 
+# the countries whose calendar gives coordinates: their table also holds every populated place's position and unit
+# (`places.nearest`; Switzerland's CSV gives the Swiss grid's x and y of most events, o-l.ch, 2026-10-24)
+POINTS = {"CH"}
+
+
 # per country: (region, dept) names written over GeoNames' (casing, a spelling, a Latin transcription)
 RENAME = {
     "BY": (_by, _by),
@@ -494,7 +499,8 @@ def build(cc: str) -> dict:
         return cache[k]
 
     cands = defaultdict(dict)                     # key -> {(ri, di): weight}
-    for gid, name, ascii_, alts, fcl, fco, a1, a2, a3, pop in s.rows:
+    points = []                                   # (POINTS) [lat × 1e4, lon × 1e4, dept] of the populated places
+    for gid, name, ascii_, alts, fcl, fco, a1, a2, a3, pop, lat, lon in s.rows:
         if not a1 or a1 == "00":
             continue
         if fco == "ADM1":
@@ -504,6 +510,8 @@ def build(cc: str) -> dict:
         ri, di = place(a1, a2, a3)
         if ri < 0 and di < 0:
             continue
+        if cc in POINTS and di >= 0 and (fcl == "P" or fco == "ADM3"):
+            points.append([round(lat * 1e4), round(lon * 1e4), di])
         w = weight(fcl, fco, pop, small_adm2)
         names = [name, ascii_] + [a for a in alts.split(",") if a and (len(a) >= 4 or CJK.search(a))]
         if fcl == "A":
@@ -535,8 +543,11 @@ def build(cc: str) -> dict:
         best = top[0][1]
         top = [(rd, w) for rd, w in top if w >= best / 50][:8]
         keys[k] = [[rd[0], rd[1], round(math.log10(w), 1)] for rd, w in top]
-    return {"v": 1, "source": "GeoNames (CC BY 4.0), https://www.geonames.org", "regions": regions, "depts": depts,
-            "keys": keys}
+    out = {"v": 1, "source": "GeoNames (CC BY 4.0), https://www.geonames.org", "regions": regions, "depts": depts,
+           "keys": keys}
+    if points:
+        out["points"] = sorted({tuple(p) for p in points})
+    return out
 
 
 def fetch(ccs):
