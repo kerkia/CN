@@ -25,6 +25,8 @@ import * as country from "../country.js";
 import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
+import * as RC from "../trace/routeplan.js";
+import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
@@ -766,6 +768,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   }
   function drawOver(g, view, lw) {
     drawExercise(g, lw);
+    if (rcm.on && leg) {                                 // the route choices computed (administrators, a prototype)
+      if (rcm.pic) { g.save(); g.globalAlpha = 0.6; g.imageSmoothingEnabled = false; g.drawImage(rcm.pic.canvas, 0, 0, rcm.pic.canvas.width * rcm.pic.cell, rcm.pic.canvas.height * rcm.pic.cell); g.restore(); }
+      RC.drawRoutes(g, rcm.routes[leg], lw, rcmPace(), clock);
+    }
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
     g.lineCap = "round"; g.lineJoin = "round";
@@ -1054,7 +1060,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
           <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
-          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>`;
+          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>
+      ${auth.session()?.admin ? html`<div id="rc-host"></div>` : ""}`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
@@ -1072,6 +1079,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
     $("#sh-strip-on").addEventListener("change", (e) => { showStrip = e.target.checked; savePrefs(); $("#sh-strip").hidden = !showStrip; drawStrip(); });
+    rcmPanel();
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -1091,6 +1099,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       if (follow === "all") follow = "none";
     } else fitRoutes();
     legend(); left(); right(); frame(); bottom.draw();
+    if (rcm.on) rcmLeg();
   }
   function fitRoutes() {
     const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y);
@@ -1189,6 +1198,105 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     exercises = list; course.exercises = list; devCache.clear();
   }
 
+  // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24): the leg shown's
+  // fastest routes on the map as read, each runner's own route measured on the same model
+  const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
+    plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", dem: null, info: null };
+  // the map's pixels to metres and to longitude and latitude, from its georeference
+  const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
+  const rcmFrame = runners[0]?.fit || (() => { const [lon, lat] = geoInv(image.width / 2, image.height / 2); return fitFromGeo(course.geo, frameAt(lat, lon)); })();
+  const rcmPace = () => RC.paceOf(rcm.s, rcm.auto[leg]);
+  const rcmStatus = (text) => { rcm.status = text; RC.setStatus(text); };
+  function rcmPanel() {
+    const host = $("#rc-host");
+    if (!host) return;
+    host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, status: rcm.status, auto: rcm.auto[leg] }))}<div class="rc-leg" id="rc-leg"></div>`;
+    RC.bindPanel(host, rcm.s, (s, what) => {
+      if (what === "on" || what === "off") {
+        rcm.on = what === "on";
+        try { localStorage.setItem("ocn.rc.on", rcm.on ? "1" : "0"); } catch (e) { /* this visit */ }
+        if (rcm.on) rcmLeg(); else { rcm.token++; mv.draw(); rcmList(); }
+      } else if (what === "picture-on") { rcm.picOn = true; rcmPicture(); }
+      else if (what === "picture-off") { rcm.picOn = false; rcm.pic = null; mv.draw(); }
+      else if (what === "pace") { rcmList(); mv.draw(); }
+      else { if (what === "reset") rcmPanel(); rcm.routes = []; rcm.mine = []; rcm.auto = []; rcmLeg(); }
+    });
+    rcmList();
+  }
+  /** The map read and its heights, once. */
+  function rcmPlan() {
+    if (rcm.ready) return rcm.ready;
+    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y));
+    rcm.ready = (async () => {
+      rcmStatus(t("rc.st.reading"));
+      rcm.info = await rcm.plan.ready;
+      rcmStatus(t("rc.st.relief"));
+      try {
+        const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
+        const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
+        const key = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
+        const g = await loadGrid({ key, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
+          onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) })) });
+        await rcm.plan.dem(g); rcm.dem = g.source;
+      } catch (e) { console.warn(e); rcm.dem = "none"; }
+    })();
+    return rcm.ready;
+  }
+  /** The leg shown: its routes, and each runner's measured (their median pace when none is typed). */
+  async function rcmLeg() {
+    if (!rcm.on) return;
+    const my = ++rcm.token, j = leg;
+    if (!j) { rcmStatus(t("rc.leg.none")); rcmList(); mv.draw(); return; }
+    try {
+      await rcmPlan();
+      await rcm.plan.settings(rcm.s);
+      if (my !== rcm.token) return;
+      rcmStatus(t("rc.st.computing"));
+      const t0 = performance.now();
+      const a = ctrls[j - 1], b = ctrls[j], routes = await rcm.plan.leg([a.x, a.y], [b.x, b.y]);
+      if (my !== rcm.token) return;
+      rcm.routes[j] = routes;
+      const mine = new Map(), pairs = [];
+      for (const r of runners) {
+        const d = legTime(r, j);
+        if (d == null || !routes) continue;
+        const i0 = indexAt(r.tr, r.passes[j - 1]), i1 = indexAt(r.tr, r.passes[j]), pts = [];
+        for (let i = i0; i <= i1; i++) pts.push([r.pxs[i], r.pys[i]]);
+        if (pts.length < 2) continue;
+        const m = await rcm.plan.line(pts);
+        if (my !== rcm.token) return;
+        mine.set(r.uid, { ...m, variant: RC.nearestRoute(routes, pts, 25 * pxPerM), actual: d });
+        pairs.push({ actual: d, model: m.time });
+      }
+      rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
+      rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
+        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }));
+      const p = $("#rc-pace"); if (p && rcm.auto[j]) p.placeholder = RC.minKm(rcm.auto[j]);
+      if (rcm.picOn && !rcm.pic) rcmPicture();
+      rcmList(); mv.draw();
+    } catch (e) { console.error(e); if (my === rcm.token) rcmStatus(t("rc.st.failed")); }
+  }
+  window.anDebugRoutes = () => ({ on: rcm.on, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], settings: rcm.s });
+  async function rcmPicture() {
+    try { await rcmPlan(); rcm.pic = await rcm.plan.picture(); } catch (e) { rcm.pic = null; }
+    if (!rcm.picOn) rcm.pic = null;
+    mv.draw();
+  }
+  /** Under the settings: the leg's routes, then the runners shown with the route they took and its time on the model. */
+  function rcmList() {
+    const el = $("#rc-leg");
+    if (!el) return;
+    const routes = rcm.on && leg ? rcm.routes[leg] : null;
+    if (!routes?.length) { el.innerHTML = ""; return; }
+    const pace = rcmPace(), mine = rcm.mine[leg] || new Map();
+    const how = rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.auto[leg] ? t("rc.pace.median") : t("rc.pace.default");
+    const signed = (v) => `${v >= 0 ? "+" : "−"}${clock(Math.abs(v))}`;
+    el.innerHTML = html`<p class="muted" style="margin:0 0 4px">${t("rc.list.hint", { p: RC.minKm(pace), how })}</p>
+      ${routes.map((r, n) => html`<div><span class="rc-dot" style="background:${RC.ROUTE_COLOURS[n]}"></span><b>${RC.LETTERS[n]}</b> ${RC.routeFacts(r, pace, clock)} <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
+      ${mine.size ? html`<p class="muted" style="margin:6px 0 2px">${t("rc.runners")}</p>
+        ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div><span class="rc-dot" style="background:${m.variant >= 0 ? RC.ROUTE_COLOURS[m.variant] : "#999"}"></span>${m.variant >= 0 ? RC.LETTERS[m.variant] : t("rc.other")} · ${r.name} · ${clock(m.actual)} <span class="muted">(${clock(m.time * pace)}, ${signed(Math.round((m.time - routes[0].time) * pace))})</span></div>`; })}` : ""}`;
+  }
+
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
   const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
     ex: /^[a-z0-9]{1,12}$/.test(init.ex || "") ? init.ex : null,
@@ -1262,5 +1370,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { stop(); video.close(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { stop(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

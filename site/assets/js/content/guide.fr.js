@@ -3,7 +3,7 @@
 // build(X) receives the page's helpers and returns the four tabs' chapters and builders: « Le site », « Courses »,
 // « Entraînement », « Organisation ». Plain sentences for orienteers; a page is named as the menu names it, with a link.
 export function build(X) {
-  const { html, raw, subTabs, fr = true } = X;
+  const { html, raw, subTabs, fr = true, admin = false } = X;
   // a page of the site, as the menus name it
   const P = (href, label) => html`<a href="${href}">${label}</a>`;
   // another tab of the Documentation
@@ -89,7 +89,8 @@ export function build(X) {
   // ======================================================================================================
   // Courses
   // ======================================================================================================
-  const COURSES = [["agenda", "Agenda"], ["resultats", "Résultats"], ["direct", "En direct"], ["analyse", "Analyse de course"], ["gps", "Analyses GPS"]];
+  const COURSES = [["agenda", "Agenda"], ["resultats", "Résultats"], ["direct", "En direct"], ["analyse", "Analyse de course"], ["gps", "Analyses GPS"],
+    ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // a prototype, for the administrators (2026-10-24)
   function courses() {
     return chapters(COURSES, {
       agenda: () => html`
@@ -204,6 +205,75 @@ export function build(X) {
           </div>
           <p>Fichiers lus : la carte (image, PDF ou KMZ), la trace (GPX, FIT ou TCX) et, si on les a, le calage de la carte (KMZ, fichier de
             géoréférencement) et les circuits en IOF XML.</p>`)}`,
+      routes: () => html`
+        ${slide("Courses · essai, administrateurs", "Les itinéraires calculés", html`
+          <p>Dans les deux analyses GPS, un administrateur peut faire proposer par Ozimut, pour chaque inter-poste, les itinéraires les plus rapides
+            sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesurer sur le même modèle l'itinéraire que chaque coureur a pris.
+            Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et un tableau les reprend sous la carte ; dans
+            l'${P("#/analyse-club", "Analyse multi")}, l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
+            la carte telle qu'Ozimut la lit, et cette lecture peut se tromper.</p>`)}
+        ${slide("Courses · essai", "1. Lire la carte d'après ses couleurs", html`
+          <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
+            (terrain découvert, plus ou moins clair), les trois verts selon leur intensité, l'olive (zone interdite), et les « encres » posées par-dessus —
+            le noir, le gris, le brun, le bleu et le violet du parcours.</p>
+          ${list([
+            html`Une encre est un <b>trait</b> ou une <b>surface</b> selon son épaisseur, comparée à celle des traits noirs de la carte : ce qui reste quand
+              on efface les traits fins est une surface. Le noir épais est un bâtiment ou une grande falaise (infranchissable), le gris un bâtiment en
+              sprint ou du rocher nu en forêt, le brun épais une zone revêtue, le bleu épais de l'eau.`,
+            html`Les <b>traits noirs fins</b> assez longs (30 m), ou les tirets d'un chemin en pointillés, forment les chemins. Un petit trait isolé
+              (une petite falaise, une ruine) ou des points (une limite de végétation) n'en sont pas.`,
+            html`Les <b>traits bleus fins</b> sont les ruisseaux et, serrés, les marais. Les courbes de niveau, le parcours, le texte et les points sont
+              effacés : chaque point prend la couleur du terrain le plus proche en dessous.`,
+            html`La carte est ensuite découpée en cases d'environ 1,5 m, chacune avec le terrain le plus présent. « Voir le terrain tel que lu »
+              montre ces cases sur la carte : c'est la première chose à vérifier.`,
+          ])}
+          <p>Limites connues : la zone interdite hachurée en violet est effacée avec le parcours ; une photo mal éclairée trouble les couleurs ; les
+            falaises infranchissables fines, les murs et les clôtures sont des traits noirs comme les chemins (le réglage « Lignes noires fines » dit ce
+            qu'ils sont).</p>`)}
+        ${slide("Courses · essai", "2. Le temps d'un pas", html`
+          <p>Le temps pour aller d'une case à sa voisine est la distance, multipliée par la lenteur du terrain et par celle de la pente :</p>
+          ${list([
+            html`<b>Le terrain</b> : sa vitesse en part de celle de la forêt blanche — chemin 125 %, terrain découvert 110 %, semi-découvert
+              100 %, les trois verts 75, 45 et 20 %, marais 65 %, zone revêtue 120 %. L'eau, les bâtiments, la zone interdite (et le gris
+              en sprint) sont infranchissables. Tout se règle sous « Vitesses par terrain ».`,
+            html`<b>La pente</b>, lue sur le relief de l'IGN (RGE ALTI, en France) ou des « Terrain Tiles » ailleurs : en montée, chaque mètre gravi
+              coûte autant que 8 m à plat (le réglage « 1 m de montée vaut ») ; en descente douce on va un peu plus vite (jusqu'à 9 % de mieux à
+              15 % de pente), plus raide on freine (à 30 %, 29 % plus lent qu'à plat).`,
+            html`Les pas vont dans 16 directions (les huit voisines et les sauts de cavalier), ce qui suit une ligne droite à 3 % près.`,
+          ])}
+          <p>Ce temps est celui d'une allure de référence en forêt blanche à plat : 6:00 min/km par défaut, ou celle qu'on tape, ou — sans rien taper —
+            celle du coureur : dans l'Analyse solo, la médiane, sur ses inter-postes, de son temps réel divisé par le temps du modèle sur son propre
+            itinéraire ; dans l'Analyse multi, la médiane des coureurs sur l'inter-poste.</p>`)}
+        ${slide("Courses · essai", "3. La prudence de navigation", html`
+          <p>Le plus court n'est pas toujours le plus sûr : loin de tout repère, au milieu de la forêt, on lit la carte plus souvent, on ralentit, on se
+            trompe. Ozimut appelle <b>lignes directrices</b> les chemins, les ruisseaux, les lisières entre terrains différents et les bords de ce qui
+            arrête (eau, bâtiments). La prudence ajoute au coût d'un pas une part de son temps qui croît avec la distance à la ligne directrice la plus
+            proche, pleine à 50 m :</p>
+          <p class="mx-eq">coût = temps × (1 + prudence × visibilité × min(1, distance / 50 m))</p>
+          <p>La visibilité pèse 1 en forêt blanche, 1,2 à 1,4 dans les verts, 0,3 en terrain découvert, 0 sur un chemin. À 20 % (le réglage par
+            défaut), traverser une forêt sans repère coûte jusqu'à un cinquième de plus ; à 0 %, on court droit comme un coureur qui ne se trompe
+            jamais. La prudence choisit l'itinéraire ; les temps affichés restent ceux de la course seule, sans elle.</p>`)}
+        ${slide("Courses · essai", "4. Les variantes", html`
+          <p>L'itinéraire A est le moins coûteux, trouvé par une recherche A* dans une ellipse autour de l'inter-poste (assez large pour contourner un
+            lac). Pour les suivants, Ozimut pénalise le couloir des itinéraires déjà trouvés et cherche à nouveau ; chaque proposition est ensuite
+            retendue sans pénalité dans une bande autour d'elle, puis gardée seulement si :</p>
+          ${list([
+            html`elle s'écarte des précédentes (au moins 30 % de son tracé hors de leurs couloirs) ;`,
+            html`elle ne coûte pas plus que A de plus que l'écart choisi (25 % par défaut) ;`,
+            html`elle est <b>localement optimale</b> : aucun tronçon de 30 % de sa longueur ne peut être raccourci de plus de 1 % — un grand arc
+              à travers une forêt uniforme n'est pas un choix, un détour par un chemin ou autour d'un vert l'est.`,
+          ])}
+          <p>Chaque variante dit si elle passe à gauche, à droite ou tout droit par rapport à la ligne entre les postes.</p>`)}
+        ${slide("Courses · essai", "5. Votre itinéraire", html`
+          <p>La trace du coureur entre deux postes est mesurée sur le même modèle, puis rapprochée de la variante la plus proche (à 25 m en moyenne près,
+            sinon « autre »). Le tableau de l'Analyse solo en tire deux écarts :</p>
+          ${list([
+            html`<b>Choix</b> : le temps du modèle sur votre itinéraire, moins celui de l'itinéraire A — ce que votre choix a coûté (ou rapporté) à
+              course égale ;`,
+            html`<b>Exécution</b> : votre temps réel moins le temps du modèle sur votre itinéraire — ce que la course elle-même a coûté (hésitations,
+              erreurs, terrain plus lent que la carte ne le dit).`,
+          ])}
+          <p>Avec l'allure automatique, l'exécution est nulle en médiane : elle dit quels inter-postes ont été plus lents ou plus rapides que d'habitude.</p>`)}`,
     });
   }
 

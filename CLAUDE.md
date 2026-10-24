@@ -1332,6 +1332,32 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   to × 16, frame by frame beyond; runner and offset kept per analysis in `localStorage ocn.sh.video.<id>.<n>`. Tested locally
   with synthetic traces on the reel's invented map (scratch `mkmulti.mjs`, `mkrace.mjs`: four accounts, a route variant, a
   mistake loop, traces time-warped to a local race's published splits).
+- **Computed route choices** (owner, 2026-10-24: « the best routes for each control, with time and climb »; a prototype,
+  **administrators only**: the box « Itinéraires calculés » under « Affichage » of « Analyse solo »'s playback and of « Analyse
+  multi »'s right panel, `me.admin`): `trace/routechoice.js` (pure, run in the worker `trace/routeworker.js`), `trace/routeplan.js`
+  (the planner, the settings panel shared by both pages, the routes drawn, `autoPace`, `nearestRoute`). The map is read **by its
+  colours only** (no vector map in the analyses): areas (white, the two yellows, three greens by depth, olive) and inks (purple,
+  black, grey, brown, blue); each ink's thick parts (an opening a little wider than its own line width, within 3 × the black's;
+  6 × 6 m at least) are areas — black a building or big cliff (impassable), grey a building in sprint or bare rock, brown paved,
+  blue water —, thin black lines 30 m long or dashes chained (gap under 0.4 × their length) are paths, thin blue streams and
+  (dense) marshes; contours, the course, text and dots are painted over by the nearest area. Cells of ~1.5 m (the most frequent
+  area). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
+  metres per metre by default; down: 1 − 0.6 × grade to 15 %, then + 2.5 per unit) × the **navigation caution** (1 + caution ×
+  visibility × min(1, distance to a handrail / 50 m): handrails = paths, streams, edges between visibility groups, blocked areas'
+  banks; caution 20 % by default); the times shown exclude the caution. Heights: `terrain.js`'s grid (IGN, else the tiles), flat
+  if it fails. A* on 16 neighbours in an ellipse (0.65 L + 90 m); variants by penalising the found routes' corridors, each pulled
+  tight without the penalty in a band around it and kept only if 30 % of it lies outside the others, it costs at most A + `extra`
+  (25 %), and it is locally optimal (no 30 % stretch shortened by over 1 % + 3 m: an arc through uniform forest is no choice);
+  4 s at most for the variants. A runner's route is measured on the same model (`lineRoute`), matched to a variant within 25 m.
+  Pace: the one typed, else (solo) the median of the runner's legs' actual ÷ model time, (multi) the runners' median on the leg,
+  clamped 3-20 min/km, else 6:00. Solo computes every leg (the current first) and adds the card « Itinéraires calculés » (Choix =
+  model of one's route − A; Exécution = actual − model); multi computes the leg shown and lists the runners shown. Settings in
+  `localStorage ocn.rc.prefs` (the map's kind from the race: sprint by its name/discipline), the box's state `ocn.rc.on`.
+  « Voir le terrain tel que lu » draws the cells over the map. `window.anDebugRoutes()` on both pages. Measured 2026-10-24 on the
+  reel's invented map (2160 × 1440, 0.42 m/px): the map read in ~2.5 s, a leg 0.5-2 s; on the local test analyses' scanned GIF
+  the contours were first read as paved areas (fixed by each ink's own width). Documented in the guide (« Courses › Itinéraires
+  calculés », `content/guide.*.js` chapter `routes`, shown to administrators only). Not done: OCAD/Mapper vector maps (exact
+  symbols, `tracer/vmap/`), learning the speeds from the shared traces, purple out-of-bounds hatching (erased with the course).
 - **Languages: French and English** (owner, 2026-10-17; open to everyone since 2026-10-18, `i18n.OPEN` true). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys

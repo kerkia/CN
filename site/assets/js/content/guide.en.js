@@ -2,7 +2,7 @@
 // build(X) receives the page's helpers and returns the four tabs' chapters and builders: « The site », « Races »,
 // « Training », « Organising ». A page is named as the English menu names it, with a link.
 export function build(X) {
-  const { html, raw, subTabs, fr = true } = X;
+  const { html, raw, subTabs, fr = true, admin = false } = X;
   // a page of the site, as the menus name it
   const P = (href, label) => html`<a href="${href}">${label}</a>`;
   // another tab of the Documentation
@@ -87,7 +87,8 @@ export function build(X) {
   // ======================================================================================================
   // Races
   // ======================================================================================================
-  const COURSES = [["agenda", "Calendar"], ["resultats", "Results"], ["direct", "Live"], ["analyse", "Race analysis"], ["gps", "GPS analyses"]];
+  const COURSES = [["agenda", "Calendar"], ["resultats", "Results"], ["direct", "Live"], ["analyse", "Race analysis"], ["gps", "GPS analyses"],
+    ...(admin ? [["routes", "Computed routes"]] : [])];     // a prototype, for the administrators (2026-10-24)
   function courses() {
     return chapters(COURSES, {
       agenda: () => html`
@@ -201,6 +202,71 @@ export function build(X) {
           </div>
           <p>Files read: the map (image, PDF or KMZ), the track (GPX, FIT or TCX) and, if you have them, the map's georeferencing (KMZ, world file)
             and the courses in IOF XML.</p>`)}`,
+      routes: () => html`
+        ${slide("Races · trial, administrators", "Computed routes", html`
+          <p>In both GPS analyses, an administrator can have Ozimut suggest, for each leg, the fastest routes on the map, with their length, climb and
+            an estimated time — and measure each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
+            computed and a table under the map lists them; in ${P("#/analyse-club", "Multi analysis")}, the leg shown, with the list of runners.
+            It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong.</p>`)}
+        ${slide("Races · trial", "1. Reading the map by its colours", html`
+          <p>The map is an image: Ozimut knows only its colours. Each pixel is classed: white (runnable forest), yellow (open land, lighter or
+            darker), the three greens by their depth, olive (out of bounds), and the "inks" printed over them — black, grey, brown, blue and the
+            course's purple.</p>
+          ${list([
+            html`An ink is a <b>line</b> or an <b>area</b> by its thickness, against the map's black lines: what remains once thin lines are erased is
+              an area. Thick black is a building or a large cliff (impassable), grey a building in sprint or bare rock in forest, thick brown a paved
+              area, thick blue water.`,
+            html`<b>Thin black lines</b> long enough (30 m), or the dashes of a dashed path, make the paths. A short isolated line (a small cliff, a
+              ruin) or dots (a vegetation boundary) do not.`,
+            html`<b>Thin blue lines</b> are streams and, close together, marshes. Contours, the course, text and dots are erased: each pixel takes the
+              colour of the nearest terrain underneath.`,
+            html`The map is then cut into cells of about 1.5 m, each with its most frequent terrain. "Show the terrain as read" draws these cells over
+              the map: the first thing to check.`,
+          ])}
+          <p>Known limits: out-of-bounds hatching in purple is erased with the course; a badly lit photo blurs the colours; thin impassable cliffs,
+            walls and fences are black lines like paths (the "Thin black lines" setting says what they are).</p>`)}
+        ${slide("Races · trial", "2. The time of a step", html`
+          <p>The time from one cell to the next is the distance, multiplied by the terrain's slowness and the slope's:</p>
+          ${list([
+            html`<b>Terrain</b>: its speed as a share of runnable forest's — path 125%, open land 110%, rough open land 100%, the three greens 75, 45
+              and 20%, marsh 65%, paved area 120%. Water, buildings, out of bounds (and grey in sprint) are impassable. All set under "Speed by
+              terrain".`,
+            html`<b>Slope</b>, read on IGN's heights (RGE ALTI, in France) or the "Terrain Tiles" elsewhere: uphill, each metre climbed costs as
+              much as 8 m on the flat (the "1 m of climb is worth" setting); gently downhill one goes a little faster (up to 9% at a 15% slope),
+              steeper one brakes (at 30%, 29% slower than on the flat).`,
+            html`Steps go in 16 directions (the eight neighbours and the knight's moves), which follows a straight line within 3%.`,
+          ])}
+          <p>That time is for a reference pace in flat runnable forest: 6:00 min/km by default, or the one typed, or — when none is typed — the
+            runner's own: in Solo analysis, the median over their legs of their actual time divided by the model's time on their own route; in Multi
+            analysis, the runners' median on the leg.</p>`)}
+        ${slide("Races · trial", "3. Navigation caution", html`
+          <p>The shortest is not always the safest: far from any feature, deep in the forest, one reads the map more often, slows down, makes
+            mistakes. Ozimut calls <b>handrails</b> paths, streams, edges between different terrains and the banks of what stops (water,
+            buildings). Caution adds to a step's cost a share of its time that grows with the distance to the nearest handrail, full at 50 m:</p>
+          <p class="mx-eq">cost = time × (1 + caution × visibility × min(1, distance / 50 m))</p>
+          <p>Visibility weighs 1 in runnable forest, 1.2 to 1.4 in the greens, 0.3 in open land, 0 on a path. At 20% (the default), crossing a
+            forest with no feature costs up to a fifth more; at 0%, one runs straight like a runner who never makes a mistake. Caution chooses the
+            route; the times shown remain running times, without it.</p>`)}
+        ${slide("Races · trial", "4. Variants", html`
+          <p>Route A costs least, found by an A* search in an ellipse around the leg (wide enough to go round a lake). For the next ones, Ozimut
+            penalises the corridor of the routes found and searches again; each proposal is then pulled tight without the penalty in a band around
+            itself, and kept only if:</p>
+          ${list([
+            html`it departs from the previous ones (at least 30% of it outside their corridors);`,
+            html`it costs no more than A plus the margin chosen (25% by default);`,
+            html`it is <b>locally optimal</b>: no stretch of 30% of its length can be shortened by over 1% — a wide arc through uniform forest is not
+              a choice, a detour by a path or round a green area is.`,
+          ])}
+          <p>Each variant says whether it goes left, right or straight against the line between the controls.</p>`)}
+        ${slide("Races · trial", "5. Your route", html`
+          <p>The runner's track between two controls is measured on the same model, then matched to the nearest variant (within 25 m on average,
+            else "other"). Solo analysis's table draws two gaps from it:</p>
+          ${list([
+            html`<b>Choice</b>: the model's time on your route, minus route A's — what your choice cost (or gained) at equal running;`,
+            html`<b>Execution</b>: your actual time minus the model's time on your route — what the running itself cost (hesitations, mistakes,
+              terrain slower than the map says).`,
+          ])}
+          <p>With the automatic pace, execution is zero at the median: it shows which legs were slower or faster than usual.</p>`)}`,
     });
   }
 

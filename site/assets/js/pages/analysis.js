@@ -36,6 +36,7 @@ import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 import { takeInbox } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
+import * as RC from "../trace/routeplan.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -171,6 +172,7 @@ export async function render(main, { query = {}, route } = {}) {
         <aside class="an-side" id="an-side"></aside>
       </div>
       <section class="card" id="an-legs" hidden></section>
+      <section class="card" id="an-rc" hidden></section>
     </div>`;
   if (!perso && !races.length) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
@@ -479,7 +481,7 @@ export async function render(main, { query = {}, route } = {}) {
     prepare();
   }
   const hideResults = () => {
-    close3d(); $("#an-3d").hidden = true;
+    close3d(); $("#an-3d").hidden = true; rcReset();
     $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
     $("#an-hud").textContent = ""; $("#an-legend").hidden = true; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
@@ -1023,6 +1025,7 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
         </div><div id="an-3d-opts" hidden></div></details>
+      ${me?.admin ? html`<div id="rc-host"></div>` : ""}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
@@ -1061,6 +1064,8 @@ export async function render(main, { query = {}, route } = {}) {
     seek(0);
     $("#an-3d").hidden = false;
     if (autoV3) { autoV3 = false; toggle3d(); }
+    rcPanel();
+    if (rcs.on) rcStart();
   }
   /** A trace that ends before the race does — before the published time, or far from the finish placed on the map —
    *  was cut short (a file synced before the end, a watch stopped early): said plainly, nothing can show the rest. */
@@ -1297,6 +1302,10 @@ export async function render(main, { query = {}, route } = {}) {
     ctx.globalAlpha = 1;
     const ta = calibrated ? traceAlpha / 100 : 1;
     const lw = (px) => px / view.k;
+    if (calibrated && rcs.on) {                       // the route choices computed (administrators, a prototype)
+      if (rcs.pic) { ctx.globalAlpha = 0.6; ctx.imageSmoothingEnabled = false; ctx.drawImage(rcs.pic.canvas, 0, 0, rcs.pic.canvas.width * rcs.pic.cell, rcs.pic.canvas.height * rcs.pic.cell); ctx.globalAlpha = 1; }
+      RC.drawRoutes(ctx, rcs.routes[Math.max(0, legAt(tNow))], lw, rcPace(), clock);
+    }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (fit && fullPath && offset != null) {
       const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
@@ -1348,6 +1357,127 @@ export async function render(main, { query = {}, route } = {}) {
       }
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24) ---------------------
+  // each leg's fastest routes on the map as read, the route the runner took measured on the same model
+  const rcs = { s: RC.loadSettings(), mapSet: false, pic: null, picOn: false, plan: null, planFor: "", planMap: null, dem: null, info: null,
+    routes: [], mine: [], auto: null, token: 0, status: "", on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
+  const rcPace = () => RC.paceOf(rcs.s, rcs.auto);
+  const rcStatus = (text) => { rcs.status = text; RC.setStatus(text); };
+  function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) { c.hidden = true; c.innerHTML = ""; } }
+  function rcPanel() {
+    const host = $("#rc-host");
+    if (!host) return;
+    host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, status: rcs.status, auto: rcs.auto });
+    RC.bindPanel(host, rcs.s, (s, what) => {
+      if (what === "on" || what === "off") {
+        rcs.on = what === "on";
+        try { localStorage.setItem("ocn.rc.on", rcs.on ? "1" : "0"); } catch (e) { /* this visit */ }
+        if (rcs.on) rcStart(); else { rcReset(); draw(); }
+      } else if (what === "picture-on") { rcs.picOn = true; rcPicture(); }
+      else if (what === "picture-off") { rcs.picOn = false; rcs.pic = null; draw(); }
+      else if (what === "pace") { rcTable(); draw(); }
+      else { if (what === "map") rcs.mapSet = true; if (what === "reset") rcPanel(); rcRun(); }
+    });
+  }
+  async function rcStart() {
+    if (!rcs.on || !calibrated || !fit || !map) return;
+    if (!rcs.mapSet) { rcs.s.map = !perso && RC.isSprint(race) ? "sprint" : "forest"; const sel = $("#rc-map"); if (sel) sel.value = rcs.s.map; }
+    const my = ++rcs.token;
+    const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",");
+    if (!rcs.plan || rcs.planFor !== sig || rcs.planMap !== map) {
+      rcs.plan?.destroy();
+      rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y)); rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
+    }
+    rcStatus(t("rc.st.reading"));
+    try {
+      rcs.info = await rcs.plan.ready;
+      if (my !== rcs.token) return;
+      if (!rcs.dem) {
+        rcStatus(t("rc.st.relief"));
+        try { const g = await heights((f) => { if (my === rcs.token) rcStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) })); }); await rcs.plan.dem(g); rcs.dem = g.source; }
+        catch (e) { console.warn(e); rcs.dem = "none"; }
+        if (my !== rcs.token) return;
+      }
+      if (rcs.picOn) rcPicture();
+      await rcRun();
+    } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }
+  }
+  async function rcRun() {
+    if (!rcs.plan || !rcs.on || !rcs.info) return;
+    const my = ++rcs.token;
+    rcs.routes = []; rcs.mine = []; rcs.auto = null;
+    try {
+      await rcs.plan.settings(rcs.s);
+      if (my !== rcs.token) return;
+      const n = targets.length - 1, now = Math.max(0, legAt(tNow));
+      const order = [...Array(Math.max(0, n)).keys()].sort((a, b) => (a === now ? -1 : b === now ? 1 : a - b));
+      let done = 0;
+      const t0 = performance.now();
+      for (const i of order) {
+        rcStatus(t("rc.st.legs", { n: done, t: n }));
+        const a = targets[i]?.pos, b = targets[i + 1]?.pos;
+        if (a && b && !targets[i].missed && !targets[i + 1].missed) {
+          const routes = await rcs.plan.leg(a, b);
+          if (my !== rcs.token) return;
+          rcs.routes[i] = routes;
+          const l = legs[i];
+          if (routes && l?.t0 != null && l.t1 != null && offset != null) {
+            const i0 = indexAt(track, offset + l.t0), i1 = indexAt(track, offset + l.t1), pts = [];
+            for (let k = i0; k <= i1; k++) pts.push([pxs[k], pys[k]]);
+            if (pts.length > 1) {
+              const m = await rcs.plan.line(pts);
+              if (my !== rcs.token) return;
+              rcs.mine[i] = { ...m, variant: RC.nearestRoute(routes, pts, 25 * fit.scale), actual: l.time };
+            }
+          }
+          if (i === Math.max(0, legAt(tNow))) draw();
+        }
+        done++;
+      }
+      rcs.auto = RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
+      const found = rcs.routes.filter(Boolean).length;
+      rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
+        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }));
+      const p = $("#rc-pace"); if (p && rcs.auto) p.placeholder = RC.minKm(rcs.auto);
+      rcTable(); draw();
+    } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }
+  }
+  window.anDebugRoutes = () => ({ on: rcs.on, info: rcs.info, dem: rcs.dem, routes: rcs.routes, mine: rcs.mine, auto: rcs.auto, settings: rcs.s });
+  async function rcPicture() {
+    if (!rcs.plan) return;
+    try { rcs.pic = await rcs.plan.picture(); } catch (e) { rcs.pic = null; }
+    if (!rcs.picOn) rcs.pic = null;
+    draw();
+  }
+  /** The legs' routes as a table: each variant's time at the pace, length and climb; the runner's own, measured alike. */
+  function rcTable() {
+    const el = $("#an-rc");
+    if (!el) return;
+    const rows = legs.map((l, i) => ({ l, i, routes: rcs.routes[i], mine: rcs.mine[i] })).filter((x) => x.routes?.length);
+    if (!rcs.on || !rows.length) { el.hidden = true; el.innerHTML = ""; return; }
+    const pace = rcPace(), nV = Math.max(...rows.map((x) => x.routes.length));
+    const how = rcs.s.pace > 0 ? "rc.pace.typed" : rcs.auto ? "rc.pace.auto" : "rc.pace.default";
+    el.hidden = false;
+    el.innerHTML = html`<div class="card-head"><div><h2>${t("rc.table")} <span class="pill rc-pill">${t("rc.admin")}</span></h2>
+        <div class="hint">${t("rc.table.hint", { p: RC.minKm(pace), how: t(how) })}</div></div></div>
+      <div class="table-wrap"><table class="data compact" data-freeze="1" data-freeze-phone="1"><thead><tr><th>${t("an.col.leg")}</th>
+        ${Array.from({ length: nV }, (_, n) => html`<th><span class="rc-dot" style="background:${RC.ROUTE_COLOURS[n]}"></span> ${RC.LETTERS[n]}</th>`)}
+        <th>${t("rc.col.mine")}</th><th class="r" title="${t("rc.col.choice.hint")}">${t("rc.col.choice")}</th><th class="r" title="${t("rc.col.exec.hint")}">${t("rc.col.exec")}</th></tr></thead>
+      <tbody>${rows.map(({ l, i, routes, mine }) => {
+        const best = routes[0].time;                    // the route suggested at the caution chosen
+        return html`<tr data-leg="${i}" style="cursor:pointer"><td>${l.label}${l.code ? html` <span class="muted">${l.code}</span>` : ""}</td>
+          ${Array.from({ length: nV }, (_, n) => { const r = routes[n]; return html`<td class="num">${r ? html`${RC.routeFacts(r, pace, clock)} <span class="muted">· ${RC.sideLabel(r)}</span>` : ""}</td>`; })}
+          <td class="num">${mine ? html`${mine.variant >= 0 ? html`<span class="rc-dot" style="background:${RC.ROUTE_COLOURS[mine.variant]}"></span> ${RC.LETTERS[mine.variant]}` : t("rc.other")} · ${clock(mine.time * pace)} · ${fmt(Math.round(mine.len / 10) * 10)} m` : "—"}</td>
+          <td class="r num">${mine ? signed(Math.round((mine.time - best) * pace)) : "—"}</td>
+          <td class="r num">${mine && mine.actual != null ? signed(Math.round(mine.actual - mine.time * pace)) : "—"}</td></tr>`;
+      })}</tbody></table></div>`;
+    $$("#an-rc tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => {
+      const l = legs[Number(tr.dataset.leg)];
+      if (l?.t0 == null) return;
+      stop(); zoomTo(l); seek(l.t0);
+    }));
   }
 
   // ---- the 3D view (a prototype, 2026-10-24): the map over the ground's heights, on the playback's own clock --------------
@@ -1516,7 +1646,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
     themeWatch.disconnect();
-    stop(); ro.disconnect(); prepToken++; close3d();
+    stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
   } };
 }

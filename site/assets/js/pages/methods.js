@@ -14,7 +14,7 @@ import { timeChart, scatterChart, methodColor, terrainColor, METHOD_SLOT, css } 
 import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery } from "../app.js";
-import { sees } from "../auth.js";
+import { sees, session } from "../auth.js";
 import * as TR from "../tracer/icons.js";
 import * as TRD from "../tracer/ribbon-data.js";
 
@@ -150,7 +150,7 @@ export async function render(main, { query = {} } = {}) {
     r6, n0, more, fr });
   // the guide to the site (owner, 2026-10-24: the page told the methods, not the site): its tabs first, then the methods';
   // « L'étude » has a panel but no button — the Ozimut method's tab leads to it
-  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr });
+  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin });
   const at = (k) => C.TABS.filter(([x]) => x === k);
   const TABS = [["site", G.LABELS.site], ["courses", G.LABELS.courses], ...at("officiel"), ...at("top"), ...at("calculs"),
     ["entrainement", G.LABELS.entrainement], ["orga", G.LABELS.orga], ...at("tracer")];
