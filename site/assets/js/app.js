@@ -108,7 +108,7 @@ function parseHash(hash = location.hash) {
     : head === "clubs" ? "clubs"
     : head === "club" ? "club"
     : head === "apercu" ? "overview"
-    : head === "methodes" ? "methods"
+    : head === "documentation" || head === "methodes" ? "methods"   // (« methodes » until 2026-10-24: old links)
     : head === "comparer-clubs" ? "clubcompare"
     : head === "reseau" ? "network"
     : head === "compte" ? "account"
@@ -402,7 +402,7 @@ function renderHeader(r) {
           <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
         <div class="nav-menu">
           ${me.lic ? html`<a href="${link.runner(`fr${me.lic}`)}" ${raw(route === "runner" && [me.lic, `fr${me.lic}`].includes(parseHash().arg) ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
-          <a href="#/methodes" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
+          <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           ${me.demo ? "" : html`<button type="button" id="install-btn" ${raw(pwa.installState() === "ready" ? "" : "hidden")}>${t("pwa.menu")}</button>`}
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
@@ -660,6 +660,11 @@ async function route_() {
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there
+  // the Documentation's address is « #/documentation » since 2026-10-24: an old « #/methodes » link shows the new one
+  if (r.route === "methods" && /^#\/methodes\b/.test(location.hash)) {
+    history.replaceState(null, "", location.hash.replace(/^#\/methodes/, "#/documentation"));
+    r = parseHash();
+  }
   if (r.route === "deposit") {
     history.replaceState(null, "", `#/orga-resultats${r.query.course ? `?course=${encodeURIComponent(r.query.course)}` : ""}`);
     r = parseHash();

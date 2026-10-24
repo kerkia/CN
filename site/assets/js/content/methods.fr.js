@@ -160,7 +160,7 @@ export function build(X) {
           <td class="r">les ${pctOf(f)} meilleurs</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
       <p style="margin-top:14px">Les raisons de chaque choix, les variantes essayées et
         les mesures qui les justifient sont dans
-        <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>.</p>
+        <a href="#/documentation?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>.</p>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
@@ -194,7 +194,7 @@ export function build(X) {
         circuit était piégeux ; les écarter dit la difficulté du circuit couru sans faute. La bonne part n'est pas la même partout : en forêt, où une
         course sur douze se perd, presque tout le peloton renseigne ; en sprint, où les erreurs sont deux fois plus rares, les plus lents brouillent la
         mesure. Chaque part a été choisie parce qu'elle prédit le mieux les résultats dans sa spécialité
-        (<a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>).</p>
+        (<a href="#/documentation?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">l'étude</a>).</p>
       <ul class="mx-list">
         <li><span>Quand le circuit ne compte que ${fmt(pf.min_ranked)} coureurs ayant un niveau, les ${fmt(pf.min_ranked)} comptent, comme dans la règle
           officielle.</span></li>
@@ -744,7 +744,7 @@ export function build(X) {
               de chaque spécialité. Il est calculé sur le niveau mesuré deux mois plus tôt, en moyenne sur 13 mois, prolongé de 10 mois au rythme de la montée
               des dix dernières années, dans les quatre spécialités ; les mois se comptent au calendrier.</span></li>
           </ul>
-          <p>Les règles complètes sont dans l'onglet <a href="#/methodes?onglet=top" data-tab-link="top">Méthode Ozimut</a>.</p>
+          <p>Les règles complètes sont dans l'onglet <a href="#/documentation?onglet=top" data-tab-link="top">Méthode Ozimut</a>.</p>
           <p><a class="mx-dl" href="${PDF}" download>⬇ Télécharger l'étude en PDF (livre blanc)</a></p>
         </section>
         <section class="mx-slide">

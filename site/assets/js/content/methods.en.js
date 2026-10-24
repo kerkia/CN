@@ -160,7 +160,7 @@ export function build(X) {
           <td class="r">the best ${pctOf(f)}</td><td class="r">${shareName(sf)}</td></tr>`)}</tbody></table></div>
       <p style="margin-top:14px">The reasons for each choice, the variants tried and the
         measurements that support them are in
-        <a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">the study</a>.</p>
+        <a href="#/documentation?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">the study</a>.</p>
     </section>
 
     <section class="mx-slide" style="--c:var(--s1)">
@@ -194,7 +194,7 @@ export function build(X) {
         course was; leaving them out tells how hard the course was when run without mistakes. The right share is not the same everywhere: in forest, where
         runners get lost in one race in twelve, almost the whole field is informative; in sprint, where mistakes are half as common, the slowest blur the
         measurement. Each share was chosen because it best predicts the results in its discipline
-        (<a href="#/methodes?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">the study</a>).</p>
+        (<a href="#/documentation?onglet=etude&voir=choix" data-tab-link="etude" data-goto="choix">the study</a>).</p>
       <ul class="mx-list">
         <li><span>When the course has only ${fmt(pf.min_ranked)} runners with a level, all ${fmt(pf.min_ranked)} count, as in the official
           rule.</span></li>
@@ -744,7 +744,7 @@ export function build(X) {
               in each discipline at ${fmt(pf.anchor_target)}. It is calculated on the level measured two months earlier, averaged over 13 months, extended by 10 months at the pace of the rise
               over the last ten years, in all four disciplines; months are counted by the calendar.</span></li>
           </ul>
-          <p>The full rules are in the <a href="#/methodes?onglet=top" data-tab-link="top">Ozimut method</a> tab.</p>
+          <p>The full rules are in the <a href="#/documentation?onglet=top" data-tab-link="top">Ozimut method</a> tab.</p>
           <p><a class="mx-dl" href="${PDF}" download>⬇ Download the study as a PDF (white paper)</a></p>
         </section>
         <section class="mx-slide">

@@ -58,13 +58,18 @@ const est = (a) => a && (a[1] > 0 || a[2] < 0);
 const star = (a) => (est(a) ? "*" : "");
 
 /** Another country's ranking: what differs from France's, whose study the page tells (i18n doc.country.<cc>). */
-function countryNote() {
+function countryNote(from) {
+  if (from) return html`<div class="notice info" style="margin-bottom:16px">${t("doc.country.none")}</div>`;     // (France's figures shown)
   const cc = data.loadedCountry(), key = `doc.country.${cc}`;
   return cc !== "FR" && t(key) !== key ? html`<div class="notice info" style="margin-bottom:16px">${raw(t(key))}</div>` : "";
 }
 
 export async function render(main, { query = {} } = {}) {
-  const meta = data.meta();
+  // the method's parameters, recalage and measures: the site's country's, else France's — a country without a ranking of
+  // its own (only its agenda: Switzerland…) has none, and the method and its study are France's (2026-10-24: « meta is null »)
+  const from = data.meta()?.methods?.top6w ? null : "FR";
+  const meta = from ? await data.countryJson(from, "meta.json") : data.meta();
+  if (!meta?.methods?.top6w) throw new Error(t("err.load"));
   const pf = meta.methods.fair.params, p6 = meta.methods.top6w.params;
   // the methods the documentation names: the official one and Ozimut (top6w); never the usual level (fair)
   const M = available();
@@ -77,7 +82,9 @@ export async function render(main, { query = {} } = {}) {
   const TNAME = { For: "Forêt", Spr: "Sprint", VTT: "VTT", Ski: "Ski" };     // meta's keys (i18n-ignore)
 
   // the live evaluation (site_eval.py) and the 2025 duel validation; the study's numbers (a static file, public)
-  const [v, ev, study] = await Promise.all([data.validation(), data.evaluation(),
+  const [v, ev, study] = await Promise.all([
+    from ? data.countryJson(from, "validation.json").catch(() => null) : data.validation(),
+    from ? data.countryJson(from, "evaluation.json").catch(() => null) : data.evaluation(),
     fetch("assets/study.json", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   const season = v ? v.season || Object.keys(v.acc.For?.all || {}).pop() : null;
   const VM = v ? M.filter((m) => v.methods.includes(m)) : [];
@@ -145,7 +152,7 @@ export async function render(main, { query = {} } = {}) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("page.methods")}</h1>
       <p class="lede">${C.lede}</p></div></div>
-    ${countryNote()}
+    ${countryNote(from)}
     <nav class="mx-tabs" role="tablist">${TABS.map(([k, label], i) => html`<button type="button" role="tab" data-tab="${k}"
       aria-selected="false"><span class="mx-n">${i + 1}</span>${label}</button>`)}</nav>
     ${TABS.map(([k]) => html`<div data-panel="${k}" role="tabpanel" hidden></div>`)}

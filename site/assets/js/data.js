@@ -18,6 +18,8 @@ const cache = new Map();
 const getJson = (path) => fetchJson(root() + path);
 /** A file of the site's own (data/meta.json…). */
 export const getSiteJson = (path) => fetchJson("data/" + path);
+/** A file of another country's folder (the Documentation reads France's when the site's country has no ranking). */
+export const countryJson = (cc, path) => fetchJson(dirOf(cc) + path);
 
 async function fetchJson(url) {
   const path = url;

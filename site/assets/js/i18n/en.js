@@ -684,6 +684,7 @@ export default {
   "cp.tab.h2h": "Head-to-head",
   "cp.tab.progress": "Progress",
   "rn.fed.all": "The whole ranking", "rn.fed.rank": "{r} of {n}",
+  "doc.country.none": "Ozimut has no ranking for this country yet: the method and the measures shown here are France's, where it was developed.",
   "doc.country.ES": "<b>In Spain.</b> The Ozimut method is France's, with one setting measured on Spain's races (July 2025 – October 2026, the same runners): in forest a course's value is computed on the fastest two thirds (instead of 90 %), which predicts the results better by 0.4 point of duels. Spain has no official index to start from: the archive's first season starts from each category's usual level against M21, as measured in France, and the races do the rest. Every runner of Spain's races is ranked, visitors included. On the same runners, the Ozimut index predicts who finishes ahead better than FEDO's rule applied on the day (the category winner's time over the runner's, mean of the best 6 races of 12 months): +5.0 points of duels in forest, +5.4 in sprint. FEDO's ranking is shown as FEDO publishes it, in the ranking's “FEDO ranking” tab. The study below is the one made in France.",
   "rk.tab.fed": "{f} ranking", "f.region": "Regional federation",
   "fed.none": "The federation ({f}) publishes no ranking the site has read.",
