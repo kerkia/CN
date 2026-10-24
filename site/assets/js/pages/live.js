@@ -168,9 +168,10 @@ async function race(main, id, wanted, arg) {
   if (wanted === PASS_VIEW) { st.view = "pass"; st.pf = arg === "mine" ? "mine" : "all"; }
   else if (wanted === CLUB_VIEW) { st.view = "club"; st.club = arg || "mine"; }
   else st.cls = wanted;
-  main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><h1 id="lv-title">…</h1><div class="lv-sub" id="lv-sub"></div></div>
-      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span><span id="lv-trk"></span>
-        <a class="btn btn-sm" id="lv-an" hidden title="${t("lv.analyse.tip")}">${t("lv.analyse")} →</a></div></div>
+  // the way to the split-time analysis beside the race's name, as « Analyse de course » has its way back (owner, 2026-10-24)
+  main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><div class="lv-tl"><h1 id="lv-title">…</h1>
+        <a class="btn btn-sm" id="lv-an" hidden title="${t("lv.analyse.tip")}">${t("lv.analyse")} →</a></div><div class="lv-sub" id="lv-sub"></div></div>
+      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span><span id="lv-trk"></span></div></div>
     <div class="lv-layout">
       <aside class="lv-side"><div class="lv-list" id="lv-chips"></div></aside>
       <div class="lv-main">

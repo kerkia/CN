@@ -1118,7 +1118,7 @@ export default {
   "lv.now.title": "En direct maintenant",
   "lv.now.hint": "Les courses dont un poste ou l'arrivée a enregistré un passage ces {m} dernières minutes.",
   "lv.badge": "direct",
-  "lv.analyse": "Analyse de course", "lv.analyse.tip": "Les temps intermédiaires reçus jusqu'ici, dans « Analyse de course » : temps perdu, écarts, passages, groupes…",
+  "lv.analyse": "Analyse", "lv.analyse.tip": "Les temps intermédiaires reçus jusqu'ici, dans « Analyse de course » : temps perdu, écarts, passages, groupes…",
   "lv.org": "Organisateur",
   "lv.connecting": "Connexion…",
   "lv.offline": "Hors ligne — reconnexion…",

@@ -371,7 +371,8 @@ and the race page's buttons lead there. **Live races** (`course=direct-<race>`, 
 (`/ws/<race>`, subscribed `"*"`) read as one document of the provisional shape in the browser (`toDoc`: status 0 → ok, 9/10 →
 « run », shown « en course »; the radio controls are the controls, code % 1000 when unnamed; nothing stored); drawn once the
 class asked for has come, then new times of the course shown offer « Actualiser » (no redraw under the reader's eyes; the others'
-are taken quietly). « En direct »'s race page shows « Analyse de course → » once a split time has come, and the list's box « En
+are taken quietly). « En direct »'s race page shows « Analyse → » beside the race's name (owner, 2026-10-24: where « Analyse de course » has
+  its way back to « En direct ») once a split time has come, and the list's box « En
 direct, avec temps intermédiaires » lists the site's country's races live now whose live gives splits (`probe`: the relay's hello
 — a last passing at a radio control — else one class read; 6 races at most, each connection closed at once). Its analysis — WinSplits' and MeOS's time loss (the leg against the runner's
 usual pace, signed; since 2026-10-24, owner, `trace/legs.js` `refLegs`/`usualPace`/`legLoss`, shared with the GPS analyses: the

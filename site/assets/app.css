@@ -1633,6 +1633,10 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
    no scrollbar of the table's own (the page's only: a course holds a few dozen runners); every runner on two lines */
 .lv-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; margin-bottom: 10px; }
 .lv-hl { min-width: 0; }
+/* the race's name and the way to its analysis on one line, as « Analyse de course »'s title and its way back */
+.lv-tl { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+.lv-tl h1 { min-width: 0; }
+.lv-tl .btn { flex: none; }
 .lv-head h1 { margin: 0; font-size: 22px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lv-sub { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
 .lv-hr { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }

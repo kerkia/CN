@@ -1644,7 +1644,7 @@ export default {
   "lv.now.title": "Live now",
   "lv.now.hint": "Races where a control or the finish recorded a punch in the last {m} minutes.",
   "lv.badge": "live",
-  "lv.analyse": "Race analysis",
+  "lv.analyse": "Analysis",
   "lv.analyse.tip": "The split times received so far, in “Race analysis”: time lost, gaps, passings, groups…",
   "lv.org": "Organiser",
   "lv.connecting": "Connecting…",
