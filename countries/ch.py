@@ -17,8 +17,8 @@ from countries.base import Country
 
 COUNTRY = Country(code="CH", federation="Swiss Orienteering", access="all", db=paths.DATA_DIR / "ch.sqlite3",
                   time_zones=("Europe/Zurich",), lang="de-CH,de;q=0.8,fr;q=0.6,en;q=0.4", results=False)
-AGENDA_VERSION = 4                       # 2: the canton from the place (countries/places, 2026-10-24); 3: from the coordinates;
-                                         # 4: the CSV's region always kept
+AGENDA_VERSION = 5                       # 2: the canton from the place (countries/places, 2026-10-24); 3: from the coordinates;
+                                         # 4: the CSV's region always kept; 5: a village of the association (`_by_word`)
 BASE = "https://www.o-l.ch/cgi-bin/fixtures"
 SPEC = {"foot": agenda.FOOT, "bike": agenda.MTBO, "ski": agenda.SKI}
 # the regional associations (the CSV's codes)
@@ -95,6 +95,42 @@ def _place(e: dict) -> None:
         e["dep"], e["region"] = m.group(1), of[m.group(1)]
         return
     agenda.locate("CH", e, expect=e.get("region"))
+    if not e.get("dep"):
+        _by_word(e)
+
+
+# a forest or hill named after its village (« Allschwilerwald », « Rheinfelderberg », « Churer Altstadt »)
+COMPOUND = re.compile(r"^(\w{4,}?)er(?:wald|berg|hard|holz|horn|egg|feld|weid|moos|ried|allmend|altstadt)?$")
+# a race's words that are villages too (« Staffel »)
+RACE_WORDS = {"staffel", "lauf", "cup", "nacht", "team", "einzel", "sommer", "winter", "jugend", "nationaler", "schweizer",
+              "sprint", "galoppen", "schuler", "meisterschaft", "etappe", "kurs", "zentralkurs", "weltcup", "noch", "offen",
+              "vakant"}
+
+
+def _by_word(e: dict) -> None:
+    """The last resort: a word of the place, else of the name, that is a village of the calendar's own association and of
+    one canton there (« i.d.R. Magglingen », « Rossweid Sörenberg », « Swiss O Days Muotatal »), or the village a forest is
+    named after; a village too small for `places.locate` to take inside a longer text, trusted only within the association.
+    A canton named in the title (« Basler », « Baselbieter ») is the organisers' and says nothing of the forest."""
+    from countries import places
+    t = places.table("CH")
+    region = e.get("region")
+    if not t or region not in t["regions"]:
+        return
+    ri = t["regions"].index(region)
+    for text, top in ((e.get("place"), 99), (e.get("name"), 7.5)):
+        for w in places.fold(text).split():
+            stems = [w]
+            m = COMPOUND.match(w)
+            if m:
+                stems += [m.group(1), m.group(1) + "en", m.group(1) + "n"]
+            for s in stems:
+                if len(s) < 4 or s in places.STOP or s in RACE_WORDS:
+                    continue
+                depts = {c[1] for c in t["keys"].get(s, ()) if c[0] == ri and c[1] >= 0 and 2.4 <= c[2] < top}
+                if len(depts) == 1:
+                    e["dep"] = t["depts"][depts.pop()][0]
+                    return
 
 
 refresh_agenda, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"solv": "o-l.ch"},
