@@ -208,6 +208,15 @@ async function race(main, id, wanted, arg) {
   // that day), today's Top, and the strength (Fit) one at J-15 that values the circuit for the Top score
   // without France (owner, 2026-10-20): the race as liveresultat gives it, no CN, score or expected place
   const FR = sees("FR");
+  // one line per runner, the table scrolling sideways (owner, 2026-10-24: a preview for the accounts the server names, see
+  // _lib/api.js previewOf; everyone else keeps two lines a runner): each two-line cell split into two columns
+  const ONE = (session()?.preview || []).includes("live1line");
+  const two = (a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
+  // a pair of values: one cell of two lines, or two cells (the second's class `cls2`)
+  const pair = (cls, a, b, cls2 = "r num lv-2") => (ONE ? html`<td class="${cls}">${a}</td><td class="${cls2}">${b || ""}</td>`
+    : html`<td class="${cls}">${two(a, b)}</td>`);
+  const pairHead = (a, b, title = "", cls = "r") => (ONE ? html`<th class="${cls}" title="${title}">${a}</th><th class="${cls}" title="${title}">${b}</th>`
+    : html`<th class="${cls}" title="${title}">${subHead(a, b)}</th>`);
   // the method: one button naming the ranking shown, a click shows the other (the header's switch is not drawn here)
   function methodBtn() {
     const el = $("#lv-method");
@@ -468,30 +477,32 @@ async function race(main, id, wanted, arg) {
         e != null && e > now ? html`${last ? " · " : ""}<span class="lv-eta" title="${t("lv.eta.tip")}">${t("lv.eta", { t: tod(e) })}</span>` : ""}`;
     } else if (k === "out") time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
     if (sub && sub.s === "") sub = "";
-    const two =(a, b) => html`<div>${a}</div>${b ? html`<div class="lv-2">${b}</div>` : ""}`;
     const cls = [rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
+    const g = x.score && x.cn ? x.score - x.cn : null;
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
-      <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
+      <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
       <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
       ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button></td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}
-      ${o.cat ? html`<td class="lv-cat lv-d">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>` : ""}
+      ${o.cat ? html`<td class="lv-cat${ONE ? "" : " lv-d"}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>` : ""}
       <td class="r num lv-st">${tod(start)}</td>
-      <td class="r num lv-t">${two(time, sub)}</td>
-      ${FR ? html`<td class="r num">${two(x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`, x.expected ? String(x.expected) : "")}</td>
-      <td class="r num lv-sc">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>` : ""}</tr>`;
+      ${pair("r num lv-t", time, sub)}
+      ${FR ? html`${pair("r num", x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`, x.expected ? String(x.expected) : "")}
+      ${ONE ? html`<td class="r num">${x.score == null ? "" : x.score ? fmt(x.score) : html`<span class="dim">0</span>`}</td>
+        <td class="r num lv-sc">${g == null ? "" : html`<span class="gap ${g > 0 ? "delta-up" : g < 0 ? "delta-down" : "dim"}">${g > 0 ? "+" : g < 0 ? "−" : "±"}${fmt(Math.abs(g))}</span>`}</td>`
+        : html`<td class="r num lv-sc">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>`}` : ""}</tr>`;
   }
   function table(groups, now, o) {
     const m = store.get().method;
-    const cols = 4 + (o.course ? 1 : 0) + (o.club ? 1 : 0) + (o.cat ? 1 : 0) + (FR ? 2 : 0);
-    const block = (k) => (groups[k]?.length ? html`<tr class="lv-sec"><td colspan="${cols}">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></td></tr>
+    const cols = 4 + (o.course ? 1 : 0) + (o.club ? 1 : 0) + (o.cat ? 1 : 0) + (FR ? 2 : 0) + (ONE ? 1 + (FR ? 2 : 0) : 0);
+    const block = (k) => (groups[k]?.length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></span></td></tr>
       ${groups[k].map((x) => line(x, k, now, o))}` : "");
-    return html`<table class="data compact lv-table"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+    return html`<table class="data compact lv-table${ONE ? " lv-one" : ""}"><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
       ${o.course ? html`<th>${t("prov.circuit")}</th>` : ""}${o.club ? html`<th>${t("prov.club")}</th>` : ""}
-      ${o.cat ? html`<th class="lv-d" title="${t("prov.catCn")}">${t("prov.cat")}</th>` : ""}<th class="r">${t("lv.start")}</th>
-      <th class="r">${subHead(t("prov.time"), t("lv.behind"))}</th>
-      ${FR ? html`<th class="r" title="${cnLabel(m)} — ${m === "official" ? `${t("lv.cnJ15.hint")} — ` : ""}${t("lv.expected.hint")}">${subHead(t(`cn.${m}.S`), t("lv.expected"))}</th>
-      <th class="r" title="${scoreLabel(m)} — ${t("lv.score.hint")}">${subHead(t("lv.score"), t("lv.gap"))}</th>` : ""}</tr></thead>
+      ${o.cat ? html`<th class="${ONE ? "" : "lv-d"}" title="${t("prov.catCn")}">${t("prov.cat")}</th>` : ""}<th class="r">${t("lv.start")}</th>
+      ${pairHead(t("prov.time"), t("lv.behind"))}
+      ${FR ? html`${pairHead(t(`cn.${m}.S`), t("lv.expected"), `${cnLabel(m)} — ${m === "official" ? `${t("lv.cnJ15.hint")} — ` : ""}${t("lv.expected.hint")}`)}
+      ${pairHead(t("lv.score"), t(ONE ? "lv.gapCn" : "lv.gap"), `${scoreLabel(m)} — ${t("lv.score.hint")}`)}` : ""}</tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`;
   }
   const grouped = (rows, now) => {
@@ -566,17 +577,19 @@ async function race(main, id, wanted, arg) {
     const shown = inWindow.length ? inWindow : evs.slice(0, 20);
     if (!shown.length) return html`<div class="empty">${t("lv.pf.none")}</div>`;
     return html`<div class="lv-pwin muted">${t(inWindow.length ? "lv.pass.window" : "lv.pass.quiet")}</div>
-      <table class="data compact lv-table lv-ptable"><thead><tr><th>${t("lv.at")}</th><th>${t("lv.ev")}</th><th>${t("prov.name")}</th>
-      <th>${t("prov.circuit")}</th><th class="r">${subHead(t("prov.time"), t("lv.behind"))}</th><th class="r">${t("prov.place")}</th><th class="r">${t("lv.start")}</th></tr></thead>
+      <table class="data compact lv-table lv-ptable${ONE ? " lv-one" : ""}"><thead><tr><th>${t("lv.at")}</th><th>${t("lv.ev")}</th>
+      ${ONE ? html`<th>${t("prov.name")}</th><th>${t("prov.club")}</th><th>${t("prov.circuit")}</th><th>${t("prov.cat")}</th>`
+        : html`<th>${t("prov.name")}</th><th>${t("prov.circuit")}</th>`}
+      ${pairHead(t("prov.time"), t("lv.behind"))}<th class="r">${t("prov.place")}</th><th class="r">${t("lv.start")}</th></tr></thead>
       <tbody>${shown.map((e) => {
         const name = e.r ? e.r[1] : e.name, fin = Number(e.ctl) === 1000;
         const gap = e.gap ? `+${hs(e.gap)}` : e.place === 1 ? "+0:00" : "";
         return html`<tr class="lv-prow ${recent(e.at, now)}" data-go="${e.cls}" data-name="${name}">
           <td class="num muted">${tod(e.at)}</td>
           <td><span class="lv-ev ${fin ? "lv-ev-fin" : "lv-ev-radio"}">${raw(fin ? FINISH_ICON : RADIO_ICON)} ${ctlOf(e.ctl, e.ctlName)}</span></td>
-          <td class="lv-n"><div class="lv-clamp"><b>${name}</b></div>${e.r?.[2] ? html`<div class="lv-2">${e.r[2]}</div>` : ""}</td>
-          <td class="lv-c"><div>${fmtCat(e.cls)}</div>${e.x?.me?.cat && !CAT_CLASS.test(e.cls) ? html`<div class="lv-2">${fmtCat(e.x.me.cat)}</div>` : ""}</td>
-          <td class="r num"><div><b>${e.time}</b></div>${gap ? html`<div class="lv-2">${gap}</div>` : ""}</td>
+          ${pair("lv-n", html`<div class="lv-clamp"><b>${name}</b></div>`, e.r?.[2] || "", "lv-c")}
+          ${pair("lv-c", fmtCat(e.cls), e.x?.me?.cat && !CAT_CLASS.test(e.cls) ? fmtCat(e.x.me.cat) : "", "lv-c")}
+          ${pair("r num", html`<b>${e.time}</b>`, gap)}
           <td class="r num">${e.place ?? ""}</td><td class="r num">${e.r ? tod(e.r[7]) : ""}</td></tr>`;
       })}</tbody></table>`;
   }

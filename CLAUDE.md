@@ -1287,7 +1287,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   once when asked) and sends them all; it keeps every class under its own storage key (`c:<class>`, the former single
   « data » value migrated at the first save). Every table has the start time; no scrollbar of its own (the last columns may
   scroll sideways), every runner on two lines (place | name | [course] | club | start | time/gap | CN/expected | score/gap),
-  the runner's category (from the data) when the class is not one, under the place on a phone; the punches' table (« Passages »,
+  the runner's category (from the data) when the class is not one, under the place on a phone; the first column (« Place », the
+  punches' time of day) frozen when a table scrolls sideways (owner, 2026-10-24: opaque, the row's tint `--lv-tint` drawn over
+  it). **One line per runner, a preview** (owner, 2026-10-24): each two-line cell split into two columns (Temps | Écart, CN |
+  Attendu, Score | Écart {cnTo}, Catégorie, in « Passages » Nom | Club and Circuit | Cat.), nothing wraps, the table scrolls
+  sideways (`live.js` `ONE`, `.lv-one`); shown only to the accounts the Pages secret `PREVIEW_ACCOUNTS` names (account ids or
+  verified e-mails, never in the repository: `_lib/api.js` `previewOf` → `preview: ["live1line"]` on `/api/account/me`, kept by
+  `auth.fromUser`); local test: launch configs `ocn-live-1line` (the mock and the relay in one) + `pages-dev-1line` (8791,
+  binding `PREVIEW_ACCOUNTS` = the local test account; start it once the relay is up, or the WebSocket fails); the punches' table (« Passages »,
   owner 2026-10-22): **every punch of the last 15 minutes**, derived from the courses' results (each radio control passed and
   each finish at start + its time; the relay's last 30 only for a course not held yet), else the latest 20 — time of day, the
   event (radio control ○ / finish ◎), runner and club, course and category, time and gap, place, start. **Recent ones

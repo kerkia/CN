@@ -1168,6 +1168,7 @@ export default {
   "lv.expected.hint": "La place que {cnThe} du coureur laisse attendre parmi ceux du circuit qui en ont un",
   "lv.noClasses": "Pas encore de circuits publiés pour cette course : ils apparaîtront ici dès que l'organisateur les mettra en ligne.",
   "lv.behind": "Écart",
+  "lv.gapCn": "Écart {cnTo}",
   "lv.empty": "Pas encore de résultat dans ce circuit.",
   "dep.title": "Déposer des résultats",
   "dep.lede": "Chargez le fichier de résultats exporté de votre logiciel de chronométrage. Il est lu ici, dans votre navigateur : rien n'est envoyé. Vous voyez aussitôt les résultats et toutes les analyses des temps intermédiaires, puis vous choisissez, si vous le souhaitez, de le publier sur Ozimut.",

@@ -1696,6 +1696,7 @@ export default {
   "lv.expected.hint": "The place {cnThe} of the runner predicts among those on the course who have one",
   "lv.noClasses": "No courses published yet for this race: they will appear here as soon as the organiser puts them online.",
   "lv.behind": "Gap",
+  "lv.gapCn": "Gap {cnTo}",
   "lv.empty": "No results on this course yet.",
   "dep.title": "Upload results",
   "dep.lede": "Load the results file exported from your timing software. It is read here, in your browser: nothing is sent. You immediately see the results and every analysis of the split times, then you choose, if you wish, to publish it on Ozimut.",
