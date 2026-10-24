@@ -57,7 +57,9 @@ export const body = (SITE, { world = false } = {}) => `
         règles ; seuls les noms, clubs, catégories et heures de départ en sont publiés, et les organisateurs de la course peuvent les
         retirer. Hors de France, un organisateur déclare les compétitions de son club (« Organisation ») : leur nom, date, lieu, club,
         discipline et site sont publiés dans l'Agenda ; le site garde en plus le compte qui les a déclarées, qui seul peut les modifier
-        ou les retirer, et ne le publie pas.</p>
+        ou les retirer, et ne le publie pas. Un organisateur peut aussi donner le lien du suivi GPS de sa compétition sur un autre
+        service (« Organisation › Direct ») : seul ce lien est publié, avec le compte qui l'a donné gardé et non publié ; Ozimut ne
+        reçoit aucune position.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>

@@ -50,7 +50,9 @@ export const body = (SITE, { world = false } = {}) => `
         the race (“Organising › Start times”) follow the same rules; only the names, clubs, classes and start times are published,
         and the race's organisers can remove them. Outside France, an organiser declares their club's competitions (“Organising”):
         their name, date, place, club, discipline and website are published in the Calendar; the site also keeps the account that
-        declared them, which alone can change or remove them, and does not publish it.</p>
+        declared them, which alone can change or remove them, and does not publish it. An organiser can also give the link to their
+        competition's GPS tracking on another service (“Organising › Live feed”): only that link is published, the account that gave it
+        is kept and not published; Ozimut receives no position.</p>
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>

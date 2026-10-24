@@ -14,6 +14,7 @@ import { raceFilters } from "../racefilters.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
+import * as tracking from "../tracking.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", direct: t("src.direct") };
@@ -152,7 +153,7 @@ async function list(main, idx, query) {
 
 // ---- one race -------------------------------------------------------------------------------------------------
 async function detail(main, idx, query) {
-  const race = await getProv(`${encodeURIComponent(query.course)}.json`);
+  const [race, tracks] = await Promise.all([getProv(`${encodeURIComponent(query.course)}.json`), tracking.links()]);
   if (!race) {
     main.innerHTML = html`<div class="notice">${t("prov.notFound")}</div>`;
     return { title: t("prov.title") };
@@ -179,6 +180,9 @@ async function detail(main, idx, query) {
     if (best) [di, ci] = best;
   }
   const M = [storeGet().method];
+  // the live GPS tracking its organiser linked (« Organisation › Direct »): by the race's key or its agenda event's
+  const agendaId = race.agenda_id || idx?.races?.find((r) => r.key === race.key)?.agenda_id;
+  const track = tracking.linkOf(tracks, race.key, agendaId && `a${agendaId}`);
   // the splits page lists only the documents with split times: its own indexes
   const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   const splitsLink = (d, c) => {
@@ -190,6 +194,7 @@ async function detail(main, idx, query) {
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("nav.raceAnalysis")} →</a>` : ""}
+        ${tracking.button(track)}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}

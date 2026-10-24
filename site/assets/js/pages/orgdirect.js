@@ -15,11 +15,12 @@
 // read it (ffco_scraper/prov/sources/broadcast.py) — its results, split times and start list stay after the race.
 
 import { html, raw, $, $$, fmtDate, addDays } from "../util.js";
-import { t, lang, locale } from "../i18n.js";
+import { t, has, lang, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { parseBytes } from "../localparse.js";
 import * as declare from "../declare.js";
+import * as tracking from "../tracking.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 
 const PREF = "ocn.direct";                        // the broadcast chosen and the interval, on this computer
@@ -170,6 +171,8 @@ export async function render(main) {
       <div class="card-body" id="od-meos"></div></section>
     <section class="card"><div class="card-head"><div><h2>${t("od.file")}</h2><div class="hint">${t("od.file.hint")}</div></div></div>
       <div class="card-body" id="od-file"></div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("trk.org.title")}</h2><div class="hint">${t("trk.org.hint")}</div></div></div>
+      <div class="card-body" id="od-trk"><div class="empty">${t("misc.loading")}</div></div></section>
     <style>
       .od-meos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; align-items: center; max-width: 720px }
       .od-meos code { font-size: 14px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; user-select: all; overflow-wrap: anywhere }
@@ -191,7 +194,8 @@ export async function render(main) {
     try { list = (await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || []; } catch (e) { list = []; }
     list = list.filter((b) => b.mine || me?.admin);
   }
-  let agenda = [], comps = [];
+  // the competitions a GPS tracking link may be given to (card 4): the same, from a week ago to three months ahead
+  let agenda = [], comps = [], tcomps = [];
   try {
     const a = await data.agenda();
     const lo = new Date(Date.now() - 86400e3).toLocaleDateString("sv-SE"), hi = new Date(Date.now() + 2 * 86400e3).toLocaleDateString("sv-SE");
@@ -202,14 +206,19 @@ export async function render(main) {
       const club = auth.myClub(), hi7 = addDays(today, 7);
       comps = (a?.events || []).filter((e) => e.kind === "c" && e.id && !e.cancelled && e.date >= lo && e.date <= hi7
         && (me?.admin || (club && orgCode(e.org) === club))).map((e) => ({ key: `a${e.id}`, name: e.name, date: e.date, org: e.org || "" }));
+      tcomps = (a?.events || []).filter((e) => e.kind === "c" && e.id && !e.cancelled && e.date >= addDays(today, -7) && e.date <= addDays(today, 90)
+        && (me?.admin || (club && orgCode(e.org) === club))).map((e) => ({ key: `a${e.id}`, name: e.name, date: e.date, org: e.org || "" }));
     }
   } catch (e) { /* free entry only */ }
   try {
     const lo = addDays(today, -1), hi7 = addDays(today, 7);
-    comps.push(...(await declare.load()).competitions.filter((d) => d.status !== "removed" && d.date >= lo && d.date <= hi7)
-      .map((d) => ({ key: d.key, name: d.name, date: d.date, org: d.club || "" })));
+    const mine = (await declare.load()).competitions.filter((d) => d.status !== "removed")
+      .map((d) => ({ key: d.key, name: d.name, date: d.date, org: d.club || "" }));
+    comps.push(...mine.filter((d) => d.date >= lo && d.date <= hi7));
+    tcomps.push(...mine.filter((d) => d.date >= addDays(today, -7) && d.date <= addDays(today, 90)));
   } catch (e) { /* none declared */ }
   comps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
+  tcomps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
   const compLabel = (c) => `${fmtDate(c.date)} · ${c.name}${c.org ? ` · ${c.org}` : ""}`;
   const errWord = (e) => (e === "not organiser" ? t("od.notOrganiser") : e);
   const current = () => list.find((b) => b.id === st.id) || null;
@@ -444,8 +453,51 @@ export async function render(main) {
       ${st.error ? html`<p class="od-log" style="color:var(--bad)">${st.error}</p>` : ""}`;
   }
 
+  // ---- 4. a GPS tracking run by another service (Loggator, GPSSeuranta, TracTrac…): its link, shown on Agenda, Résultats
+  // and En direct (functions/api/tracking.js; Ozimut reads no position)
+  async function drawTrack(msg = "", fresh = false) {
+    const links = await tracking.links({ fresh });
+    const set = tcomps.filter((c) => links.has(c.key));
+    $("#od-trk").innerHTML = !tcomps.length ? html`<div class="muted">${t("trk.org.empty")}</div>` : html`
+      ${set.length ? html`<div class="table-wrap" style="margin-bottom:12px"><table class="data compact"><tbody>${set.map((c) => html`<tr>
+        <td class="nowrap">${fmtDate(c.date)}</td><td>${c.name}</td>
+        <td style="max-width:320px;overflow-wrap:anywhere"><a href="${links.get(c.key).url}" target="_blank" rel="noopener">${tracking.serviceOf(links.get(c.key).url)} ↗</a></td>
+        <td class="r"><button type="button" class="btn btn-sm" data-trk-del="${c.key}">${t("trk.org.remove")}</button></td></tr>`)}</tbody></table></div>` : ""}
+      <div class="filters">
+        <label class="field"><span>${t("od.comp")}</span><select id="od-trk-comp" style="max-width:420px">
+          ${tcomps.map((c) => html`<option value="${c.key}">${compLabel(c)}${links.has(c.key) ? " ✓" : ""}</option>`)}</select></label>
+        <label class="field"><span>${t("trk.org.url")}</span><input id="od-trk-url" type="url" inputmode="url" style="width:340px" placeholder="https://www.loggator.com/…"></label>
+        <button type="button" class="btn btn-primary" id="od-trk-save">${t("trk.org.save")}</button>
+      </div>
+      <div class="muted" style="font-size:12.5px">${t("trk.org.note")}</div>
+      <div class="muted" id="od-trk-msg" style="font-size:12.5px">${msg}</div>`;
+    const fill = () => { const l = links.get($("#od-trk-comp")?.value); if ($("#od-trk-url")) $("#od-trk-url").value = l?.url || ""; };
+    fill();
+    $("#od-trk-comp")?.addEventListener("change", fill);
+    const call = async (method, body) => {
+      const r = await fetch("/api/tracking", { method, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json().catch(() => ({}));
+      const k = `trk.err.${String(d.error || "").replace(/\s+/g, "_")}`;
+      return r.ok ? null : has(k) ? t(k) : t("trk.err.other", { e: d.error || r.status });
+    };
+    $("#od-trk-save")?.addEventListener("click", async (e) => {
+      const url = $("#od-trk-url").value.trim();
+      if (!/^https:\/\/\S+$/i.test(url)) { $("#od-trk-msg").textContent = t("trk.err.bad_url"); return; }
+      e.target.disabled = true;
+      const err = await call("POST", { race: $("#od-trk-comp").value, url });
+      e.target.disabled = false;
+      if (err) { $("#od-trk-msg").textContent = err; return; }
+      drawTrack(t("trk.org.saved"), true);
+    });
+    $$("[data-trk-del]", $("#od-trk")).forEach((x) => x.addEventListener("click", async () => {
+      const err = await call("DELETE", { race: x.dataset.trkDel });
+      drawTrack(err || t("trk.org.removed"), true);
+    }));
+  }
+
   await loadList();
   if (st.id && !list.some((b) => b.id === st.id)) st.id = null;
+  drawTrack();
   drawRace();
   await restoreHandle();
   let n = 0;

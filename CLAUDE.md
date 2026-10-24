@@ -934,6 +934,17 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   file to its organisers). `localstart.js` keeps card numbers and bibs (IOF `ControlCard` / `BibNumber`, « Puce », « SI », « Dossard »
   columns, OE's chip in PDFs) and a table's rows without a start time (`nostart`), the browser's only: the server drops them. A race's
   published start list on « Résultats » gives its organisers (and administrators) the same file, without card numbers.
+- **GPS tracking by another service** (owner, 2026-10-24, after the live tracking study, private artifact
+  https://claude.ai/artifact/Y2kZZiMHpZsiPBczSaTVcb: no service grants a third party the right to show its positions, and a web
+  page cannot track a phone once its screen locks): Ozimut tracks nobody; a competition's organisers give the link to the
+  spectators' page of the service they use (Loggator, GPSSeuranta, TracTrac, Livelox, Routechoices…) in « Organisation › Direct »'s
+  card 4 (their club's competitions of the agenda from a week ago to three months ahead, and their declared ones). `functions/api/tracking.js`:
+  GET every link of a competition of the last 30 days on (any account; `private, max-age=300`), POST `{ race, url }` / DELETE `{ race }`
+  by its organisers (`_lib/club.js` `findRace` + `organises`, https links only, 30 changes a day); R2 `tracking/<race>.json`, the link,
+  day and name (percent-encoded) in the object's custom metadata (one R2 list). `site/assets/js/tracking.js` (`links`, read once per
+  5 minutes; `linkOf`, `serviceOf`, `button`): Agenda's « Suivi GPS en direct » box and « GPS » tag (France's competitions by their
+  agenda id, declared ones by key), the race page of « Résultats » (by its key or `a<agenda_id>`), « En direct »'s race page (the
+  link of the same day whose competition's name fits, `sameRace`). The privacy page says only the link is published.
 - **Alerts by e-mail and/or push** (owner, 2026-10-18): every alert of Réglages › Alertes (`pages/settings.js` `ALERTS`, a table
   E-mail | Notification) — « une de mes courses est en ligne » (`notify` / `push_results`, both on by default), « mon heure de
   départ est publiée » (`starts_alert`, migration 0011, off / `push_starts`, on; the e-mail `startMail`, once per race and again

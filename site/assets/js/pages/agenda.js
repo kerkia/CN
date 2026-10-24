@@ -10,6 +10,7 @@ import { getProv } from "./provisional.js";
 import * as country from "../country.js";
 import { sees } from "../auth.js";
 import { LIVE } from "../livesplits.js";
+import * as tracking from "../tracking.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -231,7 +232,7 @@ export async function render(main, { query }) {
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}</td>
         <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
   }
@@ -306,6 +307,16 @@ export async function render(main, { query }) {
     drawTable();
     if (st.selected) drawDetail();
   }
+  // the live GPS tracking an organiser linked to their competition (« Organisation › Direct », tracking.js): event id -> link;
+  // France's competitions by their agenda id (a race of « Résultats » by the event it is), declared ones by their key
+  const tracks = new Map();
+  async function findTracking() {
+    for (const [k, l] of await tracking.links()) tracks.set(eventOf.get(k) || k.replace(/^a/, ""), l);
+    if (!tracks.size) return;
+    drawTable();
+    if (st.selected) drawDetail();
+  }
+  const trackOf = (e) => (e.kind === "c" && (e.declared || country.of(e) === "FR") ? tracks.get(String(e.id)) || null : null);
 
   // ---- details ------------------------------------------------------------------------------------------------
   const link = (u, label) => (safeUrl(u) ? html`<a href="${u}" target="_blank" rel="noopener">${label || u}</a>` : (u || ""));
@@ -321,6 +332,13 @@ export async function render(main, { query }) {
     return key ? html`<div class="reg open"><div class="reg-title">${t("agd.startList")}</div>
       <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.startTimes")}</a>
       ${sees("FR") && !e.declared ? html`<span class="dim" style="font-size:12px">${t("agd.startHint")}</span>` : ""}</p></div>` : "";
+  }
+
+  // the event's live GPS tracking, on the service its organiser uses
+  function trackBox(e) {
+    const l = trackOf(e);
+    return l ? html`<div class="reg"><div class="reg-title">${t("trk.title")}</div>
+      <p style="margin:6px 0 0">${tracking.button(l, { primary: true })} <span class="dim" style="font-size:12px">${t("trk.on", { s: tracking.serviceOf(l.url) })}</span></p></div>` : "";
   }
 
   // the event's live results (« En direct »): today's race whose live competition the relay lists
@@ -397,6 +415,7 @@ export async function render(main, { query }) {
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
         ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
         ${liveBox(e)}
+        ${trackBox(e)}
         ${startBox(e)}
         ${registration(e)}
         ${accessBox(e)}
@@ -430,6 +449,7 @@ export async function render(main, { query }) {
   drawFilters();
   drawTable();
   findLive();
+  findTracking();
   if (st.selected) {
     // a linked event outside the default filters (past date, other kind) must still be visible
     const e = byKey.get(st.selected);

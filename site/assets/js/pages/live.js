@@ -15,6 +15,7 @@ import * as country from "../country.js";
 import { LIVE_KEY, hasSplits } from "../livesplits.js";
 import { raceFilters, provFacts } from "../racefilters.js";
 import { getProv } from "./provisional.js";
+import * as tracking from "../tracking.js";
 
 // the list (/api/live/list) and the live connections (/ws/<race>), on this site; a developer may point them at another
 // server (localStorage « ocn.liveBase »)
@@ -168,7 +169,7 @@ async function race(main, id, wanted, arg) {
   else if (wanted === CLUB_VIEW) { st.view = "club"; st.club = arg || "mine"; }
   else st.cls = wanted;
   main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><h1 id="lv-title">…</h1><div class="lv-sub" id="lv-sub"></div></div>
-      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span>
+      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span><span id="lv-trk"></span>
         <a class="btn btn-sm" id="lv-an" hidden title="${t("lv.analyse.tip")}">${t("lv.analyse")} →</a></div></div>
     <div class="lv-layout">
       <aside class="lv-side"><div class="lv-list" id="lv-chips"></div></aside>
@@ -311,9 +312,19 @@ async function race(main, id, wanted, arg) {
   }
   let later = null;
   const soon = () => { clearTimeout(later); later = setTimeout(draw, 120); };
+  // the live GPS tracking its organiser linked (« Organisation › Direct »): the competition of the same day and name
+  let trackAsked = false;
+  async function trackLink() {
+    if (trackAsked || !st.info?.name) return;
+    trackAsked = true;
+    const day = st.info.date || new Date().toLocaleDateString("sv-SE");
+    const l = [...(await tracking.links()).values()].find((x) => x.date === day && sameRace(x.name, st.info.name));
+    if (l) $("#lv-trk").innerHTML = tracking.button(l);
+  }
   function on(m) {
     if (m.t === "hello") {
       st.info = m.info; st.classes = m.classes; st.counts = m.counts || st.counts;
+      trackLink();
       $("#lv-title").textContent = m.info?.name || id;
       $("#lv-sub").textContent = [m.info?.organizer, m.info?.date && fmtDate(m.info.date)].filter(Boolean).join(" · ");
       if (m.pass) addPass(m.pass);
