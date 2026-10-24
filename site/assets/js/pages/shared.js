@@ -30,6 +30,7 @@ import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
 import { paceRange, paceColour, paceLegend } from "../trace/pacecolour.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
+import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 
@@ -608,21 +609,44 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   // the traces
   let recs = [];
   try { recs = await api(`/${id}/traces/${course.n}`, { key: keyOf(id) }); } catch (e) { recs = []; }
+  // a competition's published results: the runner's row — in the circuit's class with split times if there is one, else
+  // any with split times, else the first found — and a start time from any list of the race
+  const key = (n) => (n || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+  const isHim = (x, rec) => (x.lic && String(x.lic) === String(rec.lic)) || key(x.name) === key(rec.name);
   const official = (rec) => {
     if (!race) return null;
-    for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners) if ((x.lic && String(x.lic) === String(rec.lic)) || key(x.name) === key(rec.name)) return { time: x.time_s, place: x.place, status: x.status, circuit: k.name };
-    return null;
+    const hits = [];
+    for (const d of race.docs || []) for (const k of d.classes || []) for (const x of k.runners || []) if (isHim(x, rec)) hits.push({ x, k });
+    if (!hits.length) return null;
+    const h = hits.find((q) => q.k.name === course.circuit && q.x.splits?.length) || hits.find((q) => q.x.splits?.length) || hits[0];
+    const startS = hits.map((q) => q.x.start_s).find((v) => v != null) ?? null;
+    return { time: h.x.time_s, place: h.x.place, status: h.x.status, circuit: h.k.name, row: h.x, klass: h.k, startS };
   };
-  const key = (n) => (n || "").toLowerCase().replace(/[^a-z]+/g, " ").trim().split(" ").sort().join(" ");
+  // the class whose split times rank the legs: the circuit's, else that of the first runner found with split times
+  const pubClass = (() => {
+    if (!race) return null;
+    const all = (race.docs || []).flatMap((d) => d.classes || []).filter((k) => k.runners?.some((x) => x.splits?.length));
+    return all.find((k) => k.name === course.circuit) || null;
+  })();
+  const splitsN = (k) => { const n = k?.runners?.map((x) => x.splits?.length || 0) || []; return n.length ? Math.max(...n) : 0; };
   let runners = recs.map((rec) => {
     const tr = decodeTrace(rec);
     if (!tr) return null;
     const fit = fitFromGeo(course.geo, tr), pxs = new Float32Array(tr.n), pys = new Float32Array(tr.n);
     for (let i = 0; i < tr.n; i++) { const [x, y] = toPx(fit, tr.x[i], tr.y[i]); pxs[i] = x; pys[i] = y; }
-    const passes = coursePasses(tr, fit, ctrls, TOL);
+    const guess = coursePasses(tr, fit, ctrls, TOL), off = official(rec);
+    // a competition's published split times (trace/published.js): the passes from them rather than the trace's 25 m guesses
+    let pub = null;
+    if (off?.row?.splits?.length) {
+      const map = matchControls(ctrls, off.klass.controls || [], off.row.splits.length);
+      const startT = off.startS != null && race?.date_iso ? startOnTrace(race.date_iso, off.startS, tr.ms0) : null;
+      pub = publishedPasses(map, publishedTaus(off.row), guess, startT, tr.dur);
+    }
+    const passes = pub?.passes || guess;
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
     const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
-    return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: official(rec), abs0: tr.ms0 / 1000 };
+    return { uid: rec.uid, name: rec.name, lic: rec.lic, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
+      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
   const visKey = `ocn.an.vis.${id}.${course.n}`;
@@ -948,8 +972,14 @@ async function replay(box, { A, id, course, race, traces, you, reload }) {
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
   const state = { tab: TABS[0], ref: null, legsOf: null, get sel() { return sel; } };
   const X = { runners, ctrls, legsN, ctrlLabel, legName, legTime, total, state, setLeg,
-    // the field a leg time is ranked in, and its best legs: every runner with a trace
-    fieldLegs: () => ({ source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) }),
+    // the field a leg time is ranked in, and its best legs: the class's published split times (every runner of the circuit),
+    // else every runner with a trace
+    fieldLegs: () => {
+      const k = pubClass || runners.find((r) => r.published)?.klass;
+      const all = k ? classLegs(k, matchControls(ctrls, k.controls || [], splitsN(k))) : [];
+      if (all.filter((l) => l.some((v) => v != null)).length >= 2) return { source: "published", all };
+      return { source: "traces", all: runners.map((r) => Array.from({ length: legsN }, (_, i) => legTime(r, i + 1))) };
+    },
     refChanged: () => bottom.draw(), changed: () => {} };
   const bottom = bottomViews($("#sh-views"), X);
 

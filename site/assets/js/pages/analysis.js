@@ -30,6 +30,7 @@ import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCur
 import { alignTrack, visitOrder } from "../trace/align.js";
 import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
 import { bestLegs, usualRatio, legLoss } from "../trace/legs.js";
+import { parisOffsetMs } from "../trace/published.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
@@ -90,12 +91,6 @@ function matchTimes(det, off, P = 120) {
   return pairs.reverse();
 }
 
-/** Paris's offset to UTC on a day (ms): the results' start times are wall-clock, the trace's are UTC. */
-function parisOffsetMs(dateIso) {
-  const d = new Date(`${dateIso}T12:00:00Z`);
-  const h = +new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", hour12: false }).formatToParts(d).find((p) => p.type === "hour").value;
-  return (h - 12) * 3600e3;
-}
 const parisDay = (ms) => new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 
 // ---- the files ------------------------------------------------------------------------------------------------------
