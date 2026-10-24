@@ -77,6 +77,10 @@ export const TABS = [
       B("map-change", t("trc.rd.mapChange"), "swap", { need: "edit", tip: t("trc.rd.mapChangeTip") }),
       stack({ t: "chip", id: "mapInfo" }, S("event-props", t("trc.rd.eventProps"), "sliders", { need: "edit", tip: t("trc.rd.eventPropsTip") }),
         S("import-course", t("trc.rd.importCourse"), "scan", { need: "edit", tip: t("trc.rd.importCourseTip") }))] },
+    { id: "maps", title: t("trc.rd.gMaps"), pro: true, items: [
+      B("maps", t("trc.rd.maps"), "multimap", { need: "edit", tip: t("trc.rd.mapsTip") }),
+      stack(S("map-colors", t("trc.rd.mapColors"), "colors", { need: "vector", tip: t("trc.rd.mapColorsTip") }),
+        S("map-templates", t("trc.rd.mapTemplates"), "layers", { need: "vector", tip: t("trc.rd.mapTemplatesTip") }))] },
     { id: "position", title: t("trc.rd.gPosition"), items: [
       B("calage", t("trc.rd.calage"), "target", { need: "edit", tip: t("trc.rd.calageTip") }),
       stack(S("georef", t("trc.rd.georef"), "globe", { tip: t("trc.rd.georefTip") }),

@@ -3,6 +3,7 @@
 //                                the object's custom metadata, so the list is one R2 list)
 //   tracer/<id>/event            the event itself (JSON, or ciphertext when the team encrypts it in the browser)
 //   tracer/<id>/map              the map file as it came (PDF or image), never re-encoded
+//   tracer/<id>/maps/<n>         the event's other maps (the advanced level: a course part on each), as they came
 //   tracer/<id>/v/<n>            saved versions (each with its author, time and note in the object's metadata)
 //   tracer/<id>/comments         the team's comments (JSON or ciphertext)
 //   tracer/<id>/field            the field statuses of the controls (set, checked, collected)
@@ -24,6 +25,7 @@
 //   DELETE /api/tracer/<id>                  the owner: everything
 //   GET|PUT /api/tracer/<id>/event           PUT: X-Base-Version (the version edited; 409 if another was saved since)
 //   GET|PUT /api/tracer/<id>/map             PUT: the file (Content-Type, up to 80 MB)
+//   GET|PUT|DELETE /api/tracer/<id>/maps/<n> another map of the event (n 1…20), as the map
 //   GET    /api/tracer/<id>/versions         the list;  GET …/versions/<n> one;  POST …/versions (body, X-Note);
 //                                            DELETE …/versions?below=<n> (the owner, after encrypting)
 //   GET|PUT /api/tracer/<id>/comments, …/field
@@ -266,6 +268,30 @@ export const onRequest = withUser(async (ctx, user) => {
       if (!(await allow(env, `trmap:${user.id}`, 60, 86400))) return json({ error: "too many" }, 429);
       const err = await putRaw(env, request, `${base}map`, MAX_MAP, { updated: nowIso() });
       return err || json({ ok: true });
+    }
+    return json({ error: "method" }, 405);
+  }
+
+  // the event's other maps (the advanced level: several maps in one event, a course part on each): tracer/<id>/maps/<n>, n 1…20
+  if (sub === "maps") {
+    const n = Number(parts[2]);
+    if (!(Number.isInteger(n) && n >= 1 && n <= 20)) return json({ error: "map number" }, 400);
+    const key = `${base}maps/${n}`;
+    if (method === "GET") {
+      const o = await env.BUCKET.get(key);
+      if (!o) return json({ error: "not found" }, 404);
+      return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "application/octet-stream", "Cache-Control": "private, max-age=600" } });
+    }
+    if (method === "PUT") {
+      if (role !== "owner" && role !== "setter") return json({ error: "forbidden" }, 403);
+      if (!(await allow(env, `trmap:${user.id}`, 60, 86400))) return json({ error: "too many" }, 429);
+      const err = await putRaw(env, request, key, MAX_MAP, { updated: nowIso() });
+      return err || json({ ok: true });
+    }
+    if (method === "DELETE") {
+      if (role !== "owner" && role !== "setter") return json({ error: "forbidden" }, 403);
+      await env.BUCKET.delete(key);
+      return json({ ok: true });
     }
     return json({ error: "method" }, 405);
   }

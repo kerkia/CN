@@ -328,6 +328,7 @@ async function importEvent(main, files = []) {
             const r = await readOcn(await file.arrayBuffer());
             st.ev = r.ev; st.ocn = file; st.ppen = null;
             if (r.map) { st.map = new File([r.map.bytes], r.map.name, { type: r.map.type || mimeOf(r.map.name, "") }); st.mapFromOcn = true; }
+            st.extra = r.extra || [];
             if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || "";
           } catch (e) { st.notes.push(t("trc.page.fileErr", { name: escA(file.name), err: escA(e.message) })); }
         } else if (isPpenFile(file)) {
@@ -368,6 +369,7 @@ async function importEvent(main, files = []) {
     if (src.kind === "vector" && ev.map.kind === "ocad") { ev.map.w = src.w; ev.map.h = src.h; }
     if (!ev.title) ev.title = created.title;
     await S.saveMap(created.id, bytes, type, null);
+    for (const m of st.extra || []) await S.saveExtraMap(created.id, m.id, m.bytes, m.type || mimeOf(m.name, ""), null).catch(() => null);
     await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: file.name, type, size: bytes.length } } });
     await S.saveEvent(created.id, ev, null, 0);
     history.replaceState(null, "", `#/orga-tracer?id=${created.id}${inOwnTab() ? "&fen=1" : ""}`);

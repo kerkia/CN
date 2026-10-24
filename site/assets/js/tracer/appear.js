@@ -41,7 +41,9 @@ export const itemBlend = (ev, map) => (layerOf(ev, map) != null ? "none" : ev.ap
 export async function syncMap(ev, map) {
   if (map?.kind !== "vector") return false;
   const layer = layerOf(ev, map), over = !!ev.appearance.ocadOverprint;
-  if (layer === map.layer && over === map.overprint && (layer == null || map.images)) return false;
+  // colours hidden by the event (the advanced level)
+  const hid = map.setHidden ? await map.setHidden(ev.mapHidden || []) : false;
+  if (!hid && layer === map.layer && over === map.overprint && (layer == null || map.images)) return false;
   await map.setOverprint(over);
   await map.setLayer(layer);
   return true;

@@ -251,6 +251,38 @@ async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part) {
   await t.finish();
 }
 
+/** Another map of the event (maps.js) on a page: its sheet's mm placed by the inverse of its affine, then T (points). */
+async function extraMapPdf(E, doc, L, page, mo, T, s, { fonts, rgb }) {
+  const { invert } = await import("./maps.js");
+  const inv = invert(mo.tf), [x0, y0] = T(0, 0);
+  // sheet mm → page points: x' = p0 x + p1 y + p2, y' = p3 x + p4 y + p5
+  const p = [s * inv[0], s * inv[1], s * inv[2] + x0, s * inv[3], s * inv[4], s * inv[5] + y0];
+  const src = mo.src || (E.extraMaps?.[mo.id]);
+  if (src?.kind === "vector" && src.drawPdf) {
+    const [{ PdfTarget }, { Matrix }] = await Promise.all([import("./vmap/target.js"), import("./vmap/geom.js")]);
+    const tg = new PdfTarget(L, page, new Matrix(p[0], p[3], p[1], p[4], p[2], p[5]), { rgb, fonts, darken: null, minRes: 0.01 });
+    src.drawPdf(tg, [0, 0, src.w, src.h], "all");
+    await tg.finish();
+    return;
+  }
+  E._extraEmbed = E._extraEmbed?.doc === doc ? E._extraEmbed : { doc, maps: {} };
+  let em = E._extraEmbed.maps[mo.id];
+  if (!em) {
+    const raw = await S.loadExtraMap(E.meta.id, mo.id, E.key);
+    if (!raw) return;
+    if (isPdf(mo.meta.map.file, raw.type)) { const sd = await L.PDFDocument.load(raw.bytes, { ignoreEncryption: true }); const pg = sd.getPage(0), cb = pg.getCropBox(); em = { pdf: await doc.embedPage(pg, { left: cb.x, bottom: cb.y, right: cb.x + cb.width, top: cb.y + cb.height }) }; }
+    else if (/png/i.test(raw.type)) em = { img: await doc.embedPng(raw.bytes) };
+    else if (/jpe?g/i.test(raw.type)) em = { img: await doc.embedJpg(raw.bytes) };
+    else if (src?.image) { const c = document.createElement("canvas"); c.width = src.pxW; c.height = src.pxH; c.getContext("2d").drawImage(src.image, 0, 0); em = { img: await doc.embedPng(new Uint8Array(await (await new Promise((r) => c.toBlob(r, "image/png"))).arrayBuffer())) }; }
+    else return;
+    E._extraEmbed.maps[mo.id] = em;
+  }
+  const w = mo.meta.map.w || src?.w, h = mo.meta.map.h || src?.h;
+  page.pushOperators(L.pushGraphicsState(), L.concatTransformationMatrix(p[0], p[3], p[1], p[4], p[2], p[5]));
+  if (em.pdf) page.drawPage(em.pdf, { x: 0, y: 0, xScale: 25.4 / 72, yScale: 25.4 / 72 });
+  else page.drawImage(em.img, { x: 0, y: 0, width: w, height: h });
+  page.pushOperators(L.popGraphicsState());
+}
 /** One course designator on a page of the document. adv: the advanced level's options (printx.js: registration marks, the
  *  printer's offset, georeferenced pages). combined: other designators drawn on the same map (« all on one map »). */
 async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null, adv = null, combined = null }) {
@@ -262,20 +294,24 @@ async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, i
     for (const d of combined) { const l2 = layoutCourse(ev, d.cd, { descriptions: false }); layout.objs.push(...l2.objs); items = items.concat(itemsFor(ev, l2)); }
   }
   let last = null;
-  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images, adv });
+  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images, adv, cd });
   return last;
 }
-async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images, adv = null }) {
+async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images, adv = null, cd = null }) {
   const page = doc.addPage([pg.w * PT, pg.h * PT]);
   const s = k * PT;                                          // points per map mm
   const m = pg.margin * PT;
   const T = (x, y) => [m + (x - box[0]) * s, m + (y - box[1]) * s];
   const clip = [L.pushGraphicsState(), L.moveTo(m, m), L.lineTo(pg.w * PT - m, m), L.lineTo(pg.w * PT - m, pg.h * PT - m), L.lineTo(m, pg.h * PT - m), L.closePath(), L.clip(), L.endPath()];
   page.pushOperators(...clip);
-  const vector = withMap && E.map?.kind === "vector";
+  // another map of the event for this course part (the advanced level: maps.js)
+  const { mapOf } = ev.maps ? await import("./maps.js") : {};
+  const other = withMap && mapOf ? mapOf(E, cd) : null;
+  const vector = withMap && !other && E.map?.kind === "vector";
   if (vector) await syncMap(ev, E.map);
   const layer = vector ? layerOf(ev, E.map) : null, purple = coursePurple(ev, E.map);
-  if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below");
+  if (other) await extraMapPdf(E, doc, L, page, other, T, s, { fonts, rgb });
+  else if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below");
   else if (withMap) {
     const me = await mapEmbed(E, doc, L);
     if (me?.kind === "pdf") page.drawPage(me.emb, { x: T(0, 0)[0], y: T(0, 0)[1], xScale: k, yScale: k });

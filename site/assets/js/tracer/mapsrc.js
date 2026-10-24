@@ -151,8 +151,8 @@ async function openVector(u8, name, origin = null) {
   const w = Math.max(10, Math.ceil(b[2] + M - ox)), h = Math.max(10, Math.ceil(b[3] + M - oy));
   const k = Math.min(12, 6000 / Math.max(w, h));                // the base image: at most 12 px per mm and 6000 px a side
   const src = { kind: "vector", format: oom ? "oom" : "ocad", version, vmap: map, w, h, ox, oy, scale: map.scale, dpi: k * 25.4,
-    pxW: Math.round(w * k), pxH: Math.round(h * k), layer: null, overprint: false, levels: [] };
-  const range = (part) => (part === "below" ? { end: src.layer } : part === "above" ? { begin: src.layer } : {});
+    pxW: Math.round(w * k), pxH: Math.round(h * k), layer: null, overprint: false, levels: [], hidden: new Set() };
+  const range = (part) => ({ ...(part === "below" ? { end: src.layer } : part === "above" ? { begin: src.layer } : {}), hide: src.hidden.size ? src.hidden : null });
   /** Draw the box [l, b, r, t] (Tracer mm) of the map into a canvas at pxPerMm. */
   src.renderRegion = async ([l, bb, r, t], pxPerMm, signal, part = "all") => {
     const out = document.createElement("canvas");
@@ -181,6 +181,16 @@ async function openVector(u8, name, origin = null) {
     if (id === src.layer && (id == null || src.images)) return;
     src.layer = id;
     src.images = id == null ? null : await parts();
+  };
+  /** Colours left out of the drawing (the advanced level: ev.mapHidden), its images made again. */
+  src.setHidden = async (ids) => {
+    const key = [...(ids || [])].sort((a, b) => a - b).join(",");
+    if (key === [...src.hidden].sort((a, b) => a - b).join(",")) return false;
+    src.hidden = new Set(ids || []);
+    src.image = await baseImage("all");
+    src.levels = makeLevels(src.image, src.pxW, src.pxH);
+    if (src.layer != null) src.images = await parts();
+    return true;
   };
   src.setOverprint = async (on) => {
     if (!!on === src.overprint) return;

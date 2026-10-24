@@ -110,12 +110,13 @@ export class VMap {
    * end (up to and including this id), overprint (blend the colours flagged « overprint » darker, as printed), minRes (mm per
    * device pixel) }.
    */
-  draw(g, rect, { begin = null, end = null, overprint = false, minRes = 0.05 } = {}) {
+  draw(g, rect, { begin = null, end = null, overprint = false, minRes = 0.05, hide = null } = {}) {
     const ro = { minRes, metric: this.metric, view: rect };
     let on = begin == null;
     if (on) this.drawColor(g, this.imageColor, rect, ro, false);
     for (const c of this.colors) {
-      if (on) this.drawColor(g, c, rect, ro, overprint && c.overprint);
+      // colours hidden by the event (the Tracer's advanced level: Condes's « show/hide map colours ») are left out
+      if (on && !hide?.has(c.id)) this.drawColor(g, c, rect, ro, overprint && c.overprint);
       if (!on && begin === c.id) on = true;
       if (on && end === c.id) on = false;
     }

@@ -111,6 +111,10 @@ export async function loadMap(id, key) {
   return b ? { bytes: b.bytes, type: b.type } : null;
 }
 export async function saveMap(id, bytes, type, key) { return put(`/${id}/map`, bytes, type, key); }
+/** The event's other maps (the advanced level: ev.maps), stored beside the map as maps/<n>. */
+export async function loadExtraMap(id, n, key) { const b = await getBlob(`/${id}/maps/${n}`, key); return b ? { bytes: b.bytes, type: b.type } : null; }
+export async function saveExtraMap(id, n, bytes, type, key) { return put(`/${id}/maps/${n}`, bytes, type, key); }
+export const deleteExtraMap = (id, n) => api(`/${id}/maps/${n}`, { method: "DELETE" });
 /** A control's photo (field mode): JPEG bytes, encrypted with the event's key when it has one. */
 export const savePhoto = (id, pid, bytes, key) => put(`/${id}/photo/${pid}`, bytes, "image/jpeg", key);
 export async function loadPhoto(id, pid, key) { const b = await getBlob(`/${id}/photo/${pid}`, key); return b ? new Blob([b.bytes], { type: "image/jpeg" }) : null; }

@@ -166,6 +166,9 @@ export async function action(E, act, btn, at = {}) {
     case "send-results": (await lazy.more()).sendCourses(E); break;
     case "offline": (await import("./offline.js")).offlineDialog(E); break;
     case "map-change": if (!ro()) (await lazy.more()).changeMap(E); break;
+    case "maps": if (!ro()) (await import("./maps.js")).mapsDialog(E); break;
+    case "map-colors": (await import("./mapview.js")).colorsDialog(E); break;
+    case "map-templates": (await import("./mapview.js")).templatesDialog(E); break;
     case "event-props": if (!ro()) eventProps(E); break;
     case "appearance": if (!ro()) appearance(E); break;
     case "standards": if (!ro()) standards(E); break;
@@ -753,7 +756,13 @@ async function exportOcn(E) {
     if (r?.bytes) map = { name: mapName(r.type || E.meta.map?.type), type: r.type || E.meta.map?.type || "", bytes: r.bytes };
     else E.toast(t("trc.dlg.mapUnread"), 6000);
   }
-  download(`${fileName(E.ev.title)}${OCN_EXT}`, await writeOcn(M.clone(E.ev), { map }), "application/zip");
+  // the event's other maps (the advanced level) go with it
+  const extra = [];
+  if (v.withMap) for (const [id, m] of Object.entries(E.ev.maps || {})) {
+    const r = await S.loadExtraMap(E.meta.id, id, E.key).catch(() => null);
+    if (r?.bytes) extra.push({ id: Number(id), name: m.map.file || `map-${id}`, type: r.type || "", bytes: r.bytes });
+  }
+  download(`${fileName(E.ev.title)}${OCN_EXT}`, await writeOcn(M.clone(E.ev), { map, extra }), "application/zip");
   E.toast(map ? t("trc.dlg.ocnExportedMap") : t("trc.dlg.ocnExported"));
 }
 async function exportPpen(E) {

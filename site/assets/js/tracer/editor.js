@@ -23,6 +23,7 @@ import { isMapFile } from "./mapsrc.js";
 import { isOcnFile } from "./ocnfile.js";
 import { svg } from "./icons.js";
 import { insetSrc } from "./layoutx.js";
+import { mapOf, drawExtra, loadExtraMaps, templatesOf } from "./maps.js";
 import { mountRibbon } from "./ribbon.js";
 import * as auth from "../auth.js";
 import { t, tn, locale } from "./lang.js";
@@ -237,9 +238,14 @@ export async function openEditor(ctx) {
     const v = E.view;
     const T = (x, y) => [v.ox + x * v.k, v.oy - y * v.k];
     const pc = purpleOverride(E.ev, E.map), purple = pc ? cmykToRgb(pc) : SCREEN.upper, blend = itemBlend(E.ev, E.map);
+    // another map of the event for this course part (the advanced level: maps.js), placed by its affine
+    const other = E.ev.maps ? mapOf(E, E.cdDraw || E.cd) : null;
     // « layer » mode (Purple Pen): the map up to the lower purple's colour, the lower purple, the rest of the map, the rest
-    const layered = E.map?.kind === "vector" && E.map.layer != null && !!E.map.images;
-    if (E.map) drawMap(v, layered ? "below" : "all");
+    const layered = !other && E.map?.kind === "vector" && E.map.layer != null && !!E.map.images;
+    if (other) drawExtra(g, T, v.k, other, E.opts.intensity);
+    else if (E.map) drawMap(v, layered ? "below" : "all");
+    // an OCAD map's templates given to the event (mapview.js), half transparent over the map
+    if (!other && E.ev.maps) for (const tp of templatesOf(E)) drawExtra(g, T, v.k, tp, 0.5);
     else { g.strokeStyle = "#c9c6bb"; g.strokeRect(v.ox, v.oy - (E.ev.map.h || 297) * v.k, (E.ev.map.w || 210) * v.k, (E.ev.map.h || 297) * v.k); }
     let items = E.items;
     if (layered) {
@@ -682,6 +688,7 @@ export async function openEditor(ctx) {
   if (!fontsIn) loadFonts(60000).then((ok) => { if (ok && document.body.contains(root)) refresh(); });
   fontCheck();
   syncVector();
+  if (E.ev.maps && !E.blank) loadExtraMaps(E);
   // files dropped on the editor: a .ppen is imported, a map replaces the event's
   root.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !root.querySelector(".tr-modal")) e.preventDefault(); });
   root.addEventListener("drop", async (e) => {

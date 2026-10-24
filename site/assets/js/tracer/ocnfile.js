@@ -6,6 +6,8 @@
 //                the legs' routes, the publication's links…), in the event's own frame (an OCAD map's offset kept in map.ox/oy);
 //   map/<name>   the map file itself, when it is included (it is by default): one file carries the whole event, where a
 //                .ppen needs its map beside it.
+//   maps/<n>/<name>  the event's other maps (the advanced level: ev.maps), listed in event.json's `maps`; a reader that does not
+//                know them skips them.
 // `version` is the container's layout; `event.v` the model's (model.js VERSION). A newer file than this code reads is refused
 // with a plain message rather than half read.
 
@@ -27,8 +29,8 @@ function script(src) {
   return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("fflate")); document.head.appendChild(s); });
 }
 
-/** The .ozmt's bytes: the event, and the map when given ({ name, type, bytes }). */
-export async function writeOcn(ev, { map = null } = {}) {
+/** The .ozmt's bytes: the event, and the map when given ({ name, type, bytes }); extra: the other maps ([{ id, name, type, bytes }]). */
+export async function writeOcn(ev, { map = null, extra = [] } = {}) {
   await script(FFLATE);
   const enc = new TextEncoder();
   const name = map ? String(map.name || t("trc.ocn.mapName")).split(/[\\/]/).pop() : null;
@@ -36,7 +38,10 @@ export async function writeOcn(ev, { map = null } = {}) {
     format: FORMAT, version: FORMAT_VERSION, app: "Ozimut — https://ozimut.com", saved: new Date().toISOString(),
     title: ev.title || "", map: map ? { file: name, type: map.type || "", size: map.bytes.length } : null, event: ev,
   };
+  const base = (n) => String(n || t("trc.ocn.mapName")).split(/[\\/]/).pop();
+  if (extra.length) head.maps = extra.map((m) => ({ id: m.id, file: base(m.name), type: m.type || "", size: m.bytes.length }));
   const files = { "event.json": [enc.encode(JSON.stringify(head)), { level: 6 }] };
+  for (const m of extra) files[`maps/${m.id}/${base(m.name)}`] = [m.bytes, { level: /\.(png|jpe?g|gif|webp|pdf)$/i.test(m.name) ? 0 : 6 }];
   if (map) files[`map/${name}`] = [map.bytes, { level: /\.(png|jpe?g|gif|webp|pdf)$/i.test(name) ? 0 : 6 }];   // compressed images gain nothing
   return window.fflate.zipSync(files);
 }
@@ -56,5 +61,6 @@ export async function readOcn(buf) {
   for (const k of ["controls", "courses", "courseControls", "legs", "specials"]) ev[k] = ev[k] || {};
   const me = head.map && entries.find((x) => x.name === `map/${head.map.file}`);
   const map = me ? { name: head.map.file, type: head.map.type || "", bytes: me.data } : null;
-  return { ev, map, saved: head.saved || null };
+  const extra = (head.maps || []).map((m) => { const e = entries.find((x) => x.name === `maps/${m.id}/${m.file}`); return e ? { id: m.id, name: m.file, type: m.type || "", bytes: e.data } : null; }).filter(Boolean);
+  return { ev, map, extra, saved: head.saved || null };
 }
