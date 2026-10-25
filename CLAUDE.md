@@ -888,7 +888,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   « Résultats » still leaves relays out): `readOlRelay` reads each category's page (`?Action=Result&IdCat=`, `relayCats`; up to
   ~470 KB, ~30 ms to read all six), a category with nobody out or to start again every 5 min only; `relay()` reads each team
   (place, bib, name, time so far, state, its place after each leg) and each leg (runner, leg time, place, state, the team's total at
-  the handover). `compactRelay`: one class per category, a row per leg's runner — leg place, leg time and gap to the leg's best,
+  the handover); the legs sorted by their own numbers: O'Live's page does not always list them in order — « Cobs Dames »
+  1, 2, 4, 5, 3 with its 3rd runner absent). `compactRelay`: one class per category, a row per leg's runner — leg place, leg time and gap to the leg's best,
   the leg's start, and a 11th field [team bib, leg, team total, team place, gap to the first team there] — and the class's `relay`
   { legs, teams: [[bib, name, place, total, status, gap, legs done]] }, which `update` keeps and compares (counts by team). No
   cards read: a leg's start is its team's start (the earliest seen from a runner out, now less their running time; `m.ol.t0`)

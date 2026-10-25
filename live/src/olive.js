@@ -257,6 +257,9 @@ export function relay(s) {
       legs.push({ leg: num(span("NumRelayeur", p)) ?? legs.length + 1, name: personName(span("NomRelayeur", p)), time: secs(span("TempsRelayeur", p)),
         place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w), card });
     }
+    // in the order of their leg numbers: O'Live's page does not always list them so (2026-10-25, the CNE: « Cobs Dames »
+    // 1, 2, 4, 5, 3; « O'Jura Matrus 2 » 2, 3, 1), and the legs are counted by their place here
+    legs.sort((a, b) => a.leg - b.leg);
     teams.push({ bib, name: span("NomEquipe", part).replace(/^(\d+)\s+/, (m, b) => (b === bib ? "" : m)), place: num(span("PlaceEquipe", part)),
       total: secs(span("TempsEquipe", part)), word, status: statusOf(word), places: [...pl.matchAll(/<span class="Places">([^<]*)</g)].map((m) => num(m[1])), legs });
   }
