@@ -22,6 +22,7 @@ import { parseBytes } from "../localparse.js";
 import * as declare from "../declare.js";
 import * as tracking from "../tracking.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
+import { seg } from "../ui.js";
 
 const PREF = "ocn.direct";                        // the broadcast chosen and the interval, on this computer
 const LIVE_STATUS = { ok: 0, finished: 0, missingpunch: 3, mispunch: 3, disqualified: 4, didnotfinish: 2, sportingwithdrawal: 2,
@@ -156,29 +157,48 @@ export async function render(main) {
   const me = auth.session();
   const canPick = typeof window.showOpenFilePicker === "function";
   const today = new Date().toLocaleDateString("sv-SE");
-  const { steps } = await import(`../content/orgdirect.${lang()}.js`);
+  const text = await import(`../content/orgdirect.${lang()}.js`);
   const st = { id: pref.get().id || null, every: pref.get().every || 15, handle: null, running: false, sent: new Map(), order: "",
-    seen: null, reads: 0, pushes: 0, last: null, lastPush: null, error: null, stats: null, info: null, viewers: null, busy: false };
+    seen: null, reads: 0, pushes: 0, last: null, lastPush: null, error: null, stats: null, info: null, viewers: null, busy: false,
+    via: pref.get().via || null };
 
+  // three steps, each card one of them (owner, 2026-10-25: the MeOS and the file instructions were one block, read as one):
+  // 1. the race, 2. how the results are sent — MeOS or an exported file, the way chosen alone shown —, 3. « Résultats » after
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("od.title")} ${raw(betaTag())}</h1>
       <p class="lede">${t("od.lede")}</p></div></div>
     ${raw(betaNote("direct"))}
-    <section class="card"><div class="card-head"><h2>${t("od.how")}</h2></div><div class="card-body">${raw(steps)}</div></section>
+    ${raw(text.overview)}
     <section class="card"><div class="card-head"><div><h2>${t("od.race")}</h2><div class="hint">${t("od.race.hint")}</div></div></div>
       <div class="card-body" id="od-race"><div class="empty">${t("misc.loading")}</div></div></section>
-    <section class="card"><div class="card-head"><div><h2>${t("od.meos")}</h2><div class="hint">${t("od.meos.hint")}</div></div></div>
-      <div class="card-body" id="od-meos"></div></section>
-    <section class="card"><div class="card-head"><div><h2>${t("od.file")}</h2><div class="hint">${t("od.file.hint")}</div></div></div>
-      <div class="card-body" id="od-file"></div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("od.send")}</h2><div class="hint">${t("od.send.hint")}</div></div></div>
+      <div class="card-body">
+        <div class="field od-via"><span>${t("od.via")}</span>${raw(seg("odvia", [["meos", t("od.via.meos")], ["file", t("od.via.file")]], st.via))}</div>
+        <p class="muted" data-via="" style="margin-bottom:0">${t("od.via.none")}</p>
+        <div data-via="meos" hidden>${raw(text.meos)}<h3>${t("od.meos.values")}</h3><div id="od-meos"></div></div>
+        <div data-via="file" hidden>${raw(text.file)}<h3>${t("od.file.box")}</h3><div id="od-file"></div></div>
+        <p class="muted od-common">${raw(text.common)}</p>
+      </div></section>
+    <section class="card"><div class="card-head"><div><h2>${t("od.after")}</h2><div class="hint">${t("od.after.hint")}</div></div></div>
+      <div class="card-body"><div id="od-after"></div>${raw(text.after)}</div></section>
     <section class="card"><div class="card-head"><div><h2>${t("trk.org.title")}</h2><div class="hint">${t("trk.org.hint")}</div></div></div>
       <div class="card-body" id="od-trk"><div class="empty">${t("misc.loading")}</div></div></section>
     <style>
+      .od-overview { margin: 0 0 14px; padding: 10px 14px 10px 34px; border: 1px solid var(--line); border-radius: 10px; line-height: 1.55; max-width: 920px }
+      .od-overview li { margin: 2px 0 }
+      .od-via { margin-bottom: 4px }
+      .od-via .seg button { font-size: 14px; padding: 6px 14px }
+      @media (max-width: 560px) { .od-via .seg { display: flex; flex-direction: column; overflow: visible } .od-via .seg button { white-space: normal; text-align: left } }
+      [data-via] { margin-top: 12px; padding-top: 4px }
+      [data-via] h3 { margin: 16px 0 6px; font-size: 15px }
+      .od-what { margin: 6px 0 0; max-width: 920px; line-height: 1.55 }
+      .od-tip { margin: 8px 0 0; font-size: 13px; color: var(--muted) }
+      .od-common { margin: 16px 0 0; font-size: 12.5px; max-width: 920px }
       .od-meos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; align-items: center; max-width: 720px }
       .od-meos code { font-size: 14px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; user-select: all; overflow-wrap: anywhere }
       .od-meos .od-val { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
       @media (max-width: 560px) { .od-meos { grid-template-columns: minmax(0, 1fr) } }
-      .od-link { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line) }
+      #od-after:not(:empty) { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line) }
       .od-steps { margin: 0; padding-left: 22px; line-height: 1.55 }
       .od-steps li { margin: 4px 0 }
       .od-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px }
@@ -188,13 +208,21 @@ export async function render(main) {
     </style>`;
   betaNotice("direct");                                  // beta.js (owner, 2026-10-16): little tested yet
 
+  // ---- 2's choice: MeOS or a file — the one chosen last on this computer, else MeOS when it already sent to the race
+  function showVia() {
+    const v = st.via || (current()?.mopAt ? "meos" : null);
+    $$("[data-seg='odvia']", main).forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.value === v)));
+    $$("[data-via]", main).forEach((p) => { p.hidden = p.dataset.via !== (v || ""); });
+  }
+  $$("[data-seg='odvia']", main).forEach((x) => x.addEventListener("click", () => { st.via = x.dataset.value; pref.set({ via: st.via }); showVia(); }));
+
   // ---- 1. the race --------------------------------------------------------------------------------------------------
   let list = [];
   async function loadList() {
     try { list = (await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || []; } catch (e) { list = []; }
     list = list.filter((b) => b.mine || me?.admin);
   }
-  // the competitions a GPS tracking link may be given to (card 4): the same, from a week ago to three months ahead
+  // the competitions a GPS tracking link may be given to (the last card): the same, from a week ago to three months ahead
   let agenda = [], comps = [], tcomps = [];
   try {
     const a = await data.agenda();
@@ -224,8 +252,6 @@ export async function render(main) {
   const current = () => list.find((b) => b.id === st.id) || null;
   function drawRace() {
     const b = current();
-    // a broadcast's competition, even one gone from the choices (its day past)
-    const choices = b?.race && !comps.some((c) => c.key === b.race) ? [{ key: b.race, name: b.name, date: b.date, org: b.organizer || "" }, ...comps] : comps;
     $("#od-race").innerHTML = html`
       ${list.length ? html`<label class="field" style="max-width:520px"><span>${t("od.existing")}</span>
         <select id="od-pick"><option value="">${t("od.newRace")}</option>
@@ -233,19 +259,7 @@ export async function render(main) {
         </select></label>` : ""}
       ${b ? html`<p style="margin:10px 0 0"><b>${b.name}</b> · ${fmtDate(b.date)}${b.organizer ? ` · ${b.organizer}` : ""}<br>
           <span class="muted">${t("od.lastSent", { t: b.last ? new Date(b.last).toLocaleString(locale()) : t("od.never") })}</span>
-          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>
-        <div class="od-link">
-          <p style="margin:0">${b.race ? html`${t("od.linked")} <a href="#/resultats?course=${encodeURIComponent(b.race)}">${t("od.resultsLink")}</a>`
-            : html`<span class="muted">${t("od.linked.none")}</span>`}</p>
-          <div class="filters">
-            <label class="field"><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
-              <option value="">${t("od.comp.none")}</option>
-              ${choices.map((c) => html`<option value="${c.key}" ${raw(c.key === b.race ? "selected" : "")}>${compLabel(c)}</option>`)}</select></label>
-            <button type="button" class="btn btn-sm" id="od-relink-go" disabled>${t("od.link")}</button>
-            ${b.race ? html`<button type="button" class="btn btn-sm" id="od-publish">${t("od.publish")}</button>` : ""}
-          </div>
-          <div class="muted" id="od-link-msg" style="font-size:12.5px"></div>
-        </div>`
+          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>`
       : html`<div class="filters" style="margin-top:10px">
           <label class="field"><span>${t("od.comp")}</span><select id="od-comp" style="max-width:420px">
             <option value="">${t("od.comp.none")}</option>
@@ -267,24 +281,6 @@ export async function render(main) {
       for (const id of ["#od-name", "#od-date", "#od-org"]) $(id).disabled = !!c;
       if (c) { $("#od-name").value = c.name; $("#od-date").value = c.date; $("#od-org").value = c.org; }
     });
-    $("#od-relink")?.addEventListener("change", (e) => { $("#od-relink-go").disabled = (e.target.value || null) === (b?.race || null); });
-    $("#od-relink-go")?.addEventListener("click", async () => {
-      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "link", id: b.id, race: $("#od-relink").value || null }) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { $("#od-link-msg").textContent = t("od.link.failed", { e: errWord(d.error || r.status) }); return; }
-      await loadList(); drawRace();
-      $("#od-link-msg").textContent = d.race ? t("od.link.ok") : t("od.link.off");
-    });
-    $("#od-publish")?.addEventListener("click", async (e) => {
-      e.target.disabled = true;
-      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ op: "publish", id: b.id }) });
-      const d = await r.json().catch(() => ({}));
-      e.target.disabled = false;
-      $("#od-link-msg").textContent = !r.ok ? t("od.publish.failed", { e: errWord(d.error || r.status) })
-        : !d.saved ? t("od.publish.empty") : d.run ? t("od.publish.ok") : t("od.publish.queued");
-    });
     $("#od-name")?.addEventListener("change", (e) => {
       const ev = agenda.find((x) => x.name === e.target.value);
       if (ev) { $("#od-date").value = ev.date; if (!$("#od-org").value) $("#od-org").value = ev.org || ""; }
@@ -302,6 +298,45 @@ export async function render(main) {
     });
     drawMeos();
     drawFile();
+    drawAfter();
+    showVia();
+  }
+
+  // ---- 3. after the race: the broadcast tied to a competition is published in « Résultats »
+  function drawAfter(msg = "") {
+    const el = $("#od-after"), b = current();
+    if (!b) { el.innerHTML = html`<p class="muted" style="margin:0">${t("od.pickRace")}</p>`; return; }
+    // a broadcast's competition, even one gone from the choices (its day past)
+    const choices = b.race && !comps.some((c) => c.key === b.race) ? [{ key: b.race, name: b.name, date: b.date, org: b.organizer || "" }, ...comps] : comps;
+    el.innerHTML = html`
+      <p style="margin:0">${b.race ? html`${t("od.linked")} <a href="#/resultats?course=${encodeURIComponent(b.race)}">${t("od.resultsLink")}</a>`
+        : html`<span class="muted">${t("od.linked.none")}</span>`}</p>
+      <div class="filters">
+        <label class="field"><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
+          <option value="">${t("od.comp.none")}</option>
+          ${choices.map((c) => html`<option value="${c.key}" ${raw(c.key === b.race ? "selected" : "")}>${compLabel(c)}</option>`)}</select></label>
+        <button type="button" class="btn btn-sm" id="od-relink-go" disabled>${t("od.link")}</button>
+        ${b.race ? html`<button type="button" class="btn btn-sm" id="od-publish">${t("od.publish")}</button>` : ""}
+      </div>
+      <div class="muted" id="od-link-msg" style="font-size:12.5px">${msg}</div>`;
+    $("#od-relink").addEventListener("change", (e) => { $("#od-relink-go").disabled = (e.target.value || null) === (b.race || null); });
+    $("#od-relink-go").addEventListener("click", async () => {
+      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "link", id: b.id, race: $("#od-relink").value || null }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { $("#od-link-msg").textContent = t("od.link.failed", { e: errWord(d.error || r.status) }); return; }
+      await loadList(); drawRace();
+      drawAfter(d.race ? t("od.link.ok") : t("od.link.off"));
+    });
+    $("#od-publish")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "publish", id: b.id }) });
+      const d = await r.json().catch(() => ({}));
+      e.target.disabled = false;
+      $("#od-link-msg").textContent = !r.ok ? t("od.publish.failed", { e: errWord(d.error || r.status) })
+        : !d.saved ? t("od.publish.empty") : d.run ? t("od.publish.ok") : t("od.publish.queued");
+    });
   }
 
   // ---- 2. MeOS's online results: MeOS posts to /api/live/mop itself (functions/api/live/mop.js), with the race's number and
@@ -453,7 +488,7 @@ export async function render(main) {
       ${st.error ? html`<p class="od-log" style="color:var(--bad)">${st.error}</p>` : ""}`;
   }
 
-  // ---- 4. a GPS tracking run by another service (Loggator, GPSSeuranta, TracTrac…): its link, shown on Agenda, Résultats
+  // ---- and a GPS tracking run by another service (Loggator, GPSSeuranta, TracTrac…): its link, shown on Agenda, Résultats
   // and En direct (functions/api/tracking.js; Ozimut reads no position)
   async function drawTrack(msg = "", fresh = false) {
     const links = await tracking.links({ fresh });

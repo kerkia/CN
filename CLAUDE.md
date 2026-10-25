@@ -802,7 +802,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   read as full contours), a map's brown learnt from the map itself, vector sources (OCAD/OMAP through `tracer/vmap/`, symbols
   101-103, or a PDF's brown paths: exact lines, the next step), Analyse multi.
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
-  only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. The software exports
+  only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
+  2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the
+  sending — « Votre logiciel » MeOS | another (an exported file), only the chosen way's instructions and controls shown (`showVia`,
+  `ocn.direct` `via`; default MeOS once it sent to the race) —, 3. « Résultats » after the race (the competition tied, « Publier
+  maintenant »); the GPS tracking card apart; texts `content/orgdirect.*.js` `overview`, `meos`, `file`, `after`, `common`. The software exports
   its result list to a file every few seconds; the page, open on the arena PC in Chrome or Edge (File System Access API: the
   file is chosen once, its handle kept in IndexedDB `ocn-direct`, a reload asks one click), re-reads it on a timer run in a
   small Worker (hidden tabs slow their own timers), reads it in the browser (IOF XML 3.0 by its own reader `iofLive`, which
