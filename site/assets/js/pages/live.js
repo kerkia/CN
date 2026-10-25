@@ -551,7 +551,7 @@ async function race(main, id, wanted, arg) {
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
       <td class="lv-n"><div class="lv-clamp">${x.r[10] ? html`<button type="button" class="lv-link" data-go="${x.cls}" data-name="${name}"
         title="${t("lv.toLeg")}">${name}</button>` : x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
-      ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button>${
+      ${o.course ? html`<td class="lv-c">${fmtCat(x.cls)}${
         x.r[10] ? html` <span class="muted">· ${t("lv.leg.n", { l: x.r[10][1] })}</span>` : ""}</td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}
       ${o.cat ? html`<td class="lv-cat${ONE ? "" : " lv-d"}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>` : ""}
