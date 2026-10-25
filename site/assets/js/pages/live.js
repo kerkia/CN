@@ -22,6 +22,8 @@ import * as tracking from "../tracking.js";
 const devBase = (() => { try { return localStorage.getItem("ocn.liveBase"); } catch (e) { return null; } })();
 export const LIVE = devBase || "";               // this site
 const STATUS = { 1: "dns", 2: "dnf", 3: "mp", 4: "dsq", 5: "ot", 11: "dns", 12: "nc" };
+// the states of a runner who came to the finish all the same (PM, disqualified, over time)
+const ARRIVED = new Set([3, 4, 5]);
 const ST_LABEL = { dns: t("status.dns"), dnf: t("status.abandon"), mp: t("status.pm"), dsq: t("status.disqualifie"), ot: t("status.hors_delai"), nc: t("status.nc") };
 // the CN that values a method's circuits (Top: the Fit of the same mean; official: itself)
 const VALUER = { official: "official", top6w: "fair", fair: "fair" };
@@ -530,7 +532,8 @@ async function race(main, id, wanted, arg) {
     const rc = k === "fin" || k === "run" ? recent(lastAt(x.r), now) : "";
     const ctl = x.d.controls || [];
     let time = "", sub = "";
-    if (k === "fin") {
+    if (k === "fin" && STATUS[status]) time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
+    else if (k === "fin") {
       time = html`<b>${hs(result)}</b>`;
       // a finish a radio control recorded, before the card is read (MeOS's online results)
       sub = html`${timeplus ? `+${hs(timeplus)}` : ""}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}`;
@@ -700,6 +703,10 @@ async function race(main, id, wanted, arg) {
     if (!rows.length) return st.all.size < st.classes.length ? html`<div class="empty">${t("lv.loading")}</div>`
       : html`<div class="empty">${t(st.club === "run" ? "lv.run.none" : "lv.club.none")}</div>`;
     const g = grouped(rows, now), byClass = (a, b) => order.get(a.cls) - order.get(b.cls);
+    // a runner who came in with a mispunch, disqualified or over time has arrived: with the others in (owner, 2026-10-25),
+    // after the classified of their course
+    g.fin.push(...g.out.filter((x) => ARRIVED.has(x.r[4])));
+    g.out = g.out.filter((x) => !ARRIVED.has(x.r[4]));
     g.fin.sort((a, b) => byClass(a, b) || (a.r[0] ?? 1e9) - (b.r[0] ?? 1e9));
     g.run.sort((a, b) => (a.r[7] ?? 0) - (b.r[7] ?? 0));
     g.wait.sort((a, b) => (a.r[7] ?? 1e9) - (b.r[7] ?? 1e9));
