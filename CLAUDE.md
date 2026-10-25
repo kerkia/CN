@@ -896,7 +896,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   owner, 2026-10-25): each team one line, a button (`.lv-tbtn`, kept to the visible width: its rank — at the finish, else after
   the last team in, in race order —, its name, its total at its last handover, ticking before the first) that opens its runners
   (`st.openTeams`, kept over the updates; a runner searched for, or picked in the club views, opens their team, marked and
-  centred); racing teams grouped by the leg being run (« Au relais 7 », the furthest first, then by the team's total — not a
+  centred); racing teams grouped by the leg being run (« Relais 6/7 », the furthest first, then by the team's total — not a
   leg's own: a mass-started leg's total is lower); a team with a runner PM, abandoned, disqualified… is not ranked
   (« Non classées », at the bottom, under that runner's state). A runner: leg number, runner, start, leg time with its place and
   gap, the team's total and gap to the team O'Live ranks first there, « Rang » (the team's place when that runner came in),

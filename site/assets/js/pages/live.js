@@ -664,9 +664,9 @@ async function race(main, id, wanted, arg) {
             <span>${place ? t("lv.rank.n", { p: place }) : ""}</span><span>${gap ? `+${hs(gap * 100)}` : place === 1 ? "+0:00" : ""}</span>`)}</div>`;
       return html`<tr class="lv-punchrow"><td colspan="${cols}">${body}</td></tr>`;
     };
-    // (racing teams under a line per leg being run: « Au relais 3 »)
+    // (racing teams under a line per leg being run: « Relais 3/7 »)
     const legHead = (e, i, list) => (i && list[i - 1].cur === e.cur ? "" : html`<tr class="lv-sec lv-legsec"><td colspan="${cols}"><span class="lv-sec-l">${
-      t("lv.onLeg", { l: e.cur })} <span class="muted">${list.filter((x) => x.cur === e.cur).length}</span></span></td></tr>`);
+      t("lv.onLeg", { l: e.cur, n: d.relay.legs })} <span class="muted">${list.filter((x) => x.cur === e.cur).length}</span></span></td></tr>`);
     const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
       ${g[k].map((e, i, list) => html`${k === "run" ? legHead(e, i, list) : ""}${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
     const m = store.get().method;

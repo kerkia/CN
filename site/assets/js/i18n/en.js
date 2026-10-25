@@ -1710,7 +1710,7 @@ export default {
   "lv.legNo.tip": "The team's place; on a runner's line, their leg number",
   "lv.leg.n": "leg {l}", "lv.placeGap": "#{p} · {d}",
   "lv.team.open": "Show the runners", "lv.team.close": "Hide the runners",
-  "lv.onLeg": "On leg {l}",
+  "lv.onLeg": "Leg {l}/{n}",
   "lv.toLeg": "Show their line in their team",
   "lv.punch.tip": "Show their radio control times", "lv.punch.hide": "Hide their control times",
   "lv.punch.ctl": "Control", "lv.punch.leg": "Split", "lv.punch.cum": "Total",
