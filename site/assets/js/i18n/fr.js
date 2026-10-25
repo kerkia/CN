@@ -1172,7 +1172,7 @@ export default {
   "lv.gapCn": "Écart {cnTo}",
   "lv.empty": "Pas encore de résultat dans ce circuit.",
   // a relay (O'Live, 2026-10-25): a line per team, then one per leg
-  "lv.tfin": "Équipes arrivées", "lv.trun": "En course", "lv.twait": "Pas encore parties", "lv.tout": "Autres",
+  "lv.tfin": "Équipes arrivées", "lv.trun": "En course", "lv.twait": "Pas encore parties", "lv.tout": "Non classées",
   "lv.teamRunner": "Équipe / relayeur",
   "lv.legTime": "Relais", "lv.legPlace": "Place · écart",
   "lv.legTime.tip": "Le temps du relayeur sur son relais, sa place et son écart au meilleur temps de ce relais",
@@ -1182,6 +1182,7 @@ export default {
   "lv.legNo.tip": "La place de l'équipe ; sur la ligne d'un relayeur, le numéro de son relais",
   "lv.leg.n": "relais {l}", "lv.placeGap": "{p}e · {d}",
   "lv.team.open": "Afficher les relayeurs", "lv.team.close": "Masquer les relayeurs",
+  "lv.onLeg": "Au relais {l}",
   "lv.toLeg": "Voir sa ligne dans son équipe",
   "lv.punch.tip": "Afficher ses temps aux postes radio", "lv.punch.hide": "Masquer ses temps aux postes",
   "lv.punch.ctl": "Poste", "lv.punch.leg": "Interposte", "lv.punch.cum": "Cumul",

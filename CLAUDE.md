@@ -893,10 +893,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   { legs, teams: [[bib, name, place, total, status, gap, legs done]] }, which `update` keeps and compares (counts by team). No
   cards read: a leg's start is its team's start (the earliest seen from a runner out, now less their running time; `m.ol.t0`)
   plus the team's total before it, or what is seen when over 2 min apart (a mass start). « En direct » (`live.js` `relayTable`;
-  owner, 2026-10-25): each team one line, a button (`.lv-tbtn`: its rank — at the finish, else its place in the race order: the
-  furthest leg, then the total —, its name, its time so far) that opens its runners (`st.openTeams`, kept over the updates; a
-  runner searched for opens their team): leg number, runner, category (from the data), start, leg time with its place and gap,
-  the team's total and gap, « Rang » (the team's place when that runner came in), CN. A runner's line opens their times at the
+  owner, 2026-10-25): each team one line, a button (`.lv-tbtn`, kept to the visible width: its rank — at the finish, else after
+  the last team in, in race order —, its name, its total at its last handover, ticking before the first) that opens its runners
+  (`st.openTeams`, kept over the updates; a runner searched for, or picked in the club views, opens their team, marked and
+  centred); racing teams grouped by the leg being run (« Au relais 7 », the furthest first, then by the team's total — not a
+  leg's own: a mass-started leg's total is lower); a team with a runner PM, abandoned, disqualified… is not ranked
+  (« Non classées », at the bottom, under that runner's state). A runner: leg number, runner, start, leg time with its place and
+  gap, the team's total and gap to the team O'Live ranks first there, « Rang » (the team's place when that runner came in),
+  category (from the data), CN. Every redraw keeps the row tapped, else the row marked, else the first row in sight, where it was
+  on the screen (`anchor` / `restore`; `overflow-anchor: none`: updates and taps scrolled the page). A runner's line opens their times at the
   radio controls (owner, 2026-10-25: as O'Live does; no link to the runner's page there): control, split, time from their start,
   place and time behind the first there, the finish last — O'Live's card readout (bloc.php `PointagesPuce`, `ol.punchList`), read
   by the relay when a page asks (`{ punch: { c, k } }` over the WebSocket → `{ t: "punch", rows }`; kept 20 s, one read a socket a

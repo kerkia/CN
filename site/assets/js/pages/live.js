@@ -475,11 +475,34 @@ async function race(main, id, wanted, arg) {
     else if (st.view === "club") out = await clubTable();
     else out = await passTable();
     if (my !== drawing || out == null) return;
+    const a = st.mark && st.markScroll ? null : anchor();
     $("#lv-rows").innerHTML = out;
+    st.tapped = null;
     if (st.mark && st.markScroll) {
-      const tr = [...$$("tr[data-k]", main)].find((x) => x.dataset.k === st.mark);
-      if (tr) { st.markScroll = false; tr.scrollIntoView({ block: "center" }); }
-    }
+      const tr = markedRow();
+      if (tr) {
+        st.markScroll = false;
+        tr.scrollIntoView({ block: "center" });
+        // (and again once the page has settled, if what was drawn above it since pushed it out of sight)
+        setTimeout(() => { const r = markedRow()?.getBoundingClientRect(); if (r && (r.top < 0 || r.bottom > innerHeight)) markedRow().scrollIntoView({ block: "center" }); }, 400);
+      }
+    } else restore(a);
+  }
+  const markedRow = () => [...$$("#lv-rows tr[data-k]", main)].find((x) => x.dataset.k === st.mark) || null;
+  // what stays put on the screen when the table is drawn again (owner, 2026-10-25: a tap on a runner sometimes moved the
+  // page): the row tapped, else the row marked, else the first row in sight
+  function anchor() {
+    const box = $("#lv-rows"), seen = (x) => { const r = x.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
+    const el = [st.tapped?.isConnected ? st.tapped : null, st.mark ? markedRow() : null].find((x) => x && seen(x))
+      || [...$$("tr[data-k], [data-team]", box)].find(seen);
+    if (!el) return null;
+    return { k: el.dataset.k, team: el.dataset.team, top: el.getBoundingClientRect().top };
+  }
+  function restore(a) {
+    if (!a) return;
+    const el = a.team != null ? [...$$("[data-team]", $("#lv-rows"))].find((x) => x.dataset.team === a.team)
+      : [...$$("tr[data-k]", $("#lv-rows"))].find((x) => x.dataset.k === a.k);
+    if (el) window.scrollBy(0, el.getBoundingClientRect().top - a.top);
   }
 
   // a class's usual times (2026-10-22): the finishers' median time and, at each radio control, the median of those finishers
@@ -564,15 +587,21 @@ async function race(main, id, wanted, arg) {
     const g = { fin: [], run: [], wait: [], out: [] };
     for (const tm of d.relay.teams) {
       const legs = (byTeam.get(tm[0]) || []).sort((a, b) => a.r[10][1] - b.r[10][1]);
-      const k = tm[4] === 0 ? "fin" : legs.some((x) => kindOf(x, now) === "run") ? "run" : STATUS[tm[4]] ? "out"
+      // a team one of whose runners is out of the race (PM, abandon, disqualified…) is not ranked, even while its next runners
+      // still run: the list at the bottom (owner, 2026-10-25), under the first such runner's state
+      const bad = legs.find((x) => STATUS[x.r[4]]);
+      const k = bad || STATUS[tm[4]] ? "out" : tm[4] === 0 ? "fin" : legs.some((x) => kindOf(x, now) === "run") ? "run"
         : tm[6] || legs.some((x) => kindOf(x, now) !== "wait") ? "run" : "wait";
-      g[k].push({ tm, legs });
+      // the leg being run: its runner's out, else the one after the last handover
+      const cur = legs.find((x) => kindOf(x, now) === "run")?.r[10][1] ?? Math.min(tm[6] + 1, d.relay.legs);
+      g[k].push({ tm, legs, cur, why: bad ? bad.r[4] : tm[4] });
     }
-    // the furthest first, then by the total at the last handover
-    const last = (e) => [...e.legs].reverse().find((x) => x.r[10][2] != null)?.r[10][2] ?? 0;
+    // racing: grouped by the leg being run, the furthest first, then by the team's total shown on its line (O'Live's; a leg
+    // run from a mass start carries a total of its own, below the team's: ROP at the CNE, 3:54:35 after 5:18:39)
+    const last = (e) => e.tm[3] ?? [...e.legs].reverse().find((x) => x.r[10][2] != null)?.r[10][2] ?? 0;
     const byBib = (a, b) => String(a.tm[0]).localeCompare(String(b.tm[0]), undefined, { numeric: true });
     g.fin.sort((a, b) => (a.tm[2] ?? 1e9) - (b.tm[2] ?? 1e9) || byBib(a, b));
-    g.run.sort((a, b) => b.tm[6] - a.tm[6] || last(a) - last(b) || byBib(a, b));
+    g.run.sort((a, b) => b.cur - a.cur || last(a) - last(b) || byBib(a, b));
     g.wait.sort(byBib); g.out.sort(byBib);
     const cols = 7 + (FR ? 1 : 0) + (ONE ? 2 : 0);
     // each team one line, a button (owner, 2026-10-25): its rank — at the finish, else its place in the race (the furthest
@@ -582,7 +611,7 @@ async function race(main, id, wanted, arg) {
     const finRank = Math.max(g.fin.length, ...g.fin.map((e) => e.tm[2] || 0));
     const isOpen = (e) => st.openTeams.has(keyOf(e.tm[0])) || (st.mark && e.legs.some((x) => x.key === st.mark));
     const team = (e, k, i) => {
-      const [bib, name, place, total, status] = e.tm;
+      const [bib, name, place, total] = e.tm;
       // (the teams racing ranked after the last team in: owner, 2026-10-25)
       const rank = k === "fin" ? place : k === "run" ? finRank + i + 1 : null;
       // a team racing: its total at its last handover (with a mass start every team's time so far is the same clock); before
@@ -593,7 +622,7 @@ async function race(main, id, wanted, arg) {
       const open = isOpen(e);
       return html`<tr class="lv-team"><td colspan="${cols}"><button type="button" class="lv-tbtn" data-team="${keyOf(bib)}" aria-expanded="${open}"
           title="${t(open ? "lv.team.close" : "lv.team.open")}"><span class="lv-tb-pl">${rank ?? ""}</span><span class="lv-tb-ch" aria-hidden="true">›</span>
-          <span class="lv-tb-n">${name}</span><span class="lv-tb-t">${k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`
+          <span class="lv-tb-n">${name}</span><span class="lv-tb-t">${k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[e.why]] || ""}</span>`
             : from != null ? html`<span class="lv-tb-run" data-start="${from}">${now >= from ? hs(now - from) : ""}</span>`
             : total != null ? hs(total) : ""}</span></button></td></tr>`;
     };
@@ -610,11 +639,11 @@ async function race(main, id, wanted, arg) {
       return html`<tr data-k="${x.key}" data-punch="${pk}" class="${cls_} lv-pick${open ? " lv-popen" : ""}" title="${t(open ? "lv.punch.hide" : "lv.punch.tip")}"
           aria-expanded="${open}" tabindex="0"><td class="r num muted">${l}</td>
         <td class="lv-n"><div class="lv-clamp">${name}</div></td>
-        <td class="lv-cat" title="${t("prov.catCn")}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>
         <td class="r num lv-st">${k === "wait" ? "" : tod(start)}</td>
         ${pair("r num lv-t", time, tsub)}
         ${pair("r num lv-t", cumul != null ? hs(cumul) : "", cumul == null ? "" : tgap ? `+${hs(tgap)}` : tplace ? "+0:00" : "")}
         <td class="r num lv-rk">${tplace ? html`<b>${t("lv.rank.n", { p: tplace })}</b>` : ""}</td>
+        <td class="lv-cat" title="${t("prov.catCn")}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>
         ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>` : ""}</tr>
         ${open ? punchRow(pk, k) : ""}`;
     };
@@ -632,12 +661,15 @@ async function race(main, id, wanted, arg) {
             <span>${place ? t("lv.rank.n", { p: place }) : ""}</span><span>${gap ? `+${hs(gap * 100)}` : place === 1 ? "+0:00" : ""}</span>`)}</div>`;
       return html`<tr class="lv-punchrow"><td colspan="${cols}">${body}</td></tr>`;
     };
+    // (racing teams under a line per leg being run: « Au relais 3 »)
+    const legHead = (e, i, list) => (i && list[i - 1].cur === e.cur ? "" : html`<tr class="lv-sec lv-legsec"><td colspan="${cols}"><span class="lv-sec-l">${
+      t("lv.onLeg", { l: e.cur })} <span class="muted">${list.filter((x) => x.cur === e.cur).length}</span></span></td></tr>`);
     const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
-      ${g[k].map((e, i) => html`${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
+      ${g[k].map((e, i, list) => html`${k === "run" ? legHead(e, i, list) : ""}${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
     const m = store.get().method;
     return html`<table class="data compact lv-table lv-relay${ONE ? " lv-one" : ""}"><thead><tr><th class="r" title="${t("lv.legNo.tip")}">${t("prov.place")}</th>
-      <th>${t("lv.teamRunner")}</th><th title="${t("prov.catCn")}">${t("prov.cat")}</th><th class="r">${t("lv.start")}</th>
-      ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.behind"), t("lv.cumul.tip"))}<th class="r" title="${t("lv.rank.tip")}">${t("lv.rank")}</th>
+      <th>${t("lv.teamRunner")}</th><th class="r">${t("lv.start")}</th>
+      ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.behind"), t("lv.cumul.tip"))}<th class="r" title="${t("lv.rank.tip")}">${t("lv.rank")}</th><th title="${t("prov.catCn")}">${t("prov.cat")}</th>
       ${FR ? html`<th class="r" title="${cnLabel(m)}${m === "official" ? ` — ${t("lv.cnJ15.hint")}` : ""}">${t(`cn.${m}.S`)}</th>` : ""}</tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`;
   }
@@ -795,12 +827,14 @@ async function race(main, id, wanted, arg) {
     // a relay's team: its runners shown or hidden
     const pr = e.target.closest("tr[data-punch]");
     if (pr) {
+      st.tapped = pr;
       const k = pr.dataset.punch, cls = k.slice(0, k.indexOf("|"));
       if (st.openLegs.delete(k)) { draw(); return; }
       st.openLegs.add(k); askPunch(cls, k.slice(cls.length + 1)); draw(); return;
     }
     const tb = e.target.closest("[data-team]");
     if (tb) {
+      st.tapped = tb;
       const k = tb.dataset.team;
       if (tb.getAttribute("aria-expanded") === "true") { st.openTeams.delete(k); st.mark = null; } else st.openTeams.add(k);
       draw(); return;

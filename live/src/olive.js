@@ -301,8 +301,10 @@ export function compactRelay(cats, t0 = {}) {
     for (let i = 0; i < legs; i++) {
       const ok = teams.map((t) => t.legs[i]).filter((l) => l?.status === 0 && l.time != null).map((l) => l.time).sort((a, b) => a - b);
       best[i] = ok;
+      // the first team there as O'Live ranks it (a team sent off by a mass start carries a lower total of its own: the
+      // smallest total made the CNE's leader 2:29:29 behind), else the smallest total
       const c = teams.filter((t) => t.places[i] != null && t.legs[i]?.cumul != null).map((t) => t.legs[i].cumul);
-      lead[i] = c.length ? Math.min(...c) : null;
+      lead[i] = teams.find((t) => t.places[i] === 1 && t.legs[i]?.cumul != null)?.legs[i].cumul ?? (c.length ? Math.min(...c) : null);
     }
     const lastOk = teams.filter((t) => t.status === 0 && t.total != null).map((t) => t.total);
     const winner = lastOk.length ? Math.min(...lastOk) : null;
@@ -325,7 +327,7 @@ export function compactRelay(cats, t0 = {}) {
         rows.push([place, l.name, t.name, result, status, result != null ? result - best[i][0] * 100 : null, null,
           start != null ? start * 100 : null, null, radioFinish(l.word) ? 1 : 0,
           [t.bib, i + 1, l.cumul != null ? l.cumul * 100 : null, t.places[i] ?? null,
-            l.cumul != null && t.places[i] != null && lead[i] != null ? (l.cumul - lead[i]) * 100 : null]]);
+            l.cumul != null && t.places[i] != null && lead[i] != null && l.cumul >= lead[i] ? (l.cumul - lead[i]) * 100 : null]]);
       });
       const status = t.status === 0 && done < legs ? 9 : t.status;
       list.push([t.bib, t.name, status === 0 ? t.place : null, t.total != null ? t.total * 100 : null, status,
