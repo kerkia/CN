@@ -57,8 +57,8 @@ export function races(s) {
   }
   return out;
 }
-/** Only the individual races are read (a relay's pages show teams). */
-export const individual = (r) => !/relais/i.test(r.type || "");
+/** A relay (« Course en Relais »): its pages show teams, read by `relay` (2026-10-25, the CNE at Le Bessat). */
+export const isRelay = (r) => /relais/i.test(r?.type || "");
 
 /** A race's circuits, in the page's order. */
 export const circuits = (s, id) => [...new Set([...s.matchAll(new RegExp(`\\?Action=Result&amp;IdCourse=${id}&amp;Circuit=([^"&]+)"`, "g"))]
@@ -220,6 +220,115 @@ export function compact(byCircuit, ctrls, known, cats = {}) {
           codes.length ? x.times.map((t, i) => (t == null ? null : [t, placeIn(per[i], t), t - per[i][0]])) : null, x.prel]),
       };
     }
+  }
+  return { order, classes };
+}
+
+// ---- relays (2026-10-25: the CNE at Le Bessat) ----
+//   ?Action=ChoixCategories&IdCourse=<n>                 its categories, each a link ?Action=Result&IdCourse=<n>&IdCat=<k>
+//   ?Action=Result&IdCourse=<n>&IdCat=<k>                 the category's teams, grouped by the leg they are on (« 2 / 7 »):
+//                                                         the team's place, bib, name, time so far, state, its place after each
+//                                                         leg (« 1 > - > - »); each leg's runner, their leg time (the running time
+//                                                         of one out, at O'Live's last import), place, state, and the team's total
+//                                                         at the handover
+
+/** A relay's categories: [{ id, name }], in the page's order. */
+export const relayCats = (s, id) => [...s.matchAll(new RegExp(`\\?Action=Result&amp;IdCourse=${id}&amp;IdCat=(\\d+)"[^>]*>([^<]*)<`, "g"))]
+  .map((m) => ({ id: Number(m[1]), name: unent(m[2]).trim() }));
+
+const num = (s) => (/^\d+$/.test(String(s || "").trim()) ? Number(String(s).trim()) : null);
+const RX = new Map(), rx = (k, state) => RX.get(k) || RX.set(k, new RegExp(state ? `<span class="${k}">\\s*(?:<a [^>]*>)?([^<]*)<`
+  : `<span class="${k}">([^<]*)<`)).get(k);
+const span = (k, s) => unent(rx(k).exec(s)?.[1] || "").trim();
+const stateWord = (k, s) => unent(rx(k, true).exec(s)?.[1] || "").trim();
+
+/** A category's teams: [{ bib, name, place, total, word, status, places: [the team's place after each leg | null], legs: [{ leg,
+ *  name, time, place, cumul, word, status }] }], times in seconds (`cumul`: the team's total at the end of that leg). */
+export function relay(s) {
+  const teams = [];
+  for (const part of s.split('<div class="EnteteEquipe').slice(1)) {
+    const bib = span("Dossard", part), word = stateWord("StatusEquipe", part);
+    const pl = /<span class="PlacesEquipe">([\s\S]*?)<span class="EcartEquipe">/.exec(part)?.[1] || "";
+    const legs = [];
+    for (const p of part.split('<p class="Detail_1">').slice(1)) {
+      const w = stateWord("StatusRelayeur", p);
+      legs.push({ leg: num(span("NumRelayeur", p)) ?? legs.length + 1, name: personName(span("NomRelayeur", p)), time: secs(span("TempsRelayeur", p)),
+        place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w) });
+    }
+    teams.push({ bib, name: span("NomEquipe", part).replace(/^(\d+)\s+/, (m, b) => (b === bib ? "" : m)), place: num(span("PlaceEquipe", part)),
+      total: secs(span("TempsEquipe", part)), word, status: statusOf(word), places: [...pl.matchAll(/<span class="Places">([^<]*)</g)].map((m) => num(m[1])), legs });
+  }
+  return teams;
+}
+/** Is anyone of these teams out, or still to start? */
+export const relayOut = (teams) => teams.some((t) => t.status === 9 || t.legs.some((l) => l.status === 9));
+export const relayWait = (teams) => teams.some((t) => t.status === 10 || t.legs.some((l) => l.status === 10));
+
+/**
+ * The relay's categories -> the compact form (see `compact`), one class per category: a row per leg's runner — [leg place,
+ * name, team, leg time, status, gap to the leg's best, null, the leg's start, null, provisional, [team bib, leg, team's total
+ * at the handover, team's place there, its gap to the first team there]] — and `relay`: { legs, teams: [[bib, name, place,
+ * total, status, gap, legs done]] }, in hundredths. `cats`: { category: { teams: relay(), at: the page's time (ms) } };
+ * `t0`: { "category|bib": the team's start (seconds after midnight) } — what was seen, kept by the caller and filled here.
+ *
+ * A leg's start: a runner out, the page's time less their running time (an estimate: O'Live counts it at its last import); a
+ * leg through, its team's start plus the team's total before it (the team's start being the earliest seen that way: a stale
+ * running time makes it later, a mass start of the last legs too), else the category's usual team start.
+ */
+export function compactRelay(cats, t0 = {}) {
+  const classes = {}, order = [];
+  for (const [cat, { teams, at }] of Object.entries(cats)) {
+    const now = parisSeconds(at), day = (x) => ((x % 86400) + 86400) % 86400;
+    const before = (t, i) => (i === 0 ? 0 : t.legs[i - 1]?.cumul ?? null);
+    for (const t of teams) {
+      t.legs.forEach((l, i) => {
+        l.seen = l.status === 9 && l.time != null ? day(now - l.time) : null;
+        const b = before(t, i), k = `${cat}|${t.bib}`;
+        if (l.seen != null && b != null) {
+          const s = day(l.seen - b);
+          // (the earliest, within half a day: a start just before midnight stays one)
+          if (t0[k] == null || ((t0[k] - s + 86400) % 86400 < 43200 && (t0[k] - s + 86400) % 86400 > 0)) t0[k] = s;
+        }
+      });
+    }
+    const all = teams.map((t) => t0[`${cat}|${t.bib}`]).filter((x) => x != null).sort((a, b) => a - b);
+    const usual = all.length ? all[Math.floor((all.length - 1) / 2)] : null;
+    const legs = Math.max(0, ...teams.map((t) => t.legs.length));
+    const best = [], lead = [];
+    for (let i = 0; i < legs; i++) {
+      const ok = teams.map((t) => t.legs[i]).filter((l) => l?.status === 0 && l.time != null).map((l) => l.time).sort((a, b) => a - b);
+      best[i] = ok;
+      const c = teams.filter((t) => t.places[i] != null && t.legs[i]?.cumul != null).map((t) => t.legs[i].cumul);
+      lead[i] = c.length ? Math.min(...c) : null;
+    }
+    const lastOk = teams.filter((t) => t.status === 0 && t.total != null).map((t) => t.total);
+    const winner = lastOk.length ? Math.min(...lastOk) : null;
+    const rows = [], list = [];
+    for (const t of teams) {
+      const s0 = t0[`${cat}|${t.bib}`] ?? usual;
+      let done = 0;
+      t.legs.forEach((l, i) => {
+        if (l.cumul != null) done = i + 1;
+        if (!l.name) return;
+        const b = before(t, i);
+        // (the team's start + its total before, steady from one read to the next; a runner out seen to have started over 2
+        // minutes apart from it — a mass start of the last legs — by what is seen)
+        const chain = s0 != null && b != null && l.status !== 10 ? day(s0 + b) : null;
+        const start = chain != null && (l.seen == null || Math.abs(l.seen - chain) <= 120) ? chain : l.seen ?? chain;
+        const result = l.status === 0 && l.time != null ? l.time * 100 : null;
+        const status = l.status === 0 && result == null ? 9 : l.status;
+        const place = result != null ? best[i].indexOf(l.time) + 1 : null;
+        rows.push([place, l.name, t.name, result, status, result != null ? result - best[i][0] * 100 : null, null,
+          start != null ? start * 100 : null, null, radioFinish(l.word) ? 1 : 0,
+          [t.bib, i + 1, l.cumul != null ? l.cumul * 100 : null, t.places[i] ?? null,
+            l.cumul != null && t.places[i] != null && lead[i] != null ? (l.cumul - lead[i]) * 100 : null]]);
+      });
+      const status = t.status === 0 && done < legs ? 9 : t.status;
+      list.push([t.bib, t.name, status === 0 ? t.place : null, t.total != null ? t.total * 100 : null, status,
+        status === 0 && t.total != null && winner != null ? (t.total - winner) * 100 : null, done]);
+    }
+    order.push(cat);
+    classes[cat] = { controls: [], rows, relay: { legs, teams: list } };
   }
   return { order, classes };
 }

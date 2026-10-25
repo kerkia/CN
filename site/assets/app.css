@@ -1733,6 +1733,10 @@ table.data.lv-table thead th:first-child, table.data.lv-table tr:not(.lv-sec) > 
   background-color: var(--surface); background-image: linear-gradient(var(--lv-tint), var(--lv-tint)); }
 table.data.lv-table thead th:first-child { z-index: 2; }
 .lv-table .lv-sec-l { position: sticky; left: 6px; display: inline-block; }
+/* a relay (O'Live, 2026-10-25): each team's line tinted and set off above its legs, the legs' runners indented */
+table.data.lv-relay tr.lv-team { --lv-tint: color-mix(in srgb, var(--ink) 6%, transparent); }
+table.data.lv-relay tr.lv-team td { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); border-top: 1px solid var(--line); }
+table.data.lv-relay tr.lv-leg td.lv-n { padding-left: 16px; }
 /* one line per runner (a preview, live.js ONE): the two-line cells split into columns, nothing wraps, the table scrolls sideways */
 .lv-one .lv-clamp { display: block; overflow: visible; overflow-wrap: normal; }
 .lv-one.lv-table td.lv-2 { font-size: 12px; }

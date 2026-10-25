@@ -884,6 +884,18 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   import (frozen up to a minute): their start while waiting (« 12 h 46 »; « 00 h 00 » none) or their card's replaces it. « Arr »
   (finished, card unread) is a provisional result, « Arr? » not classified. 20 s while runners are out or cards wait, 60 s with
   only starts to come, 5 min after. The Agenda maps both ranges to « host/<n> » (`keyOfComp`, `run.LIVE_IDS`).
+  **O'Live relays** (2026-10-25, owner: the CNE at Le Bessat; listed since, `isRelay` by the list's type « Course en Relais »;
+  « Résultats » still leaves relays out): `readOlRelay` reads each category's page (`?Action=Result&IdCat=`, `relayCats`; up to
+  ~470 KB, ~30 ms to read all six), a category with nobody out or to start again every 5 min only; `relay()` reads each team
+  (place, bib, name, time so far, state, its place after each leg) and each leg (runner, leg time, place, state, the team's total at
+  the handover). `compactRelay`: one class per category, a row per leg's runner — leg place, leg time and gap to the leg's best,
+  the leg's start, and a 11th field [team bib, leg, team total, team place, gap to the first team there] — and the class's `relay`
+  { legs, teams: [[bib, name, place, total, status, gap, legs done]] }, which `update` keeps and compares (counts by team). No
+  cards read: a leg's start is its team's start (the earliest seen from a runner out, now less their running time; `m.ol.t0`)
+  plus the team's total before it, or what is seen when over 2 min apart (a mass start). « En direct » (`live.js` `relayTable`):
+  a line per team (place, name, bib, the leg it is on, its time so far, place and gap at its last handover), then a line per leg
+  (leg number, runner, start, leg time with its place and gap, the team's total with its place and gap, CN); no score or
+  expected place; the punches say « Fin du relais n » before the last leg (`legEnd`). Club views and the search use the rows.
   **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
   next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's
   probed by a HEAD of the results file (`SI_LIST` requests a call; `MAX_INFO` lowered to 17), the age being the time since the

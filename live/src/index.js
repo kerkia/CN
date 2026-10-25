@@ -74,7 +74,9 @@ async function lr(env, params) {
 const raceOf = (s) => (/^[a-z][a-z0-9-]{1,40}$/.test(String(s || "")) ? String(s) : null);
 
 // a class's finishers and runners (non-starters apart), for the course picker
-const countOf = (rows) => [rows.filter((r) => r[4] === 0 && r[3] != null).length, rows.filter((r) => r[4] !== 1 && r[4] !== 11).length];
+// (a relay: its teams — through the last leg / not missing)
+const countOf = (rows, relay) => (relay ? [relay.teams.filter((t) => t[4] === 0).length, relay.teams.filter((t) => t[4] !== 1 && t[4] !== 11).length]
+  : [rows.filter((r) => r[4] === 0 && r[3] != null).length, rows.filter((r) => r[4] !== 1 && r[4] !== 11).length]);
 
 // a class's results, compact: [place, name, club, result, status, timeplus, progress, start, splits]
 function compact(k) {
@@ -106,7 +108,7 @@ export class LiveRace extends DurableObject {
     this.legacy = old ? Object.keys(old) : null;
     for (const [k, v] of await this.ctx.storage.list({ prefix: "c:" })) this.m.data[k.slice(2)] = v;
     this.m.counts ||= {}; this.m.counted ||= {}; this.m.chash ||= {};       // (objects of before the counts)
-    if (this.m.pushed) for (const [k, v] of Object.entries(this.m.data)) this.m.counts[k] = countOf(v.rows || []);
+    if (this.m.pushed) for (const [k, v] of Object.entries(this.m.data)) this.m.counts[k] = countOf(v.rows || [], v.relay);
     return this.m;
   }
 
@@ -294,9 +296,11 @@ export class LiveRace extends DurableObject {
     const changed = [], arrivals = [];
     for (const [name, k] of Object.entries(p.classes && typeof p.classes === "object" ? p.classes : {})) {
       if (!name || name.length > 200 || !k || !Array.isArray(k.rows) || k.rows.length > 5000) continue;
-      const next = { controls: Array.isArray(k.controls) ? k.controls.slice(0, 200) : [], rows: k.rows };
+      // (a relay's class: its teams too, `relay`, from O'Live)
+      const next = { controls: Array.isArray(k.controls) ? k.controls.slice(0, 200) : [], rows: k.rows,
+        ...(k.relay && Array.isArray(k.relay.teams) ? { relay: k.relay } : {}) };
       const prev = m.data[name];
-      if (prev && JSON.stringify({ controls: prev.controls, rows: prev.rows }) === JSON.stringify(next)) continue;
+      if (prev && JSON.stringify({ controls: prev.controls, rows: prev.rows, ...(prev.relay ? { relay: prev.relay } : {}) }) === JSON.stringify(next)) continue;
       // the runners who finished, and the radio controls passed, since the last push, for the ticker of punches:
       // [name, class, control code (1000: the finish), its name, time, start]
       const was = new Map((prev?.rows || []).map((r) => [`${r[1]}|${r[2]}`, r]));
@@ -314,7 +318,7 @@ export class LiveRace extends DurableObject {
         for (const i of fresh) arrivals.push([r[1], name, next.controls[i]?.[0] ?? i + 1, next.controls[i]?.[1] ?? "", r[8][i][0], r[7]]);
       }
       m.data[name] = { ...next, at: now };
-      m.counts[name] = countOf(next.rows);
+      m.counts[name] = countOf(next.rows, next.relay);
       changed.push(name);
     }
     const order = Array.isArray(p.order) ? p.order.filter((c) => typeof c === "string" && m.data[c]) : null;
@@ -419,14 +423,18 @@ export class LiveRace extends DurableObject {
     if (!host) throw new Error("unknown O'Live site");
     const base = ol.base(host), page = (q) => `${base}/resultats.php?${q}&IdCourse=${id}`;
     m.ol ||= { at: 0, circuits: [], info: null, ctrls: {}, cats: {}, read: [], next: 0, out: false, wait: false, due: 0 };
+    // the race's name, day and type (a relay is read by teams) from the list of races
+    if (!m.ol.info || m.ol.relay === undefined) {
+      const race = ol.races((await ol.get(`${base}/resultats.php`)).text).find((r) => r.id === id);
+      m.ol.relay = ol.isRelay(race);
+      if (race) m.ol.info = { name: race.name, organizer: "", date: race.date || null };
+    }
+    if (m.ol.relay) return this.readOlRelay(m, page);
     if (!m.ol.circuits.length || Date.now() - m.ol.at >= OL_PAGE_MS) {
       const s = (await ol.get(page("Action=ChoixCircuits"))).text;
       m.ol.circuits = ol.circuits(s, id);
       m.ol.at = Date.now();
-      if (!m.ol.info) {
-        const race = ol.races((await ol.get(`${base}/resultats.php`)).text).find((r) => r.id === id);
-        m.ol.info = { name: race?.name || ol.title(s), organizer: "", date: race?.date || null };
-      }
+      if (!m.ol.info) m.ol.info = { name: ol.title(s), organizer: "", date: null };
     }
     // every circuit when they are few, else OL_MAX of them in turn
     const n = m.ol.circuits.length, all = n <= OL_MAX;
@@ -496,6 +504,39 @@ export class LiveRace extends DurableObject {
     return this.update(m.comp, { info: m.ol.info, order: all ? order : null, classes }, { prune: all });
   }
 
+  /** An O'Live relay (2026-10-25): its categories' pages, each a class of teams (`ol.compactRelay`), passed to `update` as a
+   *  push; a category where everyone is through read again only every OL_DONE_MS (it is kept meanwhile). Each team's start,
+   *  as seen from its runners out, kept in m.ol.t0 (the legs' starts come from it). */
+  async readOlRelay(m, page) {
+    const { id } = ol.site(m.comp);
+    if (!m.ol.rcats?.length || Date.now() - m.ol.at >= OL_PAGE_MS) {
+      const s = (await ol.get(page("Action=ChoixCategories"))).text;
+      m.ol.rcats = ol.relayCats(s, id);
+      m.ol.at = Date.now();
+      if (!m.ol.info) m.ol.info = { name: ol.title(s), organizer: "", date: null };
+    }
+    m.ol.t0 ||= {}; m.ol.rdone ||= {};
+    const cats = {}, now = Date.now();
+    let out = false, wait = false;
+    for (const c of m.ol.rcats.slice(0, OL_MAX)) {
+      if (m.data[c.name] && m.ol.rdone[c.name] && now - m.ol.rdone[c.name] < OL_DONE_MS) continue;
+      const p = await ol.get(page(`Action=Result&IdCat=${c.id}`));
+      const teams = ol.relay(p.text);
+      cats[c.name] = { teams, at: p.at };
+      const o = ol.relayOut(teams), w = ol.relayWait(teams);
+      out ||= o; wait ||= w;
+      if (o || w || !teams.length) delete m.ol.rdone[c.name]; else m.ol.rdone[c.name] = now;
+    }
+    // (a category not read this time: as it was)
+    for (const c of m.ol.rcats) if (!cats[c.name]) {
+      const t = m.data[c.name]?.relay?.teams || [];
+      out ||= t.some((x) => x[4] === 9); wait ||= t.some((x) => x[4] === 10);
+    }
+    m.ol.out = out; m.ol.wait = wait; m.ol.due = 0;
+    const { classes } = ol.compactRelay(cats, m.ol.t0);
+    return this.update(m.comp, { info: m.ol.info, order: m.ol.rcats.map((c) => c.name), classes }, { prune: true });
+  }
+
   async readClasses(m) {
     const k = await lr(this.env, { method: "getclasses", comp: m.comp, last_hash: m.classesHash });
     m.classesAt = Date.now();
@@ -522,7 +563,7 @@ export class LiveRace extends DurableObject {
     if (k.status !== "OK") return false;
     m.hashes[name] = k.hash;
     m.data[name] = { ...compact(k), at: Date.now() };
-    m.counts[name] = countOf(m.data[name].rows);
+    m.counts[name] = countOf(m.data[name].rows, m.data[name].relay);
     return true;
   }
 
@@ -878,7 +919,7 @@ export class Directory extends DurableObject {
     });
   }
 
-  /** O'Live's races of the last 3 and next 7 days (individual ones: a relay's pages show teams), in the list's form [id, name,
+  /** O'Live's races of the last 3 and next 7 days (relays too, since 2026-10-25), in the list's form [id, name,
    *  "", date, 0, "FR", age, host]: each site's list at most every LIST_MS (kept when a site does not answer), today's
    *  races probed a few circuits a call in turn, at most every PROBE_MS a race; the age is the time since someone was seen
    *  out on the race. */
@@ -891,7 +932,8 @@ export class Directory extends DurableObject {
       for (const [i, host] of ol.HOSTS.entries()) {
         let list = null;
         if (budget > 0) { budget--; try { list = ol.races((await ol.get(`${ol.base(host)}/resultats.php`)).text); } catch (e) { /* kept below */ } }
-        if (list) out.push(...list.filter((r) => ol.individual(r) && r.date && r.date >= lo && r.date <= hi).map((r) => [ol.raceId(i, r.id), r.name, "", r.date, 0, "FR", null]));
+        // (a relay's flag kept after the list's fields: its probe reads its categories)
+        if (list) out.push(...list.filter((r) => r.date && r.date >= lo && r.date <= hi).map((r) => [ol.raceId(i, r.id), r.name, "", r.date, 0, "FR", null, ol.isRelay(r)]));
         else out.push(...s.comps.filter((c) => ol.site(c[0]).host === host));
       }
       s.comps = out; s.at = now; changed = true;
@@ -904,15 +946,19 @@ export class Directory extends DurableObject {
       if (budget <= 0 || now - p.checked < PROBE_MS) continue;
       const { host, id } = ol.site(c[0]), page = (q) => `${ol.base(host)}/resultats.php?${q}&IdCourse=${id}`;
       try {
+        // (a relay: its categories, each read as a page of teams)
+        const relay = !!c[7];
         if (!p.circuits.length || now - p.circuitsAt >= MD_HASHES_MS) {
           budget--;
-          p.circuits = ol.circuits((await ol.get(page("Action=ChoixCircuits"))).text, id);
+          p.circuits = relay ? ol.relayCats((await ol.get(page("Action=ChoixCategories"))).text, id).map((x) => x.id)
+            : ol.circuits((await ol.get(page("Action=ChoixCircuits"))).text, id);
           p.circuitsAt = now;
         }
         for (let k = 0; k < Math.min(OL_PROBE, p.circuits.length) && budget > 0; k++) {
           const ci = p.circuits[p.next++ % p.circuits.length];
           budget--;
-          if (ol.anyOut(ol.rows((await ol.get(page(`Action=Result&Circuit=${encodeURIComponent(ci)}`))).text))) p.out = now;
+          const t = (await ol.get(page(relay ? `Action=Result&IdCat=${ci}` : `Action=Result&Circuit=${encodeURIComponent(ci)}`))).text;
+          if (relay ? ol.relayOut(ol.relay(t)) : ol.anyOut(ol.rows(t))) p.out = now;
         }
         p.checked = now;
       } catch (e) { /* next time */ }

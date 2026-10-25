@@ -265,9 +265,12 @@ async function race(main, id, wanted, arg) {
       const get = (k) => (me ? c[k].get(me.lic) ?? null : null);
       return { r, cls, d, me, key: `${r[1]}|${r[2]}`, time: r[4] === 0 && r[3] != null ? r[3] / 100 : null, cn: get("shown"), cnv: { v: get("valuer") } };
     });
-    const fin = rows.filter((x) => x.time), score = scores(fin, "v", terrain);
-    for (const x of fin) x.score = score(x);
-    rows.filter((x) => x.cn != null).sort((a, b) => b.cn - a.cn).forEach((x, i) => { x.expected = i + 1; });
+    // (a relay's legs are not one circuit: no score, no expected place)
+    if (!d.relay) {
+      const fin = rows.filter((x) => x.time), score = scores(fin, "v", terrain);
+      for (const x of fin) x.score = score(x);
+      rows.filter((x) => x.cn != null).sort((a, b) => b.cn - a.cn).forEach((x, i) => { x.expected = i + 1; });
+    }
     for (const x of rows) if (mine && x.me && data.clubParts(x.me.club).code === mine && x.r[2]) myKeys.add(clubKey(x.r[2]));
     enriched.set(d, { m, rows });
     return rows;
@@ -418,6 +421,12 @@ async function race(main, id, wanted, arg) {
     el.textContent = live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
   }
   const ctlOf = (ctl, ctlName) => (Number(ctl) === 1000 ? t("lv.ev.finish") : t("lv.ev.radio", { c: ctlName || ctl }));
+  // a relay leg's end before the last is a handover (« Relais 2 », the runner's row in the class held), not the finish
+  const legEnd = (cls, name) => {
+    const d = st.all.get(cls), r = d?.relay ? d.rows.find((x) => x[1] === name) : null;
+    return r?.[10] && r[10][1] < d.relay.legs ? r[10][1] : null;
+  };
+  const evLabel = (ctl, ctlName, cls, name) => { const l = Number(ctl) === 1000 ? legEnd(cls, name) : null; return l ? t("lv.ev.handover", { l }) : ctlOf(ctl, ctlName); };
   // the latest punches on one line, scrolling sideways; ▾ opens them as a table
   function ticker() {
     const el = $("#lv-pass");
@@ -425,7 +434,7 @@ async function race(main, id, wanted, arg) {
     if (st.view === "pass" || !st.pass.length) { el.innerHTML = ""; return; }
     const now = nowAt(st.info);
     el.innerHTML = html`<div class="lv-pass"><div class="lv-strip">${st.pass.slice(0, 30).map(([at, name, cls, ctl, ctlName, time]) => html`<button type="button" class="lv-pi ${recent(parseTod(at), now)}"
-      data-go="${cls}" data-name="${name}" title="${at}"><b>${name}</b> · ${fmtCat(cls)} · ${ctlOf(ctl, ctlName)} ${time}</button>`)}</div>
+      data-go="${cls}" data-name="${name}" title="${at}"><b>${name}</b> · ${fmtCat(cls)} · ${evLabel(ctl, ctlName, cls, name)} ${time}</button>`)}</div>
       <button type="button" class="btn btn-sm lv-pexp" data-lv-view="pass" title="${t("lv.passView.tip")}" aria-label="${t("lv.passView.tip")}">▾</button></div>`;
   }
   function note() {
@@ -493,7 +502,7 @@ async function race(main, id, wanted, arg) {
     } else if (k === "run") {
       const last = splits ? splits.map((s, i) => (s ? [i, s] : null)).filter(Boolean).pop() : null;
       time = html`<span class="muted" data-start="${start}">${now >= start ? hs(now - start) : ""}</span>`;
-      const e = eta(x);
+      const e = x.d.relay ? null : eta(x);
       sub = html`${last ? t("lv.atControl", { c: ctl[last[0]]?.[1] || "", p: last[1][1] ?? "–", d: last[1][2] ? `+${hs(last[1][2])}` : "+0:00" }) : ""}${
         e != null && e > now ? html`${last ? " · " : ""}<span class="lv-eta" title="${t("lv.eta.tip")}">${t("lv.eta", { t: tod(e) })}</span>` : ""}`;
     } else if (k === "out") time = html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`;
@@ -503,7 +512,8 @@ async function race(main, id, wanted, arg) {
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
       <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
-      ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button></td>` : ""}
+      ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button>${
+        x.r[10] ? html` <span class="muted">· ${t("lv.leg.n", { l: x.r[10][1] })}</span>` : ""}</td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}
       ${o.cat ? html`<td class="lv-cat${ONE ? "" : " lv-d"}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>` : ""}
       <td class="r num lv-st">${tod(start)}</td>
@@ -531,11 +541,69 @@ async function race(main, id, wanted, arg) {
     for (const x of rows) g[kindOf(x, now)].push(x);
     return g;
   };
+  // a relay's class (O'Live, 2026-10-25): a line per team — its place, name and bib, the leg it is on, its time so far and
+  // gap — then a line per leg: the runner, the leg's start, their leg time with their place and gap on that leg, the team's
+  // total at the handover with its place and gap to the first team there
+  const placeGap = (p, d) => (p ? t("lv.placeGap", { p, d: d ? `+${hs(d)}` : "+0:00" }) : "");
+  function relayTable(rows, d, now) {
+    const byTeam = new Map();
+    for (const x of rows) (byTeam.get(x.r[10][0]) || byTeam.set(x.r[10][0], []).get(x.r[10][0])).push(x);
+    const g = { fin: [], run: [], wait: [], out: [] };
+    for (const tm of d.relay.teams) {
+      const legs = (byTeam.get(tm[0]) || []).sort((a, b) => a.r[10][1] - b.r[10][1]);
+      const k = tm[4] === 0 ? "fin" : legs.some((x) => kindOf(x, now) === "run") ? "run" : STATUS[tm[4]] ? "out"
+        : tm[6] || legs.some((x) => kindOf(x, now) !== "wait") ? "run" : "wait";
+      g[k].push({ tm, legs });
+    }
+    // the furthest first, then by the total at the last handover
+    const last = (e) => [...e.legs].reverse().find((x) => x.r[10][2] != null)?.r[10][2] ?? 0;
+    const byBib = (a, b) => String(a.tm[0]).localeCompare(String(b.tm[0]), undefined, { numeric: true });
+    g.fin.sort((a, b) => (a.tm[2] ?? 1e9) - (b.tm[2] ?? 1e9) || byBib(a, b));
+    g.run.sort((a, b) => b.tm[6] - a.tm[6] || last(a) - last(b) || byBib(a, b));
+    g.wait.sort(byBib); g.out.sort(byBib);
+    const cols = 5 + (FR ? 1 : 0) + (ONE ? 2 : 0);
+    const team = ({ tm, legs }, k) => {
+      const [bib, name, place, total, status, gap, done] = tm;
+      const at = [...legs].reverse().find((x) => x.r[10][2] != null);
+      const sub = k === "fin" ? (gap ? `+${hs(gap)}` : "") : at ? `${t("lv.leg.n", { l: at.r[10][1] })} · ${placeGap(at.r[10][3], at.r[10][4])}` : "";
+      return html`<tr class="lv-team"><td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b></td>
+        <td class="lv-n"><div class="lv-clamp"><b>${name}</b></div><div class="lv-2">${t("lv.bib", { n: bib })}${
+          k === "run" && done < d.relay.legs ? ` · ${t("lv.legOf", { l: Math.min(done + 1, d.relay.legs), n: d.relay.legs })}` : ""}</div></td>
+        <td></td>${ONE ? html`<td></td><td></td>` : html`<td></td>`}
+        ${pair("r num lv-t", k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>` : total != null ? html`<b>${hs(total)}</b>` : "", sub)}
+        ${FR ? html`<td></td>` : ""}</tr>`;
+    };
+    const leg = (x) => {
+      const [place, name, , result, status, timeplus, , start, , prel, [, l, cumul, tplace, tgap]] = x.r;
+      const k = kindOf(x, now);
+      const rc = k === "fin" || k === "run" ? recent(lastAt(x.r), now) : "";
+      const cls = ["lv-leg", rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
+      const time = k === "fin" ? html`<b>${hs(result)}</b>` : k === "run" ? html`<span class="muted" data-start="${start}">${now >= start ? hs(now - start) : ""}</span>`
+        : k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>` : "";
+      const tsub = k === "fin" ? html`${placeGap(place, timeplus)}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}` : "";
+      return html`<tr data-k="${x.key}" class="${cls}"><td class="r num muted">${l}</td>
+        <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+        <td class="r num lv-st">${k === "wait" ? "" : tod(start)}</td>
+        ${pair("r num lv-t", time, tsub)}
+        ${pair("r num lv-t", cumul != null ? hs(cumul) : "", placeGap(tplace, tgap))}
+        ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>` : ""}</tr>`;
+    };
+    const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
+      ${g[k].map((e) => html`${team(e, k)}${e.legs.map(leg)}`)}` : "");
+    const m = store.get().method;
+    return html`<table class="data compact lv-table lv-relay${ONE ? " lv-one" : ""}"><thead><tr><th class="r" title="${t("lv.legNo.tip")}">${t("prov.place")}</th>
+      <th>${t("lv.teamRunner")}</th><th class="r">${t("lv.start")}</th>
+      ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.cumulPlace"), t("lv.cumul.tip"))}
+      ${FR ? html`<th class="r" title="${cnLabel(m)}${m === "official" ? ` — ${t("lv.cnJ15.hint")}` : ""}">${t(`cn.${m}.S`)}</th>` : ""}</tr></thead>
+      <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`;
+  }
   async function courseTable() {
     if (!st.cls) return html`<div class="empty">${t(st.classes.length ? "lv.loading" : "lv.noClasses")}</div>`;
     const rows = await enrich(st.cls);
     if (!rows) return html`<div class="empty">${t("lv.loading")}</div>`;
     if (!rows.length) return html`<div class="empty">${t("lv.empty")}</div>`;
+    const d = st.all.get(st.cls);
+    if (d?.relay) return relayTable(rows.filter((x) => x.r[10]), d, nowAt(st.info));
     const now = nowAt(st.info), g = grouped(rows, now);
     g.fin.sort((a, b) => (a.r[0] ?? 1e9) - (b.r[0] ?? 1e9));
     g.run.sort((a, b) => (a.r[7] ?? 0) - (b.r[7] ?? 0));
@@ -607,7 +675,7 @@ async function race(main, id, wanted, arg) {
         const gap = e.gap ? `+${hs(e.gap)}` : e.place === 1 ? "+0:00" : "";
         return html`<tr class="lv-prow ${recent(e.at, now)}" data-go="${e.cls}" data-name="${name}">
           <td class="num muted">${tod(e.at)}</td>
-          <td><span class="lv-ev ${fin ? "lv-ev-fin" : "lv-ev-radio"}">${raw(fin ? FINISH_ICON : RADIO_ICON)} ${ctlOf(e.ctl, e.ctlName)}</span></td>
+          <td><span class="lv-ev ${fin ? "lv-ev-fin" : "lv-ev-radio"}">${raw(fin ? FINISH_ICON : RADIO_ICON)} ${evLabel(e.ctl, e.ctlName, e.cls, name)}</span></td>
           ${pair("lv-n", html`<div class="lv-clamp"><b>${name}</b></div>`, e.r?.[2] || "", "lv-c")}
           ${pair("lv-c", fmtCat(e.cls), e.x?.me?.cat && !CAT_CLASS.test(e.cls) ? fmtCat(e.x.me.cat) : "", "lv-c")}
           ${pair("r num", html`<b>${e.time}</b>`, gap)}
