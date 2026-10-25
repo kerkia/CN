@@ -949,30 +949,34 @@ export async function render(main, { query = {}, route } = {}) {
     if (tn) summary.push(tn);
     const whose = whoseTrace();
     const whoseNote = !whose ? "" : html`<div class="notice" style="margin-bottom:6px">${t("an.st.whose", { t: hhmm(whose.t0), r: runner()?.name || "", rs: whose.dns ? t("an.st.whose.dns") : whose.mine != null ? t("an.st.whose.start", { s: hhmm(whose.mine) }) : t("an.st.whose.noStart") })}
-      ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}">${t("an.switch")}</button>` : ""}</div>`;
+      ${whose.other ? html` ${t("an.st.other", { o: whose.other.name, os: hhmm(whose.other.start) })} <span class="muted">${t("an.switch.hint")}</span>` : ""}</div>`;
     const need = mode === "manual" ? Math.max(0, (taus ? (guessOffset() != null || geoFit ? 2 : 3) : 3) - placed) : 0;
-    $("#an-side").innerHTML = html`<div class="an-side-title">${t(mode === "manual" ? "an.cal.title" : "an.cal.auto")}</div>
+    // the text scrolls in the panel; every action sits in a bar under it that never scrolls away (owner, 2026-10-25:
+    // « Voir la course » was out of sight at the bottom of the panel's text) — on a phone, fixed at the window's bottom
+    $("#an-side").classList.add("an-cal");
+    $("#an-side").innerHTML = html`<div class="an-side-body"><div class="an-side-title">${t(mode === "manual" ? "an.cal.title" : "an.cal.auto")}</div>
       ${summary.length ? html`<ul class="an-summary">${summary.map((s) => html`<li>${s}</li>`)}</ul>` : ""}
       ${whoseNote}${notes.map((n) => html`<div class="notice" style="margin-bottom:6px">${n}</div>`)}
       ${mode === "manual" ? html`<p class="hint">${t("an.cal.help")}</p>${taus ? "" : html`<p class="hint">${t("an.cal.noSplits")}</p>`}` : ""}
       <div class="an-targets">${targets.map((g) => html`<button type="button" class="an-target${g.i === cur && mode === "manual" ? " now" : ""}${g.pos ? " done" : ""}${g.missed ? " missed" : ""}" data-target="${g.i}" title="${g.missed ? t("an.missed") : ""}">
         <b>${g.label}</b>${g.code ? html`<span class="muted">${g.code}</span>` : html`<span></span>`}<span class="num">${g.tau != null ? clock(g.tau) : timeOf(g) != null ? html`<span class="muted">~${clock(timeOf(g))}</span>` : "—"}</span>
         <span class="an-mark">${g.pos ? "✓" : g.i === cur && mode === "manual" ? "▶" : ""}</span></button>`)}</div>
-      ${mode === "manual" ? html`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">
-        ${taus ? "" : html`<button type="button" class="btn btn-sm" id="an-add">${t("an.cal.add")}</button>`}
-        <button type="button" class="btn btn-sm" id="an-skip">${t("an.cal.skip")}</button>
-        <button type="button" class="btn btn-sm" id="an-undo">${t("an.cal.undo")}</button>
-        <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button></div>` : ""}
       <div class="an-fitbox">${fit ? html`${rmsM != null ? html`<div><span class="muted">${t("an.cal.fit")}</span> <b>${fmt(rmsM)} m</b> <span class="muted" title="${t("an.cal.fit.hint")}">ⓘ</span></div>` : ""}
           ${offset != null && guessOffset() != null ? html`<div><span class="muted">${t("an.cal.offset")}</span> <b>${signed(offset - guessOffset())}</b> <span class="muted" title="${t("an.cal.offset.hint")}">ⓘ</span></div>` : ""}
           ${offset == null ? html`<div class="notice">${t("an.cal.noStart")}</div>` : ""}`
         : html`<div class="muted">${mode === "manual" ? t("an.cal.need", { n: need }) : status}</div>`}</div>
-      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">
+      <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label></div>
+      <div class="an-actions">
         <button type="button" class="btn btn-primary" id="an-done" ${raw(fit && offset != null ? "" : "disabled")}>${t("an.cal.done")}</button>
-        ${mode === "manual" ? html`<button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>` : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>`}</div>
-      <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label>`;
+        ${whose?.other ? html`<button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}" title="${t("an.switch.hint")}">${t("an.switch", { o: whose.other.name })}</button>` : ""}
+        ${mode === "manual" ? html`${taus ? "" : html`<button type="button" class="btn btn-sm" id="an-add">${t("an.cal.add")}</button>`}
+          <button type="button" class="btn btn-sm" id="an-skip">${t("an.cal.skip")}</button>
+          <button type="button" class="btn btn-sm" id="an-undo">${t("an.cal.undo")}</button>
+          <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button>
+          <button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>`
+        : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>`}</div>`;
     $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); if (mode !== "manual") { mode = "manual"; } side(); draw(); }));
-    $("#an-switch")?.addEventListener("click", (e) => { di = Number(e.target.dataset.di); ci = Number(e.target.dataset.ci); ri = Number(e.target.dataset.ri); pickers(); setup(); });
+    $("#an-switch")?.addEventListener("click", (e) => { const d = e.currentTarget.dataset; di = Number(d.di); ci = Number(d.ci); ri = Number(d.ri); pickers(); setup(); });
     $("#an-skip")?.addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });
     $("#an-add")?.addEventListener("click", () => {
       // a new control before the finish (or at the end), then the controls renumbered
@@ -1020,6 +1024,7 @@ export async function render(main, { query = {}, route } = {}) {
     savePositions(true);
     steps(4);
     showPanels(false);
+    $("#an-side").classList.remove("an-cal");
     document.body.classList.add("an-theatre");           // the page head and the steps give way to the map; the menus stay
     window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);

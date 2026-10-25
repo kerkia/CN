@@ -688,7 +688,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   view opens zoomed on the race's trace (⤢; ▭ = the whole map); during the playback the pickers and the files card
   give way to one line (« Course et fichiers ▾ » opens them above the display, which stays; changing a choice there
   starts a new calibration). No « Recaler » and no « Postes » box on the display (owner, 2026-10-14): the calibration
-  is finished and approved (« Voir la course ») before it, and the rings are drawn only while calibrating; the clock runs on a timer, not on
+  is finished and approved (« Voir la course ») before it, and the rings are drawn only while calibrating. **The calibration's
+  actions in a bar** (owner, 2026-10-25: « Voir la course » was out of sight at the bottom of the side panel's scrolling text):
+  the panel (`.an-side.an-cal`) scrolls its text only (`.an-side-body`), every action — « Voir la course », « Corriger à la main »
+  / « Refaire le calage automatique », the manual mode's buttons, « Choisir <runner> (facultatif) » — sits in `.an-actions`
+  under it, on a phone fixed at the window's bottom; choosing the runner the trace fits is optional (`an.switch.hint`: it adds
+  their published times, else the race is read on the trace alone). The clock runs on a timer, not on
   requestAnimationFrame, which a hidden pane pauses. **Memory between visits** (owner, 2026-10-14): the files and the
   work stay in memory while the site is open (`memo`: a visit to another page and back finds them), the files are
   also kept in IndexedDB (`ocn-analyse`) for the tab's session (a tag in `sessionStorage ocn.an.tag`: a reload
