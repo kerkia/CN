@@ -85,6 +85,7 @@ export function parisSeconds(ms) {
 const STAT = { ok: 0, arr: 0, pm: 3, abd: 2, abs: 1, dsq: 4, hd: 5, nc: 12, run: 9, ant: 9, wait: 10, start: 10, "dép": 10,
   dep: 10, "dep?": 9, "arr?": 12 };
 const word = (s) => String(s || "").trim().toLowerCase().replace(/\./g, "");
+const stateKey = word;                            // (`relay` has a `word` of its own)
 export const statusOf = (s) => STAT[word(s)] ?? null;
 /** A finish whose card is not read yet: a provisional result. */
 export const radioFinish = (s) => word(s) === "arr";
@@ -174,6 +175,9 @@ export function splitPage(s) {
 
 /** Is anyone out on this circuit's page (a race under way)? */
 export const anyOut = (list) => list.some((r) => r.status === 9);
+/** The runners out on a circuit's page and their running times, "" when nobody: unchanged from one look to the next, O'Live
+ *  has stopped counting (its import stopped — a runner never cleared once the race was over), not a race under way. */
+export const outSig = (list) => list.filter((r) => r.status === 9).map((r) => `${keyOf(r)}:${r.time}`).join(",");
 /** Has this runner finished (their card read, or given up)? */
 export const final = (r) => r.status != null && r.status !== 9 && r.status !== 10 && !radioFinish(r.word);
 /** A runner's key, as `update` knows them: name and club shown. */
@@ -254,20 +258,35 @@ export function relay(s) {
       const p = pieces[i], w = stateWord("StatusRelayeur", p);
       // (the leg's card, whose punches its line opens on O'Live, is in the heading just before it: the piece before)
       const card = [...pieces[i - 1].matchAll(/data-numpuce="(\d+)"/g)].pop()?.[1] || null;
+      // (its block, there too: « Arrive DetailEquipe » once the leg is through)
+      const arrived = /^Arrive\b/.test([...pieces[i - 1].matchAll(/<div class="([^"]*)DetailEquipe/g)].pop()?.[1] || "");
       legs.push({ leg: num(span("NumRelayeur", p)) ?? legs.length + 1, name: personName(span("NomRelayeur", p)), time: secs(span("TempsRelayeur", p)),
-        place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w), card });
+        place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w), card, arrived });
     }
     // in the order of their leg numbers: O'Live's page does not always list them so (2026-10-25, the CNE: « Cobs Dames »
     // 1, 2, 4, 5, 3; « O'Jura Matrus 2 » 2, 3, 1), and the legs are counted by their place here
     legs.sort((a, b) => a.leg - b.leg);
+    // « Ant » (a leg sent off by the mass start) stays on the leg and its team once through: out only while the leg has no
+    // total at its handover (2026-10-25: the CNE's mass-started last legs, all in, kept the race « live » all evening); a team
+    // missing a leg has no totals after it, its leg through once its block says « Arrive » (not trusted alone: no page seen
+    // with a mass-started runner out)
+    legs.forEach((l, i) => {
+      if (stateKey(l.word) === "ant") l.status = l.cumul != null || (l.arrived && i > 0 && legs[i - 1].cumul == null) ? 0 : 9;
+    });
+    const status = stateKey(word) === "ant" ? (legs.some((l) => l.status === 9) || !legs.length ? 9 : 0) : statusOf(word);
     teams.push({ bib, name: span("NomEquipe", part).replace(/^(\d+)\s+/, (m, b) => (b === bib ? "" : m)), place: num(span("PlaceEquipe", part)),
-      total: secs(span("TempsEquipe", part)), word, status: statusOf(word), places: [...pl.matchAll(/<span class="Places">([^<]*)</g)].map((m) => num(m[1])), legs });
+      total: secs(span("TempsEquipe", part)), word, status, places: [...pl.matchAll(/<span class="Places">([^<]*)</g)].map((m) => num(m[1])), legs });
   }
   return teams;
 }
 /** Is anyone of these teams out, or still to start? */
 export const relayOut = (teams) => teams.some((t) => t.status === 9 || t.legs.some((l) => l.status === 9));
 export const relayWait = (teams) => teams.some((t) => t.status === 10 || t.legs.some((l) => l.status === 10));
+/** A relay's `outSig`: each runner out (a team out on no leg: the team) and their running time. */
+export const relayOutSig = (teams) => teams.flatMap((t) => {
+  const legs = t.legs.filter((l) => l.status === 9);
+  return legs.length ? legs.map((l) => `${t.bib}.${l.leg}:${l.time}`) : t.status === 9 ? [`${t.bib}:${t.total}`] : [];
+}).join(",");
 
 /**
  * The relay's categories -> the compact form (see `compact`), one class per category: a row per leg's runner — [leg place,

@@ -777,7 +777,8 @@ const PROBE_MS = 180000, MAX_PROBE = 15, LIVE_S = 1800;
 // punch (the competition's page now and then, then a few courses a call in turn), MD_LIST requests a call at most
 const MD_LIST = 8, MD_PROBE_COURSES = 3, MD_HASHES_MS = 1800000;
 // O'Live's races (olive.js): its list at most every LIST_MS, today's races probed in turn, OL_PROBE circuits a call, a race's
-// age the time since someone was seen out on it (« Run. »); OL_LIST requests a call at most
+// age the time since someone was seen out on it (« Run. ») with a running time that moved since that page's last look (frozen:
+// O'Live has stopped counting, the race is over); OL_LIST requests a call at most
 const OL_LIST = 4, OL_PROBE = 2;
 // SPORTident Center's events (sportident.js): its list (every country) at most every LIST_MS, today's events probed in turn
 // (a HEAD of the results file: the age is the time since it last changed); SI_LIST requests a call at most
@@ -978,7 +979,9 @@ export class Directory extends DurableObject {
     const races = s.comps.filter((c) => c[3] === today);
     s.probes = Object.fromEntries(races.filter((c) => s.probes[c[0]]).map((c) => [c[0], s.probes[c[0]]]));
     for (const c of races.sort((a, b) => (s.probes[a[0]]?.checked || 0) - (s.probes[b[0]]?.checked || 0))) {
-      const p = s.probes[c[0]] ||= { circuits: [], circuitsAt: 0, next: 0, out: 0, checked: 0 };
+      // (a probe of before 2026-10-25, which counted a frozen « Run. » or a finished mass start « Ant » as out: afresh)
+      if (s.probes[c[0]]?.v !== 2) s.probes[c[0]] = { v: 2, circuits: [], circuitsAt: 0, next: 0, out: 0, checked: 0, sig: {} };
+      const p = s.probes[c[0]];
       if (budget <= 0 || now - p.checked < PROBE_MS) continue;
       const { host, id } = ol.site(c[0]), page = (q) => `${ol.base(host)}/resultats.php?${q}&IdCourse=${id}`;
       try {
@@ -994,7 +997,9 @@ export class Directory extends DurableObject {
           const ci = p.circuits[p.next++ % p.circuits.length];
           budget--;
           const t = (await ol.get(page(relay ? `Action=Result&IdCat=${ci}` : `Action=Result&Circuit=${encodeURIComponent(ci)}`))).text;
-          if (relay ? ol.relayOut(ol.relay(t)) : ol.anyOut(ol.rows(t))) p.out = now;
+          const s1 = relay ? ol.relayOutSig(ol.relay(t)) : ol.outSig(ol.rows(t)), sig = s1 ? s1.length + ":" + hashOf(s1) : "";
+          if (sig && sig !== p.sig[ci]) p.out = now;
+          p.sig[ci] = sig;
         }
         p.checked = now;
       } catch (e) { /* next time */ }

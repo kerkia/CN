@@ -884,7 +884,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   **O'Live races** (2026-10-24, owner: the CF Sprint, cancelled, replaced by « Sprint Labyrinthe - Le Bessat », live on
   co-live.fr): the relay lists O'Live's individual races (`live/src/olive.js`, `HOSTS` append only, numbers 700 000 000 + the
   site's place × 1 000 000 + its IdCourse; its address where the organiser goes: O'Live gives none), today's probed two circuits a
-  call (`OL_LIST` requests; `MAX_INFO` lowered to 21), a race live while someone was seen « Run. » under `LIVE_S` ago. HTML only,
+  call (`OL_LIST` requests; `MAX_INFO` lowered to 21), a race live while someone was seen « Run. » under `LIVE_S` ago — with a running time that moved since that page's last probe (`outSig`, `relayOutSig`, hashed in the probe's `sig`: a runner never cleared keeps a frozen « Run. » once O'Live stops importing; 2026-10-25). HTML only,
   no API: the race's object reads every circuit's results page (`OL_MAX` 24, the others in turn) — one class per category, a
   category on several circuits one per circuit —, then the cards (bloc.php `PointagesPuce`: each punch's time of day, so the
   exact start) of the runners through since, those just finished first (`OL_CARDS` 15 a wake-up), or for a backlog (a race
@@ -894,7 +894,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   (finished, card unread) is a provisional result, « Arr? » not classified. 20 s while runners are out or cards wait, 60 s with
   only starts to come, 5 min after. The Agenda maps both ranges to « host/<n> » (`keyOfComp`, `run.LIVE_IDS`).
   **O'Live relays** (2026-10-25, owner: the CNE at Le Bessat; listed since, `isRelay` by the list's type « Course en Relais »;
-  « Résultats » still leaves relays out): `readOlRelay` reads each category's page (`?Action=Result&IdCat=`, `relayCats`; up to
+  « Résultats » still leaves relays out): `readOlRelay` reads each category's page (« Ant », a leg sent off by the mass start, stays on the leg and its team once through: out only while it has no handover total, or, a team missing a leg, while its block is not « Arrive » — 2026-10-25, the CNE showed « live » all evening; `?Action=Result&IdCat=`, `relayCats`; up to
   ~470 KB, ~30 ms to read all six), a category with nobody out or to start again every 5 min only; `relay()` reads each team
   (place, bib, name, time so far, state, its place after each leg) and each leg (runner, leg time, place, state, the team's total at
   the handover); the legs sorted by their own numbers: O'Live's page does not always list them in order — « Cobs Dames »
