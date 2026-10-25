@@ -1174,6 +1174,39 @@ table.data tbody tr.me .name { font-weight: 700; }
 .agenda-detail .reg.open { border-color: var(--good); }
 .agenda-detail .reg.closed { border-color: var(--border-strong); }
 .agenda-detail .reg-title { font-weight: 650; margin-bottom: 6px; }
+/* the Agenda's map (agendamap.js; a computer only): above the details, both kept in view as the list scrolls */
+.agenda-side { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 100px); min-width: 0; }
+.agenda-side .agenda-detail { position: static; max-height: none; flex: 1 1 auto; min-height: 120px; }
+.agenda-map { flex: 0 0 auto; padding: 10px 12px 8px; }
+.agm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.agm-head h2 { margin: 0; font-size: 15px; }
+.agm-tools { display: flex; gap: 4px; }
+.agm-tools .btn { min-width: 30px; padding: 2px 8px; }
+.agm-box { position: relative; }
+.agm { display: block; width: 100%; height: min(36vh, 340px); border-radius: 8px; cursor: grab; touch-action: none; user-select: none; }
+.agm.dragging { cursor: grabbing; }
+.agm-sea { fill: color-mix(in srgb, var(--water) 9%, var(--surface)); }
+.agm-near { fill: color-mix(in srgb, var(--ink) 5%, var(--surface)); stroke: color-mix(in srgb, var(--ink) 14%, transparent); stroke-width: .6; vector-effect: non-scaling-stroke; }
+.agm-land { fill: color-mix(in srgb, var(--forest) 10%, var(--surface)); }
+.agm-units { fill: none; stroke: color-mix(in srgb, var(--ink) 16%, transparent); stroke-width: .7; vector-effect: non-scaling-stroke; }
+.agm-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 45%, transparent); stroke-width: 1.1; vector-effect: non-scaling-stroke; }
+.agm-dots .agm-dot { fill: color-mix(in srgb, var(--water) 75%, var(--ink)); stroke: var(--surface); cursor: pointer; }
+.agm-dots .agm-ring { fill: color-mix(in srgb, var(--surface) 60%, transparent); stroke: color-mix(in srgb, var(--water) 75%, var(--ink)); stroke-dasharray: 2 1.5; cursor: pointer; }
+.agm-dots circle:hover { fill: var(--flag); }
+.agm-hi { pointer-events: none; }
+.agm-hi-halo { fill: color-mix(in srgb, var(--flag) 28%, transparent); }
+.agm-hi-dot { fill: var(--flag); stroke: var(--surface); }
+.agm-hi-dot.approx { fill: color-mix(in srgb, var(--flag) 35%, var(--surface)); stroke: var(--flag); }
+.agm-hi text { fill: var(--ink); stroke: var(--surface); paint-order: stroke; font-weight: 650; }
+.agm-tip { position: absolute; z-index: 5; max-width: 250px; padding: 6px 9px; font-size: 12.5px; line-height: 1.4; pointer-events: none;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.agm-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; font-size: 11.5px; color: var(--ink-2); }
+.agm-key { display: inline-flex; align-items: center; gap: 5px; }
+.agm-key i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.agm-k-dot { background: color-mix(in srgb, var(--water) 75%, var(--ink)); }
+.agm-k-ring { border: 1.5px dashed color-mix(in srgb, var(--water) 75%, var(--ink)); }
+.agm-credit { margin-left: auto; }
+.agenda-table tbody tr.map-hover { background: var(--flag-wash); }
 .multi { position: relative; }
 .multi > summary {
   list-style: none; cursor: pointer; height: 34px; padding: 0 28px 0 10px; display: flex; align-items: center; gap: 8px;
@@ -1199,6 +1232,8 @@ table.data tbody tr.me .name { font-weight: 700; }
   .agenda-layout { grid-template-columns: minmax(0, 1fr); }
   .agenda-table { max-height: 60vh; }
   .agenda-detail { position: static; max-height: none; }
+  .agenda-side { position: static; max-height: none; display: block; }
+  .agenda-map { display: none; }
 }
 
 .ag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }

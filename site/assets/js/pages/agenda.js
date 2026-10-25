@@ -1,6 +1,7 @@
 // Agenda: the upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py) in one
 // long scrolling table, with filters, and the details of the chosen event on the right —
-// including the online-registration deadline and the number of registrants.
+// including the online-registration deadline and the number of registrants. On a computer, the country's map above the
+// details (agendamap.js; owner, 2026-10-25): the event under the mouse, and the one selected, shown on it.
 
 import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat } from "../util.js";
 import { t, tn, locale, has } from "../i18n.js";
@@ -11,6 +12,7 @@ import * as country from "../country.js";
 import { sees } from "../auth.js";
 import { LIVE } from "../livesplits.js";
 import * as tracking from "../tracking.js";
+import * as agendaMap from "../agendamap.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -103,7 +105,8 @@ export async function render(main, { query }) {
     ${country.hint()}
     <div class="agenda-layout">
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
-      <section class="card agenda-detail" id="detail"></section>
+      <div class="agenda-side"><section class="card agenda-map" id="agmap" hidden></section>
+        <section class="card agenda-detail" id="detail"></section></div>
     </div></div>`;
   const page = $("#agenda-page");
   // filters: always open on a wide screen, folded behind a "Filtres" bar on a phone
@@ -227,6 +230,7 @@ export async function render(main, { query }) {
     $("#fold-badge").hidden = !n;
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
+    map?.show(shown, st.selected);
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
@@ -245,6 +249,7 @@ export async function render(main, { query }) {
     $$("#table tr.selected").forEach((r) => r.classList.remove("selected"));
     const row = key && $(`#table tr[data-key="${CSS.escape(key)}"]`);
     row?.classList.add("selected");
+    map?.select(key);
     drawDetail();
     page.classList.toggle("detail-open", !!key);
     if (mobile()) window.scrollTo(0, key ? 0 : listY);
@@ -273,6 +278,24 @@ export async function render(main, { query }) {
   }
   $("#detail").addEventListener("click", (e) => { if (e.target.closest("[data-back]")) back(); });
   $("#table").addEventListener("click", (e) => { const r = e.target.closest("tr[data-key]"); if (r && !e.target.closest("a")) select(r.dataset.key); });
+  // ---- the map (a computer only, agendamap.js): the event under the mouse in the table shown on it, and the reverse
+  let map = null;
+  async function mountMap() {
+    if (map || mobile()) return;
+    map = await agendaMap.mount($("#agmap"), cc, {
+      levels: { dept: levelName("dept").toLowerCase(), region: levelName("region").toLowerCase() },
+      onPick: (key) => { select(key); $(`#table tr[data-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: "nearest" }); },
+      onHover: (key) => {
+        $$("#table tr.map-hover").forEach((r) => r.classList.remove("map-hover"));
+        if (key) $(`#table tr[data-key="${CSS.escape(key)}"]`)?.classList.add("map-hover");
+      },
+    });
+    map?.show(shown, st.selected);
+  }
+  phone.addEventListener("change", mountMap);
+  $("#table").addEventListener("mouseover", (e) => { const r = e.target.closest("tr[data-key]"); if (r) map?.hover(r.dataset.key); });
+  $("#table").addEventListener("mouseleave", () => map?.hover(null));
+  $("#table").addEventListener("focusin", (e) => { const r = e.target.closest("tr[data-key]"); if (r) map?.hover(r.dataset.key); });
   $("#table").addEventListener("keydown", (e) => {
     const r = e.target.closest("tr[data-key]");
     if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(r.dataset.key); }
@@ -449,6 +472,7 @@ export async function render(main, { query }) {
 
   drawFilters();
   drawTable();
+  mountMap();
   findLive();
   findTracking();
   if (st.selected) {
@@ -457,5 +481,6 @@ export async function render(main, { query }) {
     if (e && !shown.includes(e)) { st.kinds.add(e.kind); if (e.date < st.from) st.from = e.date; drawFilters(); drawTable(); }
     showDetail(st.selected, true);
   } else drawDetail();
-  return { title: t("nav.agenda"), onQuery, cleanup: () => { document.removeEventListener("click", closeMulti); phone.removeEventListener("change", syncFold); } };
+  return { title: t("nav.agenda"), onQuery, cleanup: () => { document.removeEventListener("click", closeMulti); phone.removeEventListener("change", syncFold);
+    phone.removeEventListener("change", mountMap); map?.destroy(); } };
 }

@@ -485,9 +485,9 @@ def _add_announcements(events: list[dict], prev_events: list[dict]) -> None:
 
 
 def _digest(a: dict) -> str:
-    """Hash of everything but the generation time."""
-    return hashlib.sha256(json.dumps({k: v for k, v in a.items() if k != "generated"}, sort_keys=True,
-                                     ensure_ascii=False).encode()).hexdigest()
+    """Hash of everything but the generation time and the map's positions (countries/agenda.py `add_positions`)."""
+    from countries.agenda import comparable
+    return hashlib.sha256(json.dumps(comparable(a), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
 def refresh(out: Path, du: str | None = None) -> bool:

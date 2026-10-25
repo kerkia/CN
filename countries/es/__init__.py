@@ -259,7 +259,8 @@ def refresh_agenda(root: Path, today: date | None = None) -> bool:
     if not new["events"] and prev and prev.get("events"):
         print("agenda ES: nothing read (a source down?) — the last one kept")
         return False
-    same = prev and {k: v for k, v in prev.items() if k != "generated"} == {k: v for k, v in new.items() if k != "generated"}
+    from countries.agenda import comparable
+    same = prev and comparable(prev) == comparable(new)
     if same:
         return False
     path.parent.mkdir(parents=True, exist_ok=True)

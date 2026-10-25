@@ -198,3 +198,77 @@ def locate(cc: str, text: str | None, *, region_only: bool = False, expect=None)
     if dv[d] < 0.5 * sum(dv.values()):
         return region, None
     return region, t["depts"][d][0]
+
+
+def _dept_index(t: dict, dept: str | None, dept_name: str | None) -> int | None:
+    """The table's index of a calendar's finer unit: by its code, else by its name (Spain's agenda numbers its provinces
+    as INE does, GeoNames by letters)."""
+    if not dept and not dept_name:
+        return None
+    for i, d in enumerate(t["depts"]):
+        if dept and d[0] == dept:
+            return i
+    want = fold(dept_name or dept)
+    for i, d in enumerate(t["depts"]):
+        if fold(d[1]) == want:
+            return i
+    return None
+
+
+# a region's administrative words (« Région Bretagne », « Comunidad Autónoma de Madrid »): the calendar's name may lack them
+REGION_WORDS = re.compile(r"^(?:region|comunidad autonoma de(?:l| la| las)?|comunidad foral de|comunidad de|comunitat|"
+                          r"ciudad autonoma de|principado de|illes)\s+")
+
+
+def _region_index(t: dict, region: str | None) -> int | None:
+    """The table's index of a calendar's region, its administrative words aside."""
+    if not region:
+        return None
+    if region in t["regions"]:
+        return t["regions"].index(region)
+    bare = lambda n: re.sub(r"^(?:la|las|el|les|le|l) ", "", REGION_WORDS.sub("", fold(n)))
+    want = bare(region)
+    for i, r in enumerate(t["regions"]):
+        if bare(r) == want:
+            return i
+    # (« Comunitat Valenciana » / « Comunidad Valenciana », « Illes Balears » / « Islas Baleares »: the last word's stem)
+    last = [i for i, r in enumerate(t["regions"]) if bare(r).split()[-1][:5] == want.split()[-1][:5]]
+    return last[0] if len(last) == 1 else None
+
+
+def position(cc: str, text: str | None, *, dept: str | None = None, dept_name: str | None = None,
+             region: str | None = None) -> tuple[float, float, str] | None:
+    """Where a place a calendar names lies, for the Agenda's map (owner, 2026-10-25): (lat, lon, « town ») for the town (or
+    forest, park…) it names — within the event's unit when the calendar gives one —, else (lat, lon, « area ») the centre of
+    that unit (a département, a province…), else of its region; None when nothing is known. A name found in several places
+    of the unit far apart (over 15 km) is no town. Positions to ~1 km (tools/gazetteer.py)."""
+    t = table(cc)
+    if not t or t.get("v", 1) < 2:
+        return None
+    di = _dept_index(t, dept, dept_name)
+    ri = t["depts"][di][2] if di is not None else _region_index(t, region)
+    best = None
+    if text:
+        for f, n, cands in _hits(t["keys"], text):
+            here = [c for c in cands if len(c) >= 5 and (di is None or c[1] == di) and (ri is None or ri < 0 or c[0] == ri)]
+            if not here:
+                continue
+            # a town before a unit's centre (a unit's own name with no town of that name in it), the weightiest first
+            here = [c for c in here if len(c) == 5] or here
+            top = max(here, key=lambda c: c[2])
+            rivals = [c for c in here if c[2] >= top[2] - 0.3 and (abs(c[3] - top[3]) + abs(c[4] - top[4])) > 15]
+            if rivals:
+                continue
+            score = (f * top[2], n)
+            if best is None or score > best[0]:
+                best = (score, top)
+    if best:
+        c = best[1]
+        return c[3] / 100, c[4] / 100, "area" if len(c) > 5 else "town"
+    if di is not None and len(t["depts"][di]) >= 5:
+        d = t["depts"][di]
+        return d[3] / 100, d[4] / 100, "area"
+    rp = t.get("rpos") or []
+    if ri is not None and 0 <= ri < len(rp) and rp[ri]:
+        return rp[ri][0] / 100, rp[ri][1] / 100, "area"
+    return None

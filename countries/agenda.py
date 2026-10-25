@@ -125,6 +125,62 @@ def locate(cc: str, e: dict, *texts, keep_region: bool = False, expect=None, reg
     return e
 
 
+# the Agenda's map (owner, 2026-10-25): each event's position, `pos` [lat, lon] and [lat, lon, 1] when it is only its unit's
+# centre (a département, a province: the place not found); an event with GPS coordinates (`gps`) has none. Bump to place
+# every agenda's events again.
+POS_VERSION = 1
+
+
+def comparable(a: dict) -> dict:
+    """An agenda file without what is not news: its build time and the map's positions (added after each refresh)."""
+    return {k: ([{f: x for f, x in e.items() if f != "pos"} for e in v] if k == "events" else v)
+            for k, v in a.items() if k not in ("generated", "pos_v")}
+
+
+def add_positions(cc: str, path: Path) -> bool:
+    """Every event of a country's agenda file placed on the map (`places.position`: its place, else its name, within its
+    unit; else the unit's centre); the file rewritten when something changed. Run after each agenda refresh, and once on
+    a file of an older POS_VERSION (update.py)."""
+    from countries import places
+    try:
+        a = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if places.table(cc) is None:
+        return False
+    depts = a.get("depts") or {}
+    region_of = {d: r["name"] for r in a.get("regions") or [] for d in r.get("depts") or []}
+    changed = a.get("pos_v") != POS_VERSION
+    for e in a.get("events") or []:
+        pos = None
+        if not e.get("gps"):
+            where = dict(dept=e.get("dep"), dept_name=depts.get(e.get("dep")), region=e.get("region") or region_of.get(e.get("dep")))
+            texts = [x for x in (e.get("place"), e.get("name")) if x and not abroad_of(cc, x)]
+            for x in texts:
+                got = places.position(cc, x, **where)
+                if got and got[2] == "town":
+                    pos = [got[0], got[1]]
+                    break
+            if pos is None and texts:
+                got = places.position(cc, None, **where)
+                pos = [got[0], got[1], 1] if got else None
+        if e.get("pos") != pos:
+            changed = True
+            if pos:
+                e["pos"] = pos
+            else:
+                e.pop("pos", None)
+    if not changed:
+        return False
+    a["pos_v"] = POS_VERSION
+    path.write_text(json.dumps(a, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    n = sum(1 for e in a.get("events") or [] if e.get("pos") and len(e["pos"]) == 2)
+    m = sum(1 for e in a.get("events") or [] if e.get("pos") and len(e["pos"]) == 3)
+    g = sum(1 for e in a.get("events") or [] if e.get("gps"))
+    print(f"agenda {cc}: placed on the map — {g} by GPS, {n} by their town, {m} at their unit's centre, of {len(a.get('events') or [])}")
+    return True
+
+
 def _by_org(events: list[dict]) -> None:
     """A row the calendar does not place takes the region where its organiser's other rows all are (a club races at
     home): at least two of them, and no other region."""
@@ -219,7 +275,7 @@ def hooks(country, read, version: int, *, sources: dict | None = None, regions: 
         new = {"v": version, "country": country.code, "from": since, "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                "specs": sorted({e["spec"] for e in uniq if e.get("spec")}), "depts": depts or found_depts,
                "regions": regions or found_regions, "sources": sources or {}, "events": uniq}
-        if prev and {k: v for k, v in prev.items() if k != "generated"} == {k: v for k, v in new.items() if k != "generated"}:
+        if prev and comparable(prev) == comparable(new):
             return False
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(new, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

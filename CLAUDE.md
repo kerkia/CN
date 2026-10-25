@@ -1826,6 +1826,25 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the region its own column after the place, named as the country's level (« Association régionale » in Switzerland, the
   calendar's own column, « Land »…), under the place on a phone (owner, 2026-10-24: shown even where no finer unit is known).
   The filter bar's click handler took `<body data-group>` for a group chip: any click in the filters emptied the list (fixed).
+- **The Agenda's map** (owner, 2026-10-25: « on a computer, a map of the chosen country, the competition's place shown as soon as
+  the mouse is over it in the table, all the more once it is selected »): above the details (`.agenda-side`, sticky; hidden and
+  not fetched under 980 px), `site/assets/js/agendamap.js` draws the country as SVG from `site/assets/geo/<cc>.json` — Natural
+  Earth's 1:10m countries and first-level units (public domain), the land around the largest piece (overseas left out), the
+  neighbours cut to the frame, simplified to ~a pixel, ~10-70 KB a country, made once by `tools/countrymaps.py` (`fetch` into
+  `$CN_DATA_DIR/naturalearth`, `build`): no map service is asked anything. Every event of the table is a dot (one per place), the
+  row under the mouse (or focused) and the selected event in the control flag's orange with their place's name; a dot shows its
+  events on hover, a click selects them in turn (the row tinted `map-hover`); wheel or + − to zoom, drag to move, ⤢ the whole
+  country; a selected event outside the view is brought into it. **Positions**: the organiser's `gps`, else `pos` [lat, lon] —
+  its town, from GeoNames — or [lat, lon, 1], its finer unit's (else region's) centre, drawn hollow and dashed («  lieu
+  approché »). `countries/agenda.py` `add_positions` (`places.position`: the place, else the event's name, within the event's
+  unit — its code, else its name, Spain's INE numbers; a name of two places over 15 km apart in the unit is no town; a town
+  before a unit of its name) runs after every agenda refresh and once on a file of an older `POS_VERSION` (`update._agenda`,
+  `_agenda_positions`, the deploy-only run too); `comparable` keeps positions out of the « changed? » checks (hooks, Spain's,
+  FFCO's `_digest`). The places tables carry the positions since (`v` 2, tools/gazetteer.py: a candidate's town to ~1 km, a 6th
+  field 1 for a unit's centre, `rpos` and the depts' centres = the mean of their towns; the placement data unchanged, checked
+  table by table) and France (régions, départements by number) and Spain were added for it. Measured 2026-10-25 on the local
+  agendas: France 1 810 events by town, 28 by GPS, 172 at a centre, 10 not placed, of 2 020; Britain 752 / 28 of 836;
+  Switzerland 45 GPS, 87 town, 51 centre; Poland 1 town (its list gives only the club's voivodeship). Lakes are not drawn.
 - **No FFCO for those outside France** (owner, 2026-10-20): a visitor or an account that has not joined France never meets
   « FFCO » outside the site's rules (privacy page, « Indépendance et sources »): the home page, the footer, the shared pages
   (Agenda, Résultats, En direct, Réglages, registration, the Tracer, the organisers' deposits) and the e-mails speak of « la

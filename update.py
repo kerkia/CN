@@ -310,6 +310,8 @@ def main() -> None:
                     _agenda(m, args.out)
                     countries.write_index(args.out)
                     print(f"agenda {m.COUNTRY.code}: rebuilt")
+                elif hasattr(m, "refresh_agenda"):
+                    _agenda_positions(m, args.out)              # (no-op once placed by the current POS_VERSION)
             ok = deploy(args.db)
             if ok:
                 DEPLOY_PENDING.unlink(missing_ok=True)
@@ -410,11 +412,24 @@ def apply_privacy(db: Path, out: Path, root: Path) -> bool:
 
 
 def _agenda(module, root: Path) -> bool:
-    """A country's agenda refreshed; a failure (its source down) never stops the others' nor the run."""
+    """A country's agenda refreshed, then its events placed on the map; a failure (its source down) never stops the
+    others' nor the run."""
     try:
-        return bool(module.refresh_agenda(root))
+        got = bool(module.refresh_agenda(root))
     except Exception as e:
         print(f"agenda {module.COUNTRY.code}: failed — {type(e).__name__}: {e}")
+        got = False
+    return _agenda_positions(module, root) or got
+
+
+def _agenda_positions(module, root: Path) -> bool:
+    """The Agenda map's positions of a country's events (countries/agenda.py `add_positions`), when the file changed or
+    was placed by an older POS_VERSION."""
+    from countries.agenda import add_positions
+    try:
+        return add_positions(module.COUNTRY.code, module.agenda_path(root))
+    except Exception as e:
+        print(f"agenda {module.COUNTRY.code}: not placed on the map — {type(e).__name__}: {e}")
         return False
 
 

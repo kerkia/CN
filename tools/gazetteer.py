@@ -7,9 +7,12 @@ https://www.geonames.org) into one small table a country, countries/places/<cc>.
     python tools/gazetteer.py fetch            # download GeoNames' files into $CN_DATA_DIR/geonames (once)
     python tools/gazetteer.py build [cc …]     # rebuild countries/places/<cc>.json.gz (all of UNITS by default)
 
-The table: { v, regions: [name…], depts: [[code, name, region index]…], keys: { folded name: [[region, dept, weight]…] } }.
-A name met in several regions keeps its candidates (a few, the weightiest first): `places.locate` decides with the other
-words of the place. Each country's levels and names are set in UNITS below, in the country's own language.
+The table: { v, regions: [name…], rpos: [[lat, lon]…], depts: [[code, name, region index, lat, lon]…], keys: { folded name:
+[[region, dept, weight, lat, lon(, 1 when the position is a unit's centre)]…] } }, positions in hundredths of a degree (~1 km): a candidate's is its weightiest
+place's, a unit's the mean of its towns' — the Agenda's map places an event by them
+(`places.position`, owner 2026-10-25). A name met in several regions keeps its candidates (a few, the weightiest first):
+`places.locate` decides with the other words of the place. Each country's levels and names are set in UNITS below, in the
+country's own language.
 """
 from __future__ import annotations
 
@@ -375,6 +378,7 @@ def il_unit(s, a1, a2, a3):
 
 UNITS = {
     "AT": (("de",), at_unit),
+    "ES": simple(("es",), dep_pat=(r"^Provincia de ", r"^Província de ")),
     "BE": (("fr", "nl"), be_unit),
     "BG": simple(("bg",), region_pat=(r"^Област ", r"^област "), dep_pat=(r"^Община ", r"^община ")),
     "BY": simple(("ru",), dep_pat=()),
@@ -384,6 +388,9 @@ UNITS = {
                  dep_pat=(r"^Kreisfreie Stadt ", r"^Stadtkreis ", r"^Regionalverband ", r", (?:Stadt|Freie und Hansestadt)$")),
     "DK": simple(("da",), dep_pat=(r" Kommune$",)),
     "EE": simple(("et",)),
+    # France: régions and départements, by their numbers (GeoNames' second-level codes are FFCO's « 68 », « 2A »…); its
+    # agenda is FFCO's, which gives both: the table only places its events on the map (`places.position`)
+    "FR": (("fr",), lambda s, a1, a2, a3: (s.local((a1,), False), a2 or None, s.local((a1, a2), False) if a2 else None)),
     "GB": (("en",), gb_unit),
     "GE": region_only(("en",)),
     "HK": (("zh",), hk_unit),
@@ -498,7 +505,10 @@ def build(cc: str) -> dict:
             cache[k] = (ri, di)
         return cache[k]
 
-    cands = defaultdict(dict)                     # key -> {(ri, di): weight}
+    # key -> {(ri, di): [weight, the weightiest town's (lat, lon) or None, the unit's (lat, lon) or None]}: a name of a unit
+    # and of its town (« München », « Šiauliai ») is placed at the town
+    cands = defaultdict(dict)
+    towns = defaultdict(list)                     # (ri, -1) or (ri, di) -> its populated places' positions
     points = []                                   # (POINTS) [lat × 1e4, lon × 1e4, dept] of the populated places
     for gid, name, ascii_, alts, fcl, fco, a1, a2, a3, pop, lat, lon in s.rows:
         if not a1 or a1 == "00":
@@ -512,6 +522,10 @@ def build(cc: str) -> dict:
             continue
         if cc in POINTS and di >= 0 and (fcl == "P" or fco == "ADM3"):
             points.append([round(lat * 1e4), round(lon * 1e4), di])
+        if fcl == "P":
+            towns[(ri, -1)].append((lat, lon))
+            if di >= 0:
+                towns[(ri, di)].append((lat, lon))
         w = weight(fcl, fco, pop, small_adm2)
         names = [name, ascii_] + [a for a in alts.split(",") if a and (len(a) >= 4 or CJK.search(a))]
         if fcl == "A":
@@ -519,35 +533,59 @@ def build(cc: str) -> dict:
             names += [x[1] for x in s.alt.get(s.adm.get(k_), [])]
         names = [n for n in names if script_of(n) == script]
         for k in keys_of(names):
-            c = cands[k]
-            if c.get((ri, di), 0) < w:
-                c[(ri, di)] = w
+            v = cands[k].setdefault((ri, di), [0, None, None, 0])
+            if fcl == "A":
+                v[2] = v[2] or (lat, lon)
+            elif w > v[3]:
+                v[1], v[3] = (lat, lon), w
+            v[0] = max(v[0], w)
     if cc in STRIP_UNIQUE:
         names = {(d[1], d[2]) for d in depts}
         for d in depts:
             short = re.sub(STRIP_UNIQUE[cc], "", d[1])
             if short != d[1] and (short, d[2]) not in names:
                 d[0] = d[1] = short
+    # a unit's centre: the mean of its towns' positions
+    def centre(u):
+        pts = towns.get(u) or []
+        return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)) if pts else (None, None)
+    rpos = [centre((i, -1)) for i in range(len(regions))]
+    dpos = [centre((ri, i)) for i, (_, _, ri) in enumerate(depts)]
     # the units' own names
     for i, r in enumerate(regions):
         for k in keys_of([r]):
-            cands[k][(i, -1)] = max(cands[k].get((i, -1), 0), 1e8)
+            v = cands[k].setdefault((i, -1), [0, None, None, 0])
+            v[0], v[2] = 1e8, rpos[i]
     for i, (code, name, ri) in enumerate(depts):
         for k in keys_of([name] + ([code] if len(code) > 2 and not code.isupper() else [])):
-            cands[k][(ri, i)] = max(cands[k].get((ri, i), 0), 1e8)
+            v = cands[k].setdefault((ri, i), [0, None, None, 0])
+            v[0], v[2] = 1e8, dpos[i]
 
     keys = {}
     for k, c in cands.items():
         # a unit's own region-level entry and its finer entries: keep the finer ones (they carry the region too)
-        top = sorted(c.items(), key=lambda kv: -kv[1])
-        best = top[0][1]
-        top = [(rd, w) for rd, w in top if w >= best / 50][:8]
-        keys[k] = [[rd[0], rd[1], round(math.log10(w), 1)] for rd, w in top]
-    out = {"v": 1, "source": "GeoNames (CC BY 4.0), https://www.geonames.org", "regions": regions, "depts": depts,
-           "keys": keys}
+        top = sorted(c.items(), key=lambda kv: -kv[1][0])
+        best = top[0][1][0]
+        top = [(rd, v) for rd, v in top if v[0] >= best / 50][:8]
+        # [region, dept, weight, lat, lon] at a town, [..., lat, lon, 1] at a unit's centre (no town of the name in it)
+        keys[k] = [[rd[0], rd[1], round(math.log10(v[0]), 1), *place_of(v)] for rd, v in top]
+    out = {"v": 2, "source": "GeoNames (CC BY 4.0), https://www.geonames.org", "regions": regions,
+           "rpos": [centi(*p) for p in rpos], "depts": [[*d, *centi(*p)] for d, p in zip(depts, dpos)], "keys": keys}
     if points:
         out["points"] = sorted({tuple(p) for p in points})
     return out
+
+
+def place_of(v) -> list:
+    """A candidate's position: its town's, else its unit's centre and a 1, else nothing."""
+    if v[1]:
+        return centi(*v[1])
+    return centi(*v[2]) + [1] if v[2] and v[2][0] is not None else []
+
+
+def centi(lat, lon):
+    """A position in hundredths of a degree (~1 km: a place on a country's map), or nothing."""
+    return [round(lat * 100), round(lon * 100)] if lat is not None else []
 
 
 def fetch(ccs):
