@@ -1729,20 +1729,32 @@ table.data.lv-table tbody tr:hover { --lv-tint: var(--surface-2); }
 table.data.lv-table tr.lv-mark { --lv-tint: color-mix(in srgb, var(--flag) 22%, transparent); }
 table.data.lv-table tr.lv-r3 { --lv-tint: color-mix(in srgb, var(--good) 20%, transparent); }
 table.data.lv-table tr.lv-r9 { --lv-tint: color-mix(in srgb, #e7b416 20%, transparent); }
-table.data.lv-table thead th:first-child, table.data.lv-table tr:not(.lv-sec) > td:first-child { position: sticky; left: 0; z-index: 1;
+table.data.lv-table thead th:first-child, table.data.lv-table tr:not(.lv-sec):not(.lv-team) > td:first-child { position: sticky; left: 0; z-index: 1;
   background-color: var(--surface); background-image: linear-gradient(var(--lv-tint), var(--lv-tint)); }
 table.data.lv-table thead th:first-child { z-index: 2; }
 .lv-table .lv-sec-l { position: sticky; left: 6px; display: inline-block; }
 /* a relay (O'Live, 2026-10-25): each team's line tinted and set off above its legs, the legs' runners indented */
-table.data.lv-relay tr.lv-team { --lv-tint: color-mix(in srgb, var(--ink) 6%, transparent); }
-table.data.lv-relay tr.lv-team td { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); border-top: 1px solid var(--line); }
+table.data.lv-relay tr.lv-team > td { padding: 2px 0; background: var(--surface); }
+table.data.lv-relay tr.lv-team:hover { --lv-tint: transparent; }
 table.data.lv-relay tr.lv-leg td.lv-n { padding-left: 16px; }
+/* each team one line, a button that opens its runners (owner, 2026-10-25) */
+.lv-tbtn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px 6px 4px; border: 1px solid var(--line);
+  border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.lv-tbtn:hover { background: color-mix(in srgb, var(--ink) 10%, var(--surface)); }
+.lv-tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lv-tbtn[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.lv-tb-pl { min-width: 2.2em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lv-tb-ch { color: var(--ink-3); font-size: 18px; line-height: 1; transition: transform .15s; }
+.lv-tbtn[aria-expanded="true"] .lv-tb-ch { transform: rotate(90deg); }
+.lv-tb-n { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-tb-t { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .lv-tb-ch { transition: none; } }
 /* one line per runner (a preview, live.js ONE): the two-line cells split into columns, nothing wraps, the table scrolls sideways */
 .lv-one .lv-clamp { display: block; overflow: visible; overflow-wrap: normal; }
 .lv-one.lv-table td.lv-2 { font-size: 12px; }
 /* (the phone's tables wrap their text cells, !important: not this one) */
 table.data.lv-one td:not(.num):not(.r):not(.c), table.data.lv-one th:not(.num):not(.r):not(.c) { white-space: nowrap !important; }
-table.data.lv-one thead th:first-child, table.data.lv-one tr:not(.lv-sec) > td:first-child { box-shadow: inset -1px 0 0 var(--grid); }
+table.data.lv-one thead th:first-child, table.data.lv-one tr:not(.lv-sec):not(.lv-team) > td:first-child { box-shadow: inset -1px 0 0 var(--grid); }
 table.data.lv-one tr.lv-mark > td:first-child { box-shadow: inset 3px 0 0 var(--flag), inset -1px 0 0 var(--grid); }
 .lv-one.lv-table th + th, .lv-one.lv-table td + td { padding-left: 8px; }
 @media (max-width: 760px) {

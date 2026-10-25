@@ -892,9 +892,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   the leg's start, and a 11th field [team bib, leg, team total, team place, gap to the first team there] — and the class's `relay`
   { legs, teams: [[bib, name, place, total, status, gap, legs done]] }, which `update` keeps and compares (counts by team). No
   cards read: a leg's start is its team's start (the earliest seen from a runner out, now less their running time; `m.ol.t0`)
-  plus the team's total before it, or what is seen when over 2 min apart (a mass start). « En direct » (`live.js` `relayTable`):
-  a line per team (place, name, bib, the leg it is on, its time so far, place and gap at its last handover), then a line per leg
-  (leg number, runner, start, leg time with its place and gap, the team's total with its place and gap, CN); no score or
+  plus the team's total before it, or what is seen when over 2 min apart (a mass start). « En direct » (`live.js` `relayTable`;
+  owner, 2026-10-25): each team one line, a button (`.lv-tbtn`: its rank — at the finish, else its place in the race order: the
+  furthest leg, then the total —, its name, its time so far) that opens its runners (`st.openTeams`, kept over the updates; a
+  runner searched for opens their team): leg number, runner, category (from the data), start, leg time with its place and gap,
+  the team's total and gap, « Rang » (the team's place when that runner came in), CN; no score or
   expected place; the punches say « Fin du relais n » before the last leg (`legEnd`). Club views and the search use the rows.
   **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
   next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's

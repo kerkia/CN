@@ -162,7 +162,7 @@ const RADIO_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden=
 const FINISH_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 
 async function race(main, id, wanted, arg) {
-  const st = { info: null, classes: [], counts: {}, all: new Map(), cn: {}, view: "cls", cls: null, club: "mine", pf: "all",
+  const st = { info: null, classes: [], counts: {}, all: new Map(), cn: {}, openTeams: new Set(), view: "cls", cls: null, club: "mine", pf: "all",
     sub: null, pass: [], seen: new Set(), mark: null, markScroll: false, ws: null, up: false, tries: 0, gone: false,
     buzz: (() => { try { return localStorage.getItem("ocn.live.buzz") === "1"; } catch (e) { return false; } })(), buzzSeen: null };
   if (wanted === PASS_VIEW) { st.view = "pass"; st.pf = arg === "mine" ? "mine" : "all"; }
@@ -545,7 +545,7 @@ async function race(main, id, wanted, arg) {
   // gap — then a line per leg: the runner, the leg's start, their leg time with their place and gap on that leg, the team's
   // total at the handover with its place and gap to the first team there
   const placeGap = (p, d) => (p ? t("lv.placeGap", { p, d: d ? `+${hs(d)}` : "+0:00" }) : "");
-  function relayTable(rows, d, now) {
+  function relayTable(rows, d, now, cls) {
     const byTeam = new Map();
     for (const x of rows) (byTeam.get(x.r[10][0]) || byTeam.set(x.r[10][0], []).get(x.r[10][0])).push(x);
     const g = { fin: [], run: [], wait: [], out: [] };
@@ -561,17 +561,20 @@ async function race(main, id, wanted, arg) {
     g.fin.sort((a, b) => (a.tm[2] ?? 1e9) - (b.tm[2] ?? 1e9) || byBib(a, b));
     g.run.sort((a, b) => b.tm[6] - a.tm[6] || last(a) - last(b) || byBib(a, b));
     g.wait.sort(byBib); g.out.sort(byBib);
-    const cols = 5 + (FR ? 1 : 0) + (ONE ? 2 : 0);
-    const team = ({ tm, legs }, k) => {
-      const [bib, name, place, total, status, gap, done] = tm;
-      const at = [...legs].reverse().find((x) => x.r[10][2] != null);
-      const sub = k === "fin" ? (gap ? `+${hs(gap)}` : "") : at ? `${t("lv.leg.n", { l: at.r[10][1] })} · ${placeGap(at.r[10][3], at.r[10][4])}` : "";
-      return html`<tr class="lv-team"><td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b></td>
-        <td class="lv-n"><div class="lv-clamp"><b>${name}</b></div><div class="lv-2">${t("lv.bib", { n: bib })}${
-          k === "run" && done < d.relay.legs ? ` · ${t("lv.legOf", { l: Math.min(done + 1, d.relay.legs), n: d.relay.legs })}` : ""}</div></td>
-        <td></td>${ONE ? html`<td></td><td></td>` : html`<td></td>`}
-        ${pair("r num lv-t", k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>` : total != null ? html`<b>${hs(total)}</b>` : "", sub)}
-        ${FR ? html`<td></td>` : ""}</tr>`;
+    const cols = 7 + (FR ? 1 : 0) + (ONE ? 2 : 0);
+    // each team one line, a button (owner, 2026-10-25): its rank — at the finish, else its place in the race (the furthest
+    // leg, then the total at its last handover: the order above) —, its name, its time so far; pushed, its runners under it
+    // (kept open over the updates; a runner searched for opens their team)
+    const keyOf = (bib) => `${cls}|${bib}`;
+    const isOpen = (e) => st.openTeams.has(keyOf(e.tm[0])) || (st.mark && e.legs.some((x) => x.key === st.mark));
+    const team = (e, k, i) => {
+      const [bib, name, place, total, status] = e.tm;
+      const rank = k === "fin" ? place : k === "run" ? i + 1 : null;
+      const open = isOpen(e);
+      return html`<tr class="lv-team"><td colspan="${cols}"><button type="button" class="lv-tbtn" data-team="${keyOf(bib)}" aria-expanded="${open}"
+          title="${t(open ? "lv.team.close" : "lv.team.open")}"><span class="lv-tb-pl">${rank ?? ""}</span><span class="lv-tb-ch" aria-hidden="true">›</span>
+          <span class="lv-tb-n">${name}</span><span class="lv-tb-t">${k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`
+            : total != null ? hs(total) : ""}</span></button></td></tr>`;
     };
     const leg = (x) => {
       const [place, name, , result, status, timeplus, , start, , prel, [, l, cumul, tplace, tgap]] = x.r;
@@ -583,17 +586,19 @@ async function race(main, id, wanted, arg) {
       const tsub = k === "fin" ? html`${placeGap(place, timeplus)}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}` : "";
       return html`<tr data-k="${x.key}" class="${cls}"><td class="r num muted">${l}</td>
         <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+        <td class="lv-cat" title="${t("prov.catCn")}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>
         <td class="r num lv-st">${k === "wait" ? "" : tod(start)}</td>
         ${pair("r num lv-t", time, tsub)}
-        ${pair("r num lv-t", cumul != null ? hs(cumul) : "", placeGap(tplace, tgap))}
+        ${pair("r num lv-t", cumul != null ? hs(cumul) : "", cumul == null ? "" : tgap ? `+${hs(tgap)}` : tplace ? "+0:00" : "")}
+        <td class="r num lv-rk">${tplace ? html`<b>${t("lv.rank.n", { p: tplace })}</b>` : ""}</td>
         ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>` : ""}</tr>`;
     };
     const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
-      ${g[k].map((e) => html`${team(e, k)}${e.legs.map(leg)}`)}` : "");
+      ${g[k].map((e, i) => html`${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
     const m = store.get().method;
     return html`<table class="data compact lv-table lv-relay${ONE ? " lv-one" : ""}"><thead><tr><th class="r" title="${t("lv.legNo.tip")}">${t("prov.place")}</th>
-      <th>${t("lv.teamRunner")}</th><th class="r">${t("lv.start")}</th>
-      ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.cumulPlace"), t("lv.cumul.tip"))}
+      <th>${t("lv.teamRunner")}</th><th title="${t("prov.catCn")}">${t("prov.cat")}</th><th class="r">${t("lv.start")}</th>
+      ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.behind"), t("lv.cumul.tip"))}<th class="r" title="${t("lv.rank.tip")}">${t("lv.rank")}</th>
       ${FR ? html`<th class="r" title="${cnLabel(m)}${m === "official" ? ` — ${t("lv.cnJ15.hint")}` : ""}">${t(`cn.${m}.S`)}</th>` : ""}</tr></thead>
       <tbody>${block("fin")}${block("run")}${block("wait")}${block("out")}</tbody></table>`;
   }
@@ -603,7 +608,7 @@ async function race(main, id, wanted, arg) {
     if (!rows) return html`<div class="empty">${t("lv.loading")}</div>`;
     if (!rows.length) return html`<div class="empty">${t("lv.empty")}</div>`;
     const d = st.all.get(st.cls);
-    if (d?.relay) return relayTable(rows.filter((x) => x.r[10]), d, nowAt(st.info));
+    if (d?.relay) return relayTable(rows.filter((x) => x.r[10]), d, nowAt(st.info), st.cls);
     const now = nowAt(st.info), g = grouped(rows, now);
     g.fin.sort((a, b) => (a.r[0] ?? 1e9) - (b.r[0] ?? 1e9));
     g.run.sort((a, b) => (a.r[7] ?? 0) - (b.r[7] ?? 0));
@@ -748,6 +753,13 @@ async function race(main, id, wanted, arg) {
   main.addEventListener("click", (e) => {
     const m = e.target.closest("[data-lv-method]");
     if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); draw(); return; }
+    // a relay's team: its runners shown or hidden
+    const tb = e.target.closest("[data-team]");
+    if (tb) {
+      const k = tb.dataset.team;
+      if (tb.getAttribute("aria-expanded") === "true") { st.openTeams.delete(k); st.mark = null; } else st.openTeams.add(k);
+      draw(); return;
+    }
     if (e.target.closest("[data-lv-view]")) { show("pass", "all"); window.scrollTo({ top: 0 }); return; }
     const sv = e.target.closest("[data-lv-v]");
     if (sv) { const [view, v] = sv.dataset.lvV.split(":"); st.mark = null; show(view, v); return; }
