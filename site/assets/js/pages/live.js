@@ -162,7 +162,7 @@ const RADIO_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden=
 const FINISH_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 
 async function race(main, id, wanted, arg) {
-  const st = { info: null, classes: [], counts: {}, all: new Map(), cn: {}, openTeams: new Set(), view: "cls", cls: null, club: "mine", pf: "all",
+  const st = { info: null, classes: [], counts: {}, all: new Map(), cn: {}, openTeams: new Set(), openLegs: new Set(), punch: new Map(), punchAsked: new Map(), view: "cls", cls: null, club: "mine", pf: "all",
     sub: null, pass: [], seen: new Set(), mark: null, markScroll: false, ws: null, up: false, tries: 0, gone: false,
     buzz: (() => { try { return localStorage.getItem("ocn.live.buzz") === "1"; } catch (e) { return false; } })(), buzzSeen: null };
   if (wanted === PASS_VIEW) { st.view = "pass"; st.pf = arg === "mine" ? "mine" : "all"; }
@@ -339,9 +339,21 @@ async function race(main, id, wanted, arg) {
     else if (m.t === "counts") { st.counts = m.counts || {}; pickers(); }
     else if (m.t === "class" && !m.missing) {
       st.all.set(m.c, m);
+      // a relay runner's punches open: asked again as their class moves (the relay keeps them 20 s)
+      for (const k of st.openLegs) if (k.startsWith(`${m.c}|`) && Date.now() - (st.punchAsked.get(k) || 0) > 20000) askPunch(m.c, k.slice(m.c.length + 1));
       if (st.view !== "cls" || m.c === st.cls) soon();
       if (st.finding) findList();
     } else if (m.t === "pass") { addPass(m.items); ticker(); status(); if (st.view === "pass") soon(); }
+    else if (m.t === "punch") {
+      const k = `${m.c}|${m.k}`;
+      if (m.busy) { setTimeout(() => { if (st.openLegs.has(k)) askPunch(m.c, m.k); }, 1200); return; }
+      st.punch.set(k, m); soon();
+    }
+  }
+  // a relay runner's punches at the radio controls, asked of the relay (O'Live's card, read on demand)
+  function askPunch(c, key) {
+    st.punchAsked.set(`${c}|${key}`, Date.now());
+    if (st.ws?.readyState === 1) st.ws.send(JSON.stringify({ punch: { c, k: key } }));
   }
   function address() {
     const tail = st.view === "pass" ? `${PASS_VIEW}/${st.pf}` : st.view === "club" ? `${CLUB_VIEW}/${encodeURIComponent(st.club)}` : encodeURIComponent(st.cls || "");
@@ -580,18 +592,36 @@ async function race(main, id, wanted, arg) {
       const [place, name, , result, status, timeplus, , start, , prel, [, l, cumul, tplace, tgap]] = x.r;
       const k = kindOf(x, now);
       const rc = k === "fin" || k === "run" ? recent(lastAt(x.r), now) : "";
-      const cls = ["lv-leg", rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
+      const cls_ = ["lv-leg", rc, st.mark === x.key ? "lv-mark" : ""].filter(Boolean).join(" ");
       const time = k === "fin" ? html`<b>${hs(result)}</b>` : k === "run" ? html`<span class="muted" data-start="${start}">${now >= start ? hs(now - start) : ""}</span>`
         : k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>` : "";
       const tsub = k === "fin" ? html`${placeGap(place, timeplus)}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}` : "";
-      return html`<tr data-k="${x.key}" class="${cls}"><td class="r num muted">${l}</td>
-        <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+      // (owner, 2026-10-25: a runner's line opens their times at the radio controls, as O'Live does, not their page)
+      const pk = `${cls}|${x.key}`, open = st.openLegs.has(pk);
+      return html`<tr data-k="${x.key}" data-punch="${pk}" class="${cls_} lv-pick${open ? " lv-popen" : ""}" title="${t(open ? "lv.punch.hide" : "lv.punch.tip")}"
+          aria-expanded="${open}" tabindex="0"><td class="r num muted">${l}</td>
+        <td class="lv-n"><div class="lv-clamp">${name}</div></td>
         <td class="lv-cat" title="${t("prov.catCn")}">${x.me?.cat ? fmtCat(x.me.cat) : ""}</td>
         <td class="r num lv-st">${k === "wait" ? "" : tod(start)}</td>
         ${pair("r num lv-t", time, tsub)}
         ${pair("r num lv-t", cumul != null ? hs(cumul) : "", cumul == null ? "" : tgap ? `+${hs(tgap)}` : tplace ? "+0:00" : "")}
         <td class="r num lv-rk">${tplace ? html`<b>${t("lv.rank.n", { p: tplace })}</b>` : ""}</td>
-        ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>` : ""}</tr>`;
+        ${FR ? html`<td class="r num">${x.cn != null ? fmt(x.cn) : html`<span class="muted">—</span>`}</td>` : ""}</tr>
+        ${open ? punchRow(pk, k) : ""}`;
+    };
+    // the runner's punches: each radio control (the finish last) with their split, their time from their start, their place
+    // there and their time behind the first there
+    const punchRow = (pk, k) => {
+      const p = st.punch.get(pk);
+      // (no card yet for a runner out: O'Live gives one once a radio control has seen them)
+      const body = !p ? html`<span class="muted">${t("lv.loading")}</span>` : p.none ? html`<span class="muted">${t(k === "run" ? "lv.punch.empty" : "lv.punch.none")}</span>`
+        : p.failed ? html`<span class="muted">${t("lv.punch.failed")}</span>` : !p.rows?.length ? html`<span class="muted">${t("lv.punch.empty")}</span>`
+        : html`<div class="lv-pgrid"><span class="h">${t("lv.punch.ctl")}</span><span class="h">${t("lv.punch.leg")}</span><span class="h">${t("lv.punch.cum")}</span>
+          <span class="h">${t("prov.place")}</span><span class="h">${t("lv.behind")}</span>
+          ${p.rows.map(([code, legT, cum, , place, gap]) => html`<span>${/^arr/i.test(code) ? t("lv.ev.finish") : code}</span>
+            <span>${legT != null ? hs(legT * 100) : ""}</span><span><b>${cum != null ? hs(cum * 100) : ""}</b></span>
+            <span>${place ? t("lv.rank.n", { p: place }) : ""}</span><span>${gap ? `+${hs(gap * 100)}` : place === 1 ? "+0:00" : ""}</span>`)}</div>`;
+      return html`<tr class="lv-punchrow"><td colspan="${cols}">${body}</td></tr>`;
     };
     const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
       ${g[k].map((e, i) => html`${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
@@ -754,6 +784,12 @@ async function race(main, id, wanted, arg) {
     const m = e.target.closest("[data-lv-method]");
     if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); draw(); return; }
     // a relay's team: its runners shown or hidden
+    const pr = e.target.closest("tr[data-punch]");
+    if (pr) {
+      const k = pr.dataset.punch, cls = k.slice(0, k.indexOf("|"));
+      if (st.openLegs.delete(k)) { draw(); return; }
+      st.openLegs.add(k); askPunch(cls, k.slice(cls.length + 1)); draw(); return;
+    }
     const tb = e.target.closest("[data-team]");
     if (tb) {
       const k = tb.dataset.team;
@@ -796,6 +832,8 @@ async function race(main, id, wanted, arg) {
   main.addEventListener("pointerdown", (e) => { if (e.target.closest("#lv-club, #lv-find")) { st.wantAll = true; subscribe(); } });
   main.addEventListener("input", (e) => { if (e.target.id === "lv-find") { st.wantAll = true; subscribe(); st.finding = true; findList(); } });
   main.addEventListener("keydown", (e) => {
+    // (a relay runner's line: Enter or Space opens their punches, as a click)
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches?.("tr[data-punch]")) { e.preventDefault(); e.target.click(); return; }
     if (e.target.id !== "lv-find") return;
     if (e.key === "Escape") { closeFind(); e.target.blur(); }
     else if (e.key === "Enter") { e.preventDefault(); $("#lv-find-list .lv-find-item")?.click(); }

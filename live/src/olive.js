@@ -249,11 +249,13 @@ export function relay(s) {
   for (const part of s.split('<div class="EnteteEquipe').slice(1)) {
     const bib = span("Dossard", part), word = stateWord("StatusEquipe", part);
     const pl = /<span class="PlacesEquipe">([\s\S]*?)<span class="EcartEquipe">/.exec(part)?.[1] || "";
-    const legs = [];
-    for (const p of part.split('<p class="Detail_1">').slice(1)) {
-      const w = stateWord("StatusRelayeur", p);
+    const legs = [], pieces = part.split('<p class="Detail_1">');
+    for (let i = 1; i < pieces.length; i++) {
+      const p = pieces[i], w = stateWord("StatusRelayeur", p);
+      // (the leg's card, whose punches its line opens on O'Live, is in the heading just before it: the piece before)
+      const card = [...pieces[i - 1].matchAll(/data-numpuce="(\d+)"/g)].pop()?.[1] || null;
       legs.push({ leg: num(span("NumRelayeur", p)) ?? legs.length + 1, name: personName(span("NomRelayeur", p)), time: secs(span("TempsRelayeur", p)),
-        place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w) });
+        place: num(span("PlaceRelayeur", p)), cumul: secs(span("TempsCumulRelayeur", p)), word: w, status: statusOf(w), card });
     }
     teams.push({ bib, name: span("NomEquipe", part).replace(/^(\d+)\s+/, (m, b) => (b === bib ? "" : m)), place: num(span("PlaceEquipe", part)),
       total: secs(span("TempsEquipe", part)), word, status: statusOf(word), places: [...pl.matchAll(/<span class="Places">([^<]*)</g)].map((m) => num(m[1])), legs });
@@ -270,13 +272,14 @@ export const relayWait = (teams) => teams.some((t) => t.status === 10 || t.legs.
  * at the handover, team's place there, its gap to the first team there]] — and `relay`: { legs, teams: [[bib, name, place,
  * total, status, gap, legs done]] }, in hundredths. `cats`: { category: { teams: relay(), at: the page's time (ms) } };
  * `t0`: { "category|bib": the team's start (seconds after midnight) } — what was seen, kept by the caller and filled here.
+ * Also `cards`: { category: { "name|team": card number } }, for the caller alone (a card number is never sent to the pages).
  *
  * A leg's start: a runner out, the page's time less their running time (an estimate: O'Live counts it at its last import); a
  * leg through, its team's start plus the team's total before it (the team's start being the earliest seen that way: a stale
  * running time makes it later, a mass start of the last legs too), else the category's usual team start.
  */
 export function compactRelay(cats, t0 = {}) {
-  const classes = {}, order = [];
+  const classes = {}, order = [], cards = {};
   for (const [cat, { teams, at }] of Object.entries(cats)) {
     const now = parisSeconds(at), day = (x) => ((x % 86400) + 86400) % 86400;
     const before = (t, i) => (i === 0 ? 0 : t.legs[i - 1]?.cumul ?? null);
@@ -303,13 +306,14 @@ export function compactRelay(cats, t0 = {}) {
     }
     const lastOk = teams.filter((t) => t.status === 0 && t.total != null).map((t) => t.total);
     const winner = lastOk.length ? Math.min(...lastOk) : null;
-    const rows = [], list = [];
+    const rows = [], list = [], own = (cards[cat] = {});
     for (const t of teams) {
       const s0 = t0[`${cat}|${t.bib}`] ?? usual;
       let done = 0;
       t.legs.forEach((l, i) => {
         if (l.cumul != null) done = i + 1;
         if (!l.name) return;
+        if (l.card) own[`${l.name}|${t.name}`] = l.card;
         const b = before(t, i);
         // (the team's start + its total before, steady from one read to the next; a runner out seen to have started over 2
         // minutes apart from it — a mass start of the last legs — by what is seen)
@@ -330,5 +334,21 @@ export function compactRelay(cats, t0 = {}) {
     order.push(cat);
     classes[cat] = { controls: [], rows, relay: { legs, teams: list } };
   }
-  return { order, classes };
+  return { order, classes, cards };
+}
+
+/** A card's punches as O'Live shows them under a relay runner (bloc.php PointagesPuce): [[control code (« Arr. » the
+ *  finish), leg time, time from the runner's start, time of day « hh:mm:ss », place there, gap to the first there]],
+ *  times in seconds — radio controls while the runner is out, every control once the card is read. */
+export function punchList(s) {
+  const out = [];
+  for (const p of s.matchAll(/<p class="poincons">([\s\S]*?)<\/p>/g)) {
+    const code = span("code", p[1]);
+    if (!code || /^poste$/i.test(code)) continue;                      // (the heading)
+    const tm = /<span class="temps"(?: title="([^"]*)")?>([^<]*)</.exec(p[1]);
+    const gap = /^\+?\s*(?:(\d+)h)?\s*(\d+)'\s*(\d+)/.exec(span("retard", p[1]));
+    out.push([code, secs(span("interposte", p[1])), secs(tm?.[2]), /^\d{1,2}:\d{2}:\d{2}$/.test(tm?.[1] || "") ? tm[1] : null,
+      num(span("place", p[1])), gap ? Number(gap[1] || 0) * 3600 + Number(gap[2]) * 60 + Number(gap[3]) : null]);
+  }
+  return out;
 }

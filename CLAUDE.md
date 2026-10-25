@@ -896,7 +896,12 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   owner, 2026-10-25): each team one line, a button (`.lv-tbtn`: its rank — at the finish, else its place in the race order: the
   furthest leg, then the total —, its name, its time so far) that opens its runners (`st.openTeams`, kept over the updates; a
   runner searched for opens their team): leg number, runner, category (from the data), start, leg time with its place and gap,
-  the team's total and gap, « Rang » (the team's place when that runner came in), CN; no score or
+  the team's total and gap, « Rang » (the team's place when that runner came in), CN. A runner's line opens their times at the
+  radio controls (owner, 2026-10-25: as O'Live does; no link to the runner's page there): control, split, time from their start,
+  place and time behind the first there, the finish last — O'Live's card readout (bloc.php `PointagesPuce`, `ol.punchList`), read
+  by the relay when a page asks (`{ punch: { c, k } }` over the WebSocket → `{ t: "punch", rows }`; kept 20 s, one read a socket a
+  second), by the leg's card number the category's page gives (`relay()` `card`), kept by the relay under `olc:<category>` and
+  never sent to the pages; a runner out has a card once a radio control saw them. No score or
   expected place; the punches say « Fin du relais n » before the last leg (`legEnd`). Club views and the search use the rows.
   **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
   next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's

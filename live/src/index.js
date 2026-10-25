@@ -57,7 +57,9 @@ const MD_MAX = 24;                               // course reads per wake-up, at
 const OL_ACTIVE_MS = 20000, OL_QUIET_MS = 60000, OL_DONE_MS = 300000;   // runners out / only some to start / all through
 const OL_PAGE_MS = 300000;                       // the race's page (its circuits) read again at most this often
 const OL_MAX = 24, OL_CARDS = 15;                // circuit pages and cards per wake-up, at most (subrequest limit: 50)
-const OL_BULK = 10;                              // cards to read on a circuit from which its split times page is read instead
+const OL_BULK = 10;
+// a relay runner's punches, read when a page asks (O'Live's bloc.php): kept this long, one read a socket this often at most
+const PUNCH_MS = 20000, PUNCH_GAP_MS = 1000;                              // cards to read on a circuit from which its split times page is read instead
 // SPORTident Center's events (2026-10-24, sportident.js): numbers from 600 000 000 (+ the event's id), the results file read
 // again while someone watches, conditionally (its ETag: a 304 costs nothing), the classes passed to `update` as a push; the
 // event's file (its guid) is the directory's (/si)
@@ -74,6 +76,8 @@ async function lr(env, params) {
 const raceOf = (s) => (/^[a-z][a-z0-9-]{1,40}$/.test(String(s || "")) ? String(s) : null);
 
 // a class's finishers and runners (non-starters apart), for the course picker
+// a short fingerprint of a text (djb2)
+const hashOf = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 + t.charCodeAt(i)) | 0; return h >>> 0; };
 // (a relay: its teams — through the last leg / not missing)
 const countOf = (rows, relay) => (relay ? [relay.teams.filter((t) => t[4] === 0).length, relay.teams.filter((t) => t[4] !== 1 && t[4] !== 11).length]
   : [rows.filter((r) => r[4] === 0 && r[3] != null).length, rows.filter((r) => r[4] !== 1 && r[4] !== 11).length]);
@@ -183,6 +187,7 @@ export class LiveRace extends DurableObject {
     let q;
     if (raw === "ping") { try { ws.send("pong"); } catch (e) { /* closed */ } return; }
     try { q = JSON.parse(raw); } catch (e) { return; }
+    if (q.punch && typeof q.punch.c === "string" && typeof q.punch.k === "string") return this.punches(ws, q.punch.c, q.punch.k);
     if (typeof q.sub !== "string" || q.sub.length > 200) return;
     ws.serializeAttachment({ sub: q.sub });
     const m = await this.load();
@@ -202,6 +207,30 @@ export class LiveRace extends DurableObject {
       try { if (await this.readClass(m, q.sub)) await this.save([q.sub]); } catch (e) { /* sent at the next wake-up */ }
     }
     if (m.data[q.sub]) this.send(ws, { t: "class", c: q.sub, ...m.data[q.sub] });
+  }
+
+  /** An O'Live relay runner's punches (2026-10-25, owner: as O'Live opens them under a runner): the card of the class's runner
+   *  `k` (« name|team »), read from O'Live when asked (kept PUNCH_MS; one read a socket every PUNCH_GAP_MS at most). Answers
+   *  { t: "punch", c, k, rows: [[code, leg, time, time of day, place, gap]…] } (`none`: no card known). */
+  async punches(ws, c, k) {
+    const m = await this.load();
+    const reply = (x) => this.send(ws, { t: "punch", c, k, ...x });
+    if (!ol.isOl(m.comp) || !m.ol?.relay || c.length > 200 || k.length > 400) return reply({ none: true });
+    const card = (await this.ctx.storage.get(`olc:${c}`))?.[k];
+    if (!card) return reply({ none: true });
+    this.pc ||= new Map();
+    const hit = this.pc.get(card), now = Date.now();
+    if (hit && now - hit.at < PUNCH_MS) return reply({ rows: hit.rows, at: hit.at });
+    this.pw ||= new WeakMap();
+    if (now - (this.pw.get(ws) || 0) < PUNCH_GAP_MS) return hit ? reply({ rows: hit.rows, at: hit.at }) : reply({ busy: true });
+    this.pw.set(ws, now);
+    const { host, id } = ol.site(m.comp);
+    try {
+      const rows = ol.punchList((await ol.get(`${ol.base(host)}/bloc.php`, { Demande: "PointagesPuce", IdCourse: id, NumPuce: card })).text);
+      this.pc.set(card, { rows, at: now });
+      if (this.pc.size > 500) this.pc.delete(this.pc.keys().next().value);
+      reply({ rows, at: now });
+    } catch (e) { hit ? reply({ rows: hit.rows, at: hit.at }) : reply({ failed: true }); }
   }
 
   async webSocketClose(ws, code) {
@@ -533,7 +562,14 @@ export class LiveRace extends DurableObject {
       out ||= t.some((x) => x[4] === 9); wait ||= t.some((x) => x[4] === 10);
     }
     m.ol.out = out; m.ol.wait = wait; m.ol.due = 0;
-    const { classes } = ol.compactRelay(cats, m.ol.t0);
+    const { classes, cards } = ol.compactRelay(cats, m.ol.t0);
+    // each leg's card number, under its own key per category and written only when it changed: what a runner's punches are
+    // read by (`punches`), never sent to the pages
+    m.ol.chash ||= {};
+    for (const [cat, own] of Object.entries(cards)) {
+      const h = JSON.stringify(own);
+      if (m.ol.chash[cat] !== h.length + ":" + hashOf(h)) { m.ol.chash[cat] = h.length + ":" + hashOf(h); await this.ctx.storage.put(`olc:${cat}`, own); }
+    }
     return this.update(m.comp, { info: m.ol.info, order: m.ol.rcats.map((c) => c.name), classes }, { prune: true });
   }
 
