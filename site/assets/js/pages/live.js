@@ -579,10 +579,12 @@ async function race(main, id, wanted, arg) {
     // leg, then the total at its last handover: the order above) —, its name, its time so far; pushed, its runners under it
     // (kept open over the updates; a runner searched for opens their team)
     const keyOf = (bib) => `${cls}|${bib}`;
+    const finRank = Math.max(g.fin.length, ...g.fin.map((e) => e.tm[2] || 0));
     const isOpen = (e) => st.openTeams.has(keyOf(e.tm[0])) || (st.mark && e.legs.some((x) => x.key === st.mark));
     const team = (e, k, i) => {
       const [bib, name, place, total, status] = e.tm;
-      const rank = k === "fin" ? place : k === "run" ? i + 1 : null;
+      // (the teams racing ranked after the last team in: owner, 2026-10-25)
+      const rank = k === "fin" ? place : k === "run" ? finRank + i + 1 : null;
       // a team racing: its total at its last handover (with a mass start every team's time so far is the same clock); before
       // its first handover, its first runner's time, ticking
       const out = k === "run" && total == null ? e.legs.find((x) => kindOf(x, now) === "run" && x.r[7] != null) : null;
