@@ -523,7 +523,8 @@ async function race(main, id, wanted, arg) {
     const g = x.score && x.cn ? x.score - x.cn : null;
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
-      <td class="lv-n"><div class="lv-clamp">${x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+      <td class="lv-n"><div class="lv-clamp">${x.r[10] ? html`<button type="button" class="lv-link" data-go="${x.cls}" data-name="${name}"
+        title="${t("lv.toLeg")}">${name}</button>` : x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
       ${o.course ? html`<td class="lv-c"><button type="button" class="lv-link" data-c="${x.cls}">${fmtCat(x.cls)}</button>${
         x.r[10] ? html` <span class="muted">· ${t("lv.leg.n", { l: x.r[10][1] })}</span>` : ""}</td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}
@@ -582,10 +583,16 @@ async function race(main, id, wanted, arg) {
     const team = (e, k, i) => {
       const [bib, name, place, total, status] = e.tm;
       const rank = k === "fin" ? place : k === "run" ? i + 1 : null;
+      // a team racing: its total at its last handover (with a mass start every team's time so far is the same clock); before
+      // its first handover, its first runner's time, ticking
+      const out = k === "run" && total == null ? e.legs.find((x) => kindOf(x, now) === "run" && x.r[7] != null) : null;
+      const before = out ? (out.r[10][1] > 1 ? e.legs.find((x) => x.r[10][1] === out.r[10][1] - 1)?.r[10][2] : 0) : null;
+      const from = out && before != null ? out.r[7] - before : null;
       const open = isOpen(e);
       return html`<tr class="lv-team"><td colspan="${cols}"><button type="button" class="lv-tbtn" data-team="${keyOf(bib)}" aria-expanded="${open}"
           title="${t(open ? "lv.team.close" : "lv.team.open")}"><span class="lv-tb-pl">${rank ?? ""}</span><span class="lv-tb-ch" aria-hidden="true">›</span>
           <span class="lv-tb-n">${name}</span><span class="lv-tb-t">${k === "out" ? html`<span class="muted">${ST_LABEL[STATUS[status]]}</span>`
+            : from != null ? html`<span class="lv-tb-run" data-start="${from}">${now >= from ? hs(now - from) : ""}</span>`
             : total != null ? hs(total) : ""}</span></button></td></tr>`;
     };
     const leg = (x) => {

@@ -1710,7 +1710,7 @@ table.data tr.lv-mark td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
 .lv-badge { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; background: var(--bad);
   border-radius: 4px; padding: 1px 5px; vertical-align: 1px; }
 .lv-table .lv-m { display: none; }
-#lv-rows { max-height: none; }
+#lv-rows { max-height: none; container-type: inline-size; }
 table.data.lv-table th, table.data.lv-table td { padding: 4px 6px; vertical-align: top; }
 .lv-table .lv-2 { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
 /* a finish recorded by a radio control, before the card is read; a runner's estimated finish */
@@ -1738,7 +1738,8 @@ table.data.lv-relay tr.lv-team > td { padding: 2px 0; background: var(--surface)
 table.data.lv-relay tr.lv-team:hover { --lv-tint: transparent; }
 table.data.lv-relay tr.lv-leg td.lv-n { padding-left: 16px; }
 /* each team one line, a button that opens its runners (owner, 2026-10-25) */
-.lv-tbtn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px 6px 4px; border: 1px solid var(--line);
+/* (as wide as the visible box at most, and held there when the table scrolls sideways: its total stays in sight on a phone) */
+.lv-tbtn { position: sticky; left: 0; max-width: calc(100cqw - 2px); display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 10px 6px 4px; border: 1px solid var(--line);
   border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, var(--surface)); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .lv-tbtn:hover { background: color-mix(in srgb, var(--ink) 10%, var(--surface)); }
 .lv-tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1748,6 +1749,7 @@ table.data.lv-relay tr.lv-leg td.lv-n { padding-left: 16px; }
 .lv-tbtn[aria-expanded="true"] .lv-tb-ch { transform: rotate(90deg); }
 .lv-tb-n { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-tb-t { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lv-tb-run { font-weight: 600; color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) { .lv-tb-ch { transition: none; } }
 /* a relay runner's line opens their radio control times (owner, 2026-10-25) */
 table.data.lv-relay tr.lv-pick { cursor: pointer; }

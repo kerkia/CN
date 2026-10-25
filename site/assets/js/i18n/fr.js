@@ -1182,6 +1182,7 @@ export default {
   "lv.legNo.tip": "La place de l'équipe ; sur la ligne d'un relayeur, le numéro de son relais",
   "lv.leg.n": "relais {l}", "lv.placeGap": "{p}e · {d}",
   "lv.team.open": "Afficher les relayeurs", "lv.team.close": "Masquer les relayeurs",
+  "lv.toLeg": "Voir sa ligne dans son équipe",
   "lv.punch.tip": "Afficher ses temps aux postes radio", "lv.punch.hide": "Masquer ses temps aux postes",
   "lv.punch.ctl": "Poste", "lv.punch.leg": "Interposte", "lv.punch.cum": "Cumul",
   "lv.punch.none": "Pas de temps aux postes pour ce relayeur.", "lv.punch.empty": "Aucun poste radio passé pour l'instant.",
