@@ -304,7 +304,7 @@ def adopt(con, found_by, d: dict, url: str, text: str, sha: str | None) -> str |
     label = f"{urllib.parse.unquote(url.rsplit('/', 1)[-1])} {text} {d.get('title') or ''}"
     low = plain(label)
     day = date.fromisoformat(found_by["date_iso"])
-    near = con.execute("SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND key != ?",
+    near = con.execute(f"SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND key != ? AND key NOT LIKE '{RELAY}%'",
                        ((day - timedelta(days=7)).isoformat(), (day + timedelta(days=7)).isoformat(), found_by["key"])).fetchall()
     fits = [r for r in near if (not d.get("date") or d["date"] == r["date_iso"]) and date_ok(d, r)
             and any(w in low for w in place_words(r)) and not not_this_race(r, label)
@@ -366,7 +366,7 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
         # to the race(s) it is about (races.owners); one about another race is not this race's (dropped if saved before)
         # (a weekend's races too: a club posts Saturday's and Sunday's lists together)
         day = date.fromisoformat(race["date_iso"])
-        rivals = con.execute("SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ?",
+        rivals = con.execute(f"SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ? AND key NOT LIKE '{RELAY}%'",
                              ((day - timedelta(days=1)).isoformat(), (day + timedelta(days=1)).isoformat(),
                               race["org_code"], race["key"])).fetchall()
         if rivals:
@@ -515,6 +515,55 @@ def replacement(con, race, ol: OLive, pid):
                  race["terrain"], race["epreuve"], race["cn"], race["site"], 0, now, now))
     log.info("provisional: %s is cancelled; O'Live's « %s » is its replacement, %s", race["key"], comp["name"], key)
     return con.execute("SELECT * FROM prov_races WHERE key = ?", (key,)).fetchone()
+
+
+RELAY = "olr"           # an O'Live relay's race: « olr<IdCourse> » (races.split_times_only)
+
+
+def relays(con, ol: OLive, agenda: Path, today: date) -> int:
+    """O'Live's relays of the last days (owner, 2026-10-25: the CNE at Le Bessat), for « Analyse de course » alone: each a
+    race « olr<id> » — the organiser, place and site of the agenda's relay of that day whose place O'Live's name gives (else
+    the day's only one) —, its split times read as one document whose circuits are its categories' legs (OLive.read_relay),
+    again only when the categories' pages moved; looked at every 50 minutes while legs are out or to come, and once more
+    the day after; then done. Not on « Résultats », never scored, no alert (build: `relays` apart in the index)."""
+    lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
+    events = json.loads(agenda.read_text(encoding="utf-8")).get("events", []) if agenda.exists() else []
+    changed = 0
+    for c in ol.relays():
+        if not lo <= c["date"] <= today.isoformat():
+            continue
+        key = f"{RELAY}{c['id']}"
+        if not con.execute("SELECT 1 FROM prov_races WHERE key = ?", (key,)).fetchone():
+            day = [e for e in events if e.get("kind") == "c" and e.get("date") == c["date"] and races.is_relay(e.get("name"), e.get("epr"))]
+            said = [e for e in day if e.get("place") and set(races._words(e["place"])) & set(races._words(c["name"]))]
+            e = (said if len(said) == 1 else day if len(day) == 1 else [{}])[0]
+            parts = re.split(r"\s+-\s+", c["name"])
+            terrain = races.SPEC_TERRAIN.get(e.get("spec")) or ("Sprint" if "sprint" in plain(c["name"]) else "Forêt")
+            now = races.now_iso()
+            con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site,
+                           first_seen, next_check) VALUES (?,?,?,?,?,?,?,?,0,?,?,?)""",
+                        (key, c["date"], c["name"], e.get("place") or (parts[-1] if len(parts) > 1 else None), e.get("org"),
+                         races.org_code(e.get("org")), terrain, "Relais", e.get("site"), now, now))
+        race = con.execute("SELECT * FROM prov_races WHERE key = ?", (key,)).fetchone()
+        if race["done"] or (race["next_check"] and race["next_check"] > _now()) or ol.f.out_of_time():
+            continue
+        url = PLATFORM_URL["olive"].format(c["id"])
+        fp = ol.relay_fingerprint(c["id"])
+        prev = con.execute("SELECT sha, parsed FROM prov_docs WHERE race_key = ? AND url = ?", (key, url)).fetchone()
+        d = None if fp and prev and prev["sha"] == fp else ol.read_relay(c["id"]) if fp else None
+        if d:
+            changed += save(con, key, url, "olive", d, sha=fp)
+        elif ol.f.out_of_time():
+            continue
+        live = (d or json.loads(prev["parsed"] if prev and prev["parsed"] else "{}")).get("live")
+        now = datetime.now(timezone.utc)
+        if not live and fp and c["date"] < today.isoformat():
+            con.execute("UPDATE prov_races SET last_check = ?, done = 1 WHERE key = ?", (now.isoformat(timespec="seconds"), key))
+        else:
+            con.execute("UPDATE prov_races SET last_check = ?, next_check = ? WHERE key = ?",
+                        (now.isoformat(timespec="seconds"), (now + timedelta(minutes=50)).isoformat(timespec="seconds"), key))
+        con.commit()
+    return changed
 
 
 def platform_doc(con, race, md: MeOSDjango, pid: str | None) -> int:
@@ -918,7 +967,7 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     now = datetime.now(timezone.utc)
     org = set(store.meta_get(con, "org_starts", []) or [])          # their organiser gave it: nothing to look for
     # (France's races: the search reads French words, site_docs)
-    due = [r for r in con.execute("SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? AND COALESCE(country, 'FR') = 'FR' "
+    due = [r for r in con.execute(f"SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? AND COALESCE(country, 'FR') = 'FR' AND key NOT LIKE '{RELAY}%' "
                                   "ORDER BY date_iso", (today.isoformat(), hi)).fetchall()
            if r["key"] not in org and (not seen.get(r["key"]) or now - datetime.fromisoformat(seen[r["key"]]) >= timedelta(hours=START_EVERY))]
     due.sort(key=lambda r: seen.get(r["key"], ""))
@@ -937,7 +986,7 @@ def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
             log.exception("start lists: %s", race["key"])
             continue
         day = date.fromisoformat(race["date_iso"])
-        rivals = con.execute("SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ?",
+        rivals = con.execute(f"SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ? AND key NOT LIKE '{RELAY}%'",
                              ((day - timedelta(days=1)).isoformat(), (day + timedelta(days=1)).isoformat(),
                               race["org_code"], race["key"])).fetchall()
         kept: set[str] = set()                        # the files this look found (all of them, once it ends)
@@ -1007,7 +1056,7 @@ def build(con, out: Path, today: date) -> int:
     lo = (today - timedelta(days=SHOW_DAYS)).isoformat()
     matcher, scorer = Matcher(con, today), Scorer(con)
     anon = privacy.load()                # the anonymised runners: their rows by licence, the unmatched ones by name
-    index, written = [], 0
+    index, relay_index, written = [], [], 0      # (O'Live's relays apart: « Analyse de course » alone lists them)
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     far = (today + timedelta(days=ORG_START_DAYS)).isoformat()
     org_starts = set(store.meta_get(con, "org_starts", []) or [])
@@ -1030,6 +1079,7 @@ def build(con, out: Path, today: date) -> int:
         ffco = scorer.ffco_figures(race["ffco_id"]) if race["ffco_id"] else {}
         # a race of another country (a declared one): its runners are not France's licensees, nothing scored on France's CN
         foreign = (race["country"] or "FR") != "FR"
+        relay = race["key"].startswith(RELAY)          # a relay's legs (relays): split times only, nothing scored
         out_docs, n_run, n_lic, splits, lics = [], 0, 0, False, set()
         rlics, results = set(), False          # the runners recognised in lists of results (not start lists): the alert's
         lives, final = [], False               # the lists read while the race was under way; the organiser's own file
@@ -1073,7 +1123,7 @@ def build(con, out: Path, today: date) -> int:
                             r["ffco"] = ffco[r["lic"]]
                         privacy.anonymise_row(anon, r)
                         r.pop("card", None)              # a SportIdent number tells runners apart (the matching), never shown
-                    if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and not foreign:
+                    if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and not foreign and not relay:
                         k["values"] = scorer.score_class(k, race, race["ffco_id"])
                     if any(r.get("splits") for r in k["runners"]):
                         splits = True
@@ -1082,7 +1132,7 @@ def build(con, out: Path, today: date) -> int:
                     entry["circuits"] = circuit_view(parsed)
                 # a list by circuit giving most runners' categories: seen by category too
                 runners_all = [r for k in parsed["classes"] for r in k["runners"]]
-                if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and runners_all and \
+                if parsed.get("by") != "category" and parsed.get("kind") != "startlist" and runners_all and not relay and \
                         sum(1 for r in runners_all if r.get("category") or r.get("catCn")) >= 0.6 * len(runners_all):
                     entry["catview"] = category_view(parsed)
                     for k in parsed["classes"]:          # each circuit's categories, for its heading
@@ -1115,7 +1165,7 @@ def build(con, out: Path, today: date) -> int:
         (d / f"{race['key']}.json").write_text(dump(body), encoding="utf-8")
         (pub / f"{race['key']}.json").write_text(dump(public_copy(body)), encoding="utf-8")
         written += 1
-        index.append({k: race[k] for k in ("key", "date_iso", "name", "place", "org", "terrain", "epreuve", "cn", "ffco_id",
+        (relay_index if relay else index).append({k: race[k] for k in ("key", "date_iso", "name", "place", "org", "terrain", "epreuve", "cn", "ffco_id",
                                            "last_check", "next_check", "done", "country")} |
                      {"docs": len([x for x in out_docs if x.get("classes")]), "refused": len([x for x in out_docs if x["kind"] in ("refused", "platform")]),
                       "runners": n_run, "matched": n_lic, "splits": splits, "region": region_of(race["org_code"]),
@@ -1136,12 +1186,12 @@ def build(con, out: Path, today: date) -> int:
                for b in con.execute("SELECT * FROM prov_blocked ORDER BY last_seen DESC").fetchall()]
     (d / "blocked.json").write_text(json.dumps({"generated": _now(), "sites": blocked}, ensure_ascii=False, separators=(",", ":")),
                                     encoding="utf-8")
-    whole = {"generated": _now(), "races": index, "runs": store.meta_get(con, "runs", [])[-12:],
+    whole = {"generated": _now(), "races": index, "relays": relay_index, "runs": store.meta_get(con, "runs", [])[-12:],
              "due": len(races.due(con, today, _now()))}
     (d / "index.json").write_text(dump(whole), encoding="utf-8")
-    (pub / "index.json").write_text(dump(whole | {"races": [{k: v for k, v in r.items() if k not in PUB_INDEX_DROP} for r in index]}),
-                                    encoding="utf-8")
-    keep = {f"{r['key']}.json" for r in index} | {"index.json", "blocked.json"}
+    (pub / "index.json").write_text(dump(whole | {k: [{f: v for f, v in r.items() if f not in PUB_INDEX_DROP} for r in rs]
+                                                  for k, rs in (("races", index), ("relays", relay_index))}), encoding="utf-8")
+    keep = {f"{r['key']}.json" for r in index + relay_index} | {"index.json", "blocked.json"}
     for folder in (d, pub):
         for old in folder.glob("*.json"):
             if old.name not in keep:
@@ -1224,7 +1274,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         # a cancelled race takes no platform's competition (2026-10-24: WinSplits' « Sprint-labyrinthe Le Bessat, NOSE », the
         # replacement's, went to the cancelled CF Sprint final by its organiser and day): its replacement, when there is one, does
         cancelled = set(store.meta_get(con, "cancelled", []) or [])
-        period = [r for r in period if r["key"] not in cancelled]
+        period = [r for r in period if r["key"] not in cancelled and not r["key"].startswith(RELAY)]     # (relays: their own)
         lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
         lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo])
         ws_events = store.meta_get(con, "winsplits", {"events": {}})["events"]
@@ -1251,7 +1301,11 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         changed += start_lists(con, f, lr, today)
         changed += platform_start_lists(con, f, "meosdjango", md, today) + platform_start_lists(con, f, "heyries", hy, today)
         changed += site_start_lists(con, f, cs, today)
-        due = races.due(con, today, _now())
+        try:
+            changed += relays(con, ol, agenda, today)
+        except Exception:
+            log.exception("provisional: O'Live's relays failed")
+        due = [r for r in races.due(con, today, _now()) if not r["key"].startswith(RELAY)]
         # a race its organiser gave results for (sources.upload): those are used as they are, nothing looked for elsewhere
         org_races = set(store.meta_get(con, "org_races", []) or [])
         cut = False

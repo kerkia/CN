@@ -76,7 +76,7 @@ export async function render(main, { query = {} } = {}) {
   const mine = query.course === local.LOCAL ? local.race() : null;
   const live = liveId(query.course);
   const idx = mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
-  const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : (idx?.races || []).filter((r) => r.splits);
+  const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
   main.innerHTML = html`
     <div id="sp-back"></div>
     <div class="page-head sp-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
@@ -174,7 +174,8 @@ export async function render(main, { query = {} } = {}) {
     } else {
       $("#sp-title").textContent = r?.name || key;
       $("#sp-lede").textContent = [fmtDate(r?.date_iso), r?.place, r?.org, ...new Set([fmtFormat(r?.epreuve), fmtFormat(r?.terrain)])].filter(Boolean).join(" · ");
-      $("#sp-acts").innerHTML = html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}" title="${t("ra.toResults")}">${t("nav.recent")} →</a>`;
+      // (a relay is not on « Résultats »: its legs' split times are all there is)
+      $("#sp-acts").innerHTML = r?.relay ? "" : html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}" title="${t("ra.toResults")}">${t("nav.recent")} →</a>`;
     }
     if (live) document.title = `${w.st.info?.name || live} — ${SITE}`;      // known once the relay said hello, after the page was drawn
   }

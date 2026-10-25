@@ -19,7 +19,9 @@ export async function render(main, { query = {} } = {}) {
   const me = country.current() === "FR" ? auth.myId() : null;
   if (query.mes === "1" && me && !query.r) query = { ...query, r: me };      // « Mes courses seulement », before the filters
   const idx = await getProv("index.json");
-  const races = (idx?.races || []).filter((r) => r.splits && !r.soon && country.of(r) === country.current())
+  // O'Live's relays (owner, 2026-10-25: the CNE at Le Bessat) apart in the index: listed here alone, each leg a circuit
+  const races = [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))]
+    .filter((r) => r.splits && !r.soon && country.of(r) === country.current())
     .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name));
   // the filters (racefilters.js, as on Résultats)
   const F = await raceFilters({ id: "ra", query, races, onChange: () => draw() });
@@ -38,6 +40,7 @@ export async function render(main, { query = {} } = {}) {
         <th class="r ra-n">${t("prov.runners")}</th></tr></thead>
       <tbody>${rows.map((r) => html`<tr><td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td class="pv-race"><a href="${analysisLink(r.key)}">${r.name}</a>
+          ${r.relay ? html` <span class="tag" title="${t("ra.relay.tip")}">${t("ra.relay.tag")}</span>` : ""}
           ${me && (r.lics || []).includes(me) ? html` <span class="tag" title="${t("ra.mine.tip")}">${t("ra.mine.tag")}</span>` : ""}
           ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[parts(fmtFormat(r.epreuve), fmtFormat(r.terrain)), r.place, r.org].filter(Boolean).join(" · ")}</div></td>

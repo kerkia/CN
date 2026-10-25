@@ -217,7 +217,7 @@ def backfill(con, events: list[dict], lo: str, hi: str) -> int:
                         (code.zfill(4) if len(code) > 2 else code, e["org"], e["site"], stamp))
     added = 0
     for (day, code), group in _groups(rows):
-        known = con.execute("SELECT key, name, site FROM prov_races WHERE date_iso = ? AND org_code IS ?", (day, code)).fetchall()
+        known = con.execute("SELECT key, name, site FROM prov_races WHERE date_iso = ? AND org_code IS ? AND key NOT LIKE 'olr%'", (day, code)).fetchall()
         both = lambda a, b: len(set(_words(a)) & set(_words(b))) / max(1, len(set(_words(a))), len(set(_words(b))))
         pairs = sorted(((both(k["name"], e["name"]), i, j) for i, k in enumerate(known) for j, e in enumerate(group)
                         if similarity(k["name"], e["name"]) >= 0.5), reverse=True)
@@ -268,7 +268,7 @@ def merge_duplicates(con) -> int:
     merged = 0
     for f in con.execute("SELECT * FROM prov_races WHERE key LIKE 'f%'").fetchall():
         others = con.execute("""SELECT * FROM prov_races WHERE date_iso = ? AND org_code IS ? AND key != ? AND key NOT LIKE 'f%'
-                                AND (ffco_id IS NULL OR ffco_id = ?) AND country IS NULL""", (f["date_iso"], f["org_code"], f["key"], f["ffco_id"])).fetchall()
+                                AND (ffco_id IS NULL OR ffco_id = ?) AND country IS NULL AND key NOT LIKE 'olr%'""", (f["date_iso"], f["org_code"], f["key"], f["ffco_id"])).fetchall()
         # the same name, both ways: a « Sprint » and a « KO Sprint » of the same day are two races
         same = lambda r: len(set(_words(r["name"])) & set(_words(f["name"]))) / max(1, len(set(_words(r["name"]))), len(set(_words(f["name"]))))
         best = max(others, key=same, default=None)
@@ -483,15 +483,17 @@ def sync(con, agenda_path: Path, today: date, back_days: int) -> dict:
         added += 1
     drop_deleted(con, lo)
     merge_duplicates(con)
-    # relays taken in before they were left out, and relay files found next to an individual race
-    con.execute("DELETE FROM prov_docs WHERE lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' OR lower(COALESCE(title, '')) LIKE '%relais%'")
+    # relays taken in before they were left out, and relay files found next to an individual race — O'Live's relays apart
+    # (« olr<id> », run.relays: their split times, for « Analyse de course » alone)
+    con.execute("DELETE FROM prov_docs WHERE race_key NOT LIKE 'olr%' AND (lower(url) LIKE '%relais%' OR lower(url) LIKE '%relay%' "
+                "OR lower(COALESCE(title, '')) LIKE '%relais%')")
     # Cloudinary files saved under the address of one page load (« /v1791801252/ », « ?_a=… »): found again under
     # their stable one (clubsite._links)
     con.execute("DELETE FROM prov_docs WHERE url LIKE 'https://res.cloudinary.com/%' AND (url LIKE '%?_a=%' OR url GLOB '*/v[0-9]*/*')")
     # Livelox links noted before it was left out (only the runners who sent their GPS track, and closed to robots)
     con.execute("DELETE FROM prov_docs WHERE source = 'livelox'")
     con.execute("DELETE FROM prov_blocked WHERE host LIKE '%livelox.com'")
-    for (key,) in con.execute("SELECT key FROM prov_races").fetchall():
+    for (key,) in con.execute("SELECT key FROM prov_races WHERE key NOT LIKE 'olr%'").fetchall():
         r = con.execute("SELECT name, epreuve FROM prov_races WHERE key = ?", (key,)).fetchone()
         if is_relay(r["name"], r["epreuve"]):
             con.execute("DELETE FROM prov_docs WHERE race_key = ?", (key,))

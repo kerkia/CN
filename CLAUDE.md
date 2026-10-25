@@ -241,7 +241,17 @@ co-live.fr, a live results site French organisers feed from their timing softwar
 circuit's results page and split times page, read again only when the results pages moved; it lists only current races, so a
 race is read on its day or soon after; a link to its home page on the organiser's site, « Résultats provisoires », gets the
 O'Live race of that day whose name fits, or one of whose name's own words the linking page gives: `clubsite` keeps such a link
-with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2; **a cancelled race** (2026-10-24: FFCO's calendar still listed both CF Sprint races, cancelled on the organiser's
+with its page, `contexts`, `OLive.of_day`; `SOURCE_RANK` 2; **O'Live's relays in « Analyse de course »** (owner, 2026-10-25: the CNE at Le Bessat, its splits
+published on co-live.fr; relays stay out of everything else): `run.relays` makes each relay O'Live lists a race « olr<IdCourse> »
+(epreuve « Relais », the organiser, place and site of the agenda's relay of that day; skipped by `races.sync`'s relay cleanup,
+the merges, the club-site searches, the start lists and the platform matching), read by `OLive.read_relay` — one class per
+category and leg (« RELAIS HOMMES · Relayeur 3 »), every runner of the leg, the team as their club, forked positions labelled
+« 127/172 » and compared by position (the owner's choice: one circuit per leg, not per variant), places ranked from the leg
+times (O'Live's leg « place » is the team's at the handover), « Ant » (a mass-started leg, kept once through) through when its
+block says « Arrive » or the team has its handover total; no start times (the pages give none). Read again only when the
+categories' pages move (7 pages; the read itself ~33), every 50 min on its day, once more the next day, then done. `build`
+puts it in the index's `relays` (not `races`: not on « Résultats », no alert, nothing scored, no category view); only
+`racelist.js` (tag « relais ») and `splits.js` (no « Résultats → ») read them; **a cancelled race** (2026-10-24: FFCO's calendar still listed both CF Sprint races, cancelled on the organiser's
 site and replaced by « Sprint Labyrinthe - Le Bessat », and both took its results): a race whose organiser's pages hold a sentence
 with « annul… », its name — brackets and « - WRE » apart — and its day (« samedi 24/10 » too) is marked cancelled
 (`ClubSite.cancelled`, `run.mark_cancelled`, prov_meta « cancelled ») and left off « Résultats » while it has no results of its

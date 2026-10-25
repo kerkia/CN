@@ -954,6 +954,8 @@ export default {
   "ra.mine": "Mes courses seulement",
   "ra.mine.tag": "ma course",
   "ra.mine.tip": "Vous êtes reconnu dans les résultats de cette course",
+  "ra.relay.tag": "relais",
+  "ra.relay.tip": "Un relais : chaque relayeur de chaque catégorie est un circuit ; aux postes d'une fourche (« 127/172 »), les temps sont comparés par position",
   "ra.def": "Une course figure ici pendant 60 jours dès qu'un de ses circuits a des temps intermédiaires publiés par l'organisateur (WinSplits, Helga, liveresultat, son site ou son dépôt). La colonne « Résultats » mène à la page de la course.",
   "ra.empty": "Aucune course avec temps intermédiaires dans les 60 derniers jours.",
   "ra.emptyFilter": "Aucune course ne correspond à ces filtres.",

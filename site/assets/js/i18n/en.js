@@ -1389,6 +1389,8 @@ export default {
   "ra.mine": "My races only",
   "ra.mine.tag": "my race",
   "ra.mine.tip": "You are recognised in this race's results",
+  "ra.relay.tag": "relay",
+  "ra.relay.tip": "A relay: each leg of each class is a course; at forked controls (“127/172”), times are compared by position",
   "ra.def": "A race is listed here for 60 days as soon as one of its courses has split times published by the organiser (WinSplits, Helga, liveresultat, their website or their upload). The “Results” column leads to the race's page.",
   "ra.empty": "No race with split times in the last 60 days.",
   "ra.emptyFilter": "No race matches these filters.",
