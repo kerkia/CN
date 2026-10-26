@@ -894,7 +894,7 @@ async function race(main, id, wanted, arg) {
           <div class="lv-pop-dh"><span>${t(`terrain.${d.terrain}`)}</span><b>${d.cn != null ? fmt(d.cn) : html`<span class="muted">${t("rn.unranked")}</span>`}</b></div>
           ${d.cn != null ? html`<div>${t("lv.pop.rank", { r: ord(d.rank), n: fmt(d.n) })}${d.catRank ? html` · ${t("lv.pop.catRank", { r: ord(d.catRank), n: fmt(d.catN), cat: fmtCat(d.cat) })}` : ""}</div>` : ""}
           <div class="muted">${tn("lv.pop.races", d.pm.n)}${d.pm.n ? ` · ${t("lv.pop.pm", { p: pctN((100 * d.pm.pm) / d.pm.n) })}` : ""} · ${tn("lv.pop.pods", d.podiums)}${
-            d.podiums ? ` ${tn("lv.pop.wins", d.wins)}` : ""}</div></div>`)}`
+            d.wins ? ` ${tn("lv.pop.wins", d.wins)}` : ""}</div></div>`)}`
         : html`<p class="muted lv-pop-none">${t("lv.pop.nothing")}</p>`;
     }
     // the radio controls passed, then the finish: split, time from the start, place there, time behind the first there
