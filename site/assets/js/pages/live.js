@@ -495,6 +495,7 @@ async function race(main, id, wanted, arg) {
         setTimeout(() => { const r = markedRow()?.getBoundingClientRect(); if (r && (r.top < 0 || r.bottom > innerHeight)) markedRow().scrollIntoView({ block: "center" }); }, 400);
       }
     } else restore(a);
+    popDraw();
   }
   const markedRow = () => [...$$("#lv-rows tr[data-k]", main)].find((x) => x.dataset.k === st.mark) || null;
   // what stays put on the screen when the table is drawn again (owner, 2026-10-25: a tap on a runner sometimes moved the
@@ -556,7 +557,8 @@ async function race(main, id, wanted, arg) {
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
       <td class="lv-n"><div class="lv-clamp">${x.r[10] || o.course ? html`<button type="button" class="lv-link" data-go="${x.cls}" data-name="${name}"
-        title="${t(x.r[10] ? "lv.toLeg" : "lv.toCourse")}">${name}</button>` : x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+        title="${t(x.r[10] ? "lv.toLeg" : "lv.toCourse")}">${name}</button>` : html`<button type="button" class="lv-link" data-pop="${x.key}"
+        title="${t("lv.pop.tip")}">${name}</button>`}</div></td>
       ${o.course ? html`<td class="lv-c">${fmtCat(x.cls)}${
         x.r[10] ? html` <span class="muted">· ${t("lv.leg.n", { l: x.r[10][1] })}</span>` : ""}</td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}
@@ -834,6 +836,54 @@ async function race(main, id, wanted, arg) {
   }
   const closeFind = () => { st.finding = false; $("#lv-find-list").hidden = true; };
 
+  // a runner of a circuit, tapped: their race in a window over the page, closed by ✕, « Fermer », Échap or a tap beside it
+  // (owner, 2026-10-26: their page left « En direct » with no way back in the installed app); kept up to date while open
+  function popHtml(x) {
+    const [place, name, club, result, status, timeplus, , start, splits, prel] = x.r;
+    const now = nowAt(st.info), k = kindOf(x, now), ctl = x.d.controls || [], m = store.get().method;
+    const res = k === "fin" ? html`<b>${hs(result)}</b> · ${placeGap(place, timeplus)}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}`
+      : k === "out" ? ST_LABEL[STATUS[status]] : k === "run" ? html`${t("lv.run")} · <span data-start="${start}">${now >= start ? hs(now - start) : ""}</span>` : t("lv.wait");
+    const g = x.score && x.cn ? x.score - x.cn : null;
+    const row = (a, b) => html`<dt>${a}</dt><dd>${b}</dd>`;
+    // the radio controls passed, then the finish: split, time from the start, place there, time behind the first there
+    const pts = (splits || []).map((s, i) => (s ? [ctl[i]?.[1] || ctl[i]?.[0] || i + 1, s[0], s[1], s[2]] : null)).filter(Boolean);
+    if (k === "fin") pts.push([t("lv.ev.finish"), result, place, timeplus]);
+    let prev = 0;
+    const grid = pts.length ? html`<div class="lv-pgrid"><span class="h">${t("lv.punch.ctl")}</span><span class="h">${t("lv.punch.leg")}</span><span class="h">${t("lv.punch.cum")}</span>
+      <span class="h">${t("prov.place")}</span><span class="h">${t("lv.behind")}</span>
+      ${pts.map(([c, tm, p, gap]) => { const leg = tm - prev; prev = tm; return html`<span>${c}</span><span>${hs(leg)}</span><span><b>${hs(tm)}</b></span>
+        <span>${p ? t("lv.rank.n", { p }) : ""}</span><span>${gap ? `+${hs(gap)}` : p === 1 ? "+0:00" : ""}</span>`; })}</div>` : "";
+    return html`<div class="lv-pop-h"><div><div class="lv-pop-n">${name}</div><div class="muted">${club}${x.me?.cat ? ` · ${fmtCat(x.me.cat)}` : ""}</div></div>
+        <button type="button" class="lv-pop-x" data-pop-close aria-label="${t("lv.pop.close")}" title="${t("lv.pop.close")}">✕</button></div>
+      <dl class="lv-pop-dl">${row(t("prov.circuit"), fmtCat(x.cls))}${row(t("lv.start"), start != null ? tod(start) : "–")}${row(t("prov.time"), res)}
+        ${FR ? html`${row(cnLabel(m), x.cn != null ? fmt(x.cn) : "—")}${x.expected ? row(t("lv.expected"), String(x.expected)) : ""}
+          ${x.score ? row(scoreLabel(m), html`${fmt(x.score)}${g != null ? html` <span class="gap ${g > 0 ? "delta-up" : g < 0 ? "delta-down" : "dim"}">${g > 0 ? "+" : g < 0 ? "−" : "±"}${fmt(Math.abs(g))}</span>` : ""}`) : ""}` : ""}</dl>
+      ${grid}
+      <div class="lv-pop-f">${x.me && !data.isAnon(x.me.lic) ? html`<a class="btn btn-sm" href="${link.runner(x.me.lic)}" target="_blank" rel="noopener">${t("lv.pop.page")}</a>` : ""}
+        <button type="button" class="btn btn-sm btn-primary" data-pop-close>${t("lv.pop.close")}</button></div>`;
+  }
+  async function popDraw() {
+    const dlg = $("#lv-pop");
+    if (!st.pop || !dlg?.open) return;
+    const x = (await enrich(st.pop.cls))?.find((y) => y.key === st.pop.key);
+    if (x && dlg.open) dlg.querySelector(".lv-pop-in").innerHTML = popHtml(x);
+  }
+  function openPop(cls, key) {
+    let dlg = $("#lv-pop");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "lv-pop"; dlg.className = "lv-pop";
+      dlg.innerHTML = `<div class="lv-pop-in"></div>`;
+      dlg.addEventListener("close", () => { st.pop = null; });
+      // a tap beside the window (on the backdrop, the dialog itself) closes it
+      dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-pop-close]")) dlg.close(); });
+      main.append(dlg);
+    }
+    st.pop = { cls, key };
+    if (!dlg.open) dlg.showModal();
+    popDraw();
+  }
+
   main.addEventListener("click", (e) => {
     const m = e.target.closest("[data-lv-method]");
     if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); draw(); return; }
@@ -857,6 +907,9 @@ async function race(main, id, wanted, arg) {
     if (sv) { const [view, v] = sv.dataset.lvV.split(":"); st.mark = null; show(view, v); return; }
     const fc = e.target.closest("[data-club]");
     if (fc) { closeFind(); $("#lv-find").value = ""; show("club", fc.dataset.club); return; }
+    if (e.target.closest("#lv-pop")) return;
+    const pp = e.target.closest("[data-pop]");
+    if (pp) { openPop(st.cls, pp.dataset.pop); return; }
     const go = e.target.closest("[data-go]");
     if (go && !e.target.closest("a")) { closeFind(); $("#lv-find").value = ""; goRunner(go.dataset.go, go.dataset.name); return; }
     if (e.target.closest("a, select, input")) return;

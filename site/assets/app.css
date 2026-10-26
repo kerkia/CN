@@ -1807,6 +1807,21 @@ table.data.lv-relay tr.lv-punchrow > td { padding: 4px 8px 10px 40px; background
 .lv-pgrid > span:not(:nth-child(5n + 1)) { text-align: right; }
 .lv-pgrid > .h { font-size: 11.5px; color: var(--ink-3); border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 @media (max-width: 760px) { table.data.lv-relay tr.lv-punchrow > td { padding-left: 12px; } .lv-pgrid { gap: 3px 12px; } }
+/* En direct: a runner of a circuit, in a window over the page (owner, 2026-10-26) */
+.lv-pop { border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--surface); color: var(--ink); width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px); box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
+.lv-pop::backdrop { background: rgba(0, 0, 0, .4); }
+.lv-pop-in { padding: 14px 16px 16px; }
+.lv-pop-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.lv-pop-n { font-size: 17px; font-weight: 600; }
+.lv-pop-x { flex: none; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-2); color: var(--ink);
+  font-size: 16px; line-height: 1; cursor: pointer; }
+.lv-pop-x:hover { background: var(--surface-3); }
+.lv-pop-dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 12px; font-variant-numeric: tabular-nums; }
+.lv-pop-dl dt { color: var(--ink-3); }
+.lv-pop-dl dd { margin: 0; }
+.lv-pop .lv-pgrid { display: grid; margin-bottom: 4px; }
+.lv-pop-f { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 /* one line per runner (a preview, live.js ONE): the two-line cells split into columns, nothing wraps, the table scrolls sideways */
 .lv-one .lv-clamp { display: block; overflow: visible; overflow-wrap: normal; }
 .lv-one.lv-table td.lv-2 { font-size: 12px; }
