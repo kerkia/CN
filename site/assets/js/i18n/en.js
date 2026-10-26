@@ -1715,6 +1715,7 @@ export default {
   "lv.team.open": "Show the runners", "lv.team.close": "Hide the runners",
   "lv.onLeg": "Leg {l}/{n}",
   "lv.toLeg": "Show their line in their team",
+  "lv.toCourse": "Show their line in their course",
   "lv.punch.tip": "Show their radio control times", "lv.punch.hide": "Hide their control times",
   "lv.punch.ctl": "Control", "lv.punch.leg": "Split", "lv.punch.cum": "Total",
   "lv.punch.none": "No control times for this runner.", "lv.punch.empty": "No radio control passed yet.",

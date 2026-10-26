@@ -555,8 +555,8 @@ async function race(main, id, wanted, arg) {
     const g = x.score && x.cn ? x.score - x.cn : null;
     return html`<tr data-k="${x.key}"${raw(cls ? ` class="${cls}"` : "")}>
       <td class="r num"><b>${k === "fin" ? place ?? "" : ""}</b>${o.cat && x.me?.cat && !ONE ? html`<div class="lv-2 lv-m">${fmtCat(x.me.cat)}</div>` : ""}</td>
-      <td class="lv-n"><div class="lv-clamp">${x.r[10] ? html`<button type="button" class="lv-link" data-go="${x.cls}" data-name="${name}"
-        title="${t("lv.toLeg")}">${name}</button>` : x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
+      <td class="lv-n"><div class="lv-clamp">${x.r[10] || o.course ? html`<button type="button" class="lv-link" data-go="${x.cls}" data-name="${name}"
+        title="${t(x.r[10] ? "lv.toLeg" : "lv.toCourse")}">${name}</button>` : x.me ? html`<a href="${link.runner(x.me.lic)}">${name}</a>` : name}</div></td>
       ${o.course ? html`<td class="lv-c">${fmtCat(x.cls)}${
         x.r[10] ? html` <span class="muted">· ${t("lv.leg.n", { l: x.r[10][1] })}</span>` : ""}</td>` : ""}
       ${o.club ? html`<td class="lv-c"><div class="lv-clamp">${club}</div></td>` : ""}

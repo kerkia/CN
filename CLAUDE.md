@@ -947,7 +947,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   never sent to the pages; a runner out has a card once a radio control saw them. No score or
   expected place; the punches say « Fin du relais n » before the last leg (`legEnd`). Club views and the search use the rows.
   In the club views a runner PM, disqualified or over time counts as arrived (`ARRIVED`: listed after the classified of their
-  course, their state in the time column; owner, 2026-10-25).
+  course, their state in the time column; owner, 2026-10-25) A name in the club views opens the runner's
+  circuit (a relay's: their team) with their line marked and scrolled to (owner, 2026-10-26; the runner's page no longer).
   **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
   next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's
   probed by a HEAD of the results file (`SI_LIST` requests a call; `MAX_INFO` lowered to 17), the age being the time since the

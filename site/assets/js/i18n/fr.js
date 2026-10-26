@@ -1187,6 +1187,7 @@ export default {
   "lv.team.open": "Afficher les relayeurs", "lv.team.close": "Masquer les relayeurs",
   "lv.onLeg": "Relais {l}/{n}",
   "lv.toLeg": "Voir sa ligne dans son équipe",
+  "lv.toCourse": "Voir sa ligne dans son circuit",
   "lv.punch.tip": "Afficher ses temps aux postes radio", "lv.punch.hide": "Masquer ses temps aux postes",
   "lv.punch.ctl": "Poste", "lv.punch.leg": "Interposte", "lv.punch.cum": "Cumul",
   "lv.punch.none": "Pas de temps aux postes pour ce relayeur.", "lv.punch.empty": "Aucun poste radio passé pour l'instant.",
