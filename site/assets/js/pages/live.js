@@ -5,6 +5,7 @@
 // CN predicts. Times are liveresultat's hundredths of a second.
 import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat, ord, pctN, addDays } from "../util.js";
 import { loadRanking } from "./ranking.js";
+import { standalone } from "../pwa.js";
 import { t, tn, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
@@ -873,6 +874,8 @@ async function race(main, id, wanted, arg) {
     })());
     return facts.get(k);
   }
+  // (not in the app installed on a phone, owner 2026-10-26: a new tab leaves the app for the browser)
+  const phoneApp = standalone() && matchMedia("(pointer: coarse)").matches;
   async function popHtml(x) {
     const [place, name, club, result, , timeplus, , , splits] = x.r;
     const now = nowAt(st.info), k = kindOf(x, now), ctl = x.d.controls || [];
@@ -903,7 +906,7 @@ async function race(main, id, wanted, arg) {
     return html`<div class="lv-pop-h"><div><div class="lv-pop-n">${name}</div><div class="muted">${club}${x.me?.cat ? ` · ${fmtCat(x.me.cat)}` : ""}</div></div>
         <button type="button" class="lv-pop-x" data-pop-close aria-label="${t("lv.pop.close")}" title="${t("lv.pop.close")}">✕</button></div>
       ${who}${grid}
-      <div class="lv-pop-f">${x.me && !data.isAnon(x.me.lic) ? html`<a class="btn btn-sm" href="${link.runner(x.me.lic)}" target="_blank" rel="noopener">${t("lv.pop.page")}</a>` : ""}
+      <div class="lv-pop-f">${x.me && !data.isAnon(x.me.lic) && !phoneApp ? html`<a class="btn btn-sm" href="${link.runner(x.me.lic)}" target="_blank" rel="noopener">${t("lv.pop.page")}</a>` : ""}
         <button type="button" class="btn btn-sm btn-primary" data-pop-close>${t("lv.pop.close")}</button></div>`;
   }
   async function popDraw() {

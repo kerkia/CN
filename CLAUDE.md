@@ -952,7 +952,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   a circuit's table opens a window over the page (`openPop`, a `<dialog>`) about the runner, not what the table already says
   (owner, 2026-10-26): their CN and Ozimut index today with their place overall and in their category (`loadRanking` at the
   latest month), races and PM rate over 12 months, podiums and wins over 3 years, in the race's discipline, then their times at
-  the radio controls; ✕, « Fermer », Échap or a tap beside it close it; « Sa page complète » opens the runner's page in a new tab
+  the radio controls; ✕, « Fermer », Échap or a tap beside it close it; « Sa page complète » opens the runner's page in a new tab,
+  not offered in the app installed on a phone
   (the page left « En direct » with no way back in the installed app). **The official CN J-15** (owner, 2026-10-26: a runner's CN
   in « En direct » was their CN after their race of late August, their page showed today's, FFCO's J-15 lay between): the official history is FFCO's CN after each race **and the CN J-15
   FFCO printed for each race, dated 15 days before** (`build_site` `off_events`: FFCO's CN also moves between races, a race leaving
