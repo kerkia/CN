@@ -1653,6 +1653,7 @@ export default {
   "lv.connecting": "Connecting…",
   "lv.offline": "Offline — reconnecting…",
   "lv.on": "Live",
+  "lv.over": "Finished", "lv.connected": "Connected",
   "lv.method.tip": "Show the {m} ranking",
   "lv.idle": "No punches for {m} min",
   "lv.finish": "finish",

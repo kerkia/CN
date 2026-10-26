@@ -431,8 +431,14 @@ async function race(main, id, wanted, arg) {
     let age = p ? nowAt(st.info) / 100 - (Number(p[1]) * 3600 + Number(p[2]) * 60 + Number(p[3])) : null;
     if (age != null && (age < -60 || age > 12 * 3600)) age = null;
     const live = age != null && age < 300;
-    el.className = `lv-status${live ? " live" : ""}`;
-    el.textContent = live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.on");
+    // (a race of a day gone is over, whatever the clock of its last punch says: the CNE of the day before read « En direct »,
+    // its punches' times of day compared with today's clock; owner, 2026-10-26)
+    let today;
+    try { today = new Intl.DateTimeFormat("sv-SE", { timeZone: st.info?.timezone || "Europe/Paris" }).format(new Date()); }
+    catch (e) { today = new Date().toLocaleDateString("sv-SE"); }
+    const over = !!st.info?.date && st.info.date < today;
+    el.className = `lv-status${live && !over ? " live" : ""}`;
+    el.textContent = over ? t("lv.over") : live ? t("lv.on") : age != null ? t("lv.idle", { m: Math.round(age / 60) }) : t("lv.connected");
   }
   const ctlOf = (ctl, ctlName) => (Number(ctl) === 1000 ? t("lv.ev.finish") : t("lv.ev.radio", { c: ctlName || ctl }));
   // a relay leg's end before the last is a handover (« Relais 2 », the runner's row in the class held), not the finish

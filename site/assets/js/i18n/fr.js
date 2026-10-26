@@ -1126,6 +1126,7 @@ export default {
   "lv.connecting": "Connexion…",
   "lv.offline": "Hors ligne — reconnexion…",
   "lv.on": "En direct",
+  "lv.over": "Terminée", "lv.connected": "Connecté",
   "lv.method.tip": "Afficher le classement {m}",
   "lv.idle": "Pas de passage depuis {m} min",
   "lv.finish": "arrivée",
