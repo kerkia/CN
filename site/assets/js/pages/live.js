@@ -143,6 +143,7 @@ function nowAt(info) {
   return ((v("hour") * 3600 + v("minute") * 60 + v("second")) + (info?.timezone ? 0 : (info?.timediff || 0) * 3600)) * 100;
 }
 /** The race's discipline, from its name and the class: sprint, VTT, ski, else forest. */
+const TERRAINS = ["For", "Spr", "VTT", "Ski"];
 const terrainOf = (name, cls) => {
   const s = normalise(`${name} ${cls}`);
   return /\b(vtt|mtbo|mtb)\b/.test(s) ? "VTT" : /\bski\b/.test(s) ? "Ski" : /sprint/.test(s) ? "Spr" : "For";
@@ -851,26 +852,28 @@ async function race(main, id, wanted, arg) {
   // mispunches over 12 months, their podiums over 3 years, in the race's discipline —, and their times at the radio
   // controls); kept up to date while open
   const rankings = new Map(), facts = new Map();
-  const rankingOf = (terrain) => {
-    if (!rankings.has(terrain)) rankings.set(terrain, loadRanking(store.available(), terrain, data.latestMonth()).catch(() => null));
-    return rankings.get(terrain);
+  const rankingOf = (terrain, m) => {
+    const k = `${terrain}|${m}`;
+    if (!rankings.has(k)) rankings.set(k, loadRanking([m], terrain, data.latestMonth()).catch(() => null));
+    return rankings.get(k);
   };
-  function factsOf(lic, terrain) {
-    const k = `${lic}|${terrain}`;
+  // every discipline the runner has a value in, or raced in over 3 years: the method chosen in the header only (owner,
+  // 2026-10-26: the race's discipline was guessed from its name, and both rankings made the window long)
+  function factsOf(lic, m) {
+    const k = `${lic}|${m}`;
     if (!facts.has(k)) facts.set(k, (async () => {
-      const [rk, races] = await Promise.all([rankingOf(terrain), data.runnerRaces(lic).catch(() => [])]);
-      const month = data.latestMonth(), me = rk?.rows.find((r) => r.lic === String(lic));
-      const ranks = store.available().map((m) => {
-        const cn = me?.cn[m];
-        if (cn == null) return { m, cn: null };
-        const all = rk.rows.filter((r) => r.cn[m] != null), cat = me.cat ? all.filter((r) => r.cat === me.cat) : [];
-        return { m, cn, rank: me.rank[m], n: all.length, cat: me.cat, catRank: cat.length ? 1 + cat.filter((r) => r.cn[m] > cn).length : null, catN: cat.length };
-      });
-      const mine = races.filter((r) => r[data.R.terrain] === terrain);
-      const pm = data.pmRate(races, terrain, month);
-      const from3 = addDays(month, -3 * 365);
-      const last3 = mine.filter((r) => r[data.R.date] > from3);
-      return { month, ranks, pm, podiums: last3.filter((r) => r[data.R.place] && r[data.R.place] <= 3).length, wins: last3.filter((r) => r[data.R.place] === 1).length };
+      const [races, ...rks] = await Promise.all([data.runnerRaces(lic).catch(() => []), ...TERRAINS.map((tr) => rankingOf(tr, m))]);
+      const month = data.latestMonth(), from3 = addDays(month, -3 * 365);
+      const out = TERRAINS.map((terrain, i) => {
+        const rk = rks[i], me = rk?.rows.find((r) => r.lic === String(lic)), cn = me?.cn[m] ?? null;
+        const last3 = races.filter((r) => r[data.R.terrain] === terrain && r[data.R.date] > from3);
+        if (cn == null && !last3.length) return null;
+        const all = cn == null ? [] : rk.rows.filter((r) => r.cn[m] != null), cat = cn != null && me.cat ? all.filter((r) => r.cat === me.cat) : [];
+        return { terrain, cn, rank: me?.rank[m] ?? null, n: all.length, cat: me?.cat || "", catRank: cat.length ? 1 + cat.filter((r) => r.cn[m] > cn).length : null,
+          catN: cat.length, pm: data.pmRate(races, terrain, month), podiums: last3.filter((r) => r[data.R.place] && r[data.R.place] <= 3).length,
+          wins: last3.filter((r) => r[data.R.place] === 1).length };
+      }).filter(Boolean);
+      return { month, out };
     })());
     return facts.get(k);
   }
@@ -880,20 +883,19 @@ async function race(main, id, wanted, arg) {
     const [place, name, club, result, , timeplus, , , splits] = x.r;
     const now = nowAt(st.info), k = kindOf(x, now), ctl = x.d.controls || [];
     const terrain = terrainOf(st.info?.name || "", x.cls);
-    // the runner: their rankings today, their last 12 months and 3 years in the discipline
+    // the runner: in each discipline, their value today and their places, their last 12 months and 3 years; the race's own
+    // discipline (as guessed from its name) first
     let who = html`<p class="muted lv-pop-none">${t(FR ? "lv.pop.unknown" : "lv.pop.noRank")}</p>`;
     if (FR && x.me) {
-      const f = await factsOf(x.me.lic, terrain);
-      const cell = (r, n) => (r ? html`<b>${ord(r)}</b> <span class="muted">${t("rn.rankOf")} ${fmt(n)}</span>` : html`<span class="muted">—</span>`);
-      who = html`<table class="lv-pop-rk"><thead><tr><th></th><th class="r">${t("lv.pop.value")}</th><th class="r">${t("lv.pop.all")}</th>
-          <th class="r">${f.ranks.find((r) => r.cat)?.cat ? fmtCat(f.ranks.find((r) => r.cat).cat) : t("prov.cat")}</th></tr></thead><tbody>
-        ${f.ranks.map((r) => html`<tr><th>${cnLabel(r.m)}</th><td class="r"><b>${r.cn != null ? fmt(r.cn) : "—"}</b></td>
-          <td class="r">${r.cn != null ? cell(r.rank, r.n) : html`<span class="muted">${t("rn.unranked")}</span>`}</td><td class="r">${r.cn != null ? cell(r.catRank, r.catN) : ""}</td></tr>`)}</tbody></table>
-        <div class="lv-pop-sub muted">${t("lv.pop.asOf", { t: t(`terrain.${terrain}`), d: fmtDate(f.month) })}</div>
-        <div class="lv-pop-tiles">
-          <div><span>${t("rn.last12")}</span><b>${fmt(f.pm.n)}</b></div>
-          <div><span>${t("rn.pm12")}</span><b>${f.pm.n ? pctN((100 * f.pm.pm) / f.pm.n) : "—"}</b>${f.pm.n ? html`<small class="muted">${t("rn.pm12.sub", { pm: f.pm.pm, n: f.pm.n })}</small>` : ""}</div>
-          <div><span>${t("lv.pop.podiums3")}</span><b>${fmt(f.podiums)}</b><small class="muted">${tn("lv.pop.wins", f.wins)}</small></div></div>`;
+      const m = store.get().method, f = await factsOf(x.me.lic, m);
+      const list = [...f.out].sort((a, b) => (b.terrain === terrain) - (a.terrain === terrain));
+      who = list.length ? html`<div class="lv-pop-sub muted">${t("lv.pop.asOf", { cn: cnLabel(m), d: fmtDate(f.month) })}</div>
+        ${list.map((d) => html`<div class="lv-pop-d${d.terrain === terrain ? " here" : ""}">
+          <div class="lv-pop-dh"><span>${t(`terrain.${d.terrain}`)}</span><b>${d.cn != null ? fmt(d.cn) : html`<span class="muted">${t("rn.unranked")}</span>`}</b></div>
+          ${d.cn != null ? html`<div>${t("lv.pop.rank", { r: ord(d.rank), n: fmt(d.n) })}${d.catRank ? html` · ${t("lv.pop.catRank", { r: ord(d.catRank), n: fmt(d.catN), cat: fmtCat(d.cat) })}` : ""}</div>` : ""}
+          <div class="muted">${tn("lv.pop.races", d.pm.n)}${d.pm.n ? ` · ${t("lv.pop.pm", { p: pctN((100 * d.pm.pm) / d.pm.n) })}` : ""} · ${tn("lv.pop.pods", d.podiums)}${
+            d.podiums ? ` ${tn("lv.pop.wins", d.wins)}` : ""}</div></div>`)}`
+        : html`<p class="muted lv-pop-none">${t("lv.pop.nothing")}</p>`;
     }
     // the radio controls passed, then the finish: split, time from the start, place there, time behind the first there
     const pts = (splits || []).map((s, i) => (s ? [ctl[i]?.[1] || ctl[i]?.[0] || i + 1, s[0], s[1], s[2]] : null)).filter(Boolean);

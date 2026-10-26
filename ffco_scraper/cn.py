@@ -276,6 +276,23 @@ def trimmed_mean(scores: list[int], params: CnParams) -> tuple[int | None, int]:
     return Decimal_round(sum(kept) / len(kept)), len(kept)
 
 
+def ffco_cn(scores: list[int], min_races: int = 2) -> int | None:
+    """FFCO's official CN since 2026 from the window's race points, as measured against the CN FFCO publishes (2026-10-26,
+    windows holding 2026 races only: the CN after a race 99.85 % exact in forest, 100 % in sprint; the CN J-15 99.9 and
+    100 %): the best 10 % and the worst 40 % dropped (rounded half away from zero), the mean of the rest without its zeros
+    (PM, abandons; all zeros: none). Two races for the CN FFCO publishes (its CN page: « Pas de CN : pas assez de course »
+    with one), one for the CN J-15 it prints to value a circuit. Mirrored by cn.js `trimmed`."""
+    n = len(scores)
+    if n < max(1, min_races):
+        return None
+    ordered = sorted(scores, reverse=True)
+    nb, nw = Decimal_round(0.10 * n), Decimal_round(0.40 * n)
+    kept = ordered[nb: n - nw] or [ordered[n // 2]]
+    kept = [s for s in kept if s] or kept
+    cn = Decimal_round(sum(kept) / len(kept))
+    return cn or None
+
+
 JUNIOR_FADE_FLOOR = 1e-3        # a race on the window's last day still counts a little (a mean of zero weights is undefined)
 _JUNIOR = re.compile(r"^[HD](\d+)")
 

@@ -55,7 +55,10 @@ export function trimmed(values, minScores = 2) {
     roles[mid] = "kept";
     kept = [values[mid]];
   }
-  return { cn: dround(kept.reduce((s, x) => s + x, 0) / kept.length), roles, nKept: kept.length };
+  // (FFCO leaves the zeros - PM, abandons - out of the mean of the scores kept: cn.ffco_cn, measured 2026-10-26)
+  const nz = kept.filter((x) => x);
+  if (nz.length) kept = nz;
+  return { cn: dround(kept.reduce((s, x) => s + x, 0) / kept.length) || null, roles, nKept: kept.length };
 }
 
 /** A junior category (cn.is_junior): H or D followed by an age of 20 or less. */

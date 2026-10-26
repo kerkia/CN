@@ -950,8 +950,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   course, their state in the time column; owner, 2026-10-25) A name in the club views opens the runner's
   circuit (a relay's: their team) with their line marked and scrolled to (owner, 2026-10-26; the runner's page no longer). A name in
   a circuit's table opens a window over the page (`openPop`, a `<dialog>`) about the runner, not what the table already says
-  (owner, 2026-10-26): their CN and Ozimut index today with their place overall and in their category (`loadRanking` at the
-  latest month), races and PM rate over 12 months, podiums and wins over 3 years, in the race's discipline, then their times at
+  (owner, 2026-10-26): for the method chosen in the header only, one block per discipline the runner has a value in or raced in
+  over 3 years, the race's own first (`TERRAINS`, `factsOf`): the value today, the place overall and in the category
+  (`loadRanking` at the latest month), races and PM rate over 12 months, podiums and wins over 3 years; then their times at
   the radio controls; ✕, « Fermer », Échap or a tap beside it close it; « Sa page complète » opens the runner's page in a new tab,
   not offered in the app installed on a phone
   (the page left « En direct » with no way back in the installed app). **The official CN J-15** (owner, 2026-10-26: a runner's CN
@@ -959,6 +960,22 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   FFCO printed for each race, dated 15 days before** (`build_site` `off_events`: FFCO's CN also moves between races, a race leaving
   its window, which only the next race's CN J-15 tells), and the build writes `snap/official_j15.json` (the official CN on the
   build day − 15, per discipline), which « En direct » uses when the race's J-15 is within 3 days of it, else the month-end before.
+  **The official CN computed by day** (owner, 2026-10-26): in forest and sprint, while a runner's 12 months hold 2026 races only,
+  the snapshots and that file compute the official CN from FFCO's race points (`build_site.off_value`, `cn.ffco_cn`; `cn.js`
+  `trimmed` alike): the best 10 % and the worst 40 % dropped (rounded half away from zero), the mean of the rest **without its
+  zeros**, 2 races for the CN FFCO publishes (its CN page: « Pas de CN : pas assez de course » with one; the snapshots), 1 for
+  the CN J-15 it prints to value circuits (`official_j15.json`) — a race leaving the window then shows on its day, as in the
+  Ozimut index; a window of zeros only has no CN (FFCO's page alike; the published values had kept the last one). FFCO prints a
+  « nouveau CN » after a race when the window holds 2 races or more (3 616 of 3 624), never with one (1 200 of 1 200); a window
+  an exit leaves with one race: FFCO's CN page keeps a CN for some 4 in 10 such runners, by a rule not found (not the race's
+  date, the discipline's earlier races or zeros) — Ozimut gives none. End-of-September samples against FFCO's CN page on that
+  day: the values that changed matched it 11 of 12 times (the old ones none). Measured against what FFCO
+  prints (the 2026-09 database, 2026-only windows): the CN after a race 2 005 / 2 008 in forest, 387 / 387 in sprint; the CN J-15
+  — the CN at the end of the race's day − 15, races of that day included — 1 067 / 1 068 and 100 / 100 (the misses: a race whose
+  points FFCO changed). A window still holding a 2025 race keeps FFCO's published values: FFCO re-evaluated last season's races on
+  its 2026 scale under new circuit ids, whose points only each runner's CN page gives (the old points match 9 %). VTT and ski
+  keep the published values (no 2026 race in the database measured). Each build prints the match (« official CN computed
+  against FFCO's »).
   **SPORTident Center events** (2026-10-24, owner): the relay lists the Center's public orienteering events of the last 3 and
   next 7 days, every country (`live/src/sportident.js`, numbers 600 000 000 + the event's id; its country from the event), today's
   probed by a HEAD of the results file (`SI_LIST` requests a call; `MAX_INFO` lowered to 17), the age being the time since the

@@ -47,7 +47,7 @@ from pathlib import Path
 import httpx
 from lxml import html as lhtml
 
-from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, fade_factors, is_junior, is_nc, top_n_weighted
+from ffco_scraper.cn import TITLE_WEIGHTS, CnParams, Decimal_round, fade_factors, ffco_cn, is_junior, is_nc, top_n_weighted
 from ffco_scraper.cn_engine import build_methods, daily_knots, factor_on
 import privacy
 import site_extras
@@ -551,6 +551,47 @@ def main(argv: list[str] | None = None) -> None:
             return None
         return cns[hi - 1]
 
+    # the official CN computed on any day from FFCO's race points, its 2026 rule (`ffco_cn`), so that a race leaving the
+    # window shows on its day as in the Ozimut index (owner, 2026-10-26) - in forest and sprint, while the window holds 2026
+    # races only: FFCO re-evaluated the 2025 races for its 2026 scale under new circuit ids, whose points only each runner's
+    # CN page on FFCO's site gives; else (and in VTT and ski, not measured) FFCO's published values above
+    pts26 = defaultdict(lambda: ([], []))          # (lic, For|Spr) -> dates, points of the 2026 races on
+    last_old = {}                                  # lic -> the last forest or sprint race before 2026
+    for (lic, cid), o in sorted(by_method["official"].items(), key=lambda kv: kv[1]["date_iso"]):
+        t = TERRAINS.get(o["terrain"], "For")
+        if t not in FOOT:
+            continue
+        d = date.fromisoformat(o["date_iso"])
+        if d.year < SPLIT_YEAR:
+            last_old[lic] = max(last_old.get(lic, d), d)
+        elif o["score"] is not None:
+            pts26[(lic, t)][0].append(d)
+            pts26[(lic, t)][1].append(o["score"])
+
+    def off_value(lic, t, X: date, min_races: int = 2):
+        """The official CN on day X (2 races for the CN FFCO publishes, 1 for the CN J-15 it values circuits with)."""
+        if t in FOOT and X.year >= SPLIT_YEAR and (lic not in last_old or last_old[lic] <= X - timedelta(days=365)):
+            ds, ps = pts26.get((lic, t), ((), ()))
+            return ffco_cn(ps[bisect_right(ds, X - timedelta(days=365)): bisect_right(ds, X)], min_races)
+        h = hoff.get((lic, t))
+        return off_at(*h, X) if h else None
+
+    # how close that is to what FFCO prints, run after run: its CN after each 2026 race and its CN J-15
+    chk = defaultdict(lambda: [0, 0])
+    for (lic, cid), raw in raw_res.items():
+        o = by_method["official"].get((lic, cid))
+        t = o and TERRAINS.get(o["terrain"], "For")
+        if not o or t not in FOOT or o["date_iso"] < f"{SPLIT_YEAR}-01-01":
+            continue
+        d = date.fromisoformat(o["date_iso"])
+        for kind, X, pub, mr in (("after", d, to_int(raw["nouveau_cn"]), 2), ("J-15", d - timedelta(days=pf.lag_days), to_int(raw["cn_j15"]), 1)):
+            if pub and X.year >= SPLIT_YEAR and (lic not in last_old or last_old[lic] <= X - timedelta(days=365)):
+                c = chk[(t, kind)]
+                c[0] += 1
+                c[1] += off_value(lic, t, X, mr) == pub
+    print("official CN computed against FFCO's: " + ", ".join(
+        f"{t} {k} {ok}/{n} ({100 * ok / n:.2f} %)" for (t, k), (n, ok) in sorted(chk.items()) if n), flush=True)
+
     years = sorted({m.year for m in months if m.year >= min_season})
     snap_stats = {}
     levels = defaultdict(list)   # "method_terrain" -> [[yyyy-mm, n, median, top30mean]]
@@ -577,11 +618,11 @@ def main(argv: list[str] | None = None) -> None:
                             cn = agg_at(ds, ss, ws, js, m, ps[mth])
                             if cn:
                                 files[(mth, t)].setdefault(lic, [0] * 12)[idx[m]] = cn
-        for (lic, t), (ds, cs) in hoff.items():
+        for (lic, t) in set(hoff) | set(pts26):
             if t != official_terrain(t if t != "Ped" else "For", Y):     # pooled before, split after
                 continue
             for m in ym:
-                cn = off_at(ds, cs, m)
+                cn = off_value(lic, t, m)
                 if cn:
                     files[("official", t)].setdefault(lic, [0] * 12)[idx[m]] = cn
         active = set()
@@ -618,9 +659,9 @@ def main(argv: list[str] | None = None) -> None:
     # snapshot can be weeks off it)
     j15_day = paris_today() - timedelta(days=pf.lag_days)
     j15_cn = defaultdict(dict)
-    for (lic, t), (ds, cs) in hoff.items():
+    for (lic, t) in set(hoff) | set(pts26):
         if t == official_terrain(t if t != "Ped" else "For", j15_day.year):
-            cn = off_at(ds, cs, j15_day)
+            cn = off_value(lic, t, j15_day, 1)
             if cn:
                 j15_cn[t][lic] = cn
     dump(OUT / "snap" / "official_j15.json", {"date": j15_day.isoformat(), "cn": {t: dict(sorted(v.items())) for t, v in sorted(j15_cn.items())}})
