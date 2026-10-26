@@ -513,6 +513,24 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   x 1.4) applied to every season (not awarded 2023-2025); unofficial: every ranked runner counts (licence type unknown),
   a runner's club is that of their last race of the year. Shown on « Comparer des clubs » (seasons of the selected
   clubs, one season's ranking). FFCO's own cup pages are gone (404); nothing to scrape.
+- **Relais nationaux** (`#/relais-nationaux`, `pages/relayhistory.js`, menu « Classement » after « Clubs »; owner, 2026-10-26): the
+  history of the Championnat de France des Clubs (CFC, 1999 on: its four divisions — D1-D4, then N1/N2/Promotion
+  Nationale/Promotion 2007-2009, N1-N4 since 2010 — and the youth relay, the Trophée Thierry Gueorgiou) and the CNE (2006 on:
+  Hommes, Dames, Jeunes, Mini-relais). Not to be confused with `cfc.json`, the Coupe de France des clubs recomputed. The
+  rankings were gathered by hand from the archives on 2026-10-26 (LIFCO, archives.ffcorientation.fr, CO Mulhouse's former
+  site, the organisers' files, O'Live; ~12 000 team rows): two CSVs (`year;division|category;place;team;club_code;time;status;
+  source`), **results, so never in the repository**: in R2 `relays/cfc.csv` and `relays/cne.csv` (`npx wrangler r2 object put
+  cn-state/relays/<file> --file <csv> --remote`; a copy in `C:\kerkia\cn-data\relays`), synced by the workflow to
+  `$CN_DATA_DIR/relays/`; `relays.py build` (every run, from `update.main`) writes `fr/relays.json` when they changed. A new
+  edition = its rows appended to the CSV, uploaded again. Gaps: CFC 1999-2003 the champion only (`KNOWN`), 2002 nothing,
+  2004-2005 extracts; CNE 2015 a few places, 2019 ECHO 73's extract (both on Helga only, which refuses robots). Teams are tied
+  to clubs (`Clubs.of`): the club number the file prints, else a number in the team's name, else the name's first words
+  among those the numbered teams and FFCO's club list use (a prefix must point to one club in 3/4 of its uses; generic words
+  alone never), else `ALIAS`/`TEAM_RE`; open (« OPEN », FFCO's 9998), mixed, military, league and foreign teams have no club.
+  A club's place in an edition = its best team's among the clubs' teams; points 100, 80, 60, 50, 45, 40… 1 for the 30th (the
+  World Cup's old scale). Tabs: Palmarès (period, category or all, points or medals; the leaders' cumulated points), Classements
+  (one edition complete, gap, club place and points), Club (places year by year), Éditions (venues, field sizes, winners). The
+  page shows the files' order: FFCO's official CFC podiums sometimes skip a club's lower team (said under N2-N4).
 - **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator. A format defines its discipline
   (`relay.terrainOf`: CFC, CNE, relais de catégorie in forest; the sprint relay — 2 women, 2 men of any category, D-H-H-D —
   in sprint), whatever the site-wide one; only one's own format has a discipline selector (owner, 2026-10-12). A club that

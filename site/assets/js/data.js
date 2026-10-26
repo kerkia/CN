@@ -274,6 +274,10 @@ export const validation = () => getJson("validation.json");
 export const evaluation = () => getJson("evaluation.json");
 /** The Coupe de France des clubs recomputed every season (site_extras.cfc). */
 export const cfc = () => getJson("cfc.json");
+/** The national relays' history, the Championnat de France des Clubs and the CNE, every team of every edition found
+ *  (relays.py): { clubs: {code: [short, FFCO's name]}, editions: {cfc|cne: {year: {at, dep, st, div}}},
+ *  rows: {category: {year: [[place, team, club, time, status]]}} }. */
+export const relays = () => getJson("relays.json");
 /** Competitors of a season, counted: [[category, club, discipline flags (1 forest, 2 sprint), n]]. */
 export const pyramid = async (season) => (await getJson(`pyramid/${season}.json`))?.rows || [];
 /** Upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py). */

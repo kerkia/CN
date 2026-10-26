@@ -2357,3 +2357,12 @@ body.full-win .tr-app { border: 0; }
 .cg-rule { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
 /* the registration form's robot check (Cloudflare Turnstile): its room kept while it loads */
 .reg-ts { min-height: 65px; }
+
+/* « Relais nationaux » (pages/relayhistory.js): the medals of the first three places */
+.rh-med { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.rh-med-1 { background: #d4a72c; box-shadow: 0 0 0 1px #9a7412 inset; }
+.rh-med-2 { background: #b4bcc6; box-shadow: 0 0 0 1px #7d8691 inset; }
+.rh-med-3 { background: #c07a43; box-shadow: 0 0 0 1px #8a5126 inset; }
+.rh-sources { margin-top: 16px; }
+.rh-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); }
+.rh-legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }

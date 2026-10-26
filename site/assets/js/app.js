@@ -49,6 +49,7 @@ const PAGES = {
   orgTracer: () => import("./pages/tracer.js"),
   needCountry: () => import("./pages/needcountry.js"),   // a page of France's data, to an account without France (2026-10-20)       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
+  relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
   ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
@@ -61,7 +62,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // Lean pages (owner, 2026-10-12): where the title only repeats the menu, the page starts with its tabs; its text is the
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
-const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
+const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
@@ -71,14 +72,14 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
 // not a member) or a country the site does not rank yet gets « needCountry » instead (the login gate refuses the data
 // anyway: _middleware.js `needs`).
 const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
-  "ask"]);
+  "relayHistory", "ask"]);
 /** May the account open the site's country's ranking pages? */
 const ranksHere = () => country.ranks() && auth.sees(country.current());
 /** Where a signed-in account lands: the agenda, for every account (owner, 2026-10-21; before, one's own page or the ranking). */
 const homeOf = () => "#/agenda";
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
-const isLean = (r) => ["ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
+const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
@@ -125,6 +126,7 @@ function parseHash(hash = location.hash) {
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
+    : head === "relais-nationaux" ? "relayHistory"
     : head === "jeux" ? "games"
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
@@ -339,6 +341,7 @@ function renderHeader(r) {
       ["courses", "#/courses", t("nav.coursesCn")],
       ["compare", "#/comparer", t("nav.compare")],
       ["clubs", "#/clubs", t("nav.clubs")],
+      ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")],   // the national relays' history (owner, 2026-10-26)
       ["network", "#/reseau", t("nav.network")],
       // « IA » (2026-10-15): questions on the data in plain French; every account since 2026-10-16 (owner)
       // (France's tables only: /api/ask is France's, _middleware.js FR_API)

@@ -52,6 +52,7 @@ import countries  # noqa: E402  (the countries read: their sources, databases an
 import countries.fr as france  # noqa: E402
 import notify  # noqa: E402  (digest e-mails for subscribed accounts)
 import paths  # noqa: E402  (the data folder, outside the project folder)
+import relays  # noqa: E402  (the national relays' history: CFC and CNE, from R2 relays/)
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
 # Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
@@ -299,6 +300,8 @@ def main() -> None:
             sync_privacy(args.db)                               # before any build: the anonymised runners' list
             migrate(args.db, fr_out)                            # no-op once done
             apply_privacy(args.db, fr_out, args.out)            # no-op unless the anonymised runners changed
+            if relays.build(fr_out):                            # « Relais nationaux »: fr/relays.json, when its CSVs changed
+                DEPLOY_PENDING.touch()
             if countries.write_index(args.out):                 # site/data/meta.json: the countries and what they have
                 DEPLOY_PENDING.touch()
             if args.deploy and code_changed(args.db):
