@@ -3,8 +3,9 @@
 // reached through this site's Functions (/api/live/list, /ws/<race>). What it adds: each runner recognised
 // (name + club) and linked to their page, their CN (Top and official) in the race's discipline, and the place their
 // CN predicts. Times are liveresultat's hundredths of a second.
-import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat } from "../util.js";
-import { t, lang, locale } from "../i18n.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise, fmtCat, ord, pctN, addDays } from "../util.js";
+import { loadRanking } from "./ranking.js";
+import { t, tn, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
 import { nameKey, sees, session, myClub } from "../auth.js";
@@ -237,7 +238,14 @@ async function race(main, id, wanted, arg) {
     const day = st.info?.date || new Date().toISOString().slice(0, 10);
     const j15 = new Date(Date.parse(day) - 15 * 86400e3).toISOString().slice(0, 10);
     const mJ15 = data.meta().months.filter((x) => x <= j15).pop() || data.latestMonth();
-    const [shown, valuer] = await Promise.all([data.cnAt(m, terrain, m === "official" ? mJ15 : data.latestMonth()), data.cnAt(VALUER[m], terrain, mJ15)]);
+    // the official CN on the race's J-15 when the site was built 15 days before (owner, 2026-10-26: the month-end before
+    // J-15 could be weeks off FFCO's CN and the runner page's), else at the month-end before J-15
+    const exact = async () => {
+      const f = await data.officialJ15();
+      return f?.cn && Math.abs(Date.parse(f.date) - Date.parse(j15)) <= 3 * 86400e3 ? new Map(Object.entries(f.cn[terrain] || {})) : null;
+    };
+    const at = async (mm, month) => (mm === "official" && (await exact())) || data.cnAt(mm, terrain, month);
+    const [shown, valuer] = await Promise.all([at(m, m === "official" ? mJ15 : data.latestMonth()), at(VALUER[m], mJ15)]);
     st.cn[k] = { shown, valuer, monthJ15: mJ15 };
     return st.cn[k];
   }
@@ -836,37 +844,75 @@ async function race(main, id, wanted, arg) {
   }
   const closeFind = () => { st.finding = false; $("#lv-find-list").hidden = true; };
 
-  // a runner of a circuit, tapped: their race in a window over the page, closed by ✕, « Fermer », Échap or a tap beside it
-  // (owner, 2026-10-26: their page left « En direct » with no way back in the installed app); kept up to date while open
-  function popHtml(x) {
-    const [place, name, club, result, status, timeplus, , start, splits, prel] = x.r;
-    const now = nowAt(st.info), k = kindOf(x, now), ctl = x.d.controls || [], m = store.get().method;
-    const res = k === "fin" ? html`<b>${hs(result)}</b> · ${placeGap(place, timeplus)}${prel ? html` <span class="lv-prel" title="${t("lv.prel.tip")}">${t("lv.prel")}</span>` : ""}`
-      : k === "out" ? ST_LABEL[STATUS[status]] : k === "run" ? html`${t("lv.run")} · <span data-start="${start}">${now >= start ? hs(now - start) : ""}</span>` : t("lv.wait");
-    const g = x.score && x.cn ? x.score - x.cn : null;
-    const row = (a, b) => html`<dt>${a}</dt><dd>${b}</dd>`;
+  // a runner of a circuit, tapped: who they are, in a window over the page, closed by ✕, « Fermer », Échap or a tap beside
+  // it (owner, 2026-10-26: their page left « En direct » with no way back in the installed app; the window says what the
+  // table does not — their CN and Ozimut index today with their place overall and in their category, their races and
+  // mispunches over 12 months, their podiums over 3 years, in the race's discipline —, and their times at the radio
+  // controls); kept up to date while open
+  const rankings = new Map(), facts = new Map();
+  const rankingOf = (terrain) => {
+    if (!rankings.has(terrain)) rankings.set(terrain, loadRanking(store.available(), terrain, data.latestMonth()).catch(() => null));
+    return rankings.get(terrain);
+  };
+  function factsOf(lic, terrain) {
+    const k = `${lic}|${terrain}`;
+    if (!facts.has(k)) facts.set(k, (async () => {
+      const [rk, races] = await Promise.all([rankingOf(terrain), data.runnerRaces(lic).catch(() => [])]);
+      const month = data.latestMonth(), me = rk?.rows.find((r) => r.lic === String(lic));
+      const ranks = store.available().map((m) => {
+        const cn = me?.cn[m];
+        if (cn == null) return { m, cn: null };
+        const all = rk.rows.filter((r) => r.cn[m] != null), cat = me.cat ? all.filter((r) => r.cat === me.cat) : [];
+        return { m, cn, rank: me.rank[m], n: all.length, cat: me.cat, catRank: cat.length ? 1 + cat.filter((r) => r.cn[m] > cn).length : null, catN: cat.length };
+      });
+      const mine = races.filter((r) => r[data.R.terrain] === terrain);
+      const pm = data.pmRate(races, terrain, month);
+      const from3 = addDays(month, -3 * 365);
+      const last3 = mine.filter((r) => r[data.R.date] > from3);
+      return { month, ranks, pm, podiums: last3.filter((r) => r[data.R.place] && r[data.R.place] <= 3).length, wins: last3.filter((r) => r[data.R.place] === 1).length };
+    })());
+    return facts.get(k);
+  }
+  async function popHtml(x) {
+    const [place, name, club, result, , timeplus, , , splits] = x.r;
+    const now = nowAt(st.info), k = kindOf(x, now), ctl = x.d.controls || [];
+    const terrain = terrainOf(st.info?.name || "", x.cls);
+    // the runner: their rankings today, their last 12 months and 3 years in the discipline
+    let who = html`<p class="muted lv-pop-none">${t(FR ? "lv.pop.unknown" : "lv.pop.noRank")}</p>`;
+    if (FR && x.me) {
+      const f = await factsOf(x.me.lic, terrain);
+      const cell = (r, n) => (r ? html`<b>${ord(r)}</b> <span class="muted">${t("rn.rankOf")} ${fmt(n)}</span>` : html`<span class="muted">—</span>`);
+      who = html`<table class="lv-pop-rk"><thead><tr><th></th><th class="r">${t("lv.pop.value")}</th><th class="r">${t("lv.pop.all")}</th>
+          <th class="r">${f.ranks.find((r) => r.cat)?.cat ? fmtCat(f.ranks.find((r) => r.cat).cat) : t("prov.cat")}</th></tr></thead><tbody>
+        ${f.ranks.map((r) => html`<tr><th>${cnLabel(r.m)}</th><td class="r"><b>${r.cn != null ? fmt(r.cn) : "—"}</b></td>
+          <td class="r">${r.cn != null ? cell(r.rank, r.n) : html`<span class="muted">${t("rn.unranked")}</span>`}</td><td class="r">${r.cn != null ? cell(r.catRank, r.catN) : ""}</td></tr>`)}</tbody></table>
+        <div class="lv-pop-sub muted">${t("lv.pop.asOf", { t: t(`terrain.${terrain}`), d: fmtDate(f.month) })}</div>
+        <div class="lv-pop-tiles">
+          <div><span>${t("rn.last12")}</span><b>${fmt(f.pm.n)}</b></div>
+          <div><span>${t("rn.pm12")}</span><b>${f.pm.n ? pctN((100 * f.pm.pm) / f.pm.n) : "—"}</b>${f.pm.n ? html`<small class="muted">${t("rn.pm12.sub", { pm: f.pm.pm, n: f.pm.n })}</small>` : ""}</div>
+          <div><span>${t("lv.pop.podiums3")}</span><b>${fmt(f.podiums)}</b><small class="muted">${tn("lv.pop.wins", f.wins)}</small></div></div>`;
+    }
     // the radio controls passed, then the finish: split, time from the start, place there, time behind the first there
     const pts = (splits || []).map((s, i) => (s ? [ctl[i]?.[1] || ctl[i]?.[0] || i + 1, s[0], s[1], s[2]] : null)).filter(Boolean);
-    if (k === "fin") pts.push([t("lv.ev.finish"), result, place, timeplus]);
+    if (k === "fin" && pts.length) pts.push([t("lv.ev.finish"), result, place, timeplus]);
     let prev = 0;
-    const grid = pts.length ? html`<div class="lv-pgrid"><span class="h">${t("lv.punch.ctl")}</span><span class="h">${t("lv.punch.leg")}</span><span class="h">${t("lv.punch.cum")}</span>
+    const grid = pts.length ? html`<div class="lv-pop-st">${t("lv.pop.splits")}</div><div class="lv-pgrid"><span class="h">${t("lv.punch.ctl")}</span><span class="h">${t("lv.punch.leg")}</span><span class="h">${t("lv.punch.cum")}</span>
       <span class="h">${t("prov.place")}</span><span class="h">${t("lv.behind")}</span>
       ${pts.map(([c, tm, p, gap]) => { const leg = tm - prev; prev = tm; return html`<span>${c}</span><span>${hs(leg)}</span><span><b>${hs(tm)}</b></span>
         <span>${p ? t("lv.rank.n", { p }) : ""}</span><span>${gap ? `+${hs(gap)}` : p === 1 ? "+0:00" : ""}</span>`; })}</div>` : "";
     return html`<div class="lv-pop-h"><div><div class="lv-pop-n">${name}</div><div class="muted">${club}${x.me?.cat ? ` · ${fmtCat(x.me.cat)}` : ""}</div></div>
         <button type="button" class="lv-pop-x" data-pop-close aria-label="${t("lv.pop.close")}" title="${t("lv.pop.close")}">✕</button></div>
-      <dl class="lv-pop-dl">${row(t("prov.circuit"), fmtCat(x.cls))}${row(t("lv.start"), start != null ? tod(start) : "–")}${row(t("prov.time"), res)}
-        ${FR ? html`${row(cnLabel(m), x.cn != null ? fmt(x.cn) : "—")}${x.expected ? row(t("lv.expected"), String(x.expected)) : ""}
-          ${x.score ? row(scoreLabel(m), html`${fmt(x.score)}${g != null ? html` <span class="gap ${g > 0 ? "delta-up" : g < 0 ? "delta-down" : "dim"}">${g > 0 ? "+" : g < 0 ? "−" : "±"}${fmt(Math.abs(g))}</span>` : ""}`) : ""}` : ""}</dl>
-      ${grid}
+      ${who}${grid}
       <div class="lv-pop-f">${x.me && !data.isAnon(x.me.lic) ? html`<a class="btn btn-sm" href="${link.runner(x.me.lic)}" target="_blank" rel="noopener">${t("lv.pop.page")}</a>` : ""}
         <button type="button" class="btn btn-sm btn-primary" data-pop-close>${t("lv.pop.close")}</button></div>`;
   }
   async function popDraw() {
     const dlg = $("#lv-pop");
     if (!st.pop || !dlg?.open) return;
-    const x = (await enrich(st.pop.cls))?.find((y) => y.key === st.pop.key);
-    if (x && dlg.open) dlg.querySelector(".lv-pop-in").innerHTML = popHtml(x);
+    const want = st.pop, x = (await enrich(want.cls))?.find((y) => y.key === want.key);
+    if (!x) return;
+    const out = await popHtml(x);
+    if (dlg.open && st.pop === want) dlg.querySelector(".lv-pop-in").innerHTML = out;
   }
   function openPop(cls, key) {
     let dlg = $("#lv-pop");
@@ -880,6 +926,9 @@ async function race(main, id, wanted, arg) {
       main.append(dlg);
     }
     st.pop = { cls, key };
+    dlg.querySelector(".lv-pop-in").innerHTML = html`<div class="lv-pop-h"><div class="lv-pop-n">${key.split("|")[0]}</div>
+      <button type="button" class="lv-pop-x" data-pop-close aria-label="${t("lv.pop.close")}" title="${t("lv.pop.close")}">✕</button></div>
+      <p class="muted">${t("lv.loading")}</p>`;
     if (!dlg.open) dlg.showModal();
     popDraw();
   }

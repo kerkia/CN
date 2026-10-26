@@ -523,16 +523,25 @@ def main(argv: list[str] | None = None) -> None:
     hoff = defaultdict(lambda: ([], []))           # (lic, t|Ped) -> dates, cn
     # Before 2026 the official pedestrian ranking was a single one, so its
     # history is pooled under "Ped"; from 2026 it is per terrain (VTT and ski: always).
+    # FFCO's CN after each race, and the CN J-15 it printed for each race, dated 15 days before (owner, 2026-10-26: the CN
+    # also moves between races - a race leaving FFCO's window -, which only the next race's CN J-15 tells; « En direct »
+    # read a runner's CN after their race of late August where FFCO's own was some 190 points higher); on one day the CN
+    # after a race comes last
     off_events = []
     for (lic, cid), raw in raw_res.items():
         o = by_method["official"].get((lic, cid))
+        if not o:
+            continue
+        d = date.fromisoformat(o["date_iso"])
+        t = official_terrain(TERRAINS.get(o["terrain"], "For"), d.year)
+        j15 = to_int(raw["cn_j15"])
+        if j15:
+            off_events.append((d - timedelta(days=pf.lag_days), 0, lic, t, j15))
         ncn = to_int(raw["nouveau_cn"])
-        if o and ncn:
-            d = date.fromisoformat(o["date_iso"])
-            t = official_terrain(TERRAINS.get(o["terrain"], "For"), d.year)
-            off_events.append((d, lic, t, ncn))
+        if ncn:
+            off_events.append((d, 1, lic, t, ncn))
     off_events.sort()
-    for d, lic, t, ncn in off_events:
+    for d, _, lic, t, ncn in off_events:
         hoff[(lic, t)][0].append(d)
         hoff[(lic, t)][1].append(ncn)
 
@@ -605,6 +614,17 @@ def main(argv: list[str] | None = None) -> None:
         print(f"  snapshots {Y}: " + ", ".join(
             f"{m}/{t}={len(r):,}" for (m, t), r in sorted(files.items())), flush=True)
 
+    # the official CN 15 days before today, for « En direct »: the CN FFCO will value today's circuits with (a month-end
+    # snapshot can be weeks off it)
+    j15_day = paris_today() - timedelta(days=pf.lag_days)
+    j15_cn = defaultdict(dict)
+    for (lic, t), (ds, cs) in hoff.items():
+        if t == official_terrain(t if t != "Ped" else "For", j15_day.year):
+            cn = off_at(ds, cs, j15_day)
+            if cn:
+                j15_cn[t][lic] = cn
+    dump(OUT / "snap" / "official_j15.json", {"date": j15_day.isoformat(), "cn": {t: dict(sorted(v.items())) for t, v in sorted(j15_cn.items())}})
+    snap_keep.add("official_j15.json")
     prune(OUT / "snap", snap_keep)
     # a synced folder (OneDrive…) leaves conflict copies behind: never publish them
     for f in OUT.rglob("*Name clash*"):

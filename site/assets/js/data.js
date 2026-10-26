@@ -231,6 +231,8 @@ export async function runnerRaces(lic) {
 }
 // c/: five competitions to a file by their id (meta.c_group, site_io.course_file: g<id // c_group>.json = {id: results}),
 // else one a competition (data built before 2026-10-23)
+/** The official CN 15 days before the build day, per discipline: { date, cn: { For: { licence: cn } } } (build_site). */
+export const officialJ15 = () => getJson("snap/official_j15.json");
 export const course = async (id) => {
   const k = META?.c_group;
   if (!k) return getJson(`c/${id}.json`);
