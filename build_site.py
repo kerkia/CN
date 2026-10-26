@@ -556,23 +556,53 @@ def main(argv: list[str] | None = None) -> None:
     # races only: FFCO re-evaluated the 2025 races for its 2026 scale under new circuit ids, whose points only each runner's
     # CN page on FFCO's site gives; else (and in VTT and ski, not measured) FFCO's published values above
     pts26 = defaultdict(lambda: ([], []))          # (lic, For|Spr) -> dates, points of the 2026 races on
+    pts_all = defaultdict(list)                    # (lic, For|Spr) -> (date, points) of every race, the old ones on their old scale
+    after26 = {}                                   # (lic, For|Spr, date) -> the CN FFCO printed after that 2026 race
     last_old = {}                                  # lic -> the last forest or sprint race before 2026
     for (lic, cid), o in sorted(by_method["official"].items(), key=lambda kv: kv[1]["date_iso"]):
         t = TERRAINS.get(o["terrain"], "For")
         if t not in FOOT:
             continue
         d = date.fromisoformat(o["date_iso"])
+        if o["score"] is not None:
+            pts_all[(lic, t)].append((d, o["score"]))
         if d.year < SPLIT_YEAR:
             last_old[lic] = max(last_old.get(lic, d), d)
         elif o["score"] is not None:
             pts26[(lic, t)][0].append(d)
             pts26[(lic, t)][1].append(o["score"])
+            raw = raw_res.get((lic, cid))
+            if raw and to_int(raw["nouveau_cn"]):
+                after26[(lic, t, d)] = to_int(raw["nouveau_cn"])
+
+    def counted(lic, t, d1: date, s1: int) -> bool:
+        """Did a race count in the CN FFCO computed after it (not among the best 10 % or the worst 40 % dropped)?"""
+        a = after26.get((lic, t, d1))
+        if a is None:                              # no CN printed after it: it was alone in its window then
+            return False
+        if a <= s1:                                # the CN after it is not above it: it was among the scores kept
+            return True
+        # else ranked against the window's other races then, the 2025 ones on their old scale (FFCO's re-evaluated points
+        # are not known: 96.5 % of FFCO's answers reproduced, see below)
+        w = [(d, s, i) for i, (d, s) in enumerate(pts_all[(lic, t)]) if d1 - timedelta(days=365) < d <= d1]
+        n = len(w)
+        order = sorted(w, key=lambda x: -x[1])
+        nb, nw = Decimal_round(0.10 * n), Decimal_round(0.40 * n)
+        kept = order[nb: n - nw] or [order[n // 2]]
+        return any(d == d1 and s == s1 for d, s, _ in kept)
 
     def off_value(lic, t, X: date, min_races: int = 2):
-        """The official CN on day X (2 races for the CN FFCO publishes, 1 for the CN J-15 it values circuits with)."""
+        """The official CN on day X (2 races for the CN FFCO publishes, 1 for the CN J-15 it values circuits with).
+        FFCO trims the window again every day; a window a race leaving it has brought down to one race keeps a CN - that
+        race's points - only if the race counted in the CN computed after it (owner's question, 2026-10-26: FFCO's CN page
+        read for all 1 037 runners whose window held one 2026 race at 30/09/2026: 994 of 1 030 reproduced, against 86 %
+        by « 2 races or none »; windows of 2 races or more that lost one: 134 of 139 by the daily trim)."""
         if t in FOOT and X.year >= SPLIT_YEAR and (lic not in last_old or last_old[lic] <= X - timedelta(days=365)):
             ds, ps = pts26.get((lic, t), ((), ()))
-            return ffco_cn(ps[bisect_right(ds, X - timedelta(days=365)): bisect_right(ds, X)], min_races)
+            lo, hi = bisect_right(ds, X - timedelta(days=365)), bisect_right(ds, X)
+            if hi - lo == 1 and min_races >= 2:
+                return (ps[lo] or None) if counted(lic, t, ds[lo], ps[lo]) else None
+            return ffco_cn(ps[lo:hi], min_races)
         h = hoff.get((lic, t))
         return off_at(*h, X) if h else None
 

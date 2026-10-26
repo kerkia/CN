@@ -966,10 +966,15 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   zeros**, 2 races for the CN FFCO publishes (its CN page: « Pas de CN : pas assez de course » with one; the snapshots), 1 for
   the CN J-15 it prints to value circuits (`official_j15.json`) — a race leaving the window then shows on its day, as in the
   Ozimut index; a window of zeros only has no CN (FFCO's page alike; the published values had kept the last one). FFCO prints a
-  « nouveau CN » after a race when the window holds 2 races or more (3 616 of 3 624), never with one (1 200 of 1 200); a window
-  an exit leaves with one race: FFCO's CN page keeps a CN for some 4 in 10 such runners, by a rule not found (not the race's
-  date, the discipline's earlier races or zeros) — Ozimut gives none. End-of-September samples against FFCO's CN page on that
-  day: the values that changed matched it 11 of 12 times (the old ones none). Measured against what FFCO
+  « nouveau CN » after a race when the window holds 2 races or more (3 616 of 3 624), never with one (1 200 of 1 200). FFCO
+  trims the window again every day, but **a window a race leaving it brings down to one race keeps a CN — that race's points —
+  only if the race counted in the CN computed after it** (not among the worst 40 % dropped then; `build_site.counted`: the CN
+  FFCO printed after it is not above its points, else ranked against that window's races, the 2025 ones on their old scale).
+  Found by reading FFCO's CN page at 30/09/2026 for every runner whose window held one 2026 race (owner, 2026-10-26: 1 037
+  pages, 148 with a CN): this rule 995 exact, « 2 races or none » 86 %, the published values 802; windows of 2 races or more
+  that lost a race since their last (150 pages): the daily trim 135 exact, the published values 14. The misses: races FFCO
+  processed after the earlier race had left (a race of 20/09 with a 2025 race leaving on 22-28/09), its re-evaluated 2025
+  points, races the database lacked. Measured against what FFCO
   prints (the 2026-09 database, 2026-only windows): the CN after a race 2 005 / 2 008 in forest, 387 / 387 in sprint; the CN J-15
   — the CN at the end of the race's day − 15, races of that day included — 1 067 / 1 068 and 100 / 100 (the misses: a race whose
   points FFCO changed). A window still holding a 2025 race keeps FFCO's published values: FFCO re-evaluated last season's races on
