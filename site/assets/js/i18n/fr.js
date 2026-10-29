@@ -914,7 +914,7 @@ export default {
   "prov.show": "Afficher", "prov.search": "Rechercher", "prov.f.all": "Toutes", "prov.f.found": "Avec résultats", "prov.f.missing": "Sans résultats",
   "prov.f.pending": "Pas encore publiées officiellement",
   "prov.region": "Région", "prov.runner": "Coureur", "prov.oneRunner": "Un coureur",
-  "rf.find": "Chercher un coureur…", "rf.mine": "Mes courses", "rf.clear": "Retirer ce coureur", "rf.q": "Course, lieu, club…",
+  "rf.find": "Chercher un coureur…", "rf.mine": "Mes courses", "rf.everyone": "Tous", "rf.clear": "Retirer ce coureur", "rf.q": "Course, lieu, club…",
   "rf.emptyLive": "Aucune course en direct ne correspond à ces filtres (une course n'est rattachée à un coureur ou à une région que si Ozimut a sa liste de départ ou ses résultats).",
   "prov.emptyRunner": "Aucune course de ce coureur parmi ces résultats (seuls les coureurs retrouvés au CN comptent).",
   "prov.races": "Courses suivies", "prov.withResults": "Avec résultats trouvés", "prov.withSplits": "Avec temps intermédiaires",

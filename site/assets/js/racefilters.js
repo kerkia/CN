@@ -53,10 +53,14 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
     who: mine && me && !st.runner ? "all" : null, q: st.q || null });
   const changed = () => { save(); onChange?.(); };
 
-  const runnerField = () => html`${st.runner ? html`<span class="pill rf-pick">${name(st.runner)}<button type="button" class="rf-x" id="${id}-rx"
-      title="${t("rf.clear")}" aria-label="${t("rf.clear")}">✕</button></span>`
-    : me && data.runner(me) ? html`<button type="button" class="btn btn-sm" id="${id}-me">${t("rf.mine")}</button>` : ""}
-    ${runnerSearch(`${id}-rs`, t(st.runner ? "rn.change" : "rf.find"))}`;
+  // one's own races or everyone's, as a choice of two in the look of « Afficher » (owner, 2026-10-29: a lone « Mes courses »
+  // button looked chosen when it was not); another runner, found by the search, shows with a ✕ that takes them off
+  const mineSeg = () => (me && data.runner(me) ? html`<div class="seg" role="group">
+      <button type="button" data-rw="all" aria-pressed="${String(!st.runner)}">${t("rf.everyone")}</button>
+      <button type="button" data-rw="me" aria-pressed="${String(st.runner === me)}">${t("rf.mine")}</button></div>` : "");
+  const runnerField = () => html`${mineSeg()}${st.runner && st.runner !== me ? html`<span class="pill rf-pick">${name(st.runner)}<button type="button" class="rf-x" id="${id}-rx"
+      title="${t("rf.clear")}" aria-label="${t("rf.clear")}">✕</button></span>` : ""}
+    ${runnerSearch(`${id}-rs`, t(st.runner && st.runner !== me ? "rn.change" : "rf.find"))}`;
   const html_ = filterFold(html`<div class="filters rf" id="${id}">
     ${show ? html`<div class="field"><span>${t("prov.show")}</span><div id="${id}-f">${raw(seg(`${id}f`, show, st.shown))}</div></div>` : ""}
     ${specs.length ? html`<div class="field"><span>${t("f.terrain")}</span><div id="${id}-t">${raw(seg(`${id}t`, [["all", t("f.all")], ...specs.map((s) => [s, t(`terrain.${s}`)])], st.spec))}</div></div>` : ""}
@@ -71,7 +75,11 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
     if (!box) return;
     box.innerHTML = runnerField();
     $(`#${id}-rx`)?.addEventListener("click", () => { st.runner = null; bindRunner(); changed(); });
-    $(`#${id}-me`)?.addEventListener("click", () => { st.runner = me; bindRunner(); changed(); });
+    box.querySelectorAll("[data-rw]").forEach((b) => b.addEventListener("click", () => {
+      const v = b.dataset.rw === "me" ? me : null;
+      if (v === st.runner) return;
+      st.runner = v; bindRunner(); changed();
+    }));
     bindRunnerSearch($(`#${id}-rs`), { onPick: (l) => { st.runner = String(l); bindRunner(); changed(); } });
   }
   function bind() {

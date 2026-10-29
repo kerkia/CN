@@ -1302,7 +1302,7 @@ export default {
   "prov.f.missing": "Without results",
   "prov.f.pending": "Not yet published officially",
   "prov.region": "Region",
-  "rf.find": "Find a runner…", "rf.mine": "My races", "rf.clear": "Remove this runner", "rf.q": "Race, place, club…",
+  "rf.find": "Find a runner…", "rf.mine": "My races", "rf.everyone": "Everyone", "rf.clear": "Remove this runner", "rf.q": "Race, place, club…",
   "rf.emptyLive": "No live race matches these filters (a race is tied to a runner or a region only when Ozimut has its start list or results).",
   "prov.runner": "Runner",
   "prov.oneRunner": "One runner",

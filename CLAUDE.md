@@ -1710,7 +1710,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   selector) and Analyse multi — Résultats' « Afficher » (its own), Spécialité, Région, Coureur, Rechercher (name, place,
   organiser), each field only when the page's races carry it, the state in the address (`f t reg r who q`; Analyse solo keeps
   its own address: `address: false`). The runner is chosen by a search (France's runners, France's lists), shown with a ✕
-  that removes them, « Mes courses » when none: no link to their page any more. Résultats alone opens on one's own races. En
+  that removes them, beside a choice « Tous | Mes courses » in the look of « Afficher » (owner, 2026-10-29: a lone « Mes
+  courses » button looked chosen when it was not): no link to their page any more. Résultats alone opens on one's own races. En
   direct's region and runners come from the same race on « Résultats » (same day, same name words: `live.js` `sameRace`).
   **Registration and Réglages** (step 5): with `WORLD_OPEN` "1" the form asks for countries (`country.membershipFields`,
   up to 5, none required; `country.MEMBERS` mirrors `_lib/countries.js` `COUNTRIES`), else France's licence alone as before.
