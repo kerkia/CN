@@ -44,7 +44,7 @@ export const methods = `
           "VMA ≈ distance (m) ÷ 100. Simple et proche de la VMA ; demande de bien gérer son effort.")}
         ${row("Cooper (12 minutes, 1968)", "Piste",
           "La plus grande distance possible en 12 minutes.",
-          "On le court sous la VMA : VMA ≈ distance ÷ 200 ÷ 0,95 (bien entraîné) ou ÷ 0,90 (modérément). La règle « distance ÷ 200 » seule la sous-estime ; la formule de Cooper pour la VO2max, (distance − 504,9) ÷ 44,73, sous-estime les coureurs entraînés.")}
+          "On le court sous la VMA : VMA ≈ distance ÷ 200 ÷ 0,95 (bien entraîné), ÷ 0,90 (modérément) ou ÷ 0,85 (peu entraîné). La règle « distance ÷ 200 » seule la sous-estime ; la formule de Cooper pour la VO2max, (distance − 504,9) ÷ 44,73, sous-estime les coureurs entraînés.")}
         ${row("Navette de Luc Léger (20 m)", "Gymnase ou terrain, deux lignes à 20 m",
           "Allers-retours, départ à 8,5 km/h, +0,5 km/h chaque minute.",
           "Les demi-tours freinent : la vitesse atteinte est inférieure à la VMA sur piste. Bon pour la VO2max, à convertir pour les allures.")}

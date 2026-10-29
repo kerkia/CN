@@ -560,10 +560,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from
   the kerb, lane n + 2π(1.22(n−1) − 0.10) m —, a 200 m indoor track or any loop, plus the last lap's metres, or a measured
-  distance; VMA = mean speed ÷ the share of VMA held — 100 % over 6 min, over 12 min 95 % « bien entraîné » or 90 %
-  « modérément entraîné », the level asked explicitly (owner, 2026-10-14: d/200 is the mean speed, not the VMA; no mean
+  distance; VMA = mean speed ÷ the share of VMA held — 100 % over 6 min, over 12 min 95 % « bien entraîné », 90 %
+  « modérément entraîné » or 85 % « peu entraîné » (2026-10-29), the level asked explicitly (owner, 2026-10-14: d/200 is the mean speed, not the VMA; no mean
   speed shown) —, VO2max = 3.5 × VMA (Cooper's (d − 504.9)/44.73 underestimates trained runners); training speeds and times
-  per 200/400/1000 m by % VMA; entries kept in `localStorage ocn.vma`), Méthodes (lab, VAMEVAL, Léger-Boucher, demi-Cooper,
+  per 200/400/1000 m by % VMA, their uses naming the usual sessions (30/30 and 1'/1' at 100 %, « VMA longue » 3 min at 95 %, 4-6 min
+  at 90 %; 2026-10-29); entries kept in `localStorage ocn.vma`), Méthodes (lab, VAMEVAL, Léger-Boucher, demi-Cooper,
   Cooper, Luc Léger shuttle, 45-15), Applications (free, checked 2026-10-14: EZ BIPsVMA web app for VAMEVAL, EPS Test VMA
   for Léger-Boucher on Android and iOS; 20 m shuttle apps apart). Text inline in the module, as on Documentation.
 - **The « mise en ligne » alert** (owner, 2026-10-17: from the first results, wherever they appear — the club's site, a results
