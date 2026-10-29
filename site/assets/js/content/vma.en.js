@@ -43,7 +43,7 @@ export const methods = `
           "MAS ≈ distance (m) ÷ 100. Simple and close to MAS; requires good pacing.")}
         ${row("Cooper (12 minutes, 1968)", "Track",
           "The longest distance possible in 12 minutes.",
-          "It is run below MAS: MAS ≈ distance ÷ 200 ÷ 0.95 (well trained), ÷ 0.90 (moderately) or ÷ 0.85 (little trained). The rule “distance ÷ 200” alone underestimates it; Cooper's formula for VO2max, (distance − 504.9) ÷ 44.73, underestimates trained runners.")}
+          "It is run below MAS: MAS ≈ distance ÷ 200 ÷ 0.95 (well trained), ÷ 0.90 (moderately) or ÷ 0.85 (little trained). The rule “distance ÷ 200” alone gives the speed held, not MAS, and the “÷ 205” variant also met puts it even below that speed: both underestimate it. Cooper's formula for VO2max, (distance − 504.9) ÷ 44.73 (1968, 115 US servicemen), gives within a few ml/kg/min the same value as 3.5 × MAS for a well-trained runner, a little more beyond 3 km.")}
         ${row("Luc Léger shuttle (20 m)", "Gym or field, two lines 20 m apart",
           "Back and forth, starting at 8.5 km/h, +0.5 km/h every minute.",
           "The turns slow you down: the speed reached is below track MAS. Good for VO2max, to be converted for paces.")}
