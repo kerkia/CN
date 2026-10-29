@@ -14,8 +14,8 @@ const LANE_W = 1.22;              // a lane's width (m); lane 1 measured 0.30 m 
 const lap400 = (lane) => (lane <= 1 ? 400 : 400 + 2 * Math.PI * (LANE_W * (lane - 1) - 0.1));
 // % of VMA, what it is used for
 const ZONES = [105, 100, 95, 90, 85, 80, 75, 70, 65].map((p) => [p, t(`vma.zone.${p}`)]);
-// the share of VMA a runner holds over the test (owner, 2026-10-14): 6 minutes is about the time one lasts at VMA (4 to 8
-// minutes, often 6), so the demi-Cooper is run at it; 12 minutes is run below it, at about 95 % for a well-trained runner and
+// the share of VMA a runner holds over the test (owner, 2026-10-14): 6 minutes is about the time one lasts at VMA (4 to 11
+// minutes in Billat's time-limit studies, often 6), so the demi-Cooper is run at it; 12 minutes is run below it, at about 95 % for a well-trained runner and
 // 90 % for a moderately trained adult, 85 % for one little trained (owner, 2026-10-29) (coaching rules of thumb, as the races:
 // a 3 km near 95 %, a 10 km at 85 to 90 %)
 const LEVELS = [["trained", t("vma.level.trained"), 0.95], ["moderate", t("vma.level.moderate"), 0.90],

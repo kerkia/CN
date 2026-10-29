@@ -19,7 +19,7 @@ export const howTo = `
 export const methods = `
   <section class="card" style="margin-bottom:16px"><div class="card-body vma-text">
     <p><b>MAS</b> (maximal aerobic speed, « VMA » in French) is the lowest running speed at which one reaches one's maximal
-      oxygen uptake (VO2max). It can be held for about 4 to 8 minutes. It is mostly used to set one's training paces, as a
+      oxygen uptake (VO2max). It can be held for 4 to 11 minutes depending on the runner in time-limit studies (Billat), often about 6. It is mostly used to set one's training paces, as a
       percentage of MAS. Three families of tests estimate it:</p>
     <ul>
       <li><b>In the laboratory</b>, on a treadmill with analysis of the gases breathed: the reference, which also measures VO2max.</li>
@@ -43,7 +43,7 @@ export const methods = `
           "MAS ≈ distance (m) ÷ 100. Simple and close to MAS; requires good pacing.")}
         ${row("Cooper (12 minutes, 1968)", "Track",
           "The longest distance possible in 12 minutes.",
-          "It is run below MAS: MAS ≈ distance ÷ 200 ÷ 0.95 (well trained), ÷ 0.90 (moderately) or ÷ 0.85 (little trained). The rule “distance ÷ 200” alone gives the speed held, not MAS, and the “÷ 205” variant also met puts it even below that speed: both underestimate it. Cooper's formula for VO2max, (distance − 504.9) ÷ 44.73 (1968, 115 US servicemen), gives within a few ml/kg/min the same value as 3.5 × MAS for a well-trained runner, a little more beyond 3 km.")}
+          "It is run below MAS: MAS ≈ distance ÷ 200 ÷ 0.95 (well trained), ÷ 0.90 (moderately) or ÷ 0.85 (little trained). The rule “distance ÷ 200” alone gives the speed held, not MAS, and the “÷ 205” variant also met puts it even below that speed: both underestimate it. Cooper's formula for VO2max, (distance − 504.9) ÷ 44.73 (1968, 115 US servicemen), gives within a few ml/kg/min the same value as 3.5 × MAS for a well-trained runner, a little more beyond 3 km. Those who hold their MAS the longest, 10 to 11 minutes, probably run the 12 minutes at about 97 to 99% of their MAS (MAS ≈ distance ÷ 194 to ÷ 198): an estimate drawn from the usual fall of speed with race duration, not a measurement.")}
         ${row("Luc Léger shuttle (20 m)", "Gym or field, two lines 20 m apart",
           "Back and forth, starting at 8.5 km/h, +0.5 km/h every minute.",
           "The turns slow you down: the speed reached is below track MAS. Good for VO2max, to be converted for paces.")}

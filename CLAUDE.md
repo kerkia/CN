@@ -563,7 +563,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   distance; VMA = mean speed ÷ the share of VMA held — 100 % over 6 min, over 12 min 95 % « bien entraîné », 90 %
   « modérément entraîné » or 85 % « peu entraîné » (2026-10-29), the level asked explicitly (owner, 2026-10-14: d/200 is the mean speed, not the VMA; no mean
   speed shown) —, VO2max = 3.5 × VMA (Cooper's (d − 504.9)/44.73 agrees within ~3 ml/kg/min at 95 %, higher beyond ~2.9 km; « d ÷ 205 », met
-  on French sites with no source, would put the VMA below the speed held: not offered — owner, 2026-10-29); training speeds and times
+  on French sites with no source, would put the VMA below the speed held: not offered — owner, 2026-10-29; the time held at VMA, 4 to 11 min in Billat's studies, often ~6, and those holding it
+  10-11 min estimated at 97-99 % over 12 min, from the usual fall of speed with duration — said, not offered as a level); training speeds and times
   per 200/400/1000 m by % VMA, their uses naming the usual sessions (30/30 and 1'/1' at 100 %, « VMA longue » 3 min at 95 %, 4-6 min
   at 90 %; 2026-10-29); entries kept in `localStorage ocn.vma`), Méthodes (lab, VAMEVAL, Léger-Boucher, demi-Cooper,
   Cooper, Luc Léger shuttle, 45-15), Applications (free, checked 2026-10-14: EZ BIPsVMA web app for VAMEVAL, EPS Test VMA

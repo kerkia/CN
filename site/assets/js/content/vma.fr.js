@@ -20,7 +20,7 @@ export const howTo = `
 export const methods = `
   <section class="card" style="margin-bottom:16px"><div class="card-body vma-text">
     <p>La <b>VMA</b> (vitesse maximale aérobie) est la plus petite vitesse de course à laquelle on atteint sa consommation
-      maximale d'oxygène (VO2max). On la tient environ 4 à 8 minutes. Elle sert surtout à régler ses allures d'entraînement,
+      maximale d'oxygène (VO2max). On la tient de 4 à 11 minutes selon les coureurs dans les études de temps limite (Billat), souvent autour de 6. Elle sert surtout à régler ses allures d'entraînement,
       en pourcentage de VMA. Trois familles de tests l'estiment :</p>
     <ul>
       <li><b>Au laboratoire</b>, sur tapis roulant avec analyse des gaz respirés : la référence, qui mesure aussi la VO2max.</li>
@@ -44,7 +44,7 @@ export const methods = `
           "VMA ≈ distance (m) ÷ 100. Simple et proche de la VMA ; demande de bien gérer son effort.")}
         ${row("Cooper (12 minutes, 1968)", "Piste",
           "La plus grande distance possible en 12 minutes.",
-          "On le court sous la VMA : VMA ≈ distance ÷ 200 ÷ 0,95 (bien entraîné), ÷ 0,90 (modérément) ou ÷ 0,85 (peu entraîné). La règle « distance ÷ 200 » seule donne la vitesse tenue, pas la VMA, et la variante « ÷ 205 » qu'on lit aussi la place même sous cette vitesse : toutes deux la sous-estiment. La formule de Cooper pour la VO2max, (distance − 504,9) ÷ 44,73 (1968, 115 militaires américains), donne à quelques ml/kg/min près la même valeur que 3,5 × VMA pour un coureur bien entraîné, un peu plus au-delà de 3 km.")}
+          "On le court sous la VMA : VMA ≈ distance ÷ 200 ÷ 0,95 (bien entraîné), ÷ 0,90 (modérément) ou ÷ 0,85 (peu entraîné). La règle « distance ÷ 200 » seule donne la vitesse tenue, pas la VMA, et la variante « ÷ 205 » qu'on lit aussi la place même sous cette vitesse : toutes deux la sous-estiment. La formule de Cooper pour la VO2max, (distance − 504,9) ÷ 44,73 (1968, 115 militaires américains), donne à quelques ml/kg/min près la même valeur que 3,5 × VMA pour un coureur bien entraîné, un peu plus au-delà de 3 km. Ceux qui tiennent leur VMA le plus longtemps, 10 à 11 minutes, courent sans doute les 12 minutes vers 97 à 99 % de leur VMA (VMA ≈ distance ÷ 194 à ÷ 198) : une estimation tirée de la baisse habituelle de la vitesse avec la durée de course, pas une mesure.")}
         ${row("Navette de Luc Léger (20 m)", "Gymnase ou terrain, deux lignes à 20 m",
           "Allers-retours, départ à 8,5 km/h, +0,5 km/h chaque minute.",
           "Les demi-tours freinent : la vitesse atteinte est inférieure à la VMA sur piste. Bon pour la VO2max, à convertir pour les allures.")}
