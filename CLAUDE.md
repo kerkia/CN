@@ -626,8 +626,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   Coureur page (the search, a name or a node in its « Réseau »), redraws the page in place (`app.redraw`, `goInPlace`):
   same tab and settings, no loading screen, the scroll positions kept; the back button returns to the previous runner.
 - **Themes** (owner, 2026-10-12/13): five, from the lightest to the darkest — Jour (`light`), Clairière (`clearing`, the pale
-  yellow of open land), Forêt (`forest`, a greenish half-light), Sous-bois (`undergrowth`, dark green), Nuit (`dark`) —, each
-  its own token set in `app.css` (`:root[data-theme=…]`; Forêt and Sous-bois share Nuit's series and landscape), chosen under
+  yellow of open land), Forêt (`forest`, the map's light green — a light theme since 2026-10-29, owner: the grey-green
+  half-light it was looked grey), Sous-bois (`undergrowth`, dark green, deeper the same day), Nuit (`dark`) —, each its own token
+  set in `app.css` (`:root[data-theme=…]`; Clairière and Forêt keep Jour's series, Sous-bois shares Nuit's series and landscape;
+  the system's dark mode reaches none of the light themes), chosen under
   the moon button (`app.js` `THEMES`, `themeMenu`: a swatch of each theme's ground and one colour of its own; `localStorage
   cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,

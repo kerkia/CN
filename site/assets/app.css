@@ -54,7 +54,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
+  :root:where(:not([data-theme="light"]):not([data-theme="clearing"]):not([data-theme="forest"])) {
     color-scheme: dark;
     --plane: #0d0d0d; --surface: #1a1a19; --surface-2: #222220; --surface-3: #2c2c2a;
     --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #898781;
@@ -100,8 +100,9 @@
     --contour: #d38d58;
 }
 /* Three themes between Jour and Nuit (owner, 2026-10-13), each a step darker, in the map's colours: Clairière, the
-   pale yellow of open land; Forêt, a greenish half-light; Sous-bois, the dark green under the trees. Each is
-   selected, not flipped: its own surfaces and inks; Forêt and Sous-bois share Nuit's series and landscape. */
+   pale yellow of open land; Forêt, the map's light green (owner, 2026-10-29: a light theme, green rather than the grey
+   half-light it was); Sous-bois, the dark green under the trees (deeper green the same day). Each is selected, not
+   flipped: its own surfaces and inks; Clairière and Forêt keep Jour's series, Sous-bois shares Nuit's series and landscape. */
 :root[data-theme="clearing"] {
   color-scheme: light;
   --plane: #f6efd4; --surface: #fbf7e6; --surface-2: #efe6c8; --surface-3: #e5d9b4;
@@ -114,7 +115,7 @@
   --ls-sky: #efe0c4; --ls-trail: #e4cfa6;
   --flag-wash: #f8e2cc; --forest-wash: #dfeccf; --water-wash: #d8e8f0;
 }
-:root[data-theme="forest"], :root[data-theme="undergrowth"] {
+:root[data-theme="undergrowth"] {
   color-scheme: dark;
   --link: #9cc3ee; --accent: #9cc3ee; --accent-ink: #0b0b0b; --accent-wash: rgba(90, 150, 220, 0.18); --focus: #6ea4e8;
   --good: #3fb53f; --bad: #ea7a7a; --warn-bg: #3a3119; --warn-ink: #f2d38a; --amber: #f0c43c;
@@ -130,18 +131,23 @@
   --contour: #d6935f;
 }
 :root[data-theme="forest"] {
-  --plane: #313b34; --surface: #3a453d; --surface-2: #434f46; --surface-3: #4d5a50;
-  --ink: #f4f2e8; --ink-2: #cdcbbe; --ink-3: #9f9d90;
-  --grid: #46524a; --axis: #5a675d;
-  --border: rgba(255, 255, 255, 0.12); --border-strong: rgba(255, 255, 255, 0.22);
-  --flag-wash: #553320; --forest: #7fd18a; --forest-wash: #2f4a35; --water: #6cc2ea; --water-wash: #28404f;
+  color-scheme: light;
+  --plane: #dcefcd; --surface: #eef8e6; --surface-2: #e0f0d3; --surface-3: #cfe6bd;
+  --ink: #102214; --ink-2: #3e5a40; --ink-3: #6a8a6a;
+  --grid: #c6e0b3; --axis: #9cc48a;
+  --border: rgba(16, 52, 22, 0.13); --border-strong: rgba(16, 52, 22, 0.24);
+  --link: #1b5aa6; --accent: #14472a; --accent-ink: #ffffff; --accent-wash: rgba(40, 140, 70, 0.13); --focus: #2f8a4e;
+  --warn-bg: #f6efcc; --warn-ink: #5e4500;
+  --shadow: 0 1px 2px rgba(16, 52, 22, .06), 0 4px 16px rgba(16, 52, 22, .08);
+  --ls-sky: #e4f1d6; --ls-trail: #dccf9e;
+  --flag-wash: #f8e0c8; --forest: #23793a; --forest-wash: #c3e3b2; --water: #17739f; --water-wash: #cfe6ea;
 }
 :root[data-theme="undergrowth"] {
-  --plane: #121a14; --surface: #1a241c; --surface-2: #222e25; --surface-3: #2b382e;
-  --ink: #f3f2e8; --ink-2: #c4c7b9; --ink-3: #8f9588;
-  --grid: #26332a; --axis: #384838;
-  --border: rgba(255, 255, 255, 0.10); --border-strong: rgba(255, 255, 255, 0.18);
-  --flag-wash: #3f2415; --forest: #66c472; --forest-wash: #1c3a23; --water: #5ab7ea; --water-wash: #15303f;
+  --plane: #0b1d10; --surface: #112818; --surface-2: #17331f; --surface-3: #1e3f27;
+  --ink: #f1f5ea; --ink-2: #bfd2bc; --ink-3: #86a585;
+  --grid: #1b3a23; --axis: #2c5536;
+  --border: rgba(190, 255, 200, 0.10); --border-strong: rgba(190, 255, 200, 0.18);
+  --flag-wash: #3f2415; --forest: #6ccf78; --forest-wash: #19422a; --water: #5ab7ea; --water-wash: #12303b;
 }
 /* the current group's colour (app.renderHeader sets body[data-group]) */
 body[data-group="races"] { --grp: var(--water); --grp-wash: var(--water-wash); }
@@ -1917,8 +1923,8 @@ tr.drop > td { background: color-mix(in srgb, var(--flag) 16%, transparent); }
 
 /* ---------------------------------------------------------------- games (« Jeux », administrators only for now) */
 :root { --course: #a516c4; --course-wash: #f3e3f8; }
-:root[data-theme="dark"], :root[data-theme="forest"], :root[data-theme="undergrowth"] { --course: #d47af0; --course-wash: #3a1f44; }
-@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) { --course: #d47af0; --course-wash: #3a1f44; } }
+:root[data-theme="dark"], :root[data-theme="undergrowth"] { --course: #d47af0; --course-wash: #3a1f44; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"]):not([data-theme="clearing"]):not([data-theme="forest"])) { --course: #d47af0; --course-wash: #3a1f44; } }
 body[data-group="training"] { --grp: var(--course); --grp-wash: var(--course-wash); }
 /* « Organisation » (2026-10-15): the organisers' pages, in the control flag's orange */
 body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }

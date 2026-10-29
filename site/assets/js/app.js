@@ -220,8 +220,8 @@ let menusBound = false;
 // (Jour the forest green, Clairière the open-land yellow, Forêt a light green, Sous-bois the contour brown, Nuit the
 // water blue), for the swatches of the menu; the tokens are in app.css. index.html applies the saved one before the
 // first paint.
-const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["clearing", "#f6efd4", "#e0a92e"], ["forest", "#313b34", "#8fd398"],
-  ["undergrowth", "#121a14", "#d38d58"], ["dark", "#0d0d0d", "#55b5e8"]];
+const THEMES = [["light", "#f9f9f7", "#2f8a3e"], ["clearing", "#f6efd4", "#e0a92e"], ["forest", "#dcefcd", "#23793a"],
+  ["undergrowth", "#0b1d10", "#d38d58"], ["dark", "#0d0d0d", "#55b5e8"]];
 
 function themeMenu() {
   const cur = document.documentElement.dataset.theme || "light";
