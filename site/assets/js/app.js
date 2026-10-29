@@ -317,6 +317,15 @@ function menuKey(r) {
     : at;
 }
 
+/** The site's country chosen (the header's menu, a page's « Choisir un autre pays »): the page drawn again for it. */
+function pickCountry(cc) {
+  if (!cc || cc === country.current()) return;
+  country.pick(cc);
+  lastRoute = null;             // a page that follows its address (the Agenda) is built again, not just told its query
+  // a runner named in the address is the other country's: the runner page opens on this country's own (store.useCountry)
+  if (parseHash().route === "runner" && parseHash().arg) history.replaceState(null, "", "#/coureur");
+  data.useCountry(country.current()).then(() => { renderFooter(); route_(); });
+}
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session();
@@ -483,15 +492,7 @@ function renderHeader(r) {
     else setLang(l);
   }));
   // the site's country (country.js): the page drawn again for it
-  $$("[data-country-pick]").forEach((b) => b.addEventListener("click", () => {
-    closeMenus();
-    if (b.dataset.countryPick === country.current()) return;
-    country.pick(b.dataset.countryPick);
-    lastRoute = null;             // a page that follows its address (the Agenda) is built again, not just told its query
-    // a runner named in the address is the other country's: the runner page opens on this country's own (store.useCountry)
-    if (parseHash().route === "runner" && parseHash().arg) history.replaceState(null, "", "#/coureur");
-    data.useCountry(country.current()).then(() => { renderFooter(); route_(); });
-  }));
+  $$("[data-country-pick]").forEach((b) => b.addEventListener("click", () => { closeMenus(); pickCountry(b.dataset.countryPick); }));
   // the installable app (pwa.js): the item shows once the browser offers to install
   $("#install-btn")?.addEventListener("click", () => { closeMenus(); pwa.install(); });
   $("#logout-btn")?.addEventListener("click", async () => {
@@ -786,6 +787,8 @@ async function start() {
   codeChanged();                                   // the version this visit runs
   window.addEventListener("hashchange", route_);
   window.addEventListener("ocn:install", () => { const b = $("#install-btn"); if (b) b.hidden = pwa.installState() !== "ready"; });
+  // a page's own « Choisir un autre pays » (country.hint)
+  window.addEventListener("ocn:country", (e) => pickCountry(e.detail));
   // the countries « En direct » carries join the header's menu (country.noteLive)
   window.addEventListener("ocn:countries", () => { if (auth.session()) renderHeader(parseHash()); });
   route_();

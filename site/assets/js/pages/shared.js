@@ -134,12 +134,13 @@ async function listPage(main, kind, query = {}) {
       : html`<div class="empty">${t(ready.length ? "ra.emptyFilter" : `sh.${kind}.none`)}</div>`;
   };
   if (kind === "race") {
+    const all = ready.map((a) => country.of(raceOf(a.race) || {}));
     const here = ready.filter((a) => country.of(raceOf(a.race) || {}) === country.current());
     ready.splice(0, ready.length, ...here);
     F = await raceFilters({ id: "sh", query, races: ready, onChange: () => draw(),
       facts: (a) => { const r = raceOf(a.race); const x = r ? provFacts(r) : { spec: null, region: "", lics: [], text: "" };
         return { ...x, text: `${a.title} ${x.text} ${a.ownerName || ""}` }; } });
-    $("#sh-filters").innerHTML = html`${F.html}${country.hint()}`;
+    $("#sh-filters").innerHTML = html`${F.html}${country.hint(all)}`;
     F.bind();
   }
   draw();

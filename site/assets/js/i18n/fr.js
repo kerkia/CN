@@ -780,6 +780,7 @@ export default {
   "ac.reg.err.robotLoad": "La vérification anti-robot ne se charge pas (code {code}). Rechargez la page ; si cela persiste, écrivez-nous.",
   "cty.menu": "Pays",
   "cty.hint.other": "Choisir un autre pays", "cty.hint.tip": "Le pays se choisit en haut de la page, à côté de la langue.",
+  "cty.hint.none": "Aucun autre pays ici pour l'instant", "cty.hint.all": "Tous les pays…",
   "cty.hint.races": "Courses {in}", "cty.in.en": "en", "cty.in.au": "au", "cty.in.aux": "aux", "cty.in.a": "à",
   "cty.need.title": "Réservé aux membres de la France",
   "cty.need.text": "Cette page montre les données de la fédération française : classements, résultats et historiques de ses licenciés. Elle s'ouvre aux comptes qui ont rejoint la France avec leur numéro de licence.",

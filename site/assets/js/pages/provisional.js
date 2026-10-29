@@ -92,7 +92,7 @@ async function list(main, idx, query) {
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     ${F.html}
-    ${country.hint()}
+    ${country.hint(idx.races.filter((r) => !r.soon).map(country.of))}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
     ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}

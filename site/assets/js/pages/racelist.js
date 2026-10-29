@@ -20,8 +20,8 @@ export async function render(main, { query = {} } = {}) {
   if (query.mes === "1" && me && !query.r) query = { ...query, r: me };      // « Mes courses seulement », before the filters
   const idx = await getProv("index.json");
   // O'Live's relays (owner, 2026-10-25: the CNE at Le Bessat) apart in the index: listed here alone, each leg a circuit
-  const races = [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))]
-    .filter((r) => r.splits && !r.soon && country.of(r) === country.current())
+  const every = [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits && !r.soon);
+  const races = every.filter((r) => country.of(r) === country.current())
     .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name));
   // the filters (racefilters.js, as on Résultats)
   const F = await raceFilters({ id: "ra", query, races, onChange: () => draw() });
@@ -29,7 +29,7 @@ export async function render(main, { query = {} } = {}) {
     <div class="page-head"><div><h1>${t("nav.raceAnalysis")}</h1><p class="lede">${t("ra.lede")}</p></div></div>
     <div id="ra-live"></div>
     ${F.html}
-    ${country.hint()}
+    ${country.hint(every.map(country.of))}
     <section class="card"><div class="table-wrap" id="ra-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ra.def")}</p>`;
   liveNow();

@@ -102,7 +102,7 @@ export async function render(main, { query }) {
       <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
       <section class="card agenda-filters" id="filters"></section>
     </details>
-    ${country.hint()}
+    ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
     <div class="agenda-layout">
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       <div class="agenda-side"><section class="card agenda-map" id="agmap" hidden></section>

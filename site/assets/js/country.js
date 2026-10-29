@@ -47,7 +47,7 @@ export function current() {
   const ok = withData();
   let kept = null;
   try { kept = localStorage.getItem(KEY); } catch (e) { /* none */ }
-  if (ok.includes(kept)) return kept;
+  if (ok.includes(kept) || MEMBERS.includes(kept)) return kept;
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
   return mine.find((cc) => ok.includes(cc)) || ok[0];
 }
@@ -67,13 +67,15 @@ export const ranks = (cc = current()) => !!info(cc)?.ranking;
 export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
   ? html`<img class="${cls}" src="${flag(cc)}" alt="" width="18" height="13" loading="lazy" decoding="async">` : "");
 
-/** The header's menu, beside the language's: the countries with data or joined — the account's own first, then a line and
- *  the others (owner, 2026-10-24). */
+/** The header's menu, beside the language's: every country — the account's own first, then a line and the countries Ozimut
+ *  has data for, then a line and every other IOF member (owner, 2026-10-29: a country is never left out of this menu; a page's
+ *  own « Choisir un autre pays » offers only the countries it has something for, `hint`). */
 export function menu() {
   const ok = withData();
   const cur = current();
-  const mine = byName((auth.session()?.countries || []).filter((c) => c.status === "ok" && ok.includes(c.cc)).map((c) => c.cc));
-  const rest = byName(ok.filter((cc) => !mine.includes(cc)));
+  const mine = byName((auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc));
+  const known = byName(ok.filter((cc) => !mine.includes(cc)));
+  const rest = byName(MEMBERS.filter((cc) => !mine.includes(cc) && !ok.includes(cc)));
   const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
@@ -81,18 +83,23 @@ export function menu() {
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu cty-menu" role="menu">${mine.map(item)}${mine.length && rest.length ? html`<div class="cty-sep" role="separator"></div>` : ""}${rest.map(item)}</div>
+    <div class="nav-menu cty-menu" role="menu">${[mine, known, rest].filter((l) => l.length).map((l, i) => html`${i ? html`<div class="cty-sep" role="separator"></div>` : ""}${l.map(item)}`)}</div>
   </div>`;
 }
 
-/** A line above a list of the site's country's (Agenda, Résultats, En direct, Analyse de course): whose list it is, and a
- *  button that opens the header's menu for another country (owner, 2026-10-23: one place to choose, said where it is,
- *  rather than a page's own choice of countries): « Courses en 🇫🇷 France · Choisir un autre pays » (owner, 2026-10-23). */
-export function hint() {
+/** A line above a list of the site's country's (Agenda, Résultats, En direct, Analyse de course): whose list it is, and
+ *  « Choisir un autre pays » (owner, 2026-10-23: « Courses en 🇫🇷 France · Choisir un autre pays »). Its list: the countries
+ *  the page has something for, `list` (owner, 2026-10-29: the Agenda's those with an agenda, En direct's those with live races…;
+ *  `hintList` when the page learns them later), then « Tous les pays » to the header's menu; without a list, the header's menu. */
+let hintCcs = null;
+export function hint(list = null) {
+  hintCcs = list ? [...new Set(list)] : null;
   const cur = current();
   return html`<p class="cty-hint">${t("cty.hint.races", { in: t(`cty.in.${prepOf(cur)}`) })} ${flagImg(cur)}<b>${name(cur)}</b>
-    <button type="button" data-cty-open title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button></p>`;
+    <button type="button" data-cty-open aria-haspopup="menu" aria-expanded="false" title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button><span class="cty-pop" role="menu" hidden></span></p>`;
 }
+/** The page's countries for its « Choisir un autre pays », once it knows them. */
+export function hintList(list) { hintCcs = [...new Set(list)]; }
 // « in » before a country's name, by the IOF members' names in each language: French « en France », « au Portugal », « aux
 // Pays-Bas », « à Malte »; English « in France », « in the Netherlands » (cty.in.* in the catalogues)
 const PREP = {
@@ -101,8 +108,7 @@ const PREP = {
   en: { aux: ["US", "NL", "PH", "GB"] },
 };
 const prepOf = (cc) => Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
-document.addEventListener("click", (e) => {
-  if (!e.target.closest?.("[data-cty-open]")) return;
+const openHeaderMenu = () => {
   const b = document.querySelector('.nav-group[data-group="country"] > .nav-top');
   if (!b) return;
   window.scrollTo({ top: 0 });
@@ -111,6 +117,24 @@ document.addEventListener("click", (e) => {
     if (!b.parentElement.classList.contains("open")) b.click();
     b.focus({ preventScroll: true });
   });
+};
+document.addEventListener("click", (e) => {
+  const pick = e.target.closest?.(".cty-pop [data-cty-pick]");
+  if (pick) { window.dispatchEvent(new CustomEvent("ocn:country", { detail: pick.dataset.ctyPick })); return; }
+  if (e.target.closest?.(".cty-pop [data-cty-all]")) { e.target.closest(".cty-pop").hidden = true; openHeaderMenu(); return; }
+  const open = e.target.closest?.("[data-cty-open]");
+  document.querySelectorAll(".cty-pop:not([hidden])").forEach((p) => {
+    if (p.previousElementSibling !== open) { p.hidden = true; p.previousElementSibling?.setAttribute("aria-expanded", "false"); }
+  });
+  if (!open) return;
+  if (!hintCcs) { openHeaderMenu(); return; }
+  const pop = open.nextElementSibling, cur = current();
+  if (!pop.hidden) { pop.hidden = true; open.setAttribute("aria-expanded", "false"); return; }
+  const others = byName(hintCcs.filter((cc) => cc !== cur && /^[A-Z]{2}$/.test(cc || "")));
+  pop.innerHTML = html`${others.length ? others.map((cc) => html`<button type="button" role="menuitem" data-cty-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`)
+    : html`<span class="cty-pop-none">${t("cty.hint.none")}</span>`}<button type="button" role="menuitem" class="cty-pop-all" data-cty-all>${t("cty.hint.all")}</button>`;
+  pop.hidden = false;
+  open.setAttribute("aria-expanded", "true");
 });
 
 // The IOF's member countries (2026), as functions/_lib/countries.js `COUNTRIES` — keep the two in step.

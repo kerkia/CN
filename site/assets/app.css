@@ -261,6 +261,16 @@ p { margin: 0; }
 .cty-hint b { color: var(--ink-2); font-weight: 620; margin-right: 4px; }
 .cty-hint button { border: 0; padding: 0; margin-left: 14px; background: none; font: inherit; color: var(--accent); cursor: pointer; }
 .cty-hint button:hover { text-decoration: underline; }
+/* a page's own « Choisir un autre pays » (country.hint): its countries under the line */
+.cty-hint { position: relative; }
+.cty-pop { position: absolute; z-index: 40; left: 0; top: 100%; margin-top: 4px; display: flex; flex-direction: column; min-width: 220px;
+  max-height: min(60vh, 420px); overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+.cty-pop[hidden] { display: none; }
+.cty-hint .cty-pop button { display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 8px; border-radius: 6px; color: var(--ink); text-align: left; }
+.cty-hint .cty-pop button:hover { background: var(--surface-2); text-decoration: none; }
+.cty-hint .cty-pop .cty-pop-all { color: var(--accent); border-top: 1px solid var(--grid); border-radius: 0; margin-top: 2px; }
+.cty-pop-none { padding: 6px 8px; }
 .cty-hint + .agenda-layout { margin-top: 0; }
 /* the lists of races' filters (racefilters.js): the runner chosen, a cross to remove them, the search to change them */
 .rf-runner { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; min-height: 36px; }

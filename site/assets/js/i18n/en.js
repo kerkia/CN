@@ -1134,6 +1134,7 @@ export default {
   "ac.reg.err.robotLoad": "The anti-robot check does not load (code {code}). Reload the page; if it keeps failing, write to us.",
   "cty.menu": "Country",
   "cty.hint.other": "Choose another country", "cty.hint.tip": "The country is chosen at the top of the page, beside the language.",
+  "cty.hint.none": "No other country here yet", "cty.hint.all": "All countries…",
   "cty.hint.races": "Races {in}", "cty.in.en": "in", "cty.in.au": "in", "cty.in.aux": "in the", "cty.in.a": "in",
   "cty.need.title": "For members in France",
   "cty.need.text": "This page shows the French federation's data: rankings, results and histories of its licence holders. It opens to accounts that have joined France with their licence number.",
