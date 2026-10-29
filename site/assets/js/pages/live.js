@@ -79,7 +79,7 @@ async function list(main, query) {
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("lv.source")}</p>`;
   let comps = [], liveS = 1800, own = [];
   const [, idx] = await Promise.all([
-    fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).then((j) => { ({ comps = [], liveS = 1800 } = j); }).catch(() => { /* shown empty */ }),
+    fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).then((j) => { ({ comps = [], liveS = 1800 } = j); country.noteLive(comps); }).catch(() => { /* shown empty */ }),
     getProv("index.json").catch(() => null)]);
   const prov = idx?.races || [];
   const twins = new Map(comps.map((c) => [c[0], prov.find((r) => r.date_iso === c[3] && sameRace(r.name, c[1])) || null]));

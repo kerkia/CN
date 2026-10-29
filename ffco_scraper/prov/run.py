@@ -347,9 +347,9 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
         # a race its organiser's pages say is cancelled (FFCO's calendar may still list it, as the CF Sprint of 2026-10-24):
         # kept off « Résultats » while it has no results of its own (build), and an O'Live race its page leads to is its
         # replacement, a race of its own (`replacement`)
-        gone = cs.cancelled(race)
+        gone = cs.cancelled(race) or race["key"] in cancelled_keys(con)
         if not f.out_of_time():
-            mark_cancelled(con, race["key"], gone)
+            mark_cancelled(con, race, gone, date.today())
         if gone:
             # (an O'Live document its replacement holds is not the cancelled race's: given to it before 2026-10-24's fix)
             changed += con.execute("""DELETE FROM prov_docs WHERE race_key = ? AND source = 'olive' AND url IN
@@ -488,11 +488,36 @@ def site_docs(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyrie
     return changed
 
 
-def mark_cancelled(con, key: str, gone: bool) -> None:
-    """The races their organiser's pages say are cancelled (prov_meta 'cancelled', their keys), as the last look found."""
-    keys = set(store.meta_get(con, "cancelled", []) or [])
+def mark_cancelled(con, race, gone: bool, today: date) -> None:
+    """The races their organiser's pages say are cancelled (prov_meta 'cancelled', their keys), as the last look found -
+    until the race's day: after it, a cancellation stays (2026-10-29: the CF Sprint's notice taken down after the weekend
+    brought the cancelled qualification back on « Résultats », with its replacement's O'Live document)."""
+    keys, key = set(store.meta_get(con, "cancelled", []) or []), race["key"]
+    if not gone and key in keys and today > date.fromisoformat(race["date_iso"]):
+        return
     if gone != (key in keys):
         store.meta_set(con, "cancelled", sorted(keys | {key} if gone else keys - {key}))
+
+
+def _cancel_base(name: str | None) -> str:
+    """A race's name as a cancellation names it: its brackets and « - WRE » apart (ClubSite.cancelled)."""
+    return plain(re.split(r"\s+-\s+", re.sub(r"\(.*?\)", " ", name or ""))[0])
+
+
+def cancelled_keys(con) -> set[str]:
+    """The cancelled races: those marked (`mark_cancelled`), those holding an O'Live document a replacement race « ol<id> »
+    holds (a replacement exists only for a cancelled race), and the organiser's other races of their day under the same
+    name (the CF Sprint's qualification and final, cancelled together)."""
+    keys = set(store.meta_get(con, "cancelled", []) or [])
+    keys |= {r[0] for r in con.execute("""SELECT DISTINCT d.race_key FROM prov_docs d JOIN prov_docs o ON o.url = d.url
+                                           WHERE d.source = 'olive' AND o.race_key LIKE 'ol%' AND o.race_key NOT LIKE ?
+                                             AND d.race_key NOT LIKE 'ol%'""", (f"{RELAY}%",))}
+    if keys:
+        rows = con.execute("SELECT key, date_iso, org_code, name FROM prov_races").fetchall()
+        marked = {(r["date_iso"], r["org_code"], _cancel_base(r["name"])) for r in rows if r["key"] in keys}
+        keys |= {r["key"] for r in rows if not r["key"].startswith("ol") and len(_cancel_base(r["name"]).split()) >= 2
+                 and (r["date_iso"], r["org_code"], _cancel_base(r["name"])) in marked}
+    return keys
 
 
 def replacement(con, race, ol: OLive, pid):
@@ -1060,7 +1085,10 @@ def build(con, out: Path, today: date) -> int:
     hi = (today + timedelta(days=START_DAYS)).isoformat()
     far = (today + timedelta(days=ORG_START_DAYS)).isoformat()
     org_starts = set(store.meta_get(con, "org_starts", []) or [])
-    cancelled = set(store.meta_get(con, "cancelled", []) or [])     # (site_docs: its organiser's pages say so)
+    cancelled = cancelled_keys(con)                 # (site_docs: its organiser's pages say so)
+    # the O'Live documents a replacement race holds: its own, not the cancelled race's
+    replaced = {r[0] for r in con.execute("SELECT url FROM prov_docs WHERE source = 'olive' AND race_key LIKE 'ol%' AND race_key NOT LIKE ?",
+                                          (f"{RELAY}%",))}
     clock = datetime.now(ZoneInfo("Europe/Paris"))           # (a race's live lists: its times of day)
     now_s = clock.hour * 3600 + clock.minute * 60 + clock.second
     for race in con.execute("""SELECT * FROM prov_races WHERE date_iso >= ? AND (date_iso <= ? OR (date_iso <= ? AND EXISTS
@@ -1070,6 +1098,8 @@ def build(con, out: Path, today: date) -> int:
                                  OR (date_iso <= ? AND key LIKE 'd%'))
                                ORDER BY date_iso DESC, name""", (lo, today.isoformat(), hi, far, far)).fetchall():
         docs = con.execute("SELECT * FROM prov_docs WHERE race_key = ? ORDER BY source, found_at", (race["key"],)).fetchall()
+        if not race["key"].startswith("ol"):
+            docs = [x for x in docs if not (x["source"] == "olive" and x["url"] in replaced)]
         # the same file under two addresses (http and https, with or without www): shown once, the https one
         docs.sort(key=lambda x: x["url"].startswith("http:"))
         seen_sha: set[str] = set()
@@ -1273,7 +1303,7 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
                              ((today - timedelta(days=KEEP_DAYS)).isoformat(), today.isoformat())).fetchall()
         # a cancelled race takes no platform's competition (2026-10-24: WinSplits' « Sprint-labyrinthe Le Bessat, NOSE », the
         # replacement's, went to the cancelled CF Sprint final by its organiser and day): its replacement, when there is one, does
-        cancelled = set(store.meta_get(con, "cancelled", []) or [])
+        cancelled = cancelled_keys(con)
         period = [r for r in period if r["key"] not in cancelled and not r["key"].startswith(RELAY)]     # (relays: their own)
         lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
         lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo])

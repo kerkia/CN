@@ -13,12 +13,30 @@ import * as auth from "./auth.js";
 import { flag } from "./vendor.js";
 
 const KEY = "ocn.country";
-/** The countries the site offers: those whose data it holds, then those the account has joined (their organisers' competitions). */
+// the countries of the races « En direct » offers (the live relay's list: liveresultat's, every country's), kept on the device
+// for LIVE_TTL (owner, 2026-10-29: Sweden, whose agenda Ozimut cannot read, had left the menu with its live races)
+const LIVE_KEY = "ocn.liveCountries", LIVE_TTL = 6 * 3600e3;
+const liveKept = () => { try { return JSON.parse(localStorage.getItem(LIVE_KEY) || "null"); } catch (e) { return null; } };
+/** Note the countries of the live relay's list (`comps`, the country 6th): the menu offers them; « ocn:countries » when they change. */
+export function noteLive(comps) {
+  const cc = [...new Set((comps || []).map((c) => c[5]).filter((c) => /^[A-Z]{2}$/.test(c || "")))].sort();
+  const was = liveKept()?.cc || [];
+  try { localStorage.setItem(LIVE_KEY, JSON.stringify({ at: Date.now(), cc })); } catch (e) { /* this visit only */ }
+  if (cc.join() !== was.join()) window.dispatchEvent(new Event("ocn:countries"));
+}
+/** Read the live relay's list once LIVE_TTL has passed (a signed-in visit: the list is behind the login). */
+export function refreshLive(base = "") {
+  const k = liveKept();
+  if (k && Date.now() - k.at < LIVE_TTL) return;
+  fetch(`${base}/api/live/list`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((j) => j && noteLive(j.comps)).catch(() => { /* next visit */ });
+}
+/** The countries the site offers: those whose data it holds, those with races « En direct » carries, then those the account has
+ *  joined (their organisers' competitions). */
 export function withData() {
   const read = Object.keys(data.site()?.countries || {});
   if (!read.length) read.push("FR");
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
-  return [...new Set([...read, ...mine])];
+  return [...new Set([...read, ...(liveKept()?.cc || []), ...mine])];
 }
 /** A country's name in the site's language. */
 export function name(cc) {

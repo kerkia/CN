@@ -786,7 +786,10 @@ async function start() {
   codeChanged();                                   // the version this visit runs
   window.addEventListener("hashchange", route_);
   window.addEventListener("ocn:install", () => { const b = $("#install-btn"); if (b) b.hidden = pwa.installState() !== "ready"; });
+  // the countries « En direct » carries join the header's menu (country.noteLive)
+  window.addEventListener("ocn:countries", () => { if (auth.session()) renderHeader(parseHash()); });
   route_();
+  if (auth.session()) country.refreshLive();
   pushBoot();
 }
 start().catch((e) => {

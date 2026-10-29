@@ -257,7 +257,11 @@ with « annul… », its name — brackets and « - WRE » apart — and its day
 (`ClubSite.cancelled`, `run.mark_cancelled`, prov_meta « cancelled ») and left off « Résultats » while it has no results of its
 own; an O'Live race its page leads to by the page's words only becomes the replacement, a race of its own « ol<id> » with the
 cancelled race's day, organiser, site and discipline, O'Live's name and the place after its « - » (`run.replacement`), and the
-cancelled race drops an O'Live document the replacement holds), SPORTident Center (2026-10-24, `sources/sportident.py`: center.sportident.com, where
+cancelled race drops an O'Live document the replacement holds; **a cancellation stays once the race's day is past** (owner,
+  2026-10-29: the organiser's notice taken down after the weekend brought the qualification back on « Résultats » with the
+  replacement's O'Live document): `run.mark_cancelled` keeps it, and `run.cancelled_keys` also counts a race holding an O'Live
+  document a replacement « ol<id> » holds and the organiser's other races of that day under the same name (qualification and
+  final); the build drops such a document from any race but the replacement), SPORTident Center (2026-10-24, `sources/sportident.py`: center.sportident.com, where
 SPORTident's Orienteering App, its Reader, OE12 and SiTiming publish, live and after; its public events list
 `/api/rest/v1/public-events` by country and dates, each event's results file `/event-files/<guid>/results/r.1.latest.bin`, a
 protobuf read by its field numbers — taken from its page's script, none of its code —: classes, courses and their sections,
@@ -572,7 +576,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   runner's own races are those they are recognised in by an organiser's list or by FFCO's (`data.runnerRaces`), « Avec résultats »
   includes FFCO's, and a race without an organiser's list links to « Courses classées »; the sources column lists the organisers' sources only (owner, 2026-10-18: « FFCO » there repeated the FFCO column), a dash for a race FFCO alone has published; the tile « Avec résultats
   trouvés » still measures the organisers' lists found.
-- **« Courses classées » by link** (`#/courses?id=`, the e-mail digest's link; owner, 2026-10-17): a race named in the address
+- **« Courses » (« Courses classées » until 2026-10-29, owner; « Relais nationaux » became « Relais » the same day) by link** (`#/courses?id=`, the e-mail digest's link; owner, 2026-10-17): a race named in the address
   brings its discipline (the site-wide one switches, so the list beside it holds it, opened and marked) and, without `circ=`,
   opens on the circuit the signed-in user ran (in runner mode the runner's), else the busiest.
 - Tables: a `.table-wrap` (and `dataTable`'s `.table-scroll`) scrolls within the page's height with its header row frozen
@@ -1624,7 +1628,10 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   launch configs `lr-mock` (8795, a recording kept outside the repository; `--live --speed 1 --from <min>` replays it on today's clock) + `ocn-live-mock` (the relay reading it) +
   `pages-dev-games`. The list page: the site's country's races, a search looks in every country (the other countries' chips
   beside the search, 2026-10-21/22, are gone since 2026-10-23: Agenda and Résultats had none; `country.hint` says whose list it is
-  and opens the header's menu). **Live now** (owner, 2026-10-22: « identify clearly which competitions are truly live »): the
+  and opens the header's menu). **The countries of its races join the country menu** (owner, 2026-10-29: Sweden, whose agenda
+  Ozimut cannot read, had left it on 2026-10-24): `country.noteLive` keeps the list's countries in `localStorage
+  ocn.liveCountries` (6 h; read at the start of a signed-in visit by `refreshLive`, and by the page), `withData` offers them,
+  « ocn:countries » redraws the header. **Live now** (owner, 2026-10-22: « identify clearly which competitions are truly live »): the
   relay's `Directory`, when the list is asked for, reads the last passings of the races of their own today (with liveresultat's
   hash, at most every `PROBE_MS` 3 min a race and `MAX_PROBE` 15 a call; `probes` kept for today's races only) and adds to each
   race the age of its last punch in seconds (`comps[i][6]`, from the race's time zone, else liveresultat's offset from Swedish
