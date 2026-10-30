@@ -149,8 +149,9 @@
   --border: rgba(190, 255, 200, 0.10); --border-strong: rgba(190, 255, 200, 0.18);
   --flag-wash: #3f2415; --forest: #6ccf78; --forest-wash: #19422a; --water: #5ab7ea; --water-wash: #12303b;
 }
-/* the current group's colour (app.renderHeader sets body[data-group]) */
-body[data-group="races"] { --grp: var(--water); --grp-wash: var(--water-wash); }
+/* the current module's colour (app.renderHeader sets body[data-group]): Arena the map's water blue, Stats its forest green
+   (the default), Coach the course's purple, Orga the control flag's orange */
+body[data-group="arena"] { --grp: var(--water); --grp-wash: var(--water-wash); }
 
 /* ---------------------------------------------------------------- base */
 *, *::before, *::after { box-sizing: border-box; }
@@ -217,11 +218,18 @@ p { margin: 0; }
 }
 .nav-top:hover, .nav-group.open > .nav-top { background: var(--surface-2); color: var(--ink); text-decoration: none; }
 .nav-top[aria-current="true"] { background: var(--accent-wash); color: var(--ink); }
-.nav-group[data-group="cn"] > .nav-top::before, .nav-group[data-group="races"] > .nav-top::before {
-  content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--forest); flex: none; }
-.nav-group[data-group="races"] > .nav-top::before { background: var(--water); }
-.nav-group[data-group="cn"] > .nav-top[aria-current="true"] { background: var(--forest-wash); color: var(--forest); }
-.nav-group[data-group="races"] > .nav-top[aria-current="true"] { background: var(--water-wash); color: var(--water); }
+/* the module's pages, in the bar (owner, 2026-10-30): the current one in the module's colour */
+.mod-nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.mod-nav::-webkit-scrollbar { display: none; }
+.nav-link { flex: none; color: var(--ink-2); padding: 7px 10px; border-radius: 8px; font-weight: 550; font-size: 14px; white-space: nowrap; }
+.nav-link:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+.nav-link[aria-current="page"] { background: var(--grp-wash); color: var(--grp); }
+/* the module's name beside the logo, in its colour */
+.brand-mod { font-size: 13px; font-weight: 700; color: var(--grp); background: var(--grp-wash); padding: 3px 9px; border-radius: 999px; letter-spacing: .01em; }
+.guest-login { white-space: nowrap; }
+/* the banner under the bar: the module's name and what it is for, over contour lines */
+.subbar .mod-tag { margin: 0; padding: 4px 0; font-size: 13.5px; color: var(--ink-2); min-width: 0; }
+.subbar .mod-tag b { color: var(--grp); font-weight: 700; }
 .nav-top .caret { color: var(--ink-3); transition: transform .15s; }
 .nav-group.open > .nav-top .caret { transform: rotate(180deg); }
 .nav-menu {
@@ -719,6 +727,8 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   }
   .nav.open { display: flex; }
   /* the menu button's panel: each group's name, then its pages (no drop-down) */
+  .mod-nav { overflow: visible; }
+  .mod-nav .nav-link { padding: 9px 10px; }
   .nav .nav-group:not(.user-menu) > .nav-top { pointer-events: none; padding: 10px 10px 4px; font-size: 12px; text-transform: uppercase;
     letter-spacing: .04em; color: var(--ink-3); background: none; }
   .nav .nav-group:not(.user-menu) > .nav-top .caret, .nav .nav-group:not(.user-menu) > .nav-top .nav-count { display: none; }
@@ -1925,11 +1935,9 @@ tr.drop > td { background: color-mix(in srgb, var(--flag) 16%, transparent); }
 :root { --course: #a516c4; --course-wash: #f3e3f8; }
 :root[data-theme="dark"], :root[data-theme="undergrowth"] { --course: #d47af0; --course-wash: #3a1f44; }
 @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"]):not([data-theme="clearing"]):not([data-theme="forest"])) { --course: #d47af0; --course-wash: #3a1f44; } }
-body[data-group="training"] { --grp: var(--course); --grp-wash: var(--course-wash); }
+body[data-group="coach"] { --grp: var(--course); --grp-wash: var(--course-wash); }
 /* « Organisation » (2026-10-15): the organisers' pages, in the control flag's orange */
 body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }
-.nav-group[data-group="orga"] > .nav-top::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--flag); flex: none; }
-.nav-group[data-group="orga"] > .nav-top[aria-current="true"] { background: var(--flag-wash); color: var(--flag); }
 /* a page to come: in the menus, greyed and inert */
 .nav-off { color: var(--ink-3); opacity: 0.55; cursor: not-allowed; padding: 6px 10px; font-size: inherit; white-space: nowrap; }
 .nav-menu .nav-off { display: block; padding: 8px 12px; }
@@ -1969,8 +1977,6 @@ body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }
   .sh-curves-tab { writing-mode: horizontal-tb; transform: none; padding: 10px; height: auto; }
   .sh-own-cv { flex: none; height: 360px; }
 }
-.nav-group[data-group="training"] > .nav-top::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--course); flex: none; }
-.nav-group[data-group="training"] > .nav-top[aria-current="true"] { background: var(--course-wash); color: var(--course); }
 
 /* « VMA »: the calculator's form, its notes, the methods' table, the apps */
 .vma-form .vma-fields { margin: 0 0 10px; padding: 0; border: 0; background: none; }
@@ -2404,3 +2410,36 @@ body.full-win .tr-app { border: 0; }
 .rh-sources { margin-top: 16px; }
 .rh-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); }
 .rh-legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+/* ---------------------------------------------------------------- the modules page (pages/hub.js; owner, 2026-10-30) */
+.hub { max-width: 1180px; margin: 0 auto; }
+.hub-narrow { max-width: 560px; }
+.hub-head { margin: 4px 0 18px; }
+.hub-head h1 { margin: 0 0 4px; }
+.hub-head .lede { margin: 0; color: var(--ink-2); }
+.hub-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.hub-grid.one { grid-template-columns: 1fr; }
+@media (max-width: 1100px) { .hub-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .hub-grid { grid-template-columns: 1fr; } }
+.hub-card { --m: var(--forest); --m-wash: var(--forest-wash); display: flex; flex-direction: column; gap: 10px; padding: 18px;
+  background: var(--surface); border: 1px solid var(--border); border-top: 4px solid var(--m); border-radius: 14px; box-shadow: var(--shadow); }
+.hub-card[data-mod="arena"] { --m: var(--water); --m-wash: var(--water-wash); }
+.hub-card[data-mod="coach"] { --m: var(--course); --m-wash: var(--course-wash); }
+.hub-card[data-mod="orga"] { --m: var(--flag); --m-wash: var(--flag-wash); }
+.hub-card-head { display: flex; gap: 12px; align-items: center; }
+.hub-card-head h2 { margin: 0; font-size: 22px; color: var(--m); }
+.hub-card-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+.hub-icon { width: 42px; height: 42px; flex: none; padding: 8px; border-radius: 12px; color: var(--m); background: var(--m-wash); }
+.hub-text { margin: 0; color: var(--ink-2); line-height: 1.5; font-size: 14px; }
+.hub-note { margin: 0; font-size: 13px; line-height: 1.45; }
+.hub-pages { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.hub-pages a { display: inline-block; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-size: 13px; }
+.hub-pages a:hover { background: var(--m-wash); color: var(--ink); text-decoration: none; }
+.hub-actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.hub-card .btn-primary { background: var(--m); border-color: var(--m); }
+.hub-session { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink-2); }
+.hub-session > span { flex: 1 1 260px; }
+/* a runner's name that opens their window (runnerpop.js) instead of leading to another module: drawn as a link */
+.name-pop { border: 0; padding: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; text-align: left; }
+.name-pop:hover { text-decoration: underline; }

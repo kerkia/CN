@@ -1,6 +1,7 @@
 // POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names],
 //   lang?: "fr" | "en", startsAlert?: bool, pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool,
-//   movedNoticeSeen?: true }  (the window about the move to ozimut.com, seen: assets/js/moved.js)
+//   orga?: bool, movedNoticeSeen?: true }  (orga: the Orga module, migration 0016; movedNoticeSeen: the window about the move
+//   to ozimut.com, seen: assets/js/moved.js)
 // Every alert by e-mail and/or push (2026-10-18): the push ones are open to every account.
 // Only the fields sent are changed. Every alert's e-mail needs the right the administrator grants (users.alerts_allowed;
 // the results' too since 2026-10-21); the notifications do not. The language is the one
@@ -13,7 +14,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!b) return json({ error: "bad request" }, 400);
   const sets = [], vals = [];
   for (const [field, column] of [["notify", "notify"], ["agendaAlert", "agenda_alert"], ["deadlineAlert", "deadline_alert"],
-    ["startsAlert", "starts_alert"], ["pushStarts", "push_starts"], ["pushResults", "push_results"], ["pushAgenda", "push_agenda"], ["pushDeadline", "push_deadline"]]) {
+    ["startsAlert", "starts_alert"], ["pushStarts", "push_starts"], ["pushResults", "push_results"], ["pushAgenda", "push_agenda"], ["pushDeadline", "push_deadline"], ["orga", "orga"]]) {
     if (field in b) {
       if (typeof b[field] !== "boolean") return json({ error: "bad request" }, 400);
       if (["notify", "agendaAlert", "deadlineAlert", "startsAlert"].includes(field) && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);

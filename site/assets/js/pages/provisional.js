@@ -15,6 +15,7 @@ import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
+import { bindRunnerPop } from "../runnerpop.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -131,7 +132,7 @@ async function list(main, idx, query) {
       <tbody>${rows.map((r) => html`<tr${raw(has(r) ? "" : ' class="pv-none"')}>
         <td class="num">${fmtDate(r.date_iso, "short")}</td>
         <td class="pv-race">${r.docs || r.startlist ? html`<a href="#/resultats?course=${encodeURIComponent(r.key)}${one ? `&r=${encodeURIComponent(one)}` : ""}">${r.name}</a>`
-          : r.ffco_id ? html`<a href="#/courses?id=${encodeURIComponent(r.ffco_id)}" title="${t("prov.ffcoResults")}">${r.name}</a>` : html`<span>${r.name}</span>`}
+          : r.ffco_id ? html`<span>${r.name}</span> <span class="tag" title="${t("prov.ffcoResults")}">${t("prov.ffcoTag")}</span>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
           <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
@@ -200,7 +201,7 @@ async function detail(main, idx, query) {
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
-      ${CN ? html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}` : html`<div class="card"><div class="empty">${t("prov.noDoc")}</div></div>`}
+      ${CN ? html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}` : html`<div class="card"><div class="empty">${t(race.ffco_id ? "prov.noDoc.ffco" : "prov.noDoc.org")}</div></div>`}
     ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources.admin")}</h2></summary>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("prov.source")}</th><th>${t("prov.doc")}</th><th>${t("prov.format")}</th>
         <th class="r">${t("prov.classes")}</th><th>${t("prov.found")}</th><th>${t("prov.changed")}</th></tr></thead>
@@ -214,6 +215,11 @@ async function detail(main, idx, query) {
         <td class="num" style="font-size:12px">${when(d.found)}</td><td class="num" style="font-size:12px">${when(d.changed)}</td></tr>`)}</tbody></table></div>
       ${race.docs.length ? "" : html`<div class="empty">${t("prov.noDoc")}</div>`}</details>` : ""}`;
   if (!docs.length) return { title: race.name };
+  // a runner's name opens their window (runnerpop.js): Arena's pages never lead to Stats' runner page (owner, 2026-10-30)
+  const raceTerrain = TERRAIN_CODE[race.terrain] || "For";
+  const popName = (r) => html`<button type="button" class="name name-pop" data-runner-pop="${r.lic}" data-name="${r.name}"
+    data-club="${clubOf(r).name || r.club || ""}" data-cat="${r.category || r.catCn || ""}" data-terrain="${raceTerrain}">${r.name}</button>`;
+  bindRunnerPop(main);
 
   function draw() {
     const d = docs[di];
@@ -265,13 +271,13 @@ async function detail(main, idx, query) {
         { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (r) => r.place ?? 1e6,
           render: (r) => (r.place != null ? fmt(r.place) : html`<span class="dim">${STATUS[r.status]}</span>`) },
         { key: "name", label: t("rk.col.name"), defaultDir: 1, sort: (r) => r.name,
-          render: (r) => (r.lic ? html`<a class="name" href="${link.runner(r.lic)}">${r.name}</a>`
+          render: (r) => (r.lic ? popName(r)
             : CN ? html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>` : r.name) },
         { key: "cat", label: t("rk.col.cat"), defaultDir: 1, sort: (r) => r.category || r.catCn,
           render: (r) => fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "") },
         { key: "club", label: t("rk.col.club"), cls: "num", defaultDir: 1, sort: (r) => clubOf(r).code || r.club,
           render: (r) => { const c = clubOf(r);
-            return c.code ? html`<a href="${link.club(c.code)}" title="${c.name}">${c.code}</a>` : html`<span style="font-size:12.5px">${r.club || ""}</span>`; } },
+            return c.code ? html`<span title="${c.name}">${c.code}</span>` : html`<span style="font-size:12.5px">${r.club || ""}</span>`; } },
         { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
           render: (r) => (ok(r) ? clock(r.time_s) : "") },
         ...(scored ? M.flatMap((m) => [{
@@ -313,8 +319,8 @@ async function detail(main, idx, query) {
       <th class="r" title="${t("lv.expected.hint")}">${t("lv.expected")}</th>` : ""}</tr></thead>
       <tbody>${rows.map((r) => html`<tr${raw(who && r.lic === who ? ' style="background:color-mix(in srgb, var(--accent) 14%, transparent)"' : "")}>
         <td class="r num">${startClock(r.start_s)}${r.status !== "start" && r.status !== "ok" ? html` <span class="muted">${STATUS[r.status]}</span>` : ""}</td>
-        <td>${r.lic ? html`<a href="${link.runner(r.lic)}">${r.name}</a>` : CN ? html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>` : r.name}</td>
-        <td style="font-size:12.5px">${clubOf(r).code ? html`<a href="${link.club(clubOf(r).code)}" title="${clubOf(r).name}">${clubOf(r).code}</a>` : r.club || ""}</td>
+        <td>${r.lic ? popName(r) : CN ? html`<span title="${t("prov.unmatched")}">${r.name}</span> <span class="muted" style="font-size:11px">?</span>` : r.name}</td>
+        <td style="font-size:12.5px">${clubOf(r).code ? html`<span title="${clubOf(r).name}">${clubOf(r).code}</span>` : r.club || ""}</td>
         <td>${fmtCat(r.category) || (r.catCn ? html`<span class="muted" title="${t("prov.catCn")}">${fmtCat(r.catCn)}</span>` : "")}</td>
         ${FR ? html`<td class="r num">${cn(r) ? fmt(cn(r)) : html`<span class="muted">—</span>`}</td>
         <td class="r num">${expected.get(r) ?? ""}</td>` : ""}</tr>`)}</tbody></table></div>`;

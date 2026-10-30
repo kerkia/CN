@@ -125,12 +125,12 @@ async function deposit(main, race) {
     const ups = r?.ok ? (await r.json()).uploads || [] : [];
     const found = race.p?.startlist && !(race.p.sources || []).includes("upload");
     box.innerHTML = ups.length ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.yours", { date: fmtDate(ups[0].created.slice(0, 10)), file: ups[0].filename })}
-        <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a>
+        <span>${t("os.now.see")}</span>
         <button type="button" class="btn btn-sm" id="os-recheck" style="margin-left:8px">${t("os.now.check")}</button>
         <button type="button" class="btn btn-sm" id="os-remove" style="margin-left:4px">${t("os.remove")}</button>
         <div class="muted" style="font-size:12.5px;margin-top:4px">${t("os.now.replace")}</div></div>`
       : found ? html`<div class="notice info" style="margin-bottom:16px">${t("os.now.found")}
-        <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a></div>` : "";
+        <span>${t("os.now.see")}</span></div>` : "";
     // the deposited file read again: its checks and its O Checklist file (nothing to publish)
     $("#os-recheck")?.addEventListener("click", async (ev) => {
       ev.target.disabled = true;
@@ -295,7 +295,7 @@ async function deposit(main, race) {
       try { r = JSON.parse(x.responseText); } catch (ex) { /* not JSON */ }
       if (x.status === 200 && r.ok) {
         msg.innerHTML = html`<div class="notice ok">${r.soon ? t("os.done.soon") : t("os.done.later")}
-          <a href="#/resultats?course=${encodeURIComponent(race.key)}">${t("os.now.see")}</a></div>`;
+          <span>${t("os.now.see")}</span></div>`;
         current();
         return;
       }

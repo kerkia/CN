@@ -43,6 +43,16 @@ export function sees(cc) {
   if (s.demo) return cc === "FR";
   return Array.isArray(s.countries) ? s.countries.some((c) => c.cc === cc && c.status === "ok") : cc === "FR" && !!s.lic;
 }
+/**
+ * A visit without an account (owner, 2026-10-30: « Entrer sans compte »): the public data only — Arena, Coach but « Analyse
+ * multi », Stats over the period the federation publishes openly. Kept on this device until one signs in or leaves it from
+ * the modules page; nothing on the server.
+ */
+const GUEST = "ocn.guest";
+export const guest = () => { try { return !session() && localStorage.getItem(GUEST) === "1"; } catch (e) { return false; } };
+export function setGuest(on) {
+  try { if (on) localStorage.setItem(GUEST, "1"); else localStorage.removeItem(GUEST); } catch (e) { /* not kept */ }
+}
 /** The signed-in runner's number in the loaded country's files (their FFCO licence in France), or null. */
 export const myId = () => (data.loadedCountry() === "FR" && session()?.lic) || null;
 /**
@@ -79,6 +89,7 @@ export async function accountLogin(email, password) {
     const u = r.data;
     const s = { ...fromUser(u), until: Date.now() + DAYS * 86400e3 };
     keep(s);
+    setGuest(false);
     // the language: one chosen on this device (the menu, before signing in) becomes the account's; else the account's
     // own is taken on a device that has none
     const mine = storedLang();
@@ -103,7 +114,7 @@ export async function handoffLogin(token) {
 
 /** What the browser keeps of the account (the rights decide what the pages show). */
 const fromUser = (u) => ({ uid: u.uid, lic: String(u.lic || ""), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
-  agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice, preview: Array.isArray(u.preview) ? u.preview : [],
+  agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice, preview: Array.isArray(u.preview) ? u.preview : [], orga: !!u.orga,
   countries: Array.isArray(u.countries) ? u.countries : null });     // { cc, club, id, status }: `sees`
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {
@@ -121,6 +132,7 @@ export async function refresh() {
 }
 export async function logout() {
   forget();
+  setGuest(false);
   local.clear();                  // the results file read on « Déposer »
   // the Tracer's offline copies (tracer/offline.js), unless changes still wait for the network
   try { await (await import("./tracer/offline.js")).dropCopies(); } catch (e) { /* none */ }

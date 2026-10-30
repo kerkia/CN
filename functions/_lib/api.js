@@ -55,6 +55,8 @@ export const publicUser = (env, u, countries = []) => ({
   // a demo account (admin page, « Démo »): read-only, tied to no licence, valid until that day
   demo: u.demo_until || null,
   preview: previewOf(u),
+  // the Orga module, chosen by the account (migration 0016; owner, 2026-10-30)
+  orga: u.orga === 1,
   // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data
   countries: countries.map((c) => ({ cc: c.country, club: c.club, id: c.member_id, status: c.status })),
 });

@@ -47,6 +47,8 @@ const PAGES = {
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),
+  hub: () => import("./pages/hub.js"),             // the modules page: where one lands, the logo's address (2026-10-30)
+  orgaOff: () => import("./pages/hub.js"),         // an Orga page to an account that has not turned the module on, or on a phone
   needCountry: () => import("./pages/needcountry.js"),   // a page of France's data, to an account without France (2026-10-20)       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
@@ -75,8 +77,13 @@ const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compar
   "relayHistory", "ask"]);
 /** May the account open the site's country's ranking pages? */
 const ranksHere = () => country.ranks() && auth.sees(country.current());
-/** Where a signed-in account lands: the agenda, for every account (owner, 2026-10-21; before, one's own page or the ranking). */
-const homeOf = () => "#/agenda";
+/** Where a signed-in account or a visitor without one lands: the modules page (owner, 2026-10-30; the agenda from 2026-10-21). */
+const homeOf = () => "#/modules";
+// The pages a visitor without an account may open (owner, 2026-10-30): those of public data — Arena, Coach but « Analyse
+// multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
+// openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
+const GUEST_ROUTES = new Set(["overview", "account", "hub", "methods", "contact", "agenda", "provisional", "live", "splits",
+  "analysisPerso", "descriptions", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -130,6 +137,7 @@ function parseHash(hash = location.hash) {
     : head === "jeux" ? "games"
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
+    : head === "modules" ? "hub"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -326,84 +334,85 @@ function pickCountry(cc) {
   if (parseHash().route === "runner" && parseHash().arg) history.replaceState(null, "", "#/coureur");
   data.useCountry(country.current()).then(() => { renderFooter(); route_(); });
 }
+// ---- the modules (owner, 2026-10-30) ----------------------------------------------------------------------------------
+// Ozimut is four modules — Arena (the competitions: coming, live, run), Stats (the rankings and their analyses), Coach
+// (training: the GPS analyses, the control descriptions, the games, the VMA) and Orga (the organisers' tools) —, each with
+// its own menu in the bar. The modules page (#/modules, pages/hub.js) is where one lands, signed in or not, and the logo
+// leads back to it: a module's pages never lead into another module's (an e-mail's or a notification's link goes straight
+// to its page).
+export const MODULES = ["arena", "stats", "coach", "orga"];
+/** A phone (the same test as index.html's default theme): the Orga module is for computers. */
+export const isPhone = () => matchMedia("(pointer: coarse) and (max-width: 900px)").matches;
+/** May this visitor open the Orga module here? A signed-in account that turned it on (Réglages, the modules page), not on a phone. */
+export const orgaOpen = () => !!auth.session()?.orga && !isPhone();
+/** Each module's menu: [key, address, label]; the key is the route's (menuKey). */
+export function moduleMenus() {
+  const me = auth.session();
+  return {
+    arena: [["agenda", "#/agenda", t("nav.agenda")], ["provisional", "#/resultats", t("nav.recent")], ["live", "#/direct", t("nav.live")],
+      ["splits", "#/analyse-course", t("nav.raceAnalysis")]],
+    stats: [
+      // one's own page, in France's data (the runner page of one's licence)
+      ...(me?.lic && country.current() === "FR" && ranksHere() ? [["me", link.runner(`fr${me.lic}`), t("auth.myPage")]] : []),
+      ["runner", "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
+      ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
+      ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
+      // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
+      ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
+    ],
+    coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")],
+      ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
+    orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
+      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
+      ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
+  };
+}
+// the routes outside the menus, by module (a view of a page in the menu, an address of before)
+const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", analysis: "coach", analysisRace: "coach",
+  deposit: "orga" };
+/** The module a page belongs to, or null (the modules page, the documentation, the settings…). */
+export function moduleOf(r) {
+  const k = menuKey(r);
+  const menus = moduleMenus();
+  for (const m of MODULES) if (menus[m].some(([key]) => key === k)) return m;
+  return ROUTE_MODULE[r.from || r.route] || null;
+}
+/** The module last opened in this tab: the pages that belong to none (Réglages, Documentation…) keep its menu. */
+function lastModule(m) {
+  try {
+    if (m) sessionStorage.setItem("ocn.module", m);
+    return sessionStorage.getItem("ocn.module") || null;
+  } catch (e) { return m || null; }
+}
+
 function renderHeader(r) {
   const { route } = r;
-  const me = auth.session();
-  // logged in, the home page (the login page) is not needed: the brand leads to the agenda
-  // the groups (owner, 2026-10-12; « Courses » first since 2026-10-21): the races — coming, run, live —, the national
-  // ranking's analyses, training, organising. The bar shows
-  // the groups, the row under it the current group's pages (and the runner search); the documentation, settings,
-  // contact and logout are under one's name
+  const me = auth.session(), visitor = me || auth.guest();
   const fr = ranksHere();             // the site's country's rankings: the method switch
-  const groups = me ? [
-    ["races", t("nav.g.races"), [
-      ["agenda", "#/agenda", t("nav.agenda")],
-      ["provisional", "#/resultats", t("nav.recent")],
-      ["live", "#/direct", t("nav.live")],
-      ["splits", "#/analyse-course", t("nav.raceAnalysis")],
-      ["analysis", "#/analyse", t("nav.analysis")], ["analysisRace", "#/analyse-competition", t("nav.analysisRace")],
-    ]],
-    ["cn", t("nav.g.cn"), [
-      ["runner", "#/coureur", t("nav.runner")],
-      ["ranking", "#/classement", t("nav.ranking")],
-      ["categories", "#/categories", t("nav.categories")],
-      ["courses", "#/courses", t("nav.coursesCn")],
-      ["compare", "#/comparer", t("nav.compare")],
-      ["clubs", "#/clubs", t("nav.clubs")],
-      ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")],   // the national relays' history (owner, 2026-10-26)
-      ["network", "#/reseau", t("nav.network")],
-      // « IA » (2026-10-15): questions on the data in plain French; every account since 2026-10-16 (owner)
-      // (France's tables only: /api/ask is France's, _middleware.js FR_API)
-      ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
-    ]],
-    // « Entrainement » (« Jeux » until 2026-10-14, owner): the training games on generated maps, the VMA page, the
-    // analyses of one's training; every page for every account since 2026-10-15 (owner)
-    ["training", t("nav.g.training"), [["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
-      ["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")]]],
-    // « Organisation » (owner, 2026-10-15): the organisers' pages — a competition's multi analysis, a training event's,
-    // the results of their competitions, « Direct » (live results from the timing software's export) and « Tracer » (course
-    // setting, Purple Pen's way), every one for every account (owner, 2026-10-15)
-    ["orga", t("nav.g.orga"), [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
-      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")], ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]]],
-  ] : [];                                     // logged out, the home page (the login) is the whole site
-  const current = menuKey(r);
-  const group = groups.find(([, , items]) => items.some(([k]) => k === current));
-  // a group's tab leads back to the page last seen in it — a list or a view, never one of the tools that reopen their work (the
-  // analyses, « Direct », « Tracer »), and never a tab of its own's address (?fen=1, full window without the menus): the memory is
-  // shared by the tabs, and « Courses » reopened « Analyse solo » at its calibration in full window, the menus gone (owner, 2026-10-17)
-  const TOOL_PAGES = /^#\/(analyse|analyse-competition|analyse-solo|analyse-perso|analyse-club|orga-direct|orga-tracer)(?:[?/]|$)/;
-  const navMemo = (h) => (h && !TOOL_PAGES.test(h) && !/[?&]fen=1(?:&|$)/.test(h) ? h : null);
-  // the memory counts only for a page of this group's menu (it is the browser's, shared by the accounts signed in on it)
-  const lastIn = (g, items) => {
-    let h = null;
-    try { h = navMemo(localStorage.getItem(`ocn.nav.${g}`)); } catch (e) { /* none kept */ }
-    return h && items.some(([k]) => k === menuKey(parseHash(h))) ? h : items[0][1];
-  };
-  if (group && navMemo(location.hash)) { try { localStorage.setItem(`ocn.nav.${group[0]}`, location.hash); } catch (e) {} }
-  document.body.dataset.group = group?.[0] || "";
+  // the module shown: the page's, else the one last opened (a page of no module: Réglages, Documentation…); none on the
+  // modules page and the home page
+  const own = visitor && route !== "orgaOff" ? moduleOf(r) : null;
+  const mod = own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
+  const items = mod ? moduleMenus()[mod] : [];
+  const current = menuKey(r) === "runner" && me?.lic && [me.lic, `fr${me.lic}`].includes(r.arg) ? "me" : menuKey(r);
+  document.body.dataset.group = mod || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
-  // the bar under the navigation: the runner search, where it helps (the discipline is among each page's filters)
+  const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
-  $("#topbar").innerHTML = html`<div class="topbar-inner${me ? "" : " guest"}">
-    ${me ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
+  $("#topbar").innerHTML = html`<div class="topbar-inner${visitor ? "" : " guest"}">
+    ${items.length ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
-    <a class="brand" href="${me ? homeOf(me) : "#/"}">
+    <a class="brand" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <!-- a compass bezel, the control flag's two quarters as its needle on a bearing of 45° (owner, 2026-10-19) -->
         <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <span class="brand-name"><span class="brand-o">O</span>zimut</span>
+      <span class="brand-name"><span class="brand-o">O</span>zimut</span>${mod ? html`<span class="brand-mod">${t(`mod.${mod}`)}</span>` : ""}
     </a>
-    <nav class="nav" id="nav" aria-label="Navigation">
-      ${groups.map(([g, label, items]) => html`<div class="nav-group" data-group="${g}">
-        <a class="nav-top" href="${lastIn(g, items)}" ${raw(group?.[0] === g ? 'aria-current="true"' : "")}>${label}</a>
-        <div class="nav-menu">${items.map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")}>${text}${betaMark(k)}</a>`
-          : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</div>
-      </div>`)}
-    </nav>
+    ${items.length ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
-      ${me ? country.menu() : ""}
+      ${visitor ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}
       ${themeMenu()}
       ${me ? html`
@@ -413,7 +422,7 @@ function renderHeader(r) {
           <span class="user-name">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</span>
           <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
         <div class="nav-menu">
-          ${me.lic ? html`<a href="${link.runner(`fr${me.lic}`)}" ${raw(route === "runner" && [me.lic, `fr${me.lic}`].includes(parseHash().arg) ? 'aria-current="page"' : "")}>${t("auth.myPage")}</a>` : ""}
+          <a href="${homeOf()}" ${raw(route === "hub" ? 'aria-current="page"' : "")}>${t("mod.pick")}</a>
           <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           ${me.demo ? "" : html`<button type="button" id="install-btn" ${raw(pwa.installState() === "ready" ? "" : "hidden")}>${t("pwa.menu")}</button>`}
@@ -421,14 +430,12 @@ function renderHeader(r) {
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
-      </div>` : ""}
+      </div>` : visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/">${t("hub.login")}</a>` : ""}
     </div>
   </div>
-  ${me && group ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
-      ${group ? html`<nav class="subnav" aria-label="${group[1]}">${group[2].map(([k, href, text]) => (href ? html`<a href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`
-        : html`<span class="nav-off" aria-disabled="true" title="${t("nav.soon")}">${text}</span>`))}</nav>` : ""}
-      ${["agenda", "games", "vma", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "live", "splits"].includes(route) || !fr || store.available().length < 2 ? "" : methodSwitch()}
-
+  ${visitor && (mod || route === "hub") ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
+      <p class="mod-tag">${mod ? html`<b>${t(`mod.${mod}`)}</b> · ${t(`mod.${mod}.tag`)}` : t("hub.lede.short")}</p>
+      ${mod !== "stats" || !fr || store.available().length < 2 || route === "needCountry" ? "" : methodSwitch()}
     </div></div>` : ""}`;
   // a demo account (admin page, « Démo »): said on every page, with its last day
   if (me?.demo) $("#topbar").insertAdjacentHTML("beforeend", html`<div class="demo-strip">${t("demo.strip", { date: fmtDate(me.demo, "long") })}</div>`);
@@ -455,7 +462,7 @@ function renderHeader(r) {
     b.setAttribute("aria-expanded", String(open));
     if (open) $(".nav-menu a", g)?.focus({ preventScroll: true });
   }));
-  $$(".nav-menu a").forEach((a) => a.addEventListener("click", () => { closeMenus(); $("#nav")?.classList.remove("open"); }));
+  $$(".nav-menu a, .mod-nav a").forEach((a) => a.addEventListener("click", () => { closeMenus(); $("#nav")?.classList.remove("open"); }));
   if (!menusBound) {
     menusBound = true;
     document.addEventListener("click", (e) => { if (!e.target.closest(".nav-group")) closeMenus(); });
@@ -627,14 +634,20 @@ async function route_() {
   // a page that follows its own address (the Agenda: list <-> details) is not rebuilt for a change of query
   if (current?.onQuery && lastRoute === r.route) { current.onQuery(r.query); return; }
   const my = ++token;
-  // the gate: logged out, only the home (login) page exists; the page asked for (a link in an e-mail…) opens after the login
-  const me = auth.session();
-  if (!me && !["overview", "account"].includes(r.route)) {
+  // the gate: logged out, only the home (login) page exists; the page asked for (a link in an e-mail…) opens after the login.
+  // A visitor without an account (« Entrer sans compte », auth.guest) has the pages of public data (GUEST_ROUTES); any
+  // other page leads to the modules page
+  const me = auth.session(), guest = !me && auth.guest();
+  if (!me && !guest && !["overview", "account"].includes(r.route)) {
     try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
-  // logged in, the home page leads to the agenda (homeOf)
+  if (guest && !GUEST_ROUTES.has(r.route)) {
+    history.replaceState(null, "", homeOf());
+    r = parseHash();
+  }
+  // logged in, the home page leads to the modules page (homeOf)
   if (me && r.route === "overview") {
     history.replaceState(null, "", homeOf(me));
     r = parseHash();
@@ -673,6 +686,8 @@ async function route_() {
     history.replaceState(null, "", `#/orga-resultats${r.query.course ? `?course=${encodeURIComponent(r.query.course)}` : ""}`);
     r = parseHash();
   }
+  // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
+  if (moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
@@ -759,7 +774,7 @@ export async function signedIn(s) {
   if (s.lic && data.loadedCountry() === "FR") store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
-  // the page asked for before the login, else the agenda (homeOf)
+  // the page asked for before the login, else the modules page (homeOf)
   location.hash = next && next.startsWith("#/") && next !== "#/" ? next : homeOf(s);
   pushBoot();
   movedNotice();

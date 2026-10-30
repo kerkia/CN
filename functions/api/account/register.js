@@ -1,4 +1,4 @@
-// POST /api/account/register { email, password, first, last, countries: [{ country, club, id }], consent, website, lang,
+// POST /api/account/register { email, password, first, last, countries: [{ country, club, id }], consent, website, lang, orga,
 //   turnstile } — `licence` alone (the form of before) stands for France.
 //
 // Every country asked is checked by its policy (_lib/countries.js): France's only if (first name, last name, licence)
@@ -75,6 +75,8 @@ export async function onRequestPost({ request, env }) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), b.lang === "en" ? "en" : "fr").first();
   if (rows.length) await env.DB.batch(rows.map((r) => saveMembership(env, row.id, r)));
+  // the Orga module asked for at registration (migration 0016; without the column, left for Réglages)
+  if (b.orga === true) { try { await env.DB.prepare("UPDATE users SET orga = 1 WHERE id = ?").bind(row.id).run(); } catch (e) { /* no column yet */ } }
   const mail = await sendVerification(env, row);
   return json({ ok: true, mail });
 }

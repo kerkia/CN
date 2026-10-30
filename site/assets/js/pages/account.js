@@ -83,6 +83,7 @@ async function register(main) {
         <label class="field"><span>${t("ac.password")} <span class="muted">· ${t("ac.password.hint")}</span></span><input name="password" type="password" autocomplete="new-password" required minlength="6" maxlength="200"></label>
         <label class="field"><span>${t("ac.password2")}</span><input name="password2" type="password" autocomplete="new-password" required minlength="6" maxlength="200"></label>
         <div class="hp" aria-hidden="true"><label>Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
+        <label class="check"><input name="orga" type="checkbox"><span>${t("ac.reg.orga")}</span></label>
         <label class="check"><input name="consent" type="checkbox" required><span>${t(world ? "ac.reg.consent.world" : "ac.reg.consent")}
           <a href="#/compte/confidentialite">${t("ac.reg.privacy")}</a></span></label>
         ${siteKey ? html`<div id="reg-ts" class="reg-ts"></div>` : ""}
@@ -127,7 +128,7 @@ async function register(main) {
     const r = await auth.api("api/account/register", {
       email: f.get("email"), password: f.get("password"), first: f.get("first"), last: f.get("last"),
       countries: Array.from({ length: rows }, (_, i) => readMembership(form, `c${i}`)).filter(Boolean),
-      consent: f.get("consent") === "on", website: f.get("website"),
+      consent: f.get("consent") === "on", website: f.get("website"), orga: f.get("orga") === "on",
       lang: lang(), turnstile: tsToken,
     });
     if (!r.ok && tsWidget !== null) { try { window.turnstile.reset(tsWidget); } catch (e) { /* gone */ } tsToken = ""; }

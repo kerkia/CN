@@ -37,10 +37,11 @@ import { checkClass, issueText, markText } from "../splitcheck.js";
 import { followers, regularity } from "../splitstats.js";
 import { refLegs, legLoss } from "../trace/legs.js";
 import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs, freezeAttrs } from "../ui.js";
-import { link, replaceQuery, SITE } from "../app.js";
+import { replaceQuery, SITE } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
 import { liveId, toDoc, watch } from "../livesplits.js";
+import { bindRunnerPop } from "../runnerpop.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
 // Résultats » — the organisers' alone (2026-10-15)
@@ -69,6 +70,7 @@ const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
 export async function render(main, { query = {} } = {}) {
+  bindRunnerPop(main);
   // no race named: « Analyse de course »'s list of the races with split times (owner, 2026-10-23)
   if (!query.course) return (await import("./racelist.js")).render(main, { query });
   // the results file read on « Déposer », not published: it alone (local.js); a live race (« En direct »): the times received
@@ -283,7 +285,9 @@ export async function render(main, { query = {} } = {}) {
     const sel = () => byPlace(shown.filter((x) => picked.has(x.r.name)));
     const label = (i) => (i === n ? t("spl.finish") : `${i + 1} (${codes[i]})`);
     const legLabels = Array.from({ length: L }, (_, i) => label(i));
-    const name = (x) => (x.r.lic ? html`<a href="${link.runner(x.r.lic)}">${x.r.name}</a>` : x.r.name);
+    // a runner's name opens their window (runnerpop.js), not Stats' runner page (owner, 2026-10-30)
+    const name = (x) => (x.r.lic ? html`<button type="button" class="name-pop" data-runner-pop="${x.r.lic}" data-name="${x.r.name}"
+      data-club="${x.r.club || ""}" data-cat="${x.r.category || ""}">${x.r.name}</button>` : x.r.name);
     // legs won and lost by a against b, on the legs both ran
     const duel = (a, b) => {
       let w = 0, l = 0;

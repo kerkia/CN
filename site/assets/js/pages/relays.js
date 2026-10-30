@@ -115,7 +115,7 @@ export async function render(main, { query }) {
         ${f.custom ? html`<td><button class="btn btn-sm" type="button" data-leg-del="${i}" ${raw(f.legs.length < 2 ? "disabled" : "")}>✕</button></td>` : ""}</tr>`)}</tbody></table></div>
       <div class="card-body">${f.custom ? html`<button class="btn btn-sm" type="button" id="rl-add">${t("rl.addLeg")}</button>`
         : html`<div class="muted" style="font-size:12.5px"><b>${t("ui.colon", { a: t("rl.slots") })}</b> ${f.slots.map((s) => s.label).join(" · ")}</div>`}
-        ${next ? html`<div class="muted" style="font-size:12.5px;margin-top:8px">${t("ui.colon", { a: t("rl.next") })} <a href="#/agenda?id=${next.id}">${next.name}</a>,
+        ${next ? html`<div class="muted" style="font-size:12.5px;margin-top:8px">${t("ui.colon", { a: t("rl.next") })} <b>${next.name}</b>,
           ${fmtDate(next.date)}${next.place ? ` · ${next.place}` : ""}${next.key === key ? "" : html` — <a href="#/relais" id="rl-next-use">${t("rl.next.use")}</a>`}</div>` : ""}</div>`;
     $("#rl-next-use")?.addEventListener("click", (e) => { e.preventDefault(); setFormat(next.key); });
     const changed = () => { manual = manual && manual.length === fmtNow.legs.length ? manual : null; compute(); drawFormat(); };

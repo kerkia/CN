@@ -99,6 +99,11 @@ export async function render(main, { query = {} } = {}) {
         <div class="notice ok" id="alerts-ok" hidden>${t("st.saved")}</div>
       </div></section>
 
+      <section class="card"><div class="card-head"><h2>${t("st.orga.title")}</h2></div><div class="card-body stack" style="gap:8px">
+        <label class="check"><input type="checkbox" id="st-orga" ${user.orga ? "checked" : ""}><span>${t("st.orga.label")}</span></label>
+        <p class="muted" style="margin:0;font-size:12.5px">${t("st.orga.hint")}</p>
+      </div></section>
+
       <section class="card"><div class="card-head"><h2>${t("st.push.title")}</h2></div><div class="card-body stack" style="gap:8px">
         <p class="soft" style="margin:0">${t("st.push.hint")}</p>
         <div id="push-device" class="stack" style="gap:8px"></div>
@@ -183,6 +188,16 @@ export async function render(main, { query = {} } = {}) {
   $("#st-lang")?.addEventListener("change", (e) => {
     const l = e.target.value;
     auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
+  });
+  // the Orga module (migration 0016): saved as it changes, the bar drawn again
+  $("#st-orga")?.addEventListener("change", async (e) => {
+    const box = e.target;
+    box.disabled = true;
+    const res = await auth.api("api/account/settings", { orga: box.checked });
+    box.disabled = false;
+    if (!res.ok) { box.checked = !box.checked; return; }
+    await auth.refresh();
+    window.dispatchEvent(new Event("ocn:countries"));
   });
   // the alerts: each box saved as it changes; the regions shown while an agenda alert is on, by either channel
   const agendaOn = () => $$("[data-alert]").some((i) => i.checked && /^(agendaAlert|deadlineAlert|pushAgenda|pushDeadline)$/.test(i.dataset.alert));

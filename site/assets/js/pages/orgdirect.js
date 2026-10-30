@@ -259,7 +259,7 @@ export async function render(main) {
         </select></label>` : ""}
       ${b ? html`<p style="margin:10px 0 0"><b>${b.name}</b> · ${fmtDate(b.date)}${b.organizer ? ` · ${b.organizer}` : ""}<br>
           <span class="muted">${t("od.lastSent", { t: b.last ? new Date(b.last).toLocaleString(locale()) : t("od.never") })}</span>
-          ${t("od.watch")} <a href="#/direct/${b.id}">${t("od.liveLink", { name: b.name })}</a>.</p>`
+          ${t("od.watch")} <b>${t("od.liveLink", { name: b.name })}</b>.</p>`
       : html`<div class="filters" style="margin-top:10px">
           <label class="field"><span>${t("od.comp")}</span><select id="od-comp" style="max-width:420px">
             <option value="">${t("od.comp.none")}</option>
@@ -309,7 +309,7 @@ export async function render(main) {
     // a broadcast's competition, even one gone from the choices (its day past)
     const choices = b.race && !comps.some((c) => c.key === b.race) ? [{ key: b.race, name: b.name, date: b.date, org: b.organizer || "" }, ...comps] : comps;
     el.innerHTML = html`
-      <p style="margin:0">${b.race ? html`${t("od.linked")} <a href="#/resultats?course=${encodeURIComponent(b.race)}">${t("od.resultsLink")}</a>`
+      <p style="margin:0">${b.race ? html`${t("od.linked")}`
         : html`<span class="muted">${t("od.linked.none")}</span>`}</p>
       <div class="filters">
         <label class="field"><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
