@@ -290,9 +290,16 @@ provisoires et analyse »: the organiser's list once there, else the live times 
 names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
 legal notices. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
-**The home page**: the bar's links lead to each module's section and to « Qui voit quoi » (`#/?s=arena…`, `s=features`, the
-overview's `onQuery`), and « Se connecter » / « Créer un compte » / « Entrer sans compte » (`data-guest-enter`,
-`app.enterAsGuest`); `tour.js` `MODS` (each module's introduction, a way in, its legs) and `FEATURES` (the table by profile).
+**The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »
+(Découvrir, Partout, Arrivée: what Ozimut is, phones, the pledges and the account), Arena, Stats, Coach, Orga, « Tarifs » /
+« Pricing » (`#/?s=overview|arena|stats|coach|orga|features`); no sign-in buttons in the bar there, the login card under the
+hero has « Se connecter », « Créer un compte », « Entrer sans compte » (`data-guest-enter`, `app.enterAsGuest`). Each section is a
+course of its own (`tour.js` `mod`: the start triangle beside its introduction, its legs numbered from 1, its finish holding the
+way in; the line's length measured to the finish, `--line`). « Tarifs » is a table, the modules as columns and the access levels
+as rows (without an account, with one, a federation's licensee, with Orga), each row adding to the one above and marked
+« Gratuit pour tous »; each cell lists what it adds (`CAPS`, keys `tour.f.<module>.<level>.<n>`: change both together). A link
+of the bar is caught by the page (`overview.onSectionLink`: a second click on the same one works too) and jumps to the section
+under the bar, put right again as the pictures load (their sizes are written in the page) unless the reader has scrolled since.
 Its pictures were all retaken on 2026-10-30 (the old ones showed the menus of before) on the scrambled copy rebuilt with that day's
 code — `synth/oz2` (`synth-oz2.sqlite3`, `data/` in today's layout), by `build_oz2.py` / `build_oz2b.py`, then `tour2.mjs fr|en`
 (Orga's pages on the administrators' dev server, 8790, so that their lists are full), `convert.py`, `sheet.py` for contact

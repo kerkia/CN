@@ -417,7 +417,8 @@ function renderHeader(r) {
   const mod = own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
   // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
   const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
-    ? [...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]), ["home-features", "#/?s=features", t("tour.feat.eyebrow")]] : [];
+    ? [["home-overview", "#/?s=overview", t("tour.ov.menu")], ...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]),
+      ["home-features", "#/?s=features", t("tour.feat.eyebrow")]] : [];
   const current = menuKey(r);
   document.body.dataset.group = mod || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
@@ -457,8 +458,9 @@ function renderHeader(r) {
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
       </div>` : visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/?s=login">${t("hub.login")}</a>`
-        // signed out: sign in, create an account, or enter without one (owner, 2026-10-30)
-        : html`<div class="home-ways"><a class="btn btn-sm" href="#/?s=login">${t("hub.login")}</a>
+        // signed out: sign in, create an account, or enter without one (owner, 2026-10-30) — not on the home page, whose login
+        // card under the hero offers the three (owner, 2026-10-30)
+        : route === "overview" ? "" : html`<div class="home-ways"><a class="btn btn-sm" href="#/?s=login">${t("hub.login")}</a>
           <a class="btn btn-sm home-way-reg" href="#/compte/inscription">${t("hub.register")}</a>
           <button type="button" class="btn btn-sm btn-primary" data-guest-enter="">${t("hub.guest.enter")}</button></div>`}
     </div>

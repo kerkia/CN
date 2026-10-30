@@ -47,12 +47,28 @@ const LANDSCAPE = `<svg class="home-landscape" viewBox="0 0 1440 640" preserveAs
 </svg>`;
 
 /** The bar's links lead to a section of the page (#/?s=arena…, s=features), « Se connecter » to the form (s=login). */
+// The section starts at the top of the window, under the bar (owner, 2026-10-30): a jump (a smooth scroll still running
+// when the pictures above it settle lands elsewhere), put right again as they load unless the reader has scrolled since.
 function goTo(s) {
   if (!s) return;
   const el = s === "login" ? document.querySelector(".home-login") : document.getElementById(`mod-${s}`);
   if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const top = () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - (document.querySelector(".topbar")?.offsetHeight || 0) - 12);
+  let at = -1;
+  const align = () => { window.scrollTo({ top: top(), behavior: "instant" }); at = window.scrollY; };
+  align();
+  for (const ms of [400, 1200, 2500]) setTimeout(() => { if (Math.abs(window.scrollY - at) < 2) align(); }, ms);
   if (s === "login") setTimeout(() => document.getElementById("acct-email")?.focus({ preventScroll: true }), 300);
+}
+// the bar's links to the sections (#/?s=…) and the page's own: handled here, so that a second click on the same one scrolls too
+function onSectionLink(e) {
+  const a = e.target.closest?.('a[href^="#/?s="]');
+  if (!a) return;
+  e.preventDefault();
+  const s = new URLSearchParams(a.getAttribute("href").split("?")[1]).get("s");
+  history.replaceState(null, "", a.getAttribute("href"));
+  $("#nav")?.classList.remove("open");
+  goTo(s);
 }
 
 export async function render(main, { query = {} } = {}) {
@@ -114,5 +130,6 @@ export async function render(main, { query = {} } = {}) {
       abtn.textContent = t("ac.login");
     }
   });
-  return { title: t("ov.title"), onQuery: (q) => goTo(q.s) };
+  document.addEventListener("click", onSectionLink);
+  return { title: t("ov.title"), onQuery: (q) => goTo(q.s), cleanup: () => document.removeEventListener("click", onSectionLink) };
 }

@@ -797,7 +797,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
 .tour-fig b { display: block; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .tour-fig span { font-size: 13px; color: var(--ink-2); }
 .tour-course { position: relative; padding-left: 64px; }
-.tour-course::before { content: ""; position: absolute; left: 21px; top: 30px; bottom: 70px; width: 3px; background: var(--course); border-radius: 2px; }
+.tour-course::before { content: ""; position: absolute; left: 21px; top: 30px; height: var(--line, calc(100% - 100px)); width: 3px; background: var(--course); border-radius: 2px; }
 .tour-start { position: absolute; left: 0; top: 0; width: 45px; height: 45px; color: var(--course); }
 .tour-leg { position: relative; padding: 50px 0 14px; }
 .tour-ctrl { position: absolute; left: -64px; top: 42px; width: 45px; height: 45px; border-radius: 50%; border: 3px solid var(--course); background: var(--plane);
@@ -2475,21 +2475,12 @@ body.full-win .tr-app { border: 0; }
 .tour-mod[data-mod="arena"] { --m: var(--water); --m-wash: var(--water-wash); }
 .tour-mod[data-mod="coach"] { --m: var(--course); --m-wash: var(--course-wash); }
 .tour-mod[data-mod="orga"] { --m: var(--flag); --m-wash: var(--flag-wash); }
-.tour-mod-head { margin: 34px 0 6px; padding: 18px 20px; border-radius: 14px; background: var(--m-wash); border-left: 5px solid var(--m); }
+.tour-mod-head { margin: 0 0 6px; padding: 18px 20px; border-radius: 14px; background: var(--m-wash); border-left: 5px solid var(--m); }
 .tour-mod-head h2 { margin: 6px 0 6px; }
 .tour-mod-badge { display: inline-block; font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--m); }
-.tour-mod-cta { margin-top: 12px; }
+.tour-mod-cta { min-height: 45px; display: flex; align-items: center; }
 .tour-mod-cta .btn-primary { background: var(--m); border-color: var(--m); }
-.tour-features { margin: 40px auto 10px; max-width: 980px; scroll-margin-top: 76px; }
-.tour-feat-table td.c, .tour-feat-table th.c { text-align: center; }
-.tour-feat-table .tour-yes { color: var(--good, var(--forest)); font-weight: 700; }
-.tour-feat-table .tour-no { color: var(--ink-3); }
-.tour-feat-mod th { text-align: left; padding-top: 14px; font-size: 15px; }
-.tour-feat-mod th span { font-weight: 500; color: var(--ink-3); font-size: 13px; margin-left: 6px; }
-.tour-feat-mod[data-mod="arena"] th { color: var(--water); }
-.tour-feat-mod[data-mod="stats"] th { color: var(--forest); }
-.tour-feat-mod[data-mod="coach"] th { color: var(--course); }
-.tour-feat-mod[data-mod="orga"] th { color: var(--flag); }
+.tour-features { margin: 0 0 10px; scroll-margin-top: 76px; }
 .tour-feat-note { font-size: 12.5px; margin: 8px 2px 0; }
 .home-login { scroll-margin-top: 76px; }
 /* the modules page's picture, under the home page's figures (2026-10-30) */
@@ -2565,3 +2556,40 @@ body.full-win .tr-app { border: 0; }
 /* Analyse solo on a phone: the map photographed with the camera (2026-10-30) */
 .an-cam-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; font-size: 12.5px; }
 .an-cam { justify-content: center; height: 44px; font-size: 15px; }
+/* who sees what (2026-10-30): the modules as columns, the access levels as rows; on a phone, a level's four cells one under another */
+.tour-feat-grid { overflow-x: auto; }
+.tour-feat-table { width: 100%; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
+.tour-feat-table thead th { text-align: left; font-size: 16px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.tour-feat-table thead th span { display: block; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.tour-feat-table thead th:first-child { background: none; width: 150px; }
+.tour-feat-table th[data-mod="arena"] { color: var(--water); } .tour-feat-table th[data-mod="stats"] { color: var(--forest); }
+.tour-feat-table th[data-mod="coach"] { color: var(--course); } .tour-feat-table th[data-mod="orga"] { color: var(--flag); }
+.tour-feat-table tbody th { text-align: left; vertical-align: top; padding: 10px; font-size: 14px; }
+.tour-feat-table tbody th span { display: block; font-size: 12px; font-weight: 500; color: var(--ink-3); margin-top: 2px; }
+.tour-feat-table td { vertical-align: top; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; line-height: 1.4; }
+.tour-feat-table td ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.tour-feat-table .tour-feat-m { display: none; }
+.tour-feat-table .tour-no { color: var(--ink-3); }
+@media (max-width: 860px) {
+  .tour-feat-table, .tour-feat-table tbody, .tour-feat-table tr, .tour-feat-table td, .tour-feat-table tbody th { display: block; width: auto; }
+  .tour-feat-table thead { display: none; }
+  .tour-feat-table tr { margin-bottom: 14px; }
+  .tour-feat-table tbody th { padding: 6px 2px; font-size: 16px; }
+  .tour-feat-table td { margin-bottom: 6px; }
+  .tour-feat-table .tour-feat-m { display: block; font-weight: 700; margin-bottom: 4px; }
+  .tour-feat-table td[data-mod="arena"] .tour-feat-m { color: var(--water); } .tour-feat-table td[data-mod="stats"] .tour-feat-m { color: var(--forest); }
+  .tour-feat-table td[data-mod="coach"] .tour-feat-m { color: var(--course); } .tour-feat-table td[data-mod="orga"] .tour-feat-m { color: var(--flag); }
+}
+/* the home page by module (owner, 2026-10-30): each section a course of its own, a rule between them */
+.tour-mod[data-mod="overview"] { --m: var(--flag); --m-wash: var(--flag-wash); }
+.tour-sec + .tour-sec { margin-top: 56px; padding-top: 48px; border-top: 2px solid var(--border-strong); }
+.tour-sec .tour-top { margin-bottom: 0; }
+.tour-mod-end { padding: 42px 0 4px; }
+.tour-mod-end .tour-ctrl { top: 42px; }
+@media (max-width: 640px) {
+  .tour-sec + .tour-sec { margin-top: 36px; padding-top: 30px; }
+  .tour-mod-end { display: flex; gap: 12px; align-items: center; padding-top: 26px; }
+  .tour-mod-end .tour-ctrl { margin: 0; flex: none; }
+}
+.tour-feat-table .tour-free { display: inline-block; margin-top: 5px; font-style: normal; font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
+  color: var(--forest); border: 1.5px solid currentColor; border-radius: 99px; padding: 1px 8px; }

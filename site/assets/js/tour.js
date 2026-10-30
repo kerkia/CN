@@ -3,8 +3,9 @@
 // numbered controls (the sections), to the finish. The screenshots (assets/tour/<lang>/*.webp) were taken on a scrambled
 // copy of the data — invented names, licences and clubs, times shifted — so this public page shows nobody's real results
 // (the public page never shows real results or names); « En direct » and the notifications are drawn mockups.
-// The sections follow the menu (owner, 2026-10-21): Courses (then the analyses, its last pages), Classement, Entrainement,
-// Organisation. The analysis's phone picture (phone-analysis) is the invented run of assets/reel-trace.webp on a phone.
+// Since 2026-10-30 (owner) the page follows the four modules: an overview (what Ozimut is, on phones, the pledges and the
+// account), then each module its own course — its start beside its introduction, its controls numbered from 1, its finish
+// holding the way in —, then who sees what; a rule between them, each a link of the bar (#/?s=overview|arena|…|features). The analysis's phone picture (phone-analysis) is the invented run of assets/reel-trace.webp on a phone.
 
 import { html, raw, $, $$, fmt } from "./util.js";
 import { t, lang } from "./i18n.js";
@@ -28,18 +29,23 @@ export const MODS = [
   { id: "coach", legs: ["analysis", "training"] },
   { id: "orga", legs: ["orga"] },
 ];
-// who sees what: each module's features, and for each profile — without an account, with one, with one and Orga — "y" yes,
-// "f" for the federation's members (France: an FFCO licence checked), "" no
-const FEATURES = [
-  ["arena", [["agenda", "yyy"], ["live", "yyy"], ["results", "yyy"], ["cn", "-ff"], ["alerts", "-yy"]]],
-  ["stats", [["public", "yyy"], ["history", "-ff"]]],
-  ["coach", [["solo", "yyy"], ["multi", "-yy"], ["learn", "yyy"]]],
-  ["orga", [["tools", "--y"]]],
-];
+// who sees what (owner, 2026-10-30): the modules as columns, the access levels as rows — without an account, with one, a
+// federation's licensee (France: an FFCO licence checked), with the Orga module —, each level adding to the one above; in each
+// cell the capabilities it adds (`tour.f.<module>.<level>.<n>`, counted here)
+const LEVELS = ["guest", "account", "fed", "orga"];
+const CAPS = {
+  arena: { guest: 10, account: 3, fed: 4, orga: 0 },
+  stats: { guest: 5, account: 0, fed: 12, orga: 0 },
+  coach: { guest: 8, account: 5, fed: 1, orga: 0 },
+  orga: { guest: 0, account: 1, fed: 1, orga: 9 },
+};
 const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
   : `assets/tour/${lang() === "en" ? "en" : "fr"}/${name}.webp`);
 const capKey = (name) => name.replace(/^@/, "");
+// each picture's size (the reel's drawn views 1400 × 750, the screenshots 1400 × 875, a phone's 560 × 1212)
+const dims = (name) => (name.startsWith("@") ? 'width="1400" height="750"' : 'width="1400" height="875"');
+const PHONE_DIMS = 'width="560" height="1212"';
 
 const cap = (name) => {
   const k = capKey(name), b = t(`tour.cap.${k}.b`), rest = t(`tour.cap.${k}`);
@@ -48,7 +54,7 @@ const cap = (name) => {
 const shot = (name, { small = false } = {}) => {
   if (name === "@live") return live();
   if (name === "@notif") return notif();
-  return html`<figure><div class="tour-shot"><img src="${src(name)}" alt="${t(`tour.cap.${capKey(name)}.b`)}" loading="lazy" decoding="async"
+  return html`<figure><div class="tour-shot"><img src="${src(name)}" ${raw(dims(name))} alt="${t(`tour.cap.${capKey(name)}.b`)}" loading="lazy" decoding="async"
     tabindex="0" title="${t("tour.zoom")}"></div>${small ? html`<figcaption><b>${t(`tour.cap.${capKey(name)}.b`)}</b>${t(`tour.cap.${capKey(name)}`) ? html` ${t(`tour.cap.${capKey(name)}`)}` : ""}</figcaption>` : cap(name)}</figure>`;
 };
 // the mockups: a live results table and a phone's lock screen, invented
@@ -79,34 +85,39 @@ function leg(L, i) {
   const row = L.row ? html`<div class="tour-g-3">${L.row.map((s) => shot(s))}</div>` : "";
   const strip = L.strip ? html`<div class="tour-g-4">${L.strip.map((s) => shot(s, { small: true }))}</div>` : "";
   const pair = L.pair ? html`<div class="tour-g-2">${L.pair.map((s) => shot(s))}</div>` : "";
-  const phones = L.phones ? html`<div class="tour-g-5">${L.phones.map((s) => html`<figure><div class="tour-phone"><img src="${src(s)}"
+  const phones = L.phones ? html`<div class="tour-g-5">${L.phones.map((s) => html`<figure><div class="tour-phone"><img src="${src(s)}" ${raw(PHONE_DIMS)}
       alt="${t(`tour.cap.${s}.b`)}" loading="lazy" decoding="async" tabindex="0" title="${t("tour.zoom")}"></div><figcaption><b>${t(`tour.cap.${s}.b`)}</b></figcaption></figure>`)}</div>` : "";
   // a computer's picture beside the same page on a phone
-  const dp = L.dp ? html`<div class="tour-g-dp">${shot(L.dp[0])}<figure><div class="tour-phone"><img src="${src(L.dp[1])}"
+  const dp = L.dp ? html`<div class="tour-g-dp">${shot(L.dp[0])}<figure><div class="tour-phone"><img src="${src(L.dp[1])}" ${raw(PHONE_DIMS)}
       alt="${t(`tour.cap.${L.dp[1]}.b`)}" loading="lazy" decoding="async" tabindex="0" title="${t("tour.zoom")}"></div>${cap(L.dp[1])}</figure></div>` : "";
   return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${main}${dp}${row}${strip}${pair}${phones}</section>`;
 }
 
-/** A module's section: its introduction (with a way in), then its legs, numbered on from `n`. */
-function mod(M, n) {
+const START = `<svg class="tour-start" viewBox="0 0 45 45" aria-hidden="true"><path d="M22.5 5 L41 37 L4 37 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>`;
+const FINISH = `<svg class="tour-ctrl tour-ctrl-finish" viewBox="0 0 45 45" aria-hidden="true"><circle cx="22.5" cy="22.5" r="20" stroke="currentColor" stroke-width="3"/><circle cx="22.5" cy="22.5" r="13" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+
+/** A module's section, a course of its own: its introduction at the start, its legs numbered from 1, its way in at the finish. */
+function mod(M) {
   const cta = M.id === "orga" ? html`<a class="btn btn-primary" href="#/compte/inscription">${t("tour.mod.orga.cta")}</a>`
     : html`<button type="button" class="btn btn-primary" data-guest-enter="${M.id}">${t("tour.mod.try", { mod: t(`mod.${M.id}`) })}</button>`;
-  return html`<div class="tour-mod" id="mod-${M.id}" data-mod="${M.id}">
+  return html`<div class="tour-sec tour-mod" id="mod-${M.id}" data-mod="${M.id}"><div class="tour-course">${raw(START)}
     <header class="tour-mod-head"><span class="tour-mod-badge">${t(`mod.${M.id}`)}</span><h2>${t(`tour.mod.${M.id}.title`)}</h2>
-      <p class="tour-lede">${t(`tour.mod.${M.id}.lede`)}</p><div class="tour-mod-cta">${cta}</div></header>
-    ${M.legs.map((id, i) => leg(LEGS.find((L) => L.id === id), n + i))}</div>`;
+      <p class="tour-lede">${t(`tour.mod.${M.id}.lede`)}</p></header>
+    ${M.legs.map((id, i) => leg(LEGS.find((L) => L.id === id), i))}
+    <div class="tour-leg tour-mod-end">${raw(FINISH)}<div class="tour-mod-cta">${cta}</div></div></div></div>`;
 }
-/** Who sees what: the features of each module by profile. */
+/** Who sees what: the modules as columns, the access levels as rows, in each cell what that level adds. */
 function features() {
-  const cell = (v) => (v === "y" ? html`<td class="c tour-yes" title="${t("tour.feat.yes")}">✓</td>`
-    : v === "f" ? html`<td class="c tour-yes" title="${t("tour.feat.fed")}">✓<sup>1</sup></td>` : html`<td class="c tour-no" title="${t("tour.feat.no")}">—</td>`);
-  return html`<section class="tour-features" id="mod-features">
+  const cell = (m, l) => {
+    const n = CAPS[m][l];
+    return html`<td data-mod="${m}"><span class="tour-feat-m">${t(`mod.${m}`)}</span>${n ? html`<ul>${Array.from({ length: n }, (_, i) => html`<li>${t(`tour.f.${m}.${l}.${i + 1}`)}</li>`)}</ul>`
+      : html`<span class="tour-no">${t(`tour.f.none.${l}`)}</span>`}</td>`;
+  };
+  return html`<section class="tour-sec tour-features" id="mod-features">
     <div class="tour-eyebrow">${t("tour.feat.eyebrow")}</div><h2>${t("tour.feat.title")}</h2><p class="tour-lede">${t("tour.feat.lede")}</p>
-    <div class="table-wrap"><table class="data tour-feat-table"><thead><tr><th>${t("tour.feat.col")}</th><th class="c">${t("tour.feat.guest")}</th>
-      <th class="c">${t("tour.feat.account")}</th><th class="c">${t("tour.feat.orga")}</th></tr></thead>
-      <tbody>${FEATURES.map(([m, rows]) => html`<tr class="tour-feat-mod" data-mod="${m}"><th colspan="4">${t(`mod.${m}`)} <span>${t(`mod.${m}.tag`)}</span></th></tr>
-        ${rows.map(([k, v]) => html`<tr><td>${t(`tour.feat.${m}.${k}`)}</td>${[...v].map(cell)}</tr>`)}`)}</tbody></table></div>
-    <p class="muted tour-feat-note"><sup>1</sup> ${t("tour.feat.note")}</p></section>`;
+    <div class="tour-feat-grid"><table class="tour-feat-table"><thead><tr><th></th>${MODS.map((M) => html`<th data-mod="${M.id}">${t(`mod.${M.id}`)}<span>${t(`mod.${M.id}.tag`)}</span></th>`)}</tr></thead>
+      <tbody>${LEVELS.map((l) => html`<tr><th scope="row"><b>${t(`tour.lvl.${l}`)}</b><em class="tour-free">${t("tour.lvl.free")}</em><span>${t(`tour.lvl.${l}.sub`)}</span></th>${MODS.map((M) => cell(M.id, l))}</tr>`)}</tbody></table></div>
+    <p class="muted tour-feat-note">${t("tour.feat.note")}</p></section>`;
 }
 
 /** The section, under the hero. counts: meta.json's { runners, competitions, results }. */
@@ -114,18 +125,16 @@ function features() {
 export function tourHtml(counts = {}, { world = false } = {}) {
   const fig = (v, k) => (v ? html`<div class="tour-fig"><b>${fmt(v)}</b><span>${t(k)}</span></div>` : "");
   const tick = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 12.5l3.2 3L17 8.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // the overview, a course too: what Ozimut is at the start, on phones (1), the pledges and the account at the finish
   return html`<section class="tour" aria-labelledby="tour-title">
-    <header class="tour-top"><div class="tour-eyebrow">${t("tour.eyebrow")}</div><h2 id="tour-title">${t("tour.title")}</h2>
-      <p class="tour-lede">${t("tour.lede")}</p>
-      <div class="tour-figs">${fig(counts.runners, "tour.fig.runners")}${fig(counts.competitions, "tour.fig.competitions")}${fig(counts.results, "tour.fig.results")}
-        <div class="tour-fig"><b>4</b><span>${t("tour.fig.specs")}</span></div></div>
-      <div class="tour-hub">${shot("hub")}</div></header>
-    <div class="tour-course">
-      <svg class="tour-start" viewBox="0 0 45 45" aria-hidden="true"><path d="M22.5 5 L41 37 L4 37 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>
-      ${MODS.map((M, i) => mod(M, MODS.slice(0, i).reduce((s, x) => s + x.legs.length, 0)))}
-      ${leg(LEGS.find((L) => L.id === "phones"), MODS.reduce((s, x) => s + x.legs.length, 0))}
-      <section class="tour-leg tour-finish" id="tour-finish">
-        <svg class="tour-ctrl tour-ctrl-finish" viewBox="0 0 45 45" aria-hidden="true"><circle cx="22.5" cy="22.5" r="20" stroke="currentColor" stroke-width="3"/><circle cx="22.5" cy="22.5" r="13" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+    <div class="tour-sec tour-mod" id="mod-overview" data-mod="overview"><div class="tour-course">${raw(START)}
+      <header class="tour-top"><div class="tour-eyebrow">${t("tour.eyebrow")}</div><h2 id="tour-title">${t("tour.title")}</h2>
+        <p class="tour-lede">${t("tour.lede")}</p>
+        <div class="tour-figs">${fig(counts.runners, "tour.fig.runners")}${fig(counts.competitions, "tour.fig.competitions")}${fig(counts.results, "tour.fig.results")}
+          <div class="tour-fig"><b>4</b><span>${t("tour.fig.specs")}</span></div></div>
+        <div class="tour-hub">${shot("hub")}</div></header>
+      ${leg(LEGS.find((L) => L.id === "phones"), 0)}
+      <section class="tour-leg tour-finish" id="tour-finish">${raw(FINISH)}
         <div class="tour-leg-head"><div><div class="tour-eyebrow">${t("tour.finish.eyebrow")}</div><h2>${t(world ? "tour.finish.title.world" : "tour.finish.title")}</h2></div></div>
         <div class="tour-finish-band">
           <ul class="tour-pledge">${[1, 2, 3, 4, 5].map((i) => { const w = world && i === 1 ? ".world" : "";
@@ -135,8 +144,8 @@ export function tourHtml(counts = {}, { world = false } = {}) {
             <p class="tour-cta-mail"><span>${t("tour.cta.mail")}</span> <b id="tour-mail">${MAIL}</b>
               <button type="button" class="btn btn-sm" id="tour-copy">${t("tour.cta.copy")}</button></p></div>
         </div>
-      </section>
-    </div>
+      </section></div></div>
+    ${MODS.map((M) => mod(M))}
     ${features()}
     <p class="tour-note">${t("tour.note")}</p>
     <dialog class="tour-box" id="tour-box"><img alt=""><p></p></dialog>
@@ -158,6 +167,14 @@ export function mountTour(root) {
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
   });
   box.addEventListener("click", () => box.close());
+  const lines = () => $$(".tour-course", root).forEach((c) => {
+    const end = $(":scope > .tour-leg:last-child .tour-ctrl-finish", c);
+    if (!end || !c.offsetHeight) return;
+    const e = end.getBoundingClientRect(), y = e.top + e.height / 2 - c.getBoundingClientRect().top;
+    c.style.setProperty("--line", `${Math.max(0, Math.round(y - 30))}px`);
+  });
+  if (window.ResizeObserver) { const ro = new ResizeObserver(lines); $$(".tour-course", root).forEach((c) => ro.observe(c)); }
+  lines();
   $("#tour-copy", root)?.addEventListener("click", (e) => {
     const b = e.currentTarget;
     navigator.clipboard?.writeText(MAIL).then(() => { b.textContent = t("tour.cta.copied"); }).catch(() => {
