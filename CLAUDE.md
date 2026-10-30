@@ -231,7 +231,9 @@ water blue), **Stats** (the rankings and their analyses — forest green), **Coa
 « Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).
 `app.js` `MODULES`, `moduleMenus()` (each module's menu), `moduleOf(r)` (a route's module; `ROUTE_MODULE` for the routes
 outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`; folded behind
-the menu button when they do not fit, `app.fitNav`), the logo and the module's name (`.brand-mod`), the method switch in Stats;
+the menu button when they do not fit, `app.fitNav`), the logo and the module's name (`.brand-mod`, a word in the flag's orange
+right after « Ozimut », not a pill like the menu's items); the bar holds the menu only: the method switch sits at the right of
+a Stats page's tab row (`app.placeMethod`, else alone above the page); Stats has no « Ma page »: « Coureur » opens one's own;
 the contour lines are drawn behind the bar itself (owner, 2026-10-30, second review: no banner under it, no line describing the
 module — the modules page says it). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
 account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. **No page leads into another module**

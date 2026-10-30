@@ -2519,3 +2519,14 @@ body.full-win .tr-app { border: 0; }
   background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 14px; box-shadow: var(--shadow-pop); overflow: visible; }
 .topbar-inner.nav-fold .nav.open { display: flex; }
 .topbar-inner.nav-fold .mod-nav .nav-link { padding: 9px 10px; }
+/* the method switch at the right of a Stats page's tab row (app.placeMethod; owner, 2026-10-30) */
+.tabs-row > .method-pick { flex: none; display: flex; align-items: center; gap: 6px; margin: 0 0 6px auto; }
+.tabs-row > .tabs-actions + .method-pick { margin-left: 0; }
+.tabs-row > .method-pick + .search { margin-left: 0; }
+.page-head > .method-pick { flex: none; display: flex; align-items: center; gap: 6px; }
+.method-pick.method-alone { display: flex; justify-content: flex-end; gap: 6px; margin: 0 0 12px; }
+.method-pick .lab { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; cursor: help; }
+@media (max-width: 640px) { .tabs-row > .method-pick { margin-left: 0; } }
+/* the module's name: a word after « Ozimut » in the control flag's orange, not a pill like the menu's items (owner, 2026-10-30) */
+.brand .brand-mod { background: none; padding: 0; margin-left: -5px; border-radius: 0; color: var(--flag); font-size: 16px; font-weight: 700;
+  letter-spacing: -0.01em; }

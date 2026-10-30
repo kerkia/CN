@@ -361,9 +361,9 @@ export function moduleMenus() {
     // coming ones — the Agenda, with what is live now (« En direct »'s list of before) — and the past ones (« Résultats »)
     arena: [["coming", "#/agenda", t("arena.tab.coming")], ["past", "#/resultats", t("arena.tab.past")]],
     stats: [
-      // one's own page, in France's data (the runner page of one's licence)
-      ...(me?.lic && country.current() === "FR" && ranksHere() ? [["me", link.runner(`fr${me.lic}`), t("auth.myPage")]] : []),
-      ...[["runner", "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
+      // « Coureur » opens on one's own page, in France's data (owner, 2026-10-30: « Ma page » was the same page); another
+      // runner is found by its search
+      ...[["runner", me?.lic && country.current() === "FR" && ranksHere() ? link.runner(`fr${me.lic}`) : "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
         ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
         ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
         // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
@@ -408,7 +408,6 @@ function fitNav() {
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session(), visitor = me || auth.guest();
-  const fr = country.ranks();         // the site's country's rankings (its public copy included): the method switch
   // the module shown: the page's, else the one last opened (a page of no module: Réglages, Documentation…); none on the
   // modules page and the home page
   const own = visitor && route !== "orgaOff" ? moduleOf(r) : null;
@@ -416,7 +415,7 @@ function renderHeader(r) {
   // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
   const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
     ? [...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]), ["home-features", "#/?s=features", t("tour.feat.eyebrow")]] : [];
-  const current = menuKey(r) === "runner" && me?.lic && [me.lic, `fr${me.lic}`].includes(r.arg) ? "me" : menuKey(r);
+  const current = menuKey(r);
   document.body.dataset.group = mod || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
@@ -435,7 +434,6 @@ function renderHeader(r) {
     </a>
     ${items.length ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
-      ${mod !== "stats" || !fr || store.available().length < 2 || route === "needCountry" ? "" : methodSwitch()}
       ${visitor ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}
       ${themeMenu()}
@@ -467,15 +465,6 @@ function renderHeader(r) {
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
   fitNav();
   if (!navBound) { navBound = true; window.addEventListener("resize", debounce(fitNav, 120)); }
-  // the method: one for the whole site; a switch redraws the page (a ?m= in the address follows)
-  const pickMethod = (m) => {
-    store.setMethod(m);
-    const q = parseHash().query;
-    if (q.m) replaceQuery({ ...q, m: store.get().method });
-    redraw();
-  };
-  $$("[data-method-pick]").forEach((b) => b.addEventListener("click", () => pickMethod(b.dataset.methodPick)));
-  $("#method-pick")?.addEventListener("change", (e) => pickMethod(e.target.value));
   // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice
   const closeMenus = (except) => $$(".nav-group.open").forEach((g) => {
     if (g === except) return;
@@ -567,6 +556,33 @@ function leanHead(main) {
   }
   if (!head.children.length) head.remove(); else head.classList.add("lean");
 }
+
+// ---- the method -----------------------------------------------------------------------------------------------------
+// One for the whole site, chosen on Stats' pages at the right of their tab row (owner, 2026-10-30: the bar holds the menu
+// only); a switch redraws the page in place (a ?m= in the address follows).
+function placeMethod(main, r) {
+  if (moduleOf(r) !== "stats" || r.route === "needCountry" || !country.ranks() || store.available().length < 2) return;
+  const sw = document.createElement("div");
+  sw.innerHTML = methodSwitch().toString();
+  const el = sw.firstElementChild;
+  const row = tabsRow(main);
+  if (row) { row.insertBefore(el, $(".search", row)); return; }
+  const head = $(".page-head", main);
+  if (head) { head.append(el); return; }
+  el.classList.add("method-alone");
+  main.prepend(el);
+}
+function pickMethod(m) {
+  store.setMethod(m);
+  const q = parseHash().query;
+  if (q.m) replaceQuery({ ...q, m: store.get().method });
+  redraw();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-method-pick]");
+  if (b) pickMethod(b.dataset.methodPick);
+});
+document.addEventListener("change", (e) => { if (e.target.id === "method-pick") pickMethod(e.target.value); });
 
 function placeSearch(main) {
   const row = auth.session() ? tabsRow(main) : null;
@@ -748,6 +764,7 @@ async function route_() {
     current = (await mod.render(main, r)) || null;
     if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
     if (isLean(r)) leanHead(main);
+    placeMethod(main, r);
     lastRoute = r.route;
     track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;
