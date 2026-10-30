@@ -224,6 +224,56 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   thresholds gains +0.29 in sprint and VTT but adds two rules for the flaw the juniors' fading treats: not adopted (owner,
   2026-10-19). `study.json` `ecarts`; the Documentation's « Les choix » has a slide on each study, the white paper a paragraph.
 
+## The four modules and the three profiles (owner, 2026-10-30)
+
+Ozimut is four **modules**, the same names in both languages: **Arena** (the competitions: coming, live, run — the map's
+water blue), **Stats** (the rankings and their analyses — forest green), **Coach** (training: Analyse solo, Analyse multi,
+« Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).
+`app.js` `MODULES`, `moduleMenus()` (each module's menu), `moduleOf(r)` (a route's module; `ROUTE_MODULE` for the routes
+outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`), the logo and
+the module's name (`.brand-mod`); the contour-line banner under it says what the module is (and holds the method switch in
+Stats). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
+account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. **No page leads into another module**
+(the rule of the restructure): runner names in Arena's tables open the runner's window (`runnerpop.js`, as « En direct »'s),
+Orga's pages name where things show (« Arena › En direct › … ») instead of linking, the analyses tag an organiser's own event
+instead of linking to Orga. E-mail and notification links go straight to their page (allowed). The pages outside the modules
+(Réglages, Documentation, Nous écrire, admin) keep the last module's menu (`sessionStorage ocn.module`).
+
+**Three profiles**: a **visitor without an account** (« Entrer sans compte »: `auth.guest()`, `localStorage ocn.guest`; the
+router keeps them to `GUEST_ROUTES`: Arena, Coach but Analyse multi, Stats' runner, ranking and races), a **signed-in account**,
+and a signed-in account **with Orga** (`users.orga`, migration 0016 — at registration, in Réglages › Modules, or « Activer Orga »
+on the modules page; `_lib/api.js publicUser` treats a database without the column as Orga for all). Orga is never offered on a
+phone (`app.isPhone`: coarse pointer and ≤ 900 px; an Orga address shows `orgaOff`, hub.js). Analyse multi needs an account.
+
+**Public data for visitors** (`data.setPublicRule`, set by `app.start`): a visitor, or an account that has not joined a country
+whose access is "members" (France), reads its **public copy** `data/<cc>/pub/` (`site_public.py`, written by `build_site` for
+France after `site_extras`, and once by any run if missing — `update.ensure_public`): the races from the first season FFCO shows
+without a login (`countries/fr/public_period.py`: the season listing's « réservée aux licenciés », checked monthly by the
+regular runs, `engine_meta` `ffco_public_from` / `ffco_public_checked`; 2024 on 2026-10-30), runners.json (those with a race in
+the period or ranked in its snapshots, counts recomputed), competitions.json, c/, r/ (a hundred numbers a file, meta `bucket`
+100), snap/ of the period's seasons, agecurve.json, meta.json (`public_from`). Agenda, evaluation and validation stay the
+country's own files (`data.js SHARED`). The pages read from it (`data.isPublicCopy()`) hide the long-term tabs (runner: only
+Courses and Calcul; ranking: no Progressions); the other Stats pages show `needCountry` (« create an account and join France »).
+The login gate (`_middleware.js guestMay`) lets a request without a session GET the public copies and `DATA_FOR_ALL`, the
+countries whose access is "all" (Spain, the agendas' countries; `auth.sees` is true for them without a session too), the live
+results (`/api/live/list`, `/ws/*`) and `/api/tracking` (its GET serves visitors, `mine` false). Not excluded in `_routes.json`:
+every visitor's request goes through the gate, which judges the decoded path, and counts on the Workers' daily quota.
+
+**Arena**: its menu is « Compétitions » (`#/agenda`) and « En direct ». The competitions page is two pages shown as one
+(`arenatabs.js` `arenaTabs`): « Aujourd'hui et à venir » (the Agenda) and « Passées » (« Résultats », the last 60 days; older
+results are Stats' « Courses » only). A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
+has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
+`SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
+provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.
+**Coach**: « Analyse solo » is one page, two tabs (`coachtabs.js`): a competition (`#/analyse`) or a training or any race
+(`#/analyse-solo`); « Analyse multi » likewise (`#/analyse-competition`, `#/analyse-club`). « Définitions de postes »
+(`#/definitions`, `pages/descriptions.js`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
+names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
+legal notices. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out).
+**The home page**: the bar's links lead to each module's section and to « Qui voit quoi » (`#/?s=arena…`, `s=features`, the
+overview's `onQuery`), and « Se connecter » / « Créer un compte » / « Entrer sans compte » (`data-guest-enter`,
+`app.enterAsGuest`); `tour.js` `MODS` (each module's introduction, a way in, its legs) and `FEATURES` (the table by profile).
+
 ## Provisional results (« Résultats »)
 
 Organisers publish results (and often split times) on race day or the next, days before FFCO. `ffco_scraper/prov`
@@ -602,7 +652,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   its name-first views 1 / 1, Analyse multi's splits, Comparer's face-à-face, Résultats' list and start list); `fit.js` measures
   where the second and third stick (`--fz2`, `--fz3`, from the header row's widths — a stuck cell's position moves with the
   scroll). Opaque cells, the row's tint `--row-tint` over them, a line after the last; « En direct » keeps its own (`--lv-tint`).
-- Navigation (owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as
+- Navigation (superseded on 2026-10-30 by « The four modules » above; owner, 2026-10-12; « Entrainement » and « Organisation » added 2026-10-14/15; « Courses » first and the agenda as
   every signed-in account's landing page since 2026-10-21, `app.homeOf`, the brand's link too): the bar shows the groups as tabs —
   « Courses » (Agenda, formerly « Bientôt »; Résultats, formerly « Récemment »; En direct; Analyse de course, 2026-10-23), « Classement » (« Classement national »
   until 2026-10-15; Coureur, Classement, Courses classées = `#/courses`, Comparer, Clubs, Statistiques = `#/reseau`), « Entrainement »,
