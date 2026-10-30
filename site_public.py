@@ -125,7 +125,8 @@ def write(out: Path, public_from: int) -> dict:
              "seasons": [y for y in meta.get("seasons", []) if y >= public_from],
              "months": [m for m in meta.get("months", []) if m >= start],
              "overview": {y: v for y, v in (meta.get("overview") or {}).items() if str(y).isdigit() and int(y) >= public_from},
-             "counts": {**(meta.get("counts") or {}), "runners": len(rows), "competitions": len(keep_comps), "results": n_results}}
+             "counts": {**(meta.get("counts") or {}), "runners": len(rows), "competitions": len(keep_comps), "results": n_results,
+                        "circuits": sum(len((c or {}).get("circuits") or []) for g in groups.values() for c in g.values())}}
     pmeta.pop("club_packs", None)
     dump(pub / "meta.json", pmeta)
     held = {"runners": len(rows), "competitions": len(keep_comps), "r_files": len(buckets), "c_files": len(groups)}
