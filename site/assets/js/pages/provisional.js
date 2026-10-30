@@ -16,7 +16,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { raceTabs } from "../arenatabs.js";
+import { raceTabs, raceHref } from "../arenatabs.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -187,15 +187,11 @@ async function detail(main, idx, query) {
   const track = tracking.linkOf(tracks, race.key, agendaId && `a${agendaId}`);
   // the splits page lists only the documents with split times: its own indexes
   const withSplits = race.docs.filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
-  const splitsLink = (d, c) => {
-    const i = withSplits.indexOf(d);
-    return `#/analyse-course?course=${encodeURIComponent(race.key)}${i > 0 ? `&doc=${i}` : ""}${i >= 0 && c ? `&c=${c}` : ""}`;
-  };
 
   // the way back to Arena's list of competitions (owner, 2026-10-30), which comes back where it was (agenda.js memo)
   main.innerHTML = html`
     <a class="back-link" href="#/agenda">‹ ${t("arena.back")}</a>
-    <div class="page-head"><div><h1>${race.name}</h1>
+    <div class="page-head race-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${tracking.button(track)}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
@@ -231,10 +227,12 @@ async function detail(main, idx, query) {
     const k = groups[ci];
     replaceQuery({ course: race.key, doc: di || null, c: ci || null, r: who, vue: views(d) && byCat ? "categorie" : null });
     $("#pv-pick").innerHTML = html`
-      ${docs.length > 1 ? html`<label class="field"><span>${t("prov.source")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${sourceName(x)}</option>`)}</select></label>` : ""}
+      ${docs.length > 1 && auth.session()?.admin ? html`<label class="field"><span>${t("prov.source")}</span><select id="pv-doc" style="max-width:420px">${docs.map((x, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${sourceName(x)}</option>`)}</select></label>` : ""}
       ${views(d) ? html`<div class="field"><span>${t("prov.view")}</span>${seg("pvv", [["circ", t("prov.view.circ")], ["cat", t("prov.view.cat")]], byCat ? "cat" : "circ")}</div>` : ""}
-      <label class="field"><span>${(views(d) ? byCat : d.by === "category") ? t("prov.category") : t("prov.circuit")}</span><select id="pv-c">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
-      ${k.runners.some((r) => r.splits) ? html`<a class="btn btn-sm" style="align-self:flex-end" href="${splitsLink(d, ci)}">${t("spl.ofClass")} →</a>` : ""}`;
+      <label class="field"><select id="pv-c" aria-label="${(views(d) ? byCat : d.by === "category") ? t("prov.category") : t("prov.circuit")}">${groups.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name}${asCircuits && x.categories?.length ? ` · ${x.categories.join(", ")}` : ""} (${x.runners.length})</option>`)}</select></label>
+`;
+    const si = withSplits.indexOf(d);
+    $$(".race-tabs a[data-view]").forEach((a) => { a.href = raceHref(race.key, a.dataset.view, si >= 0 ? { doc: si || null, c: ci || null } : {}); });
     $("#pv-doc")?.addEventListener("change", (e) => {
       di = Number(e.target.value);
       ci = who ? Math.max(0, groupsOf(docs[di]).findIndex((g) => g.runners.some((r) => r.lic === who))) : 0;   // the runner's group

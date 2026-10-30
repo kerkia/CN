@@ -219,7 +219,7 @@ export async function render(main, { query }) {
     <div class="page-head">
       <div><h1>${t("rk.title")}</h1><p class="lede">${t("rk.lede")}</p></div>
       <div class="row">
-        <button class="btn" type="button" id="export">${t("rk.export")}</button>
+        <button class="btn csv-btn" type="button" id="export">${t("rk.export")}</button>
         <button class="btn" type="button" id="find-me" hidden></button>
         <a class="btn btn-primary" href="#/comparer" id="go-compare">${t("rk.compare")}</a>
       </div>

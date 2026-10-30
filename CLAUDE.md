@@ -277,7 +277,15 @@ competitions as dots, today's and the past ones only while the mouse is over the
 by the offline place tables, else that unit's centre). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
 tables show the one chosen in Stats. Arena has no menu: a race's
 page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-bar-tabs]` — the results page's `raceTabs`,
-`splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit, a dropdown on a phone). A past row
+`splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit). **On a phone** (≤ 760 px; owner,
+2026-10-30: the bar's folded menu stayed open, came twice, would not close on a tap beside it) a race's tabs and Stats' pages are a
+menu in the page instead (`app.pageMenu`): its button before the race's name, or before a Stats page's tabs, the current tab or
+page written on it; a choice, a tap elsewhere or Escape closes it; the bar's menu button goes on those pages (`.pm-on`). A race's
+page on a phone drops the line under its name (`.race-head .lede`); Stats' CSV exports are not offered there (`.csv-btn`). **The
+source is Ozimut's choice** (owner: « users don't know better »): the results page and the analysis show the best document
+(`run.doc_priority`'s order) and offer the source selector to administrators only; the circuit selector has no « Circuit » /
+« Catégorie » label (« Voir » says it), and no « Temps intermédiaires de ce circuit » button: the race's tabs carry the circuit
+shown (`data-view`, `raceHref`). On the modules page a module's name opens it, as its button does. A past row
 opens its results page (`#/resultats?course=`); a coming or today's one its details beside the list. `#/resultats` (the old list)
 leads to the competitions with « Passées » ticked (`?periode=passees`), `#/direct` to the competitions (a race's live page
 `#/direct/<id>` stays), `#/analyse-course` without a race to « Passées ». Desktop layout: the filters (with the runner,

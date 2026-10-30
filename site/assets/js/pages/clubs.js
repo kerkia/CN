@@ -114,7 +114,7 @@ async function listView(main, query, mode) {
         <div class="row">
           <label class="field" style="flex-direction:row;align-items:center;gap:8px"><span>${t("f.name")}</span>
             <input type="search" id="cq" value="${q}" style="width:180px"></label>
-          <button class="btn btn-sm" type="button" id="csv">${t("rk.export")}</button>
+          <button class="btn btn-sm csv-btn" type="button" id="csv">${t("rk.export")}</button>
         </div></div>
       <div id="clubs"></div>
     </section>

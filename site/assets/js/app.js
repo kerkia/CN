@@ -592,13 +592,61 @@ document.addEventListener("click", (e) => {
 document.addEventListener("change", (e) => { if (e.target.id === "method-pick") pickMethod(e.target.value); });
 
 /** A page whose tabs are its module's menu (Arena's race page: its results and the analysis's views; owner, 2026-10-30): its
- *  [data-bar-tabs] element moves into the bar, where it keeps its own id and handlers. */
-function placeBarTabs(main) {
+ *  [data-bar-tabs] element moves into the bar, where it keeps its own id and handlers — on a computer; on a phone, into the
+ *  page's own menu (pageMenu). */
+function placeBarTabs(main, r) {
+  if (pageMenu(main, r)) return;
   const el = $("[data-bar-tabs]", main), nav = $("#nav");
   if (!el || !nav) return;
   nav.append(el);
   $("#menu-btn")?.removeAttribute("hidden");
   fitNav();
+}
+
+/** On a phone (owner, 2026-10-30: the bar's folded menu stayed open, came twice, would not close on a tap beside it) a race's
+ *  tabs and Stats' pages are a menu in the page: its button before the race's name, or before the page's tabs, the current
+ *  tab or page written on it; a choice, a tap elsewhere or Escape closes it. The bar's menu button goes on those pages. */
+const narrow = () => matchMedia("(max-width: 760px)").matches;
+let pageMenuBound = false;
+function pageMenu(main, r) {
+  if (!narrow()) return false;
+  const tabs = $("[data-bar-tabs]", main);
+  if (!tabs && moduleOf(r) !== "stats") return false;
+  const box = document.createElement("div");
+  box.className = `page-menu${tabs ? " race" : ""}`;
+  box.innerHTML = html`<button type="button" class="btn btn-sm page-menu-btn" aria-expanded="false" aria-haspopup="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    <span class="pm-label"></span></button><div class="page-menu-list" hidden></div>`;
+  const list = $(".page-menu-list", box), label = $(".pm-label", box);
+  if (tabs) {
+    const at = $("h1", main);
+    if (!at) return false;
+    list.append(tabs);
+    const cur = () => tabs.querySelector('[aria-selected="true"]')?.textContent.trim() || "";
+    label.textContent = cur();
+    new MutationObserver(() => { label.textContent = cur(); }).observe(tabs, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-selected"] });
+    at.before(box);
+  } else {
+    const k = menuKey(r), items = moduleMenus().stats;
+    list.innerHTML = html`<nav class="pm-nav">${items.map(([key, href, text]) => html`<a href="${href}" ${raw(key === k ? 'aria-current="page"' : "")}>${text}</a>`)}</nav>`;
+    label.textContent = items.find(([key]) => key === k)?.[2] || t("mod.stats");
+    const row = tabsRow(main);
+    if (row) row.prepend(box); else main.prepend(box);
+  }
+  const close = (m) => { $(".page-menu-list", m).hidden = true; $(".page-menu-btn", m).setAttribute("aria-expanded", "false"); };
+  $(".page-menu-btn", box).addEventListener("click", () => {
+    const open = list.hidden;
+    list.hidden = !open;
+    $(".page-menu-btn", box).setAttribute("aria-expanded", String(open));
+  });
+  list.addEventListener("click", (e) => { if (e.target.closest("a, button")) close(box); });
+  if (!pageMenuBound) {
+    pageMenuBound = true;
+    document.addEventListener("click", (e) => $$(".page-menu").forEach((m) => { if (!m.contains(e.target)) close(m); }));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") $$(".page-menu").forEach(close); });
+  }
+  $(".topbar-inner")?.classList.add("pm-on");
+  return true;
 }
 
 function placeSearch(main) {
@@ -787,7 +835,7 @@ async function route_() {
     if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
     if (isLean(r)) leanHead(main);
     placeMethod(main, r);
-    placeBarTabs(main);
+    placeBarTabs(main, r);
     lastRoute = r.route;
     track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;

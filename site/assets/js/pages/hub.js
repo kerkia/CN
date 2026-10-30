@@ -44,7 +44,7 @@ function card(m) {
   const locked = m === "orga" ? orgaState() : null;
   const guest = !auth.session();
   return html`<section class="hub-card" data-mod="${m}">
-    <div class="hub-card-head">${icon(m)}<div><h2>${t(`mod.${m}`)}</h2><p>${t(`mod.${m}.tag`)}</p></div></div>
+    <div class="hub-card-head">${icon(m)}<div><h2>${locked ? t(`mod.${m}`) : html`<a href="${moduleHome(m)}">${t(`mod.${m}`)}</a>`}</h2><p>${t(`mod.${m}.tag`)}</p></div></div>
     <p class="hub-text">${t(`hub.${m}.text`)}</p>
     ${guest && m === "stats" ? html`<p class="muted hub-note">${t("hub.stats.guest")}</p>` : ""}
     ${guest && m === "coach" ? html`<p class="muted hub-note">${t("hub.coach.guest")}</p>` : ""}

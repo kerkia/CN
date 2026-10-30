@@ -43,6 +43,7 @@ import * as local from "../local.js";
 import { liveId, toDoc, watch } from "../livesplits.js";
 import { bindRunnerPop } from "../runnerpop.js";
 import { SPLIT_VIEWS, resultsTab } from "../arenatabs.js";
+import * as auth from "../auth.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
 // Résultats » — the organisers' alone (2026-10-15)
@@ -82,7 +83,7 @@ export async function render(main, { query = {} } = {}) {
   const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
   main.innerHTML = html`
     <div id="sp-back">${live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
-    <div class="page-head sp-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
+    <div class="page-head sp-head race-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
     <div id="sp-tabs" data-bar-tabs></div>
     <div id="sp-live"></div>
@@ -125,7 +126,7 @@ export async function render(main, { query = {} } = {}) {
     head(r);
     $("#sp-pick").innerHTML = html`
       ${key === local.LOCAL ? html`<span class="pill" title="${t("dep.file")}">${r?.name || ""}</span>` : ""}
-      ${docs.length > 1 ? html`<select id="sp-doc" aria-label="${t("prov.doc")}" title="${t("prov.doc")}">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select>` : ""}
+      ${docs.length > 1 && auth.session()?.admin ? html`<select id="sp-doc" aria-label="${t("prov.doc")}" title="${t("prov.doc")}">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select>` : ""}
       <select id="sp-c" aria-label="${t("prov.circuit")}" title="${t("prov.circuit")}">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select>
       <select id="sp-club" aria-label="${t("spl.club")}" title="${t("spl.club")}"><option value="">${t("ag.allClubs")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`;

@@ -268,7 +268,7 @@ export async function render(main) {
   function foot(el, entry) {
     const u = entry.usage;
     $(".ia-foot", el).innerHTML = html`
-      ${entry.result ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="csv">${t("ia.csv")}</button>` : ""}
+      ${entry.result ? html`<button type="button" class="btn btn-ghost btn-sm csv-btn" data-act="csv">${t("ia.csv")}</button>` : ""}
       ${entry.answer?.sql ? html`<button type="button" class="btn btn-ghost btn-sm" data-act="follow">${t("ia.refine")}</button>` : ""}
       ${u ? html`<span class="muted">${u.provider ? `${u.provider} · ${u.model}` : String(u.model).split("/").pop()} · ${t("ia.usage.tokens", { in: fmt(u.tokensIn), out: fmt(u.tokensOut) })}${
         u.neurons != null ? ` · ${t("ia.usage.neurons", { n: fmt(u.neurons) })}` : ""}${u.dollars != null ? ` · ${fmt(u.dollars, 4)} $` : ""} · ${fmt(u.ms / 1000, 1)} s${entry.retried ? ` · ${t("ia.usage.retried")}` : ""}</span>` : ""}

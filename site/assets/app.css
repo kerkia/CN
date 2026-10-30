@@ -2624,3 +2624,22 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .sh-orglist td.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the modules page on a phone: « Se connecter » is in the bar already (owner, 2026-10-30) */
 @media (pointer: coarse) and (max-width: 900px) { .hub-session .hub-login { display: none; } }
+/* a phone (2026-10-30): a race's tabs and Stats' pages as a menu in the page (app.pageMenu), the race's head light, no CSV */
+.page-menu { position: relative; display: inline-block; z-index: 30; }
+.page-menu.race { float: left; margin: 3px 10px 4px 0; }
+.page-menu-btn { display: inline-flex; align-items: center; gap: 6px; max-width: 62vw; }
+.page-menu-btn .pm-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page-menu-list { position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-width: calc(100vw - 32px); max-height: 70vh;
+  overflow-y: auto; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-pop); padding: 6px; }
+.page-menu-list .page-tabs, .page-menu-list .pm-nav { display: flex; flex-direction: column; gap: 0; border: 0; margin: 0; overflow: visible; }
+.page-menu-list a, .page-menu-list button[role="tab"] { display: block; width: 100%; text-align: left; padding: 9px 10px; border: 0; border-radius: 8px;
+  background: none; font: inherit; color: var(--ink); text-decoration: none; }
+.page-menu-list [aria-selected="true"], .page-menu-list [aria-current="page"] { background: var(--surface-2); font-weight: 600; }
+.topbar-inner.pm-on .menu-btn, .topbar-inner.pm-on #nav { display: none !important; }
+.tabs-row > .page-menu { flex: none; }
+.hub-card h2 a { color: inherit; text-decoration: none; }
+.hub-card h2 a:hover { text-decoration: underline; }
+@media (max-width: 760px) {
+  .race-head .lede { display: none; }
+  .csv-btn { display: none !important; }
+}

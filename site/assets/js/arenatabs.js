@@ -22,4 +22,4 @@ export const resultsTab = (key, cur) => html`<a role="tab" href="${raceHref(key,
 
 /** A race's tabs on its results page: the results (shown), then each view of the analysis when the race has split times. */
 export const raceTabs = (key, withSplits, q = {}) => html`<nav class="page-tabs race-tabs" role="tablist">${resultsTab(key, "results")}${
-  withSplits ? SPLIT_VIEWS.map((v) => html`<a role="tab" href="${raceHref(key, v, q)}" aria-selected="false">${t(`spl.tab.${v}`)}</a>`) : ""}</nav>`;
+  withSplits ? SPLIT_VIEWS.map((v) => html`<a role="tab" data-view="${v}" href="${raceHref(key, v, q)}" aria-selected="false">${t(`spl.tab.${v}`)}</a>`) : ""}</nav>`;
