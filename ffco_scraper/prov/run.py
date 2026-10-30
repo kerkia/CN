@@ -620,6 +620,27 @@ COLLECT_VERSION = 6
 _BY_DEPT = {d: region for region, ds in REGIONS.items() for d in ds.split()}
 
 
+def race_pos(race) -> list | None:
+    """Where a race was run, for Arena's map (owner, 2026-10-30: a past competition shown where the mouse is): its place
+    within its organiser's département (France; a name searched in the whole country took « Champs de bataille » of a Finistère
+    club to Seine-et-Marne), else in its country — [lat, lon], or [lat, lon, 1] for the centre of the unit when no town of
+    that name is known there (countries/places.py, offline tables)."""
+    try:
+        from countries import places
+    except Exception:
+        return None
+    cc = (race["country"] or "FR").upper()
+    code = (race["org_code"] or "")[:2].upper()
+    dept = code if cc == "FR" and (code.isdigit() or code in ("2A", "2B")) else None
+    try:
+        p = places.position(cc, race["place"], dept=dept)
+    except Exception:
+        return None
+    if not p:
+        return None
+    return [round(p[0], 3), round(p[1], 3)] + ([] if p[2] == "town" else [1])
+
+
 def region_of(org_code: str | None) -> str | None:
     """The organiser's region: a club number starts with its département ('6804' -> 68), a committee is one ('13')."""
     code = (org_code or "").upper()
@@ -1199,6 +1220,7 @@ def build(con, out: Path, today: date) -> int:
                                            "last_check", "next_check", "done", "country")} |
                      {"docs": len([x for x in out_docs if x.get("classes")]), "refused": len([x for x in out_docs if x["kind"] in ("refused", "platform")]),
                       "runners": n_run, "matched": n_lic, "splits": splits, "region": region_of(race["org_code"]),
+                      "pos": race_pos(race),
                       "site": bool(race["site"] or races.club_site(con, race["org_code"])),
                       "agenda_id": race["agenda_id"] or None, "soon": race["date_iso"] > today.isoformat() or None,
                       "startlist": any(x["kind"] in START_KINDS for x in out_docs) or None,

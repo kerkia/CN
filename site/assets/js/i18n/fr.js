@@ -2582,4 +2582,6 @@ export default {
   "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 derniers jours)",
   "agd.past.results": "résultats", "agd.past.splits": "temps inter.", "agd.past.official": "officiels",
   "mod.home": "Revenir à la première page de {mod}",
+  "an.cam": "📷 Photographier la carte",
+  "an.cam.hint": "Carte à plat, bien éclairée, tout le circuit dans le cadre, sans reflet : la photo reste sur ce téléphone.",
 };

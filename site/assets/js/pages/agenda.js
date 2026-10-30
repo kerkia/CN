@@ -18,8 +18,8 @@ import { raceFilters } from "../racefilters.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
-// today's, the coming and the past competitions (the last 60 days'), the first two shown at first
-const WHEN = ["today", "coming", "past"], WHEN_DEFAULT = ["today", "coming"];
+// today's, the coming and the past competitions (the last 60 days'), all three at first (owner, 2026-10-30): the list opens on today
+const WHEN = ["today", "coming", "past"], WHEN_DEFAULT = ["today", "coming", "past"];
 
 /** Merge of FFCO's "discipline" and "format": Forêt MD, Forêt LD, Sprint, Nuit, VTT MD, Ski, … (the data's French
  *  values compared, shown in the site's language) */
@@ -46,7 +46,7 @@ const SPEC = { "Forêt": "Pédestre", Sprint: "Pédestre", VTT: "VTT", Ski: "Ski
 // results page (owner, 2026-10-30: today's, the coming and the past competitions in one list, three boxes to choose)
 const pastEvent = (r) => ({ kind: "c", id: `r:${r.key}`, past: r.key, date: r.date_iso, name: r.name, place: r.place, org: r.org,
   region: r.region || "", country: r.country, cn: !!r.cn, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "",
-  docs: r.docs || 0, splits: !!r.splits, official: !!r.ffco_id, lics: r.lics || [] });
+  docs: r.docs || 0, splits: !!r.splits, official: !!r.ffco_id, lics: r.lics || [], pos: r.pos || null });
 const declaredEvent = (r) => ({ kind: "c", id: r.key, declared: true, date: r.date_iso, name: r.name, place: r.place, org: r.org,
   country: r.country, site: r.url || null, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "" });
 
@@ -270,7 +270,7 @@ export async function render(main, { query }) {
     $("#fold-badge").hidden = !n;
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
-    map?.show(shown.filter((e) => !e.past), st.selected);      // (a past competition has no place on the map)
+    map?.show(shown, st.selected, (e) => periodOf(e) !== "coming");      // today's and past ones: only on hover
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
@@ -341,7 +341,7 @@ export async function render(main, { query }) {
         if (key) $(`#table tr[data-key="${CSS.escape(key)}"]`)?.classList.add("map-hover");
       },
     });
-    map?.show(shown.filter((e) => !e.past), st.selected);      // (a past competition has no place on the map)
+    map?.show(shown, st.selected, (e) => periodOf(e) !== "coming");      // today's and past ones: only on hover
   }
   phone.addEventListener("change", mountMap);
   $("#table").addEventListener("mouseover", (e) => { const r = e.target.closest("tr[data-key]"); if (r) map?.hover(r.dataset.key); });

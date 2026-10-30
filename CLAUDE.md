@@ -265,8 +265,10 @@ every visitor's request goes through the gate, which judges the decoded path, an
 **Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
 agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in a box of their own above the filters, always shown — on a phone too, where the other filters are
-folded (« Aujourd'hui », « À venir », « Passées »; `st.when`, the first two by default; the list opens on today when past ones
-come first). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
+folded (« Aujourd'hui », « À venir », « Passées »; `st.when`, all three by default; the list opens on today). The map draws the coming
+competitions as dots, today's and the past ones only while the mouse is over their row or they are selected (`agendamap.show`'s
+`ghost`; a past race's place from the results index's `pos`, `prov/run.race_pos`: its place within its organiser's département
+by the offline place tables, else that unit's centre). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
 tables show the one chosen in Stats. Arena has no menu: a race's
 page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-bar-tabs]` — the results page's `raceTabs`,
 `splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit, a dropdown on a phone). A past row
@@ -278,7 +280,7 @@ from the top. A live race of today whose name fits an event becomes that event's
 (owner: not useful). An event's details start with one row of buttons (`actions`: invitation, « Suivre en direct », its
 provisional results and analysis, GPS tracking, the start list, « Accès » — the way there; the access text is a line of the
 details). The map has no frame of its own: its buttons and legend over it (`agendamap.js`; past rows are not on it). The modules page's Arena card lists what a competition chosen
-there offers (`hub.js ARENA_STEPS`) instead of page links. A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
+there offers (`hub.js ARENA_STEPS`: agenda, results, live, split analysis — the GPS analyses are Coach's) instead of page links. A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
 provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.
@@ -286,7 +288,8 @@ provisoires et analyse »: the organiser's list once there, else the live times 
 (`#/analyse-solo`); « Analyse multi » likewise (`#/analyse-competition`, `#/analyse-club`). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
 names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
-legal notices. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out).
+legal notices. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
+« Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page**: the bar's links lead to each module's section and to « Qui voit quoi » (`#/?s=arena…`, `s=features`, the
 overview's `onQuery`), and « Se connecter » / « Créer un compte » / « Entrer sans compte » (`data-guest-enter`,
 `app.enterAsGuest`); `tour.js` `MODS` (each module's introduction, a way in, its legs) and `FEATURES` (the table by profile).

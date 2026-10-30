@@ -2562,3 +2562,6 @@ body.full-win .tr-app { border: 0; }
 .agenda-when .frow { margin: 0; gap: 6px 18px; }
 .agenda-when .checkline { gap: 7px; }
 .agenda-when .frow { display: flex; flex-wrap: wrap; align-items: center; }
+/* Analyse solo on a phone: the map photographed with the camera (2026-10-30) */
+.an-cam-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; font-size: 12.5px; }
+.an-cam { justify-content: center; height: 44px; font-size: 15px; }

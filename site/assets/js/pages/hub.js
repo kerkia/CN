@@ -37,7 +37,7 @@ function orgaState() {
 }
 
 // Arena is one page, the competitions: its card says what a competition chosen there offers (owner, 2026-10-30), not links
-const ARENA_STEPS = ["agenda", "results", "live", "splits", "map"];
+const ARENA_STEPS = ["agenda", "results", "live", "splits"];      // (the GPS analyses are Coach's, owner 2026-10-30)
 
 function card(m) {
   const items = moduleMenus()[m];

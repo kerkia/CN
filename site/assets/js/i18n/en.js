@@ -3386,4 +3386,6 @@ export default {
   "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past (last 60 days)",
   "agd.past.results": "results", "agd.past.splits": "splits", "agd.past.official": "official",
   "mod.home": "Back to {mod}'s first page",
+  "an.cam": "📷 Photograph the map",
+  "an.cam.hint": "Map flat, well lit, the whole course in the frame, no glare: the photo stays on this phone.",
 };

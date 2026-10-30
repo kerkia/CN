@@ -102,21 +102,23 @@ export async function mount(el, cc, { onPick, onHover, levels = {} } = {}) {
 
   // ---- the dots: one per place (the events at one place share it)
   let spots = [], byKey = new Map(), cur = { hover: null, selected: null };
-  function show(events, selected) {
+  // `ghost(e)`: an event placed but drawn only while the mouse is over its row or it is selected (owner, 2026-10-30: today's
+  // and the past competitions, the coming ones being the dots)
+  function show(events, selected, ghost = () => false) {
     const at = new Map();
     let missing = 0, outside = 0;
     for (const e of events) {
-      const w = where(e);
-      if (!w) { missing++; continue; }
+      const g = !!ghost(e), w = where(e);
+      if (!w) { if (!g) missing++; continue; }
       const x = X(w[1]), y = Y(w[0]);
-      if (x < -full.w * 0.2 || x > full.w * 1.2 || y < -full.h * 0.2 || y > full.h * 1.2) { outside++; continue; }   // (overseas)
-      const k = `${x.toFixed(0)},${y.toFixed(0)},${w[2] ? 1 : 0}`;
-      if (!at.has(k)) at.set(k, { x, y, approx: w[2], events: [] });
+      if (x < -full.w * 0.2 || x > full.w * 1.2 || y < -full.h * 0.2 || y > full.h * 1.2) { if (!g) outside++; continue; }   // (overseas)
+      const k = `${x.toFixed(0)},${y.toFixed(0)},${w[2] ? 1 : 0},${g ? 1 : 0}`;
+      if (!at.has(k)) at.set(k, { x, y, approx: w[2], ghost: g, events: [] });
       at.get(k).events.push(e);
     }
     spots = [...at.values()].sort((a, b) => b.approx - a.approx);        // (the hollow rings under the dots)
     byKey = new Map(spots.flatMap((s) => s.events.map((e) => [e.key, s])));
-    dotsG.innerHTML = spots.map((s, i) => `<circle data-i="${i}" class="${s.approx ? "agm-ring" : "agm-dot"}" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}"/>`).join("");
+    dotsG.innerHTML = spots.map((s, i) => (s.ghost ? "" : `<circle data-i="${i}" class="${s.approx ? "agm-ring" : "agm-dot"}" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}"/>`)).join("");
     const n = missing + outside;
     el.querySelector(".agm-missing").textContent = n ? tn("agd.map.missing", n) : "";
     cur.selected = selected || null;

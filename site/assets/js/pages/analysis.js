@@ -310,6 +310,8 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-files").innerHTML = html`<div class="card-body">
       <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${fileAccept(ACCEPT)}">
         <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
+      ${matchMedia("(pointer: coarse)").matches ? html`<div class="an-cam-row"><label class="btn btn-primary an-cam"><input type="file" id="an-cam" accept="image/*" capture="environment" hidden>${t("an.cam")}</label>
+        <span class="muted">${t("an.cam.hint")}</span></div>` : ""}
       <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}${files.vector ? row("vector", files.vector) : ""}
@@ -320,6 +322,7 @@ export async function render(main, { query = {}, route } = {}) {
         <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+    $("#an-cam")?.addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     $("#an-forget")?.addEventListener("click", () => {
       stop(); prepToken++;                                  // a calibration under way stops with its files
       for (const role of Object.keys(files)) files[role] = null;
