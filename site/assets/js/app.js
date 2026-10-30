@@ -383,7 +383,8 @@ export function moduleMenus() {
 const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga",
   agenda: "arena", provisional: "arena", splits: "arena", live: "arena" };
 /** Where a module opens: its first page (Arena: the competitions). */
-export const moduleHome = (m) => (m === "arena" ? "#/agenda" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
+// Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
+export const moduleHome = (m) => (m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
 /** The module a page belongs to, or null (the modules page, the documentation, the settings…). */
 export function moduleOf(r) {
   const k = menuKey(r);

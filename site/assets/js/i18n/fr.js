@@ -2650,4 +2650,5 @@ export default {
   "tour.multi.lede": "L'organisateur prépare la carte et le circuit ; chacun ajoute sa trace. Départ groupé ou depuis un poste, les itinéraires côte à côte, les variantes regroupées, les écarts poste par poste et le face-à-face : de quoi débriefer un entraînement de club comme une compétition.",
   "tour.cap.multi.b": "La relecture :", "tour.cap.multi": "chaque coureur sur la même carte, en départ groupé, son allure sous la carte.",
   "tour.cap.multi-gaps.b": "Les écarts :", "tour.cap.multi-gaps": "le retard de chacun sur le meilleur, poste après poste ; un clic sur un point remet la relecture à ce passage.",
+  "hub.orga.register": "Créer un compte pour l'ouvrir",
 };

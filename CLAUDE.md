@@ -233,7 +233,7 @@ water blue), **Stats** (the rankings and their analyses — forest green), **Coa
 outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`; folded behind
 the menu button when they do not fit, `app.fitNav`), the logo and « Ozimut » (a link to the choice of module) with the module's name
 under it (`.brand-mod`, in the flag's orange, a link to the module's first page, `moduleHome`; owner, 2026-10-30); the bar holds the menu only: the method switch sits at the right of
-a Stats page's tab row (`app.placeMethod`, else alone above the page); Stats has no « Ma page »: « Coureur » opens one's own;
+a Stats page's tab row (`app.placeMethod`, else alone above the page); Stats has no « Ma page »: « Coureur » opens one's own, and Stats opens on « Classement », the page every visitor has (`moduleHome`; owner, 2026-10-30);
 the contour lines are drawn behind the bar itself (owner, 2026-10-30, second review: no banner under it, no line describing the
 module — the modules page says it). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
 account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. **No page leads into another module**

@@ -3454,4 +3454,5 @@ export default {
   "tour.multi.lede": "The organiser sets up the map and the course; everyone adds their track. Mass start or from a control, routes side by side, route variants grouped, gaps control by control and head-to-head: debrief a club training like a competition.",
   "tour.cap.multi.b": "The replay:", "tour.cap.multi": "every runner on the same map, in a mass start, their pace under the map.",
   "tour.cap.multi-gaps.b": "The gaps:", "tour.cap.multi-gaps": "everyone's time behind the best, control after control; a click on a point takes the replay to that pass.",
+  "hub.orga.register": "Create an account to open it",
 };

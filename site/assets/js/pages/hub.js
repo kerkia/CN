@@ -30,7 +30,7 @@ async function turnOrgaOn(btn) {
 /** What the Orga card says, and its button, by who is visiting and on what. */
 function orgaState() {
   const me = auth.session();
-  if (!me) return { note: t("hub.orga.guest"), action: html`<a class="btn btn-primary" href="#/compte/inscription">${t("hub.register")}</a>` };
+  if (!me) return { note: t("hub.orga.guest"), action: html`<a class="btn btn-primary" href="#/compte/inscription">${t("hub.orga.register")}</a>` };
   if (isPhone()) return { note: t("hub.orga.phone") };
   if (!me.orga) return { note: t("hub.orga.off"), action: html`<button type="button" class="btn btn-primary" data-orga-on>${t("hub.orga.on")}</button>` };
   return null;
