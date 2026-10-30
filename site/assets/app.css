@@ -2468,7 +2468,26 @@ body.full-win .tr-app { border: 0; }
 .cd-pics { display: flex; gap: 6px; justify-content: center; max-width: 100%; }
 .cd-map { flex: none; outline: 1px solid var(--border-strong); border-radius: 1px; }
 :root[data-theme="dark"] .cd-map, :root[data-theme="undergrowth"] .cd-map { filter: brightness(.9); }
-.cd-practising.cd-by-map .cd-card:not(.shown) .cd-sym { visibility: hidden; }
+.cd-practising.cd-by-map .cd-card:not(.shown) .cd-sym, .cd-practising.cd-by-sym .cd-card:not(.shown) .cd-map { visibility: hidden; }
+.cd-sec { scroll-margin-top: 76px; }
+/* the worked line at the top: eight boxes under their letters, the line in words, what each column says */
+.cd-intro { margin-bottom: 14px; }
+.cd-intro-body { display: grid; gap: 12px; padding: 4px 16px 16px; }
+.cd-row { display: flex; width: max-content; max-width: 100%; }
+.cd-rc { display: flex; flex-direction: column; align-items: stretch; }
+.cd-rl { text-align: center; font-size: 12px; font-weight: 650; color: var(--ink-3); padding-bottom: 2px; }
+.cd-rv { width: 46px; height: 46px; display: grid; place-items: center; border: 1.5px solid var(--ink); margin-left: -1.5px; background: var(--surface); color: var(--ink); }
+.cd-rc:first-child .cd-rv { margin-left: 0; }
+.cd-rv.txt { font-weight: 650; font-size: 15px; font-variant-numeric: tabular-nums; }
+.cd-cell-sym { display: block; }
+@media (max-width: 420px) { .cd-rv { width: 39px; height: 39px; } .cd-cell-sym { width: 34px; height: 34px; } .cd-rv.txt { font-size: 13px; } }
+.cd-row-text { margin: 0; font-size: 14px; color: var(--ink-2); }
+.cd-letters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 22px; font-size: 13.5px; }
+.cd-letters li { display: flex; gap: 8px; align-items: baseline; }
+.cd-letter { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; font: inherit; font-weight: 700; font-size: 12.5px;
+  border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--ink); padding: 0; }
+button.cd-letter { cursor: pointer; border-color: var(--grp, var(--border-strong)); color: var(--grp, var(--ink)); }
+button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surface); }
 /* the home page in four modules (owner, 2026-10-30): the bar's ways in, each module's section, who sees what */
 .home-ways { display: flex; gap: 6px; align-items: center; }
 @media (max-width: 760px) { .home-ways .home-way-reg { display: none; } }
