@@ -276,7 +276,7 @@ overview's `onQuery`), and « Se connecter » / « Créer un compte » / « Entr
 Its pictures were all retaken on 2026-10-30 (the old ones showed the menus of before) on the scrambled copy rebuilt with that day's
 code — `synth/oz2` (`synth-oz2.sqlite3`, `data/` in today's layout), by `build_oz2.py` / `build_oz2b.py`, then `tour2.mjs fr|en`
 (Orga's pages on the administrators' dev server, 8790, so that their lists are full), `convert.py`, `sheet.py` for contact
-sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-COc7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
+sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\7c7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
 (`npm install` there for puppeteer-core; run from PowerShell). New ones: `hub`, `past`, `descriptions`, `orga-direct`, `phone-hub`.
 
 ## Provisional results (« Résultats »)
