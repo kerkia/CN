@@ -71,10 +71,11 @@ function session() {
 export async function render(main, r) {
   if (r.route === "orgaOff") return orgaOff(main);
   const me = auth.session();
+  // no Orga tile on a phone (owner, 2026-10-30): the module is never open there
   main.innerHTML = html`<div class="hub">
     <div class="hub-head"><h1>${me ? t("hub.hello", { name: nameParts(me.nom).first || me.nom }) : t("hub.welcome")}</h1>
       <p class="lede">${t("hub.lede")}</p></div>
-    <div class="hub-grid">${MODULES.map(card)}</div>
+    <div class="hub-grid">${MODULES.filter((m) => m !== "orga" || !isPhone()).map(card)}</div>
     ${session()}
   </div>`;
   main.addEventListener("click", async (e) => {

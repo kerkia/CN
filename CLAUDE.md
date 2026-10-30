@@ -247,7 +247,8 @@ instead of linking to Orga. E-mail and notification links go straight to their p
 router keeps them to `GUEST_ROUTES`: Arena, Coach but Analyse multi, Stats' runner, ranking and races), a **signed-in account**,
 and a signed-in account **with Orga** (`users.orga`, migration 0016 — at registration, in Réglages › Modules, or « Activer Orga »
 on the modules page; `_lib/api.js publicUser` treats a database without the column as Orga for all). Orga is never offered on a
-phone (`app.isPhone`: coarse pointer and ≤ 900 px; an Orga address shows `orgaOff`, hub.js). Analyse multi needs an account.
+phone (`app.isPhone`: coarse pointer and ≤ 900 px; an Orga address shows `orgaOff`, hub.js; the modules page has no Orga tile
+there, and its bottom line no « Se connecter », which the bar has — owner, 2026-10-30). Analyse multi needs an account.
 
 **Public data for visitors** (`data.setPublicRule`, set by `app.start`): a visitor, or an account that has not joined a country
 whose access is "members" (France), reads its **public copy** `data/<cc>/pub/` (`site_public.py`, written by `build_site` for
