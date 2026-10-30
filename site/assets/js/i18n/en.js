@@ -198,7 +198,7 @@ export default {
   "auth.lede": "Your history race by race, your GPS tracks replayed on the map, results and split times as soon as the organisers publish them, tools to train, set courses and organise — and, where Ozimut has your federation's results, your ranking and the whole sport, season after season.",
   "home.tag": "Orienteering, in maps and numbers",
   // the home page's presentation of the site (overview.js, under the hero)
-  "tour.eyebrow": "Discover the site",
+  "tour.eyebrow": "Overview",
   "tour.title": "Your orienteering, from every angle",
   "tour.lede": "A living site for orienteers: your history race by race, organisers' results often the same evening, the analysis of your GPS track, tools for clubs and organisers, and the rankings of the federations whose results Ozimut has. Free, no advertising.",
   "tour.fig.runners": "runners",

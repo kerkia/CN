@@ -137,7 +137,7 @@ export default {
   "auth.lede": "Votre historique course par course, vos traces GPS rejouées sur la carte, les résultats et les temps intermédiaires dès que les organisateurs les publient, de quoi vous entraîner, tracer et organiser — et, là où Ozimut a les résultats de votre fédération, votre classement et toute la discipline, saison après saison.",
   "home.tag": "La course d'orientation, en cartes et en chiffres",
   // the home page's presentation of the site (overview.js, under the hero)
-  "tour.eyebrow": "Découvrir le site",
+  "tour.eyebrow": "Aperçu",
   "tour.title": "Votre course d'orientation, sous tous les angles",
   "tour.lede": "Un site vivant pour les orienteurs : votre historique course par course, les résultats des organisateurs dès le soir même, l'analyse de votre trace GPS, des outils pour les clubs et les organisateurs, et les classements des fédérations dont Ozimut a les résultats. Gratuit, sans publicité.",
   "tour.fig.runners": "coureurs",
