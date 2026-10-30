@@ -19,23 +19,24 @@ export function build(X) {
   function site() {
     return chapters(SITE, {
       menus: () => html`
-        ${slide("The site", "Four parts", html`
-          <p>The top menu has four parts; the row under it shows the pages of the part you are in. Each part reopens on the last page you saw
-            there.</p>
+        ${slide("The site", "Four modules", html`
+          <p>Ozimut has four modules. After signing in, or on entering without an account, the modules page offers to pick one; the top bar
+            then shows that module's pages only. The Ozimut logo brings you back to the modules page at any time, to change.</p>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--water)"><h3>Races</h3><p>Before, during and after the race: the ${P("#/agenda", "Calendar")}, the organisers'
-              ${P("#/resultats", "Results")}, ${P("#/direct", "Live")}, the ${P("#/analyse-course", "Race analysis")} of split times and the GPS
-              analyses.</p></div>
-            <div class="mx-box" style="--c:var(--forest)"><h3>Ranking</h3><p>${fr ? html`Runners, rankings, classes, ranked races, comparisons, clubs and
+            <div class="mx-box" style="--c:var(--water)"><h3>Arena</h3><p>The competitions: today's and those to come, with their details and
+              start lists, live results, then those of the last 60 days, with their results and the split-time analysis as tabs.</p></div>
+            <div class="mx-box" style="--c:var(--forest)"><h3>Stats</h3><p>${fr ? html`Runners, rankings, classes, ranked races, comparisons, clubs and
               statistics, by the official CN or the Ozimut index.` : html`The rankings of the countries where Ozimut computes one, with their runners,
               their clubs and their statistics.`}</p></div>
-            <div class="mx-box" style="--c:var(--course)"><h3>Training</h3><p>Map-reading ${P("#/jeux", "Games")}, the ${P("#/vma", "MAS")} (maximal aerobic
-              speed), and the analysis of your own GPS tracks, alone or with others.</p></div>
-            <div class="mx-box" style="--c:var(--flag)"><h3>Organising</h3><p>For the clubs that organise: uploading results and start times, broadcasting
-              live, preparing the GPS analyses, setting courses.</p></div>
+            <div class="mx-box" style="--c:var(--course)"><h3>Coach</h3><p>The analysis of your GPS tracks, alone or with others, the control
+              descriptions, map-reading games and the MAS (maximal aerobic speed).</p></div>
+            <div class="mx-box" style="--c:var(--flag)"><h3>Orga</h3><p>For the clubs that organise: uploading results and start times, broadcasting
+              live, preparing the GPS analyses, setting courses. Turn it on when registering, in Settings or on the modules page; it is used on
+              a computer.</p></div>
           </div>
-          <p>Under your name: your runner page, this documentation, the ${P("#/reglages", "Settings")}, “Write to us” and signing out. The pages still
-            being tried out carry the word “beta”; a notice says so the first time they open.</p>`)}`,
+          <p>Without an account, Ozimut shows what is public: Arena, Coach but the multi analysis, and in Stats the runner, the ranking and the
+            races over the period the federation publishes openly. Under your name: the modules page, this documentation, Settings, “Write to
+            us” and signing out. The pages still in trial carry a “beta” mark; a notice says so the first time they open.</p>`)}`,
       pays: () => html`
         ${slide("The site", "The site's country", html`
           <p>The country button, at the top, chooses the country whose races you see: the calendar, the results and the live races are that country's,

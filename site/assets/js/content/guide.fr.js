@@ -20,23 +20,27 @@ export function build(X) {
   function site() {
     return chapters(SITE, {
       menus: () => html`
-        ${slide("Le site", "Quatre parties", html`
-          <p>Le menu du haut a quatre parties ; la ligne en dessous montre les pages de la partie où l'on est. Chaque partie se rouvre sur la
-            dernière page qu'on y a vue.</p>
+        ${slide("Le site", "Quatre modules", html`
+          <p>Ozimut a quatre modules. Après la connexion, ou en entrant sans compte, la page des modules propose de choisir l'un d'eux ;
+            la barre du haut montre alors les pages de ce module seulement. Le logo Ozimut ramène à tout moment à la page des modules,
+            pour en changer.</p>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--water)"><h3>Courses</h3><p>Avant, pendant et après la course : l'${P("#/agenda", "Agenda")}, les
-              ${P("#/resultats", "Résultats")} des organisateurs, l'${P("#/direct", "En direct")}, l'${P("#/analyse-course", "Analyse de course")} des temps
-              intermédiaires et les analyses de traces GPS.</p></div>
-            <div class="mx-box" style="--c:var(--forest)"><h3>Classement</h3><p>${fr ? html`Les coureurs, les classements, les catégories, les courses
+            <div class="mx-box" style="--c:var(--water)"><h3>Arena</h3><p>Les compétitions : celles d'aujourd'hui et à venir, avec leurs
+              informations et listes de départ, le direct, puis celles des 60 derniers jours, avec leurs résultats et l'analyse des temps
+              intermédiaires en onglets.</p></div>
+            <div class="mx-box" style="--c:var(--forest)"><h3>Stats</h3><p>${fr ? html`Les coureurs, les classements, les catégories, les courses
               classées, les comparaisons, les clubs et les statistiques, au CN officiel ou à l'indice Ozimut.` : html`Les classements des pays
               où Ozimut en calcule un, avec leurs coureurs, leurs clubs et leurs statistiques.`}</p></div>
-            <div class="mx-box" style="--c:var(--course)"><h3>Entraînement</h3><p>Des ${P("#/jeux", "Jeux")} de lecture de carte, la ${P("#/vma", "VMA")},
-              et l'analyse de ses propres traces GPS, seul ou à plusieurs.</p></div>
-            <div class="mx-box" style="--c:var(--flag)"><h3>Organisation</h3><p>Pour les clubs qui organisent : déposer résultats et horaires, diffuser
-              en direct, préparer les analyses GPS, tracer les circuits.</p></div>
+            <div class="mx-box" style="--c:var(--course)"><h3>Coach</h3><p>L'analyse de ses traces GPS, seul ou à plusieurs, les définitions de
+              postes, des jeux de lecture de carte et la VMA.</p></div>
+            <div class="mx-box" style="--c:var(--flag)"><h3>Orga</h3><p>Pour les clubs qui organisent : déposer résultats et horaires, diffuser
+              en direct, préparer les analyses GPS, tracer les circuits. Il s'active à l'inscription, dans les Réglages ou sur la page des
+              modules, et s'utilise sur ordinateur.</p></div>
           </div>
-          <p>Sous votre nom : votre page de coureur, cette documentation, les ${P("#/reglages", "Réglages")}, « Nous écrire » et la déconnexion. Les
-            pages encore en essai portent la mention « bêta » ; un avis le rappelle à la première ouverture.</p>`)}`,
+          <p>Sans compte, Ozimut montre ce qui est public : Arena, Coach sauf l'analyse multi, et dans Stats le coureur, le classement et les
+            courses sur la période que la fédération publie librement. Sous votre nom : la page des modules, cette documentation, les
+            Réglages, « Nous écrire » et la déconnexion. Les pages encore en essai portent la mention « bêta » ; un avis le rappelle à la
+            première ouverture.</p>`)}`,
       pays: () => html`
         ${slide("Le site", "Le pays du site", html`
           <p>Le bouton du pays, en haut, choisit le pays dont on voit les courses : l'agenda, les résultats et l'en direct sont ceux de ce pays,
