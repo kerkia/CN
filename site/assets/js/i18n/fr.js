@@ -2566,7 +2566,7 @@ export default {
   "tour.feat.coach.learn": "Définitions de postes, jeux d'orientation, VMA",
   "tour.feat.orga.tools": "Résultats, horaires, direct depuis MeOS, tracé des circuits, analyses multi de vos courses (sur ordinateur)",
   "hub.guest.enter": "Entrer sans compte",
-  "home.guest.or": "ou", "home.guest.hint": "Les compétitions, les résultats, le classement de la période publique, l'analyse solo : sans compte.",
+  "home.guest.or": "ou", "home.guest.hint": "Sans compte, de nombreuses fonctions restent réservées aux inscrits : la plupart des fonctions avancées ne sont pas visibles.",
   "cd.quote": "« {x} »",
   // the home page's new pictures (2026-10-30)
   "tour.cap.hub.b": "Quatre modules,", "tour.cap.hub": "à choisir en arrivant : le logo y ramène à tout moment.",

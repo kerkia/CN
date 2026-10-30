@@ -3370,7 +3370,7 @@ export default {
   "tour.feat.coach.learn": "Control descriptions, orienteering games, VMA",
   "tour.feat.orga.tools": "Results, start lists, live from MeOS, course setting, multi analyses of your races (on a computer)",
   "hub.guest.enter": "Enter without an account",
-  "home.guest.or": "or", "home.guest.hint": "Competitions, results, the ranking of the public period, the solo analysis: no account needed.",
+  "home.guest.or": "or", "home.guest.hint": "Without an account, many features are for registered users only: most advanced features are not shown.",
   "cd.quote": "“{x}”",
   // the home page's new pictures (2026-10-30)
   "tour.cap.hub.b": "Four modules,", "tour.cap.hub": "to choose on arrival: the logo brings you back at any time.",
