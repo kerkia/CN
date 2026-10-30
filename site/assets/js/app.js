@@ -423,18 +423,19 @@ function renderHeader(r) {
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
-  // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it)
+  // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
+  // the site's name lead to the choice of module, the module's name under the site's to the module's first page
   $("#topbar").innerHTML = html`<canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="topbar-inner${visitor ? "" : " guest"}">
     ${items.length || mod === "arena" ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
-    <a class="brand" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
+    <div class="brand"><a class="brand-home" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <!-- a compass bezel, the control flag's two quarters as its needle on a bearing of 45° (owner, 2026-10-19) -->
         <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <span class="brand-name"><span class="brand-o">O</span>zimut</span>${mod ? html`<span class="brand-mod">${t(`mod.${mod}`)}</span>` : ""}
-    </a>
+      </a><span class="brand-text"><a class="brand-name" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}"><span class="brand-o">O</span>zimut</a>${
+        mod ? html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
     ${items.length || mod === "arena" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
       ${visitor ? country.menu() : ""}

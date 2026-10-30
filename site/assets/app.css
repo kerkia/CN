@@ -2549,3 +2549,16 @@ body.full-win .tr-app { border: 0; }
 /* a long menu in the bar (a race's tabs, Stats' pages): tighter tabs, the country's and language's buttons without their word */
 #nav .page-tabs a, #nav .page-tabs button { padding: 6px 8px; font-size: 13.5px; }
 @media (max-width: 1600px) { .topbar-inner:has(#nav:not(:empty)) .tool-label { display: none; } }
+/* the brand: the logo and « Ozimut » (the choice of module), the module's name under « Ozimut » (its first page) */
+.brand .brand-home { display: flex; color: inherit; }
+.brand .brand-text { display: flex; flex-direction: column; justify-content: center; line-height: 1.1; }
+.brand a.brand-name { color: var(--ink); }
+.brand a:hover { text-decoration: none; }
+.brand .brand-mod { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.1; }
+.brand .brand-mod:hover { text-decoration: underline; }
+@media (max-width: 520px) { .brand a.brand-name { display: none; } .guest .brand a.brand-name { display: inline; } }
+/* today's, coming and past competitions: their own box above the filters, always shown */
+.agenda-when { padding: 10px 14px; }
+.agenda-when .frow { margin: 0; gap: 6px 18px; }
+.agenda-when .checkline { gap: 7px; }
+.agenda-when .frow { display: flex; flex-wrap: wrap; align-items: center; }

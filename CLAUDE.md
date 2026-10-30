@@ -231,8 +231,8 @@ water blue), **Stats** (the rankings and their analyses — forest green), **Coa
 « Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).
 `app.js` `MODULES`, `moduleMenus()` (each module's menu), `moduleOf(r)` (a route's module; `ROUTE_MODULE` for the routes
 outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`; folded behind
-the menu button when they do not fit, `app.fitNav`), the logo and the module's name (`.brand-mod`, a word in the flag's orange
-right after « Ozimut », not a pill like the menu's items); the bar holds the menu only: the method switch sits at the right of
+the menu button when they do not fit, `app.fitNav`), the logo and « Ozimut » (a link to the choice of module) with the module's name
+under it (`.brand-mod`, in the flag's orange, a link to the module's first page, `moduleHome`; owner, 2026-10-30); the bar holds the menu only: the method switch sits at the right of
 a Stats page's tab row (`app.placeMethod`, else alone above the page); Stats has no « Ma page »: « Coureur » opens one's own;
 the contour lines are drawn behind the bar itself (owner, 2026-10-30, second review: no banner under it, no line describing the
 module — the modules page says it). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
@@ -264,8 +264,10 @@ every visitor's request goes through the gate, which judges the decoded path, an
 
 **Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
-agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in its filters (« Aujourd'hui », « À venir »,
-« Passées »; `st.when`, the first two by default; the list opens on today when past ones come first). Arena has no menu: a race's
+agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in a box of their own above the filters, always shown — on a phone too, where the other filters are
+folded (« Aujourd'hui », « À venir », « Passées »; `st.when`, the first two by default; the list opens on today when past ones
+come first). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
+tables show the one chosen in Stats. Arena has no menu: a race's
 page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-bar-tabs]` — the results page's `raceTabs`,
 `splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit, a dropdown on a phone). A past row
 opens its results page (`#/resultats?course=`); a coming or today's one its details beside the list. `#/resultats` (the old list)

@@ -9,7 +9,7 @@ import { t, tn, lang, locale } from "../i18n.js";
 import * as data from "../data.js";
 import * as cn from "../cn.js";
 import { nameKey, sees, session, myClub } from "../auth.js";
-import { methodShort, scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
+import { scoreCell, subHead, cnLabel, scoreLabel } from "../ui.js";
 import * as store from "../store.js";
 import { link, replaceQuery } from "../app.js";
 import * as country from "../country.js";
@@ -175,7 +175,7 @@ async function race(main, id, wanted, arg) {
   // the way to the split-time analysis beside the race's name, as « Analyse de course » has its way back (owner, 2026-10-24)
   main.innerHTML = html`<div class="lv-head"><div class="lv-hl"><div class="lv-tl"><h1 id="lv-title">…</h1>
         <a class="btn btn-sm" id="lv-an" hidden title="${t("lv.analyse.tip")}">${t("lv.analyse")} →</a></div><div class="lv-sub" id="lv-sub"></div></div>
-      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-method"></span><span id="lv-trk"></span></div></div>
+      <div class="lv-hr"><span class="lv-status" id="lv-status">${t("lv.connecting")}</span><span id="lv-trk"></span></div></div>
     <div class="lv-layout">
       <aside class="lv-side"><div class="lv-list" id="lv-chips"></div></aside>
       <div class="lv-main">
@@ -223,15 +223,7 @@ async function race(main, id, wanted, arg) {
     : html`<td class="${cls}">${two(a, b)}</td>`);
   const pairHead = (a, b, title = "", cls = "r") => (ONE ? html`<th class="${cls}" title="${title}">${a}</th><th class="${cls}" title="${title}">${b}</th>`
     : html`<th class="${cls}" title="${title}">${subHead(a, b)}</th>`);
-  // the method: one button naming the ranking shown, a click shows the other (the header's switch is not drawn here)
-  function methodBtn() {
-    const el = $("#lv-method");
-    if (!el || !FR) return;
-    const ms = store.available(), cur = store.get().method, next = ms[(ms.indexOf(cur) + 1) % ms.length];
-    el.innerHTML = ms.length < 2 ? "" : html`<button type="button" class="btn btn-sm lv-mbtn" data-lv-method="${next}"
-      title="${t("lv.method.tip", { m: methodShort(next) })}"><span class="lv-wide">${t("msw.label")} </span>${methodShort(cur)} <span aria-hidden="true">⇄</span></button>`;
-  }
-  methodBtn();
+  // the ranking shown is the one chosen in Stats (owner, 2026-10-30: Arena offers no choice of its own)
   async function cnFor(terrain) {
     if (!FR) return { shown: new Map(), valuer: new Map(), monthJ15: null };
     const m = store.get().method, k = `${terrain}|${m}`;
@@ -936,8 +928,6 @@ async function race(main, id, wanted, arg) {
   }
 
   main.addEventListener("click", (e) => {
-    const m = e.target.closest("[data-lv-method]");
-    if (m) { store.setMethod(m.dataset.lvMethod); methodBtn(); draw(); return; }
     // a relay's team: its runners shown or hidden
     const pr = e.target.closest("tr[data-punch]");
     if (pr) {

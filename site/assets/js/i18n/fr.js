@@ -2581,4 +2581,5 @@ export default {
   // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
   "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 derniers jours)",
   "agd.past.results": "résultats", "agd.past.splits": "temps inter.", "agd.past.official": "officiels",
+  "mod.home": "Revenir à la première page de {mod}",
 };

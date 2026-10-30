@@ -121,6 +121,7 @@ export async function render(main, { query }) {
       <p class="lede">${t("agd.lede", { updated: A.generated ? t("agd.updated", { d: fmtDate(A.generated.slice(0, 10)) }) : "" })}</p></div></div>
     <div class="agenda-layout">
       <div class="agenda-main">
+      <section class="card agenda-when" id="when"></section>
       <details class="filters-fold" id="fold">
         <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
         <section class="card agenda-filters"><div id="filters"></div><div id="ag-rf"></div></section>
@@ -191,10 +192,9 @@ export async function render(main, { query }) {
 
   function drawFilters() {
     const openIds = $$("details.multi[open]", main).map((d) => d.id);          // keep an open list open while it redraws
+    // today's, the coming and the past competitions: a box of their own, always shown, on a phone too (owner, 2026-10-30)
+    $("#when").innerHTML = html`<div class="frow">${WHEN.map((w) => html`<label class="checkline"><input type="checkbox" data-when="${w}" ${raw(st.when.has(w) ? "checked" : "")}>${t(`agd.when.${w}`)}</label>`)}</div>`;
     $("#filters").innerHTML = html`
-      <div class="frow">
-        ${WHEN.map((w) => html`<label class="checkline"><input type="checkbox" data-when="${w}" ${raw(st.when.has(w) ? "checked" : "")}>${t(`agd.when.${w}`)}</label>`)}
-      </div>
       <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
         ${sees("FR") && fr ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
@@ -219,7 +219,7 @@ export async function render(main, { query }) {
   }
 
   // the filter bar is rebuilt on each change, so its events are delegated once
-  $("#filters").addEventListener("change", (e) => {
+  const onFilterChange = (e) => {
     const el = e.target;
     if (el.dataset.when) { el.checked ? st.when.add(el.dataset.when) : st.when.delete(el.dataset.when); toToday = true; }
     else if (el.dataset.kind) { el.checked ? st.kinds.add(el.dataset.kind) : st.kinds.delete(el.dataset.kind); }
@@ -239,7 +239,9 @@ export async function render(main, { query }) {
     }
     else return;
     drawFilters(); drawTable();
-  });
+  };
+  $("#filters").addEventListener("change", onFilterChange);
+  $("#when").addEventListener("change", onFilterChange);
   $("#filters").addEventListener("click", (e) => {
     const g = e.target.closest("button[data-group]");          // (not <body data-group>, the menu group's colour)
     if (g) { st.groups.has(g.dataset.group) ? st.groups.delete(g.dataset.group) : st.groups.add(g.dataset.group); drawFilters(); drawTable(); return; }
@@ -259,8 +261,7 @@ export async function render(main, { query }) {
   // ---- table ------------------------------------------------------------------------------------------------
   let shown = [];
   function activeFilters() {
-    return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, !!st.from, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0,
-      st.when.size !== WHEN_DEFAULT.length || WHEN_DEFAULT.some((w) => !st.when.has(w))]
+    return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, !!st.from, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0]
       .filter(Boolean).length;
   }
   function drawTable() {
