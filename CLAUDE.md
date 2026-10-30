@@ -288,7 +288,11 @@ provisoires et analyse »: the organiser's list once there, else the live times 
 (`#/analyse-solo`); « Analyse multi » likewise (`#/analyse-competition`, `#/analyse-club`). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
 names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
-legal notices. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
+legal notices. Beside each symbol its map equivalent (owner, 2026-10-30, after Maprunner's posters — the idea only):
+`mapsymbols.js` (`mapSvg(id, size)`, keyed by the IOF id, for the Tracer's guide later), our own schematic SVGs in ISOM 2017-2 /
+ISSprOM 2019-2 colours, the purple circle on the feature — every column D symbol, C and G (the eight directions drawn for north
+and turned, the flag's spot marked), E and F where a map shows them; H, sizes and special instructions none; white map paper
+in every theme. A second practice mode, « Retrouver le symbole d'après la carte » (`?mode=carte`), shows the maps alone. The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »
 (Découvrir, Partout, Arrivée: what Ozimut is, phones, the pledges and the account), Arena, Stats, Coach, Orga, « Tarifs » /

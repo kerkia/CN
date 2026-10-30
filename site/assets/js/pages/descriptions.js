@@ -1,17 +1,22 @@
 // « Définitions de postes » (Coach; owner, 2026-10-30): the IOF control description symbols, column by column, each drawn
 // with its name and the text a description sheet prints for it, in any of the symbol file's 23 languages. The symbols are
 // Purple Pen's (BSD licence, credited in the site's legal notices), the same the Tracer draws (tracer/symbols.js). A search
-// over the names and texts, and a practice mode that hides the names until a symbol is tapped.
+// over the names and texts, and a practice mode that hides the names until a symbol is tapped. Beside each symbol, the feature
+// as a map draws it (mapsymbols.js; owner, 2026-10-30, after Maprunner's posters): the second practice mode shows the maps
+// alone, the symbol and name found by a tap.
 
 import { html, raw, $, $$, normalise } from "../util.js";
 import { t, lang } from "../i18n.js";
 import { loadSymbols, loadAllTexts, languages, symbolsFor, symbolName, symbolText, symbolPaths } from "../tracer/symbols.js";
+import { mapSvg } from "../mapsymbols.js";
 
 // the columns of a description sheet, and the special instructions (Purple Pen's kinds); column D by its families (the
 // symbols' numbers: 1 landforms, 2 rocks, 3 water, 4 vegetation, 5 man-made, 6 special features)
 const COLUMNS = ["C", "D", "E", "F", "G", "H"];
 const D_FAMILIES = ["1", "2", "3", "4", "5", "6"];
 const SPECIAL = ["W", "X", "Y", "Z", "V"];
+// the practice modes: off, the names hidden, the maps alone (the address's « mode=pratique » / « mode=carte »)
+const MODES = { "": "off", names: "names", map: "map" };
 
 /** A symbol drawn as SVG: a square cell, or a row of eight for a special instruction. */
 function svg(s, size = 56) {
@@ -27,7 +32,7 @@ export async function render(main, { query = {} } = {}) {
   await loadSymbols();
   const langs = languages();
   let L = langs[query.langue] ? query.langue : langs[lang()] ? lang() : "en";
-  let practice = query.mode === "pratique";
+  let practice = query.mode === "pratique" ? "names" : query.mode === "carte" ? "map" : "";
   if (L !== "fr" && L !== "en") await loadAllTexts();
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("cd.title")}</h1><p class="lede">${t("cd.lede")}</p></div></div>
@@ -35,9 +40,10 @@ export async function render(main, { query = {} } = {}) {
       <label class="field"><span>${t("cd.lang")}</span><select id="cd-lang">${Object.entries(langs).sort((a, b) => a[1].name.localeCompare(b[1].name))
         .map(([k, v]) => html`<option value="${k}" ${raw(k === L ? "selected" : "")}>${v.name}</option>`)}</select></label>
       <label class="field" style="flex:1 1 220px"><span>${t("cd.search")}</span><input type="search" id="cd-q" placeholder="${t("cd.search.ph")}"></label>
-      <label class="check" style="align-self:flex-end"><input type="checkbox" id="cd-practice" ${practice ? "checked" : ""}><span>${t("cd.practice")}</span></label>
+      <label class="field"><span>${t("cd.practice")}</span><select id="cd-practice">${Object.entries(MODES)
+        .map(([k, v]) => html`<option value="${k}" ${raw(k === practice ? "selected" : "")}>${t(`cd.practice.${v}`)}</option>`)}</select></label>
     </div>
-    <p class="muted cd-hint" id="cd-hint" ${practice ? "" : "hidden"}>${t("cd.practice.hint")}</p>
+    <p class="muted cd-hint" id="cd-hint"></p>
     <div id="cd-body"></div>
     <p class="muted" style="font-size:12.5px;margin-top:18px">${t("cd.source")}</p>`;
 
@@ -46,8 +52,9 @@ export async function render(main, { query = {} } = {}) {
     // (a column C or G text is a pattern around the feature's own, « {0}, le plus au Nord »: shown with an ellipsis)
     const name = symbolName(s, L), text = s.k >= "T" ? "" : (symbolText(s, L) || "").replace(/\{\d\}/g, "…");
     const words = normalise(`${name} ${text} ${s.id}`);
-    return html`<button type="button" class="cd-card${s.k >= "T" ? " wide" : ""}" data-words="${words}" aria-label="${name}">
-      ${svg(s)}<span class="cd-id">${/^[0-9]/.test(s.id) ? s.id.replace(/@.*/, "") : ""}</span>
+    const map = s.k >= "T" ? "" : mapSvg(s.id, 64);
+    return html`<button type="button" class="cd-card${s.k >= "T" ? " wide" : ""}" data-words="${words}" ${raw(map ? "data-map" : "")} aria-label="${name}">
+      <span class="cd-pics">${svg(s)}${raw(map)}</span><span class="cd-id">${/^[0-9]/.test(s.id) ? s.id.replace(/@.*/, "") : ""}</span>
       <span class="cd-name">${name}</span>${text && normalise(text) !== normalise(name) ? html`<span class="cd-text">${t("cd.quote", { x: text })}</span>` : ""}</button>`;
   };
   const section = (title, hint, list) => (list.length ? html`<section class="card cd-sec"><div class="card-head"><div><h2>${title}</h2>${hint ? html`<div class="hint">${hint}</div>` : ""}</div></div>
@@ -61,9 +68,15 @@ export async function render(main, { query = {} } = {}) {
   }
   function filter() {
     const q = normalise($("#cd-q").value.trim());
-    $$(".cd-card", main).forEach((b) => { b.hidden = !!q && !q.split(/\s+/).every((w) => b.dataset.words.includes(w)); });
+    $$(".cd-card", main).forEach((b) => {
+      b.hidden = (practice === "map" && !("map" in b.dataset)) || (!!q && !q.split(/\s+/).every((w) => b.dataset.words.includes(w)));
+    });
     $$(".cd-sec", main).forEach((s) => { s.hidden = !$$(".cd-card", s).some((b) => !b.hidden); });
-    main.classList.toggle("cd-practising", practice);
+    main.classList.toggle("cd-practising", !!practice);
+    main.classList.toggle("cd-by-map", practice === "map");
+    const hint = $("#cd-hint");
+    hint.hidden = !practice;
+    hint.textContent = practice ? t(practice === "map" ? "cd.practice.hint.map" : "cd.practice.hint") : "";
   }
   draw();
   $("#cd-lang").addEventListener("change", async (e) => {
@@ -73,8 +86,7 @@ export async function render(main, { query = {} } = {}) {
   });
   $("#cd-q").addEventListener("input", filter);
   $("#cd-practice").addEventListener("change", (e) => {
-    practice = e.target.checked;
-    $("#cd-hint").hidden = !practice;
+    practice = e.target.value;
     $$(".cd-card.shown", main).forEach((b) => b.classList.remove("shown"));
     filter();
   });
