@@ -2515,4 +2515,7 @@ export default {
   "prov.ffcoTag": "résultats officiels",
   "prov.noDoc.org": "Aucun organisateur n'a encore déposé de fichier de résultats, et Ozimut n'en a pas trouvé pour l'instant.",
   "prov.noDoc.ffco": "Aucune liste de l'organisateur trouvée. La fédération a publié ses résultats officiels : ils sont dans Stats › Courses.",
+  // Arena (owner, 2026-10-30): the competitions page's tabs, a race's results tab
+  "nav.arena.comps": "Compétitions", "arena.tab.coming": "Aujourd'hui et à venir", "arena.tab.past": "Passées",
+  "arena.tab.results": "Résultats", "agd.live.results": "Résultats provisoires et analyse",
 };

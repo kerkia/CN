@@ -3319,4 +3319,7 @@ export default {
   "prov.ffcoTag": "official results",
   "prov.noDoc.org": "No organiser has deposited a results file yet, and Ozimut has not found one so far.",
   "prov.noDoc.ffco": "No organiser's list found. The federation has published its official results: they are in Stats › Races.",
+  // Arena (owner, 2026-10-30): the competitions page's tabs, a race's results tab
+  "nav.arena.comps": "Competitions", "arena.tab.coming": "Today and coming", "arena.tab.past": "Past",
+  "arena.tab.results": "Results", "agd.live.results": "Provisional results and analysis",
 };

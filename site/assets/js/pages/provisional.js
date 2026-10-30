@@ -16,6 +16,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
 import { bindRunnerPop } from "../runnerpop.js";
+import { arenaTabs, raceTabs } from "../arenatabs.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -91,6 +92,7 @@ async function list(main, idx, query) {
     ranBy: (r, lic) => { const s = ffcoSet(lic); return !!(s && r.ffco_id && s.has(String(r.ffco_id))); } });
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
+    ${arenaTabs("past")}
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     ${F.html}
     ${country.hint(idx.races.filter((r) => !r.soon).map(country.of))}
@@ -194,10 +196,10 @@ async function detail(main, idx, query) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
-      <div class="row" style="gap:8px">${withSplits.length ? html`<a class="btn btn-sm" href="${splitsLink(null)}">${t("nav.raceAnalysis")} →</a>` : ""}
-        ${tracking.button(track)}
+      <div class="row" style="gap:8px">${tracking.button(track)}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
+    ${raceTabs(race.key, withSplits.length > 0)}
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>

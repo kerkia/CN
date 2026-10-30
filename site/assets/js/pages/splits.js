@@ -36,18 +36,19 @@ import { lineChart, columnChart, passChart, slotColor, css } from "../charts.js"
 import { checkClass, issueText, markText } from "../splitcheck.js";
 import { followers, regularity } from "../splitstats.js";
 import { refLegs, legLoss } from "../trace/legs.js";
-import { seg, chartCard, bindChartCard, legend, dataTable, pageTabs, freezeAttrs } from "../ui.js";
+import { seg, chartCard, bindChartCard, legend, dataTable, freezeAttrs } from "../ui.js";
 import { replaceQuery, SITE } from "../app.js";
 import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
 import { liveId, toDoc, watch } from "../livesplits.js";
 import { bindRunnerPop } from "../runnerpop.js";
+import { SPLIT_VIEWS, resultsTab } from "../arenatabs.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
 // Résultats » — the organisers' alone (2026-10-15)
 const depositLink = () => { let c = ""; try { c = sessionStorage.getItem("ocn.dep.course") || ""; } catch (e) { /* none */ } return c ? `#/orga-resultats?course=${encodeURIComponent(c)}` : "#/orga-resultats"; };
 
-const VIEWS = ["table", "gaps", "clock", "legs", "profile", "h2h", "groups", "follow", "regular", "summary"];
+const VIEWS = SPLIT_VIEWS;
 const FOLLOW_DEFAULT = { t1: 7, t2: 20 };   // seconds apart: together (t1), then less and less up to t2
 // the time of day, from seconds after midnight
 const hm = (s, sec = false) => { s = Math.round(s); const h = Math.floor(s / 3600) % 24, m = Math.floor((s % 3600) / 60);
@@ -83,9 +84,9 @@ export async function render(main, { query = {} } = {}) {
     <div id="sp-back"></div>
     <div class="page-head sp-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
+    <div id="sp-tabs"></div>
     <div id="sp-live"></div>
     <div class="sp-pick" id="sp-pick"></div>
-    <div id="sp-tabs"></div>
     <div class="filters sp-views" id="sp-views"></div>
     <div id="sp-check"></div>
     <div id="sp-body"></div>`;
@@ -128,7 +129,11 @@ export async function render(main, { query = {} } = {}) {
       <select id="sp-c" aria-label="${t("prov.circuit")}" title="${t("prov.circuit")}">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select>
       <select id="sp-club" aria-label="${t("spl.club")}" title="${t("spl.club")}"><option value="">${t("ag.allClubs")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`;
-    $("#sp-tabs").innerHTML = pageTabs(VIEWS.map((v) => [v, t(`spl.tab.${v}`)]), view);
+    // a race's page in Arena (owner, 2026-10-30): its results as the first tab, then the analysis's views (not for a live race,
+    // a file under deposit or a relay, which have no results page)
+    const resultsToo = !live && key !== local.LOCAL && !withSplits.find((x) => x.key === key)?.relay;
+    $("#sp-tabs").innerHTML = html`<nav class="page-tabs race-tabs" role="tablist">${resultsToo ? resultsTab(key, view) : ""}${VIEWS.map((v) =>
+      html`<button type="button" role="tab" data-ptab="${v}" aria-selected="${v === view}">${t(`spl.tab.${v}`)}</button>`)}</nav>`;
     $("#sp-views").innerHTML = html`${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
       ${view === "gaps" ? html`<label class="field"><span>${t("spl.graph")}</span><select id="sp-graph">${GRAPHS.map((g) => html`<option value="${g}" ${raw(g === graph ? "selected" : "")}>${t(`spl.graph.${g}`)}</option>`)}</select></label>
         ${graph === "gap" ? html`<label class="field"><span>${t("spl.ref")}</span><select id="sp-ref">${REFS.map((x) => html`<option value="${x}" ${raw(x === ref ? "selected" : "")}>${t(`spl.ref.${x}`)}</option>`)}</select></label>` : ""}
@@ -176,8 +181,8 @@ export async function render(main, { query = {} } = {}) {
     } else {
       $("#sp-title").textContent = r?.name || key;
       $("#sp-lede").textContent = [fmtDate(r?.date_iso), r?.place, r?.org, ...new Set([fmtFormat(r?.epreuve), fmtFormat(r?.terrain)])].filter(Boolean).join(" · ");
-      // (a relay is not on « Résultats »: its legs' split times are all there is)
-      $("#sp-acts").innerHTML = r?.relay ? "" : html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}" title="${t("ra.toResults")}">${t("nav.recent")} →</a>`;
+      // (the results are the page's first tab: arenatabs.js)
+      $("#sp-acts").innerHTML = "";
     }
     if (live) document.title = `${w.st.info?.name || live} — ${SITE}`;      // known once the relay said hello, after the page was drawn
   }

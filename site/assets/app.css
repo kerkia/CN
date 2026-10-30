@@ -2443,3 +2443,9 @@ body.full-win .tr-app { border: 0; }
 /* a runner's name that opens their window (runnerpop.js) instead of leading to another module: drawn as a link */
 .name-pop { border: 0; padding: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; text-align: left; }
 .name-pop:hover { text-decoration: underline; }
+/* tabs that are links (Arena: the competitions page's two pages, a race's results and its analysis) */
+.page-tabs a { font-size: 15px; font-weight: 600; color: var(--ink-2); padding: 10px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  white-space: nowrap; text-decoration: none; }
+.page-tabs a:hover { color: var(--ink); text-decoration: none; }
+.page-tabs a[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--grp); }
+@media (max-width: 640px) { .page-tabs a { font-size: 13.5px; padding: 9px 8px; } }

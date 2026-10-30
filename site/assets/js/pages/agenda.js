@@ -13,6 +13,8 @@ import { sees } from "../auth.js";
 import { LIVE } from "../livesplits.js";
 import * as tracking from "../tracking.js";
 import * as agendaMap from "../agendamap.js";
+import { arenaTabs } from "../arenatabs.js";
+import { probe } from "../livesplits.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -55,11 +57,14 @@ export async function render(main, { query }) {
   // the live competitions tied to an event (the provisional index's `live`: liveresultat's number, a broadcast's, a
   // MeOSDjango site's « host/<n> »), and the event of a race key (the organisers' broadcasts name their competition's)
   const liveIds = new Map(), eventOf = new Map();
+  // the event's race on « Résultats » once an organiser's list of results is there: its results page (Arena's race page)
+  const resultsKey = new Map();
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
       const id = String(r.agenda_id || r.key.replace(/^a/, ""));
       eventOf.set(r.key, id);
       if (r.live) liveIds.set(id, r.live);
+      if (r.docs && !r.soon) resultsKey.set(id, r.key);
       if (r.startlist && r.date_iso >= today) starts.set(id, r.key);
       if (/^d/.test(r.key) && r.date_iso >= today) declared.push(declaredEvent(r));
     }
@@ -98,6 +103,7 @@ export async function render(main, { query }) {
   main.innerHTML = html`<div class="agenda-page" id="agenda-page">
     <div class="page-head"><div><h1>${t("nav.agenda")}</h1>
       <p class="lede">${t("agd.lede", { updated: A.generated ? t("agd.updated", { d: fmtDate(A.generated.slice(0, 10)) }) : "" })}</p></div></div>
+    ${arenaTabs("coming")}
     <details class="filters-fold" id="fold">
       <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
       <section class="card agenda-filters" id="filters"></section>
@@ -368,8 +374,22 @@ export async function render(main, { query }) {
   // the event's live results (« En direct »): today's race whose live competition the relay lists
   function liveBox(e) {
     const l = lives.get(String(e.id));
-    return l ? html`<div class="reg lv-reg"><div class="reg-title">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t(l.now ? "agd.live.now" : "agd.live")}</div>
-      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/direct/${l.id}">${t("agd.live.go")}</a></p></div>` : "";
+    if (!l) return "";
+    // and its provisional results with the analysis (owner, 2026-10-30): the organiser's list once there, else the live
+    // times when the live race gives split times (livesplits.probe, asked once a race)
+    const key = resultsKey.get(String(e.id));
+    if (!key) setTimeout(() => liveSplits(l.id), 0);
+    return html`<div class="reg lv-reg"><div class="reg-title">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t(l.now ? "agd.live.now" : "agd.live")}</div>
+      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/direct/${l.id}">${t("agd.live.go")}</a>
+        ${key ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.live.results")}</a>`
+          : html`<span data-lsplits="${l.id}"></span>`}</p></div>`;
+  }
+  const probes = new Map();
+  async function liveSplits(id) {
+    if (!probes.has(id)) probes.set(id, probe(id).catch(() => false));
+    if (!(await probes.get(id))) return;
+    const box = document.querySelector(`[data-lsplits="${id}"]`);
+    if (box) box.innerHTML = html`<a class="btn btn-sm" href="#/analyse-course?course=direct-${id}">${t("agd.live.results")}</a>`.toString();
   }
 
   function registration(e) {

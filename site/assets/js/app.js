@@ -322,6 +322,7 @@ function menuKey(r) {
   const at = r.from || r.route;
   return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
     : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
+    : at === "provisional" || at === "splits" ? "agenda"                       // Arena's competitions page and a race's
     : at;
 }
 
@@ -349,8 +350,8 @@ export const orgaOpen = () => !!auth.session()?.orga && !isPhone();
 export function moduleMenus() {
   const me = auth.session();
   return {
-    arena: [["agenda", "#/agenda", t("nav.agenda")], ["provisional", "#/resultats", t("nav.recent")], ["live", "#/direct", t("nav.live")],
-      ["splits", "#/analyse-course", t("nav.raceAnalysis")]],
+    // the competitions (the Agenda and « Résultats » as one page's two tabs, a race's results and analysis), and « En direct »
+    arena: [["agenda", "#/agenda", t("nav.arena.comps")], ["live", "#/direct", t("nav.live")]],
     stats: [
       // one's own page, in France's data (the runner page of one's licence)
       ...(me?.lic && country.current() === "FR" && ranksHere() ? [["me", link.runner(`fr${me.lic}`), t("auth.myPage")]] : []),
@@ -680,6 +681,11 @@ async function route_() {
   // the Documentation's address is « #/documentation » since 2026-10-24: an old « #/methodes » link shows the new one
   if (r.route === "methods" && /^#\/methodes\b/.test(location.hash)) {
     history.replaceState(null, "", location.hash.replace(/^#\/methodes/, "#/documentation"));
+    r = parseHash();
+  }
+  // « Analyse de course »'s list of before (2026-10-30): the past competitions, which list the races with split times
+  if (r.route === "splits" && !r.query.course) {
+    history.replaceState(null, "", "#/resultats");
     r = parseHash();
   }
   if (r.route === "deposit") {
