@@ -79,6 +79,11 @@ export function fmtTime(s) {
   return h ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 }
 export const isoDay = (d) => d.toISOString().slice(0, 10);
+/**
+ * A file input's `accept` (owner, 2026-10-30: a phone could not pick its trace): none on a touch screen — iOS greys out the
+ * files whose extension it does not know (.fit, .tcx), Android's picker can hide them; the page checks what it gets anyway.
+ */
+export const fileAccept = (list) => (matchMedia("(pointer: coarse)").matches ? "" : list);
 export function addDays(iso, n) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);

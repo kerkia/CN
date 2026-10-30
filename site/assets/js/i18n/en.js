@@ -3322,4 +3322,24 @@ export default {
   // Arena (owner, 2026-10-30): the competitions page's tabs, a race's results tab
   "nav.arena.comps": "Competitions", "arena.tab.coming": "Today and coming", "arena.tab.past": "Past",
   "arena.tab.results": "Results", "agd.live.results": "Provisional results and analysis",
+  // « Définitions de postes » (Coach; owner, 2026-10-30)
+  "nav.descriptions": "Control descriptions", "cd.title": "Control descriptions",
+  "cd.lede": "The IOF control description symbols, column by column, with their names and the text a written description sheet prints.",
+  "cd.lang": "Language of the texts", "cd.search": "Search", "cd.search.ph": "a name, a word, a number",
+  "cd.practice": "Practise: hide the names",
+  "cd.practice.hint": "The names are hidden: tap a symbol to reveal it, tap again to hide it.",
+  "cd.source": "Symbols and texts: Purple Pen, after the IOF's International Specification for Control Descriptions.",
+  "cd.col.C": "Column C · Which of similar features", "cd.col.C.hint": "When several similar features lie in the circle.",
+  "cd.col.D": "Column D · The feature: {f}", "cd.col.D.hint": "The control feature, as the map shows it (columns D and E are also read one for the other).",
+  "cd.fam.1": "landforms", "cd.fam.2": "rocks and boulders", "cd.fam.3": "water and marshes", "cd.fam.4": "vegetation", "cd.fam.5": "man-made features",
+  "cd.fam.6": "special features",
+  "cd.col.E": "Column E · Feature detail", "cd.col.E.hint": "Its appearance, when it needs saying.",
+  "cd.col.F": "Column F · Dimensions and combinations", "cd.col.F.hint": "The feature's size, or where two features meet or cross.",
+  "cd.col.G": "Column G · Location of the control flag", "cd.col.G.hint": "Where the flag stands in relation to the feature.",
+  "cd.col.H": "Column H · Other information", "cd.col.H.hint": "Refreshments, first aid, radio control, marshalled crossing…",
+  "cd.special": "Special instructions", "cd.special.hint": "The sheet's lines between controls and to the finish: taped routes, mandatory crossings, map exchanges.",
+  // Coach's analyses, one page each (owner, 2026-10-30)
+  "coach.solo.race": "A competition", "coach.solo.free": "A training session or another race",
+  "coach.multi.race": "Competitions", "coach.multi.club": "Training",
+  "sh.mine.tip": "You organise it: manage it in the Orga module.",
 };

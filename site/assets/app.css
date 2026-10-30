@@ -2449,3 +2449,19 @@ body.full-win .tr-app { border: 0; }
 .page-tabs a:hover { color: var(--ink); text-decoration: none; }
 .page-tabs a[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--grp); }
 @media (max-width: 640px) { .page-tabs a { font-size: 13.5px; padding: 9px 8px; } }
+/* « Définitions de postes » (pages/descriptions.js): the symbols as cards, the name hidden when practising */
+.cd-filters { align-items: flex-end; }
+.cd-hint { margin: 0 2px 12px; font-size: 13px; }
+.cd-sec { margin-bottom: 14px; }
+.cd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 4px 16px 16px; }
+.cd-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font: inherit; text-align: center; cursor: default; }
+.cd-card.wide { grid-column: span 3; }
+@media (max-width: 720px) { .cd-card.wide { grid-column: 1 / -1; } }
+.cd-card[hidden] { display: none; }
+.cd-sym { color: var(--ink); max-width: 100%; height: auto; outline: 1px solid var(--border-strong); background: var(--surface); }
+.cd-id { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; min-height: 13px; }
+.cd-name { font-size: 13px; font-weight: 620; line-height: 1.3; }
+.cd-text { font-size: 12px; color: var(--ink-2); font-style: italic; line-height: 1.3; }
+.cd-practising .cd-card { cursor: pointer; }
+.cd-practising .cd-card:not(.shown) .cd-name, .cd-practising .cd-card:not(.shown) .cd-text { visibility: hidden; }

@@ -53,7 +53,8 @@ const PAGES = {
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
-  vma: () => import("./pages/vma.js"),             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
+  vma: () => import("./pages/vma.js"),
+  descriptions: () => import("./pages/descriptions.js"),   // « Définitions de postes » (Coach): the IOF symbols (2026-10-30)             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
   ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
 };
 
@@ -83,7 +84,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysisPerso", "descriptions", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "descriptions", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -138,6 +139,7 @@ function parseHash(hash = location.hash) {
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
+    : head === "definitions" ? "descriptions"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -323,6 +325,7 @@ function menuKey(r) {
   return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
     : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
     : at === "provisional" || at === "splits" ? "agenda"                       // Arena's competitions page and a race's
+    : at === "analysis" ? "analysisPerso" : at === "analysisRace" ? "analysisClub"   // Coach's analyses: one page each, two tabs
     : at;
 }
 
@@ -361,16 +364,16 @@ export function moduleMenus() {
       // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
       ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
     ],
-    coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ["analysisClub", "#/analyse-club", t("nav.analysisClub")],
-      ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
+    // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
+    coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
+      ["descriptions", "#/definitions", t("nav.descriptions")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
   };
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
-const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", analysis: "coach", analysisRace: "coach",
-  deposit: "orga" };
+const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga" };
 /** The module a page belongs to, or null (the modules page, the documentation, the settings…). */
 export function moduleOf(r) {
   const k = menuKey(r);

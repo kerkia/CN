@@ -2518,4 +2518,24 @@ export default {
   // Arena (owner, 2026-10-30): the competitions page's tabs, a race's results tab
   "nav.arena.comps": "Compétitions", "arena.tab.coming": "Aujourd'hui et à venir", "arena.tab.past": "Passées",
   "arena.tab.results": "Résultats", "agd.live.results": "Résultats provisoires et analyse",
+  // « Définitions de postes » (Coach; owner, 2026-10-30)
+  "nav.descriptions": "Définitions de postes", "cd.title": "Définitions de postes",
+  "cd.lede": "Les symboles des définitions de postes de l'IOF, colonne par colonne, avec leur nom et le texte qu'imprime une feuille de définitions en clair.",
+  "cd.lang": "Langue des textes", "cd.search": "Rechercher", "cd.search.ph": "un nom, un mot, un numéro",
+  "cd.practice": "S'entraîner : masquer les noms",
+  "cd.practice.hint": "Les noms sont masqués : touchez un symbole pour le découvrir, une seconde fois pour le masquer de nouveau.",
+  "cd.source": "Symboles et textes : Purple Pen, d'après la spécification internationale des définitions de postes de l'IOF.",
+  "cd.col.C": "Colonne C · Lequel des objets semblables", "cd.col.C.hint": "Quand plusieurs objets semblables se trouvent dans le cercle.",
+  "cd.col.D": "Colonne D · L'objet : {f}", "cd.col.D.hint": "L'objet du poste, tel que la carte le représente (les colonnes D et E se lisent aussi l'une pour l'autre).",
+  "cd.fam.1": "reliefs", "cd.fam.2": "rochers et pierres", "cd.fam.3": "eau et marais", "cd.fam.4": "végétation", "cd.fam.5": "objets artificiels",
+  "cd.fam.6": "objets particuliers",
+  "cd.col.E": "Colonne E · Précisions sur l'objet", "cd.col.E.hint": "Son aspect, quand il faut le préciser.",
+  "cd.col.F": "Colonne F · Dimensions et combinaisons", "cd.col.F.hint": "La taille de l'objet, ou l'endroit où deux objets se rejoignent ou se croisent.",
+  "cd.col.G": "Colonne G · Position de la balise", "cd.col.G.hint": "Où la balise est placée par rapport à l'objet.",
+  "cd.col.H": "Colonne H · Autres informations", "cd.col.H.hint": "Ravitaillement, secours, contrôle radio, passage sous surveillance…",
+  "cd.special": "Instructions spéciales", "cd.special.hint": "Les lignes de la feuille entre les postes et vers l'arrivée : itinéraires balisés, passages obligatoires, changements de carte.",
+  // Coach's analyses, one page each (owner, 2026-10-30)
+  "coach.solo.race": "Une compétition", "coach.solo.free": "Un entraînement ou une autre course",
+  "coach.multi.race": "Compétitions", "coach.multi.club": "Entraînements",
+  "sh.mine.tip": "Vous en êtes l'organisateur : gérez-la dans le module Orga.",
 };

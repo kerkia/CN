@@ -17,7 +17,8 @@
 //    rule; the trace's length against the straight line; pace; mean heart rate and cadence).
 // Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
-import { html, raw, $, $$, fmt, fmtDate, pctN } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
+import { coachTabs } from "../coachtabs.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -153,6 +154,7 @@ export async function render(main, { query = {}, route } = {}) {
   const RF = perso || !races.length ? null : await raceFilters({ id: "anf", races, address: false, onChange: () => pickers() });
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
+    ${coachTabs("solo", perso ? "free" : "race")}
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="an-brief" id="an-brief" hidden></div>
     <div id="an-rf">${RF ? RF.html : ""}</div>
@@ -306,7 +308,7 @@ export async function render(main, { query = {}, route } = {}) {
     const iof = files.iof;
     const courseSel = iof?.data?.courses?.length > 1 ? html` <select id="an-iof-course" style="margin-left:8px">${iof.data.courses.map((c, i) => html`<option value="${i}" ${raw(i === iofIndex ? "selected" : "")}>${c.name || `#${i + 1}`}${c.length ? ` · ${fmt(c.length / 1000, 1)} km` : ""}</option>`)}</select>` : "";
     $("#an-files").innerHTML = html`<div class="card-body">
-      <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${ACCEPT}">
+      <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${fileAccept(ACCEPT)}">
         <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
       <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>

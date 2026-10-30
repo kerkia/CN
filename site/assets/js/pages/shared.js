@@ -16,7 +16,8 @@
 // corridor and compass exercises (pages/sharedviews.js); a headcam video in step (pages/sharedvideo.js); the replay's
 // state in the address. Stored by /api/analyses (R2).
 
-import { html, raw, $, $$, fmt, fmtDate } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fileAccept } from "../util.js";
+import { coachTabs } from "../coachtabs.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -109,11 +110,12 @@ export async function render(main, r) {
 async function listPage(main, kind, query = {}) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(`sh.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
+    ${coachTabs("multi", kind)}
     ${raw(betaNote("multi"))}
     <div id="sh-filters"></div>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} <a href="${ORG_ROUTE[kind]}">${t("nav.g.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")} →</a></p>`;
+    <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} ${t("mod.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")}.</p>`;
   let data;
   try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.${kind}.title`) }; }
   const races = kind === "race" ? ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso)) : [];
@@ -244,7 +246,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   }
   const A = data.analysis, organiser = data.you.organiser;
   if (org && !organiser) {
-    main.innerHTML = html`<div class="card"><div class="empty">${t("sh.org.notOrg")} <a href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")} →</a></div></div>`;
+    main.innerHTML = html`<div class="card"><div class="empty">${t("sh.org.notOrg")}</div></div>`;
     return { title: homeTitle };
   }
   let race = null;
@@ -255,10 +257,9 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     <div class="sh-top">
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
-      ${race ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(A.race)}">${t("sh.results")}</a>` : ""}
       <span class="sh-tabs" id="sh-tabs"></span>
-      ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button> <a class="btn btn-sm" href="${ROUTE[kind]}?id=${id}">${t("sh.org.asRunner")}</a>`
-        : organiser ? html`<a class="btn btn-sm" href="${ORG_ROUTE[kind]}?id=${id}">${t("sh.manage")}</a>` : ""}</div>
+      ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button>`
+        : organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}</div>
     <section class="card sh-setup" id="sh-setup" hidden></section>
     <div id="sh-viewer"></div>`;
   const drawTabs = () => {
@@ -906,7 +907,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     }
     el.innerHTML = html`<div class="sh-curves-head"><b>${t("sh.own.title")}</b><button type="button" class="btn btn-sm" id="sh-curves-close" title="${t("sh.own.close")}">‹</button></div>
       ${own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
-        : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept=".gpx,.tcx,.fit" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
+        : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
           <p class="hint" style="margin:6px 0 0">${t("an.fitTip")}</p>
           <p class="notice" id="sh-own-note" hidden></p>`}`;
     $("#sh-curves-close").addEventListener("click", () => { curvesOpen = false; savePrefs(); curvesPanel(); });
@@ -954,12 +955,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       <div class="sh-mine">${runners.some((r) => r.mine)
         ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
-        <input type="file" id="sh-file" accept=".gpx,.tcx,.fit" hidden>
+        <input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
       ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
         <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
         ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
-        <input type="file" id="sh-test-file" accept=".gpx,.tcx,.fit" multiple hidden>
+        <input type="file" id="sh-test-file" accept="${fileAccept(".gpx,.tcx,.fit")}" multiple hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.test.hint")}</p></div>` : ""}
       <div id="sh-upload"></div>`;
     const shownChanged = () => {
