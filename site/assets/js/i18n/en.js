@@ -314,8 +314,8 @@ export default {
   "tour.cap.docs-top": "One click switches from the official ranking to the Ozimut index.",
   "tour.cap.agenda-start.b": "The calendar,",
   "tour.cap.agenda-start": "with entries, directions and start lists.",
-  "tour.cap.race.b": "The organisers' results,",
-  "tour.cap.race": "read from their site or the platforms, with scores.",
+  "tour.cap.race.b": "A race's page:",
+  "tour.cap.race": "the organisers' results, then the split-time analysis as tabs.",
   "tour.cap.live.b": "Live,",
   "tour.cap.live": "with the place each runner's Ozimut index predicted.",
   "tour.cap.dark-splits.b": "Split times:",
@@ -3372,4 +3372,10 @@ export default {
   "hub.guest.enter": "Enter without an account",
   "home.guest.or": "or", "home.guest.hint": "Competitions, results, the ranking of the public period, the solo analysis: no account needed.",
   "cd.quote": "“{x}”",
+  // the home page's new pictures (2026-10-30)
+  "tour.cap.hub.b": "Four modules,", "tour.cap.hub": "to choose on arrival: the logo brings you back at any time.",
+  "tour.cap.past.b": "Past competitions,", "tour.cap.past": "with what Ozimut found of each.",
+  "tour.cap.descriptions.b": "Control descriptions,", "tour.cap.descriptions": "in 23 languages, with a mode to practise.",
+  "tour.cap.orga-direct.b": "Live results from MeOS", "tour.cap.orga-direct": "or a plain exported file.",
+  "tour.cap.phone-hub.b": "The modules", "tour.cap.phone-hub": "",
 };

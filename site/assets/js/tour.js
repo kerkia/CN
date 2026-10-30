@@ -10,15 +10,15 @@ import { html, raw, $, $$, fmt } from "./util.js";
 import { t, lang } from "./i18n.js";
 
 const LEGS = [
-  { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "settings"] },
+  { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "past"] },
   { id: "analysis", who: ["r", "c", "o"], dp: ["@trace", "phone-analysis"] },
   { id: "runner", who: ["r"], main: "runner-calc", side: ["dark-progress", "compare"], row: ["runner-map", "runner-network", "runner-seasons"] },
   { id: "ranking", who: ["r", "c"], main: "ranking", side: ["categories", "courses"], strip: ["stats-territories", "stats-ages", "stats-participation", "stats-leaders"] },
   { id: "method", who: ["r", "l"], duel: true, pair: ["docs", "docs-top"] },
   { id: "clubs", who: ["c", "l"], main: "relays", side: ["club", "clubcompare"], pair: ["clubs", "ia"] },
-  { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["vma", "game-photo"], row: ["game-contour", "game-rapid", "game-maze"] },
-  { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "results"] },
-  { id: "phones", who: ["all"], phones: ["phone-ranking", "phone-agenda", "phone-race", "phone-settings", "phone-runner"] },
+  { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["descriptions", "vma"], row: ["game-photo", "game-contour", "game-maze"] },
+  { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "orga-direct"] },
+  { id: "phones", who: ["all"], phones: ["phone-hub", "phone-agenda", "phone-race", "phone-ranking", "phone-runner"] },
 ];
 // the four modules (owner, 2026-10-30): each a section of the page, its introduction then its legs; the bar's links lead to
 // them (#/?s=arena…), and to the table of who sees what (#/?s=features)
@@ -118,7 +118,8 @@ export function tourHtml(counts = {}, { world = false } = {}) {
     <header class="tour-top"><div class="tour-eyebrow">${t("tour.eyebrow")}</div><h2 id="tour-title">${t("tour.title")}</h2>
       <p class="tour-lede">${t("tour.lede")}</p>
       <div class="tour-figs">${fig(counts.runners, "tour.fig.runners")}${fig(counts.competitions, "tour.fig.competitions")}${fig(counts.results, "tour.fig.results")}
-        <div class="tour-fig"><b>4</b><span>${t("tour.fig.specs")}</span></div></div></header>
+        <div class="tour-fig"><b>4</b><span>${t("tour.fig.specs")}</span></div></div>
+      <div class="tour-hub">${shot("hub")}</div></header>
     <div class="tour-course">
       <svg class="tour-start" viewBox="0 0 45 45" aria-hidden="true"><path d="M22.5 5 L41 37 L4 37 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>
       ${MODS.map((M, i) => mod(M, MODS.slice(0, i).reduce((s, x) => s + x.legs.length, 0)))}

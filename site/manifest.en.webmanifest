@@ -122,11 +122,11 @@
       "label": "How the index is computed"
     },
     {
-      "src": "/assets/tour/en/results.webp",
+      "src": "/assets/tour/en/past.webp",
       "sizes": "1400x875",
       "type": "image/webp",
       "form_factor": "wide",
-      "label": "The organisers' results"
+      "label": "Past competitions and their results"
     }
   ],
   "file_handlers": [

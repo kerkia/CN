@@ -2492,3 +2492,5 @@ body.full-win .tr-app { border: 0; }
 .tour-feat-mod[data-mod="orga"] th { color: var(--flag); }
 .tour-feat-note { font-size: 12.5px; margin: 8px 2px 0; }
 .home-login { scroll-margin-top: 76px; }
+/* the modules page's picture, under the home page's figures (2026-10-30) */
+.tour-hub { max-width: 980px; margin: 22px auto 0; text-align: left; }

@@ -253,8 +253,8 @@ export default {
   "tour.cap.docs-top": "Un clic suffit pour passer du classement officiel à l'indice Ozimut.",
   "tour.cap.agenda-start.b": "L'agenda,",
   "tour.cap.agenda-start": "avec les inscriptions, les accès et les listes de départ.",
-  "tour.cap.race.b": "Les résultats des organisateurs,",
-  "tour.cap.race": "lus sur leur site ou les plateformes, avec les scores.",
+  "tour.cap.race.b": "La page d'une course :",
+  "tour.cap.race": "les résultats des organisateurs, puis l'analyse des temps intermédiaires en onglets.",
   "tour.cap.live.b": "En direct,",
   "tour.cap.live": "avec la place que l'indice Ozimut de chacun prédisait.",
   "tour.cap.dark-splits.b": "Les temps intermédiaires :",
@@ -2568,4 +2568,10 @@ export default {
   "hub.guest.enter": "Entrer sans compte",
   "home.guest.or": "ou", "home.guest.hint": "Les compétitions, les résultats, le classement de la période publique, l'analyse solo : sans compte.",
   "cd.quote": "« {x} »",
+  // the home page's new pictures (2026-10-30)
+  "tour.cap.hub.b": "Quatre modules,", "tour.cap.hub": "à choisir en arrivant : le logo y ramène à tout moment.",
+  "tour.cap.past.b": "Les compétitions passées,", "tour.cap.past": "avec ce qu'Ozimut a trouvé de chacune.",
+  "tour.cap.descriptions.b": "Les définitions de postes,", "tour.cap.descriptions": "en 23 langues, avec un mode pour s'entraîner.",
+  "tour.cap.orga-direct.b": "Le direct depuis MeOS", "tour.cap.orga-direct": "ou un simple fichier exporté.",
+  "tour.cap.phone-hub.b": "Les modules", "tour.cap.phone-hub": "",
 };

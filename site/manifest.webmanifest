@@ -122,11 +122,11 @@
       "label": "Le calcul de l'indice"
     },
     {
-      "src": "/assets/tour/fr/results.webp",
+      "src": "/assets/tour/fr/past.webp",
       "sizes": "1400x875",
       "type": "image/webp",
       "form_factor": "wide",
-      "label": "Les résultats des organisateurs"
+      "label": "Les compétitions passées et leurs résultats"
     }
   ],
   "file_handlers": [
