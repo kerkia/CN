@@ -361,9 +361,9 @@ export function moduleMenus() {
     // its own tabs there (its results, the analysis's views: placeBarTabs; owner, 2026-10-30, third review)
     arena: [],
     stats: [
-      // « Coureur » opens on one's own page, in France's data (owner, 2026-10-30: « Ma page » was the same page); another
-      // runner is found by its search
-      ...[["runner", me?.lic && country.current() === "FR" && ranksHere() ? link.runner(`fr${me.lic}`) : "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
+      // « Classement » first, then « Coureur » (owner, 2026-10-30); « Coureur » opens on one's own page, in France's data
+      // (« Ma page » was the same page); another runner is found by its search
+      ...[["ranking", "#/classement", t("nav.ranking")], ["runner", me?.lic && country.current() === "FR" && ranksHere() ? link.runner(`fr${me.lic}`) : "#/coureur", t("nav.runner")], ["categories", "#/categories", t("nav.categories")],
         ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
         ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
         // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)

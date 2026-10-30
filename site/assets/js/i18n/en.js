@@ -695,7 +695,7 @@ export default {
   "fed.season": "Season", "fed.title": "{f} — {n} runners, {s} season",
   "fed.col.total": "Total", "fed.col.n": "Races",
   "fed.m1.tip": "The mean of the best 6 races (from 6 races)", "fed.m2.tip": "The mean of every valid race",
-  "rk.tab.list": "Ranking",
+  "rk.tab.list": "List",
   "rk.tab.dist": "Distribution",
   "rk.tab.progress": "Progress",
   "cm.tab.years": "Seasons",

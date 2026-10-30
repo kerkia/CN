@@ -26,7 +26,8 @@ const num = (v, d) => (Number.isFinite(Number(v)) && v !== "" && v != null ? Num
 const pace = (kmh) => (kmh > 0 ? t("vma.perKm", { t: fmtTime(Math.round(3600 / kmh)) }) : "—");
 
 export async function render(main, { query }) {
-  const tabs = [["calcul", t("vma.tab.calc")], ["methodes", t("vma.tab.methods")], ["applis", t("vma.tab.apps")]];
+  // the methods first, then the calculator (owner, 2026-10-30)
+  const tabs = [["methodes", t("vma.tab.methods")], ["calcul", t("vma.tab.calc")], ["applis", t("vma.tab.apps")]];
   const tab = tabFrom(tabs, query);
   const m = read();
   const st = {
@@ -43,7 +44,7 @@ export async function render(main, { query }) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.vma")}</h1><p class="lede">${t("vma.lede")}</p></div></div>
     ${pageTabs(tabs, tab)}
-    <div data-panel="calcul">
+    <div data-panel="calcul" hidden>
       <div class="grid grid-main-side vma-grid" style="align-items:start;margin-bottom:16px">
         <div>
           <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("vma.test.title")}</h2>
@@ -58,7 +59,7 @@ export async function render(main, { query }) {
         <div class="hint">${t("vma.zones.hint")}</div></div></div>
         <div id="vma-zones"></div></section>
     </div>
-    <div data-panel="methodes" hidden>${raw(C.methods)}</div>
+    <div data-panel="methodes">${raw(C.methods)}</div>
     <div data-panel="applis" hidden>${raw(C.apps)}</div>`;
 
   function lapLen() {

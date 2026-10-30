@@ -562,7 +562,7 @@ export default {
   "fed.season": "Saison", "fed.title": "{f} — {n} coureurs, saison {s}",
   "fed.col.total": "Total", "fed.col.n": "Courses",
   "fed.m1.tip": "La moyenne des 6 meilleures courses (à partir de 6 courses)", "fed.m2.tip": "La moyenne de toutes les courses valides",
-  "rk.tab.list": "Classement", "rk.tab.dist": "Répartition", "rk.tab.progress": "Progressions",
+  "rk.tab.list": "Liste", "rk.tab.dist": "Répartition", "rk.tab.progress": "Progressions",
   "cm.tab.years": "Saisons", "cm.tab.summary": "Bilan", "cm.tab.monthly": "Mois par mois", "cm.tab.cfc": "Coupe de France",
   "cl.view.regions": "Fédérations régionales", "cl.view.clubs": "Clubs", "cl.view.ligues": "Ligues", "cl.view.compare": "Comparer des clubs", "cl.view.relays": "Simulateur de relais",
   "co.tab.results": "Résultats", "co.tab.score": "Score par place", "co.tab.cn": "{cnSCap} et score",
