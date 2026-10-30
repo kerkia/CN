@@ -176,10 +176,12 @@ async function orgListPage(main, kind) {
     const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const draw = (q = "") => {
       const list = q ? mine.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""}`).includes(norm(q))) : mine;
-      $("#sh-list").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
+      // the page's width, no sideways scroll (owner, 2026-10-30): the race's and the organiser's names cut, whole on hover
+      $("#sh-list").innerHTML = list.length ? html`<table class="data compact sh-orglist"><colgroup><col class="c-date"><col><col class="c-org"><col class="c-status"><col class="c-act"></colgroup>
+        <thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
         <tbody>${list.map((x) => { const a = byRace.get(x.key);
-          return html`<tr><td class="num">${fmtDate(x.date_iso, "short")}</td><td>${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
-            <td class="muted">${x.org || "—"}</td>
+          return html`<tr><td class="num">${fmtDate(x.date_iso, "short")}</td><td class="cut" title="${x.place ? `${x.name} · ${x.place}` : x.name}">${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
+            <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
             <td>${a ? t("sh.org.status.n", { n: a.courses }) : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
             <td class="r">${a ? html`<a class="btn btn-sm" href="${ORG_ROUTE.race}?id=${a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`; })}</tbody></table>`
         : html`<div class="empty">${club || me?.admin ? t("sh.org.race.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;

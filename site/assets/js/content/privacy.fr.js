@@ -32,6 +32,13 @@ export const body = (SITE, { world = false } = {}) => `
         des licenciés de la FEDO (nom, club, fédération régionale, numéro de licence et de puce), dont il n'affiche aucun numéro. Ces résultats étant publics, ils
         sont visibles par tous, avec ou sans compte. Toute personne concernée peut demander à ne plus y être identifiée (voir
         « Vos droits »).</p>
+      <h2 style="font-size:16px">Accès et images du site</h2>
+      <p>${SITE} est entièrement gratuit. Une partie du site se consulte sans compte ; un compte ouvre les alertes et le partage de
+        traces, et l'historique complet du classement est réservé aux licenciés de la fédération : en France, un compte qui a rejoint
+        la France, son numéro de licence FFCO vérifié d'après le nom. Les pays dont tous les résultats sont publics (l'Espagne)
+        s'ouvrent à tous.</p>
+      <p>Les captures d'écran de la page d'accueil sont prises sur une copie brouillée des données : noms, licences, clubs et temps
+        y sont inventés ou modifiés, et ne correspondent à personne. Les encadrés marqués « Maquette » sont des illustrations.</p>
       <h2 style="font-size:16px">Données des résultats, y compris celles des licenciés sans compte</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr : nom,
         club, catégorie, numéro de licence, temps et place de chaque licencié classé, qu'il dispose ou non d'un compte sur ${SITE}, y

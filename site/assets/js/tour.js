@@ -13,9 +13,11 @@ import { t, lang } from "./i18n.js";
 const LEGS = [
   { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "past"] },
   { id: "analysis", who: ["r", "c", "o"], dp: ["@trace", "phone-analysis"] },
+  // Analyse multi (owner, 2026-10-30): the replay and the gaps, on the reel's invented map, every name invented
+  { id: "multi", who: ["r", "c"], pair: ["multi", "multi-gaps"] },
   { id: "runner", who: ["r"], main: "runner-calc", side: ["dark-progress", "compare"], row: ["runner-map", "runner-network", "runner-seasons"] },
   { id: "ranking", who: ["r", "c"], main: "ranking", side: ["categories", "courses"], strip: ["stats-territories", "stats-ages", "stats-participation", "stats-leaders"] },
-  { id: "method", who: ["r", "l"], duel: true, pair: ["docs", "docs-top"] },
+  { id: "method", who: ["r", "l"], duel: true, long: 3, pair: ["docs", "docs-top"] },
   { id: "clubs", who: ["c", "l"], main: "relays", side: ["club", "clubcompare"], pair: ["clubs", "ia"] },
   { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["descriptions", "vma"], row: ["game-photo", "game-contour", "game-maze"] },
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "orga-direct"] },
@@ -26,7 +28,7 @@ const LEGS = [
 export const MODS = [
   { id: "arena", legs: ["races"] },
   { id: "stats", legs: ["runner", "ranking", "method", "clubs"] },
-  { id: "coach", legs: ["analysis", "training"] },
+  { id: "coach", legs: ["analysis", "multi", "training"] },
   { id: "orga", legs: ["orga"] },
 ];
 // who sees what (owner, 2026-10-30): the modules as columns, the access levels as rows — without an account, with one, a
@@ -81,6 +83,9 @@ function leg(L, i) {
       <div class="tour-who">${L.who.map((w) => html`<span class="tour-who-${w}">${t(`tour.who.${w}`)}</span>`)}</div></div>`;
   const duel = L.duel ? html`<div class="tour-duel">${["forest", "sprint"].map((d) => html`<div><h3>${t(`tour.method.${d}`)}</h3>
       <div class="tour-vs"><s>${t(`tour.method.${d}.a`)}</s><b>${t(`tour.method.${d}.b`)}</b></div><p>${t("tour.method.note")}</p></div>`)}</div>` : "";
+  // the Ozimut index over the years (owner, 2026-10-30): what makes a runner's curve readable from end to end
+  const long = L.long ? html`<div class="tour-long"><h3>${t(`tour.${L.id}.long`)}</h3><ul>${Array.from({ length: L.long }, (_, i) =>
+    html`<li><b>${t(`tour.${L.id}.long.${i + 1}.b`)}</b> ${t(`tour.${L.id}.long.${i + 1}`)}</li>`)}</ul></div>` : "";
   const main = L.main ? html`<div class="tour-g-main">${shot(L.main)}<div class="tour-g-side">${L.side.map((s) => shot(s))}</div></div>` : "";
   const row = L.row ? html`<div class="tour-g-3">${L.row.map((s) => shot(s))}</div>` : "";
   const strip = L.strip ? html`<div class="tour-g-4">${L.strip.map((s) => shot(s, { small: true }))}</div>` : "";
@@ -90,7 +95,7 @@ function leg(L, i) {
   // a computer's picture beside the same page on a phone
   const dp = L.dp ? html`<div class="tour-g-dp">${shot(L.dp[0])}<figure><div class="tour-phone"><img src="${src(L.dp[1])}" ${raw(PHONE_DIMS)}
       alt="${t(`tour.cap.${L.dp[1]}.b`)}" loading="lazy" decoding="async" tabindex="0" title="${t("tour.zoom")}"></div>${cap(L.dp[1])}</figure></div>` : "";
-  return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${main}${dp}${row}${strip}${pair}${phones}</section>`;
+  return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${long}${main}${dp}${row}${strip}${pair}${phones}</section>`;
 }
 
 const START = `<svg class="tour-start" viewBox="0 0 45 45" aria-hidden="true"><path d="M22.5 5 L41 37 L4 37 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>`;
@@ -117,7 +122,7 @@ function features() {
     <div class="tour-eyebrow">${t("tour.feat.eyebrow")}</div><h2>${t("tour.feat.title")}</h2><p class="tour-lede">${t("tour.feat.lede")}</p>
     <div class="tour-feat-grid"><table class="tour-feat-table"><thead><tr><th></th>${MODS.map((M) => html`<th data-mod="${M.id}">${t(`mod.${M.id}`)}<span>${t(`mod.${M.id}.tag`)}</span></th>`)}</tr></thead>
       <tbody>${LEVELS.map((l) => html`<tr><th scope="row"><b>${t(`tour.lvl.${l}`)}</b><em class="tour-free">${t("tour.lvl.free")}</em><span>${t(`tour.lvl.${l}.sub`)}</span></th>${MODS.map((M) => cell(M.id, l))}</tr>`)}</tbody></table></div>
-    <p class="muted tour-feat-note">${t("tour.feat.note")}</p></section>`;
+    <p class="muted tour-feat-note">${t("tour.feat.note")}</p><p class="muted tour-feat-note">${t("tour.note")}</p></section>`;
 }
 
 /** The section, under the hero. counts: meta.json's { runners, competitions, results }. */
@@ -147,7 +152,6 @@ export function tourHtml(counts = {}, { world = false } = {}) {
       </section></div></div>
     ${MODS.map((M) => mod(M))}
     ${features()}
-    <p class="tour-note">${t("tour.note")}</p>
     <dialog class="tour-box" id="tour-box"><img alt=""><p></p></dialog>
   </section>`;
 }

@@ -27,6 +27,12 @@ export const body = (SITE, { world = false } = {}) => `
         category; to recognise the same runner from one race to the next, it also reads the FEDO's public list of licence holders
         (name, club, regional federation, licence and card numbers), of which it shows no number. These results being public, everyone can see them, with or without an account.
         Anyone concerned may ask no longer to be identified in them (see “Your rights”).</p>
+      <h2 style="font-size:16px">Access and pictures of the site</h2>
+      <p>${SITE} is entirely free. Part of the site can be read without an account; an account opens alerts and track sharing,
+        and the ranking's whole history is kept to the federation's licence holders: in France, an account that joined France, its
+        FFCO licence number checked against the name. Countries whose results are all public (Spain) are open to everyone.</p>
+      <p>The screenshots on the home page are taken on a scrambled copy of the data: names, licences, clubs and times are invented
+        or altered and match nobody. The panels marked “Mockup” are illustrations.</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the
         name, club, class, licence number, time and place of each ranked licence holder, whether or not they have an account on

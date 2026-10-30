@@ -299,12 +299,21 @@ way in; the line's length measured to the finish, `--line`). « Tarifs » is a t
 as rows (without an account, with one, a federation's licensee, with Orga), each row adding to the one above and marked
 « Gratuit pour tous »; each cell lists what it adds (`CAPS`, keys `tour.f.<module>.<level>.<n>`: change both together). A link
 of the bar is caught by the page (`overview.onSectionLink`: a second click on the same one works too) and jumps to the section
-under the bar, put right again as the pictures load (their sizes are written in the page) unless the reader has scrolled since.
+under the bar, put right again as the pictures load (their sizes are written in the page) unless the reader has scrolled since;
+on the home page the logo and the name take it back to its top. Stats' « Indice Ozimut » leg holds « Votre niveau sur la durée »
+(`tour.method.long.*`: one set of rules since 2010, one scale with no jump between seasons, each race scored once — owner: the
+index's value for following one's level over the years); Coach has an « Analyse multi » leg (`multi`, `multi-gaps`). The notes
+on licensees and on the pictures sit under the Pricing table, one under the other, and are in the rules page too (« Accès et
+images du site »).
 Its pictures were all retaken on 2026-10-30 (the old ones showed the menus of before) on the scrambled copy rebuilt with that day's
 code — `synth/oz2` (`synth-oz2.sqlite3`, `data/` in today's layout), by `build_oz2.py` / `build_oz2b.py`, then `tour2.mjs fr|en`
 (Orga's pages on the administrators' dev server, 8790, so that their lists are full), `convert.py`, `sheet.py` for contact
 sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\7c7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
 (`npm install` there for puppeteer-core; run from PowerShell). New ones: `hub`, `past`, `descriptions`, `orga-direct`, `phone-hub`.
+Retaken the same evening with the modules' bar, plus `multi` and `multi-gaps`: the local test analysis « Test UI club » (circuit
+« Bleu », the reel's invented map), whose title, organiser and runners `lib.mjs` replaces with invented ones
+(`/api/analyses/<id>` and `/traces/<n>`, fetched with the page's cookies) — never take them without that. `past` must open in a
+fresh page: an Agenda address opened from the Agenda keeps the page's periods.
 
 ## Provisional results (« Résultats »)
 

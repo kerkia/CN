@@ -860,7 +860,6 @@ svg.tour-ctrl-finish { border: 0; background: none; fill: var(--plane); color: v
 .tour-cta-row { margin: 16px 0 14px; }
 .tour-cta-mail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
 .tour-cta-mail b { color: var(--flag); user-select: all; }
-.tour-note { color: var(--ink-3); font-size: 13px; margin: 36px 0 10px; padding-top: 18px; border-top: 1px solid var(--border); }
 .tour-box { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
 .tour-box::backdrop { background: rgba(8, 12, 9, .82); }
 .tour-box img { max-width: 96vw; max-height: 88vh; width: auto; height: auto; border-radius: 10px; display: block; }
@@ -2593,3 +2592,15 @@ body.full-win .tr-app { border: 0; }
 }
 .tour-feat-table .tour-free { display: inline-block; margin-top: 5px; font-style: normal; font-size: 11.5px; font-weight: 700; letter-spacing: .03em;
   color: var(--forest); border: 1.5px solid currentColor; border-radius: 99px; padding: 1px 8px; }
+/* the Ozimut index over the years, under the duel figures (2026-10-30) */
+.tour-long { background: var(--forest-wash); border-left: 5px solid var(--forest); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; }
+.tour-long h3 { margin: 0 0 10px; font-size: 18px; color: var(--forest); }
+.tour-long ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.tour-long li { font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.tour-long li b { display: block; color: var(--ink); font-size: 15px; margin-bottom: 3px; }
+@media (max-width: 760px) { .tour-long ul { grid-template-columns: minmax(0, 1fr); } }
+.tour-feat-note + .tour-feat-note { margin-top: 0; }
+/* Orga › Compétitions: the list at the page's width (2026-10-30) */
+.sh-orglist { table-layout: fixed; width: 100%; }
+.sh-orglist .c-date { width: 96px; } .sh-orglist .c-org { width: 28%; } .sh-orglist .c-status { width: 150px; } .sh-orglist .c-act { width: 190px; }
+.sh-orglist td.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

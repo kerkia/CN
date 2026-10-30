@@ -62,6 +62,12 @@ function goTo(s) {
 }
 // the bar's links to the sections (#/?s=…) and the page's own: handled here, so that a second click on the same one scrolls too
 function onSectionLink(e) {
+  if (e.target.closest?.(".brand-home, .brand-name") && /^#\/?(\?.*)?$/.test(location.hash || "#/")) {
+    e.preventDefault();
+    history.replaceState(null, "", "#/");
+    window.scrollTo({ top: 0, behavior: "instant" });
+    return;
+  }
   const a = e.target.closest?.('a[href^="#/?s="]');
   if (!a) return;
   e.preventDefault();
