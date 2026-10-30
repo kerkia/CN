@@ -182,15 +182,16 @@ def owners(group, text: str, plain_default: bool = True) -> set:
     return {k for k, ws in own.items() if rank(ws) == plainest}
 
 
-def assign(races_list, items, min_score: float = 1.0) -> dict:
+def assign(races_list, items, min_score: float = 1.0, accept=None) -> dict:
     """One-to-one: each platform competition goes to the watched race of its day it matches best (and each race gets
-    at most one), so two races of a weekend never share a competition. items: [(id, name, organiser, date)]."""
+    at most one), so two races of a weekend never share a competition. items: [(id, name, organiser, date)].
+    accept(race, id): a last check of a pair that matched (asked only then: it may cost a request)."""
     pairs = []
     for r in races_list:
         for iid, name, org, d in items:
             if d == r["date_iso"]:
                 s = match_score(r, name, org)
-                if s >= min_score:
+                if s >= min_score and (accept is None or accept(r, iid)):
                     pairs.append((s, r["key"], iid))
     taken_r, taken_i, out = set(), set(), {}
     for s, rk, iid in sorted(pairs, key=lambda p: -p[0]):

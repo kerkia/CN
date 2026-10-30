@@ -93,6 +93,9 @@ def live_ids(con, key: str) -> list | None:
 # the time zones of a race's country, for liveresultat's competitions (a race in France reads only Paris's): the others
 # are their country module's (countries/<cc>), any time zone for a country without one
 TZ = {None: ("Europe/Paris",), "FR": ("Europe/Paris",)}
+# overseas France, for the liveresultat competitions that may be France's (as the live relay's TZ_COUNTRY)
+FR_OVERSEAS = ("Indian/Reunion", "Indian/Mayotte", "America/Guadeloupe", "America/Martinique", "America/Cayenne",
+               "Pacific/Noumea", "Pacific/Tahiti")
 
 
 def time_zones(country: str | None) -> tuple[str, ...] | None:
@@ -1328,7 +1331,26 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         cancelled = cancelled_keys(con)
         period = [r for r in period if r["key"] not in cancelled and not r["key"].startswith(RELAY)]     # (relays: their own)
         lo = (today - timedelta(days=KEEP_DAYS)).isoformat()
-        lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo])
+        # liveresultat lists every country's competitions: one goes to a race only in its country's time zones, as
+        # LiveResultat.candidates does (2026-10-30: Sweden's « Halloween-Natta » had gone to Nouméa's « Kids Halloween » by
+        # the one word they share, and the Agenda offered its live results)
+        # (no time zone declared: a Swedish race, liveresultat's home — the live relay's rule, live/src/index.js countryOf;
+        # « timediff » cannot tell: Sweden and France share a clock; overseas France counts as France)
+        def lr_here(country, cid):
+            zones = time_zones(country)
+            if zones and "Europe/Paris" in zones:
+                zones = zones + FR_OVERSEAS
+            return zones is None or (lr.info(cid).get("timezone") or "Europe/Stockholm") in zones
+        lr_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in lr.competitions() if c["date"] >= lo],
+                              accept=lambda r, cid: lr_here(r["country"], cid))
+        # and a liveresultat document kept before from another country's time zone goes
+        for d in con.execute("SELECT d.race_key, d.url, r.country FROM prov_docs d JOIN prov_races r ON r.key = d.race_key "
+                             "WHERE d.source = 'liveresultat' AND r.date_iso >= ?", (lo,)).fetchall():
+            m = LIVE_IDS[0][0].search(d["url"] or "")
+            if m and not lr_here(d["country"], int(m[1])):
+                log.info("provisional: %s drops %s (another country's time zone)", d["race_key"], d["url"])
+                con.execute("DELETE FROM prov_docs WHERE race_key = ? AND url = ?", (d["race_key"], d["url"]))
+                changed += 1
         ws_events = store.meta_get(con, "winsplits", {"events": {}})["events"]
         ws_map = races.assign(period, [(int(k), e["name"], e["organiser"], e["date"]) for k, e in ws_events.items() if e["date"] >= lo])
         hy_map = races.assign(period, [(c["id"], c["name"], c["organizer"], c["date"]) for c in hy.competitions() if c["date"] >= lo])

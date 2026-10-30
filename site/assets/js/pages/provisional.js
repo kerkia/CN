@@ -192,7 +192,9 @@ async function detail(main, idx, query) {
     return `#/analyse-course?course=${encodeURIComponent(race.key)}${i > 0 ? `&doc=${i}` : ""}${i >= 0 && c ? `&c=${c}` : ""}`;
   };
 
+  // the way back to Arena's list of competitions (owner, 2026-10-30), which comes back where it was (agenda.js memo)
   main.innerHTML = html`
+    <a class="back-link" href="#/agenda">‹ ${t("arena.back")}</a>
     <div class="page-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${tracking.button(track)}

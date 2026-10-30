@@ -3373,7 +3373,7 @@ export default {
   "hub.arena.step.agenda": "Calendar", "hub.arena.step.results": "Results", "hub.arena.step.live": "Live",
   "hub.arena.step.splits": "Split-time analysis", "hub.arena.step.map": "Map analysis",
   // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
-  "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past (last 60 days)",
+  "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past (60 days)",
   "agd.past.results": "results", "agd.past.splits": "splits", "agd.past.official": "official",
   "mod.home": "Back to {mod}'s first page",
   "an.cam": "📷 Photograph the map",
@@ -3457,4 +3457,5 @@ export default {
   "tour.cap.multi.b": "The replay:", "tour.cap.multi": "every runner on the same map, in a mass start, their pace under the map.",
   "tour.cap.multi-gaps.b": "The gaps:", "tour.cap.multi-gaps": "everyone's time behind the best, control after control; a click on a point takes the replay to that pass.",
   "hub.orga.register": "Create an account to open it",
+  "arena.back": "Competitions",
 };

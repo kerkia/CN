@@ -2569,7 +2569,7 @@ export default {
   "hub.arena.step.agenda": "Agenda", "hub.arena.step.results": "Résultats", "hub.arena.step.live": "En direct",
   "hub.arena.step.splits": "Analyse des temps intermédiaires", "hub.arena.step.map": "Analyse sur la carte",
   // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
-  "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 derniers jours)",
+  "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 jours)",
   "agd.past.results": "résultats", "agd.past.splits": "temps inter.", "agd.past.official": "officiels",
   "mod.home": "Revenir à la première page de {mod}",
   "an.cam": "📷 Photographier la carte",
@@ -2653,4 +2653,5 @@ export default {
   "tour.cap.multi.b": "La relecture :", "tour.cap.multi": "chaque coureur sur la même carte, en départ groupé, son allure sous la carte.",
   "tour.cap.multi-gaps.b": "Les écarts :", "tour.cap.multi-gaps": "le retard de chacun sur le meilleur, poste après poste ; un clic sur un point remet la relecture à ce passage.",
   "hub.orga.register": "Créer un compte pour l'ouvrir",
+  "arena.back": "Compétitions",
 };

@@ -267,7 +267,11 @@ every visitor's request goes through the gate, which judges the decoded path, an
 **Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
 agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in a box of their own above the filters, always shown — on a phone too, where the other filters are
-folded (« Aujourd'hui », « À venir », « Passées »; `st.when`, all three by default; the list opens on today). The map draws the coming
+folded (« Aujourd'hui », « À venir », « Passées (60 jours) »; `st.when`, all three by default; the list opens on today — its box
+scrolled there, on a phone, where the list has no box, the page, once the router has put it at its top). Left for a race (a row, a
+link of the details), the list remembers where it was (`agenda.js` `memo`: periods and scroll, an hour, the same country): coming
+back — a race page's « ‹ Compétitions » (`arena.back`, on the results page and the analysis), the browser's Back, the module's
+name — finds it there; an address naming an event or `periode` opens as asked (owner, 2026-10-30). The map draws the coming
 competitions as dots, today's and the past ones only while the mouse is over their row or they are selected (`agendamap.show`'s
 `ghost`; a past race's place from the results index's `pos`, `prov/run.race_pos`: its place within its organiser's département
 by the offline place tables, else that unit's centre). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
@@ -422,7 +426,11 @@ listed as complete): a list read from liveresultat or a MeOSDjango site while ru
 `run.build` marks the race `ongoing` (index and race file: the number of runners out) while it is today, no organiser's file
 (upload, the club's site) is there and the latest finish is under 90 min old or a start is still to come (`run.ongoing`,
 `ONGOING_QUIET_S`) — the list tags it « en cours », its page says the results are partial, and `notify` holds the « mise en
-ligne » alert until it is over. liveresultat's splits are kept when a class's « splitcontrols » cover the course (4 or more: MeOS feeds every
+ligne » alert until it is over. **A liveresultat competition goes to a race only in its country's time zones** (`races.assign`'s `accept`, `run.lr_here`;
+2026-10-30: Sweden's « Halloween-Natta » had gone to Nouméa's « Kids Halloween » by the one word they share, and the Agenda offered
+its live results): the time zone its organiser declared (`getcompetitioninfo`), none = Swedish, as the live relay's `countryOf`
+(`timediff` cannot tell France from Sweden), overseas France counting as France (`FR_OVERSEAS`); a liveresultat document kept
+before from another country's time zone is dropped. liveresultat's splits are kept when a class's « splitcontrols » cover the course (4 or more: MeOS feeds every
 control, code 1000 + number, repeats 101031…; a radio control or two are not kept). A race's documents are
 shown in the order `run.doc_priority` gives (`prio`, both sites follow it): uploads and the organiser's files, then
 WinSplits / Orientation Data, Helga, liveresultat last (live results are not corrected afterwards); a document with

@@ -50,6 +50,11 @@ const pastEvent = (r) => ({ kind: "c", id: `r:${r.key}`, past: r.key, date: r.da
 const declaredEvent = (r) => ({ kind: "c", id: r.key, declared: true, date: r.date_iso, name: r.name, place: r.place, org: r.org,
   country: r.country, site: r.url || null, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "" });
 
+// Where the list was when the page was left for a race (a row, a link of the details): coming back to the list — the race
+// page's « ‹ Compétitions », the browser's Back, the module's name — finds it there, with its periods, instead of on today
+// (owner, 2026-10-30), within the hour and in the same country; an address naming an event or the past ones opens as asked
+let memo = null;
+
 export async function render(main, { query }) {
   const A = await data.agenda();
   if (!A) {
@@ -113,6 +118,9 @@ export async function render(main, { query }) {
     regions: new Set(A.regions.map((r) => r.name)), depts: new Set(A.regions.flatMap((r) => r.depts)),
     groups: new Set(), selected: query.id && byKey.has(String(query.id)) ? String(query.id) : null,
   };
+  const returning = !query.periode && query.id == null && memo && memo.cc === cc && Date.now() - memo.at < 3600e3 ? memo : null;
+  memo = null;
+  if (returning) st.when = new Set(returning.when);
   const groupsPresent = [...new Set(events.map(groupOf).filter(Boolean))]
     .sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
 
@@ -142,7 +150,7 @@ export async function render(main, { query }) {
 
   // today's, a coming or a past competition (an event under way is today's); the list opens on today (toToday)
   const periodOf = (e) => ((e.end || e.date) < today ? "past" : e.date > today ? "coming" : "today");
-  let toToday = true;
+  let toToday = !returning;
   // a runner: one's own competitions or another runner's, as on the other lists of races (racefilters.js; France's members):
   // the events whose start list or results name them
   const RF = await raceFilters({ id: "agr", races: events, address: false, fields: ["runner"], bare: true,
@@ -281,10 +289,19 @@ export async function render(main, { query }) {
         ${places ? html`<td class="r">${e.region || ""}</td>` : ""}
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
     // past competitions above today's: the list opens on today (after a change of the three boxes)
+    // On a phone the list has no box of its own (the page scrolls): the page goes to today's first row, under the bar (owner,
+    // 2026-10-30: it opened on the oldest past competitions) — once the router has put a new page at its top
     if (toToday) {
       toToday = false;
+      const box = $("#table");
       const first = st.when.has("past") && $('#table tr[data-period="today"], #table tr[data-period="coming"]');
-      $("#table").scrollTop = first ? Math.max(0, first.offsetTop - 44) : 0;
+      if (box.scrollHeight > box.clientHeight + 1) box.scrollTop = first ? Math.max(0, first.offsetTop - 44) : 0;
+      else setTimeout(() => {
+        // without past competitions, the list's top — only when the page is below it (after a box ticked off)
+        const bar = document.querySelector(".topbar")?.offsetHeight || 0;
+        const y = Math.max(0, (first || box).getBoundingClientRect().top + window.scrollY - bar - 8);
+        if (first || window.scrollY > y) window.scrollTo({ top: y, behavior: "instant" });
+      }, 0);
     }
   }
   /** What « Résultats » found of a past competition: the organisers' results, split times, the official results. */
@@ -532,6 +549,14 @@ export async function render(main, { query }) {
   drawFilters();
   drawTable();
   mountMap();
+  if (returning) setTimeout(() => {
+    const box = $("#table");
+    if (box.scrollHeight > box.clientHeight + 1) box.scrollTop = returning.box;
+    else window.scrollTo({ top: returning.y, behavior: "instant" });
+  }, 0);
+  page.addEventListener("click", (e) => {
+    if (e.target.closest("tr[data-key], a[href]")) memo = { cc, when: [...st.when], box: $("#table").scrollTop, y: window.scrollY, at: Date.now() };
+  }, true);
   findLive();
   findTracking();
   if (st.selected) {
