@@ -2622,3 +2622,5 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .sh-orglist { table-layout: fixed; width: 100%; }
 .sh-orglist .c-date { width: 96px; } .sh-orglist .c-org { width: 28%; } .sh-orglist .c-status { width: 150px; } .sh-orglist .c-act { width: 190px; }
 .sh-orglist td.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the modules page on a phone: « Se connecter » is in the bar already (owner, 2026-10-30) */
+@media (pointer: coarse) and (max-width: 900px) { .hub-session .hub-login { display: none; } }

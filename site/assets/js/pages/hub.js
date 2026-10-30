@@ -63,7 +63,7 @@ function session() {
       <button type="button" class="btn btn-sm" data-hub-logout>${t("auth.logout")}</button></div>`;
   }
   return html`<div class="hub-session"><span>${t("hub.guestAs")}</span>
-    <a class="btn btn-sm btn-primary" href="#/?s=login">${t("hub.login")}</a>
+    <a class="btn btn-sm btn-primary hub-login" href="#/?s=login">${t("hub.login")}</a>
     <a class="btn btn-sm" href="#/compte/inscription">${t("hub.register")}</a>
     <button type="button" class="btn btn-sm btn-ghost" data-hub-leave>${t("hub.leave")}</button></div>`;
 }
