@@ -2220,7 +2220,7 @@ export default {
   "od.lastSent": "Dernier envoi : {t}.",
   "od.never": "aucun",
   "od.watch": "Les spectateurs la suivent ici :",
-  "od.liveLink": "Arena › En direct › {name}",
+  "od.liveLink": "Arena › Aujourd'hui et à venir › {name}",
   "od.name": "Nom de la course",
   "od.namePh": "Régionale de …",
   "od.date": "Date",
@@ -2574,4 +2574,8 @@ export default {
   "tour.cap.descriptions.b": "Les définitions de postes,", "tour.cap.descriptions": "en 23 langues, avec un mode pour s'entraîner.",
   "tour.cap.orga-direct.b": "Le direct depuis MeOS", "tour.cap.orga-direct": "ou un simple fichier exporté.",
   "tour.cap.phone-hub.b": "Les modules", "tour.cap.phone-hub": "",
+  "agd.liveBox": "En direct aujourd'hui",
+  "agd.liveBox.hint": "Les courses du jour suivies en direct ; « direct » : un poste ou une arrivée lus il y a moins de {m} min.",
+  "hub.arena.step.agenda": "Agenda", "hub.arena.step.results": "Résultats", "hub.arena.step.live": "En direct",
+  "hub.arena.step.splits": "Analyse des temps intermédiaires", "hub.arena.step.map": "Analyse sur la carte",
 };

@@ -230,9 +230,10 @@ Ozimut is four **modules**, the same names in both languages: **Arena** (the com
 water blue), **Stats** (the rankings and their analyses — forest green), **Coach** (training: Analyse solo, Analyse multi,
 « Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).
 `app.js` `MODULES`, `moduleMenus()` (each module's menu), `moduleOf(r)` (a route's module; `ROUTE_MODULE` for the routes
-outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`), the logo and
-the module's name (`.brand-mod`); the contour-line banner under it says what the module is (and holds the method switch in
-Stats). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
+outside the menus), `body[data-group]` = the module. The bar shows the current module's pages only (`.mod-nav`; folded behind
+the menu button when they do not fit, `app.fitNav`), the logo and the module's name (`.brand-mod`), the method switch in Stats;
+the contour lines are drawn behind the bar itself (owner, 2026-10-30, second review: no banner under it, no line describing the
+module — the modules page says it). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
 account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. **No page leads into another module**
 (the rule of the restructure): runner names in Arena's tables open the runner's window (`runnerpop.js`, as « En direct »'s),
 Orga's pages name where things show (« Arena › En direct › … ») instead of linking, the analyses tag an organiser's own event
@@ -259,9 +260,16 @@ countries whose access is "all" (Spain, the agendas' countries; `auth.sees` is t
 results (`/api/live/list`, `/ws/*`) and `/api/tracking` (its GET serves visitors, `mine` false). Not excluded in `_routes.json`:
 every visitor's request goes through the gate, which judges the decoded path, and counts on the Workers' daily quota.
 
-**Arena**: its menu is « Compétitions » (`#/agenda`) and « En direct ». The competitions page is two pages shown as one
-(`arenatabs.js` `arenaTabs`): « Aujourd'hui et à venir » (the Agenda) and « Passées » (« Résultats », the last 60 days; older
-results are Stats' « Courses » only). A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
+**Arena** is one page, the competitions, whose two tabs are the module's menu in the bar: « Aujourd'hui et à venir » (the
+Agenda, `#/agenda`) and « Passées » (« Résultats », `#/resultats`, the last 60 days; older results are Stats' « Courses » only).
+« En direct »'s list is gone (`#/direct` leads to the Agenda; a race's live page `#/direct/<id>` stays): the Agenda's box « En
+direct aujourd'hui » lists the events live now and today's live races no event is (`findLive`/`drawLive`: the same answer of the
+relay as the events' « direct » tags — the two lists disagreed before; a live race of today whose name fits an event becomes
+that event's), and a runner filter (`raceFilters` with `fields: ["runner"], bare`) keeps the events whose start list or results
+name them. An event's details start with one row of buttons (`actions`: invitation, « Suivre en direct », its provisional results
+and analysis, GPS tracking, the start list, « Accès » — the way there; the access text is a line of the details). The map has no
+frame of its own: its buttons and legend over it (`agendamap.js`). The modules page's Arena card lists what a competition chosen
+there offers (`hub.js ARENA_STEPS`) instead of page links. A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
 provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.

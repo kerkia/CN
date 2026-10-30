@@ -16,7 +16,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { arenaTabs, raceTabs } from "../arenatabs.js";
+import { raceTabs } from "../arenatabs.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -92,7 +92,6 @@ async function list(main, idx, query) {
     ranBy: (r, lic) => { const s = ffcoSet(lic); return !!(s && r.ffco_id && s.has(String(r.ffco_id))); } });
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("prov.title")}</h1><p class="lede">${t("prov.lede")}</p></div></div>
-    ${arenaTabs("past")}
     <div class="tiles tiles-compact" id="pv-tiles" style="margin-bottom:14px"></div>
     ${F.html}
     ${country.hint(idx.races.filter((r) => !r.soon).map(country.of))}

@@ -29,9 +29,12 @@ export const provFacts = (r) => ({ spec: specOf(r), region: r.region || "", lics
  *   ranBy    (race, licence) → also the runner's race (Résultats: FFCO's own published races)
  *   onChange called after any change
  *   address  the state kept in the address (false: the page's address is its own)
+ *   fields   the fields drawn (default all: show, spec, reg, runner, q); bare: without the fold (inside a page's own filters)
  * Returns { html, bind(), keep(race), shown, runner(), one() }.
  */
-export async function raceFilters({ id, query = {}, races = [], facts = provFacts, show = null, mine = false, ranBy = null, onChange, address = true }) {
+export async function raceFilters({ id, query = {}, races = [], facts = provFacts, show = null, mine = false, ranBy = null, onChange, address = true,
+  fields = null, bare = false }) {
+  const has = (f) => !fields || fields.includes(f);
   const F = races.map(facts);
   const specs = SPECS.filter((s) => F.some((x) => x.spec === s));
   const regions = [...new Set(F.map((x) => x.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
@@ -61,14 +64,15 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
   const runnerField = () => html`${mineSeg()}${st.runner && st.runner !== me ? html`<span class="pill rf-pick">${name(st.runner)}<button type="button" class="rf-x" id="${id}-rx"
       title="${t("rf.clear")}" aria-label="${t("rf.clear")}">✕</button></span>` : ""}
     ${runnerSearch(`${id}-rs`, t(st.runner && st.runner !== me ? "rn.change" : "rf.find"))}`;
-  const html_ = filterFold(html`<div class="filters rf" id="${id}">
-    ${show ? html`<div class="field"><span>${t("prov.show")}</span><div id="${id}-f">${raw(seg(`${id}f`, show, st.shown))}</div></div>` : ""}
-    ${specs.length ? html`<div class="field"><span>${t("f.terrain")}</span><div id="${id}-t">${raw(seg(`${id}t`, [["all", t("f.all")], ...specs.map((s) => [s, t(`terrain.${s}`)])], st.spec))}</div></div>` : ""}
-    ${regions.length ? html`<label class="field"><span>${t("prov.region")}</span><select id="${id}-reg"><option value="">${t("f.all")}</option>
+  const inner = html`<div class="filters rf" id="${id}">
+    ${show && has("show") ? html`<div class="field"><span>${t("prov.show")}</span><div id="${id}-f">${raw(seg(`${id}f`, show, st.shown))}</div></div>` : ""}
+    ${specs.length && has("spec") ? html`<div class="field"><span>${t("f.terrain")}</span><div id="${id}-t">${raw(seg(`${id}t`, [["all", t("f.all")], ...specs.map((s) => [s, t(`terrain.${s}`)])], st.spec))}</div></div>` : ""}
+    ${regions.length && has("reg") ? html`<label class="field"><span>${t("prov.region")}</span><select id="${id}-reg"><option value="">${t("f.all")}</option>
       ${regions.map((x) => html`<option value="${x}" ${raw(x === st.reg ? "selected" : "")}>${x}</option>`)}</select></label>` : ""}
-    ${withRunner ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row rf-runner" id="${id}-who">${raw(runnerField())}</div></div>` : ""}
-    <label class="field"><span>${t("prov.search")}</span><input type="search" id="${id}-q" value="${st.q}" placeholder="${t("rf.q")}" style="width:200px"></label>
-  </div>`);
+    ${withRunner && has("runner") ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row rf-runner" id="${id}-who">${raw(runnerField())}</div></div>` : ""}
+    ${has("q") ? html`<label class="field"><span>${t("prov.search")}</span><input type="search" id="${id}-q" value="${st.q}" placeholder="${t("rf.q")}" style="width:200px"></label>` : ""}
+  </div>`;
+  const html_ = bare ? inner : filterFold(inner);
 
   function bindRunner() {
     const box = $(`#${id}-who`);
@@ -91,7 +95,7 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
       }));
     }
     $(`#${id}-reg`)?.addEventListener("change", (e) => { st.reg = e.target.value; changed(); });
-    $(`#${id}-q`).addEventListener("input", (e) => { st.q = e.target.value; changed(); });
+    $(`#${id}-q`)?.addEventListener("input", (e) => { st.q = e.target.value; changed(); });
     bindRunner();
     save();
   }
@@ -102,6 +106,6 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
       && (!st.runner || x.lics.includes(st.runner) || !!ranBy?.(r, st.runner))
       && (!qn || normalise(x.text).includes(qn));
   }
-  return { html: html_, bind, keep, get shown() { return st.shown; }, runner: () => st.runner, one: () => !!st.runner, searching: () => !!st.q.trim(),
+  return { html: html_, bind, keep, withRunner, get shown() { return st.shown; }, runner: () => st.runner, one: () => !!st.runner, searching: () => !!st.q.trim(),
     filtered: () => st.spec !== "all" || !!st.reg || !!st.runner };
 }

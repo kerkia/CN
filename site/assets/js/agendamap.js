@@ -42,19 +42,20 @@ export async function mount(el, cc, { onPick, onHover, levels = {} } = {}) {
     return `${d}Z`;
   }).join("");
 
-  el.innerHTML = html`<div class="agm-head"><h2>${t("agd.map.title")}</h2>
-      <div class="agm-tools"><button type="button" class="btn btn-sm" data-z="in" title="${t("agd.map.in")}" aria-label="${t("agd.map.in")}">+</button><button type="button" class="btn btn-sm" data-z="out" title="${t("agd.map.out")}" aria-label="${t("agd.map.out")}">−</button><button type="button" class="btn btn-sm" data-z="all" title="${t("agd.map.all")}" aria-label="${t("agd.map.all")}">⤢</button></div></div>
-    <div class="agm-box"><svg class="agm" xmlns="${SVG}" viewBox="0 0 ${full.w} ${full.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t("agd.map.title")}">
+  // (owner, 2026-10-30: the map, no frame of its own — its buttons and its legend over it)
+  el.innerHTML = html`
+    <div class="agm-box"><div class="agm-tools"><button type="button" class="btn btn-sm" data-z="in" title="${t("agd.map.in")}" aria-label="${t("agd.map.in")}">+</button><button type="button" class="btn btn-sm" data-z="out" title="${t("agd.map.out")}" aria-label="${t("agd.map.out")}">−</button><button type="button" class="btn btn-sm" data-z="all" title="${t("agd.map.all")}" aria-label="${t("agd.map.all")}">⤢</button></div>
+      <svg class="agm" xmlns="${SVG}" viewBox="0 0 ${full.w} ${full.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${t("agd.map.title")}">
       <rect class="agm-sea" x="-5000" y="-5000" width="${full.w + 10000}" height="${full.h + 10000}"/>
       <path class="agm-near" d="${path(geo.near)}"/>
       <path class="agm-land" d="${path(geo.land)}"/>
       <path class="agm-units" d="${path(geo.units)}"/>
       <path class="agm-edge" d="${path(geo.land)}"/>
       <g class="agm-dots"></g><g class="agm-hi"></g></svg>
-      <div class="agm-tip" hidden></div></div>
+      <div class="agm-tip" hidden></div>
     <div class="agm-foot"><span class="agm-key"><i class="agm-k-dot"></i>${t("agd.map.town")}</span>
       <span class="agm-key"><i class="agm-k-ring"></i>${t("agd.map.area", levels)}</span><span class="agm-missing dim"></span>
-      <span class="agm-credit dim">${t("agd.map.credit")}</span></div>`;
+      <span class="agm-credit dim">${t("agd.map.credit")}</span></div></div>`;
   const svg = el.querySelector("svg"), dotsG = el.querySelector(".agm-dots"), hiG = el.querySelector(".agm-hi");
   const tip = el.querySelector(".agm-tip"), box = el.querySelector(".agm-box");
 

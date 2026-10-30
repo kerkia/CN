@@ -36,6 +36,9 @@ function orgaState() {
   return null;
 }
 
+// Arena is one page, the competitions: its card says what a competition chosen there offers (owner, 2026-10-30), not links
+const ARENA_STEPS = ["agenda", "results", "live", "splits", "map"];
+
 function card(m) {
   const items = moduleMenus()[m];
   const locked = m === "orga" ? orgaState() : null;
@@ -46,7 +49,8 @@ function card(m) {
     ${guest && m === "stats" ? html`<p class="muted hub-note">${t("hub.stats.guest")}</p>` : ""}
     ${guest && m === "coach" ? html`<p class="muted hub-note">${t("hub.coach.guest")}</p>` : ""}
     ${locked ? html`<p class="muted hub-note">${locked.note}</p>${locked.action ? html`<div class="hub-actions">${locked.action}</div>` : ""}`
-      : html`<ul class="hub-pages">${items.map(([, href, text]) => html`<li><a href="${href}">${text}</a></li>`)}</ul>
+      : html`<ul class="hub-pages">${m === "arena" ? ARENA_STEPS.map((k) => html`<li><span>${t(`hub.arena.step.${k}`)}</span></li>`)
+        : items.map(([, href, text]) => html`<li><a href="${href}">${text}</a></li>`)}</ul>
         <div class="hub-actions"><a class="btn btn-primary" href="${items[0][1]}">${t("hub.open", { mod: t(`mod.${m}`) })}</a></div>`}
   </section>`;
 }

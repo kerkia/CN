@@ -3024,7 +3024,7 @@ export default {
   "od.lastSent": "Last sent: {t}.",
   "od.never": "never",
   "od.watch": "Spectators follow it here:",
-  "od.liveLink": "Arena › Live › {name}",
+  "od.liveLink": "Arena › Today and coming › {name}",
   "od.name": "Race name",
   "od.namePh": "Regional race in …",
   "od.date": "Date",
@@ -3378,4 +3378,8 @@ export default {
   "tour.cap.descriptions.b": "Control descriptions,", "tour.cap.descriptions": "in 23 languages, with a mode to practise.",
   "tour.cap.orga-direct.b": "Live results from MeOS", "tour.cap.orga-direct": "or a plain exported file.",
   "tour.cap.phone-hub.b": "The modules", "tour.cap.phone-hub": "",
+  "agd.liveBox": "Live today",
+  "agd.liveBox.hint": "Today's races followed live; “live”: a control or a finish read under {m} min ago.",
+  "hub.arena.step.agenda": "Calendar", "hub.arena.step.results": "Results", "hub.arena.step.live": "Live",
+  "hub.arena.step.splits": "Split-time analysis", "hub.arena.step.map": "Map analysis",
 };

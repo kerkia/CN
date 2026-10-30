@@ -2494,3 +2494,28 @@ body.full-win .tr-app { border: 0; }
 .home-login { scroll-margin-top: 76px; }
 /* the modules page's picture, under the home page's figures (2026-10-30) */
 .tour-hub { max-width: 980px; margin: 22px auto 0; text-align: left; }
+/* the relief behind the bar (app.drawContours; owner, 2026-10-30): the bar's own background under it, its content over it */
+.topbar { isolation: isolate; }
+.topbar > .contours { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+/* the method switch in the bar (Stats) */
+.topbar-tools .method-pick { display: flex; align-items: center; gap: 6px; }
+.topbar-tools .method-pick .lab { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; cursor: help; }
+.topbar-tools .method-switch button { padding: 0 9px; }
+.topbar-tools .method-pick .lab { display: none; }
+.hub-pages span { display: inline-block; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); font-size: 13px; }
+/* the Agenda's map without a frame of its own: its buttons in a corner, its legend along the bottom (2026-10-30) */
+.agenda-map { padding: 0; overflow: hidden; }
+.agenda-map .agm { border-radius: 0; height: min(40vh, 380px); }
+.agm-tools { position: absolute; top: 6px; right: 6px; z-index: 4; }
+.agm-foot { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 3px 8px; font-size: 10.5px; pointer-events: none;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); }
+/* the event's actions, one row of buttons at the top of its details */
+.agd-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.agd-actions .lv-dot { margin-right: 6px; }
+/* a module's menu that does not fit folds behind the menu button (app.fitNav), as under 1120 px */
+.topbar-inner.nav-fold .menu-btn { display: inline-grid; }
+.topbar-inner.nav-fold .brand { order: -1; }
+.topbar-inner.nav-fold .nav { display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column; z-index: 5;
+  background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 14px; box-shadow: var(--shadow-pop); overflow: visible; }
+.topbar-inner.nav-fold .nav.open { display: flex; }
+.topbar-inner.nav-fold .mod-nav .nav-link { padding: 9px 10px; }

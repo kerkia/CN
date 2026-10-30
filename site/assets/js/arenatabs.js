@@ -1,17 +1,12 @@
-// Arena's tabs (owner, 2026-10-30). The competitions page: today's and the coming competitions (the Agenda, the ones under
-// way marked live) and the past ones (« Résultats »: the last 60 days), two pages shown as one. A race's page: its results,
-// then — when the race has split times — the analysis's views as more tabs (« Analyse de course », pages/splits.js).
+// Arena's tabs (owner, 2026-10-30). Today's and coming competitions and the past ones are the module's menu (app.js
+// moduleMenus). A race's page: its results, then — when the race has split times — the analysis's views as more tabs
+// (« Analyse de course », pages/splits.js).
 
 import { html } from "./util.js";
 import { t } from "./i18n.js";
 
 /** The split-time analysis's views, in their order (pages/splits.js). */
 export const SPLIT_VIEWS = ["table", "gaps", "clock", "legs", "profile", "h2h", "groups", "follow", "regular", "summary"];
-
-/** The competitions page's two tabs: "coming" or "past". */
-export const arenaTabs = (cur) => html`<nav class="page-tabs" role="tablist">
-  <a role="tab" href="#/agenda" aria-selected="${cur === "coming"}">${t("arena.tab.coming")}</a>
-  <a role="tab" href="#/resultats" aria-selected="${cur === "past"}">${t("arena.tab.past")}</a></nav>`;
 
 /** A race's address: its results, or one of the analysis's views (q: doc, c). */
 export function raceHref(key, view, q = {}) {

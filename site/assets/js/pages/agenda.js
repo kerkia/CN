@@ -3,7 +3,7 @@
 // including the online-registration deadline and the number of registrants. On a computer, the country's map above the
 // details (agendamap.js; owner, 2026-10-25): the event under the mouse, and the one selected, shown on it.
 
-import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat, normalise } from "../util.js";
 import { t, tn, locale, has } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
@@ -13,8 +13,8 @@ import { sees } from "../auth.js";
 import { LIVE } from "../livesplits.js";
 import * as tracking from "../tracking.js";
 import * as agendaMap from "../agendamap.js";
-import { arenaTabs } from "../arenatabs.js";
 import { probe } from "../livesplits.js";
+import { raceFilters } from "../racefilters.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
@@ -59,12 +59,15 @@ export async function render(main, { query }) {
   const liveIds = new Map(), eventOf = new Map();
   // the event's race on « Résultats » once an organiser's list of results is there: its results page (Arena's race page)
   const resultsKey = new Map();
+  // the runners each event's lists name (start lists, results; the full index only): the runner filter (owner, 2026-10-30)
+  const licsOf = new Map();
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
       const id = String(r.agenda_id || r.key.replace(/^a/, ""));
       eventOf.set(r.key, id);
       if (r.live) liveIds.set(id, r.live);
       if (r.docs && !r.soon) resultsKey.set(id, r.key);
+      if (r.lics?.length) licsOf.set(id, r.lics);
       if (r.startlist && r.date_iso >= today) starts.set(id, r.key);
       if (/^d/.test(r.key) && r.date_iso >= today) declared.push(declaredEvent(r));
     }
@@ -103,12 +106,13 @@ export async function render(main, { query }) {
   main.innerHTML = html`<div class="agenda-page" id="agenda-page">
     <div class="page-head"><div><h1>${t("nav.agenda")}</h1>
       <p class="lede">${t("agd.lede", { updated: A.generated ? t("agd.updated", { d: fmtDate(A.generated.slice(0, 10)) }) : "" })}</p></div></div>
-    ${arenaTabs("coming")}
     <details class="filters-fold" id="fold">
       <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
       <section class="card agenda-filters" id="filters"></section>
     </details>
     ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
+    <div id="ag-rf"></div>
+    <div id="ag-live"></div>
     <div class="agenda-layout">
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       <div class="agenda-side"><section class="card agenda-map" id="agmap" hidden></section>
@@ -121,6 +125,12 @@ export async function render(main, { query }) {
   const syncFold = () => { if (!phone.matches) $("#fold").open = true; };
   syncFold();
   phone.addEventListener("change", syncFold);
+
+  // a runner: one's own competitions or another runner's, as on the other lists of races (racefilters.js; France's members):
+  // the events whose start list or results name them
+  const RF = await raceFilters({ id: "agr", races: events, address: false, fields: ["runner"], bare: true,
+    facts: (e) => ({ spec: null, region: "", lics: licsOf.get(String(e.id)) || [], text: "" }), onChange: () => { drawTable(); drawLive(); } });
+  if (RF.withRunner) { $("#ag-rf").innerHTML = RF.html; RF.bind(); }
 
   // ---- filtering -------------------------------------------------------------------------------
   function visible() {
@@ -136,7 +146,7 @@ export async function render(main, { query }) {
         else return false;                                  // no known place
       }
       if (st.groups.size && !st.groups.has(groupOf(e))) return false;
-      return true;
+      return RF.keep(e);
     });
   }
 
@@ -312,15 +322,20 @@ export async function render(main, { query }) {
   // broadcast tied to them: event id -> { id: the « En direct » number, now: a punch within the relay's « live » time }.
   // Read once the list is drawn; nothing when none is today.
   const lives = new Map();
+  // « En direct »'s list of before (owner, 2026-10-30: one page): the races live now and today's on the live platforms that no
+  // event of the agenda is, in a box above the list — read from the same answer as the events' « direct » tags
+  let extra = [], liveSecs = 1800;
+  const words = (s) => normalise(s).split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^(19|20)\d\d$/.test(w));
+  const fits = (a, b) => { const x = words(a), y = words(b); const n = x.filter((w) => y.includes(w)).length; return n >= Math.min(2, x.length, y.length) && n > 0; };
   async function findLive() {
     const on = events.filter((e) => e.date <= today && (e.end || e.date) >= today && !e.cancelled);
-    if (!on.length) return;
     const ids = new Set(on.map((e) => String(e.id)));
     const set = (ev, id, now) => { const o = lives.get(ev); if (ids.has(ev) && (!o || (now && !o.now))) lives.set(ev, { id, now }); };
     const [list, bc] = await Promise.all([
       fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).catch(() => ({})),
       fetch("/api/live/broadcasts", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({}))]);
     const liveS = list.liveS || 1800;
+    liveSecs = liveS;
     // the relay numbers a SPORTident Center event from 600 000 000, an O'Live race from 700 000 000 and a MeOSDjango site's
     // from 800 000 000 (the site's address last in the row)
     const keyOfComp = (c) => (c[0] >= 6e8 && c[0] < 9e8 ? `${c[7]}/${c[0] % 1e6}` : c[0]);
@@ -333,9 +348,36 @@ export async function render(main, { query }) {
       const ev = b.race && (eventOf.get(b.race) || b.race.replace(/^a/, ""));
       if (ev && b.last) set(ev, b.id, Date.now() - b.last <= liveS * 1000);
     }
+    // a live race of today the agenda's ids do not tie: an event of today whose name fits takes it; else it is listed apart
+    const tied = new Set([...lives.values()].map((l) => String(l.id)));
+    const cc = country.current();
+    extra = [];
+    for (const c of list.comps || []) {
+      if (tied.has(String(c[0])) || c[3] !== today || ((c[5] || cc) !== cc)) continue;
+      const ev = on.find((e) => fits(e.name || "", c[1]));
+      if (ev) { set(String(ev.id), c[0], c[6] != null && c[6] <= liveS); continue; }
+      extra.push({ id: c[0], name: c[1], org: [c[2], c[7]].filter(Boolean).join(" · "), now: c[6] != null && c[6] <= liveS });
+    }
+    for (const b of bc.broadcasts || []) {
+      if (b.race || !b.last || b.date !== today) continue;
+      extra.push({ id: b.id, name: b.name, org: b.organizer || "", now: Date.now() - b.last <= liveS * 1000 });
+    }
+    drawLive();
     if (!lives.size) return;
     drawTable();
     if (st.selected) drawDetail();
+  }
+  /** The box above the list: the events live now, then the other live races of today. */
+  function drawLive() {
+    const box = $("#ag-live");
+    if (!box) return;
+    const now = events.filter((e) => lives.get(String(e.id))?.now && RF.keep(e)).map((e) => ({ id: lives.get(String(e.id)).id, name: e.name, org: e.org || "", now: true }));
+    const more = RF.runner() ? [] : extra;                       // (the races the agenda does not list name no runner)
+    const items = [...now, ...more.filter((x) => x.now), ...more.filter((x) => !x.now)];
+    box.innerHTML = items.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("agd.liveBox")}</h2>
+        <div class="hint">${t("agd.liveBox.hint", { m: Math.round(liveSecs / 60) })}</div></div></div>
+      <div class="lv-now-list">${items.map((x) => html`<a class="lv-now-item" href="#/direct/${x.id}"><b>${x.name}${x.now ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</b>
+        <span class="muted">${x.org}</span></a>`)}</div></section>` : "";
   }
   // the live GPS tracking an organiser linked to their competition (« Organisation › Direct », tracking.js): event id -> link;
   // France's competitions by their agenda id (a race of « Résultats » by the event it is), declared ones by their key
@@ -356,34 +398,8 @@ export async function render(main, { query }) {
     return n === 0 ? t("agd.today") : n === 1 ? t("agd.tomorrow") : n > 1 ? t("agd.inDays", { n }) : n === -1 ? t("agd.yesterday") : t("agd.daysAgo", { n: -n });
   };
 
-  // the start list the organiser published (liveresultat, their site), shown on « Récemment »
-  function startBox(e) {
-    const key = starts.get(String(e.id));
-    return key ? html`<div class="reg open"><div class="reg-title">${t("agd.startList")}</div>
-      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.startTimes")}</a>
-      ${sees("FR") && !e.declared ? html`<span class="dim" style="font-size:12px">${t("agd.startHint")}</span>` : ""}</p></div>` : "";
-  }
 
-  // the event's live GPS tracking, on the service its organiser uses
-  function trackBox(e) {
-    const l = trackOf(e);
-    return l ? html`<div class="reg"><div class="reg-title">${t("trk.title")}</div>
-      <p style="margin:6px 0 0">${tracking.button(l, { primary: true })} <span class="dim" style="font-size:12px">${t("trk.on", { s: tracking.serviceOf(l.url) })}</span></p></div>` : "";
-  }
 
-  // the event's live results (« En direct »): today's race whose live competition the relay lists
-  function liveBox(e) {
-    const l = lives.get(String(e.id));
-    if (!l) return "";
-    // and its provisional results with the analysis (owner, 2026-10-30): the organiser's list once there, else the live
-    // times when the live race gives split times (livesplits.probe, asked once a race)
-    const key = resultsKey.get(String(e.id));
-    if (!key) setTimeout(() => liveSplits(l.id), 0);
-    return html`<div class="reg lv-reg"><div class="reg-title">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t(l.now ? "agd.live.now" : "agd.live")}</div>
-      <p style="margin:6px 0 0"><a class="btn btn-primary btn-sm" href="#/direct/${l.id}">${t("agd.live.go")}</a>
-        ${key ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.live.results")}</a>`
-          : html`<span data-lsplits="${l.id}"></span>`}</p></div>`;
-  }
   const probes = new Map();
   async function liveSplits(id) {
     if (!probes.has(id)) probes.set(id, probe(id).catch(() => false));
@@ -418,20 +434,34 @@ export async function render(main, { query }) {
   const waze = (g) => `https://waze.com/ul?ll=${g[0]},${g[1]}&navigate=yes`;
   const apple = (g) => `https://maps.apple.com/?daddr=${g[0]},${g[1]}&dirflg=d`;
   const onApple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
-  function accessBox(e) {
+  /** The way there: the event's spot on Apple's maps on an Apple device, else Google Maps; its route or its place without one. */
+  function accessUrl(e) {
     const fl = e.flechage || "";
     const approx = `${fl && !safeUrl(fl) ? `${fl}, ` : ""}${e.place || ""}${e.dep ? ` ${e.dep}` : ""}`.trim();
-    const go = e.gps ? [[gmaps(e.gps), "Google Maps"], [waze(e.gps), "Waze"], ...(onApple ? [[apple(e.gps), t("agd.go.apple")]] : [])]
-      : safeUrl(e.mapUrl) ? [[e.mapUrl, t("agd.go.route")]]
-      : approx ? [[`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(approx)}`, t("agd.go.approx")]] : [];
-    if (!e.access && !fl && !go.length) return "";
-    return html`<div class="accessbox">
-      <div class="reg-title">${t("agd.access")}</div>
-      ${e.access ? html`<div class="access-text">${e.access}</div><div class="dim access-src">${t("agd.access.src")}</div>` : ""}
-      ${fl && !(e.access || "").includes(fl) ? html`<div style="margin-top:6px">${raw(t("agd.signs", { x: link(fl) }))}</div>` : ""}
-      ${e.gps ? html`<div class="dim" style="margin-top:6px">${t("agd.coords", { x: `${e.gps[0]}, ${e.gps[1]}` })}</div>` : ""}
-      ${go.length ? html`<div class="row" style="gap:8px;margin-top:10px">${go.map(([u, l]) => html`<a class="btn btn-sm btn-primary" href="${u}" target="_blank" rel="noopener">${l} ↗</a>`)}</div>` : ""}
-    </div>`;
+    return e.gps ? (onApple ? apple(e.gps) : gmaps(e.gps)) : safeUrl(e.mapUrl) ? e.mapUrl
+      : approx ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(approx)}` : "";
+  }
+  /** What the announcement says of the access, the signs, the coordinates: a line of the details. */
+  function accessText(e) {
+    const fl = e.flechage || "";
+    if (!e.access && !fl && !e.gps) return "";
+    return html`${e.access ? html`<span class="access-text">${e.access}</span> <span class="dim access-src">${t("agd.access.src")}</span>` : ""}
+      ${fl && !(e.access || "").includes(fl) ? html`<div>${raw(t("agd.signs", { x: link(fl) }))}</div>` : ""}
+      ${e.gps ? html`<div class="dim">${t("agd.coords", { x: `${e.gps[0]}, ${e.gps[1]}` })}</div>` : ""}`;
+  }
+  /** The event's actions, one row of buttons at the top of its details (owner, 2026-10-30). */
+  function actions(e) {
+    const l = lives.get(String(e.id)), key = resultsKey.get(String(e.id)), sk = starts.get(String(e.id)), go = accessUrl(e);
+    if (l && !key) setTimeout(() => liveSplits(l.id), 0);
+    const b = [
+      safeUrl(e.invitation) ? html`<a class="btn btn-sm" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a>` : "",
+      l ? html`<a class="btn btn-sm btn-primary" href="#/direct/${l.id}">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t("agd.live.go")}</a>` : "",
+      key ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.live.results")}</a>` : l ? html`<span data-lsplits="${l.id}"></span>` : "",
+      tracking.button(trackOf(e)),
+      sk && sk !== key ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(sk)}">${t("agd.startTimes")}</a>` : "",
+      go ? html`<a class="btn btn-sm" href="${go}" target="_blank" rel="noopener">${t("agd.access")} ↗</a>` : "",
+    ].filter(Boolean);
+    return b.length ? html`<div class="agd-actions">${b}</div>` : "";
   }
 
   // where an event of another country comes from: its federation's page (Spain: SICO), its results platform (O-Replay)
@@ -457,13 +487,10 @@ export async function render(main, { query }) {
       <div class="card-body stack" style="gap:14px">
         <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
-        ${safeUrl(e.invitation) ? html`<div><a class="btn btn-primary" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a></div>` : ""}
-        ${liveBox(e)}
-        ${trackBox(e)}
-        ${startBox(e)}
+        ${actions(e)}
         ${registration(e)}
-        ${accessBox(e)}
         <dl>
+          ${row(t("agd.access"), accessText(e))}
           ${row(t("agd.d.manif"), e.manif)}
           ${row(t("agd.d.league"), e.league)}
           ${row(t("agd.d.level"), e.level)}

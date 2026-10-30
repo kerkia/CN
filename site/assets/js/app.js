@@ -326,7 +326,9 @@ function menuKey(r) {
   const at = r.from || r.route;
   return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
     : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
-    : at === "provisional" || at === "splits" ? "agenda"                       // Arena's competitions page and a race's
+    // Arena: today's and coming competitions, a live race; the past ones and a race's results and analysis
+    : at === "agenda" || at === "live" || (at === "splits" && /^direct-/.test(r.query?.course || "")) ? "coming"
+    : at === "provisional" || at === "splits" ? "past"
     : at === "analysis" ? "analysisPerso" : at === "analysisRace" ? "analysisClub"   // Coach's analyses: one page each, two tabs
     : at;
 }
@@ -355,8 +357,9 @@ export const orgaOpen = () => !!auth.session()?.orga && !isPhone();
 export function moduleMenus() {
   const me = auth.session();
   return {
-    // the competitions (the Agenda and « Résultats » as one page's two tabs, a race's results and analysis), and « En direct »
-    arena: [["agenda", "#/agenda", t("nav.arena.comps")], ["live", "#/direct", t("nav.live")]],
+    // one page, the competitions, whose two tabs are the module's menu (owner, 2026-10-30, second review): today's and the
+    // coming ones — the Agenda, with what is live now (« En direct »'s list of before) — and the past ones (« Résultats »)
+    arena: [["coming", "#/agenda", t("arena.tab.coming")], ["past", "#/resultats", t("arena.tab.past")]],
     stats: [
       // one's own page, in France's data (the runner page of one's licence)
       ...(me?.lic && country.current() === "FR" && ranksHere() ? [["me", link.runner(`fr${me.lic}`), t("auth.myPage")]] : []),
@@ -393,6 +396,15 @@ function lastModule(m) {
   } catch (e) { return m || null; }
 }
 
+/** A module's menu that does not fit beside the logo and the tools (Stats' ten pages on a laptop) folds behind the menu
+ *  button, as on a phone, rather than hiding its last pages (owner, 2026-10-30). */
+let navBound = false;
+function fitNav() {
+  const inner = $(".topbar-inner"), nav = $("#nav");
+  if (!inner || !nav) return;
+  inner.classList.remove("nav-fold");
+  if (nav.scrollWidth > nav.clientWidth + 2) inner.classList.add("nav-fold");
+}
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session(), visitor = me || auth.guest();
@@ -409,7 +421,8 @@ function renderHeader(r) {
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
   const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
-  $("#topbar").innerHTML = html`<div class="topbar-inner${visitor ? "" : " guest"}">
+  // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it)
+  $("#topbar").innerHTML = html`<canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="topbar-inner${visitor ? "" : " guest"}">
     ${items.length ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
@@ -422,6 +435,7 @@ function renderHeader(r) {
     </a>
     ${items.length ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
+      ${mod !== "stats" || !fr || store.available().length < 2 || route === "needCountry" ? "" : methodSwitch()}
       ${visitor ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}
       ${themeMenu()}
@@ -447,13 +461,12 @@ function renderHeader(r) {
           <button type="button" class="btn btn-sm btn-primary" data-guest-enter="">${t("hub.guest.enter")}</button></div>`}
     </div>
   </div>
-  ${visitor && (mod || route === "hub") ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
-      <p class="mod-tag">${mod ? html`<b>${t(`mod.${mod}`)}</b> · ${t(`mod.${mod}.tag`)}` : t("hub.lede.short")}</p>
-      ${mod !== "stats" || !fr || store.available().length < 2 || route === "needCountry" ? "" : methodSwitch()}
-    </div></div>` : ""}`;
+`;
   // a demo account (admin page, « Démo »): said on every page, with its last day
   if (me?.demo) $("#topbar").insertAdjacentHTML("beforeend", html`<div class="demo-strip">${t("demo.strip", { date: fmtDate(me.demo, "long") })}</div>`);
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
+  fitNav();
+  if (!navBound) { navBound = true; window.addEventListener("resize", debounce(fitNav, 120)); }
   // the method: one for the whole site; a switch redraws the page (a ?m= in the address follows)
   const pickMethod = (m) => {
     store.setMethod(m);
@@ -700,6 +713,11 @@ async function route_() {
   // the Documentation's address is « #/documentation » since 2026-10-24: an old « #/methodes » link shows the new one
   if (r.route === "methods" && /^#\/methodes\b/.test(location.hash)) {
     history.replaceState(null, "", location.hash.replace(/^#\/methodes/, "#/documentation"));
+    r = parseHash();
+  }
+  // « En direct »'s list of before (2026-10-30): today's competitions, where what is live now is listed
+  if (r.route === "live" && !r.arg) {
+    history.replaceState(null, "", "#/agenda");
     r = parseHash();
   }
   // « Analyse de course »'s list of before (2026-10-30): the past competitions, which list the races with split times
