@@ -191,11 +191,6 @@ export default {
   "auth.name.ph": "e.g. Marie Dupont",
   "auth.name": "First name and surname",
   "auth.title": "Log in",
-  "auth.point3": "Your ranking and your history, where Ozimut has your federation's results, in forest, sprint, MTB and ski orienteering",
-  "auth.point4": "Training games on invented maps, your MAS, alerts by email or notification",
-  "auth.point2": "Your GPS tracks replayed on the map, alone or with the whole group, and course setting in the browser",
-  "auth.point1": "Races while they're hot: calendar, start times, live results, then the organisers' results with their split times analysed (legs, gaps, groups of runners)",
-  "auth.lede": "Your history race by race, your GPS tracks replayed on the map, results and split times as soon as the organisers publish them, tools to train, set courses and organise — and, where Ozimut has your federation's results, your ranking and the whole sport, season after season.",
   "home.tag": "Orienteering, in maps and numbers",
   // the home page's presentation of the site (overview.js, under the hero)
   "tour.eyebrow": "Overview",

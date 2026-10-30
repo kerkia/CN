@@ -130,11 +130,6 @@ export default {
   "auth.name.ph": "ex. Marie Dupont",
   "auth.name": "Prénom et nom",
   "auth.title": "Connexion",
-  "auth.point3": "Votre classement et votre historique, là où Ozimut a les résultats de votre fédération, en forêt, en sprint, à VTT et à ski",
-  "auth.point4": "Des jeux d'entraînement sur des cartes inventées, votre VMA, des alertes par e-mail ou notification",
-  "auth.point2": "Vos traces GPS rejouées sur la carte, seul ou avec tout le groupe, et le tracé des circuits dans le navigateur",
-  "auth.point1": "Les courses à chaud : agenda, horaires de départ, direct, puis les résultats des organisateurs et leurs temps intermédiaires analysés (inter-postes, écarts, groupes de coureurs)",
-  "auth.lede": "Votre historique course par course, vos traces GPS rejouées sur la carte, les résultats et les temps intermédiaires dès que les organisateurs les publient, de quoi vous entraîner, tracer et organiser — et, là où Ozimut a les résultats de votre fédération, votre classement et toute la discipline, saison après saison.",
   "home.tag": "La course d'orientation, en cartes et en chiffres",
   // the home page's presentation of the site (overview.js, under the hero)
   "tour.eyebrow": "Aperçu",

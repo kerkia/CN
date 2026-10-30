@@ -779,13 +779,7 @@ table.compact th, table.compact td { padding: 5px 8px; font-size: 13px; }
   background: color-mix(in srgb, var(--surface) 74%, transparent); }
 .home-intro h1 { font-size: 42px; margin: 0; letter-spacing: -0.01em; }
 .home-tag { font-size: 18px; color: var(--ink-2); margin: 2px 0 14px; }
-.home-lede { color: var(--ink); font-size: 16px; margin: 0; }
-.home-points { margin: 14px 0 0; padding-left: 18px; color: var(--ink-2); }
-.home-points li { margin: 5px 0; }
-.home-specs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .home-login { background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: var(--shadow-pop); }
-/* the login page's reel (reel.js): wide screens only, phones keep the few lines of .home-text */
-.home-text { display: none; }
 /* the home page's presentation (tour.js): a course through the site, start triangle, numbered controls, finish */
 .tour { max-width: 1180px; margin: 44px auto 0; }
 .tour-top { max-width: 760px; margin-bottom: 36px; }
@@ -999,9 +993,9 @@ svg.tour-ctrl-finish { border: 0; background: none; fill: var(--plane); color: v
   .reel .rv-draw { stroke-dashoffset: 0; }
   .reel-slide, .reel-slide *, .reel-bar i { animation: none !important; transition: none !important; }
 }
+/* the login page's reel (reel.js): wide screens only; a phone shows the name and the tagline above the login card */
 @media (max-width: 860px) {
   .reel { display: none; }
-  .home-text { display: block; }
   .home-inner { grid-template-columns: 1fr; padding: 16px 16px 300px; gap: 16px; }
   .home-intro { padding: 16px 16px; }
   .home-landscape { top: auto; height: 380px; }     /* a band at the bottom, the sky above */

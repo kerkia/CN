@@ -591,7 +591,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   make_files.py, shot.mjs; nothing real. The « Tracé » slide no longer names Purple Pen (owner, 2026-10-16)) (`reel.js`: drawn views of the
   analyses with **made-up figures and blurred invented names** — the page and the repo are public, never real results
   or names there; texts `reel.*` in `i18n.js`; story-like bars, ‹ ›, pause, ←/→; paused on hover, when hidden, and not
-  automatic under reduced motion); phones keep the short text (`.home-text`).
+  automatic under reduced motion); a phone shows the name and the tagline above the login card only (its short text, `.home-text`,
+  was removed on 2026-10-30, owner: the sections below say it at length).
 - **The site in pictures** (owner, 2026-10-19; first made as a brochure for Swiss Orienteering): the home page, under the hero,
   presents the whole site (`site/assets/js/tour.js`, rendered by `pages/overview.js`; texts `tour.*` in both catalogues; styles
   `.tour-*`): a course drawn down the page — the start triangle, nine numbered controls in the menu's order (owner, 2026-10-21:
