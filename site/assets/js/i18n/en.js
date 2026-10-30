@@ -3382,4 +3382,7 @@ export default {
   "agd.liveBox.hint": "Today's races followed live; “live”: a control or a finish read under {m} min ago.",
   "hub.arena.step.agenda": "Calendar", "hub.arena.step.results": "Results", "hub.arena.step.live": "Live",
   "hub.arena.step.splits": "Split-time analysis", "hub.arena.step.map": "Map analysis",
+  // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
+  "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past (last 60 days)",
+  "agd.past.results": "results", "agd.past.splits": "splits", "agd.past.official": "official",
 };

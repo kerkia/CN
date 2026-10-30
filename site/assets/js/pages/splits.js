@@ -84,7 +84,7 @@ export async function render(main, { query = {} } = {}) {
     <div id="sp-back"></div>
     <div class="page-head sp-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
-    <div id="sp-tabs"></div>
+    <div id="sp-tabs" data-bar-tabs></div>
     <div id="sp-live"></div>
     <div class="sp-pick" id="sp-pick"></div>
     <div class="filters sp-views" id="sp-views"></div>

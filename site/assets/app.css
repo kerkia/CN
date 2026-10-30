@@ -2530,3 +2530,22 @@ body.full-win .tr-app { border: 0; }
 /* the module's name: a word after « Ozimut » in the control flag's orange, not a pill like the menu's items (owner, 2026-10-30) */
 .brand .brand-mod { background: none; padding: 0; margin-left: -5px; border-radius: 0; color: var(--flag); font-size: 16px; font-weight: 700;
   letter-spacing: -0.01em; }
+/* the competitions page (owner, 2026-10-30, third review): the filters and the list on the left, the map and the details on the
+   right from the top; a race's tabs as the bar's menu (app.placeBarTabs) */
+.agenda-layout { margin-top: 0; }
+.agenda-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.agenda-main > .filters-fold, .agenda-main > .cty-hint { margin: 0; }
+.agenda-filters #ag-rf:not(:empty) { border-top: 1px solid var(--grid); margin-top: 10px; padding-top: 10px; }
+.agenda-filters #ag-rf .filters { padding: 0; margin: 0; border: 0; box-shadow: none; background: none; }
+.agenda-table tbody tr.past td { color: var(--ink-2); }
+#nav [data-bar-tabs], #nav #sp-tabs { display: contents; }
+#nav .page-tabs { border: 0; margin: 0; gap: 2px; overflow: visible; }
+#nav .page-tabs a, #nav .page-tabs button { font-size: 14px; font-weight: 550; padding: 7px 10px; border: 0; border-radius: 8px; margin: 0; color: var(--ink-2); }
+#nav .page-tabs a:hover, #nav .page-tabs button:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+#nav .page-tabs [aria-selected="true"] { background: var(--grp-wash); color: var(--grp); }
+@media (max-width: 1120px) { #nav .page-tabs { flex-direction: column; } }
+.topbar-inner.nav-fold #nav .page-tabs { flex-direction: column; }
+.menu-btn[hidden] { display: none !important; }
+/* a long menu in the bar (a race's tabs, Stats' pages): tighter tabs, the country's and language's buttons without their word */
+#nav .page-tabs a, #nav .page-tabs button { padding: 6px 8px; font-size: 13.5px; }
+@media (max-width: 1600px) { .topbar-inner:has(#nav:not(:empty)) .tool-label { display: none; } }

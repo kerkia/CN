@@ -262,15 +262,20 @@ countries whose access is "all" (Spain, the agendas' countries; `auth.sees` is t
 results (`/api/live/list`, `/ws/*`) and `/api/tracking` (its GET serves visitors, `mine` false). Not excluded in `_routes.json`:
 every visitor's request goes through the gate, which judges the decoded path, and counts on the Workers' daily quota.
 
-**Arena** is one page, the competitions, whose two tabs are the module's menu in the bar: « Aujourd'hui et à venir » (the
-Agenda, `#/agenda`) and « Passées » (« Résultats », `#/resultats`, the last 60 days; older results are Stats' « Courses » only).
-« En direct »'s list is gone (`#/direct` leads to the Agenda; a race's live page `#/direct/<id>` stays): the Agenda's box « En
-direct aujourd'hui » lists the events live now and today's live races no event is (`findLive`/`drawLive`: the same answer of the
-relay as the events' « direct » tags — the two lists disagreed before; a live race of today whose name fits an event becomes
-that event's), and a runner filter (`raceFilters` with `fields: ["runner"], bare`) keeps the events whose start list or results
-name them. An event's details start with one row of buttons (`actions`: invitation, « Suivre en direct », its provisional results
-and analysis, GPS tracking, the start list, « Accès » — the way there; the access text is a line of the details). The map has no
-frame of its own: its buttons and legend over it (`agendamap.js`). The modules page's Arena card lists what a competition chosen
+**Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
+past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
+agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in its filters (« Aujourd'hui », « À venir »,
+« Passées »; `st.when`, the first two by default; the list opens on today when past ones come first). Arena has no menu: a race's
+page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-bar-tabs]` — the results page's `raceTabs`,
+`splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit, a dropdown on a phone). A past row
+opens its results page (`#/resultats?course=`); a coming or today's one its details beside the list. `#/resultats` (the old list)
+leads to the competitions with « Passées » ticked (`?periode=passees`), `#/direct` to the competitions (a race's live page
+`#/direct/<id>` stays), `#/analyse-course` without a race to « Passées ». Desktop layout: the filters (with the runner,
+`raceFilters` `fields: ["runner"], bare`, inside the same card) and the list on the left, the map and the details on the right
+from the top. A live race of today whose name fits an event becomes that event's « direct » (`findLive`); no box of live races
+(owner: not useful). An event's details start with one row of buttons (`actions`: invitation, « Suivre en direct », its
+provisional results and analysis, GPS tracking, the start list, « Accès » — the way there; the access text is a line of the
+details). The map has no frame of its own: its buttons and legend over it (`agendamap.js`; past rows are not on it). The modules page's Arena card lists what a competition chosen
 there offers (`hub.js ARENA_STEPS`) instead of page links. A race's page (`#/resultats?course=`) has the results as its first tab, then — when it
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats

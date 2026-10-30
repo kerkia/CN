@@ -18,6 +18,8 @@ import { raceFilters } from "../racefilters.js";
 
 const KINDS = ["c", "e", "f"].map((k) => [k, t(`agd.kind.${k}`)]);
 const GROUP_ORDER = ["A", "B1", "B2", "C1", "C2", "D"];
+// today's, the coming and the past competitions (the last 60 days'), the first two shown at first
+const WHEN = ["today", "coming", "past"], WHEN_DEFAULT = ["today", "coming"];
 
 /** Merge of FFCO's "discipline" and "format": Forêt MD, Forêt LD, Sprint, Nuit, VTT MD, Ski, … (the data's French
  *  values compared, shown in the site's language) */
@@ -40,6 +42,11 @@ const keyOf = (e, i) => (e.id != null ? String(e.id) : `x${i}`);
 // a competition its organiser declared (« d<id> », a race of the provisional index) as an event of the agenda: the agenda's
 // discipline (« Pédestre ») and format from the race's terrain and format
 const SPEC = { "Forêt": "Pédestre", Sprint: "Pédestre", VTT: "VTT", Ski: "Ski" };      // the data's values (i18n-ignore)
+// a past competition of « Résultats » (the last 60 days of the provisional index) as a row of the list: a click opens its
+// results page (owner, 2026-10-30: today's, the coming and the past competitions in one list, three boxes to choose)
+const pastEvent = (r) => ({ kind: "c", id: `r:${r.key}`, past: r.key, date: r.date_iso, name: r.name, place: r.place, org: r.org,
+  region: r.region || "", country: r.country, cn: !!r.cn, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "",
+  docs: r.docs || 0, splits: !!r.splits, official: !!r.ffco_id, lics: r.lics || [] });
 const declaredEvent = (r) => ({ kind: "c", id: r.key, declared: true, date: r.date_iso, name: r.name, place: r.place, org: r.org,
   country: r.country, site: r.url || null, spec: SPEC[r.terrain] || "", epr: r.terrain === "Sprint" ? "Sprint" : r.epreuve || "" });
 
@@ -61,6 +68,7 @@ export async function render(main, { query }) {
   const resultsKey = new Map();
   // the runners each event's lists name (start lists, results; the full index only): the runner filter (owner, 2026-10-30)
   const licsOf = new Map();
+  const past = [], pastIds = new Set();
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
       const id = String(r.agenda_id || r.key.replace(/^a/, ""));
@@ -70,12 +78,15 @@ export async function render(main, { query }) {
       if (r.lics?.length) licsOf.set(id, r.lics);
       if (r.startlist && r.date_iso >= today) starts.set(id, r.key);
       if (/^d/.test(r.key) && r.date_iso >= today) declared.push(declaredEvent(r));
+      if (!r.soon && r.date_iso < today) { past.push(pastEvent(r)); if (r.agenda_id) pastIds.add(String(r.agenda_id)); }
     }
   } catch (e) { /* no start lists then */ }
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
   const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
   // the site's country's events (country.js; France's alone until another country's agenda is read)
-  const events = [...A.events, ...declared].map((e, i) => ({ ...e, key: keyOf(e, i) })).filter((e) => country.of(e) === country.current())
+  // (an event of the agenda's last days that « Résultats » has is its past row)
+  const events = [...A.events.filter((e) => !(e.date < today && pastIds.has(String(e.id)))), ...declared, ...past]
+    .map((e, i) => ({ ...e, key: keyOf(e, i) })).filter((e) => country.of(e) === country.current())
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || depOrder(a.dep) - depOrder(b.dep)
       || String(a.name || "").localeCompare(String(b.name || ""), "fr"));
   const byKey = new Map(events.map((e) => [e.key, e]));
@@ -96,7 +107,9 @@ export async function render(main, { query }) {
   const checkAllPlaces = () => { st.regions = new Set(A.regions.map((r) => r.name)); st.depts = new Set(allDepts); };
 
   const st = {
-    kinds: new Set(["c"]), cnOnly: false, from: today, to: "", spec: "",
+    kinds: new Set(["c"]), cnOnly: false, from: "", to: "", spec: "",
+    // today's, the coming and the past competitions (an old « Résultats » address: the past ones)
+    when: new Set(query.periode === "passees" ? ["past"] : WHEN_DEFAULT),
     regions: new Set(A.regions.map((r) => r.name)), depts: new Set(A.regions.flatMap((r) => r.depts)),
     groups: new Set(), selected: query.id && byKey.has(String(query.id)) ? String(query.id) : null,
   };
@@ -106,15 +119,15 @@ export async function render(main, { query }) {
   main.innerHTML = html`<div class="agenda-page" id="agenda-page">
     <div class="page-head"><div><h1>${t("nav.agenda")}</h1>
       <p class="lede">${t("agd.lede", { updated: A.generated ? t("agd.updated", { d: fmtDate(A.generated.slice(0, 10)) }) : "" })}</p></div></div>
-    <details class="filters-fold" id="fold">
-      <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
-      <section class="card agenda-filters" id="filters"></section>
-    </details>
-    ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
-    <div id="ag-rf"></div>
-    <div id="ag-live"></div>
     <div class="agenda-layout">
+      <div class="agenda-main">
+      <details class="filters-fold" id="fold">
+        <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
+        <section class="card agenda-filters"><div id="filters"></div><div id="ag-rf"></div></section>
+      </details>
+      ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
+      </div>
       <div class="agenda-side"><section class="card agenda-map" id="agmap" hidden></section>
         <section class="card agenda-detail" id="detail"></section></div>
     </div></div>`;
@@ -126,10 +139,13 @@ export async function render(main, { query }) {
   syncFold();
   phone.addEventListener("change", syncFold);
 
+  // today's, a coming or a past competition (an event under way is today's); the list opens on today (toToday)
+  const periodOf = (e) => ((e.end || e.date) < today ? "past" : e.date > today ? "coming" : "today");
+  let toToday = true;
   // a runner: one's own competitions or another runner's, as on the other lists of races (racefilters.js; France's members):
   // the events whose start list or results name them
   const RF = await raceFilters({ id: "agr", races: events, address: false, fields: ["runner"], bare: true,
-    facts: (e) => ({ spec: null, region: "", lics: licsOf.get(String(e.id)) || [], text: "" }), onChange: () => { drawTable(); drawLive(); } });
+    facts: (e) => ({ spec: null, region: "", lics: e.lics || licsOf.get(String(e.id)) || [], text: "" }), onChange: () => drawTable() });
   if (RF.withRunner) { $("#ag-rf").innerHTML = RF.html; RF.bind(); }
 
   // ---- filtering -------------------------------------------------------------------------------
@@ -137,7 +153,8 @@ export async function render(main, { query }) {
     const places = everyPlace();
     return events.filter((e) => {
       if (!st.kinds.has(e.kind)) return false;
-      if ((e.end || e.date) < st.from || (st.to && e.date > st.to)) return false;      // a multi-day event under way stays
+      if (!st.when.has(periodOf(e))) return false;
+      if ((st.from && (e.end || e.date) < st.from) || (st.to && e.date > st.to)) return false;      // a multi-day event under way stays
       if (st.cnOnly && !e.cn) return false;
       if (st.spec && e.spec !== st.spec) return false;
       if (!places) {                                        // some places are unchecked
@@ -176,6 +193,9 @@ export async function render(main, { query }) {
     const openIds = $$("details.multi[open]", main).map((d) => d.id);          // keep an open list open while it redraws
     $("#filters").innerHTML = html`
       <div class="frow">
+        ${WHEN.map((w) => html`<label class="checkline"><input type="checkbox" data-when="${w}" ${raw(st.when.has(w) ? "checked" : "")}>${t(`agd.when.${w}`)}</label>`)}
+      </div>
+      <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
         ${sees("FR") && fr ? html`<label class="checkline"><input type="checkbox" id="cn-only" ${raw(st.cnOnly ? "checked" : "")}>${t("agd.cnOnly")}</label>` : ""}
       </div>
@@ -201,9 +221,10 @@ export async function render(main, { query }) {
   // the filter bar is rebuilt on each change, so its events are delegated once
   $("#filters").addEventListener("change", (e) => {
     const el = e.target;
-    if (el.dataset.kind) { el.checked ? st.kinds.add(el.dataset.kind) : st.kinds.delete(el.dataset.kind); }
+    if (el.dataset.when) { el.checked ? st.when.add(el.dataset.when) : st.when.delete(el.dataset.when); toToday = true; }
+    else if (el.dataset.kind) { el.checked ? st.kinds.add(el.dataset.kind) : st.kinds.delete(el.dataset.kind); }
     else if (el.id === "cn-only") st.cnOnly = el.checked;
-    else if (el.id === "f-from") { st.from = el.value || today; if (st.to && st.to < st.from) st.to = st.from; }
+    else if (el.id === "f-from") { st.from = el.value || ""; if (st.to && st.from && st.to < st.from) st.to = st.from; }
     else if (el.id === "f-to") st.to = el.value;
     else if (el.id === "f-spec") st.spec = el.value;
     else if (el.dataset.multi === "m-regions") {
@@ -226,7 +247,8 @@ export async function render(main, { query }) {
     if (all) { checkAllPlaces(); drawFilters(); drawTable(); return; }
     if (none) { st.regions.clear(); st.depts.clear(); drawFilters(); drawTable(); return; }
     if (e.target.closest("#f-reset")) {
-      Object.assign(st, { kinds: new Set(["c"]), cnOnly: false, from: today, to: "", spec: "", groups: new Set() });
+      Object.assign(st, { kinds: new Set(["c"]), cnOnly: false, from: "", to: "", spec: "", groups: new Set(), when: new Set(WHEN_DEFAULT) });
+      toToday = true;
       checkAllPlaces();
       drawFilters(); drawTable();
     }
@@ -237,7 +259,8 @@ export async function render(main, { query }) {
   // ---- table ------------------------------------------------------------------------------------------------
   let shown = [];
   function activeFilters() {
-    return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, st.from !== today, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0]
+    return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, !!st.from, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0,
+      st.when.size !== WHEN_DEFAULT.length || WHEN_DEFAULT.some((w) => !st.when.has(w))]
       .filter(Boolean).length;
   }
   function drawTable() {
@@ -246,17 +269,26 @@ export async function render(main, { query }) {
     $("#fold-badge").hidden = !n;
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
-    map?.show(shown, st.selected);
+    map?.show(shown.filter((e) => !e.past), st.selected);      // (a past competition has no place on the map)
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
-      <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""}">
+      <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}</td>
+        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
         <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
         ${places ? html`<td class="r">${e.region || ""}</td>` : ""}
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
+    // past competitions above today's: the list opens on today (after a change of the three boxes)
+    if (toToday) {
+      toToday = false;
+      const first = st.when.has("past") && $('#table tr[data-period="today"], #table tr[data-period="coming"]');
+      $("#table").scrollTop = first ? Math.max(0, first.offsetTop - 44) : 0;
+    }
   }
+  /** What « Résultats » found of a past competition: the organisers' results, split times, the official results. */
+  const pastTags = (e) => html`${e.docs ? html` <span class="tag">${t("agd.past.results")}</span>` : ""}${e.splits ? html` <span class="tag">${t("agd.past.splits")}</span>` : ""}${
+    e.official ? html` <span class="tag" title="${t("prov.ffcoResults")}">${t("agd.past.official")}</span>` : ""}`;
   // Wide screen: list and details side by side. Phone: one at a time. Opening an event adds a history
   // entry, so the phone's own Back button (or the one in the details) returns to the list where it was.
   let pushed = false, listY = 0;
@@ -273,6 +305,8 @@ export async function render(main, { query }) {
   }
   function select(key) {
     const e = byKey.get(key);
+    // a past competition: its results page, whose tabs are the analysis's views
+    if (e?.past) { location.hash = `#/resultats?course=${encodeURIComponent(e.past)}`; return; }
     if (mobile()) {
       listY = window.scrollY;
       pushed = true;
@@ -306,7 +340,7 @@ export async function render(main, { query }) {
         if (key) $(`#table tr[data-key="${CSS.escape(key)}"]`)?.classList.add("map-hover");
       },
     });
-    map?.show(shown, st.selected);
+    map?.show(shown.filter((e) => !e.past), st.selected);      // (a past competition has no place on the map)
   }
   phone.addEventListener("change", mountMap);
   $("#table").addEventListener("mouseover", (e) => { const r = e.target.closest("tr[data-key]"); if (r) map?.hover(r.dataset.key); });
@@ -322,9 +356,7 @@ export async function render(main, { query }) {
   // broadcast tied to them: event id -> { id: the « En direct » number, now: a punch within the relay's « live » time }.
   // Read once the list is drawn; nothing when none is today.
   const lives = new Map();
-  // « En direct »'s list of before (owner, 2026-10-30: one page): the races live now and today's on the live platforms that no
-  // event of the agenda is, in a box above the list — read from the same answer as the events' « direct » tags
-  let extra = [], liveSecs = 1800;
+  // a live race of today the agenda's ids do not tie takes the event of today whose name fits
   const words = (s) => normalise(s).split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^(19|20)\d\d$/.test(w));
   const fits = (a, b) => { const x = words(a), y = words(b); const n = x.filter((w) => y.includes(w)).length; return n >= Math.min(2, x.length, y.length) && n > 0; };
   async function findLive() {
@@ -335,7 +367,6 @@ export async function render(main, { query }) {
       fetch(`${LIVE}/api/live/list`, { cache: "no-cache" }).then((r) => r.json()).catch(() => ({})),
       fetch("/api/live/broadcasts", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({}))]);
     const liveS = list.liveS || 1800;
-    liveSecs = liveS;
     // the relay numbers a SPORTident Center event from 600 000 000, an O'Live race from 700 000 000 and a MeOSDjango site's
     // from 800 000 000 (the site's address last in the row)
     const keyOfComp = (c) => (c[0] >= 6e8 && c[0] < 9e8 ? `${c[7]}/${c[0] % 1e6}` : c[0]);
@@ -348,36 +379,16 @@ export async function render(main, { query }) {
       const ev = b.race && (eventOf.get(b.race) || b.race.replace(/^a/, ""));
       if (ev && b.last) set(ev, b.id, Date.now() - b.last <= liveS * 1000);
     }
-    // a live race of today the agenda's ids do not tie: an event of today whose name fits takes it; else it is listed apart
     const tied = new Set([...lives.values()].map((l) => String(l.id)));
     const cc = country.current();
-    extra = [];
     for (const c of list.comps || []) {
       if (tied.has(String(c[0])) || c[3] !== today || ((c[5] || cc) !== cc)) continue;
       const ev = on.find((e) => fits(e.name || "", c[1]));
-      if (ev) { set(String(ev.id), c[0], c[6] != null && c[6] <= liveS); continue; }
-      extra.push({ id: c[0], name: c[1], org: [c[2], c[7]].filter(Boolean).join(" · "), now: c[6] != null && c[6] <= liveS });
+      if (ev) set(String(ev.id), c[0], c[6] != null && c[6] <= liveS);
     }
-    for (const b of bc.broadcasts || []) {
-      if (b.race || !b.last || b.date !== today) continue;
-      extra.push({ id: b.id, name: b.name, org: b.organizer || "", now: Date.now() - b.last <= liveS * 1000 });
-    }
-    drawLive();
     if (!lives.size) return;
     drawTable();
     if (st.selected) drawDetail();
-  }
-  /** The box above the list: the events live now, then the other live races of today. */
-  function drawLive() {
-    const box = $("#ag-live");
-    if (!box) return;
-    const now = events.filter((e) => lives.get(String(e.id))?.now && RF.keep(e)).map((e) => ({ id: lives.get(String(e.id)).id, name: e.name, org: e.org || "", now: true }));
-    const more = RF.runner() ? [] : extra;                       // (the races the agenda does not list name no runner)
-    const items = [...now, ...more.filter((x) => x.now), ...more.filter((x) => !x.now)];
-    box.innerHTML = items.length ? html`<section class="card lv-now"><div class="card-head"><div><h2><span class="lv-dot" aria-hidden="true"></span>${t("agd.liveBox")}</h2>
-        <div class="hint">${t("agd.liveBox.hint", { m: Math.round(liveSecs / 60) })}</div></div></div>
-      <div class="lv-now-list">${items.map((x) => html`<a class="lv-now-item" href="#/direct/${x.id}"><b>${x.name}${x.now ? html` <span class="lv-badge">${t("lv.badge")}</span>` : ""}</b>
-        <span class="muted">${x.org}</span></a>`)}</div></section>` : "";
   }
   // the live GPS tracking an organiser linked to their competition (« Organisation › Direct », tracking.js): event id -> link;
   // France's competitions by their agenda id (a race of « Résultats » by the event it is), declared ones by their key

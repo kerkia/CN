@@ -357,9 +357,9 @@ export const orgaOpen = () => !!auth.session()?.orga && !isPhone();
 export function moduleMenus() {
   const me = auth.session();
   return {
-    // one page, the competitions, whose two tabs are the module's menu (owner, 2026-10-30, second review): today's and the
-    // coming ones — the Agenda, with what is live now (« En direct »'s list of before) — and the past ones (« Résultats »)
-    arena: [["coming", "#/agenda", t("arena.tab.coming")], ["past", "#/resultats", t("arena.tab.past")]],
+    // one page, the competitions — today's, the coming and the past ones, chosen in its filters —: no menu; a race's page puts
+    // its own tabs there (its results, the analysis's views: placeBarTabs; owner, 2026-10-30, third review)
+    arena: [],
     stats: [
       // « Coureur » opens on one's own page, in France's data (owner, 2026-10-30: « Ma page » was the same page); another
       // runner is found by its search
@@ -380,7 +380,10 @@ export function moduleMenus() {
   };
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
-const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga" };
+const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga",
+  agenda: "arena", provisional: "arena", splits: "arena", live: "arena" };
+/** Where a module opens: its first page (Arena: the competitions). */
+export const moduleHome = (m) => (m === "arena" ? "#/agenda" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
 /** The module a page belongs to, or null (the modules page, the documentation, the settings…). */
 export function moduleOf(r) {
   const k = menuKey(r);
@@ -422,7 +425,7 @@ function renderHeader(r) {
 
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it)
   $("#topbar").innerHTML = html`<canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="topbar-inner${visitor ? "" : " guest"}">
-    ${items.length ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn">
+    ${items.length || mod === "arena" ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
     <a class="brand" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
@@ -432,7 +435,7 @@ function renderHeader(r) {
       </svg>
       <span class="brand-name"><span class="brand-o">O</span>zimut</span>${mod ? html`<span class="brand-mod">${t(`mod.${mod}`)}</span>` : ""}
     </a>
-    ${items.length ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
+    ${items.length || mod === "arena" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
       ${visitor ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}
@@ -584,6 +587,16 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("change", (e) => { if (e.target.id === "method-pick") pickMethod(e.target.value); });
 
+/** A page whose tabs are its module's menu (Arena's race page: its results and the analysis's views; owner, 2026-10-30): its
+ *  [data-bar-tabs] element moves into the bar, where it keeps its own id and handlers. */
+function placeBarTabs(main) {
+  const el = $("[data-bar-tabs]", main), nav = $("#nav");
+  if (!el || !nav) return;
+  nav.append(el);
+  $("#menu-btn")?.removeAttribute("hidden");
+  fitNav();
+}
+
 function placeSearch(main) {
   const row = auth.session() ? tabsRow(main) : null;
   if (!row || $(".search", row)) return;
@@ -731,7 +744,12 @@ async function route_() {
     history.replaceState(null, "", location.hash.replace(/^#\/methodes/, "#/documentation"));
     r = parseHash();
   }
-  // « En direct »'s list of before (2026-10-30): today's competitions, where what is live now is listed
+  // « Résultats »' list of before (2026-10-30): the competitions page, its past ones
+  if (r.route === "provisional" && !r.query.course && !r.query.deposer) {
+    history.replaceState(null, "", "#/agenda?periode=passees");
+    r = parseHash();
+  }
+  // « En direct »'s list of before (2026-10-30): today's competitions
   if (r.route === "live" && !r.arg) {
     history.replaceState(null, "", "#/agenda");
     r = parseHash();
@@ -765,6 +783,7 @@ async function route_() {
     if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
     if (isLean(r)) leanHead(main);
     placeMethod(main, r);
+    placeBarTabs(main);
     lastRoute = r.route;
     track(r);
     document.title = (current?.title ? current.title + " — " : "") + SITE;
@@ -823,7 +842,7 @@ function track(r) {
 export async function enterAsGuest(mod = "") {
   auth.setGuest(true);
   await data.reloadCountry();                   // the public copies now (data.setPublicRule)
-  location.hash = MODULES.includes(mod) && mod !== "orga" ? moduleMenus()[mod][0][1] : homeOf();
+  location.hash = MODULES.includes(mod) && mod !== "orga" ? moduleHome(mod) : homeOf();
 }
 /** Leave a visit without an account: back to the home page. */
 export async function leaveGuest() {

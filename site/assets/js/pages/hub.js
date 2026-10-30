@@ -7,7 +7,7 @@ import { html, raw, $, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { MODULES, moduleMenus, isPhone, orgaOpen, leaveGuest } from "../app.js";
+import { MODULES, moduleMenus, moduleHome, isPhone, orgaOpen, leaveGuest } from "../app.js";
 
 // one drawing a module, in the module's colour (currentColor)
 const ICONS = {
@@ -51,7 +51,7 @@ function card(m) {
     ${locked ? html`<p class="muted hub-note">${locked.note}</p>${locked.action ? html`<div class="hub-actions">${locked.action}</div>` : ""}`
       : html`<ul class="hub-pages">${m === "arena" ? ARENA_STEPS.map((k) => html`<li><span>${t(`hub.arena.step.${k}`)}</span></li>`)
         : items.map(([, href, text]) => html`<li><a href="${href}">${text}</a></li>`)}</ul>
-        <div class="hub-actions"><a class="btn btn-primary" href="${items[0][1]}">${t("hub.open", { mod: t(`mod.${m}`) })}</a></div>`}
+        <div class="hub-actions"><a class="btn btn-primary" href="${moduleHome(m)}">${t("hub.open", { mod: t(`mod.${m}`) })}</a></div>`}
   </section>`;
 }
 

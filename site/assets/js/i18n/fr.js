@@ -2578,4 +2578,7 @@ export default {
   "agd.liveBox.hint": "Les courses du jour suivies en direct ; « direct » : un poste ou une arrivée lus il y a moins de {m} min.",
   "hub.arena.step.agenda": "Agenda", "hub.arena.step.results": "Résultats", "hub.arena.step.live": "En direct",
   "hub.arena.step.splits": "Analyse des temps intermédiaires", "hub.arena.step.map": "Analyse sur la carte",
+  // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
+  "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 derniers jours)",
+  "agd.past.results": "résultats", "agd.past.splits": "temps inter.", "agd.past.official": "officiels",
 };
