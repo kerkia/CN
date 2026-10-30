@@ -46,7 +46,16 @@ const LANDSCAPE = `<svg class="home-landscape" viewBox="0 0 1440 640" preserveAs
   <g class="ls-forest">${forest(1270, 548, 4, 44, 2)}${forest(-6, 560, 3, 40, 4)}</g>
 </svg>`;
 
-export async function render(main) {
+/** The bar's links lead to a section of the page (#/?s=arena…, s=features), « Se connecter » to the form (s=login). */
+function goTo(s) {
+  if (!s) return;
+  const el = s === "login" ? document.querySelector(".home-login") : document.getElementById(`mod-${s}`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (s === "login") setTimeout(() => document.getElementById("acct-email")?.focus({ preventScroll: true }), 300);
+}
+
+export async function render(main, { query = {} } = {}) {
   // registration open to every orienteer (WORLD_OPEN): the tour's pledge about who sees the results follows it
   let world = false;
   try { world = !!(await (await fetch("api/account/status")).json()).world; } catch (e) { /* as before */ }
@@ -77,6 +86,9 @@ export async function render(main) {
             <button class="btn btn-primary" type="submit" id="acct-btn">${t("ac.login")}</button>
             <p class="links"><a href="#/compte/inscription">${t("ac.register")}</a><a href="#/compte/mot-de-passe">${t("ac.forgot")}</a></p>
           </form>
+          <div class="home-guest"><span class="muted">${t("home.guest.or")}</span>
+            <button type="button" class="btn" data-guest-enter="">${t("hub.guest.enter")}</button>
+            <span class="muted">${t("home.guest.hint")}</span></div>
         </div>
       </div>
     </section>
@@ -84,7 +96,7 @@ export async function render(main) {
 
   mountReel(main);
   mountTour(main);
-  $("#acct-email").focus();
+  if (query.s) setTimeout(() => goTo(query.s), 50); else $("#acct-email").focus();
   const aform = $("#acct-form"), aerr = $("#acct-error"), abtn = $("#acct-btn");
   aform.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -102,5 +114,5 @@ export async function render(main) {
       abtn.textContent = t("ac.login");
     }
   });
-  return { title: t("ov.title") };
+  return { title: t("ov.title"), onQuery: (q) => goTo(q.s) };
 }

@@ -7,7 +7,7 @@ import { html, raw, $, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { MODULES, moduleMenus, isPhone, orgaOpen } from "../app.js";
+import { MODULES, moduleMenus, isPhone, orgaOpen, leaveGuest } from "../app.js";
 
 // one drawing a module, in the module's colour (currentColor)
 const ICONS = {
@@ -59,7 +59,7 @@ function session() {
       <button type="button" class="btn btn-sm" data-hub-logout>${t("auth.logout")}</button></div>`;
   }
   return html`<div class="hub-session"><span>${t("hub.guestAs")}</span>
-    <a class="btn btn-sm btn-primary" href="#/">${t("hub.login")}</a>
+    <a class="btn btn-sm btn-primary" href="#/?s=login">${t("hub.login")}</a>
     <a class="btn btn-sm" href="#/compte/inscription">${t("hub.register")}</a>
     <button type="button" class="btn btn-sm btn-ghost" data-hub-leave>${t("hub.leave")}</button></div>`;
 }
@@ -81,10 +81,7 @@ export async function render(main, r) {
       data.dropPrivate();
       location.hash = "#/";
     }
-    if (e.target.closest("[data-hub-leave]")) {
-      auth.setGuest(false);
-      location.hash = "#/";
-    }
+    if (e.target.closest("[data-hub-leave]")) leaveGuest();
   });
   return { title: t("mod.pick") };
 }

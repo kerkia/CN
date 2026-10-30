@@ -210,7 +210,8 @@ export async function render(main, { query }) {
   // France's licences and FFCO's club numbers; another country's runner numbers and club keys are Ozimut's own: not shown
   const fr = data.loadedCountry() === "FR";
   const fedName = country.info(data.loadedCountry())?.federation || "";
-  const tabs = [["classement", t("rk.tab.list")], ["repartition", t("rk.tab.dist")], ["progres", t("rk.tab.progress")],
+  // (the progressions compare a year with the one before: not from a country's public copy, data.isPublicCopy)
+  const tabs = [["classement", t("rk.tab.list")], ["repartition", t("rk.tab.dist")], ...(data.isPublicCopy() ? [] : [["progres", t("rk.tab.progress")]]),
     // a country whose federation's ranking is a table of its own (Spain's FEDO; France's is the official CN, a method)
     ...(country.info(data.loadedCountry())?.official_table ? [["federation", t("rk.tab.fed", { f: fedName })]] : [])];
   const tab = tabFrom(tabs, query);

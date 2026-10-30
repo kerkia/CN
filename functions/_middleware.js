@@ -31,7 +31,18 @@ const parisToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Eur
 // a country's list of competitions and agenda, the study's aggregates (the Documentation), and the provisional results'
 // copy without CN, scores or licences (prov/pub/). Deny by default: a country folder without a rule is nobody's, and
 // anything else under /data/ (the provisional results' full files) is France's.
-const DATA_FOR_ALL = [/^\/data\/[a-z]{2}\/(competitions|agenda|evaluation|validation)\.json$/, /^\/data\/prov\/pub\//];
+const DATA_FOR_ALL = [/^\/data\/[a-z]{2}\/(competitions|agenda|evaluation|validation)\.json$/, /^\/data\/prov\/pub\//,
+  /^\/data\/[a-z]{2}\/pub\//];       // a country's public copy (site_public.py): its federation's open seasons
+// What a visitor without an account may read (owner, 2026-10-30: « Entrer sans compte »), by GET only: what is open to every
+// account above, the countries whose results are all public (DATA_ACCESS "all": Spain, the agendas' countries), the live
+// results (the races' list and their WebSocket) and the competitions' GPS tracking links. Nothing about accounts.
+const GUEST = [/^\/api\/live\/list$/, /^\/ws\/[^/]+$/, /^\/api\/tracking$/];
+/** May a visitor without an account read this path? */
+export function guestMay(path) {
+  if (GUEST.some((re) => re.test(path)) || DATA_FOR_ALL.some((re) => re.test(path))) return true;
+  const m = /^\/data\/([a-z]{2})\//.exec(path);
+  return !!m && DATA_ACCESS[m[1].toUpperCase()] === "all";
+}
 // the endpoints that serve France's data: FFCO's own pages, « IA » (it queries the French tables), the relay's added runners
 const FR_API = [/^\/api\/ffco-(cn|history)$/, /^\/api\/ask$/, /^\/api\/account\/relay$/];
 /**
@@ -125,6 +136,7 @@ export async function onRequest(context) {
   if (PUBLIC.some((re) => re.test(path))) return next();
   const s = await readSession(request, env.SESSION_SECRET);
   if (!s?.uid) {                      // only account sessions count (the name+licence login is gone)
+    if ((request.method === "GET" || request.method === "HEAD") && guestMay(path)) return next();
     return new Response(JSON.stringify({ error: "login required" }), {
       status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });

@@ -49,7 +49,10 @@ export async function render(main, { arg, query }) {
   let histMethod = null, ref = "all";
   // France's runner: FFCO's licence, its départements' map, FFCO's pages; another country's numbers are Ozimut's own
   const fr = data.loadedCountry() === "FR";
-  const tabs = TABS.filter(([k]) => fr || k !== "carte").map(([k, l]) => [k, t(l)]);
+  // read from the country's public copy (no account, or the country not joined: data.isPublicCopy), the races and the
+  // calculation only — the other tabs look over the years the federation keeps to its members (owner, 2026-10-30)
+  const pub = data.isPublicCopy();
+  const tabs = TABS.filter(([k]) => (fr || k !== "carte") && (!pub || k === "courses" || k === "calcul")).map(([k, l]) => [k, t(l)]);
   const tab = tabFrom(tabs, { ...query, onglet: OLD_TABS[query.onglet] || query.onglet });
   if (OLD_TABS[query.onglet]) replaceQuery({ onglet: tab });                   // the address says the tab's current name
 

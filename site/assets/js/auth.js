@@ -37,9 +37,10 @@ export function session() {
  * refuses the rest (_middleware.js `needs`). A session kept before the countries: its licence is France.
  */
 export function sees(cc) {
+  // a country whose results are all public (Spain): everyone, signed in or not (owner, 2026-10-30)
+  if (data.site()?.countries?.[cc]?.access === "all") return true;
   const s = session();
   if (!s) return false;
-  if (data.site()?.countries?.[cc]?.access === "all") return true;
   if (s.demo) return cc === "FR";
   return Array.isArray(s.countries) ? s.countries.some((c) => c.cc === cc && c.status === "ok") : cc === "FR" && !!s.lic;
 }

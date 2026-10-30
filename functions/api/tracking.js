@@ -2,12 +2,13 @@
 // study: private artifact https://claude.ai/artifact/Y2kZZiMHpZsiPBczSaTVcb). Ozimut tracks nobody itself: an organiser gives
 // the link to the page of the service they use (Loggator, GPSSeuranta, TracTrac, Livelox, Routechoices…), and Agenda,
 // Résultats and En direct show it as a button. No third party's data passes through Ozimut, only the link.
-//   GET                    every link of a competition from TRACK_PAST days ago on: { links: [{ race, url, name, date, mine }] }
+//   GET                    every link of a competition from TRACK_PAST days ago on: { links: [{ race, url, name, date, mine }] };
+//                          a visitor without an account too (owner, 2026-10-30: the links are public, `mine` false)
 //   POST { race, url }     sets the competition's link (its organisers only, as a deposit: _lib/club.js `organises`)
 //   DELETE { race }        removes it (its organisers)
 // `race` is a competition's key: the agenda's « a<id> », a declared « d<id> », or a race of « Résultats ». Kept in R2
 // (cn-state, tracking/<race>.json, the link in the object's custom metadata so that the list is one R2 list).
-import { allow, isAdmin, json, nowIso, readBody, withUser } from "../_lib/api.js";
+import { allow, currentUser, isAdmin, json, nowIso, readBody, withUser } from "../_lib/api.js";
 import { findRace, organises } from "../_lib/club.js";
 
 const PREFIX = "tracking/";
@@ -36,9 +37,10 @@ async function listAll(env) {
   return out;
 }
 
-export const onRequest = withUser(async ({ request, env }, user) => {
+export async function onRequestGet({ request, env }) {
   if (!env.BUCKET) return json({ error: "storage not configured" }, 500);
-  if (request.method === "GET") {
+  const user = env.DB ? await currentUser(request, env) : null;
+  {
     const since = new Date(Date.now() - TRACK_PAST * 86400e3).toISOString().slice(0, 10);
     const links = [];
     for (const o of await listAll(env)) {
@@ -46,11 +48,15 @@ export const onRequest = withUser(async ({ request, env }, user) => {
       if (!m.race || !m.url || (m.date || "") < since) continue;
       let name = "";
       try { name = decodeURIComponent(m.name || ""); } catch (e) { /* none */ }
-      links.push({ race: m.race, url: m.url, name, date: m.date || "", mine: Number(m.by) === user.id });
+      links.push({ race: m.race, url: m.url, name, date: m.date || "", mine: !!user && Number(m.by) === user.id });
     }
     // the pages read it once a visit, again after 5 minutes at most (each read counts on the Functions' daily quota)
     return json({ links }, 200, { "Cache-Control": "private, max-age=300" });
   }
+}
+
+export const onRequest = withUser(async ({ request, env }, user) => {
+  if (!env.BUCKET) return json({ error: "storage not configured" }, 500);
   const b = await readBody(request);
   const key = String(b?.race || "");
   if (!RACE.test(key)) return json({ error: "bad competition" }, 400);

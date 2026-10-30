@@ -8,18 +8,27 @@ import * as country from "./country.js";
 // same names in every country; the countries' index (data/meta.json) and the provisional results (data/prov/) are the
 // site's. The pages read the country loaded — the site's country (country.js) — through getJson.
 let LOADED = null;                       // the country whose data is loaded ("FR")
-const dirOf = (cc) => `data/${String(cc).toLowerCase()}/`;
+// A country whose federation keeps its older seasons to its members (France) has a public copy, data/<cc>/pub/ (site_public.py;
+// owner, 2026-10-30): what a visitor without an account, or an account that has not joined the country, reads of its rankings
+// (app.js sets the rule: auth.sees). Its agenda, list of competitions and the study's figures are the country's own files.
+let publicOnly = () => false;
+/** Set the rule: does this visitor read country cc's public copy? */
+export const setPublicRule = (fn) => { publicOnly = fn; };
+const SHARED = /^(agenda|evaluation|validation)\.json$/;
+const dirOf = (cc, path = "") => `data/${String(cc).toLowerCase()}/${publicOnly(cc) && !SHARED.test(path) ? "pub/" : ""}`;
+/** Is the loaded country read from its public copy (the federation's open seasons only)? */
+export const isPublicCopy = () => publicOnly(loadedCountry());
 /** The loaded country's folder: "data/fr/". */
 export const root = () => dirOf(loadedCountry());
 export const loadedCountry = () => LOADED || country.current();
 const cache = new Map();
 
 /** A file of the loaded country's folder. */
-const getJson = (path) => fetchJson(root() + path);
+const getJson = (path) => fetchJson(dirOf(loadedCountry(), path) + path);
 /** A file of the site's own (data/meta.json…). */
 export const getSiteJson = (path) => fetchJson("data/" + path);
 /** A file of another country's folder (the Documentation reads France's when the site's country has no ranking). */
-export const countryJson = (cc, path) => fetchJson(dirOf(cc) + path);
+export const countryJson = (cc, path) => fetchJson(dirOf(cc, path) + path);
 
 async function fetchJson(url) {
   const path = url;
@@ -90,6 +99,14 @@ export async function useCountry(cc) {
   return true;
 }
 export const isPrivateLoaded = () => !!RUNNERS;
+/** The visitor changed (signed in, entered without an account): the loaded country's files are read again, from the folder
+ *  its rule now gives. */
+export async function reloadCountry() {
+  for (const k of [...cache.keys()]) if (!k.startsWith("data/meta.json") && !k.startsWith("data/prov/")) cache.delete(k);
+  RUNNERS = null;
+  COMPS = null;
+  META = await getJson("meta.json").catch(() => null);
+}
 
 /**
  * Everything else — only readable once logged in. `open`: the account may read the loaded country's runners (its rule,

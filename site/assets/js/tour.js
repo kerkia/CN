@@ -20,6 +20,22 @@ const LEGS = [
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "results"] },
   { id: "phones", who: ["all"], phones: ["phone-ranking", "phone-agenda", "phone-race", "phone-settings", "phone-runner"] },
 ];
+// the four modules (owner, 2026-10-30): each a section of the page, its introduction then its legs; the bar's links lead to
+// them (#/?s=arena…), and to the table of who sees what (#/?s=features)
+export const MODS = [
+  { id: "arena", legs: ["races"] },
+  { id: "stats", legs: ["runner", "ranking", "method", "clubs"] },
+  { id: "coach", legs: ["analysis", "training"] },
+  { id: "orga", legs: ["orga"] },
+];
+// who sees what: each module's features, and for each profile — without an account, with one, with one and Orga — "y" yes,
+// "f" for the federation's members (France: an FFCO licence checked), "" no
+const FEATURES = [
+  ["arena", [["agenda", "yyy"], ["live", "yyy"], ["results", "yyy"], ["cn", "-ff"], ["alerts", "-yy"]]],
+  ["stats", [["public", "yyy"], ["history", "-ff"]]],
+  ["coach", [["solo", "yyy"], ["multi", "-yy"], ["learn", "yyy"]]],
+  ["orga", [["tools", "--y"]]],
+];
 const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
   : `assets/tour/${lang() === "en" ? "en" : "fr"}/${name}.webp`);
@@ -71,6 +87,28 @@ function leg(L, i) {
   return html`<section class="tour-leg" id="tour-${L.id}">${head}${duel}${main}${dp}${row}${strip}${pair}${phones}</section>`;
 }
 
+/** A module's section: its introduction (with a way in), then its legs, numbered on from `n`. */
+function mod(M, n) {
+  const cta = M.id === "orga" ? html`<a class="btn btn-primary" href="#/compte/inscription">${t("tour.mod.orga.cta")}</a>`
+    : html`<button type="button" class="btn btn-primary" data-guest-enter="${M.id}">${t("tour.mod.try", { mod: t(`mod.${M.id}`) })}</button>`;
+  return html`<div class="tour-mod" id="mod-${M.id}" data-mod="${M.id}">
+    <header class="tour-mod-head"><span class="tour-mod-badge">${t(`mod.${M.id}`)}</span><h2>${t(`tour.mod.${M.id}.title`)}</h2>
+      <p class="tour-lede">${t(`tour.mod.${M.id}.lede`)}</p><div class="tour-mod-cta">${cta}</div></header>
+    ${M.legs.map((id, i) => leg(LEGS.find((L) => L.id === id), n + i))}</div>`;
+}
+/** Who sees what: the features of each module by profile. */
+function features() {
+  const cell = (v) => (v === "y" ? html`<td class="c tour-yes" title="${t("tour.feat.yes")}">✓</td>`
+    : v === "f" ? html`<td class="c tour-yes" title="${t("tour.feat.fed")}">✓<sup>1</sup></td>` : html`<td class="c tour-no" title="${t("tour.feat.no")}">—</td>`);
+  return html`<section class="tour-features" id="mod-features">
+    <div class="tour-eyebrow">${t("tour.feat.eyebrow")}</div><h2>${t("tour.feat.title")}</h2><p class="tour-lede">${t("tour.feat.lede")}</p>
+    <div class="table-wrap"><table class="data tour-feat-table"><thead><tr><th>${t("tour.feat.col")}</th><th class="c">${t("tour.feat.guest")}</th>
+      <th class="c">${t("tour.feat.account")}</th><th class="c">${t("tour.feat.orga")}</th></tr></thead>
+      <tbody>${FEATURES.map(([m, rows]) => html`<tr class="tour-feat-mod" data-mod="${m}"><th colspan="4">${t(`mod.${m}`)} <span>${t(`mod.${m}.tag`)}</span></th></tr>
+        ${rows.map(([k, v]) => html`<tr><td>${t(`tour.feat.${m}.${k}`)}</td>${[...v].map(cell)}</tr>`)}`)}</tbody></table></div>
+    <p class="muted tour-feat-note"><sup>1</sup> ${t("tour.feat.note")}</p></section>`;
+}
+
 /** The section, under the hero. counts: meta.json's { runners, competitions, results }. */
 /** `world`: registration open to every orienteer (WORLD_OPEN): the pledge about who sees the results follows it. */
 export function tourHtml(counts = {}, { world = false } = {}) {
@@ -83,7 +121,8 @@ export function tourHtml(counts = {}, { world = false } = {}) {
         <div class="tour-fig"><b>4</b><span>${t("tour.fig.specs")}</span></div></div></header>
     <div class="tour-course">
       <svg class="tour-start" viewBox="0 0 45 45" aria-hidden="true"><path d="M22.5 5 L41 37 L4 37 Z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/></svg>
-      ${LEGS.map(leg)}
+      ${MODS.map((M, i) => mod(M, MODS.slice(0, i).reduce((s, x) => s + x.legs.length, 0)))}
+      ${leg(LEGS.find((L) => L.id === "phones"), MODS.reduce((s, x) => s + x.legs.length, 0))}
       <section class="tour-leg tour-finish" id="tour-finish">
         <svg class="tour-ctrl tour-ctrl-finish" viewBox="0 0 45 45" aria-hidden="true"><circle cx="22.5" cy="22.5" r="20" stroke="currentColor" stroke-width="3"/><circle cx="22.5" cy="22.5" r="13" fill="none" stroke="currentColor" stroke-width="3"/></svg>
         <div class="tour-leg-head"><div><div class="tour-eyebrow">${t("tour.finish.eyebrow")}</div><h2>${t(world ? "tour.finish.title.world" : "tour.finish.title")}</h2></div></div>
@@ -97,6 +136,7 @@ export function tourHtml(counts = {}, { world = false } = {}) {
         </div>
       </section>
     </div>
+    ${features()}
     <p class="tour-note">${t("tour.note")}</p>
     <dialog class="tour-box" id="tour-box"><img alt=""><p></p></dialog>
   </section>`;

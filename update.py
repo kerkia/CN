@@ -300,6 +300,8 @@ def main() -> None:
             sync_privacy(args.db)                               # before any build: the anonymised runners' list
             migrate(args.db, fr_out)                            # no-op once done
             apply_privacy(args.db, fr_out, args.out)            # no-op unless the anonymised runners changed
+            if ensure_public(args.db, fr_out):                  # France's public copy, written once if missing
+                DEPLOY_PENDING.touch()
             if relays.build(fr_out):                            # « Relais nationaux »: fr/relays.json, when its CSVs changed
                 DEPLOY_PENDING.touch()
             if countries.write_index(args.out):                 # site/data/meta.json: the countries and what they have
@@ -479,9 +481,40 @@ def day_point_due(out: Path) -> bool:
     return last < build_site.paris_today().isoformat()
 
 
+def ensure_public(db: Path, out: Path) -> bool:
+    """France's public copy (site_public.py; owner, 2026-10-30), written from the published files when a build has not
+    made it yet (the first run after it came, a deploy-only run). -> True when written."""
+    if (out / "pub" / "meta.json").exists() or not (out / "meta.json").exists():
+        return False
+    import site_public
+    from countries.fr import public_period
+    con = sqlite3.connect(db)
+    try:
+        start = public_period.public_from(con)
+    finally:
+        con.close()
+    site_public.write(out, start)
+    return True
+
+
 def _run(args, since, t0) -> bool:
     """Steps 1-3 for France; True when the site data was rebuilt."""
     out = france.COUNTRY.data_dir(args.out)
+    # FFCO's open seasons, checked once a month (countries/fr/public_period.py): a change rebuilds the public copy
+    if not args.dry_run and not args.new_only:
+        from countries.fr import public_period
+        con = sqlite3.connect(args.db)
+        try:
+            before = public_period.public_from(con)
+        finally:
+            con.close()
+        try:
+            first = public_period.check(args.db)
+            if first != before:
+                import site_public
+                site_public.write(out, first)
+        except Exception as e:                  # never a reason to stop a run
+            print(f"FFCO's open seasons not checked: {e}")
     # ---- 1. fetch & compare -------------------------------------------------------
     if not args.no_fetch:
         earliest, changes = france.fetch(args)

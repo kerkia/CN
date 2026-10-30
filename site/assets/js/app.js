@@ -76,6 +76,8 @@ const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.le
 // anyway: _middleware.js `needs`).
 const FR_ROUTES = new Set(["runner", "ranking", "categories", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network",
   "relayHistory", "ask"]);
+// the ranking pages a public copy serves (data.js): the runner, the ranking, the races (owner, 2026-10-30)
+const PUBLIC_STATS = new Set(["runner", "ranking", "courses"]);
 /** May the account open the site's country's ranking pages? */
 const ranksHere = () => country.ranks() && auth.sees(country.current());
 /** Where a signed-in account or a visitor without one lands: the modules page (owner, 2026-10-30; the agenda from 2026-10-21). */
@@ -358,11 +360,13 @@ export function moduleMenus() {
     stats: [
       // one's own page, in France's data (the runner page of one's licence)
       ...(me?.lic && country.current() === "FR" && ranksHere() ? [["me", link.runner(`fr${me.lic}`), t("auth.myPage")]] : []),
-      ["runner", "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
-      ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
-      ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
-      // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
-      ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
+      ...[["runner", "#/coureur", t("nav.runner")], ["ranking", "#/classement", t("nav.ranking")], ["categories", "#/categories", t("nav.categories")],
+        ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
+        ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
+        // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
+        ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
+      // without the country's data (no account, or the country not joined): the pages its public copy serves
+      ].filter(([k]) => auth.sees(country.current()) || PUBLIC_STATS.has(k)),
     ],
     // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
@@ -392,12 +396,14 @@ function lastModule(m) {
 function renderHeader(r) {
   const { route } = r;
   const me = auth.session(), visitor = me || auth.guest();
-  const fr = ranksHere();             // the site's country's rankings: the method switch
+  const fr = country.ranks();         // the site's country's rankings (its public copy included): the method switch
   // the module shown: the page's, else the one last opened (a page of no module: Réglages, Documentation…); none on the
   // modules page and the home page
   const own = visitor && route !== "orgaOff" ? moduleOf(r) : null;
   const mod = own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
-  const items = mod ? moduleMenus()[mod] : [];
+  // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
+  const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
+    ? [...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]), ["home-features", "#/?s=features", t("tour.feat.eyebrow")]] : [];
   const current = menuKey(r) === "runner" && me?.lic && [me.lic, `fr${me.lic}`].includes(r.arg) ? "me" : menuKey(r);
   document.body.dataset.group = mod || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
@@ -434,7 +440,11 @@ function renderHeader(r) {
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
-      </div>` : visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/">${t("hub.login")}</a>` : ""}
+      </div>` : visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/?s=login">${t("hub.login")}</a>`
+        // signed out: sign in, create an account, or enter without one (owner, 2026-10-30)
+        : html`<div class="home-ways"><a class="btn btn-sm" href="#/?s=login">${t("hub.login")}</a>
+          <a class="btn btn-sm home-way-reg" href="#/compte/inscription">${t("hub.register")}</a>
+          <button type="button" class="btn btn-sm btn-primary" data-guest-enter="">${t("hub.guest.enter")}</button></div>`}
     </div>
   </div>
   ${visitor && (mod || route === "hub") ? html`<div class="subbar"><canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="subbar-inner">
@@ -666,18 +676,24 @@ async function route_() {
     }
     if (id && id.cc === country.current()) r = { ...r, arg: id.n };
   }
-  if (me && !data.isPrivateLoaded()) {
-    // only a session the server refuses (401, data.getJson) signs out; anything else is shown as a failed load
-    try { await data.bootPrivate({ open: auth.sees(data.loadedCountry()) }); } catch (e) {
+  if ((me || guest) && !data.isPrivateLoaded()) {
+    // only a session the server refuses (401, data.getJson) signs out; anything else is shown as a failed load. (Every
+    // visitor reads the runners: the country's own file, or its public copy, data.setPublicRule.)
+    try { await data.bootPrivate({ open: true }); } catch (e) {
       if (/HTTP 401/.test(e.message)) return signedOut();
       $("#main").innerHTML = html`<div class="card"><div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
       return;
     }
-    await auth.refresh();                     // rights granted or withdrawn since the login
-    if (my !== token) return;
-    movedNotice();
+    if (me) {
+      await auth.refresh();                   // rights granted or withdrawn since the login
+      if (my !== token) return;
+      movedNotice();
+    }
   }
-  if (me && FR_ROUTES.has(r.route) && (!ranksHere() || (r.route === "ask" && country.current() !== "FR"))) r = { ...r, route: "needCountry", from: r.route };
+  // a country's ranking pages: all of them to those who see its data; to the others, from its public copy, the runner, the
+  // ranking and the races only (the federation's open seasons: data.setPublicRule); else the page that says why
+  if ((me || guest) && FR_ROUTES.has(r.route) && (!country.ranks() || (r.route === "ask" && country.current() !== "FR")
+    || (!auth.sees(country.current()) && !PUBLIC_STATS.has(r.route)))) r = { ...r, route: "needCountry", from: r.route };
   // a link may carry the method (?m=official|top6w): it becomes the site's
   if (r.query.m) store.setMethod(r.query.m, { quiet: true });
   // « Déposer » is the organisers' alone, under « Organisation › Résultats » (owner, 2026-10-15): the old address leads there
@@ -768,6 +784,23 @@ function track(r) {
     keepalive: true, body: JSON.stringify({ page: pageKey(r), visit }) }).catch(() => {});
 }
 
+/** « Entrer sans compte » (owner, 2026-10-30): a visit without an account, on the modules page or a module's first page. */
+export async function enterAsGuest(mod = "") {
+  auth.setGuest(true);
+  await data.reloadCountry();                   // the public copies now (data.setPublicRule)
+  location.hash = MODULES.includes(mod) && mod !== "orga" ? moduleMenus()[mod][0][1] : homeOf();
+}
+/** Leave a visit without an account: back to the home page. */
+export async function leaveGuest() {
+  auth.setGuest(false);
+  await data.reloadCountry();
+  location.hash = "#/";
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-guest-enter]");
+  if (b) { e.preventDefault(); enterAsGuest(b.dataset.guestEnter); }
+});
+
 /** The server no longer accepts the session (expired, secret rotated…). */
 function signedOut() {
   auth.forget();
@@ -779,7 +812,8 @@ window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOu
 
 /** Called by the login page once the credentials are accepted: land on one's own page. */
 export async function signedIn(s) {
-  await data.bootPrivate({ open: auth.sees(data.loadedCountry()) });
+  await data.reloadCountry();                 // the full files now, or the public copy (data.setPublicRule)
+  await data.bootPrivate({ open: true });
   if (s.lic && data.loadedCountry() === "FR") store.set({ lastRunner: s.lic });
   let next = null;
   try { next = sessionStorage.getItem("ocn.after"); sessionStorage.removeItem("ocn.after"); } catch (e) {}
@@ -806,6 +840,8 @@ async function start() {
   pwa.boot();                                      // the service worker, the manifest's language, files opened with the app
   // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
+  // a visitor without an account, or an account that has not joined a country, reads its public copy (data.js)
+  data.setPublicRule((cc) => (!!auth.session() || auth.guest()) && data.site()?.countries?.[cc]?.access === "members" && !auth.sees(cc));
   await data.bootPublic();
   renderFooter();
   codeChanged();                                   // the version this visit runs

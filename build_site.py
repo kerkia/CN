@@ -787,6 +787,12 @@ def main(argv: list[str] | None = None) -> None:
             prune(OUT, set(), "official.json")
     dump(OUT / "meta.json", meta)
     site_extras.main(OUT)
+    # France's public copy (owner, 2026-10-30): its data from the first season FFCO shows without a login, for visitors
+    # without an account and the accounts that have not joined France (site_public.py)
+    if fr:
+        import site_public
+        from countries.fr import public_period
+        site_public.write(OUT, public_period.public_from(conn))
     total = sum(f.stat().st_size for f in OUT.rglob("*.json"))
     nfiles = sum(1 for _ in OUT.rglob("*.json"))
     print(f"done in {time.monotonic()-t0:.0f}s: {nfiles:,} files, {total/1e6:.1f} MB — "

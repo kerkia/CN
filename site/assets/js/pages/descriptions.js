@@ -48,7 +48,7 @@ export async function render(main, { query = {} } = {}) {
     const words = normalise(`${name} ${text} ${s.id}`);
     return html`<button type="button" class="cd-card${s.k >= "T" ? " wide" : ""}" data-words="${words}" aria-label="${name}">
       ${svg(s)}<span class="cd-id">${/^[0-9]/.test(s.id) ? s.id.replace(/@.*/, "") : ""}</span>
-      <span class="cd-name">${name}</span>${text && normalise(text) !== normalise(name) ? html`<span class="cd-text">« ${text} »</span>` : ""}</button>`;
+      <span class="cd-name">${name}</span>${text && normalise(text) !== normalise(name) ? html`<span class="cd-text">${t("cd.quote", { x: text })}</span>` : ""}</button>`;
   };
   const section = (title, hint, list) => (list.length ? html`<section class="card cd-sec"><div class="card-head"><div><h2>${title}</h2>${hint ? html`<div class="hint">${hint}</div>` : ""}</div></div>
       <div class="cd-grid">${list.map(card)}</div></section>` : "");

@@ -25,7 +25,7 @@ export const body = (SITE, { world = false } = {}) => `
         4.0</a>.</p>
       <p>For Spain, ${SITE} takes the races' public results (name, club, category, time, split times) and the number of entries per
         category; to recognise the same runner from one race to the next, it also reads the FEDO's public list of licence holders
-        (name, club, regional federation, licence and card numbers), of which it shows no number. These results being public, every signed-in account can see them.
+        (name, club, regional federation, licence and card numbers), of which it shows no number. These results being public, everyone can see them, with or without an account.
         Anyone concerned may ask no longer to be identified in them (see “Your rights”).</p>
       <h2 style="font-size:16px">Results data, including that of licence holders without an account</h2>
       <p>The rankings, results and calculations shown come from the results published by the FFCO on cn.ffcorientation.fr: the
@@ -35,11 +35,12 @@ export const body = (SITE, { world = false } = {}) => `
         by the organisers themselves (on their website, liveresultat, WinSplits, Helga, etc.) or uploaded to ${SITE}, matched to
         licences by name and club.</p>
       <p>This processing is based on the publisher's legitimate interest in informing licence holders and analysing the national
-        ranking from results already published. ${world ? `On ${SITE}, this data is only accessible to logged-in accounts that have
-        joined France, whose FFCO licence number is checked against their name. The other accounts, open to every orienteer, see the
-        results published by the organisers (name, club, class, time), with no licence number, CN or score, and no access to the
-        rankings, histories or statistics.` : `On ${SITE}, this data is only accessible to logged-in accounts, which are reserved
-        for licence holders, whose registration is checked against their name and licence number.`} The one exception: the publisher
+        ranking from results already published. On ${SITE} it is open as far as the FFCO publishes it itself: without an
+        account${world ? ", or with an account that has not joined France," : ""} one sees the races, results and ranking of the seasons
+        the FFCO shows on its website without asking for a login, and the results published by the organisers (name, club, class,
+        time), with no CN or score. The older seasons, which the FFCO keeps to its licence holders, and the histories and statistics
+        drawn from them are only accessible to logged-in accounts${world ? " that have joined France" : ""}, whose FFCO licence number is
+        checked against their name. The one exception: the publisher
         may open, for a limited time, a demo account for an orienteering body (federation, league, club) that wants to see the
         site; it is tied to no licence, can't change or upload anything and stops working on the date set. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
         the source remains the FFCO's website.</p>
@@ -156,5 +157,8 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
-      <p class="muted">Last updated: 24 October 2026.</p>
+      <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
+        Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
+        under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
+      <p class="muted">Last updated: 30 October 2026.</p>
 `;

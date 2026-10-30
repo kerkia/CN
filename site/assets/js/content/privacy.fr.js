@@ -30,7 +30,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Pour l'Espagne, ${SITE} reprend les résultats publics des courses (nom, club, catégorie, temps, temps intermédiaires) et le
         nombre d'inscrits par catégorie ; pour reconnaître un même coureur d'une course à l'autre, il lit aussi la liste publique
         des licenciés de la FEDO (nom, club, fédération régionale, numéro de licence et de puce), dont il n'affiche aucun numéro. Ces résultats étant publics, ils
-        sont visibles par tous les comptes connectés. Toute personne concernée peut demander à ne plus y être identifiée (voir
+        sont visibles par tous, avec ou sans compte. Toute personne concernée peut demander à ne plus y être identifiée (voir
         « Vos droits »).</p>
       <h2 style="font-size:16px">Données des résultats, y compris celles des licenciés sans compte</h2>
       <p>Les classements, résultats et calculs affichés proviennent des résultats publiés par la FFCO sur cn.ffcorientation.fr : nom,
@@ -40,11 +40,12 @@ export const body = (SITE, { world = false } = {}) => `
         60 derniers jours, les résultats publiés par les organisateurs eux-mêmes (sur leur site, liveresultat, WinSplits, Helga, etc.)
         ou déposés sur ${SITE}, rapprochés des licences d'après le nom et le club.</p>
       <p>Ce traitement repose sur l'intérêt légitime de l'éditeur à informer les licenciés et à analyser le classement national à
-        partir de résultats déjà publiés. ${world ? `Sur ${SITE}, ces données ne sont accessibles qu'aux comptes connectés qui ont
-        rejoint la France, dont le numéro de licence FFCO est vérifié d'après le nom. Les autres comptes, ouverts à tout orienteur,
-        voient les résultats publiés par les organisateurs (nom, club, catégorie, temps), sans numéro de licence, sans CN ni score, et
-        sans accès aux classements, aux historiques ni aux statistiques.` : `Sur ${SITE}, ces données ne sont accessibles qu'aux comptes
-        connectés, réservés aux licenciés, dont l'inscription est vérifiée d'après le nom et le numéro de licence.`} Seule exception : l'éditeur peut ouvrir,
+        partir de résultats déjà publiés. Sur ${SITE}, elles sont ouvertes dans la mesure où la FFCO les publie elle-même : sans
+        compte${world ? ", ou avec un compte qui n'a pas rejoint la France," : ""} on voit les courses, les résultats et le classement des
+        saisons que la FFCO montre sur son site sans demander de connexion, ainsi que les résultats publiés par les organisateurs (nom,
+        club, catégorie, temps), sans CN ni score. Les saisons plus anciennes, que la FFCO réserve à ses licenciés, et les historiques
+        et statistiques qui en sont tirés ne sont accessibles qu'aux comptes connectés${world ? " qui ont rejoint la France" : ""}, dont
+        le numéro de licence FFCO est vérifié d'après le nom. Seule exception : l'éditeur peut ouvrir,
         pour une durée limitée, un compte de démonstration à un organisme de course d'orientation (fédération, ligue, club) qui
         souhaite découvrir le site ; ce compte n'est rattaché à aucune licence, ne peut rien modifier ni déposer et cesse de
         fonctionner à la date fixée. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
@@ -174,5 +175,8 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
-      <p class="muted">Dernière mise à jour : 24 octobre 2026.</p>
+      <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
+        viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
+        sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
+      <p class="muted">Dernière mise à jour : 30 octobre 2026.</p>
 `;
