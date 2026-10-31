@@ -329,8 +329,8 @@ legal notices. Beside each symbol its map equivalent (owner, 2026-10-30, after M
 `mapsymbols.js` (`mapSvg(id, size)`, keyed by the IOF id, for the Tracer's guide later), our own schematic SVGs in ISOM 2017-2 /
 ISSprOM 2019-2 colours, the purple circle on the feature — every column D symbol, C and G (the eight directions drawn for north
 and turned, the flag's spot marked), E and F where a map shows them; H, sizes and special instructions none; white map paper
-in every theme. Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`), « Imaginer la définition d'après la carte »
-(`?mode=carte`, the maps alone) or « Imaginer la carte d'après le symbole » (`?mode=symbole`), the rest shown by a tap. At the top,
+in every theme. Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`), « Masquer les symboles »
+(`?mode=carte`, the maps alone) or « Masquer les dessins de carte » (`?mode=symbole`; « Imaginer … » until 2026-10-31, owner: « Masquer » as the other choices), the rest shown by a tap. At the top,
 « Lire une ligne de définitions »: our own worked line (`EXAMPLE`: 7, 145, the eastern stony depression 8×4, north part,
 refreshments) under its letters A-H, written out in the language chosen by the Tracer's `textifier`, and what each column says
 (C-H lead to their part). « Symboles de carte » (`#/symboles`, route `mapkey`, `pages/mapkey.js`, after « Définitions de postes »;

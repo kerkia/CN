@@ -3327,7 +3327,7 @@ export default {
   "nav.descriptions": "Control descriptions", "cd.title": "Control descriptions",
   "cd.lede": "The IOF control description symbols, column by column, with their names, the text a written description sheet prints and, beside them, the feature as a map draws it.",
   "cd.lang": "Language of the texts", "cd.search": "Search", "cd.search.ph": "a name, a word, a number",
-  "cd.practice": "Practise", "cd.practice.off": "No", "cd.practice.names": "Hide the names", "cd.practice.map": "Imagine the description from the map", "cd.practice.sym": "Imagine the map from the symbol",
+  "cd.practice": "Practise", "cd.practice.off": "No", "cd.practice.names": "Hide the names", "cd.practice.map": "Hide the symbols", "cd.practice.sym": "Hide the map drawings",
   "cd.practice.hint": "The names are hidden: tap a symbol to reveal it, tap again to hide it.",
   "cd.practice.hint.map": "Only the map drawings are shown: imagine the description, then tap the drawing to reveal the symbol and its name, tap again to hide them.",
   "cd.practice.hint.sym": "Only the symbols are shown: imagine the feature as the map draws it, then tap the symbol to reveal the map and the name, tap again to hide them.",
