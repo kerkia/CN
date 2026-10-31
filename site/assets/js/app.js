@@ -259,6 +259,12 @@ function langMenu() {
   </div>`;
 }
 
+/** On a phone the language is chosen in the top-right menu, as the country (owner, 2026-10-31): a section that opens in place. */
+function langSub() {
+  return html`<details class="menu-sub" data-sub="lang"><summary>${t("st.lang")}<span class="menu-sub-cur">${LANG_NAMES[lang()]}</span></summary>
+    <div class="menu-sub-list" role="menu">${LANGS.map((l) => html`<button type="button" role="menuitemradio" aria-checked="${String(l === lang())}" data-lang-pick="${l}" lang="${l}">${LANG_NAMES[l]}</button>`)}</div></details>`;
+}
+
 /** The relief behind the second row (owner, 2026-10-13, as on the study's page): a few hills, their contour lines
  *  drawn by marching squares in the map's brown, an index contour every fifth line. Redrawn when the bar is, and on resize. */
 function drawContours(retry = 2) {
@@ -423,6 +429,9 @@ function renderHeader(r) {
   const current = menuKey(r);
   document.body.dataset.group = mod || "";
   const caret = raw(`<svg class="caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
+  // the country and the language, in the top-right menu on a phone (shown there by app.css; the bar's own buttons on a computer)
+  const subs = html`${visitor ? country.subMenu() : ""}${OPEN || me?.admin ? langSub() : ""}`;
+  const subsBlock = String(subs).trim() ? html`<div class="menu-subs">${subs}</div>` : "";
   const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
@@ -450,6 +459,7 @@ function renderHeader(r) {
           <span class="user-name">${(({ first, last }) => html`<span>${first}</span>${last ? html`<span>${last}</span>` : ""}`)(nameParts(me.nom))}</span>
           <svg class="user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>${caret}</button>
         <div class="nav-menu">
+          ${subsBlock}
           <a href="${homeOf()}" ${raw(route === "hub" ? 'aria-current="page"' : "")}>${t("mod.pick")}</a>
           <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
@@ -458,12 +468,24 @@ function renderHeader(r) {
           ${me.admin ? html`<a href="#/admin" ${raw(route === "admin" ? 'aria-current="page"' : "")}>${t("admin.link")}</a>` : ""}
           <button type="button" id="logout-btn">${t("auth.logout")}</button>
         </div>
-      </div>` : visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/?s=login">${t("hub.login")}</a>`
+      </div>` : html`${visitor ? html`<a class="btn btn-sm btn-primary guest-login" href="#/?s=login">${t("hub.login")}</a>`
         // signed out: sign in, create an account, or enter without one (owner, 2026-10-30) — not on the home page, whose login
         // card under the hero offers the three (owner, 2026-10-30)
         : route === "overview" ? "" : html`<div class="home-ways"><a class="btn btn-sm" href="#/?s=login">${t("hub.login")}</a>
           <a class="btn btn-sm home-way-reg" href="#/compte/inscription">${t("hub.register")}</a>
           <button type="button" class="btn btn-sm btn-primary" data-guest-enter="">${t("hub.guest.enter")}</button></div>`}
+      <div class="nav-group user-menu visitor-menu" data-group="me">
+        <button type="button" class="icon-btn nav-top" aria-expanded="false" aria-haspopup="menu" aria-label="${t("auth.menu.visitor")}" title="${t("auth.menu.visitor")}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></button>
+        <div class="nav-menu">
+          ${subsBlock}
+          ${visitor ? html`<a href="${homeOf()}" ${raw(route === "hub" ? 'aria-current="page"' : "")}>${t("mod.pick")}</a>` : ""}
+          <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
+          <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
+          ${visitor ? "" : html`<a href="#/?s=login">${t("hub.login")}</a>`}
+          <a href="#/compte/inscription">${t("hub.register")}</a>
+        </div>
+      </div>`}
     </div>
   </div>
 `;

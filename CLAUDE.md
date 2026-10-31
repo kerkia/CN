@@ -281,7 +281,7 @@ page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-ba
 2026-10-30: the bar's folded menu stayed open, came twice, would not close on a tap beside it) a race's tabs and Stats' pages are a
 menu in the page instead (`app.pageMenu`): its button before the race's name, or before a Stats page's tabs, the current tab or
 page written on it; a choice, a tap elsewhere or Escape closes it; the bar's menu button goes on those pages (`.pm-on`). A race's
-page on a phone drops the line under its name (`.race-head .lede`); Stats' CSV exports are not offered there (`.csv-btn`). **The
+page on a phone drops the line under its name (`.race-head .lede`); Stats' CSV exports are not offered there (`.csv-btn`). **The country and the language on a phone** (owner, 2026-10-31: room in the bar) are sections of the top-right menu (`.menu-subs`: `country.subMenu`, `app.langSub`, each opening in place), not buttons of the bar; the theme stays in the bar. Visitors without an account have that menu too on a phone (`.visitor-menu`: country for a guest, language, the modules page, Documentation, Nous écrire, sign in for the signed-out, create an account); `country.hint`'s « Tous les pays » opens it at its country section. **The
 source is Ozimut's choice** (owner: « users don't know better »): the results page and the analysis show the best document
 (`run.doc_priority`'s order) and offer the source selector to administrators only; the circuit selector has no « Circuit » /
 « Catégorie » label (« Voir » says it), and no « Temps intermédiaires de ce circuit » button: the race's tabs carry the circuit
@@ -333,7 +333,7 @@ code — `synth/oz2` (`synth-oz2.sqlite3`, `data/` in today's layout), by `build
 sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\7c7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
 (`npm install` there for puppeteer-core; run from PowerShell). New ones: `hub`, `past`, `descriptions`, `orga-direct`, `phone-hub`.
 Retaken the same evening with the modules' bar, plus `multi` and `multi-gaps`: the local test analysis « Test UI club » (circuit
-« Bleu », the reel's invented map), whose title, organiser and runners `lib.mjs` replaces with invented ones
+« Bleu », the reel's invented map; `multi` at 23:00, nobody followed, every runner's whole route in thick lines — `ocn.sh.prefs` tail 0, width 2.4 — so that the four routes and their variants show, owner 2026-10-31), whose title, organiser and runners `lib.mjs` replaces with invented ones
 (`/api/analyses/<id>` and `/traces/<n>`, fetched with the page's cookies) — never take them without that. `past` must open in a
 fresh page: an Agenda address opened from the Agenda keeps the page's periods.
 

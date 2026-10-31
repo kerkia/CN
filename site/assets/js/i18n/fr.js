@@ -2654,4 +2654,5 @@ export default {
   "tour.cap.multi-gaps.b": "Les écarts :", "tour.cap.multi-gaps": "le retard de chacun sur le meilleur, poste après poste ; un clic sur un point remet la relecture à ce passage.",
   "hub.orga.register": "Créer un compte pour l'ouvrir",
   "arena.back": "Compétitions",
+  "auth.menu.visitor": "Menu",
 };

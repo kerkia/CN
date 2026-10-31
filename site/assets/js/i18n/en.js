@@ -3458,4 +3458,5 @@ export default {
   "tour.cap.multi-gaps.b": "The gaps:", "tour.cap.multi-gaps": "everyone's time behind the best, control after control; a click on a point takes the replay to that pass.",
   "hub.orga.register": "Create an account to open it",
   "arena.back": "Competitions",
+  "auth.menu.visitor": "Menu",
 };

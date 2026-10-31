@@ -2643,3 +2643,26 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
   .race-head .lede { display: none; }
   .csv-btn { display: none !important; }
 }
+/* a phone (owner, 2026-10-31): the country and the language in the top-right menu, which visitors without an account have too;
+   the bar keeps the theme */
+.menu-subs, .visitor-menu { display: none; }
+.menu-sub summary { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 7px; cursor: pointer; list-style: none;
+  font-weight: 550; font-size: 14px; color: var(--ink-2); }
+.menu-sub summary::-webkit-details-marker { display: none; }
+.menu-sub summary::after { content: ""; width: 7px; height: 7px; margin-left: 4px; border: solid currentColor; border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg) translateY(-2px); flex: none; }
+.menu-sub[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+.menu-sub summary:hover { background: var(--surface-2); color: var(--ink); }
+.menu-sub-cur { margin-left: auto; display: inline-flex; align-items: center; color: var(--ink); font-weight: 620; }
+.menu-sub-cur .cty-flag { margin-right: 6px; }
+.menu-sub-list { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px 12px; padding-left: 6px; border-left: 2px solid var(--grid);
+  max-height: 42vh; overflow-y: auto; }
+.menu-sub-list button[aria-checked="true"] { background: var(--accent-wash); color: var(--ink); }
+.menu-subs { border-bottom: 1px solid var(--grid); margin-bottom: 4px; padding-bottom: 4px; }
+@media (max-width: 760px) {
+  .menu-subs { display: block; }
+  .visitor-menu { display: block; }
+  .topbar-tools > .lang-menu { display: none; }
+  .user-menu .nav-menu { min-width: min(280px, calc(100vw - 24px)); max-height: calc(100vh - 70px); overflow-y: auto; }
+  .user-menu .nav-menu a, .user-menu .nav-menu button { white-space: normal; }
+}

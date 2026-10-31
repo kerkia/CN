@@ -70,21 +70,32 @@ export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
 /** The header's menu, beside the language's: every country — the account's own first, then a line and the countries Ozimut
  *  has data for, then a line and every other IOF member (owner, 2026-10-29: a country is never left out of this menu; a page's
  *  own « Choisir un autre pays » offers only the countries it has something for, `hint`). */
-export function menu() {
+function items() {
   const ok = withData();
   const cur = current();
   const mine = byName((auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc));
   const known = byName(ok.filter((cc) => !mine.includes(cc)));
   const rest = byName(MEMBERS.filter((cc) => !mine.includes(cc) && !ok.includes(cc)));
   const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
+  return html`${[mine, known, rest].filter((l) => l.length).map((l, i) => html`${i ? html`<div class="cty-sep" role="separator"></div>` : ""}${l.map(item)}`)}`;
+}
+export function menu() {
+  const cur = current();
   return html`<div class="nav-group lang-menu" data-group="country">
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
       <span class="tool-label" aria-hidden="true">${t("cty.menu")}</span>
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
       <span class="lang-code">${cur}</span>
     </button>
-    <div class="nav-menu cty-menu" role="menu">${[mine, known, rest].filter((l) => l.length).map((l, i) => html`${i ? html`<div class="cty-sep" role="separator"></div>` : ""}${l.map(item)}`)}</div>
+    <div class="nav-menu cty-menu" role="menu">${items()}</div>
   </div>`;
+}
+/** On a phone the country is chosen in the top-right menu (owner, 2026-10-31: room in the bar for the page's menu): a section
+ *  that opens in place, the current country on its line. */
+export function subMenu() {
+  const cur = current();
+  return html`<details class="menu-sub" data-sub="country"><summary>${t("cty.menu")}<span class="menu-sub-cur">${flagImg(cur)}${name(cur)}</span></summary>
+    <div class="menu-sub-list cty-menu" role="menu">${items()}</div></details>`;
 }
 
 /** A line above a list of the site's country's (Agenda, Résultats, En direct, Analyse de course): whose list it is, and
@@ -109,12 +120,15 @@ const PREP = {
 };
 const prepOf = (cc) => Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
 const openHeaderMenu = () => {
-  const b = document.querySelector('.nav-group[data-group="country"] > .nav-top');
+  let b = document.querySelector('.nav-group[data-group="country"] > .nav-top');
+  const sub = !b?.offsetParent && document.querySelector('.nav-group[data-group="me"] .menu-sub[data-sub="country"]');
+  if (sub) b = sub.closest(".nav-group").querySelector(".nav-top");
   if (!b) return;
   window.scrollTo({ top: 0 });
   // after this click has run its course: the document's own listener (app.js) closes the menus on a click outside them
   setTimeout(() => {
     if (!b.parentElement.classList.contains("open")) b.click();
+    if (sub) sub.open = true;
     b.focus({ preventScroll: true });
   });
 };
