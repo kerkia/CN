@@ -2666,3 +2666,38 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
   .user-menu .nav-menu { min-width: min(280px, calc(100vw - 24px)); max-height: calc(100vh - 70px); overflow-y: auto; }
   .user-menu .nav-menu a, .user-menu .nav-menu button { white-space: normal; }
 }
+/* « Symboles de carte » (2026-10-31): ISOM's symbols as a legend, a swatch, number, name and meaning a row */
+.ms-intro, .ms-sec { margin-bottom: 14px; }
+.ms-sec { scroll-margin-top: 76px; }
+.ms-sec h2 { display: flex; align-items: center; gap: 10px; }
+.ms-chips { display: inline-flex; gap: 3px; }
+.ms-chip { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.ms-chip.paper { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.ms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 6px 14px; padding: 4px 16px 16px; }
+.ms-item { display: flex; align-items: center; gap: 12px; padding: 7px 8px; border: 0; border-radius: 8px; background: none; text-align: left;
+  font: inherit; color: inherit; cursor: default; }
+.ms-item[hidden] { display: none; }
+.ms-pic { flex: none; width: 128px; display: flex; justify-content: center; }
+.ms-sw { display: block; outline: 1px solid var(--border-strong); border-radius: 1px; }
+:root[data-theme="dark"] .ms-sw, :root[data-theme="undergrowth"] .ms-sw { filter: brightness(.92); }
+.ms-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-name { font-size: 13.5px; font-weight: 620; line-height: 1.3; }
+.ms-code { color: var(--ink-3); font-weight: 500; font-variant-numeric: tabular-nums; margin-right: 7px; font-size: 12px; }
+.ms-note { font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+.ms-tag { font-size: 11px; font-weight: 650; color: var(--flag, #c4238f); border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+.ms-practising .ms-item { cursor: pointer; }
+.ms-practising .ms-item:hover { background: var(--surface-2); }
+.ms-hide-names .ms-item:not(.shown) .ms-name, .ms-hide-names .ms-item:not(.shown) .ms-note { visibility: hidden; }
+.ms-hide-names .ms-item:not(.shown) .ms-code { visibility: visible; }
+.ms-hide-pics .ms-item:not(.shown) .ms-sw { visibility: hidden; }
+.ms-intro-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 14px 28px; padding: 4px 16px 16px; align-items: start; }
+@media (max-width: 760px) { .ms-intro-body { grid-template-columns: 1fr; } .ms-grid { grid-template-columns: 1fr; padding: 4px 8px 12px; } .ms-pic { width: 100px; } .ms-pic svg { max-width: 100px; height: auto; } }
+.ms-colours { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 13.5px; }
+.ms-colours li { display: flex; gap: 9px; align-items: baseline; }
+.ms-colours .ms-chip { transform: translateY(2px); }
+.ms-run-h { font-size: 13px; font-weight: 620; margin-bottom: 8px; }
+.ms-run-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ms-run-cell { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ink-2); line-height: 1.25; }
+.ms-run-cell b { color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ms-run-sw { height: 34px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.ms-run-sw.paper { box-shadow: inset 0 0 0 1px var(--border-strong); }

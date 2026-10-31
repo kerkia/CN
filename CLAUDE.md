@@ -310,7 +310,15 @@ in every theme. Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`
 (`?mode=carte`, the maps alone) or « Imaginer la carte d'après le symbole » (`?mode=symbole`), the rest shown by a tap. At the top,
 « Lire une ligne de définitions »: our own worked line (`EXAMPLE`: 7, 145, the eastern stony depression 8×4, north part,
 refreshments) under its letters A-H, written out in the language chosen by the Tracer's `textifier`, and what each column says
-(C-H lead to their part). The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
+(C-H lead to their part). « Symboles de carte » (`#/symboles`, route `mapkey`, `pages/mapkey.js`, after « Définitions de postes »;
+owner, 2026-10-31, after a legend of the kind maps print): every ISOM 2017-2 symbol (101-115, 201-215, 301-313, 401-419 — no 411
+in 2017-2 —, 501-532, 601-603, 701-713) as a legend's swatch, group by group (= colour by colour), with its number, name and a
+line of meaning; a card « Ce que disent les couleurs » with the forest's runnability by the green; search; practice hiding the
+names (`?mode=noms`) or the drawings (`?mode=dessins`). `isom.js` draws them, our own SVGs at the specification's dimensions in mm
+(line widths, dots, dashes, spacings read from its drawings), 18 px a mm, the course symbols in a larger frame (7.6 px a mm). Names:
+the specification's (French: FFCO's translation, ISOM 2017-2 FR/EN); notes our own words (`ms.s.<code>`, `ms.n.<code>`). The four
+« shall not be crossed / entered » symbols (520, 708, 709, 711) are tagged « interdit ». Sprint maps (ISSprOM 2019-2): not yet.
+The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »
 (Découvrir, Partout, Arrivée: what Ozimut is, phones, the pledges and the account), Arena, Stats, Coach, Orga, « Tarifs » /

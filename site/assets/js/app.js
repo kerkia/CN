@@ -54,6 +54,7 @@ const PAGES = {
   relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),
+  mapkey: () => import("./pages/mapkey.js"),       // « Symboles de carte » (Coach): ISOM 2017-2's symbols, as a legend (2026-10-31)
   descriptions: () => import("./pages/descriptions.js"),   // « Définitions de postes » (Coach): the IOF symbols (2026-10-30)             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
   ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
 };
@@ -86,7 +87,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "descriptions", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -142,6 +143,7 @@ function parseHash(hash = location.hash) {
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
     : head === "definitions" ? "descriptions"
+    : head === "symboles" ? "mapkey"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -379,7 +381,7 @@ export function moduleMenus() {
     ],
     // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
-      ["descriptions", "#/definitions", t("nav.descriptions")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
+      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
