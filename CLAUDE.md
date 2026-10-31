@@ -300,7 +300,7 @@ source is Ozimut's choice** (owner: « users don't know better »): the results 
 (`run.doc_priority`'s order) and offer the source selector to administrators only; the circuit selector has no « Circuit » /
 « Catégorie » label (« Voir » says it), and no « Temps intermédiaires de ce circuit » button: the race's tabs carry the circuit
 shown (`data-view`, `raceHref`). On the modules page a module's whole card opens it, as its button does (owner, 2026-10-31: `.hub-card.go`, its name's link
-stretched over the card, its page links and buttons above). A past row
+stretched over the card, its page links and buttons above; a tap on a phone's tabbed card too, the hover tint with a mouse only). A past row
 opens its results page (`#/resultats?course=`); a coming or today's one its details beside the list. `#/resultats` (the old list)
 leads to the competitions with « Passées » ticked (`?periode=passees`), `#/direct` to the competitions (a race's live page
 `#/direct/<id>` stays), `#/analyse-course` without a race to « Passées ». Desktop layout: the filters (with the runner,
