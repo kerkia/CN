@@ -823,7 +823,7 @@ export async function render(main, { query = {}, route } = {}) {
       if (px < 0 || py < 0 || px > map.width || py > map.height) continue;
       if (located.some((p) => Math.hypot(p.pos[0] - px, p.pos[1] - py) < 2.5 * r) || out.some((p) => Math.hypot(p.pos[0] - px, p.pos[1] - py) < 2.5 * r)) continue;
       const hit = course.probe(px, py, 2.5 * r);
-      if (hit && hit.score >= 0.45 && hit.raw >= 0.3 && hit.inner <= 0.35 && hit.outer <= 0.5) out.push({ kind: "control", code: "", pos: [hit.x, hit.y], probed: true });
+      if (hit) out.push({ kind: "control", code: "", pos: [hit.x, hit.y], probed: true });
     }
     return out;
   }
@@ -1010,8 +1010,8 @@ export async function render(main, { query = {}, route } = {}) {
       const near = all.map((c) => [Math.hypot(c.x - px, c.y - py), c]).sort((a, b) => a[0] - b[0])[0];
       if (near && near[0] <= 1.2 * course.r) pos = [near[1].x, near[1].y];
       else if (course.probe && targets[cur].kind === "control") {                  // a ring the first pass missed, right here?
-        const hit = course.probe(px, py, 1.2 * course.r);
-        if (hit && hit.score >= 0.4 && hit.raw >= 0.25 && hit.inner <= 0.4) pos = [hit.x, hit.y];
+        const hit = course.probe(px, py, 1.2 * course.r, { loose: true });
+        if (hit) pos = [hit.x, hit.y];
       }
     }
     targets[cur].pos = pos; targets[cur].missed = false;

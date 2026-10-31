@@ -1,19 +1,30 @@
 // Reading the course printed on the map — the purple overprint: the control circles, the finish's double circle, the
 // start triangle, the leg lines — by image analysis in the browser, nothing sent anywhere.
-// 1. A purple mask over the image (read at 1800 px at most, smaller when its lines come out wider than 3 px): the
-//    pixels whose hue runs from violet to magenta and that are saturated. The overprint stays purple over yellow and green; over black it is lost, which the ring
-//    scores tolerate.
+// 1. The ink of the overprint (read at 1800 px at most, smaller when its lines come out wider than 3 px), not its hue:
+//    each pixel's optical density over the local background (a closing of each channel over 9 px, which removes the
+//    thin lines), and the overprint's ink = the green it absorbs beyond the mean of red and blue. Densities add and
+//    the lighting divides out, so the overprint reads the same over white, yellow or green and in an uneven light;
+//    black absorbs the three alike (0), brown, yellow, green and blue score below 0. On a phone's photo the overprint
+//    comes out a pale greyish lavender, its colour smeared by the JPEG and one side faded by blur, which a hue test
+//    loses (2026-10-31: 6 of the 16 controls of the owner's Fougères photo). The mask: ink above a tenth of the map's
+//    strongest (the 95th percentile), red and blue absorbed alike (brown and red text absorb blue far more).
 // 2. Circles by a Hough vote: every purple pixel votes, at 24 angles, for the centres at each of 20 radii, on a grid
 //    of 4 px; the peaks are refined at full resolution by the share of the ring that is purple (72 samples, a pixel of
 //    tolerance), and a ring must be hollow inside and clear outside — a small circle laid on a thick line would pass
-//    otherwise; radii below 2.5 line widths are not tried. The control radius r* is the radius the good circles share;
-//    the finish is the larger circle concentric with one of them.
+//    otherwise; radii below 2.5 line widths are not tried; and it must be the overprint's colour and empty of ink
+//    inside (a magenta hatching's grid makes rings). The control radius r* is the radius the good circles share; the
+//    finish is the larger circle concentric with one of them.
 // 3. The leg lines: a purple pixel through which a straight purple run of 2.2 r* passes (12 directions) is a line
 //    pixel — the run need not be centred on it, so the lines' ends count. A control is a circle a line reaches; a
 //    circle of the right size that no line reaches (a digit's loop, a logo) is dropped when enough are reached. With
 //    the rings and lines removed, the purple blobs of the triangle's size are scored against an equilateral triangle
 //    (orientation, size and centre searched), as are the circles' centres (the start is often drawn in the finish):
 //    the best one is the start.
+// 4. The rings the mask missed, on the continuous ink field, at r*: a ridge of ink along the circle (more ink on it
+//    than 4 px inside and outside) in most of its sectors, in long arcs, of the colour the controls found share, empty
+//    inside and with no straight line across. Measured 2026-10-31 (the Fougères photo; the « Entrainement Gif »
+//    course drawn on its scanned map, clean and as two phone photos; the synthetic test maps; two maps without a
+//    course): 13/16, 24/24, 24/24 and 12/24 against 6, 24, 3 and 0, no false control on any (3 on the scan before).
 // Positions come back in the image's own pixels.
 
 const RADII = [6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 26, 29, 32, 36, 40, 45, 50];
@@ -21,14 +32,14 @@ const ANGLES = 24, STRIDE = 4;
 
 export async function detectCourse(image, { maxSide = 1800, debug = false } = {}) {
   const W = image.width, H = image.height;
-  let s = Math.min(1, maxSide / Math.max(W, H)), w, h, full, lw, lum;
+  let s = Math.min(1, maxSide / Math.max(W, H)), w, h, full, lw, lum, ink, tInk, dens;
   const read = () => {
     w = Math.max(1, Math.round(W * s)); h = Math.max(1, Math.round(H * s));
     const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
     const g = cv.getContext("2d", { willReadFrequently: true });
     g.drawImage(image, 0, 0, w, h);
     const data = g.getImageData(0, 0, w, h).data;
-    full = purpleMask(data, w, h);
+    ({ m: full, M: ink, t: tInk, D: dens } = inkMask(data, w, h));
     lw = lineWidth(full, w, h);
     lum = new Uint8Array(w * h);                                          // the lightness, for the finish's rings
     for (let i = 0, p = 0; i < lum.length; i++, p += 4) lum[i] = (299 * data[p] + 587 * data[p + 1] + 114 * data[p + 2]) / 1000;
@@ -40,8 +51,10 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   // thick purple — a title, the class names, a logo — is not the course: keep what is thinner than three line widths
   const mask = thinOnly(full, w, h, Math.max(1, Math.round(1.5 * lw)));
   const dil = dilate(mask, w, h);
-  const { circles, rStar, found } = findCircles(mask, dil, w, h, lw);
-  let controls = [], finish = null, start = null, startCands = null;
+  // a ring of the course is the overprint's colour and empty inside (a hatching's grid of lines makes rings too)
+  const genuine = (c) => purpleRing(ringColour(ink, dens, w, h, c.x, c.y, c.r)) && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3;
+  const { circles, rStar, found } = findCircles(mask, dil, w, h, lw, genuine);
+  let controls = [], finish = null, start = null, startCands = null, added = null;
   if (rStar) {
     controls = circles.filter((c) => c.r >= 0.75 * rStar && c.r <= 1.25 * rStar);
     // the finish: two concentric rings, the outer 1.25 to 1.6 times the inner — ISOM draws them 5 and 7 mm across
@@ -79,23 +92,64 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
     if (reached.length >= 3) controls = reached;
     start = findStart(mask, dil, longLines, lines, circles, w, h, rStar, [...controls, ...(finish ? [finish] : [])], debug ? (startCands = []) : null);
     if (start) controls = controls.filter((c) => Math.hypot(c.x - start.x, c.y - start.y) >= 1.2 * rStar);
+    // the course's own ink, and empty inside: not a grey building on olive green, a brown knoll or a magenta hatching
+    for (const c of controls) Object.assign(c, ringColour(ink, dens, w, h, c.x, c.y, c.r));
+    controls = controls.filter((c) => purpleRing(c) && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3);
+    // the finish likewise — the start triangle may be drawn inside it, so a little more ink is allowed there
+    if (finish && (!purpleRing(ringColour(ink, dens, w, h, finish.x, finish.y, finish.r2))
+      || inkInside(ink, w, h, finish.x, finish.y, finish.r1 ?? finish.r2, tInk) > (finish.r1 ? 0.45 : 0.3))) finish = null;
+    // the rings the first pass missed — a side faded by a photo's blur, an arc cut by ISOM, over yellow or green —
+    // read on the continuous ink field once three controls say what the course looks like: its radius and its ink
+    if (controls.length >= 3) {
+      const known = [...controls, ...(finish ? [{ ...finish, r: finish.r2 }] : []), ...(start ? [{ ...start, r: start.R }] : [])];
+      const med = (v) => [...v].sort((p, q) => p - q)[v.length >> 1];
+      const cr = med(controls.map((c) => c.cr ?? 0.5)), cb = med(controls.map((c) => c.cb ?? 0.5));
+      const free = (c) => !known.some((k) => Math.hypot(k.x - c.x, k.y - c.y) < 1.8 * rStar);   // ISOM: controls never overlap
+      if (debug) added = [];
+      for (const c0 of ringCandidates(ink, w, h, rStar, tInk)) {
+        if (!free(c0)) continue;
+        const q = ridgeRing(ink, w, h, c0.x, c0.y, rStar, tInk);
+        if (q.score + q.arcs < 0.9) continue;                                // nothing like a ring here: not worth refining
+        const c = bestRidge(ink, w, h, c0.x, c0.y, rStar, tInk);
+        if (!free(c) || c.score < 0.55 || c.arcs < 0.4 || c.score + c.arcs < 1.3) continue;
+        Object.assign(c, ringColour(ink, dens, w, h, c.x, c.y, c.r));
+        const ok = purpleRing(c) && Math.abs(c.cr - cr) <= 0.3 && Math.abs(c.cb - cb) <= 0.3
+          && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3 && lineAcross(ink, w, h, c.x, c.y, c.r, tInk) < 0.8;
+        if (debug) added.push({ ...c, ok });
+        if (ok) { known.push(c); controls.push({ x: c.x, y: c.y, r: c.r, score: c.score, raw: c.arcs, ridge: true }); }
+      }
+    }
   }
+  if (!controls.length) start = null;                                    // no course on this map
   const back = (p) => (p ? { ...p, x: p.x / s, y: p.y / s, r: p.r != null ? p.r / s : undefined } : null);
-  /** A ring of the control's size near an image point (within `radius` px): the best one, with its scores, or null.
-   *  For the page: once the trace is laid, its sharp turns say where to look for rings the first pass missed. */
-  const probe = (X, Y, radius) => {
+  /** A ring of the control's size near an image point (within `radius` px), or null. For the page: once the trace is
+   *  laid, its sharp turns say where to look for rings the first passes missed; a click in the manual mode says it more
+   *  surely (`loose`: weaker evidence is enough). The ridge reading on the ink field first, the mask's rings second. */
+  const probe = (X, Y, radius, { loose = false } = {}) => {
     if (!rStar) return null;
     const x0 = X * s, y0 = Y * s, R = Math.max(4, radius * s);
+    // the course's ink, empty inside, no line across it
+    const plain = (c) => purpleRing(ringColour(ink, dens, w, h, c.x, c.y, c.r)) && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3 && lineAcross(ink, w, h, c.x, c.y, c.r, tInk) < 0.8;
     let best = null;
+    for (let y = Math.round(y0 - R); y <= y0 + R; y += 2) for (let x = Math.round(x0 - R); x <= x0 + R; x += 2) {
+      if ((x - x0) ** 2 + (y - y0) ** 2 > R * R) continue;
+      const q = ridgeRing(ink, w, h, x, y, rStar, tInk);
+      if (!best || q.score + q.arcs > best.v) best = { x, y, v: q.score + q.arcs };
+    }
+    if (best && best.v >= 0.7) {
+      const c = bestRidge(ink, w, h, best.x, best.y, rStar, tInk);
+      if (c.score + c.arcs >= (loose ? 0.8 : 1.1) && c.score >= (loose ? 0.4 : 0.55) && c.arcs >= (loose ? 0.25 : 0.35) && plain(c))
+        return back({ x: c.x, y: c.y, r: c.r, score: c.score, raw: c.arcs });
+    }
+    best = null;
     for (let r = Math.max(4, Math.round(rStar) - 2); r <= Math.round(rStar) + 2; r++) {
       for (let y = Math.round(y0 - R); y <= y0 + R; y += 2) for (let x = Math.round(x0 - R); x <= x0 + R; x += 2) {
         const sc = ringScore(dil, w, h, x, y, r, 48);
         if (!best || sc > best.score) best = { x, y, r, score: sc };
       }
     }
-    if (!best) return null;
-    const c = refineCircle(mask, dil, w, h, best.x, best.y, best.r);
-    return c ? { ...back(c) } : null;
+    const c = best && refineCircle(mask, dil, w, h, best.x, best.y, best.r);
+    return c && c.score >= (loose ? 0.4 : 0.45) && c.raw >= (loose ? 0.25 : 0.3) && c.inner <= (loose ? 0.4 : 0.35) && (loose || c.outer <= 0.5) && plain(c) ? back(c) : null;
   };
   /**
    * The finish's double circle near an image point (within `radius` px), read from the lightness, not the colour: the
@@ -146,26 +200,9 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe, probeFinish,
     finish: finish && { ...back(finish), r1: finish.r1 == null ? null : finish.r1 / s, r2: finish.r2 / s },
     start: start && { ...back(start), R: start.R / s }, nCircles: circles.length, lw,
-    found: debug ? found.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };
+    found: debug ? found.map(back) : undefined, added: debug && added ? added.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };
 }
 
-/** The purple pixels: hue from violet to pink with green the weakest channel — saturated when light; when dark (the
- *  magenta ink photographed in poor light comes out a dark plum), red and blue both clearly above green, which black
- *  lines, brown contours and blue water never give. */
-function purpleMask(d, w, h) {
-  const m = new Uint8Array(w * h);
-  for (let i = 0, p = 0; i < m.length; i++, p += 4) {
-    const r = d[p], gg = d[p + 1], b = d[p + 2];
-    const max = r > b ? (r > gg ? r : gg) : (b > gg ? b : gg), min = r < b ? (r < gg ? r : gg) : (b < gg ? b : gg);
-    if (max < 40 || gg !== min || max === min) continue;                  // black, grey, or green not the weakest
-    const span = max - min;
-    const hue = max === r ? 360 - (60 * (b - gg)) / span : 240 + (60 * (r - gg)) / span;
-    if (hue < 255 || hue > 345) continue;
-    if (max >= 60 && span >= 0.3 * max) m[i] = 1;                          // the overprint as printed
-    else if (max <= 150 && r - gg >= 12 && b - gg >= 6 && r - gg >= 0.2 * max) m[i] = 1;    // dark plum on a photo
-  }
-  return m;
-}
 function dilate(m, w, h) {
   const d = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -241,7 +278,7 @@ function thinOnly(m, w, h, k) {
   }
   return out;
 }
-function findCircles(mask, dil, w, h, lw) {
+function findCircles(mask, dil, w, h, lw, genuine) {
   const px = [];
   for (let i = 0; i < mask.length; i++) if (mask[i]) px.push(i);
   if (!px.length) return { circles: [], rStar: null, found: [] };
@@ -283,7 +320,7 @@ function findCircles(mask, dil, w, h, lw) {
   // a ring: nearly complete with a pixel of tolerance (a photo blurs the line), or crisp though partly hidden —
   // a small circle where a line meets a ring scores 0.6 to 0.7 tolerant and less raw; hollow inside, clear outside
   const strict = (c) => ((c.score >= 0.8 && c.raw >= 0.3) || (c.score >= 0.55 && c.raw >= 0.5)) && c.inner <= 0.3 && c.outer <= 0.4;
-  const kept = suppress(found.filter(strict));
+  const kept = suppress(found.filter(strict)).filter(genuine);
   const rStar = controlRadius(kept);
   if (!rStar) return { circles: kept, rStar, found };
   const more = found.filter((c) => !strict(c) && c.score >= 0.85 && c.raw >= 0.6 && c.outer <= 0.6 && c.inner <= 0.75 && c.r >= 0.75 * rStar && c.r <= 1.8 * rStar);
@@ -409,5 +446,167 @@ function triangleAt(dil, w, h, cx0, cy0, rStar) {
     }
   }
   if (best && ringScore(dil, w, h, best.x, best.y, best.R * 0.3, 24) > 0.5) return null;      // not hollow
+  return best;
+}
+
+/** The closing of a channel (max then min over a (2k + 1) square, each separably), into `out`, `tmp` as scratch: the
+ *  local background, without the dark lines thinner than the square. */
+function closing(a, w, h, k, tmp, out) {
+  const pass = (src, dst, isMax, horiz) => {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const lo = horiz ? Math.max(0, x - k) : Math.max(0, y - k), hi = horiz ? Math.min(w - 1, x + k) : Math.min(h - 1, y + k);
+      let v = isMax ? -1e9 : 1e9;
+      for (let d = lo; d <= hi; d++) { const u = horiz ? src[y * w + d] : src[d * w + x]; v = isMax ? (u > v ? u : v) : (u < v ? u : v); }
+      dst[y * w + x] = v;
+    }
+  };
+  pass(a, tmp, true, true); pass(tmp, out, true, false); pass(out, tmp, false, true); pass(tmp, out, false, false);
+  return out;
+}
+/** A 3 × 3 box blur, twice, in place (`tmp` as scratch). */
+function blur(a, w, h, tmp) {
+  for (let n = 0; n < 2; n++) {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; tmp[i] = (a[x > 0 ? i - 1 : i] + a[i] + a[x < w - 1 ? i + 1 : i]) / 3; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; a[i] = (tmp[y > 0 ? i - w : i] + tmp[i] + tmp[y < h - 1 ? i + w : i]) / 3; }
+  }
+  return a;
+}
+/** The overprint's ink (see the head of this file): `D` the three channels' densities over the local background, `M`
+ *  the ink (green absorbed beyond the mean of red and blue), `t` the mask's level, `m` the mask. */
+function inkMask(data, w, h) {
+  const K = 4, T = 0.1, n = w * h;
+  const a = new Float32Array(n), tmp = new Float32Array(n), bg = new Float32Array(n), D = [];
+  for (let c = 0; c < 3; c++) {
+    for (let i = 0; i < n; i++) a[i] = data[4 * i + c] + 1;
+    closing(a, w, h, K, tmp, bg);
+    const d = new Float32Array(n);
+    for (let i = 0; i < n; i++) d[i] = bg[i] > a[i] ? Math.log(bg[i] / a[i]) : 0;
+    D.push(d);
+  }
+  const M = new Float32Array(n), hist = new Uint32Array(400);
+  let cnt = 0;
+  for (let i = 0; i < n; i++) { const v = (M[i] = D[1][i] - 0.5 * (D[0][i] + D[2][i])); if (v > T) { hist[Math.min(399, (v * 100) | 0)]++; cnt++; } }
+  let t = T;                                                              // a tenth and a half of the strongest ink
+  for (let k = 399, acc = 0; k >= 0; k--) { acc += hist[k]; if (acc >= 0.05 * cnt) { t = Math.max(T, 0.15 * (k / 100)); break; } }
+  // red and blue absorbed alike, read a little blurred: a phone's lens and the JPEG shift the channels by a pixel
+  for (let i = 0; i < n; i++) a[i] = D[2][i] - D[0][i];
+  blur(a, w, h, tmp);
+  bg.set(D[1]); blur(bg, w, h, tmp);
+  const m = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (M[i] > t && Math.abs(a[i]) < 0.45 * bg[i]) m[i] = 1;
+  return { m, M, t, D };
+}
+
+/** Where rings of radius about r may be, on the continuous ink field: a vote, at radius r only, of every pixel with a
+ *  third of the mask's ink, on a 3 px grid; the local peaks with a quarter of a full ring's votes, strongest first. */
+function ringCandidates(M, w, h, r, t) {
+  const G = 3, cw = Math.ceil(w / G), ch = Math.ceil(h / G), acc = new Uint16Array(cw * ch), A = 36, dx = [], dy = [];
+  for (let a = 0; a < A; a++) { dx.push(Math.round(r * Math.cos((2 * Math.PI * a) / A))); dy.push(Math.round(r * Math.sin((2 * Math.PI * a) / A))); }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (M[y * w + x] < t / 3) continue;
+    for (let a = 0; a < A; a++) {
+      const X = x + dx[a], Y = y + dy[a];
+      if (X >= 0 && Y >= 0 && X < w && Y < h) acc[((Y / G) | 0) * cw + ((X / G) | 0)]++;
+    }
+  }
+  const floor = 0.25 * (2 * Math.PI * r) * 2, out = [];                 // a quarter of a ring 2 px wide
+  for (let cy = 1; cy < ch - 1; cy++) for (let cx = 1; cx < cw - 1; cx++) {
+    const k = cy * cw + cx, v = acc[k];
+    if (v < floor) continue;
+    let peak = true;
+    for (let j = -1; j <= 1 && peak; j++) for (let i = -1; i <= 1; i++) if ((i || j) && acc[k + j * cw + i] > v) { peak = false; break; }
+    if (peak) out.push({ x: cx * G + 1, y: cy * G + 1, v });
+  }
+  return out.sort((a, b) => b.v - a.v).slice(0, 3000);
+}
+/** A ring read on the continuous ink field, at 72 points of the circle: at each, the ink on the circle (within a pixel
+ *  and a half) less the ink 4 to 5 px inside and outside it — a ridge, which a line crossing the circle or a hatching
+ *  does not make. `score`: the share of 24 sectors with a ridge of the mask's ink (a third of it counting half: a
+ *  photo's blur makes a side pale); `arcs`: the share of the circle in inked arcs of 20° or more (ISOM cuts a circle in
+ *  a few places; hatching and text cross it in many short dots). */
+function ridgeRing(M, w, h, x, y, r, t) {
+  const n = 72, at = (X, Y) => { X = Math.round(X); Y = Math.round(Y); return X >= 0 && Y >= 0 && X < w && Y < h ? M[Y * w + X] : 0; };
+  const rd = new Float32Array(n), on = new Uint8Array(n);
+  for (let k = 0; k < n; k++) {
+    const a = (2 * Math.PI * k) / n, c = Math.cos(a), s = Math.sin(a);
+    let v = 0, off = 0;
+    for (const d of [-1.5, -0.75, 0, 0.75, 1.5]) v = Math.max(v, at(x + (r + d) * c, y + (r + d) * s));
+    for (const d of [4, 5]) off = Math.max(off, at(x + (r - d) * c, y + (r - d) * s), at(x + (r + d) * c, y + (r + d) * s));
+    rd[k] = v - off;
+    on[k] = rd[k] >= 0.3 * t && v >= 0.5 * t ? 1 : 0;
+  }
+  let strong = 0, weak = 0;
+  for (let q = 0; q < 24; q++) { const m = Math.max(rd[3 * q], rd[3 * q + 1], rd[3 * q + 2]); if (m >= t) strong++; else if (m >= 0.3 * t) weak++; }
+  let arcs = 0;
+  const z = on.indexOf(0);
+  if (z < 0) arcs = n;
+  else for (let k = 1, run = 0; k <= n; k++) { if (on[(z + k) % n]) run++; else { if (run >= 4) arcs += run; run = 0; } }
+  return { score: (strong + 0.5 * weak) / 24, arcs: arcs / n };
+}
+/** The best ridge ring within two pixels and a pixel of radius of (x, y, r). */
+function bestRidge(M, w, h, x0, y0, r0, t) {
+  let best = null;
+  for (let r = r0 - 1; r <= r0 + 1; r++) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    const q = ridgeRing(M, w, h, x0 + dx, y0 + dy, r, t), v = q.score + q.arcs;
+    if (!best || v > best.v) best = { x: x0 + dx, y: y0 + dy, r, ...q, v };
+  }
+  return best;
+}
+
+/** The overprint's colour along a ring, as two density ratios: red and blue ink over green ink, read where the ring is
+ *  inked (the point of most ink within a pixel and a half of the circle, at 72 points); medians. The overprint absorbs
+ *  green and lets red and blue through: both ratios well under 1, and close to each other. */
+function ringColour(M, D, w, h, x, y, r) {
+  const A = [], B = [];
+  for (let k = 0; k < 72; k++) {
+    const a = (2 * Math.PI * k) / 72, c = Math.cos(a), s = Math.sin(a);
+    let bi = -1, bv = 0;
+    for (const d of [-1.5, -0.75, 0, 0.75, 1.5]) {
+      const X = Math.round(x + (r + d) * c), Y = Math.round(y + (r + d) * s);
+      if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+      const i = Y * w + X;
+      if (M[i] > bv) { bv = M[i]; bi = i; }
+    }
+    if (bi >= 0 && D[1][bi] > 0.05) { A.push(D[0][bi] / D[1][bi]); B.push(D[2][bi] / D[1][bi]); }
+  }
+  const med = (v) => { if (!v.length) return null; v.sort((p, q) => p - q); return v[v.length >> 1]; };
+  return { cr: med(A), cb: med(B) };
+}
+/** The overprint's colour: red and blue let through alike (their density ratios within 0.3 of each other), and both
+ *  absorbed less than green. A grey building on olive green, a brown knoll or red text are not. */
+function purpleRing(c) { return c.cr == null || (Math.abs(c.cr - c.cb) <= 0.3 && Math.max(c.cr, c.cb) <= 1); }
+/** The share of a circle's inside (within 0.7 r, on a grid of about 60 points) inked at half the mask's level: a control's
+ *  circle is empty inside, a hatching or a grid of lines is not. */
+function inkInside(M, w, h, x, y, r, t) {
+  const st = Math.max(1, (1.4 * r) / 9);
+  let n = 0, on = 0;
+  for (let dy = -0.7 * r; dy <= 0.7 * r; dy += st) for (let dx = -0.7 * r; dx <= 0.7 * r; dx += st) {
+    if (dx * dx + dy * dy > 0.49 * r * r) continue;
+    const X = Math.round(x + dx), Y = Math.round(y + dy);
+    if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+    n++; if (M[Y * w + X] >= t / 2) on++;
+  }
+  return n ? on / n : 0;
+}
+/** Whether a straight line crosses a circle's inside: of 36 chords (12 directions, through the centre and 0.4 r either
+ *  side, within 0.75 r of it), the largest share inked at half the mask's level. Legs stop at a control's circle; a
+ *  crossing of legs, or a hatching, runs through. */
+function lineAcross(M, w, h, x, y, r, t) {
+  let best = 0;
+  for (let d = 0; d < 12; d++) {
+    const c = Math.cos((Math.PI * d) / 12), s = Math.sin((Math.PI * d) / 12);
+    for (const o of [-0.4, 0, 0.4]) {
+      const half = Math.sqrt(0.5625 - o * o) * r;
+      let n = 0, on = 0;
+      for (let u = -half; u <= half; u += 1) {
+        const X = Math.round(x + u * c - o * r * s), Y = Math.round(y + u * s + o * r * c);
+        if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+        n++;
+        const i = Y * w + X;
+        if (M[i] >= t / 2 || (X + 1 < w && M[i + 1] >= t / 2) || (Y + 1 < h && M[i + w] >= t / 2)) on++;
+      }
+      if (n && on / n > best) best = on / n;
+    }
+  }
   return best;
 }

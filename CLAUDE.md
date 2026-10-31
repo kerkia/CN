@@ -910,7 +910,19 @@ Every multiple-choice game was played through to its score page at phone size, w
   affine (a photographed page is skewed). Result on that photo: 6 rings read + 4 probed of 16, fit 6 m, scale 0.47 px/m,
   the rest placed by hand (clicks snap to a ring found on the spot; « Ajouter un poste » when no split times exist; the
   trace's visiting order renumbers them, two passes within 15 s are one control); a hand-placed point counts as reached
-  within 30 m. Without split times the race clock is the runner's published start time, looked up in every list of
+  within 30 m. **The overprint read as ink, not hue** (owner, 2026-10-31: 8 of 16 found on that photo): `course.js`
+  `inkMask` — each pixel's optical density over its local background (a 9 px closing per channel), the overprint's ink =
+  green absorbed beyond the mean of red and blue (the same over white, yellow or green, the lighting divided out; the
+  photo's purple is a pale greyish lavender, one side faded by blur); a ring must also be the overprint's colour
+  (`ringColour`/`purpleRing`: red and blue absorbed alike) and empty inside (`inkInside`: a magenta hatching makes rings);
+  then a second pass on the continuous ink field at r* (`ringCandidates`, `ridgeRing`: a ridge in most of 24 sectors, in
+  arcs of 20° or more, no straight line across — `lineAcross` —, the controls' own colour), and `probe` uses the same
+  test (`{ loose }` for a click). Measured (scratch `eval.mjs`, kept with the session's scratch): that photo 13/16 read +
+  start (14/16, start and finish on the page with the FIT, fit 6 m); the « Entrainement Gif » course drawn on its scanned
+  map clean 24/24 + finish, as a phone photo 24/24 (3 before), badly degraded 12/24 (0); no false control on any, nor on
+  two maps without a course (2 before); probes at random spots 3 false rings in 150 (16). Leg-line ends as evidence were
+  tried and dropped (crossings and digits make ends). Controls over the lake (15, 16) stay unread.
+  Without split times the race clock is the runner's published start time, looked up in every list of
   the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
   less the published total. The finish on the lake
   (purple over blue) cannot be read. `window.anDebug()` in the console returns the fit, offset, targets, detection,
