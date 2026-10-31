@@ -2546,6 +2546,25 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .agenda-filters #ag-rf:not(:empty) { border-top: 1px solid var(--grid); margin-top: 10px; padding-top: 10px; }
 .agenda-filters #ag-rf .filters { padding: 0; margin: 0; border: 0; box-shadow: none; background: none; }
 .agenda-table tbody tr.past td { color: var(--ink-2); }
+/* A row's period in its ground (owner, 2026-10-31): the past in the map's water, today in the flag's orange, the coming in the
+   forest's green — each theme's own washes, so a dark theme gets dark tints; the three boxes above the list carry the same
+   colours as its legend. Hover and selection darken the row's own tint and mark its first cell (a row's box-shadow is not drawn
+   in a table), the map's hover in the flag's colour. */
+.agenda-table tbody tr[data-period] { --period: transparent; background: var(--period); }
+.agenda-table tbody tr[data-period="past"], .when-sw[data-p="past"] { --period: var(--water-wash); }
+.agenda-table tbody tr[data-period="today"], .when-sw[data-p="today"] { --period: var(--flag-wash); }
+.agenda-table tbody tr[data-period="coming"], .when-sw[data-p="coming"] { --period: var(--forest-wash); }
+.agenda-table tbody tr[data-period]:hover { background: color-mix(in srgb, var(--period), var(--ink) 7%); }
+.agenda-table tbody tr[data-period].selected { background: color-mix(in srgb, var(--period), var(--ink) 13%); }
+.agenda-table tbody tr[data-period].selected > td:first-child { box-shadow: inset 4px 0 0 var(--focus); }
+.agenda-table tbody tr[data-period].map-hover { background: color-mix(in srgb, var(--period), var(--flag) 22%); }
+.agenda-table tbody tr[data-period].map-hover > td:first-child { box-shadow: inset 4px 0 0 var(--flag); }
+@media (max-width: 700px) {
+  .agenda-table table.data tbody tr[data-period].selected { box-shadow: inset 4px 0 0 var(--focus); }
+  .agenda-table table.data tbody tr[data-period].selected > td:first-child { box-shadow: none; }
+}
+.when-sw { display: inline-block; width: 13px; height: 13px; border-radius: 3px; background: var(--period);
+  border: 1px solid var(--border-strong); margin-right: 6px; vertical-align: -2px; }
 #nav [data-bar-tabs], #nav #sp-tabs { display: contents; }
 #nav .page-tabs { border: 0; margin: 0; gap: 2px; overflow: visible; }
 #nav .page-tabs a, #nav .page-tabs button { font-size: 14px; font-weight: 550; padding: 7px 10px; border: 0; border-radius: 8px; margin: 0; color: var(--ink-2); }

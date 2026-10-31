@@ -268,7 +268,10 @@ every visitor's request goes through the gate, which judges the decoded path, an
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
 agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in a box of their own above the filters, always shown — on a phone too, where the other filters are
 folded (« Aujourd'hui », « À venir », « Passées (60 jours) »; `st.when`, all three by default; the list opens on today — its box
-scrolled there, on a phone, where the list has no box, the page, once the router has put it at its top). Left for a race (a row, a
+scrolled there, on a phone, where the list has no box, the page, once the router has put it at its top). Each row's ground
+says its period (owner, 2026-10-31): the past in the water's wash, today in the flag's, the coming in the forest's (each theme's
+own `--water-wash`, `--flag-wash`, `--forest-wash`; `tr[data-period]`), the three boxes carrying the same colours as a legend
+(`.when-sw`); hover and selection darken the row's tint and mark its first cell. Left for a race (a row, a
 link of the details), the list remembers where it was (`agenda.js` `memo`: periods and scroll, an hour, the same country): coming
 back — a race page's « ‹ Compétitions » (`arena.back`, on the results page and the analysis), the browser's Back, the module's
 name — finds it there; an address naming an event or `periode` opens as asked (owner, 2026-10-30). The map draws the coming
@@ -761,7 +764,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   set in `app.css` (`:root[data-theme=…]`; Clairière and Forêt keep Jour's series, Sous-bois shares Nuit's series and landscape;
   the system's dark mode reaches none of the light themes), chosen under
   the moon button (`app.js` `THEMES`, `themeMenu`: a swatch of each theme's ground and one colour of its own; `localStorage
-  cnx.theme`); by default light on a computer, dark on a phone (`index.html`: a coarse pointer and ≤ 900 px).
+  cnx.theme`); by default Sous-bois on a computer, Clairière on a phone (`index.html`: a coarse pointer and ≤ 900 px; owner,
+  2026-10-31 — light and dark until then).
 - **Look** (owner, 2026-10-12): orienteering colours used mildly (`app.css` tokens `--flag`, `--forest`, `--water`,
   `--contour`): « Classement » in the map's forest green, « Courses » in its water blue (`body[data-group]` →
   `--grp`: the group's dot and tab in the bar, the current page in the row under it, the active tab's underline), the main button

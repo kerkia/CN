@@ -15,14 +15,14 @@
   <link rel="stylesheet" href="assets/app.css">
   <script>
     // Apply the theme before first paint so there is no flash: the one chosen under the moon button (five, from
-    // Clair to Nuit: app.js THEMES), else (owner, 2026-10-12) light on a computer, dark on a phone — whatever the
-    // system's own setting.
+    // Clair to Nuit: app.js THEMES), else (owner, 2026-10-31) Sous-bois on a computer, Clairière on a phone — whatever the
+    // system's own setting (light and dark until then).
     let t = null;
     try { t = localStorage.getItem("cnx.theme"); } catch (e) {}
     // the themes' first names, for a few hours on 2026-10-13 (« forest » was then Sous-bois, but it is Forêt's name since:
     // renamed, it turned every saved Forêt into Sous-bois at each visit — 2026-10-24)
     if (t === "paper") t = "clearing"; else if (t === "dusk") t = "forest";
-    if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "dark" : "light";
+    if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "clearing" : "undergrowth";
     document.documentElement.dataset.theme = t;
   </script>
   <script src="/assets/vendor/echarts@5.5.1/dist/echarts.min.js" defer></script>

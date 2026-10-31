@@ -201,7 +201,7 @@ export async function render(main, { query }) {
   function drawFilters() {
     const openIds = $$("details.multi[open]", main).map((d) => d.id);          // keep an open list open while it redraws
     // today's, the coming and the past competitions: a box of their own, always shown, on a phone too (owner, 2026-10-30)
-    $("#when").innerHTML = html`<div class="frow">${WHEN.map((w) => html`<label class="checkline"><input type="checkbox" data-when="${w}" ${raw(st.when.has(w) ? "checked" : "")}>${t(`agd.when.${w}`)}</label>`)}</div>`;
+    $("#when").innerHTML = html`<div class="frow">${WHEN.map((w) => html`<label class="checkline"><input type="checkbox" data-when="${w}" ${raw(st.when.has(w) ? "checked" : "")}><i class="when-sw" data-p="${w}"></i>${t(`agd.when.${w}`)}</label>`)}</div>`;
     $("#filters").innerHTML = html`
       <div class="frow">
         ${KINDS.map(([k, label]) => html`<label class="checkline"><input type="checkbox" data-kind="${k}" ${raw(st.kinds.has(k) ? "checked" : "")}>${label}</label>`)}
