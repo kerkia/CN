@@ -772,7 +772,7 @@ export async function render(main, { query = {}, route } = {}) {
       side(); draw();
       return;
     }
-    const vo = visitOrder(track, geometry, ptsOf(located), TOL);
+    const vo = visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg });
     const passOf = (p) => { const i = located.indexOf(p); return i >= 0 && vo.pass.has(i) ? vo.pass.get(i) : null; };
     // two circles passed within 15 s are not two controls (a leg takes longer): the second is a phantom
     let prevT = -Infinity;
@@ -851,18 +851,18 @@ export async function render(main, { query = {}, route } = {}) {
     fit = null; offset = null; rmsM = null;
     if (taus) {
       const pairs = targets.filter((g) => g.tau != null && g.pos && !g.missed).map((g) => ({ tau: g.tau, px: g.pos[0], py: g.pos[1] }));
-      const guess = vo?.startT ?? guessOffset() ?? (geometry && located.length ? visitOrder(track, geometry, ptsOf(located), TOL).startT : null);
+      const guess = vo?.startT ?? guessOffset() ?? (geometry && located.length ? visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg }).startT : null);
       const c = pairs.length >= (geoFit ? 1 : 2) ? calibrate(track, pairs, guess, geoFit) : null;
       if (c) { fit = c.fit; offset = c.offset; rmsM = c.rms / fit.scale; }
       else if (geoFit) { fit = geoFit; offset = guess; }
-      if (fit && offset == null) { const v = visitOrder(track, fit, ptsOf(located), TOL); offset = v.startT; }
+      if (fit && offset == null) { const v = visitOrder(track, fit, ptsOf(located), TOL, { leg: course?.leg }); offset = v.startT; }
     } else {
       if (geoFit) fit = geoFit;
       else if (geometry) fit = geometry;
       else if (auto?.fit) fit = auto.fit;                                   // placed by hand: the geometry found stays
       else if (located.length >= 3) { auto = alignTrack(track, ptsOf(located), { rStar: course?.r || null, northUp, tol: TOL }); fit = auto?.fit || null; }
       if (fit) {
-        const v = visitOrder(track, fit, ptsOf(located), TOL);
+        const v = visitOrder(track, fit, ptsOf(located), TOL, { leg: course?.leg });
         located.forEach((g, i) => { g.tEst = v.pass.has(i) ? v.pass.get(i) : null; });
         // the controls in the trace's visiting order, the unreached ones after, then renumbered
         const ctrls = targets.filter((g) => g.kind === "control");

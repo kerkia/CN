@@ -921,7 +921,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   start (14/16, start and finish on the page with the FIT, fit 6 m); the « Entrainement Gif » course drawn on its scanned
   map clean 24/24 + finish, as a phone photo 24/24 (3 before), badly degraded 12/24 (0); no false control on any, nor on
   two maps without a course (2 before); probes at random spots 3 false rings in 150 (16). Leg-line ends as evidence were
-  tried and dropped (crossings and digits make ends). Controls over the lake (15, 16) stay unread.
+  tried and dropped (crossings and digits make ends). Controls 15 and 16 stay unread: two overlapping circles, each
+  cut where they meet, over yellow and a building and over the lake — at the trace's turns a rule loose enough for them
+  takes 11 false rings for 10 true ones, and the runner did not slow there more than elsewhere; a click there keeps its
+  place (`probe`'s `loose` snaps to a faint ring only within 0.5 r* of the click; it took one 18 px away). **The legs
+  order the controls** (owner, same day: the trace's order had numbered 8 before 5, 6, 7 — run past between 4 and 5):
+  `course.leg(a, b)` = the share of the way between two symbols inked (1.3 r* left at each end; the photo's true legs
+  0.78-1.00, other pairs ≤ 0.42), and `align.visitOrder(..., { leg })` picks each control's pass so that controls
+  consecutive in time are joined by legs (≥ 0.6), start and finish included, then the least cost (both pages).
   Without split times the race clock is the runner's published start time, looked up in every list of
   the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
   less the published total. The finish on the lake

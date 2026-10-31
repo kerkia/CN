@@ -105,8 +105,11 @@ export function alignTrack(track, pts, { rStar = null, northUp = true, tol = 20 
  * distance along the trace (within 1.5 tol), each with its time; the controls' visiting order (their closest pass);
  * the start's departure (the last pass before the first control, left when the trace leaves tol) and the finish's
  * arrival (after the last control found, the pass that ends the race: `finishArrival`). pts: [{ x, y, kind }].
+ * `leg(a, b)` (course.js's, image points): the share of the way between two symbols inked as a printed leg. A control
+ * passed twice — run past on an earlier leg, then visited (the Fougères photo's 8, passed between 4 and 5: 2026-10-31)
+ * — takes the pass that puts it, in time, next to the controls the legs join it to.
  */
-export function visitOrder(track, fit, pts, tol = 20) {
+export function visitOrder(track, fit, pts, tol = 20, { leg = null } = {}) {
   const n = track.n;
   const passes = pts.map((p) => {
     const [mx, my] = toM(fit, p.x, p.y), d = new Float32Array(n);
@@ -132,9 +135,39 @@ export function visitOrder(track, fit, pts, tol = 20) {
     return (d * 180) / Math.PI;
   };
   const cost = (p) => p.d - 0.15 * Math.min(120, turnAt(p.k));
-  const controls = pts.map((p, i) => i).filter((i) => pts[i].kind === "control" && inlier(i))
-    .map((i) => { const best = passes[i].out.filter((p) => p.d <= 1.5 * tol).reduce((a, p) => (cost(p) < cost(a) ? p : a)); return { i, t: best.t, k: best.k, d: best.d }; })
-    .sort((a, b) => a.t - b.t);
+  const cands = pts.map((p, i) => i).filter((i) => pts[i].kind === "control" && inlier(i))
+    .map((i) => ({ i, list: passes[i].out.filter((p) => p.d <= 1.5 * tol) }));
+  const pick = cands.map(({ list }) => list.reduce((a, p, j) => (cost(p) < cost(list[a]) ? j : a), 0));
+  if (leg && cands.some((c) => c.list.length > 1)) {
+    // the passes chosen together: the most printed legs between controls consecutive in time (the start before the
+    // first, the finish after the last), then the least cost; one control's pass changed at a time while it gains
+    const si0 = pts.findIndex((p) => p.kind === "start"), fi0 = pts.findIndex((p) => p.kind === "finish"), memo = new Map();
+    const linked = (a, b) => {
+      if (a < 0 || b < 0) return 0;
+      const key = a < b ? `${a},${b}` : `${b},${a}`;
+      if (!memo.has(key)) memo.set(key, leg([pts[a].x, pts[a].y], [pts[b].x, pts[b].y]) >= 0.6 ? 1 : 0);
+      return memo.get(key);
+    };
+    const value = (choice) => {
+      const seq = cands.map((c, j) => [c.list[choice[j]].t, c.i]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+      let v = seq.length ? linked(si0, seq[0]) + linked(seq[seq.length - 1], fi0) : 0;
+      for (let j = 1; j < seq.length; j++) v += linked(seq[j - 1], seq[j]);
+      return v - 1e-4 * cands.reduce((s, c, j) => s + cost(c.list[choice[j]]), 0);
+    };
+    let cur = value(pick);
+    for (let round = 0, better = true; better && round < 10; round++) {
+      better = false;
+      cands.forEach((c, j) => {
+        for (let m = 0; m < c.list.length; m++) {
+          if (m === pick[j]) continue;
+          const was = pick[j]; pick[j] = m;
+          const v = value(pick);
+          if (v > cur + 1e-9) { cur = v; better = true; } else pick[j] = was;
+        }
+      });
+    }
+  }
+  const controls = cands.map((c, j) => { const p = c.list[pick[j]]; return { i: c.i, t: p.t, k: p.k, d: p.d }; }).sort((a, b) => a.t - b.t);
   const firstT = controls.length ? controls[0].t : Infinity, lastT = controls.length ? controls[controls.length - 1].t : -Infinity;
   let startT = null, finishT = null;
   const si = pts.findIndex((p) => p.kind === "start"), fi = pts.findIndex((p) => p.kind === "finish");

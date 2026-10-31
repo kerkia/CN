@@ -128,8 +128,10 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   const probe = (X, Y, radius, { loose = false } = {}) => {
     if (!rStar) return null;
     const x0 = X * s, y0 = Y * s, R = Math.max(4, radius * s);
-    // the course's ink, empty inside, no line across it
-    const plain = (c) => purpleRing(ringColour(ink, dens, w, h, c.x, c.y, c.r)) && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3 && lineAcross(ink, w, h, c.x, c.y, c.r, tInk) < 0.8;
+    // the course's ink, empty inside, no line across it; for a click, a faint ring only right under it — two
+    // overlapping circles cut where they meet (the Fougères photo's 15 and 16, 2026-10-31) took a click 18 px away
+    const plain = (c, v) => purpleRing(ringColour(ink, dens, w, h, c.x, c.y, c.r)) && inkInside(ink, w, h, c.x, c.y, c.r, tInk) <= 0.3 && lineAcross(ink, w, h, c.x, c.y, c.r, tInk) < 0.8
+      && (!loose || v >= 1.1 || Math.hypot(c.x - x0, c.y - y0) <= 0.5 * rStar);
     let best = null;
     for (let y = Math.round(y0 - R); y <= y0 + R; y += 2) for (let x = Math.round(x0 - R); x <= x0 + R; x += 2) {
       if ((x - x0) ** 2 + (y - y0) ** 2 > R * R) continue;
@@ -138,7 +140,7 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
     }
     if (best && best.v >= 0.7) {
       const c = bestRidge(ink, w, h, best.x, best.y, rStar, tInk);
-      if (c.score + c.arcs >= (loose ? 0.8 : 1.1) && c.score >= (loose ? 0.4 : 0.55) && c.arcs >= (loose ? 0.25 : 0.35) && plain(c))
+      if (c.score + c.arcs >= (loose ? 0.8 : 1.1) && c.score >= (loose ? 0.4 : 0.55) && c.arcs >= (loose ? 0.25 : 0.35) && plain(c, c.score + c.arcs))
         return back({ x: c.x, y: c.y, r: c.r, score: c.score, raw: c.arcs });
     }
     best = null;
@@ -149,7 +151,7 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
       }
     }
     const c = best && refineCircle(mask, dil, w, h, best.x, best.y, best.r);
-    return c && c.score >= (loose ? 0.4 : 0.45) && c.raw >= (loose ? 0.25 : 0.3) && c.inner <= (loose ? 0.4 : 0.35) && (loose || c.outer <= 0.5) && plain(c) ? back(c) : null;
+    return c && c.score >= (loose ? 0.4 : 0.45) && c.raw >= (loose ? 0.25 : 0.3) && c.inner <= (loose ? 0.4 : 0.35) && (loose || c.outer <= 0.5) && plain(c, c.score + c.raw) ? back(c) : null;
   };
   /**
    * The finish's double circle near an image point (within `radius` px), read from the lightness, not the colour: the
@@ -197,7 +199,25 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
     }
     return best.score >= 0.5 ? { x: best.x / s, y: best.y / s, r1: best.r1 / s, r2: best.r2 / s, score: best.score } : null;
   };
-  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe, probeFinish,
+  /** The share of the straight way between two symbols (image points, each left at 1.3 r*) inked with the
+   *  overprint, within a pixel and a half of the line: a leg printed from one to the other comes near 1 (ISOM cuts it
+   *  here and there), two symbols no leg joins near 0. For the page: the legs say which controls follow each other. */
+  const leg = (A, B) => {
+    if (!rStar) return 0;
+    const ax = A[0] * s, ay = A[1] * s, bx = B[0] * s, by = B[1] * s, L = Math.hypot(bx - ax, by - ay), m = 1.3 * rStar;
+    if (L < 2 * m + 4) return 0;
+    const ux = (bx - ax) / L, uy = (by - ay) / L;
+    let n = 0, on = 0;
+    for (let u = m; u <= L - m; u += 1) {
+      n++;
+      for (const o of [-1.5, 0, 1.5]) {
+        const X = Math.round(ax + u * ux - o * uy), Y = Math.round(ay + u * uy + o * ux);
+        if (X >= 0 && Y >= 0 && X < w && Y < h && ink[Y * w + X] >= tInk / 2) { on++; break; }
+      }
+    }
+    return n ? on / n : 0;
+  };
+  return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe, probeFinish, leg,
     finish: finish && { ...back(finish), r1: finish.r1 == null ? null : finish.r1 / s, r2: finish.r2 / s },
     start: start && { ...back(start), R: start.R / s }, nCircles: circles.length, lw,
     found: debug ? found.map(back) : undefined, added: debug && added ? added.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };

@@ -524,7 +524,7 @@ async function editor(box, ctx) {
         st.controls.push({ kind: "control", code: cc.type === "Control" ? cc.id : "", x, y });
       }
     } else if (st.track && validGeo(st.geo) && pts.length) {
-      const vo = visitOrder(st.track, fitFromGeo(st.geo, st.track), pts, 20);
+      const vo = visitOrder(st.track, fitFromGeo(st.geo, st.track), pts, 20, { leg: st.detect?.leg });
       const start = pts.find((p) => p.kind === "start"), finish = pts.find((p) => p.kind === "finish");
       st.controls = [...(start ? [{ ...start }] : []), ...vo.order.filter((i) => pts[i].kind === "control").map((i) => ({ ...pts[i] })), ...(finish ? [{ ...finish }] : [])];
       if (!start || !finish) st.notes.push(t("sh.e.checkEnds"));
