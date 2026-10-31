@@ -1,11 +1,13 @@
 """The directory of France's clubs, committees and ligues with their websites (Stats › Clubs › « Annuaire », owner
 2026-10-31): FFCO's structure pages on api.ffcorientation.fr — the list of ligues and committees (`/iframe/structures/`),
 each ligue's page (`/iframe/ligues/<id>/`: its number, website and committees, and the clubs it holds directly) and each
-committee's (`/iframe/comites/<id>/`: its département number, ligue, website and clubs). Only numbers, names and websites
-are kept, never the officers' names, the postal addresses, phones or e-mails the pages also print. A few pages a run, the
+committee's (`/iframe/comites/<id>/`: its département number, ligue, website and clubs). Numbers, names, websites and, since
+2026-10-31 (owner), the contacts each page prints — its « Bureau » (the officers' names and roles), phone and e-mail, shown to
+FFCO's licensees only (`contacts`, a file of its own the login gate keeps to them); never the postal address. A few pages a run, the
 oldest first, each read again every week: a new website, a changed one or a new club shows within a week. A club found on
 a committee's page that the club directory (races.read_directory) has not read yet is queued there at once, so its own
-website comes at the next runs. The site's file is France's `clubdir.json`, written by `build` when it changed."""
+website comes at the next runs (its popup gives the club's contacts too). The site's files are France's `clubdir.json` and
+`clubdir_contacts.json`, written by `build` when they changed."""
 
 from __future__ import annotations
 
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS prov_struct (
   parent     INTEGER,                    -- a committee's ligue (its id)
   site       TEXT,                       -- the website the page gives ('' none)
   site_at    TEXT,                       -- when that website was first seen (a change resets it)
+  contact    TEXT,                       -- JSON {bureau: [[name, role]], tel, email} as the page prints them; NULL = not read yet
   read_at    TEXT NOT NULL,              -- '' = never read
   seen_at    TEXT,                       -- last listed by FFCO (the structures' list or a ligue's page)
   PRIMARY KEY (kind, id)
@@ -62,6 +65,38 @@ def _number(page: str) -> str | None:
     return m.group(1).upper() if m else None
 
 
+def _phone(s: str) -> str:
+    """A French number written as France writes it: '+33614175471' -> '06 14 17 54 71'; anything else as given."""
+    s = re.sub(r"\s+", " ", s).strip()
+    d = re.sub(r"[^\d+]", "", s)
+    if re.fullmatch(r"\+33\d{9}", d):
+        d = "0" + d[3:]
+    if re.fullmatch(r"0\d{9}", d):
+        return " ".join(d[i:i + 2] for i in range(0, 10, 2))
+    return s
+
+
+def contact(page: str) -> dict:
+    """The contacts a ligue's, committee's or club's page (or the club's popup) prints: its « Bureau » — [[name, role]] —,
+    phone and e-mail; {} when it gives none. Never the postal address (« Siège social »)."""
+    out = {}
+    m = re.search(r"Bureau(?:&nbsp;|\s)*:(.*?)(?:<br\s*/?>|</p>)", page, re.S)
+    if m:
+        txt = _text(m.group(1))
+        people = [[n.strip(" ,"), r.strip()] for n, r in re.findall(r"([^,()]+?)\s*\(([^)]*)\)", txt) if n.strip(" ,")]
+        if not people:
+            people = [[n.strip(), ""] for n in txt.split(",") if n.strip()]
+        if people:
+            out["bureau"] = people
+    m = re.search(r"T[ée]l(?:&nbsp;|\s)*:\s*([^<]+)", page)
+    if m and _text(m.group(1)):
+        out["tel"] = _phone(_text(m.group(1)))
+    m = re.search(r'href="mailto:([^"]+)"', page)
+    if m:
+        out["email"] = htmlmod.unescape(m.group(1)).strip()
+    return out
+
+
 def _links(page: str, kind: str) -> list[tuple[int, str]]:
     """(id, text) of the page's links to /iframe/<kind>/<id>/."""
     return [(int(i), _text(t)) for i, t in re.findall(rf'<a href="/iframe/{kind}/(\d+)/">(.*?)</a>', page, re.S)]
@@ -88,7 +123,7 @@ def parse_page(page: str) -> dict:
     """A ligue's or a committee's page: its name, number, website, ligue (a committee's), committees (a ligue's) and clubs."""
     h1 = re.search(r"<h1>(.*?)</h1>", page, re.S)
     lig = _links(page, "ligues")
-    return {"name": _text(h1.group(1)) if h1 else None, "code": _number(page), "site": _site(page),
+    return {"name": _text(h1.group(1)) if h1 else None, "code": _number(page), "site": _site(page), "contact": contact(page),
             "ligue": lig[0][0] if lig else None,
             "comites": [(i, *_split(t)) for i, t in _links(page, "comites")],
             "clubs": [(i, *_split(t)) for i, t in _links(page, "clubs")]}
@@ -96,6 +131,11 @@ def parse_page(page: str) -> dict:
 
 def connect(con) -> None:
     con.executescript(SCHEMA)
+    # columns added since the tables were made
+    if "contact" not in {r[1] for r in con.execute("PRAGMA table_info(prov_struct)")}:
+        con.execute("ALTER TABLE prov_struct ADD COLUMN contact TEXT")
+    if "contact" not in {r[1] for r in con.execute("PRAGMA table_info(prov_club_dir)")}:
+        con.execute("ALTER TABLE prov_club_dir ADD COLUMN contact TEXT")
 
 
 def _set_site(con, kind: str, sid: int, site: str, stamp: str) -> bool:
@@ -136,25 +176,28 @@ def read(con, f, per_run: int = 12) -> dict:
             con.execute("INSERT OR REPLACE INTO prov_meta (k, v) VALUES ('struct_list', ?)", (stamp,))
             got["read"] += 1
     # the ligues first (their pages name the committees), then the committees; the first time (pages never read) all of
-    # them at once, ~110 pages: the directory is only published complete (build)
-    if con.execute("SELECT 1 FROM prov_struct WHERE read_at = '' LIMIT 1").fetchone():
+    # them at once, ~110 pages: the directory is only published complete (build); likewise once for the contacts
+    # (2026-10-31: the pages read before kept none)
+    if con.execute("SELECT 1 FROM prov_struct WHERE read_at = '' OR contact IS NULL LIMIT 1").fetchone():
         per_run = max(per_run, 150)
-    due = con.execute("""SELECT kind, id FROM prov_struct WHERE read_at < ?
+    due = con.execute("""SELECT kind, id FROM prov_struct WHERE read_at < ? OR contact IS NULL
                          ORDER BY kind = 'comite', read_at LIMIT ?""", (old, per_run)).fetchall()
     for kind, sid in due:
         if f.out_of_time():
             break
         a = f.get(f"{DIR}/{'ligues' if kind == 'ligue' else 'comites'}/{sid}/", conditional=False)
         if a.status == 404:            # gone: read again next week, forgotten once unlisted for FORGET_DAYS
-            con.execute("UPDATE prov_struct SET read_at = ? WHERE kind = ? AND id = ?", (stamp, kind, sid))
+            con.execute("UPDATE prov_struct SET read_at = ?, contact = COALESCE(contact, '{}') WHERE kind = ? AND id = ?",
+                        (stamp, kind, sid))
             continue
         if a.status != 200:
             continue
         p = parse_page(a.content.decode("utf-8", "replace"))
         got["read"] += 1
-        con.execute("UPDATE prov_struct SET code = COALESCE(?, code), name = COALESCE(?, name), parent = ?, read_at = ? "
-                    "WHERE kind = ? AND id = ?", (p["code"], p["name"], p["ligue"] if kind == "comite" else None,
-                                                  stamp, kind, sid))
+        con.execute("UPDATE prov_struct SET code = COALESCE(?, code), name = COALESCE(?, name), parent = ?, read_at = ?, "
+                    "contact = ? WHERE kind = ? AND id = ?",
+                    (p["code"], p["name"], p["ligue"] if kind == "comite" else None, stamp,
+                     json.dumps(p["contact"], ensure_ascii=False), kind, sid))
         got["changed"] += _set_site(con, kind, sid, p["site"], stamp)
         if kind == "ligue":
             for cid, code, name in p["comites"]:
@@ -294,8 +337,41 @@ def directory(con, names: dict | None = None, depts: dict | None = None) -> dict
     return {"ligues": out, "counts": counts}
 
 
+def contacts(con) -> dict:
+    """The contacts FFCO prints, by the directory's keys: {"L": {ligue: c}, "D": {département: c}, "C": {club: c}}, each
+    c = {bureau, tel, email} — the officers' names and roles, phone and e-mail (FFCO's licensees only: the login gate)."""
+    connect(con)
+    cut = (datetime.now(timezone.utc) - timedelta(days=FORGET_DAYS)).isoformat()
+    out = {"L": {}, "D": {}, "C": {}}
+    for r in con.execute("SELECT kind, code, contact FROM prov_struct WHERE seen_at >= ? AND contact IS NOT NULL", (cut,)):
+        c, code = json.loads(r["contact"] or "{}"), (r["code"] or "").upper()
+        if not c or not code:
+            continue
+        if r["kind"] == "ligue":
+            out["L"][code] = c
+        elif code != "99":
+            out["D"][code.zfill(2) if code.isdigit() else code] = c
+    for r in con.execute("SELECT code, contact FROM prov_club_dir WHERE code IS NOT NULL AND contact IS NOT NULL"):
+        c = json.loads(r["contact"] or "{}")
+        if c:
+            out["C"][r["code"]] = c
+    return out
+
+
+def _write(path: Path, d: dict) -> bool:
+    """Writes the file (with its date) when its content changed; True then."""
+    try:
+        before = json.loads(path.read_text(encoding="utf-8"))
+        if {k: v for k, v in before.items() if k != "generated"} == d:
+            return False
+    except (OSError, ValueError):
+        pass
+    path.write_text(json.dumps({"generated": _now()} | d, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return True
+
+
 def build(con, fr: Path) -> bool:
-    """Writes France's clubdir.json (site/data/fr) when its content changed; True then."""
+    """Writes France's clubdir.json and clubdir_contacts.json (site/data/fr) when their content changed; True then."""
     if not fr.is_dir():
         return False
     try:
@@ -308,12 +384,6 @@ def build(con, fr: Path) -> bool:
     d = directory(con, meta.get("clubs"), meta.get("depts"))
     if not d["ligues"]:
         return False
-    path = fr / "clubdir.json"
-    try:
-        before = json.loads(path.read_text(encoding="utf-8"))
-        if {k: v for k, v in before.items() if k != "generated"} == d:
-            return False
-    except (OSError, ValueError):
-        pass
-    path.write_text(json.dumps({"generated": _now()} | d, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    return True
+    a = _write(fr / "clubdir.json", d)
+    b = _write(fr / "clubdir_contacts.json", contacts(con))
+    return a or b

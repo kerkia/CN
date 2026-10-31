@@ -1,5 +1,5 @@
 // The privacy policy and legal notices, in French — the version that prevails (pages/account.js « privacy »; the GDPR's
-// information, articles 13 and 14, and the legal notices, LCEN article 6; reviewed 2026-10-15: keep the date up to date
+// information, articles 13 and 14, and the legal notices, LCEN article 6; reviewed 2026-10-15, the directory's contacts added 2026-10-31: keep the date up to date
 // when what the site keeps changes, and the English version, privacy.en.js, in step).
 // world: registration open to every orienteer (WORLD_OPEN, /api/account/status; owner, 2026-10-20): the texts about who may
 // see what follow it, so that the page says what is true on either side of the switch.
@@ -57,6 +57,15 @@ export const body = (SITE, { world = false } = {}) => `
         souhaite découvrir le site ; ce compte n'est rattaché à aucune licence, ne peut rien modifier ni déposer et cesse de
         fonctionner à la date fixée. Toute personne concernée peut en demander la rectification ou demander à ne plus y être identifiée (voir
         « Vos droits ») ; la source demeure le site de la FFCO.</p>
+      <h2 style="font-size:16px">Annuaire des clubs, comités et ligues</h2>
+      <p>L'onglet « Annuaire » de la page Clubs reprend, pour chaque ligue, comité départemental et club, ce que la FFCO publie sur
+        ses pages des structures et son annuaire des clubs : son numéro, son site web et ses coordonnées — les noms et fonctions des
+        membres de son bureau (président, secrétaire, trésorier), son téléphone et son adresse e-mail. L'adresse postale n'est pas
+        reprise. Ces coordonnées ne sont montrées qu'aux comptes connectés dont la licence FFCO est vérifiée (pas aux visiteurs sans
+        compte, ni aux comptes de démonstration), et sont relues chaque semaine : ce que la FFCO retire disparaît d'${SITE} à la
+        relecture suivante. Base légale : l'intérêt légitime de l'éditeur à aider les licenciés à joindre les structures de leur
+        sport, à partir d'informations que la FFCO publie elle-même. Toute personne concernée peut s'y opposer ou en demander la
+        rectification (voir « Vos droits ») ; la source demeure le site de la FFCO.</p>
       <h2 style="font-size:16px">Dépôts de résultats et d'horaires de départ</h2>
       <p>Lors du dépôt d'un fichier de résultats, sont enregistrés le compte de l'auteur du dépôt, la course, le nom et la taille du
         fichier ainsi que la date du dépôt. Le fichier est conservé 60 jours dans l'espace de stockage du site (Cloudflare), puis

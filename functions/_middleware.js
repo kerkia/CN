@@ -174,6 +174,13 @@ export async function onRequest(context) {
       status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
     });
   }
+  // the officers' names, phones and e-mails FFCO prints for its ligues, committees and clubs (« Annuaire »; owner,
+  // 2026-10-31): FFCO's licensees only — a session with a verified licence, never a demo account
+  if (path === "/data/fr/clubdir_contacts.json" && (s.demo || !s.lic)) {
+    return new Response(JSON.stringify({ error: "licence" }), {
+      status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
+    });
+  }
   // the sites to follow up with (admin page, « Sites »): administrators only
   if (path === "/data/prov/blocked.json") {
     const u = env.DB && await env.DB.prepare("SELECT email, email_verified, status FROM users WHERE id = ?").bind(s.uid).first();

@@ -457,8 +457,8 @@ name says VTT goes to a VTT race only, and a VTT race prefers one that says so (
 (published twice, one deleted) gives its documents to its twin and goes (`races.drop_deleted`); f-race names follow
 FFCO's. A file already parsed (same content hash) is not parsed again for the weekend's other races (`run._PARSED`, then
 `prov_docs.sha`). Club websites: FFCO's club directory first (`races.read_directory`: api.ffcorientation.fr's map,
-`clubs.geojson` monthly and one popup per club, 40 per run — only the number and the website are kept, never the
-officers' names, phones or e-mails; table `prov_club_dir`), else the site the agenda gave for one of the club's events
+`clubs.geojson` monthly and one popup per club, 40 per run — the number, the website and, since 2026-10-31, the contacts
+(column `contact`, for « Annuaire »); table `prov_club_dir`), else the site the agenda gave for one of the club's events
 (often the event's own: `prov_clubs`); the past month's races, dropped
 by the agenda before the pilot started, were added from its CSV export (one request each time the window reaches
 further back — `agenda_backfill_from`; the owner's go-ahead 2026-10-08, for September then August; `races.backfill`). Each run looks at the longest-waiting races first, the organiser's site before the
@@ -704,15 +704,23 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   FFCO lists with its website, as a tree — the ligues (their site), their départements (their committee's, the CDCO's), their
   clubs (their own) — beside a map of France's ligues and départements (`geo/departements.json` and `regions.json`, drawn as SVG;
   hidden under 640 px). A node chosen in the tree lights up on the map with what it holds and the map zooms to its ligue; a click
-  on the map chooses the ligue, a second one inside it the département, and opens that node alone in the tree (`?sel=L:AR|D:69`).
+  on the map chooses the ligue, a second one inside it the département, and opens that node alone in the tree (`?sel=L:AR|D:69`);
+  the map is never zoomed, only coloured (owner, 2026-10-31: every ligue stays in reach).
   A website not found is said (« site non trouvé »), as is a département without a committee. The data: `ffco_scraper/prov/clubdir.py`,
   run by every provisional run after the club directory: FFCO's structure pages on api.ffcorientation.fr (`/iframe/structures/`,
   `/iframe/ligues/<id>/`, `/iframe/comites/<id>/`; tables `prov_struct`, `prov_struct_club`), each read again every 7 days (the
-  first time all ~110 at once), only numbers, names and websites kept — never the officers, addresses, phones or e-mails the pages
-  print; a club a committee lists that `prov_club_dir` lacks is queued there, whose popups are now read every 14 days (30 before).
+  first time all ~110 at once), numbers, names, websites and **contacts** — the « Bureau » (officers' names and roles), phone and
+  e-mail each page and each club's popup prints (`clubdir.contact`, column `contact` of `prov_struct` and `prov_club_dir`; NULL =
+  not read since, which makes it due), never the postal address; a club a committee lists that `prov_club_dir` lacks is queued
+  there, whose popups are now read every 14 days (30 before). **The contacts are FFCO's licensees' only** (owner, 2026-10-31):
+  a file of their own, `fr/clubdir_contacts.json` (`{L, D, C}` by ligue, département, club), which the login gate refuses to a
+  session without a licence or of a demo account (`_middleware.js`, 403 `licence`); the privacy page says what is kept and why.
+  Each opened node (and a club's ▸) shows them under its row. **Figures**, in the browser (`clubStats`): per club, the licensees
+  holding a value in the site's method at the last month-end, in any discipline (by discipline in the tooltip), and the runners
+  whose last race is within 12 months; summed by département and ligue, in the rows and under the map.
   A club's site: FFCO's directory's, else the agenda's (`prov_clubs`, tagged « d'après l'agenda », payment and registration hosts
-  and the structures' own sites left out). `clubdir.build` writes `fr/clubdir.json` only once every listed page was read and when
-  its content changed (a deploy then). On 2026-10-31: 13 ligues (13 with a site), 95 committees (41), 189 clubs (163; 2 from the
+  and the structures' own sites left out). `clubdir.build` writes `fr/clubdir.json` and `fr/clubdir_contacts.json` only once every
+  listed page was read and when their content changed (a deploy then). On 2026-10-31: 13 ligues (13 with a site), 95 committees (41), 189 clubs (163; 2 from the
   agenda); of the 183 club numbers in results since September 2025 only 3801 and 7203 are absent from FFCO's lists (and the
   « INDIVIDUEL » xx99 numbers).
 - **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator. A format defines its discipline

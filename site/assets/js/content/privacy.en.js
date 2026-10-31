@@ -50,6 +50,15 @@ export const body = (SITE, { world = false } = {}) => `
         may open, for a limited time, a demo account for an orienteering body (federation, league, club) that wants to see the
         site; it is tied to no licence, can't change or upload anything and stops working on the date set. Anyone concerned may ask for it to be corrected or ask no longer to be identified (see “Your rights”);
         the source remains the FFCO's website.</p>
+      <h2 style="font-size:16px">Directory of clubs, committees and regions</h2>
+      <p>The “Directory” tab of the Clubs page shows, for each FFCO region (ligue), departmental committee and club, what the FFCO
+        publishes on its structure pages and club directory: its number, its website and its contact details — the names and roles
+        of its board members (president, secretary, treasurer), its phone number and e-mail address. The postal address is not
+        kept. These contact details are shown only to logged-in accounts whose FFCO licence is checked (not to visitors without an
+        account, nor to demo accounts), and are read again every week: what the FFCO removes disappears from ${SITE} at the next
+        reading. Legal basis: the publisher's legitimate interest in helping licence holders reach the bodies of their sport, from
+        information the FFCO publishes itself. Anyone concerned may object or ask for a correction (see “Your rights”); the source
+        remains the FFCO's website.</p>
       <h2 style="font-size:16px">Results and start-list uploads</h2>
       <p>When a results file is uploaded, the uploader's account, the race, the file's name and size and the date of the upload are
         recorded. The file is kept for 60 days in the site's storage (Cloudflare), then erased; the results it contains remain on

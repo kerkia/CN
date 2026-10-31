@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS prov_clubs (
   site       TEXT,
   read_at    TEXT NOT NULL
 );
--- FFCO's club directory (api.ffcorientation.fr/iframe/structures/, one popup per club): the number and the website
--- only — never the officers' names, phones or e-mails it shows too
+-- FFCO's club directory (api.ffcorientation.fr/iframe/structures/, one popup per club): the number, the website and,
+-- since 2026-10-31, the contacts (column `contact`, added by clubdir.connect: officers, phone, e-mail; FFCO's licensees only)
 CREATE TABLE IF NOT EXISTS prov_club_dir (
   id         INTEGER PRIMARY KEY,        -- the directory's own id
   code       TEXT,                       -- FFCO club number ('2104')

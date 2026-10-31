@@ -306,8 +306,11 @@ DIR = "https://api.ffcorientation.fr/iframe"
 
 def read_directory(con, f, per_run: int = 40, every_days: int = 30) -> int:
     """FFCO's club directory: the club's own website, by club number. Its map lists the clubs (clubs.geojson, once a
-    month) and a popup per club gives its number and website — read a few per run, the oldest first. Its robots.txt
-    forbids robots: read anyway (the owner's decision, 2026-10-09), on the admin's list of sites."""
+    month) and a popup per club gives its number, website and contacts (« Bureau », phone, e-mail: clubdir.contact, shown
+    to FFCO's licensees only) — read a few per run, the oldest first (a popup whose contacts were never kept first). Its
+    robots.txt forbids robots: read anyway (the owner's decision, 2026-10-09), on the admin's list of sites."""
+    from . import clubdir
+    clubdir.connect(con)
     stamp = now_iso()
     last = con.execute("SELECT v FROM prov_meta WHERE k = 'club_dir_list'").fetchone()
     if not last or last["v"] < (datetime.now(timezone.utc) - timedelta(days=every_days)).isoformat():
@@ -323,7 +326,8 @@ def read_directory(con, f, per_run: int = 40, every_days: int = 30) -> int:
         con.execute("INSERT OR REPLACE INTO prov_meta (k, v) VALUES ('club_dir_list', ?)", (stamp,))
     old = (datetime.now(timezone.utc) - timedelta(days=every_days)).isoformat()
     n = 0
-    for row in con.execute("SELECT id FROM prov_club_dir WHERE read_at < ? ORDER BY read_at LIMIT ?", (old, per_run)).fetchall():
+    for row in con.execute("SELECT id FROM prov_club_dir WHERE read_at < ? OR contact IS NULL "
+                           "ORDER BY contact IS NOT NULL, read_at LIMIT ?", (old, per_run)).fetchall():
         if f.out_of_time():
             break
         a = f.get(f"{DIR}/clubs/popup/", conditional=False, params={"id": row["id"]})
@@ -332,8 +336,9 @@ def read_directory(con, f, per_run: int = 40, every_days: int = 30) -> int:
         text = a.content.decode("utf-8", "replace")
         code = re.search(r"Num[ée]ro FFCO(?:&nbsp;|\s)*:\s*(\d{2,4})", text)
         site = re.search(r"Site web(?:&nbsp;|\s)*:\s*<a href=\"([^\"]+)\"", text)
-        con.execute("UPDATE prov_club_dir SET code = ?, site = ?, read_at = ? WHERE id = ?",
-                    (code.group(1).zfill(4) if code else None, site.group(1).strip() if site else None, stamp, row["id"]))
+        con.execute("UPDATE prov_club_dir SET code = ?, site = ?, contact = ?, read_at = ? WHERE id = ?",
+                    (code.group(1).zfill(4) if code else None, site.group(1).strip() if site else None,
+                     json.dumps(clubdir.contact(text), ensure_ascii=False), stamp, row["id"]))
         n += 1
     con.commit()
     return n
