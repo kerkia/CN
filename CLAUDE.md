@@ -362,8 +362,10 @@ The file inputs of traces take any file on a touch screen (`util.fileAccept`: iO
 hero has « Se connecter », « Créer un compte », « Entrer sans compte » (`data-guest-enter`, `app.enterAsGuest`). Each section is a
 course of its own (`tour.js` `mod`: the start triangle beside its introduction, its legs numbered from 1, its finish holding the
 way in; the line's length measured to the finish, `--line`). « Tarifs » is a table, the modules as columns and the access levels
-as rows (without an account, with one, a federation's licensee, with Orga), each row adding to the one above and marked
-« Gratuit pour tous »; each cell lists what it adds (`CAPS`, keys `tour.f.<module>.<level>.<n>`: change both together). A link
+as rows (without an account, with one, with Orga), each row adding to the one above and marked « Gratuit pour tous »; each cell
+lists what it adds (`CAPS`, the keys `tour.f.<module>.<level>.<n>` it names: change both together); what only a federation's
+licensee sees (`<module>.fed.<n>`) has no row of its own since 2026-10-31 (owner): an asterisk in the row it opens from, the note
+under the table (`tour.feat.note`) explaining it. A link
 of the bar is caught by the page (`overview.onSectionLink`: a second click on the same one works too) and jumps to the section
 under the bar, put right again as the pictures load (their sizes are written in the page) unless the reader has scrolled since;
 on the home page the logo and the name take it back to its top. Stats' « Indice Ozimut » leg holds « Votre niveau sur la durée »

@@ -34,15 +34,17 @@ export const MODS = [
   { id: "coach", legs: ["analysis", "multi", "training"] },
   { id: "orga", legs: ["orga"] },
 ];
-// who sees what (owner, 2026-10-30): the modules as columns, the access levels as rows — without an account, with one, a
-// federation's licensee (France: an FFCO licence checked), with the Orga module —, each level adding to the one above; in each
-// cell the capabilities it adds (`tour.f.<module>.<level>.<n>`, counted here)
-const LEVELS = ["guest", "account", "fed", "orga"];
+// who sees what (owner, 2026-10-30): the modules as columns, the access levels as rows — without an account, with one, with
+// the Orga module —, each level adding to the one above; in each cell the capabilities it adds (`tour.f.<key>`). What only a
+// federation's licensee sees (France: an FFCO licence checked; keys `<module>.fed.<n>`) has no row of its own (owner,
+// 2026-10-31): it sits in the row it opens from, marked with an asterisk that the note under the table explains
+const LEVELS = ["guest", "account", "orga"];
+const seq = (k, n) => Array.from({ length: n }, (_, i) => `${k}.${i + 1}`);
 const CAPS = {
-  arena: { guest: 10, account: 3, fed: 4, orga: 0 },
-  stats: { guest: 5, account: 0, fed: 12, orga: 0 },
-  coach: { guest: 8, account: 5, fed: 1, orga: 0 },
-  orga: { guest: 0, account: 1, fed: 1, orga: 9 },
+  arena: { guest: seq("arena.guest", 10), account: [...seq("arena.account", 3), ...seq("arena.fed", 4)], orga: [] },
+  stats: { guest: seq("stats.guest", 5), account: seq("stats.fed", 11), orga: [] },
+  coach: { guest: seq("coach.guest", 8), account: [...seq("coach.account", 5), "coach.fed.1"], orga: [] },
+  orga: { guest: [], account: ["orga.account.1"], orga: ["orga.orga.1", "orga.fed.1", ...seq("orga.orga", 9).slice(1)] },
 };
 // the capabilities that name « Définitions de postes », listed for the accounts named Le Helloco only (auth.owner)
 const OWNER_CAPS = new Set(["coach.guest.6"]);
@@ -119,8 +121,9 @@ function mod(M) {
 /** Who sees what: the modules as columns, the access levels as rows, in each cell what that level adds. */
 function features() {
   const cell = (m, l) => {
-    const n = CAPS[m][l];
-    return html`<td data-mod="${m}"><span class="tour-feat-m">${t(`mod.${m}`)}</span>${n ? html`<ul>${Array.from({ length: n }, (_, i) => `${m}.${l}.${i + 1}`).filter((k) => owner() || !OWNER_CAPS.has(k)).map((k) => html`<li>${t(`tour.f.${k}`)}</li>`)}</ul>`
+    const keys = CAPS[m][l].filter((k) => owner() || !OWNER_CAPS.has(k));
+    const star = (k) => (k.includes(".fed.") ? html`<span class="tour-star" title="${t("tour.feat.star")}">*</span>` : "");
+    return html`<td data-mod="${m}"><span class="tour-feat-m">${t(`mod.${m}`)}</span>${keys.length ? html`<ul>${keys.map((k) => html`<li>${t(`tour.f.${k}`)}${star(k)}</li>`)}</ul>`
       : html`<span class="tour-no">${t(`tour.f.none.${l}`)}</span>`}</td>`;
   };
   return html`<section class="tour-sec tour-features" id="mod-features">

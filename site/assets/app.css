@@ -2700,6 +2700,7 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .tour-feat-table td ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
 .tour-feat-table .tour-feat-m { display: none; }
 .tour-feat-table .tour-no { color: var(--ink-3); }
+.tour-feat-table .tour-star { color: var(--flag); font-weight: 700; margin-left: 2px; cursor: help; }
 @media (max-width: 860px) {
   .tour-feat-table, .tour-feat-table tbody, .tour-feat-table tr, .tour-feat-table td, .tour-feat-table tbody th { display: block; width: auto; }
   .tour-feat-table thead { display: none; }
