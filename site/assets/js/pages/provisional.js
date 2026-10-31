@@ -8,7 +8,7 @@ import { html, raw, $, $$, fmt, fmtDate, fmtFormat, pctN, fmtCat } from "../util
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { available, get as storeGet } from "../store.js";
+import { available, arenaMethod } from "../store.js";
 import { methodShort, seg, dataTable, scoreCell, subHead, cnLabel, scoreLabel, freezeAttrs } from "../ui.js";
 import { raceFilters } from "../racefilters.js";
 import { link, replaceQuery } from "../app.js";
@@ -181,7 +181,7 @@ async function detail(main, idx, query) {
     const best = found.find(([i]) => docs[i].by !== "category" || docs[i].circuits?.length) || found[0];
     if (best) [di, ci] = best;
   }
-  const M = [storeGet().method];
+  const M = [arenaMethod()];
   // the live GPS tracking its organiser linked (« Organisation › Direct »): by the race's key or its agenda event's
   const agendaId = race.agenda_id || idx?.races?.find((r) => r.key === race.key)?.agenda_id;
   const track = tracking.linkOf(tracks, race.key, agendaId && `a${agendaId}`);
@@ -308,7 +308,7 @@ async function detail(main, idx, query) {
     if (!cnNow && !FR) cnNow = new Map();
     if (!cnNow) {
       const month = data.latestMonth(), tr = TERRAIN_CODE[race.terrain] || "For";
-      cnNow = await data.cnAt(storeGet().method, tr, month);      // the site's method, today
+      cnNow = await data.cnAt(arenaMethod(), tr, month);      // Arena's method, today
     }
     const cn = (r) => (r.lic ? cnNow.get(String(r.lic)) ?? null : null);
     const rows = [...k.runners].sort((a, b) => (a.start_s ?? 1e9) - (b.start_s ?? 1e9) || a.name.localeCompare(b.name, "fr"));

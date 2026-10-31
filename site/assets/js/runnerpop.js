@@ -44,7 +44,7 @@ export function runnerFacts(lic, m) {
 /** The figures' blocks (the discipline `terrain` first), or a line saying there are none. */
 export async function factsHtml(lic, terrain) {
   if (!lic || !data.isPrivateLoaded()) return html`<p class="muted lv-pop-none">${t("lv.pop.noRank")}</p>`;
-  const m = store.get().method, f = await runnerFacts(lic, m);
+  const m = store.arenaMethod(), f = await runnerFacts(lic, m);
   const list = [...f.out].sort((a, b) => (b.terrain === terrain) - (a.terrain === terrain));
   return list.length ? html`<div class="lv-pop-sub muted">${t("lv.pop.asOf", { cn: cnLabel(m), d: fmtDate(f.month) })}</div>
     ${list.map((d) => html`<div class="lv-pop-d${d.terrain === terrain ? " here" : ""}">

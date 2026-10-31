@@ -991,7 +991,7 @@ const movedNotice = () => { if (auth.session()?.movedNotice) setTimeout(() => im
 const pushBoot = () => setTimeout(() => { if (auth.session()?.email && !auth.session()?.demo) import("./push.js").then((p) => p.boot()).catch(() => {}); }, 4000);
 
 // the words for the value of the method shown, in any text that names it without its caller giving them (« indices Ozimut »)
-setDefaults(() => cnWords(store.get().method));
+setDefaults(() => cnWords(store.pageMethod()));
 
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });

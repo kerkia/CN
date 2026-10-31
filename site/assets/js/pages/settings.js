@@ -8,6 +8,7 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
 import { link } from "../app.js";
+import { methodShort } from "../ui.js";
 import * as pwa from "../pwa.js";
 import { name as countryName, membershipFields, bindMembershipFields, readMembership, flagImg } from "../country.js";
 
@@ -104,6 +105,11 @@ export async function render(main, { query = {} } = {}) {
         <p class="muted" style="margin:0;font-size:12.5px">${t("st.orga.hint")}</p>
       </div></section>
 
+      ${store.METHODS.every((m) => store.available().includes(m)) && auth.sees("FR") ? html`<section class="card"><div class="card-head"><h2>${t("st.arenaM.title")}</h2></div><div class="card-body stack" style="gap:8px">
+        <div class="seg" role="group" aria-label="${t("st.arenaM.title")}">${store.METHODS.map((m) => html`<button type="button" data-arena-m="${m}" aria-pressed="${String(store.arenaMethod() === m)}" title="${t(`m.${m}.tip`)}">${methodShort(m)}</button>`)}</div>
+        <p class="muted" style="margin:0;font-size:12.5px">${t("st.arenaM.hint")}</p>
+      </div></section>` : ""}
+
       <section class="card"><div class="card-head"><h2>${t("st.push.title")}</h2></div><div class="card-body stack" style="gap:8px">
         <p class="soft" style="margin:0">${t("st.push.hint")}</p>
         <div id="push-device" class="stack" style="gap:8px"></div>
@@ -134,6 +140,12 @@ export async function render(main, { query = {} } = {}) {
     </div>`;
 
   const flash = (el, text, ok) => { el.textContent = text; el.className = `notice${ok ? " ok" : ""}`; el.hidden = false; };
+
+  // Arena's ranking method (owner, 2026-10-31), on this device as Stats' choice is
+  $$("[data-arena-m]").forEach((b) => b.addEventListener("click", () => {
+    store.setArenaMethod(b.dataset.arenaM);
+    $$("[data-arena-m]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
 
   // « Mes pays » (owner, 2026-10-20): the countries joined — club, member id, checked or declared —, each changed or left;
   // another joined. France is checked against FFCO's licensees with the account's own first name and surname. A change

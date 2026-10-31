@@ -20,6 +20,7 @@ const KEY = "cnx.state";
 const defaults = {
   method: "official",
   methods: ["official"],
+  arenaMethod: "official", // Arena's own (owner, 2026-10-31: chosen in Réglages; Stats keeps its switch)
   terrain: "For",
   compare: [],            // [{lic, slot}] — slot is a fixed colour index 0..7
   clubs: [],              // [{code, slot}] — clubs being compared, same slot rule
@@ -42,6 +43,9 @@ function load() {
     if (RENAMED[s.method]) s.method = RENAMED[s.method];
     if (!METHODS.includes(s.method)) s.method = defaults.method;
     s.methods = [s.method];
+    // Arena's method, saved before it had its own: the one Stats showed, which Arena followed until then
+    if (RENAMED[s.arenaMethod]) s.arenaMethod = RENAMED[s.arenaMethod];
+    if (!METHODS.includes(s.arenaMethod)) s.arenaMethod = s.method;
     delete s.mv;
     return { ...defaults, ...s };
   } catch (e) {
@@ -97,6 +101,15 @@ export function setMethod(m, { quiet = false } = {}) {
   set({ method: m, methods: [m] });
 }
 export const toggleMethod = (m) => setMethod(m);
+
+// Arena's ranking method (owner, 2026-10-31): chosen in Réglages, apart from Stats' switch — Arena's results, live races and
+// runner windows show it (the CN J-15, scores and expected places); the loaded country's first when it lacks it (Spain).
+export const arenaMethod = () => (AVAIL.includes(state.arenaMethod) ? state.arenaMethod : AVAIL[0]);
+export function setArenaMethod(m) {
+  if (METHODS.includes(m) && m !== state.arenaMethod) set({ arenaMethod: m });
+}
+/** The method of the page shown: Arena's own in Arena, else the site's (Stats' switch). */
+export const pageMethod = () => (document.body?.dataset.group === "arena" ? arenaMethod() : get().method);
 
 // ---- comparison set -------------------------------------------------------
 // Colour follows the runner, not their position: a runner keeps its slot until

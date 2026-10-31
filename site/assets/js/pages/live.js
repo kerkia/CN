@@ -226,7 +226,7 @@ async function race(main, id, wanted, arg) {
   // the ranking shown is the one chosen in Stats (owner, 2026-10-30: Arena offers no choice of its own)
   async function cnFor(terrain) {
     if (!FR) return { shown: new Map(), valuer: new Map(), monthJ15: null };
-    const m = store.get().method, k = `${terrain}|${m}`;
+    const m = store.arenaMethod(), k = `${terrain}|${m}`;
     if (st.cn[k]) return st.cn[k];
     const day = st.info?.date || new Date().toISOString().slice(0, 10);
     const j15 = new Date(Date.parse(day) - 15 * 86400e3).toISOString().slice(0, 10);
@@ -248,7 +248,7 @@ async function race(main, id, wanted, arg) {
   function scores(finishers, key, terrain) {
     const held = finishers.filter((x) => x.cnv[key] && x.time > 0);
     if (held.length < 3) return () => null;
-    const m = store.get().method;
+    const m = store.arenaMethod();
     const p = m === "official" ? {} : cn.paramsFor(data.meta(), VALUER[m], terrain);
     const cv = cn.circuitValue(held.map((x) => [x.cnv[key], x.time]), { ...p, min_ranked: 3 });
     return (x) => (cv != null && x.time > 0 ? Math.round(cv / x.time) : null);
@@ -259,7 +259,7 @@ async function race(main, id, wanted, arg) {
   async function enrich(cls) {
     const d = st.all.get(cls);
     if (!d) return null;
-    const m = store.get().method, hit = enriched.get(d);
+    const m = store.arenaMethod(), hit = enriched.get(d);
     if (hit && hit.m === m) return hit.rows;
     const terrain = terrainOf(st.info?.name || "", cls);
     const c = await cnFor(terrain);
@@ -572,7 +572,7 @@ async function race(main, id, wanted, arg) {
         : html`<td class="r num lv-sc">${x.score != null ? scoreCell(x.score, x.cn) : ""}</td>`}` : ""}</tr>`;
   }
   function table(groups, now, o) {
-    const m = store.get().method;
+    const m = store.arenaMethod();
     const cols = 4 + (o.course ? 1 : 0) + (o.club ? 1 : 0) + (o.cat ? 1 : 0) + (FR ? 2 : 0) + (ONE ? 1 + (FR ? 2 : 0) : 0);
     const block = (k) => (groups[k]?.length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.${k}`)} <span class="muted">${groups[k].length}</span></span></td></tr>
       ${groups[k].map((x) => line(x, k, now, o))}` : "");
@@ -678,7 +678,7 @@ async function race(main, id, wanted, arg) {
       t("lv.onLeg", { l: e.cur, n: d.relay.legs })} <span class="muted">${list.filter((x) => x.cur === e.cur).length}</span></span></td></tr>`);
     const block = (k) => (g[k].length ? html`<tr class="lv-sec"><td colspan="${cols}"><span class="lv-sec-l">${t(`lv.t${k}`)} <span class="muted">${g[k].length}</span></span></td></tr>
       ${g[k].map((e, i, list) => html`${k === "run" ? legHead(e, i, list) : ""}${team(e, k, i)}${isOpen(e) ? e.legs.map(leg) : ""}`)}` : "");
-    const m = store.get().method;
+    const m = store.arenaMethod();
     return html`<table class="data compact lv-table lv-relay${ONE ? " lv-one" : ""}"><thead><tr><th class="r" title="${t("lv.legNo.tip")}">${t("prov.place")}</th>
       <th>${t("lv.teamRunner")}</th><th class="r">${t("lv.start")}</th>
       ${pairHead(t("lv.legTime"), t("lv.legPlace"), t("lv.legTime.tip"))}${pairHead(t("lv.cumul"), t("lv.behind"), t("lv.cumul.tip"))}<th class="r" title="${t("lv.rank.tip")}">${t("lv.rank")}</th><th title="${t("prov.catCn")}">${t("prov.cat")}</th>
@@ -876,7 +876,7 @@ async function race(main, id, wanted, arg) {
     // discipline (as guessed from its name) first
     let who = html`<p class="muted lv-pop-none">${t(FR ? "lv.pop.unknown" : "lv.pop.noRank")}</p>`;
     if (FR && x.me) {
-      const m = store.get().method, f = await factsOf(x.me.lic, m);
+      const m = store.arenaMethod(), f = await factsOf(x.me.lic, m);
       const list = [...f.out].sort((a, b) => (b.terrain === terrain) - (a.terrain === terrain));
       who = list.length ? html`<div class="lv-pop-sub muted">${t("lv.pop.asOf", { cn: cnLabel(m), d: fmtDate(f.month) })}</div>
         ${list.map((d) => html`<div class="lv-pop-d${d.terrain === terrain ? " here" : ""}">
