@@ -699,7 +699,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   World Cup's old scale). Tabs: Palmarès (period, category or all, points or medals; the leaders' cumulated points), Classements
   (one edition complete, gap, club place and points), Club (places year by year), Éditions (venues, field sizes, winners). The
   page shows the files' order: FFCO's official CFC podiums sometimes skip a club's lower team (said under N2-N4).
-- **Annuaire** (`#/clubs?onglet=annuaire`, `pages/clubdir.js`, a view of Clubs, France only; owner, 2026-10-31): every club
+- **Annuaire** (`#/clubs?onglet=annuaire`, `pages/clubdir.js`, the last view of Clubs, after « Mon club », France only; owner,
+  2026-10-31): every club
   FFCO lists with its website, as a tree — the ligues (their site), their départements (their committee's, the CDCO's), their
   clubs (their own) — beside a map of France's ligues and départements (`geo/departements.json` and `regions.json`, drawn as SVG;
   hidden under 640 px). A node chosen in the tree lights up on the map with what it holds and the map zooms to its ligue; a click
