@@ -2589,7 +2589,7 @@ export default {
   "tour.mod.orga.lede": "Orga donne aux clubs les outils du jour J et d'après : tracer les circuits dans le navigateur, publier horaires et résultats, diffuser le direct depuis MeOS, vérifier les temps et offrir aux coureurs leur analyse multi. Il s'active à l'inscription ou dans vos réglages, sur ordinateur.",
   "tour.feat.eyebrow": "Tarifs", "tour.feat.title": "Tout est gratuit, module par module",
   "tour.feat.lede": "Chaque ligne ajoute à la précédente. Sans compte, Ozimut montre ce qui est public ; un compte ouvre les alertes et le partage de traces, et le module Orga les outils des organisateurs. Ce qui porte un astérisque demande aussi d'être licencié de la fédération.",
-  "tour.feat.note": "* Réservé aux licenciés de la fédération : en France, un compte qui a rejoint la France, son numéro de licence FFCO vérifié d'après le nom. Les pays dont tous les résultats sont publics (l'Espagne) s'ouvrent à tous.",
+  "tour.feat.note": "Réservé aux licenciés de la fédération : en France, un compte qui a rejoint la France, son numéro de licence FFCO vérifié d'après le nom. Les pays dont tous les résultats sont publics (l'Espagne) s'ouvrent à tous.",
   "tour.feat.star": "Licenciés de la fédération",
   "hub.guest.enter": "Entrer sans compte",
   "home.guest.or": "ou", "home.guest.hint": "Sans compte, de nombreuses fonctions restent réservées aux inscrits : la plupart des fonctions avancées ne sont pas visibles.",

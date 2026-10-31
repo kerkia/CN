@@ -3396,7 +3396,7 @@ export default {
   "tour.mod.orga.lede": "Orga gives clubs the tools for race day and after: set courses in the browser, publish start lists and results, broadcast live from MeOS, check the times and give runners their multi analysis. Turn it on when you register or in your settings, on a computer.",
   "tour.feat.eyebrow": "Pricing", "tour.feat.title": "Everything is free, module by module",
   "tour.feat.lede": "Each row adds to the one above. Without an account Ozimut shows what is public; an account opens alerts and track sharing, and the Orga module the organisers' tools. What carries an asterisk also needs a federation's licence.",
-  "tour.feat.note": "* For a federation's licensees only: in France, an account that joined France, its FFCO licence number checked against the name. Countries whose results are all public (Spain) are open to everyone.",
+  "tour.feat.note": "For a federation's licensees only: in France, an account that joined France, its FFCO licence number checked against the name. Countries whose results are all public (Spain) are open to everyone.",
   "tour.feat.star": "Federation licensees",
   "hub.guest.enter": "Enter without an account",
   "home.guest.or": "or", "home.guest.hint": "Without an account, many features are for registered users only: most advanced features are not shown.",
