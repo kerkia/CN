@@ -25,18 +25,39 @@ export function costGrid(map, raster = map.raster, { cell = 2, climb = 8, descen
   return { map, gw, gh, cell, cost, hgt, blocked, climb, descent };
 }
 
-const NB = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+const NBX = [1, -1, 0, 0, 1, 1, -1, -1], NBY = [0, 0, 1, -1, 1, -1, 1, -1], NBS = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
+/** The cheapest ground of a grid (A*'s lower bound). */
+function minOf(cost, blocked) { let m = Infinity; for (let k = 0; k < cost.length; k++) if (!blocked[k] && cost[k] < m) m = cost[k]; return isFinite(m) ? m : 1; }
 
-/** Binary heap of [key, value]. */
+/** Binary heap of (key, value) pairs in two flat arrays: no object per entry (Edge without its JIT is ten times slower). */
 class Heap {
-  constructor() { this.a = []; }
-  push(k, v) { const a = this.a; a.push([k, v]); let i = a.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break; [a[p], a[i]] = [a[i], a[p]]; i = p; } }
+  constructor() { this.k = []; this.v = []; }
+  push(key, val) {
+    const K = this.k, V = this.v;
+    let i = K.length;
+    K.push(key); V.push(val);
+    while (i > 0) { const p = (i - 1) >> 1; if (K[p] <= key) break; K[i] = K[p]; V[i] = V[p]; i = p; }
+    K[i] = key; V[i] = val;
+  }
+  /** Takes the value of the smallest key. */
   pop() {
-    const a = this.a, top = a[0], last = a.pop();
-    if (a.length) { a[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < a.length && a[l][0] < a[m][0]) m = l; if (r < a.length && a[r][0] < a[m][0]) m = r; if (m === i) break; [a[m], a[i]] = [a[i], a[m]]; i = m; } }
+    const K = this.k, V = this.v, top = V[0];
+    const key = K.pop(), val = V.pop(), n = K.length;
+    if (n) {
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1, r = l + 1;
+        let m = -1, mk = key;
+        if (l < n && K[l] < mk) { m = l; mk = K[l]; }
+        if (r < n && K[r] < mk) { m = r; mk = K[r]; }
+        if (m < 0) break;
+        K[i] = K[m]; V[i] = V[m]; i = m;
+      }
+      K[i] = key; V[i] = val;
+    }
     return top;
   }
-  get size() { return this.a.length; }
+  get size() { return this.k.length; }
 }
 
 /** The node of a map point. */
@@ -44,31 +65,37 @@ const node = (g, p) => [Math.min(g.gw - 1, Math.max(0, Math.floor(p[0] / g.cell)
 
 /**
  * The cheapest way from a to b (map points): {cost, pts (cell centres), simple (straightened), length} or null.
- * extra(k): an added cost per node (to push a route away from another, for alternatives).
+ * extra: an added cost per node (to push a route away from another, for alternatives), a function of the node or an array.
+ * A* (2026-10-31): the octile distance at the grid's cheapest ground is a lower bound of what is left, so the cost found is
+ * Dijkstra's, with far fewer nodes looked at.
  */
 export function dijkstra(g, a, b, { extra = null, pull = true } = {}) {
   const [ax, ay] = node(g, a), [bx, by] = node(g, b);
-  const N = g.gw * g.gh, start = ay * g.gw + ax, goal = by * g.gw + bx;
+  const N = g.gw * g.gh, start = ay * g.gw + ax, goal = by * g.gw + bx, gw = g.gw, gh = g.gh;
   const D = new Float64Array(N).fill(Infinity), P = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+  const blocked = g.blocked, cost = g.cost, hgt = g.hgt, cell = g.cell, climb = g.climb, descent = g.descent;
+  const xf = typeof extra === "function" ? extra : null, xa = extra && !xf ? extra : null;
+  const low = cell * (g.minCost ??= minOf(cost, blocked)), SQ = Math.SQRT2 - 1;
+  const hOf = (x, y) => { const dx = Math.abs(x - bx), dy = Math.abs(y - by); return low * (dx > dy ? dx + SQ * dy : dy + SQ * dx); };
   D[start] = 0;
-  const h = new Heap(); h.push(0, start);
+  const h = new Heap(); h.push(hOf(ax, ay), start);
   while (h.size) {
-    const [d, k] = h.pop();
+    const k = h.pop();
     if (done[k]) continue;
     done[k] = 1;
     if (k === goal) break;
-    const x = k % g.gw, y = (k - x) / g.gw;
-    for (const [dx, dy, s] of NB) {
-      const nx = x + dx, ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= g.gw || ny >= g.gh) continue;
-      const nk = ny * g.gw + nx;
-      if (g.blocked[nk] || done[nk]) continue;
+    const d = D[k], x = k % gw, y = (k - x) / gw, ck = cost[k], hk = hgt[k];
+    for (let q = 0; q < 8; q++) {
+      const dx = NBX[q], dy = NBY[q], nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+      const nk = ny * gw + nx;
+      if (blocked[nk] || done[nk]) continue;
       // a diagonal step must not squeeze between two blocked cells
-      if (dx && dy && g.blocked[y * g.gw + nx] && g.blocked[ny * g.gw + x]) continue;
-      const dh = g.hgt[nk] - g.hgt[k];
-      const step = s * g.cell * (g.cost[k] + g.cost[nk]) / 2 + (dh > 0 ? g.climb * dh : -g.descent * dh) + (extra ? extra(nk) : 0);
+      if (dx && dy && blocked[y * gw + nx] && blocked[ny * gw + x]) continue;
+      const dh = hgt[nk] - hk;
+      const step = NBS[q] * cell * (ck + cost[nk]) / 2 + (dh > 0 ? climb * dh : -descent * dh) + (xf ? xf(nk) : xa ? xa[nk] : 0);
       const nd = d + step;
-      if (nd < D[nk]) { D[nk] = nd; P[nk] = k; h.push(nd, nk); }
+      if (nd < D[nk]) { D[nk] = nd; P[nk] = k; h.push(nd + hOf(nx, ny), nk); }
     }
   }
   if (!isFinite(D[goal])) return null;

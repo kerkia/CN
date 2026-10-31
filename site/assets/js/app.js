@@ -146,7 +146,7 @@ function parseHash(hash = location.hash) {
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
-    : head === "coach" || head === "stats" ? "modtiles"     // a module's tiles, its landing on a phone (2026-10-31)
+    : head === "coach" || head === "stats" || head === "orga" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31)
     : head === "definitions" ? "descriptions"
     : head === "symboles" ? "mapkey"
     : "overview";
@@ -398,15 +398,18 @@ const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask
   agenda: "arena", provisional: "arena", splits: "arena", live: "arena" };
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
-// On a phone, Coach and Stats open on their pages as tiles (owner, 2026-10-31: every choice in sight at once)
-export const moduleHome = (m) => (isPhone() && (m === "coach" || m === "stats") ? `#/${m}`
+// Coach and Orga open on their pages as tiles, Stats too on a phone (owner, 2026-10-31: every choice in sight at once; a
+// computer's Stats stays on the ranking)
+export const moduleHome = (m) => (m === "coach" || m === "orga" || (isPhone() && m === "stats") ? `#/${m}`
   : m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
+/** The module of a tiles page (#/coach, #/stats, #/orga). */
+export const tilesModule = (r) => ({ stats: "stats", orga: "orga" })[r.path.split("/").filter(Boolean)[0]] || "coach";
 /** The module a page belongs to, or null (the modules page, the documentation's home, the settings…). A module's
  *  documentation (#/documentation?module=…) is the module's, its menu in the bar (Orga's greyed out to those who have not
  *  the module: renderHeader). */
 export function moduleOf(r) {
   if (r.route === "methods") return MODULES.includes(r.query?.module) ? r.query.module : null;
-  if (r.route === "modtiles") return r.path.split("/").filter(Boolean)[0] === "stats" ? "stats" : "coach";
+  if (r.route === "modtiles") return tilesModule(r);
   const k = menuKey(r);
   const menus = moduleMenus();
   for (const m of MODULES) if (menus[m].some(([key]) => key === k)) return m;

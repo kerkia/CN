@@ -6,7 +6,6 @@ import { html, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { runGame } from "../games/quiz.js";
-import { isPhone } from "../app.js";
 
 // key, module, export name, levels [[key, label key]] (a level restarts the game with another spec)
 const GAMES = [
@@ -26,9 +25,9 @@ const GAMES = [
 
 export async function render(main, { query }) {
   const tabs = GAMES.map(([k]) => [k, t(`g.${k}.tab`)]);
-  // on a phone the page opens on its games as tiles, one a game (owner, 2026-10-31: every game in sight at once); a tile
-  // opens its game (?onglet=), the bar's back button comes back here
-  if (isPhone() && !tabs.some(([k]) => k === query.onglet)) {
+  // the page opens on its games as tiles, one a game (owner, 2026-10-31: every game in sight at once; on a computer too the
+  // same day); a tile opens its game (?onglet=), the browser's back button comes back here
+  if (!tabs.some(([k]) => k === query.onglet)) {
     main.innerHTML = html`<div class="mod-tiles-page" data-mod="coach">
       <div class="mod-tiles-head"><p>${t("g.lede")}</p></div>
       <div class="mod-tiles">${tabs.map(([k, label]) => html`<a class="mod-tile g-tile" href="#/jeux?onglet=${k}"><b>${label}</b><span>${t(`g.${k}.desc`)}</span></a>`)}</div>

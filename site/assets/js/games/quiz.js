@@ -59,23 +59,76 @@ export function runGame(root, spec) {
   const S = SCORING[spec.scoring] || SCORING.count;
   const bestBox = () => { const b = bests()[spec.key]; return b ? html`<span class="g-best">${t("ui.colon", { a: t("g.best") })} <b>${b.label}</b></span>` : ""; };
 
+  // The puzzles are made before the run (owner, 2026-10-31: some games took seconds, the page frozen, and on Edge without
+  // its JIT — its « enhanced security » on a site it does not know — ten times longer: nothing seemed to happen). They are
+  // made one at a time, the page drawn between two, from the rules' page on; a bar shows how far it is. The timer then only
+  // counts the answer.
+  let prep = null;                                   // {seed, puzzles, ready (promise), onStep}
+  const prepare = (sd) => {
+    if (prep?.seed === sd) return prep;
+    const P = prep = { seed: sd, puzzles: [], onStep: null };
+    P.ready = (async () => {
+      const r = rng(sd);
+      for (let i = 0; i < spec.count; i++) {
+        // let the page draw (the bar, a click); wait while the game's tab is not shown
+        await new Promise((res) => setTimeout(res, 0));
+        while (prep === P && root.isConnected && !root.offsetParent) await new Promise((res) => setTimeout(res, 300));
+        if (prep !== P || !root.isConnected) return null;
+        let p = null;
+        try { p = spec.make(i, r); } catch (e) { console.error(e); }
+        P.puzzles.push(p);
+        P.onStep?.(i + 1);
+      }
+      return P.puzzles;
+    })();
+    return P;
+  };
+  const prepBar = (P, cls = "") => html`<div class="g-prep ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="${spec.count}" aria-valuenow="${P.puzzles.length}">
+    <span>${t("g.prep")}</span><span class="g-bar"><i style="width: ${(100 * P.puzzles.length) / spec.count}%"></i></span>
+    <span class="num g-prep-n">${P.puzzles.length} / ${spec.count}</span></div>`;
+  const follow = (P, box) => {
+    P.onStep = (n) => {
+      const el = $(".g-prep", box);
+      if (!el) return;
+      el.setAttribute("aria-valuenow", n);
+      $(".g-bar i", el).style.width = `${(100 * n) / spec.count}%`;
+      $(".g-prep-n", el).textContent = `${n} / ${spec.count}`;
+      if (n === spec.count && el.classList.contains("g-prep-quiet")) setTimeout(() => el.remove(), 400);   // the rules' page: ready
+    };
+  };
+
   const intro = () => {
     root.innerHTML = html`<div class="g-intro">
       <div class="g-rules">${raw(spec.intro)}</div>
       <div class="row"><button class="btn btn-primary" type="button" id="g-start">${t("g.start")}</button>${bestBox()}</div>
+      <div class="g-prep-slot"></div>
     </div>`;
     $("#g-start", root).addEventListener("click", play);
+    // the rules are read while the maps are made; the bar only when it takes a while
+    const sd = seed;
+    setTimeout(() => {
+      if (seed !== sd || !root.isConnected || !$(".g-prep-slot", root)) return;
+      const P = prepare(sd), slot = $(".g-prep-slot", root);
+      setTimeout(() => { if (P.puzzles.length < spec.count && slot.isConnected) { slot.innerHTML = prepBar(P, "g-prep-quiet"); follow(P, slot); } }, 350);
+    }, 250);
   };
 
   async function play() {
-    const r = rng(seed);
+    const P = prepare(seed);
+    if (P.puzzles.length < spec.count) {
+      root.innerHTML = html`<div class="g-loading">${prepBar(P)}</div>`;
+      follow(P, root);
+    }
+    const puzzles = await P.ready;
+    if (!puzzles || prep !== P || !root.isConnected) return;
+    prep = null;                                       // a puzzle is played once
     const results = [];
     let timer = null, cleanup = null;
     const stop = () => { if (timer) clearInterval(timer); timer = null; cleanup?.(); cleanup = null; };
     root._stop = stop;
     for (let i = 0; i < spec.count; i++) {
       // eslint-disable-next-line no-await-in-loop
-      const res = await one(i, r, results, (fn) => { cleanup = fn; }, (tm) => { timer = tm; });
+      const res = await one(i, puzzles[i], results, (fn) => { cleanup = fn; }, (tm) => { timer = tm; });
       if (!res) return;                                 // left the page
       results.push(res);
     }
@@ -83,10 +136,9 @@ export function runGame(root, spec) {
   }
 
   /** One puzzle: resolves to {ok, choice, ms, points, answer}; null if the root was emptied meanwhile. */
-  function one(i, r, results, setCleanup, setTimer) {
+  function one(i, p, results, setCleanup, setTimer) {
     return new Promise((resolve) => {
-      let p;
-      try { p = spec.make(i, r); } catch (e) { console.error(e); resolve({ ok: false, choice: "—", ms: 0, points: 0, answer: "?" }); return; }
+      if (!p) { resolve({ ok: false, choice: "—", ms: 0, points: 0, answer: "?" }); return; }
       const soFar = results.length ? S.total(results).label : "";
       root.innerHTML = html`<div class="g-top">
         <span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span>
@@ -194,7 +246,7 @@ export function runGame(root, spec) {
   }
 
   intro();
-  return { stop: () => root._stop?.() };
+  return { stop: () => { prep = null; root._stop?.(); } };
 }
 
 /** A small beep (the countdowns); silent where audio is not allowed. */

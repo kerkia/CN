@@ -1,14 +1,14 @@
-// A module's own landing on a phone (owner, 2026-10-31): Coach's (#/coach) and Stats' (#/stats) pages as tiles, one a menu
-// entry, so that every page is in sight at once (app.moduleHome leads there on a phone; a computer has them in the bar).
+// A module's own landing (owner, 2026-10-31): Coach's (#/coach), Orga's (#/orga) and, on a phone, Stats' (#/stats) pages as
+// tiles, one a menu entry, so that every page is in sight at once (app.moduleHome leads there).
 
 import { html } from "../util.js";
 import { t } from "../i18n.js";
-import { moduleMenus } from "../app.js";
+import { moduleMenus, tilesModule } from "../app.js";
 import * as auth from "../auth.js";
 import { icon } from "./hub.js";
 
 export async function render(main, r) {
-  const m = r.path.split("/").filter(Boolean)[0] === "stats" ? "stats" : "coach";
+  const m = tilesModule(r);
   const items = moduleMenus()[m];
   main.innerHTML = html`<div class="mod-tiles-page" data-mod="${m}">
     <div class="mod-tiles-head">${icon(m)}<p>${t(m === "coach" ? auth.ownerKey("mod.coach.tag") : `mod.${m}.tag`)}</p></div>

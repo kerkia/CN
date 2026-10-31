@@ -48,13 +48,23 @@ export function spec() {
         if (!L) continue;
         const [S, C] = L;
         const found = [];
-        const nearAny = (k) => { const x = ((k % g.gw) + 0.5) * g.cell, y = (Math.floor(k / g.gw) + 0.5) * g.cell; return found.some((f) => apart([[x, y]], f) < 35) ? 2.2 : 0; };
+        // the nodes within 35 m of a route found cost 2.2 more: the next route keeps off it (a mask, not a distance per node)
+        const near = new Float32Array(g.gw * g.gh), R = 35 / g.cell;
+        const keepOff = (pts) => {
+          for (const [px, py] of pts) {
+            const ci = px / g.cell - 0.5, cj = py / g.cell - 0.5;
+            for (let j = Math.max(0, Math.ceil(cj - R)); j <= Math.min(g.gh - 1, Math.floor(cj + R)); j++)
+              for (let i = Math.max(0, Math.ceil(ci - R)); i <= Math.min(g.gw - 1, Math.floor(ci + R)); i++)
+                if ((i - ci) ** 2 + (j - cj) ** 2 < R * R) near[j * g.gw + i] = 2.2;
+          }
+        };
         for (let k = 0; k < 3; k++) {
-          const res = dijkstra(g, S, C, { pull: false, extra: found.length ? nearAny : null });
+          const res = dijkstra(g, S, C, { pull: false, extra: found.length ? near : null });
           if (!res) break;
           const pts = resample(res.simple, 6);
           if (found.some((f) => apart(pts, f) < 25)) break;
           found.push(pts);
+          keepOff(pts);
         }
         if (found.length < 2) continue;
         const straight = resample([S, C], 6);

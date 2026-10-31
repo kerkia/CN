@@ -26,10 +26,12 @@ function variants(r, map, kind) {
     const forks = [];
     for (let k = 0; k < 3; k++) { const p = freePoint(r, map, { margin: 40, away: 45, from: [...pts, ...forks] }); if (!p || Math.hypot(p[0] - start[0], p[1] - start[1]) > 230) { ok = false; break; } forks.push(p); }
     if (!ok) continue;
+    const first = dijkstra(g, S, C1, { pull });            // the same first leg for the three
+    if (!first) continue;
     const V = forks.map((C2) => {
       const course = [S, C1, C2, F];
-      const legs = [];
-      for (let k = 1; k < course.length; k++) { const res = dijkstra(g, course[k - 1], course[k], { pull }); if (!res) return null; legs.push(res); }
+      const legs = [first];
+      for (let k = 2; k < course.length; k++) { const res = dijkstra(g, course[k - 1], course[k], { pull }); if (!res) return null; legs.push(res); }
       const cost = legs.reduce((s, l) => s + l.cost, 0);
       return { pts: course, legs, cost, length: legs.reduce((s, l) => s + l.length, 0) };
     });
