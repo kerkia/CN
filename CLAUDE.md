@@ -285,7 +285,8 @@ name — finds it there; an address naming an event or `periode` opens as asked 
 competitions as dots, today's and the past ones only while the mouse is over their row or they are selected (`agendamap.show`'s
 `ghost`; a past race's place from the results index's `pos`, `prov/run.race_pos`: its place within its organiser's département
 by the offline place tables, else that unit's centre). Arena offers no choice of ranking (owner, 2026-10-30: Stats' alone; « En direct »'s race page lost its button): its
-tables show the one chosen in Stats. Arena has no menu: a race's
+tables show **Arena's own ranking method**, chosen in Réglages (owner, 2026-10-31: « Classement utilisé dans Arena », for an account that sees France; `store.arenaMethod` / `setArenaMethod`, kept in `cnx.state` beside Stats' `method` and taken from it the first time; `store.pageMethod` fills the `{cn}` words with Arena's in Arena — the results page, « En
+direct », the runner's window: `provisional.js`, `live.js`, `runnerpop.js`). Arena has no menu: a race's
 page puts its own tabs in the bar (`app.placeBarTabs` moves the page's `[data-bar-tabs]` — the results page's `raceTabs`,
 `splits.js`'s `#sp-tabs` — into `#nav`; folded behind the menu button when they do not fit). **On a phone** (≤ 760 px; owner,
 2026-10-30: the bar's folded menu stayed open, came twice, would not close on a tap beside it) a race's tabs and Stats' pages are a
