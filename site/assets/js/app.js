@@ -89,6 +89,9 @@ const homeOf = () => "#/modules";
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
   "analysis", "analysisPerso", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+// « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
+const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
+const ownerOnly = () => normalise(nameParts(auth.session()?.nom || "").last) === "le helloco";
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -383,7 +386,8 @@ export function moduleMenus() {
     ],
     // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
-      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]],
+      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]]
+      .filter(([k]) => !OWNER_ROUTES.has(k) || ownerOnly()),
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
@@ -818,6 +822,10 @@ async function route_() {
     try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
+  }
+  if (OWNER_ROUTES.has(r.route) && !ownerOnly()) {
+    history.replaceState(null, "", "#/modules");
+    r = parseHash();
   }
   if (guest && !GUEST_ROUTES.has(r.route)) {
     history.replaceState(null, "", homeOf());
