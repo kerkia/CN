@@ -134,6 +134,7 @@ export function runGame(root, spec) {
           if (finished) return;
           if (!spec.multi) { finish([].concat(p.answer).includes(b.dataset.opt), b.dataset.opt); return; }
           b.classList.toggle("g-picked");
+          stage.querySelector(`.g-pick-${CSS.escape(b.dataset.opt)}`)?.classList.toggle("g-picked", b.classList.contains("g-picked"));   // its picture too
           picked = $$(".g-picked", answers).map((x) => x.dataset.opt);
           $("#g-validate", answers).disabled = picked.length !== spec.multi;
         }));
@@ -145,6 +146,12 @@ export function runGame(root, spec) {
       const begin = () => {
         try { p.render(stage, api); } catch (e) { console.error(e); stage.innerHTML = html`<div class="empty">${String(e.message || e)}</div>`; }
         showOptions();
+        // a tap on an option's own picture (its frame, .g-pick-<option>) answers as its button does (owner, 2026-10-31: on a
+        // phone the buttons were a long scroll away from the pictures)
+        stage.addEventListener("click", (e) => {
+          const f = e.target.closest('[class*="g-pick-"]'), opt = f && /\bg-pick-(\S+)/.exec(f.className)?.[1];
+          if (opt && !finished) answers.querySelector(`.g-opt[data-opt="${CSS.escape(opt)}"]`)?.click();
+        });
         startTimer();
         // a limited look at the map (the knockout's course choice): hidden after viewTime s, chooseTime s more to answer
         if (spec.viewTime) {

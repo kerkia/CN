@@ -65,6 +65,8 @@ export async function render(main, { query }) {
     $$("button", b.parentElement).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
     start(k, b.dataset.level);
   }));
+  // the game's tab in sight in the row of twelve (a phone shows three or four)
+  $('.page-tabs [aria-selected="true"]', main)?.scrollIntoView({ inline: "center", block: "nearest" });
   bindPageTabs(main, tabs, tab, (k) => { if (!running.has(k)) start(k, $(`[data-panel="${k}"] .g-levels [aria-pressed="true"]`, main)?.dataset.level); });
   return { title: t("nav.games"), cleanup: () => running.forEach((g) => g.stop()) };
 }

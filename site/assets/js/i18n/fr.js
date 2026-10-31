@@ -1750,7 +1750,7 @@ export default {
   "g.maze.tab": "Labyrinthe", "g.maze.desc": "Un parcours dans un labyrinthe de haies, vu de l'intérieur. La carte ne dit pas où vous êtes.",
   "g.maze.rules": "<p>Un parcours dans un labyrinthe : départ, postes dans l'ordre, arrivée. Vous le voyez de l'intérieur. <b>Flèches</b> ⟲ ⟳ pour tourner, ▲ ▼ pour avancer et reculer (ou les flèches du clavier), <b>Carte</b> (ou Espace) pour voir le labyrinthe et le parcours — sans votre position. La boussole indique le nord.</p><p>Chaque poste est poinçonné en entrant dans sa case. Le temps compte.</p><p class=\"muted\">D'après <i>Laby</i> de Jarkko Ryyppö.</p>",
   "g.maze.left": "Tourner à gauche", "g.maze.forward": "Avancer", "g.maze.right": "Tourner à droite", "g.maze.back": "Reculer", "g.maze.map": "Carte",
-  "g.maze.toFinish": "Vers l'arrivée", "g.maze.toControl": "Vers le poste {n}", "g.maze.finished": "parcours bouclé",
+  "g.maze.toFinish": "Vers l'arrivée", "g.maze.touch": "Sur un écran tactile, touchez la vue : à gauche ou à droite pour tourner, au milieu pour avancer ; glissez vers le bas pour reculer.", "g.maze.toControl": "Vers le poste {n}", "g.maze.finished": "parcours bouclé",
   // privacy
   "pv.title": "Règles du site et confidentialité",
   // beta notices (beta.js, app.js menus)

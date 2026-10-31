@@ -2561,6 +2561,7 @@ export default {
   "g.maze.back": "Move back",
   "g.maze.map": "Map",
   "g.maze.toFinish": "To the finish",
+  "g.maze.touch": "On a touch screen, tap the view: on its left or right to turn, in its middle to move forward; swipe down to move back.",
   "g.maze.toControl": "To control {n}",
   "g.maze.finished": "course completed",
   "pv.title": "Site rules and privacy",

@@ -1,5 +1,7 @@
 // « Labyrinthe » (after Laby by Jarkko Ryyppö): a course through a hedge maze seen from inside. Arrows (or the
-// buttons) to turn and step, the map on demand — without your position on it. The time counts.
+// buttons) to turn and step, the map on demand — without your position on it. The time counts. On a touch screen
+// (owner, 2026-10-31: « not usable on a phone »): a taller view, the buttons as a pad, and the view itself answers a tap —
+// its left or right side turns, its middle steps forward, a swipe down steps back.
 
 import { html, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
@@ -8,6 +10,10 @@ import { makeCanvas } from "./quiz.js";
 import { int, shuffle } from "./rng.js";
 
 const D = [[0, -1], [1, 0], [0, 1], [-1, 0]];          // N E S W in cell units (north = -y)
+
+// a hedge's height against the lens (the view of 480 × 300 px as first drawn), so that a taller view shows more sky and
+// ground rather than taller hedges
+const WALL = 0.476;
 
 /** Whether one can leave cell (x, y) by side d. */
 const openSide = (map, x, y, d) => map.open.has(`${x},${y},${d}`);
@@ -35,7 +41,7 @@ function drawView(ctx, map, W, H, px, py, f, controls, target) {
     }
     const perp = dist * Math.cos(a - ax);
     zbuf[col] = perp;
-    const hgt = Math.min(H * 3, (H * 0.62) / Math.max(0.05, perp));
+    const hgt = Math.min(H * 3, (focal * WALL) / Math.max(0.05, perp));
     const shade = (side ? 0.72 : 0.9) * Math.max(0.35, 1 - perp / (n * 1.6));
     ctx.fillStyle = `rgb(${Math.round(58 * shade)},${Math.round(120 * shade)},${Math.round(52 * shade)})`;
     ctx.fillRect(col, H / 2 - hgt / 2, 1, hgt);
@@ -47,7 +53,7 @@ function drawView(ctx, map, W, H, px, py, f, controls, target) {
   controls.forEach(([cx, cy], k) => {
     const ox = cx + 0.5 - px, oy = cy + 0.5 - py, z = ox * fx + oy * fy, lat = ox * rxv + oy * ryv;
     if (z < 0.25) return;
-    const sxp = W / 2 + (lat * focal) / z, size = (focal / z) * 0.35, base = H / 2 + (focal / z) * 0.5 * 0.62;
+    const sxp = W / 2 + (lat * focal) / z, size = (focal / z) * 0.35, base = H / 2 + (focal / z) * 0.5 * WALL;
     if (sxp < -size || sxp > W + size) return;
     const c0 = Math.max(0, Math.floor(sxp - size / 2)), c1 = Math.min(W - 1, Math.ceil(sxp + size / 2));
     let seen = false;
@@ -90,26 +96,33 @@ export function spec(level = "small") {
       return {
         answer: null,
         render(stage, api) {
-          const W = 480, H = 300;
+          // a narrow screen gets a view nearly as tall as wide (a phone held upright)
+          const narrow = matchMedia("(max-width: 600px)").matches;
+          const W = narrow ? 360 : 480, H = narrow ? 400 : 300;
           const [c, ctx] = makeCanvas(W, H, W);
+          c.classList.add("g-maze-view");
           stage.append(c);
           const bar = document.createElement("div"); bar.className = "g-pad";
           bar.innerHTML = html`<div class="g-pad-row"><span class="g-target" id="g-target"></span></div>
-            <div class="g-pad-row"><button class="btn" data-k="left" type="button" aria-label="${t("g.maze.left")}">⟲</button>
-            <button class="btn" data-k="up" type="button" aria-label="${t("g.maze.forward")}">▲</button>
-            <button class="btn" data-k="right" type="button" aria-label="${t("g.maze.right")}">⟳</button>
-            <button class="btn" data-k="down" type="button" aria-label="${t("g.maze.back")}">▼</button>
-            <button class="btn" data-k="map" type="button" aria-pressed="false">${t("g.maze.map")}</button></div>`;
+            <div class="g-dpad">
+            <button class="btn" data-k="up" type="button" aria-label="${t("g.maze.forward")}" title="${t("g.maze.forward")}">▲</button>
+            <button class="btn" data-k="left" type="button" aria-label="${t("g.maze.left")}" title="${t("g.maze.left")}">⟲</button>
+            <button class="btn g-dpad-map" data-k="map" type="button" aria-pressed="false">${t("g.maze.map")}</button>
+            <button class="btn" data-k="right" type="button" aria-label="${t("g.maze.right")}" title="${t("g.maze.right")}">⟳</button>
+            <button class="btn" data-k="down" type="button" aria-label="${t("g.maze.back")}" title="${t("g.maze.back")}">▼</button></div>
+            <p class="muted g-maze-touch">${t("g.maze.touch")}</p>`;
           stage.append(bar);
           let [px, py] = course[0], f = 0, next = 1, showMap = false, done = false;
+          while (f < 3 && !openSide(map, px, py, f)) f++;          // the start facing an open way, not a hedge
           const controls = course.slice(1);
           const status = () => { $("#g-target", bar).textContent = next < course.length ? (next === course.length - 1 ? t("g.maze.toFinish") : t("g.maze.toControl", { n: next })) : ""; };
           const draw = () => {
             if (showMap) {
-              const view = { x: 0, y: 0, scale: H / map.h };
+              // the map as large as the view allows
+              const S = Math.min(W, H) - 8, view = { x: 0, y: 0, scale: S / map.h };
               ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
-              ctx.save(); ctx.translate((W - H) / 2, 0);
-              drawMap(ctx, map, view, { w: H, h: H, contours: false });
+              ctx.save(); ctx.translate((W - S) / 2, (H - S) / 2);
+              drawMap(ctx, map, view, { w: S, h: S, contours: false });
               const pts = course.map(([x, y]) => [(x + 0.5) * map.cw, (y + 0.5) * map.ch]);
               ctx.save(); ctx.scale(view.scale, view.scale);
               ctx.strokeStyle = COL.course; ctx.fillStyle = COL.course; ctx.lineWidth = 3; ctx.globalAlpha = 0.9;
@@ -139,6 +152,20 @@ export function spec(level = "small") {
             status(); draw();
           };
           $$("button[data-k]", bar).forEach((b) => b.addEventListener("click", () => act(b.dataset.k)));
+          // the view answers a touch: a tap on its left or right third turns, in its middle steps forward (or leaves the map);
+          // a swipe down steps back, a swipe sideways turns
+          let p0 = null;
+          c.addEventListener("pointerdown", (e) => { p0 = [e.clientX, e.clientY]; e.preventDefault(); });
+          c.addEventListener("pointerup", (e) => {
+            if (!p0) return;
+            const dx = e.clientX - p0[0], dy = e.clientY - p0[1], box = c.getBoundingClientRect();
+            p0 = null;
+            if (showMap) { act("map"); return; }
+            if (Math.hypot(dx, dy) > 30) { act(Math.abs(dy) > Math.abs(dx) ? (dy > 0 ? "down" : "up") : dx < 0 ? "right" : "left"); return; }
+            const x = (e.clientX - box.left) / box.width;
+            act(x < 0.3 ? "left" : x > 0.7 ? "right" : "up");
+          });
+          c.addEventListener("pointercancel", () => { p0 = null; });
           const keys = (e) => {
             const k = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", " ": "map" }[e.key];
             if (!k) return;
