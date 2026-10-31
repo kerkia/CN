@@ -374,10 +374,11 @@ export function moduleMenus() {
     // its own tabs there (its results, the analysis's views: placeBarTabs; owner, 2026-10-30, third review)
     arena: [],
     stats: [
-      // « Classement » first, then « Coureur » (owner, 2026-10-30); « Coureur » opens on one's own page, in France's data
+      // « Classement » first, then « Coureur » (owner, 2026-10-30), « Courses » before « Catégories » (owner, 2026-10-31);
+      // « Coureur » opens on one's own page, in France's data
       // (« Ma page » was the same page); another runner is found by its search
-      ...[["ranking", "#/classement", t("nav.ranking")], ["runner", me?.lic && country.current() === "FR" && ranksHere() ? link.runner(`fr${me.lic}`) : "#/coureur", t("nav.runner")], ["categories", "#/categories", t("nav.categories")],
-        ["courses", "#/courses", t("nav.coursesCn")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
+      ...[["ranking", "#/classement", t("nav.ranking")], ["runner", me?.lic && country.current() === "FR" && ranksHere() ? link.runner(`fr${me.lic}`) : "#/coureur", t("nav.runner")], ["courses", "#/courses", t("nav.coursesCn")],
+        ["categories", "#/categories", t("nav.categories")], ["compare", "#/comparer", t("nav.compare")], ["clubs", "#/clubs", t("nav.clubs")],
         ["relayHistory", "#/relais-nationaux", t("nav.relayHistory")], ["network", "#/reseau", t("nav.network")],
         // « IA » (2026-10-15): France's tables only (/api/ask is France's, _middleware.js FR_API)
         ...(country.current() === "FR" ? [["ask", "#/ia", t("nav.ask")]] : []),
