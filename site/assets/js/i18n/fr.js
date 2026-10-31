@@ -2486,7 +2486,7 @@ export default {
   "mod.stats.tag": "Les classements, les coureurs, les clubs et leurs analyses",
   "mod.coach.tag": "S'entraîner : analyses GPS, définitions de postes, jeux, VMA",
   "mod.orga.tag": "Les outils de l'organisateur : résultats, horaires, direct, tracé",
-  "mod.back": "Revenir au choix du module", "mod.pick": "Choisir un module",
+  "mod.back": "Revenir au choix du module", "nav.histBack": "Page précédente", "nav.histFwd": "Page suivante", "mod.pick": "Choisir un module",
   "hub.welcome": "Bienvenue sur Ozimut", "hub.hello": "Bonjour {name}",
   "hub.lede": "Choisissez un module. Le logo Ozimut, en haut à gauche, vous ramène ici à tout moment pour en changer.",
   "hub.lede.short": "Choisissez un module",
@@ -2571,7 +2571,7 @@ export default {
   "hub.arena.step.agenda": "Agenda", "hub.arena.step.results": "Résultats", "hub.arena.step.live": "En direct",
   "hub.arena.step.splits": "Analyse des temps intermédiaires", "hub.arena.step.map": "Analyse sur la carte",
   // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
-  "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées (60 jours)",
+  "agd.when.today": "Aujourd'hui", "agd.when.coming": "À venir", "agd.when.past": "Passées",
   "agd.past.results": "résultats", "agd.past.splits": "temps inter.", "agd.past.official": "officiels",
   "mod.home": "Revenir à la première page de {mod}",
   "an.cam": "📷 Photographier la carte",

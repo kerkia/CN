@@ -1292,7 +1292,6 @@ table.data tbody tr.found .name { font-weight: 700; }
   .agenda-page.detail-open .cty-hint { display: none; }
   .detail-nav { display: block; padding: 12px 16px 0; }
   .detail-nav:last-child { padding: 4px 0 0; }
-  .agenda-table { max-height: none; min-height: 0; overflow: visible; }
   .agenda-filters .frow > .field { flex: 1 1 calc(50% - 10px); }
   .agenda-filters .frow > .field-wide { flex: 1 1 100%; }
   .agenda-filters .multi > summary { min-width: 0; width: 100%; }
@@ -2642,6 +2641,40 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .agenda-when .frow { margin: 0; gap: 6px 18px; }
 .agenda-when .checkline { gap: 7px; }
 .agenda-when .frow { display: flex; flex-wrap: wrap; align-items: center; }
+.agenda-bar { display: contents; }
+/* the line « Courses en 🇫🇷 France · Choisir un autre pays » (country.hint): the country is a button too, drawn as text on a
+   computer and as a drop-down on a phone, where « Choisir un autre pays » goes (owner, 2026-10-31) */
+.cty-hint button.cty-cur { margin: 0; color: inherit; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.cty-hint button.cty-cur:hover { text-decoration: none; }
+.cty-hint button.cty-cur:hover b { text-decoration: underline; }
+.cty-caret { display: none; }
+/* Arena on a phone (owner, 2026-10-31): the period boxes on one line, the filters and the country on one line under them, and
+   the list scrolling in its own box below, so that the controls stay in sight; the filters open over the list */
+@media (max-width: 980px) {
+  .agenda-page { margin-top: -3px; }                       /* under the bar, the space its buttons have above its line */
+  .agenda-main { gap: 6px; }
+  .agenda-when { padding: 7px 10px; }
+  .agenda-when .frow { flex-wrap: nowrap; justify-content: space-between; gap: 8px; }
+  .agenda-when .checkline { gap: 0; white-space: nowrap; }
+  .agenda-when .when-sw { margin: 0 5px 0 3px; }
+  .agenda-bar { display: flex; align-items: center; gap: 10px; position: relative; }
+  .agenda-bar .filters-fold { flex: none; }
+  .agenda-bar .filters-fold > summary { margin: 0; padding: 8px 12px; gap: 6px; }
+  .agenda-bar .filters-fold > summary::after { margin-left: 4px; }
+  .agenda-bar .filters-fold > .agenda-filters { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30; margin: 0;
+    max-height: calc(100dvh - 190px); overflow: auto; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
+  .agenda-bar .cty-hint { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+  .agenda-bar .cty-pop { left: auto; right: 0; }
+  .agenda-table { max-height: var(--table-fit, calc(100dvh - 210px)); min-height: 220px; overflow: auto; }
+  .cty-hint { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .cty-hint .cty-in { white-space: nowrap; }
+  .cty-hint button.cty-other { display: none; }
+  .cty-hint button.cty-cur { min-width: 0; gap: 6px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 10px;
+    background: var(--surface); color: var(--ink); font-size: 14px; }
+  .cty-hint button.cty-cur b { margin: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cty-hint button.cty-cur:hover b { text-decoration: none; }
+  .cty-hint .cty-caret { display: inline; color: var(--ink-3); }
+}
 /* Analyse solo on a phone: the map photographed with the camera (2026-10-30) */
 .an-cam-row { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; font-size: 12.5px; }
 .an-cam { justify-content: center; height: 44px; font-size: 15px; }
@@ -2788,3 +2821,11 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .ms-tag.sprint { color: var(--water, #0b7fb8); }
 .ms-source { font-size: 12.5px; margin-top: 18px; }
 .cd-id .ms-tag { font-size: 10px; padding: 0 3px; }
+/* a phone's back and forward in the bar (app.js renderHeader; owner, 2026-10-31), in place of a race page's « ‹ Compétitions » */
+.hist-nav { display: none; }
+@media (max-width: 760px) {
+  .hist-nav { display: flex; gap: 2px; flex: none; }
+  .hist-nav .icon-btn { width: 30px; height: 34px; padding: 0; font-size: 24px; line-height: 1; display: grid; place-items: center; }
+  .hist-nav .icon-btn:disabled { opacity: .35; cursor: default; }
+  .back-link.arena-back { display: none; }
+}

@@ -82,7 +82,7 @@ export async function render(main, { query = {} } = {}) {
   const idx = mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
   const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
   main.innerHTML = html`
-    <div id="sp-back">${live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
+    <div id="sp-back">${live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link arena-back" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
     <div class="page-head sp-head race-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
     <div id="sp-tabs" data-bar-tabs></div>

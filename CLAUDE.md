@@ -277,8 +277,14 @@ every visitor's request goes through the gate, which judges the decoded path, an
 **Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the
 agenda's last days that « Résultats » has drops for its row) —, chosen by three boxes in a box of their own above the filters, always shown — on a phone too, where the other filters are
-folded (« Aujourd'hui », « À venir », « Passées (60 jours) »; `st.when`, all three by default; the list opens on today — its box
-scrolled there, on a phone, where the list has no box, the page, once the router has put it at its top). Each row's ground
+folded (« Aujourd'hui », « À venir », « Passées » — « (60 jours) » dropped on 2026-10-31, owner —; `st.when`, all three by default;
+the list opens on today with the last past competition above it, placed again once the box has settled). **On a phone** (owner,
+2026-10-31) the three boxes are on one line, « Filtres » (opening over the list, a tap beside it closes it) and the country's
+drop-down (`country.hint`'s `.cty-cur`, « Choisir un autre pays » hidden there) share the next (`.agenda-bar`), and the list scrolls
+in its own box under them so that they stay in sight; the space under the bar's line is the space its buttons have above it.
+A phone's bar has back and forward buttons on every page (`.hist-nav`, greyed where the Navigation API says there is nowhere to
+go), in place of the race pages' « ‹ Compétitions » (`.arena-back`, hidden there). The results page has no circuit title over
+its table: the circuit's selector says its name and runners. Each row's ground
 says its period (owner, 2026-10-31): the past in the water's wash, today in the flag's, the coming in the forest's (each theme's
 own `--water-wash`, `--flag-wash`, `--forest-wash`; `tr[data-period]`), the three boxes carrying the same colours as a legend
 (`.when-sw`); hover and selection darken the row's tint and mark its first cell. Left for a race (a row, a

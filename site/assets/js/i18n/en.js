@@ -3293,7 +3293,7 @@ export default {
   "mod.stats.tag": "Rankings, runners, clubs and their analyses",
   "mod.coach.tag": "Training: GPS analyses, control descriptions, games, VMA",
   "mod.orga.tag": "The organiser's tools: results, start lists, live, course setting",
-  "mod.back": "Back to the choice of module", "mod.pick": "Choose a module",
+  "mod.back": "Back to the choice of module", "nav.histBack": "Previous page", "nav.histFwd": "Next page", "mod.pick": "Choose a module",
   "hub.welcome": "Welcome to Ozimut", "hub.hello": "Hello {name}",
   "hub.lede": "Choose a module. The Ozimut logo, top left, brings you back here at any time to change.",
   "hub.lede.short": "Choose a module",
@@ -3378,7 +3378,7 @@ export default {
   "hub.arena.step.agenda": "Calendar", "hub.arena.step.results": "Results", "hub.arena.step.live": "Live",
   "hub.arena.step.splits": "Split-time analysis", "hub.arena.step.map": "Map analysis",
   // the competitions page's three boxes, a past competition's tags (owner, 2026-10-30)
-  "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past (60 days)",
+  "agd.when.today": "Today", "agd.when.coming": "Coming", "agd.when.past": "Past",
   "agd.past.results": "results", "agd.past.splits": "splits", "agd.past.official": "official",
   "mod.home": "Back to {mod}'s first page",
   "an.cam": "📷 Photograph the map",

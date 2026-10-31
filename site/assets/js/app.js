@@ -479,6 +479,7 @@ function renderHeader(r) {
       </a><span class="brand-text"><a class="brand-name" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}"><span class="brand-o">O</span>zimut</a>${
         mod ? off ? html`<span class="brand-mod nav-off" title="${t("doc.orgaOff")}">${t(`mod.${mod}`)}</span>`
           : html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
+    ${visitor ? html`<span class="hist-nav"><button type="button" class="icon-btn" data-hist="back" aria-label="${t("nav.histBack")}" title="${t("nav.histBack")}">‹</button><button type="button" class="icon-btn" data-hist="forward" aria-label="${t("nav.histFwd")}" title="${t("nav.histFwd")}">›</button></span>` : ""}
     ${items.length || mod === "arena" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
       ${visitor ? country.menu() : ""}
@@ -524,6 +525,14 @@ function renderHeader(r) {
   // a demo account (admin page, « Démo »): said on every page, with its last day
   if (me?.demo) $("#topbar").insertAdjacentHTML("beforeend", html`<div class="demo-strip">${t("demo.strip", { date: fmtDate(me.demo, "long") })}</div>`);
   $("#menu-btn")?.addEventListener("click", () => $("#nav").classList.toggle("open"));
+  // a phone's back and forward (owner, 2026-10-31: the installed app has no browser buttons; every module, instead of the race
+  // pages' « ‹ Compétitions »): shown by app.css on a phone only; greyed where the browser says there is nowhere to go
+  // (the Navigation API; without it, always on)
+  $$("[data-hist]", $("#topbar")).forEach((b) => {
+    const nav = window.navigation, back = b.dataset.hist === "back";
+    if (nav && "canGoBack" in nav) b.disabled = back ? !nav.canGoBack : !nav.canGoForward;
+    b.addEventListener("click", () => (back ? history.back() : history.forward()));
+  });
   fitNav();
   if (!navBound) { navBound = true; window.addEventListener("resize", debounce(fitNav, 120)); }
   // the drop-down menus: one open at a time, closed by a click elsewhere, Escape or a choice

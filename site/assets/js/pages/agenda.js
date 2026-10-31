@@ -130,11 +130,13 @@ export async function render(main, { query }) {
     <div class="agenda-layout">
       <div class="agenda-main">
       <section class="card agenda-when" id="when"></section>
+      <div class="agenda-bar">
       <details class="filters-fold" id="fold">
         <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
         <section class="card agenda-filters"><div id="filters"></div><div id="ag-rf"></div></section>
       </details>
       ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
+      </div>
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       </div>
       <div class="agenda-side"><section class="card agenda-map" id="agmap" hidden></section>
@@ -264,7 +266,12 @@ export async function render(main, { query }) {
     }
   });
   document.addEventListener("click", closeMulti);
-  function closeMulti(e) { if (!e.target.closest?.(".multi")) $$("details.multi[open]", main).forEach((d) => (d.open = false)); }
+  function closeMulti(e) {
+    if (!e.target.closest?.(".multi")) $$("details.multi[open]", main).forEach((d) => (d.open = false));
+    // on a phone the filters open over the list (2026-10-31): a tap beside them closes them
+    const fold = $("#fold", main);
+    if (fold?.open && mobile() && !e.target.closest?.("#fold")) fold.open = false;
+  }
 
   // ---- table ------------------------------------------------------------------------------------------------
   let shown = [];
@@ -279,6 +286,10 @@ export async function render(main, { query }) {
     $("#fold-badge").textContent = n;
     $("#count").textContent = tn("agd.count", shown.length);
     map?.show(shown, st.selected, (e) => periodOf(e) !== "coming");      // today's and past ones: only on hover
+    // a redraw (live races, start lists found later) keeps the row at the list's top where it was: rows above it may have grown
+    const box0 = $("#table"), top0 = box0.getBoundingClientRect().top;
+    const anchor = !toToday && box0.scrollTop > 0 ? $$("#table tbody tr").find((r) => r.getBoundingClientRect().bottom > top0 + 1) : null;
+    const at0 = anchor ? anchor.getBoundingClientRect().top - top0 : 0, key0 = anchor?.dataset.key;
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
@@ -288,18 +299,30 @@ export async function render(main, { query }) {
         <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
         ${places ? html`<td class="r">${e.region || ""}</td>` : ""}
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
-    // past competitions above today's: the list opens on today (after a change of the three boxes)
-    // On a phone the list has no box of its own (the page scrolls): the page goes to today's first row, under the bar (owner,
-    // 2026-10-30: it opened on the oldest past competitions) — once the router has put a new page at its top
+    const back = key0 && $(`#table tr[data-key="${CSS.escape(key0)}"]`);
+    if (back) box0.scrollTop += back.getBoundingClientRect().top - top0 - at0;
+    // past competitions above today's: the list opens on today (after a change of the three boxes), the last past competition
+    // still in sight above it (owner, 2026-10-31: the past ones are there, one scroll up). The list scrolls in its own box, on a
+    // phone too since 2026-10-31 (owner: the filters stay in sight); else the page goes there, under the bar
     if (toToday) {
       toToday = false;
       const box = $("#table");
       const first = st.when.has("past") && $('#table tr[data-period="today"], #table tr[data-period="coming"]');
-      if (box.scrollHeight > box.clientHeight + 1) box.scrollTop = first ? Math.max(0, first.offsetTop - 44) : 0;
+      const prev = first?.previousElementSibling?.dataset.period === "past" ? first.previousElementSibling : null;
+      const head = $("#table thead")?.offsetHeight || 0;
+      // placed again once the box has settled (fit.js frames it, which narrows it and wraps its rows anew), unless the reader
+      // has scrolled since
+      let set = -1;
+      const place = () => {
+        if (set >= 0 && box.scrollTop !== set) return;
+        box.scrollTop = first ? Math.max(0, box.scrollTop + (prev || first).getBoundingClientRect().top - box.getBoundingClientRect().top - head) : 0;
+        set = box.scrollTop;
+      };
+      if (box.scrollHeight > box.clientHeight + 1) { place(); requestAnimationFrame(place); setTimeout(place, 400); setTimeout(place, 1200); }
       else setTimeout(() => {
         // without past competitions, the list's top — only when the page is below it (after a box ticked off)
         const bar = document.querySelector(".topbar")?.offsetHeight || 0;
-        const y = Math.max(0, (first || box).getBoundingClientRect().top + window.scrollY - bar - 8);
+        const y = Math.max(0, (prev || first || box).getBoundingClientRect().top + window.scrollY - bar - 8);
         if (first || window.scrollY > y) window.scrollTo({ top: y, behavior: "instant" });
       }, 0);
     }
@@ -309,7 +332,8 @@ export async function render(main, { query }) {
     e.official ? html` <span class="tag" title="${t("prov.ffcoResults")}">${t("agd.past.official")}</span>` : ""}`;
   // Wide screen: list and details side by side. Phone: one at a time. Opening an event adds a history
   // entry, so the phone's own Back button (or the one in the details) returns to the list where it was.
-  let pushed = false, listY = 0;
+  // (the list's own box loses its scroll while hidden: listBox keeps it)
+  let pushed = false, listY = 0, listBox = 0;
   function showDetail(key, scroll) {
     st.selected = key;
     $$("#table tr.selected").forEach((r) => r.classList.remove("selected"));
@@ -318,7 +342,7 @@ export async function render(main, { query }) {
     map?.select(key);
     drawDetail();
     page.classList.toggle("detail-open", !!key);
-    if (mobile()) window.scrollTo(0, key ? 0 : listY);
+    if (mobile()) { window.scrollTo(0, key ? 0 : listY); if (!key) $("#table").scrollTop = listBox; }
     else if (key && scroll) row?.scrollIntoView({ block: "center" });
   }
   function select(key) {
@@ -327,6 +351,7 @@ export async function render(main, { query }) {
     if (e?.past) { location.hash = `#/resultats?course=${encodeURIComponent(e.past)}`; return; }
     if (mobile()) {
       listY = window.scrollY;
+      listBox = $("#table").scrollTop;
       pushed = true;
       location.hash = `#/agenda?id=${encodeURIComponent(key)}`;      // the router calls onQuery below
     } else {

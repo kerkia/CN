@@ -106,8 +106,11 @@ let hintCcs = null;
 export function hint(list = null) {
   hintCcs = list ? [...new Set(list)] : null;
   const cur = current();
-  return html`<p class="cty-hint">${t("cty.hint.races", { in: t(`cty.in.${prepOf(cur)}`) })} ${flagImg(cur)}<b>${name(cur)}</b>
-    <button type="button" data-cty-open aria-haspopup="menu" aria-expanded="false" title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button><span class="cty-pop" role="menu" hidden></span></p>`;
+  // the country itself opens the choice too: on a phone it is drawn as a drop-down and « Choisir un autre pays » goes (owner,
+  // 2026-10-31)
+  return html`<p class="cty-hint"><span class="cty-in">${t("cty.hint.races", { in: t(`cty.in.${prepOf(cur)}`) })}</span>
+    <button type="button" class="cty-cur" data-cty-open aria-haspopup="menu" aria-expanded="false" title="${t("cty.hint.other")}">${flagImg(cur)}<b>${name(cur)}</b><span class="cty-caret" aria-hidden="true">▾</span></button>
+    <button type="button" class="cty-other" data-cty-open aria-haspopup="menu" aria-expanded="false" title="${t("cty.hint.tip")}">${t("cty.hint.other")}</button><span class="cty-pop" role="menu" hidden></span></p>`;
 }
 /** The page's countries for its « Choisir un autre pays », once it knows them. */
 export function hintList(list) { hintCcs = [...new Set(list)]; }
@@ -137,13 +140,13 @@ document.addEventListener("click", (e) => {
   if (pick) { window.dispatchEvent(new CustomEvent("ocn:country", { detail: pick.dataset.ctyPick })); return; }
   if (e.target.closest?.(".cty-pop [data-cty-all]")) { e.target.closest(".cty-pop").hidden = true; openHeaderMenu(); return; }
   const open = e.target.closest?.("[data-cty-open]");
-  document.querySelectorAll(".cty-pop:not([hidden])").forEach((p) => {
-    if (p.previousElementSibling !== open) { p.hidden = true; p.previousElementSibling?.setAttribute("aria-expanded", "false"); }
-  });
+  const popOf = (el) => el.closest(".cty-hint")?.querySelector(".cty-pop");
+  const shut = (p) => { p.hidden = true; p.closest(".cty-hint")?.querySelectorAll("[data-cty-open]").forEach((b) => b.setAttribute("aria-expanded", "false")); };
+  document.querySelectorAll(".cty-pop:not([hidden])").forEach((p) => { if (!open || popOf(open) !== p) shut(p); });
   if (!open) return;
   if (!hintCcs) { openHeaderMenu(); return; }
-  const pop = open.nextElementSibling, cur = current();
-  if (!pop.hidden) { pop.hidden = true; open.setAttribute("aria-expanded", "false"); return; }
+  const pop = popOf(open), cur = current();
+  if (!pop.hidden) { shut(pop); return; }
   const others = byName(hintCcs.filter((cc) => cc !== cur && /^[A-Z]{2}$/.test(cc || "")));
   pop.innerHTML = html`${others.length ? others.map((cc) => html`<button type="button" role="menuitem" data-cty-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`)
     : html`<span class="cty-pop-none">${t("cty.hint.none")}</span>`}<button type="button" role="menuitem" class="cty-pop-all" data-cty-all>${t("cty.hint.all")}</button>`;

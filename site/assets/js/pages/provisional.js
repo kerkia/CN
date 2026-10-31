@@ -190,7 +190,7 @@ async function detail(main, idx, query) {
 
   // the way back to Arena's list of competitions (owner, 2026-10-30), which comes back where it was (agenda.js memo)
   main.innerHTML = html`
-    <a class="back-link" href="#/agenda">‹ ${t("arena.back")}</a>
+    <a class="back-link arena-back" href="#/agenda">‹ ${t("arena.back")}</a>
     <div class="page-head race-head"><div><h1>${race.name}</h1>
       <p class="lede">${fmtDate(race.date_iso)} · ${parts(race.place, race.org, fmtFormat(race.epreuve), fmtFormat(race.terrain))}</p></div>
       <div class="row" style="gap:8px">${tracking.button(track)}
@@ -198,7 +198,7 @@ async function detail(main, idx, query) {
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
     <div data-bar-tabs>${raceTabs(race.key, withSplits.length > 0)}</div>
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}
-    ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div><h2 id="pv-class-title"></h2>
+    ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>
       ${CN ? html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.scoreDef")}</p>` : ""}` : html`<div class="card"><div class="empty">${t(race.ffco_id ? "prov.noDoc.ffco" : "prov.noDoc.org")}</div></div>`}
     ${auth.session()?.admin ? html`<details class="card" style="margin-top:16px"><summary class="card-head" style="cursor:pointer"><h2>${t("prov.sources.admin")}</h2></summary>
@@ -251,7 +251,7 @@ async function detail(main, idx, query) {
       draw();
     }));
     const v = k.values || {};
-    $("#pv-class-title").textContent = `${k.name} · ${k.runners.length} ${t("prov.runners").toLowerCase()}`;
+    // (no title: the circuit's selector above says its name and its runners — owner, 2026-10-31)
     $("#pv-class-hint").innerHTML = html`${[k.length_m ? `${fmt(k.length_m / 1000, 1)} km` : "", k.climb_m ? `${fmt(k.climb_m)} m D+` : "", k.controls ? `${k.controls.length} ${t("prov.controls")}` : ""].filter(Boolean).join(" · ")}
       ${!CN ? "" : d.by === "category" && !k.values ? html`<span>${t("prov.byCategory")}</span>` : html`${asCircuits && k.categories?.length ? html`${t("prov.circuitCats", { c: k.categories.join(", ") })} · ` : k.circuit ? html`${t("prov.circuitOf", { c: k.circuit })} · ` : ""}${t("prov.values")} ${M.filter((m) => m === "official" || v[m.replace("top6w3", "fair3").replace("top6w", "fair")] != null)
         .map((m) => fmt(m === "official" ? v.official : v[m === "top6w" ? "fair" : m])).join(" · ") || "—"}`}`;
