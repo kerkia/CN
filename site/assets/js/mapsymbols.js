@@ -10,6 +10,8 @@ export const MAP_COLOURS = {
   paper: "#ffffff", black: "#1c1c1c", brown: "#c8641a", blue: "#00a0e2", yellow: "#ffba36", yellow50: "#ffdd9b",
   green20: "#c9eac4", green50: "#8fd18c", green: "#3eb34a", olive: "#a2a136", rock: "#b8b8b8", building: "#6b6b6b",
   canopy: "#cfcfcf", paved: "#ebc8a5", purple: "#b5229b",
+  // the sprint map's (ISSprOM 2019-2): paved areas brown 30 %, buildings grey 50 %, impassable vegetation dark green
+  paved30: "#f3dbc4", building50: "#9a9a9a", darkGreen: "#1f6b35",
 };
 const K = MAP_COLOURS;
 
@@ -163,9 +165,9 @@ const D = {
   "3.6": () => stroke(smooth([[-2, 34], [24, 44], [50, 48], [76, 58], [102, 62]]), K.blue, 3, dash(2.6, 2.6)) + ctl(50, 49),
   "3.7": () => hatch(50, 50, 40, 32) + ctl(),
   "3.8": () => hatch(50, 50, 71, 71) + fill(blob(50, 50, 14, 10, 5), K.paper) + ctl(),
-  "3.9": () => big(ring(50, 50, 4.5, K.blue, 2.2)) + ctl(),
+  "3.9": () => big(square(K.blue)) + ctl(),
   "3.10": () => stroke("M43.5,50A6.5,6.5 0 0 1 56.5,50", K.blue, 2.4) + stream(smooth([[50, 52], [47, 72], [53, 88], [50, 104]]), 2.6) + ctl(),
-  "3.11": () => big(cross(50, 50, 5, K.blue, 2.4)) + ctl(),
+  "3.11": () => big(square(K.blue)) + ctl(),
   // vegetation
   "4.1": () => fill(smooth([[-2, 40], [30, 34], [60, 30], [102, 26], [102, 102], [-2, 102]], true), K.yellow) + ctl(52, 60),
   "4.2": () => fill(blob(50, 52, 40, 34, 2), K.yellow) + scatter(50, 52, 34, 14, 2).map(([x, y]) => dot(x, y, 2.4, K.paper)).join("") + ctl(),
@@ -202,6 +204,8 @@ const D = {
   "5.20": () => big(cross(50, 50, 5, K.black, 2.4)) + ctl(),
   "5.23": () => fill("M8,36H44V64H8Z", K.building, K.black, 1.4) + fill("M56,36H92V64H56Z", K.building, K.black, 1.4) + fill("M44,36H56V64H44Z", K.canopy)
     + stroke("M44,36H56M44,64H56", K.black, 1.4) + stroke("M44,36V64M56,36V64", K.black, 1.2, dash(2.5, 2)) + ctl(50, 50, 19),
+  "5.25": () => fill(blob(50, 50, 26, 18, 4), K.olive, K.black, 1.2) + ctl(),
+  "5.26": () => railway() + ctl(),
   "5.24": () => fill("M38,-2H62V102H38Z", K.paved) + stroke("M38,-2V102M62,-2V102", K.black, 1.2) + stroke([34, 40, 46, 52, 58, 64].map((y) => `M38,${y}H62`).join(""), K.black, 1.4) + ctl(),
   "5.25": () => fill(blob(50, 50, 20, 14, 2), K.olive, K.black, 1.4) + ctl(50, 50, 24),
   "5.26": () => stroke("M-2,62C30,54 70,46 102,38", K.black, 4.4) + stroke("M-2,62C30,54 70,46 102,38", K.paper, 1.8, dash(5, 5)) + ctl(),
@@ -254,9 +258,37 @@ const NORTH = {
   "11.14": () => cliff([[6, 54], [28, 56], [50, 52], [72, 56], [94, 53]], -1) + ctl(50, 40, 14, true), // foot: below the cliff, its ticks downhill
 };
 
-/** The drawing's body for an IOF id (a symbol's `id`; « 11.1NE » turns « 11.1 »'s), or "" when none. */
-export function mapBody(id) {
+// ---- the same features as a sprint map draws them (ISSprOM 2019-2; owner, 2026-10-31): streets and squares paved, buildings
+// grey, thin black lines for what can be crossed and thick ones for what cannot --------------------------------------------
+const pavedBand = (d, w) => stroke(d, K.black, w + 2.4) + stroke(d, K.paved30, w);
+const SPRINT = {
+  "1.6": () => { const p = [[6, 58], [28, 54], [50, 50], [72, 46], [94, 42]]; return stroke(poly(p), K.brown, 2) + dotsAlong(p, 3.2, 30, K.brown) + ctl(); },
+  "4.6": () => rect(K.paved30) + stroke("M-2,56C30,50 70,52 102,44", K.darkGreen, 8) + ctl(50, 51),
+  "5.1": () => pavedBand("M-2,58C30,50 70,50 102,42", 16) + ctl(50, 51),
+  "5.2": () => stroke("M-2,58C30,50 70,50 102,42", K.paved30, 5) + stroke("M-2,55.5C30,47.5 70,47.5 102,39.5M-2,60.5C30,52.5 70,52.5 102,44.5", K.black, 1.1, dash(9, 1.2)) + ctl(50, 51),
+  "5.4": () => pavedBand("M-2,50H102", 14) + rect0(38, -2, 62, 102, K.paved30) + stroke("M34,0L38,6V94L34,100M66,0L62,6V94L66,100", K.black, 1.6) + ctl(),
+  "5.7": () => pavedBand("M-2,50H102", 14) + fill("M30,22H70V78H30Z", K.building50, K.black, 1.4) + fill("M30,43H70V57H30Z", K.paved30)
+    + stroke("M30,43H70M30,57H70", K.black, 1.8, ' stroke-dasharray="0.1 3.2" stroke-linecap="round"') + ctl(50, 50, 17),
+  "5.8": () => { const p = [[4, 60], [96, 40]]; return stroke(poly(p), K.black, 1.6) + dotsAlong(p, 3, 30, K.black) + ctl(); },
+  "5.9": () => { const p = [[4, 60], [96, 40]]; return stroke(poly(p), K.black, 1.6) + stroke(ticks(p, 6, 28, -1, 14), K.black, 1.2) + ctl(); },
+  "5.10": () => stroke("M2,50H43M57,50H98", K.black, 4) + stroke("M43,42V58M57,42V58", K.black, 2) + ctl(),
+  "5.11": () => rect(K.paved30) + big(fill(poly([[40, 42], [60, 38], [62, 54], [42, 58]], true), K.building50, K.black, 1.2)) + ctl(),
+  "5.12": () => fill(blob(50, 50, 30, 22, 3), K.paved30, K.black, 1) + ctl(),
+  "5.23": () => rect(K.paved30) + fill("M8,34H44V66H8Z", K.building50, K.black, 1.2) + fill("M56,34H92V66H56Z", K.building50, K.black, 1.2) + fill("M44,34H56V66H44Z", K.canopy)
+    + stroke("M44,34H56M44,66H56", K.black, 1.2) + ctl(50, 50, 19),
+  "5.24": () => rect(K.paved30) + fill("M38,-2H62V102H38Z", K.paved30) + stroke("M38,-2V102M62,-2V102", K.black, 1.2) + stroke([34, 40, 46, 52, 58, 64].map((y) => `M38,${y}H62`).join(""), K.black, 1.2) + ctl(),
+  "5.25": () => rect(K.paved30) + fill(blob(50, 50, 26, 18, 4), K.olive, K.black, 1) + ctl(),
+  "5.26": () => railway() + ctl(),
+};
+function square(col) { return `<rect x="45" y="45" width="10" height="10" fill="none" stroke="${col}" stroke-width="2.2"/>`; }
+function rect0(x0, y0, x1, y1, col) { return `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${col}"/>`; }
+function railway() { return stroke("M-2,60L102,40", K.black, 3.6) + stroke("M-2,60L102,40", K.paper, 1.1, dash(9, 14)); }
+
+/** The drawing's body for an IOF id (a symbol's `id`; « 11.1NE » turns « 11.1 »'s), or "" when none; `sprint`: as a sprint
+ *  map draws the feature, where it differs. */
+export function mapBody(id, sprint = false) {
   id = String(id || "").replace(/@.*/, "");
+  if (sprint && SPRINT[id]) return SPRINT[id]();
   if (D[id]) return D[id]();
   const m = /^(\d+\.\d+)(N|NE|E|SE|S|SW|W|NW)$/.exec(id);
   if (m && NORTH[m[1]]) return turn(DIR[m[2]], NORTH[m[1]]());
@@ -265,7 +297,7 @@ export function mapBody(id) {
 /** Whether an id has a map drawing. */
 export const hasMap = (id) => !!mapBody(id);
 /** The map drawing as an SVG element's markup (a square of `size` px on map paper), or "" when the id has none. */
-export function mapSvg(id, size = 60, cls = "cd-map") {
-  const body = mapBody(id);
+export function mapSvg(id, size = 60, cls = "cd-map", sprint = false) {
+  const body = mapBody(id, sprint);
   return body ? `<svg class="${cls}" viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${rect(K.paper)}${body}</svg>` : "";
 }

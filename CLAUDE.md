@@ -327,7 +327,16 @@ line of meaning; a card « Ce que disent les couleurs » with the forest's runna
 names (`?mode=noms`) or the drawings (`?mode=dessins`). `isom.js` draws them, our own SVGs at the specification's dimensions in mm
 (line widths, dots, dashes, spacings read from its drawings), 18 px a mm, the course symbols in a larger frame (7.6 px a mm). Names:
 the specification's (French: FFCO's translation, ISOM 2017-2 FR/EN); notes our own words (`ms.s.<code>`, `ms.n.<code>`). The four
-« shall not be crossed / entered » symbols (520, 708, 709, 711) are tagged « interdit ». Sprint maps (ISSprOM 2019-2): not yet.
+« shall not be crossed / entered » symbols (520, 708, 709, 711) are tagged « interdit ». **Two tabs** (owner, 2026-10-31): « Forêt »
+(ISOM 2017-2) and « Sprint » (`?onglet=sprint`): ISSprOM 2019-2, revision 6 of January 2024 — read from the Czech federation's
+translation, the only copy of that revision found (no English one reachable); its numbers (105.1, 501.1-3, 509.1-2, 512.1-3, 513.1-2,
+522.1, 533, 710.1-2, 714, 715…) and dimensions at 1:4000 (`isom.js` `SP`, `SP_COURSE`, `GROUPS_SPRINT`; names `ms.sp.s.<code>`, the
+FFCO's French of ISSprOM 2019 where it has them); `SPRINT_ONLY` tagged « sprint » (not on a forest map), `FORBIDDEN_SPRINT` the
+symbols the sprint text says not to cross or enter. The standards, with their year, are named at the top of both this page and
+« Définitions de postes » (`.ms-stds`; owner, 2026-10-31). « Définitions de postes » has the same two tabs: one IOF standard (2018)
+for both, the Sprint tab keeping the symbols a sprint uses (`descriptions.js` `SPRINT_D`, `SPRINT_OTHER`; C, F and the special
+instructions whole) with each map drawn as a sprint map shows it (`mapsymbols.js` `SPRINT`, `mapSvg(id, size, cls, sprint)`), the
+urban features 5.23-5.25 tagged « sprint » on both tabs. A well / fountain / water tank is drawn as ISOM's blue square (311).
 The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »

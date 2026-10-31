@@ -2751,3 +2751,10 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .ms-run-cell b { color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
 .ms-run-sw { height: 34px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
 .ms-run-sw.paper { box-shadow: inset 0 0 0 1px var(--border-strong); }
+/* the standards named at the top of « Symboles de carte » and « Définitions de postes »; the sprint tabs (2026-10-31) */
+.ms-stds { list-style: none; margin: -6px 0 12px; padding: 0; display: grid; gap: 2px; font-size: 12.5px; color: var(--ink-2); }
+.ms-stds li::before { content: "▸ "; color: var(--grp, var(--ink-3)); }
+.ms-sp-intro { margin: 0 2px 14px; font-size: 13.5px; color: var(--ink-2); max-width: 900px; }
+.ms-tag.sprint { color: var(--water, #0b7fb8); }
+.ms-source { font-size: 12.5px; margin-top: 18px; }
+.cd-id .ms-tag { font-size: 10px; padding: 0 3px; }
