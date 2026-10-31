@@ -56,7 +56,8 @@ export const selDescription = (s) => (s.base === "org" ? `${t(`cb.desc.org.${s.m
 // own club (« Mon club », owner 2026-10-14) and, when another club's page is open, that club —, the view under them
 // switched in place (the address follows), as on Statistiques: #/clubs, #/clubs?onglet=ligues, #/comparer-clubs,
 // #/relais and #/club/<code> all open it.
-const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
+const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["annuaire", "#/clubs?onglet=annuaire"],
+  ["compare", "#/comparer-clubs"], ["relays", "#/relais"]];
 // France's: FFCO's club numbers, its ligues, its national races' points and its relay formats; another country's clubs are
 // keyed by Ozimut (countries/<cc>/clubs.py) and its regions are its regional federations
 const isFr = () => data.loadedCountry() === "FR";
@@ -65,15 +66,17 @@ async function view(el, v, query) {
   setLede(t("cl.lede"));
   if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });
   if (v === "relays") return (await import("./relays.js")).render(el, { query });
+  // the directory of France's clubs, committees and ligues with their websites (pages/clubdir.js; owner, 2026-10-31)
+  if (v === "annuaire") return (await import("./clubdir.js")).render(el, { query });
   if (v.startsWith("club:")) return (await import("./club.js")).render(el, { arg: v.slice(5), query });
   return listView(el, query, v);
 }
 export async function render(main, { route, arg, query }) {
   const mine = myClub();
   const v = route === "clubcompare" ? "compare" : route === "relays" ? "relays" : route === "club" ? `club:${arg}`
-    : query.onglet === "ligues" ? "ligues" : "clubs";
+    : query.onglet === "ligues" ? "ligues" : query.onglet === "annuaire" && isFr() ? "annuaire" : "clubs";
   // the views: the four, one's own club, and the club whose page is open when it is another one
-  const views = VIEWS.filter(([k]) => isFr() || k !== "relays")
+  const views = VIEWS.filter(([k]) => isFr() || (k !== "relays" && k !== "annuaire"))
     .map(([k, href]) => [k, href, k === "ligues" && !isFr() ? t("cl.view.regions") : t(`cl.view.${k}`)]);
   if (mine) views.push([`club:${mine}`, link.club(mine), t("cl.myClub")]);
   if (route === "club" && arg && arg !== mine) views.push([v, link.club(arg), clubName(arg)]);

@@ -2890,3 +2890,53 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .g-dpad [aria-pressed="true"] { background: var(--accent-wash); border-color: var(--focus); }
 .g-maze-touch { display: none; margin: 0; font-size: 12.5px; text-align: center; max-width: 360px; }
 @media (pointer: coarse) { .g-maze-touch { display: block; } }
+
+/* ---- Stats › Clubs › « Annuaire » (pages/clubdir.js; owner, 2026-10-31): the tree of ligues, départements and clubs with
+   their websites beside the map of France; a node chosen lights up on the map, the map's click opens it in the tree */
+.cdir-tiles { margin-bottom: 16px; }
+.cdir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 40%); gap: 16px; align-items: start; }
+.cdir-side { position: sticky; top: 76px; }
+.cdir-tree ul { list-style: none; margin: 0; padding: 0; }
+.cdir-kids { margin-left: 22px !important; border-left: 1px solid var(--border); padding-left: 6px !important; }
+.cdir-row { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 3px 4px 3px 28px;
+  border-radius: var(--radius-sm); }
+.cdir-row > .cdir-tog { position: absolute; left: 3px; top: 3px; }
+.cdir-node.sel > .cdir-row { background: color-mix(in srgb, var(--flag) 14%, transparent); box-shadow: inset 3px 0 0 var(--flag); }
+.cdir-tog { width: 22px; height: 22px; padding: 0; border: 0; background: none; color: var(--ink-2); cursor: pointer; font-size: 14px; border-radius: 4px; }
+.cdir-tog:hover { background: var(--surface-2); color: var(--ink); }
+.cdir-pick { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 650; cursor: pointer; text-align: left; }
+.cdir-pick:hover { color: var(--link); }
+.cdir-d .cdir-pick { font-weight: 600; }
+.cdir-meta { font-size: 12px; color: var(--ink-3); }
+.cdir-who { font-size: 12px; color: var(--ink-2); }
+.cdir-code { font-variant-numeric: tabular-nums; color: var(--ink-3); font-weight: 500; }
+.cdir-site { font-size: 13px; overflow-wrap: anywhere; }
+.cdir-none { font-size: 12.5px; font-style: italic; color: var(--amber); }
+.cdir-src { font-size: 11px; color: var(--ink-3); }
+.cdir-club { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 3px 4px 3px 26px; }
+.cdir-club .cdir-name { font-size: 13.5px; }
+.cdir-club .cdir-code { font-size: 12px; min-width: 2.6em; }
+.cdir-empty { margin: 2px 0 6px 34px; font-size: 12.5px; }
+.cdir-foot { margin: 12px 0 0; font-size: 12px; }
+.cdir-mapbox { position: relative; }
+.cdir-tools { position: absolute; top: 4px; right: 4px; z-index: 2; }
+.cdir-tools .btn { min-width: 30px; padding: 2px 8px; }
+.cdir-map { display: block; width: 100%; height: min(62vh, 560px); }
+.cdir-dep { fill: color-mix(in srgb, var(--forest) 9%, var(--surface)); stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: .6;
+  vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .15s; }
+.cdir-dep.off { fill: color-mix(in srgb, var(--ink) 5%, var(--surface)); cursor: default; }
+.cdir-dep.in { fill: color-mix(in srgb, var(--flag) 30%, var(--surface)); }
+.cdir-dep.on { fill: color-mix(in srgb, var(--flag) 62%, var(--surface)); }
+.cdir-dep.hov:not(.off) { fill: color-mix(in srgb, var(--flag) 40%, var(--surface)); }
+.cdir-lig { fill: none; stroke: color-mix(in srgb, var(--ink) 60%, transparent); stroke-width: 1.3; vector-effect: non-scaling-stroke; pointer-events: none; }
+.cdir-tip { position: absolute; z-index: 5; max-width: 260px; padding: 5px 8px; font-size: 12.5px; line-height: 1.35; pointer-events: none;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+.cdir-caption { margin: 8px 0 2px; font-weight: 650; min-height: 1.4em; }
+.cdir-hint { margin: 0; font-size: 12px; }
+@media (max-width: 900px) {
+  .cdir { grid-template-columns: minmax(0, 1fr); }
+  .cdir-side { position: static; order: -1; }
+  .cdir-map { height: 340px; }
+}
+/* (a phone: the tree alone — the map is too small to click a département) */
+@media (max-width: 640px) { .cdir-side { display: none; } .cdir-kids { margin-left: 10px !important; } .cdir-club { padding-left: 14px; } }

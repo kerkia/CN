@@ -6,6 +6,7 @@ prov_docs    every document found for a race (a results or split-times file, a l
 prov_fetch   what each URL answered last time (conditional requests, robots.txt refusals, failures)
 prov_clubs   club number -> a website the agenda gave for one of its events (a guess: often the event's own site)
 prov_club_dir FFCO's club directory: club number -> the club's own website
+prov_struct, prov_struct_club  FFCO's ligues and committees with their websites, and the clubs each lists (clubdir.py)
 prov_meta    small values (the last WinSplits event id looked at, when the club directory was read…)
 """
 

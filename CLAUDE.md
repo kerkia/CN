@@ -699,6 +699,21 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   World Cup's old scale). Tabs: Palmarès (period, category or all, points or medals; the leaders' cumulated points), Classements
   (one edition complete, gap, club place and points), Club (places year by year), Éditions (venues, field sizes, winners). The
   page shows the files' order: FFCO's official CFC podiums sometimes skip a club's lower team (said under N2-N4).
+- **Annuaire** (`#/clubs?onglet=annuaire`, `pages/clubdir.js`, a view of Clubs, France only; owner, 2026-10-31): every club
+  FFCO lists with its website, as a tree — the ligues (their site), their départements (their committee's, the CDCO's), their
+  clubs (their own) — beside a map of France's ligues and départements (`geo/departements.json` and `regions.json`, drawn as SVG;
+  hidden under 640 px). A node chosen in the tree lights up on the map with what it holds and the map zooms to its ligue; a click
+  on the map chooses the ligue, a second one inside it the département, and opens that node alone in the tree (`?sel=L:AR|D:69`).
+  A website not found is said (« site non trouvé »), as is a département without a committee. The data: `ffco_scraper/prov/clubdir.py`,
+  run by every provisional run after the club directory: FFCO's structure pages on api.ffcorientation.fr (`/iframe/structures/`,
+  `/iframe/ligues/<id>/`, `/iframe/comites/<id>/`; tables `prov_struct`, `prov_struct_club`), each read again every 7 days (the
+  first time all ~110 at once), only numbers, names and websites kept — never the officers, addresses, phones or e-mails the pages
+  print; a club a committee lists that `prov_club_dir` lacks is queued there, whose popups are now read every 14 days (30 before).
+  A club's site: FFCO's directory's, else the agenda's (`prov_clubs`, tagged « d'après l'agenda », payment and registration hosts
+  and the structures' own sites left out). `clubdir.build` writes `fr/clubdir.json` only once every listed page was read and when
+  its content changed (a deploy then). On 2026-10-31: 13 ligues (13 with a site), 95 committees (41), 189 clubs (163; 2 from the
+  agenda); of the 183 club numbers in results since September 2025 only 3801 and 7203 are absent from FFCO's lists (and the
+  « INDIVIDUEL » xx99 numbers).
 - **Relais** (`#/relais`, `pages/relays.js`, a view of Clubs; 2026-10-10): a relay simulator. A format defines its discipline
   (`relay.terrainOf`: CFC, CNE, relais de catégorie in forest; the sprint relay — 2 women, 2 men of any category, D-H-H-D —
   in sprint), whatever the site-wide one; only one's own format has a discipline selector (owner, 2026-10-12). A club that

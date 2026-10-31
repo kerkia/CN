@@ -23,7 +23,7 @@ from pathlib import Path
 
 import privacy
 from ..agenda import LIGUES, OUTRE_MER, REGIONS
-from . import model, races, store
+from . import clubdir, model, races, store
 from .compute import Scorer
 from .fetch import Fetcher
 from .match import Matcher
@@ -1278,9 +1278,14 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
             log.exception("provisional: another country's agenda failed")
         stats["renamed"] = canonical_docs(con)
         try:
-            stats["club_dir"] = races.read_directory(con, f)
+            stats["club_dir"] = races.read_directory(con, f, every_days=14)
         except Exception:
             log.exception("provisional: club directory failed")
+        # FFCO's ligues and committees with their websites, and the clubs each lists (Stats › Clubs › « Annuaire »)
+        try:
+            stats["structures"] = clubdir.read(con, f)["read"]
+        except Exception:
+            log.exception("provisional: structures directory failed")
         # the races already past when the pilot started, or before a longer window (the agenda drops a race once
         # run), from FFCO's agenda export — one request each time the window reaches further back than the last one
         # (agreed with the owner: the first month, 2026-10-08; back to early August when the list went to 60 days)
@@ -1415,6 +1420,12 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
         if reread and not f.out_of_time():
             store.meta_set(con, "parser_version", PARSER_VERSION)
         stats["built"] = build(con, out, today)
+        try:
+            if clubdir.build(con, out / "fr"):      # France's clubdir.json, when a website or a club changed
+                stats["clubdir"] = True
+                stats["changed"] = stats.get("changed", 0) + 1
+        except Exception:
+            log.exception("provisional: clubdir.json failed")
         if store.meta_get(con, "index_version", None) != INDEX_VERSION:
             store.meta_set(con, "index_version", INDEX_VERSION)
             stats["reshaped"] = True
