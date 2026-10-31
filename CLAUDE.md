@@ -246,7 +246,8 @@ instead of linking to Orga. E-mail and notification links go straight to their p
 (Réglages, Documentation, Nous écrire, admin) keep the last module's menu (`sessionStorage ocn.module`); the modules page forgets it
 (owner, 2026-10-31: Réglages and the Documentation opened from there showed an earlier visit's Orga), so they are neutral from there.
 **One documentation per module** (owner, 2026-10-31): `#/documentation` is its home — « Le site », short, and a card per module —;
-`?module=arena|stats|coach|orga` a module's, with that module's menu in the bar (Orga's only to those who have Orga: `moduleOf`) and
+`?module=arena|stats|coach|orga` a module's, with that module's menu in the bar (Orga's greyed out, `.nav-off`, to those without
+Orga) — a documentation page always looks the same whatever led to it (owner, 2026-10-31): the home has no module's menu — and
 `.doc-nav` (« ‹ Documentation » and the four modules) to move about; the user menu's « Documentation » opens the current module's.
 Arena, Coach and Orga's « Les outils » are `content/guide.*.js` (`arena`, `coach`, `orga`, `site`, `LEDE`), Stats' the methods'
 tabs (CN officiel, Méthode Ozimut, Coureurs et clubs, and « L'étude »), Orga's « Le tracé » the methods' `tracerDoc`. A link of before
@@ -298,7 +299,8 @@ page on a phone drops the line under its name (`.race-head .lede`); Stats' CSV e
 source is Ozimut's choice** (owner: « users don't know better »): the results page and the analysis show the best document
 (`run.doc_priority`'s order) and offer the source selector to administrators only; the circuit selector has no « Circuit » /
 « Catégorie » label (« Voir » says it), and no « Temps intermédiaires de ce circuit » button: the race's tabs carry the circuit
-shown (`data-view`, `raceHref`). On the modules page a module's name opens it, as its button does. A past row
+shown (`data-view`, `raceHref`). On the modules page a module's whole card opens it, as its button does (owner, 2026-10-31: `.hub-card.go`, its name's link
+stretched over the card, its page links and buttons above). A past row
 opens its results page (`#/resultats?course=`); a coming or today's one its details beside the list. `#/resultats` (the old list)
 leads to the competitions with « Passées » ticked (`?periode=passees`), `#/direct` to the competitions (a race's live page
 `#/direct/<id>` stays), `#/analyse-course` without a race to « Passées ». Desktop layout: the filters (with the runner,

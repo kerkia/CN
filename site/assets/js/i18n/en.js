@@ -1078,6 +1078,7 @@ export default {
   "page.methods": "Documentation",
   "doc.read": "Read the documentation",
   "doc.nav": "The modules' documentation",
+  "doc.orgaOff": "Turn Orga on (on a computer) to open its pages",
   "page.all": "Show all",
   "page.allRows": "All",
   "page.prev": "Previous",

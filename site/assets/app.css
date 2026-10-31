@@ -2476,6 +2476,8 @@ body.full-win .tr-app { border: 0; }
 .doc-mods { display: flex; flex-wrap: wrap; gap: 6px; }
 .doc-mods a { padding: 3px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); font-weight: 550; }
 .doc-mods a:hover { text-decoration: none; color: var(--ink); background: var(--m-wash); }
+/* Orga's menu on its documentation, to a visitor without the module: shown, not usable */
+.nav-off { opacity: .45; cursor: not-allowed; }
 .doc-mods a[aria-current="page"] { color: var(--surface); background: var(--m); border-color: var(--m); }
 .page-head > .doc-title { display: flex; flex-wrap: nowrap; gap: 14px; align-items: center; }
 .doc-title > div { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
@@ -2708,6 +2710,12 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .topbar-inner.pm-on .menu-btn, .topbar-inner.pm-on #nav { display: none !important; }
 .tabs-row > .page-menu { flex: none; }
 .hub-card h2 a { color: inherit; text-decoration: none; }
+/* a module's whole card leads into it: its name's link stretched over the card, the card's own links and buttons above it */
+.hub-card.go { position: relative; cursor: pointer; transition: background .15s; }
+.hub-card.go:hover { background: var(--m-wash); }
+.hub-card.go h2 a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.hub-card.go .hub-pages a, .hub-card.go .hub-actions > * { position: relative; z-index: 1; }
+.hub-card.go:hover .hub-pages a { background: var(--surface); }
 .hub-card h2 a:hover { text-decoration: underline; }
 @media (max-width: 760px) {
   .race-head .lede { display: none; }

@@ -394,12 +394,10 @@ const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
 export const moduleHome = (m) => (m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
 /** The module a page belongs to, or null (the modules page, the documentation's home, the settings…). A module's
- *  documentation (#/documentation?module=…) is the module's, its menu in the bar — Orga's only to those who have the module. */
+ *  documentation (#/documentation?module=…) is the module's, its menu in the bar (Orga's greyed out to those who have not
+ *  the module: renderHeader). */
 export function moduleOf(r) {
-  if (r.route === "methods") {
-    const m = r.query?.module;
-    return MODULES.includes(m) && (m !== "orga" || orgaOpen()) ? m : null;
-  }
+  if (r.route === "methods") return MODULES.includes(r.query?.module) ? r.query.module : null;
   const k = menuKey(r);
   const menus = moduleMenus();
   for (const m of MODULES) if (menus[m].some(([key]) => key === k)) return m;
@@ -449,7 +447,10 @@ function renderHeader(r) {
   // modules page and the home page
   const own = visitor && route !== "orgaOff" ? moduleOf(r) : null;
   if (route === "hub") lastModule("");
-  const mod = own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
+  // a documentation page always looks the same, whatever led to it (owner, 2026-10-31): its module's menu, its home none
+  const mod = route === "methods" ? own : own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
+  // Orga's documentation to a visitor without the module: Orga's menu, its pages greyed out (owner, 2026-10-31)
+  const off = mod === "orga" && !orgaOpen();
   // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
   const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
     ? [["home-overview", "#/?s=overview", t("tour.ov.menu")], ...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]),
@@ -462,7 +463,7 @@ function renderHeader(r) {
   const subsBlock = String(subs).trim() ? html`<div class="menu-subs">${subs}</div>` : "";
   // the documentation: the module's, from within a module; else its home, the site's and the choice of module
   const docHref = `#/documentation${mod ? `?module=${mod}` : ""}`;
-  const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
+  const navLink = ([k, href, text]) => off ? html`<span class="nav-link nav-off" aria-disabled="true" title="${t("doc.orgaOff")}">${text}</span>` : html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
   // the site's name lead to the choice of module, the module's name under the site's to the module's first page
@@ -476,7 +477,8 @@ function renderHeader(r) {
         <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       </a><span class="brand-text"><a class="brand-name" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}"><span class="brand-o">O</span>zimut</a>${
-        mod ? html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
+        mod ? off ? html`<span class="brand-mod nav-off" title="${t("doc.orgaOff")}">${t(`mod.${mod}`)}</span>`
+          : html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
     ${items.length || mod === "arena" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
       ${visitor ? country.menu() : ""}
@@ -873,7 +875,7 @@ async function route_() {
     r = parseHash();
   }
   // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
-  if (moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
+  if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch
