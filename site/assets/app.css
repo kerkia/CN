@@ -2433,6 +2433,37 @@ body.full-win .tr-app { border: 0; }
 .hub-session { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; padding: 14px 16px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink-2); }
 .hub-session > span { flex: 1 1 260px; }
+/* the documentation (pages/methods.js; owner, 2026-10-31): its home's choice of module, a module's way back and colours */
+.doc { --m: var(--flag); --m-wash: var(--flag-wash); }
+.doc[data-mod="stats"], .doc-card[data-mod="stats"], .doc-mods a[data-mod="stats"] { --m: var(--forest); --m-wash: var(--forest-wash); }
+.doc[data-mod="arena"], .doc-card[data-mod="arena"], .doc-mods a[data-mod="arena"] { --m: var(--water); --m-wash: var(--water-wash); }
+.doc[data-mod="coach"], .doc-card[data-mod="coach"], .doc-mods a[data-mod="coach"] { --m: var(--course); --m-wash: var(--course-wash); }
+.doc[data-mod="orga"], .doc-card[data-mod="orga"], .doc-mods a[data-mod="orga"] { --m: var(--flag); --m-wash: var(--flag-wash); }
+.doc-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0 0 26px; }
+@media (max-width: 1100px) { .doc-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .doc-cards { grid-template-columns: 1fr; } }
+.doc-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-top: 4px solid var(--m); border-radius: 14px; box-shadow: var(--shadow); }
+.doc-card:hover { text-decoration: none; background: var(--m-wash); }
+.doc-card .hub-icon { width: 38px; height: 38px; padding: 7px; }
+.doc-card-text { display: flex; flex-direction: column; gap: 3px; }
+.doc-card-text b { font-size: 20px; color: var(--m); }
+.doc-card-text span { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.doc-card-go { margin-top: auto; font-size: 14px; font-weight: 600; color: var(--m); }
+.doc-sec { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); margin: 0 0 12px; }
+.doc-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; font-size: 14px; }
+.doc-home { font-weight: 600; }
+.doc-mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.doc-mods a { padding: 3px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); font-weight: 550; }
+.doc-mods a:hover { text-decoration: none; color: var(--ink); background: var(--m-wash); }
+.doc-mods a[aria-current="page"] { color: var(--surface); background: var(--m); border-color: var(--m); }
+.page-head > .doc-title { display: flex; flex-wrap: nowrap; gap: 14px; align-items: center; }
+.doc-title > div { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
+.doc-title .hub-icon { width: 46px; height: 46px; }
+.doc-title h1 { color: var(--m); }
+.doc[data-mod] .mx-tabs button[aria-selected="true"] { border-bottom-color: var(--m); }
+.doc[data-mod] .mx-tabs button[aria-selected="true"] .mx-n { background: var(--m); color: var(--surface); }
+.doc[data-mod] .mx-subtabs button[aria-selected="true"] { color: var(--surface); background: var(--m); border-color: var(--m); }
 /* a runner's name that opens their window (runnerpop.js) instead of leading to another module: drawn as a link */
 .name-pop { border: 0; padding: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; text-align: left; }
 .name-pop:hover { text-decoration: underline; }

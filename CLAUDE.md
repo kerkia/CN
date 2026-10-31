@@ -241,7 +241,14 @@ account (`homeOf`) — and the logo leads back to it; it also signs out, signs i
 (the rule of the restructure): runner names in Arena's tables open the runner's window (`runnerpop.js`, as « En direct »'s),
 Orga's pages name where things show (« Arena › En direct › … ») instead of linking, the analyses tag an organiser's own event
 instead of linking to Orga. E-mail and notification links go straight to their page (allowed). The pages outside the modules
-(Réglages, Documentation, Nous écrire, admin) keep the last module's menu (`sessionStorage ocn.module`).
+(Réglages, Documentation, Nous écrire, admin) keep the last module's menu (`sessionStorage ocn.module`); the modules page forgets it
+(owner, 2026-10-31: Réglages and the Documentation opened from there showed an earlier visit's Orga), so they are neutral from there.
+**One documentation per module** (owner, 2026-10-31): `#/documentation` is its home — « Le site », short, and a card per module —;
+`?module=arena|stats|coach|orga` a module's, with that module's menu in the bar (Orga's only to those who have Orga: `moduleOf`) and
+`.doc-nav` (« ‹ Documentation » and the four modules) to move about; the user menu's « Documentation » opens the current module's.
+Arena, Coach and Orga's « Les outils » are `content/guide.*.js` (`arena`, `coach`, `orga`, `site`, `LEDE`), Stats' the methods'
+tabs (CN officiel, Méthode Ozimut, Coureurs et clubs, and « L'étude »), Orga's « Le tracé » the methods' `tracerDoc`. A link of before
+naming only `?onglet=` is sent to its module by `app.docAddress` (`DOC_TAB_MODULE`; the GPS analyses are Coach's).
 
 **Three profiles**: a **visitor without an account** (« Entrer sans compte »: `auth.guest()`, `localStorage ocn.guest`; the
 router keeps them to `GUEST_ROUTES`: Arena, Coach but Analyse multi, Stats' runner, ranking and races), a **signed-in account**,
@@ -1188,7 +1195,8 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   tables' headers, the runner page's tiles and cards (`rn.current`, `rn.best`, `rn.calc`, `rn.cnHistory` take `{cn}`), the
   switch's tooltips and the documentation use these words.
 - **Documentation** (`#/documentation` since 2026-10-24, `#/methodes` before and still opened, rewritten; `pages/methods.js`, title
-  « Documentation », `page.methods`). **Since 2026-10-24 (owner: the page told the methods, not the site)** its tabs are « Le site »
+  « Documentation », `page.methods`). **Since 2026-10-31 a home and one documentation per module** (« The four modules » above);
+  what follows is the layout of 2026-10-24 to 30, whose texts it regrouped. **Since 2026-10-24 (owner: the page told the methods, not the site)** its tabs are « Le site »
   (the menus, country and language, account and alerts, the phone), « Courses » (Agenda, Résultats — the provisional scores —,
   En direct, Analyse de course — the split times' calculations —, the GPS analyses), « CN officiel » (France), « Méthode
   Ozimut », « Coureurs et clubs » (the former « Les calculs du site » less the split times, France only), « Entraînement »

@@ -31,7 +31,7 @@ const norm = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g,
 const PREF = "ocn.tr.prefs";
 const loadPref = (k, d) => { try { const v = JSON.parse(localStorage.getItem(PREF) || "{}")[k]; return v ?? d; } catch (e) { return d; } };
 const savePref = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PREF) || "{}"); o[k] = v; localStorage.setItem(PREF, JSON.stringify(o)); } catch (e) { /* this visit */ } };
-const GUIDE = (ch) => `#/documentation?onglet=tracer${ch ? `&voir=${ch}` : ""}`;
+const GUIDE = (ch) => `#/documentation?module=orga&onglet=tracer${ch ? `&voir=${ch}` : ""}`;
 // the commands that need a point on the map: the ribbon asks for the click
 const PICK = {
   "gap-add-circle": t("trc.rib.pickGapCircle"), "bend-add": t("trc.rib.pickBendAdd"),

@@ -20,8 +20,9 @@ export function build(X) {
     ["choix", "Les choix et les variantes"], ["resultats", "Les résultats"], ["conclusion", "La méthode retenue"]];
   // (the results and split times moved to the guide's « Courses » on 2026-10-24: guide.*.js)
   const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Coureurs"], ["reseau", "Réseau"], ["relais", "Relais"], ["limites", "Limites"]];
-  const lede = fr ? html`Comment se servir d'Ozimut, partie par partie, et comment il calcule : le classement officiel, la méthode Ozimut et l'étude qui l'a validée, les analyses, le tracé des circuits.`
-    : html`Comment se servir d'Ozimut, partie par partie, et comment il calcule : la méthode Ozimut et l'étude qui l'a validée sur les résultats français, les analyses, le tracé des circuits.`;
+  // (Stats' documentation, since 2026-10-31: one documentation per module)
+  const lede = fr ? html`Comment les classements se calculent : le CN officiel, la méthode Ozimut et l'étude qui l'a validée, et les calculs des pages des coureurs et des clubs.`
+    : html`Comment le classement se calcule : la méthode Ozimut et l'étude qui l'a validée sur les résultats français.`;
   const note = !fr ? "" : html`Seule la ${methodLabel("official")} reprend des valeurs publiées par la Fédération française de course d'orientation (FFCO) ; la méthode Ozimut est un calcul alternatif, fait par le site sur les mêmes résultats.`;
   const pctOf = (x) => `${fmt(100 * x)} %`;
   const force = html`le niveau habituel des coureurs`;

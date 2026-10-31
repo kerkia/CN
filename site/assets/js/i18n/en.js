@@ -1076,6 +1076,8 @@ export default {
   "err.load": "Couldn't load the data.",
   "err.notfound": "Not found.",
   "page.methods": "Documentation",
+  "doc.read": "Read the documentation",
+  "doc.nav": "The modules' documentation",
   "page.all": "Show all",
   "page.allRows": "All",
   "page.prev": "Previous",

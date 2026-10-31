@@ -393,19 +393,44 @@ const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
 export const moduleHome = (m) => (m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
-/** The module a page belongs to, or null (the modules page, the documentation, the settings…). */
+/** The module a page belongs to, or null (the modules page, the documentation's home, the settings…). A module's
+ *  documentation (#/documentation?module=…) is the module's, its menu in the bar — Orga's only to those who have the module. */
 export function moduleOf(r) {
+  if (r.route === "methods") {
+    const m = r.query?.module;
+    return MODULES.includes(m) && (m !== "orga" || orgaOpen()) ? m : null;
+  }
   const k = menuKey(r);
   const menus = moduleMenus();
   for (const m of MODULES) if (menus[m].some(([key]) => key === k)) return m;
   return ROUTE_MODULE[r.from || r.route] || null;
 }
-/** The module last opened in this tab: the pages that belong to none (Réglages, Documentation…) keep its menu. */
+/** The module last opened in this tab: the pages that belong to none (Réglages, Documentation…) keep its menu. The modules
+ *  page forgets it (owner, 2026-10-31: Réglages or the Documentation opened from there showed the Orga menu of an earlier
+ *  visit): a page opened from it belongs to no module. */
 function lastModule(m) {
   try {
-    if (m) sessionStorage.setItem("ocn.module", m);
+    if (m === "") sessionStorage.removeItem("ocn.module");
+    else if (m) sessionStorage.setItem("ocn.module", m);
     return sessionStorage.getItem("ocn.module") || null;
   } catch (e) { return m || null; }
+}
+/** The documentation's address: one documentation per module since 2026-10-31 (owner) — `?module=` names it, `?onglet=`
+ *  its tab, `?voir=` a chapter. A link of before names only the tab (or the chapter): its module is found here. */
+const DOC_TAB_MODULE = { courses: "arena", arena: "arena", officiel: "stats", top: "stats", calculs: "stats", etude: "stats",
+  autres: "stats", essentiel: "stats", detail: "stats", analyses: "stats", entrainement: "coach", coach: "coach", orga: "orga", tracer: "orga" };
+function docAddress(q) {
+  let { onglet, voir } = q;
+  // the guide's « Courses » held the GPS analyses until 2026-10-31 (Coach's now); « calculs › résultats », Arena's analysis
+  if (onglet === "courses" && voir === "gps") return { module: "coach", voir: "solo" };
+  if (onglet === "courses" && voir === "routes") return { module: "coach", voir: "routes" };
+  if (onglet === "calculs" && voir === "resultats") return { module: "arena", voir: "analyse" };
+  if (onglet === "courses" && voir === "agenda") voir = "competitions";
+  const module = DOC_TAB_MODULE[onglet];
+  if (!module) return voir ? { voir } : {};              // « Le site » (or nothing): the documentation's home, its section
+  // a module of one tab has no ?onglet=; Stats and Orga keep it (« autres » and the others of before 2026-10-14: methods.js)
+  const tab = module === "stats" || onglet === "tracer" ? onglet : null;
+  return { module, ...(tab ? { onglet: tab } : {}), ...(voir ? { voir } : {}) };
 }
 
 /** A module's menu that does not fit beside the logo and the tools (Stats' ten pages on a laptop) folds behind the menu
@@ -423,6 +448,7 @@ function renderHeader(r) {
   // the module shown: the page's, else the one last opened (a page of no module: Réglages, Documentation…); none on the
   // modules page and the home page
   const own = visitor && route !== "orgaOff" ? moduleOf(r) : null;
+  if (route === "hub") lastModule("");
   const mod = own ? lastModule(own) : visitor && !["hub", "overview", "account", "orgaOff"].includes(route) ? lastModule() : null;
   // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
   const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
@@ -434,6 +460,8 @@ function renderHeader(r) {
   // the country and the language, in the top-right menu on a phone (shown there by app.css; the bar's own buttons on a computer)
   const subs = html`${visitor ? country.subMenu() : ""}${OPEN || me?.admin ? langSub() : ""}`;
   const subsBlock = String(subs).trim() ? html`<div class="menu-subs">${subs}</div>` : "";
+  // the documentation: the module's, from within a module; else its home, the site's and the choice of module
+  const docHref = `#/documentation${mod ? `?module=${mod}` : ""}`;
   const navLink = ([k, href, text]) => html`<a class="nav-link" href="${href}" ${raw(k === current ? 'aria-current="page"' : "")} title="${NAV_HINT[k] ? t(NAV_HINT[k]) : ""}">${text}${betaMark(k)}</a>`;
 
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
@@ -463,7 +491,7 @@ function renderHeader(r) {
         <div class="nav-menu">
           ${subsBlock}
           <a href="${homeOf()}" ${raw(route === "hub" ? 'aria-current="page"' : "")}>${t("mod.pick")}</a>
-          <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
+          <a href="${docHref}" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/reglages" ${raw(route === "settings" ? 'aria-current="page"' : "")}>${t("st.link")}</a>
           ${me.demo ? "" : html`<button type="button" id="install-btn" ${raw(pwa.installState() === "ready" ? "" : "hidden")}>${t("pwa.menu")}</button>`}
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
@@ -482,7 +510,7 @@ function renderHeader(r) {
         <div class="nav-menu">
           ${subsBlock}
           ${visitor ? html`<a href="${homeOf()}" ${raw(route === "hub" ? 'aria-current="page"' : "")}>${t("mod.pick")}</a>` : ""}
-          <a href="#/documentation" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
+          <a href="${docHref}" ${raw(route === "methods" ? 'aria-current="page"' : "")}>${t("nav.docs")}</a>
           <a href="#/contact?${new URLSearchParams({ from: location.hash || "#/" })}" ${raw(route === "contact" ? 'aria-current="page"' : "")}>${t("ct.link.menu")}</a>
           ${visitor ? "" : html`<a href="#/?s=login">${t("hub.login")}</a>`}
           <a href="#/compte/inscription">${t("hub.register")}</a>
@@ -592,7 +620,7 @@ function leanHead(main) {
 // One for the whole site, chosen on Stats' pages at the right of their tab row (owner, 2026-10-30: the bar holds the menu
 // only); a switch redraws the page in place (a ?m= in the address follows).
 function placeMethod(main, r) {
-  if (moduleOf(r) !== "stats" || r.route === "needCountry" || !country.ranks() || store.available().length < 2) return;
+  if (moduleOf(r) !== "stats" || r.route === "needCountry" || r.route === "methods" || !country.ranks() || store.available().length < 2) return;
   const sw = document.createElement("div");
   sw.innerHTML = methodSwitch().toString();
   const el = sw.firstElementChild;
@@ -818,6 +846,11 @@ async function route_() {
   // the Documentation's address is « #/documentation » since 2026-10-24: an old « #/methodes » link shows the new one
   if (r.route === "methods" && /^#\/methodes\b/.test(location.hash)) {
     history.replaceState(null, "", location.hash.replace(/^#\/methodes/, "#/documentation"));
+    r = parseHash();
+  }
+  // a documentation link of before one documentation per module (2026-10-31): the module its tab belongs to
+  if (r.route === "methods" && !r.query.module && (r.query.onglet || r.query.voir)) {
+    history.replaceState(null, "", `#/documentation${qstr(docAddress(r.query))}`);
     r = parseHash();
   }
   // « Résultats »' list of before (2026-10-30): the competitions page, its past ones

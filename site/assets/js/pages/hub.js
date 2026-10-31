@@ -16,7 +16,7 @@ const ICONS = {
   coach: `<circle cx="12" cy="13" r="7" /><path d="M12 13l3-3" /><path d="M10 3h4" /><path d="M12 3v3" />`,
   orga: `<rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="M9 10h6M9 14h6M9 18h3" />`,
 };
-const icon = (m) => raw(`<svg class="hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[m]}</svg>`);
+export const icon = (m) => raw(`<svg class="hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[m]}</svg>`);
 
 /** Turn the Orga module on for this account, then show the page again. */
 async function turnOrgaOn(btn) {

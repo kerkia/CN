@@ -20,8 +20,9 @@ export function build(X) {
     ["choix", "Choices and variants"], ["resultats", "The results"], ["conclusion", "The method adopted"]];
   // (the results and split times moved to the guide's « Races » on 2026-10-24: guide.*.js)
   const SITE_CHAPTERS = [["clubs", "Clubs"], ["coureurs", "Runners"], ["reseau", "Network"], ["relais", "Relays"], ["limites", "Limitations"]];
-  const lede = fr ? html`How to use Ozimut, part by part, and how it calculates: the official ranking, the Ozimut method and the study that validated it, the analyses, course setting.`
-    : html`How to use Ozimut, part by part, and how it calculates: the Ozimut method and the study that validated it on French results, the analyses, course setting.`;
+  // (Stats' documentation, since 2026-10-31: one documentation per module)
+  const lede = fr ? html`How the rankings are calculated: the official CN, the Ozimut method and the study that validated it, and the calculations of the runners' and clubs' pages.`
+    : html`How the ranking is calculated: the Ozimut method and the study that validated it on French results.`;
   const note = !fr ? "" : html`Only the ${methodLabel("official")} uses values published by the French orienteering federation (FFCO); the Ozimut method is an alternative calculation, made by the site on the same results.`;
   const pctOf = (x) => `${fmt(100 * x)}%`;
   const force = html`the runners' usual level`;

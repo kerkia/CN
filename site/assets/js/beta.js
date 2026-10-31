@@ -8,7 +8,7 @@ import { t } from "./i18n.js";
 /** « Nous écrire » as a bug report, its subject filled in, the page one comes from noted. */
 const feedback = (n) => `#/contact?${new URLSearchParams({ type: "bug", sujet: t(`beta.${n.id}.subject`), from: location.hash || "#/" })}`;
 const NOTICES = {
-  tracer: { id: "tracer", key: "ocn.tr.beta", v: "1", guide: "#/documentation?onglet=tracer", try: "beta.try.m" },
+  tracer: { id: "tracer", key: "ocn.tr.beta", v: "1", guide: "#/documentation?module=orga&onglet=tracer", try: "beta.try.m" },
   multi: { id: "multi", key: "ocn.beta.multi", v: "1", try: "beta.try.f" },
   direct: { id: "direct", key: "ocn.beta.direct", v: "1", try: "beta.try.m" },
 };

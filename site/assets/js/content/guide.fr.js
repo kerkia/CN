@@ -1,126 +1,99 @@
-// The Documentation's guide to the site, in French (owner, 2026-10-24: the page told the methods but not the site — its
-// races pages, training, the organisers' pages, the account). guide.en.js in step: the same structure, the English words.
-// build(X) receives the page's helpers and returns the four tabs' chapters and builders: « Le site », « Courses »,
-// « Entraînement », « Organisation ». Plain sentences for orienteers; a page is named as the menu names it, with a link.
+// The Documentation's guide to the site, in French (owner, 2026-10-24: the page told the methods but not the site; 2026-10-31:
+// one documentation per module). guide.en.js in step: the same structure, the English words. build(X) receives the page's
+// helpers and returns « Le site » (the documentation's home: short, every section on one page) and the guides of Arena,
+// Coach and Orga, each a set of chapters (Stats' documentation is the methods', content/methods.*.js; Orga's « Le tracé »
+// too). Plain sentences for orienteers; a page is named as the menu names it, with a link.
 export function build(X) {
   const { html, raw, subTabs, fr = true, admin = false } = X;
   // a page of the site, as the menus name it
   const P = (href, label) => html`<a href="${href}">${label}</a>`;
-  // another tab of the Documentation
+  // a module's documentation
+  const M = (mod, label) => html`<a href="#/documentation?module=${mod}">${label}</a>`;
+  // a tab of the module's documentation shown (Orga: « Le tracé »)
   const D = (tab, label, goto) => html`<a href="#/documentation?onglet=${tab}${goto ? `&voir=${goto}` : ""}" data-tab-link="${tab}"${raw(goto ? ` data-goto="${goto}"` : "")}>${label}</a>`;
   const chapters = (list, CH) => raw(subTabs(list, list[0][0]).s.replace(/<div data-subpanel="([a-z]+)"( hidden)?><\/div>/g, (m0, k, hid) =>
     `<div data-subpanel="${k}"${hid || ""}>${CH[k]().s}</div>`));
   const slide = (kicker, title, body, id) => html`<section class="mx-slide"${raw(id ? ` id="${id}"` : "")}><p class="mx-kicker">${kicker}</p><h2>${title}</h2>${body}</section>`;
   const list = (items) => html`<ul class="mx-list">${items.filter(Boolean).map((i) => html`<li><span>${i}</span></li>`)}</ul>`;
 
+  // what each documentation says under its title
+  const LEDE = {
+    home: html`Ozimut en quelques mots, puis la documentation de chaque module : choisissez celui qui vous intéresse.`,
+    arena: html`Les compétitions : l'agenda, les résultats des organisateurs, le direct et l'analyse des temps intermédiaires.`,
+    coach: html`S'entraîner : les analyses de traces GPS, les définitions de postes, les symboles de carte, les jeux et la VMA.`,
+    orga: html`Les outils des organisateurs : résultats, horaires, direct, suivi GPS, analyses multi et tracé des circuits.`,
+  };
+
   // ======================================================================================================
-  // Le site
+  // Le site: the documentation's home, short
   // ======================================================================================================
-  const SITE = [["menus", "Les menus"], ["pays", "Pays et langue"], ["compte", "Compte et alertes"], ["telephone", "Sur le téléphone"]];
   function site() {
-    return chapters(SITE, {
-      menus: () => html`
-        ${slide("Le site", "Quatre modules", html`
-          <p>Ozimut a quatre modules. Après la connexion, ou en entrant sans compte, la page des modules propose de choisir l'un d'eux ;
-            la barre du haut montre alors les pages de ce module seulement. Le logo Ozimut ramène à tout moment à la page des modules,
-            pour en changer.</p>
-          <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--water)"><h3>Arena</h3><p>Les compétitions : celles d'aujourd'hui et à venir, avec leurs
-              informations et listes de départ, le direct, puis celles des 60 derniers jours, avec leurs résultats et l'analyse des temps
-              intermédiaires en onglets.</p></div>
-            <div class="mx-box" style="--c:var(--forest)"><h3>Stats</h3><p>${fr ? html`Les coureurs, les classements, les catégories, les courses
-              classées, les comparaisons, les clubs et les statistiques, au CN officiel ou à l'indice Ozimut.` : html`Les classements des pays
-              où Ozimut en calcule un, avec leurs coureurs, leurs clubs et leurs statistiques.`}</p></div>
-            <div class="mx-box" style="--c:var(--course)"><h3>Coach</h3><p>L'analyse de ses traces GPS, seul ou à plusieurs, les définitions de
-              postes, des jeux de lecture de carte et la VMA.</p></div>
-            <div class="mx-box" style="--c:var(--flag)"><h3>Orga</h3><p>Pour les clubs qui organisent : déposer résultats et horaires, diffuser
-              en direct, préparer les analyses GPS, tracer les circuits. Il s'active à l'inscription, dans les Réglages ou sur la page des
-              modules, et s'utilise sur ordinateur.</p></div>
-          </div>
-          <p>Sans compte, Ozimut montre ce qui est public : Arena, Coach sauf l'analyse multi, et dans Stats le coureur, le classement et les
-            courses sur la période que la fédération publie librement. Sous votre nom : la page des modules, cette documentation, les
-            Réglages, « Nous écrire » et la déconnexion. Les pages encore en essai portent la mention « bêta » ; un avis le rappelle à la
-            première ouverture.</p>`)}`,
-      pays: () => html`
-        ${slide("Le site", "Le pays du site", html`
-          <p>Le bouton du pays, en haut, choisit le pays dont on voit les courses : l'agenda, les résultats et l'en direct sont ceux de ce pays,
-            ouverts à tous les comptes. On peut courir partout ; seules les courses du pays choisi sont listées, mais une recherche dans « En direct »
-            parcourt tous les pays.</p>
-          ${list([
-            html`<b>L'agenda</b> d'une trentaine de pays vient de leur fédération (France, Espagne, Suisse, Allemagne, Royaume-Uni, Italie…) : il est lu
-              chaque matin, avec la région et le département, le canton ou le comté de chaque manifestation.`,
-            html`<b>Les classements</b> n'existent que là où Ozimut a les résultats de la fédération : la France (le ${fr ? "CN officiel et " : ""}l'indice
-              Ozimut) et l'Espagne (l'indice Ozimut). Ailleurs, les pages de la partie « Classement » le disent.`,
-            html`<b>Hors de France</b>, un organisateur peut déclarer ses compétitions (voir ${D("orga", "Organisation", "declarer")}) : elles
-              paraissent dans l'agenda et les résultats de son pays.`,
-          ])}`)}
-        ${slide("Le site", "La langue et le thème", html`
-          <p>Le site existe en français et en anglais : le bouton de la langue, à côté du pays, la change sur cet appareil et, connecté, pour le
-            compte (les e-mails suivent). Le bouton de la lune choisit l'un des cinq thèmes, du plus clair au plus sombre : Jour, Clairière, Forêt,
-            Sous-bois et Nuit. Par défaut, clair sur un ordinateur, sombre sur un téléphone.</p>`)}`,
-      compte: () => html`
-        ${slide("Le site", "Le compte", html`
-          ${list([
-            html`Un compte s'ouvre avec une adresse e-mail et un mot de passe ; on indique ensuite les pays où l'on court (${P("#/reglages?onglet=pays", "Réglages › Mes pays")}).
-              Pour la France, le nom et le numéro de licence sont vérifiés auprès de la liste des licenciés : c'est ce qui ouvre ${fr ? "les classements, votre page de coureur et vos alertes de résultats" : "les classements français"}.`,
-            html`Le compte ne garde que ce qu'il faut pour fonctionner ; la page ${P("#/compte/confidentialite", "Règles du site et confidentialité")} dit
-              tout ce qui est gardé, où et combien de temps. Il se supprime depuis les Réglages.`,
-          ])}`)}
-        ${slide("Le site", "Les alertes", html`
-          <p>Dans ${P("#/reglages", "Réglages")}, chaque alerte part par e-mail, par notification, ou les deux :</p>
-          ${list([
-            html`<b>Une de mes courses est en ligne</b> : dès que des résultats vous nommant paraissent, chez l'organisateur, sur une plateforme ou à la
-              fédération${fr ? "" : " (avec une licence française)"}.`,
-            html`<b>Mon heure de départ est publiée</b>, et de nouveau si elle change.`,
-            html`<b>Une nouvelle course dans mes régions</b>, et <b>la clôture des inscriptions approche</b> (8 jours avant), pour les régions choisies.`,
-          ])}
-          <p>Les notifications se règlent appareil par appareil (« Activer sur cet appareil », puis « Envoyer un essai ») ; les e-mails d'alerte sont
-            ouverts compte par compte, le nombre d'envois du site étant limité.</p>`)}`,
-      telephone: () => html`
-        ${slide("Le site", "Ozimut sur le téléphone", html`
-          ${list([
-            html`<b>Installer l'application</b> : le menu sous votre nom propose « Installer l'application » (Chrome, Edge, Android) ; sur iPhone,
-              Partager › « Sur l'écran d'accueil ». Installée, elle s'ouvre comme une application, avec des raccourcis vers le classement, les résultats,
-              l'agenda et l'analyse solo.`,
-            html`<b>Les notifications sur iPhone</b> n'arrivent qu'à l'application ajoutée à l'écran d'accueil.`,
-            html`<b>Partager une trace</b> : depuis l'application de la montre ou du téléphone, « Partager » vers Ozimut ouvre l'${P("#/analyse-solo", "Analyse solo")}
-              avec le fichier ; un fichier GPX, FIT, TCX ou KMZ s'ouvre aussi directement avec Ozimut. Rien n'est envoyé : le fichier reste dans le téléphone.`,
-            html`<b>Hors connexion</b>, une page l'indique au lieu d'une erreur ; le mode terrain du tracé garde ses relevés jusqu'au retour du réseau.`,
-          ])}`)}`,
-    });
+    return html`
+      ${slide("Le site", "Les modules et le compte", html`
+        <p>Ozimut a quatre modules : la page des modules, où l'on arrive, propose de choisir l'un d'eux, et la barre du haut montre alors ses pages
+          seulement. Le logo Ozimut y ramène à tout moment. Orga s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise
+          sur ordinateur.</p>
+        ${list([
+          html`<b>Sans compte</b>, Ozimut montre ce qui est public : Arena, Coach sauf l'analyse multi, et dans Stats le coureur, le classement et les
+            courses sur la période que la fédération publie librement.`,
+          html`<b>Un compte</b> s'ouvre avec une adresse e-mail et un mot de passe, puis les pays où l'on court (${P("#/reglages?onglet=pays", "Réglages › Mes pays")}).
+            Pour la France, le nom et le numéro de licence sont vérifiés auprès de la liste des licenciés : c'est ce qui ouvre ${fr ? "les classements et votre page de coureur" : "les classements français"}.
+            Le compte ne garde que ce qu'il faut ; ${P("#/compte/confidentialite", "Règles du site et confidentialité")} dit quoi, où et combien de temps.`,
+          html`Sous votre nom : la page des modules, cette documentation, les ${P("#/reglages", "Réglages")}, « Nous écrire » et la déconnexion. Les pages
+            encore en essai portent la mention « bêta ».`,
+        ])}`, "menus")}
+      ${slide("Le site", "Pays, langue et thème", html`
+        ${list([
+          html`<b>Le pays</b>, en haut, choisit les compétitions que l'on voit : l'agenda d'une trentaine de pays, lu chaque matin chez leur fédération,
+            leurs résultats et leur direct, ouverts à tous. Les classements n'existent que là où Ozimut a les résultats de la fédération : la France
+            (${fr ? "le CN officiel et " : ""}l'indice Ozimut) et l'Espagne (l'indice Ozimut).`,
+          html`<b>La langue</b>, français ou anglais, change sur cet appareil et, connecté, pour le compte (les e-mails suivent).`,
+          html`<b>Le thème</b>, sous la lune : Jour, Clairière, Forêt, Sous-bois ou Nuit ; clair sur un ordinateur, sombre sur un téléphone par défaut.`,
+        ])}`, "pays")}
+      ${slide("Le site", "Les alertes", html`
+        <p>Dans les ${P("#/reglages", "Réglages")}, chaque alerte part par e-mail, par notification, ou les deux : <b>une de mes courses est en ligne</b>${fr ? "" : " (avec une licence française)"},
+          <b>mon heure de départ est publiée</b>, <b>une nouvelle course dans mes régions</b> et <b>la clôture des inscriptions approche</b>. Les
+          notifications se règlent appareil par appareil ; les e-mails d'alerte sont ouverts compte par compte, le nombre d'envois du site étant limité.</p>`, "compte")}
+      ${slide("Le site", "Sur le téléphone", html`
+        ${list([
+          html`<b>L'application</b> : « Installer l'application » dans le menu sous votre nom (Chrome, Edge, Android) ; sur iPhone, Partager › « Sur l'écran
+            d'accueil » — c'est aussi la seule façon d'y recevoir les notifications.`,
+          html`<b>Partager une trace</b> depuis la montre ou le téléphone vers Ozimut ouvre l'${P("#/analyse-solo", "Analyse solo")} avec le fichier ; rien
+            n'est envoyé.`,
+        ])}`, "telephone")}`;
   }
 
   // ======================================================================================================
-  // Courses
+  // Arena
   // ======================================================================================================
-  const COURSES = [["agenda", "Agenda"], ["resultats", "Résultats"], ["direct", "En direct"], ["analyse", "Analyse de course"], ["gps", "Analyses GPS"],
-    ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // a prototype, for the administrators (2026-10-24)
-  function courses() {
-    return chapters(COURSES, {
-      agenda: () => html`
-        ${slide("Courses", "L'agenda", html`
-          <p>L'${P("#/agenda", "Agenda")} reprend chaque matin le calendrier de la fédération du pays choisi : les courses, et aussi les entraînements,
-            stages et formations. On le filtre par date, spécialité, région, département${fr ? ", et aux courses comptant pour le CN" : ""} ; une manifestation
-            de plusieurs jours reste listée tant qu'elle dure.</p>
-          <p>Le détail d'une manifestation donne le lieu et l'itinéraire, l'annonce de course, ${fr ? "le nombre d'inscrits par circuit, " : ""}les dates de
-            clôture des inscriptions, et, quand ils existent, des encadrés :</p>
+  const ARENA = [["competitions", "Les compétitions"], ["resultats", "Résultats"], ["direct", "En direct"], ["analyse", "Analyse de course"]];
+  function arena() {
+    return chapters(ARENA, {
+      competitions: () => html`
+        ${slide("Arena", "Une page, toutes les compétitions", html`
+          <p>Arena est une seule page, les ${P("#/agenda", "Compétitions")} du pays choisi : trois cases choisissent celles d'aujourd'hui, celles à venir et
+            celles des 60 derniers jours. L'agenda vient chaque matin du calendrier de la fédération — les courses, et aussi les entraînements, stages et
+            formations. On filtre par date, spécialité, région${fr ? ", département, et aux courses comptant pour le CN" : ""} ; sur un ordinateur, une carte
+            montre où elles ont lieu.</p>
           ${list([
-            html`<b>Liste de départ publiée</b> : les horaires de départ${fr ? ", avec le CN de chacun et la place qu'il laisse attendre" : ""}.`,
-            html`<b>Résultats en direct</b> : le jour de la course, un lien vers « En direct » ; « En direct en ce moment » quand des coureurs pointent.`,
-            html`<b>Suivi GPS en direct</b> : le lien vers le site de suivi que l'organisateur a choisi.`,
+            html`<b>Une compétition à venir</b> s'ouvre à côté de la liste : le lieu et l'itinéraire, l'annonce, ${fr ? "le nombre d'inscrits par circuit, " : ""}la
+              clôture des inscriptions, et des boutons quand ils existent — la liste de départ${fr ? " (avec le CN de chacun et la place qu'il laisse attendre)" : ""},
+              « Suivre en direct », le suivi GPS.`,
+            html`<b>Une compétition passée</b> ouvre sa page : les résultats en premier onglet, puis, quand les temps intermédiaires sont publiés, chaque vue
+              de leur analyse. « ‹ Compétitions » ramène à la liste là où on l'avait laissée.`,
           ])}`)}`,
       resultats: () => html`
-        ${slide("Courses", "Les résultats des organisateurs", html`
-          <p>${P("#/resultats", "Résultats")} montre les courses des 60 derniers jours telles que les organisateurs les publient, souvent le soir même, des
-            jours avant la fédération. Ozimut les cherche lui-même plusieurs fois par jour, et toutes les 20 minutes les samedis et dimanches soir :</p>
+        ${slide("Arena", "Les résultats des organisateurs", html`
+          <p>Les résultats des 60 derniers jours paraissent tels que les organisateurs les publient, souvent le soir même, des jours avant la fédération.
+            Ozimut les cherche lui-même plusieurs fois par jour, et toutes les 20 minutes les samedis et dimanches soir :</p>
           ${list([
             html`sur les <b>plateformes</b> de résultats : liveresultat, WinSplits, Helga, O'Live, SPORTident Center, les sites MeOSDjango (dont Orientation Data) ;`,
             html`sur le <b>site du club</b> organisateur : ses pages et ses fichiers (HTML d'OE ou de MeOS, IOF XML, PDF) ;`,
-            html`dans les <b>dépôts</b> des organisateurs et leurs <b>diffusions en direct</b> (voir ${D("orga", "Organisation")}).`,
+            html`dans les <b>dépôts</b> des organisateurs et leurs <b>diffusions en direct</b> (voir la documentation d'${M("orga", "Orga")}).`,
           ])}
-          <p>Une course en cours le dit (« en cours ») tant que des coureurs sont dehors. Quand plusieurs documents existent, celui de l'organisateur passe
-            devant les plateformes, et les résultats en direct en dernier (ils ne sont pas corrigés ensuite). Les coureurs sont reconnus par leur nom et
-            leur club ; ${fr ? "« Mes courses » montre les vôtres. " : ""}Une course à venir dont la liste de départ est publiée s'ouvre depuis l'agenda.</p>`)}
+          <p>Une course en cours le dit (« en cours ») tant que des coureurs sont dehors. Quand plusieurs documents existent, Ozimut montre le meilleur :
+            celui de l'organisateur avant les plateformes, les résultats en direct en dernier (ils ne sont pas corrigés ensuite). Les coureurs sont reconnus
+            par leur nom et leur club.</p>`)}
         ${!fr ? "" : html`
         <section class="mx-slide">
           <p class="mx-kicker">Résultats</p>
@@ -140,23 +113,22 @@ export function build(X) {
           ])}
         </section>`}`,
       direct: () => html`
-        ${slide("Courses", "En direct", html`
-          <p>${P("#/direct", "En direct")} relaie les résultats publiés pendant la course sur liveresultat, O'Live, SPORTident Center, un site MeOSDjango, ou
-            envoyés par l'organisateur depuis son logiciel de chronométrage. « En direct maintenant » regroupe en tête les courses où un poste ou l'arrivée a
-            enregistré un passage dans la dernière demi-heure.</p>
+        ${slide("Arena", "En direct", html`
+          <p>Le jour de la course, « Suivre en direct » relaie les résultats publiés pendant la course sur liveresultat, O'Live, SPORTident Center, un site
+            MeOSDjango, ou envoyés par l'organisateur depuis son logiciel de chronométrage. Une compétition où un poste ou l'arrivée a enregistré un passage
+            dans la dernière demi-heure est marquée « direct ».</p>
           ${list([
             html`<b>Par circuit ou par catégorie</b> : place, temps, écart, heure de départ${fr ? ", le CN de chacun et la place qu'il laisse attendre, et le score de son temps" : ""}.
               Un coureur encore dehors a une heure d'arrivée estimée d'après ses postes radio et le temps des arrivés.`,
             html`<b>Suivre</b> : « Mon club » (les coureurs de votre club, toutes catégories), « Encore en course », « Tous les passages » des 15
               dernières minutes, et ceux de votre club, qui peuvent faire vibrer et sonner le téléphone à chaque passage.`,
             html`<b>Les passages récents</b> sont en vert (moins de 3 minutes) puis en jaune (moins de 9) ; une recherche trouve un coureur ou un club.`,
-            html`Dès qu'un temps intermédiaire arrive, « Analyse de course » analyse la course en direct.`,
+            html`Dès qu'un temps intermédiaire arrive, « Analyse » analyse la course en direct.`,
           ])}`)}`,
       analyse: () => html`
-        ${slide("Courses", "Analyse de course", html`
-          <p>L'${P("#/analyse-course", "Analyse de course")} liste les courses récentes dont les temps intermédiaires sont publiés, et celles en direct qui en
-            donnent. Une course s'analyse circuit par circuit, en plusieurs vues : Tableau, Écarts, Passages, Inter-postes, Profil, Face-à-face, Groupes,
-            Autonomie, Régularité et Bilan. Un organisateur peut aussi y regarder son propre fichier avant de le publier.</p>`)}
+        ${slide("Arena", "Analyse de course", html`
+          <p>Quand les temps intermédiaires sont publiés, la page d'une course les analyse circuit par circuit, en plusieurs vues : Tableau, Écarts,
+            Passages, Inter-postes, Profil, Face-à-face, Groupes, Autonomie, Régularité et Bilan.</p>`)}
         <section class="mx-slide">
           <p class="mx-kicker">Temps intermédiaires</p>
           <h2>Le temps perdu et les erreurs</h2>
@@ -195,28 +167,74 @@ export function build(X) {
               publier ; le lecteur, au-dessus des analyses, et les cases concernées sont encadrées dans le tableau.`,
           ])}
         </section>`,
-      gps: () => html`
-        ${slide("Courses", "Analyser sa trace GPS", html`
-          <p>Deux analyses, sous « Courses » pour une compétition et sous « Entraînement » pour le reste (voir ${D("entrainement", "Entraînement", "solo")}) :</p>
-          <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>${P("#/analyse", "Analyse solo")}</h3><p>Votre trace sur votre carte, pour une course de « Résultats ». La carte et la
-              trace sont lues dans votre navigateur et n'en sortent pas. Le parcours est lu sur la carte, la trace calée dessus toute seule, et les temps
-              intermédiaires publiés affinent le calage ; la course se rejoue ensuite, inter-poste par inter-poste, avec le temps perdu, l'allure et la
-              fréquence cardiaque.</p></div>
-            <div class="mx-box" style="--c:var(--s3)"><h3>${P("#/analyse-competition", "Analyse multi")}</h3><p>Les traces de tous ceux qui ont couru une compétition, sur la carte que
-              l'organisateur a préparée, à côté des résultats publiés : départ en masse, attente aux postes, comparaison inter-poste par inter-poste,
-              comme sur Livelox. Chacun y dépose sa trace, qui ne garde que les positions et les heures.</p></div>
-          </div>
-          <p>Fichiers lus : la carte (image, PDF ou KMZ), la trace (GPX, FIT ou TCX) et, si on les a, le calage de la carte (KMZ, fichier de
-            géoréférencement) et les circuits en IOF XML.</p>`)}`,
+    });
+  }
+
+  // ======================================================================================================
+  // Coach
+  // ======================================================================================================
+  const COACH = [["solo", "Analyse solo"], ["multi", "Analyse multi"], ["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"],
+    ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
+  function coach() {
+    return chapters(COACH, {
+      solo: () => html`
+        ${slide("Coach", "Analyse solo", html`
+          <p>L'${P("#/analyse-solo", "Analyse solo")} rejoue votre course sur votre carte avec votre trace GPS. Deux onglets : une compétition (une course
+            passée d'Arena, dont les temps intermédiaires publiés affinent le calage) ou un entraînement, n'importe quelle sortie.</p>
+          ${list([
+            html`<b>Les fichiers</b> : la carte (image, PDF, KMZ, ou le fichier OCAD ou Mapper lui-même), la trace (GPX, FIT ou TCX) et, si on les a, le calage
+              de la carte (KMZ, fichier de géoréférencement) et les circuits en IOF XML. Sur un téléphone, « Photographier la carte ».`,
+            html`<b>Le calage</b> se fait seul : le parcours est lu sur la carte, la trace posée dessus ; si la lecture se trompe, quelques clics la corrigent.`,
+            html`<b>La course</b> se rejoue ensuite, plein écran si on veut, inter-poste par inter-poste, avec le temps perdu, l'allure et les courbes de la
+              montre (fréquence cardiaque, cadence, altitude…).`,
+          ])}
+          <p>La carte et la trace sont lues dans votre navigateur et n'en sortent pas ; seul le calage des postes est gardé, pour retrouver l'analyse telle
+            qu'on l'a laissée.</p>`)}`,
+      multi: () => html`
+        ${slide("Coach", "Analyse multi", html`
+          <p>L'${P("#/analyse-competition", "Analyse multi")} met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
+            que l'organisateur a préparée (voir la documentation d'${M("orga", "Orga")}). Choisissez la course, ajoutez votre trace — elle ne garde que les
+            positions et les heures —, et comparez. Il faut un compte.</p>
+          ${list([
+            html`<b>Le rejeu</b>, comme sur Livelox : heure réelle, départ en masse, attente aux postes, un inter-poste à la fois.`,
+            html`<b>Sous la carte</b> : les temps intermédiaires (ceux publiés pour une compétition), les inter-postes, les écarts, les variantes d'itinéraire, et
+              pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
+            html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
+              pour vous seul.`,
+          ])}`)}`,
+      definitions: () => html`
+        ${slide("Coach", "Définitions de postes", html`
+          <p>Les ${P("#/definitions", "Définitions de postes")} présentent les symboles de l'IOF colonne par colonne, chacun avec son équivalent sur la carte,
+            leurs noms dans 23 langues et une recherche. « Lire une ligne de définitions » détaille un exemple colonne par colonne. Pour réviser, on cache les
+            noms, on devine la définition d'après la carte, ou la carte d'après le symbole.</p>`)}`,
+      symboles: () => html`
+        ${slide("Coach", "Symboles de carte", html`
+          <p>Les ${P("#/symboles", "Symboles de carte")} sont la légende complète d'une carte de forêt (ISOM 2017-2), couleur par couleur : chaque symbole avec
+            son numéro, son nom et ce qu'il signifie, ceux qu'il est interdit de franchir signalés. « Ce que disent les couleurs » explique la course possible
+            selon le vert. Pour réviser, on cache les noms ou les dessins.</p>`)}`,
+      jeux: () => html`
+        ${slide("Coach", "Douze jeux de lecture de carte", html`
+          <p>Les ${P("#/jeux", "Jeux")} se jouent sur des cartes dessinées par le site à chaque partie — une forêt avec son relief et sa végétation, une
+            ville, un labyrinthe — et des « photos » du terrain dessinées de même. Rien n'est envoyé ; les meilleurs scores restent dans le navigateur.</p>
+          ${list([
+            html`<b>Choix d'itinéraire</b> : Tracé rapide (dessiner le plus court), Choix de parcours (20 secondes de carte, 5 pour choisir), Variante la
+              plus rapide, Choix d'itinéraire entre trois ou quatre tracés.`,
+            html`<b>Lecture du relief et du terrain</b> : Courbes de niveau, Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Trail'O.`,
+            html`<b>Mémoire</b> : Mémoire de carte, Mémoire photo, et le Labyrinthe, vu à la première personne.`,
+          ])}`)}`,
+      vma: () => html`
+        ${slide("Coach", "La VMA", html`
+          <p>La page ${P("#/vma", "VMA")} présente les tests (en laboratoire, VAMEVAL, Léger-Boucher, demi-Cooper, Cooper, navette, 45-15), calcule la vitesse
+            maximale aérobie d'après un demi-Cooper (6 minutes) ou un Cooper (12 minutes) — le couloir de la piste compte, comme le dernier tour incomplet —,
+            en déduit les allures d'entraînement, et propose des applications gratuites pour faire les tests.</p>`)}`,
       routes: () => html`
-        ${slide("Courses · essai, administrateurs", "Les itinéraires calculés", html`
+        ${slide("Coach · essai, administrateurs", "Les itinéraires calculés", html`
           <p>Dans les deux analyses GPS, un administrateur peut faire proposer par Ozimut, pour chaque inter-poste, les itinéraires les plus rapides
             sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesurer sur le même modèle l'itinéraire que chaque coureur a pris.
             Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et un tableau les reprend sous la carte ; dans
             l'${P("#/analyse-club", "Analyse multi")}, l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
             la carte telle qu'Ozimut la lit, et cette lecture peut se tromper.</p>`)}
-        ${slide("Courses · essai", "1. Lire la carte d'après ses couleurs", html`
+        ${slide("Coach · essai", "1. Lire la carte d'après ses couleurs", html`
           <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
             (terrain découvert, plus ou moins clair), les trois verts selon leur intensité, l'olive (zone interdite), et les « encres » posées par-dessus —
             le noir, le gris, le brun, le bleu et le violet du parcours.</p>
@@ -234,7 +252,7 @@ export function build(X) {
           <p>Limites connues : la zone interdite hachurée en violet est effacée avec le parcours ; une photo mal éclairée trouble les couleurs ; les
             falaises infranchissables fines, les murs et les clôtures sont des traits noirs comme les chemins (le réglage « Lignes noires fines » dit ce
             qu'ils sont).</p>`)}
-        ${slide("Courses · essai", "1 bis. Mieux : la carte OCAD ou Mapper", html`
+        ${slide("Coach · essai", "1 bis. Mieux : la carte OCAD ou Mapper", html`
           <p>Le fichier de la carte elle-même — OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap) — dit le terrain sans deviner : Ozimut le lit
             dans votre navigateur avec le moteur du tracé de circuits et dessine chaque symbole à sa place exacte.</p>
           ${list([
@@ -250,7 +268,7 @@ export function build(X) {
           <p>Dans l'Analyse solo, un fichier OCAD ou Mapper déposé seul <b>est</b> la carte : dessinée ici, la trace calée par son
             géoréférencement. Déposé avec une image de la carte — ou choisi dans la boîte « Itinéraires calculés », dans les deux analyses —, il
             sert aux itinéraires, placé sur l'image par son géoréférencement : il doit en avoir un, et recouvrir la carte affichée.</p>`)}
-        ${slide("Courses · essai", "2. Le temps d'un pas", html`
+        ${slide("Coach · essai", "2. Le temps d'un pas", html`
           <p>Le temps pour aller d'une case à sa voisine est la distance, multipliée par la lenteur du terrain et par celle de la pente :</p>
           ${list([
             html`<b>Le terrain</b> : sa vitesse en part de celle de la forêt blanche — chemin 125 %, terrain découvert 110 %, semi-découvert
@@ -264,7 +282,7 @@ export function build(X) {
           <p>Ce temps est celui d'une allure de référence en forêt blanche à plat : 6:00 min/km par défaut, ou celle qu'on tape, ou — sans rien taper —
             celle du coureur : dans l'Analyse solo, la médiane, sur ses inter-postes, de son temps réel divisé par le temps du modèle sur son propre
             itinéraire ; dans l'Analyse multi, la médiane des coureurs sur l'inter-poste.</p>`)}
-        ${slide("Courses · essai", "3. La prudence de navigation", html`
+        ${slide("Coach · essai", "3. La prudence de navigation", html`
           <p>Le plus court n'est pas toujours le plus sûr : loin de tout repère, au milieu de la forêt, on lit la carte plus souvent, on ralentit, on se
             trompe. Ozimut appelle <b>lignes directrices</b> les chemins, les ruisseaux, les lisières entre terrains différents et les bords de ce qui
             arrête (eau, bâtiments). La prudence ajoute au coût d'un pas une part de son temps qui croît avec la distance à la ligne directrice la plus
@@ -273,7 +291,7 @@ export function build(X) {
           <p>La visibilité pèse 1 en forêt blanche, 1,2 à 1,4 dans les verts, 0,3 en terrain découvert, 0 sur un chemin. À 20 % (le réglage par
             défaut), traverser une forêt sans repère coûte jusqu'à un cinquième de plus ; à 0 %, on court droit comme un coureur qui ne se trompe
             jamais. La prudence choisit l'itinéraire ; les temps affichés restent ceux de la course seule, sans elle.</p>`)}
-        ${slide("Courses · essai", "4. Les variantes", html`
+        ${slide("Coach · essai", "4. Les variantes", html`
           <p>L'itinéraire A est le moins coûteux, trouvé par une recherche A* dans une ellipse autour de l'inter-poste (assez large pour contourner un
             lac). Pour les suivants, Ozimut pénalise le couloir des itinéraires déjà trouvés et cherche à nouveau ; chaque proposition est ensuite
             retendue sans pénalité dans une bande autour d'elle, puis gardée seulement si :</p>
@@ -284,7 +302,7 @@ export function build(X) {
               à travers une forêt uniforme n'est pas un choix, un détour par un chemin ou autour d'un vert l'est.`,
           ])}
           <p>Chaque variante dit si elle passe à gauche, à droite ou tout droit par rapport à la ligne entre les postes.</p>`)}
-        ${slide("Courses · essai", "5. Votre itinéraire", html`
+        ${slide("Coach · essai", "5. Votre itinéraire", html`
           <p>La trace du coureur entre deux postes est mesurée sur le même modèle, puis rapprochée de la variante la plus proche (à 25 m en moyenne près,
             sinon « autre »). Le tableau de l'Analyse solo en tire deux écarts :</p>
           ${list([
@@ -298,102 +316,66 @@ export function build(X) {
   }
 
   // ======================================================================================================
-  // Entraînement
-  // ======================================================================================================
-  const TRAINING = [["jeux", "Jeux"], ["vma", "VMA"], ["solo", "Analyse solo"], ["multi", "Analyse multi"]];
-  function entrainement() {
-    return chapters(TRAINING, {
-      jeux: () => html`
-        ${slide("Entraînement", "Douze jeux de lecture de carte", html`
-          <p>Les ${P("#/jeux", "Jeux")} se jouent sur des cartes dessinées par le site à chaque partie — une forêt avec son relief et sa végétation, une
-            ville, un labyrinthe — et des « photos » du terrain dessinées de même. Rien n'est envoyé ; les meilleurs scores restent dans le navigateur.</p>
-          ${list([
-            html`<b>Choix d'itinéraire</b> : Tracé rapide (dessiner le plus court), Choix de parcours (20 secondes de carte, 5 pour choisir), Variante la
-              plus rapide, Choix d'itinéraire entre trois ou quatre tracés.`,
-            html`<b>Lecture du relief et du terrain</b> : Courbes de niveau, Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Trail'O.`,
-            html`<b>Mémoire</b> : Mémoire de carte, Mémoire photo, et le Labyrinthe, vu à la première personne.`,
-          ])}`)}`,
-      vma: () => html`
-        ${slide("Entraînement", "La VMA", html`
-          <p>La page ${P("#/vma", "VMA")} calcule la vitesse maximale aérobie d'après un demi-Cooper (6 minutes) ou un Cooper (12 minutes) sur piste — le
-            couloir choisi compte, comme le dernier tour incomplet —, en déduit les allures d'entraînement, et présente les autres tests (VAMEVAL,
-            Léger-Boucher, 45-15…) et des applications gratuites pour les faire.</p>`)}`,
-      solo: () => html`
-        ${slide("Entraînement", "Analyse solo", html`
-          <p>L'${P("#/analyse-solo", "Analyse solo")} est la même analyse que celle des compétitions (voir ${D("courses", "Courses", "gps")}), pour n'importe
-            quelle sortie : déposez la carte et la trace, le parcours est lu sur la carte et la trace calée dessus ; si la lecture se trompe, quelques
-            clics la corrigent. La course se rejoue ensuite, plein écran si on veut, avec les courbes de la montre (allure, fréquence cardiaque,
-            cadence, altitude…).</p>
-          <p>Les fichiers restent dans le navigateur le temps de la visite ; seul le calage des postes est gardé, pour retrouver l'analyse telle qu'on l'a
-            laissée.</p>`)}`,
-      multi: () => html`
-        ${slide("Entraînement", "Analyse multi", html`
-          <p>L'${P("#/analyse-club", "Analyse multi")} des entraînements : ceux que leurs organisateurs ont préparés, avec la carte et les circuits.
-            Choisissez le vôtre, déposez votre trace, et comparez-la à celles des autres. Un entraînement peut être ouvert à tous, à un club ou protégé par
-            un mot de passe. Votre propre fichier sert aussi à afficher vos courbes à côté de la carte, pour vous seul.</p>`)}`,
-    });
-  }
-
-  // ======================================================================================================
-  // Organisation
+  // Orga (« Le tracé », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Qui organise"], ["resultats", "Résultats"], ["horaires", "Horaires"], ["direct", "Direct"], ["suivi", "Suivi GPS"],
-    ["analyses", "Analyses multi"], ["declarer", "Compétitions déclarées"], ["trace", "Le tracé"]];
+    ["analyses", "Analyses multi"], ["declarer", "Compétitions déclarées"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Organisation", "Les pages des organisateurs", html`
-          <p>Ces pages servent aux clubs qui organisent. Est organisateur d'une compétition ${fr ? "tout membre de son club organisateur — le club de sa dernière course connue — ou" : ""}
+        ${slide("Orga", "Les pages des organisateurs", html`
+          <p>Orga sert aux clubs qui organisent ; il s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise sur ordinateur.
+            Est organisateur d'une compétition ${fr ? "tout membre de son club organisateur — le club de sa dernière course connue — ou" : ""}
             le compte qui l'a déclarée, hors de France. Un entraînement, lui, peut être créé par n'importe quel compte.</p>
           ${list([
             html`${P("#/orga-competitions", "Compétitions")} et ${P("#/orga-entrainements", "Entraînements")} : préparer les analyses multi.`,
             html`${P("#/orga-resultats", "Résultats")} et ${P("#/orga-horaires", "Horaires")} : déposer les résultats et la liste de départ.`,
             html`${P("#/orga-direct", "Direct")} : diffuser les résultats en direct depuis le logiciel de chronométrage, et donner le lien du suivi GPS.`,
-            html`${P("#/orga-tracer", "Tracer")} : tracer les circuits, comme avec Purple Pen.`,
+            html`${P("#/orga-tracer", "Tracer")} : tracer les circuits ; son guide est l'onglet ${D("tracer", "Le tracé")}.`,
           ])}`)}`,
       resultats: () => html`
-        ${slide("Organisation", "Déposer les résultats", html`
-          <p>Pour une compétition de votre club, ${P("#/orga-resultats", "Organisation › Résultats")} montre ce que « Résultats » en a déjà, et
+        ${slide("Orga", "Déposer les résultats", html`
+          <p>Pour une compétition de votre club, ${P("#/orga-resultats", "Orga › Résultats")} montre ce qu'Arena en a déjà, et
             « Déposer les résultats » ajoute votre fichier, en trois étapes :</p>
           <div class="mx-steps">
             <div class="mx-step"><b>Le fichier</b>Un export IOF XML de votre logiciel (le meilleur : il porte les circuits et les temps intermédiaires),
               ou le HTML d'OE ou de MeOS, ou un PDF ; zippé ou non, 30 Mo au plus.</div>
             <div class="mx-step"><b>La vérification</b>Le fichier est lu dans votre navigateur, rien n'est envoyé : résumé, résultats circuit par circuit,
               contrôle des temps (boîtiers mal réglés, cartes non effacées), et toutes les vues de l'analyse de course.</div>
-            <div class="mx-step"><b>La publication</b>« Publier » l'envoie : la course paraît dans « Résultats » en quelques minutes, marquée comme déposée par
+            <div class="mx-step"><b>La publication</b>« Publier » l'envoie : la course paraît dans Arena en quelques minutes, marquée comme déposée par
               l'organisateur, et n'est plus cherchée ailleurs. Un nouveau dépôt remplace le précédent.</div>
           </div>`)}`,
       horaires: () => html`
-        ${slide("Organisation", "Publier les horaires de départ", html`
-          <p>${P("#/orga-horaires", "Organisation › Horaires")} publie la liste de départ d'une compétition à venir de votre club, jusqu'au jour de la
+        ${slide("Orga", "Publier les horaires de départ", html`
+          <p>${P("#/orga-horaires", "Orga › Horaires")} publie la liste de départ d'une compétition à venir de votre club, jusqu'au jour de la
             course. Fichiers lus : IOF XML « StartList » (le mieux), CSV, tableau à une colonne de circuit par paire, HTML, PDF d'OE ou de MeOS, ou un
             lien Google Sheets partagé.</p>
           ${list([
             html`Le fichier est d'abord lu et vérifié dans votre navigateur : deux coureurs d'un même club qui se suivent, une minute de départ partagée,
               des coureurs sans heure, sans puce ou sans circuit, les intervalles et les places libres.`,
             html`« Vérifier et exporter » écrit aussi le fichier du départ pour l'application O Checklist.`,
-            html`Une fois publiée, la liste paraît dans l'agenda (« Liste de départ publiée »), et chaque coureur qui l'a demandé reçoit son heure de départ par
-              notification ou par e-mail.`,
+            html`Une fois publiée, la liste paraît dans Arena (la liste de départ de la compétition), et chaque coureur qui l'a demandé reçoit son heure de
+              départ par notification ou par e-mail.`,
           ])}`)}`,
       direct: () => html`
-        ${slide("Organisation", "Diffuser en direct", html`
-          <p>${P("#/orga-direct", "Organisation › Direct")} fait paraître vos résultats dans « En direct » sans passer par liveresultat. Une diffusion
+        ${slide("Orga", "Diffuser en direct", html`
+          <p>${P("#/orga-direct", "Orga › Direct")} fait paraître vos résultats en direct dans Arena sans passer par liveresultat. Une diffusion
             s'ouvre par un nom, une date et, si possible, la compétition à laquelle elle se rattache. Puis, au choix :</p>
           <div class="mx-grid">
-            <div class="mx-box" style="--c:var(--s1)"><h3>Depuis le fichier</h3><p>Votre logiciel exporte la liste des résultats toutes les quelques secondes
-              (IOF XML, HTML d'OE ou de MeOS) ; la page, ouverte sur l'ordinateur de l'arène dans Chrome ou Edge, relit ce fichier et envoie ce qui change.</p></div>
-            <div class="mx-box" style="--c:var(--s3)"><h3>Depuis MeOS</h3><p>Le service « Résultats en ligne » de MeOS envoie lui-même ses résultats à
+            <div class="mx-box" style="--c:var(--s1)"><h3>Depuis MeOS</h3><p>Le service « Résultats en ligne » de MeOS envoie lui-même ses résultats à
               l'adresse, au numéro et au mot de passe que la page donne ; les temps intermédiaires des postes radio suivent.</p></div>
+            <div class="mx-box" style="--c:var(--s3)"><h3>Depuis un fichier</h3><p>Votre logiciel exporte la liste des résultats toutes les quelques secondes
+              (IOF XML, HTML d'OE ou de MeOS) ; la page, ouverte sur l'ordinateur de l'arène dans Chrome ou Edge, relit ce fichier et envoie ce qui change.</p></div>
           </div>
           <p>Rattachée à sa compétition, une diffusion est gardée après la course : ses résultats, ses temps intermédiaires et sa liste de départ restent
-            dans « Résultats ». C'est encore une version d'essai : à tester d'abord à un entraînement, ou à côté du direct habituel.</p>`)}`,
+            dans Arena. C'est encore une version d'essai : à tester d'abord à un entraînement, ou à côté du direct habituel.</p>`)}`,
       suivi: () => html`
-        ${slide("Organisation", "Le suivi GPS", html`
+        ${slide("Orga", "Le suivi GPS", html`
           <p>Ozimut ne suit aucun coureur par GPS. Si votre compétition utilise un service de suivi (Loggator, GPSSeuranta, TracTrac, Livelox,
-            Routechoices…), donnez son lien dans ${P("#/orga-direct", "Organisation › Direct")} : il paraît dans l'agenda (« Suivi GPS en direct »), dans
-            les résultats et dans « En direct » de la course. Seul le lien est publié.</p>`)}`,
+            Routechoices…), donnez son lien dans ${P("#/orga-direct", "Orga › Direct")} : il paraît sur la compétition dans Arena, avec ses résultats et son
+            direct. Seul le lien est publié.</p>`)}`,
       analyses: () => html`
-        ${slide("Organisation", "Préparer une analyse multi", html`
+        ${slide("Orga", "Préparer une analyse multi", html`
           <p>Dans ${P("#/orga-competitions", "Compétitions")} (les compétitions de votre club des 60 derniers jours) ou ${P("#/orga-entrainements", "Entraînements")}
             (« Nouvel entraînement »), une analyse multi se prépare circuit par circuit :</p>
           ${list([
@@ -403,21 +385,17 @@ export function build(X) {
             html`<b>L'accès</b> : tous les comptes, les membres du club, ou un mot de passe. « Voir comme les coureurs » montre la page telle qu'ils la
               verront.`,
           ])}
-          <p>Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse multi (après la course pour une compétition).</p>`)}`,
+          <p>Les coureurs la trouvent dans Coach (« Analyse multi »). Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse multi (après
+            la course pour une compétition).</p>`)}`,
       declarer: () => html`
-        ${slide("Organisation", "Déclarer une compétition, hors de France", html`
+        ${slide("Orga", "Déclarer une compétition, hors de France", html`
           <p>Les compétitions françaises viennent du calendrier de ${fr ? "la FFCO" : "la fédération française"}. Dans les autres pays, un compte membre du pays déclare lui-même sa
             compétition, dans l'encadré « Mes compétitions déclarées » des pages Résultats, Horaires et Compétitions : pays, club, nom, date, lieu,
-            spécialité, format, site web. Elle paraît alors dans l'agenda et les résultats de son pays, et son organisateur peut y déposer liste de départ,
+            spécialité, format, site web. Elle paraît alors dans Arena, avec les compétitions de son pays, et son organisateur peut y déposer liste de départ,
             résultats et analyses. Qui l'a déclarée n'est pas publié.</p>`)}`,
-      trace: () => html`
-        ${slide("Organisation", "Tracer les circuits", html`
-          <p>${P("#/orga-tracer", "Tracer")} est un logiciel de tracé dans le navigateur, sur le modèle de Purple Pen : postes, circuits et variantes,
-            définitions, impression des cartes et des définitions, exports IOF XML et fichiers OCAD ou Mapper, travail en équipe avec un chiffrement
-            possible, mode terrain sur le téléphone. Son guide complet est l'onglet ${D("tracer", "Le tracé")}.</p>`)}`,
     });
   }
 
-  const LABELS = { site: "Le site", courses: "Courses", entrainement: "Entraînement", orga: "Organisation" };
-  return { LABELS, SITE, COURSES, TRAINING, ORGA, site, courses, entrainement, orga };
+  const LABELS = { site: "Le site", arena: "Les compétitions", coach: "Coach", orga: "Les outils" };
+  return { LABELS, LEDE, ARENA, COACH, ORGA, site, arena, coach, orga };
 }
