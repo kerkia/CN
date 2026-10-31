@@ -2430,6 +2430,26 @@ body.full-win .tr-app { border: 0; }
 .hub-pages a:hover { background: var(--m-wash); color: var(--ink); text-decoration: none; }
 .hub-actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .hub-card .btn-primary { background: var(--m); border-color: var(--m); }
+/* On a phone the modules are a notebook's tabs over one card (owner, 2026-10-31: every module in sight without scrolling):
+   each tab in its module's colour, the one chosen open into its card */
+.hub-tabs { display: none; }
+.hub-tabs button { --m: var(--forest); --m-wash: var(--forest-wash); }
+.hub-tabs button[data-mod="arena"] { --m: var(--water); --m-wash: var(--water-wash); }
+.hub-tabs button[data-mod="coach"] { --m: var(--course); --m-wash: var(--course-wash); }
+.hub-tabs button[data-mod="orga"] { --m: var(--flag); --m-wash: var(--flag-wash); }
+@media (max-width: 640px) {
+  .hub-head { margin-bottom: 12px; }
+  .hub-tabs { display: flex; gap: 5px; align-items: flex-end; position: relative; z-index: 1; margin-bottom: -1px; }
+  .hub-tabs button { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 6px 4px 7px; margin-top: 6px; font: inherit; font-size: 14.5px; font-weight: 650; cursor: pointer;
+    color: var(--ink-2); background: var(--m-wash); border: 1px solid var(--border); border-top: 4px solid var(--m);
+    border-bottom: 0; border-radius: 12px 12px 0 0; }
+  .hub-tabs button[aria-selected="true"] { margin-top: 0; padding-bottom: 9px; color: var(--m); background: var(--surface); }
+  .hub-tabs .hub-icon { width: 30px; height: 30px; padding: 4px; background: none; }
+  .hub-grid.tabbed > .hub-card:not(.tab-on) { display: none; }
+  .hub-grid.tabbed > .hub-card { border-top: 1px solid var(--border); border-radius: 0 0 14px 14px; }
+  .hub-grid.tabbed .hub-card-head .hub-icon { display: none; }
+}
 .hub-session { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; padding: 14px 16px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink-2); }
 .hub-session > span { flex: 1 1 260px; }

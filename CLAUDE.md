@@ -237,7 +237,9 @@ a Stats page's tab row (`app.placeMethod`, else alone above the page); Stats has
 first tab is « Liste » (owner, 2026-10-30), and Stats opens on « Classement », the page every visitor has (`moduleHome`; owner, 2026-10-30);
 the contour lines are drawn behind the bar itself (owner, 2026-10-30, second review: no banner under it, no line describing the
 module — the modules page says it). **The modules page** (`#/modules`, route `hub`, `pages/hub.js`) is where one lands — signed in or entered without an
-account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. **No page leads into another module**
+account (`homeOf`) — and the logo leads back to it; it also signs out, signs in or leaves. On a phone (under 640 px) its modules are a
+notebook's tabs over one card (owner, 2026-10-31: every module in sight without scrolling; `.hub-tabs`, the tab kept for
+the visit in `sessionStorage ocn.hub.tab`). **No page leads into another module**
 (the rule of the restructure): runner names in Arena's tables open the runner's window (`runnerpop.js`, as « En direct »'s),
 Orga's pages name where things show (« Arena › En direct › … ») instead of linking, the analyses tag an organiser's own event
 instead of linking to Orga. E-mail and notification links go straight to their page (allowed). The pages outside the modules

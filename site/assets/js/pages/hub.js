@@ -3,7 +3,7 @@
 // session's own actions under them (sign out; for a visitor without an account: sign in, create an account, leave). Also
 // the page an Orga address shows to an account that has not turned the module on, or on a phone (route « orgaOff »).
 
-import { html, raw, $, nameParts } from "../util.js";
+import { html, raw, $, $$, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -38,6 +38,7 @@ function orgaState() {
 
 // Arena is one page, the competitions: its card says what a competition chosen there offers (owner, 2026-10-30), not links
 const ARENA_STEPS = ["agenda", "results", "live", "splits"];      // (the GPS analyses are Coach's, owner 2026-10-30)
+const TAB_KEY = "ocn.hub.tab";                                    // the module tab shown on a phone, for the visit
 
 function card(m) {
   const items = moduleMenus()[m];
@@ -72,13 +73,29 @@ export async function render(main, r) {
   if (r.route === "orgaOff") return orgaOff(main);
   const me = auth.session();
   // no Orga tile on a phone (owner, 2026-10-30): the module is never open there
+  const mods = MODULES.filter((m) => m !== "orga" || !isPhone());
+  // on a phone the modules are tabs over one card (owner, 2026-10-31: as a notebook's, every module in sight without
+  // scrolling); app.css shows the tabs under 640 px only, the cards side by side above. The tab chosen is kept for the visit.
+  let cur = null;
+  try { cur = sessionStorage.getItem(TAB_KEY); } catch (e) {}
+  if (!mods.includes(cur)) cur = mods[0];
   main.innerHTML = html`<div class="hub">
     <div class="hub-head"><h1>${me ? t("hub.hello", { name: nameParts(me.nom).first || me.nom }) : t("hub.welcome")}</h1>
       <p class="lede">${t("hub.lede")}</p></div>
-    <div class="hub-grid">${MODULES.filter((m) => m !== "orga" || !isPhone()).map(card)}</div>
+    <div class="hub-tabs" role="tablist" aria-label="${t("mod.pick")}">${mods.map((m) => html`<button type="button" role="tab"
+      data-hub-tab="${m}" data-mod="${m}" aria-selected="${String(m === cur)}">${icon(m)}<span>${t(`mod.${m}`)}</span></button>`)}</div>
+    <div class="hub-grid tabbed">${mods.map(card)}</div>
     ${session()}
   </div>`;
+  const showTab = (m) => {
+    $$("[data-hub-tab]", main).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.hubTab === m)));
+    $$(".hub-grid.tabbed > .hub-card", main).forEach((c) => c.classList.toggle("tab-on", c.dataset.mod === m));
+    try { sessionStorage.setItem(TAB_KEY, m); } catch (e) {}
+  };
+  showTab(cur);
   main.addEventListener("click", async (e) => {
+    const tab = e.target.closest("[data-hub-tab]");
+    if (tab) { showTab(tab.dataset.hubTab); return; }
     const on = e.target.closest("[data-orga-on]");
     if (on && (await turnOrgaOn(on))) { location.hash = moduleMenus().orga[0][1]; return; }
     if (e.target.closest("[data-hub-logout]")) {
