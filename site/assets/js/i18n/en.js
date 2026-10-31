@@ -3302,6 +3302,7 @@ export default {
   "hub.coach.text": "Replay your race on your map with your GPS track, compare it with others', revise the control descriptions, train your map reading and work out your VMA.",
   "hub.orga.text": "For organisers: publish results and start lists, broadcast live from MeOS, set the courses and prepare their runners' multi analysis.",
   "hub.open": "Open {mod}",
+  "mt.analysisPerso": "Replay your race on your map with your GPS track", "mt.analysisClub": "Compare your track with the other runners'", "mt.descriptions": "The control description symbols, and practice", "mt.mapkey": "The map legend, symbol by symbol", "mt.games": "Twelve games to train your map reading", "mt.vma": "The MAS tests and the training paces", "mt.ranking": "The ranking, discipline by discipline", "mt.runner": "A runner: their races, index and progress", "mt.categories": "The level of each age class", "mt.courses": "The ranked races, course by course", "mt.compare": "Several runners side by side", "mt.clubs": "The clubs, their members and their rankings", "mt.relayHistory": "The national relays' honours", "mt.network": "Runners' network, areas, participation, ages", "mt.ask": "A question about the data, in a few words",
   "hub.stats.guest": "Without an account: the ranking, the runners and the races over the period the federation publishes openly.",
   "hub.coach.guest": "Without an account: everything but the multi analysis, which shares tracks between accounts.",
   "hub.orga.guest": "Orga is for accounts: create yours to organise.",

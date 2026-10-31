@@ -47,6 +47,7 @@ const PAGES = {
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),
+  modtiles: () => import("./pages/modtiles.js"),   // Coach's and Stats' pages as tiles: their landing on a phone (2026-10-31)
   hub: () => import("./pages/hub.js"),             // the modules page: where one lands, the logo's address (2026-10-30)
   orgaOff: () => import("./pages/hub.js"),         // an Orga page to an account that has not turned the module on, or on a phone
   needCountry: () => import("./pages/needcountry.js"),   // a page of France's data, to an account without France (2026-10-20)       // « Tracer »: course setting in the browser, Purple Pen's way (2026-10-15)
@@ -86,7 +87,7 @@ const homeOf = () => "#/modules";
 // The pages a visitor without an account may open (owner, 2026-10-30): those of public data — Arena, Coach but « Analyse
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
-const GUEST_ROUTES = new Set(["overview", "account", "hub", "methods", "contact", "agenda", "provisional", "live", "splits",
+const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
   "analysis", "analysisPerso", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
@@ -142,6 +143,7 @@ function parseHash(hash = location.hash) {
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
+    : head === "coach" || head === "stats" ? "modtiles"     // a module's tiles, its landing on a phone (2026-10-31)
     : head === "definitions" ? "descriptions"
     : head === "symboles" ? "mapkey"
     : "overview";
@@ -392,12 +394,15 @@ const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask
   agenda: "arena", provisional: "arena", splits: "arena", live: "arena" };
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
-export const moduleHome = (m) => (m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
+// On a phone, Coach and Stats open on their pages as tiles (owner, 2026-10-31: every choice in sight at once)
+export const moduleHome = (m) => (isPhone() && (m === "coach" || m === "stats") ? `#/${m}`
+  : m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
 /** The module a page belongs to, or null (the modules page, the documentation's home, the settings…). A module's
  *  documentation (#/documentation?module=…) is the module's, its menu in the bar (Orga's greyed out to those who have not
  *  the module: renderHeader). */
 export function moduleOf(r) {
   if (r.route === "methods") return MODULES.includes(r.query?.module) ? r.query.module : null;
+  if (r.route === "modtiles") return r.path.split("/").filter(Boolean)[0] === "stats" ? "stats" : "coach";
   const k = menuKey(r);
   const menus = moduleMenus();
   for (const m of MODULES) if (menus[m].some(([key]) => key === k)) return m;
@@ -658,7 +663,7 @@ document.addEventListener("change", (e) => { if (e.target.id === "method-pick") 
  *  [data-bar-tabs] element moves into the bar, where it keeps its own id and handlers — on a computer; on a phone, into the
  *  page's own menu (pageMenu). */
 function placeBarTabs(main, r) {
-  if (pageMenu(main, r)) return;
+  if (r.route !== "modtiles" && pageMenu(main, r)) return;
   const el = $("[data-bar-tabs]", main), nav = $("#nav");
   if (!el || !nav) return;
   nav.append(el);

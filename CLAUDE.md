@@ -283,7 +283,9 @@ the list opens on today with the last past competition above it, placed again on
 drop-down (`country.hint`'s `.cty-cur`, « Choisir un autre pays » hidden there) share the next (`.agenda-bar`), and the list scrolls
 in its own box under them so that they stay in sight; the space under the bar's line is the space its buttons have above it.
 A phone's bar has back and forward buttons on every page (`.hist-nav`, greyed where the Navigation API says there is nowhere to
-go), in place of the race pages' « ‹ Compétitions » (`.arena-back`, hidden there). The results page has no circuit title over
+go), in place of the race pages' « ‹ Compétitions » (`.arena-back`, hidden there). **Coach and Stats open on tiles on a phone** (owner, 2026-10-31:
+every choice in sight at once): `moduleHome` leads to `#/coach` / `#/stats` (route `modtiles`, `pages/modtiles.js`), one tile a
+menu entry with a line of its own (`mt.<key>`); « Jeux » likewise opens on one tile a game (`games.js`, `?onglet=` opens it). The results page has no circuit title over
 its table: the circuit's selector says its name and runners. Each row's ground
 says its period (owner, 2026-10-31): the past in the water's wash, today in the flag's, the coming in the forest's (each theme's
 own `--water-wash`, `--flag-wash`, `--forest-wash`; `tr[data-period]`), the three boxes carrying the same colours as a legend

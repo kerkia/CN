@@ -2495,6 +2495,8 @@ export default {
   "hub.coach.text": "Rejouez votre course sur votre carte avec votre trace GPS, comparez-la à celles des autres, révisez les définitions de postes, entraînez votre lecture de carte et calculez votre VMA.",
   "hub.orga.text": "Pour les organisateurs : publier les résultats et les horaires, diffuser le direct depuis MeOS, tracer les circuits et préparer l'analyse multi de leurs coureurs.",
   "hub.open": "Ouvrir {mod}",
+  // a module's pages as tiles, its landing on a phone (pages/modtiles.js)
+  "mt.analysisPerso": "Rejouer sa course sur sa carte avec sa trace GPS", "mt.analysisClub": "Comparer sa trace à celles des autres coureurs", "mt.descriptions": "Les symboles des définitions de postes, et s'exercer", "mt.mapkey": "La légende des cartes, symbole par symbole", "mt.games": "Douze jeux pour entraîner sa lecture de carte", "mt.vma": "Les tests de VMA et les allures d'entraînement", "mt.ranking": "Le classement, spécialité par spécialité", "mt.runner": "Un coureur : ses courses, son indice, sa progression", "mt.categories": "Le niveau de chaque catégorie d'âge", "mt.courses": "Les courses classées, circuit par circuit", "mt.compare": "Plusieurs coureurs côte à côte", "mt.clubs": "Les clubs, leurs membres et leurs classements", "mt.relayHistory": "Les palmarès des relais nationaux", "mt.network": "Réseau des coureurs, territoires, participation, âges", "mt.ask": "Une question sur les données, en quelques mots",
   "hub.stats.guest": "Sans compte : le classement, les coureurs et les courses sur la période que la fédération publie librement.",
   "hub.coach.guest": "Sans compte : tout, sauf l'analyse multi, qui partage les traces entre comptes.",
   "hub.orga.guest": "Orga est réservé aux comptes : créez le vôtre pour organiser.",
