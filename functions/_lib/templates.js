@@ -9,10 +9,10 @@ const locale = (lang) => (L(lang) === "en" ? "en-GB" : "fr-FR");
 
 const FRAME = {
   fr: { tagline: "La course d'orientation, en cartes et en chiffres",
-    foot: (from) => `Site indépendant, sans lien avec aucune fédération. Message envoyé automatiquement ; vous pouvez écrire à ${from}.`,
+    foot: (from) => `Site indépendant, sans lien avec aucune fédération. Message envoyé automatiquement ; contactez ${from} pour toute question ou tout retour.`,
     copy: "Si le bouton ne fonctionne pas, copiez ce lien :" },
   en: { tagline: "Orienteering, in maps and numbers",
-    foot: (from) => `An independent site, not affiliated with any federation. Automatic message; you can write to ${from}.`,
+    foot: (from) => `An independent site, not affiliated with any federation. Automatic message; contact ${from} with any question or feedback.`,
     copy: "If the button doesn't work, copy this link:" },
 };
 function wrap(env, title, bodyHtml, lang) {
@@ -22,7 +22,7 @@ function wrap(env, title, bodyHtml, lang) {
 <div style="font-weight:700;font-size:20px;color:#1b1a17;margin-bottom:12px"><img src="${siteUrl(env)}/assets/mail-mark.png" width="28" height="28" alt="" style="vertical-align:-6px;margin-right:8px;border:0"><span style="color:#e8641c">O</span>zimut <span style="font-weight:500;font-size:13px;color:#5b6675">${F.tagline}</span></div>
 <div style="background:#fff;border-radius:10px;padding:22px 24px;line-height:1.5">
 <h1 style="font-size:18px;margin:0 0 12px">${esc(title)}</h1>${bodyHtml}</div>
-<p style="font-size:12px;color:#5b6675;margin:14px 4px">${esc(F.foot(env.MAIL_FROM))}</p>
+<p style="font-size:12px;color:#5b6675;margin:14px 4px">${esc(F.foot(env.REPLY_TO || env.MAIL_FROM))}</p>
 </div></body></html>`;
 }
 const button = (href, label, lang) => `<p style="margin:18px 0"><a href="${esc(href)}" style="background:#d4561a;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;display:inline-block">${esc(label)}</a></p>
