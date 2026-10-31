@@ -47,8 +47,8 @@ function card(m) {
   // an open module's whole card leads into it (owner, 2026-10-31: as the documentation's cards); its own links and buttons
   // stay on top (app.css « .hub-card.go »)
   return html`<section class="hub-card${locked ? "" : " go"}" data-mod="${m}">
-    <div class="hub-card-head">${icon(m)}<div><h2>${locked ? t(`mod.${m}`) : html`<a href="${moduleHome(m)}">${t(`mod.${m}`)}</a>`}</h2><p>${t(`mod.${m}.tag`)}</p></div></div>
-    <p class="hub-text">${t(`hub.${m}.text`)}</p>
+    <div class="hub-card-head">${icon(m)}<div><h2>${locked ? t(`mod.${m}`) : html`<a href="${moduleHome(m)}">${t(`mod.${m}`)}</a>`}</h2><p>${t(m === "coach" ? auth.ownerKey("mod.coach.tag") : `mod.${m}.tag`)}</p></div></div>
+    <p class="hub-text">${t(m === "coach" ? auth.ownerKey("hub.coach.text") : `hub.${m}.text`)}</p>
     ${guest && m === "stats" ? html`<p class="muted hub-note">${t("hub.stats.guest")}</p>` : ""}
     ${guest && m === "coach" ? html`<p class="muted hub-note">${t("hub.coach.guest")}</p>` : ""}
     ${locked ? html`<p class="muted hub-note">${locked.note}</p>${locked.action ? html`<div class="hub-actions">${locked.action}</div>` : ""}`

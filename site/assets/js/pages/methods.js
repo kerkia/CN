@@ -15,7 +15,7 @@ import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery, MODULES } from "../app.js";
 import { icon } from "./hub.js";
-import { sees, session } from "../auth.js";
+import { sees, session, owner, ownerKey } from "../auth.js";
 import * as TR from "../tracer/icons.js";
 import * as TRD from "../tracer/ribbon-data.js";
 
@@ -181,7 +181,7 @@ function home(main, G, query) {
   main.innerHTML = html`<div class="doc">
     <div class="page-head"><div><h1>${t("page.methods")}</h1><p class="lede">${G.LEDE.home}</p></div></div>
     <div class="doc-cards">${MODULES.map((m) => html`<a class="doc-card" data-mod="${m}" href="#/documentation?module=${m}">
-      ${icon(m)}<span class="doc-card-text"><b>${t(`mod.${m}`)}</b><span>${t(`mod.${m}.tag`)}</span></span>
+      ${icon(m)}<span class="doc-card-text"><b>${t(`mod.${m}`)}</b><span>${t(m === "coach" ? ownerKey("mod.coach.tag") : `mod.${m}.tag`)}</span></span>
       <span class="doc-card-go">${t("doc.read")} ›</span></a>`)}</div>
     <h2 class="doc-sec">${G.LABELS.site}</h2>
     ${G.site()}
@@ -196,7 +196,7 @@ export async function render(main, { query = {} } = {}) {
   const fr = sees("FR");                      // France's ranking: its official CN and the ranking's calculations
   // one documentation per module (owner, 2026-10-31): `?module=` names it; without, the documentation's home
   const mod = MODULES.includes(query.module) ? query.module : null;
-  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin });
+  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin, owner: owner() });
   if (!mod) return home(main, G, query);
   // the address keeps the module: every change of tab or chapter writes it again
   const rq = (q) => replaceQuery({ module: mod, ...q });

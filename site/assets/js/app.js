@@ -91,7 +91,7 @@ const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods
   "analysis", "analysisPerso", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
-const ownerOnly = () => normalise(nameParts(auth.session()?.nom || "").last) === "le helloco";
+const ownerOnly = auth.owner;
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)

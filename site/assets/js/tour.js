@@ -9,6 +9,7 @@
 
 import { html, raw, $, $$, fmt } from "./util.js";
 import { t, lang } from "./i18n.js";
+import { owner, ownerKey } from "./auth.js";
 
 const LEGS = [
   { id: "races", who: ["r"], main: "agenda-start", side: ["race", "@live"], row: ["dark-splits", "@notif", "past"] },
@@ -19,7 +20,9 @@ const LEGS = [
   { id: "ranking", who: ["r", "c"], main: "ranking", side: ["categories", "courses"], strip: ["stats-territories", "stats-ages", "stats-participation", "stats-leaders"] },
   { id: "method", who: ["r", "l"], duel: true, long: 3, pair: ["docs", "docs-top"] },
   { id: "clubs", who: ["c", "l"], main: "relays", side: ["club", "clubcompare"], pair: ["clubs", "ia"] },
-  { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["descriptions", "vma"], row: ["game-photo", "game-contour", "game-maze"] },
+  { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["descriptions", "vma"], row: ["game-photo", "game-contour", "game-maze"],
+    // without « Définitions de postes », for everyone but the accounts named Le Helloco (auth.owner; owner, 2026-10-31)
+    lim: { side: ["game-photo", "vma"], row: null, pair: ["game-contour", "game-maze"] } },
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "orga-direct"] },
   { id: "phones", who: ["all"], phones: ["phone-hub", "phone-agenda", "phone-race", "phone-ranking", "phone-runner"] },
 ];
@@ -41,6 +44,8 @@ const CAPS = {
   coach: { guest: 8, account: 5, fed: 1, orga: 0 },
   orga: { guest: 0, account: 1, fed: 1, orga: 9 },
 };
+// the capabilities that name « Définitions de postes », listed for the accounts named Le Helloco only (auth.owner)
+const OWNER_CAPS = new Set(["coach.guest.6"]);
 const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
   : `assets/tour/${lang() === "en" ? "en" : "fr"}/${name}.webp`);
@@ -107,20 +112,20 @@ function mod(M) {
     : html`<button type="button" class="btn btn-primary" data-guest-enter="${M.id}">${t("tour.mod.try", { mod: t(`mod.${M.id}`) })}</button>`;
   return html`<div class="tour-sec tour-mod" id="mod-${M.id}" data-mod="${M.id}"><div class="tour-course">${raw(START)}
     <header class="tour-mod-head"><span class="tour-mod-badge">${t(`mod.${M.id}`)}</span><h2>${t(`tour.mod.${M.id}.title`)}</h2>
-      <p class="tour-lede">${t(`tour.mod.${M.id}.lede`)}</p></header>
-    ${M.legs.map((id, i) => leg(LEGS.find((L) => L.id === id), i))}
+      <p class="tour-lede">${t(M.id === "coach" ? ownerKey("tour.mod.coach.lede") : `tour.mod.${M.id}.lede`)}</p></header>
+    ${M.legs.map((id, i) => leg(((L) => (L.lim && !owner() ? { ...L, ...L.lim } : L))(LEGS.find((L) => L.id === id)), i))}
     <div class="tour-leg tour-mod-end">${raw(FINISH)}<div class="tour-mod-cta">${cta}</div></div></div></div>`;
 }
 /** Who sees what: the modules as columns, the access levels as rows, in each cell what that level adds. */
 function features() {
   const cell = (m, l) => {
     const n = CAPS[m][l];
-    return html`<td data-mod="${m}"><span class="tour-feat-m">${t(`mod.${m}`)}</span>${n ? html`<ul>${Array.from({ length: n }, (_, i) => html`<li>${t(`tour.f.${m}.${l}.${i + 1}`)}</li>`)}</ul>`
+    return html`<td data-mod="${m}"><span class="tour-feat-m">${t(`mod.${m}`)}</span>${n ? html`<ul>${Array.from({ length: n }, (_, i) => `${m}.${l}.${i + 1}`).filter((k) => owner() || !OWNER_CAPS.has(k)).map((k) => html`<li>${t(`tour.f.${k}`)}</li>`)}</ul>`
       : html`<span class="tour-no">${t(`tour.f.none.${l}`)}</span>`}</td>`;
   };
   return html`<section class="tour-sec tour-features" id="mod-features">
     <div class="tour-eyebrow">${t("tour.feat.eyebrow")}</div><h2>${t("tour.feat.title")}</h2><p class="tour-lede">${t("tour.feat.lede")}</p>
-    <div class="tour-feat-grid"><table class="tour-feat-table"><thead><tr><th></th>${MODS.map((M) => html`<th data-mod="${M.id}">${t(`mod.${M.id}`)}<span>${t(`mod.${M.id}.tag`)}</span></th>`)}</tr></thead>
+    <div class="tour-feat-grid"><table class="tour-feat-table"><thead><tr><th></th>${MODS.map((M) => html`<th data-mod="${M.id}">${t(`mod.${M.id}`)}<span>${t(M.id === "coach" ? ownerKey("mod.coach.tag") : `mod.${M.id}.tag`)}</span></th>`)}</tr></thead>
       <tbody>${LEVELS.map((l) => html`<tr><th scope="row"><b>${t(`tour.lvl.${l}`)}</b><em class="tour-free">${t("tour.lvl.free")}</em><span>${t(`tour.lvl.${l}.sub`)}</span></th>${MODS.map((M) => cell(M.id, l))}</tr>`)}</tbody></table></div>
     <p class="muted tour-feat-note">${t("tour.feat.note")}</p><p class="muted tour-feat-note">${t("tour.note")}</p></section>`;
 }

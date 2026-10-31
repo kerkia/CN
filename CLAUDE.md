@@ -324,7 +324,9 @@ provisoires et analyse »: the organiser's list once there, else the live times 
 **Coach**: « Analyse solo » is one page, two tabs (`coachtabs.js`): a competition (`#/analyse`) or a training or any race
 (`#/analyse-solo`); « Analyse multi » likewise (`#/analyse-competition`, `#/analyse-club`). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`; it and « Symboles de carte » shown only to the accounts whose last name
-is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `ownerOnly`, out of the menus, the router sends others to the modules page): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
+is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
+the home page's Coach section, its picture and Tarifs line, the modules page, the tiles, Coach's documentation — have a « .lim »
+version without them, `auth.ownerKey`, `tour.js` `lim` / `OWNER_CAPS`, the guide's `owner`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
 names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
 legal notices. Beside each symbol its map equivalent (owner, 2026-10-30, after Maprunner's posters — the idea only):
 `mapsymbols.js` (`mapSvg(id, size)`, keyed by the IOF id, for the Tracer's guide later), our own schematic SVGs in ISOM 2017-2 /

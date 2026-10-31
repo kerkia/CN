@@ -4,7 +4,7 @@
 // Coach and Orga, each a set of chapters (Stats' documentation is the methods', content/methods.*.js; Orga's « Le tracé »
 // too). Plain sentences for orienteers; a page is named as the menu names it, with a link.
 export function build(X) {
-  const { html, raw, subTabs, fr = true, admin = false } = X;
+  const { html, raw, subTabs, fr = true, admin = false, owner = false } = X;
   // a page of the site, as the menus name it
   const P = (href, label) => html`<a href="${href}">${label}</a>`;
   // a module's documentation
@@ -20,7 +20,8 @@ export function build(X) {
   const LEDE = {
     home: html`Ozimut en quelques mots, puis la documentation de chaque module : choisissez celui qui vous intéresse.`,
     arena: html`Les compétitions : l'agenda, les résultats des organisateurs, le direct et l'analyse des temps intermédiaires.`,
-    coach: html`S'entraîner : les analyses de traces GPS, les définitions de postes, les symboles de carte, les jeux et la VMA.`,
+    coach: owner ? html`S'entraîner : les analyses de traces GPS, les définitions de postes, les symboles de carte, les jeux et la VMA.`
+      : html`S'entraîner : les analyses de traces GPS, les jeux et la VMA.`,
     orga: html`Les outils des organisateurs : résultats, horaires, direct, suivi GPS, analyses multi et tracé des circuits.`,
   };
 
@@ -173,7 +174,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Analyse solo"], ["multi", "Analyse multi"], ["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"],
+  const COACH = [["solo", "Analyse solo"], ["multi", "Analyse multi"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {

@@ -2485,6 +2485,7 @@ export default {
   "mod.arena.tag": "Les compétitions : à venir, en direct, résultats et analyse",
   "mod.stats.tag": "Les classements, les coureurs, les clubs et leurs analyses",
   "mod.coach.tag": "S'entraîner : analyses GPS, définitions de postes, jeux, VMA",
+  "mod.coach.tag.lim": "S'entraîner : analyses GPS, jeux, VMA",
   "mod.orga.tag": "Les outils de l'organisateur : résultats, horaires, direct, tracé",
   "mod.back": "Revenir au choix du module", "nav.histBack": "Page précédente", "nav.histFwd": "Page suivante", "mod.pick": "Choisir un module",
   "hub.welcome": "Bienvenue sur Ozimut", "hub.hello": "Bonjour {name}",
@@ -2493,6 +2494,7 @@ export default {
   "hub.arena.text": "Toutes les compétitions au même endroit : celles qui viennent, avec leurs informations et listes de départ, celles qui se courent en ce moment, en direct, et les résultats des deux derniers mois avec l'analyse des temps intermédiaires.",
   "hub.stats.text": "Le classement national et l'indice Ozimut, la page de chaque coureur, les courses classées, les clubs, les relais et les statistiques de toute l'orientation française.",
   "hub.coach.text": "Rejouez votre course sur votre carte avec votre trace GPS, comparez-la à celles des autres, révisez les définitions de postes, entraînez votre lecture de carte et calculez votre VMA.",
+  "hub.coach.text.lim": "Rejouez votre course sur votre carte avec votre trace GPS, comparez-la à celles des autres, entraînez votre lecture de carte et calculez votre VMA.",
   "hub.orga.text": "Pour les organisateurs : publier les résultats et les horaires, diffuser le direct depuis MeOS, tracer les circuits et préparer l'analyse multi de leurs coureurs.",
   "hub.open": "Ouvrir {mod}",
   // a module's pages as tiles, its landing on a phone (pages/modtiles.js)
@@ -2554,6 +2556,7 @@ export default {
   "tour.mod.stats.lede": "Stats met toute l'orientation en chiffres : votre indice et votre place, le détail exact de chaque calcul, vos progrès saison après saison sur un indice qui se compare d'une année à l'autre depuis 2010, les clubs, les relais et les tendances du pays. Comparez-vous, suivez vos rivaux, comprenez chaque point gagné ou perdu.",
   "tour.mod.coach.title": "Progresser entre deux courses",
   "tour.mod.coach.lede": "Coach transforme vos traces en leçons : rejouez votre course sur votre carte, voyez où filent les secondes, comparez vos choix d'itinéraire à ceux des autres. Révisez les définitions de postes, entraînez votre lecture de carte avec douze jeux et calculez votre VMA.",
+  "tour.mod.coach.lede.lim": "Coach transforme vos traces en leçons : rejouez votre course sur votre carte, voyez où filent les secondes, comparez vos choix d'itinéraire à ceux des autres. Entraînez votre lecture de carte avec douze jeux et calculez votre VMA.",
   "tour.mod.orga.title": "Organiser, sans s'épuiser",
   "tour.mod.orga.lede": "Orga donne aux clubs les outils du jour J et d'après : tracer les circuits dans le navigateur, publier horaires et résultats, diffuser le direct depuis MeOS, vérifier les temps et offrir aux coureurs leur analyse multi. Il s'active à l'inscription ou dans vos réglages, sur ordinateur.",
   "tour.feat.eyebrow": "Tarifs", "tour.feat.title": "Tout est gratuit, module par module",

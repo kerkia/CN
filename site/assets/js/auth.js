@@ -5,6 +5,7 @@
 import * as local from "./local.js";
 import { adoptLang, storedLang } from "./i18n.js";
 import * as data from "./data.js";
+import { normalise, nameParts } from "./util.js";
 
 const KEY = "cnx.session";
 const DAYS = 30;
@@ -23,6 +24,11 @@ export function myClub() {
 }
 export const cleanLicence = (lic) => String(lic || "").replace(/\s+/g, "").replace(/^0+(?=\d)/, "");
 
+// « Définitions de postes » and « Symboles de carte » are shown only to the accounts named Le Helloco for now (owner,
+// 2026-10-31): their pages, and every text that names them (the home page, the modules page, Coach's documentation)
+export const owner = () => normalise(nameParts(session()?.nom || "").last) === "le helloco";
+/** The key of a text naming those pages, or its version without them for everyone else. */
+export const ownerKey = (k) => (owner() ? k : `${k}.lim`);
 export function session() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");

@@ -2,7 +2,7 @@
 // build(X) receives the page's helpers and returns « The site » (the documentation's home) and the guides of Arena, Coach and
 // Orga. A page is named as the English menu names it, with a link.
 export function build(X) {
-  const { html, raw, subTabs, fr = true, admin = false } = X;
+  const { html, raw, subTabs, fr = true, admin = false, owner = false } = X;
   // a page of the site, as the menus name it
   const P = (href, label) => html`<a href="${href}">${label}</a>`;
   // a module's documentation
@@ -18,7 +18,8 @@ export function build(X) {
   const LEDE = {
     home: html`Ozimut in a few words, then each module's documentation: choose the one you want.`,
     arena: html`The competitions: the calendar, the organisers' results, live results and the split-time analysis.`,
-    coach: html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`,
+    coach: owner ? html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`
+      : html`Training: GPS track analyses, games and the MAS.`,
     orga: html`The organisers' tools: results, start times, live feed, GPS tracking, group analyses and course setting.`,
   };
 
@@ -169,7 +170,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Solo analysis"], ["multi", "Group analysis"], ["definitions", "Control descriptions"], ["symboles", "Map symbols"],
+  const COACH = [["solo", "Solo analysis"], ["multi", "Group analysis"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ...(admin ? [["routes", "Computed routes"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
