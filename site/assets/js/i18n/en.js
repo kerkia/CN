@@ -3323,7 +3323,7 @@ export default {
   "mod.coach.tag": "Training: GPS analyses, control descriptions, games, VMA",
   "mod.coach.tag.lim": "Training: GPS analyses, games, VMA",
   "mod.orga.tag": "The organiser's tools: results, start lists, live, course setting",
-  "mod.back": "Back to the choice of module", "nav.histBack": "Previous page", "nav.histFwd": "Next page", "mod.pick": "Choose a module",
+  "mod.back": "Back to the choice of module", "nav.histBack": "Previous page", "nav.histFwd": "Next page", "mod.pick": "Choose a module", "ad.modtiles": "A module's page (Coach, Orga…)",
   "hub.welcome": "Welcome to Ozimut", "hub.hello": "Hello {name}",
   "hub.lede": "Choose a module. The Ozimut logo, top left, brings you back here at any time to change.",
   "hub.lede.short": "Choose a module",

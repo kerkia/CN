@@ -30,7 +30,7 @@ export async function render(main, { query }) {
   if (!tabs.some(([k]) => k === query.onglet)) {
     main.innerHTML = html`<div class="mod-tiles-page" data-mod="coach">
       <div class="mod-tiles-head"><p>${t("g.lede")}</p></div>
-      <div class="mod-tiles">${tabs.map(([k, label]) => html`<a class="mod-tile g-tile" href="#/jeux?onglet=${k}"><b>${label}</b><span>${t(`g.${k}.desc`)}</span></a>`)}</div>
+      <div class="mod-tiles g-tiles">${tabs.map(([k, label]) => html`<a class="mod-tile g-tile" href="#/jeux?onglet=${k}"><b>${label}</b><span>${t(`g.${k}.desc`)}</span></a>`)}</div>
     </div>`;
     return { title: t("nav.games") };
   }

@@ -2515,7 +2515,7 @@ export default {
   "mod.coach.tag": "S'entraîner : analyses GPS, définitions de postes, jeux, VMA",
   "mod.coach.tag.lim": "S'entraîner : analyses GPS, jeux, VMA",
   "mod.orga.tag": "Les outils de l'organisateur : résultats, horaires, direct, tracé",
-  "mod.back": "Revenir au choix du module", "nav.histBack": "Page précédente", "nav.histFwd": "Page suivante", "mod.pick": "Choisir un module",
+  "mod.back": "Revenir au choix du module", "nav.histBack": "Page précédente", "nav.histFwd": "Page suivante", "mod.pick": "Choisir un module", "ad.modtiles": "Pages d'un module (Coach, Orga…)",
   "hub.welcome": "Bienvenue sur Ozimut", "hub.hello": "Bonjour {name}",
   "hub.lede": "Choisissez un module. Le logo Ozimut, en haut à gauche, vous ramène ici à tout moment pour en changer.",
   "hub.lede.short": "Choisissez un module",

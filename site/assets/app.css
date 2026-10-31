@@ -2859,13 +2859,15 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .mod-tile:hover { text-decoration: none; }
 .mod-tile:active { background: var(--m-wash); }
 @media (hover: hover) { .mod-tile:hover { background: var(--m-wash); } }
-/* a game's tile (pages/games.js): its description kept to four lines */
+/* a game's tile (pages/games.js): its description kept to four lines; the twelve games three rows of four on a computer (owner,
+   2026-10-31), three a row on a narrower one */
+@media (min-width: 1000px) { .mod-tiles.g-tiles { --cols: 4; } }
 .g-tile span { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 @media (min-width: 761px) {
   .mod-tiles-page { padding-top: 6px; }
   .mod-tiles-head { margin-bottom: 18px; }
   .mod-tiles-head p { font-size: 15px; }
-  .mod-tiles { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .mod-tiles { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 14px; }
   .mod-tile { min-height: 112px; padding: 16px 18px; gap: 6px; }
   .mod-tile b { font-size: 17px; }
   .mod-tile span { font-size: 13.5px; }
