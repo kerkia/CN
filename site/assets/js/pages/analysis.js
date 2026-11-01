@@ -34,7 +34,7 @@ import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCur
 import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { colourModes, seriesOf, rangeOf, colourOf, legendOf, legendHtml, PACE_COLOURS } from "../trace/pacecolour.js";
 import { bestLegs, refLegs, legLoss } from "../trace/legs.js";
-import { parisOffsetMs } from "../trace/published.js";
+import { parisOffsetMs, matchControls } from "../trace/published.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
@@ -152,8 +152,9 @@ export async function render(main, { query = {}, route } = {}) {
   let autoV3 = query.d3 === "1";
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
   // « Analyse solo » on an organiser's published map and circuits (owner, 2026-11-01; route analysisOrga, #/analyse-orga?id=):
-  // the map, the circuit and its georeferencing are the organiser's, one drops one's trace only; a training's way otherwise
-  // (one runner, no published times), nothing sent
+  // the map, the circuit and its georeferencing are the organiser's, one drops one's trace only, nothing sent; a competition's
+  // published results give the runner's split times as on « Une compétition » (the runner found in them: the account's row,
+  // else the run that fits the trace; « — » for none), a training is read on the trace alone
   const orgaMode = route === "analysisOrga";
   const perso = route === "analysisPerso" || orgaMode;
   const pageMode = orgaMode ? "orga" : perso ? "perso" : "race", fileKey = orgaMode ? "files:orga" : perso ? "files:perso" : "files";
@@ -170,6 +171,8 @@ export async function render(main, { query = {}, route } = {}) {
       else { orga = { id, A: d.analysis, key: k }; orgaN = d.analysis.courses.some((c) => String(c.n) === String(query.c)) ? Number(query.c) : d.analysis.courses[0].n; }
     } catch (e) { orgaErr = "an.orga.err"; }
   }
+  const orgaRace = orga?.A?.kind === "race" && orga.A.race ? orga.A.race : null;
+  let withTimes = !perso;                                  // published times to read: a race, or an organiser's competition with results
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
   // the list offers the site's country's races (country.js, as « Analyse de course »); a race of another country named in
@@ -272,7 +275,9 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-steps").innerHTML = html`${labels.map((s, i) => html`<li class="${i + 1 < n ? "done" : i + 1 === n ? "now" : ""}"><b>${i + 1}</b> ${s}</li>`)}`;
   };
   const stage = () => (!map || !track ? 2 : calibrated ? 4 : 3);
-  const runner = () => docs[di]?.classes[ci]?.runners[ri], klass = () => docs[di]?.classes[ci];
+  // an organiser's competition read without a runner of the results (« — »): one with no published times, as a training's
+  const nobody = { name: "", status: null };
+  const runner = () => (ri < 0 ? nobody : docs[di]?.classes[ci]?.runners[ri]), klass = () => docs[di]?.classes[ci];
   /** The runner's official sequence of race times: start, the controls, the finish (null where unknown), or null. */
   const officialTaus = () => { const r = runner(); if (!r?.splits || !timesApply()) return null; return [0, ...r.splits, r.status === "ok" && r.time_s != null ? r.time_s : null]; };
   const totalOfficial = () => { const r = runner(); return r && r.status === "ok" && r.time_s != null && timesApply() ? r.time_s : null; };
@@ -283,7 +288,7 @@ export async function render(main, { query = {}, route } = {}) {
    * page reads the race on the trace alone.
    */
   function timesApply() {
-    if (perso) return false;
+    if (!withTimes || ri < 0) return false;
     const r = docs[di]?.classes[ci]?.runners[ri];
     if (!r || !track || !race?.date_iso) return !!r;
     if (parisDay(track.ms0) !== race.date_iso) return false;
@@ -292,7 +297,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   /** Why the selected runner's times are not used, said on the calibration and on the display. */
   function timesNote() {
-    if (perso || !track || !race?.date_iso || timesApply()) return "";
+    if (!withTimes || ri < 0 || !track || !race?.date_iso || timesApply()) return "";
     const day = parisDay(track.ms0);
     return day !== race.date_iso ? t("an.st.otherDay", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }) : t("an.st.otherRunner", { r: runner()?.name || "" });
   }
@@ -301,6 +306,7 @@ export async function render(main, { query = {}, route } = {}) {
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
     if (orgaMode) await loadOrgaMap();
+    if (orgaRace && await loadOrgaRace()) return;
     if (perso) {                                          // no race: one runner, the account's
       race = { key: "perso", name: orgaMode ? orga.A.title : t("an.perso.title"), date_iso: null, docs: [] };
       docs = [{ source: "", title: "", classes: [{ name: "", controls: null, runners: [{ name: me?.nom || "", status: null }] }] }];
@@ -322,6 +328,40 @@ export async function render(main, { query = {}, route } = {}) {
     if (Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] && !wanted) { di = Number(query.doc); ci = Math.min(Number(query.c) || 0, docs[di].classes.length - 1); ri = 0; }
     if (query.r && docs[di]?.classes[ci]) { const n = docs[di].classes[ci].runners.findIndex((r) => r.name === query.r); if (n >= 0) ri = n; }
   }
+  /** An organiser's competition: its published results, the runner in them (the address's, the account's row — in the
+   *  circuit's class with split times first —, else the run that fits the trace, else none: ri −1). False without results. */
+  async function loadOrgaRace() {
+    let data = null;
+    try { data = await getProv(`${encodeURIComponent(orgaRace)}.json`); } catch (e) { data = null; }
+    const list = (data?.docs || []).filter((d) => d.classes?.length && d.by !== "category");
+    withTimes = list.length > 0;
+    if (!withTimes) return false;
+    race = data; docs = list;
+    const rank = (d) => (d.classes.some((k) => k.runners.some((r) => r.splits)) ? 1e9 : 0) + (d.prio ?? 0);
+    docs.sort((a, b) => rank(b) - rank(a));
+    pickOrgaRunner(query.r || null);
+    return true;
+  }
+  /** The class of the organiser's circuit (by its name), with split times first: [di, ci], or null. */
+  function circuitClass() {
+    const c = orga.A.courses.find((x) => x.n === orgaN), name = c?.circuit || c?.name || "";
+    let best = null;
+    docs.forEach((d, i) => d.classes.forEach((k, j) => { if (k.name === name && (!best || (!best.sp && k.runners.some((x) => x.splits)))) best = { di: i, ci: j, sp: k.runners.some((x) => x.splits) }; }));
+    return best ? [best.di, best.ci] : null;
+  }
+  function pickOrgaRunner(name) {
+    const hits = [];
+    docs.forEach((d, i) => d.classes.forEach((k, j) => k.runners.forEach((x, n) => hits.push({ x, k, at: [i, j, n] }))));
+    const cc = circuitClass(), better = (a, b) => (a.x.splits ? 2 : 0) + (cc && a.at[0] === cc[0] && a.at[1] === cc[1] ? 1 : 0) - ((b.x.splits ? 2 : 0) + (cc && b.at[0] === cc[0] && b.at[1] === cc[1] ? 1 : 0));
+    const best = (test) => hits.filter(test).sort((a, b) => better(b, a))[0] || null;
+    let h = (name && best((q) => q.x.name === name)) || (me?.lic && best((q) => q.x.lic && String(q.x.lic) === String(me.lic))) || null;
+    if (!h && track) {
+      let sc = null;
+      for (const q of hits) { if (q.x.status === "dns") continue; const v = runFit(startOf(q.x), q.x); if (v != null && (sc == null || v < sc)) { sc = v; h = q; } }
+    }
+    if (h) [di, ci, ri] = h.at;
+    else { [di, ci] = cc || [0, 0]; ri = -1; }
+  }
   /** The organiser's circuit `orgaN`: its map (the stored image, never re-encoded), its controls and georeferencing. */
   async function loadOrgaMap() {
     const c = orga.A.courses.find((x) => x.n === orgaN);
@@ -339,26 +379,40 @@ export async function render(main, { query = {}, route } = {}) {
       const A = orga.A;
       $("#an-pick").innerHTML = html`<div class="field"><span>${t("an.orga.event")}</span><b class="an-orga-ev">${A.title}</b>
           <span class="muted">${[fmtDate(A.date), A.ownerName].filter(Boolean).join(" · ")}</span></div>
-        <label class="field"><span>${t("prov.circuit")}</span><select id="an-oc">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === orgaN ? "selected" : "")}>${c.name}</option>`)}</select></label>`;
-      $("#an-oc").addEventListener("change", async (e) => { orgaN = Number(e.target.value); await loadOrgaMap(); replaceQuery({ id: orga.id, c: orgaN }); filesCard(); setup(); });
-      replaceQuery({ id: orga.id, c: orgaN });
+        <label class="field"><span>${t("prov.circuit")}</span><select id="an-oc">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === orgaN ? "selected" : "")}>${c.name}</option>`)}</select></label>
+        ${withTimes ? runnerFields(true) : ""}`;
+      $("#an-oc").addEventListener("change", async (e) => {
+        orgaN = Number(e.target.value); await loadOrgaMap();
+        if (withTimes && ri < 0) { const cc = circuitClass(); if (cc) [di, ci] = cc; }
+        pickers(); filesCard(); setup();
+      });
+      if (withTimes) bindRunnerFields(true);
+      replaceQuery({ id: orga.id, c: orgaN, r: withTimes && ri >= 0 ? runner()?.name : null });
       return;
     }
     if (perso) { $("#an-pick").hidden = true; return; }
-    const k = klass();
     $("#an-pick").innerHTML = html`
       <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.filter((r) => r.key === key || (country.of(r) === country.current() && (!RF || RF.keep(r)))).map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
-      ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="an-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent((d.url || "").split("/").pop())}</option>`)}</select></label>` : ""}
-      ${docs.length ? html`<label class="field"><span>${t("prov.circuit")}</span><select id="an-c">${docs[di].classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
-      <label class="field"><span>${t("prov.runner")}</span><select id="an-r" style="max-width:300px">${k.runners.map((r, i) => html`<option value="${i}" ${raw(i === ri ? "selected" : "")}>${r.place ? `${r.place}. ` : ""}${r.name}${r.club ? ` (${r.club})` : ""}${r.splits ? "" : ` — ${t("an.noSplitsShort")}`}</option>`)}</select></label>`
-      : html`<div class="field"><span></span><span class="muted">${t("an.noList")}</span></div>`}`;
+      ${docs.length ? runnerFields(false) : html`<div class="field"><span></span><span class="muted">${t("an.noList")}</span></div>`}`;
     // a choice by hand: the race found from the trace is no longer the one shown
     $("#an-race").addEventListener("change", async (e) => { key = e.target.value; query = {}; matchedNote = ""; await loadRace(); pickers(); setup(); });
-    $("#an-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; ri = 0; matchedNote = ""; pickers(); setup(); });
-    $("#an-c")?.addEventListener("change", (e) => { ci = Number(e.target.value); ri = 0; matchedNote = ""; pickers(); setup(); });
-    $("#an-r")?.addEventListener("change", (e) => { ri = Number(e.target.value); matchedNote = ""; pickers(); setup(); });
+    bindRunnerFields(false);
     replaceQuery({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null });
     try { sessionStorage.setItem(selKey, JSON.stringify({ course: key, doc: di || null, c: ci || null, r: runner()?.name || null })); } catch (e) { /* not kept */ }
+  }
+
+  /** The results' document, class and runner selects (an organiser's competition: « — », no runner, first). */
+  function runnerFields(none) {
+    const k = klass();
+    return html`${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="an-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent((d.url || "").split("/").pop())}</option>`)}</select></label>` : ""}
+      <label class="field"><span>${t(none ? "an.orga.class" : "prov.circuit")}</span><select id="an-c">${docs[di].classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
+      <label class="field"><span>${t("prov.runner")}</span><select id="an-r" style="max-width:300px">${none ? html`<option value="-1" ${raw(ri < 0 ? "selected" : "")}>${t("an.orga.noRunner")}</option>` : ""}${k.runners.map((r, i) => html`<option value="${i}" ${raw(i === ri ? "selected" : "")}>${r.place ? `${r.place}. ` : ""}${r.name}${r.club ? ` (${r.club})` : ""}${r.splits ? "" : ` — ${t("an.noSplitsShort")}`}</option>`)}</select></label>`;
+  }
+  function bindRunnerFields(none) {
+    const first = none ? -1 : 0;
+    $("#an-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; ri = first; matchedNote = ""; pickers(); setup(); });
+    $("#an-c")?.addEventListener("change", (e) => { ci = Number(e.target.value); ri = first; matchedNote = ""; pickers(); setup(); });
+    $("#an-r")?.addEventListener("change", (e) => { ri = Number(e.target.value); matchedNote = ""; pickers(); setup(); });
   }
 
   // ---- 2. the files
@@ -638,7 +692,7 @@ export async function render(main, { query = {}, route } = {}) {
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
     if (newTrace && traceFull) { cadence(traceFull); track = withCut(traceFull); }
-    if (newTrace && orgaMode && remember) orgaGo = true;                    // a trace just dropped: straight to its playback   // once the race is known (a VTT race: pedal turns)
+    if (newTrace && orgaMode && remember) { if (withTimes && ri < 0) { pickOrgaRunner(null); pickers(); } orgaGo = true; }                    // a trace just dropped: straight to its playback   // once the race is known (a VTT race: pedal turns)
     filesCard();
     setup();
   }
@@ -997,7 +1051,15 @@ export async function render(main, { query = {}, route } = {}) {
         : mapOrder ? String(ordered.slice(0, i).filter((q) => q.kind === "control").length + 1)
         : p.missed ? "?" : String(ordered.slice(0, i).filter((q) => q.kind === "control" && !q.missed).length + 1) }));
     const taus = officialTaus();
-    if (taus) {
+    // the organiser's course on a competition: its controls matched to the class's published sequence by their codes in
+    // order, else by their number (trace/published.js); the class's controls the course lacks are left out
+    const offT = taus && orgaPts ? officialTargets(null) : null;
+    const orgaMap = offT ? matchControls(orgaPts, klass()?.controls || [], offT.length - 2) : null;
+    if (orgaMap) {
+      targets = offT;
+      orgaMap.forEach((j, i) => { if (j != null && targets[j]) { targets[j].pos = seqTargets[i].pos; targets[j].tEst = seqTargets[i].tEst; } });
+      for (const g of targets) if (!g.pos) g.missed = true;
+    } else if (taus) {
       // the official sequence, each control placed by the detected one that passed at its time
       const off = [], det = seqTargets.filter((g) => g.kind === "control" && g.tEst != null);
       const startT = vo.startT ?? (vo.finishT != null && totalOfficial() ? vo.finishT - totalOfficial() : null);
@@ -1213,7 +1275,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (geoHow) summary.push(`${t("an.st.geo")} ${geoHow}`);
     else if (auto) summary.push(t("an.st.aligned", { m: targets.filter((g) => g.pos && !g.missed && g.tEst != null).length, n: placed, r: fmt(auto.rotationDeg, 1) }));
     if (taus) summary.push(t("an.st.official", { n: targets.filter((g) => g.pos && g.tau != null).length, t: targets.filter((g) => g.tau != null).length }));
-    else if (r && !perso && !timesNote()) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
+    else if (r && withTimes && ri >= 0 && !timesNote()) summary.push(totalOfficial() ? t("an.st.totalOnly") : t("an.st.noTimes"));
     const short = traceShortNote();
     if (short) summary.push(short);
     if (matchedNote) summary.push(matchedNote);
@@ -1655,14 +1717,14 @@ export async function render(main, { query = {}, route } = {}) {
     }
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
     const rc = races.find((x) => x.key === key), day = parisDay(track.ms0 + offset * 1000);
-    const title = perso ? t("an.perso.title") : rc?.name || race?.name || "";
+    const title = orgaMode ? orga.A.title : perso ? t("an.perso.title") : rc?.name || race?.name || "";
     if (shot.legend) {
       const fs = Math.max(12, Math.min(40, Math.round(Math.min(cw, ch) / 42))), pad = Math.round(fs * 0.6);
       const panel = (x, y, w, h) => { g.fillStyle = "rgba(255, 255, 255, 0.9)"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, pad); else g.rect(x, y, w, h); g.fill(); };
       const font = (px, bold) => { g.font = `${bold ? "650 " : ""}${px}px system-ui, sans-serif`; };
       // the title, top left
       const dist = cumAt(track, offset + total) - cumAt(track, offset);
-      const lines = [[title, true], [[perso ? "" : runner()?.name, fmtDate(day)].filter(Boolean).join(" · "), false],
+      const lines = [[title, true], [[withTimes ? runner()?.name : "", fmtDate(day)].filter(Boolean).join(" · "), false],
         [[clock(total), `${fmt(dist / 1000, 2)} km`, `${pace(dist / total)} ${t("an.unit.pace")}`, klass()?.name].filter(Boolean).join(" · "), false]].filter(([s]) => s);
       g.textBaseline = "top";
       let tw = 0;
@@ -1690,7 +1752,7 @@ export async function render(main, { query = {}, route } = {}) {
       }
     }
     const slug = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-    const type = shot.type === "jpeg" ? "jpeg" : "png", name = `ozimut-${day}${slug(title) ? `-${slug(title)}` : ""}${!perso && runner()?.name ? `-${slug(runner().name)}` : ""}.${type === "jpeg" ? "jpg" : "png"}`;
+    const type = shot.type === "jpeg" ? "jpeg" : "png", name = `ozimut-${day}${slug(title) ? `-${slug(title)}` : ""}${withTimes && runner()?.name ? `-${slug(runner().name)}` : ""}.${type === "jpeg" ? "jpg" : "png"}`;
     const state = $("#an-shot-state");
     if (state) state.textContent = t("an.shot.making");
     cv.toBlob((blob) => {

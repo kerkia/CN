@@ -185,7 +185,7 @@ export function build(X) {
           ${list([
             html`<b>Der Veranstalter hat die Karte und die Bahnen veröffentlicht</b>: <b>Mit den anderen vergleichen</b> (die Gruppenanalyse, dein Track
               geteilt mit den Läufern der Veranstaltung) oder <b>Meinen Lauf allein analysieren</b> (die Einzelanalyse auf seiner Karte: Du legst nur deinen
-              Track ab, er legt sich dank der Einpassung des Veranstalters von selbst auf die Karte, und nichts wird gesendet). Du brauchst ein Konto.`,
+              Track ab, er legt sich dank der Einpassung des Veranstalters von selbst auf die Karte, und nichts wird gesendet; bei einem Wettkampf geben deine veröffentlichten Zwischenzeiten die Zeiten). Du brauchst ein Konto.`,
             html`<b>Du hast deine eigene Karte</b>: <b>Ein Wettkampf</b> (ein Lauf der letzten 60 Tage, seine Ergebnisse und Zwischenzeiten neben deinem
               Track) oder <b>Ein Training oder ein Ausflug</b> (jede Karte, jeder Track).`,
             html`<b>Die Veranstaltung</b> wählst du in einer Liste, auf einem Computer mit der Karte des Landes daneben; eine gewählte Veranstaltung zeigt,

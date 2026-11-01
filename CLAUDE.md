@@ -335,8 +335,11 @@ events, competitions of the site's country and every training, a password's even
 `sessionStorage ocn.an.key.<id>`, as Multi's); 3 the races of « Résultats » (`raceFilters`), a race whose organiser published its
 map tagged and its card offering tile 2. An event's place: its race's `pos`, else the middle of its first circuit's map
 (`/api/analyses` list `pos`, the summary's `centreOf` from the circuit's `geo`; an analysis saved before has its summary written
-again at the first list). The organiser's mode of `analysis.js` (`orgaMode`, `perso` true: one runner, no published times,
-`pageMode` « orga », IndexedDB key `files:orga`): the circuit chosen above the files, its stored map (`/api/analyses/<id>/map/<n>`,
+again at the first list). The organiser's mode of `analysis.js` (`orgaMode`, `perso` true,
+`pageMode` « orga », IndexedDB key `files:orga`; a competition's analysis reads its race's published results as tile 3 does —
+`withTimes`, `loadOrgaRace`: the runner the address names, else the account's row, else the run that fits the trace, « — » for
+none; the organiser's controls matched to the class's sequence by `published.matchControls`, the geometry kept and the clock
+offset fitted on the split times —, a training's is read on the trace alone): the circuit chosen above the files, its stored map (`/api/analyses/<id>/map/<n>`,
 never re-encoded), its controls in order and its `geo` (`files.orga`: `fitFromGeo`, nothing read on the map, `passesInOrder`);
 only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every analysis has « ‹ <its tile> » on top (`ma-crumb`,
 `mapanalysis.backLine`; hidden during the playback and in full window); the runners' lists of Multi and `coachtabs.js` are gone

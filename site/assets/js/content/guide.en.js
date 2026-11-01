@@ -180,7 +180,7 @@ export function build(X) {
           ${list([
             html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (the Group analysis, your track shared with
               the event's runners) or <b>Analyse my race alone</b> (the Solo analysis on their map: you drop only your track, it lays itself on the map from
-              the organiser's calibration, and nothing is sent). It needs an account.`,
+              the organiser's calibration, and nothing is sent; for a competition, your published split times time it). It needs an account.`,
             html`<b>You have your own map</b>: <b>A competition</b> (a race of the last 60 days, its results and split times beside your track) or <b>A
               training or an outing</b> (any map, any track).`,
             html`<b>The event</b> is chosen in a list, with the country's map beside it on a computer; an event chosen says what it offers. A competition whose

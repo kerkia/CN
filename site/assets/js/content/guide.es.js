@@ -183,7 +183,7 @@ export function build(X) {
           ${list([
             html`<b>El organizador ha publicado el mapa y los recorridos</b>: <b>Comparar con los demás corredores</b> (el Análisis de grupo, tu track
               compartido con los corredores del evento) o <b>Analizar mi carrera en solitario</b> (el Análisis individual sobre su mapa: solo sueltas tu
-              track, se coloca solo gracias a la calibración del organizador y no se envía nada). Necesitas una cuenta.`,
+              track, se coloca solo gracias a la calibración del organizador y no se envía nada; en una competición, tus tiempos parciales publicados lo cronometran). Necesitas una cuenta.`,
             html`<b>Tienes tu propio mapa</b>: <b>Una competición</b> (una carrera de los últimos 60 días, sus resultados y parciales junto a tu track) o
               <b>Un entrenamiento o una salida</b> (cualquier mapa, cualquier track).`,
             html`<b>El evento</b> se elige en una lista, con el mapa del país al lado en un ordenador; un evento elegido indica lo que ofrece. Una

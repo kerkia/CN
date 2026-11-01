@@ -184,7 +184,7 @@ export function build(X) {
           ${list([
             html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (l'Analyse multi, votre trace partagée avec
               les coureurs de l'événement) ou <b>Analyser seul ma course</b> (l'Analyse solo sur sa carte : vous ne déposez que votre trace, elle se pose
-              d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé). Il faut un compte.`,
+              d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé ; pour une compétition, vos temps intermédiaires publiés le chronomètrent). Il faut un compte.`,
             html`<b>Vous avez votre propre carte</b> : <b>Une compétition</b> (une course des 60 derniers jours, ses résultats et ses temps intermédiaires à
               côté de votre trace) ou <b>Un entraînement ou une sortie</b> (n'importe quelle carte, n'importe quelle trace).`,
             html`<b>L'événement</b> se choisit dans une liste, avec la carte du pays à côté sur un ordinateur ; un événement choisi dit ce qu'il offre. Une
