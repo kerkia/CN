@@ -371,7 +371,8 @@ export async function render(main, { query = {}, route } = {}) {
   function cutBlock() {
     if (!traceFull) return "";
     const D = Math.floor(traceFull.dur), a = track.cut ? Math.round(track.cut.s0) : 0, b = track.cut ? Math.round(track.cut.s1) : D;
-    return html`<details class="an-cut" ${raw(track.cut ? "open" : "")}><summary>✂ ${t("an.cut.title")}</summary>
+    return html`<details class="an-cut" ${raw(track.cut ? "open" : "")}><summary>✂ ${t("an.cut.title")}${track.cut ? html` <span class="an-cut-now">· ${t("an.cut.done", { a: clock(track.cut.s0), b: clock(traceFull.dur - track.cut.s1) })}</span>` : ""}</summary>
+      <div class="an-cut-acts" id="an-cut-ends"></div>
       <canvas class="an-cut-prof" id="an-cut-prof" height="44"></canvas>
       <div class="an-cut-row"><label><span>${t("an.cut.start")}</span><input type="range" id="an-cut-a" min="0" max="${D}" step="1" value="${a}"></label><span class="an-cut-v" id="an-cut-a-v"></span></div>
       <div class="an-cut-row"><label><span>${t("an.cut.end")}</span><input type="range" id="an-cut-b" min="0" max="${D}" step="1" value="${b}"></label><span class="an-cut-v" id="an-cut-b-v"></span></div>
@@ -407,6 +408,37 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-cut-apply").addEventListener("click", () => applyCut(Number(A.value), Number(B.value)));
     $("#an-cut-reset").addEventListener("click", () => applyCut(0, D));
     show();
+    cutEnds();
+  }
+  /**
+   * The race's start and finish on the whole trace's clock, when the calibration found them (owner, 2026-11-01: « cut before
+   * the start and after the finish when those are detected », from the files card): the start's departure, else the published
+   * start; the finish's arrival, else the start plus the published time. null for an end not known.
+   */
+  function raceEnds() {
+    if (!fit || offset == null || !traceFull) return { start: null, finish: null };
+    const base = track.cut ? track.cut.s0 : 0;
+    const st = targets.find((g) => g.kind === "start"), fin = targets.find((g) => g.kind === "finish"), tot = totalOfficial();
+    const start = (st?.pos && st.tEst != null) || guessOffset() != null ? base + offset : null;
+    const finish = fin?.pos && fin.tEst != null ? base + fin.tEst : tot != null ? base + offset + tot : null;
+    return { start, finish: finish != null && (start == null || finish > start + 60) ? finish : null };
+  }
+  const CUT_MARGIN = 10;                                // seconds kept before the start and after the finish
+  /** The files card's buttons: cut before the start, after the finish, as the calibration found them. */
+  function cutEnds() {
+    const box = $("#an-cut-ends");
+    if (!box || !traceFull) return;
+    const { start, finish } = raceEnds(), full = traceFull;
+    const s0 = track.cut ? track.cut.s0 : 0, s1 = track.cut ? track.cut.s1 : full.dur;
+    const a = start != null ? Math.max(0, start - CUT_MARGIN) : null, b = finish != null ? Math.min(full.dur, finish + CUT_MARGIN) : null;
+    const offA = a != null && a > s0 + 1, offB = b != null && b < s1 - 1;          // something left to cut there
+    box.innerHTML = start == null && finish == null ? html`<span class="muted">${t("an.cut.noEnds")}</span>`
+      : html`${start != null ? html`<button type="button" class="btn btn-sm" id="an-cut-start" ${raw(offA ? "" : "disabled")}>${t("an.cut.atStart", { t: timeOfDay(full, start) })}</button>` : ""}
+        ${finish != null ? html`<button type="button" class="btn btn-sm" id="an-cut-finish" ${raw(offB ? "" : "disabled")}>${t("an.cut.atFinish", { t: timeOfDay(full, finish) })}</button>` : ""}
+        ${offA && offB ? html`<button type="button" class="btn btn-sm btn-primary" id="an-cut-both">${t("an.cut.both")}</button>` : ""}`;
+    $("#an-cut-start")?.addEventListener("click", () => applyCut(a, s1));
+    $("#an-cut-finish")?.addEventListener("click", () => applyCut(s0, b));
+    $("#an-cut-both")?.addEventListener("click", () => applyCut(a, b));
   }
   /** The cut set: the trace taken again from the whole one, the calibration carried over, the page redone (back to the
    *  playback when it was on). s0, s1: seconds of the whole trace. */
@@ -418,19 +450,15 @@ export async function render(main, { query = {}, route } = {}) {
     const back = calibrated;
     track = withCut(full);
     if (files.trace) files.trace.detail = traceDetail();
-    // the calibration's geometry is in the whole trace's metres: it holds for the part kept
-    if (rec && rec.trace === oldSig && traceSig() !== oldSig) { rec.trace = traceSig(); try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ } }
+    // the calibration's geometry is in the whole trace's metres: it holds for the part kept. The one in hand is saved for the
+    // new trace — the record kept during the automatic calibration has no geometry yet, and the part kept alone was laid
+    // afresh (a cut at mid-race turned the map 29°) —, else a record of this trace follows it
+    if (fit && targets.some((g) => g.pos)) savePositions(calibrated);
+    else if (rec && rec.trace === oldSig && traceSig() !== oldSig) { rec.trace = traceSig(); try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ } }
     autoPlay = back;
     filesCard(); setup();
   }
-  /** During the playback: the trace cut before or after the moment shown. */
-  function cutHere(before) {
-    if (!traceFull || offset == null) return;
-    const base = track.cut ? track.cut.s0 : 0, now = base + offset + tNow;
-    const s0 = track.cut ? track.cut.s0 : 0, s1 = track.cut ? track.cut.s1 : traceFull.dur;
-    if (before) { if (s1 - now >= 60) applyCut(now, s1); }
-    else if (now - s0 >= 60) applyCut(s0, now);
-  }
+
   // ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only)
   const genCredit = () => raw(t("an.gen.credit", { ign: html`<a href="${LM.CREDIT_LIDAR.url}" target="_blank" rel="noopener">${LM.CREDIT_LIDAR.text}</a>`,
     osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` }));
@@ -1073,6 +1101,7 @@ export async function render(main, { query = {}, route } = {}) {
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
+    cutEnds();
     if (fit) {
       pxs = new Float64Array(track.n); pys = new Float64Array(track.n);
       fullPath = new Path2D();
@@ -1260,10 +1289,6 @@ export async function render(main, { query = {}, route } = {}) {
         <label><span>${t("an.shot.type")}</span><select id="an-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
         <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="an-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
         <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div>
-      <div class="an-opts an-cuthere"><b>✂ ${t("an.cut.title")}</b>
-        <div class="an-cut-acts"><button type="button" class="btn btn-sm" id="an-cut-before" title="${t("an.cut.before.hint")}">${t("an.cut.before")}</button>
-          <button type="button" class="btn btn-sm" id="an-cut-after" title="${t("an.cut.after.hint")}">${t("an.cut.after")}</button>
-          ${track.cut ? html`<button type="button" class="btn btn-sm" id="an-cut-whole">${t("an.cut.whole")}</button>` : ""}</div></div>
       ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     if (me?.admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
@@ -1281,9 +1306,6 @@ export async function render(main, { query = {}, route } = {}) {
     const shotSet = () => { shot.zone = $("#an-shot-zone").value; shot.type = $("#an-shot-type").value; shot.legend = $("#an-shot-legend").checked; savePrefs(); };
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
     $("#an-shot").addEventListener("click", () => exportImage());
-    $("#an-cut-before").addEventListener("click", () => cutHere(true));
-    $("#an-cut-after").addEventListener("click", () => cutHere(false));
-    $("#an-cut-whole")?.addEventListener("click", () => applyCut(0, traceFull.dur));
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });

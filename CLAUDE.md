@@ -1173,9 +1173,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   margin or the whole map, PNG or JPEG, a title — race, runner, day, time, distance, pace — and the legend drawn in; the line
   0.4 mm × the width chosen, a millimetre read from the control circles; saved on the device, nothing sent; settings in
   `ocn.an.prefs` `shotZone`, `shotType`, `shotLegend`); **« Couper la trace »** (`track.cutTrack`: the part kept in the whole
-  trace's frame, its time from 0; the files card's sliders over the whole trace's pace, and « Couper avant / après ce moment » in
-  the playback's display panel; kept per trace in `localStorage ocn.an.cut.<ms0 s>:<points>`; the calibration record follows the
-  cut — its geometry still holds — and a cut made during the playback goes back to it).
+  trace's frame, its time from 0; in the files card only — owner, 2026-11-01: « Couper avant le départ » / « après l'arrivée » /
+  both, 10 s kept, once the calibration has found the start's departure or the published start and the finish's arrival or the
+  published time (`raceEnds`, `cutEnds`, redrawn by every `recompute`), and sliders over the whole trace's pace for the rest; kept
+  per trace in `localStorage ocn.an.cut.<ms0 s>:<points>`, so a file dropped again comes back cut — the card's title says so; the
+  calibration in hand is saved for the cut trace, geometry included — its geometry still holds; the record the automatic
+  calibration saves has none yet, and a cut at mid-race laid the part kept afresh, 29° off — and a cut made from the playback's
+  « Course et fichiers » goes back to it).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

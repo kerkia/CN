@@ -1721,7 +1721,7 @@ body.an-theatre .an-right { grid-area: side; }
 .an-opts label { display: flex; align-items: center; gap: 6px; }
 .an-opts label > span { flex: 1; }
 /* « Exporter une image » and « Couper la trace » in the display panel, the cut's sliders in the files card */
-.an-shot, .an-cuthere { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.an-shot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 .an-shot > .btn { align-self: flex-start; }
 .an-shot-state { font-size: 12px; }
 .an-cut-acts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1733,6 +1733,8 @@ body.an-theatre .an-right { grid-area: side; }
 .an-cut-row label > span { width: 44px; }
 .an-cut-row input[type="range"] { flex: 1; }
 .an-cut-v { font-variant-numeric: tabular-nums; color: var(--ink-3); min-width: 150px; }
+.an-cut-now { font-weight: 400; color: var(--flag); }
+#an-cut-ends { margin: 8px 0 2px; font-size: 13px; }
 .an-cut-hint { margin: 6px 0 0; font-size: 12px; }
 #an-legs { margin-top: 0; }
 tr.an-mistake td.an-lost { color: var(--bad); font-weight: 650; }
