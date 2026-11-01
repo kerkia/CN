@@ -58,6 +58,9 @@ ADMIN_EMAILS = "ocn@kerkia.com, admin@ozimut.com"
 WELCOME_MAIL = "1"
 # "1" opens registration; "0" closes it
 REGISTRATION_OPEN = "1"
+# « Nutrition » (Coach, functions/api/nutrition): "1" lets every account read its articles; "0" only those given the right on the
+# admin page, its authors and the administrators (owner, 2026-11-01)
+NUTRITION_OPEN = "0"
 # "1": registration without France (the countries, migration 0014); "0" until the site's access follows the countries
 WORLD_OPEN = "1"
 # Cloudflare Turnstile on registration (_lib/turnstile.js): the widget's public site key; its secret is the Pages secret

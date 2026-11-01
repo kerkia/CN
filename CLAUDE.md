@@ -755,6 +755,31 @@ in multi-pick games), the answers and the result stay at the screen's bottom (st
 the Labyrinthe's view is nearly square on a narrow screen, hedge height tied to the lens (`WALL`), the start facing an open way, the
 buttons a pad, the view itself tapped (left/right third turns, middle steps, a swipe down steps back), its map as large as the view.
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
+- **Nutrition** (`#/nutrition`, `pages/nutrition.js`, and its authors' « Rédaction », `#/redaction`, `pages/nutritionwrite.js`; Coach,
+  after VMA; owner, 2026-11-01): a blog of articles by theme and by date. **Who**: D1 `users.nutrition` (migration 0017: '' / 'reader' /
+  'author', the admin page's « Nutrition » column; Nadejda Le Helloco author and Alec Le Helloco reader from the start), the
+  administrators always authors (`_lib/api.js` `nutritionRole`, `publicUser.nutrition`, `auth.nutritionReads` / `nutritionWrites`,
+  `app.js` `NUTRITION_ROUTES`: neither in the menus nor at their addresses for the others); `NUTRITION_OPEN` (wrangler.toml) "1"
+  would let every account read. An author changes and deletes their own articles, an administrator anyone's and gives them to
+  another author (one or in bulk); authors and administrators manage the themes. **Storage**: D1 `nut_posts` (HTML body, its
+  language, draft / published, a publication date — one to come publishes it that day —, « à la une », cover, words, a version),
+  `nut_categories` (`names` per language, the ones not typed filled by the AI), `nut_post_cats`, `nut_translations`; images in R2
+  `nutrition/img/<key>` (JPEG/PNG/WebP/GIF, 6 MB, reduced to 1800 px in the browser), served to readers only, deleted with the last
+  article showing them. `functions/api/nutrition/[[path]].js` (its header lists the routes). **HTML**: the server strips scripts and
+  handlers, the browser cleans it again by an allowlist before showing or saving it (`nutrition/sanitize.js`: tags, links opening
+  apart, images only from `/api/nutrition/img/` or https, styles colour / background / alignment). **Reading**: themes and months
+  on the left, a search, cards (« à la une » first), an article with its previous / next; it opens in its own language, « Lire en … »
+  asks for the reader's, translated by Workers AI (`DEFAULT_MODEL`, the HTML kept, markers @@TITLE@@ / @@SUMMARY@@ / @@BODY@@) once per
+  article, language and version, kept in `nut_translations` (30 new a day an account; the free neurons shared with « IA »);
+  « Toujours traduire » kept in `localStorage ocn.nut.translate`. **Writing**: « Articles » (filters; ticked ones published, back to
+  draft, added to or taken out of a theme, given to another author — administrators —, deleted), « Thèmes » (a name per language),
+  the editor (`?id=`, `?nouveau=1`): one ribbon (history, paragraph style, bold… colours, highlight, clear; lists, indents, alignment;
+  link, image — also pasted or dropped —, table, line, emoji; a table's rows and columns and an image's width when one is chosen;
+  the HTML itself) on `contenteditable` + `execCommand` (Chrome's `insertHTML` drops a `<thead>`: the header cells go in the
+  body), the settings beside it, a preview; Ctrl+S saves; an unsaved copy kept in `localStorage ocn.nut.draft.<id|new>` is offered
+  back; a change made elsewhere meanwhile (version) asks before overwriting. A summary not typed: the first lines, in the lists only.
+  A deleted account's articles stay under the name they were published with. Local test: launch configs `pages-dev-nutrition`
+  (8797, the test account an administrator) and `pages-dev-nutrition-user` (8798, not).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from

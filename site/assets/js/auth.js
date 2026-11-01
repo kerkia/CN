@@ -27,6 +27,10 @@ export const cleanLicence = (lic) => String(lic || "").replace(/\s+/g, "").repla
 // « Définitions de postes » and « Symboles de carte » are shown only to the accounts named Le Helloco for now (owner,
 // 2026-10-31): their pages, and every text that names them (the home page, the modules page, Coach's documentation)
 export const owner = () => normalise(nameParts(session()?.nom || "").last) === "le helloco";
+/** « Nutrition » (Coach; owner, 2026-11-01): who reads it (the accounts given the right, its authors, the administrators), who
+ *  writes (its authors and the administrators). The server checks the same (functions/_lib/api.js `nutritionRole`). */
+export const nutritionReads = () => !!session()?.nutrition;
+export const nutritionWrites = () => ["admin", "author"].includes(session()?.nutrition);
 /** The key of a text naming those pages, or its version without them for everyone else. */
 export const ownerKey = (k) => (owner() ? k : `${k}.lim`);
 export function session() {
@@ -122,6 +126,7 @@ export async function handoffLogin(token) {
 /** What the browser keeps of the account (the rights decide what the pages show). */
 const fromUser = (u) => ({ uid: u.uid, lic: String(u.lic || ""), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
   agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice, preview: Array.isArray(u.preview) ? u.preview : [], orga: !!u.orga,
+  nutrition: ["admin", "author", "reader"].includes(u.nutrition) ? u.nutrition : "",
   countries: Array.isArray(u.countries) ? u.countries : null });     // { cc, club, id, status }: `sees`
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */
 export async function refresh() {

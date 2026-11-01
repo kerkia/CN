@@ -56,6 +56,8 @@ const PAGES = {
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),
   mapkey: () => import("./pages/mapkey.js"),       // « Symboles de carte » (Coach): ISOM 2017-2's symbols, as a legend (2026-10-31)
+  nutrition: () => import("./pages/nutrition.js"),     // « Nutrition » (Coach): articles by theme and date (2026-11-01)
+  nutritionWrite: () => import("./pages/nutritionwrite.js"),   // « Rédaction »: its authors write, change and delete them
   descriptions: () => import("./pages/descriptions.js"),   // « Définitions de postes » (Coach): the IOF symbols (2026-10-30)             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
   ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
 };
@@ -92,6 +94,9 @@ const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
+// « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
+// the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
+const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
@@ -149,6 +154,8 @@ function parseHash(hash = location.hash) {
     : head === "coach" || head === "stats" || head === "orga" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31)
     : head === "definitions" ? "descriptions"
     : head === "symboles" ? "mapkey"
+    : head === "nutrition" ? "nutrition"
+    : head === "redaction" ? "nutritionWrite"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
 }
@@ -387,8 +394,10 @@ export function moduleMenus() {
     ],
     // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
-      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")]]
-      .filter(([k]) => !OWNER_ROUTES.has(k) || ownerOnly()),
+      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
+      // « Nutrition » to the accounts given it, « Rédaction » to its authors alone (owner, 2026-11-01)
+      ["nutrition", "#/nutrition", t("nav.nutrition")], ["nutritionWrite", "#/redaction", t("nav.nutritionWrite")]]
+      .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
@@ -827,7 +836,9 @@ async function route_() {
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
   }
-  if (OWNER_ROUTES.has(r.route) && !ownerOnly()) {
+  // a right granted since this device signed in (« Nutrition »): read the account again before turning the address away
+  if (me && NUTRITION_ROUTES[r.route] && !NUTRITION_ROUTES[r.route]()) await auth.refresh();
+  if ((OWNER_ROUTES.has(r.route) && !ownerOnly()) || (NUTRITION_ROUTES[r.route] && !NUTRITION_ROUTES[r.route]())) {
     history.replaceState(null, "", "#/modules");
     r = parseHash();
   }

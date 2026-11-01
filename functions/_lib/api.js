@@ -41,6 +41,15 @@ export function jsonList(s) {
   try { const v = JSON.parse(s || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
 
+/** « Nutrition » (Coach, migration 0017): "admin", "author", "reader" or "" — administrators always write, users.nutrition
+ *  set on the admin page; NUTRITION_OPEN "1" (wrangler.toml) would let every account read. */
+export function nutritionRole(env, u) {
+  if (!u) return "";
+  if (isAdmin(env, u)) return "admin";
+  if (u.nutrition === "author") return "author";
+  return u.nutrition === "reader" || env.NUTRITION_OPEN === "1" ? "reader" : "";
+}
+
 /** What the browser needs to know about the logged-in user; `countries` its memberships (_lib/countries.js `memberships`). */
 export const publicUser = (env, u, countries = []) => ({
   uid: u.id, lic: u.licence, nom: u.display_name, email: u.email, notify: !!u.notify, admin: isAdmin(env, u),
@@ -55,6 +64,7 @@ export const publicUser = (env, u, countries = []) => ({
   // a demo account (admin page, « Démo »): read-only, tied to no licence, valid until that day
   demo: u.demo_until || null,
   preview: previewOf(u),
+  nutrition: nutritionRole(env, u),          // « Nutrition » (migration 0017): admin | author | reader | ""
   // the Orga module, chosen by the account (migration 0016; owner, 2026-10-30); before the migration, every account has it
   orga: u.orga === undefined ? true : u.orga === 1,
   // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data

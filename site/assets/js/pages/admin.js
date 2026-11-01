@@ -28,7 +28,7 @@ function pageName(k) {
     deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "nav.analysis.long", games: "nav.games", vma: "nav.vma",
     analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long",
     orgRace: "sh.org.race.title", orgTraining: "sh.org.club.title", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", categories: "cg.title", relayHistory: "rh.title", needCountry: "cty.need.title",
-    descriptions: "nav.descriptions", mapkey: "nav.mapkey", hub: "mod.pick", modtiles: "ad.modtiles" };
+    descriptions: "nav.descriptions", mapkey: "nav.mapkey", nutrition: "nav.nutrition", nutritionWrite: "nav.nutritionWrite", hub: "mod.pick", modtiles: "ad.modtiles" };
   if (k.startsWith("network:")) {
     const v = k.slice(8);
     return v === "ego" || v === "leaders" ? t(`nw.mode.${v}`) : `${t("nav.network")} · ${t(`nw.mode.${v}`)}`;
@@ -462,6 +462,7 @@ export async function render(main, { query = {} } = {}) {
       <th>${t("ad.col.email")}</th><th>${t("ad.col.name")}</th><th>${t("ad.col.lic")}</th><th>${t("ad.col.countries")}</th><th>${t("ad.col.status")}</th>
       <th>${t("ad.col.created")}</th><th>${t("ad.col.login")}</th><th>${t("ad.col.notify")}</th>
       <th title="${t("ad.col.alerts.hint")}">${t("ad.col.alerts")}</th>
+      <th title="${t("ad.col.nutrition.hint")}">${t("nav.nutrition")}</th>
       <th>${t("ad.col.actions")}</th></tr></thead>
       <tbody>${rows.map((u) => html`<tr>
         <td>${u.email}</td>
@@ -474,6 +475,9 @@ export async function render(main, { query = {} } = {}) {
         <td>${u.notify ? "✓" : ""}</td>
         <td class="c"><input type="checkbox" data-right="alerts" data-id="${u.id}" ${u.alerts_allowed ? "checked" : ""} aria-label="${t("ad.col.alerts")}">
           ${u.agenda_alert || u.deadline_alert ? html`<div class="muted" style="font-size:11.5px">${[u.agenda_alert ? t("ad.alert.new") : "", u.deadline_alert ? t("ad.alert.deadline") : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
+        <td>${u.admin ? html`<span class="muted" title="${t("ad.nut.adminHint")}">${t("ad.nut.author")}</span>` : u.nutrition === undefined ? "—"
+          : html`<select data-nut="${u.id}" aria-label="${t("nav.nutrition")}">${[["", "ad.nut.none"], ["reader", "ad.nut.reader"], ["author", "ad.nut.author"]]
+            .map(([v, k]) => html`<option value="${v}" ${(u.nutrition || "") === v ? "selected" : ""}>${t(k)}</option>`)}</select>`}</td>
         <td><div class="row" style="gap:6px;flex-wrap:nowrap">
           <button type="button" class="btn btn-sm" data-act="${u.status === "disabled" ? "enable" : "disable"}" data-id="${u.id}">${u.status === "disabled" ? t("ad.enable") : t("ad.disable")}</button>
           <button type="button" class="btn btn-sm" data-act="delete" data-id="${u.id}" style="color:var(--bad)">${t("ad.delete")}</button>
@@ -495,6 +499,15 @@ export async function render(main, { query = {} } = {}) {
       if (!res.ok) { box.checked = !box.checked; return; }
       const u = users.find((x) => x.id === Number(box.dataset.id));
       if (u) u.alerts_allowed = box.checked ? 1 : 0;
+    }));
+    // « Nutrition » (migration 0017): reads it, writes in it, or neither; saved at each change
+    $$("[data-nut]", $("#ad-table")).forEach((sel) => sel.addEventListener("change", async () => {
+      const u = users.find((x) => x.id === Number(sel.dataset.nut)), before = u?.nutrition || "";
+      sel.disabled = true;
+      const res = await auth.api("api/admin/user", { id: Number(sel.dataset.nut), action: "nutrition", value: sel.value });
+      sel.disabled = false;
+      if (!res.ok) { sel.value = before; return; }
+      if (u) u.nutrition = sel.value;
     }));
   }
   $("#ad-q").addEventListener("input", (e) => { q = e.target.value; draw(); });
