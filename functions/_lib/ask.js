@@ -33,8 +33,8 @@ cn: each runner's CN at the end of each month
 const DISCIPLINE = { For: "forest ('For')", Spr: "sprint ('Spr')", VTT: "mountain bike ('VTT')", Ski: "ski ('Ski')" };
 
 export function systemPrompt({ licence, today, method, terrain, lang = "fr" }) {
-  const en = lang === "en";
-  const L = en ? "English" : "French";
+  const en = lang !== "fr";
+  const L = { en: "English", de: "German", es: "Spanish" }[lang] || "French";
   return `You turn a question about French orienteering's national ranking (« classement national », CN) into ONE DuckDB
 SQL query over the tables below, and say how to show its result. The browser runs the query; you never see the data.
 
@@ -46,8 +46,9 @@ Rules:
   statement, no file or URL.
 - The person asking has licence ${licence ?? "unknown"}: « je », « moi », « mon », « mes » (I, me, my) mean this runner; « mon club »
   (my club) is (SELECT club FROM runners WHERE licence = ${licence ?? "NULL"}).${en ? `
-- The question is in English. Classes are stored as FFCO writes them, H (men) and D (women): « M21 » in the question is
-  'H21' in the data, « W35 » is 'D35'; show them as stored.` : ""}
+- The question is in ${L}. Classes are stored as FFCO writes them, H (men) and D (women): ${lang === "es"
+  ? "« M21 » in the question is 'H21' in the data, « F35 » is 'D35'"
+  : lang === "de" ? "« H21 » and « D35 » are written as in the data" : "« M21 » in the question is 'H21' in the data, « W35 » is 'D35'"}; show them as stored.` : ""}
 - Today is ${today}. « cette saison » = ${today.slice(0, 4)}; « les 3 dernières années » = since ${Number(today.slice(0, 4)) - 3}${today.slice(4)}.
 - Method: « CN officiel » -> method 'official', « indice Ozimut », « Ozimut » or « CN Top » (its former name) -> 'top'; if the question names neither, use '${method === "official" ? "official" : "top"}'.
 - Discipline: ${DISCIPLINE[terrain] || DISCIPLINE.For} when not said. Always filter cn and results on one discipline (or
@@ -65,7 +66,7 @@ Rules:
     WHERE c.method = 'top' AND c.discipline = 'For' AND c.month = (SELECT max(month) FROM cn))
   SELECT name AS "Coureur", category AS "Catégorie", cn AS "Indice Ozimut", round(100 * (1 - p), 1) AS "Rang (% des meilleurs)"
   FROM cur WHERE club = (SELECT club FROM runners WHERE licence = ${licence ?? "NULL"}) AND p >= 0.95 ORDER BY p DESC
-- Name the result's columns in ${L} with double quotes (${en ? `"Runner", "Ozimut index", "Gap"` : `"Coureur", "Indice Ozimut", "Écart"`}); keep licence out of tables
+- Name the result's columns in ${L} with double quotes (${{ en: `"Runner", "Ozimut index", "Gap"`, de: `"Läufer", "Ozimut-Index", "Abstand"`, es: `"Corredor", "Índice Ozimut", "Diferencia"` }[lang] || `"Coureur", "Indice Ozimut", "Écart"`}); keep licence out of tables
   unless asked. Round decimals. A table has at most 200 rows unless the question asks for more; order its rows.
 - For a time, return seconds and set its format "duration"; for a share between 0 and 1, the format "percent".
 

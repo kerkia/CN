@@ -1,7 +1,8 @@
-// The interface's language (owner, 2026-10-17: the site globalised, French and English first). The texts live in
-// catalogues — i18n/fr.js, the reference where every key exists first, and i18n/en.js —, plus an area's own catalogues
-// loaded by its pages (loadArea: i18n/<area>.fr.js, <area>.en.js; the Tracer's). Long texts (the documentation, the
-// guides, the legal pages) are whole modules per language, not keys. A text missing in English falls back to French.
+// The interface's language (owner, 2026-10-17: the site globalised, French and English first; German and Spanish since
+// 2026-11-01). The texts live in catalogues — i18n/fr.js, the reference where every key exists first, i18n/en.js,
+// de.js, es.js —, plus an area's own catalogues loaded by its pages (loadArea: i18n/<area>.fr.js, <area>.en.js…; the
+// Tracer's). Long texts (the documentation, the guides, the legal pages) are whole modules per language, not keys. A text
+// missing in German or Spanish falls back to English, then French; one missing in English to French.
 //
 // The language: the one chosen (localStorage ocn.lang — the language menu beside the theme, on every page, Réglages, the
 // registration form; ?lang= in an address; a signed-in account's own at login on a device that has none), else the
@@ -9,8 +10,9 @@
 // French texts transformed, so that any text not drawn through t() stands out (?lang=xx).
 // The catalogues load before any module that imports this one runs (top-level await), so t() is synchronous everywhere.
 
-export const LANGS = ["fr", "en"];
-export const LANG_NAMES = { fr: "Français", en: "English" };     // each in its own language (i18n-ignore)
+export const LANGS = ["fr", "en", "de", "es"];
+export const LANG_NAMES = { fr: "Français", en: "English", de: "Deutsch", es: "Español" };     // each in its own language (i18n-ignore)
+const LOCALES = { fr: "fr-FR", en: "en-GB", de: "de-DE", es: "es-ES" };
 const KEY = "ocn.lang";
 // false while the English was being written (French unless chosen, the switch for administrators only); true since
 // 2026-10-18 (owner): the browser's language decides, everyone has the switch.
@@ -32,14 +34,17 @@ function chosen() {
 
 const UI = chosen();
 const FR = (await import("./i18n/fr.js")).default;
-const EN = UI === "en" ? (await import("./i18n/en.js")).default : null;
+// the language's own catalogue, and English beneath German and Spanish
+const OWN = LANGS.includes(UI) && UI !== "fr" ? (await import(`./i18n/${UI}.js`)).default : null;
+const EN = UI === "en" ? OWN : OWN ? (await import("./i18n/en.js")).default : null;
+const LOC = UI === "en" ? null : OWN;
 
-/** The language the texts are in: "fr" or "en" (the pseudo-language formats as French). */
-export const lang = () => (UI === "en" ? "en" : "fr");
+/** The language the texts are in: "fr", "en", "de" or "es" (the pseudo-language formats as French). */
+export const lang = () => (LANGS.includes(UI) ? UI : "fr");
 /** The language as chosen, the pseudo-language included. */
 export const uiLang = () => UI;
 /** The locale numbers and dates are written in. */
-export const locale = () => (UI === "en" ? "en-GB" : "fr-FR");
+export const locale = () => LOCALES[lang()];
 if (typeof document !== "undefined") document.documentElement.lang = lang();
 
 /** Change the language: kept on this device (and on the account, by the caller), then the page is drawn again. */
@@ -64,13 +69,14 @@ export function adoptLang(l) {
   } catch (e) { return false; }
 }
 
-/** Load an area's catalogues (i18n/<area>.fr.js and, in English, <area>.en.js) into the tables; once. */
+/** Load an area's catalogues (i18n/<area>.fr.js and the language's, <area>.en.js…) into the tables; once. */
 const areas = new Map();
 export function loadArea(name) {
   if (!areas.has(name)) {
     areas.set(name, (async () => {
       Object.assign(FR, (await import(`./i18n/${name}.fr.js`)).default);
       if (EN) { try { Object.assign(EN, (await import(`./i18n/${name}.en.js`)).default); } catch (e) { /* French then */ } }
+      if (LOC) { try { Object.assign(LOC, (await import(`./i18n/${name}.${UI}.js`)).default); } catch (e) { /* English then */ } }
     })());
   }
   return areas.get(name);
@@ -90,14 +96,14 @@ export const setDefaults = (fn) => { DEFAULTS = fn; };
 
 /** The text of `key` in the interface's language; `vars` fills its {placeholders}. */
 export const t = (key, vars) => {
-  let s = EN && EN[key] != null ? EN[key] : FR[key];
+  let s = LOC && LOC[key] != null ? LOC[key] : EN && EN[key] != null ? EN[key] : FR[key];
   if (s == null) return key;
   if (UI === "xx") s = pseudo(s);
   if (DEFAULTS && s.includes("{cn")) vars = { ...DEFAULTS(), ...vars };
   if (!vars) return s;
   const out = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
-  // an English text that opens on a placeholder (« {cn} history ») opens with a capital (« Official CN history »)
-  return UI === "en" && s[0] === "{" ? out.charAt(0).toUpperCase() + out.slice(1) : out;
+  // an English (German, Spanish) text that opens on a placeholder (« {cn} history ») opens with a capital (« Official CN history »)
+  return UI !== "fr" && UI !== "xx" && s[0] === "{" ? out.charAt(0).toUpperCase() + out.slice(1) : out;
 };
 
 const plurals = new Intl.PluralRules(locale());
@@ -105,5 +111,5 @@ const numbers = new Intl.NumberFormat(locale());
 /** A count's text: the key's plural form for n (key.one, key.other…; {n} is n written in the locale). */
 export const tn = (key, n, vars = {}) => {
   const form = `${key}.${plurals.select(n)}`;
-  return t(form in FR || (EN && form in EN) ? form : `${key}.other`, { n: numbers.format(n), ...vars });
+  return t(form in FR || (EN && form in EN) || (LOC && form in LOC) ? form : `${key}.other`, { n: numbers.format(n), ...vars });
 };

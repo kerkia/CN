@@ -1,0 +1,182 @@
+{
+  "id": "/",
+  "name": "Ozimut — Orientierungslauf in Karten und Zahlen",
+  "short_name": "Ozimut",
+  "description": "Orientierungslauf in Karten und Zahlen: Ergebnisse, Startzeiten, GPS-Tracks, Training, Ranglisten.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f2ec",
+  "theme_color": "#f4f2ec",
+  "categories": [
+    "sports"
+  ],
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Rangliste",
+      "short_name": "Rangliste",
+      "description": "Die nationale Rangliste",
+      "url": "/#/classement",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ergebnisse",
+      "short_name": "Ergebnisse",
+      "description": "Die Ergebnisse der letzten Läufe",
+      "url": "/#/resultats",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Kalender",
+      "short_name": "Kalender",
+      "description": "Kommende Läufe",
+      "url": "/#/agenda",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Einzelanalyse",
+      "short_name": "Einzelanalyse",
+      "description": "Dein GPS-Track auf der Karte",
+      "url": "/#/analyse-solo",
+      "icons": [
+        {
+          "src": "/assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/tour/en/phone-ranking.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Die Rangliste"
+    },
+    {
+      "src": "/assets/tour/en/phone-runner.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Die Seite eines Läufers"
+    },
+    {
+      "src": "/assets/tour/en/phone-race.webp",
+      "sizes": "560x1212",
+      "type": "image/webp",
+      "form_factor": "narrow",
+      "label": "Ein Lauf"
+    },
+    {
+      "src": "/assets/tour/en/ranking.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Die Rangliste"
+    },
+    {
+      "src": "/assets/tour/en/runner-calc.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Wie der Index berechnet wird"
+    },
+    {
+      "src": "/assets/tour/en/past.webp",
+      "sizes": "1400x875",
+      "type": "image/webp",
+      "form_factor": "wide",
+      "label": "Vergangene Wettkämpfe und ihre Ergebnisse"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/?recu=fichier",
+      "accept": {
+        "application/gpx+xml": [
+          ".gpx"
+        ],
+        "application/vnd.ant.fit": [
+          ".fit"
+        ],
+        "application/vnd.garmin.tcx+xml": [
+          ".tcx"
+        ],
+        "application/vnd.google-earth.kmz": [
+          ".kmz"
+        ]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/partage",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/gpx+xml",
+            "application/vnd.ant.fit",
+            "application/vnd.garmin.tcx+xml",
+            "application/vnd.google-earth.kmz",
+            "application/vnd.google-earth.kml+xml",
+            "application/octet-stream",
+            "application/xml",
+            "text/xml",
+            "image/*",
+            "application/pdf",
+            ".gpx",
+            ".fit",
+            ".tcx",
+            ".kmz",
+            ".kml"
+          ]
+        }
+      ]
+    }
+  }
+}

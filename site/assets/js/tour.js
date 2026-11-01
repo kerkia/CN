@@ -50,7 +50,7 @@ const CAPS = {
 const OWNER_CAPS = new Set(["coach.guest.6"]);
 const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
-  : `assets/tour/${lang() === "en" ? "en" : "fr"}/${name}.webp`);
+  : `assets/tour/${lang() === "fr" ? "fr" : "en"}/${name}.webp`);
 const capKey = (name) => name.replace(/^@/, "");
 // each picture's size (the reel's drawn views 1400 × 750, the screenshots 1400 × 875, a phone's 560 × 1212)
 const dims = (name) => (name.startsWith("@") ? 'width="1400" height="750"' : 'width="1400" height="875"');

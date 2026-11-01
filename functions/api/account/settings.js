@@ -1,12 +1,12 @@
 // POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names],
-//   lang?: "fr" | "en", startsAlert?: bool, pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool,
+//   lang?: "fr" | "en" | "de" | "es", startsAlert?: bool, pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool,
 //   orga?: bool, movedNoticeSeen?: true }  (orga: the Orga module, migration 0016; movedNoticeSeen: the window about the move
 //   to ozimut.com, seen: assets/js/moved.js)
 // Every alert by e-mail and/or push (2026-10-18): the push ones are open to every account.
 // Only the fields sent are changed. Every alert's e-mail needs the right the administrator grants (users.alerts_allowed;
 // the results' too since 2026-10-21); the notifications do not. The language is the one
 // the account's e-mails are written in, and the one a login on another device takes.
-import { alertsAllowed, json, publicUser, readBody, withUser } from "../../_lib/api.js";
+import { alertsAllowed, json, LANGS, publicUser, readBody, withUser } from "../../_lib/api.js";
 import { memberships } from "../../_lib/countries.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
@@ -27,7 +27,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
     sets.push("agenda_regions = ?"); vals.push(JSON.stringify([...new Set(r)]));
   }
   if ("lang" in b) {
-    if (b.lang !== "fr" && b.lang !== "en") return json({ error: "bad request" }, 400);
+    if (!LANGS.includes(b.lang)) return json({ error: "bad request" }, 400);
     sets.push("lang = ?"); vals.push(b.lang);
   }
   if (b.movedNoticeSeen === true) sets.push("moved_notice = 1");

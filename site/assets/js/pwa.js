@@ -67,7 +67,7 @@ export async function takeInbox() {
 /** At start: the worker, the manifest's language, files opened with the app. */
 export function boot() {
   const link = document.querySelector('link[rel="manifest"]');
-  if (link) link.href = lang() === "en" ? "manifest.en.webmanifest" : "manifest.webmanifest";
+  if (link) link.href = lang() === "fr" ? "manifest.webmanifest" : `manifest.${lang()}.webmanifest`;
   if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
   // the address the share or the file handler opened: its mark goes, the page stays
   const q = new URLSearchParams(location.search);

@@ -6,7 +6,7 @@
 //   POST /api/admin/demo { id, action: "extend", days }     valid `days` more from today (or from its last day, if later)
 //   POST /api/admin/demo { id, action: "password" }         a new password -> { password }
 // Disable, enable and delete: /api/admin/user, as for any account.
-import { cleanEmail, json, nowIso, parisToday, readBody, validEmail, withUser } from "../../_lib/api.js";
+import { cleanEmail, json, LANGS, nowIso, parisToday, readBody, validEmail, withUser } from "../../_lib/api.js";
 import { hashPassword, randomBytes } from "../../_lib/crypto.js";
 
 const MAX_DAYS = 365;
@@ -53,7 +53,7 @@ export const onRequestPost = withUser(async ({ request, env }) => {
   if (!validEmail(email)) return json({ error: "email" }, 400);
   if (await env.DB.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first()) return json({ error: "exists" }, 409);
   const password = newPassword(), pw = await hashPassword(password, env), now = nowIso();
-  const lang = b.lang === "en" ? "en" : "fr";
+  const lang = LANGS.includes(b.lang) ? b.lang : "fr";
   // no licence, no alert of any kind (nothing is ever sent to a demo account)
   await env.DB.prepare(`INSERT INTO users (email, pw_hash, pw_salt, pw_iter, first_name, last_name, licence, display_name, email_verified,
       status, notify, consent_at, created_at, lang, demo_until, push_starts, push_results)

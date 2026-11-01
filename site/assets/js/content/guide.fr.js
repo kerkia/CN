@@ -48,7 +48,7 @@ export function build(X) {
           html`<b>Le pays</b>, en haut, choisit les compétitions que l'on voit : l'agenda d'une trentaine de pays, lu chaque matin chez leur fédération,
             leurs résultats et leur direct, ouverts à tous. Les classements n'existent que là où Ozimut a les résultats de la fédération : la France
             (${fr ? "le CN officiel et " : ""}l'indice Ozimut) et l'Espagne (l'indice Ozimut).`,
-          html`<b>La langue</b>, français ou anglais, change sur cet appareil et, connecté, pour le compte (les e-mails suivent).`,
+          html`<b>La langue</b>, français, anglais, allemand ou espagnol, change sur cet appareil et, connecté, pour le compte (les e-mails suivent).`,
           html`<b>Le thème</b>, sous la lune : Jour, Clairière, Forêt, Sous-bois ou Nuit ; clair sur un ordinateur, sombre sur un téléphone par défaut.`,
         ])}`, "pays")}
       ${slide("Le site", "Les alertes", html`

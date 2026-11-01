@@ -46,7 +46,7 @@ export function build(X) {
           html`<b>The country</b>, at the top, chooses the competitions you see: the calendar of some thirty countries, read every morning at their
             federation, their results and live races, open to all. Rankings exist only where Ozimut has the federation's results: France
             (${fr ? "the official CN and " : ""}the Ozimut index) and Spain (the Ozimut index).`,
-          html`<b>The language</b>, French or English, changes on this device and, signed in, for the account (the e-mails follow).`,
+          html`<b>The language</b>, French, English, German or Spanish, changes on this device and, signed in, for the account (the e-mails follow).`,
           html`<b>The theme</b>, under the moon: Day, Clearing, Forest, Undergrowth or Night; light on a computer, dark on a phone by default.`,
         ])}`, "pays")}
       ${slide("The site", "Alerts", html`

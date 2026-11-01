@@ -71,7 +71,8 @@ export const publicUser = (env, u, countries = []) => ({
   countries: countries.map((c) => ({ cc: c.country, club: c.club, id: c.member_id, status: c.status })),
 });
 /** An account's language, "fr" or "en" (users.lang, migration 0009; French before it). */
-export const userLang = (u) => (u?.lang === "en" ? "en" : "fr");
+export const LANGS = ["fr", "en", "de", "es"];
+export const userLang = (u) => (LANGS.includes(u?.lang) ? u.lang : "fr");
 /** May this account receive the agenda alerts? */
 export const alertsAllowed = (env, u) => !!u.alerts_allowed;
 

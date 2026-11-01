@@ -1,11 +1,19 @@
-// The e-mails the site sends, in the recipient's language (users.lang: "fr", the reference, or "en"; 2026-10-17).
+// The e-mails the site sends, in the recipient's language (users.lang: "fr", the reference, "en" (2026-10-17), "de" or "es"
+// (2026-11-01: German « du », Spanish « tú », docs/i18n/glossary.de-es.md); anything else is French).
 // Each returns { subject, html, text }. The FFCO's own data (race names, places, regions, officials) stays as published.
 
 import { siteUrl } from "./api.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const L = (lang) => (lang === "en" ? "en" : "fr");
-const locale = (lang) => (L(lang) === "en" ? "en-GB" : "fr-FR");
+const LANGS = ["fr", "en", "de", "es"];
+const L = (lang) => (LANGS.includes(lang) ? lang : "fr");
+const LOCALES = { fr: "fr-FR", en: "en-GB", de: "de-DE", es: "es-ES" };
+const locale = (lang) => LOCALES[L(lang)];
+/** The recipient's language's entry of { fr, en, de, es }. */
+const pick = (lang, o) => o[L(lang)];
+/** « Bonjour Anne, » — Spanish writes « Hola, Ana: »; German goes on in lower case after « Hallo Anna, ». */
+const GREET = { fr: (n) => `Bonjour ${n},`, en: (n) => `Hello ${n},`, de: (n) => `Hallo ${n},`, es: (n) => `Hola, ${n}:` };
+const greet = (lang, name) => GREET[L(lang)](name);
 
 const FRAME = {
   fr: { tagline: "La course d'orientation, en cartes et en chiffres",
@@ -14,6 +22,12 @@ const FRAME = {
   en: { tagline: "Orienteering, in maps and numbers",
     foot: (from) => `An independent site, not affiliated with any federation. Automatic message; contact ${from} with any question or feedback.`,
     copy: "If the button doesn't work, copy this link:" },
+  de: { tagline: "Orientierungslauf, in Karten und Zahlen",
+    foot: (from) => `Eine unabhängige Website, ohne Verbindung zu einem Verband. Automatisch versandte Nachricht; schreib an ${from} bei Fragen oder Rückmeldungen.`,
+    copy: "Falls der Button nicht funktioniert, kopiere diesen Link:" },
+  es: { tagline: "La orientación, en mapas y en cifras",
+    foot: (from) => `Sitio independiente, sin relación con ninguna federación. Mensaje enviado automáticamente; escribe a ${from} para cualquier pregunta o comentario.`,
+    copy: "Si el botón no funciona, copia este enlace:" },
 };
 function wrap(env, title, bodyHtml, lang) {
   const F = FRAME[L(lang)];
@@ -37,6 +51,20 @@ export function verifyMail(env, token, firstName, lang) {
 <p style="font-size:13px;color:#5b6675">If you didn't register, ignore this message: nothing will be activated.</p>`, lang),
     text: `Hello ${firstName},\n\nConfirm your email address to activate your Ozimut account (link valid for 24 hours):\n${url}\n\nIf you didn't register, ignore this message.`,
   };
+  if (L(lang) === "de") return {
+    subject: "Bestätige deine E-Mail-Adresse — Ozimut",
+    html: wrap(env, "Bestätige deine E-Mail-Adresse", `<p>${esc(greet(lang, firstName))}</p>
+<p>danke für deine Registrierung. Klicke unten, um deine E-Mail-Adresse zu bestätigen und dein Konto zu aktivieren (der Link ist 24 Stunden gültig).</p>${button(url, "Adresse bestätigen", lang)}
+<p style="font-size:13px;color:#5b6675">Falls du dich nicht registriert hast, ignoriere diese Nachricht: Es wird nichts aktiviert.</p>`, lang),
+    text: `${greet(lang, firstName)}\n\nbestätige deine E-Mail-Adresse, um dein Ozimut-Konto zu aktivieren (der Link ist 24 Stunden gültig):\n${url}\n\nFalls du dich nicht registriert hast, ignoriere diese Nachricht.`,
+  };
+  if (L(lang) === "es") return {
+    subject: "Confirma tu dirección de correo electrónico — Ozimut",
+    html: wrap(env, "Confirma tu dirección de correo electrónico", `<p>${esc(greet(lang, firstName))}</p>
+<p>Gracias por registrarte. Haz clic abajo para confirmar tu dirección de correo electrónico y activar tu cuenta (enlace válido durante 24 horas).</p>${button(url, "Confirmar mi dirección", lang)}
+<p style="font-size:13px;color:#5b6675">Si no te has registrado, ignora este mensaje: no se activará nada.</p>`, lang),
+    text: `${greet(lang, firstName)}\n\nConfirma tu dirección de correo electrónico para activar tu cuenta de Ozimut (enlace válido durante 24 horas):\n${url}\n\nSi no te has registrado, ignora este mensaje.`,
+  };
   return {
     subject: "Confirmez votre adresse e-mail — Ozimut",
     html: wrap(env, "Confirmez votre adresse e-mail", `<p>Bonjour ${esc(firstName)},</p>
@@ -53,6 +81,18 @@ export function resetMail(env, token, lang) {
     html: wrap(env, "Reset your password", `<p>A password reset was requested for this account. The link below is valid for 1 hour.</p>${button(url, "Choose a new password", lang)}
 <p style="font-size:13px;color:#5b6675">If you didn't ask for anything, ignore this message: your password stays unchanged.</p>`, lang),
     text: `A password reset was requested for your Ozimut account. Link valid for 1 hour:\n${url}\n\nIf you didn't ask for anything, ignore this message.`,
+  };
+  if (L(lang) === "de") return {
+    subject: "Passwort zurücksetzen — Ozimut",
+    html: wrap(env, "Setze dein Passwort zurück", `<p>Für dieses Konto wurde das Zurücksetzen des Passworts angefordert. Der Link unten ist 1 Stunde gültig.</p>${button(url, "Neues Passwort wählen", lang)}
+<p style="font-size:13px;color:#5b6675">Falls du nichts angefordert hast, ignoriere diese Nachricht: Dein Passwort bleibt unverändert.</p>`, lang),
+    text: `Für dein Ozimut-Konto wurde das Zurücksetzen des Passworts angefordert. Der Link ist 1 Stunde gültig:\n${url}\n\nFalls du nichts angefordert hast, ignoriere diese Nachricht.`,
+  };
+  if (L(lang) === "es") return {
+    subject: "Restablecimiento de tu contraseña — Ozimut",
+    html: wrap(env, "Restablece tu contraseña", `<p>Se ha solicitado restablecer la contraseña de esta cuenta. El enlace de abajo es válido durante 1 hora.</p>${button(url, "Elegir una nueva contraseña", lang)}
+<p style="font-size:13px;color:#5b6675">Si no has pedido nada, ignora este mensaje: tu contraseña no cambia.</p>`, lang),
+    text: `Se ha solicitado restablecer la contraseña de tu cuenta de Ozimut. Enlace válido durante 1 hora:\n${url}\n\nSi no has pedido nada, ignora este mensaje.`,
   };
   return {
     subject: "Réinitialisation de votre mot de passe — Ozimut",
@@ -82,6 +122,34 @@ export function newUserMail(env, user, total, lang, countries = []) {
 ${lines.join("\n")}
 
 Administration (to turn this alert off): ${url}`,
+    };
+  }
+  if (L(lang) === "de") {
+    const lines = [`E-Mail: ${user.email}`, ...(user.licence ? [`Lizenz: ${user.licence} (${user.display_name})`] : []),
+      `Länder: ${countries.join(", ") || "keine"}`, `Registriert am: ${day}`, `Bestätigte Konten: ${total}`];
+    return {
+      subject: `Neues Konto: ${who} — Ozimut`,
+      html: wrap(env, `Neues Konto: ${who}`, `<p>Soeben wurde ein neues Konto bestätigt.</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Administrationsseite öffnen", lang)}
+<p style="font-size:13px;color:#5b6675">Du erhältst diese Nachricht, weil die Benachrichtigung über neue Registrierungen auf der Administrationsseite eingeschaltet ist.</p>`, lang),
+      text: `Soeben wurde ein neues Konto bestätigt: ${who}
+${lines.join("\n")}
+
+Administration (um diese Benachrichtigung auszuschalten): ${url}`,
+    };
+  }
+  if (L(lang) === "es") {
+    const lines = [`Correo electrónico: ${user.email}`, ...(user.licence ? [`Licencia: ${user.licence} (${user.display_name})`] : []),
+      `Países: ${countries.join(", ") || "ninguno"}`, `Registrado el: ${day}`, `Cuentas confirmadas: ${total}`];
+    return {
+      subject: `Nueva cuenta: ${who} — Ozimut`,
+      html: wrap(env, `Nueva cuenta: ${who}`, `<p>Se acaba de confirmar una nueva cuenta.</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Abrir la página de administración", lang)}
+<p style="font-size:13px;color:#5b6675">Recibes este mensaje porque la alerta de nuevos registros está activada en la página de administración.</p>`, lang),
+      text: `Se acaba de confirmar una nueva cuenta: ${who}
+${lines.join("\n")}
+
+Administración (para desactivar esta alerta): ${url}`,
     };
   }
   const lines = [`E-mail : ${user.email}`, ...(user.licence ? [`Licence : ${user.licence} (${user.display_name})`] : []),
@@ -123,6 +191,44 @@ ${lines.join("\n")}
 The uploads (to remove one): ${url}`,
     };
   }
+  if (L(lang) === "de") {
+    const lines = [`Lauf: ${up.race}`, `Datei: ${up.filename} (${kb} KB)`,
+      `Hochgeladen von: ${user.first_name} ${user.last_name} — ${user.email} — Lizenz ${user.licence}`];
+    const head = courses ? "Bahnen hochgeladen" : starts ? "Startliste hochgeladen" : "Ergebnisse hochgeladen";
+    const intro = courses ? "Soeben wurden die Bahnen eines Laufs (die IOF-XML-Datei des Bahnlegers) in „Ergebnisse“ hochgeladen."
+      : starts ? "Ein Veranstalter hat soeben die Startliste eines kommenden Laufs hochgeladen („Organisation › Startzeiten“)."
+      : "Soeben wurde eine Ergebnisdatei in „Ergebnisse“ hochgeladen.";
+    const when = courses ? "Sie ergänzen die Ergebnislisten des Laufs (Länge, Steigung, Posten), sobald der Lauf vorbei ist."
+      : "Sie wird beim nächsten Datenabruf veröffentlicht.";
+    return {
+      subject: `${head}: ${up.race} — Ozimut`,
+      html: wrap(env, head, `<p>${intro} ${when}</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Uploads ansehen", lang)}`, lang),
+      text: `${intro}
+${lines.join("\n")}
+
+Die Uploads (um einen zu entfernen): ${url}`,
+    };
+  }
+  if (L(lang) === "es") {
+    const lines = [`Carrera: ${up.race}`, `Archivo: ${up.filename} (${kb} KB)`,
+      `Subido por: ${user.first_name} ${user.last_name} — ${user.email} — licencia ${user.licence}`];
+    const head = courses ? "Recorridos subidos" : starts ? "Lista de salida subida" : "Resultados subidos";
+    const intro = courses ? "Se acaban de subir a «Resultados» los recorridos de una carrera (el archivo IOF XML del trazador)."
+      : starts ? "Un organizador acaba de subir la lista de salida de una próxima carrera («Organización › Horarios»)."
+      : "Se acaba de subir un archivo de resultados a «Resultados».";
+    const when = courses ? "Completan las listas de resultados de la carrera (longitud, desnivel, controles) una vez pasada la carrera."
+      : "Se publicará en la próxima recogida de datos.";
+    return {
+      subject: `${head}: ${up.race} — Ozimut`,
+      html: wrap(env, head, `<p>${intro} ${when}</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Ver los archivos subidos", lang)}`, lang),
+      text: `${intro}
+${lines.join("\n")}
+
+Los archivos subidos (para retirar uno): ${url}`,
+    };
+  }
   const lines = [`Course : ${up.race}`, `Fichier : ${up.filename} (${kb} Ko)`,
     `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
   const head = courses ? "Circuits déposés" : starts ? "Horaires de départ déposés" : "Résultats déposés";
@@ -145,9 +251,22 @@ Les dépôts (pour en retirer un) : ${url}`,
 /** To the administrator (in their language): several verified accounts claim the same licence. */
 export function duplicateAlert(env, licence, accounts, lang) {
   const url = `${siteUrl(env)}/#/admin`;
-  const en = L(lang) === "en";
-  const lines = accounts.map((a) => `${a.email} — ${a.first_name} ${a.last_name} — ${en ? "registered on" : "inscrit le"} ${String(a.created_at).slice(0, 10)}${a.status === "disabled" ? (en ? " (disabled)" : " (désactivé)") : ""}`);
-  if (en) return {
+  const D = pick(lang, { fr: { on: "inscrit le", off: " (désactivé)" }, en: { on: "registered on", off: " (disabled)" },
+    de: { on: "registriert am", off: " (deaktiviert)" }, es: { on: "registrada el", off: " (desactivada)" } });
+  const lines = accounts.map((a) => `${a.email} — ${a.first_name} ${a.last_name} — ${D.on} ${String(a.created_at).slice(0, 10)}${a.status === "disabled" ? D.off : ""}`);
+  if (L(lang) === "de") return {
+    subject: `Lizenz ${licence}: ${accounts.length} Konten — Ozimut`,
+    html: wrap(env, `Lizenz ${licence}: ${accounts.length} Konten`, `<p>Mehrere bestätigte Konten gehören zur selben FFCO-Lizenz:</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Administrationsseite öffnen", lang)}`, lang),
+    text: `Mehrere bestätigte Konten für die Lizenz ${licence}:\n${lines.join("\n")}\n\nAdministration: ${url}`,
+  };
+  if (L(lang) === "es") return {
+    subject: `Licencia ${licence}: ${accounts.length} cuentas — Ozimut`,
+    html: wrap(env, `Licencia ${licence}: ${accounts.length} cuentas`, `<p>Varias cuentas confirmadas corresponden a la misma licencia FFCO:</p>
+<ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Abrir la página de administración", lang)}`, lang),
+    text: `Varias cuentas confirmadas para la licencia ${licence}:\n${lines.join("\n")}\n\nAdministración: ${url}`,
+  };
+  if (L(lang) === "en") return {
     subject: `Licence ${licence}: ${accounts.length} accounts — Ozimut`,
     html: wrap(env, `Licence ${licence}: ${accounts.length} accounts`, `<p>Several confirmed accounts match the same FFCO licence:</p>
 <ul>${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>${button(url, "Open the admin page", lang)}`, lang),
@@ -168,7 +287,8 @@ export function digestMail(env, user, races) {
   const base = siteUrl(env);
   const n = races.length;
   const rows = races.map((r) => ({ ...r, url: r.prov ? `${base}/#/resultats?course=${encodeURIComponent(r.prov)}`
-    : `${base}/#/courses?id=${encodeURIComponent(r.id)}`, note: r.prov ? (en ? "organiser's results" : "résultats de l'organisateur") : "" }));
+    : `${base}/#/courses?id=${encodeURIComponent(r.id)}`, note: r.prov ? pick(lang, { fr: "résultats de l'organisateur", en: "organiser's results",
+      de: "Ergebnisse des Veranstalters", es: "resultados del organizador" }) : "" }));
   const settings = `${base}/#/reglages`;
   const list = `<ul style="padding-left:18px">${rows.map((r) => `<li style="margin:6px 0"><a href="${esc(r.url)}">${esc(r.title)}</a>${r.location ? ` — ${esc(r.location)}` : ""}${r.date ? ` (${esc(r.date)})` : ""}${r.note ? ` <span style="color:#5b6675">· ${esc(r.note)}</span>` : ""}</li>`).join("")}</ul>`;
   const listText = rows.map((r) => `- ${r.title}${r.location ? ` (${r.location})` : ""}${r.date ? ` ${r.date}` : ""}${r.note ? ` · ${r.note}` : ""}\n  ${r.url}`).join("\n");
@@ -178,6 +298,20 @@ export function digestMail(env, user, races) {
 ${list}
 <p style="font-size:13px;color:#5b6675">You receive this message because you turned notifications on. <a href="${esc(settings)}">Change my settings</a>.</p>`, lang),
     text: `Hello ${user.first_name},\n\n${listText}\n\nTo stop receiving these messages: ${settings}`,
+  };
+  if (lang === "de") return {
+    subject: n === 1 ? `Neuer Lauf online: ${races[0].title} — Ozimut` : `${n} neue Läufe online — Ozimut`,
+    html: wrap(env, n === 1 ? "Einer deiner Läufe ist online" : `${n} deiner Läufe sind online`, `<p>${esc(greet(lang, user.first_name))}</p>
+${list}
+<p style="font-size:13px;color:#5b6675">Du erhältst diese Nachricht, weil du Benachrichtigungen eingeschaltet hast. <a href="${esc(settings)}">Einstellungen ändern</a>.</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${listText}\n\nUm diese Nachrichten nicht mehr zu erhalten: ${settings}`,
+  };
+  if (lang === "es") return {
+    subject: n === 1 ? `Nueva carrera en línea: ${races[0].title} — Ozimut` : `${n} nuevas carreras en línea — Ozimut`,
+    html: wrap(env, n === 1 ? "Una de tus carreras está en línea" : `${n} de tus carreras están en línea`, `<p>${esc(greet(lang, user.first_name))}</p>
+${list}
+<p style="font-size:13px;color:#5b6675">Recibes este mensaje porque has activado las notificaciones. <a href="${esc(settings)}">Cambiar mis ajustes</a>.</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${listText}\n\nPara dejar de recibir estos mensajes: ${settings}`,
   };
   return {
     subject: n === 1 ? `Nouvelle course en ligne : ${races[0].title} — Ozimut` : `${n} nouvelles courses en ligne — Ozimut`,
@@ -198,10 +332,27 @@ const shortDate = (iso, lang) => (iso ? new Date(iso + "T00:00:00").toLocaleDate
 const a = (href, label) => `<a href="${esc(href)}">${esc(label || href)}</a>`;
 /** The plain-text twin of an escaped HTML fragment. */
 const plain = (html) => html.replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-// a race's type as update.py writes it (« Forêt MD », « Nuit », « Entraînement VTT »…), word by word in English
+// a race's type as update.py writes it (« Forêt MD », « Nuit », « Entraînement VTT »…), word by word in the recipient's
+// language (German and Spanish: « Longue distance » as one word first, Langdistanz / larga distancia)
 const TYPE_EN = { "Forêt": "Forest", Nuit: "Night", Relais: "Relay", "Pédestre": "Foot", VTT: "MTB", "Entraînement": "Training",
   Formation: "Workshop", Moyenne: "Middle", Longue: "Long", Autre: "Other" };
-const typeOf = (s, lang) => (L(lang) === "en" ? String(s || "").replace(/[\p{L}']+/gu, (w) => TYPE_EN[w] ?? w) : s || "");
+const TYPE_WORDS = {
+  en: TYPE_EN,
+  de: { "Forêt": "Wald", Nuit: "Nacht", Relais: "Staffel", "Pédestre": "Fuß-OL", VTT: "MTB-O", "Entraînement": "Training",
+    Formation: "Schulung", Moyenne: "Mittel", Longue: "Lang", Autre: "Sonstiges" },
+  es: { "Forêt": "Bosque", Nuit: "Nocturna", Relais: "Relevos", "Pédestre": "A pie", VTT: "MTB-O", "Entraînement": "Entrenamiento",
+    Formation: "Formación", Moyenne: "Media", Longue: "Larga", Autre: "Otro" },
+};
+const TYPE_PHRASES = {
+  de: [[/Longue distance/gi, "Langdistanz"], [/Moyenne distance/gi, "Mitteldistanz"]],
+  es: [[/Longue distance/gi, "Larga distancia"], [/Moyenne distance/gi, "Media distancia"]],
+};
+const typeOf = (s, lang) => {
+  const W = TYPE_WORDS[L(lang)];
+  if (!W) return s || "";
+  const t = (TYPE_PHRASES[L(lang)] || []).reduce((acc, [re, w]) => acc.replace(re, w), String(s || ""));
+  return t.replace(/[\p{L}']+/gu, (w) => W[w] ?? w);
+};
 
 const AGENDA = {
   fr: {
@@ -215,7 +366,7 @@ const AGENDA = {
     count: (n, teams) => `${n} inscrit${n > 1 ? "s" : ""}${teams != null ? ` (${teams} équipe${teams > 1 ? "s" : ""})` : ""} à ce jour`,
     regOnline: "Inscriptions en ligne", noDates: " — dates de clôture non encore publiées", colon: " :",
     invitationArrow: "Annonce de course (PDF) →", access: "Accès", accessSrc: "(extrait de l'annonce)", accessText: "Accès (extrait de l'annonce)",
-    see: "Voir sur Ozimut", ffco: "Fiche officielle", hello: "Bonjour", also: "Et aussi :",
+    see: "Voir sur Ozimut", ffco: "Fiche officielle", also: "Et aussi :",
     more: (n, link) => `… et ${n} autre${n > 1 ? "s" : ""} dans l'${link}.`, moreText: (n, url) => `… et ${n} autre${n > 1 ? "s" : ""} : ${url}`,
     agenda: "agenda", why: (w, link) => `Vous recevez ce message parce que vous avez activé l'alerte ${w}. ${link}.`, settings: "Modifier mes réglages",
     stop: "Pour modifier ou arrêter cette alerte :",
@@ -243,7 +394,7 @@ const AGENDA = {
     count: (n, teams) => `${n} entr${n !== 1 ? "ies" : "y"}${teams != null ? ` (${teams} team${teams !== 1 ? "s" : ""})` : ""} so far`,
     regOnline: "Online entries", noDates: " — deadlines not published yet", colon: ":",
     invitationArrow: "Race announcement (PDF) →", access: "Getting there", accessSrc: "(from the announcement)", accessText: "Getting there (from the announcement)",
-    see: "See on Ozimut", ffco: "Official page", hello: "Hello", also: "And also:",
+    see: "See on Ozimut", ffco: "Official page", also: "And also:",
     more: (n, link) => `… and ${n} more in the ${link}.`, moreText: (n, url) => `… and ${n} more: ${url}`,
     agenda: "calendar", why: (w, link) => `You receive this message because you turned on the ${w} alert. ${link}.`, settings: "Change my settings",
     stop: "To change or stop this alert:",
@@ -258,6 +409,63 @@ const AGENDA = {
       title: (n) => (n === 1 ? "Entries closing soon" : `Entries closing soon for ${n} races`),
       intro: (n) => `Entries close within the next 8 days for ${n === 1 ? "this race" : "these races"}, in the regions you follow:`,
       why: "“entry deadline”",
+    },
+  },
+  // German: the intros follow « Hallo Anna, » and so begin in lower case
+  de: {
+    place: "Ort", type: "Art", cn: "Nationale Rangliste", cnYes: "<b>ja</b> — zählt für den CN", cnNo: "nein",
+    manif: "Veranstaltung", org: "Veranstalter", referee: "Schiedsrichter", referee2: "Schiedsrichter in Ausbildung",
+    controller: "Bahnkontrolleur", delegate: "Delegierter", monitor: "Ausbilder", contact: "Kontakt", phone: "Telefon",
+    email: "E-Mail", site: "Website", signs: "Ausschilderung", invitation: "Ausschreibung", invitationLink: "Ausschreibung herunterladen (PDF)",
+    gps: "GPS-Route", route: "Route öffnen", obs: "Bemerkungen",
+    noReg: "Auf der Website des Verbands ist keine Online-Anmeldung angegeben.",
+    close: (d) => `Anmeldeschluss am <b>${d}</b>`, mods: (d) => `Änderungen (SI-Chips, Aufstellungen) bis ${d}`,
+    count: (n, teams) => `bisher ${n} Anmeldung${n !== 1 ? "en" : ""}${teams != null ? ` (${teams} Team${teams !== 1 ? "s" : ""})` : ""}`,
+    regOnline: "Online-Anmeldung", noDates: " — Anmeldeschluss noch nicht veröffentlicht", colon: ":",
+    invitationArrow: "Ausschreibung (PDF) →", access: "Anreise", accessSrc: "(aus der Ausschreibung)", accessText: "Anreise (aus der Ausschreibung)",
+    see: "Auf Ozimut ansehen", ffco: "Offizielle Seite", also: "Außerdem:",
+    more: (n, link) => `… und ${n} weitere${n === 1 ? "r" : ""} im ${link}.`, moreText: (n, url) => `… und ${n} weitere${n === 1 ? "r" : ""}: ${url}`,
+    agenda: "Kalender", why: (w, link) => `Du erhältst diese Nachricht, weil du die Benachrichtigung ${w} eingeschaltet hast. ${link}.`, settings: "Einstellungen ändern",
+    stop: "Um diese Benachrichtigung zu ändern oder abzubestellen:",
+    new: {
+      subject: (n, e) => (n === 1 ? `Neuer Lauf im Kalender: ${e.name} — Ozimut` : `${n} neue Läufe im Kalender — Ozimut`),
+      title: (n) => (n === 1 ? "Ein neuer Lauf im Kalender" : `${n} neue Läufe im Kalender`),
+      intro: (n) => `in den Regionen, denen du folgst, ${n === 1 ? "wurde soeben ein Lauf" : "wurden soeben Läufe"} in den Kalender aufgenommen:`,
+      why: "„Neue Läufe“",
+    },
+    deadline: {
+      subject: (n, e) => (n === 1 ? `Anmeldeschluss naht: ${e.name} — Ozimut` : `${n} Läufe: Anmeldeschluss naht — Ozimut`),
+      title: (n) => (n === 1 ? "Anmeldeschluss naht" : `Anmeldeschluss naht für ${n} Läufe`),
+      intro: (n) => `für ${n === 1 ? "diesen Lauf" : "diese Läufe"} in den Regionen, denen du folgst, endet die Anmeldung in den nächsten 8 Tagen:`,
+      why: "„Anmeldeschluss“",
+    },
+  },
+  es: {
+    place: "Lugar", type: "Tipo", cn: "Clasificación nacional", cnYes: "<b>sí</b> — cuenta para el CN", cnNo: "no",
+    manif: "Evento", org: "Organizador", referee: "Árbitro titular", referee2: "Árbitro en prácticas",
+    controller: "Controlador de recorridos", delegate: "Delegado", monitor: "Monitor", contact: "Contacto", phone: "Teléfono",
+    email: "Correo electrónico", site: "Sitio web", signs: "Señalización", invitation: "Anuncio de la prueba", invitationLink: "Descargar el anuncio (PDF)",
+    gps: "Ruta GPS", route: "Abrir la ruta", obs: "Observaciones",
+    noReg: "El sitio de la federación no indica inscripción en línea.",
+    close: (d) => `cierre de inscripciones el <b>${d}</b>`, mods: (d) => `cambios (pinzas, equipos) hasta el ${d}`,
+    count: (n, teams) => `${n} inscrito${n !== 1 ? "s" : ""}${teams != null ? ` (${teams} equipo${teams !== 1 ? "s" : ""})` : ""} hasta ahora`,
+    regOnline: "Inscripciones en línea", noDates: " — fechas de cierre aún no publicadas", colon: ":",
+    invitationArrow: "Anuncio de la prueba (PDF) →", access: "Cómo llegar", accessSrc: "(del anuncio)", accessText: "Cómo llegar (del anuncio)",
+    see: "Ver en Ozimut", ffco: "Página oficial", also: "Y también:",
+    more: (n, link) => `… y ${n} más en el ${link}.`, moreText: (n, url) => `… y ${n} más: ${url}`,
+    agenda: "calendario", why: (w, link) => `Recibes este mensaje porque has activado la alerta ${w}. ${link}.`, settings: "Cambiar mis ajustes",
+    stop: "Para cambiar o desactivar esta alerta:",
+    new: {
+      subject: (n, e) => (n === 1 ? `Nueva carrera en el calendario: ${e.name} — Ozimut` : `${n} nuevas carreras en el calendario — Ozimut`),
+      title: (n) => (n === 1 ? "Una nueva carrera en el calendario" : `${n} nuevas carreras en el calendario`),
+      intro: (n) => `${n === 1 ? "Se acaba de añadir una carrera" : "Se acaban de añadir carreras"} al calendario en las regiones que sigues:`,
+      why: "«nuevas carreras»",
+    },
+    deadline: {
+      subject: (n, e) => (n === 1 ? `Inscripciones a punto de cerrar: ${e.name} — Ozimut` : `${n} carreras: inscripciones a punto de cerrar — Ozimut`),
+      title: (n) => (n === 1 ? "Inscripciones a punto de cerrar" : `Inscripciones a punto de cerrar en ${n} carreras`),
+      intro: (n) => `Las inscripciones cierran en los próximos 8 días para ${n === 1 ? "esta carrera" : "estas carreras"}, en las regiones que sigues:`,
+      why: "«cierre de inscripciones»",
     },
   },
 };
@@ -340,16 +548,18 @@ ${e.access ? `<div style="background:#f4f6f9;border-radius:6px;padding:8px 10px;
 
   return {
     subject: K.subject(n, events[0]),
-    html: wrap(env, K.title(n), `<p>${T.hello} ${esc(user.first_name)},</p>
+    html: wrap(env, K.title(n), `<p>${esc(greet(lang, user.first_name))}</p>
 <p>${K.intro(n)}</p>
 ${full.map(blockHtml).join("")}
 ${compact.length ? `<p><b>${T.also}</b></p><ul style="padding-left:18px">${compact.map((e) => `<li style="margin:4px 0">${a(link(e), e.name)} — ${esc(shortDate(e.date, lang))}${e.place ? `, ${esc(e.place)}` : ""}${e.type ? ` (${esc(type(e))})` : ""}</li>`).join("")}</ul>` : ""}
 ${more > 0 ? `<p>${T.more(more, a(`${base}/#/agenda`, T.agenda))}</p>` : ""}
 <p style="font-size:13px;color:#5b6675">${T.why(K.why, a(settings, T.settings))}</p>`, lang),
-    text: `${T.hello} ${user.first_name},\n\n${K.intro(n)}\n\n${full.map(blockText).join("\n\n---\n\n")}${compact.length ? `\n\n${T.also}\n${compact.map((e) => `- ${compactLine(e)}\n  ${link(e)}`).join("\n")}` : ""}${more > 0 ? `\n\n${T.moreText(more, `${base}/#/agenda`)}` : ""}\n\n${T.stop} ${settings}`,
+    text: `${greet(lang, user.first_name)}\n\n${K.intro(n)}\n\n${full.map(blockText).join("\n\n---\n\n")}${compact.length ? `\n\n${T.also}\n${compact.map((e) => `- ${compactLine(e)}\n  ${link(e)}`).join("\n")}` : ""}${more > 0 ? `\n\n${T.moreText(more, `${base}/#/agenda`)}` : ""}\n\n${T.stop} ${settings}`,
   };
 }
 
+// the writer's language, when not French, as the administrator reads it
+const LANG_NAME_FR = { en: "anglais", de: "allemand", es: "espagnol" };
 /** A message from the contact page, to the administrator (in French: the site's own address reads it). msg: { category,
  *  subject, html, text, from, browser, files }. */
 export function contactMail(env, user, msg) {
@@ -359,7 +569,7 @@ export function contactMail(env, user, msg) {
     ["De", `${esc(who)} (${esc(user.display_name)}) — <a href="mailto:${esc(user.email)}">${esc(user.email)}</a>`, `${who} (${user.display_name}) — ${user.email}`],
     ["Licence", `<a href="${esc(`${base}/#/coureur/${encodeURIComponent(user.licence)}`)}">${esc(user.licence)}</a>`, user.licence],
     ["Type", esc(msg.category), msg.category],
-    ...(user.lang === "en" ? [["Langue", "anglais", "anglais"]] : []),
+    ...(LANG_NAME_FR[user.lang] ? [["Langue", LANG_NAME_FR[user.lang], LANG_NAME_FR[user.lang]]] : []),
     ...(msg.from ? [["Depuis la page", esc(msg.from), msg.from]] : []),
     ...(msg.browser ? [["Navigateur", esc(msg.browser), msg.browser]] : []),
     ...(msg.files.length ? [["Pièces jointes", esc(msg.files.join(", ")), msg.files.join(", ")]] : []),
@@ -379,52 +589,76 @@ const clock = (s) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}${sec ? `:${String(sec).padStart(2, "0")}` : ""}`;
 };
+/** The pushes' words, by language. */
+const PUSH = {
+  fr: { start: "Départ", startChanged: "Heure de départ modifiée", startYours: "Votre heure de départ",
+    test: "Les notifications fonctionnent sur cet appareil.", and: "et", more: "autres",
+    results1: "Vos résultats sont en ligne", resultsN: (n) => `${n} de vos courses sont en ligne`,
+    deadline: "Clôture des inscriptions proche", closes: "clôture",
+    new1: "Une nouvelle course dans vos régions", newN: (n) => `${n} nouvelles courses dans vos régions` },
+  en: { start: "Start", startChanged: "Start time changed", startYours: "Your start time",
+    test: "Notifications work on this device.", and: "and", more: "more",
+    results1: "Your results are online", resultsN: (n) => `${n} of your races are online`,
+    deadline: "Registrations closing soon", closes: "closes",
+    new1: "A new race in your regions", newN: (n) => `${n} new races in your regions` },
+  de: { start: "Start", startChanged: "Startzeit geändert", startYours: "Deine Startzeit",
+    test: "Benachrichtigungen funktionieren auf diesem Gerät.", and: "und", more: (k) => (k === 1 ? "weiterer" : "weitere"),
+    results1: "Deine Ergebnisse sind online", resultsN: (n) => `${n} deiner Läufe sind online`,
+    deadline: "Anmeldeschluss naht", closes: "Anmeldeschluss",
+    new1: "Ein neuer Lauf in deinen Regionen", newN: (n) => `${n} neue Läufe in deinen Regionen` },
+  es: { start: "Salida", startChanged: "Hora de salida cambiada", startYours: "Tu hora de salida",
+    test: "Las notificaciones funcionan en este dispositivo.", and: "y", more: "más",
+    results1: "Tus resultados están en línea", resultsN: (n) => `${n} de tus carreras están en línea`,
+    deadline: "Inscripciones a punto de cerrar", closes: "cierre",
+    new1: "Una nueva carrera en tus regiones", newN: (n) => `${n} nuevas carreras en tus regiones` },
+};
 /** A runner's start time, published (or changed: `changed`) on the start list of a coming race.
  *  s = { key, name, date, place, start_s, cls } */
 export function startPush(lang, s, changed) {
-  const en = L(lang) === "en";
+  const P = PUSH[L(lang)];
   const day = s.date ? new Date(s.date + "T00:00:00").toLocaleDateString(locale(lang), { weekday: "short", day: "numeric", month: "short" }) : "";
   const where = [s.name, day].filter(Boolean).join(" · ");
-  const what = `${en ? "Start" : "Départ"} ${clock(s.start_s)}${s.cls ? ` · ${s.cls}` : ""}`;
+  const what = `${P.start} ${clock(s.start_s)}${s.cls ? ` · ${s.cls}` : ""}`;
   return {
-    title: en ? (changed ? "Start time changed" : "Your start time") : (changed ? "Heure de départ modifiée" : "Votre heure de départ"),
+    title: changed ? P.startChanged : P.startYours,
     body: `${where}
 ${what}`, url: `/#/resultats?course=${encodeURIComponent(s.key)}`, tag: `start-${s.key}`,
   };
 }
 /** Réglages' « Envoyer un essai ». */
 export function testPush(lang) {
-  const en = L(lang) === "en";
-  return { title: "Ozimut", body: en ? "Notifications work on this device." : "Les notifications fonctionnent sur cet appareil.",
-    url: "/#/reglages", tag: "test" };
+  return { title: "Ozimut", body: PUSH[L(lang)].test, url: "/#/reglages", tag: "test" };
 }
 
 const pushDay = (iso, lang) => (iso ? new Date(iso + "T00:00:00").toLocaleDateString(locale(lang), { weekday: "short", day: "numeric", month: "short" }) : "");
 /** A list of names for one line: the first two, then « +3 ». */
-const fewNames = (names, en) => (names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} ${en ? "and" : "et"} ${names.length - 2} ${en ? "more" : "autres"}`);
+const fewNames = (names, lang) => {
+  const P = PUSH[L(lang)];
+  return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} ${P.and} ${names.length - 2} ${typeof P.more === "function" ? P.more(names.length - 2) : P.more}`;
+};
 /** « A race you ran is online » (the push twin of digestMail). races: [{ id, prov?, title, date }] */
 export function resultsPush(lang, races) {
-  const en = L(lang) === "en", n = races.length, r = races[0];
+  const P = PUSH[L(lang)], n = races.length, r = races[0];
   const url = n > 1 ? "/#/resultats" : r.prov ? `/#/resultats?course=${encodeURIComponent(r.prov)}` : `/#/courses?id=${encodeURIComponent(r.id)}`;
   return {
-    title: en ? (n === 1 ? "Your results are online" : `${n} of your races are online`) : (n === 1 ? "Vos résultats sont en ligne" : `${n} de vos courses sont en ligne`),
-    body: n === 1 ? [r.title, pushDay(r.date, lang)].filter(Boolean).join(" · ") : fewNames(races.map((x) => x.title), en),
+    title: n === 1 ? P.results1 : P.resultsN(n),
+    body: n === 1 ? [r.title, pushDay(r.date, lang)].filter(Boolean).join(" · ") : fewNames(races.map((x) => x.title), lang),
     url, tag: n === 1 ? `results-${r.prov || r.id}` : "results",
   };
 }
 /** The agenda's alerts: new races in the regions followed (`kind` "new"), or registrations closing soon ("deadline").
  *  events: as announceAgenda keeps them ({ id, name, date, place, reg: { close } }). */
 export function agendaPush(lang, events, kind = "new") {
-  const en = L(lang) === "en", n = events.length, e = events[0];
+  const P = PUSH[L(lang)], n = events.length, e = events[0];
   const url = n === 1 ? `/#/agenda?id=${encodeURIComponent(e.id)}` : "/#/agenda";
   if (kind === "deadline") return {
-    title: en ? "Registrations closing soon" : "Clôture des inscriptions proche",
-    body: n === 1 ? `${e.name} · ${en ? "closes" : "clôture"} ${pushDay(e.reg?.close, lang)}` : fewNames(events.map((x) => x.name), en),
+    title: P.deadline,
+    body: n === 1 ? `${e.name} · ${P.closes} ${pushDay(e.reg?.close, lang)}` : fewNames(events.map((x) => x.name), lang),
     url, tag: n === 1 ? `deadline-${e.id}` : "deadline",
   };
   return {
-    title: en ? (n === 1 ? "A new race in your regions" : `${n} new races in your regions`) : (n === 1 ? "Une nouvelle course dans vos régions" : `${n} nouvelles courses dans vos régions`),
-    body: n === 1 ? [e.name, pushDay(e.date, lang), e.place].filter(Boolean).join(" · ") : fewNames(events.map((x) => x.name), en),
+    title: n === 1 ? P.new1 : P.newN(n),
+    body: n === 1 ? [e.name, pushDay(e.date, lang), e.place].filter(Boolean).join(" · ") : fewNames(events.map((x) => x.name), lang),
     url, tag: n === 1 ? `agenda-${e.id}` : "agenda",
   };
 }
@@ -434,16 +668,35 @@ export function startMail(env, user, s, changed) {
   const lang = L(user.lang), en = lang === "en";
   const url = `${siteUrl(env)}/#/resultats?course=${encodeURIComponent(s.key)}`, settings = `${siteUrl(env)}/#/reglages`;
   const when = clock(s.start_s), day = longDate(s.date, lang);
-  const rows = [[en ? "Race" : "Course", s.name], [en ? "Date" : "Date", day], [en ? "Place" : "Lieu", s.place],
-    [en ? "Course / class" : "Circuit / catégorie", s.cls], [en ? "Start time" : "Heure de départ", when]].filter(([, v]) => v);
+  const R = pick(lang, {
+    fr: ["Course", "Date", "Lieu", "Circuit / catégorie", "Heure de départ"],
+    en: ["Race", "Date", "Place", "Course / class", "Start time"],
+    de: ["Lauf", "Datum", "Ort", "Bahn / Kategorie", "Startzeit"],
+    es: ["Carrera", "Fecha", "Lugar", "Recorrido / categoría", "Hora de salida"],
+  });
+  const rows = [[R[0], s.name], [R[1], day], [R[2], s.place], [R[3], s.cls], [R[4], when]].filter(([, v]) => v);
   const table = `<table style="border-collapse:collapse;margin:8px 0">${rows.map(([k, v]) => `<tr><td style="padding:3px 14px 3px 0;color:#5b6675">${esc(k)}</td><td style="padding:3px 0"><b>${esc(v)}</b></td></tr>`).join("")}</table>`;
-  const text = rows.map(([k, v]) => `${k}${en ? ":" : " :"} ${v}`).join("\n");
+  const text = rows.map(([k, v]) => `${k}${lang === "fr" ? " :" : ":"} ${v}`).join("\n");
   if (en) return {
     subject: `${changed ? "Start time changed" : "Your start time"}: ${when} — ${s.name} — Ozimut`,
     html: wrap(env, changed ? "Your start time has changed" : "Your start time", `<p>Hello ${esc(user.first_name)},</p>
 <p>${changed ? "The start list of your race was updated:" : "The start list of your race is published:"}</p>${table}${button(url, "See the start list", lang)}
 <p style="font-size:13px;color:#5b6675">You receive this message because you asked for your start times by email. <a href="${esc(settings)}">Change my settings</a>.</p>`, lang),
     text: `Hello ${user.first_name},\n\n${text}\n\n${url}\n\nTo stop receiving these messages: ${settings}`,
+  };
+  if (lang === "de") return {
+    subject: `${changed ? "Startzeit geändert" : "Deine Startzeit"}: ${when} — ${s.name} — Ozimut`,
+    html: wrap(env, changed ? "Deine Startzeit hat sich geändert" : "Deine Startzeit", `<p>${esc(greet(lang, user.first_name))}</p>
+<p>${changed ? "die Startliste deines Laufs wurde aktualisiert:" : "die Startliste deines Laufs ist veröffentlicht:"}</p>${table}${button(url, "Startliste ansehen", lang)}
+<p style="font-size:13px;color:#5b6675">Du erhältst diese Nachricht, weil du deine Startzeiten per E-Mail angefordert hast. <a href="${esc(settings)}">Einstellungen ändern</a>.</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${text}\n\n${url}\n\nUm diese Nachrichten nicht mehr zu erhalten: ${settings}`,
+  };
+  if (lang === "es") return {
+    subject: `${changed ? "Hora de salida cambiada" : "Tu hora de salida"}: ${when} — ${s.name} — Ozimut`,
+    html: wrap(env, changed ? "Tu hora de salida ha cambiado" : "Tu hora de salida", `<p>${esc(greet(lang, user.first_name))}</p>
+<p>${changed ? "La lista de salida de tu carrera se ha actualizado:" : "La lista de salida de tu carrera está publicada:"}</p>${table}${button(url, "Ver la lista de salida", lang)}
+<p style="font-size:13px;color:#5b6675">Recibes este mensaje porque has pedido tus horas de salida por correo electrónico. <a href="${esc(settings)}">Cambiar mis ajustes</a>.</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${text}\n\n${url}\n\nPara dejar de recibir estos mensajes: ${settings}`,
   };
   return {
     subject: `${changed ? "Heure de départ modifiée" : "Votre heure de départ"} : ${when} — ${s.name} — Ozimut`,
@@ -460,10 +713,10 @@ export function startMail(env, user, s, changed) {
  * fr: the account has joined France (its rankings are open to it); else a word on how a federation's rankings open.
  */
 export function welcomeMail(env, user, { fr = false } = {}) {
-  const site = siteUrl(env), en = L(user.lang) === "en", NB = " ";
-  const W = en ? {
+  const site = siteUrl(env), NB = " ";
+  const W = pick(user.lang, { en: {
     subject: "Welcome to Ozimut",
-    hello: "Hello",
+    greet: (n) => `Hello${n ? ` ${n}` : ""},`,
     intro: "Your account is active. Ozimut gathers in one place what surrounds an orienteering race:",
     items: [
       ["Races", "the calendar of competitions, the results as soon as the organiser publishes them, the split times, and live results."],
@@ -478,9 +731,9 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     sign: "See you soon on the courses,",
     team: "The Ozimut team",
     colon: ": ",
-  } : {
+  }, fr: {
     subject: "Bienvenue sur Ozimut",
-    hello: "Bonjour",
+    greet: (n) => `Bonjour${n ? ` ${n}` : ""},`,
     intro: `Votre compte est activé. Ozimut rassemble en un seul endroit ce qui entoure une course d'orientation${NB}:`,
     items: [
       ["Courses", "l'agenda des compétitions, les résultats dès que l'organisateur les publie, les temps intermédiaires et le direct."],
@@ -495,8 +748,42 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     sign: "À bientôt sur les circuits,",
     team: "L'équipe Ozimut",
     colon: `${NB}: `,
-  };
-  const hello = `${W.hello}${user.first_name ? ` ${user.first_name}` : ""},`;
+  }, de: {
+    subject: "Willkommen bei Ozimut",
+    greet: (n) => `Hallo${n ? ` ${n}` : ""},`,
+    intro: "dein Konto ist aktiv. Ozimut vereint an einem Ort alles rund um einen OL-Wettkampf:",
+    items: [
+      ["Läufe", "der Wettkampfkalender, die Ergebnisse, sobald der Veranstalter sie veröffentlicht, die Zwischenzeiten und Live-Ergebnisse."],
+      fr ? ["Rangliste", "deine Läuferseite, die offizielle nationale Rangliste und der Ozimut-Index, Vereine, Vergleiche und Statistiken."]
+        : ["Ranglisten", "die Ranglisten eines Verbands stehen seinen Lizenzinhabern offen, über Einstellungen › Meine Länder."],
+      ["Training", "dein GPS-Track, abgespielt auf der Karte des Laufs, OL-Spiele und ein MAG-Rechner."],
+      ["Organisation", "Ergebnisse und Startzeiten hochladen, Live-Ergebnisse übertragen, Bahnen legen und eine GPS-Analyse mit deinen Läufern teilen."],
+    ],
+    alerts: "Wähle in den Einstellungen deine Benachrichtigungen: einer deiner Läufe ist online, deine Startzeit, neue Läufe in deinen Regionen — als Mitteilung auf deinem Handy oder Computer. Ozimut lässt sich auch als App installieren.",
+    feedback: ["Ozimut ist jung und entwickelt sich jede Woche weiter. Eine Idee, ein Fehler, eine unklare Seite? Antworte einfach auf diese Nachricht oder schreib uns über die Seite „", "Kontakt", "“. Jede Nachricht wird gelesen."],
+    open: "Ozimut öffnen",
+    sign: "Bis bald im Gelände,",
+    team: "Das Ozimut-Team",
+    colon: ": ",
+  }, es: {
+    subject: "Te damos la bienvenida a Ozimut",
+    greet: (n) => (n ? `Hola, ${n}:` : "¡Hola!"),
+    intro: "Tu cuenta está activada. Ozimut reúne en un solo lugar todo lo que rodea a una carrera de orientación:",
+    items: [
+      ["Carreras", "el calendario de competiciones, los resultados en cuanto el organizador los publica, los tiempos parciales y el directo."],
+      fr ? ["Clasificación", "tu página de corredor, la clasificación nacional oficial y el índice Ozimut, los clubes, las comparaciones y las estadísticas."]
+        : ["Clasificaciones", "las de una federación se abren a sus federados, desde Ajustes › Mis países."],
+      ["Entrenamiento", "tu track GPS reproducido sobre el mapa de la carrera, juegos de orientación y una calculadora de VAM."],
+      ["Organización", "subir resultados y horarios, emitir en directo, trazar recorridos y compartir un análisis GPS con tus corredores."],
+    ],
+    alerts: "En Ajustes, elige tus alertas: una de tus carreras en línea, tu hora de salida, las nuevas carreras de tus regiones — como notificaciones en tu móvil o tu ordenador. Ozimut también se instala como aplicación.",
+    feedback: ["Ozimut es joven y cambia cada semana. ¿Una idea, un error, una página poco clara? Responde simplemente a este mensaje o escríbenos desde la página «", "Contacto", "». Leemos todos los mensajes."],
+    open: "Abrir Ozimut",
+    sign: "Hasta pronto en los recorridos,",
+    team: "El equipo de Ozimut",
+    colon: ": ",
+  } });
+  const hello = W.greet(user.first_name);
   const contact = `${site}/#/contact`, home = `${site}/#/agenda`;
   const [f0, fLink, f1] = W.feedback;
   const html = `<p>${esc(hello)}</p><p>${esc(W.intro)}</p>

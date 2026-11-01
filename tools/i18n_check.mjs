@@ -1,9 +1,10 @@
-// The catalogues' check (owner, 2026-10-17: the site in French and English). node tools/i18n_check.mjs [--strict] [--list]
+// The catalogues' check (owner, 2026-10-17: the site in French and English; German and Spanish since 2026-11-01).
+// node tools/i18n_check.mjs [--strict] [--list]
 //  - keys the code uses (t("…"), tn("…")) that the French catalogue lacks;
-//  - French keys the English catalogue lacks, English keys French does not have;
-//  - placeholders {x} and markup tags that differ between a key's French and English;
+//  - French keys the English, German or Spanish catalogue lacks, keys of theirs French does not have;
+//  - placeholders {x} and markup tags that differ between a key's French and its translation;
 //  - French written in the code outside the catalogues (string and template literals with French words or accents),
-//    except in the long texts written per language (*.fr.js, *.en.js), lines marked « i18n-ignore » and the N lines
+//    except in the long texts written per language (*.fr.js, *.en.js, *.de.js, *.es.js), lines marked « i18n-ignore » and the N lines
 //    after a comment « i18n-ignore-next N » (a pattern
 //    matching French in documents, a name…); a file whose first lines say « i18n-ignore-file » is skipped whole.
 // --strict exits 1 when anything is found; --list prints every finding, else the first ones of each kind.
@@ -19,11 +20,13 @@ const strict = process.argv.includes("--strict"), all = process.argv.includes("-
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : p.endsWith(".js") ? [p] : []; });
 const load = async (f) => (await import(pathToFileURL(join(CAT, f)).href)).default;
 
-// the catalogues: fr.js / en.js and the areas' <area>.fr.js / <area>.en.js
-const FR = { ...(await load("fr.js")) }, EN = { ...(await load("en.js")) };
+// the catalogues: fr.js / en.js / de.js / es.js and the areas' <area>.fr.js / <area>.en.js…
+const LANGS = ["en", "de", "es"];
+const FR = { ...(await load("fr.js")) }, TR = {};
+for (const l of LANGS) TR[l] = { ...(await load(`${l}.js`)) };
 for (const f of readdirSync(CAT)) {
-  const m = /^([\w-]+)\.(fr|en)\.js$/.exec(f);
-  if (m) Object.assign(m[2] === "fr" ? FR : EN, await load(f));
+  const m = /^([\w-]+)\.(fr|en|de|es)\.js$/.exec(f);
+  if (m) Object.assign(m[2] === "fr" ? FR : TR[m[2]], await load(f));
 }
 
 const out = [];
@@ -47,26 +50,30 @@ for (const f of files) {
 const plural = (k) => [`${k}.one`, `${k}.other`].some((x) => x in FR);
 report("Keys used but missing in fr.js", [...used].filter((k) => !(k in FR) && !plural(k)).sort());
 
-// English against French
-const missingEn = Object.keys(FR).filter((k) => !(k in EN));
-const byPrefix = {};
-for (const k of missingEn) { const p = k.split(".")[0]; byPrefix[p] = (byPrefix[p] || 0) + 1; }
-report("French keys missing in English", all ? missingEn : Object.entries(byPrefix).sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p}.* ${n}`));
-report("English keys not in French", Object.keys(EN).filter((k) => !(k in FR)));
+// each translation against French
+const NAME = { en: "English", de: "German", es: "Spanish" };
 const marks = (s, re) => [...String(s).matchAll(re)].map((m) => m[1]).sort().join(",");
-const diff = [];
-for (const k of Object.keys(EN)) {
-  if (!(k in FR)) continue;
-  if (marks(FR[k], /\{(\w+)\}/g) !== marks(EN[k], /\{(\w+)\}/g)) diff.push(`${k}: placeholders ${marks(FR[k], /\{(\w+)\}/g)} / ${marks(EN[k], /\{(\w+)\}/g)}`);
-  else if (marks(FR[k], /<\/?(\w+)/g) !== marks(EN[k], /<\/?(\w+)/g)) diff.push(`${k}: tags ${marks(FR[k], /<\/?(\w+)/g)} / ${marks(EN[k], /<\/?(\w+)/g)}`);
+for (const l of LANGS) {
+  const T = TR[l];
+  const missing = Object.keys(FR).filter((k) => !(k in T));
+  const byPrefix = {};
+  for (const k of missing) { const p = k.split(".")[0]; byPrefix[p] = (byPrefix[p] || 0) + 1; }
+  report(`French keys missing in ${NAME[l]}`, all ? missing : Object.entries(byPrefix).sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p}.* ${n}`));
+  report(`${NAME[l]} keys not in French`, Object.keys(T).filter((k) => !(k in FR)));
+  const diff = [];
+  for (const k of Object.keys(T)) {
+    if (!(k in FR)) continue;
+    if (marks(FR[k], /\{(\w+)\}/g) !== marks(T[k], /\{(\w+)\}/g)) diff.push(`${k}: placeholders ${marks(FR[k], /\{(\w+)\}/g)} / ${marks(T[k], /\{(\w+)\}/g)}`);
+    else if (marks(FR[k], /<\/?(\w+)/g) !== marks(T[k], /<\/?(\w+)/g)) diff.push(`${k}: tags ${marks(FR[k], /<\/?(\w+)/g)} / ${marks(T[k], /<\/?(\w+)/g)}`);
+  }
+  report(`Placeholders or tags that differ (${NAME[l]})`, diff);
 }
-report("Placeholders or tags that differ", diff);
 
 // French written in the code
 const FRENCH = /[àâçéèêëîïôûùüÿœÀÂÇÉÈÊËÎÏÔÛÙÜŒ«»]|\b(les|des|une|pour|avec|dans|sur|votre|vous|aucun|aucune|chargement|enregistr\w*|choisi\w*|fermer|annuler|valider|ajouter|supprimer|cliquez|déposez)\b/i;
 const inline = [], typo = [];
 for (const f of files) {
-  if (/\.(fr|en)\.js$/.test(f)) continue;
+  if (/\.(fr|en|de|es)\.js$/.test(f)) continue;
   const src = readFileSync(f, "utf8");
   if (/i18n-ignore-file/.test(src.slice(0, 600))) continue;
   const lines = src.split("\n");
@@ -136,5 +143,5 @@ report("French typography in templates", typo);
 if (dynamic.length) out.push(`(keys built at run time, not checked: ${dynamic.length})`);
 
 console.log(out.join("\n"));
-const bad = out.some((l) => /: [1-9]\d*$/.test(l) && !l.startsWith("French keys missing") || /^French keys missing in English: [1-9]/.test(l));
+const bad = out.some((l) => /: [1-9]\d*$/.test(l));
 process.exit(strict && bad ? 1 : 0);

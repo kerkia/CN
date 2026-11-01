@@ -37,27 +37,32 @@ export function mount(el, content) {
 }
 
 // ---- numbers & dates ------------------------------------------------------
-// numbers and dates in the interface's language (i18n.locale: fr-FR or en-GB)
+// numbers and dates in the interface's language (i18n.locale: fr-FR, en-GB, de-DE or es-ES)
 export const fmt = (n, digits = 0) =>
   n == null || Number.isNaN(n) ? "—" : Number(n).toLocaleString(locale(), {
     maximumFractionDigits: digits, minimumFractionDigits: digits,
   });
-/** An ordinal: 1er, 2e, 3e… in French; 1st, 2nd, 3rd, 4th… in English. */
+/** An ordinal: 1er, 2e, 3e… in French; 1st, 2nd, 3rd, 4th… in English; 1., 2. in German; 1.º, 2.º in Spanish. */
 const EN_ORD = new Intl.PluralRules("en-GB", { type: "ordinal" });
 const EN_SUFFIX = { one: "st", two: "nd", few: "rd", other: "th" };
-export const ord = (n) => (n == null ? "—" : lang() === "en" ? `${fmt(n)}${EN_SUFFIX[EN_ORD.select(n)]}` : n === 1 ? "1er" : `${fmt(n)}e`);
-/** "1 victoire" / "3 victoires": the plural from 2 up in French, for anything but 1 in English (0 races). */
-export const plural = (n, one, many) => `${fmt(n)} ${(lang() === "en" ? Math.abs(n) !== 1 : Math.abs(n) >= 2) ? many : one}`;
-/** An FFCO class as shown: « H21 », « D16 » in French; « M21 », « W16 » in English (owner, 2026-10-17). */
-export const fmtCat = (c) => (c && lang() === "en" ? String(c).replace(/^([HD])(?=\d|$|\s)/, (m) => (m === "H" ? "M" : "W")) : c ?? "");
-/** A format or discipline of FFCO's data as shown: itself in French; in English word by word through the
+export const ord = (n) => (n == null ? "—" : lang() === "en" ? `${fmt(n)}${EN_SUFFIX[EN_ORD.select(n)]}` : lang() === "de" ? `${fmt(n)}.`
+  : lang() === "es" ? `${fmt(n)}.º` : n === 1 ? "1er" : `${fmt(n)}e`);
+/** "1 victoire" / "3 victoires": the plural from 2 up in French, for anything but 1 in English, German, Spanish (0 races). */
+export const plural = (n, one, many) => `${fmt(n)} ${(lang() !== "fr" ? Math.abs(n) !== 1 : Math.abs(n) >= 2) ? many : one}`;
+// the sex letters of FFCO's classes in each language: H / D in French and German (Herren / Damen), M / W in English,
+// M / F in Spanish (masculino / femenino, as FEDO writes them)
+const SEX = { en: { H: "M", D: "W" }, es: { H: "M", D: "F" } };
+/** An FFCO class as shown: « H21 », « D16 » in French and German; « M21 », « W16 » in English (owner, 2026-10-17);
+ *  « M21 », « F16 » in Spanish. */
+export const fmtCat = (c) => (c && SEX[lang()] ? String(c).replace(/^([HD])(?=\d|$|\s)/, (m) => SEX[lang()][m]) : c ?? "");
+/** A format or discipline of FFCO's data as shown: itself in French; in the other languages word by word through the
  *  catalogue's « format.<word> » (Nuit -> Night, Pédestre -> Foot, VTT MD -> MTB MD), unknown words kept. */
-export const fmtFormat = (s) => (s && lang() === "en"
+export const fmtFormat = (s) => (s && lang() !== "fr"
   ? String(s).replace(/[\p{L}']+/gu, (w) => (has(`format.${w}`) ? t(`format.${w}`) : w)).replace(/\s{2,}/g, " ").trim() : s ?? "");
-/** The sex letter of a class as shown: H / D in French, M / W in English. */
-export const fmtSex = (x) => (lang() === "en" ? { H: "M", D: "W" }[x] || x : x);
+/** The sex letter of a class as shown: H / D in French and German, M / W in English, M / F in Spanish. */
+export const fmtSex = (x) => (SEX[lang()]?.[x] || x);
 export const fmtSigned =(n) => (n == null ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n)));
-// « 12 % » in French, « 12% » in English
+// « 12 % » in French, German and Spanish, « 12% » in English
 export const pct = (x, digits = 0) => (x == null ? "—" : fmt(100 * x, digits) + (lang() === "en" ? "%" : " %"));
 /** The same for a number already in percent (12.5 -> « 12,5 % » / « 12.5% »). */
 export const pctN = (n, digits = 0) => (n == null ? "—" : fmt(n, digits) + (lang() === "en" ? "%" : " %"));

@@ -1,0 +1,199 @@
+// The privacy policy and legal notices, in German — a translation for information; the French version (privacy.fr.js, the
+// reference) prevails. Keep the two in step.
+// world: registration open to every orienteer (privacy.fr.js, which prevails).
+export const body = (SITE, { world = false } = {}) => `
+      <p class="muted"><i>Diese deutsche Fassung dient nur zur Information; maßgeblich ist die französische Fassung.</i></p>
+      <p>${SITE} ist eine unabhängige Website ohne Verbindung zum französischen Orientierungslaufverband (Fédération française de
+        course d'orientation, FFCO). Sie wird privat und nicht kommerziell von <b>Yann Le Helloco</b> herausgegeben, dem
+        Verantwortlichen für die unten beschriebenen personenbezogenen Daten im Sinne der Verordnung (EU) 2016/679 (DSGVO).
+        Kontakt: <b>contact@ozimut.com</b>.</p>
+      <h2 style="font-size:16px">Nutzungsbedingungen</h2>
+      <p>${SITE} läuft mit kostenlosen, begrenzten Ressourcen, die sich alle Nutzer teilen. Die Website ist für die persönliche
+        Nutzung durch ${world ? "ihre Nutzer" : "die Lizenzinhaber"} mit einem Webbrowser bestimmt. Ohne vorherige Zustimmung des Herausgebers sind daher
+        untersagt: die automatisierte Erfassung (Robots, Skripte, Abgreifen von Seiten oder Datendateien), massenhafte Downloads,
+        die Weiterverwendung der Daten zu anderen Zwecken sowie jede Nutzung, die die Website zulasten der anderen Nutzer
+        überlasten könnte. Ein Konto, das diese Regeln nicht einhält, kann gesperrt werden.</p>
+      <p>Für einen besonderen Bedarf (eine Studie, die Bedürfnisse eines Vereins oder Regionalverbands, Daten für ein anderes
+        Werkzeug) kannst du dem Herausgeber über die Seite „Kontakt“ oder an contact@ozimut.com schreiben: Die Anfrage wird
+        geprüft.</p>
+      <h2 style="font-size:16px">Unabhängigkeit und Quellen</h2>
+      <p>${SITE} ist unabhängig, inoffiziell und kostenlos, ohne Verbindung zu einem Verband oder Veranstalter. Die Quellen: für Frankreich
+        die Ergebnisse, die nationale Rangliste (CN) und der Kalender, die der französische Orientierungslaufverband (FFCO)
+        auf cn.ffcorientation.fr und ffcorientation.fr veröffentlicht und die die Referenz bleiben; für Spanien der Kalender und die
+        Anmeldungen, die der spanische Verband (FEDO) auf sico.fedo.org veröffentlicht, sowie die auf O-Replay (oreplay.es)
+        veröffentlichten Ergebnisse; für alle Läufe die Ergebnisse und Startzeiten, die die Veranstalter veröffentlichen (ihre
+        Website, liveresultat, WinSplits, Helga, Orientation Data, O-Replay) oder auf ${SITE} hochladen.</p>
+      <p>Der Kalender der anderen Länder übernimmt die Kalender, die ihre Verbände veröffentlichen, jeweils unter dem Wettkampf
+        genannt („Ansehen auf …“). Region und Département (oder ihre Entsprechung) eines Wettkampfs werden aus seinem Ort anhand
+        der Ortsnamen von GeoNames (<a href="https://www.geonames.org/" target="_blank" rel="noopener">geonames.org</a>) ermittelt,
+        unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.fr" target="_blank" rel="noopener">Creative Commons
+        Attribution 4.0</a>.</p>
+      <p>Für Spanien übernimmt ${SITE} die öffentlichen Ergebnisse der Läufe (Name, Verein, Kategorie, Zeit, Zwischenzeiten) und die
+        Zahl der Anmeldungen je Kategorie; um denselben Läufer von einem Lauf zum nächsten wiederzuerkennen, liest die Website auch
+        die öffentliche Liste der Lizenzinhaber der FEDO (Name, Verein, Regionalverband, Lizenz- und Chipnummer), von der sie keine Nummer anzeigt. Da diese Ergebnisse öffentlich sind,
+        sind sie für alle sichtbar, mit oder ohne Konto. Jede betroffene Person kann verlangen, dort nicht mehr identifiziert zu
+        werden (siehe „Deine Rechte“).</p>
+      <h2 style="font-size:16px">Zugang und Bilder der Website</h2>
+      <p>${SITE} ist vollständig kostenlos. Ein Teil der Website ist ohne Konto zugänglich; ein Konto öffnet die Benachrichtigungen und das Teilen von
+        GPS-Tracks, und der vollständige Verlauf der Rangliste ist den Lizenzinhabern des Verbands vorbehalten: in Frankreich einem Konto, das
+        Frankreich beigetreten ist und dessen FFCO-Lizenznummer anhand des Namens geprüft wurde. Länder, deren Ergebnisse alle öffentlich sind (Spanien),
+        stehen allen offen.</p>
+      <p>Die Bildschirmfotos der Startseite stammen aus einer verfremdeten Kopie der Daten: Namen, Lizenzen, Vereine und Zeiten
+        sind dort erfunden oder verändert und entsprechen keiner realen Person. Die mit „Entwurf“ gekennzeichneten Kästen sind Illustrationen.</p>
+      <h2 style="font-size:16px">Ergebnisdaten, auch die von Lizenzinhabern ohne Konto</h2>
+      <p>Die angezeigten Ranglisten, Ergebnisse und Berechnungen stammen aus den von der FFCO auf cn.ffcorientation.fr veröffentlichten
+        Ergebnissen: Name, Verein, Kategorie, Lizenznummer, Zeit und Rang jedes klassierten Lizenzinhabers, ob er ein Konto auf ${SITE} hat
+        oder nicht, minderjährige Lizenzinhaber eingeschlossen. ${SITE} leitet daraus neu berechnete CN, Ranglisten, Vergleiche und Statistiken ab (Vereine,
+        Regionen, Alterspyramide, im Wettkampf getroffene Läufer). Die Seite „Ergebnisse“ zeigt außerdem für die Läufe der
+        letzten 60 Tage die Ergebnisse, die die Veranstalter selbst veröffentlicht haben (auf ihrer Website, liveresultat, WinSplits, Helga usw.)
+        oder die auf ${SITE} hochgeladen wurden, anhand von Name und Verein den Lizenzen zugeordnet.</p>
+      <p>Diese Verarbeitung beruht auf dem berechtigten Interesse des Herausgebers, die Lizenzinhaber zu informieren und die nationale Rangliste
+        anhand bereits veröffentlichter Ergebnisse zu analysieren. Auf ${SITE} sind die Daten in dem Umfang zugänglich, in dem die FFCO sie selbst veröffentlicht: Ohne
+        Konto${world ? " oder mit einem Konto, das Frankreich nicht beigetreten ist," : ""} sieht man die Läufe, die Ergebnisse und die Rangliste der
+        Saisons, die die FFCO auf ihrer Website ohne Anmeldung zeigt, sowie die von den Veranstaltern veröffentlichten Ergebnisse (Name,
+        Verein, Kategorie, Zeit), ohne CN und Score. Die älteren Saisons, die die FFCO ihren Lizenzinhabern vorbehält, sowie die daraus abgeleiteten Verläufe
+        und Statistiken sind nur angemeldeten Konten zugänglich${world ? ", die Frankreich beigetreten sind" : ""}, deren
+        FFCO-Lizenznummer anhand des Namens geprüft wurde. Einzige Ausnahme: Der Herausgeber kann einer Orientierungslauf-Organisation
+        (Verband, Regionalverband, Verein), die die Website kennenlernen möchte, für begrenzte Zeit ein Demokonto einrichten; dieses Konto
+        ist mit keiner Lizenz verbunden, kann nichts ändern oder hochladen und funktioniert ab dem festgelegten Datum nicht mehr. Jede
+        betroffene Person kann die Berichtigung verlangen oder verlangen, dort nicht mehr identifiziert zu werden (siehe
+        „Deine Rechte“); die Quelle bleibt die Website der FFCO.</p>
+      <h2 style="font-size:16px">Verzeichnis der Vereine, Komitees und Regionalverbände</h2>
+      <p>Der Reiter „Verzeichnis“ der Seite „Vereine“ übernimmt für jeden Regionalverband, jedes Départementskomitee und jeden Verein, was die FFCO auf
+        ihren Strukturseiten und in ihrem Vereinsverzeichnis veröffentlicht: Nummer, Website und Kontaktdaten — Namen und Funktionen der
+        Vorstandsmitglieder (Präsident, Sekretär, Schatzmeister), Telefonnummer und E-Mail-Adresse. Die Postanschrift wird nicht
+        übernommen. Diese Kontaktdaten werden nur angemeldeten Konten mit geprüfter FFCO-Lizenz angezeigt (weder Besuchern ohne
+        Konto noch Demokonten) und jede Woche neu gelesen: Was die FFCO entfernt, verschwindet bei der nächsten Lesung von ${SITE}.
+        Rechtsgrundlage: das berechtigte Interesse des Herausgebers, den Lizenzinhabern zu helfen, die Strukturen ihres
+        Sports zu erreichen, anhand von Informationen, die die FFCO selbst veröffentlicht. Jede betroffene Person kann dem widersprechen oder die
+        Berichtigung verlangen (siehe „Deine Rechte“); die Quelle bleibt die Website der FFCO.</p>
+      <h2 style="font-size:16px">Hochgeladene Ergebnisse und Startzeiten</h2>
+      <p>Beim Hochladen einer Ergebnisdatei werden das Konto des Hochladenden, der Lauf, Name und Größe der
+        Datei sowie das Datum des Hochladens gespeichert. Die Datei wird 60 Tage im Speicher der Website (Cloudflare) aufbewahrt und dann
+        gelöscht; die darin enthaltenen Ergebnisse bleiben angezeigt. Der Administrator sieht, wer jede Datei hochgeladen hat, und kann
+        eine Datei entfernen. Die Startzeiten, die ein Veranstalter vor dem Lauf hochlädt („Organisation › Startzeiten“), folgen denselben
+        Regeln; veröffentlicht werden nur Namen, Vereine, Kategorien und Startzeiten, und die Veranstalter des Laufs können sie
+        entfernen. Außerhalb Frankreichs meldet ein Veranstalter die Wettkämpfe seines Vereins selbst an („Organisation“): Name, Datum, Ort, Verein,
+        Disziplin und Website werden im Kalender veröffentlicht; die Website speichert zusätzlich das Konto, das sie angemeldet hat und als einziges sie ändern
+        oder entfernen kann, und veröffentlicht es nicht. Ein Veranstalter kann auch den Link zum GPS-Tracking seines Wettkampfs bei einem anderen
+        Dienst angeben („Organisation › Live-Übertragung“): Nur dieser Link wird veröffentlicht; das Konto, das ihn angegeben hat, wird gespeichert und nicht veröffentlicht; Ozimut
+        erhält keine Positionen.</p>
+      <h2 style="font-size:16px">Analysen von GPS-Tracks</h2>
+      <p>Die Seite „Einzelanalyse“ liest Karte und GPS-Track in deinem Browser: Es werden keine Daten an die Website übertragen, und diese
+        Dateien werden nur für die Dauer des Besuchs aufbewahrt.</p>
+      <p>In einer „Gruppenanalyse“ (Training oder Wettkampf) lädt der Veranstalter die Karten und Bahnen hoch, und jeder
+        Teilnehmer kann seinen eigenen GPS-Track hinzufügen. Dieser wird dann übertragen und im Speicher der Website
+        (Cloudflare) aufbewahrt, mit Name und Lizenznummer des Teilnehmers, beschränkt auf die Positionen und Uhrzeiten innerhalb der
+        Kartenfläche (ohne Herzfrequenz, Kadenz und Wege außerhalb der Karte). Er ist für die Personen sichtbar, die die Analyse öffnen dürfen,
+        je nach Wahl des Veranstalters: alle angemeldeten Lizenzinhaber, die Mitglieder seines Vereins oder die Inhaber des
+        Passworts. Jeder Teilnehmer kann seinen GPS-Track jederzeit entfernen; er wird mit der Analyse und mit seinem Konto gelöscht. Die
+        Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
+        ohne seinen Namen. In einer „Gruppenanalyse“ stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
+        Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
+      <h2 style="font-size:16px">Bahnlegung</h2>
+      <p>Ein Ereignis der Seite „Bahnlegung“ (seine Bahnen, seine Karte, seine Versionen, die Kommentare des Teams und die im Geländemodus
+        notierten Postenzustände) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur seinem Team zugänglich:
+        seinem Ersteller und den Personen, die über einen Einladungslink beitreten, den ihnen das Team übermittelt hat (niemand wird dort
+        nach Name, Lizenz oder E-Mail-Adresse gesucht); ihr Name, ihr Konto und bei einem FFCO-Lizenzinhaber seine Lizenz werden
+        mit ihrer Rolle gespeichert. Die
+        Versionen, Kommentare und Postenzustände tragen den Namen ihres Urhebers. Im Geländemodus speichert der an einem Posten notierte Zustand
+        auch die Position des Telefons in diesem Moment (um sie mit der Karte zu vergleichen), sichtbar für das Team, und das Team
+        kann Fotos der Posten anhängen (sie können Personen zeigen: vermeide das), die mit dem Ereignis gelöscht werden; die Position
+        wird nur in diesem Modus und mit Erlaubnis des Browsers gelesen. Verschlüsselt das Team das Ereignis, werden diese Daten
+        im Browser verschlüsselt und sind für die Website unlesbar. Das Ereignis wird aufbewahrt, bis sein Ersteller es löscht; löscht
+        dieser sein Konto, geht es an den ersten Bahnleger (ersatzweise Kontrolleur) des Teams mit einem Konto über, andernfalls wird es
+        gelöscht. Die Berechnung der Steigung sendet an den Höhendienst des IGN (Géoplateforme, Frankreich) nur die Koordinaten der
+        Posten und der Knickpunkte der Bahnen, ohne Namen oder Code.</p>
+      <h2 style="font-size:16px">Fragen an die KI</h2>
+      <p>Auf der Seite „KI“ wird deine Frage an das Sprachmodell gesendet, das die Abfrage schreibt, zusammen mit der Beschreibung der Tabellen der
+        Website, dem heutigen Datum, deiner Lizenznummer sowie der gewählten Methode und Disziplin: standardmäßig das Modell von Ozimut, ausgeführt
+        von Cloudflare (Workers AI); weder die Website noch Cloudflare speichern die Fragen. Die Abfrage wird dann in deinem
+        Browser ausgeführt, auf den Daten, die die Website veröffentlicht: Sie werden an kein Modell übertragen. Wenn du deinen eigenen
+        API-Schlüssel verwendest (Anthropic, OpenAI, Google oder OpenRouter), sendet dein Browser dieselben Angaben direkt an diesen Anbieter, unter
+        deinem Konto und nach dessen Bedingungen (mit einem kostenlosen Schlüssel kann Google die Fragen zur Verbesserung seiner
+        Produkte nutzen); der Schlüssel bleibt in deinem Browser und wird nie an Ozimut übertragen.</p>
+      <h2 style="font-size:16px">Daten deines Kontos</h2>
+      <ul>
+        <li><b>Gespeicherte Daten:</b> die E-Mail-Adresse; der eingegebene Vor- und Nachname; die beigetretenen Länder, jeweils mit dem
+          angegebenen Verein und der Mitgliedsnummer, und für Frankreich die Lizenznummer, anhand der von der FFCO veröffentlichten Ergebnisse geprüft; das Passwort in einer irreversibel verschlüsselten Form; das Datum der Registrierung
+          und der letzten Anmeldung; die für die Website und die E-Mails gewählte Sprache; die Einstellungen der Benachrichtigungen (gewählte Regionen) und die Liste der
+          bereits per E-Mail angekündigten Läufe; für den
+          Staffelsimulator die hinzugefügten Läufer (Name, Kategorie, geschätzter CN) und die als nicht verfügbar markierten, nur für dich sichtbar.
+          Füge dort nur Personen hinzu, die damit einverstanden sind.</li>
+        <li><b>Zwecke und Rechtsgrundlagen:</b> die Erbringung des bei der Erstellung des Kontos angeforderten Dienstes (${world
+          ? "die Daten der FFCO ihren Lizenzinhabern vorbehalten" : "den Zugang den Lizenzinhabern der FFCO vorbehalten"}, die E-Mail-Adresse bestätigen, das Passwort zurücksetzen); das berechtigte Interesse des Herausgebers, mehrere
+          Konten für dieselbe Lizenz zu erkennen; deine Einwilligung für die Benachrichtigungen per E-Mail oder Push-Mitteilung, die du jederzeit
+          in den Einstellungen widerrufen kannst.</li>
+        <li><b>Speicherdauer:</b> bis zur Löschung des Kontos, die du jederzeit in den Einstellungen vornehmen kannst. Eine
+          zum Versand anstehende E-Mail wird gelöscht, sobald sie versendet ist.</li>
+        <li><b>Empfänger:</b> der Administrator der Website und die unten genannten technischen Dienstleister. Es werden keine Daten
+          verkauft oder zu Werbezwecken verwendet.</li>
+      </ul>
+      <p>Eine über die Seite „Kontakt“ gesendete Nachricht erreicht den Herausgeber per E-Mail, zusammen mit deiner Adresse, deinem Namen und dem
+        verwendeten Browser; sie wird in seinem Postfach so lange aufbewahrt, wie es für die Bearbeitung der Anfrage nötig ist.</p>
+      <h2 style="font-size:16px">Push-Mitteilungen</h2>
+      <p>Wenn du die Mitteilungen von Ozimut auf einem Gerät erlaubst, speichert die Website für dieses Gerät die Zustelladresse, die ihm
+        der Mitteilungsdienst deines Browsers zuweist (Google für Chrome und Android, Apple für Safari, Mozilla für
+        Firefox, Microsoft für Edge), die Schlüssel zur Verschlüsselung der Nachrichten und den Gerätetyp (zum Beispiel
+        „Chrome · Android“). Die Nachrichten (deine Startzeit, die Veröffentlichung deiner Ergebnisse, die Läufe des Kalenders,
+        je nach deinen Einstellungen) sind Ende-zu-Ende-verschlüsselt: Der Mitteilungsdienst stellt sie zu, ohne sie lesen zu können. Die Website
+        speichert außerdem die zuletzt mitgeteilte Startzeit für jeden Lauf, um sie nur bei einer Änderung erneut zu senden, sowie die
+        zum Versand anstehenden Mitteilungen, höchstens einige Tage lang. Rechtsgrundlage: deine Einwilligung, die du durch das Erlauben der
+        Mitteilungen gibst und jederzeit in den Einstellungen oder in den Einstellungen deines Browsers widerrufen kannst. Diese Daten werden gelöscht,
+        wenn du die Mitteilungen auf dem Gerät deaktivierst, wenn du dich auf diesem Gerät abmeldest und mit dem Konto.</p>
+      <h2 style="font-size:16px">Nutzungsstatistiken</h2>
+      <p>Um die Nutzung der Website zu kennen und sie zu verbessern (berechtigtes Interesse), speichert die Website für jedes Konto die Zahl der
+        aufgerufenen Seiten pro Tag und Rubrik (Rangliste, Läufer, Netzwerk usw.) und die Zahl der Besuche. Zu diesem Zweck werden keine weiteren Daten
+        gespeichert: weder die durchgeführten Suchen noch die IP-Adresse. Diese Statistiken sind nur dem
+        Administrator zugänglich; sie werden 13 Monate aufbewahrt und mit dem Konto gelöscht.</p>
+      <h2 style="font-size:16px">Sicherheit</h2>
+      <p>Um wiederholte Versuche zu begrenzen (Anmeldung, Registrierung, Passwort vergessen), zählt die Website die Versuche pro
+        IP-Adresse und pro E-Mail-Adresse (berechtigtes Interesse); diese Zähler werden nach etwa einem Tag gelöscht. Der Hoster kann
+        außerdem die IP-Adresse verarbeiten, um die Seiten auszuliefern und die Website vor Angriffen zu schützen.</p>
+      <h2 style="font-size:16px">Auftragsverarbeiter und Übermittlungen außerhalb der Europäischen Union</h2>
+      <p>Die folgenden Dienstleister verarbeiten Daten im Auftrag des Herausgebers:</p>
+      <ul>
+        <li><b>Cloudflare, Inc.</b> (USA) hostet die Website, ihre Kontendatenbank und ihren Dateispeicher und führt
+          das Sprachmodell der Seite „KI“ aus; bei der Registrierung prüft sein Dienst Turnstile, dass das Formular von einer
+          Person und nicht von einem Robot ausgefüllt wird, indem er den Browser ohne Werbe-Cookie und ohne seitenübergreifendes Tracking untersucht. Die
+          Übermittlungen in die USA beruhen auf dem Datenschutzrahmen EU-USA (Data Privacy Framework),
+          dem Cloudflare beigetreten ist.</li>
+        <li><b>Resend</b> (Plus Five Five, Inc., USA) versendet die E-Mails der Website, was die Adresse des
+          Empfängers und den Inhalt der Nachricht einschließt. Die Übermittlungen sind durch die Standardvertragsklauseln der Europäischen
+          Kommission abgesichert.</li>
+        <li><b>GitHub, Inc.</b> (USA) führt die automatischen Aktualisierungen der Website aus; die Ergebnisse und hochgeladenen Dateien werden dort
+          verarbeitet, ausgenommen die Kontodaten. Die Übermittlungen sind durch die Standardvertragsklauseln abgesichert.</li>
+      </ul>
+      <h2 style="font-size:16px">Cookies und lokale Speicherung</h2>
+      <p>Die Website setzt ein einziges Cookie, das für ihren Betrieb unbedingt erforderlich ist: Es hält deine Anmeldung aufrecht, höchstens 30 Tage
+        lang. Der Browser speichert außerdem auf deinem Gerät deine Anzeigeeinstellungen (Sprache, Thema, gewählte Disziplin und
+        Methode), deine Eingaben im MAG-Rechner oder im Staffelsimulator und, für die Bahnlegung, ihre Anzeigeeinstellungen, den Schlüssel
+        eines verschlüsselten Ereignisses, aus seiner Passphrase abgeleitet (für die Dauer des Tabs), die auf eine Netzverbindung wartenden Zustände des Geländemodus und, wenn du
+        ein Ereignis behältst, um offline zu arbeiten, seine Kopie (Bahnen und Karte, verschlüsselt, falls das Ereignis verschlüsselt ist) und die Dateien der Website, die beim Abmelden gelöscht werden;
+        wenn du auf der Seite „KI“ deinen eigenen API-Schlüssel verwendest, diesen Schlüssel (für die Dauer des Tabs oder auf dem Gerät, wenn du es wünschst;
+        beim Abmelden gelöscht). Die Website verwendet keine Werbetracker und
+        kein Reichweitenmessungswerkzeug von Dritten; eine Einwilligung ist daher nicht erforderlich.</p>
+      <h2 style="font-size:16px">Deine Rechte</h2>
+      <p>Gemäß der DSGVO hast du ein Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit, ein
+        Recht auf Einschränkung der Verarbeitung und ein Widerspruchsrecht gegen Verarbeitungen, die auf dem berechtigten Interesse des
+        Herausgebers beruhen.</p>
+      <p>Du kannst insbesondere verlangen, auf ${SITE} nicht mehr identifiziert zu werden, sofern keine zwingenden schutzwürdigen Gründe entgegenstehen: Dein Name und
+        deine Lizenznummer werden dann auf der gesamten Website durch einen anonymen Vermerk („Anonymer Läufer“) ersetzt. Deine
+        Zeiten und Ränge werden weiterhin berücksichtigt, ohne deinen Namen und deine Lizenznummer, damit die Ranglisten der anderen
+        Lizenzinhaber nicht verändert werden; die Maßnahme ist auf deinen Wunsch umkehrbar. Ein Antrag auf Löschung der Ergebnisdaten
+        wird auf dieselbe Weise erfüllt; ein Konto wird dagegen vollständig gelöscht. Die Daten eines minderjährigen Lizenzinhabers werden
+        auf einfachen Antrag seines gesetzlichen Vertreters, der diese Rechte in seinem Namen ausübt, anonymisiert und sein Konto, falls er eines hat,
+        gelöscht.</p>
+      <p>Du kannst dein Konto selbst in den Einstellungen löschen. Andere Anfragen richtest du an contact@ozimut.com; sie werden
+        innerhalb eines Monats beantwortet. Bei begründeten Zweifeln an der Identität des Antragstellers kann ein Nachweis verlangt werden.
+        Wenn du der Ansicht bist, dass deine Rechte nicht gewahrt werden, kannst du eine Beschwerde bei der CNIL, der französischen Datenschutzaufsichtsbehörde, einreichen
+        (<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>).</p>
+      <h2 style="font-size:16px">Impressum</h2>
+      <p><b>Herausgeber und verantwortlich für den Inhalt:</b> Yann Le Helloco, Privatperson, nicht berufliche Veröffentlichung;
+        Kontakt: contact@ozimut.com.<br>
+        <b>Hoster:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, USA; Telefon: +1 888 993 5273.</p>
+      <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
+        stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
+        unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
+      <p class="muted">Letzte Aktualisierung: 30. Oktober 2026.</p>
+`;

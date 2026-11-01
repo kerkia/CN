@@ -238,7 +238,7 @@ export default {
   "tour.orga.lede": "Set courses in the browser, publish start times and results, broadcast live results from the timing software, open a GPS analysis to every participant.",
   "tour.phones.eyebrow": "Everywhere",
   "tour.phones.title": "At your desk, at the start, in the tent",
-  "tour.phones.lede": "The whole site on your phone, five themes from broad daylight to night, in French and English.",
+  "tour.phones.lede": "The whole site on your phone, five themes from broad daylight to night, in French, English, German and Spanish.",
   "tour.finish.eyebrow": "Finish",
   "tour.finish.title": "Open to all, respectful of each",
   "tour.pledge.1.b": "Public data for all, the rest for licence holders.",

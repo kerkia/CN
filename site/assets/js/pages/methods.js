@@ -21,7 +21,7 @@ import * as TRD from "../tracer/ribbon-data.js";
 
 // the white paper in the reader's language (docs/whitepaper: methode-ozimut.tex, methode-ozimut.en.tex; the old ocn-methode-top*.pdf
 // are copies kept for old links)
-const PDF = lang() === "en" ? "assets/ozimut-methode.en.pdf" : "assets/ozimut-methode.pdf";
+const PDF = lang() === "fr" ? "assets/ozimut-methode.pdf" : "assets/ozimut-methode.en.pdf";     // no German or Spanish white paper yet
 const cvar = (m) => `--c:var(--s${METHOD_SLOT[m]})`;
 const MINUS = "−";
 
@@ -48,7 +48,7 @@ const sg = (v, dec, pt = false) => {
 };
 /** A difference with its interval, as the study's pages show it (the study's differences: points of duels called right). */
 /** The separator inside an interval: « [a ; b] » in French, « [a, b] » in English. */
-const SEP = () => (lang() === "en" ? ", " : " ; ");
+const SEP = () => (lang() === "fr" ? " ; " : ", ");
 const ci = (a, dec = 2, pt = false) => (a ? `${sg(a[0], dec, pt)} [${sg(a[1], dec, pt)}${SEP()}${sg(a[2], dec, pt)}]` : "—");
 /** The opposite difference (b − a from a − b), its interval turned round. */
 const neg = (a) => (a ? [-a[0], -a[2], -a[1]] : null);

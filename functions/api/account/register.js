@@ -6,7 +6,7 @@
 // that one does not end up without the country one meant. Until WORLD_OPEN is "1" France is required (the site's access
 // does not follow the countries yet). The account then waits for the e-mail confirmation; it cannot log in before.
 
-import { allow, cleanEmail, clientIp, json, nowIso, pause, readBody, validEmail } from "../../_lib/api.js";
+import { allow, cleanEmail, clientIp, json, LANGS, nowIso, pause, readBody, validEmail } from "../../_lib/api.js";
 import { checkMembership, cleanCountry, saveMembership } from "../../_lib/countries.js";
 import { turnstileOk } from "../../_lib/turnstile.js";
 import { hashPassword, newToken, sha256hex } from "../../_lib/crypto.js";
@@ -73,7 +73,7 @@ export async function onRequestPost({ request, env }) {
   const row = await env.DB.prepare(
     `INSERT INTO users (email, pw_hash, pw_salt, pw_iter, first_name, last_name, licence, display_name, consent_at, created_at, lang)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-  ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), b.lang === "en" ? "en" : "fr").first();
+  ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), LANGS.includes(b.lang) ? b.lang : "fr").first();
   if (rows.length) await env.DB.batch(rows.map((r) => saveMembership(env, row.id, r)));
   // the Orga module asked for at registration (migration 0016; without the column, left for Réglages)
   if (b.orga === true) { try { await env.DB.prepare("UPDATE users SET orga = 1 WHERE id = ?").bind(row.id).run(); } catch (e) { /* no column yet */ } }

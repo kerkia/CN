@@ -36,7 +36,7 @@ function init(el) {
   const existing = window.echarts.getInstanceByDom(el);
   if (existing) existing.dispose();
   // month names on time axes, the toolbox: the interface's language (the French locale loaded by index.html)
-  const c = window.echarts.init(el, null, { renderer: "canvas", locale: lang() === "en" ? "EN" : "FR" });
+  const c = window.echarts.init(el, null, { renderer: "canvas", locale: lang() === "fr" ? "FR" : "EN" });
   registry.add(c);
   const ro = new ResizeObserver(() => c.resize());
   ro.observe(el);

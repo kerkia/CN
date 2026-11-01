@@ -115,11 +115,13 @@ export function hint(list = null) {
 /** The page's countries for its « Choisir un autre pays », once it knows them. */
 export function hintList(list) { hintCcs = [...new Set(list)]; }
 // « in » before a country's name, by the IOF members' names in each language: French « en France », « au Portugal », « aux
-// Pays-Bas », « à Malte »; English « in France », « in the Netherlands » (cty.in.* in the catalogues)
+// Pays-Bas », « à Malte »; English « in France », « in the Netherlands »; German « in Frankreich », « in den Niederlanden »,
+// « in der Schweiz »; Spanish « en Francia » (cty.in.* in the catalogues)
 const PREP = {
   fr: { au: ["BR", "CA", "CL", "DK", "JP", "KE", "KZ", "LU", "MA", "ME", "MX", "PK", "PT", "GB", "UY", "VN", "XK"],
     aux: ["US", "NL", "PH"], a: ["SG", "MT", "CY", "TW"] },
   en: { aux: ["US", "NL", "PH", "GB"] },
+  de: { aux: ["US", "NL", "PH"], au: ["CH", "TR", "SK", "UA", "MN", "CZ"] },
 };
 const prepOf = (cc) => Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
 const openHeaderMenu = () => {

@@ -6,7 +6,7 @@
 // failed?: { sql, error }, model? (administrators: a test), promptOnly? }. Errors carry a `code` (quota, hour, day with n,
 // model with detail, unreadable) the page words in its language, and a French `error` for older pages. With promptOnly the model is not called: the answer is the messages themselves, for the browser to send to a
 // model of the user's own choosing, with their own key (pages/ask.js, askbyok.js; owner, 2026-10-15) - the key never comes here.
-import { allow, isAdmin, json, readBody, withUser } from "../_lib/api.js";
+import { allow, isAdmin, json, LANGS, readBody, withUser } from "../_lib/api.js";
 import { DEFAULT_MODEL, MODELS, NEURONS_PER_DOLLAR, parseAnswer, systemPrompt, userPrompt } from "../_lib/ask.js";
 
 const PER_HOUR = 40, PER_HOUR_ADMIN = 200;      // questions an hour per account: a runaway loop cannot eat the day's quota
@@ -22,7 +22,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Paris" });
   const messages = [
     { role: "system", content: systemPrompt({ licence: /^\d+$/.test(String(user.licence || "")) ? Number(user.licence) : null, today, method: b.method, terrain: b.terrain,
-      lang: b.lang === "en" ? "en" : "fr" }) },
+      lang: LANGS.includes(b.lang) ? b.lang : "fr" }) },
     { role: "user", content: userPrompt({ question, previous: b.previous, failed: b.failed }) },
   ];
   if (b.promptOnly) return json({ messages });            // the user's own model: no call here, no quota used

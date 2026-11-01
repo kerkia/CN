@@ -1776,7 +1776,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   Purple Pen's samples (Clouds, Penistone Hill, Ft Casey, Lake Sammamish, SampleMap georeferenced in UTM 10 with a synthetic GPX;
   Mapper's HG_Mar28 sprint): the layers in 0.1-1.5 s, the companion's placing equal to the map's own to the pixel. Not done: learning
   the speeds from the shared traces, purple out-of-bounds hatching on an image map (erased with the course).
-- **Languages: French and English** (owner, 2026-10-17; open to everyone since 2026-10-18, `i18n.OPEN` true). **Never write UI
+- **Languages: French, English, German and Spanish** (owner, 2026-10-17 French and English, open to everyone since 2026-10-18,
+  `i18n.OPEN` true; **German and Spanish since 2026-11-01**: `i18n.LANGS`, catalogues `i18n/de.js`, `es.js`, `tracer.de.js`,
+  `tracer.es.js`, long texts `content/<name>.de.js` / `.es.js`, e-mails in `_lib/templates.js`, `manifest.de|es.webmanifest`;
+  a key missing in German or Spanish falls back to English, then French; vocabulary and register in
+  `docs/i18n/glossary.de-es.md` — German « du », Spanish « tú », classes H/D kept in German, M/F in Spanish (`util.fmtCat`),
+  `de-DE` / `es-ES`; their tour pictures and the white paper are the English ones; `node tools/i18n_check.mjs` checks all
+  three translations. A change of French text now means four catalogues). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys
   `x.one` / `x.other`) from `i18n.js`; an area's own catalogues `i18n/<area>.fr.js` / `.en.js` (`loadArea`, the Tracer's);

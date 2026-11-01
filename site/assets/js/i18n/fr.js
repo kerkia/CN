@@ -177,7 +177,7 @@ export default {
   "tour.orga.lede": "Tracer les circuits dans le navigateur, publier les horaires et les résultats, diffuser le direct depuis le logiciel de chronométrage, ouvrir une analyse GPS pour tous les participants.",
   "tour.phones.eyebrow": "Partout",
   "tour.phones.title": "Au bureau, au départ, sous la tente",
-  "tour.phones.lede": "Tout le site sur téléphone, cinq thèmes du plein jour à la nuit, en français et en anglais.",
+  "tour.phones.lede": "Tout le site sur téléphone, cinq thèmes du plein jour à la nuit, en français, en anglais, en allemand et en espagnol.",
   "tour.finish.eyebrow": "Arrivée",
   "tour.finish.title": "Ouvert à tous, respectueux de chacun",
   "tour.pledge.1.b": "Le public pour tous, le reste aux licenciés.",
