@@ -45,6 +45,8 @@ export const DEFAULTS = {
   variants: 3,              // routes shown per leg, 1-4
   extra: 25,                // a variant is kept up to this % slower than the best
   pace: 0,                  // seconds per km in white runnable forest on the flat; 0 = automatic
+  relief: "contours",       // the heights: "contours" (the map's contour lines, levelled on the model) or "dem" (the model only)
+  interval: 5,              // the map's contour interval, metres
   speeds: { track: 130, path: 125, small: 110, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30 },
 };
 

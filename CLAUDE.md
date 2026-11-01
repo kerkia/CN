@@ -1778,7 +1778,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   metres per metre by default; down: 1 − 0.6 × grade to 15 %, then + 2.5 per unit) × the **navigation caution** (1 + caution ×
   visibility × min(1, distance to a handrail / 50 m): handrails = paths, streams, edges between visibility groups, blocked areas'
   banks; caution 20 % by default); the times shown exclude the caution. Heights: `terrain.js`'s grid (IGN, else the tiles), flat
-  if it fails. **The search** (`legSearch`): two complete Dijkstra trees on 16 neighbours over an ellipse (0.75 L + 150 m), from the
+  if it fails, **refined by the map's own contour lines by default** (owner, 2026-11-01: « the map contours are always more
+  accurate than IGN or any public source » — the 3D view's measure of 2026-10-24 could not show it, IGN being its reference):
+  `routeplan.reliefGrid` runs `contours.refineGrid` (each line's level from the model, the model filling between them) on nodes
+  ~2 m apart (`size`, 4 million at most) and the worker samples it per cell; settings `relief` "contours" | "dem", `interval`
+  2.5 / 5 / 10 m; « Analyse multi » keeps the model's grid and refines it again when they change (`rcmDem`). On the Fougères
+  photo (2.13 m/px, its 0.14 mm contours under a pixel) only 30 pieces are read; a scan reads far more. **The search** (`legSearch`): two complete Dijkstra trees on 16 neighbours over an ellipse (0.75 L + 150 m), from the
   start and from the control; T = their sum = the cost of the best route through each cell (A* was already exact: searching from
   the arrival too gives the same best route, but the sum gives the choices). Candidates: the best route, the longest « plateau »
   (steps both trees take), then the other plateaus and the « cuts » (every tenth of the leg, a line across it; each valley of T on it

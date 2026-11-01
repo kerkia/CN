@@ -284,7 +284,7 @@ export function build(X) {
             html`<b>Das Gelände</b>: seine Geschwindigkeit als Anteil der im weißen Wald – Straße oder Fahrweg 130 %, Fußweg 125 %, kleiner Pfad 110 %, offenes Gelände 110 %, halboffenes
               100 %, die drei Grüntöne 75, 45 und 20 %, Sumpf 65 %, befestigte Fläche 120 %. Wasser, Gebäude, Sperrgebiet (und Grau
               im Sprint) sind unpassierbar. Alles ist unter „Geschwindigkeit nach Gelände“ einstellbar.`,
-            html`<b>Die Hangneigung</b>, gelesen aus dem Relief des IGN (RGE ALTI, in Frankreich) oder den „Terrain Tiles“ anderswo: Bergauf kostet jeder
+            html`<b>Die Hangneigung</b>, gelesen aus den Höhenlinien der Karte – vom Kartografen im Gelände aufgenommen –, jede auf ihre Höhe nach dem Relief des IGN (RGE ALTI, in Frankreich) oder den „Terrain Tiles“ anderswo gesetzt, das auch den Raum zwischen ihnen füllt („Relief: nur das Modell“ verzichtet darauf; eine falsch gelesene Linie ergibt eine Stufe): Bergauf kostet jeder
               erstiegene Meter so viel wie 8 m in der Ebene (die Einstellung „1 m Steigung entspricht in der Ebene“); leicht bergab ist man etwas schneller (bis zu 9 %
               bei 15 % Gefälle), steiler bremst man (bei 30 % 29 % langsamer als in der Ebene).`,
             html`Die Schritte gehen in 16 Richtungen (die acht Nachbarn und die Rösselsprünge), womit eine gerade Linie auf 3 % genau nachgebildet wird.`,

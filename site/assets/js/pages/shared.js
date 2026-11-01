@@ -1278,25 +1278,42 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const g = course.geo, T = throughGeo(rcm.vec.v, (lat, lon) => [g.a * lon + g.b * lat + g.c, g.d * lon + g.e * lat + g.f]);
     return T && cover(rcm.vec.v, T, image.width, image.height) >= 0.2 ? { v: rcm.vec.v, T } : null;
   }
-  /** The map read and its heights, once. */
+  /** The map read, once. */
   function rcmPlan() {
     if (rcm.ready) return rcm.ready;
     rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), rcmVector(), { map: rcm.s.map, onProgress: rcmReading });
+    rcm.demKey = null;
     rcm.ready = (async () => {
       rcmStatus(t("rc.st.reading"), 0);
       rcm.info = null;
       rcmFacts(await rcm.plan.ready);
-      rcmStatus(t("rc.st.relief"), 0);
-      try {
-        const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
-        const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
-        const key = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
-        const g = await loadGrid({ key, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
-          onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f) });
-        await rcm.plan.dem(g); rcm.dem = g.source;
-      } catch (e) { console.warn(e); rcm.dem = "none"; }
     })();
     return rcm.ready;
+  }
+  /** The heights: the model's grid, once, refined by the map's contours as the settings ask (again when they change). */
+  function rcmDem() {
+    const key = `${rcm.s.relief}|${rcm.s.interval}`;
+    if (rcm.demKey === key) return rcm.demP;
+    rcm.demKey = key;
+    rcm.demP = (async () => {
+      if (rcm.grid === undefined) {
+        rcmStatus(t("rc.st.relief"), 0);
+        try {
+          const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
+          const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
+          const gkey = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
+          rcm.grid = await loadGrid({ key: gkey, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
+            onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f) });
+        } catch (e) { console.warn(e); rcm.grid = null; }
+      }
+      if (!rcm.grid) { rcm.dem = "none"; return; }
+      rcm.dem = rcm.grid.source;
+      if (rcm.s.relief !== "dem") rcmStatus(t("rc.st.contoursReading"));
+      const r = await RC.reliefGrid(image, rcm.grid, (x, y) => toM(rcmFrame, x, y), rcm.s);
+      rcm.pieces = r.pieces;
+      await rcm.plan.dem(r.grid);
+    })();
+    return rcm.demP;
   }
   /** The leg shown: its routes, and each runner's measured (their median pace when none is typed). */
   async function rcmLeg() {
@@ -1305,6 +1322,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!j) { rcmStatus(t("rc.leg.none")); rcmList(); mv.draw(); return; }
     try {
       await rcmPlan();
+      await rcmDem();
+      if (my !== rcm.token) return;
       const facts = await rcm.plan.settings(rcm.s, rcmReading);
       if (my !== rcm.token) return;
       if (facts) { rcmFacts(facts); rcm.pic = null; }
@@ -1327,7 +1346,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       }
       rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
       rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
-        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
+        r: rcm.dem && rcm.dem !== "none" ? RC.reliefNote(CREDIT[rcm.dem]?.text || rcm.dem, rcm.pieces) : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
         + (rcm.info.north ? ` · ${tn("rc.st.north", rcm.info.north)}` : ""));
       const p = $("#rc-pace"); if (p && rcm.auto[j]) p.placeholder = RC.minKm(rcm.auto[j]);
       if (rcm.picOn && !rcm.pic) rcmPicture();

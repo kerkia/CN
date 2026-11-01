@@ -274,7 +274,7 @@ export function build(X) {
             html`<b>Terrain</b>: its speed as a share of runnable forest's — road or track 130%, footpath 125%, small path 110%, open land 110%, rough open land 100%, the three greens 75, 45
               and 20%, marsh 65%, paved area 120%. Water, buildings, out of bounds (and grey in sprint) are impassable. All set under "Speed by
               terrain".`,
-            html`<b>Slope</b>, read on IGN's heights (RGE ALTI, in France) or the "Terrain Tiles" elsewhere: uphill, each metre climbed costs as
+            html`<b>Slope</b>, read on the map's contour lines — surveyed on the ground by its mapper —, each set at its height from IGN's model (RGE ALTI, in France) or the "Terrain Tiles" elsewhere, which also fills between them ("Relief: model only" does without them; a contour misread makes a step): uphill, each metre climbed costs as
               much as 8 m on the flat (the "1 m of climb is worth" setting); gently downhill one goes a little faster (up to 9% at a 15% slope),
               steeper one brakes (at 30%, 29% slower than on the flat).`,
             html`Steps go in 16 directions (the eight neighbours and the knight's moves), which follows a straight line within 3%.`,

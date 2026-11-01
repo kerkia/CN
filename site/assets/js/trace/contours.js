@@ -270,10 +270,11 @@ export function surface(rc, dem, level, { cellM = 2, lambda = 0.004 } = {}) {
 }
 
 /**
- * The 3D view's grid (nodes over the map's W × H pixels) refined by the map's contours: { z, nx, ny, step, source,
- * contours: { pieces, pairs, offset, interval, ms } }, or null when the map shows too few contour lines.
+ * The model's grid (nodes over the map's W × H pixels) refined by the map's contours: { z, nx, ny, step, source,
+ * contours: { pieces, pairs, offset, interval, ms } }, or null when the map shows too few contour lines. size: { nx, ny },
+ * the nodes of the grid returned (the route choices want ~2 m between them), else the model's own.
  */
-export function refineGrid(image, grid, W, H, mPerMapPx, { interval = 5 } = {}) {
+export function refineGrid(image, grid, W, H, mPerMapPx, { interval = 5, size = null } = {}) {
   const t0 = performance.now();
   const rc = readContours(image, mPerMapPx);
   if (rc.comps.length < 4) return null;
@@ -286,7 +287,7 @@ export function refineGrid(image, grid, W, H, mPerMapPx, { interval = 5 } = {}) 
   };
   const { level, offset, pairs } = assignLevels(rc, dem, interval);
   const s = surface(rc, dem, level);
-  const z = new Float32Array(nx * ny);
-  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) z[j * nx + i] = s.at((i / (nx - 1)) * W * k, (j / (ny - 1)) * H * k);
-  return { ...grid, z, contours: { pieces: rc.comps.length, pairs, offset, interval, lw: rc.lw, mPerPx: rc.mPerPx, ms: Math.round(performance.now() - t0) } };
+  const ox = size?.nx || nx, oy = size?.ny || ny, z = new Float32Array(ox * oy);
+  for (let j = 0; j < oy; j++) for (let i = 0; i < ox; i++) z[j * ox + i] = s.at((i / (ox - 1)) * W * k, (j / (oy - 1)) * H * k);
+  return { ...grid, z, nx: ox, ny: oy, contours: { pieces: rc.comps.length, pairs, offset, interval, lw: rc.lw, mPerPx: rc.mPerPx, ms: Math.round(performance.now() - t0) } };
 }

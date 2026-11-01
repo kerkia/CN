@@ -1515,7 +1515,11 @@ export async function render(main, { query = {}, route } = {}) {
       else if (what === "picture-off") { rcs.picOn = false; rcs.pic = null; draw(); }
       else if (what === "decision-on" || what === "decision-off") { rcs.decOn = what === "decision-on"; rcs.dec = null; rcs.decAsk = ""; draw(); }
       else if (what === "pace") { rcTable(); draw(); }
-      else { if (what === "map") rcs.mapSet = true; if (what === "reset") rcPanel(); rcRun(); }
+      else {
+        if (what === "map") rcs.mapSet = true;
+        if (what === "reset") rcPanel();
+        if (what === "relief" || what === "reset") { rcs.dem = null; rcStart(); } else rcRun();
+      }
     });
   }
   /** The OCAD or Mapper map the routes read: the map shown (exactly placed), or one given beside its image, placed through its
@@ -1545,7 +1549,14 @@ export async function render(main, { query = {}, route } = {}) {
       if (my !== rcs.token) return;
       if (!rcs.dem) {
         rcStatus(t("rc.st.relief"), 0);
-        try { const g = await heights((f) => { if (my === rcs.token) rcStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f); }); await rcs.plan.dem(g); rcs.dem = g.source; }
+        try {
+          const g = await heights((f) => { if (my === rcs.token) rcStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f); });
+          if (my !== rcs.token) return;
+          if (rcs.s.relief !== "dem") rcStatus(t("rc.st.contoursReading"));
+          const r = await RC.reliefGrid(map, g, (x, y) => toM(fit, x, y), rcs.s);
+          if (my !== rcs.token) return;
+          await rcs.plan.dem(r.grid); rcs.dem = g.source; rcs.pieces = r.pieces;
+        }
         catch (e) { console.warn(e); rcs.dem = "none"; }
         if (my !== rcs.token) return;
       }
@@ -1589,7 +1600,7 @@ export async function render(main, { query = {}, route } = {}) {
       rcs.auto = RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
       rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
-        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : "")
+        r: rcs.dem && rcs.dem !== "none" ? RC.reliefNote(CREDIT[rcs.dem]?.text || rcs.dem, rcs.pieces) : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : "")
         + (rcs.info.north ? ` · ${tn("rc.st.north", rcs.info.north)}` : ""));
       const p = $("#rc-pace"); if (p && rcs.auto) p.placeholder = RC.minKm(rcs.auto);
       rcTable(); draw();

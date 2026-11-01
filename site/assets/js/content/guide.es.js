@@ -280,7 +280,7 @@ export function build(X) {
             html`<b>El terreno</b>: su velocidad como porcentaje de la del bosque blanco: carretera o pista 130 %, sendero 125 %, senda pequeña 110 %, terreno abierto 110 %, semiabierto
               100 %, los tres verdes 75, 45 y 20 %, pantano 65 %, zona pavimentada 120 %. El agua, los edificios, la zona prohibida (y el gris
               en sprint) son infranqueables. Todo se ajusta en «Velocidad por terreno».`,
-            html`<b>La pendiente</b>, leída en el relieve del IGN (RGE ALTI, en Francia) o de los «Terrain Tiles» en otros lugares: en subida, cada metro
+            html`<b>La pendiente</b>, leída en las curvas de nivel del mapa —levantadas sobre el terreno por su cartógrafo—, cada una a su altitud según el relieve del IGN (RGE ALTI, en Francia) o de los «Terrain Tiles» en otros lugares, que también rellena el espacio entre ellas («Relieve: solo el modelo» prescinde de ellas; una curva mal leída produce un escalón): en subida, cada metro
               ascendido cuesta tanto como 8 m en llano (el ajuste «1 m de subida equivale, en llano, a»); en bajada suave se va algo más rápido (hasta un 9 % más
               con un 15 % de pendiente), y más empinado se frena (al 30 %, un 29 % más lento que en llano).`,
             html`Los pasos van en 16 direcciones (las ocho vecinas y los saltos de caballo), lo que sigue una línea recta con un margen del 3 %.`,

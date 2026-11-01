@@ -282,7 +282,7 @@ export function build(X) {
             html`<b>Le terrain</b> : sa vitesse en part de celle de la forêt blanche — route ou piste 130 %, chemin 125 %, petit sentier 110 %, terrain découvert 110 %, semi-découvert
               100 %, les trois verts 75, 45 et 20 %, marais 65 %, zone revêtue 120 %. L'eau, les bâtiments, la zone interdite (et le gris
               en sprint) sont infranchissables. Tout se règle sous « Vitesses par terrain ».`,
-            html`<b>La pente</b>, lue sur le relief de l'IGN (RGE ALTI, en France) ou des « Terrain Tiles » ailleurs : en montée, chaque mètre gravi
+            html`<b>La pente</b>, lue sur les courbes de niveau de la carte — relevées sur le terrain par le cartographe —, chacune mise à son altitude d'après le relief de l'IGN (RGE ALTI, en France) ou des « Terrain Tiles » ailleurs, qui comble aussi l'espace entre elles (« Relief : modèle seul » s'en passe ; une courbe mal lue fait une marche) : en montée, chaque mètre gravi
               coûte autant que 8 m à plat (le réglage « 1 m de montée vaut ») ; en descente douce on va un peu plus vite (jusqu'à 9 % de mieux à
               15 % de pente), plus raide on freine (à 30 %, 29 % plus lent qu'à plat).`,
             html`Les pas vont dans 16 directions (les huit voisines et les sauts de cavalier), ce qui suit une ligne droite à 3 % près.`,

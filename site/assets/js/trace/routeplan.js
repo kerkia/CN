@@ -147,6 +147,8 @@ export function panelHtml(s, { on, picture, decision = false, status = "", progr
         <label ${raw(vector?.used ? "hidden" : "")}><span>${t("rc.black")}</span><select id="rc-black">${["auto", "paths", "neutral", "obstacles"].map((v) => html`<option value="${v}" ${raw(s.black === v ? "selected" : "")}>${t(`rc.black.${v}`)}</option>`)}</select></label>
         ${range("rc-risk", s.risk, 0, 100, 5, t("rc.risk"), " %")}
         ${range("rc-climb", s.climb, 0, 20, 1, t("rc.climb"), " m")}
+        <label><span>${t("rc.relief")}</span><select id="rc-relief">${["contours", "dem"].map((v) => html`<option value="${v}" ${raw(s.relief === v ? "selected" : "")}>${t(`rc.relief.${v}`)}</option>`)}</select></label>
+        <label ${raw(s.relief === "dem" ? "hidden" : "")} id="rc-interval-row"><span>${t("rc.interval")}</span><select id="rc-interval">${[2.5, 5, 10].map((v) => html`<option value="${v}" ${raw(Number(s.interval) === v ? "selected" : "")}>${fmt(v, v % 1 ? 1 : 0)} m</option>`)}</select></label>
         <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
         <label><span>${t("rc.variants")}</span><select id="rc-variants">${[1, 2, 3, 4].map((n) => html`<option value="${n}" ${raw(n === s.variants ? "selected" : "")}>${n}</option>`)}</select></label>
         ${range("rc-extra", s.extra, 5, 60, 5, t("rc.extra"), " %")}
@@ -176,6 +178,8 @@ export function bindPanel(root, s, onChange) {
   $("#rc-map", box).addEventListener("change", (e) => { s.map = e.target.value; set("map"); });
   $("#rc-black", box).addEventListener("change", (e) => { s.black = e.target.value; set("search"); });
   $("#rc-variants", box).addEventListener("change", (e) => { s.variants = Number(e.target.value); set("search"); });
+  $("#rc-relief", box).addEventListener("change", (e) => { s.relief = e.target.value; $("#rc-interval-row", box).hidden = s.relief === "dem"; set("relief"); });
+  $("#rc-interval", box).addEventListener("change", (e) => { s.interval = Number(e.target.value); set("relief"); });
   const slide = (id, apply) => {
     const el = $(`#${id}`, box);
     el.addEventListener("input", () => { const v = $(`#${id}-v`, box); if (v) v.textContent = v.textContent.replace(/^[\d.]+/, el.value); });
@@ -199,6 +203,25 @@ export const setStatus = (text, frac = null) => {
   const el = $("#rc-status"); if (el) el.textContent = text;
   const bar = $("#rc-prog"); if (bar) { bar.hidden = frac == null; if (frac != null) bar.value = Math.max(0, Math.min(1, frac)); }
 };
+/**
+ * The heights the routes climb: the model's grid (trace/terrain.js) refined by the map's own contour lines (trace/contours.js:
+ * each line set at its level from the model, the model filling between them), on nodes ~2 m apart — or the model alone
+ * (s.relief "dem"). toM(px, py): a map pixel's metres. Returns { grid, pieces } (pieces: the contour pieces read; 0 too few,
+ * the model kept; null not asked).
+ */
+export async function reliefGrid(image, grid, toM, s) {
+  if (s.relief === "dem") return { grid, pieces: null };
+  await new Promise((r) => setTimeout(r, 30));          // the status drawn before the page's thread is busy
+  const { refineGrid } = await import("./contours.js");
+  const W = image.width, H = image.height, o = toM(0, 0), e = toM(W, 0), mPerPx = Math.hypot(e[0] - o[0], e[1] - o[1]) / W;
+  let step = 2, nx, ny;
+  do { nx = Math.ceil((W * mPerPx) / step) + 1; ny = Math.ceil((H * mPerPx) / step) + 1; step *= 1.2; } while (nx * ny > 4e6);
+  let r = null;
+  try { r = refineGrid(image, grid, W, H, mPerPx, { interval: Number(s.interval) || 5, size: { nx, ny } }); } catch (err) { console.error(err); }
+  return r ? { grid: r, pieces: r.contours.pieces } : { grid, pieces: 0 };
+}
+/** The relief's words for the status: the model's credit, and what the map's contours added. */
+export const reliefNote = (credit, pieces) => (pieces > 0 ? t("rc.st.contours", { r: credit, n: pieces }) : pieces === 0 ? `${credit} · ${t("rc.st.contours.none")}` : credit);
 /** Whether the decision map was last asked for (kept on the device). */
 export const decisionOn = () => { try { return localStorage.getItem("ocn.rc.dec") === "1"; } catch (e) { return false; } };
 const CLS_KEYS = ["white", "open", "rough", "g1", "g2", "g3", "water", "shallow", "paved", "oob", "building", "grey", "marsh"];
