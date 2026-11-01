@@ -1615,7 +1615,8 @@ body.an-theatre .an-right { grid-area: side; }
 .rc-lb-head { margin-bottom: 2px; }
 .rc-lb-row { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
 .rc-lb-mine { margin-top: 2px; padding-top: 3px; border-top: 1px dashed var(--border); }
-.rc-lb-gaps { display: flex; gap: 14px; font-size: 12.5px; margin: 2px 0 0 16px; }
+.rc-lb-gaps { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; margin: 2px 0 0 16px; }
+.rc-lb-gaps > span { white-space: nowrap; }
 .an-transport { flex-wrap: wrap; }
 .an-transport select { margin-left: 0; }
 .an-stats { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 4px 0 6px; font-size: 13px; }

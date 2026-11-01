@@ -2395,7 +2395,7 @@ export default {
   "rc.st.flat": "none (flat terrain assumed)", "rc.st.failed": "Computing the routes failed.", "rc.side.left": "left",
   "rc.side.right": "right", "rc.side.straight": "straight", "rc.table": "Computed routes",
   "rc.table.hint": "Times estimated at a pace of {p} min/km in flat runnable forest ({how}). Your route: your track laid on the map (within the GPS's margin of error, on the path it runs along); if it follows a computed route for 80% of its length, that route, else the share it follows. Choice: the route taken's time minus route A's, the best at the caution chosen. Execution: your actual time minus the route taken's time.", "rc.pace.typed": "pace typed", "rc.pace.auto": "from your legs",
-  "rc.pace.default": "default pace", "rc.col.mine": "Your route", "rc.col.choice": "Choice",
+  "rc.pace.default": "default pace", "rc.col.mine": "Your route", "rc.col.actual": "Actual time", "rc.col.actual.hint": "Your time on this leg", "rc.col.choice": "Choice",
   "rc.col.choice.hint": "The time of the route you took minus route A's", "rc.col.exec": "Execution", "rc.col.exec.hint": "Your actual time minus the time of the route you took",
   "rc.other": "other", "rc.leg.none": "Choose a leg to see its computed routes.", "rc.runners": "Runners (the route taken)",
   "rc.pace.median": "the runners' median pace on this leg",

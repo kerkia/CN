@@ -2546,7 +2546,7 @@ export default {
   "rc.pace.typed": "ritmo introducido",
   "rc.pace.auto": "según tus tramos",
   "rc.pace.default": "ritmo por defecto",
-  "rc.col.mine": "Tu ruta",
+  "rc.col.mine": "Tu ruta", "rc.col.actual": "Tiempo real", "rc.col.actual.hint": "Tu tiempo en este tramo",
   "rc.col.choice": "Elección",
   "rc.col.choice.hint": "El tiempo de la ruta que tomaste menos el de la ruta A",
   "rc.col.exec": "Ejecución",

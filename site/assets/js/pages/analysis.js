@@ -1635,8 +1635,10 @@ export async function render(main, { query = {}, route } = {}) {
         ${mine ? html`<div class="rc-lb-row rc-lb-mine">${dot(mine.variant)}<b>${t("rc.col.mine")}</b>
             <span class="muted">${mine.matched ? RC.LETTERS[mine.variant] : RC.sharesLabel(mine) || t("rc.other")}</span>
             <span class="num">${RC.routeFacts(mine.facts, pace, clock)}</span></div>
-          <div class="rc-lb-gaps"><span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((mine.time - routes[0].time) * pace))}</b></span>
-            ${mine.actual != null ? html`<span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(mine.actual - mine.time * pace))}</b></span>` : ""}</div>` : ""}
+          <div class="rc-lb-gaps">${l.time != null ? html`<span title="${t("rc.col.actual.hint")}">${t("rc.col.actual")} <b class="num">${clock(l.time)}</b></span>` : ""}
+            <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((mine.time - routes[0].time) * pace))}</b></span>
+            ${mine.actual != null ? html`<span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(mine.actual - mine.time * pace))}</b></span>` : ""}</div>`
+          : l.time != null ? html`<div class="rc-lb-gaps">${l.time != null ? html`<span title="${t("rc.col.actual.hint")}">${t("rc.col.actual")} <b class="num">${clock(l.time)}</b></span>` : ""}</div>` : ""}
       </div>`)}`;
     $$("#an-rc .rc-lb").forEach((b) => b.addEventListener("click", () => {
       const l = legs[Number(b.dataset.leg)];

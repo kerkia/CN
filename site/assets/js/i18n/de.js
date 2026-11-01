@@ -2546,7 +2546,7 @@ export default {
   "rc.pace.typed": "eingegebenes Tempo",
   "rc.pace.auto": "nach deinen Teilstrecken",
   "rc.pace.default": "Standardtempo",
-  "rc.col.mine": "Deine Route",
+  "rc.col.mine": "Deine Route", "rc.col.actual": "Echte Zeit", "rc.col.actual.hint": "Deine Zeit auf dieser Teilstrecke",
   "rc.col.choice": "Wahl",
   "rc.col.choice.hint": "Die Zeit der Route, die du gewählt hast, minus die der Route A",
   "rc.col.exec": "Ausführung",

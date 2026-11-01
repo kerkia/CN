@@ -1699,7 +1699,7 @@ export default {
   "rc.st.flat": "aucun (terrain supposé plat)", "rc.st.failed": "Le calcul des itinéraires a échoué.", "rc.side.left": "par la gauche",
   "rc.side.right": "par la droite", "rc.side.straight": "tout droit", "rc.table": "Itinéraires calculés",
   "rc.table.hint": "Temps estimés à l’allure de {p} min/km en forêt blanche à plat ({how}). Votre itinéraire : votre trace recalée sur la carte (à la marge d’erreur du GPS près, sur le chemin qu’elle longe) ; s’il suit un itinéraire calculé sur 80 % de sa longueur, c’est celui-là, sinon la part qu’il en suit. Choix : le temps de l’itinéraire pris moins celui de A, le meilleur à la prudence choisie. Exécution : votre temps réel moins le temps de l’itinéraire pris.", "rc.pace.typed": "allure saisie", "rc.pace.auto": "d’après vos postes",
-  "rc.pace.default": "allure par défaut", "rc.col.mine": "Votre itinéraire", "rc.col.choice": "Choix",
+  "rc.pace.default": "allure par défaut", "rc.col.mine": "Votre itinéraire", "rc.col.actual": "Temps réel", "rc.col.actual.hint": "Votre temps sur ce poste", "rc.col.choice": "Choix",
   "rc.col.choice.hint": "Le temps de l’itinéraire que vous avez pris moins celui de l’itinéraire A", "rc.col.exec": "Exécution", "rc.col.exec.hint": "Votre temps réel moins le temps de l’itinéraire que vous avez pris",
   "rc.other": "autre", "rc.leg.none": "Choisissez un poste pour voir ses itinéraires calculés.", "rc.runners": "Coureurs (l’itinéraire pris)",
   "rc.pace.median": "l’allure médiane des coureurs sur ce poste",
