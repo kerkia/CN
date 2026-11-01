@@ -81,6 +81,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   }
   // « Nutrition »'s articles stay, under the name they were published with (migration 0017)
   try { await env.DB.prepare("UPDATE nut_posts SET author_id = NULL WHERE author_id = ?").bind(user.id).run(); } catch (e) {}
+  try { await env.DB.prepare("DELETE FROM nut_likes WHERE user_id = ?").bind(user.id).run(); } catch (e) {}      // its likes go
   // the relay simulator's added runners (a table that may not exist yet: migration 0008)
   try { await env.DB.prepare("DELETE FROM relay_runners WHERE user_id = ?").bind(user.id).run(); } catch (e) {}
   try {                                       // the devices' push subscriptions and what was sent to them (migration 0010)

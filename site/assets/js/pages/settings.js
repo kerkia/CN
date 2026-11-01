@@ -22,6 +22,8 @@ const ALERTS = [
   { key: "starts", mail: "startsAlert", push: "pushStarts", gated: true, lic: true },
   { key: "agenda", mail: "agendaAlert", push: "pushAgenda", gated: true },
   { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", gated: true },
+  // a new article in « Nutrition »: to the accounts that read it (auth.nutritionReads; owner, 2026-11-01)
+  { key: "nutrition", mail: "nutMail", push: "pushNut", gated: true, nut: true },
 ];
 
 // Same names as the regions of the Agenda page (ffco_scraper/agenda.py).
@@ -82,7 +84,7 @@ export async function render(main, { query = {} } = {}) {
       <section class="card"><div class="card-head"><h2>${t("st.alerts.title")}</h2></div><div class="card-body stack" style="gap:10px">
         <table class="alerts-table">
           <thead><tr><th></th><th>${t("st.alerts.mail")}</th><th>${t("st.alerts.push")}</th></tr></thead>
-          <tbody>${ALERTS.filter((a) => !a.lic || user.lic).map((a) => html`<tr>
+          <tbody>${ALERTS.filter((a) => (!a.lic || user.lic) && (!a.nut || auth.nutritionReads())).map((a) => html`<tr>
             <td><b>${t(`st.alerts.${a.key}`)}</b><br><span class="muted">${t(`st.alerts.${a.key}.hint`)}</span></td>
             <td>${!a.mail ? html`<span class="muted" title="${t("st.alerts.pushOnly")}">—</span>`
               : a.gated && !user.agendaAllowed ? ""

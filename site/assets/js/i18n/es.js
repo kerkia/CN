@@ -4412,4 +4412,14 @@ export default {
   "ad.nut.reader": "Lector",
   "ad.nut.author": "Autor",
   "ad.nut.adminHint": "Administrador: siempre autor",
+  // « Nutrition »: the new-article alert, likes, related articles (2026-11-01)
+  "st.alerts.nutrition": "Nuevo artículo en Nutrición",
+  "st.alerts.nutrition.hint": "En cuanto se publica un artículo en Coach › Nutrición",
+  "nut.like": "Me gusta",
+  "nut.unlike": "Ya no me gusta",
+  "nut.likes.one": "A {n} persona le gusta este artículo",
+  "nut.likes.other": "A {n} personas les gusta este artículo",
+  "nut.related": "También te puede interesar",
+  "nutw.col.likes": "Me gusta",
+  "nutw.col.likes.hint": "Cuántos lectores han marcado «me gusta»",
 };

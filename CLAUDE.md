@@ -778,6 +778,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   the HTML itself) on `contenteditable` + `execCommand` (Chrome's `insertHTML` drops a `<thead>`: the header cells go in the
   body), the settings beside it, a preview; Ctrl+S saves; an unsaved copy kept in `localStorage ocn.nut.draft.<id|new>` is offered
   back; a change made elsewhere meanwhile (version) asks before overwriting. A summary not typed: the first lines, in the lists only.
+  **Alert, likes, related** (owner, 2026-11-01, migration 0018): « Nouvel article dans Nutrition » in Réglages › Alertes, shown to
+  the readers only, by e-mail (`users.nut_mail`, off, with the administrator's e-mail right as every alert) and push (`nut_push`, on);
+  `_lib/nutrition.js` `announceDue` tells the readers once per article (`nut_posts.announced_at`, taken by an UPDATE … RETURNING),
+  the author apart, at its publication or — a date to come — by the first `/api/track` or « Nutrition » list request after its
+  day (`announceSoon`, every 10 min an isolate), queued then partly flushed; an article dated over 14 days back is not news.
+  Likes: `nut_likes`, one per account and published article (`POST …/posts/<id>/like`), counted on the cards, the article and
+  « Rédaction »; no comments (owner). « À lire aussi »: three articles under each, by shared themes (×3), the words their titles
+  and summaries share, then the nearer date (`nutrition.js` `related`).
   A deleted account's articles stay under the name they were published with. Local test: launch configs `pages-dev-nutrition`
   (8797, the test account an administrator) and `pages-dev-nutrition-user` (8798, not).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and

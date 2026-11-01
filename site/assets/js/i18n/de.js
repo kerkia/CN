@@ -4412,4 +4412,14 @@ export default {
   "ad.nut.reader": "Leser",
   "ad.nut.author": "Autor",
   "ad.nut.adminHint": "Administrator: immer Autor",
+  // « Nutrition »: the new-article alert, likes, related articles (2026-11-01)
+  "st.alerts.nutrition": "Neuer Artikel in Ernährung",
+  "st.alerts.nutrition.hint": "Sobald ein Artikel in Coach › Ernährung erscheint",
+  "nut.like": "Gefällt mir",
+  "nut.unlike": "Gefällt mir nicht mehr",
+  "nut.likes.one": "{n} Person gefällt dieser Artikel",
+  "nut.likes.other": "{n} Personen gefällt dieser Artikel",
+  "nut.related": "Auch lesenswert",
+  "nutw.col.likes": "Likes",
+  "nutw.col.likes.hint": "Wie vielen Lesern der Artikel gefällt",
 };

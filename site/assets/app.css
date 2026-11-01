@@ -3120,3 +3120,19 @@ a.nut-chip:hover { filter: brightness(.95); }
   .nut-ed-grid { grid-template-columns: minmax(0, 1fr); }
   .nut-ed-side { position: static; }
 }
+
+/* « Nutrition »: likes and related articles (2026-11-01) */
+.nut-likes { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
+.nut-likes svg { width: 13px; height: 13px; }
+.nut-likebar { display: flex; align-items: center; gap: 12px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+.nut-like { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; transition: transform .12s; }
+.nut-like svg { color: var(--ink-3); transition: color .12s; }
+.nut-like:hover svg { color: var(--bad); }
+.nut-like[aria-pressed="true"] { border-color: var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, var(--surface)); }
+.nut-like[aria-pressed="true"] svg { color: var(--bad); }
+.nut-like:active { transform: scale(.95); }
+.nut-related { max-width: 780px; margin: 22px auto 0; }
+.nut-related h2 { font-size: 18px; margin: 0 0 10px; }
+.nut-related .nut-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.nut-related .nut-summary { -webkit-line-clamp: 2; }

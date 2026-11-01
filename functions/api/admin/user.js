@@ -27,6 +27,7 @@ export const onRequestPost = withUser(async ({ request, env }, admin) => {
   if (b.action === "delete") {
     // « Nutrition »'s articles stay, under the name they were published with
     try { await env.DB.prepare("UPDATE nut_posts SET author_id = NULL WHERE author_id = ?").bind(id).run(); } catch (e) {}
+    try { await env.DB.prepare("DELETE FROM nut_likes WHERE user_id = ?").bind(id).run(); } catch (e) {}
     await env.DB.batch([
       env.DB.prepare("DELETE FROM notified WHERE user_id = ?").bind(id),
       env.DB.prepare("DELETE FROM user_countries WHERE user_id = ?").bind(id),

@@ -2,6 +2,7 @@
 // visit: true when the page opens a new browser session (one visit). Shown to the administrator only, on the
 // admin page; kept 13 months. Two upserts at most per page view, well within D1's free quota.
 import { json, readBody, withUser } from "../_lib/api.js";
+import { announceSoon } from "../_lib/nutrition.js";
 
 // the site's pages (app.js routes; the Réseau views apart) — anything else is refused
 const PAGES = new Set(["overview", "ranking", "runner", "compare", "clubs", "club", "clubcompare", "courses", "agenda",
@@ -15,7 +16,10 @@ export const parisDay = (plus = 0) => {
   return d.toISOString().slice(0, 10);
 };
 
-export const onRequestPost = withUser(async ({ request, env }, user) => {
+export const onRequestPost = withUser(async (ctx, user) => {
+  const { request, env } = ctx;
+  // a « Nutrition » article whose day has come: its readers are told (at most every 10 minutes an isolate)
+  announceSoon(ctx);
   const b = await readBody(request);
   const page = String(b?.page || "");
   if (!PAGES.has(page)) return json({ error: "bad request" }, 400);

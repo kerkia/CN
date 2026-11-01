@@ -14,12 +14,14 @@
 //   DELETE /api/nutrition/posts/<id>
 //   POST   /api/nutrition/bulk                { ids, op: delete | author | addCat | removeCat | publish | unpublish, author?, cat? }
 //   POST   /api/nutrition/categories          { names } -> { category }; PUT …/categories/<id> { names }; DELETE …/categories/<id>
+//   POST   /api/nutrition/posts/<id>/like  { on } a reader's like (on: false takes it back) -> { likes, liked }
 //   POST   /api/nutrition/img                 an image body (JPEG, PNG, WebP, GIF; 6 MB) -> { url }
 //   GET    /api/nutrition/img/<key>
 
 import { allow, json, nowIso, nutritionRole, readBody, withUser } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
 import { DEFAULT_MODEL } from "../../_lib/ask.js";
+import { announceSoon, excerpt } from "../../_lib/nutrition.js";
 
 const IMG = "nutrition/img/";
 const IMG_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
@@ -43,15 +45,6 @@ function stripHtml(h) {
     .replace(/(href|src)\s*=\s*("|')\s*(javascript|vbscript|data):[^"']*\2/gi, '$1="#"');
 }
 const textOf = (h) => String(h || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&[a-z#0-9]+;/gi, "x");
-const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-/** The first sentences of an article, its summary when none is typed. */
-function excerpt(h, max = 220) {
-  const s = String(h || "").replace(/<\/(p|h2|h3|h4|li|blockquote|tr|td|th)>|<br\s*\/?>/gi, " ").replace(/<[^>]*>/g, "")
-    .replace(/&(#\d+|[a-z]+);/gi, (m, e) => (e[0] === "#" ? String.fromCodePoint(Number(e.slice(1)) || 32) : ENT[e.toLowerCase()] ?? " ")).replace(/\s+/g, " ").trim();
-  if (s.length <= max) return s;
-  const cut = s.slice(0, max), at = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(" "));
-  return `${cut.slice(0, at > max / 2 ? at + (cut[at] === "." ? 1 : 0) : max).trim()}…`;
-}
 const wordCount = (h) => (textOf(h).match(/[\p{L}\p{N}]+/gu) || []).length;
 const imgKeys = (s) => [...String(s || "").matchAll(/\/api\/nutrition\/img\/([a-z0-9]{8,40}\.(?:jpg|png|webp|gif))/g)].map((m) => m[1]);
 
@@ -80,12 +73,25 @@ async function catsOf(env, ids) {
   return out;
 }
 
+/** Each article's likes and whether the account likes it: id -> [n, mine] (none before migration 0018). */
+async function likesOf(env, ids, me) {
+  const out = new Map();
+  if (!ids.length) return out;
+  try {
+    const { results } = await env.DB.prepare(`SELECT post_id, COUNT(*) AS n, SUM(user_id = ?) AS mine FROM nut_likes WHERE post_id IN (${ids.map(() => "?").join(",")}) GROUP BY post_id`)
+      .bind(me.id, ...ids).all();
+    for (const r of results) out.set(r.post_id, [r.n, !!r.mine]);
+  } catch (e) { /* no table yet */ }
+  return out;
+}
+
 /** What a list shows of an article (no body). */
-const listed = (p, cats, me, role) => ({
+const listed = (p, cats, me, role, likes = new Map()) => ({
   // a summary not typed: the article's first lines, for the lists only
   id: p.id, title: p.title, summary: p.summary || excerpt(p.body), cover: p.cover, lang: p.lang, status: p.status, pinned: !!p.pinned,
   published: p.published_at, updated: p.updated_at, words: p.words, author: p.author_name, authorId: p.author_id,
   cats: cats.get(p.id) || [], version: p.version, mine: p.author_id === me.id, canEdit: role === "admin" || (role === "author" && p.author_id === me.id),
+  likes: likes.get(p.id)?.[0] || 0, liked: !!likes.get(p.id)?.[1],
 });
 
 const isLive = (p, now = nowIso()) => p.status === "published" && p.published_at && p.published_at <= now;
@@ -120,8 +126,8 @@ async function onePost(env, id) {
   return env.DB.prepare("SELECT * FROM nut_posts WHERE id = ?").bind(id).first();
 }
 async function full(env, p, me, role) {
-  const cats = await catsOf(env, [p.id]);
-  return { ...listed(p, cats, me, role), summary: p.summary, body: p.body };
+  const [cats, likes] = await Promise.all([catsOf(env, [p.id]), likesOf(env, [p.id], me)]);
+  return { ...listed(p, cats, me, role, likes), summary: p.summary, body: p.body };
 }
 
 /** The images of deleted articles that no other article shows any more. */
@@ -140,6 +146,7 @@ async function deletePosts(env, posts) {
     env.DB.prepare(`DELETE FROM nut_translations WHERE post_id IN (${qs})`).bind(...ids),
     env.DB.prepare(`DELETE FROM nut_posts WHERE id IN (${qs})`).bind(...ids),
   ]);
+  try { await env.DB.prepare(`DELETE FROM nut_likes WHERE post_id IN (${qs})`).bind(...ids).run(); } catch (e) { /* before migration 0018 */ }
   if (env.BUCKET) await dropImages(env, posts);
 }
 
@@ -232,8 +239,10 @@ export const onRequest = withUser(async (ctx, me) => {
         ? await env.DB.prepare("SELECT * FROM nut_posts ORDER BY COALESCE(published_at, updated_at) DESC").all()
         : await env.DB.prepare("SELECT * FROM nut_posts WHERE author_id = ? OR (status = 'published') ORDER BY COALESCE(published_at, updated_at) DESC").bind(me.id).all())
       : await env.DB.prepare("SELECT * FROM nut_posts WHERE status = 'published' AND published_at <= ? ORDER BY pinned DESC, published_at DESC").bind(now).all();
-    const cats = await catsOf(env, results.map((p) => p.id));
-    const out = { role, me: me.id, categories: await categories(env), posts: results.map((p) => listed(p, cats, me, role)) };
+    const ids = results.map((p) => p.id);
+    const [cats, likes] = await Promise.all([catsOf(env, ids), likesOf(env, ids, me)]);
+    const out = { role, me: me.id, categories: await categories(env), posts: results.map((p) => listed(p, cats, me, role, likes)) };
+    announceSoon(ctx);           // an article whose publication day has come since: its readers are told
     if (manage && role === "admin") {
       const { results: au } = await env.DB.prepare(
         "SELECT id, first_name, last_name, display_name, email FROM users WHERE status = 'active' AND email_verified = 1 AND (nutrition = 'author' OR lower(email) IN (" +
@@ -272,6 +281,7 @@ export const onRequest = withUser(async (ctx, me) => {
     } else if (b.op === "unpublish") {
       await env.DB.prepare(`UPDATE nut_posts SET status = 'draft', updated_at = ? WHERE id IN (${qs})`).bind(now, ...keep).run();
     } else return json({ error: "bad request" }, 400);
+    if (b.op === "publish") announceSoon(ctx, { now: true });
     return json({ ok: true, n: keep.length });
   }
 
@@ -306,6 +316,18 @@ export const onRequest = withUser(async (ctx, me) => {
     const p = id ? await onePost(env, id) : null;
     if (id && !p) return json({ error: "not found" }, 404);
     const mayEdit = p && (role === "admin" || (role === "author" && p.author_id === me.id));
+
+    // a like, by any reader, on a published article: POST …/posts/<id>/like { on } -> { likes, liked }
+    if (parts[2] === "like" && method === "POST" && p) {
+      if (!isLive(p)) return json({ error: "not found" }, 404);
+      if (!(await allow(env, `nutlike:${me.id}`, 300, 86400))) return json({ error: "rate" }, 429);
+      const b = await readBody(request);
+      await (b?.on === false
+        ? env.DB.prepare("DELETE FROM nut_likes WHERE post_id = ? AND user_id = ?").bind(p.id, me.id)
+        : env.DB.prepare("INSERT OR IGNORE INTO nut_likes (post_id, user_id, created_at) VALUES (?, ?, ?)").bind(p.id, me.id, nowIso())).run();
+      const [n, mine] = (await likesOf(env, [p.id], me)).get(p.id) || [0, false];
+      return json({ likes: n, liked: mine });
+    }
 
     if (method === "GET" && p) {
       if (!isLive(p) && !mayEdit) return json({ error: "not found" }, 404);
@@ -343,6 +365,7 @@ export const onRequest = withUser(async (ctx, me) => {
         .bind(me.id, authorName(me), f.lang, f.title, f.summary, f.body, f.cover, f.status, f.pinned,
           f.status === "published" ? f.published || now : f.published, f.words, now, now).first();
       await setCats(env, r.id, f.cats);
+      if (f.status === "published") announceSoon(ctx, { now: true });
       return json({ post: await full(env, await onePost(env, r.id), me, role) });
     }
     if (method === "PUT" && p) {
@@ -369,6 +392,7 @@ export const onRequest = withUser(async (ctx, me) => {
       const kept = new Set(imgKeys(`${f.body} ${f.cover}`));
       const gone = imgKeys(`${before.body} ${before.cover}`).filter((k) => !kept.has(k));
       if (gone.length && env.BUCKET) await dropImages(env, [{ body: gone.map((k) => `/api/nutrition/img/${k}`).join(" "), cover: "" }]);
+      if (f.status === "published") announceSoon(ctx, { now: true });
       return json({ post: await full(env, await onePost(env, p.id), me, role) });
     }
     if (method === "DELETE" && p) {

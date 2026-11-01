@@ -795,3 +795,49 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     `${f0}${fLink}${f1}`, `${fLink}${W.colon}${contact}`, "", W.sign, W.team].join("\n");
   return { subject: W.subject, html: wrap(env, W.subject, html, user.lang), text };
 }
+
+// « Nutrition »: a new article is out (owner, 2026-11-01; users.nut_mail / nut_push, _lib/nutrition.js announceDue).
+// posts: [{ id, title, summary, author, lang }], the article's own words as written (its title is not translated here)
+const NUT = {
+  fr: { one: "Nouvel article dans Nutrition", many: (n) => `${n} nouveaux articles dans Nutrition`, by: (a) => `par ${a}`,
+    intro1: "Un nouvel article est paru dans Nutrition :", introN: "De nouveaux articles sont parus dans Nutrition :", read: "Lire l'article", all: "Voir les articles",
+    why: (s) => `Vous recevez ce message parce que l'alerte « Nouvel article dans Nutrition » est cochée dans vos ${s}.`, settings: "réglages", stop: "Pour ne plus le recevoir :",
+    lang: { fr: "", en: " (en anglais)", de: " (en allemand)", es: " (en espagnol)" } },
+  en: { one: "New article in Nutrition", many: (n) => `${n} new articles in Nutrition`, by: (a) => `by ${a}`,
+    intro1: "A new article is out in Nutrition:", introN: "New articles are out in Nutrition:", read: "Read the article", all: "See the articles",
+    why: (s) => `You receive this message because the alert “New article in Nutrition” is ticked in your ${s}.`, settings: "settings", stop: "To stop receiving it:",
+    lang: { fr: " (in French)", en: "", de: " (in German)", es: " (in Spanish)" } },
+  de: { one: "Neuer Artikel in Ernährung", many: (n) => `${n} neue Artikel in Ernährung`, by: (a) => `von ${a}`,
+    intro1: "In Ernährung ist ein neuer Artikel erschienen:", introN: "In Ernährung sind neue Artikel erschienen:", read: "Artikel lesen", all: "Artikel ansehen",
+    why: (s) => `Du erhältst diese Nachricht, weil die Benachrichtigung „Neuer Artikel in Ernährung“ in deinen ${s} angekreuzt ist.`, settings: "Einstellungen", stop: "Um sie nicht mehr zu erhalten:",
+    lang: { fr: " (auf Französisch)", en: " (auf Englisch)", de: "", es: " (auf Spanisch)" } },
+  es: { one: "Nuevo artículo en Nutrición", many: (n) => `${n} artículos nuevos en Nutrición`, by: (a) => `por ${a}`,
+    intro1: "Se ha publicado un artículo nuevo en Nutrición:", introN: "Se han publicado artículos nuevos en Nutrición:", read: "Leer el artículo", all: "Ver los artículos",
+    why: (s) => `Recibes este mensaje porque la alerta «Nuevo artículo en Nutrición» está marcada en tus ${s}.`, settings: "ajustes", stop: "Para dejar de recibirlo:",
+    lang: { fr: " (en francés)", en: " (en inglés)", de: " (en alemán)", es: "" } },
+};
+export function nutritionMail(env, user, posts) {
+  const lang = L(user.lang), T = NUT[lang], base = siteUrl(env), n = posts.length;
+  const link = (p) => `${base}/#/nutrition?article=${p.id}`, settings = `${base}/#/reglages`;
+  const title = n === 1 ? T.one : T.many(n);
+  const block = (p) => `<div style="border:1px solid #dde3ea;border-radius:8px;padding:12px 14px;margin:12px 0">
+<div style="font-size:16px;font-weight:700">${a(link(p), p.title)}</div>
+<div style="color:#5b6675;margin:2px 0 6px">${esc(T.by(p.author))}${esc(T.lang[p.lang] || "")}</div>
+${p.summary ? `<div style="font-size:14px">${esc(p.summary)}</div>` : ""}</div>`;
+  return {
+    subject: n === 1 ? `${T.one}${lang === "fr" ? " : " : ": "}${posts[0].title}` : title,
+    html: wrap(env, title, `<p>${esc(greet(lang, user.first_name))}</p><p>${esc(n === 1 ? T.intro1 : T.introN)}</p>
+${posts.map(block).join("")}${button(n === 1 ? link(posts[0]) : `${base}/#/nutrition`, n === 1 ? T.read : T.all, lang)}
+<p style="font-size:13px;color:#5b6675">${T.why(a(settings, T.settings))}</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${n === 1 ? T.intro1 : T.introN}\n\n${posts.map((p) => `${p.title}\n${T.by(p.author)}${T.lang[p.lang] || ""}${p.summary ? `\n${p.summary}` : ""}\n${link(p)}`).join("\n\n")}\n\n${T.stop} ${settings}`,
+  };
+}
+/** The push twin of nutritionMail. */
+export function nutritionPush(lang, posts) {
+  const T = NUT[L(lang)], n = posts.length, p = posts[0];
+  return {
+    title: n === 1 ? T.one : T.many(n),
+    body: n === 1 ? `${p.title} · ${T.by(p.author)}` : posts.slice(0, 3).map((x) => x.title).join(" · "),
+    url: n === 1 ? `/#/nutrition?article=${p.id}` : "/#/nutrition", tag: n === 1 ? `nutrition-${p.id}` : "nutrition",
+  };
+}

@@ -3,7 +3,8 @@
 // (app.js NUTRITION_ROUTES; the server checks the same). Left: a search, the themes, the months; right: the articles, those
 // « à la une » first, or one article (?article=<id>). An article opens in the language it was written in; « Lire en … »
 // asks the server for its translation into the reader's language, made once by the AI and kept (functions/api/nutrition).
-// The address keeps the theme, the month, the search and the article (?theme=, ?mois=, ?q=, ?article=).
+// The address keeps the theme, the month, the search and the article (?theme=, ?mois=, ?q=, ?article=). Readers like an article
+// (one like an account; no comments: owner, 2026-11-01), and under it three related ones are offered (`related`).
 
 import { html, raw, $, $$, fmtDate, normalise, debounce } from "../util.js";
 import { t, tn, lang } from "../i18n.js";
@@ -64,7 +65,7 @@ export async function render(main, { query }) {
   }
 
   const chips = (p) => html`${p.cats.map((c) => cats.get(c)).filter(Boolean).map((c) => html`<a class="nut-chip" href="#/nutrition?theme=${c.id}" data-chip="${c.id}">${catName(c)}</a>`)}`;
-  const meta = (p) => html`<span>${fmtDay(p.published)}</span><span>${t("nut.by", { a: p.author })}</span><span>${readingTime(p.words)}</span>${p.lang !== lang() ? html`<span class="nut-lang" title="${t("nut.written", { lang: langName(p.lang) })}">${p.lang.toUpperCase()}</span>` : ""}`;
+  const meta = (p) => html`<span>${fmtDay(p.published)}</span><span>${t("nut.by", { a: p.author })}</span><span>${readingTime(p.words)}</span>${p.lang !== lang() ? html`<span class="nut-lang" title="${t("nut.written", { lang: langName(p.lang) })}">${p.lang.toUpperCase()}</span>` : ""}${p.likes ? html`<span class="nut-likes" title="${tn("nut.likes", p.likes)}">${raw(HEART)} ${p.likes}</span>` : ""}`;
 
   function card(p, big = false) {
     return html`<article class="nut-card${big ? " big" : ""}" data-open="${p.id}" tabindex="0">
@@ -88,6 +89,22 @@ export async function render(main, { query }) {
       : !list.length ? html`${head}<div class="card"><div class="empty">${t("nut.noneFilter")}</div></div>`
       : html`${head}${pinned.length ? html`<div class="nut-pinned">${pinned.map((p) => card(p, true))}</div>` : ""}<div class="nut-grid">${rest.map((p) => card(p))}</div>`;
     $("#nut-clear")?.addEventListener("click", () => { st.theme = null; st.month = ""; st.q = ""; $("#nut-q").value = ""; sync(); });
+  }
+
+  // ---- related articles (owner, 2026-11-01): the themes shared count most, then the words their titles and summaries share,
+  // then the nearer date; the latest ones fill in when nothing is shared ----
+  // short words of the four languages that say nothing about a subject (i18n-ignore-next 2)
+  const STOP = new Set(["avec", "dans", "pour", "plus", "sans", "sont", "être", "avoir", "mais", "comme", "cette", "votre", "leurs", "after",
+    "with", "your", "that", "this", "from", "have", "what", "when", "nach", "eine", "einen", "oder", "nicht", "para", "como", "pero", "antes"]);
+  const wordsOf = (p) => new Set(normalise(`${p.title} ${p.summary}`).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
+  function related(p, n = 3) {
+    const mine = wordsOf(p), t0 = Date.parse(p.published || 0);
+    return posts.filter((x) => x.id !== p.id).map((x) => {
+      const shared = x.cats.filter((c) => p.cats.includes(c)).length;
+      const w = wordsOf(x), common = [...w].filter((k) => mine.has(k)).length;
+      const days = Math.abs(Date.parse(x.published || 0) - t0) / 86400e3;
+      return { x, score: 3 * shared + (common ? (2 * common) / Math.sqrt((mine.size || 1) * (w.size || 1)) : 0) + 0.5 / (1 + days / 30) };
+    }).sort((a, b) => b.score - a.score).slice(0, n).map((r) => r.x);
   }
 
   // ---- one article -------------------------------------------------------------------------------------------
@@ -126,11 +143,26 @@ export async function render(main, { query }) {
             <span id="nut-trmsg" class="muted">${tr?.error ? t(`nut.tr.err.${tr.error}`) : ""}</span></div>` : ""}
           ${summary ? html`<p class="nut-lead">${summary}</p>` : ""}
           <div class="nut-body">${raw(sanitize(body))}</div>
+          <div class="nut-likebar"><button type="button" class="nut-like" id="nut-like" aria-pressed="${p.liked}" title="${t(p.liked ? "nut.unlike" : "nut.like")}">${raw(HEART)}
+            <span>${t("nut.like")}</span></button><span class="muted" id="nut-likes">${p.likes ? tn("nut.likes", p.likes) : ""}</span></div>
         </div>
       </article>
+      ${related(p).length ? html`<section class="nut-related"><h2>${t("nut.related")}</h2><div class="nut-grid">${related(p).map((x) => card(x))}</div></section>` : ""}
       <nav class="nut-pager">${prev ? html`<a href="#/nutrition?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${prev.title}</b></a>` : html`<span></span>`}
         ${next ? html`<a class="next" href="#/nutrition?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${next.title}</b></a>` : ""}</nav>`;
     $$("[data-view]", box).forEach((b) => b.addEventListener("click", () => translate(p, b.dataset.view)));
+    $("#nut-like", box).addEventListener("click", async (e) => {
+      const btn = e.currentTarget, on = !p.liked;
+      btn.disabled = true;
+      const r = await call(`/posts/${p.id}/like`, { method: "POST", body: { on } });
+      btn.disabled = false;
+      if (!r.ok) return;
+      p.liked = r.data.liked; p.likes = r.data.likes;
+      if (brief) Object.assign(brief, { liked: p.liked, likes: p.likes });
+      btn.setAttribute("aria-pressed", String(p.liked));
+      btn.title = t(p.liked ? "nut.unlike" : "nut.like");
+      $("#nut-likes", box).textContent = p.likes ? tn("nut.likes", p.likes) : "";
+    });
     $("#nut-always", box)?.addEventListener("change", (e) => { setWantsTranslation(e.target.checked); if (e.target.checked && !showTr) translate(p, "tr"); });
     if (other && !p.view && wantsTranslation()) translate(p, "tr");
   }
@@ -196,5 +228,6 @@ export async function render(main, { query }) {
   return { title: t("nav.nutrition"), onQuery };
 }
 
+const HEART = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 2.7 4.5 6.6 4.5c2.2 0 3.7 1.3 5.4 3.3 1.7-2 3.2-3.3 5.4-3.3 3.9 0 5.7 4.1 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
 // an article without a picture: a leaf, in the forest's green
 const LEAF = `<svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 38C10 20 22 9 40 8c0 19-11 30-28 30z"/><path d="M10 38 28 20"/></svg>`;

@@ -4192,4 +4192,14 @@ export default {
   "ad.nut.reader": "Reader",
   "ad.nut.author": "Author",
   "ad.nut.adminHint": "Administrator: always an author",
+  // « Nutrition »: the new-article alert, likes, related articles (2026-11-01)
+  "st.alerts.nutrition": "New article in Nutrition",
+  "st.alerts.nutrition.hint": "As soon as an article comes out in Coach › Nutrition",
+  "nut.like": "Like",
+  "nut.unlike": "Unlike",
+  "nut.likes.one": "{n} person likes this article",
+  "nut.likes.other": "{n} people like this article",
+  "nut.related": "Read also",
+  "nutw.col.likes": "Likes",
+  "nutw.col.likes.hint": "How many readers like the article",
 };

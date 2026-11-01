@@ -90,7 +90,7 @@ async function lists(main, query) {
     $("#nw-table").innerHTML = rows.length ? html`<table class="data compact nut-wtable" data-freeze="1" data-freeze-phone="1"><thead><tr>
       <th class="c"><input type="checkbox" id="nw-all" aria-label="${t("nutw.selectAll")}" ${editable.length && editable.every((p) => sel.has(p.id)) ? "checked" : ""}></th>
       <th>${t("nutw.col.title")}</th><th>${t("nutw.col.status")}</th><th>${t("nutw.col.date")}</th><th>${t("nutw.col.author")}</th>
-      <th>${t("nut.themes")}</th><th>${t("nutw.col.lang")}</th><th class="r">${t("nutw.col.words")}</th><th></th></tr></thead>
+      <th>${t("nut.themes")}</th><th>${t("nutw.col.lang")}</th><th class="r">${t("nutw.col.words")}</th><th class="r" title="${t("nutw.col.likes.hint")}">${t("nutw.col.likes")}</th><th></th></tr></thead>
       <tbody>${rows.map((p) => html`<tr>
         <td class="c"><input type="checkbox" data-sel="${p.id}" ${p.canEdit ? "" : "disabled"} ${sel.has(p.id) ? "checked" : ""} aria-label="${p.title}"></td>
         <td>${p.canEdit ? html`<a href="#/redaction?id=${p.id}">${p.title}</a>` : p.title}${p.pinned ? html` <span class="nut-chip pin">${t("nut.pinned")}</span>` : ""}</td>
@@ -100,6 +100,7 @@ async function lists(main, query) {
         <td>${p.cats.map((c) => categories.find((x) => x.id === c)).filter(Boolean).map((c) => html`<span class="nut-chip">${catName(c)}</span> `)}</td>
         <td>${p.lang.toUpperCase()}</td>
         <td class="r num">${p.words}</td>
+        <td class="r num">${p.likes || ""}</td>
         <td><div class="row" style="gap:6px;flex-wrap:nowrap">${isLive(p) ? html`<a class="btn btn-sm" href="#/nutrition?article=${p.id}">${t("nutw.view")}</a>` : ""}
           ${p.canEdit ? html`<a class="btn btn-sm" href="#/redaction?id=${p.id}">${t("nut.edit")}</a>` : ""}</div></td>
       </tr>`)}</tbody></table>` : html`<div class="empty">${posts.length ? t("nut.noneFilter") : t("nutw.none")}</div>`;
