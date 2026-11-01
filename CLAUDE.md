@@ -1179,20 +1179,33 @@ Every multiple-choice game was played through to its score page at phone size, w
   the PC (2026-11-01): karttapullautin 13 s a km² alone, 4 km² in 60-77 s in batch with 4 processes; a tile's point cloud ~250 MB
   (1.3 GB in 143 s); the Fougères forest's 9 tiles put together in ~2 s (3072 × 4457 px), the trace on OpenStreetMap's roads within
   a few metres; Fougères' old town: buildings, streets, squares, the river and the ramparts' slopes.
-  **Two styles** (owner, 2026-11-01, the same day: « the sprint style for both Analyse solo and the Tracer »): every tile is drawn
-  twice over the same karttapullautin render (`run.STYLES`): `<id>.png` in ISOM 2017-2 at 1:10 000 (`osm._forest`) and `<id>.s.png`
+  **Two styles** (owner, 2026-11-01, the same day: « the sprint style for both Analyse solo and the Tracer »): a tile is made in the
+  style asked (`run.STYLES`): `<id>.png` in ISOM 2017-2 at 1:10 000 (`osm._forest`) and `<id>.s.png`
   in ISSprOM 2019-2 at 1:4 000 (`osm._sprint`: streets, squares, parkings and paved footways as paved area 501, brown 30 %, at their
   width on the ground — OSM's `width`, else by class, `STREET_W` —; paved or not by OSM's `surface`, else by class, `paved`; unpaved
   paths as 505 or 506; buildings grey 50 % (521), canopies 522 — `building=roof|carport` —, walls impassable 515, retaining walls and
-  fences passable, stairways hatched 532; the symbols' sizes in mm at the style's scale, `_Canvas.mm`). The tile's JSON lists its
-  `styles`; the API answers a tile ready only in the style asked (`POST { tiles, style }`; a tile of before, forest only, is made
-  again for a sprint request). « Analyse solo » offers the style beside the button (sprint by default for a race whose name says so),
+  fences passable, stairways hatched 532; the symbols' sizes in mm at the style's scale, `_Canvas.mm`). **Each style has its own
+  karttapullautin run** (owner, 2026-11-01 evening, « do you use karttapullautin at all for the sprint mapping? »; `run.KP_STYLE`, in
+  `work/<style>/`, its `out/` emptied first — the batch mode skips a cloud whose render is there): the forest one as before (5 m
+  contours with form lines, at 1:10 000); the sprint one `formline=0` (2.5 m contours, index every 12.5 m), `scalefactor=0.4` (drawn
+  at 1:4000: 600 dpi there is 0.16933 m a pixel, so contours, cliffs and depressions 2.5 times finer on the ground) and
+  `remove_touching_contours=1` (a rampart's slope came out solid brown); OpenStreetMap drawn on that fine render (the ground's fill
+  reads its exact colours, which averaging blurs: a white mesh through the olive), then the whole brought to the tile's 0.42333 m by
+  Lanczos. 42 s a tile for the sprint render on the PC against ~13 s for the forest one. The tile's JSON lists its `styles` and their
+  versions `v` (`run.STYLE_V` = the API's `STYLE_V` = `lidarmap.js`'s: forest 1, sprint 2; a record without `v` counts its styles
+  as version 1, so the sprint tiles of before — the forest render under sprint symbols — are made again); a run keeps the other
+  style's entry (`run._versions`: the workflow syncs R2's tile records to `known/` first). A request carries its `style`; a round of
+  the workflow makes the oldest request's style, the other style's requests wait for the next round. The tiles' addresses carry
+  `?v=<version>` (cached a week). The API answers a tile ready only in the style asked and its version (`POST { tiles, style }`). « Analyse solo » offers the style beside the button (sprint by default for a race whose name says so),
   the files named `ozimut-lidar-sprint-…`. The shared steps — ask, wait, put together — are `lidarmap.make(area, style, say, stop)`.
   **The Tracer's base map** (use case 4): « Nouvel événement » has, for administrators, « Pas de carte ? Générer une carte d'après le
   LiDAR (essai) » (`pages/tracer.js` `genHtml`/`bindGen`): no base map to pick from (no third-party map in the site), so the area is a
   square of 0.5-3 km round a centre — the chosen competition's place from the agenda (`agendamap.where`: its GPS, else its town,
   « approché »), the device's position, coordinates typed (« 48.3912, -1.1734 », or with decimal commas and « ; »), or a trace's
-  extent (GPX/FIT/TCX, `lidarmap.areaOf` + 150 m) —; the style follows the map standard chosen (Sprint 2019 → sprint). The map image
+  extent (GPX/FIT/TCX, `lidarmap.areaOf` + 150 m) —; **the style asked first** (owner, 2026-11-01 evening: « ask the user if Sprint
+  or Forest mapping is required, before the tool is used »: « Type de carte », Sprint — ISSprOM 1:4000, contours every 2.5 m — or Forêt
+  — ISOM 1:10 000, every 5 m —, nothing chosen beforehand, « Générer » refused until one is, `trc.gen.needKind`), the event's map
+  standard following it (Sprint 2019 / ISOM 2017). The map image
   becomes the event's map file at its scale (1:4 000 sprint, 1:10 000 forest) and dpi (25.4 × scale / px: 240 and 600), the event
   georeferenced from its world file (`geo.geoFromWorld` in Lambert 93) and the credit put on the map as a black text object
   (`trc.gen.credit`, all courses). Checked on Fougères' old town at 1:4 000: 3.99-4.00 m on the ground a map mm.
@@ -1211,8 +1224,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   ramparts (its unwooded patches) and the castle's grounds come out olive — a residential polygon covers them. Each run keeps its
   Overpass answer in the work folder (`osm_<first tile>_<n>.json`); `MAPGEN_OSM_CACHE=1` reads it back, to try a style without asking
   Overpass again (it answered in 3-8 minutes, or not at all, from the PC on 2026-11-01 evening).
-  Not done: contours
-  at sprint's interval (karttapullautin's 5 m with 2.5 m form lines), passability of OSM's fences, tiles made again when OpenStreetMap
+  Not done: passability of OSM's fences, karttapullautin's black marks for walls and embankments in town, tiles made again when OpenStreetMap
   changes, edges between tiles made in different runs (possible seams); **route choices on LiDAR layers: never for runners** (owner: a
   route is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
 - **After QuickRoute** (owner, 2026-11-01: QuickRoute's features compared; its manual route adjustment not wanted, the automatic

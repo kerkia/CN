@@ -79,6 +79,9 @@ export const ask = (ids, style = "forest") => call(API, { method: "POST", header
 export const poll = (req) => call(`${API}?req=${encodeURIComponent(req)}`);
 
 const tileUrl = (id, ext) => `${API}/t/${id}${ext}`;
+// a style's version, as the server's (functions/api/lidarmap): in its tiles' address, so that a browser does not keep a
+// tile of the version before (they are cached a week)
+const STYLE_V = { forest: 1, sprint: 2 };
 const corner = (id) => { const [x, y] = id.split("_").map(Number); return [x * 1000, y * 1000]; };
 async function bitmap(url) {
   const r = await fetch(url, { credentials: "same-origin" });
@@ -107,7 +110,7 @@ export async function compose(area, ids, style = "forest", onProgress) {
     const [x0, y1] = corner(id);
     const dx = Math.round((x0 - ox) / px) - c0, dy = Math.round((oy - y1) / px) - r0, s = SIZE / k;
     if (dx + s > 0 && dy + s > 0 && dx < W && dy < H) {
-      try { g.drawImage(await bitmap(tileUrl(id, style === "sprint" ? ".s.png" : ".png")), dx, dy, s, s); } catch (e) { console.warn(id, e); }
+      try { g.drawImage(await bitmap(`${tileUrl(id, style === "sprint" ? ".s.png" : ".png")}?v=${STYLE_V[style]}`), dx, dy, s, s); } catch (e) { console.warn(id, e); }
     }
     onProgress?.(++done / ids.length);
   }

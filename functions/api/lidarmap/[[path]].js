@@ -4,12 +4,14 @@
 //   lidarmap/t/<id>.png       the map, 2362 px a side, 0.42333 m a pixel, from the tile's north-west corner, in a forest
 //                             map's symbols (ISOM); <id>.s.png the same in a sprint map's (ISSprOM)
 //   lidarmap/t/<id>.dem.png   heights, Terrarium-encoded, 500 × 500 nodes every 2 m from that corner
-//   lidarmap/t/<id>.json      { id, x0, y1, px, size, dem, styles, lidar, osm, made } — or { none: true }: no LiDAR there yet
-//   lidarmap/req/<id>.json    a request: { id, tiles, by, at, status: queued | done | failed, result }
+//   lidarmap/t/<id>.json      { id, x0, y1, px, size, dem, styles, v: { style: version }, lidar, osm, made } — or
+//                             { none: true }: no LiDAR there yet
+//   lidarmap/req/<id>.json    a request: { id, tiles, style, by, at, status: queued | done | failed, result }
+// Each style has its own karttapullautin render (the sprint one 2.5 m contours drawn at 1:4000), made only when asked.
 // A tile's id is IGN's: its west and north edges in Lambert 93 kilometres ("0391_6819").
-//   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made before 2026-11-01's
-//                             sprint style has the forest one only, and is made again); the missing ones are asked of the
-//                             workflow → { req?, tiles: { id: state } }
+//   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made in an older version
+//                             of the style, STYLE_V, is made again); the missing ones are asked of the workflow
+//                             → { req?, tiles: { id: state } }
 //   GET ?req=<id>             a request's state (the page asks every ~15 s while it waits)
 //   GET /t/<file>             a tile's file
 // Nothing of the trace is sent: the page asks for the tiles its trace's area touches.
@@ -19,6 +21,8 @@ const T = "lidarmap/t/", Q = "lidarmap/req/";
 const ID = /^(\d{4})_(\d{4})$/;
 const FILE = /^(\d{4}_\d{4})(\.dem\.png|\.s\.png|\.png|\.json)$/;
 const STYLES = ["forest", "sprint"];
+// a style's version, as mapgen/run.py's STYLE_V (sprint 2: its own render, 2.5 m contours at 1:4000)
+const STYLE_V = { forest: 1, sprint: 2 };
 const MAX_TILES = 12;
 // metropolitan France and Corsica in Lambert 93 (km): IGN's LiDAR HD covers nothing else
 const inFrance = (id) => { const m = ID.exec(id); return !!m && +m[1] >= 50 && +m[1] <= 1250 && +m[2] >= 6040 && +m[2] <= 7120; };
@@ -28,7 +32,9 @@ async function tileState(env, id, style) {
   const o = await env.BUCKET.get(`${T}${id}.json`);
   if (!o) return "missing";
   const m = await o.json().catch(() => ({}));
-  return m.none ? "none" : (m.styles || ["forest"]).includes(style) ? "ready" : "missing";
+  if (m.none) return "none";
+  const v = m.v ? m.v[style] || 0 : (m.styles || ["forest"]).includes(style) ? 1 : 0;   // a record of before: version 1
+  return v >= STYLE_V[style] ? "ready" : "missing";
 }
 
 /** The workflow started (GitHub workflow_dispatch); false without the token. */
@@ -55,7 +61,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!missing.length) return json({ tiles });
   if (!(await allow(env, `lidarmap:${user.id}`, 20, 86400))) return json({ error: "too many requests" }, 429);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  await env.BUCKET.put(`${Q}${id}.json`, JSON.stringify({ id, tiles: missing, by: user.id, at: nowIso(), status: "queued" }),
+  await env.BUCKET.put(`${Q}${id}.json`, JSON.stringify({ id, tiles: missing, style, by: user.id, at: nowIso(), status: "queued" }),
     { httpMetadata: { contentType: "application/json" } });
   for (const t of missing) tiles[t] = "queued";
   return json({ req: id, tiles, started: await startMaps(env) });

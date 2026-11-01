@@ -1,7 +1,7 @@
 # Generated orienteering maps (a prototype, 2026-11-01): makes the 1 km tiles the site asked for — « Analyse solo »'s
 # « Générer une carte » posts a request to R2 (functions/api/lidarmap/[[path]].js, lidarmap/req/<id>.json) and starts
 # this workflow (workflow_dispatch, GH_DISPATCH_TOKEN) —, from IGN's LiDAR HD through karttapullautin with
-# OpenStreetMap's features drawn over it (mapgen/run.py), into R2 lidarmap/t/. Runs never overlap; each run takes the
+# OpenStreetMap's features drawn over it (mapgen/run.py), in the style asked (forest or sprint), into R2 lidarmap/t/. Runs never overlap; each run takes the
 # requests waiting, again until none is left (a request posted while a run was making others).
 #
 # karttapullautin (GPL-3) is downloaded from its own release, checked against its checksum, and run as it is: it is a
@@ -53,11 +53,13 @@ jobs:
           for round in 1 2 3 4; do
             rm -rf "$RUNNER_TEMP/req" "$RUNNER_TEMP/out" && mkdir -p "$RUNNER_TEMP/req" "$RUNNER_TEMP/out"
             aws s3 sync "$BUCKET/lidarmap/req/" "$RUNNER_TEMP/req/" --endpoint-url "$R2" --only-show-errors || true
-            python -m mapgen ci --requests "$RUNNER_TEMP/req" --out "$RUNNER_TEMP/out" --work "$RUNNER_TEMP/work" --kp "$KP"
+            # the tiles' records, so that a tile made in one style keeps the other style it was made in before
+            aws s3 sync "$BUCKET/lidarmap/t/" "$RUNNER_TEMP/known/" --exclude "*" --include "*.json" --endpoint-url "$R2" --only-show-errors || true
+            python -m mapgen ci --requests "$RUNNER_TEMP/req" --out "$RUNNER_TEMP/out" --work "$RUNNER_TEMP/work" --known "$RUNNER_TEMP/known" --kp "$KP"
             [ -d "$RUNNER_TEMP/out/req" ] || break
             if [ -d "$RUNNER_TEMP/out/t" ]; then
               aws s3 cp "$RUNNER_TEMP/out/t/" "$BUCKET/lidarmap/t/" --recursive --endpoint-url "$R2" --only-show-errors
             fi
             aws s3 cp "$RUNNER_TEMP/out/req/" "$BUCKET/lidarmap/req/" --recursive --endpoint-url "$R2" --only-show-errors
-            rm -rf "$RUNNER_TEMP/work/laz" "$RUNNER_TEMP/work/out" "$RUNNER_TEMP"/work/mnt_*.tif
+            rm -rf "$RUNNER_TEMP/work/laz" "$RUNNER_TEMP"/work/*/out "$RUNNER_TEMP"/work/mnt_*.tif
           done

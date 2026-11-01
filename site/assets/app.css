@@ -1678,6 +1678,10 @@ body.an-theatre .an-right { grid-area: side; }
 .tr-gen > summary { cursor: pointer; font-weight: 600; font-size: 13px; }
 .tr-gen-from, .tr-gen-go { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
 .tr-gen-go .tr-hint { margin: 0; }
+.tr-gen-kind { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin: 8px 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.tr-gen-kind legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
+.tr-gen-kind label { display: flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+.tr-gen-kind .tr-hint { flex-basis: 100%; margin: 0; }
 /* Route choices computed (trace/routeplan.js, administrators only): the settings box of both analyses, the table's dots */
 .rc-box { margin-top: 8px; }
 .rc-pill { font-size: 10.5px; font-weight: 600; padding: 0 6px; vertical-align: 1px; }

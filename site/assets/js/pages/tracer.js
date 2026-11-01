@@ -236,12 +236,17 @@ const baseName = (n) => String(n || "").split(/[\\/]/).pop().replace(/\.[^.]+$/,
 
 // ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only) --------------
 // No base map to pick the area from (no third-party map in the site): its centre is the competition's place, the device's
-// position, coordinates typed, or a trace's extent; its size a square; its style the map standard chosen (sprint: ISSprOM at
-// 1:4000, else ISOM at 1:10 000). Only the tiles' ids leave the browser.
+// position, coordinates typed, or a trace's extent; its size a square; its style asked first, sprint or forest, nothing
+// chosen beforehand (the two are made by different settings: ISSprOM at 1:4000 with 2.5 m contours, ISOM at 1:10 000 with
+// 5 m ones), the event's standard following it. Only the tiles' ids leave the browser.
 const SIZES = [500, 1000, 1500, 2000, 3000];
 function genHtml() {
   return `<details class="tr-gen" id="tr-gen"><summary>${escA(t("trc.gen.title"))}</summary>
     <p class="tr-hint">${escA(t("trc.gen.hint"))}</p>
+    <fieldset class="tr-gen-kind"><legend>${escA(t("trc.gen.kind"))}</legend>
+      <label><input type="radio" name="genKind" value="sprint"> ${escA(t("trc.gen.kindSprint"))}</label>
+      <label><input type="radio" name="genKind" value="forest"> ${escA(t("trc.gen.kindForest"))}</label>
+      <span class="tr-hint">${escA(t("trc.gen.kindHint"))}</span></fieldset>
     <div class="tr-grid2">${field(escA(t("trc.gen.centre")), `<input name="genCentre" placeholder="${escA(t("trc.gen.centrePh"))}" autocomplete="off">`, escA(t("trc.gen.centreHint")))}
     ${field(escA(t("trc.gen.size")), `<select name="genSize">${SIZES.map((v) => `<option value="${v}" ${v === 1000 ? "selected" : ""}>${escA(t("trc.gen.sizeOpt", { n: new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(v / 1000) }))}</option>`).join("")}</select>`)}</div>
     <div class="tr-gen-from"><button type="button" class="btn btn-sm" data-gen-from="race">${escA(t("trc.gen.fromRace"))}</button>
@@ -266,6 +271,11 @@ function bindGen(f, races, onMade) {
   const setCentre = (lat, lon) => { f.elements.genCentre.value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`; traceArea = null; };
   f.elements.genCentre.addEventListener("input", () => { traceArea = null; });
   f.elements.genSize.addEventListener("change", () => { traceArea = null; });
+  const kind = () => box.querySelector('input[name="genKind"]:checked')?.value || "";
+  box.querySelectorAll('input[name="genKind"]').forEach((el) => el.addEventListener("change", () => {
+    f.elements.std.value = kind() === "sprint" ? "Spr2019" : "2017";
+    state("");
+  }));
   box.querySelector('[data-gen-from="race"]').addEventListener("click", () => {
     const r = f.elements.kind.value === "race" ? races.find((x) => x.key === f.elements.race?.value) : null;
     if (r?.ll) { setCentre(r.ll[0], r.ll[1]); state(r.ll[2] ? t("trc.gen.racePlaceApprox") : t("trc.gen.racePlace")); }
@@ -290,7 +300,8 @@ function bindGen(f, races, onMade) {
   });
   box.querySelector("[data-gen]").addEventListener("click", async () => {
     if (busy) return;
-    const style = f.elements.std.value === "Spr2019" ? "sprint" : "forest";
+    const style = kind();
+    if (!style) { state(t("trc.gen.needKind"), true); box.querySelector('input[name="genKind"]').focus(); return; }
     const c = parseCentre(f.elements.genCentre.value);
     if (!traceArea && !c) { state(t("trc.gen.needCentre"), true); return; }
     const size = Number(f.elements.genSize.value) || 1000;
@@ -349,6 +360,7 @@ async function newEvent(main, files = null) {
       mapFile = made.files[0]; vec = null; gen = made;
       const scale = style === "sprint" ? 4000 : 10000;
       f.elements.scale.value = String(scale);
+      f.elements.std.value = style === "sprint" ? "Spr2019" : "2017";
       f.elements.dpi.value = String(Math.round((25.4 * scale) / (made.px * 1000)));
       show(t("trc.page.mapOk", { name: escA(mapFile.name), info: escA(`${t("trc.page.image")}, ${fmtMb(mapFile.size)}`) }));
     });

@@ -2,12 +2,18 @@
 
     py -3 -m mapgen tiles 0391_6819 0392_6819 --out DIR      # these tiles (IGN's names: west km, north km)
     py -3 -m mapgen area 48.380 -1.180 48.400 -1.150 --out DIR   # every tile of an area (lat, lon, lat, lon)
+    ... --style sprint                                         # in a sprint map's style (forest by default)
     py -3 -m mapgen ci --requests DIR --out DIR              # the site's requests (lidarmap.yml)
 
 A tile's map: IGN's classified point cloud (COPC LAZ, Licence Ouverte 2.0) through karttapullautin — a program of
 its own (GPL-3), downloaded and run as it is, never part of Ozimut —, cut to its square kilometre, with OpenStreetMap's
 roads, paths, buildings and water drawn over it (osm.py). Beside it the ground's heights every 2 m from IGN's MNT, for
 the 3D view, Terrarium-encoded (R × 256 + G + B / 256 − 32 768 m) as the elevation tiles the 3D view already reads.
+
+Each style has karttapullautin run with its own settings (KP_STYLE): a forest map's 5 m contours with form lines at
+1:10 000, a sprint map's 2.5 m contours drawn at 1:4000 (its lines and cliffs 2.5 times finer on the ground), the render
+then brought to the tile's pixel. A tile is made in the style asked; its record lists the styles made, each with its
+version (STYLE_V: a style's tiles of an older version are made again).
 
 Out, per tile <id> (e.g. 0391_6819): t/<id>.png (2362 × 2362, 0.42333 m a pixel, the top-left corner at the tile's
 north-west corner; a forest map's symbols) and t/<id>.s.png (the same in a sprint map's), t/<id>.dem.png (500 × 500, a node every 2 m from that corner), t/<id>.json (what and when).
@@ -37,8 +43,16 @@ UA = osm.UA
 PX = 0.4233333333333334          # karttapullautin's 600 dpi at 1:10 000
 SIZE = 2362                      # pixels a tile side: 999.9 m
 DEM_STEP, DEM_N = 2.0, 500
-# each tile in both styles (osm.draw), the same LiDAR render under them: a forest map's ISOM, a sprint map's ISSprOM
+# a tile's two styles (osm.draw): a forest map's ISOM, a sprint map's ISSprOM, each on its own karttapullautin render
 STYLES = {"forest": ".png", "sprint": ".s.png"}
+# a style's version: a tile made in an older one is made again (sprint 2, 2026-11-01: its own render, 2.5 m contours at
+# 1:4000; before, the forest render under the sprint symbols). Keep functions/api/lidarmap/[[path]].js's STYLE_V in step.
+STYLE_V = {"forest": 1, "sprint": 2}
+# karttapullautin's settings per style: sprint's contours every 2.5 m without form lines (formline 0; ISSprOM's 2-2.5 m),
+# drawn at 1:4000 (scalefactor 0.4: the 600 dpi render 0.16933 m a pixel, so its lines are 2.5 times finer on the ground),
+# contours too close to be told apart left out (remove_touching_contours: a rampart's slope came out solid brown)
+KP_STYLE = {"forest": {}, "sprint": {"formline": "0", "contour_interval": "2.5", "scalefactor": "0.4",
+                                     "remove_touching_contours": "1"}}
 KP_VERSION = "2.15.4"
 ID = re.compile(r"^(\d{4})_(\d{4})$")
 MAX_TILES = 16                   # a run's work at most (~4 GB of point clouds)
@@ -106,35 +120,44 @@ def fetch(http: httpx.Client, url: str, dest: Path, pace: Pace) -> Path:
     return dest
 
 
-def karttapullautin(kp: Path, work: Path, processes: int) -> None:
-    """karttapullautin over every point cloud in work/laz, in its batch mode (each tile with its neighbours' edges)."""
-    ini = work / "pullauta.ini"
+def karttapullautin(kp: Path, work: Path, processes: int, style: str = "forest") -> Path:
+    """karttapullautin over every point cloud in work/laz, in its batch mode (each tile with its neighbours' edges), with
+    the style's settings, in a folder of the style's own (work/<style>, returned)."""
+    home = work / style
+    home.mkdir(parents=True, exist_ok=True)
+    ini = home / "pullauta.ini"
     if not ini.exists():
-        subprocess.run([str(kp)], cwd=work, check=True, capture_output=True)
+        subprocess.run([str(kp)], cwd=home, check=True, capture_output=True)
     text = ini.read_text(encoding="utf-8")
-    for k, v in {**KP_SETTINGS, "processes": str(processes)}.items():
+    laz = (work / "laz").resolve().as_posix()
+    for k, v in {**KP_SETTINGS, "lazfolder": laz, **KP_STYLE[style], "processes": str(processes)}.items():
         text, n = re.subn(rf"(?m)^{k}\s*=.*$", f"{k}={v}", text)
         if not n:
             text += f"\n{k}={v}\n"
     ini.write_text(text, encoding="utf-8")
-    (work / "out").mkdir(exist_ok=True)
+    # its batch mode skips a point cloud whose render is there: an earlier run's (other settings) must go
+    shutil.rmtree(home / "out", ignore_errors=True)
+    (home / "out").mkdir()
     env = {**os.environ, "RUST_LOG": "warn"}
-    subprocess.run([str(kp)], cwd=work, check=True, env=env)
+    subprocess.run([str(kp)], cwd=home, check=True, env=env)
+    return home
 
 
-def rendered(work: Path, tid: str) -> Image.Image:
-    """karttapullautin's render of a tile (with its depressions), cut to the tile: its first pixel's corner is the
-    tile's (it starts at the tile's corner and runs 0.75 m further)."""
-    p = next((work / "out").glob(f"*{tid}*_depr.png"))
+def rendered(home: Path, tid: str, style: str = "forest") -> tuple[Image.Image, float]:
+    """karttapullautin's render of a tile (with its depressions) and its pixel in metres, cut to the tile: its first
+    pixel's corner is the tile's (it starts at the tile's corner and runs a little further)."""
+    p = next((home / "out").glob(f"*{tid}*_depr.png"))
     w = [float(v) for v in p.with_suffix(".pgw").read_text().split()]
+    px = PX * float(KP_STYLE[style].get("scalefactor", 1))
     x0, y1 = corner(tid)
     i0, j0 = round((x0 - (w[4] - w[0] / 2)) / w[0]), round((y1 - (w[5] - w[3] / 2)) / w[3])
-    if abs(w[0] - PX) > 1e-6 or (i0, j0) != (0, 0):
+    if abs(w[0] - px) > 1e-6 or (i0, j0) != (0, 0):
         raise RuntimeError(f"{tid}: unexpected render frame {w}")
     im = Image.open(p)
     bg = Image.new("RGB", im.size, (255, 255, 255))
     bg.paste(im, mask=im.getchannel("A") if im.mode == "RGBA" else None)
-    return bg.crop((0, 0, SIZE, SIZE))
+    n = round(SIZE * PX / px)
+    return bg.crop((0, 0, n, n)), px
 
 
 def dem(tif: Path) -> Image.Image:
@@ -164,8 +187,11 @@ def dem(tif: Path) -> Image.Image:
     return Image.fromarray(np.stack([r, gg, b], axis=-1).astype(np.uint8), "RGB")
 
 
-def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 4, log=print) -> dict[str, str]:
-    """The tiles' maps into out/t/. Returns each tile's outcome: "done", "none" (no LiDAR there yet) or an error."""
+def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 4, log=print, style: str = "forest",
+             known: Path | None = None) -> dict[str, str]:
+    """The tiles' maps in a style into out/t/, each tile's record keeping the styles made before (its former record read
+    from out/t, else from known/: the workflow's copy of R2's). Returns each tile's outcome: "done", "none" (no LiDAR
+    there yet) or an error."""
     tdir = out / "t"
     tdir.mkdir(parents=True, exist_ok=True)
     (work / "laz").mkdir(parents=True, exist_ok=True)
@@ -186,8 +212,8 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
         fetch(http, cat[t]["mnt"], work / f"mnt_{t}.tif", pace)
     log(f"downloaded {len(todo)} tiles in {time.monotonic() - t0:.0f} s")
     t1 = time.monotonic()
-    karttapullautin(kp, work, processes)
-    log(f"karttapullautin: {time.monotonic() - t1:.0f} s")
+    home = karttapullautin(kp, work, processes, style)
+    log(f"karttapullautin ({style}): {time.monotonic() - t1:.0f} s")
     xs, ys = zip(*(corner(t) for t in todo))
     s, w = lambert93.inverse(min(xs) - 50, min(ys) - 1050)
     n, e = lambert93.inverse(max(xs) + 1050, max(ys) + 50)
@@ -210,14 +236,19 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     for t in todo:
         try:
             x0, y1 = corner(t)
-            base = rendered(work, t)
-            for style, ext in STYLES.items():
-                img = osm.draw(base, feats, x0, y1, PX, style)
-                img.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(tdir / f"{t}{ext}", optimize=True)
+            # OpenStreetMap drawn on the render's own pixels (the ground's fill reads its colours, which averaging blurs),
+            # then the whole brought to the tile's pixel PX
+            base, px = rendered(home, t, style)
+            img = osm.draw(base, feats, x0, y1, px, style)
+            if img.width != SIZE:
+                img = img.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
+            img.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(tdir / f"{t}{STYLES[style]}", optimize=True)
             dem(work / f"mnt_{t}.tif").save(tdir / f"{t}.dem.png", optimize=True)
+            v = {k: n for k, n in _versions(tdir, known, t).items() if k != style}
+            v[style] = STYLE_V[style]
             (tdir / f"{t}.json").write_text(json.dumps({
-                "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N}, "styles": list(STYLES),
-                "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
+                "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N}, "styles": sorted(v),
+                "v": v, "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
             res[t] = "done"
         except Exception as ex:
             log(f"{t}: {ex}")
@@ -226,13 +257,28 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     return res
 
 
+def _versions(tdir: Path, known: Path | None, tid: str) -> dict[str, int]:
+    """The styles a tile was made in before, with their versions (a record without "v": its "styles" at version 1)."""
+    for d in (tdir, known):
+        p = d / f"{tid}.json" if d else None
+        if p and p.exists():
+            try:
+                m = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            if not m.get("none"):
+                return m.get("v") or {k: 1 for k in m.get("styles", ["forest"])}
+    return {}
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int) -> None:
-    """The site's waiting requests (lidarmap/req/<id>.json, {id, tiles, status "queued"}): their tiles made, at most
-    MAX_TILES a run (the rest wait for the next run), each request's status written to out/req/."""
+def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int, known: Path | None = None) -> None:
+    """The site's waiting requests (lidarmap/req/<id>.json, {id, tiles, style, status "queued"}): their tiles made in the
+    oldest request's style, at most MAX_TILES a run (the rest, and the other style's, wait for the next round), each
+    request's status written to out/req/."""
     queued = []
     for p in sorted(reqs.glob("*.json")):
         try:
@@ -244,17 +290,18 @@ def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int) -> None:
     queued.sort(key=lambda r: r.get("at", ""))
     tids: list[str] = []
     take = []
-    for r in queued:
+    style = next((r.get("style") for r in queued if r.get("style") in STYLES), "forest")
+    for r in (r for r in queued if (r.get("style") if r.get("style") in STYLES else "forest") == style):
         new = [t for t in r.get("tiles", []) if ID.match(t) and t not in tids]
         if take and len(tids) + len(new) > MAX_TILES:
             break
         tids += new[:MAX_TILES]
         take.append(r)
-    print(f"{len(queued)} requests waiting, {len(take)} taken, {len(tids)} tiles")
+    print(f"{len(queued)} requests waiting, {len(take)} taken, {len(tids)} tiles ({style})")
     if not tids:
         return
     try:
-        res = generate(tids, out, work, kp, processes)
+        res = generate(tids, out, work, kp, processes, style=style, known=known)
     except Exception as ex:
         res = {t: f"error: {ex}"[:300] for t in tids}
     (out / "req").mkdir(parents=True, exist_ok=True)
@@ -272,6 +319,9 @@ def main(argv: list[str] | None = None) -> None:
     a = sub.add_parser("tiles"); a.add_argument("ids", nargs="+")
     b = sub.add_parser("area"); b.add_argument("box", nargs=4, type=float)
     c = sub.add_parser("ci"); c.add_argument("--requests", required=True, type=Path)
+    c.add_argument("--known", type=Path, default=None)
+    for p in (a, b):
+        p.add_argument("--style", choices=list(STYLES), default="forest")
     for p in (a, b, c):
         p.add_argument("--out", required=True, type=Path)
         p.add_argument("--work", type=Path, default=None)
@@ -281,9 +331,9 @@ def main(argv: list[str] | None = None) -> None:
     work = args.work or args.out / "work"
     work.mkdir(parents=True, exist_ok=True)
     if args.cmd == "ci":
-        ci(args.requests, args.out, work, args.kp, args.processes)
+        ci(args.requests, args.out, work, args.kp, args.processes, args.known)
         return
     ids = args.ids if args.cmd == "tiles" else tile_ids(*args.box)
     if len(ids) > MAX_TILES:
         sys.exit(f"{len(ids)} tiles: at most {MAX_TILES}")
-    print(json.dumps(generate(ids, args.out, work, args.kp, args.processes), indent=1))
+    print(json.dumps(generate(ids, args.out, work, args.kp, args.processes, style=args.style), indent=1))
