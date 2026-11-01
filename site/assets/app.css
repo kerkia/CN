@@ -2986,7 +2986,6 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .nut-card.big { flex-direction: row; }
 .nut-card.big .nut-cover { width: 45%; aspect-ratio: auto; min-height: 220px; }
 .nut-cover { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; background: var(--surface-2); }
-.nut-cover-none { display: grid; place-items: center; color: var(--forest); background: var(--forest-wash); }
 .nut-card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .nut-card h2 { font-size: 18px; margin: 0; line-height: 1.3; }
 .nut-card.big h2 { font-size: 22px; }

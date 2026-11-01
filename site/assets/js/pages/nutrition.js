@@ -73,7 +73,7 @@ export async function render(main, { query }) {
 
   function card(p, big = false) {
     return html`<article class="nut-card${big ? " big" : ""}" data-open="${p.id}" tabindex="0">
-      ${p.cover ? html`<img class="nut-cover" src="${p.cover}" alt="" loading="lazy">` : html`<div class="nut-cover nut-cover-none" aria-hidden="true">${raw(LEAF)}</div>`}
+      ${p.cover ? html`<img class="nut-cover" src="${p.cover}" alt="" loading="lazy">` : ""}
       <div class="nut-card-body">
         <div class="nut-chips">${p.pinned ? html`<span class="nut-chip pin">${t("nut.pinned")}</span>` : ""}${chips(p)}</div>
         <h2><a href="#/sante?article=${p.id}">${p.title}</a></h2>
@@ -233,5 +233,3 @@ export async function render(main, { query }) {
 }
 
 const HEART = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 2.7 4.5 6.6 4.5c2.2 0 3.7 1.3 5.4 3.3 1.7-2 3.2-3.3 5.4-3.3 3.9 0 5.7 4.1 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
-// an article without a picture: a leaf, in the forest's green
-const LEAF = `<svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 38C10 20 22 9 40 8c0 19-11 30-28 30z"/><path d="M10 38 28 20"/></svg>`;
