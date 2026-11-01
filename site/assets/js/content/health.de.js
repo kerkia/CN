@@ -8,7 +8,7 @@ export const intro = {
     der besten medizinischen Fakultäten des ehemaligen sowjetischen Systems Medizin studiert und mehrere Jahre als Ärztin
     gearbeitet, bevor sie 2002 nach Kanada zog, um ihr Kind großzuziehen und ihrer Leidenschaft für Ernährungslehre und Kochen
     nachzugehen.`,
-  // always shown under the first paragraph (owner, 2026-11-01)
+  // at the foot of the page, always (owner, 2026-11-01)
   noAi: "Die Artikel schreiben ihre Autoren selbst; sie werden weder von noch mit einer KI erstellt. Nur die Übersetzungen, die du anfordern kannst, entstehen automatisch.",
   more: [
     `Ihre Küche hat tiefe Wurzeln: Kochen lernte sie bei ihrer bulgarischen Mutter, später kamen russische und rumänische

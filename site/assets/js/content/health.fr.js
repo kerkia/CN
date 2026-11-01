@@ -7,7 +7,7 @@ export const intro = {
   lead: `Nadya dirige l'équipe de rédaction d'Ozimut : elle écrit la plupart des articles et relit chaque contribution. Docteure
     en médecine, diplômée de l'une des meilleures facultés de médecine de l'ex-système soviétique, elle a exercé plusieurs années
     avant de s'installer au Canada en 2002 pour élever son enfant et se consacrer à sa passion, la diététique et la cuisine.`,
-  // always shown under the first paragraph (owner, 2026-11-01)
+  // at the foot of the page, always (owner, 2026-11-01)
   noAi: "Les articles sont écrits par leurs auteurs eux-mêmes, sans être produits par ou avec une IA. Seules les traductions que vous pouvez demander sont faites automatiquement.",
   more: [
     `Sa cuisine a des racines profondes : elle a appris à cuisiner auprès de sa mère bulgare, puis y a mêlé des influences russes

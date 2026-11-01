@@ -15,7 +15,7 @@ import { call, catName, readingTime, fmtDay, dayOf, langName } from "../nutritio
 
 // the introduction above the articles (owner, 2026-11-01): who leads the editorial team, one module per language; its first
 // name and title shown with « Lire la suite » beside them, the text behind it (owner, 2026-11-01), kept open or folded on this
-// device (ocn.nut.intro); the line saying the articles are not written by AI always shown
+// device (ocn.nut.intro); the line saying the articles are not written by AI at the page's foot (owner, 2026-11-01)
 const INTRO = "ocn.nut.intro";
 const introOpen = () => { try { return localStorage.getItem(INTRO) === "open"; } catch (e) { return false; } };
 const setIntroOpen = (on) => { try { if (on) localStorage.setItem(INTRO, "open"); else localStorage.removeItem(INTRO); } catch (e) {} };
@@ -55,7 +55,8 @@ export async function render(main, { query }) {
         <h3>${t("nut.period")}</h3><div id="nut-periods" class="nut-facets"></div>
       </aside>
       <section id="nut-main" class="nut-main"></section>
-    </div></div>`;
+    </div>
+    <p id="nut-noai" class="nut-noai"></p></div>`;
 
   const matches = (p, { theme = st.theme, period = st.period } = {}) => {
     if (theme === NONE ? p.cats.length : theme && !p.cats.includes(theme)) return false;
@@ -142,14 +143,19 @@ export async function render(main, { query }) {
     const showTr = other && tr && !tr.error && p.view === "tr";
     const title = showTr ? tr.title : p.title, summary = showTr ? tr.summary : p.summary, body = showTr ? tr.body : p.body;
     box.innerHTML = html`<a class="nut-back" href="#/sante${backQuery()}">${t("nut.back")}</a>
-      <article class="card nut-article" lang="${showTr ? lang() : p.lang}">
+      <article class="card nut-article${p.translating ? " translating" : ""}" lang="${showTr ? lang() : p.lang}">
         ${p.cover ? html`<img class="nut-article-cover" src="${p.cover}" alt="">` : ""}
         <div class="nut-article-in">
           <div class="nut-chips">${chips(p)}</div>
           <h1>${title}</h1>
           <div class="nut-meta">${meta(p)}${p.updated && dayOf(p.updated) > dayOf(p.published) ? html`<span>${t("nut.updated", { d: fmtDay(p.updated) })}</span>` : ""}
             ${p.canEdit ? html`<a href="#/redaction?id=${p.id}">${t("nut.edit")}</a>` : ""}</div>
-          ${other ? html`<div class="nut-trbar" lang="${lang()}">
+          ${other && p.translating ? html`<div class="nut-trwait" lang="${lang()}" role="status">
+            <span class="spinner" aria-hidden="true"></span>
+            <div class="nut-trwait-text"><b>${t("nut.tr.wait", { lang: langName(lang()) })}</b>
+              <span>${t("nut.tr.waitHint", { s: p.translating.est })} · <span id="nut-elapsed">0 s</span></span>
+              <div class="nut-prog" aria-hidden="true"><i style="animation-duration:${p.translating.est}s"></i></div></div></div>`
+          : other ? html`<div class="nut-trbar" lang="${lang()}">
             ${showTr ? html`<span>${t("nut.tr.done", { from: t(`nut.from.${p.lang}`) })}</span><button type="button" class="btn btn-sm" data-view="orig">${t("nut.tr.orig")}</button>`
               : html`<span>${t("nut.written", { lang: langName(p.lang) })}</span><button type="button" class="btn btn-sm" data-view="tr">${t("nut.tr.offer", { lang: langName(lang()) })}</button>`}
             <label class="nut-always"><input type="checkbox" id="nut-always" ${wantsTranslation() ? "checked" : ""}> ${t("nut.tr.always")}</label>
@@ -164,6 +170,14 @@ export async function render(main, { query }) {
       <nav class="nut-pager">${prev ? html`<a href="#/sante?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${prev.title}</b></a>` : html`<span></span>`}
         ${next ? html`<a class="next" href="#/sante?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${next.title}</b></a>` : ""}</nav>`;
     $$("[data-view]", box).forEach((b) => b.addEventListener("click", () => translate(p, b.dataset.view)));
+    // the seconds since the translation was asked for, while it is made
+    if (p.translating) {
+      const t0 = p.translating.at, tick = setInterval(() => {
+        const el = $("#nut-elapsed");
+        if (!el || !p.translating) { clearInterval(tick); return; }
+        el.textContent = `${Math.round((Date.now() - t0) / 1000)} s`;
+      }, 1000);
+    }
     $("#nut-like", box).addEventListener("click", async (e) => {
       const btn = e.currentTarget, on = !p.liked;
       btn.disabled = true;
@@ -183,11 +197,12 @@ export async function render(main, { query }) {
   async function translate(p, view) {
     p.view = view;
     if (view === "tr" && (!p.tr[lang()] || p.tr[lang()].error)) {
-      const btn = $("[data-view]");
-      if (btn) btn.disabled = true;
-      const msg = $("#nut-trmsg");
-      if (msg) msg.textContent = t("nut.tr.wait");
+      // made on the fly by the AI, a few seconds to a minute by the article's length: an estimate drives the bar, which
+      // waits at its end if the AI takes longer (owner, 2026-11-01: the reader saw the untranslated article and a line only)
+      p.translating = { at: Date.now(), est: Math.round(Math.min(90, Math.max(10, 6 + (p.words || 0) / 12))) };
+      if (st.article === p.id) drawArticle();
       const r = await call(`/posts/${p.id}?lang=${lang()}`);
+      p.translating = null;
       p.tr[lang()] = r.ok ? r.data.translation || { error: "model" } : { error: "model" };
       if (p.tr[lang()].error) p.view = "orig";
     }
@@ -200,6 +215,7 @@ export async function render(main, { query }) {
   };
 
   function drawIntro() {
+    if (I) $("#nut-noai").textContent = I.noAi;
     const box = $("#nut-intro");
     box.hidden = !!st.article;
     if (st.article || !I) return;
@@ -207,7 +223,7 @@ export async function render(main, { query }) {
     box.innerHTML = html`<div class="nut-intro-face" aria-hidden="true">${I.name.charAt(0)}</div>
       <div class="nut-intro-text"><h2>${I.name}</h2>
         <div class="nut-intro-role">${I.role} · <button type="button" class="nut-intro-more" aria-expanded="${open}">${t(open ? "nut.intro.less" : "nut.intro.more")}</button></div>
-        ${open ? html`<p>${I.lead}</p>${I.more.map((x) => html`<p>${x}</p>`)}` : ""}<p class="nut-intro-noai">${I.noAi}</p></div>`;
+        ${open ? html`<p>${I.lead}</p>${I.more.map((x) => html`<p>${x}</p>`)}` : ""}</div>`;
     box.querySelector(".nut-intro-more").addEventListener("click", () => { setIntroOpen(!introOpen()); drawIntro(); });
   }
 

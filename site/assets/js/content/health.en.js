@@ -7,7 +7,7 @@ export const intro = {
   lead: `Nadya leads Ozimut's editorial team—authoring most articles and reviewing every contribution. She holds an M.D. from one
     of the finest medical faculties of the former Soviet system and practiced medicine for several years before moving to Canada
     in 2002 to raise her child and pursue her passion for dietetics and cooking.`,
-  // always shown under the first paragraph (owner, 2026-11-01)
+  // at the foot of the page, always (owner, 2026-11-01)
   noAi: "The articles are written by their authors themselves, not produced by or with AI. Only the translations you may ask for are made automatically.",
   more: [
     `Her culinary roots run deep: she first learned to cook from her Bulgarian mother, later weaving in Russian and Romanian

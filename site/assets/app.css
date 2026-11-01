@@ -3152,7 +3152,21 @@ a.nut-chip:hover { filter: brightness(.95); }
 .nut-intro h2 { margin: 0; font-size: 19px; }
 .nut-intro-role { color: var(--ink-3); font-size: 13px; margin: 2px 0 8px; }
 .nut-intro p { margin: 0 0 8px; line-height: 1.6; color: var(--ink-2); }
-.nut-intro p.nut-intro-noai { color: var(--ink); font-weight: 600; font-size: 14.5px; margin: 0; }
+.nut-noai { max-width: 780px; margin: 26px auto 0; padding-top: 14px; border-top: 1px solid var(--border); text-align: center; color: var(--ink-2); font-size: 13.5px; }
 .nut-intro-more { border: 0; background: none; padding: 0; color: var(--link); font: inherit; font-size: 13px; cursor: pointer; }
 .nut-intro-more:hover { text-decoration: underline; }
 @media (max-width: 640px) { .nut-intro { padding: 14px 16px; gap: 12px; } .nut-intro-face { width: 40px; height: 40px; font-size: 18px; } }
+
+/* Santé: a translation being made (2026-11-01) */
+.nut-trwait { display: flex; gap: 12px; align-items: center; background: var(--accent-wash); border: 1px solid var(--focus); border-radius: var(--radius-sm);
+  padding: 10px 14px; margin-bottom: 18px; font-size: 14px; }
+.nut-trwait .spinner { flex: none; width: 24px; height: 24px; }
+.nut-trwait-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.nut-trwait-text > span { color: var(--ink-2); font-size: 13px; }
+#nut-elapsed { font-variant-numeric: tabular-nums; }
+.nut-prog { height: 5px; border-radius: 3px; background: var(--grid); overflow: hidden; margin-top: 4px; }
+.nut-prog i { display: block; height: 100%; width: 95%; background: var(--focus); border-radius: 3px; transform-origin: left;
+  animation: nutProg linear forwards; }
+@keyframes nutProg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.nut-article.translating .nut-body, .nut-article.translating .nut-lead, .nut-article.translating h1 { opacity: .45; transition: opacity .3s; }
+@media (prefers-reduced-motion: reduce) { .nut-prog i { animation: none; transform: scaleX(.5); } }
