@@ -1,27 +1,40 @@
-// Route choices computed on a map image (a prototype, administrators only; 2026-10-24): the fastest ways between two
-// controls, a few distinct variants, each with its length, climb and an estimated time. Pure functions, run in a worker
-// (trace/routeworker.js), steered by trace/routeplan.js.
+// Route choices computed on a map image (a prototype, administrators only; 2026-10-24, the reading and the search redone on
+// 2026-11-01): the fastest ways between two controls, the distinct choices among them, each with its length, climb and an
+// estimated time, and the time lost going through any point. Pure functions, run in a worker (trace/routeworker.js), steered by
+// trace/routeplan.js.
 //
-// 1. The map read by colour (`classify`): each pixel an area (white forest, open land, rough open, the three greens, out
-//    of bounds) or an ink (purple overprint, black, grey, brown, blue). Inks are lines drawn over an area, so they are
-//    split by thickness — an opening by a square a little wider than the map's black line width: what survives is an
-//    area of its own (black: a building or a big cliff, grey: a building in sprint or bare rock, brown: a paved area,
-//    blue: water); thin black lines long enough are the paths' layer, thin blue the streams and marshes' lines; the rest
-//    (contours, the course itself, text, dots) is painted over with the nearest area underneath.
-// 2. Cells of about 1.5 m: each the most frequent area of its pixels, a path flag, a share of blue lines (`cells`).
-// 3. A cost per cell from the settings (`costs`): the time multiplier of its terrain against white runnable forest,
-//    blocked when impassable, and a navigation weight — off the handrails (paths, streams, vegetation and open-land
-//    edges, water's banks), deep in the forest, a careful runner slows down; the « prudence » setting scales it.
-// 4. A* on 16 neighbours over an ellipse around the leg, the climb from the ground's heights (`slopeFactor`), then the
-//    variants by penalising the corridors of the routes already found, each pulled tight without the penalty and kept
-//    only when distinct and locally optimal (`legRoutes`, `locallyOptimal`). Documented in content/guide.*.js « routes ».
+// 1. The map read by colour (`classify`). The paper is made white first (`flatten`: a photo's paper is grey, unevenly lit, and
+//    was read as bare rock all over), then each pixel is an area (white forest, open land, rough open, the three greens, out of
+//    bounds) or an ink (purple overprint, black, grey, brown, blue). The magnetic north lines — long straight lines, parallel,
+//    evenly spaced — are taken out (`northLines`). Inks are lines drawn over an area, so they are split by thickness: an
+//    opening by a square some 7-10 m across (`THICK`, in metres: the map's own line width, measured, was a pixel on photos
+//    and scans, so that every path came out a « thick » area); what survives is an area of its own (black: a building or a big
+//    cliff, grey: a building in sprint or bare rock, brown: a paved area, blue: water). The thin black lines become a network
+//    (`lineNetwork`): each piece's ends and direction from its skeleton, the dashes of a dashed path joined end to end across
+//    their gaps when they face each other, a chain 30 m long a path — a track (solid and wide, or long wide dashes), a path, or
+//    a small path (short dashes) —; dots, triangles and isolated short lines are none. Blue thin lines are streams and marshes;
+//    the rest (contours, the course, text, dots) is painted over with the nearest area.
+// 2. Cells of about 1.5 m: each the most frequent area of its pixels, the fastest path kind, a share of blue lines (`cells`).
+// 3. A cost per cell from the settings (`costs`): the time multiplier of its terrain against white runnable forest, blocked
+//    when impassable, and a navigation weight — off the handrails (paths, streams, vegetation and open-land edges, water's
+//    banks), deep in the forest, a careful runner slows down; the « prudence » setting scales it.
+// 4. Two complete shortest-path trees over an ellipse around the leg, one grown from the start and one from the control
+//    (`legSearch`); their sum at a cell is the cost of the best route through it. The choices: the best route, then the long
+//    stretches both trees agree on (« plateaus »: a track followed for long is one) and the separate valleys of that sum
+//    across the leg (« cuts »: where do the good routes cross it?), each kept when distinct from those kept and locally
+//    optimal; each pulled tight off the grid's 16 directions (`tighten`). The sum, against the best, is the decision map.
+// Documented in content/guide.*.js « routes ».
 
 export const A = { WHITE: 0, OPEN: 1, ROUGH: 2, G1: 3, G2: 4, G3: 5, WATER: 6, SHALLOW: 7, PAVED: 8, OOB: 9, BUILDING: 10, GREY: 11, MARSH: 12 };
 export const N_CLASSES = 13;
 const UNKNOWN = 255;
-// pixel kinds: the areas are their class; the inks above them
-const I_PURPLE = 20, I_BLACK = 21, I_GREY = 22, I_BROWN = 23, I_BLUE = 24, I_OLIVE = 25;
+// pixel kinds: the areas are their class; the inks above them; a north line's pixel taken out
+const I_PURPLE = 20, I_BLACK = 21, I_GREY = 22, I_BROWN = 23, I_BLUE = 24, I_OLIVE = 25, I_ERASED = 26;
 export const INK = { PURPLE: I_PURPLE, BLACK: I_BLACK, GREY: I_GREY, BROWN: I_BROWN, BLUE: I_BLUE, OLIVE: I_OLIVE };
+/** The path layer's kinds; BRIDGE marks the pixels drawn across a dashed path's gaps. */
+export const PATH = { SMALL: 1, PATH: 2, TRACK: 3, BRIDGE: 4 };
+/** The half width of the thickness test, metres: an ink wider than about twice this is an area. */
+export const THICK = { forest: 3.5, sprint: 2 };
 
 /** The default settings: speeds in % of white runnable forest's, the climb's cost in flat metres per metre up. */
 export const DEFAULTS = {
@@ -32,7 +45,7 @@ export const DEFAULTS = {
   variants: 3,              // routes shown per leg, 1-4
   extra: 25,                // a variant is kept up to this % slower than the best
   pace: 0,                  // seconds per km in white runnable forest on the flat; 0 = automatic
-  speeds: { path: 125, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30 },
+  speeds: { track: 130, path: 125, small: 110, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30 },
 };
 
 // ---- 1. pixels ---------------------------------------------------------------------------------------------------------
@@ -59,6 +72,92 @@ export function kindOf(r, g, b) {
   }
   if (hue < 36) return min > 215 ? A.WHITE : I_BROWN;
   return I_PURPLE;                                       // pinks and violets the test above missed: the overprint's edges
+}
+
+/**
+ * The paper made white: a photo's paper is grey, warmer or colder, darker in a corner. Its colour is the median of the
+ * brightest nearly grey pixels; in blocks of ~50 m, its level per channel is the 92nd percentile of the pixels of that colour
+ * (a block of green or yellow has none: it takes its neighbours'), smoothed, and each pixel is divided by it. A clean export,
+ * already white, is returned as it is.
+ */
+export function flatten(src, w, h, mpp) {
+  const N = w * h, stride = Math.max(1, Math.floor(Math.sqrt(N / 250000)));
+  const sums = [], rs = [], gs = [], bs = [];
+  for (let y = 0; y < h; y += stride) for (let x = 0; x < w; x += stride) {
+    const p = 4 * (y * w + x), r = src[p], g = src[p + 1], b = src[p + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (src[p + 3] >= 128 && mx >= 60 && mx - mn <= 0.3 * mx) { sums.push(r + g + b); rs.push(r); gs.push(g); bs.push(b); }
+  }
+  if (sums.length < 500) return src;
+  const thr = [...sums].sort((p, q) => p - q)[Math.floor(0.8 * sums.length)];
+  const cr = [], cg = [], cb = [];
+  let P = 0, nP = 0;
+  sums.forEach((s, i) => { if (s >= thr && s > 0) { cr.push(rs[i] / s); cg.push(gs[i] / s); cb.push(bs[i] / s); P += s; nP++; } });
+  const med = (a) => a.sort((p, q) => p - q)[a.length >> 1];
+  const kr = med(cr), kg = med(cg), kb = med(cb);
+  P /= nP;
+  const paper = (r, g, b) => { const s = r + g + b; return s >= 0.7 * P && Math.abs(r / s - kr) < 0.035 && Math.abs(g / s - kg) < 0.035 && Math.abs(b / s - kb) < 0.035; };
+  const B = Math.max(16, Math.round(50 / mpp)), bx = Math.ceil(w / B), by = Math.ceil(h / B), NB2 = bx * by;
+  const lev = [new Float32Array(NB2), new Float32Array(NB2), new Float32Array(NB2)], known = new Uint8Array(NB2);
+  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  const floor = [0.7 * P * kr, 0.7 * P * kg, 0.7 * P * kb];
+  for (let j = 0; j < by; j++) for (let i = 0; i < bx; i++) {
+    for (const H of hist) H.fill(0);
+    let n = 0, all = 0;
+    for (let y = j * B; y < Math.min(h, (j + 1) * B); y += 2) for (let x = i * B; x < Math.min(w, (i + 1) * B); x += 2) {
+      const p = 4 * (y * w + x), r = src[p], g = src[p + 1], b = src[p + 2];
+      all++;
+      if (!paper(r, g, b)) continue;
+      hist[0][r]++; hist[1][g]++; hist[2][b]++; n++;
+    }
+    if (n < Math.max(12, 0.03 * all)) continue;
+    const k = j * bx + i;
+    known[k] = 1;
+    for (let c = 0; c < 3; c++) {
+      let acc = 0, v = 255;
+      for (let q = 255; q >= 0; q--) { acc += hist[c][q]; if (acc >= 0.08 * n) { v = q; break; } }
+      lev[c][k] = Math.max(floor[c], v);
+    }
+  }
+  // the blocks without paper take the mean of their known neighbours, ring after ring
+  let left = NB2 - known.reduce((s, v) => s + v, 0);
+  if (left === NB2) return src;
+  while (left > 0) {
+    const fill = [];
+    for (let j = 0; j < by; j++) for (let i = 0; i < bx; i++) {
+      const k = j * bx + i;
+      if (known[k]) continue;
+      let n = 0;
+      const s = [0, 0, 0];
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) {
+        const I = i + a, J = j + b;
+        if (I < 0 || J < 0 || I >= bx || J >= by || !known[J * bx + I]) continue;
+        for (let c = 0; c < 3; c++) s[c] += lev[c][J * bx + I];
+        n++;
+      }
+      if (n) fill.push([k, s[0] / n, s[1] / n, s[2] / n]);
+    }
+    for (const [k, r, g, b] of fill) { lev[0][k] = r; lev[1][k] = g; lev[2][k] = b; known[k] = 1; }
+    left -= fill.length;
+    if (!fill.length) break;
+  }
+  const sm = lev.map((L) => { const M = new Float32Array(NB2); for (let j = 0; j < by; j++) for (let i = 0; i < bx; i++) { let s = 0, n = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const I = i + a, J = j + b; if (I >= 0 && J >= 0 && I < bx && J < by) { s += L[J * bx + I]; n++; } } M[j * bx + i] = s / n; } return M; });
+  let low = 255;
+  for (let c = 0; c < 3; c++) for (const v of sm[c]) low = Math.min(low, v);
+  if (low >= 246) return src;                              // white already
+  const out = new Uint8ClampedArray(src.length);
+  for (let y = 0; y < h; y++) {
+    const fy = Math.min(by - 1, Math.max(0, (y + 0.5) / B - 0.5)), j0 = Math.floor(fy), j1 = Math.min(by - 1, j0 + 1), ty = fy - j0;
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(bx - 1, Math.max(0, (x + 0.5) / B - 0.5)), i0 = Math.floor(fx), i1 = Math.min(bx - 1, i0 + 1), tx = fx - i0, p = 4 * (y * w + x);
+      for (let c = 0; c < 3; c++) {
+        const L = sm[c], v = (L[j0 * bx + i0] * (1 - tx) + L[j0 * bx + i1] * tx) * (1 - ty) + (L[j1 * bx + i0] * (1 - tx) + L[j1 * bx + i1] * tx) * ty;
+        out[p + c] = (src[p + c] * 250) / v;
+      }
+      out[p + 3] = src[p + 3];
+    }
+  }
+  return out;
 }
 
 /** The width of the mask's lines in pixels: the lower quartile of the shorter run through its pixels (as course.js). */
@@ -99,17 +198,19 @@ function morph(m, w, h, k, erode) {
   return out;
 }
 
-/** Connected components (8-neighbours) of a binary mask: labels (0 = none) and, per label, size and bounding box. */
-function components(m, w, h) {
+/** Connected components (8-neighbours) of a binary mask: labels (0 = none) and, per label, size, bounding box and, with
+ *  `moments`, the sums of x, y, x², y², xy (for its main direction). */
+function components(m, w, h, moments = false) {
   const lab = new Int32Array(w * h), stack = new Int32Array(w * h), comps = [null];
   for (let s = 0; s < m.length; s++) {
     if (!m[s] || lab[s]) continue;
     const id = comps.length;
-    let top = 0, n = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
+    let top = 0, n = 0, x0 = w, y0 = h, x1 = 0, y1 = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
     stack[top++] = s; lab[s] = id;
     while (top) {
       const i = stack[--top], x = i % w, y = (i - x) / w;
       n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (moments) { sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; }
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const X = x + dx, Y = y + dy;
         if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
@@ -117,32 +218,293 @@ function components(m, w, h) {
         if (m[j] && !lab[j]) { lab[j] = id; stack[top++] = j; }
       }
     }
-    comps.push({ n, x0, y0, x1, y1 });
+    comps.push(moments ? { n, x0, y0, x1, y1, sx, sy, sxx, syy, sxy } : { n, x0, y0, x1, y1 });
   }
   return { lab, comps };
 }
 
 /**
- * The map read: per pixel its area (A.*, inks painted over) and the line layers. rgba: the image's bytes; mpp: metres per
- * pixel. Returns { area, path, blue, lw, ms }.
+ * The magnetic north lines taken out of the kinds (into I_ERASED; nmask marks them): for the blue ink, then the black, a Hough
+ * vote of the thin runs of each row over lines within 16° of the vertical; a family of three lines or more, parallel within
+ * 0.4°, evenly spaced (a line may be missing) at 80 m or more, each running over most of the map's height. Long straight
+ * paths and rides are not evenly spaced, nor that long. Returns the lines found [{ ink, x (at mid-height), angle (°) }].
  */
-export function classify(rgba, w, h, mpp) {
+function northLines(kind, rgba, w, h, mpp, nmask) {
+  const found = [];
+  const maxRun = Math.max(3, Math.round(3 / mpp)), hw = Math.ceil(maxRun / 2) + 1;
+  const NA = 161, deg = Math.PI / 180, cs = new Float64Array(NA), sn = new Float64Array(NA);
+  for (let a = 0; a < NA; a++) { const th = (-16 + 0.2 * a) * deg; cs[a] = Math.cos(th); sn[a] = Math.sin(th); }
+  const R0 = Math.ceil(h * Math.sin(16 * deg)) + 3, NR = w + 2 * R0;
+  const xAt = (a, rho, y) => (rho - R0 + y * sn[a]) / cs[a];
+  // a photo's blue north lines are often so pale that most of their pixels read as paper: the vote takes any bluish pixel
+  const bluish = (i) => { const p = 4 * i, r = rgba[p], g = rgba[p + 1], b = rgba[p + 2]; return b >= r + 8 && b >= g + 3 && b - Math.min(r, g) <= 0.75 * b; };
+  for (const ink of [I_BLUE, I_BLACK]) {
+    const acc = new Int32Array(NA * NR);
+    const on = ink === I_BLUE ? (i) => kind[i] === I_BLUE || (kind[i] < 20 && bluish(i)) : (i) => kind[i] === I_BLACK;
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w;) {
+        if (!on(row + x)) { x++; continue; }
+        let e = x;
+        while (e < w && on(row + e)) e++;
+        if (e - x <= maxRun) { const xc = (x + e - 1) / 2; for (let a = 0; a < NA; a++) acc[a * NR + Math.round(xc * cs[a] - y * sn[a]) + R0]++; }
+        x = e;
+      }
+    }
+    const S = new Int32Array(NA * NR);
+    for (let a = 0; a < NA; a++) for (let r = 1; r < NR - 1; r++) { const k = a * NR + r; S[k] = acc[k - 1] + acc[k] + acc[k + 1]; }
+    const peaks = [];
+    for (let a = 0; a < NA; a++) for (let r = 1; r < NR - 1; r++) {
+      const v = S[a * NR + r];
+      if (v < 0.12 * h) continue;
+      let top = true;
+      for (let b = Math.max(0, a - 3); b <= Math.min(NA - 1, a + 3) && top; b++) for (let q = Math.max(1, r - 4); q <= Math.min(NR - 2, r + 4); q++) {
+        const u = S[b * NR + q];
+        if (u > v || (u === v && (b < a || (b === a && q < r)))) { top = false; break; }
+      }
+      if (top) peaks.push({ a, r, v, x: xAt(a, r, h / 2) });
+    }
+    peaks.sort((p, q) => q.v - p.v);
+    peaks.length = Math.min(peaks.length, 200);
+    // each line's ink along it: the rows where it is there, and how far apart the first and the last
+    const along = (p) => {
+      if (p.n != null) return p;
+      let n = 0, y0 = -1, y1 = -1;
+      for (let y = 0; y < h; y++) {
+        const xc = Math.round(xAt(p.a, p.r, y));
+        let hit = false;
+        for (let x = Math.max(0, xc - hw); x <= Math.min(w - 1, xc + hw) && !hit; x++) if (on(y * w + x)) hit = true;
+        if (hit) { n++; if (y0 < 0) y0 = y; y1 = y; }
+      }
+      p.n = n; p.span = y1 - y0;
+      return p;
+    };
+    // a family: three strong lines (ink on 40 % of the rows, over 60 % of the height) parallel and evenly spaced; then every
+    // line of its spacing across the map that is there on a fifth of the rows
+    const strong = peaks.filter((p) => { along(p); return p.n >= 0.4 * h && p.span >= 0.6 * h; });
+    let best = [];
+    for (const seed of strong) {
+      const fam = strong.filter((p) => Math.abs(p.a - seed.a) <= 2).sort((p, q) => p.x - q.x);
+      const uniq = [];
+      for (const p of fam) if (!uniq.length || p.x - uniq[uniq.length - 1].x > 8) uniq.push(p);
+      for (let i = 1; i < uniq.length; i++) for (let j = 0; j < i; j++) {
+        const g = uniq[i].x - uniq[j].x;
+        if (g * mpp < 80) continue;
+        const fits = uniq.filter((p) => { const f = (p.x - uniq[j].x) / g; return Math.abs(f - Math.round(f)) < 0.06; });
+        if (fits.length < 3 || fits.length < best.length) continue;
+        const ext = [];
+        for (let m = Math.floor(-uniq[j].x / g) - 1; uniq[j].x + m * g <= w + g; m++) {
+          const x = uniq[j].x + m * g;
+          let p = null;
+          for (let a = Math.max(0, seed.a - 2); a <= Math.min(NA - 1, seed.a + 2); a++) for (let dx = -4; dx <= 4; dx++) {
+            const q = along({ a, r: Math.round((x + dx) * cs[a] - (h / 2) * sn[a] + R0), x: x + dx });
+            if (!p || q.n > p.n) p = q;
+          }
+          if (p && p.n >= 0.2 * h && p.span >= 0.5 * h) ext.push(p);
+        }
+        if (ext.length > best.length) best = ext;
+      }
+    }
+    for (const p of best) {
+      found.push({ ink: ink === I_BLUE ? "blue" : "black", x: Math.round(p.x), angle: Math.round((-16 + 0.2 * p.a) * 10) / 10 });
+      for (let y = 0; y < h; y++) {
+        const xc = Math.round(xAt(p.a, p.r, y));
+        for (let x = Math.max(0, xc - hw); x <= Math.min(w - 1, xc + hw); x++) { const i = y * w + x; if (kind[i] === ink) { kind[i] = I_ERASED; nmask[i] = 1; } }
+      }
+    }
+  }
+  return found;
+}
+
+/** Zhang-Suen thinning of the mask's pixels `list` (the mask is changed): the skeleton's pixels. */
+function thinning(m, w, h, list) {
+  const inner = (i) => { const x = i % w; return x > 0 && x < w - 1 && i >= w && i < w * h - w; };
+  let alive = list.filter(inner);
+  for (const i of list) if (!inner(i)) m[i] = 0;          // the image's border: no skeleton there
+  for (let changed = true; changed;) {
+    changed = false;
+    for (let pass = 0; pass < 2; pass++) {
+      const del = [];
+      for (const i of alive) {
+        if (!m[i]) continue;
+        const p2 = m[i - w], p3 = m[i - w + 1], p4 = m[i + 1], p5 = m[i + w + 1], p6 = m[i + w], p7 = m[i + w - 1], p8 = m[i - 1], p9 = m[i - w - 1];
+        const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (B < 2 || B > 6) continue;
+        const T = (!p2 && p3) + (!p3 && p4) + (!p4 && p5) + (!p5 && p6) + (!p6 && p7) + (!p7 && p8) + (!p8 && p9) + (!p9 && p2);
+        if (T !== 1) continue;
+        if (pass === 0 ? p2 * p4 * p6 || p4 * p6 * p8 : p2 * p4 * p8 || p2 * p6 * p8) continue;
+        del.push(i);
+      }
+      for (const i of del) m[i] = 0;
+      if (del.length) changed = true;
+    }
+    alive = alive.filter((i) => m[i]);
+  }
+  return alive;
+}
+
+/**
+ * The thin black lines as a network of paths, into `path` (PATH kinds; the gaps bridged | PATH.BRIDGE). thin: the mask of the
+ * thin black or dark neutral grey pixels (a scan's black lines are dark grey, the edges of a photo's too); black: those black. Each piece: its skeleton, its ends (a skeleton pixel with one neighbour) and the direction it leaves them
+ * by (the piece's own axis for a dash, the last 5 m of skeleton for a longer line). Two ends of different pieces are joined when
+ * they face each other across a gap (both within 30° of the gap's direction, the two pieces within 45° of one line) of at most
+ * 0.8 × the shorter piece, 3 to 15 m, the closest pairs first, an end joined once. A chain of pieces 30 m long in all is a path;
+ * its kind from its dashes against the map's other dashed paths: solid and wider, or long and wide dashes, a track; short
+ * dashes a small path. Returns { chains, dash, width } (the map's typical dash length and stroke width, metres).
+ */
+function lineNetwork(thin, black, w, h, mpp, path) {
+  const { lab, comps } = components(thin, w, h, true);
+  const nc = comps.length;
+  // a piece is black when 3 % of it is: a scan's black lines are dark grey with a black core here and there
+  const nBlack = new Int32Array(nc);
+  for (let i = 0; i < thin.length; i++) if (lab[i] && black[i]) nBlack[lab[i]]++;
+  const list = [];
+  for (let i = 0; i < thin.length; i++) if (thin[i]) list.push(i);
+  const sk = thinning(Uint8Array.from(thin), w, h, list);
+  const skel = new Uint8Array(w * h);
+  for (const i of sk) skel[i] = 1;
+  const slen = new Float64Array(nc);
+  for (const i of sk) slen[lab[i]] += mpp * 1.08;
+  // each piece's axis (for a dash's direction) and stroke width
+  const axis = comps.map((c) => {
+    if (!c) return null;
+    const mx = c.sx / c.n, my = c.sy / c.n, vxx = c.sxx / c.n - mx * mx, vyy = c.syy / c.n - my * my, vxy = c.sxy / c.n - mx * my;
+    const tr = vxx + vyy, det = vxx * vyy - vxy * vxy, l1 = tr / 2 + Math.sqrt(Math.max(0, (tr * tr) / 4 - det)), l2 = Math.max(0.05, tr - l1);
+    let ux = vxy, uy = l1 - vxx;
+    if (Math.abs(ux) + Math.abs(uy) < 1e-9) { ux = vxx >= vyy ? 1 : 0; uy = vxx >= vyy ? 0 : 1; }
+    const L = Math.hypot(ux, uy);
+    return { mx, my, ux: ux / L, uy: uy / L, elong: l1 / l2 };
+  });
+  const ext = comps.map((c) => (c ? Math.hypot(c.x1 - c.x0 + 1, c.y1 - c.y0 + 1) * mpp : 0));
+  const lenOf = (c) => Math.max(slen[c], ext[c] * 0.5);
+  const lineLike = (c) => nBlack[c] >= Math.max(1, 0.03 * comps[c].n) && (ext[c] >= 30 || (ext[c] >= Math.max(3, 3 * mpp) && axis[c].elong >= 6));
+  // the ends
+  const ends = [];
+  const NB8 = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+  const nbrs = (i) => { const out = []; const x = i % w; for (const d of NB8) { const j = i + d, X = j % w; if (j >= 0 && j < w * h && Math.abs(X - x) <= 1 && skel[j]) out.push(j); } return out; };
+  const walk = Math.max(3, Math.round(5 / mpp));
+  for (const i of sk) {
+    const c = lab[i];
+    if (!lineLike(c)) continue;
+    const nb = nbrs(i);
+    if (nb.length !== 1) continue;
+    const x = i % w, y = (i - x) / w;
+    let dx, dy;
+    if (ext[c] < 30) {
+      const ax = axis[c], s = (x - ax.mx) * ax.ux + (y - ax.my) * ax.uy >= 0 ? 1 : -1;
+      dx = s * ax.ux; dy = s * ax.uy;
+    } else {
+      let prev = i, cur = nb[0];
+      for (let s = 1; s < walk; s++) { const nx2 = nbrs(cur).filter((j) => j !== prev); if (nx2.length !== 1) break; prev = cur; cur = nx2[0]; }
+      const cx = cur % w, cy = (cur - cx) / w, L = Math.hypot(x - cx, y - cy);
+      if (!L) continue;
+      dx = (x - cx) / L; dy = (y - cy) / L;
+    }
+    ends.push({ i, x, y, c, dx, dy });
+  }
+  // the gaps: facing ends of different pieces
+  const G = Math.max(3, Math.ceil(15 / mpp)), buckets = new Map(), key = (x, y) => Math.floor(x / G) * 65536 + Math.floor(y / G);
+  ends.forEach((e, n) => { const k = key(e.x, e.y); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(n); });
+  const pairs = [];
+  ends.forEach((e, n) => {
+    const bx = Math.floor(e.x / G), by = Math.floor(e.y / G);
+    for (let a = bx - 1; a <= bx + 1; a++) for (let b = by - 1; b <= by + 1; b++) for (const m of buckets.get(a * 65536 + b) || []) {
+      if (m <= n) continue;
+      const f = ends[m];
+      if (f.c === e.c) continue;
+      const vx = f.x - e.x, vy = f.y - e.y, D = Math.hypot(vx, vy);
+      const gap = Math.max(2.5, Math.min(15, Math.max(3, 0.8 * Math.min(lenOf(e.c), lenOf(f.c)))) / mpp);
+      if (D > gap) continue;
+      const facing = -(e.dx * f.dx + e.dy * f.dy);
+      let c1 = 1, c2 = 1;
+      if (D > 1.5) { c1 = (e.dx * vx + e.dy * vy) / D; c2 = -(f.dx * vx + f.dy * vy) / D; }
+      if (facing < (D > 1.5 ? 0.707 : 0.5) || c1 < 0.866 || c2 < 0.866) continue;
+      pairs.push({ n, m, s: D * mpp * (3 - c1 - c2 - facing + 0.5) });
+    }
+  });
+  pairs.sort((p, q) => p.s - q.s);
+  const used = new Uint8Array(ends.length), links = [];
+  const parent = new Int32Array(nc).map((_, i) => i);
+  const root = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (const p of pairs) {
+    if (used[p.n] || used[p.m]) continue;
+    used[p.n] = used[p.m] = 1;
+    links.push(p);
+    parent[root(ends[p.n].c)] = root(ends[p.m].c);
+  }
+  // the chains: their length, pieces, dashes and stroke width
+  const ch = new Map();
+  const chainOf = (c) => { const r = root(c); if (!ch.has(r)) ch.set(r, { total: 0, pieces: [], n: 0, sk: 0, long: false }); return ch.get(r); };
+  for (let c = 1; c < nc; c++) {
+    if (!lineLike(c)) continue;
+    const k = chainOf(c);
+    k.pieces.push(c); k.total += lenOf(c); k.n += comps[c].n; k.sk += Math.max(1, slen[c] / (mpp * 1.08));
+    if (ext[c] >= 30) k.long = true;
+  }
+  for (const l of links) { const e = ends[l.n], f = ends[l.m]; chainOf(e.c).total += Math.hypot(f.x - e.x, f.y - e.y) * mpp; }
+  const chains = [...ch.values()].filter((k) => k.total >= 30);
+  for (const k of chains) {
+    const lens = k.pieces.map(lenOf).sort((a, b) => a - b), longest = lens[lens.length - 1];
+    k.solid = longest >= 0.7 * k.total;
+    k.dash = lens[lens.length >> 1];
+    k.width = (k.n / k.sk) * mpp;
+  }
+  // the map's typical dashed path: the medians, by length, of its dashed chains
+  const wmed = (arr, f) => { const s = arr.map((k) => [f(k), k.total]).sort((a, b) => a[0] - b[0]), T = s.reduce((t, x) => t + x[1], 0); let acc = 0; for (const [v, wt] of s) { acc += wt; if (acc >= T / 2) return v; } return null; };
+  const dashed = chains.filter((k) => !k.solid && k.pieces.length >= 3);
+  const Dm = dashed.length ? wmed(dashed, (k) => k.dash) : null, Wm = dashed.length ? wmed(dashed, (k) => k.width) : null;
+  for (const k of chains) {
+    k.kind = PATH.PATH;
+    if (Dm != null) {
+      if (!k.solid && k.dash < 0.6 * Dm) k.kind = PATH.SMALL;
+      else if (k.solid ? k.width >= 1.15 * Wm : k.dash >= 1.3 * Dm && k.width >= 1.1 * Wm) k.kind = PATH.TRACK;
+    }
+  }
+  const kindOfPiece = new Uint8Array(nc);
+  for (const k of chains) for (const c of k.pieces) kindOfPiece[c] = k.kind;
+  for (let i = 0; i < thin.length; i++) if (lab[i] && kindOfPiece[lab[i]]) path[i] = kindOfPiece[lab[i]];
+  // the gaps drawn, as wide as the line
+  for (const l of links) {
+    const e = ends[l.n], f = ends[l.m], v = kindOfPiece[e.c];
+    if (!v) continue;
+    const r = Math.max(0, Math.floor((chainOf(e.c).width / mpp) / 2)), n = Math.ceil(Math.hypot(f.x - e.x, f.y - e.y) * 2);
+    for (let s = 0; s <= n; s++) {
+      const x = Math.round(e.x + ((f.x - e.x) * s) / n), y = Math.round(e.y + ((f.y - e.y) * s) / n);
+      for (let b = -r; b <= r; b++) for (let a = -r; a <= r; a++) {
+        const X = x + a, Y = y + b;
+        if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+        const i = Y * w + X;
+        if (!path[i]) path[i] = v | PATH.BRIDGE;
+      }
+    }
+  }
+  return { chains: chains.length, links: links.length, dash: Dm, width: Wm };
+}
+
+/**
+ * The map read: per pixel its area (A.*, inks painted over) and the line layers. rgba: the image's bytes; mpp: metres per
+ * pixel; opt: { map ("forest" | "sprint": the thickness test's width), flat (false: the paper left as it is) }; progress(f):
+ * how far it is. Returns { area, path (PATH kinds), blue, north (the north lines' pixels), lw, k, lines, northLines, ms }.
+ */
+export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
   const t0 = Date.now(), N = w * h;
+  const rgba = opt.flat === false ? rgba0 : flatten(rgba0, w, h, mpp);
+  progress(0.2);
   const kind = new Uint8Array(N);
   for (let i = 0, p = 0; i < N; i++, p += 4) kind[i] = rgba[p + 3] < 128 ? A.WHITE : kindOf(rgba[p], rgba[p + 1], rgba[p + 2]);
+  progress(0.3);
+  const north = new Uint8Array(N), nlines = northLines(kind, rgba, w, h, mpp, north);
+  progress(0.45);
   const lw = lineWidth(kind, w, h, I_BLACK);
-  const k = Math.max(1, Math.round(0.5 * lw + 0.5));
+  const k = Math.max(1, Math.round((THICK[opt.map] ?? THICK.forest) / mpp));
   const minArea = Math.max(9, (6 / mpp) ** 2);           // an area of ink smaller than 6 × 6 m is a point symbol, not an area
   const area = new Uint8Array(N).fill(UNKNOWN);
   for (let i = 0; i < N; i++) if (kind[i] < 20) area[i] = kind[i];
   // the thick parts of each ink: areas of their own
-  // an ink's own line width counts too (a blurred scan's contours are thicker than its thinnest black), within 3 k: a
-  // sprint map's brown is mostly paved areas, whose runs are no line width
-  const kOf = (v) => Math.min(3 * k, Math.max(k, Math.ceil(lineWidth(kind, w, h, v))));
-  const thickOf = (test, decide, kk = k) => {
+  const thickOf = (test, decide) => {
     const m = new Uint8Array(N);
     for (let i = 0; i < N; i++) if (test(kind[i])) m[i] = 1;
-    const open = morph(morph(m, w, h, kk, true), w, h, kk, false);
+    const open = morph(morph(m, w, h, k, true), w, h, k, false);
     for (let i = 0; i < N; i++) open[i] &= m[i];
     const { lab, comps } = components(open, w, h);
     const stats = comps.map(() => [0, 0, 0]);
@@ -151,37 +513,21 @@ export function classify(rgba, w, h, mpp) {
     for (let i = 0; i < N; i++) if (lab[i] && cls[lab[i]] !== UNKNOWN) area[i] = cls[lab[i]];
     return open;
   };
-  const darkThick = thickOf((v) => v === I_BLACK || v === I_GREY, (s) => (s[1] > 0.5 * s[0] ? A.BUILDING : A.GREY));
-  thickOf((v) => v === I_BROWN, () => A.PAVED, kOf(I_BROWN));
-  thickOf((v) => v === I_BLUE, (s) => (s[2] / s[0] > 150 ? A.SHALLOW : A.WATER), kOf(I_BLUE));
+  // a forest map's grey is bare rock, a dark grey; a lighter one is the photo's shade on the paper (a crease, a corner): nothing
+  const shade = opt.map === "sprint" ? 256 : 165;
+  const darkThick = thickOf((v) => v === I_BLACK || v === I_GREY, (s) => (s[1] > 0.5 * s[0] ? A.BUILDING : s[2] / s[0] > shade ? UNKNOWN : A.GREY));
+  thickOf((v) => v === I_BROWN, () => A.PAVED);
+  thickOf((v) => v === I_BLUE, (s) => (s[2] / s[0] > 150 ? A.SHALLOW : A.WATER));
   thickOf((v) => v === I_OLIVE, () => A.OOB);
-  // thin black lines: a path when long (30 m across), or a dash of a dashed path — 4 m across at least, with another
-  // piece of line close to its end (a gap well under its own length); an isolated short line (a small cliff, a ruin, a
-  // fence's stretch) and dots (a vegetation boundary, stony ground) are not. Paths, and also fences, walls, long cliffs —
-  // what they are is the settings' choice
-  const thin = new Uint8Array(N);
-  for (let i = 0; i < N; i++) if (kind[i] === I_BLACK && !darkThick[i] && area[i] === UNKNOWN) thin[i] = 1;
-  const { lab, comps } = components(thin, w, h);
-  const ext = comps.map((c) => (c ? Math.hypot(c.x1 - c.x0 + 1, c.y1 - c.y0 + 1) * mpp : 0));
-  const long = ext.map((e) => e >= 30);
-  const S = Math.max(4, Math.round(30 / mpp)), buckets = new Map(), keyOf = (x, y) => Math.floor(x / S) * 65536 + Math.floor(y / S);
-  comps.forEach((c, id) => { if (c && ext[id] >= 2) { const k = keyOf((c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(id); } });
-  comps.forEach((c, id) => {
-    if (!c || long[id] || ext[id] < 4) return;
-    const g = Math.max(3, 0.4 * ext[id]) / mpp, cx = Math.floor((c.x0 + c.x1) / 2 / S), cy = Math.floor((c.y0 + c.y1) / 2 / S);
-    for (let bx = cx - 1; bx <= cx + 1 && !long[id]; bx++) for (let by = cy - 1; by <= cy + 1 && !long[id]; by++) {
-      for (const o of buckets.get(bx * 65536 + by) || []) {
-        if (o === id) continue;
-        const d = comps[o];
-        if (d.x0 <= c.x1 + g && d.x1 >= c.x0 - g && d.y0 <= c.y1 + g && d.y1 >= c.y0 - g) { long[id] = true; break; }
-      }
-    }
-  });
-  const path = new Uint8Array(N), blue = new Uint8Array(N);
-  for (let i = 0; i < N; i++) {
-    if (lab[i] && long[lab[i]]) path[i] = 1;
-    if (kind[i] === I_BLUE && area[i] === UNKNOWN) blue[i] = 1;
-  }
+  progress(0.6);
+  // the thin black lines: the paths' network (and also fences, walls, long cliffs — what they are is the settings' choice)
+  const thin = new Uint8Array(N), black = new Uint8Array(N);
+  const darkGrey = (i) => { const p = 4 * i, mx = Math.max(rgba[p], rgba[p + 1], rgba[p + 2]); return mx < 170 && mx - Math.min(rgba[p], rgba[p + 1], rgba[p + 2]) < 24; };
+  for (let i = 0; i < N; i++) if ((kind[i] === I_BLACK || (kind[i] === I_GREY && darkGrey(i))) && !darkThick[i] && area[i] === UNKNOWN) { thin[i] = 1; black[i] = kind[i] === I_BLACK ? 1 : 0; }
+  const path = new Uint8Array(N), lines = lineNetwork(thin, black, w, h, mpp, path);
+  progress(0.85);
+  const blue = new Uint8Array(N);
+  for (let i = 0; i < N; i++) if (kind[i] === I_BLUE && area[i] === UNKNOWN) blue[i] = 1;
   // the inks painted over: each unknown pixel takes the nearest area (a breadth-first fill from every known pixel)
   const q = new Int32Array(N);
   let qh = 0, qt = 0;
@@ -194,42 +540,45 @@ export function classify(rgba, w, h, mpp) {
     if (i >= w && area[i - w] === UNKNOWN) { area[i - w] = v; q[qt++] = i - w; }
     if (i + w < N && area[i + w] === UNKNOWN) { area[i + w] = v; q[qt++] = i + w; }
   }
-  return { area, path, blue, lw, ms: Date.now() - t0 };
+  progress(1);
+  return { area, path, blue, north, lw, k, lines, northLines: nlines, ms: Date.now() - t0 };
 }
 
 // ---- 2. cells -----------------------------------------------------------------------------------------------------------
 /**
- * The cells: cs × cs pixels each. Returns { cs, nx, ny, cls (most frequent area), path (any path pixel), blue (share of blue
- * line pixels, 0-255) }, a cell full of marsh lines becoming A.MARSH.
+ * The cells: cs × cs pixels each. Returns { cs, nx, ny, cls (most frequent area), path (the fastest path kind, gaps bridged
+ * included), raw (the same without the bridged gaps), blue (share of blue line pixels, 0-255), north (a north line taken out
+ * there) }, a cell full of marsh lines becoming A.MARSH.
  */
 export function cells(px, w, h, cs) {
   const nx = Math.ceil(w / cs), ny = Math.ceil(h / cs), M = nx * ny;
-  const cls = new Uint8Array(M), path = new Uint8Array(M), blue = new Uint8Array(M), count = new Int32Array(N_CLASSES);
+  const cls = new Uint8Array(M), path = new Uint8Array(M), raw = new Uint8Array(M), blue = new Uint8Array(M), north = new Uint8Array(M), count = new Int32Array(N_CLASSES);
   // a vector map's own layers (trace/vectorroutes.js): lines that block, handrails
   const vector = !!px.block, block = vector ? new Uint8Array(M) : null, hand = vector ? new Uint8Array(M) : null;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     count.fill(0);
-    let p = 0, b = 0, n = 0, bl = 0, ha = 0;
+    let p = 0, r = 0, b = 0, n = 0, bl = 0, ha = 0, no = 0;
     for (let y = j * cs; y < Math.min(h, (j + 1) * cs); y++) for (let x = i * cs; x < Math.min(w, (i + 1) * cs); x++) {
-      const k = y * w + x;
-      count[px.area[k]]++; p |= px.path[k]; b += px.blue[k]; n++;
+      const k = y * w + x, v = px.path[k];
+      count[px.area[k]]++; b += px.blue[k]; n++;
+      if (v) { const t = v & 3; if (t > p) p = t; if (!(v & PATH.BRIDGE) && t > r) r = t; }
+      if (px.north?.[k]) no = 1;
       if (vector) { bl |= px.block[k]; ha |= px.hand[k]; }
     }
     let best = 0;
     for (let c = 1; c < N_CLASSES; c++) if (count[c] > count[best]) best = c;
-    // an impassable area wins only when it fills half the cell: a building's corner does not close a street
     const k = j * nx + i;
-    cls[k] = best; path[k] = p; blue[k] = Math.round((255 * b) / Math.max(1, n));
+    cls[k] = best; path[k] = p; raw[k] = r; blue[k] = Math.round((255 * b) / Math.max(1, n)); north[k] = no;
     if (vector) { block[k] = bl; hand[k] = ha; }
   }
-  // a dashed path's gaps: a cell between two path cells is one
+  // a dashed path's last gaps: a cell between two path cells is one (the slower of the two)
   const fill = [];
   for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) {
     const k = j * nx + i;
     if (path[k]) continue;
-    if ((path[k - 1] && path[k + 1]) || (path[k - nx] && path[k + nx]) || (path[k - nx - 1] && path[k + nx + 1]) || (path[k - nx + 1] && path[k + nx - 1])) fill.push(k);
+    for (const [u, v] of [[k - 1, k + 1], [k - nx, k + nx], [k - nx - 1, k + nx + 1], [k - nx + 1, k + nx - 1]]) if (path[u] && path[v]) { fill.push([k, Math.min(path[u], path[v])]); break; }
   }
-  for (const k of fill) path[k] = 1;
+  for (const [k, v] of fill) path[k] = v;
   // marsh: blue lines over a fifth of the 5 × 5 cells around
   const marsh = [];
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
@@ -239,7 +588,7 @@ export function cells(px, w, h, cs) {
     if (s / n > 0.2 * 255 && blue[k] && cls[k] <= A.G3) marsh.push(k);
   }
   for (const k of marsh) cls[k] = A.MARSH;
-  return { cs, nx, ny, cls, path, blue, vector, block, hand };
+  return { cs, nx, ny, cls, path, raw, blue, north, vector, block, hand };
 }
 
 // ---- 3. costs -------------------------------------------------------------------------------------------------------------
@@ -254,24 +603,26 @@ export const blackMode = (s) => (s.black && s.black !== "auto" ? s.black : s.map
  * ≥ 1). G: the cells; mpc: metres per cell.
  */
 export function costs(G, s, mpc) {
-  const { nx, ny, cls, path } = G, M = nx * ny, sp = { ...DEFAULTS.speeds, ...(s.speeds || {}) };
+  const { nx, ny, cls, path } = G, raw = G.raw || path, M = nx * ny, sp = { ...DEFAULTS.speeds, ...(s.speeds || {}) };
   const inv = (v) => 100 / Math.max(1, v);
   const F = new Float32Array(N_CLASSES);
   F[A.WHITE] = 1; F[A.OPEN] = inv(sp.open); F[A.ROUGH] = inv(sp.rough); F[A.G1] = inv(sp.g1); F[A.G2] = inv(sp.g2); F[A.G3] = inv(sp.g3);
   F[A.WATER] = Infinity; F[A.SHALLOW] = inv(sp.shallow); F[A.PAVED] = inv(sp.paved); F[A.OOB] = Infinity; F[A.BUILDING] = Infinity;
   F[A.GREY] = s.map === "sprint" ? Infinity : inv(sp.grey); F[A.MARSH] = inv(sp.marsh);
-  const bm = G.vector ? "paths" : blackMode(s), fPath = inv(sp.path);     // a vector map's paths are paths
-  const f = new Float32Array(M), hand = new Uint8Array(M);
+  const bm = G.vector ? "paths" : blackMode(s);                          // a vector map's paths are paths
+  const FP = [1, inv(sp.small), inv(sp.path), inv(sp.track)];
+  const f = new Float32Array(M), hand = new Uint8Array(M), isPath = new Uint8Array(M);
   for (let k = 0; k < M; k++) {
     let v = G.block?.[k] ? Infinity : F[cls[k]];
-    // a path crosses a wall or a fence (a gate), never an area out of bounds
-    if (path[k] && cls[k] !== A.OOB) { if (bm === "paths") v = Math.min(v, fPath); else if (bm === "obstacles") v = Infinity; }
+    // a path crosses a wall or a fence (a gate), never an area out of bounds; a gap bridged opens nothing
+    if (bm === "paths" && path[k] && cls[k] !== A.OOB && (raw[k] || v < Infinity)) { v = Math.min(v, FP[path[k]]); isPath[k] = 1; }
+    else if (bm === "obstacles" && raw[k]) v = Infinity;
     f[k] = v;
   }
   // the handrails: paths (or black lines), streams, the edges between areas seen differently, the banks of what blocks
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const k = j * nx + i;
-    if (path[k] || G.blue[k] > 25 || G.hand?.[k] || G.block?.[k]) { hand[k] = 1; continue; }
+    if (isPath[k] || raw[k] || G.blue[k] > 25 || G.hand?.[k] || G.block?.[k]) { hand[k] = 1; continue; }
     const g = GROUP[cls[k]];
     if ((i < nx - 1 && GROUP[cls[k + 1]] !== g) || (j < ny - 1 && GROUP[cls[k + nx]] !== g)) { hand[k] = 1; if (i < nx - 1) hand[k + 1] = 1; if (j < ny - 1) hand[k + nx] = 1; }
   }
@@ -294,8 +645,8 @@ export function costs(G, s, mpc) {
     d[k] = v;
   }
   const R = Math.max(0, Math.min(100, s.risk ?? DEFAULTS.risk)) / 100, r = new Float32Array(M);
-  for (let k = 0; k < M; k++) r[k] = 1 + (path[k] && bm === "paths" ? 0 : R * VIS[cls[k]] * Math.min(1, (d[k] * mpc) / RISK_DIST));
-  return { f, r, fMin: Math.min(fPath, ...[...F].filter((v) => v > 0)) };
+  for (let k = 0; k < M; k++) r[k] = 1 + (isPath[k] ? 0 : R * VIS[cls[k]] * Math.min(1, (d[k] * mpc) / RISK_DIST));
+  return { f, r, isPath, fMin: Math.min(...FP.slice(1), ...[...F].filter((v) => v > 0)) };
 }
 export const RISK_DIST = 50;                              // metres from a handrail at which the risk is full
 
@@ -308,6 +659,7 @@ export function slopeFactor(g, climb) {
 
 // ---- 4. routes ------------------------------------------------------------------------------------------------------------
 const NB = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1], [1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+const OPP = NB.map(([dx, dy]) => NB.findIndex(([x, y]) => x === -dx && y === -dy));
 
 /** A binary heap of (key, value) in typed arrays, grown as needed (stale entries skipped by the caller). */
 class Heap {
@@ -324,7 +676,6 @@ class Heap {
     let i = 0;
     for (;;) { let c = 2 * i + 1; if (c >= this.n) break; if (c + 1 < this.n && K[c + 1] < K[c]) c++; if (K[c] >= key) break; K[i] = K[c]; V[i] = V[c]; i = c; }
     K[i] = key; V[i] = val;
-    this.topKey = K[0];
     return top;
   }
 }
@@ -339,18 +690,24 @@ export function context(G, C, h, em, s) {
 }
 
 /** The physical time (at 1 s per metre of white forest on the flat), the cost (with the navigation risk) of a step. */
-function step(X, a, b, n, mul = null) {
+function step(X, a, b, n) {
   const { f, r } = X.C;
-  let fa = f[a], fb = f[b];
+  const fa = f[a], fb = f[b];
   if (!(fa < Infinity) || !(fb < Infinity)) return null;
   const L = X.len[n], g = X.h ? (X.h[b] - X.h[a]) / L : 0;
   const tm = L * ((fa + fb) / 2) * slopeFactor(g, X.s.climb ?? DEFAULTS.climb);
-  return [tm, tm * ((r[a] + r[b]) / 2) * (mul ? (mul[a] + mul[b]) / 2 : 1)];
+  return [tm, tm * ((r[a] + r[b]) / 2)];
+}
+/** Whether the step n from cell (i, j) squeezes between blocked cells: a diagonal between two, a knight's move over one. */
+function squeezed(X, i, j, n) {
+  const { nx } = X.G, f = X.C.f, [dx, dy] = NB[n];
+  if (n >= 4 && n < 8) return !(f[j * nx + i + dx] < Infinity) && !(f[(j + dy) * nx + i] < Infinity);
+  if (n >= 8) { const sx = Math.sign(dx), sy = Math.sign(dy), m1 = Math.abs(dx) === 2 ? j * nx + i + sx : (j + sy) * nx + i, m2 = (j + sy) * nx + i + sx; return !(f[m1] < Infinity) || !(f[m2] < Infinity); }
+  return false;
 }
 
-/** A* from cell a to cell b within the region { i0, j0, i1, j1, rw, inside (per region cell) }; mul: an extra cost per
- *  cell (variants). The search's arrays are the region's size. */
-function astar(X, a, b, reg, mul) {
+/** A* from cell a to cell b within the region { i0, j0, i1, j1, rw, inside (per region cell) }. */
+function astar(X, a, b, reg) {
   const { nx } = X.G, { i0, j0, i1, j1, rw } = reg, RN = rw * (j1 - j0 + 1);
   const loc = (k) => { const i = k % nx; return ((k - i) / nx - j0) * rw + (i - i0); };
   const g = new Float64Array(RN).fill(Infinity), from = new Int32Array(RN).fill(-1), done = new Uint8Array(RN);
@@ -368,11 +725,8 @@ function astar(X, a, b, reg, mul) {
       const [dx, dy] = NB[n], I = i + dx, J = j + dy;
       if (I < i0 || J < j0 || I > i1 || J > j1) continue;
       const q = J * nx + I, lq = (J - j0) * rw + (I - i0);
-      if (done[lq] || !reg.inside[lq]) continue;
-      // a diagonal never squeezes between two blocked cells; a knight's move never jumps over one
-      if (n >= 4 && n < 8 && !(X.C.f[j * nx + I] < Infinity) && !(X.C.f[J * nx + i] < Infinity)) continue;
-      if (n >= 8) { const sx = Math.sign(dx), sy = Math.sign(dy), m1 = Math.abs(dx) === 2 ? j * nx + i + sx : (j + sy) * nx + i, m2 = (j + sy) * nx + i + sx; if (!(X.C.f[m1] < Infinity) || !(X.C.f[m2] < Infinity)) continue; }
-      const st = step(X, k, q, n, mul);
+      if (done[lq] || !reg.inside[lq] || squeezed(X, i, j, n)) continue;
+      const st = step(X, k, q, n);
       if (!st) continue;
       const v = g[lk] + st[1];
       if (v < g[lq]) { g[lq] = v; from[lq] = k; H.push(v + hOf(q), q); }
@@ -384,7 +738,34 @@ function astar(X, a, b, reg, mul) {
   return out.reverse();
 }
 
-/** The cells of a route measured: time, cost, length, climb and descent, the share on paths. */
+/** A complete shortest-path tree over the region from src (reverse: the costs of reaching src): per region cell its cost g and
+ *  par, the next cell toward src. */
+function tree(X, src, reg, reverse) {
+  const { nx } = X.G, { i0, j0, i1, j1, rw } = reg, RN = rw * (j1 - j0 + 1);
+  const loc = (k) => { const i = k % nx; return ((k - i) / nx - j0) * rw + (i - i0); };
+  const g = new Float64Array(RN).fill(Infinity), par = new Int32Array(RN).fill(-1), done = new Uint8Array(RN);
+  const H = new Heap();
+  g[loc(src)] = 0; H.push(0, src);
+  while (H.n) {
+    const k = H.pop(), lk = loc(k);
+    if (done[lk]) continue;
+    done[lk] = 1;
+    const i = k % nx, j = (k - i) / nx;
+    for (let n = 0; n < 16; n++) {
+      const [dx, dy] = NB[n], I = i + dx, J = j + dy;
+      if (I < i0 || J < j0 || I > i1 || J > j1) continue;
+      const q = J * nx + I, lq = (J - j0) * rw + (I - i0);
+      if (done[lq] || !reg.inside[lq] || squeezed(X, i, j, n)) continue;
+      const st = reverse ? step(X, q, k, OPP[n]) : step(X, k, q, n);
+      if (!st) continue;
+      const v = g[lk] + st[1];
+      if (v < g[lq]) { g[lq] = v; par[lq] = k; H.push(v, q); }
+    }
+  }
+  return { g, par, loc };
+}
+
+/** The cells of a route measured: time, cost, length, climb and descent, the share on paths; cum: the cost cell by cell. */
 function measure(X, path) {
   const { nx } = X.G;
   let time = 0, cost = 0, len = 0, onPath = 0, up = 0, down = 0;
@@ -394,7 +775,7 @@ function measure(X, path) {
     const n = NB.findIndex(([x, y]) => x === dx && y === dy);
     const st = step(X, a, b, n) || [X.len[n] * 4, X.len[n] * 4];
     time += st[0]; cost += st[1]; len += X.len[n]; cum[q] = cost;
-    if (X.G.path[a] && X.G.path[b]) onPath += X.len[n];
+    if (X.C.isPath[a] && X.C.isPath[b]) onPath += X.len[n];
   }
   if (X.h) {                                             // the climb on heights smoothed over ~5 cells (the model's noise)
     const hs = path.map((k, i) => { let s = 0, n = 0; for (let d = -2; d <= 2; d++) { const p = path[i + d]; if (p != null) { s += X.h[p]; n++; } } return s / n; });
@@ -403,18 +784,74 @@ function measure(X, path) {
   return { time, cost, len, up, down, onPath: len ? onPath / len : 0, cum };
 }
 
-/** Douglas-Peucker on [x, y] points. */
-function simplify(pts, tol) {
-  if (pts.length < 3) return pts;
-  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
-  const st = [[0, pts.length - 1]];
-  while (st.length) {
-    const [a, b] = st.pop(), [ax, ay] = pts[a], [bx, by] = pts[b], L = Math.hypot(bx - ax, by - ay) || 1;
-    let best = -1, bd = tol;
-    for (let i = a + 1; i < b; i++) { const d = Math.abs((bx - ax) * (ay - pts[i][1]) - (ax - pts[i][0]) * (by - ay)) / L; if (d > bd) { bd = d; best = i; } }
-    if (best > 0) { keep[best] = 1; st.push([a, best], [best, b]); }
+/**
+ * A straight line between two points in cell units (x, y; a cell's centre at i + 0.5) measured on the model, sampled every
+ * half cell: { time, cost, len, onPath (metres), hs (the heights met) }; an impassable cell costs `cap` × white forest
+ * (null: the line is refused).
+ */
+function segment(X, x0, y0, x1, y1, cap) {
+  const { nx, ny } = X.G, climb = X.s.climb ?? DEFAULTS.climb, f = X.C.f, r = X.C.r;
+  const at = (x, y) => Math.min(ny - 1, Math.max(0, Math.floor(y))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(x)));
+  const u = x1 - x0, v = y1 - y0, d = Math.hypot(u * X.em[0][0] + v * X.em[1][0], u * X.em[0][1] + v * X.em[1][1]);
+  const out = { time: 0, cost: 0, len: d, onPath: 0, hs: [] };
+  if (!d) return out;
+  const n = Math.max(1, Math.ceil(d / (X.mpc / 2))), L = d / n;
+  let ka = at(x0, y0);
+  for (let s = 1; s <= n; s++) {
+    const kb = at(x0 + (u * s) / n, y0 + (v * s) / n);
+    let fa = f[ka], fb = f[kb];
+    if (!(fa < Infinity) || !(fb < Infinity)) { if (cap == null) return null; fa = Math.min(cap, fa); fb = Math.min(cap, fb); }
+    const g = X.h ? Math.max(-1, Math.min(1, (X.h[kb] - X.h[ka]) / L)) : 0;
+    const tm = L * ((fa + fb) / 2) * slopeFactor(g, climb);
+    out.time += tm; out.cost += tm * ((r[ka] + r[kb]) / 2);
+    if (X.C.isPath[ka] && X.C.isPath[kb]) out.onPath += L;
+    if (X.h) out.hs.push(X.h[kb]);
+    ka = kb;
   }
-  return pts.filter((_, i) => keep[i]);
+  return out;
+}
+/** A polyline in cell units measured: time, cost, len, up, down (heights smoothed over ~9 samples), onPath (share). */
+function polyline(X, pts, cap) {
+  let time = 0, cost = 0, len = 0, on = 0, up = 0, down = 0, hPrev = null;
+  const hs = [];
+  for (let i = 1; i < pts.length; i++) {
+    const s = segment(X, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cap);
+    if (!s) return null;
+    time += s.time; cost += s.cost; len += s.len; on += s.onPath;
+    for (const v of s.hs) hs.push(v);
+  }
+  for (let i = 0; i < hs.length; i++) {
+    let s = 0, n = 0;
+    for (let d = -4; d <= 4; d++) { const v = hs[i + d]; if (v != null) { s += v; n++; } }
+    const v = s / n;
+    if (hPrev != null) { if (v > hPrev) up += v - hPrev; else down += hPrev - v; }
+    hPrev = v;
+  }
+  return { time, cost, len, up, down, onPath: len ? on / len : 0 };
+}
+
+/** A route on the grid pulled tight, its zigzags between the 16 directions taken out: from each point kept, the farthest
+ *  later cell reached by a straight line that costs no more than the grid's way there, crosses nothing impassable and keeps
+ *  within two cells of it (a shortcut to another route is no tightening). Points in cell units. */
+function tighten(X, path, cum) {
+  const { nx } = X.G, P = path.map((k) => { const i = k % nx; return [i + 0.5, (k - i) / nx + 0.5]; });
+  const close = (i, j) => {
+    const [ax, ay] = P[i], [bx, by] = P[j], L = Math.hypot(bx - ax, by - ay) || 1;
+    for (let m = i + 1; m < j; m++) if (Math.abs((bx - ax) * (ay - P[m][1]) - (ax - P[m][0]) * (by - ay)) / L > 2) return false;
+    return true;
+  };
+  const out = [P[0]];
+  let i = 0;
+  while (i < P.length - 1) {
+    let best = i + 1, misses = 0;
+    for (let j = i + 2; j < P.length && misses < 16; j++) {
+      const s = close(i, j) && segment(X, P[i][0], P[i][1], P[j][0], P[j][1], null);
+      if (s && s.cost <= cum[j] - cum[i] + 0.05) { best = j; misses = 0; } else misses++;
+    }
+    out.push(P[best]);
+    i = best;
+  }
+  return out;
 }
 
 /** Cells within r cells of the route's cells (a disc around each, the route sampled every r / 2). */
@@ -442,21 +879,10 @@ function ellipse(X, a, b, semi) {
   for (let j = reg.j0; j <= reg.j1; j++) for (let i = reg.i0; i <= reg.i1; i++) reg.inside[(j - reg.j0) * reg.rw + i - reg.i0] = mOf(i - ai, j - aj) + mOf(i - bi, j - bj) <= 2 * semi ? 1 : 0;
   return reg;
 }
-/** A search region: the cells within r cells of a route. */
-function around(X, path, r) {
-  const { nx } = X.G, rr = Math.ceil(r);
-  let i0 = Infinity, j0 = Infinity, i1 = -1, j1 = -1;
-  for (const k of path) { const i = k % nx, j = (k - i) / nx; i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
-  const reg = { i0: Math.max(0, i0 - rr), j0: Math.max(0, j0 - rr), i1: Math.min(nx - 1, i1 + rr), j1: Math.min(X.G.ny - 1, j1 + rr) };
-  reg.rw = reg.i1 - reg.i0 + 1;
-  reg.inside = new Uint8Array(reg.rw * (reg.j1 - reg.j0 + 1));
-  near(X, path, r, (k) => { const i = k % nx, j = (k - i) / nx; if (i >= reg.i0 && i <= reg.i1 && j >= reg.j0 && j <= reg.j1) reg.inside[(j - reg.j0) * reg.rw + i - reg.i0] = 1; });
-  return reg;
-}
-/** Whether a route is locally optimal: every stretch of 30 % of its length (seven tested) costs at most 1 % (and 3 m) more
- *  than the best way between its ends — a bend of over ~16° in open ground fails. cum: the route's cost, cell by cell. */
-function locallyOptimal(X, path, cum) {
-  const total = cum[cum.length - 1], T = 0.3 * total;
+/** Whether a route is locally optimal: every stretch of `share` of its length (seven tested) costs at most 1 % (and 1 m) more
+ *  than the best way between its ends — a sharp bend in open ground fails. cum: the route's cost, cell by cell. */
+function locallyOptimal(X, path, cum, share = 0.3) {
+  const total = cum[cum.length - 1], T = share * total;
   for (let w = 1; w <= 7; w++) {
     const mid = (w / 8) * total;
     let u = 0, v = path.length - 1;
@@ -464,114 +890,198 @@ function locallyOptimal(X, path, cum) {
     while (v > 0 && cum[v] > mid + T / 2) v--;
     if (v - u < 4) continue;
     const reg = ellipse(X, path[u], path[v], 0.6 * cellMetres(X, path[u], path[v]) + 3 * X.mpc);
-    const q = astar(X, path[u], path[v], reg, null);
-    if (q && measure(X, q).cost * 1.01 + 3 < cum[v] - cum[u]) return false;
+    const q = astar(X, path[u], path[v], reg);
+    if (q && measure(X, q).cost * 1.01 + 1 < cum[v] - cum[u]) return false;
   }
   return true;
 }
 
 /**
- * The routes between map pixels pa and pb (cell coordinates come from G.cs): up to s.variants routes, the best first, each
- * { pts (map px), time (s at 1 s/m), cost, len, up, down, onPath, side } — side: -1 left of the straight line, 1 right,
- * 0 along it. null when no way was found.
+ * The search of a leg between map pixels pa and pb: { routes, dec }. routes: up to s.variants, the best first, each { pts (map
+ * px), time (s at 1 s/m), cost, len, up, down, onPath, side, how ("best", "plateau" or "cut") } — side: -1 left of the straight
+ * line, 1 right, 0 along it; null when no way was found. dec: the decision map, { i0, j0, rw, rh, T (the cost of the best route
+ * through each region cell, Infinity outside), best }.
  */
-export function legRoutes(X, pa, pb) {
-  const { nx, ny, cs } = X.G, M = nx * ny;
+export function legSearch(X, pa, pb) {
+  const { nx, ny, cs } = X.G;
   const cell = (p) => Math.min(ny - 1, Math.max(0, Math.floor(p[1] / cs))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(p[0] / cs)));
-  const a = cell(pa), b = cell(pb);
-  const L = cellMetres(X, a, b);
-  // the region: an ellipse around the leg, wide enough for a detour round a lake
-  const reg = ellipse(X, a, b, 0.65 * L + 90);
+  const a = cell(pa), b = cell(pb), L = cellMetres(X, a, b);
+  // the region: an ellipse around the leg, wide enough for a detour round a lake or by a track some way off
+  const reg = ellipse(X, a, b, 0.75 * L + 150);
   // the controls' own cells always passable: a control on a boulder, by a wall
   const saved = [];
   for (const k0 of [a, b]) near(X, [k0], 3, (k) => { if (!(X.C.f[k] < Infinity)) { saved.push([k, X.C.f[k]]); X.C.f[k] = 2; } });
   try {
     const wantN = Math.max(1, Math.min(4, X.s.variants ?? DEFAULTS.variants)), extra = 1 + (X.s.extra ?? DEFAULTS.extra) / 100;
-    const corridor = Math.max(20, 0.12 * L) / X.mpc;
-    const mul = new Float32Array(M).fill(1), seen = new Uint8Array(M);
-    const routes = [];
-    const best = astar(X, a, b, reg, null);
-    if (!best) return null;
-    routes.push({ cells: best, ...measure(X, best) });
-    near(X, best, corridor, (k) => { seen[k] = 1; mul[k] = 6; });
-    // the variants: the penalty method proposes a route away from those found; it is relaxed (searched again without the
-    // penalty, within a band around itself) and kept only if it stays apart from the others and is locally optimal — no
-    // stretch of a quarter of it can be cut short — so that a mere arc through uniform forest is not offered as a choice
-    const until = Date.now() + 4000;                    // the variants' search stops after 4 s
-    for (let tries = 0; tries < wantN + 2 && routes.length < wantN && Date.now() < until; tries++) {
-      const p = astar(X, a, b, reg, mul);
-      if (!p) break;
-      near(X, p, corridor, (k) => { mul[k] = Math.min(mul[k] * 2, 12); });
-      const band = around(X, p, 1.5 * corridor);
-      const q = astar(X, a, b, band, null) || p;
-      const m = measure(X, q);
-      if (m.cost > routes[0].cost * extra) continue;
+    const F = tree(X, a, reg, false), B = tree(X, b, reg, true), loc = F.loc;
+    const best = F.g[loc(b)];
+    if (!(best < Infinity)) return { routes: null, dec: null };
+    const { i0, j0, i1, j1, rw } = reg, rh = j1 - j0 + 1, RN = rw * rh;
+    const T = new Float32Array(RN);
+    for (let l = 0; l < RN; l++) T[l] = reg.inside[l] ? F.g[l] + B.g[l] : Infinity;
+    const glob = (l) => (Math.floor(l / rw) + j0) * nx + (l % rw) + i0;
+    // the plateaus: the steps u → v both trees take (F reaches v from u, B leaves u by v), chained; a long one is a route of
+    // its own — every cell on it lies on the best route through itself
+    const next = new Int32Array(RN).fill(-1), hasIn = new Uint8Array(RN);
+    for (let l = 0; l < RN; l++) {
+      if (!reg.inside[l]) continue;
+      const u = F.par[l];
+      if (u < 0) continue;
+      const lu = loc(u);
+      if (B.par[lu] === glob(l)) { next[lu] = l; hasIn[l] = 1; }
+    }
+    const minPlateau = Math.max(15, 0.1 * L), chains = [];
+    for (let l = 0; l < RN; l++) {
+      if (next[l] < 0 || hasIn[l]) continue;
+      let len = 0, prev = glob(l), first = prev;
+      for (let c = l; next[c] >= 0; c = next[c]) { const d = glob(next[c]); len += cellMetres(X, prev, d); prev = d; }
+      if (len >= minPlateau && T[l] <= best * extra) chains.push({ cell: first, cost: T[l], len });
+    }
+    chains.sort((x, y) => y.len - x.len);
+    // the cuts: along lines square to the leg at every tenth of it, each valley of the cost through a cell — prominent enough
+    // that one must climb 1.5 % of the best (4 s at least) on both sides to reach a lower one — is a corridor of its own; the
+    // ridges between them tell which valley a route crosses each line in
+    const cuts = [], lines = [];
+    const ai = a % nx, aj = (a - ai) / nx, bi = b % nx, bj = (b - bi) / nx, Lc = Math.hypot(bi - ai, bj - aj) || 1;
+    const ux = (bi - ai) / Lc, uy = (bj - aj) / Lc, R = Math.ceil((0.75 * L + 150) / X.mpc), prom = Math.max(4, 0.015 * best);
+    for (let fr = 0.1; fr < 0.95; fr += 0.1) {
+      const cx = ai + fr * (bi - ai), cy = aj + fr * (bj - aj), V = [], K = [];
+      for (let t = -R; t <= R; t++) {
+        const I = Math.round(cx - uy * t), J = Math.round(cy + ux * t);
+        let v = Infinity, k = -1;
+        if (I >= i0 && J >= j0 && I <= i1 && J <= j1) { const l = (J - j0) * rw + (I - i0); if (reg.inside[l]) { v = T[l]; k = J * nx + I; } }
+        V.push(v); K.push(k);
+      }
+      const mins = [];
+      for (let t = 1; t < V.length - 1; t++) {
+        const v = V[t];
+        if (!(v <= best * extra) || !(v <= V[t - 1]) || !(v < V[t + 1])) continue;
+        let left = v, right = v, lo = true, ro = true;
+        for (let u = t - 1; u >= 0; u--) { if (V[u] < v) { lo = false; break; } left = Math.max(left, V[u]); }
+        for (let u = t + 1; u < V.length; u++) { if (V[u] < v) { ro = false; break; } right = Math.max(right, V[u]); }
+        if (Math.min(lo ? Infinity : left, ro ? Infinity : right) - v >= prom) { cuts.push({ cell: K[t], cost: v }); mins.push(t); }
+      }
+      const ridges = [];
+      for (let m = 1; m < mins.length; m++) { let top = mins[m - 1]; for (let t = mins[m - 1]; t <= mins[m]; t++) if (!(V[t] <= V[top])) top = t; ridges.push(top); }
+      if (ridges.length) lines.push({ fr, cx, cy, ridges });
+    }
+    // a route's valleys: on each line with more than one, the valley it crosses it in (its first crossing)
+    const valleys = (q) => {
+      const out = new Set();
+      for (const ln of lines) {
+        const s0 = Lc * ln.fr;
+        let prev = null;
+        for (const k of q) {
+          const i = k % nx, j = (k - i) / nx, s = (i - ai) * ux + (j - aj) * uy;
+          if (prev != null && prev < s0 && s >= s0) {
+            const t = Math.round((i - ln.cx) * -uy + (j - ln.cy) * ux) + R;
+            out.add(`${ln.fr.toFixed(1)}:${ln.ridges.filter((r) => r < t).length}`);
+            break;
+          }
+          prev = s;
+        }
+      }
+      return out;
+    };
+    // the best route through a cell: the forward tree back to the start, the backward tree on to the control
+    const via = (k) => {
+      const head = [];
+      for (let c = k; c !== -1; c = F.par[loc(c)]) { head.push(c); if (c === a) break; }
+      head.reverse();
+      for (let c = B.par[loc(k)]; c !== -1; c = B.par[loc(c)]) { head.push(c); if (c === b) break; }
+      return head;
+    };
+    const cands = [{ how: "best", cell: b }, ...chains.slice(0, 1).map((c) => ({ how: "plateau", ...c })),
+      ...[...cuts.map((c) => ({ how: "cut", ...c })), ...chains.slice(1).map((c) => ({ how: "plateau", ...c }))].sort((x, y) => x.cost - y.cost)];
+    // a choice is kept when it lies for a fifth of it away from the routes kept, and either crosses the leg in a valley none of
+    // them crosses it in and is locally optimal over 30 % stretches, or lies for 30 % of it apart and is locally optimal over
+    // half of it — the straight way beside a track is a choice, a mere arc through uniform forest (the best route's valley,
+    // and a bend) is not
+    const corridor = Math.max(20, 0.12 * L) / X.mpc, seen = new Uint8Array(nx * ny), found = [], used = new Set();
+    const until = Date.now() + 20000;                   // the choices' checks stop after 20 s
+    for (const c of cands) {
+      if (found.length >= wantN || (found.length && Date.now() > until)) break;
+      const q = via(c.cell), vs = valleys(q);
       let out = 0;
       for (const k of q) if (!seen[k]) out++;
-      if (out / q.length < 0.3 || !locallyOptimal(X, q, m.cum)) continue;
-      routes.push({ cells: q, ...m });
-      near(X, q, corridor, (k) => { seen[k] = 1; mul[k] = Math.max(mul[k], 6); });
+      if (found.length && out / q.length < 0.2) continue;
+      const m = measure(X, q);
+      if (found.length && m.cost > best * extra) continue;
+      const fresh = [...vs].some((v) => !used.has(v));
+      if (found.length && !(fresh ? locallyOptimal(X, q, m.cum, 0.3) : out / q.length >= 0.3 && locallyOptimal(X, q, m.cum, 0.5))) continue;
+      found.push({ cells: q, cum: m.cum, how: c.how });
+      for (const v of vs) used.add(v);
+      near(X, q, corridor, (k) => { seen[k] = 1; });
     }
-    if (!routes.length) return null;
-    routes.sort((x, y) => x.cost - y.cost);
-    return routes.map((r) => {
-      const pts = simplify(r.cells.map((k) => { const i = k % nx; return [(i + 0.5) * cs, ((k - i) / nx + 0.5) * cs]; }), 0.7 * cs);
+    // each pulled tight and measured off the grid, as a runner's route is
+    const routes = found.map((r) => {
+      const P = tighten(X, r.cells, r.cum), m = polyline(X, P, 4);
+      const pts = P.map(([x, y]) => [x * cs, y * cs]);
       pts[0] = [pa[0], pa[1]]; pts[pts.length - 1] = [pb[0], pb[1]];
-      // the side: the signed area between the route and the straight line, against the leg's length squared
-      let area = 0, dev = 0;
-      const ux = pb[0] - pa[0], uy = pb[1] - pa[1], l2 = ux * ux + uy * uy || 1;
-      for (let i = 1; i < pts.length; i++) {
-        const c1 = ((pts[i - 1][0] - pa[0]) * uy - (pts[i - 1][1] - pa[1]) * ux), c2 = ((pts[i][0] - pa[0]) * uy - (pts[i][1] - pa[1]) * ux);
-        const t1 = ((pts[i - 1][0] - pa[0]) * ux + (pts[i - 1][1] - pa[1]) * uy) / l2, t2 = ((pts[i][0] - pa[0]) * ux + (pts[i][1] - pa[1]) * uy) / l2;
-        area += ((c1 + c2) / 2) * (t2 - t1);
-        dev = Math.max(dev, Math.abs(c2) / Math.sqrt(l2));
-      }
-      const side = dev < 0.08 * Math.sqrt(l2) || Math.abs(area) / l2 < 0.02 ? 0 : area > 0 ? -1 : 1;
-      return { pts, time: r.time, cost: r.cost, len: r.len, up: r.up, down: r.down, onPath: r.onPath, side };
-    });
+      return { pts, ...m, how: r.how, side: sideOf(pts, pa, pb) };
+    }).sort((x, y) => x.cost - y.cost);
+    return { routes, dec: { i0, j0, rw, rh, T, best, cs } };
   } finally { for (const [k, v] of saved) X.C.f[k] = v; }
+}
+/** The routes alone (legSearch's). */
+export const legRoutes = (X, pa, pb) => legSearch(X, pa, pb).routes;
+
+/** The side a route passes the straight line on: the signed area between them against the leg's length squared. */
+function sideOf(pts, pa, pb) {
+  let area = 0, dev = 0;
+  const ux = pb[0] - pa[0], uy = pb[1] - pa[1], l2 = ux * ux + uy * uy || 1;
+  for (let i = 1; i < pts.length; i++) {
+    const c1 = ((pts[i - 1][0] - pa[0]) * uy - (pts[i - 1][1] - pa[1]) * ux), c2 = ((pts[i][0] - pa[0]) * uy - (pts[i][1] - pa[1]) * ux);
+    const t1 = ((pts[i - 1][0] - pa[0]) * ux + (pts[i - 1][1] - pa[1]) * uy) / l2, t2 = ((pts[i][0] - pa[0]) * ux + (pts[i][1] - pa[1]) * uy) / l2;
+    area += ((c1 + c2) / 2) * (t2 - t1);
+    dev = Math.max(dev, Math.abs(c2) / Math.sqrt(l2));
+  }
+  return dev < 0.08 * Math.sqrt(l2) || Math.abs(area) / l2 < 0.02 ? 0 : area > 0 ? -1 : 1;
 }
 
 /**
- * Any route (a runner's, in map px) measured on the same model: time (s at 1 s/m), cost, len, up, down. An impassable cell
- * crossed (a misread colour, the GPS's noise) counts as four times white forest.
+ * The decision map as an image, one pixel a region cell: the time lost going through each point against the best route —
+ * dark green on a best route, through lighter green and yellow to orange at the variants' limit (extra, %), nothing beyond.
  */
-export function lineRoute(X, pts) {
-  const { nx, ny, cs } = X.G, climb = X.s.climb ?? DEFAULTS.climb;
-  const at = (x, y) => Math.min(ny - 1, Math.max(0, Math.floor(y / cs))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(x / cs)));
-  const m = (dx, dy) => { const u = dx / cs, v = dy / cs; return Math.hypot(u * X.em[0][0] + v * X.em[1][0], u * X.em[0][1] + v * X.em[1][1]); };
-  let time = 0, cost = 0, len = 0, up = 0, down = 0, hPrev = null;
-  const hs = [];
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], d = m(x1 - x0, y1 - y0);
-    if (!d) continue;
-    const n = Math.max(1, Math.ceil(d / (X.mpc / 2)));
-    for (let s = 0; s < n; s++) {
-      const xa = x0 + ((x1 - x0) * s) / n, ya = y0 + ((y1 - y0) * s) / n, xb = x0 + ((x1 - x0) * (s + 1)) / n, yb = y0 + ((y1 - y0) * (s + 1)) / n;
-      const ka = at(xa, ya), kb = at(xb, yb), L = d / n;
-      const fa = Math.min(4, X.C.f[ka]), fb = Math.min(4, X.C.f[kb]);
-      const g = X.h ? (X.h[kb] - X.h[ka]) / L : 0;
-      const tm = L * ((fa + fb) / 2) * slopeFactor(Math.max(-1, Math.min(1, g)), climb);
-      time += tm; cost += tm * ((X.C.r[ka] + X.C.r[kb]) / 2); len += L;
-      if (X.h) hs.push(X.h[kb]);
-    }
+export function decisionPicture(dec, extra) {
+  const { rw, rh, T, best } = dec, out = new Uint8ClampedArray(rw * rh * 4), lim = Math.max(0.01, extra / 100);
+  const stops = [[0, [0, 104, 55]], [0.15, [26, 152, 80]], [0.4, [166, 217, 106]], [0.7, [254, 224, 139]], [1, [244, 109, 67]]];
+  for (let l = 0; l < rw * rh; l++) {
+    const e = T[l] / best - 1;
+    if (!(e <= lim)) continue;
+    const t = Math.max(0, e / lim);
+    let s = 1;
+    while (s < stops.length - 1 && stops[s][0] < t) s++;
+    const [t0, c0] = stops[s - 1], [t1, c1] = stops[s], f = Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
+    for (let c = 0; c < 3; c++) out[4 * l + c] = c0[c] + f * (c1[c] - c0[c]);
+    out[4 * l + 3] = 230 - 130 * t;
   }
-  for (let i = 0; i < hs.length; i++) {
-    let s = 0, n = 0;
-    for (let d = -4; d <= 4; d++) { const v = hs[i + d]; if (v != null) { s += v; n++; } }
-    const v = s / n;
-    if (hPrev != null) { if (v > hPrev) up += v - hPrev; else down += hPrev - v; }
-    hPrev = v;
-  }
-  return { time, cost, len, up, down };
+  return out;
 }
 
-/** The colours of the terrain as read, for a picture of the cells (RGBA, one pixel a cell). */
-export const CLASS_RGB = [[255, 255, 255], [250, 200, 60], [253, 232, 160], [200, 235, 185], [140, 210, 120], [60, 160, 70], [60, 140, 230], [150, 200, 240], [215, 170, 120], [140, 140, 20], [40, 40, 40], [160, 160, 160], [110, 180, 200]];
+/**
+ * Any route (a runner's, in map px) measured on the same model: time (s at 1 s/m), cost, len, up, down, onPath. An impassable
+ * cell crossed (a misread colour, the GPS's noise) counts as four times white forest.
+ */
+export function lineRoute(X, pts) {
+  const cs = X.G.cs;
+  return polyline(X, pts.map(([x, y]) => [x / cs, y / cs]), 4);
+}
+
+/** The colours of the terrain as read, for a picture of the cells (RGBA, one pixel a cell): the areas, the three path kinds,
+ *  a black line that blocks, a north line taken out. */
+export const CLASS_RGB = [[255, 255, 255], [255, 186, 54], [255, 228, 150], [196, 234, 180], [120, 200, 100], [40, 140, 60], [40, 120, 230], [140, 190, 245], [205, 160, 110], [130, 130, 20], [70, 40, 110], [150, 150, 150], [80, 170, 190]];
+export const PATH_RGB = [null, [255, 120, 160], [230, 30, 60], [130, 0, 30]];
+export const BLOCK_RGB = [0, 0, 0], NORTH_RGB = [0, 200, 220];
+/** The legend: [key, rgb] — the areas' keys as the speeds' (routeplan.js words them). */
+export const LEGEND = [["track", PATH_RGB[3]], ["path", PATH_RGB[2]], ["small", PATH_RGB[1]], ["block", BLOCK_RGB], ["white", CLASS_RGB[A.WHITE]],
+  ["open", CLASS_RGB[A.OPEN]], ["rough", CLASS_RGB[A.ROUGH]], ["g1", CLASS_RGB[A.G1]], ["g2", CLASS_RGB[A.G2]], ["g3", CLASS_RGB[A.G3]],
+  ["marsh", CLASS_RGB[A.MARSH]], ["water", CLASS_RGB[A.WATER]], ["shallow", CLASS_RGB[A.SHALLOW]], ["paved", CLASS_RGB[A.PAVED]],
+  ["grey", CLASS_RGB[A.GREY]], ["building", CLASS_RGB[A.BUILDING]], ["oob", CLASS_RGB[A.OOB]], ["north", NORTH_RGB]];
 export function picture(X) {
-  const { nx, ny, cls, path } = X.G, out = new Uint8ClampedArray(nx * ny * 4);
+  const { nx, ny, cls, path } = X.G, raw = X.G.raw || path, out = new Uint8ClampedArray(nx * ny * 4);
   for (let k = 0; k < nx * ny; k++) {
-    const c = path[k] ? (X.C.f[k] < Infinity ? [0, 0, 0] : [200, 0, 0]) : CLASS_RGB[cls[k]];
+    const c = X.C.isPath[k] ? PATH_RGB[path[k]] : raw[k] && !(X.C.f[k] < Infinity) ? BLOCK_RGB : X.G.north?.[k] ? NORTH_RGB : CLASS_RGB[cls[k]];
     out[4 * k] = c[0]; out[4 * k + 1] = c[1]; out[4 * k + 2] = c[2]; out[4 * k + 3] = 255;
   }
   return out;

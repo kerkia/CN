@@ -18,7 +18,7 @@
 
 import { html, raw, $, $$, fmt, fmtDate, fileAccept } from "../util.js";
 import { coachTabs } from "../coachtabs.js";
-import { t } from "../i18n.js";
+import { t, tn } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
@@ -789,6 +789,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     drawExercise(g, lw);
     if (rcm.on && leg) {                                 // the route choices computed (administrators, a prototype)
       if (rcm.pic) { g.save(); g.globalAlpha = 0.6; g.imageSmoothingEnabled = false; g.drawImage(rcm.pic.canvas, 0, 0, rcm.pic.canvas.width * rcm.pic.cell, rcm.pic.canvas.height * rcm.pic.cell); g.restore(); }
+      RC.drawDecision(g, rcmDecision(leg));
       RC.drawRoutes(g, rcm.routes[leg], lw, rcmPace(), clock);
     }
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
@@ -1220,18 +1221,32 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24): the leg shown's
   // fastest routes on the map as read, each runner's own route measured on the same model
   const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
-    plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", dem: null, info: null,
+    plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", prog: null, warn: "", dem: null, info: null,
+    decOn: RC.decisionOn(), dec: null, decAsk: "",
     vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only
   // the map's pixels to metres and to longitude and latitude, from its georeference
   const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
   const rcmFrame = runners[0]?.fit || (() => { const [lon, lat] = geoInv(image.width / 2, image.height / 2); return fitFromGeo(course.geo, frameAt(lat, lon)); })();
   const rcmPace = () => RC.paceOf(rcm.s, rcm.auto[leg]);
-  const rcmStatus = (text) => { rcm.status = text; RC.setStatus(text); };
+  const rcmStatus = (text, frac = null) => { rcm.status = text; rcm.prog = frac; RC.setStatus(text, frac); };
+  const rcmFacts = (facts) => { rcm.info = { ...rcm.info, ...facts }; rcm.warn = RC.readingWarning(rcm.info, rcm.s); RC.setWarning(rcm.warn); };
+  const rcmReading = (f) => rcmStatus(t("rc.st.readingPct", { p: Math.round(100 * f) }), f);
+  /** The decision map of the leg shown, asked of the worker once (null until it has come: the map is drawn again then). */
+  function rcmDecision(j) {
+    if (!rcm.decOn || !rcm.plan || !j || !rcm.routes[j]) return null;
+    const a = ctrls[j - 1], b = ctrls[j], key = `${rcm.token}|${j}`;
+    if (rcm.dec?.key === key) return rcm.dec;
+    if (rcm.decAsk !== key) {
+      rcm.decAsk = key;
+      rcm.plan.decision([a.x, a.y], [b.x, b.y]).then((d) => { if (rcm.decAsk === key && d) { rcm.dec = { key, ...d }; mv.draw(); } }).catch((e) => console.warn(e));
+    }
+    return null;
+  }
   function rcmPanel() {
     const host = $("#rc-host");
     if (!host) return;
     const vt = rcmVector();
-    host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, status: rcm.status, auto: rcm.auto[leg],
+    host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, decision: rcm.decOn, status: rcm.status, progress: rcm.prog, warn: rcm.warn, auto: rcm.auto[leg],
       vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null }))}<div class="rc-leg" id="rc-leg"></div>`;
     RC.bindPanel(host, rcm.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
@@ -1251,6 +1266,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         if (rcm.on) rcmLeg(); else { rcm.token++; mv.draw(); rcmList(); }
       } else if (what === "picture-on") { rcm.picOn = true; rcmPicture(); }
       else if (what === "picture-off") { rcm.picOn = false; rcm.pic = null; mv.draw(); }
+      else if (what === "decision-on" || what === "decision-off") { rcm.decOn = what === "decision-on"; rcm.dec = null; rcm.decAsk = ""; mv.draw(); }
       else if (what === "pace") { rcmList(); mv.draw(); }
       else { if (what === "reset") rcmPanel(); rcm.routes = []; rcm.mine = []; rcm.auto = []; rcmLeg(); }
     });
@@ -1265,17 +1281,18 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   /** The map read and its heights, once. */
   function rcmPlan() {
     if (rcm.ready) return rcm.ready;
-    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), rcmVector());
+    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), rcmVector(), { map: rcm.s.map, onProgress: rcmReading });
     rcm.ready = (async () => {
-      rcmStatus(t("rc.st.reading"));
-      rcm.info = await rcm.plan.ready;
-      rcmStatus(t("rc.st.relief"));
+      rcmStatus(t("rc.st.reading"), 0);
+      rcm.info = null;
+      rcmFacts(await rcm.plan.ready);
+      rcmStatus(t("rc.st.relief"), 0);
       try {
         const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
         const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
         const key = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
         const g = await loadGrid({ key, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
-          onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) })) });
+          onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f) });
         await rcm.plan.dem(g); rcm.dem = g.source;
       } catch (e) { console.warn(e); rcm.dem = "none"; }
     })();
@@ -1288,9 +1305,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!j) { rcmStatus(t("rc.leg.none")); rcmList(); mv.draw(); return; }
     try {
       await rcmPlan();
-      await rcm.plan.settings(rcm.s);
+      const facts = await rcm.plan.settings(rcm.s, rcmReading);
       if (my !== rcm.token) return;
-      rcmStatus(t("rc.st.computing"));
+      if (facts) { rcmFacts(facts); rcm.pic = null; }
+      rcmStatus(t("rc.st.computing"), 0.5);
       const t0 = performance.now();
       const a = ctrls[j - 1], b = ctrls[j], routes = await rcm.plan.leg([a.x, a.y], [b.x, b.y]);
       if (my !== rcm.token) return;
@@ -1309,7 +1327,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       }
       rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
       rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
-        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : ""));
+        r: rcm.dem && rcm.dem !== "none" ? CREDIT[rcm.dem]?.text || rcm.dem : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
+        + (rcm.info.north ? ` · ${tn("rc.st.north", rcm.info.north)}` : ""));
       const p = $("#rc-pace"); if (p && rcm.auto[j]) p.placeholder = RC.minKm(rcm.auto[j]);
       if (rcm.picOn && !rcm.pic) rcmPicture();
       rcmList(); mv.draw();

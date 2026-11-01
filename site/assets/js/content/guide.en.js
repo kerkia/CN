@@ -234,25 +234,33 @@ export function build(X) {
             darker), the three greens by their depth, olive (out of bounds), and the "inks" printed over them — black, grey, brown, blue and the
             course's purple.</p>
           ${list([
-            html`An ink is a <b>line</b> or an <b>area</b> by its thickness, against the map's black lines: what remains once thin lines are erased is
-              an area. Thick black is a building or a large cliff (impassable), grey a building in sprint or bare rock in forest, thick brown a paved
-              area, thick blue water.`,
-            html`<b>Thin black lines</b> long enough (30 m), or the dashes of a dashed path, make the paths. A short isolated line (a small cliff, a
-              ruin) or dots (a vegetation boundary) do not.`,
+            html`<b>The paper first</b>: on a photo it is grey, warmer or colder, darker in a corner. Ozimut finds its colour (the light, nearly grey
+              pixels), measures it in squares of some fifty metres and brings it back to white everywhere; an exported map, white already, is left as
+              it is. A shade lighter than bare rock's grey is not rock.`,
+            html`<b>The north lines</b> — long, straight, parallel and evenly spaced — are taken out (cyan in "Show the terrain as read"): otherwise they
+              made strips of water or marsh across the map.`,
+            html`An ink is a <b>line</b> or an <b>area</b> by its thickness, measured in metres: what remains once lines narrower than 7 to 10 m are
+              erased (4 to 5 m in sprint) is an area. Thick black is a building or a large cliff (impassable), dark grey a building in sprint or bare
+              rock in forest, thick brown a paved area, thick blue water.`,
+            html`<b>Paths</b>: the thin black lines (or dark grey ones, as on a scan) make a network. Ozimut follows each line, its two ends and its
+              direction, and joins the dashes of a dashed path end to end when they face each other across their gap. A chain at least 30 m long is a
+              path, of one of three kinds from its dashes against the map's other paths: road or track (solid and thicker, or long thick dashes),
+              footpath, small path (short dashes). Dots, triangles and a short isolated line are not.`,
             html`<b>Thin blue lines</b> are streams and, close together, marshes. Contours, the course, text and dots are erased: each pixel takes the
               colour of the nearest terrain underneath.`,
             html`The map is then cut into cells of about 1.5 m, each with its most frequent terrain. "Show the terrain as read" draws these cells over
-              the map: the first thing to check.`,
+              the map, with their legend: the first thing to check. Ozimut warns when the reading looks wrong (much bare rock or buildings in forest,
+              one terrain nearly everywhere, no path at all).`,
           ])}
-          <p>Known limits: out-of-bounds hatching in purple is erased with the course; a badly lit photo blurs the colours; thin impassable cliffs,
-            walls and fences are black lines like paths (the "Thin black lines" setting says what they are).</p>`)}
+          <p>Known limits: out-of-bounds hatching in purple is erased with the course; thin impassable cliffs, walls and fences are black lines like
+            paths (the "Thin black lines" setting says what they are).</p>`)}
         ${slide("Coach · trial", "1b. Better: the OCAD or Mapper map", html`
           <p>The map's own file — OCAD (.ocd) or OpenOrienteering Mapper (.omap, .xmap) — tells the terrain without guessing: Ozimut reads it in
             your browser with the course setter's engine and draws each symbol exactly where it is.</p>
           ${list([
             html`<b>Areas</b> by their fill colour (or hatching: blue for a marsh, olive or purple for out of bounds), layer by layer as on the map
               — a green over a yellow wins. The colour rather than the number: ISOM 2000, ISOM 2017 and ISSprOM number differently.`,
-            html`<b>Lines</b> by their number: roads, tracks and paths (501 to 508) are paths, solid even where the map dashes them; impassable
+            html`<b>Lines</b> by their number: roads and vehicle tracks (501 to 504), footpaths (505), small paths and rides (506 to 508) are the three kinds of path, solid even where the map dashes them; impassable
               cliffs, walls and fences (201, 515, 518; 521 and 524 in ISOM 2000) stop the runner, except where a path crosses them; passable walls
               and fences and vegetation boundaries are handrails; blue lines are streams.`,
             html`Contours, point symbols, text and the course are left out.`,
@@ -263,7 +271,7 @@ export function build(X) {
         ${slide("Coach · trial", "2. The time of a step", html`
           <p>The time from one cell to the next is the distance, multiplied by the terrain's slowness and the slope's:</p>
           ${list([
-            html`<b>Terrain</b>: its speed as a share of runnable forest's — path 125%, open land 110%, rough open land 100%, the three greens 75, 45
+            html`<b>Terrain</b>: its speed as a share of runnable forest's — road or track 130%, footpath 125%, small path 110%, open land 110%, rough open land 100%, the three greens 75, 45
               and 20%, marsh 65%, paved area 120%. Water, buildings, out of bounds (and grey in sprint) are impassable. All set under "Speed by
               terrain".`,
             html`<b>Slope</b>, read on IGN's heights (RGE ALTI, in France) or the "Terrain Tiles" elsewhere: uphill, each metre climbed costs as
@@ -282,16 +290,22 @@ export function build(X) {
           <p>Visibility weighs 1 in runnable forest, 1.2 to 1.4 in the greens, 0.3 in open land, 0 on a path. At 20% (the default), crossing a
             forest with no feature costs up to a fifth more; at 0%, one runs straight like a runner who never makes a mistake. Caution chooses the
             route; the times shown remain running times, without it.</p>`)}
-        ${slide("Coach · trial", "4. Variants", html`
-          <p>Route A costs least, found by an A* search in an ellipse around the leg (wide enough to go round a lake). For the next ones, Ozimut
-            penalises the corridor of the routes found and searches again; each proposal is then pulled tight without the penalty in a band around
-            itself, and kept only if:</p>
+        ${slide("Coach · trial", "4. The variants and the decision map", html`
+          <p>Ozimut grows two shortest-path trees over an ellipse around the leg (wide enough to go round a lake or to fetch a track some way off):
+            one from the start, one from the control. Their sum at a point is the cost of the best route through that point; the lowest gives A, the
+            fastest, exact on the grid. The choices are read on that sum:</p>
           ${list([
-            html`it departs from the previous ones (at least 30% of it outside their corridors);`,
-            html`it costs no more than A plus the margin chosen (25% by default);`,
-            html`it is <b>locally optimal</b>: no stretch of 30% of its length can be shortened by over 1% — a wide arc through uniform forest is not
-              a choice, a detour by a path or round a green area is.`,
+            html`the <b>plateaus</b>: the stretches both trees agree on — a path followed for long is one;`,
+            html`the <b>valleys</b>: along lines across the leg, at every tenth of it, each dip of the sum parted from the others by a ridge (1.5% of
+              A's time at least) is a way through of its own — where do the good routes cross the leg?`,
           ])}
+          <p>A proposal is kept if it costs no more than A plus the margin chosen (25% by default), departs from the routes kept for at least a fifth
+            of it, and either crosses the leg in a valley none of them takes (no stretch of 30% of its length can be shortened by over 1%) or departs
+            from them for 30% and stays <b>locally optimal</b> over half of its length. An arc through uniform forest is not a choice; the straight
+            way beside a track, a detour by a path or round a green area are. Each route is then pulled tight in straight lines, off the grid's 16
+            directions, and measured as a runner's track is.</p>
+          <p>The <b>decision map</b> colours each point by the time lost going through it: dark green on a best route, then light green, yellow and
+            orange up to the variants' margin; nothing beyond. It shows at a glance the corridors of the good choices and what leaving them costs.</p>
           <p>Each variant says whether it goes left, right or straight against the line between the controls.</p>`)}
         ${slide("Coach · trial", "5. Your route", html`
           <p>The runner's track between two controls is measured on the same model, then matched to the nearest variant (within 25 m on average,

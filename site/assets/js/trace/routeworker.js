@@ -1,12 +1,15 @@
 // The route choices' worker (trace/routechoice.js): the map read once, then the legs asked one by one, off the page's thread.
-// Messages { id, op, ... } answered { id, ok, ... }: init (the image's bytes, its size, the metres of a pixel step) or layers (a
-// vector map's, drawn by trace/vectorroutes.js), dem (the ground's heights), settings, leg (two map points), line (a runner's
-// route), picture (the terrain as read).
+// Messages { id, op, ... } answered { id, ok, ... }, and while the map is read { id, progress } (0-1): init (the image's bytes,
+// its size, the metres of a pixel step, the map's kind) or layers (a vector map's, drawn by trace/vectorroutes.js), dem (the
+// ground's heights), settings (the map read again when its kind changes: the thickness test's width), leg (two map points),
+// decision (the leg's decision map), line (a runner's route), picture (the terrain as read).
 
-import { classify, cells, costs, context, legRoutes, lineRoute, picture, DEFAULTS } from "./routechoice.js";
+import { classify, cells, costs, context, legSearch, lineRoute, picture, decisionPicture, DEFAULTS } from "./routechoice.js";
 import { heightAt } from "./terrain.js";
 
 let G = null, h = null, em = null, mpc = 1, cs = 1, W = 0, H = 0, settings = { ...DEFAULTS }, X = null;
+let image = null, mppRead = 1, kindRead = "forest", facts = null;
+const decisions = new Map();                         // the last legs' decision maps, by their points
 
 /** The grid's size and the metres of a pixel step (J's columns): the cell size, about 1.5 m, 4 million cells at most. */
 function start(w, hh, J) {
@@ -20,22 +23,32 @@ function start(w, hh, J) {
   return mpp;
 }
 function finish(px) {
+  const hOld = h;
   G = cells(px, W, H, cs);
+  h = hOld && hOld.length === G.nx * G.ny ? hOld : null;
   rebuild();
-  const counts = new Array(13).fill(0);
+  const counts = new Array(13).fill(0), paths = [0, 0, 0, 0];
   for (const c of G.cls) counts[c]++;
-  return { cs, mpc, nx: G.nx, ny: G.ny, lw: px.lw, ms: px.ms, counts };
+  for (const v of G.path) paths[v]++;
+  facts = { cs, mpc, nx: G.nx, ny: G.ny, lw: px.lw, ms: px.ms, counts, paths, north: px.northLines?.length || 0, chains: px.lines?.chains || 0, kind: kindRead };
+  return facts;
 }
-function rebuild() { if (G) X = context(G, costs(G, settings, mpc), h, em, settings); }
+function rebuild() { decisions.clear(); if (G) X = context(G, costs(G, settings, mpc), h, em, settings); }
+function read(id) {
+  return finish(classify(image, W, H, mppRead, { map: kindRead }, (f) => postMessage({ id, progress: f })));
+}
 
 const ops = {
-  init({ rgba, w, h: hh, J }) {
-    const mpp = start(w, hh, J);
-    return finish(classify(new Uint8ClampedArray(rgba), W, H, mpp));
+  init({ id, rgba, w, h: hh, J, map }) {
+    mppRead = start(w, hh, J);
+    image = new Uint8ClampedArray(rgba);
+    kindRead = map === "sprint" ? "sprint" : "forest";
+    return read(id);
   },
   /** A vector map's layers, drawn on the page (trace/vectorroutes.js): no colours to read. */
   layers({ area, path, blue, block, hand, w, h: hh, J }) {
     start(w, hh, J);
+    image = null;
     const t0 = Date.now();
     return { ...finish({ area: new Uint8Array(area), path: new Uint8Array(path), blue: new Uint8Array(blue), block: new Uint8Array(block), hand: new Uint8Array(hand), lw: 0, ms: 0 }), ms: Date.now() - t0, vector: true };
   },
@@ -46,8 +59,27 @@ const ops = {
     rebuild();
     return {};
   },
-  settings({ s }) { settings = { ...DEFAULTS, ...s, speeds: { ...DEFAULTS.speeds, ...(s.speeds || {}) } }; rebuild(); return {}; },
-  leg({ a, b }) { return { routes: X ? legRoutes(X, a, b) : null }; },
+  settings({ id, s }) {
+    settings = { ...DEFAULTS, ...s, speeds: { ...DEFAULTS.speeds, ...(s.speeds || {}) } };
+    const kind = settings.map === "sprint" ? "sprint" : "forest";
+    if (image && kind !== kindRead) { kindRead = kind; return { reread: true, facts: read(id) }; }
+    rebuild();
+    return {};
+  },
+  leg({ a, b }) {
+    if (!X) return { routes: null };
+    const r = legSearch(X, a, b);
+    decisions.set(`${a}|${b}`, r.dec);
+    while (decisions.size > 12) decisions.delete(decisions.keys().next().value);
+    return { routes: r.routes };
+  },
+  decision({ a, b }) {
+    if (!X) return { rgba: null };
+    let dec = decisions.get(`${a}|${b}`);
+    if (!dec) { dec = legSearch(X, a, b).dec; decisions.set(`${a}|${b}`, dec); }
+    if (!dec) return { rgba: null };
+    return { rgba: decisionPicture(dec, settings.extra ?? DEFAULTS.extra), i0: dec.i0, j0: dec.j0, rw: dec.rw, rh: dec.rh, cs };
+  },
   line({ pts }) { return { route: X ? lineRoute(X, pts) : null }; },
   picture() { return { rgba: picture(X), nx: G.nx, ny: G.ny, cs }; },
 };

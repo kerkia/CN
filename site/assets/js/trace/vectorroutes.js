@@ -7,7 +7,8 @@
 //   brown (paved), grey and black (buildings; light grey passable), olive or purple (out of bounds) — the colour, not the symbol
 //   number, since ISOM 2000, ISOM 2017 and ISSprOM number them differently; drawn colour by colour from the bottom of the map's
 //   colour table, so that a green over a yellow wins as on the map;
-// - lines by their symbol number: roads, tracks and paths (501-508) are paths, solid even when the map dashes them; impassable
+// - lines by their symbol number: roads and vehicle tracks (501-504), footpaths (505), small paths and rides (506-508) — the
+//   three kinds of path, solid even when the map dashes them; impassable
 //   cliffs, walls and fences (201, 515, 518, and ISOM 2000's 521 and 524 when they are lines) block; passable walls, fences and
 //   cliffs, vegetation boundaries are handrails; blue lines are streams.
 // Contours, points, text and the course are not drawn. A map that is not the one shown is placed through both georeferences.
@@ -17,7 +18,7 @@ import { A, INK, kindOf } from "./routechoice.js";
 export const isVectorName = (name) => /\.(ocd|omap|xmap)$/i.test(name || "");
 export const VECTOR_ACCEPT = ".ocd,.omap,.xmap";
 
-const PATHS = new Set([501, 502, 503, 504, 505, 506, 507, 508]);
+const PATHS = new Map([[501, 3], [502, 3], [503, 3], [504, 3], [505, 2], [506, 1], [507, 1], [508, 1]]);  // the path layer's kinds (routechoice.js PATH)
 const BLOCKS = new Set([201, 515, 518, 521, 524]);
 const HANDRAILS = new Set([202, 416, 415, 513, 514, 516, 517, 519, 520, 522, 523]);
 
@@ -121,10 +122,10 @@ function areaColour(def, map) {
   return def.fill || def.hatches?.[0]?.color || (def.patterns?.length ? map.colors.find((c) => def.patterns[0].glyph.hasColor?.(c)) : null) || null;
 }
 const lineColours = (def) => (def.partsDefs ? def.partsDefs.flatMap(lineColours) : [def.color, def.double?.fill, def.double?.left, def.second?.color].filter(Boolean));
-/** A line symbol's role: "path", "block", "hand", "blue" or null. */
+/** A line symbol's role: "path1", "path2", "path3" (small, path, track), "block", "hand", "blue" or null. */
 function lineRole(def) {
   const n = Math.floor(parseFloat(def.id));
-  if (PATHS.has(n)) return "path";
+  if (PATHS.has(n)) return `path${PATHS.get(n)}`;
   if (BLOCKS.has(n)) return "block";
   if (lineColours(def).some((c) => c.cmyk && kindOf(...rgbOf(c)) === INK.BLUE)) return "blue";
   if (HANDRAILS.has(n)) return "hand";
@@ -178,7 +179,7 @@ export function layers(v, T, W, H) {
         const key = `line|${role}`;
         if (!groups.has(key)) groups.set(key, { role, list: [] });
         groups.get(key).list.push({ path: s.path, width: Math.max(d.maxThick || d.width || 0.25, 0.1) });
-        counts[{ path: "paths", block: "blocks", hand: "hands", blue: "streams" }[role]]++;
+        counts[{ path1: "paths", path2: "paths", path3: "paths", block: "blocks", hand: "hands", blue: "streams" }[role]]++;
       }
     }
   }
@@ -189,12 +190,13 @@ export function layers(v, T, W, H) {
   }
   // the lines, each at least one and a half pixels wide
   const minMm = 1.5 / pxPerMm;
-  for (const [role, into] of [["path", path], ["block", block], ["hand", hand], ["blue", blue]]) {
+  // the paths from the slowest kind to the fastest: where two meet, the faster is kept
+  for (const [role, into, value] of [["path1", path, 1], ["path2", path, 2], ["path3", path, 3], ["block", block, 1], ["hand", hand, 1], ["blue", blue, 1]]) {
     const grp = groups.get(`line|${role}`);
     if (!grp) continue;
     begin(); g.lineCap = "round"; g.lineJoin = "round";
     for (const l of grp.list) { g.lineWidth = Math.max(l.width, minMm); g.stroke(path2d(l.path.commands())); }
-    read(into, 1);
+    read(into, value);
   }
   return { area, path, blue, block, hand, counts, ms: Date.now() - t0 };
 }

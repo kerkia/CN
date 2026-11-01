@@ -241,19 +241,27 @@ export function build(X) {
             (offenes Gelände, mehr oder weniger licht), die drei Grüntöne nach ihrer Intensität, Oliv (Sperrgebiet) und die darübergedruckten „Druckfarben“ –
             Schwarz, Grau, Braun, Blau und das Violett der Bahn.</p>
           ${list([
-            html`Eine Druckfarbe ist eine <b>Linie</b> oder eine <b>Fläche</b>, je nach ihrer Dicke im Vergleich zu den schwarzen Linien der Karte: Was übrig
-              bleibt, wenn man die dünnen Linien entfernt, ist eine Fläche. Dickes Schwarz ist ein Gebäude oder eine große Felswand (unpassierbar), Grau ein
-              Gebäude im Sprint oder blanker Fels im Wald, dickes Braun eine befestigte Fläche, dickes Blau Wasser.`,
-            html`Die <b>dünnen schwarzen Linien</b>, die lang genug sind (30 m), oder die Striche eines gestrichelten Wegs bilden die Wege. Ein kurzer
-              einzelner Strich (eine kleine Felswand, eine Ruine) oder Punkte (eine Vegetationsgrenze) zählen nicht dazu.`,
+            html`<b>Zuerst das Papier</b>: Auf einem Foto ist es grau, wärmer oder kälter, in einer Ecke dunkler. Ozimut findet seine Farbe (die hellen, fast
+              grauen Punkte), misst sie in Quadraten von etwa fünfzig Metern und bringt sie überall auf Weiß zurück; eine exportierte, schon weiße Karte
+              bleibt, wie sie ist. Ein Schatten, heller als das Grau des nackten Felsens, ist kein Fels.`,
+            html`<b>Die Nordlinien</b> – lang, gerade, parallel und gleichmäßig verteilt – werden entfernt (in Cyan bei „Gelände wie gelesen anzeigen“):
+              Sonst bildeten sie Streifen aus Wasser oder Sumpf quer über die Karte.`,
+            html`Eine Druckfarbe ist eine <b>Linie</b> oder eine <b>Fläche</b>, je nach ihrer Dicke, in Metern gemessen: Was übrig bleibt, wenn man die Linien
+              unter 7 bis 10 m Breite entfernt (im Sprint 4 bis 5 m), ist eine Fläche. Dickes Schwarz ist ein Gebäude oder eine große Felswand
+              (unpassierbar), Dunkelgrau ein Gebäude im Sprint oder nackter Fels im Wald, dickes Braun eine befestigte Fläche, dickes Blau Wasser.`,
+            html`<b>Die Wege</b>: Die dünnen schwarzen Linien (oder dunkelgrauen, wie auf einem Scan) bilden ein Netz. Ozimut folgt jeder Linie, ihren beiden
+              Enden und ihrer Richtung, und verbindet die Striche eines gestrichelten Wegs Ende an Ende, wenn sie einander über ihre Lücke hinweg
+              zugewandt sind. Eine Kette von mindestens 30 m ist ein Weg, einer von drei Arten nach ihren Strichen im Vergleich zu den anderen Wegen der
+              Karte: Straße oder Fahrweg (durchgehend und dicker, oder lange dicke Striche), Fußweg, kleiner Pfad (kurze Striche). Punkte, Dreiecke und
+              ein kurzer einzelner Strich zählen nicht.`,
             html`Die <b>dünnen blauen Linien</b> sind die Bäche und, dicht beieinander, die Sümpfe. Höhenlinien, Bahn, Text und Punkte werden
               entfernt: Jeder Punkt nimmt die Farbe des nächstgelegenen Geländes darunter an.`,
-            html`Die Karte wird dann in Zellen von etwa 1,5 m zerlegt, jede mit dem häufigsten Gelände. „Gelände wie gelesen anzeigen“
-              zeigt diese Zellen auf der Karte: das Erste, was du prüfen solltest.`,
+            html`Die Karte wird dann in Zellen von etwa 1,5 m zerlegt, jede mit dem häufigsten Gelände. „Gelände wie gelesen anzeigen“ zeigt diese Zellen
+              mit ihrer Legende auf der Karte: das Erste, was du prüfen solltest. Ozimut warnt, wenn das Lesen falsch wirkt (viel nackter Fels oder
+              Gebäude im Wald, fast überall ein einziges Gelände, gar kein Weg).`,
           ])}
-          <p>Bekannte Grenzen: Das violett schraffierte Sperrgebiet wird mit der Bahn entfernt; ein schlecht belichtetes Foto verfälscht die Farben; dünne
-            unpassierbare Felswände, Mauern und Zäune sind schwarze Linien wie die Wege (die Einstellung „Dünne schwarze Linien“ sagt, was sie
-            sind).</p>`)}
+          <p>Bekannte Grenzen: Das violett schraffierte Sperrgebiet wird mit der Bahn entfernt; dünne unpassierbare Felswände, Mauern und Zäune sind
+            schwarze Linien wie die Wege (die Einstellung „Dünne schwarze Linien“ sagt, was sie sind).</p>`)}
         ${slide("Coach · Test", "1b. Besser: die OCAD- oder Mapper-Karte", html`
           <p>Die Datei der Karte selbst – OCAD (.ocd) oder OpenOrienteering Mapper (.omap, .xmap) – beschreibt das Gelände, ohne zu raten: Ozimut liest sie
             in deinem Browser mit der Engine der Bahnlegung und zeichnet jedes Symbol an seiner genauen Stelle.</p>
@@ -261,7 +269,7 @@ export function build(X) {
             html`Die <b>Flächen</b> nach ihrer Füllfarbe (oder Schraffur: blau für einen Sumpf, oliv oder violett für ein Sperrgebiet), Schicht für
               Schicht wie auf der Karte – ein Grün über einem Gelb gewinnt. Die Farbe statt der Nummer: ISOM 2000, ISOM 2017 und ISSprOM nummerieren
               unterschiedlich.`,
-            html`Die <b>Linien</b> nach ihrer Nummer: Straßen, Fahrwege und Pfade (501 bis 508) sind Wege, durchgehend, auch wenn die Karte sie
+            html`Die <b>Linien</b> nach ihrer Nummer: Straßen und Fahrwege (501 bis 504), Fußwege (505), kleine Pfade und Schneisen (506 bis 508) sind die drei Arten von Wegen, durchgehend, auch wenn die Karte sie
               gestrichelt zeichnet; unpassierbare Felswände, Mauern und Zäune (201, 515, 518; 521 und 524 in ISOM 2000) stoppen den Läufer, außer
               dort, wo ein Weg sie quert; passierbare Mauern und Zäune und Vegetationsgrenzen sind Leitlinien; die blauen Linien sind
               Bäche.`,
@@ -273,7 +281,7 @@ export function build(X) {
         ${slide("Coach · Test", "2. Die Zeit eines Schritts", html`
           <p>Die Zeit von einer Zelle zur benachbarten ist die Distanz, multipliziert mit der Langsamkeit des Geländes und der der Hangneigung:</p>
           ${list([
-            html`<b>Das Gelände</b>: seine Geschwindigkeit als Anteil der im weißen Wald – Weg 125 %, offenes Gelände 110 %, halboffenes
+            html`<b>Das Gelände</b>: seine Geschwindigkeit als Anteil der im weißen Wald – Straße oder Fahrweg 130 %, Fußweg 125 %, kleiner Pfad 110 %, offenes Gelände 110 %, halboffenes
               100 %, die drei Grüntöne 75, 45 und 20 %, Sumpf 65 %, befestigte Fläche 120 %. Wasser, Gebäude, Sperrgebiet (und Grau
               im Sprint) sind unpassierbar. Alles ist unter „Geschwindigkeit nach Gelände“ einstellbar.`,
             html`<b>Die Hangneigung</b>, gelesen aus dem Relief des IGN (RGE ALTI, in Frankreich) oder den „Terrain Tiles“ anderswo: Bergauf kostet jeder
@@ -293,16 +301,23 @@ export function build(X) {
           <p>Die Sichtbarkeit wiegt 1 im weißen Wald, 1,2 bis 1,4 in den Grüntönen, 0,3 im offenen Gelände, 0 auf einem Weg. Bei 20 % (der
             Standardeinstellung) kostet das Durchqueren eines Waldes ohne Anhaltspunkt bis zu einem Fünftel mehr; bei 0 % läuft man geradeaus wie ein Läufer,
             der sich nie irrt. Die Vorsicht wählt die Route; die angezeigten Zeiten bleiben die des reinen Laufens, ohne sie.</p>`)}
-        ${slide("Coach · Test", "4. Die Varianten", html`
-          <p>Route A ist die günstigste, gefunden durch eine A*-Suche in einer Ellipse um die Teilstrecke (breit genug, um einen See zu umgehen). Für die
-            nächsten bestraft Ozimut den Korridor der bereits gefundenen Routen und sucht erneut; jeder Vorschlag wird dann ohne Strafe in einem Band um
-            ihn herum gestrafft und nur behalten, wenn:</p>
+        ${slide("Coach · Test", "4. Die Varianten und die Entscheidungskarte", html`
+          <p>Ozimut lässt zwei Bäume kürzester Wege in einer Ellipse um die Teilstrecke wachsen (breit genug, um einen See zu umgehen oder einen Fahrweg
+            etwas abseits zu nutzen): einen vom Start, einen vom Posten aus. Ihre Summe in einem Punkt sind die Kosten der besten Route durch diesen Punkt;
+            die niedrigste ergibt A, die schnellste, exakt auf dem Raster. Die Wahlmöglichkeiten werden an dieser Summe abgelesen:</p>
           ${list([
-            html`er von den vorherigen abweicht (mindestens 30 % seiner Strecke außerhalb ihrer Korridore);`,
-            html`er nicht mehr kostet als A plus den gewählten Spielraum (standardmäßig 25 %);`,
-            html`er <b>lokal optimal</b> ist: Kein Abschnitt von 30 % seiner Länge lässt sich um mehr als 1 % verkürzen – ein großer Bogen durch
-              gleichförmigen Wald ist keine Wahl, ein Umweg über einen Weg oder um ein Grün schon.`,
+            html`die <b>Plateaus</b>: die Abschnitte, in denen beide Bäume übereinstimmen – ein lange verfolgter Weg ist einer;`,
+            html`die <b>Täler</b>: entlang von Linien quer zur Teilstrecke, bei jedem Zehntel, ist jede Senke der Summe, von den anderen durch einen Kamm
+              getrennt (mindestens 1,5 % der Zeit von A), ein eigener Durchgang – wo kreuzen die guten Routen die Teilstrecke?`,
           ])}
+          <p>Ein Vorschlag wird behalten, wenn er nicht mehr kostet als A plus den gewählten Spielraum (standardmäßig 25 %), auf mindestens einem Fünftel
+            von den behaltenen Routen abweicht und entweder die Teilstrecke in einem Tal kreuzt, das keine von ihnen nimmt (kein Abschnitt von 30 % seiner
+            Länge lässt sich um mehr als 1 % verkürzen), oder auf 30 % abweicht und auf der Hälfte seiner Länge <b>lokal optimal</b> bleibt. Ein Bogen durch
+            gleichförmigen Wald ist keine Wahl; der gerade Weg neben einem Fahrweg, ein Umweg über einen Weg oder um ein Grün schon. Jede Route wird
+            schließlich in geraden Linien gestrafft, abseits der 16 Richtungen des Rasters, und wie der Track eines Läufers gemessen.</p>
+          <p>Die <b>Entscheidungskarte</b> färbt jeden Punkt nach der Zeit, die man verliert, wenn man durch ihn läuft: Dunkelgrün auf einer besten Route,
+            dann Hellgrün, Gelb und Orange bis zum Spielraum der Varianten; darüber nichts. Sie zeigt auf einen Blick die Korridore der guten
+            Entscheidungen und was es kostet, sie zu verlassen.</p>
           <p>Jede Variante sagt, ob sie gegenüber der Linie zwischen den Posten links, rechts oder geradeaus verläuft.</p>`)}
         ${slide("Coach · Test", "5. Deine Route", html`
           <p>Der Track des Läufers zwischen zwei Posten wird mit demselben Modell gemessen und dann der nächstgelegenen Variante zugeordnet (im Mittel auf

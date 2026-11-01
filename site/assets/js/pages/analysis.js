@@ -19,7 +19,7 @@
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { coachTabs } from "../coachtabs.js";
-import { t } from "../i18n.js";
+import { t, tn } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import { raceFilters } from "../racefilters.js";
@@ -1411,6 +1411,7 @@ export async function render(main, { query = {}, route } = {}) {
     const lw = (px) => px / view.k;
     if (calibrated && rcs.on) {                       // the route choices computed (administrators, a prototype)
       if (rcs.pic) { ctx.globalAlpha = 0.6; ctx.imageSmoothingEnabled = false; ctx.drawImage(rcs.pic.canvas, 0, 0, rcs.pic.canvas.width * rcs.pic.cell, rcs.pic.canvas.height * rcs.pic.cell); ctx.globalAlpha = 1; }
+      RC.drawDecision(ctx, rcDecision(Math.max(0, legAt(tNow))));
       RC.drawRoutes(ctx, rcs.routes[Math.max(0, legAt(tNow))], lw, rcPace(), clock);
     }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -1469,15 +1470,31 @@ export async function render(main, { query = {}, route } = {}) {
   // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24) ---------------------
   // each leg's fastest routes on the map as read, the route the runner took measured on the same model
   const rcs = { s: RC.loadSettings(), mapSet: false, pic: null, picOn: false, plan: null, planFor: "", planMap: null, dem: null, info: null,
-    routes: [], mine: [], auto: null, token: 0, status: "", on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
+    routes: [], mine: [], auto: null, token: 0, status: "", prog: null, warn: "", decOn: RC.decisionOn(), dec: null, decAsk: "",
+    on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
   const rcPace = () => RC.paceOf(rcs.s, rcs.auto);
-  const rcStatus = (text) => { rcs.status = text; RC.setStatus(text); };
+  const rcStatus = (text, frac = null) => { rcs.status = text; rcs.prog = frac; RC.setStatus(text, frac); };
+  /** The reading's facts: kept, and the warning when the map as read looks wrong. */
+  const rcFacts = (facts) => { rcs.info = { ...rcs.info, ...facts }; rcs.warn = RC.readingWarning(rcs.info, rcs.s); RC.setWarning(rcs.warn); };
+  const rcReading = (f) => rcStatus(t("rc.st.readingPct", { p: Math.round(100 * f) }), f);
+  /** The decision map of leg i, asked of the worker once (null until it has come: the map is drawn again then). */
+  function rcDecision(i) {
+    if (!rcs.decOn || !rcs.plan || !rcs.routes[i]) return null;
+    const a = targets[i]?.pos, b = targets[i + 1]?.pos, key = `${rcs.token}|${i}`;
+    if (!a || !b) return null;
+    if (rcs.dec?.key === key) return rcs.dec;
+    if (rcs.decAsk !== key) {
+      rcs.decAsk = key;
+      rcs.plan.decision(a, b).then((d) => { if (rcs.decAsk === key && d) { rcs.dec = { key, ...d }; draw(); } }).catch((e) => console.warn(e));
+    }
+    return null;
+  }
   function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) { c.hidden = true; c.innerHTML = ""; } }
   function rcPanel() {
     const host = $("#rc-host");
     if (!host) return;
     const vr = rcVector(), vrec = files.map?.vec ? files.map : files.vector;
-    host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, status: rcs.status, auto: rcs.auto,
+    host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, decision: rcs.decOn, status: rcs.status, progress: rcs.prog, warn: rcs.warn, auto: rcs.auto,
       vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
     RC.bindPanel(host, rcs.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
@@ -1496,6 +1513,7 @@ export async function render(main, { query = {}, route } = {}) {
         if (rcs.on) rcStart(); else { rcReset(); draw(); }
       } else if (what === "picture-on") { rcs.picOn = true; rcPicture(); }
       else if (what === "picture-off") { rcs.picOn = false; rcs.pic = null; draw(); }
+      else if (what === "decision-on" || what === "decision-off") { rcs.decOn = what === "decision-on"; rcs.dec = null; rcs.decAsk = ""; draw(); }
       else if (what === "pace") { rcTable(); draw(); }
       else { if (what === "map") rcs.mapSet = true; if (what === "reset") rcPanel(); rcRun(); }
     });
@@ -1517,15 +1535,17 @@ export async function render(main, { query = {}, route } = {}) {
     const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",") + (vr ? `|${vr.v.name}` : "");
     if (!rcs.plan || rcs.planFor !== sig || rcs.planMap !== map) {
       rcs.plan?.destroy();
-      rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y), vr); rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
+      rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y), vr, { map: rcs.s.map, onProgress: (f) => { if (my === rcs.token) rcReading(f); } });
+      rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
     }
-    rcStatus(t("rc.st.reading"));
+    rcStatus(t("rc.st.reading"), 0);
     try {
-      rcs.info = await rcs.plan.ready;
+      rcs.info = null;
+      rcFacts(await rcs.plan.ready);
       if (my !== rcs.token) return;
       if (!rcs.dem) {
-        rcStatus(t("rc.st.relief"));
-        try { const g = await heights((f) => { if (my === rcs.token) rcStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) })); }); await rcs.plan.dem(g); rcs.dem = g.source; }
+        rcStatus(t("rc.st.relief"), 0);
+        try { const g = await heights((f) => { if (my === rcs.token) rcStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f); }); await rcs.plan.dem(g); rcs.dem = g.source; }
         catch (e) { console.warn(e); rcs.dem = "none"; }
         if (my !== rcs.token) return;
       }
@@ -1536,16 +1556,17 @@ export async function render(main, { query = {}, route } = {}) {
   async function rcRun() {
     if (!rcs.plan || !rcs.on || !rcs.info) return;
     const my = ++rcs.token;
-    rcs.routes = []; rcs.mine = []; rcs.auto = null;
+    rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = "";
     try {
-      await rcs.plan.settings(rcs.s);
+      const facts = await rcs.plan.settings(rcs.s, (f) => { if (my === rcs.token) rcReading(f); });
       if (my !== rcs.token) return;
+      if (facts) { rcFacts(facts); if (rcs.picOn) rcPicture(); }
       const n = targets.length - 1, now = Math.max(0, legAt(tNow));
       const order = [...Array(Math.max(0, n)).keys()].sort((a, b) => (a === now ? -1 : b === now ? 1 : a - b));
       let done = 0;
       const t0 = performance.now();
       for (const i of order) {
-        rcStatus(t("rc.st.legs", { n: done, t: n }));
+        rcStatus(t("rc.st.legs", { n: done, t: n }), n ? done / n : null);
         const a = targets[i]?.pos, b = targets[i + 1]?.pos;
         if (a && b && !targets[i].missed && !targets[i + 1].missed) {
           const routes = await rcs.plan.leg(a, b);
@@ -1568,7 +1589,8 @@ export async function render(main, { query = {}, route } = {}) {
       rcs.auto = RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
       rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
-        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : ""));
+        r: rcs.dem && rcs.dem !== "none" ? CREDIT[rcs.dem]?.text || rcs.dem : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : "")
+        + (rcs.info.north ? ` · ${tn("rc.st.north", rcs.info.north)}` : ""));
       const p = $("#rc-pace"); if (p && rcs.auto) p.placeholder = RC.minKm(rcs.auto);
       rcTable(); draw();
     } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }

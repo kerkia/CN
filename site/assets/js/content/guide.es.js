@@ -239,19 +239,26 @@ export function build(X) {
             (terreno abierto, más o menos claro), los tres verdes según su intensidad, el oliva (zona prohibida) y las «tintas» impresas encima: el
             negro, el gris, el marrón, el azul y el violeta del recorrido.</p>
           ${list([
-            html`Una tinta es una <b>línea</b> o una <b>superficie</b> según su grosor, comparado con el de las líneas negras del mapa: lo que queda cuando
-              se borran las líneas finas es una superficie. El negro grueso es un edificio o un gran cortado (infranqueable), el gris un edificio en
-              sprint o roca desnuda en bosque, el marrón grueso una zona pavimentada, el azul grueso agua.`,
-            html`Las <b>líneas negras finas</b> lo bastante largas (30 m), o los trazos de un camino discontinuo, forman los caminos. Un trazo corto
-              aislado (un cortado pequeño, una ruina) o unos puntos (un límite de vegetación) no lo son.`,
+            html`<b>Primero el papel</b>: en una foto es gris, más cálido o más frío, más oscuro en una esquina. Ozimut encuentra su color (los puntos
+              claros y casi grises), lo mide por cuadrados de unos cincuenta metros y lo devuelve al blanco en todas partes; un mapa exportado, ya
+              blanco, se queda como está. Una sombra más clara que el gris de la roca desnuda no es roca.`,
+            html`<b>Las líneas de norte</b> —largas, rectas, paralelas y espaciadas con regularidad— se retiran (en cian en «Ver el terreno tal como se ha
+              leído»): si no, formaban franjas de agua o de pantano a través del mapa.`,
+            html`Una tinta es una <b>línea</b> o una <b>superficie</b> según su grosor, medido en metros: lo que queda cuando se borran las líneas de
+              menos de 7 a 10 m de ancho (4 a 5 m en sprint) es una superficie. El negro grueso es un edificio o un gran cortado (infranqueable), el gris
+              oscuro un edificio en sprint o roca desnuda en bosque, el marrón grueso una zona pavimentada, el azul grueso agua.`,
+            html`<b>Los caminos</b>: las líneas negras finas (o gris oscuro, como en un escaneo) forman una red. Ozimut sigue cada línea, sus dos extremos y
+              su dirección, y une por los extremos los trazos de un camino discontinuo cuando se miran por encima de su hueco. Una cadena de al menos
+              30 m es un camino, de uno de tres tipos según sus trazos comparados con los demás caminos del mapa: carretera o pista (trazo continuo y más
+              grueso, o trazos largos y gruesos), sendero, senda pequeña (trazos cortos). Los puntos, los triángulos y un trazo corto aislado no lo son.`,
             html`Las <b>líneas azules finas</b> son los arroyos y, muy juntas, los pantanos. Las curvas de nivel, el recorrido, el texto y los puntos se
               borran: cada punto toma el color del terreno más cercano debajo.`,
-            html`Después, el mapa se divide en celdas de unos 1,5 m, cada una con el terreno más presente. «Ver el terreno tal como se ha leído»
-              muestra esas celdas sobre el mapa: es lo primero que hay que comprobar.`,
+            html`Después, el mapa se divide en celdas de unos 1,5 m, cada una con el terreno más presente. «Ver el terreno tal como se ha leído» muestra
+              esas celdas sobre el mapa, con su leyenda: es lo primero que hay que comprobar. Ozimut avisa cuando la lectura parece errónea (mucha roca
+              desnuda o edificios en bosque, un solo terreno casi en todas partes, ningún camino).`,
           ])}
-          <p>Límites conocidos: la zona prohibida rayada en violeta se borra con el recorrido; una foto mal iluminada altera los colores; los cortados
-            infranqueables finos, los muros y las vallas son líneas negras como los caminos (el ajuste «Líneas negras finas» indica qué
-            son).</p>`)}
+          <p>Límites conocidos: la zona prohibida rayada en violeta se borra con el recorrido; los cortados infranqueables finos, los muros y las vallas
+            son líneas negras como los caminos (el ajuste «Líneas negras finas» indica qué son).</p>`)}
         ${slide("Coach · prueba", "1 bis. Mejor: el mapa OCAD o Mapper", html`
           <p>El archivo del propio mapa —OCAD (.ocd) u OpenOrienteering Mapper (.omap, .xmap)— describe el terreno sin adivinar: Ozimut lo lee
             en tu navegador con el motor del trazado de recorridos y dibuja cada símbolo en su lugar exacto.</p>
@@ -259,7 +266,7 @@ export function build(X) {
             html`Las <b>superficies</b> según su color de relleno (o de rayado: azul para un pantano, oliva o violeta para una zona prohibida), capa por
               capa como en el mapa: un verde sobre un amarillo prevalece. El color mejor que el número: la ISOM 2000, la ISOM 2017 y la ISSprOM no
               numeran igual.`,
-            html`Las <b>líneas</b> según su número: carreteras, pistas y senderos (501 a 508) son caminos, continuos incluso cuando el mapa los
+            html`Las <b>líneas</b> según su número: carreteras y pistas (501 a 504), senderos (505), sendas pequeñas y cortafuegos (506 a 508) son los tres tipos de camino, continuos incluso cuando el mapa los
               dibuja discontinuos; los cortados, muros y vallas infranqueables (201, 515, 518; 521 y 524 en ISOM 2000) detienen la carrera, salvo
               donde un camino los atraviesa; los muros y vallas franqueables y los límites de vegetación son pasamanos; las líneas azules, arroyos.`,
             html`Las curvas de nivel, los símbolos puntuales, los textos y el recorrido se dejan de lado.`,
@@ -270,7 +277,7 @@ export function build(X) {
         ${slide("Coach · prueba", "2. El tiempo de un paso", html`
           <p>El tiempo para ir de una celda a su vecina es la distancia, multiplicada por la lentitud del terreno y por la de la pendiente:</p>
           ${list([
-            html`<b>El terreno</b>: su velocidad como porcentaje de la del bosque blanco: camino 125 %, terreno abierto 110 %, semiabierto
+            html`<b>El terreno</b>: su velocidad como porcentaje de la del bosque blanco: carretera o pista 130 %, sendero 125 %, senda pequeña 110 %, terreno abierto 110 %, semiabierto
               100 %, los tres verdes 75, 45 y 20 %, pantano 65 %, zona pavimentada 120 %. El agua, los edificios, la zona prohibida (y el gris
               en sprint) son infranqueables. Todo se ajusta en «Velocidad por terreno».`,
             html`<b>La pendiente</b>, leída en el relieve del IGN (RGE ALTI, en Francia) o de los «Terrain Tiles» en otros lugares: en subida, cada metro
@@ -290,16 +297,23 @@ export function build(X) {
           <p>La visibilidad pesa 1 en bosque blanco, de 1,2 a 1,4 en los verdes, 0,3 en terreno abierto y 0 en un camino. Al 20 % (el ajuste por
             defecto), cruzar un bosque sin referencias cuesta hasta una quinta parte más; al 0 %, se corre en línea recta como un corredor que nunca se
             equivoca. La prudencia elige la ruta; los tiempos mostrados siguen siendo los de la carrera sola, sin ella.</p>`)}
-        ${slide("Coach · prueba", "4. Las variantes", html`
-          <p>La ruta A es la menos costosa, encontrada mediante una búsqueda A* en una elipse alrededor del tramo (lo bastante ancha para rodear un
-            lago). Para las siguientes, Ozimut penaliza el pasillo de las rutas ya encontradas y vuelve a buscar; cada propuesta se tensa después sin
-            penalización en una franja a su alrededor, y solo se conserva si:</p>
+        ${slide("Coach · prueba", "4. Las variantes y el mapa de decisiones", html`
+          <p>Ozimut hace crecer dos árboles de caminos más cortos en una elipse alrededor del tramo (lo bastante ancha para rodear un lago o ir a buscar
+            una pista algo apartada): uno desde la salida y otro desde el control. Su suma en un punto es el coste de la mejor ruta que pasa por ese
+            punto; la más baja da A, la más rápida, exacta en la cuadrícula. Las elecciones se leen en esa suma:</p>
           ${list([
-            html`se aparta de las anteriores (al menos el 30 % de su trazado fuera de sus pasillos);`,
-            html`no cuesta más que A más el margen elegido (25 % por defecto);`,
-            html`es <b>localmente óptima</b>: ningún segmento del 30 % de su longitud puede acortarse más de un 1 %; un gran arco a través de un bosque
-              uniforme no es una elección, un rodeo por un camino o alrededor de un verde sí lo es.`,
+            html`las <b>mesetas</b>: los tramos en los que los dos árboles coinciden; un camino seguido durante mucho tiempo es una;`,
+            html`los <b>valles</b>: a lo largo de líneas que cruzan el tramo, en cada décima parte, cada hueco de la suma separado de los demás por una
+              cresta (al menos un 1,5 % del tiempo de A) es un paso propio: ¿por dónde cortan el tramo las buenas rutas?`,
           ])}
+          <p>Una propuesta se conserva si no cuesta más que A más el margen elegido (25 % por defecto), se aparta de las rutas conservadas en al menos
+            una quinta parte de su trazado, y o bien corta el tramo por un valle que ninguna de ellas toma (ningún segmento del 30 % de su longitud
+            puede acortarse más de un 1 %), o bien se aparta de ellas en un 30 % y sigue siendo <b>localmente óptima</b> en la mitad de su longitud. Un
+            arco a través de un bosque uniforme no es una elección; el recto junto a una pista, un rodeo por un camino o alrededor de un verde sí lo
+            son. Por último, cada ruta se tensa en líneas rectas, fuera de las 16 direcciones de la cuadrícula, y se mide como el track de un corredor.</p>
+          <p>El <b>mapa de decisiones</b> colorea cada punto según el tiempo perdido al pasar por él: verde oscuro en una de las mejores rutas, luego
+            verde claro, amarillo y naranja hasta el margen de las variantes; más allá, nada. Muestra de un vistazo los pasillos de las buenas
+            elecciones y lo que cuesta salirse de ellos.</p>
           <p>Cada variante indica si pasa por la izquierda, por la derecha o recto respecto a la línea entre los controles.</p>`)}
         ${slide("Coach · prueba", "5. Tu ruta", html`
           <p>El track del corredor entre dos controles se mide con el mismo modelo y luego se asocia a la variante más cercana (a menos de 25 m de media;

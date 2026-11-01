@@ -236,23 +236,30 @@ export function build(X) {
             l'${P("#/analyse-club", "Analyse multi")}, l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
             la carte telle qu'Ozimut la lit, et cette lecture peut se tromper.</p>`)}
         ${slide("Coach · essai", "1. Lire la carte d'après ses couleurs", html`
-          <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
-            (terrain découvert, plus ou moins clair), les trois verts selon leur intensité, l'olive (zone interdite), et les « encres » posées par-dessus —
+          <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
+            (terrain découvert, plus ou moins clair), les trois verts selon leur intensité, l'olive (zone interdite), et les « encres » posées par-dessus —
             le noir, le gris, le brun, le bleu et le violet du parcours.</p>
           ${list([
-            html`Une encre est un <b>trait</b> ou une <b>surface</b> selon son épaisseur, comparée à celle des traits noirs de la carte : ce qui reste quand
-              on efface les traits fins est une surface. Le noir épais est un bâtiment ou une grande falaise (infranchissable), le gris un bâtiment en
-              sprint ou du rocher nu en forêt, le brun épais une zone revêtue, le bleu épais de l'eau.`,
-            html`Les <b>traits noirs fins</b> assez longs (30 m), ou les tirets d'un chemin en pointillés, forment les chemins. Un petit trait isolé
-              (une petite falaise, une ruine) ou des points (une limite de végétation) n'en sont pas.`,
+            html`<b>Le papier d'abord</b> : sur une photo, il est gris, plus chaud ou plus froid, plus sombre dans un coin. Ozimut trouve sa couleur
+              (les points clairs et presque gris), la mesure par carrés d'une cinquantaine de mètres et la ramène au blanc partout ; une carte exportée,
+              déjà blanche, reste telle quelle. Une ombre plus claire que le gris du rocher nu n'est pas du rocher.`,
+            html`<b>Les lignes du nord</b>, longues, droites, parallèles et régulièrement espacées, sont retirées (en cyan dans « Voir le terrain tel que
+              lu ») : elles faisaient sinon des bandes d'eau ou de marais en travers de la carte.`,
+            html`Une encre est un <b>trait</b> ou une <b>surface</b> selon son épaisseur, mesurée en mètres : ce qui reste quand on efface les traits de
+              moins de 7 à 10 m de large (4 à 5 m en sprint) est une surface. Le noir épais est un bâtiment ou une grande falaise (infranchissable), le
+              gris foncé un bâtiment en sprint ou du rocher nu en forêt, le brun épais une zone revêtue, le bleu épais de l'eau.`,
+            html`<b>Les chemins</b> : les traits noirs fins (ou gris foncé, comme sur un scan) forment un réseau. Ozimut suit chaque trait, ses deux bouts et
+              sa direction, et relie bout à bout les tirets d'un chemin en pointillés quand ils se font face par-dessus leur écart. Une chaîne de 30 m au
+              moins est un chemin, de l'un de trois types d'après ses tirets comparés aux autres chemins de la carte : route ou piste (trait plein et plus
+              épais, ou longs tirets épais), chemin, petit sentier (tirets courts). Des points, des triangles, un petit trait isolé n'en sont pas.`,
             html`Les <b>traits bleus fins</b> sont les ruisseaux et, serrés, les marais. Les courbes de niveau, le parcours, le texte et les points sont
-              effacés : chaque point prend la couleur du terrain le plus proche en dessous.`,
-            html`La carte est ensuite découpée en cases d'environ 1,5 m, chacune avec le terrain le plus présent. « Voir le terrain tel que lu »
-              montre ces cases sur la carte : c'est la première chose à vérifier.`,
+              effacés : chaque point prend la couleur du terrain le plus proche en dessous.`,
+            html`La carte est ensuite découpée en cases d'environ 1,5 m, chacune avec le terrain le plus présent. « Voir le terrain tel que lu »
+              montre ces cases sur la carte, avec leur légende : c'est la première chose à vérifier. Ozimut avertit quand la lecture semble fausse
+              (beaucoup de rocher nu ou de bâtiments en forêt, un seul terrain presque partout, aucun chemin).`,
           ])}
-          <p>Limites connues : la zone interdite hachurée en violet est effacée avec le parcours ; une photo mal éclairée trouble les couleurs ; les
-            falaises infranchissables fines, les murs et les clôtures sont des traits noirs comme les chemins (le réglage « Lignes noires fines » dit ce
-            qu'ils sont).</p>`)}
+          <p>Limites connues : la zone interdite hachurée en violet est effacée avec le parcours ; les falaises infranchissables fines, les murs et les
+            clôtures sont des traits noirs comme les chemins (le réglage « Lignes noires fines » dit ce qu'ils sont).</p>`)}
         ${slide("Coach · essai", "1 bis. Mieux : la carte OCAD ou Mapper", html`
           <p>Le fichier de la carte elle-même — OCAD (.ocd) ou OpenOrienteering Mapper (.omap, .xmap) — dit le terrain sans deviner : Ozimut le lit
             dans votre navigateur avec le moteur du tracé de circuits et dessine chaque symbole à sa place exacte.</p>
@@ -260,7 +267,7 @@ export function build(X) {
             html`Les <b>surfaces</b> d'après leur couleur de remplissage (ou de hachure : bleue pour un marais, olive ou violette pour une zone
               interdite), couche par couche comme sur la carte — un vert posé sur un jaune l'emporte. La couleur plutôt que le numéro : l'ISOM 2000,
               l'ISOM 2017 et l'ISSprOM ne numérotent pas pareil.`,
-            html`Les <b>lignes</b> d'après leur numéro : routes, pistes et sentiers (501 à 508) sont des chemins, continus même quand la carte les
+            html`Les <b>lignes</b> d'après leur numéro : routes et pistes (501 à 504), chemins (505), petits sentiers et layons (506 à 508) sont les trois types de chemin, continus même quand la carte les
               dessine en tirets ; les falaises, murs et clôtures infranchissables (201, 515, 518 ; 521 et 524 en ISOM 2000) arrêtent la course, sauf
               là où un chemin les traverse ; murs et clôtures franchissables et limites de végétation sont des lignes directrices ; les lignes
               bleues des ruisseaux.`,
@@ -272,7 +279,7 @@ export function build(X) {
         ${slide("Coach · essai", "2. Le temps d'un pas", html`
           <p>Le temps pour aller d'une case à sa voisine est la distance, multipliée par la lenteur du terrain et par celle de la pente :</p>
           ${list([
-            html`<b>Le terrain</b> : sa vitesse en part de celle de la forêt blanche — chemin 125 %, terrain découvert 110 %, semi-découvert
+            html`<b>Le terrain</b> : sa vitesse en part de celle de la forêt blanche — route ou piste 130 %, chemin 125 %, petit sentier 110 %, terrain découvert 110 %, semi-découvert
               100 %, les trois verts 75, 45 et 20 %, marais 65 %, zone revêtue 120 %. L'eau, les bâtiments, la zone interdite (et le gris
               en sprint) sont infranchissables. Tout se règle sous « Vitesses par terrain ».`,
             html`<b>La pente</b>, lue sur le relief de l'IGN (RGE ALTI, en France) ou des « Terrain Tiles » ailleurs : en montée, chaque mètre gravi
@@ -292,16 +299,24 @@ export function build(X) {
           <p>La visibilité pèse 1 en forêt blanche, 1,2 à 1,4 dans les verts, 0,3 en terrain découvert, 0 sur un chemin. À 20 % (le réglage par
             défaut), traverser une forêt sans repère coûte jusqu'à un cinquième de plus ; à 0 %, on court droit comme un coureur qui ne se trompe
             jamais. La prudence choisit l'itinéraire ; les temps affichés restent ceux de la course seule, sans elle.</p>`)}
-        ${slide("Coach · essai", "4. Les variantes", html`
-          <p>L'itinéraire A est le moins coûteux, trouvé par une recherche A* dans une ellipse autour de l'inter-poste (assez large pour contourner un
-            lac). Pour les suivants, Ozimut pénalise le couloir des itinéraires déjà trouvés et cherche à nouveau ; chaque proposition est ensuite
-            retendue sans pénalité dans une bande autour d'elle, puis gardée seulement si :</p>
+        ${slide("Coach · essai", "4. Les variantes et la carte des décisions", html`
+          <p>Ozimut fait pousser deux arbres de plus courts chemins dans une ellipse autour de l'inter-poste (assez large pour contourner un lac ou aller
+            chercher une piste à côté) : l'un depuis le départ, l'autre depuis le poste. Leur somme en un point est le coût du meilleur itinéraire qui
+            passe par ce point ; la plus basse donne A, le plus rapide, exact sur la grille. Les choix se lisent sur cette somme :</p>
           ${list([
-            html`elle s'écarte des précédentes (au moins 30 % de son tracé hors de leurs couloirs) ;`,
-            html`elle ne coûte pas plus que A de plus que l'écart choisi (25 % par défaut) ;`,
-            html`elle est <b>localement optimale</b> : aucun tronçon de 30 % de sa longueur ne peut être raccourci de plus de 1 % — un grand arc
-              à travers une forêt uniforme n'est pas un choix, un détour par un chemin ou autour d'un vert l'est.`,
+            html`les <b>plateaux</b> : les tronçons où les deux arbres s'accordent — un chemin suivi longtemps en est un ;`,
+            html`les <b>vallées</b> : le long de lignes en travers de l'inter-poste, à chaque dixième, chaque creux de la somme séparé des autres par une
+              crête (1,5 % du temps de A au moins) est un passage à lui — où les bons itinéraires coupent-ils l'inter-poste ?`,
           ])}
+          <p>Une proposition est gardée si elle ne coûte pas plus que A de plus que l'écart choisi (25 % par défaut), s'écarte des itinéraires gardés sur
+            un cinquième de son tracé au moins, et soit coupe l'inter-poste dans une vallée qu'aucun d'eux ne prend (et aucun tronçon de 30 % de sa
+            longueur ne peut être raccourci de plus de 1 %), soit s'en écarte sur 30 % et reste <b>localement optimale</b> sur la moitié de sa
+            longueur. Un arc à travers une forêt uniforme n'est pas un choix ; le tout droit à côté d'une piste, un détour par un chemin ou autour
+            d'un vert le sont. Chaque itinéraire est enfin tendu en lignes droites, hors des 16 directions de la grille, et mesuré comme la trace d'un
+            coureur.</p>
+          <p>La <b>carte des décisions</b> colore chaque point par le temps perdu en y passant : vert foncé sur un meilleur itinéraire, puis vert clair,
+            jaune et orange jusqu'à l'écart des variantes ; au-delà, rien. Elle montre d'un coup d'œil les couloirs des bons choix et ce que coûte
+            de s'en écarter.</p>
           <p>Chaque variante dit si elle passe à gauche, à droite ou tout droit par rapport à la ligne entre les postes.</p>`)}
         ${slide("Coach · essai", "5. Votre itinéraire", html`
           <p>La trace du coureur entre deux postes est mesurée sur le même modèle, puis rapprochée de la variante la plus proche (à 25 m en moyenne près,

@@ -1757,18 +1757,48 @@ Every multiple-choice game was played through to its score page at phone size, w
   multi »'s right panel, `me.admin`): `trace/routechoice.js` (pure, run in the worker `trace/routeworker.js`), `trace/routeplan.js`
   (the planner, the settings panel shared by both pages, the routes drawn, `autoPace`, `nearestRoute`). The map is read **by its
   colours only** (no vector map in the analyses): areas (white, the two yellows, three greens by depth, olive) and inks (purple,
-  black, grey, brown, blue); each ink's thick parts (an opening a little wider than its own line width, within 3 × the black's;
-  6 × 6 m at least) are areas — black a building or big cliff (impassable), grey a building in sprint or bare rock, brown paved,
-  blue water —, thin black lines 30 m long or dashes chained (gap under 0.4 × their length) are paths, thin blue streams and
-  (dense) marshes; contours, the course, text and dots are painted over by the nearest area. Cells of ~1.5 m (the most frequent
-  area). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
+  black, grey, brown, blue). **The reading and the search redone on 2026-11-01** (owner, on the Fougères night-champs photo: the
+  routes ignored the big track the runner took; « don't use the runner's trace, don't retune the speeds »): the cause was the
+  reading — the photo's grey paper read as bare rock over 88 % of the map, and the opening sized from the measured black line
+  width (1 px on photos and scans) made every path a « thick » area. Now: (1) `flatten` makes the paper white (its colour = the
+  median of the brightest nearly grey pixels; its level per channel the 92nd percentile of those pixels in ~50 m blocks, blocks
+  without paper filled from their neighbours, smoothed; a white export left as it is); (2) `northLines` takes the magnetic north
+  lines out (a Hough vote of each row's thin runs, blue — any bluish pixel: a photo's are pale — then black, within 16° of the
+  vertical; three strong lines parallel within 0.4° and evenly spaced ≥ 80 m, then every line of that spacing present on a fifth
+  of the rows; erased into `I_ERASED`, the cells' `north`, cyan in the picture); (3) the thickness test in metres (`THICK`: a
+  half width of 3.5 m in forest, 2 m in sprint — the worker reads the map again when its kind changes); a forest map's thick grey
+  lighter than 165 is shade, not rock; (4) `lineNetwork`: the thin black **or dark neutral grey** pixels (a scan's black lines) as
+  pieces (3 % black at least), each one's skeleton (Zhang-Suen), ends and direction (a dash's axis, else the last 5 m), facing ends
+  of different pieces joined across gaps ≤ 0.8 × the shorter piece (3-15 m; within 30° of the gap, the pieces within 45°), a chain
+  of 30 m a path of one of three kinds against the map's weighted-median dashed path (`PATH`: TRACK solid and 15 % wider, or dashes
+  1.3 × longer and 10 % wider; SMALL dashes under 0.6 ×; else PATH), the gaps drawn with `PATH.BRIDGE` (they open nothing
+  impassable, and count as nothing in « obstacles » mode); speeds `track` 130, `path` 125, `small` 110 (vector maps: 501-504 track,
+  505 path, 506-508 small). Cells of ~1.5 m: the most frequent area, the fastest path kind (`path`, and `raw` without the bridged
+  gaps). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
   metres per metre by default; down: 1 − 0.6 × grade to 15 %, then + 2.5 per unit) × the **navigation caution** (1 + caution ×
   visibility × min(1, distance to a handrail / 50 m): handrails = paths, streams, edges between visibility groups, blocked areas'
   banks; caution 20 % by default); the times shown exclude the caution. Heights: `terrain.js`'s grid (IGN, else the tiles), flat
-  if it fails. A* on 16 neighbours in an ellipse (0.65 L + 90 m); variants by penalising the found routes' corridors, each pulled
-  tight without the penalty in a band around it and kept only if 30 % of it lies outside the others, it costs at most A + `extra`
-  (25 %), and it is locally optimal (no 30 % stretch shortened by over 1 % + 3 m: an arc through uniform forest is no choice);
-  4 s at most for the variants. A runner's route is measured on the same model (`lineRoute`), matched to a variant within 25 m.
+  if it fails. **The search** (`legSearch`): two complete Dijkstra trees on 16 neighbours over an ellipse (0.75 L + 150 m), from the
+  start and from the control; T = their sum = the cost of the best route through each cell (A* was already exact: searching from
+  the arrival too gives the same best route, but the sum gives the choices). Candidates: the best route, the longest « plateau »
+  (steps both trees take), then the other plateaus and the « cuts » (every tenth of the leg, a line across it; each valley of T on it
+  with a prominence of 1.5 % of the best, 4 s at least) by cost; the route through a cell = the forward tree back + the backward tree
+  on. Kept when ≤ best × (1 + `extra`), a fifth of it outside the kept routes' corridors (max(20 m, 0.12 L)), and either it crosses
+  some cut line in a valley no kept route crosses it in (the ridges between the valleys) and is locally optimal over 30 % stretches,
+  or it lies 30 % apart and is locally optimal over 50 % stretches (1 % + 1 m) — an arc through uniform forest is no choice. Each
+  kept route pulled tight (`tighten`: straight lines no costlier than the grid's way, nothing impassable, within 2 cells of it) and
+  measured off the grid like a runner's (`polyline`, as `lineRoute`). The **decision map** (« Carte des décisions », `ocn.rc.dec`):
+  T / best − 1 per region cell, dark green to orange up to `extra`, nothing beyond (`decisionPicture`, the worker's `decision` op,
+  `drawDecision` under the routes). The panel: a progress bar under the status (the reading by stages, the relief, the legs), a
+  warning when the reading looks wrong (`readingWarning`: grey + buildings over 20 % in forest, one class over 2/3, no path), the
+  terrain's legend under « Voir le terrain tel que lu ». Measured on the Fougères photo (960 × 1280, 2.13 m/px): read in 0.8 s, the
+  six north lines found, 16 legs in 1.2-2.3 s; S-1 best = along the track (72 % on paths), the runner's route matched to A. On the
+  Gif scan (0.635 m/px): read in 3.3-4.7 s, six north lines, the dashed paths as a network. Synthetic legs (scratch `synth_new.mjs`):
+  16 of 19 expected choices, no arc offered in uniform forest; a straight way far from any handrail beside a track is not locally
+  optimal under the caution (the caution pulls toward the track), so it is not offered. Scratch: `rc/` in that session's scratchpad
+  (`fnew.mjs`, `synth_new.mjs`, `gpic.mjs`), copied to `C:\kerkia\cn-data\scratch-scripts`. Not done: the line network as a graph
+  of its own for the search (the raster's path cells carry it), form lines, dashed contours.
+  A runner's route is measured on the same model (`lineRoute`), matched to a variant within 25 m.
   Pace: the one typed, else (solo) the median of the runner's legs' actual ÷ model time, (multi) the runners' median on the leg,
   clamped 3-20 min/km, else 6:00. Solo computes every leg (the current first) and adds the card « Itinéraires calculés » (Choix =
   model of one's route − A; Exécution = actual − model); multi computes the leg shown and lists the runners shown. Settings in
@@ -1780,7 +1810,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   `trace/vectorroutes.js` reads them with the Tracer's `tracer/vmap/` (`readVector`: the frame of `mapsrc.openVector`, its
   `geoFromVector`) and draws the engine's layers on the image's pixels (`layers`; the worker's op `layers` instead of `init`, no
   colours read): areas by their fill colour (hatching: blue marsh, olive/purple out of bounds; pattern green/black: slow), colour by
-  colour from the bottom of the colour table; lines by symbol number (501-508 paths drawn solid; 201, 515, 518, and 521/524 as
+  colour from the bottom of the colour table; lines by symbol number (501-508 paths drawn solid, of their three kinds; 201, 515, 518, and 521/524 as
   lines block — a path crossing them stays open, an out-of-bounds area never; 202, 415, 416, 513-523's passable ones handrails;
   blue lines streams); contours, points, text and course left out. « Analyse solo »: a .ocd/.omap/.xmap dropped with no image is
   the map (rendered by `mapsrc.openMap`, georeferenced by its own grid: `files.geo.corners`), else (or from the routes box) a
