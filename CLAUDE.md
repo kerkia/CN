@@ -847,8 +847,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   name there, a note) that posts a ready message to `/api/contact` (« Demande d'aide », the account, language and map count). **Sharing**
   (owner: private by default): a link to the whole archive or to one map (`mymap_links`; `#/mes-cartes?partage=<token>[&carte=<id>]`),
   opened by anyone holding it — a visitor without an account enters as a guest (`app.route_`, the guest pass; the gate's `GUEST`
-  lets `/api/mymaps/s/…` through) —, showing the owner's name, never the personal channels; deleting the link ends it. **No quota for
-  now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
+  lets `/api/mymaps/s/…` through) —, showing the owner's name, never the personal channels; deleting the link ends it. **A link shares
+  the maps with the routes, or the maps alone** (owner, 2026-11-01: `mymap_links.traces`, chosen before the link is made and changed
+  on the link kept, same address; a map-only link lists no runs and refuses them — a QuickRoute map still shows the route painted in
+  its picture, which the dialog says). **A map without a run** (owner, 2026-11-01: « Ajouter une carte »; the import takes them too):
+  any JPEG, PNG or WebP, a PDF's first page (as a PNG, `mapfile.readMap`/`imageBlob`), a KMZ's image georeferenced by its overlay
+  (`georef.kmlCorners`); in a zip only QuickRoute's and Ozimut's JPEGs count (a DOMA folder's « .blank.jpg » would make each map
+  twice). **No quota for now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
   (`functions/api/mymaps/[[path]].js`, its header lists the routes; images cached a year: a map never changes under its id);
   account deletion removes all (`api/account/delete.js`); the privacy page's « Mes cartes ». Texts in the area catalogue
   `i18n/mymaps.{fr,en,de,es}.js` (`loadArea("mymaps")`); the Coach guide's chapter `cartes`. Local test: launch config

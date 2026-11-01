@@ -111,7 +111,7 @@ export const updateMap = (id, fields) => call(`/maps/${id}`, { method: "PUT", bo
 export const deleteMap = (id) => call(`/maps/${id}`, { method: "DELETE" });
 export const updateRun = (id, fields) => call(`/runs/${id}`, { method: "PUT", body: fields });
 export const deleteRun = (id) => call(`/runs/${id}`, { method: "DELETE" });
-export const setLink = (map, on) => call("/link", { method: "POST", body: { map: map || null, on } });
+export const setLink = (map, on, traces = true) => call("/link", { method: "POST", body: { map: map || null, on, traces } });
 /** Where a map's image, a thumbnail or a run is read: one's own, or through a link. */
 export const mapUrl = (id, part, token) => (token ? `${API}/s/${token}/maps/${id}/${part}` : `${API}/maps/${id}/${part}`);
 export const runUrl = (id, token) => (token ? `${API}/s/${token}/runs/${id}` : `${API}/runs/${id}`);
@@ -150,10 +150,15 @@ export async function save(entry, { personal = false } = {}) {
 const day = (ms) => (Number.isFinite(ms) ? new Date(ms).toLocaleDateString("en-CA", { timeZone: "Europe/Paris" }) : null);
 const stem = (name) => String(name || "").replace(/\.[a-z0-9]+$/i, "");
 
-/** The entries (see `save`) a file holds: an Ozimut or QuickRoute JPEG, or a zip of them. Throws "unknown" otherwise. */
+/**
+ * The entries (see `save`) a file holds: an Ozimut or QuickRoute JPEG, or a zip of them; else a map without a run (owner,
+ * 2026-11-01): any JPEG, PNG or WebP image, a PDF's first page, a KMZ's image (georeferenced by its overlay). In a zip only
+ * QuickRoute's and Ozimut's JPEGs count (a DOMA folder's « .blank.jpg » would make each map twice). Throws "unknown" otherwise.
+ */
 export async function readFile(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {                       // a zip
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {                       // a zip, or a KMZ
+    if (/\.kmz$/i.test(file.name)) return [await readKmz(bytes, file.name)];
     const ff = await fflate();
     const all = ff.unzipSync(bytes, { filter: (f) => /\.jpe?g$/i.test(f.name) && !/(^|\/)__MACOSX\//.test(f.name) });
     const out = [];
@@ -163,13 +168,41 @@ export async function readFile(file) {
     if (!out.length) throw new Error("unknown");
     return out;
   }
-  return readBytes(bytes, file.name);
+  try { return await readBytes(bytes, file.name); }
+  catch (e) { if (e.message !== "unknown") throw e; }
+  return [await readPlain(file, bytes)];
 }
 async function readBytes(bytes, name) {
   const kind = kindOf(bytes);
   if (kind === "ozimut") return [await readOzimut(bytes, name)];
   if (kind === "quickroute") return [await readQr(bytes, name)];
   throw new Error("unknown");
+}
+const blank = (blob, name, image, geo = null, from = "image") => ({ blob, name, image, title: stem(name), day: null, place: "", notes: "", geo, runs: [], from });
+/** An image or a PDF as a map without a run, kept as it came (a PDF's page as a PNG: mapfile.imageBlob). */
+async function readPlain(file, bytes) {
+  const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  const isImg = (bytes[0] === 0xff && bytes[1] === 0xd8) || (bytes[0] === 0x89 && bytes[1] === 0x50)
+    || (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50);
+  if (!isPdf && !isImg) throw new Error("unknown");
+  const { readMap, imageBlob } = await import("./mapfile.js");
+  const image = await readMap(isPdf ? new File([bytes], file.name, { type: "application/pdf" }) : file).catch(() => { throw new Error("unknown"); });
+  const blob = await imageBlob(file, image);
+  return blank(blob, isPdf ? `${stem(file.name)}.png` : file.name, image);
+}
+/** A KMZ's map: its overlay's image, georeferenced by the overlay's corners. */
+async function readKmz(bytes, name) {
+  const { readZip, parseKml, kmlCorners } = await import("./georef.js");
+  const files = await readZip(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const kml = files.find((f) => /\.kml$/i.test(f.name));
+  const ov = kml && parseKml(new TextDecoder().decode(kml.data))[0];
+  const img = ov && (files.find((f) => f.name === ov.href) || files.find((f) => /\.(jpe?g|png|webp)$/i.test(f.name)));
+  if (!img) throw new Error("unknown");
+  const type = /\.png$/i.test(img.name) ? "image/png" : /\.webp$/i.test(img.name) ? "image/webp" : "image/jpeg";
+  const blob = new Blob([img.data], { type }), image = await createImageBitmap(blob);
+  const [tl, tr, br, bl] = kmlCorners(ov), W = image.width, H = image.height;
+  const geo = affineFit([[tl[1], tl[0], 0, 0], [tr[1], tr[0], W, 0], [br[1], br[0], W, H], [bl[1], bl[0], 0, H]]);
+  return blank(blob, `${stem(name)}.${type === "image/jpeg" ? "jpg" : type.slice(6)}`, image, geo, "kmz");
 }
 
 async function readQr(bytes, name) {

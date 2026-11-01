@@ -6,7 +6,7 @@
 // map), which anyone holding it reads — a visitor without an account too (with the guest pass: _middleware.js GUEST); the
 // personal channels are never served through a link.
 //
-//   GET    /api/mymaps                          { maps: [map + runs], links: { archive, maps: { id: token } }, name }
+//   GET    /api/mymaps                          { maps: [map + runs], links: { archive, maps: { id: link } }, name } (a link: { token, traces })
 //   POST   /api/mymaps/maps                     the image as the body, X-Meta (URI-encoded JSON: sha, title, day, place,
 //                                               notes, w, h, geo) -> { map, existed } (the same image again: the map kept)
 //   PUT    /api/mymaps/maps/<id>                { title, day, place, notes, geo } -> { map }
@@ -16,8 +16,10 @@
 //   POST   /api/mymaps/maps/<id>/runs           { title, day, start, dur, dist, source, rec } -> { run }
 //   GET    /api/mymaps/runs/<id>                the run's record
 //   PUT    /api/mymaps/runs/<id>                { title } -> { run };  DELETE /api/mymaps/runs/<id>
-//   POST   /api/mymaps/link                     { map: id | null, on: true | false } -> { token | null }
-//   GET    /api/mymaps/s/<token>                { name, maps } of a link (the archive's: every map; a map's: that one)
+//   POST   /api/mymaps/link                     { map: id | null, on: true | false, traces } -> { token | null, traces } (traces: the
+//                                               routes shared with the maps, else the maps alone; changed on the link kept)
+//   GET    /api/mymaps/s/<token>                { name, archive, traces, maps } of a link (the archive's: every map; a map's: that one;
+//                                               a link of the maps alone lists no runs and serves none)
 //   GET    /api/mymaps/s/<token>/maps/<id>/map | /thumb,  GET /api/mymaps/s/<token>/runs/<id>
 
 import { allow, currentUser, json, nowIso, readBody } from "../../_lib/api.js";
@@ -107,7 +109,9 @@ export async function onRequest(ctx) {
       if (parts.length === 2) {
         const u = await env.DB.prepare("SELECT first_name, last_name, display_name FROM users WHERE id = ?").bind(uid).first();
         const { maps, runs } = await mapsOf(env, uid, link.map_id);
-        return json({ name: u ? nameOf(u) : "", archive: !link.map_id, maps: listed(maps, runs, true) }, 200, { "Cache-Control": "private, max-age=60" });
+        const traces = link.traces !== 0;
+        return json({ name: u ? nameOf(u) : "", archive: !link.map_id, traces, maps: listed(maps, traces ? runs : [], true) },
+          200, { "Cache-Control": "private, max-age=60" });
       }
       if (parts[2] === "maps" && ID.test(parts[3] || "") && ["map", "thumb"].includes(parts[4]) && parts.length === 5) {
         if (link.map_id && link.map_id !== parts[3]) return json({ error: "not found" }, 404);
@@ -116,7 +120,7 @@ export async function onRequest(ctx) {
       }
       if (parts[2] === "runs" && ID.test(parts[3] || "") && parts.length === 4) {
         const r = await env.DB.prepare("SELECT * FROM mymap_runs WHERE id = ? AND user_id = ?").bind(parts[3], uid).first();
-        if (!r || (link.map_id && link.map_id !== r.map_id)) return json({ error: "not found" }, 404);
+        if (!r || link.traces === 0 || (link.map_id && link.map_id !== r.map_id)) return json({ error: "not found" }, 404);
         return serve(env, key(uid, r.map_id, `runs/${r.id}.json`), { strip: true });
       }
       return json({ error: "not found" }, 404);
@@ -130,9 +134,9 @@ export async function onRequest(ctx) {
     if (!parts.length) {
       if (method !== "GET") return json({ error: "method" }, 405);
       const [{ maps, runs }, { results: links }] = await Promise.all([mapsOf(env, uid),
-        env.DB.prepare("SELECT token, map_id FROM mymap_links WHERE user_id = ?").bind(uid).all()]);
+        env.DB.prepare("SELECT token, map_id, traces FROM mymap_links WHERE user_id = ?").bind(uid).all()]);
       const out = { archive: null, maps: {} };
-      for (const l of links) { if (l.map_id) out.maps[l.map_id] = l.token; else out.archive = l.token; }
+      for (const l of links) { const v = { token: l.token, traces: l.traces !== 0 }; if (l.map_id) out.maps[l.map_id] = v; else out.archive = v; }
       return json({ maps: listed(maps, runs), links: out, name: nameOf(user) });
     }
 
@@ -141,14 +145,18 @@ export async function onRequest(ctx) {
       const mapId = b?.map ? String(b.map) : null;
       if (mapId && !(await env.DB.prepare("SELECT id FROM mymaps WHERE id = ? AND user_id = ?").bind(mapId, uid).first())) return json({ error: "not found" }, 404);
       const where = mapId ? ["DELETE FROM mymap_links WHERE user_id = ? AND map_id = ?", uid, mapId] : ["DELETE FROM mymap_links WHERE user_id = ? AND map_id IS NULL", uid];
-      if (!b?.on) { await env.DB.prepare(where[0]).bind(...where.slice(1)).run(); return json({ token: null }); }
-      const sel = mapId ? env.DB.prepare("SELECT token FROM mymap_links WHERE user_id = ? AND map_id = ?").bind(uid, mapId)
-        : env.DB.prepare("SELECT token FROM mymap_links WHERE user_id = ? AND map_id IS NULL").bind(uid);
+      if (!b?.on) { await env.DB.prepare(where[0]).bind(...where.slice(1)).run(); return json({ token: null, traces: true }); }
+      const sel = mapId ? env.DB.prepare("SELECT token, traces FROM mymap_links WHERE user_id = ? AND map_id = ?").bind(uid, mapId)
+        : env.DB.prepare("SELECT token, traces FROM mymap_links WHERE user_id = ? AND map_id IS NULL").bind(uid);
       const old = await sel.first();
-      if (old) return json({ token: old.token });
+      const traces = "traces" in b ? (b.traces ? 1 : 0) : old ? old.traces : 1;
+      if (old) {
+        if (old.traces !== traces) await env.DB.prepare("UPDATE mymap_links SET traces = ? WHERE token = ?").bind(traces, old.token).run();
+        return json({ token: old.token, traces: traces !== 0 });
+      }
       const token = newId(20);
-      await env.DB.prepare("INSERT INTO mymap_links (token, user_id, map_id, created_at) VALUES (?, ?, ?, ?)").bind(token, uid, mapId, nowIso()).run();
-      return json({ token });
+      await env.DB.prepare("INSERT INTO mymap_links (token, user_id, map_id, traces, created_at) VALUES (?, ?, ?, ?, ?)").bind(token, uid, mapId, traces, nowIso()).run();
+      return json({ token, traces: traces !== 0 });
     }
 
     if (parts[0] === "maps") {

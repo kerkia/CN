@@ -53,9 +53,9 @@ export function parseKml(text) {
   }
   return out;
 }
-/** The transform metres -> px of an overlay drawn on an image W × H. */
-export function fitFromKml(ov, W, H, track) {
-  let corners;                                       // lat/lon of the image's corners: top-left, top-right, bottom-right, bottom-left
+/** The lat/lon of an overlay's image corners: top-left, top-right, bottom-right, bottom-left. */
+export function kmlCorners(ov) {
+  let corners;
   if (ov.quad) corners = [ov.quad[3], ov.quad[2], ov.quad[1], ov.quad[0]].map(([lon, lat]) => [lat, lon]);     // KML: lower-left first, counter-clockwise
   else {
     const { n, s, e, w, rot } = ov.box, latc = (n + s) / 2, lonc = (e + w) / 2;
@@ -63,7 +63,11 @@ export function fitFromKml(ov, W, H, track) {
     const hw = ((e - w) / 2) * kx, hh = ((n - s) / 2) * ky, a = (rot * Math.PI) / 180;
     corners = [[-hw, hh], [hw, hh], [hw, -hh], [-hw, -hh]].map(([x, y]) => [latc + (x * Math.sin(a) + y * Math.cos(a)) / ky, lonc + (x * Math.cos(a) - y * Math.sin(a)) / kx]);
   }
-  return fitAffine(corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]);
+  return corners;
+}
+/** The transform metres -> px of an overlay drawn on an image W × H. */
+export function fitFromKml(ov, W, H, track) {
+  return fitAffine(kmlCorners(ov).map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]);
 }
 
 // ---- world files and projections ---------------------------------------------------------------------------------------

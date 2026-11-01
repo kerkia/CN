@@ -3412,3 +3412,5 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
   .mm-side { max-height: none; }
 }
 @media (max-width: 640px) { .mm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .mm-card { padding: 6px; } .mm-card b { font-size: 13.5px; } }
+.mm-what { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.mm-what legend { padding: 0 4px; font-size: 13px; color: var(--ink-2); }

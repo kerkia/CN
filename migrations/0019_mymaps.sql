@@ -46,6 +46,7 @@ CREATE TABLE mymap_links (
   token      TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL,
   map_id     TEXT,
+  traces     INTEGER NOT NULL DEFAULT 1,       -- 1: the maps with the routes run on them; 0: the maps alone (owner, 2026-11-01)
   created_at TEXT NOT NULL
 );
 CREATE UNIQUE INDEX mymap_links_one ON mymap_links (user_id, IFNULL(map_id, ''));

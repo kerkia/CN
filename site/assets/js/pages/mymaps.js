@@ -6,7 +6,7 @@
 // or all in a zip, and comes back the same. DOMA: no import yet — its button asks the Ozimut team to turn it on for the
 // account, a message ready to send. No quota for now (owner).
 
-import { html, raw, $, $$, fmt, fmtDate, fmtTime } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtTime, fileAccept } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import * as auth from "../auth.js";
 import { replaceQuery } from "../app.js";
@@ -15,6 +15,9 @@ import * as MM from "../trace/mymaps.js";
 await loadArea("mymaps");
 
 const SKEY = "ocn.mm.prefs";
+// a map alone: an image, a PDF (its first page), a KMZ (its image, georeferenced); with its runs: QuickRoute's and Ozimut's JPEGs, a zip of them
+const ACCEPT_MAP = ".jpg,.jpeg,.png,.webp,.pdf,.kmz,image/jpeg,image/png,image/webp,application/pdf";
+const ACCEPT_ALL = `${ACCEPT_MAP},.zip,application/zip`;
 const prefs = (() => { try { return JSON.parse(localStorage.getItem(SKEY) || "{}") || {}; } catch (e) { return {}; } })();
 const keepPrefs = () => { try { localStorage.setItem(SKEY, JSON.stringify(prefs)); } catch (e) { /* this visit */ } };
 const km = (m) => (m == null ? "—" : t("mm.km", { n: fmt(m / 1000, 1) }));
@@ -59,9 +62,10 @@ export async function render(main, { query = {} } = {}) {
     const nRuns = st.maps.reduce((n, m) => n + m.runs.length, 0), bytes = st.maps.reduce((n, m) => n + m.bytes + m.runs.reduce((k, r) => k + (r.bytes || 0), 0), 0);
     $("#mm").innerHTML = html`
       <div class="page-head"><div><h1>${token ? t("mm.shared.title", { name: st.name }) : t("mm.title")}</h1>
-        <p class="lede">${token ? t("mm.shared.lede") : t("mm.lede")}</p></div>
+        <p class="lede">${token ? t(st.traces ? "mm.shared.lede" : "mm.shared.ledeMap") : t("mm.lede")}</p></div>
         ${mine ? html`<div class="mm-acts">
-          <label class="btn btn-primary btn-sm" for="mm-files">${t("mm.import")}</label><input type="file" id="mm-files" multiple hidden accept=".jpg,.jpeg,.zip,image/jpeg,application/zip">
+          <label class="btn btn-primary btn-sm" for="mm-files">${t("mm.import")}</label><input type="file" id="mm-files" multiple hidden accept="${fileAccept(ACCEPT_ALL)}">
+          <label class="btn btn-sm" for="mm-blank" title="${t("mm.addMap.hint")}">${t("mm.addMap")}</label><input type="file" id="mm-blank" multiple hidden accept="${fileAccept(ACCEPT_MAP)}">
           <button type="button" class="btn btn-sm" id="mm-doma">${t("mm.doma")}</button>
           <button type="button" class="btn btn-sm" id="mm-export" ${raw(st.maps.length ? "" : "disabled")}>${t("mm.exportAll")}</button>
           <button type="button" class="btn btn-sm" id="mm-share">${st.links.archive ? `🔗 ${t("mm.shared.on")}` : t("mm.share")}</button></div>` : ""}</div>
@@ -69,7 +73,7 @@ export async function render(main, { query = {} } = {}) {
       ${st.maps.length ? html`<div class="filters mm-filters">
           <input type="search" id="mm-q" placeholder="${t("mm.search")}" value="${q}" aria-label="${t("mm.search")}">
           <select id="mm-year" aria-label="${t("mm.year")}"><option value="">${t("mm.allYears")}</option>${years.map((y) => html`<option ${raw(y === year ? "selected" : "")}>${y}</option>`)}</select>
-          <span class="muted">${tn("mm.count.maps", st.maps.length)} · ${tn("mm.count.runs", nRuns)}${mine ? ` · ${size(bytes)}` : ""}</span></div>
+          <span class="muted">${tn("mm.count.maps", st.maps.length)}${token && !st.traces ? "" : ` · ${tn("mm.count.runs", nRuns)}`}${mine ? ` · ${size(bytes)}` : ""}</span></div>
         <div class="mm-grid">${shown.map(card)}</div>
         ${shown.length ? "" : html`<div class="empty">${t("mm.none.filter")}</div>`}`
       : html`<div class="card"><div class="card-body prose mm-empty">${mine ? raw(t("mm.none", { solo: `<a href="#/analyse-solo">${t("mm.solo")}</a>` })) : t("mm.shared.none")}</div></div>`}
@@ -78,7 +82,7 @@ export async function render(main, { query = {} } = {}) {
     $("#mm-year")?.addEventListener("change", (e) => { year = e.target.value; replaceQuery({ partage: token, q: q || null, annee: year || null }); drawList(); });
     $$(".mm-card").forEach((c) => c.addEventListener("click", (e) => { e.preventDefault(); go(c.dataset.id); }));
     if (!mine) return;
-    $("#mm-files").addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importFiles(f); });
+    for (const id of ["#mm-files", "#mm-blank"]) $(id).addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importFiles(f); });
     $("#mm-doma").addEventListener("click", domaDialog);
     $("#mm-export").addEventListener("click", () => exportDialog(st.maps));
     $("#mm-share").addEventListener("click", () => shareDialog(null));
@@ -97,7 +101,7 @@ export async function render(main, { query = {} } = {}) {
       <span class="mm-thumb"><img src="${thumb(m)}" alt="" loading="lazy">${mine && st.links.maps[m.id] ? html`<span class="mm-tag" title="${t("mm.shared.on")}">🔗</span>` : ""}</span>
       <b>${m.title || t("mm.untitled")}</b>
       <span class="muted">${[m.day ? fmtDate(m.day) : "", m.place].filter(Boolean).join(" · ")}</span>
-      <span class="muted">${tn("mm.count.runs", m.runs.length)}${dist ? ` · ${km(dist)}` : ""}${dur ? ` · ${fmtTime(Math.round(dur))}` : ""}</span></a>`;
+      <span class="muted">${token && !st.traces ? "" : m.runs.length ? html`${tn("mm.count.runs", m.runs.length)}${dist ? ` · ${km(dist)}` : ""}${dur ? ` · ${fmtTime(Math.round(dur))}` : ""}` : t("mm.mapOnly")}</span></a>`;
   };
   function go(id) {
     query = { ...query, carte: id };
@@ -133,7 +137,7 @@ export async function render(main, { query = {} } = {}) {
           <div class="mm-side-h"><b>${t("mm.runs")}</b>
             <select id="mm-colour" aria-label="${t("mm.colour")}"><option value="run">${t("mm.colour.run")}</option><option value="pace" ${raw(colourBy === "pace" ? "selected" : "")}>${t("mm.colour.pace")}</option></select></div>
           <ul class="mm-runs" id="mm-runs"></ul>
-          ${m.runs.length ? "" : html`<p class="muted">${t("mm.noRuns")}</p>`}
+          ${m.runs.length ? "" : html`<p class="muted">${t(token ? (st.traces ? "mm.noRuns.shared" : "mm.shared.noTraces") : "mm.noRuns")}</p>`}
         </div></aside>
       </div>`;
     $("#mm-back")?.addEventListener("click", (e) => { e.preventDefault(); back(); });
@@ -298,14 +302,23 @@ export async function render(main, { query = {} } = {}) {
     });
   }
 
+  // a link shares the maps with the routes run on them, or the maps alone (owner, 2026-11-01): chosen before the link is made,
+  // changed on the link kept (same address)
   function shareDialog(m) {
     const cur = () => (m ? st.links.maps[m.id] : st.links.archive);
+    let traces = cur()?.traces ?? true;
+    // a QuickRoute map carries its route in the picture itself: shared alone, the route still shows
+    const painted = (m ? [m] : st.maps).some((x) => x.runs.some((r) => r.source === "quickroute"));
     const d = dialog(html`${dlgHead(t(m ? "mm.shareMap" : "mm.share"))}<div class="stack mm-form" id="mm-sh"></div>`);
     const fill = () => {
-      const tok = cur();
+      const link = cur();
       $("#mm-sh", d).innerHTML = html`<p>${t(m ? "mm.share.mapText" : "mm.share.allText")}</p>
-        ${tok ? html`<div class="mm-link"><input readonly value="${shareUrl(tok, m?.id)}" id="mm-url"><button type="button" class="btn btn-sm btn-primary" id="mm-copy">${t("mm.copy")}</button></div>
-          <p class="muted">${t("mm.share.who")}</p>
+        <fieldset class="mm-what"><legend>${t("mm.share.what")}</legend>
+          <label class="mm-check"><input type="radio" name="mm-what" value="1" ${raw(traces ? "checked" : "")}> <span>${t("mm.share.withTraces")}</span></label>
+          <label class="mm-check"><input type="radio" name="mm-what" value="0" ${raw(traces ? "" : "checked")}> <span>${t("mm.share.mapOnly")}</span></label>
+          ${painted ? html`<p class="muted">${t("mm.share.qrNote")}</p>` : ""}</fieldset>
+        ${link ? html`<div class="mm-link"><input readonly value="${shareUrl(link.token, m?.id)}" id="mm-url"><button type="button" class="btn btn-sm btn-primary" id="mm-copy">${t("mm.copy")}</button></div>
+          <p class="muted">${t(link.traces ? "mm.share.who" : "mm.share.whoMap")}</p>
           <div class="row"><button type="button" class="btn btn-sm mm-danger" id="mm-off">${t("mm.share.off")}</button></div>`
         : html`<p class="muted">${t("mm.share.private")}</p><div class="row"><button type="button" class="btn btn-primary" id="mm-on">${t("mm.share.make")}</button></div>`}`;
       $("#mm-copy", d)?.addEventListener("click", async () => {
@@ -313,11 +326,13 @@ export async function render(main, { query = {} } = {}) {
       });
       const set = async (on) => {
         try {
-          const { token: tok } = await MM.setLink(m?.id, on);
-          if (m) { if (tok) st.links.maps[m.id] = tok; else delete st.links.maps[m.id]; } else st.links.archive = tok;
+          const r = await MM.setLink(m?.id, on, traces);
+          const v = r.token ? { token: r.token, traces: r.traces } : null;
+          if (m) { if (v) st.links.maps[m.id] = v; else delete st.links.maps[m.id]; } else st.links.archive = v;
           fill();
         } catch (e) { alert(t("mm.err.save")); }
       };
+      $$('input[name="mm-what"]', d).forEach((r) => r.addEventListener("change", () => { traces = r.value === "1"; if (cur()) set(true); }));
       $("#mm-on", d)?.addEventListener("click", () => set(true));
       $("#mm-off", d)?.addEventListener("click", () => set(false));
     };
@@ -374,7 +389,7 @@ export async function render(main, { query = {} } = {}) {
     box.innerHTML = html`
       ${entries.length ? html`<p>${t("mm.imp.found")}</p><ul class="mm-imp">${entries.map((e, i) => html`<li><label>
         <input type="checkbox" data-i="${i}" ${raw(e.on ? "checked" : "")} ${raw(shaKnown.has(e.sha) && !e.newRuns.length ? "disabled" : "")}>
-        <b>${e.title || e.file}</b> <span class="muted">${[e.day ? fmtDate(e.day) : "", tn("mm.count.runs", e.runs.length), t(`mm.from.${e.from}`)].filter(Boolean).join(" · ")}</span>
+        <b>${e.title || e.file}</b> <span class="muted">${[e.day ? fmtDate(e.day) : "", e.runs.length ? tn("mm.count.runs", e.runs.length) : t("mm.mapOnly"), t(`mm.from.${e.from}`)].filter(Boolean).join(" · ")}</span>
         ${shaKnown.has(e.sha) ? html` <span class="mm-tag-s">${e.newRuns.length ? t("mm.imp.addRuns") : t("mm.imp.already")}</span>` : ""}</label></li>`)}</ul>` : ""}
       ${failed.length ? html`<div class="notice">${failed.map(([n, k]) => html`<div><b>${n}</b> — ${t(k)}</div>`)}</div>` : ""}
       ${entries.some((e) => e.from === "quickroute") ? html`<p class="muted">${t("mm.imp.qrNote")}</p>` : ""}
