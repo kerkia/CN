@@ -17,7 +17,7 @@ export const COOKIE = "cnx_session";
 // (/data/meta.json: the countries the site reads; /data/<cc>/meta.json: a country's headline figures, for the login page)
 const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/,
   /^\/data\/[a-z]{2}\/meta\.json$/, /^\/api\/logout$/,
-  /^\/sw(-push)?\.js$/, /^\/manifest(\.en)?\.webmanifest$/, /^\/offline(\.html)?$/,
+  /^\/sw(-push)?\.js$/, /^\/manifest(\.(en|de|es))?\.webmanifest$/, /^\/offline(\.html)?$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/,
   /^\/api\/live\/mop$/];          // MeOS's online results: no session, the broadcast's MeOS password (api/live/mop.js)
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
