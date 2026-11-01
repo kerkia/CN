@@ -757,7 +757,8 @@ buttons a pad, the view itself tapped (left/right third turns, middle steps, a s
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
 - **Santé / Health** (« Nutrition » until 2026-11-01, owner: more general — the name only: the code, the tables `nut_*`, the right
   `users.nutrition` and the route key `nutrition` keep it; `#/sante`, the old `#/nutrition` still opens it), formerly **Nutrition**
-  (`pages/nutrition.js`, and its authors' « Rédaction », `#/redaction`, `pages/nutritionwrite.js`; Coach,
+  (`pages/nutrition.js`, and its authors' « Rédaction » / Authoring, `#/redaction`, `pages/nutritionwrite.js` — out of the menu since
+  2026-11-01, owner: reached by the « Page de rédaction » button of Santé's page, Santé marked in the menu (`menuKey`); Coach,
   after VMA; owner, 2026-11-01): a blog of articles by theme and by date. **Who**: D1 `users.nutrition` (migration 0017: '' / 'reader' /
   'author', the admin page's « Nutrition » column; Nadejda Le Helloco author and Alec Le Helloco reader from the start), the
   administrators always authors (`_lib/api.js` `nutritionRole`, `publicUser.nutrition`, `auth.nutritionReads` / `nutritionWrites`,

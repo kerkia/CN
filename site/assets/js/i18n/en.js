@@ -4027,9 +4027,8 @@ export default {
   "cd.sprint.typical": "An urban feature, met mostly in sprint",
   // « Nutrition » (Coach) and its authors' « Rédaction » (2026-11-01)
   "nav.nutrition": "Health",
-  "nav.nutritionWrite": "Writing",
+  "nav.nutritionWrite": "Authoring",
   "mt.nutrition": "Food, recovery, fitness: articles by theme",
-  "mt.nutritionWrite": "Write and manage the Health articles",
   "nut.lede": "Eating well, recovering well, staying fit: articles by theme and by date.",
   "nut.loading": "Loading…",
   "nut.err.forbidden": "This page is not open to your account yet.",
@@ -4063,6 +4062,7 @@ export default {
   "nut.tr.wait": "Translating (a few seconds, done once for every reader)…",
   "nut.tr.err.rate": "Too many translations asked for today: try again tomorrow.",
   "nut.tr.err.quota": "The AI's quota for the day is used up: try again tomorrow.",
+  "nut.toAuthoring": "Authoring page",
   "nut.tr.err.model": "The translation failed: try again later.",
   "nut.tr.err.ai": "Translation is not available here.",
   "nut.prev": "‹ Previous article",

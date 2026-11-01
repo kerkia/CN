@@ -34,7 +34,7 @@ export async function render(main, { query }) {
 
   main.innerHTML = html`<div class="nut">
     <div class="page-head"><div><h1>${t("nav.nutrition")}</h1><p class="lede">${t("nut.lede")}</p></div>
-      ${auth.nutritionWrites() ? html`<a class="btn btn-primary" href="#/redaction?nouveau=1">${t("nut.write")}</a>` : ""}</div>
+      ${auth.nutritionWrites() ? html`<a class="btn" href="#/redaction">${t("nut.toAuthoring")}</a>` : ""}</div>
     <div class="nut-layout">
       <aside class="nut-side card">
         <input type="search" id="nut-q" class="nut-search" placeholder="${t("nut.search")}" aria-label="${t("nut.search")}" value="${st.q}">

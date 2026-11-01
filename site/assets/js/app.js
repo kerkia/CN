@@ -350,6 +350,7 @@ function menuKey(r) {
     : at === "agenda" || at === "live" || (at === "splits" && /^direct-/.test(r.query?.course || "")) ? "coming"
     : at === "provisional" || at === "splits" ? "past"
     : at === "analysis" ? "analysisPerso" : at === "analysisRace" ? "analysisClub"   // Coach's analyses: one page each, two tabs
+    : at === "nutritionWrite" ? "nutrition"        // « Rédaction »: Santé's authors' page, out of the menu
     : at;
 }
 
@@ -395,8 +396,8 @@ export function moduleMenus() {
     // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
       ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
-      // « Nutrition » to the accounts given it, « Rédaction » to its authors alone (owner, 2026-11-01)
-      ["nutrition", "#/sante", t("nav.nutrition")], ["nutritionWrite", "#/redaction", t("nav.nutritionWrite")]]
+      // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
+      ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
