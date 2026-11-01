@@ -1683,7 +1683,7 @@ export default {
   "rc.cls.paved": "Zone revêtue",
   "rc.cls.grey": "Rocher nu",
   "rc.cls.building": "Bâtiment, falaise",
-  "rc.cls.oob": "Zone interdite",
+  "rc.cls.oob": "Zone interdite", "rc.cls.band": "Itinéraire interdit",
   "rc.cls.north": "Ligne du nord retirée", "rc.st.reading": "Lecture de la carte…", "rc.st.relief": "Relief : chargement…",
   "rc.st.reliefPct": "Relief : chargement… {p} %", "rc.st.legs": "Calcul des itinéraires : {n} postes sur {t}…", "rc.st.done": "{n} postes sur {t} en {s} s · cases de {c} m · relief : {r}",
   "rc.st.flat": "aucun (terrain supposé plat)", "rc.st.failed": "Le calcul des itinéraires a échoué.", "rc.side.left": "par la gauche",

@@ -2,13 +2,14 @@
 // Messages { id, op, ... } answered { id, ok, ... }, and while the map is read { id, progress } (0-1): init (the image's bytes,
 // its size, the metres of a pixel step, the map's kind) or layers (a vector map's, drawn by trace/vectorroutes.js), dem (the
 // ground's heights), settings (the map read again when its kind changes: the thickness test's width), leg (two map points),
-// decision (the leg's decision map), line (a runner's route), picture (the terrain as read).
+// decision (the leg's decision map), line (a runner's route), picture (the terrain as read), controls (the course's controls:
+// the overprint near them is theirs).
 
-import { classify, cells, costs, context, legSearch, lineRoute, picture, decisionPicture, DEFAULTS } from "./routechoice.js";
+import { classify, cells, costs, context, legSearch, lineRoute, picture, decisionPicture, releaseAround, DEFAULTS } from "./routechoice.js";
 import { heightAt } from "./terrain.js";
 
 let G = null, h = null, em = null, mpc = 1, cs = 1, W = 0, H = 0, settings = { ...DEFAULTS }, X = null;
-let image = null, mppRead = 1, kindRead = "forest", facts = null;
+let image = null, mppRead = 1, kindRead = "forest", facts = null, ctrlPts = [];
 const decisions = new Map();                         // the last legs' decision maps, by their points
 
 /** The grid's size and the metres of a pixel step (J's columns): the cell size, about 1.5 m, 4 million cells at most. */
@@ -25,6 +26,7 @@ function start(w, hh, J) {
 function finish(px) {
   const hOld = h;
   G = cells(px, W, H, cs);
+  G.release = releaseAround(G, em, ctrlPts);
   h = hOld && hOld.length === G.nx * G.ny ? hOld : null;
   rebuild();
   const counts = new Array(13).fill(0), paths = [0, 0, 0, 0];
@@ -82,6 +84,7 @@ const ops = {
   },
   line({ pts }) { return { route: X ? lineRoute(X, pts) : null }; },
   picture() { return { rgba: picture(X), nx: G.nx, ny: G.ny, cs }; },
+  controls({ pts }) { ctrlPts = pts || []; if (G) { G.release = releaseAround(G, em, ctrlPts); rebuild(); } return {}; },
 };
 
 self.onmessage = (e) => {

@@ -251,6 +251,10 @@ export function build(X) {
               su dirección, y une por los extremos los trazos de un camino discontinuo cuando se miran por encima de su hueco. Una cadena de al menos
               30 m es un camino, de uno de tres tipos según sus trazos comparados con los demás caminos del mapa: carretera o pista (trazo continuo y más
               grueso, o trazos largos y gruesos), sendero, senda pequeña (trazos cortos). Los puntos, los triángulos y un trazo corto aislado no lo son.`,
+            html`<b>La sobreimpresión de la organización</b>: el violeta impreso sobre amarillo, naranja o verde sale rojo en el papel. Sus zonas rayadas
+              están prohibidas; sus bandas de cruces a lo largo de una carretera son rutas prohibidas: se cruzan, no se siguen; cerca de los controles del
+              recorrido (sus círculos y números) se ignora. Los muros y vallas infranqueables, en cambio, no se distinguen de un camino en una foto: sus
+              pequeños trazos son demasiado finos.`,
             html`Las <b>líneas azules finas</b> son los arroyos y, muy juntas, los pantanos. Las curvas de nivel, el recorrido, el texto y los puntos se
               borran: cada punto toma el color del terreno más cercano debajo.`,
             html`Después, el mapa se divide en celdas de unos 1,5 m, cada una con el terreno más presente. «Ver el terreno tal como se ha leído» muestra

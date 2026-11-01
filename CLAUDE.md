@@ -1788,7 +1788,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   1.3 × longer and 10 % wider; SMALL dashes under 0.6 ×; else PATH), the gaps drawn with `PATH.BRIDGE` (they open nothing
   impassable, and count as nothing in « obstacles » mode); speeds `track` 130, `path` 125, `small` 110 (vector maps: 501-504 track,
   505 path, 506-508 small). Cells of ~1.5 m: the most frequent area, the fastest path kind (`path`, and `raw` without the bridged
-  gaps). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
+  gaps). **The organisers' overprint** (owner, 2026-11-01: 11 → 12 through a château's hatched grounds; `overprint`): the purple,
+  and purple printed over yellow, orange or green — red on paper (r > 60, g < 0.55 r, b < 0.45 r) —, closed by ~12 m; a piece of
+  600 m² whose ink fills ≤ 60 % of it is overprint; what an opening of ~20 m keeps (1 500 m² at least) is out of bounds (`A.OOB`,
+  the cells' `over` 1), the rest, red, thin and 60 m long, a forbidden route (`over` 2: 40 % speed, no path, no handrail — crossed,
+  not followed). Within 75 m of the course's controls (the pages send them: the worker's `controls` op, `releaseAround`) it is
+  the course's own circles and numbers: released. On an image map a line read as a path no longer opens a building, water or an
+  out-of-bounds area (it did: a château's black edge read as a track). Found: Fougères' château and « Maison Neuve » hatching, its
+  rides' crosses; the Gif scan's three pink hatched areas. **Impassable walls and fences are not read** from an image: on the
+  Fougères photo their tick marks (0.4 mm, two blurred pixels) do not separate them from paths by width or spurs (measured). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
   metres per metre by default; down: 1 − 0.6 × grade to 15 %, then + 2.5 per unit) × the **navigation caution** (1 + caution ×
   visibility × min(1, distance to a handrail / 50 m): handrails = paths, streams, edges between visibility groups, blocked areas'
   banks; caution 20 % by default); the times shown exclude the caution. Heights: `terrain.js`'s grid (IGN, else the tiles), flat

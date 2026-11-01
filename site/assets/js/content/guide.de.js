@@ -254,6 +254,10 @@ export function build(X) {
               zugewandt sind. Eine Kette von mindestens 30 m ist ein Weg, einer von drei Arten nach ihren Strichen im Vergleich zu den anderen Wegen der
               Karte: Straße oder Fahrweg (durchgehend und dicker, oder lange dicke Striche), Fußweg, kleiner Pfad (kurze Striche). Punkte, Dreiecke und
               ein kurzer einzelner Strich zählen nicht.`,
+            html`<b>Der Aufdruck des Veranstalters</b>: Violett, auf Gelb, Orange oder Grün gedruckt, erscheint auf dem Papier rot. Seine schraffierten
+              Flächen sind Sperrgebiete; seine Kreuzbänder entlang eines Weges sind verbotene Wege – man überquert sie, man folgt ihnen nicht; nahe den
+              Posten der Bahn (ihre Kreise und Nummern) wird er nicht beachtet. Unpassierbare Mauern und Zäune lassen sich auf einem Foto nicht von einem
+              Weg unterscheiden: Ihre kleinen Striche sind zu fein.`,
             html`Die <b>dünnen blauen Linien</b> sind die Bäche und, dicht beieinander, die Sümpfe. Höhenlinien, Bahn, Text und Punkte werden
               entfernt: Jeder Punkt nimmt die Farbe des nächstgelegenen Geländes darunter an.`,
             html`Die Karte wird dann in Zellen von etwa 1,5 m zerlegt, jede mit dem häufigsten Gelände. „Gelände wie gelesen anzeigen“ zeigt diese Zellen

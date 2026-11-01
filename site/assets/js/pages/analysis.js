@@ -1556,6 +1556,9 @@ export async function render(main, { query = {}, route } = {}) {
       const facts = await rcs.plan.settings(rcs.s, (f) => { if (my === rcs.token) rcReading(f); });
       if (my !== rcs.token) return;
       if (facts) { rcFacts(facts); if (rcs.picOn) rcPicture(); }
+      await rcs.plan.controls(targets.filter((g) => g.pos && !g.missed).map((g) => g.pos));
+      if (my !== rcs.token) return;
+      if (rcs.picOn) rcPicture();
       const n = targets.length - 1, now = Math.max(0, legAt(tNow));
       const order = [...Array(Math.max(0, n)).keys()].sort((a, b) => (a === now ? -1 : b === now ? 1 : a - b));
       let done = 0;

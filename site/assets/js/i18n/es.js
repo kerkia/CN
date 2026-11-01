@@ -2519,7 +2519,7 @@ export default {
   "rc.cls.paved": "Zona pavimentada",
   "rc.cls.grey": "Roca desnuda",
   "rc.cls.building": "Edificio, cortado",
-  "rc.cls.oob": "Zona prohibida",
+  "rc.cls.oob": "Zona prohibida", "rc.cls.band": "Ruta prohibida",
   "rc.cls.north": "Línea de norte retirada",
   "rc.st.reading": "Leyendo el mapa…",
   "rc.st.relief": "Relieve: cargando…",

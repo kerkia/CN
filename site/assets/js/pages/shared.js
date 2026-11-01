@@ -1340,6 +1340,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       if (my !== rcm.token) return;
       const facts = await rcm.plan.settings(rcm.s, rcmReading);
       if (my !== rcm.token) return;
+      await rcm.plan.controls(ctrls.map((p) => [p.x, p.y]));
+      if (my !== rcm.token) return;
       if (facts) { rcmFacts(facts); rcm.pic = null; }
       rcmStatus(t("rc.st.computing"), 0.5);
       const t0 = performance.now();

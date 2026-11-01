@@ -13,7 +13,10 @@
 //    (`lineNetwork`): each piece's ends and direction from its skeleton, the dashes of a dashed path joined end to end across
 //    their gaps when they face each other, a chain 30 m long a path — a track (solid and wide, or long wide dashes), a path, or
 //    a small path (short dashes) —; dots, triangles and isolated short lines are none. Blue thin lines are streams and marshes;
-//    the rest (contours, the course, text, dots) is painted over with the nearest area.
+//    the rest (contours, the course, text, dots) is painted over with the nearest area. The organisers' purple overprint
+//    printed over a coloured area comes out red on paper (`overprint`): its hatched areas are out of bounds, its bands of
+//    crosses along a road forbidden routes (crossed, not followed); near the course's own controls (their circles and numbers
+//    over yellow are as red) it is released, within 75 m (`releaseAround`).
 // 2. Cells of about 1.5 m: each the most frequent area of its pixels, the fastest path kind, a share of blue lines (`cells`).
 // 3. A cost per cell from the settings (`costs`): the time multiplier of its terrain against white runnable forest, blocked
 //    when impassable, and a navigation weight — off the handrails (paths, streams, vegetation and open-land edges, water's
@@ -318,6 +321,46 @@ function northLines(kind, rgba, w, h, mpp, nmask) {
   return found;
 }
 
+/**
+ * The organisers' overprint (owner, 2026-11-01: routes through the hatched grounds of a château, along roads marked with
+ * crosses): the purple, and purple printed over yellow, orange or green, which comes out red on paper — much red, little green
+ * and blue. Its pixels closed by ~12 m (the gaps between hatch lines, between crosses); a closed piece of 600 m² whose ink fills
+ * at most 60 % of it (a leg, a circle's arc fills it all) is overprint. What an opening of ~20 m keeps of it is an out-of-bounds
+ * area when it covers 1 500 m² (hatching; a course's number beside its circle is released near its control); the rest, thin, red and 60 m long at least, a forbidden
+ * route. Returns per pixel 1 (area), 2 (route), else 0.
+ */
+function overprint(rgba, kind, w, h, mpp) {
+  const N = w * h, O = new Uint8Array(N), R = new Uint8Array(N);
+  let any = 0;
+  for (let i = 0, p = 0; i < N; i++, p += 4) {
+    const r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
+    if (kind[i] === I_PURPLE) O[i] = 1;
+    else if (r > 60 && g < 0.55 * r && b < 0.45 * r) { O[i] = R[i] = 1; any++; }
+  }
+  const out = new Uint8Array(N);
+  const kc = Math.max(2, Math.round(12 / mpp)), ko = Math.max(2, Math.round(10 / mpp));
+  const C = morph(morph(O, w, h, kc, false), w, h, kc, true);
+  const { lab, comps } = components(C, w, h);
+  const ink = new Int32Array(comps.length);
+  for (let i = 0; i < N; i++) if (lab[i] && O[i]) ink[lab[i]]++;
+  const keep = comps.map((c, id) => id > 0 && c.n * mpp * mpp >= 600 && ink[id] <= 0.6 * c.n);
+  const cand = new Uint8Array(N);
+  for (let i = 0; i < N; i++) if (lab[i] && keep[lab[i]]) cand[i] = 1;
+  const areas = morph(morph(cand, w, h, ko, true), w, h, ko, false);
+  // an area of 1 500 m² at least (a symbol, a number away from its circle are smaller)
+  const al = components(areas, w, h), big = al.comps.map((c) => !!c && c.n * mpp * mpp >= 1500);
+  for (let i = 0; i < N; i++) if (al.lab[i] && !big[al.lab[i]]) areas[i] = 0;
+  const near = morph(areas, w, h, ko, false);
+  const band = new Uint8Array(N);
+  // a band is the red crosses' (over a road's colours): the course's own legs over white are no forbidden route
+  const redC = any ? morph(morph(R, w, h, kc, false), w, h, kc, true) : R;
+  for (let i = 0; i < N; i++) { if (areas[i] && cand[i]) out[i] = 1; else if (cand[i] && !near[i] && redC[i]) band[i] = 1; }
+  const bl = components(band, w, h);
+  const long = bl.comps.map((c) => (c ? Math.hypot(c.x1 - c.x0 + 1, c.y1 - c.y0 + 1) * mpp >= 60 : false));
+  for (let i = 0; i < N; i++) if (bl.lab[i] && long[bl.lab[i]]) out[i] = 2;
+  return out;
+}
+
 /** Zhang-Suen thinning of the mask's pixels `list` (the mask is changed): the skeleton's pixels. */
 function thinning(m, w, h, list) {
   const inner = (i) => { const x = i % w; return x > 0 && x < w - 1 && i >= w && i < w * h - w; };
@@ -486,7 +529,8 @@ function lineNetwork(thin, black, w, h, mpp, path) {
 /**
  * The map read: per pixel its area (A.*, inks painted over) and the line layers. rgba: the image's bytes; mpp: metres per
  * pixel; opt: { map ("forest" | "sprint": the thickness test's width), flat (false: the paper left as it is) }; progress(f):
- * how far it is. Returns { area, path (PATH kinds), blue, north (the north lines' pixels), lw, k, lines, northLines, ms }.
+ * how far it is. Returns { area, path (PATH kinds), blue, north (the north lines' pixels), over (the overprint: 1 out of bounds,
+ * 2 a forbidden route), lw, k, lines, northLines, ms }.
  */
 export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
   const t0 = Date.now(), N = w * h;
@@ -496,6 +540,7 @@ export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
   for (let i = 0, p = 0; i < N; i++, p += 4) kind[i] = rgba[p + 3] < 128 ? A.WHITE : kindOf(rgba[p], rgba[p + 1], rgba[p + 2]);
   progress(0.3);
   const north = new Uint8Array(N), nlines = northLines(kind, rgba, w, h, mpp, north);
+  const over = overprint(rgba, kind, w, h, mpp);
   progress(0.45);
   const lw = lineWidth(kind, w, h, I_BLACK);
   const k = Math.max(1, Math.round((THICK[opt.map] ?? THICK.forest) / mpp));
@@ -542,8 +587,10 @@ export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
     if (i >= w && area[i - w] === UNKNOWN) { area[i - w] = v; q[qt++] = i - w; }
     if (i + w < N && area[i + w] === UNKNOWN) { area[i + w] = v; q[qt++] = i + w; }
   }
+  // the overprint's areas are out of bounds whatever lies under them; on its forbidden routes no path is followed
+  for (let i = 0; i < N; i++) { if (over[i] === 1) area[i] = A.OOB; if (over[i]) path[i] = 0; }
   progress(1);
-  return { area, path, blue, north, lw, k, lines, northLines: nlines, ms: Date.now() - t0 };
+  return { area, path, blue, north, over, lw, k, lines, northLines: nlines, ms: Date.now() - t0 };
 }
 
 // ---- 2. cells -----------------------------------------------------------------------------------------------------------
@@ -554,23 +601,25 @@ export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
  */
 export function cells(px, w, h, cs) {
   const nx = Math.ceil(w / cs), ny = Math.ceil(h / cs), M = nx * ny;
-  const cls = new Uint8Array(M), path = new Uint8Array(M), raw = new Uint8Array(M), blue = new Uint8Array(M), north = new Uint8Array(M), count = new Int32Array(N_CLASSES);
+  const cls = new Uint8Array(M), path = new Uint8Array(M), raw = new Uint8Array(M), blue = new Uint8Array(M), north = new Uint8Array(M), over = new Uint8Array(M), count = new Int32Array(N_CLASSES);
   // a vector map's own layers (trace/vectorroutes.js): lines that block, handrails
   const vector = !!px.block, block = vector ? new Uint8Array(M) : null, hand = vector ? new Uint8Array(M) : null;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     count.fill(0);
-    let p = 0, r = 0, b = 0, n = 0, bl = 0, ha = 0, no = 0;
+    let p = 0, r = 0, b = 0, n = 0, bl = 0, ha = 0, no = 0, oa = 0, ob = 0;
     for (let y = j * cs; y < Math.min(h, (j + 1) * cs); y++) for (let x = i * cs; x < Math.min(w, (i + 1) * cs); x++) {
       const k = y * w + x, v = px.path[k];
       count[px.area[k]]++; b += px.blue[k]; n++;
       if (v) { const t = v & 3; if (t > p) p = t; if (!(v & PATH.BRIDGE) && t > r) r = t; }
       if (px.north?.[k]) no = 1;
+      if (px.over) { if (px.over[k] === 1) oa++; else if (px.over[k] === 2) ob = 1; }
       if (vector) { bl |= px.block[k]; ha |= px.hand[k]; }
     }
     let best = 0;
     for (let c = 1; c < N_CLASSES; c++) if (count[c] > count[best]) best = c;
     const k = j * nx + i;
     cls[k] = best; path[k] = p; raw[k] = r; blue[k] = Math.round((255 * b) / Math.max(1, n)); north[k] = no;
+    over[k] = oa * 2 >= n ? 1 : ob ? 2 : 0;
     if (vector) { block[k] = bl; hand[k] = ha; }
   }
   // a dashed path's last gaps: a cell between two path cells is one (the slower of the two)
@@ -590,7 +639,7 @@ export function cells(px, w, h, cs) {
     if (s / n > 0.2 * 255 && blue[k] && cls[k] <= A.G3) marsh.push(k);
   }
   for (const k of marsh) cls[k] = A.MARSH;
-  return { cs, nx, ny, cls, path, raw, blue, north, vector, block, hand };
+  return { cs, nx, ny, cls, path, raw, blue, north, over, vector, block, hand };
 }
 
 // ---- 3. costs -------------------------------------------------------------------------------------------------------------
@@ -602,7 +651,8 @@ export const blackMode = (s) => (s.black && s.black !== "auto" ? s.black : s.map
 
 /**
  * Per cell: f (time multiplier against white forest on the flat; Infinity = impassable) and r (navigation risk factor
- * ≥ 1). G: the cells; mpc: metres per cell.
+ * ≥ 1). G: the cells (G.release: the cells near the course's controls, where the overprint is the course's own); mpc: metres
+ * per cell.
  */
 export function costs(G, s, mpc) {
   const { nx, ny, cls, path } = G, raw = G.raw || path, M = nx * ny, sp = { ...DEFAULTS.speeds, ...(s.speeds || {}) };
@@ -614,11 +664,17 @@ export function costs(G, s, mpc) {
   const bm = G.vector ? "paths" : blackMode(s);                          // a vector map's paths are paths
   const FP = [1, inv(sp.small), inv(sp.path), inv(sp.track)];
   const f = new Float32Array(M), hand = new Uint8Array(M), isPath = new Uint8Array(M);
+  const ov = G.over, rel = G.release;
   for (let k = 0; k < M; k++) {
-    let v = G.block?.[k] ? Infinity : F[cls[k]];
-    // a path crosses a wall or a fence (a gate), never an area out of bounds; a gap bridged opens nothing
-    if (bm === "paths" && path[k] && cls[k] !== A.OOB && (raw[k] || v < Infinity)) { v = Math.min(v, FP[path[k]]); isPath[k] = 1; }
+    // the overprint near a control is the course's own circle or number: the ground under it is taken as runnable forest
+    const freed = ov?.[k] === 1 && rel?.[k];
+    let v = G.block?.[k] ? Infinity : freed ? 1 : F[cls[k]];
+    // a vector map's path crosses a wall or a fence (a gate), never an area out of bounds; on an image a line read as a path opens
+    // nothing impassable (the black edge of a building, of an area out of bounds), nor does a gap bridged
+    if (bm === "paths" && path[k] && cls[k] !== A.OOB && (G.vector ? raw[k] || v < Infinity : v < Infinity)) { v = Math.min(v, FP[path[k]]); isPath[k] = 1; }
     else if (bm === "obstacles" && raw[k]) v = Infinity;
+    // a forbidden route is crossed, not followed: slow along it, its path no handrail
+    if (ov?.[k] === 2 && !rel?.[k]) { v = Math.max(v, FORBIDDEN_ROUTE); isPath[k] = 0; }
     f[k] = v;
   }
   // the handrails: paths (or black lines), streams, the edges between areas seen differently, the banks of what blocks
@@ -651,6 +707,20 @@ export function costs(G, s, mpc) {
   return { f, r, isPath, fMin: Math.min(...FP.slice(1), ...[...F].filter((v) => v > 0)) };
 }
 export const RISK_DIST = 50;                              // metres from a handrail at which the risk is full
+const FORBIDDEN_ROUTE = 2.5;                             // a forbidden route's cells: 40 % of white forest's speed (crossed, not followed)
+/** The cells within `radius` metres of the course's controls (map px): where the overprint is the course itself. */
+export function releaseAround(G, em, pts, radius = 75) {
+  const { nx, ny, cs } = G, M = nx * ny, out = new Uint8Array(M);
+  const mpc = Math.min(Math.hypot(...em[0]), Math.hypot(...em[1])), R = Math.ceil(radius / mpc);
+  for (const [x, y] of pts) {
+    const ci = Math.floor(x / cs), cj = Math.floor(y / cs);
+    for (let j = Math.max(0, cj - R); j <= Math.min(ny - 1, cj + R); j++) for (let i = Math.max(0, ci - R); i <= Math.min(nx - 1, ci + R); i++) {
+      const di = i - ci, dj = j - cj;
+      if (Math.hypot(di * em[0][0] + dj * em[1][0], di * em[0][1] + dj * em[1][1]) <= radius) out[j * nx + i] = 1;
+    }
+  }
+  return out;
+}
 
 /** The time multiplier of a grade (rise over run): uphill climb metres per metre; downhill faster when gentle, then slower. */
 export function slopeFactor(g, climb) {
@@ -1074,16 +1144,17 @@ export function lineRoute(X, pts) {
  *  a black line that blocks, a north line taken out. */
 export const CLASS_RGB = [[255, 255, 255], [255, 186, 54], [255, 228, 150], [196, 234, 180], [120, 200, 100], [40, 140, 60], [40, 120, 230], [140, 190, 245], [205, 160, 110], [130, 130, 20], [70, 40, 110], [150, 150, 150], [80, 170, 190]];
 export const PATH_RGB = [null, [255, 120, 160], [230, 30, 60], [130, 0, 30]];
-export const BLOCK_RGB = [0, 0, 0], NORTH_RGB = [0, 200, 220];
+export const BLOCK_RGB = [0, 0, 0], NORTH_RGB = [0, 200, 220], BAND_RGB = [200, 0, 140];
 /** The legend: [key, rgb] — the areas' keys as the speeds' (routeplan.js words them). */
 export const LEGEND = [["track", PATH_RGB[3]], ["path", PATH_RGB[2]], ["small", PATH_RGB[1]], ["block", BLOCK_RGB], ["white", CLASS_RGB[A.WHITE]],
   ["open", CLASS_RGB[A.OPEN]], ["rough", CLASS_RGB[A.ROUGH]], ["g1", CLASS_RGB[A.G1]], ["g2", CLASS_RGB[A.G2]], ["g3", CLASS_RGB[A.G3]],
   ["marsh", CLASS_RGB[A.MARSH]], ["water", CLASS_RGB[A.WATER]], ["shallow", CLASS_RGB[A.SHALLOW]], ["paved", CLASS_RGB[A.PAVED]],
-  ["grey", CLASS_RGB[A.GREY]], ["building", CLASS_RGB[A.BUILDING]], ["oob", CLASS_RGB[A.OOB]], ["north", NORTH_RGB]];
+  ["grey", CLASS_RGB[A.GREY]], ["building", CLASS_RGB[A.BUILDING]], ["oob", CLASS_RGB[A.OOB]], ["band", BAND_RGB], ["north", NORTH_RGB]];
 export function picture(X) {
   const { nx, ny, cls, path } = X.G, raw = X.G.raw || path, out = new Uint8ClampedArray(nx * ny * 4);
   for (let k = 0; k < nx * ny; k++) {
-    const c = X.C.isPath[k] ? PATH_RGB[path[k]] : raw[k] && !(X.C.f[k] < Infinity) ? BLOCK_RGB : X.G.north?.[k] ? NORTH_RGB : CLASS_RGB[cls[k]];
+    const ov = X.G.over?.[k], rel = X.G.release?.[k];
+    const c = ov === 2 && !rel ? BAND_RGB : ov === 1 && rel ? CLASS_RGB[A.WHITE] : X.C.isPath[k] ? PATH_RGB[path[k]] : raw[k] && !(X.C.f[k] < Infinity) ? BLOCK_RGB : X.G.north?.[k] ? NORTH_RGB : CLASS_RGB[cls[k]];
     out[4 * k] = c[0]; out[4 * k + 1] = c[1]; out[4 * k + 2] = c[2]; out[4 * k + 3] = 255;
   }
   return out;

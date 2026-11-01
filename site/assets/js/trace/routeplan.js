@@ -32,7 +32,8 @@ export const isSprint = (race) => /sprint/i.test(`${race?.terrain || ""} ${race?
  * an OCAD or Mapper map of it ({ v: trace/vectorroutes.js readVector's, T: the affine from its mm to the image's pixels }),
  * whose symbols are read instead of the image's colours; opts: { map (the map's kind), onProgress(f) (the reading's) }.
  * Returns { ready (Promise of the reading's facts), dem(grid), settings(s, onProgress) (the new facts when the map was read
- * again, else null), leg(a, b), decision(a, b), line(pts), picture(), destroy() }; points in the map's own pixels.
+ * again, else null), controls(pts) (the course's controls), leg(a, b), decision(a, b), line(pts), picture(), destroy() }; points in
+ * the map's own pixels.
  */
 export function planner(image, toM, vector = null, opts = {}) {
   const W0 = image.width, H0 = image.height, sc = W0 * H0 > MAX_PX ? Math.sqrt(MAX_PX / (W0 * H0)) : 1;
@@ -66,7 +67,7 @@ export function planner(image, toM, vector = null, opts = {}) {
     ready = ask("init", { rgba, w: W, h: H, J, map: opts.map }, [rgba], opts.onProgress);
   }
   const cache = new Map(), decs = new Map();
-  let skey = "";
+  let skey = "", ckey = "";
   const S = (p) => [p[0] * sc, p[1] * sc], U = (p) => [p[0] / sc, p[1] / sc];
   return {
     ready,
@@ -85,6 +86,14 @@ export function planner(image, toM, vector = null, opts = {}) {
       const k = `${skey}|${a.map((v) => v.toFixed(1))}|${b.map((v) => v.toFixed(1))}`;
       if (!cache.has(k)) cache.set(k, ready.then(() => ask("leg", { a: S(a), b: S(b) })).then((r) => (r.routes ? r.routes.map((x) => ({ ...x, pts: x.pts.map(U) })) : null)));
       return cache.get(k);
+    },
+    /** The course's controls (map px): the overprint around them is the course's own (circles, numbers), not out of bounds. */
+    async controls(pts) {
+      const k = JSON.stringify(pts.map((p) => p.map((v) => Math.round(v))));
+      if (k === ckey) return;
+      await ready; ckey = k;
+      await ask("controls", { pts: pts.map(S) });
+      cache.clear(); decs.clear();
     },
     /** The decision map of a leg: { canvas (one pixel a cell), x, y (its corner, map px), cell (map px a cell) }, or null. */
     decision(a, b) {

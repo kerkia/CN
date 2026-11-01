@@ -252,6 +252,10 @@ export function build(X) {
               sa direction, et relie bout à bout les tirets d'un chemin en pointillés quand ils se font face par-dessus leur écart. Une chaîne de 30 m au
               moins est un chemin, de l'un de trois types d'après ses tirets comparés aux autres chemins de la carte : route ou piste (trait plein et plus
               épais, ou longs tirets épais), chemin, petit sentier (tirets courts). Des points, des triangles, un petit trait isolé n'en sont pas.`,
+            html`<b>La surcharge de l'organisateur</b> : le violet imprimé sur du jaune, de l'orange ou du vert sort rouge sur le papier. Ses zones
+              hachurées sont interdites ; ses bandes de croix le long d'une route sont des itinéraires interdits — on les traverse, on ne les suit pas ;
+              près des postes du circuit (leurs cercles et leurs numéros), elle est ignorée. Les murs et clôtures infranchissables, eux, ne se
+              distinguent pas d'un chemin sur une photo : leurs petits traits sont trop fins.`,
             html`Les <b>traits bleus fins</b> sont les ruisseaux et, serrés, les marais. Les courbes de niveau, le parcours, le texte et les points sont
               effacés : chaque point prend la couleur du terrain le plus proche en dessous.`,
             html`La carte est ensuite découpée en cases d'environ 1,5 m, chacune avec le terrain le plus présent. « Voir le terrain tel que lu »

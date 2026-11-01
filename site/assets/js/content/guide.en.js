@@ -246,6 +246,9 @@ export function build(X) {
               direction, and joins the dashes of a dashed path end to end when they face each other across their gap. A chain at least 30 m long is a
               path, of one of three kinds from its dashes against the map's other paths: road or track (solid and thicker, or long thick dashes),
               footpath, small path (short dashes). Dots, triangles and a short isolated line are not.`,
+            html`<b>The organisers' overprint</b>: purple printed over yellow, orange or green comes out red on paper. Its hatched areas are out of
+              bounds; its bands of crosses along a road are forbidden routes — crossed, not followed; near the course's controls (their circles and
+              numbers) it is ignored. Impassable walls and fences cannot be told from a path on a photo: their tick marks are too fine.`,
             html`<b>Thin blue lines</b> are streams and, close together, marshes. Contours, the course, text and dots are erased: each pixel takes the
               colour of the nearest terrain underneath.`,
             html`The map is then cut into cells of about 1.5 m, each with its most frequent terrain. "Show the terrain as read" draws these cells over

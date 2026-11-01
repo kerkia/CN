@@ -2379,7 +2379,7 @@ export default {
   "rc.cls.paved": "Paved area",
   "rc.cls.grey": "Bare rock",
   "rc.cls.building": "Building, cliff",
-  "rc.cls.oob": "Out of bounds",
+  "rc.cls.oob": "Out of bounds", "rc.cls.band": "Forbidden route",
   "rc.cls.north": "North line taken out", "rc.st.reading": "Reading the map…", "rc.st.relief": "Heights: loading…",
   "rc.st.reliefPct": "Heights: loading… {p}%", "rc.st.legs": "Computing routes: {n} of {t} legs…", "rc.st.done": "{n} of {t} legs in {s} s · {c} m cells · heights: {r}",
   "rc.st.flat": "none (flat terrain assumed)", "rc.st.failed": "Computing the routes failed.", "rc.side.left": "left",

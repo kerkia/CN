@@ -2519,7 +2519,7 @@ export default {
   "rc.cls.paved": "Befestigte Fläche",
   "rc.cls.grey": "Nackter Fels",
   "rc.cls.building": "Gebäude, Felswand",
-  "rc.cls.oob": "Sperrgebiet",
+  "rc.cls.oob": "Sperrgebiet", "rc.cls.band": "Verbotener Weg",
   "rc.cls.north": "Entfernte Nordlinie",
   "rc.st.reading": "Karte wird gelesen…",
   "rc.st.relief": "Relief: wird geladen…",
