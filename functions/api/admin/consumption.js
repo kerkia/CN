@@ -1,6 +1,7 @@
 // GET /api/admin/consumption — the site's use of its free plans, for the admin page's « Consommation » tab (owner, 2026-10-20):
 // each measure day by day over the last 30 days (or its value now), with the plan's limit.
-//   From D1 (always): e-mails sent (mail_log, the UTC days the Resend quota counts), e-mails waiting, accounts.
+//   From D1 (always): e-mails sent by Resend and by Scaleway (mail_log, the UTC days Resend's quota counts), e-mails waiting,
+//   accounts.
 //   From Cloudflare's analytics (when the Pages secret CF_ANALYTICS_TOKEN is set — a read-only API token with « Account
 //   Analytics: Read », « D1: Read » and « Cloudflare Pages: Read »; the account id from CF_ACCOUNT_ID, else the token's only
 //   account): requests to the Functions and Workers, Durable Objects, Workers AI neurons, D1 rows and size, R2 storage and
@@ -61,15 +62,18 @@ export const onRequestGet = withUser(async ({ env }) => {
   // from D1: the e-mails (mail_log is never pruned) and the accounts
   const since = Date.parse(`${first}T00:00:00Z`);
   const [mails, month, queued, accounts] = await env.DB.batch([
-    env.DB.prepare("SELECT ts FROM mail_log WHERE ts >= ?").bind(since),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM mail_log WHERE ts >= ?").bind(Date.parse(`${monthStart()}T00:00:00Z`)),
+    env.DB.prepare("SELECT ts, provider = 'tem' AS tem FROM mail_log WHERE ts >= ?").bind(since),
+    env.DB.prepare("SELECT SUM(provider IS NOT 'tem') AS n, SUM(provider = 'tem') AS tem FROM mail_log WHERE ts >= ?")
+      .bind(Date.parse(`${monthStart()}T00:00:00Z`)),
     env.DB.prepare("SELECT COUNT(*) AS n FROM mail_queue"),
     env.DB.prepare("SELECT COUNT(*) AS n, SUM(created_at >= ?) AS recent FROM users WHERE email_verified = 1 AND demo_until IS NULL").bind(first),
   ]);
-  const mailBy = new Map();
-  for (const r of mails.results) { const d = isoDay(r.ts); mailBy.set(d, (mailBy.get(d) || 0) + 1); }
-  out.mail = { daily: onDays(days, mailBy), month: month.results[0].n, queued: queued.results[0].n,
-    dayLimit: Number(env.DAILY_EMAIL_LIMIT) || 90, monthLimit: Number(env.MONTHLY_EMAIL_LIMIT) || 2900 };
+  const mailBy = new Map(), temBy = new Map();
+  for (const r of mails.results) { const by = r.tem ? temBy : mailBy, d = isoDay(r.ts); by.set(d, (by.get(d) || 0) + 1); }
+  out.mail = { daily: onDays(days, mailBy), month: month.results[0].n || 0, queued: queued.results[0].n,
+    dayLimit: Number(env.DAILY_EMAIL_LIMIT) || 90, monthLimit: Number(env.MONTHLY_EMAIL_LIMIT) || 2900,
+    tem: { daily: onDays(days, temBy), month: month.results[0].tem || 0, monthLimit: Number(env.TEM_MONTHLY_LIMIT) || 50000,
+      on: !!(env.SCW_SECRET_KEY && env.SCW_PROJECT_ID) } };
   out.accounts = { confirmed: accounts.results[0].n || 0, recent: accounts.results[0].recent || 0 };
 
   if (!env.CF_ANALYTICS_TOKEN) return json({ ...out, cloudflare: { error: "no token" } });

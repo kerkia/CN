@@ -169,6 +169,8 @@ export const body = (SITE, { world = false } = {}) => `
         <li><b>Resend</b> (Plus Five Five, Inc., Estados Unidos) se encarga del envío de los correos del sitio, lo que implica la dirección del
           destinatario y el contenido del mensaje. Las transferencias están amparadas por las cláusulas contractuales tipo de la Comisión
           Europea.</li>
+        <li><b>Scaleway</b> (Scaleway SAS, Francia) envía los correos que el plan gratuito de Resend no puede asumir, lo que implica
+          los mismos datos; permanecen en la Unión Europea (París).</li>
         <li><b>GitHub, Inc.</b> (Estados Unidos) ejecuta las actualizaciones automáticas del sitio; los resultados y los archivos subidos se
           tratan allí, con exclusión de los datos de cuenta. Las transferencias están amparadas por las cláusulas contractuales tipo.</li>
       </ul>

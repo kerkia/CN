@@ -42,7 +42,7 @@ commit results, personal data, secrets or credentials.
   file by id, `c/g<id // 5>.json` = {id: results}, meta `c_group`, `site_io.course_file` / `Courses`, `data.course`; a race
   opened reads ~15 KB instead of ~3. `r/` and `net/` stay ten runners' numbers a file: the runner page, Comparer, a club's
   members and the « Réseau » tab — 21 lists — each read several, and at //100 that tab would load 306 KB instead of 53),
-  Resend 100 mails/day.
+  Resend 100 mails/day (beyond it Scaleway TEM, ~€0.25 per 1 000).
 - Pages secrets (set by the owner with `wrangler pages secret put`): `SESSION_SECRET`, `RESEND_API_KEY`,
   `NOTIFY_SECRET`. GitHub repo secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
   `R2_SECRET_ACCESS_KEY`, `NOTIFY_SECRET`. Never ask for or print their values.
@@ -2206,7 +2206,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   e-mails) counts the registered accounts (confirmed, not disabled) and the active ones (a page view in the last 21 Paris
   days), today and day by day; visits are counted since 2026-10-07 (the window complete from 2026-10-27); a deleted
   account leaves no trace.
-  Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars).
+  Mail through Resend with daily/monthly quotas and a reserve for account mails (`wrangler.toml` vars), **then Scaleway's
+  Transactional Email beyond them** (owner, 2026-11-01; `_lib/mail.js`): the registration's confirmation and the password reset
+  (`URGENT`) and the contact form go to Scaleway at once when Resend's day is full or Resend fails; every other mail waits
+  `RESEND_WAIT_HOURS` (48) in `mail_queue` for Resend's quota, then goes through Scaleway; `TEM_MONTHLY_LIMIT` (50 000,
+  Scaleway's quota once payment method and identity are validated; 10 000 with the payment method alone) caps it. A Scaleway refusal is never final (the message stays for Resend). `mail_log.provider` (migration 0021,
+  NULL = Resend) splits the counts; the admin « Consommation » tab has a Scaleway row. Needs the Pages secret `SCW_SECRET_KEY` and
+  `SCW_PROJECT_ID` (wrangler.toml), ozimut.com verified in Scaleway (DKIM; Scaleway's SPF include written directly in ozimut.com's
+  SPF record beside Proton's — its checker does not follow nested includes); without them mail waits for Resend as before. Its
+  API takes 2 MB a message and a fixed list of attachment types: a contact message with others stays on Resend. Tested on a
+  simulated D1 and providers, not yet against Scaleway itself.
 - **Countries** (owner, 2026-10-20: Ozimut open to every orienteer; the plan in nine steps — data model, access by path in
   `_middleware.js`, a CN-free copy of the provisional results, the front end by profile, registration and Réglages « Mes pays »,
   admin, texts, an admin « Consommation » tab, a global country selector): an account joins countries (D1 `user_countries`,

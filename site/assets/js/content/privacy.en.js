@@ -152,6 +152,8 @@ export const body = (SITE, { world = false } = {}) => `
           signed up.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., United States) sends the site's emails, which involves the recipient's address and
           the content of the message. Transfers are covered by the European Commission's standard contractual clauses.</li>
+        <li><b>Scaleway</b> (Scaleway SAS, France) sends the emails that Resend's free plan cannot take, which involves the same
+          data; it stays in the European Union (Paris).</li>
         <li><b>GitHub, Inc.</b> (United States) runs the site's automatic updates; the results and uploaded files are processed there,
           but not the account data. Transfers are covered by the standard contractual clauses.</li>
       </ul>

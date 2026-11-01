@@ -166,10 +166,14 @@ export async function render(main, { query = {} } = {}) {
     if (!d) { $("#co-list").innerHTML = html`<div class="empty">${t("err.load")}</div>`; consoLoaded = false; return; }
     const L = d.limits, cf = d.cloudflare || {}, lastOf = (a) => (Array.isArray(a) ? a[a.length - 1] : null);
     const rows = [];
-    const row = (key, value, limit, { daily = null, fmtv = fmt, note = "", error = null } = {}) =>
-      rows.push({ key, value, limit, daily, fmtv, note, error });
+    const row = (key, value, limit, { daily = null, fmtv = fmt, note = "", error = null, dayLimit = limit } = {}) =>
+      rows.push({ key, value, limit, daily, fmtv, note, error, dayLimit });
     row("mail", lastOf(d.mail.daily), d.mail.dayLimit, { daily: d.mail.daily,
       note: t("ad.co.mail.note", { month: fmt(d.mail.month), monthLimit: fmt(d.mail.monthLimit), queued: fmt(d.mail.queued) }) });
+    // Scaleway TEM, beyond Resend's free plan: this month's count against the site's own cap (TEM_MONTHLY_LIMIT)
+    const tem = d.mail.tem;
+    if (tem) row("mailTem", tem.month, tem.monthLimit, { daily: tem.daily, dayLimit: null,
+      note: tem.on ? t("ad.co.mailTem.note", { cost: fmt(Math.max(0, tem.month - 300) * 0.25 / 1000, 2) }) : t("ad.co.mailTem.off") });
     const cfRow = (key, v, limit, opts = {}) => (v?.error ? row(key, null, limit, { error: v.error }) : row(key, opts.value ? opts.value(v) : lastOf(v), limit, { daily: Array.isArray(v) ? v : null, ...opts }));
     if (!cf.error) {
       cfRow("requests", cf.requests, L.requests, { note: cf.requestsNote ? t("ad.co.partial", { e: cf.requestsNote }) : "" });
@@ -194,7 +198,7 @@ export async function render(main, { query = {} } = {}) {
         <td class="r num">${x.error ? html`<span class="muted" title="${x.error}">${t("ad.co.unavailable")}</span>` : x.value == null ? "—" : x.fmtv(x.value)}</td>
         <td class="r num">${x.limit ? x.fmtv(x.limit) : "—"}</td>
         <td class="r num">${x.error || x.value == null ? "" : level(x.value, x.limit)}</td>
-        <td>${x.daily ? spark(x.daily, x.fmtv === fmt ? x.limit : x.limit) : ""}</td></tr>`)}</tbody></table>`;
+        <td>${x.daily ? spark(x.daily, x.dayLimit) : ""}</td></tr>`)}</tbody></table>`;
     drawRobots();
   }
 

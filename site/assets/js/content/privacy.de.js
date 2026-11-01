@@ -172,6 +172,8 @@ export const body = (SITE, { world = false } = {}) => `
         <li><b>Resend</b> (Plus Five Five, Inc., USA) versendet die E-Mails der Website, was die Adresse des
           Empfängers und den Inhalt der Nachricht einschließt. Die Übermittlungen sind durch die Standardvertragsklauseln der Europäischen
           Kommission abgesichert.</li>
+        <li><b>Scaleway</b> (Scaleway SAS, Frankreich) versendet die E-Mails, die der kostenlose Tarif von Resend nicht übernehmen kann,
+          mit denselben Daten; sie bleiben in der Europäischen Union (Paris).</li>
         <li><b>GitHub, Inc.</b> (USA) führt die automatischen Aktualisierungen der Website aus; die Ergebnisse und hochgeladenen Dateien werden dort
           verarbeitet, ausgenommen die Kontodaten. Die Übermittlungen sind durch die Standardvertragsklauseln abgesichert.</li>
       </ul>

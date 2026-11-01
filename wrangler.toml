@@ -1,7 +1,8 @@
 # Cloudflare Pages project "observatoire-cn": static site in site/, Functions in functions/.
 # Secrets (never in this file), set with `wrangler pages secret put <NAME> --project-name observatoire-cn`:
 #   SESSION_SECRET  signs the session cookie (and peppers the password hashes)
-#   RESEND_API_KEY  sends the e-mails (confirmation, reset, alerts, digests)
+#   RESEND_API_KEY  sends the e-mails (confirmation, reset, alerts, digests) within Resend's free plan
+#   SCW_SECRET_KEY  Scaleway Transactional Email, beyond it (an IAM API key allowed to send; its project in SCW_PROJECT_ID below)
 #   NOTIFY_SECRET   lets update.py call /api/notify from the PC
 #   GH_DISPATCH_TOKEN  starts a provisional-results run after an upload (GitHub fine-grained token, repository
 #                      kerkia/CN, "Actions: read and write"); without it, uploads wait for the next hourly run
@@ -68,9 +69,16 @@ WORLD_OPEN = "1"
 TURNSTILE_SITE_KEY = "0x4AAAAAAFd6fHJaiIvn92Xe"
 # the repository whose workflow an upload starts
 GH_REPO = "kerkia/CN"
-# Resend free plan: 100 e-mails a day and 3 000 a month; what does not fit is sent the next day
+# Resend free plan: 100 e-mails a day and 3 000 a month; beyond it Scaleway's Transactional Email (functions/_lib/mail.js)
 DAILY_EMAIL_LIMIT = "90"
 MONTHLY_EMAIL_LIMIT = "2900"
+# the e-mails other than the registration's and the password's wait this long for Resend's quota before going through Scaleway
+RESEND_WAIT_HOURS = "48"
+# Scaleway TEM: its project (the secret key is SCW_SECRET_KEY), and at most this many e-mails a month: Scaleway's quota for an
+# organisation whose payment method and identity are validated (its « Organization quotas » page; 10 000 with the payment method
+# alone). 300 free, then about 0.25 EUR the 1 000
+SCW_PROJECT_ID = ""
+TEM_MONTHLY_LIMIT = "50000"
 # of the day's quota, this many e-mails are kept for account mails (confirmation, reset): digests stop short of it
 ACCOUNT_EMAIL_RESERVE = "20"
 # the free Workers plan gives ~10 ms of CPU per request: a light PBKDF2 (the pepper makes up for it)
