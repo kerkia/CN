@@ -3212,3 +3212,18 @@ a.nut-chip:hover { filter: brightness(.95); }
 .nut-intro-more:hover { text-decoration: underline; }
 @media (max-width: 640px) { .nut-intro { padding: 14px 16px; gap: 12px; } .nut-intro-face { width: 40px; height: 40px; font-size: 18px; } }
 
+
+/* Santé: the page's head kept in sight, the editor fitted to the window (2026-11-01) */
+.nut > .page-head { position: sticky; top: var(--nut-bar, 0px); z-index: 6; background: var(--plane); margin: 0 -8px 12px; padding: 8px; }
+@media (min-width: 821px) {
+  .nut .nut-side { top: calc(var(--nut-bar, 0px) + var(--nut-head, 0px) + 8px); max-height: calc(100vh - var(--nut-bar, 0px) - var(--nut-head, 0px) - 20px); overflow-y: auto; }
+}
+body.nut-ed-open #footer { display: none; }
+@media (min-width: 981px) {
+  .nut-ed .nut-ed-grid { height: var(--nut-ed-h, auto); align-items: stretch; }
+  .nut-ed .nut-ed-main { display: flex; flex-direction: column; min-height: 0; }
+  .nut-ed .nut-ed-main > .nut-ed-body, .nut-ed .nut-ed-main > .nut-ed-src, .nut-ed .nut-ed-main > .nut-ed-preview { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .nut-ed .nut-ed-main > .nut-ed-src { height: auto !important; resize: none; }
+  .nut-ed .nut-ed-side { position: static; overflow-y: auto; min-height: 0; }
+  .nut-ed .nut-ribbon { position: static; }
+}

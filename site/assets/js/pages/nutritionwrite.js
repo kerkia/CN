@@ -635,7 +635,23 @@ async function editor(main, query) {
 
   drawCats(); drawCover(); reflect(); drawState();
   if (!post) $("#ne-title").focus();
+  // the editor fills the window (owner, 2026-11-01): the text scrolls in its own box, the ribbon and the settings stay in
+  // sight; the footer goes (as the Tracer's). On a narrow screen (the settings under the text) the page scrolls as before.
+  document.body.classList.add("nut-ed-open");
+  const grid = main.querySelector(".nut-ed-grid");
+  const fit = () => {
+    const top = grid.getBoundingClientRect().top + window.scrollY;
+    let h = Math.floor(window.innerHeight - top - 12);
+    grid.style.setProperty("--nut-ed-h", `${Math.max(360, h)}px`);
+    // what the page still holds below the editor (its padding): taken off too, so that the window does not scroll
+    const extra = document.scrollingElement.scrollHeight - window.innerHeight;
+    if (extra > 0) { h -= extra; grid.style.setProperty("--nut-ed-h", `${Math.max(360, h)}px`); }
+  };
+  fit();
+  window.addEventListener("resize", fit);
   return () => {
+    document.body.classList.remove("nut-ed-open");
+    window.removeEventListener("resize", fit);
     document.removeEventListener("selectionchange", onSel);
     document.removeEventListener("mousedown", outside);
     document.removeEventListener("keydown", onKey);

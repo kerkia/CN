@@ -238,7 +238,15 @@ export async function render(main, { query }) {
     draw();
     window.scrollTo({ top: 0 });
   }
-  return { title: t("nav.nutrition"), onQuery };
+  // the page's head stays under the site's bar while the list scrolls, the search and filters under it (owner, 2026-11-01)
+  const root = main.querySelector(".nut");
+  const place = () => {
+    root.style.setProperty("--nut-bar", `${document.querySelector(".topbar")?.offsetHeight || 0}px`);
+    root.style.setProperty("--nut-head", `${root.querySelector(":scope > .page-head")?.offsetHeight || 0}px`);
+  };
+  place();
+  window.addEventListener("resize", place);
+  return { title: t("nav.nutrition"), onQuery, cleanup: () => window.removeEventListener("resize", place) };
 }
 
 const HEART = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 2.7 4.5 6.6 4.5c2.2 0 3.7 1.3 5.4 3.3 1.7-2 3.2-3.3 5.4-3.3 3.9 0 5.7 4.1 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>`;
