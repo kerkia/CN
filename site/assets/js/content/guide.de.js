@@ -175,14 +175,27 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Einzelanalyse"], ["multi", "Gruppenanalyse"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Kartenanalyse"], ["solo", "Einzelanalyse"], ["multi", "Gruppenanalyse"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Spiele"], ["vma", "MAG"], ...(admin ? [["routes", "Berechnete Routen"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
+      carte: () => html`
+        ${slide("Coach", "Kartenanalyse", html`
+          <p>Die ${P("#/analyse-carte", "Kartenanalyse")} vereint die Analysen von GPS-Tracks hinter vier Kacheln, geordnet danach, wer die Karte liefert.</p>
+          ${list([
+            html`<b>Der Veranstalter hat die Karte und die Bahnen veröffentlicht</b>: <b>Mit den anderen vergleichen</b> (die Gruppenanalyse, dein Track
+              geteilt mit den Läufern der Veranstaltung) oder <b>Meinen Lauf allein analysieren</b> (die Einzelanalyse auf seiner Karte: Du legst nur deinen
+              Track ab, er legt sich dank der Einpassung des Veranstalters von selbst auf die Karte, und nichts wird gesendet). Du brauchst ein Konto.`,
+            html`<b>Du hast deine eigene Karte</b>: <b>Ein Wettkampf</b> (ein Lauf der letzten 60 Tage, seine Ergebnisse und Zwischenzeiten neben deinem
+              Track) oder <b>Ein Training oder ein Ausflug</b> (jede Karte, jeder Track).`,
+            html`<b>Die Veranstaltung</b> wählst du in einer Liste, auf einem Computer mit der Karte des Landes daneben; eine gewählte Veranstaltung zeigt,
+              was sie bietet. Ein Wettkampf, dessen Veranstalter die Karte veröffentlicht hat, sagt es und bietet an, ihn auf dieser Karte zu analysieren.`,
+          ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Einzelanalyse", html`
-          <p>Die ${P("#/analyse-solo", "Einzelanalyse")} spielt deinen Lauf auf deiner Karte mit deinem GPS-Track ab. Zwei Reiter: ein Wettkampf (ein vergangener
-            Lauf aus Arena, dessen veröffentlichte Zwischenzeiten die Kalibrierung verfeinern) oder ein Training, jede beliebige Einheit.</p>
+          <p>Die ${P("#/analyse-solo", "Einzelanalyse")} spielt deinen Lauf auf deiner Karte mit deinem GPS-Track ab. Du erreichst sie über die ${P("#/analyse-carte", "Kartenanalyse")}: ein Wettkampf (ein
+            vergangener Lauf aus Arena, dessen veröffentlichte Zwischenzeiten die Kalibrierung verfeinern), ein Training oder jede beliebige Einheit, oder die
+            vom Veranstalter veröffentlichte Karte, ohne eigene Karte und ohne Kalibrierung.</p>
           ${list([
             html`<b>Die Dateien</b>: die Karte (Bild, PDF, KMZ oder die OCAD- oder Mapper-Datei selbst), der Track (GPX, FIT oder TCX) und, falls vorhanden,
               die Kalibrierung der Karte (KMZ, Georeferenzierungsdatei) und die Bahnen als IOF XML. Auf dem Handy „Karte fotografieren“.`,
@@ -197,12 +210,12 @@ export function build(X) {
             so wiederfindest, wie du sie verlassen hast.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Gruppenanalyse", html`
-          <p>Die ${P("#/analyse-competition", "Gruppenanalyse")} zeigt nebeneinander die Tracks aller, die einen Wettkampf oder ein Training gelaufen sind, auf der Karte,
+          <p>Die ${P("#/analyse-carte?choix=multi", "Gruppenanalyse")} zeigt nebeneinander die Tracks aller, die einen Wettkampf oder ein Training gelaufen sind, auf der Karte,
             die der Veranstalter vorbereitet hat (siehe die Dokumentation von ${M("orga", "Orga")}). Wähle den Lauf, füge deinen Track hinzu – er behält nur die
             Positionen und Uhrzeiten – und vergleiche. Du brauchst dafür ein Konto.</p>
           ${list([
             html`<b>Die Wiedergabe</b>, wie bei Livelox: echte Uhrzeit, Massenstart, Warten an den Posten, eine Teilstrecke nach der anderen.`,
-            html`<b>Unter der Karte</b>: die Zwischenzeiten (bei einem Wettkampf die veröffentlichten), die Teilstrecken, die Rückstände, die Routenvarianten und
+            html`<b>Links der Karte</b>, im Reiter „Analysen“: die Zwischenzeiten (bei einem Wettkampf die veröffentlichten), die Teilstrecken, die Rückstände, die Routenvarianten und
               bei einem Training die Übungen des Veranstalters (Korridor, Kompassstrecke).`,
             html`<b>Der Zugang</b>: alle Konten, die Mitglieder eines Vereins oder ein Passwort. Deine eigene Datei zeigt zudem deine Kurven neben der Karte,
               nur für dich.`,

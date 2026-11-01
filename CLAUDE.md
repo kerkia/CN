@@ -323,8 +323,24 @@ there offers (`hub.js ARENA_STEPS`: agenda, results, live, split analysis — th
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
 provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.
-**Coach**: « Analyse solo » is one page, two tabs (`coachtabs.js`): a competition (`#/analyse`) or a training or any race
-(`#/analyse-solo`); « Analyse multi » likewise (`#/analyse-competition`, `#/analyse-club`). « Définitions de postes »
+**Coach**: **« Analyse de carte »** (`#/analyse-carte`, route `mapAnalysis`, `pages/mapanalysis.js`; owner, 2026-11-01: « grouping
+solo and multi analyses into one workflow ») is Coach's one menu entry for the GPS analyses: four tiles in two rows by who gives
+the map — « L'organisateur a publié la carte et les circuits »: 1. « Comparer avec les autres coureurs » (the multi analysis,
+`#/analyse-competition?id=` / `#/analyse-club?id=`), 2. « Analyser seul ma course » (**« Analyse solo » on the organiser's map**,
+route `analysisOrga`, `#/analyse-orga?id=&c=`), both for an account; « Vous avez votre propre carte »: 3. « Une compétition »
+(`#/analyse?course=`, the published times beside the trace), 4. « Un entraînement ou une sortie » (`#/analyse-solo`). Each tile
+says what one needs (`ma.<tile>.need`). Tiles 1-3 open on a picker (`?choix=multi|orga|course`): a list beside the country's map
+(`agendamap.js`, as the Agenda; a computer only), the event chosen in a card with its way in (`?id=`); 1-2 list the published
+events, competitions of the site's country and every training, a password's event asked in the card (the key in
+`sessionStorage ocn.an.key.<id>`, as Multi's); 3 the races of « Résultats » (`raceFilters`), a race whose organiser published its
+map tagged and its card offering tile 2. An event's place: its race's `pos`, else the middle of its first circuit's map
+(`/api/analyses` list `pos`, the summary's `centreOf` from the circuit's `geo`; an analysis saved before has its summary written
+again at the first list). The organiser's mode of `analysis.js` (`orgaMode`, `perso` true: one runner, no published times,
+`pageMode` « orga », IndexedDB key `files:orga`): the circuit chosen above the files, its stored map (`/api/analyses/<id>/map/<n>`,
+never re-encoded), its controls in order and its `geo` (`files.orga`: `fitFromGeo`, nothing read on the map, `passesInOrder`);
+only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every analysis has « ‹ <its tile> » on top (`ma-crumb`,
+`mapanalysis.backLine`; hidden during the playback and in full window); the runners' lists of Multi and `coachtabs.js` are gone
+(`#/analyse-club` / `#/analyse-competition` without `id` lead to the picker). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`; it and « Symboles de carte » shown only to the accounts whose last name
 is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
 the home page's Coach section, its picture and Tarifs line, the modules page, the tiles, Coach's documentation — have a « .lim »
@@ -1135,7 +1151,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   « Calcul ». Widths, folds and tabs kept in the pages' prefs (`gw`, `sw`, `gcol`, `rcol`, `ltab`, `rtab`; Multi `lw`, `rw`, `lcol`,
   `rcol`, `ltab`, `rtab`); the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
   « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
-  of its tabs). Full window also hides Coach's « Une compétition | Un entraînement » tabs (`.coach-tabs`).
+  of its tabs). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
   solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
   `genBlock`/`genMap`). The map: IGN's LiDAR HD point clouds (COPC LAZ, Licence Ouverte 2.0; each 1 km tile's addresses from IGN's

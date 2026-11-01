@@ -170,14 +170,27 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Solo analysis"], ["multi", "Group analysis"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Group analysis"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ...(admin ? [["routes", "Computed routes"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
+      carte: () => html`
+        ${slide("Coach", "Map analysis", html`
+          <p>The ${P("#/analyse-carte", "Map analysis")} gathers the GPS track analyses behind four tiles, arranged by who provides the map.</p>
+          ${list([
+            html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (the Group analysis, your track shared with
+              the event's runners) or <b>Analyse my race alone</b> (the Solo analysis on their map: you drop only your track, it lays itself on the map from
+              the organiser's calibration, and nothing is sent). It needs an account.`,
+            html`<b>You have your own map</b>: <b>A competition</b> (a race of the last 60 days, its results and split times beside your track) or <b>A
+              training or an outing</b> (any map, any track).`,
+            html`<b>The event</b> is chosen in a list, with the country's map beside it on a computer; an event chosen says what it offers. A competition whose
+              organiser has published the map says so, and offers to analyse it on that map.`,
+          ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Solo analysis", html`
-          <p>The ${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. Two tabs: a competition (a past race of
-            Arena, whose published split times refine the fit) or a training session, any outing.</p>
+          <p>The ${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from the ${P("#/analyse-carte", "Map analysis")}: a competition (a past race of
+            Arena, whose published split times refine the fit), a training session or any outing, or the map the organiser published, with no map to
+            provide and no calibration to do.</p>
           ${list([
             html`<b>The files</b>: the map (image, PDF, KMZ, or the OCAD or Mapper file itself), the track (GPX, FIT or TCX) and, if you have them, the
               map's georeferencing (KMZ, world file) and the courses in IOF XML. On a phone, “Photograph the map”.`,
@@ -192,12 +205,12 @@ export function build(X) {
             it.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Group analysis", html`
-          <p>The ${P("#/analyse-competition", "Group analysis")} shows side by side the tracks of everyone who ran a competition or a training session, on the
+          <p>The ${P("#/analyse-carte?choix=multi", "Group analysis")} shows side by side the tracks of everyone who ran a competition or a training session, on the
             map its organiser prepared (see ${M("orga", "Orga")}'s documentation). Choose the race, add your track — it keeps only positions and times —,
             and compare. It needs an account.</p>
           ${list([
             html`<b>The replay</b>, as on Livelox: real time, mass start, waiting at controls, one leg at a time.`,
-            html`<b>Under the map</b>: the split times (those published for a competition), the legs, the gaps, the route variants, and for a training
+            html`<b>Left of the map</b>, the “Analyses” tab: the split times (those published for a competition), the legs, the gaps, the route variants, and for a training
               session the organiser's exercises (corridor, compass leg).`,
             html`<b>Access</b>: every account, a club's members, or a password. Your own file also shows your curves beside the map, for you alone.`,
           ])}`)}`,

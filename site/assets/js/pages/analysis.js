@@ -18,7 +18,8 @@
 // Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
-import { coachTabs } from "../coachtabs.js";
+import { backLine } from "./mapanalysis.js";
+import { fitFromGeo } from "../trace/share.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -150,7 +151,25 @@ export async function render(main, { query = {}, route } = {}) {
   setTabParams(() => ({ tag: sessionTag(), play: document.body.classList.contains("an-theatre") ? "1" : null, d3: v3on ? "1" : null }));
   let autoV3 = query.d3 === "1";
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
-  const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
+  // « Analyse solo » on an organiser's published map and circuits (owner, 2026-11-01; route analysisOrga, #/analyse-orga?id=):
+  // the map, the circuit and its georeferencing are the organiser's, one drops one's trace only; a training's way otherwise
+  // (one runner, no published times), nothing sent
+  const orgaMode = route === "analysisOrga";
+  const perso = route === "analysisPerso" || orgaMode;
+  const pageMode = orgaMode ? "orga" : perso ? "perso" : "race", fileKey = orgaMode ? "files:orga" : perso ? "files:perso" : "files";
+  const titleKey = orgaMode ? "an.orga.title" : perso ? "an.perso.title" : "an.title";
+  let orga = null, orgaErr = "", orgaN = null, orgaGo = false;
+  if (orgaMode) {
+    const id = String(query.id || "");
+    try {
+      const k = (() => { try { return sessionStorage.getItem(`ocn.an.key.${id}`) || ""; } catch (e) { return ""; } })();
+      const r = /^[a-z0-9-]{4,64}$/i.test(id) ? await fetch(`api/analyses/${id}`, { credentials: "same-origin", headers: k ? { "X-Analysis-Key": k } : {} }) : null;
+      const d = r ? await r.json().catch(() => null) : null;
+      if (!r || !r.ok) orgaErr = d?.error === "locked" ? "an.orga.locked" : "an.orga.err";
+      else if (!(d.analysis.courses || []).length) orgaErr = "an.orga.noCourse";
+      else { orga = { id, A: d.analysis, key: k }; orgaN = d.analysis.courses.some((c) => String(c.n) === String(query.c)) ? Number(query.c) : d.analysis.courses[0].n; }
+    } catch (e) { orgaErr = "an.orga.err"; }
+  }
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
   // the list offers the site's country's races (country.js, as « Analyse de course »); a race of another country named in
@@ -159,8 +178,8 @@ export async function render(main, { query = {}, route } = {}) {
   // the race's list narrowed by the lists of races' filters (racefilters.js, as on Résultats); the address is the race's own
   const RF = perso || !here.length ? null : await raceFilters({ id: "anf", races: here, address: false, onChange: () => pickers() });
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
-    ${coachTabs("solo", perso ? "free" : "race")}
+    ${backLine(orgaMode ? "orga" : perso ? "" : "course")}
+    <div class="page-head"><div><h1>${t(titleKey)}</h1><p class="lede">${t(orgaMode ? "an.orga.lede" : perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="an-brief" id="an-brief" hidden></div>
     <div id="an-rf">${RF ? RF.html : ""}${perso ? "" : country.hint(races.map(country.of))}</div>
@@ -187,13 +206,18 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
     return { title: t("an.title") };
   }
+  if (orgaMode && !orga) {
+    $("#an-pick").innerHTML = html`<div class="empty">${t(orgaErr)} <a href="#/analyse-carte?choix=orga">${t("an.orga.back")}</a></div>`;
+    $("#an-files").hidden = true;
+    return { title: t(titleKey) };
+  }
   RF?.bind();
 
   // ---- state
   // the race, circuit and runner of the last visit (the menu's link carries no query): the tab's session remembers them
   const selKey = "ocn.an.sel";
   if (!perso && !query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && here.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
-  let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (here.find((r) => (r.lics || []).includes(me?.lic)) || here[0]).key;
+  let key = orgaMode ? `orga.${orga.id}.${orgaN}` : perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (here.find((r) => (r.lics || []).includes(me?.lic)) || here[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
   let traceFull = null;                                 // the trace as read; `track` is it, or its part kept (« Couper la trace »)
@@ -234,7 +258,7 @@ export async function render(main, { query = {}, route } = {}) {
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
-  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
+  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga;
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
   let vLo = 0, vHi = 1, vSet = false;                 // the colours' range (rangeOf: the pace's 10-90 %, the other channels' 5-95 %)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
@@ -276,8 +300,9 @@ export async function render(main, { query = {}, route } = {}) {
 
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
+    if (orgaMode) await loadOrgaMap();
     if (perso) {                                          // no race: one runner, the account's
-      race = { key: "perso", name: t("an.perso.title"), date_iso: null, docs: [] };
+      race = { key: "perso", name: orgaMode ? orga.A.title : t("an.perso.title"), date_iso: null, docs: [] };
       docs = [{ source: "", title: "", classes: [{ name: "", controls: null, runners: [{ name: me?.nom || "", status: null }] }] }];
       di = 0; ci = 0; ri = 0;
       return;
@@ -297,7 +322,28 @@ export async function render(main, { query = {}, route } = {}) {
     if (Number.isInteger(Number(query.doc)) && docs[Number(query.doc)] && !wanted) { di = Number(query.doc); ci = Math.min(Number(query.c) || 0, docs[di].classes.length - 1); ri = 0; }
     if (query.r && docs[di]?.classes[ci]) { const n = docs[di].classes[ci].runners.findIndex((r) => r.name === query.r); if (n >= 0) ri = n; }
   }
+  /** The organiser's circuit `orgaN`: its map (the stored image, never re-encoded), its controls and georeferencing. */
+  async function loadOrgaMap() {
+    const c = orga.A.courses.find((x) => x.n === orgaN);
+    if (files.orga?.n === c.n && map) return;
+    const r = await fetch(`api/analyses/${orga.id}/map/${c.n}?v=${c.map?.v || 0}`, { credentials: "same-origin", headers: orga.key ? { "X-Analysis-Key": orga.key } : {} });
+    if (!r.ok) { map = null; files.map = { name: c.name, note: t("an.orga.err") }; return; }
+    map = await createImageBitmap(await r.blob());
+    files.map = { name: c.name, detail: `${t("an.orga.map")} · ${map.width} × ${map.height}` };
+    files.orga = { n: c.n, geo: c.geo, r: c.r || 20, controls: c.controls || [] };
+    courseCache = null;
+    key = `orga.${orga.id}.${c.n}`;
+  }
   function pickers() {
+    if (orgaMode) {
+      const A = orga.A;
+      $("#an-pick").innerHTML = html`<div class="field"><span>${t("an.orga.event")}</span><b class="an-orga-ev">${A.title}</b>
+          <span class="muted">${[fmtDate(A.date), A.ownerName].filter(Boolean).join(" · ")}</span></div>
+        <label class="field"><span>${t("prov.circuit")}</span><select id="an-oc">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === orgaN ? "selected" : "")}>${c.name}</option>`)}</select></label>`;
+      $("#an-oc").addEventListener("change", async (e) => { orgaN = Number(e.target.value); await loadOrgaMap(); replaceQuery({ id: orga.id, c: orgaN }); filesCard(); setup(); });
+      replaceQuery({ id: orga.id, c: orgaN });
+      return;
+    }
     if (perso) { $("#an-pick").hidden = true; return; }
     const k = klass();
     $("#an-pick").innerHTML = html`
@@ -323,26 +369,27 @@ export async function render(main, { query = {}, route } = {}) {
     const courseSel = iof?.data?.courses?.length > 1 ? html` <select id="an-iof-course" style="margin-left:8px">${iof.data.courses.map((c, i) => html`<option value="${i}" ${raw(i === iofIndex ? "selected" : "")}>${c.name || `#${i + 1}`}${c.length ? ` · ${fmt(c.length / 1000, 1)} km` : ""}</option>`)}</select>` : "";
     $("#an-files").innerHTML = html`<div class="card-body">
       <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${fileAccept(ACCEPT)}">
-        <strong>${t("an.drop")}</strong><span class="muted">${t("an.drop.hint")}</span></label>
-      ${matchMedia("(pointer: coarse)").matches ? html`<div class="an-cam-row"><label class="btn btn-primary an-cam"><input type="file" id="an-cam" accept="image/*" capture="environment" hidden>${t("an.cam")}</label>
+        <strong>${t(orgaMode ? "an.orga.drop" : "an.drop")}</strong><span class="muted">${t(orgaMode ? "an.orga.drop.hint" : "an.drop.hint")}</span></label>
+      ${matchMedia("(pointer: coarse)").matches && !orgaMode ? html`<div class="an-cam-row"><label class="btn btn-primary an-cam"><input type="file" id="an-cam" accept="image/*" capture="environment" hidden>${t("an.cam")}</label>
         <span class="muted">${t("an.cam.hint")}</span></div>` : ""}
       <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>
-        ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}${files.vector ? row("vector", files.vector) : ""}
+        ${row("map", files.map)}${row("trace", files.trace)}${orgaMode ? "" : html`${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}`}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
       ${cutBlock()}
       ${genBlock()}
       <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
-        ${files.map || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
-      <details class="an-formats"><summary>${t("an.formats")}</summary><ul>
+        ${(files.map && !orgaMode) || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
+      <details class="an-formats" ${raw(orgaMode ? "hidden" : "")}><summary>${t("an.formats")}</summary><ul>
         <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     $("#an-cam")?.addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     $("#an-forget")?.addEventListener("click", () => {
       stop(); prepToken++;                                  // a calibration under way stops with its files
-      for (const role of Object.keys(files)) files[role] = null;
-      map = null; track = traceFull = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
+      for (const role of Object.keys(files)) if (!(orgaMode && (role === "map" || role === "orga"))) files[role] = null;   // the organiser's map stays
+      if (!orgaMode) map = null;
+      track = traceFull = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
       idbWrite(null, fileKey).catch(() => {});
       filesCard(); setup();
     });
@@ -508,6 +555,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   async function take(list, { remember = true } = {}) {
     let newTrace = false;
+    if (orgaMode) list = list.filter((f) => isTraceName(f.name));          // the map and its course are the organiser's
     for (const f of list) {
       const name = f.name, low = name.toLowerCase();
       for (const role of Object.keys(files)) if (files[role]?.file === f) files[role] = null;
@@ -589,7 +637,8 @@ export async function render(main, { query = {}, route } = {}) {
       matchedNote = "";
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
-    if (newTrace && traceFull) { cadence(traceFull); track = withCut(traceFull); }   // once the race is known (a VTT race: pedal turns)
+    if (newTrace && traceFull) { cadence(traceFull); track = withCut(traceFull); }
+    if (newTrace && orgaMode && remember) orgaGo = true;                    // a trace just dropped: straight to its playback   // once the race is known (a VTT race: pedal turns)
     filesCard();
     setup();
   }
@@ -649,7 +698,7 @@ export async function render(main, { query = {}, route } = {}) {
     const tag = sessionTag();
     let rec = null;
     try { rec = await idbRead(fileKey); } catch (e) { return; }
-    if (!rec || rec.tag !== tag || !rec.entries?.length || map || track) return;
+    if (!rec || rec.tag !== tag || !rec.entries?.length || (map && !orgaMode) || track) return;
     restoredFiles = true;
     await take(rec.entries.map((e) => new File([e.blob], e.name, { type: e.type })), { remember: false });
   }
@@ -705,7 +754,7 @@ export async function render(main, { query = {}, route } = {}) {
   window.addEventListener("resize", onWinResize);
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
   function showPanels(on) {
-    $("#an-pick").hidden = $("#an-rf").hidden = perso || !on; $("#an-files").hidden = !on;
+    $("#an-pick").hidden = (perso && !orgaMode) || !on; $("#an-rf").hidden = perso || !on; $("#an-files").hidden = !on;
     const brief = $("#an-brief");
     brief.hidden = on;
     // during the playback the race's line sits in the map's top left corner, so that the site's menus can stay as on
@@ -714,13 +763,13 @@ export async function render(main, { query = {}, route } = {}) {
     ($("#an-bar-brief") || $(".an-map")).prepend(brief);
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
-      <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
+      <span>${orgaMode ? html`<b>${orga.A.title}</b> · ${files.map?.name || ""}` : perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
       <span class="muted">${[files.map?.name, files.trace?.name && track ? `${files.trace.name} (${clock(track.dur)})` : files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
     // the race's and the files' choices open above the display, which stays; changing one of them starts a new
     // calibration (its inputs changed) — the display itself has nothing to recalibrate (owner, 2026-10-14)
     $("#an-brief-edit").addEventListener("click", (e) => {
       const open = $("#an-files").hidden;
-      $("#an-pick").hidden = $("#an-rf").hidden = perso || !open; $("#an-files").hidden = !open;
+      $("#an-pick").hidden = (perso && !orgaMode) || !open; $("#an-rf").hidden = perso || !open; $("#an-files").hidden = !open;
       e.currentTarget.setAttribute("aria-expanded", String(open));
       e.currentTarget.textContent = `${t("an.brief.edit")} ${open ? "▴" : "▾"}`;
       fitHeight();
@@ -800,18 +849,19 @@ export async function render(main, { query = {}, route } = {}) {
     if (fresh) { try { localStorage.removeItem(calKey()); } catch (e) { /* nothing kept */ } }
     setStatus(t("an.st.reading"));
     await tick();
-    if (!courseCache || courseCache.image !== map) {
+    if (!files.orga && (!courseCache || courseCache.image !== map)) {
       let c = null;
       try { c = await detectCourse(map); } catch (e) { console.error(e); }
       courseCache = { image: map, course: c };
     }
     if (my !== prepToken) return;
-    course = courseCache.course;
-    if (!course) notes.push(t("an.st.noCourse"));
+    course = files.orga ? null : courseCache.course;
+    if (!course && !files.orga) notes.push(t("an.st.noCourse"));
     // the georeferencing
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
-    if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
+    if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
+    else if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
     else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }
     else if (files.world?.wf) {
       const crs = files.prj?.crs || guessCrs(files.world.wf[4], files.world.wf[5], track.lon0);
@@ -846,9 +896,12 @@ export async function render(main, { query = {}, route } = {}) {
     }
     // the course's points
     const pts = [];
-    const iofData = files.iof?.data, iofCourse = iofData?.courses[iofIndex] || null;
-    const r = course?.r || null;
-    if (iofCourse) {
+    const iofData = files.orga ? null : files.iof?.data, iofCourse = iofData?.courses[iofIndex] || null;
+    const r = files.orga ? files.orga.r : course?.r || null;
+    // the organiser's course: its controls placed on the map, in its order
+    const orgaPts = files.orga ? files.orga.controls.map((c) => ({ kind: c.kind, code: c.code || "", pos: [c.x, c.y] })) : null;
+    if (orgaPts) pts.push(...orgaPts);
+    else if (iofCourse) {
       const seq = iofCourse.controls.map((cc) => ({ ...(iofData.controls.get(cc.id) || { id: cc.id }), type: cc.type }));
       const circles = [...(course?.controls || []).map((c) => [c.x, c.y]), ...(course?.start ? [[course.start.x, course.start.y]] : []), ...(course?.finish ? [[course.finish.x, course.finish.y]] : [])];
       const withMm = seq.filter((c) => c.mx != null && c.my != null);
@@ -914,7 +967,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the targets: in the course's order (IOF), else in the trace's visiting order
     const saved = savedPositions();
     if (!geometry) {
-      targets = iofCourse ? pts.map((p, i) => ({ i, label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : String(pts.slice(0, i).filter((q) => q.kind === "control").length + 1), ...p, tau: null, tEst: null }))
+      targets = iofCourse || orgaPts ? pts.map((p, i) => ({ i, label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : String(pts.slice(0, i).filter((q) => q.kind === "control").length + 1), ...p, tau: null, tEst: null }))
         : officialTargets(null);
       if (saved) restorePositions(saved);
       mode = "manual"; cur = nextTarget(0);
@@ -927,13 +980,13 @@ export async function render(main, { query = {}, route } = {}) {
     const mapOrder = !iofCourse ? courseOrder(geometry, located) : null;
     mapOrdered = !!mapOrder;
     if (mapOrder) located = mapOrder;
-    const vo = mapOrder ? passesInOrder(track, geometry, ptsOf(located), TOL) : visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg });
+    const vo = mapOrder || orgaPts ? passesInOrder(track, geometry, ptsOf(located), TOL) : visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg });
     const passOf = (p) => { const i = located.indexOf(p); return i >= 0 && vo.pass.has(i) ? vo.pass.get(i) : null; };
     // two circles passed within 15 s are not two controls (a leg takes longer): the second is a phantom
     let prevT = -Infinity;
     const visited = vo.order.map((i) => located[i]).map((p) => { const tp = passOf(p); const ok = tp == null || tp - prevT >= 15; if (ok && tp != null) prevT = tp; return ok ? p : { ...p, missed: true }; });
     const slot = (kind) => pts.find((p) => p.kind === kind) || { kind, code: "", pos: null };
-    const ordered = iofCourse ? pts
+    const ordered = iofCourse || orgaPts ? pts
       : mapOrder ? located.map((p) => (p.kind === "control" && !visited.includes(p) ? { ...p, missed: true } : p))
       : [slot("start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), slot("finish")];
     if (mapOrder && !ordered.some((p) => p.kind === "start")) ordered.unshift(slot("start"));
@@ -971,6 +1024,8 @@ export async function render(main, { query = {}, route } = {}) {
     cur = nextTarget(0);
     side(); draw();
     if (fit && !notes.length && targets.filter((g) => g.pos).length >= 3) steps(3);
+    // the organiser's map: placed by its own georeferencing, nothing to check by hand — a trace just dropped plays at once
+    if (orgaGo && fit && offset != null && targets.filter((g) => g.pos && g.tEst != null).length >= 2) { orgaGo = false; finish(); }
   }
   const median = (xs) => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : 0; };
   /** The trace's sharp turns (over 50°) with no control placed nearby, probed on the map for a ring: the rings found. */
@@ -2097,7 +2152,7 @@ export async function render(main, { query = {}, route } = {}) {
   steps(1);
   await loadRace();
   pickers();
-  const memo = memos[pageMode];
+  const memo = memos[pageMode] && (!orgaMode || memos[pageMode].orgaKey === key) ? memos[pageMode] : null;
   // files opened with the installed app or shared to it (pwa.js): they join the files of the visit, as if dropped
   const received = await takeInbox();
   if (memo) {
@@ -2112,7 +2167,7 @@ export async function render(main, { query = {}, route } = {}) {
   if (received.length) take(received);
   const onInbox = async () => { const got = await takeInbox(); if (got.length) take(got); };
   window.addEventListener("ocn:inbox", onInbox);
-  return { title: t(perso ? "an.perso.title" : "an.title"), cleanup: () => {
+  return { title: t(titleKey), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     leaveFull();
     window.removeEventListener("resize", onWinResize);
@@ -2120,6 +2175,6 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("ocn:inbox", onInbox);
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
-    if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files } };
+    if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };
   } };
 }

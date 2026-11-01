@@ -174,14 +174,27 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Analyse solo"], ["multi", "Analyse multi"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Analyse multi"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
+      carte: () => html`
+        ${slide("Coach", "Analyse de carte", html`
+          <p>L'${P("#/analyse-carte", "Analyse de carte")} rassemble les analyses de traces GPS derrière quatre tuiles, rangées selon qui fournit la carte.</p>
+          ${list([
+            html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (l'Analyse multi, votre trace partagée avec
+              les coureurs de l'événement) ou <b>Analyser seul ma course</b> (l'Analyse solo sur sa carte : vous ne déposez que votre trace, elle se pose
+              d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé). Il faut un compte.`,
+            html`<b>Vous avez votre propre carte</b> : <b>Une compétition</b> (une course des 60 derniers jours, ses résultats et ses temps intermédiaires à
+              côté de votre trace) ou <b>Un entraînement ou une sortie</b> (n'importe quelle carte, n'importe quelle trace).`,
+            html`<b>L'événement</b> se choisit dans une liste, avec la carte du pays à côté sur un ordinateur ; un événement choisi dit ce qu'il offre. Une
+              compétition dont l'organisateur a publié la carte le signale, et propose de l'analyser sur sa carte.`,
+          ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Analyse solo", html`
-          <p>L'${P("#/analyse-solo", "Analyse solo")} rejoue votre course sur votre carte avec votre trace GPS. Deux onglets : une compétition (une course
-            passée d'Arena, dont les temps intermédiaires publiés affinent le calage) ou un entraînement, n'importe quelle sortie.</p>
+          <p>L'${P("#/analyse-solo", "Analyse solo")} rejoue votre course sur votre carte avec votre trace GPS. On y entre par l'${P("#/analyse-carte", "Analyse de carte")} : une compétition (une course
+            passée d'Arena, dont les temps intermédiaires publiés affinent le calage), un entraînement ou n'importe quelle sortie, ou la carte publiée par
+            l'organisateur, sans carte à fournir ni calage à faire.</p>
           ${list([
             html`<b>Les fichiers</b> : la carte (image, PDF, KMZ, ou le fichier OCAD ou Mapper lui-même), la trace (GPX, FIT ou TCX) et, si on les a, le calage
               de la carte (KMZ, fichier de géoréférencement) et les circuits en IOF XML. Sur un téléphone, « Photographier la carte ».`,
@@ -196,12 +209,12 @@ export function build(X) {
             qu'on l'a laissée.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Analyse multi", html`
-          <p>L'${P("#/analyse-competition", "Analyse multi")} met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
+          <p>L'${P("#/analyse-carte?choix=multi", "Analyse multi")} met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
             que l'organisateur a préparée (voir la documentation d'${M("orga", "Orga")}). Choisissez la course, ajoutez votre trace — elle ne garde que les
             positions et les heures —, et comparez. Il faut un compte.</p>
           ${list([
             html`<b>Le rejeu</b>, comme sur Livelox : heure réelle, départ en masse, attente aux postes, un inter-poste à la fois.`,
-            html`<b>Sous la carte</b> : les temps intermédiaires (ceux publiés pour une compétition), les inter-postes, les écarts, les variantes d'itinéraire, et
+            html`<b>À gauche de la carte</b>, l'onglet « Analyses » : les temps intermédiaires (ceux publiés pour une compétition), les inter-postes, les écarts, les variantes d'itinéraire, et
               pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
             html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
               pour vous seul.`,

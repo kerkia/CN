@@ -17,13 +17,11 @@
 // state in the address. Stored by /api/analyses (R2).
 
 import { html, raw, $, $$, fmt, fmtDate, fileAccept } from "../util.js";
-import { coachTabs } from "../coachtabs.js";
 import { t, tn } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
 import * as country from "../country.js";
-import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
@@ -48,7 +46,6 @@ import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "..
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 import { replaceQuery } from "../app.js";
 
-const ROUTE = { club: "#/analyse-club", race: "#/analyse-competition" };          // the runners' pages
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), as the server's _lib/club.js. */
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
@@ -104,50 +101,10 @@ export async function render(main, r) {
   const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
   betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
   if (org) return r.query.id ? eventPage(main, kind, r.query.id, true, r.query) : orgListPage(main, kind);
-  return r.query.id ? eventPage(main, kind, r.query.id, false, r.query) : listPage(main, kind, r.query);
-}
-
-// ---- the list ----------------------------------------------------------------------------------------------------
-async function listPage(main, kind, query = {}) {
-  main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(`sh.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.${kind}.lede`)}</p></div></div>
-    ${coachTabs("multi", kind)}
-    ${raw(betaNote("multi"))}
-    <div id="sh-filters"></div>
-    <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
-    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("sh.privacy")}</p>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t(`sh.${kind}.orgHint`)} ${t("mod.orga")} › ${t(kind === "race" ? "nav.orgRace" : "nav.orgTraining")}.</p>`;
-  let data;
-  try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.${kind}.title`) }; }
-  const races = kind === "race" ? ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso)) : [];
-  const raceOf = (k) => races.find((x) => x.key === k) || null;
-  const raceName = (k) => raceOf(k)?.name || "";
-  const ready = data.analyses.filter((a) => a.courses > 0);          // ready: the organiser has set its maps and circuits
-  // a competition's analyses: the filters of the lists of races (racefilters.js, as on Résultats), on the race each is tied to;
-  // those of the site's country (a race not on « Résultats » any more: kept, France's)
-  let F = null;
-  const draw = () => {
-    const rows = F ? ready.filter(F.keep) : ready;
-    $("#sh-list").innerHTML = rows.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th>
-        ${kind === "race" ? html`<th>${t("prov.race")}</th>` : ""}<th>${t("sh.col.owner")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th></tr></thead>
-      <tbody>${rows.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td>
-        <td><a href="${ROUTE[kind]}?id=${a.id}">${a.title}</a>${a.organiser ? html` <span class="tag">${t("sh.mine")}</span>` : ""}</td>
-        ${kind === "race" ? html`<td>${raceName(a.race)}</td>` : ""}<td>${a.ownerName || "—"}</td>
-        <td>${t(`sh.vis.${a.vis}`)}${a.access === "locked" ? " 🔒" : ""}</td><td class="r num">${a.courses}</td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t(ready.length ? "ra.emptyFilter" : `sh.${kind}.none`)}</div>`;
-  };
-  if (kind === "race") {
-    const all = ready.map((a) => country.of(raceOf(a.race) || {}));
-    const here = ready.filter((a) => country.of(raceOf(a.race) || {}) === country.current());
-    ready.splice(0, ready.length, ...here);
-    F = await raceFilters({ id: "sh", query, races: ready, onChange: () => draw(),
-      facts: (a) => { const r = raceOf(a.race); const x = r ? provFacts(r) : { spec: null, region: "", lics: [], text: "" };
-        return { ...x, text: `${a.title} ${x.text} ${a.ownerName || ""}` }; } });
-    $("#sh-filters").innerHTML = html`${F.html}${country.hint(all)}`;
-    F.bind();
-  }
-  draw();
-  return { title: t(`sh.${kind}.title`) };
+  // the runners' lists are « Analyse de carte »'s since 2026-11-01 (pages/mapanalysis.js: competitions and trainings in one
+  // list, a map beside it); an address of before without an event goes there
+  if (!r.query.id) { location.replace("#/analyse-carte?choix=multi"); return { title: t("ma.multi.title") }; }
+  return eventPage(main, kind, r.query.id, false, r.query);
 }
 
 // ---- the organisers' list: their club's competitions (one analysis each), or their training events ----------------
@@ -238,7 +195,7 @@ function createForm(box, kind, races, club) {
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
 async function eventPage(main, kind, id, org = false, query = {}) {
-  const home = org ? ORG_ROUTE[kind] : ROUTE[kind], homeTitle = t(org ? `sh.org.${kind}.title` : `sh.${kind}.title`);
+  const home = org ? ORG_ROUTE[kind] : "#/analyse-carte?choix=multi", homeTitle = t(org ? `sh.org.${kind}.title` : "ma.multi.title");
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
   try { data = await api(`/${id}`, { key: keyOf(id) }); }

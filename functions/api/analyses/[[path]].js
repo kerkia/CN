@@ -55,7 +55,17 @@ async function unlockKey(env, meta, uid) {
 }
 
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
-  owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated });
+  owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
+/** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
+function centreOf(m) {
+  const c = (m.courses || [])[0], g = c?.geo;
+  if (!g || !c.map?.w || !c.map?.h) return "";
+  const det = g.a * g.e - g.b * g.d;
+  if (!det) return "";
+  const x = c.map.w / 2 - g.c, y = c.map.h / 2 - g.f;
+  const lon = (g.e * x - g.b * y) / det, lat = (-g.d * x + g.a * y) / det;
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? `${lat.toFixed(5)},${lon.toFixed(5)}` : "";
+}
 const custom = (m) => Object.fromEntries(Object.entries(summary(m)).map(([k, v]) => [k, String(v ?? "")]));
 const publicMeta = (m) => { const { pw, ...rest } = m; return rest; };
 
@@ -194,6 +204,11 @@ export const onRequest = withUser(async (ctx, user) => {
         const m = o.customMetadata || {};
         if (kind && m.kind !== kind) continue;
         if (race && m.race !== race) continue;
+        // an analysis saved before its summary had a position: its summary written again once (its date of change kept)
+        if (m.pos === undefined && Number(m.courses) > 0) {
+          const full = await loadMeta(env, m.id);
+          if (full) { await env.BUCKET.put(o.key, JSON.stringify(full), { httpMetadata: { contentType: "application/json" }, customMetadata: custom(full) }); m.pos = centreOf(full); }
+        }
         const meta = { ...m, owner: Number(m.owner), courses: [] };
         const org = await isOrganiser(env, user, meta, lazyClub);
         let acc;
@@ -202,7 +217,8 @@ export const onRequest = withUser(async (ctx, user) => {
         else if (m.vis === "password") acc = "locked";
         if (!acc) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, ownerName: m.ownerName,
-          courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc });
+          courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
+          pos: m.pos ? m.pos.split(",").map(Number) : null });
       }
       out.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.updated || "").localeCompare(a.updated || ""));
       return json({ analyses: out, club: await lazyClub() });

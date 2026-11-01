@@ -6,7 +6,7 @@ import { announceSoon, translateSoon } from "../_lib/nutrition.js";
 
 // the site's pages (app.js routes; the Réseau views apart) — anything else is refused
 const PAGES = new Set(["overview", "ranking", "runner", "compare", "clubs", "club", "clubcompare", "courses", "agenda",
-  "methods", "settings", "contact", "admin", "provisional", "splits", "deposit", "live", "relays", "analysis", "analysisPerso", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "categories", "relayHistory", "games", "vma", "descriptions", "mapkey", "nutrition", "nutritionWrite", "hub", "modtiles", "ask", "network:ego", "network:leaders", "network:territories", "network:stats"]);
+  "methods", "settings", "contact", "admin", "provisional", "splits", "deposit", "live", "relays", "analysis", "analysisPerso", "analysisOrga", "mapAnalysis", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "categories", "relayHistory", "games", "vma", "descriptions", "mapkey", "nutrition", "nutritionWrite", "hub", "modtiles", "ask", "network:ego", "network:leaders", "network:territories", "network:stats"]);
 const KEEP_DAYS = 400;
 
 /** Today's date in Paris, YYYY-MM-DD; `plus` days later (negative: earlier). */

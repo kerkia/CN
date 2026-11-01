@@ -38,6 +38,8 @@ const PAGES = {
   deposit: () => import("./pages/deposit.js"),     // « Déposer »: a results file read in the browser, then published
   analysis: () => import("./pages/analysis.js"),   // « Analyse solo » (Courses): a GPS trace on one's map, a race's
   analysisPerso: () => import("./pages/analysis.js"),   // « Analyse solo » (Entrainement): the same page, no race
+  analysisOrga: () => import("./pages/analysis.js"),    // « Analyse solo » on an organiser's published map and circuits (2026-11-01)
+  mapAnalysis: () => import("./pages/mapanalysis.js"),  // « Analyse de carte » (2026-11-01): the four ways into the GPS analyses
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
   // « Organisation » (2026-10-15): the organisers' pages — a competition's multi analysis, a training event's, the results
@@ -71,7 +73,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
-  analysisPerso: "an.perso.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
+  analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 // The pages of a country's ranked data (owner, 2026-10-20; by country since 2026-10-22): the rankings and everything they
@@ -90,7 +92,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "mapAnalysis", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
@@ -99,7 +101,7 @@ const ownerOnly = auth.owner;
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
 const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
-const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "games", "vma"].includes(r.route)
+const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
@@ -142,6 +144,7 @@ function parseHash(hash = location.hash) {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
+    : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
     : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
@@ -349,7 +352,8 @@ function menuKey(r) {
     // Arena: today's and coming competitions, a live race; the past ones and a race's results and analysis
     : at === "agenda" || at === "live" || (at === "splits" && /^direct-/.test(r.query?.course || "")) ? "coming"
     : at === "provisional" || at === "splits" ? "past"
-    : at === "analysis" ? "analysisPerso" : at === "analysisRace" ? "analysisClub"   // Coach's analyses: one page each, two tabs
+    // Coach's analyses: one entry, « Analyse de carte », whose four tiles lead to them (owner, 2026-11-01)
+    : ["analysis", "analysisPerso", "analysisOrga", "analysisRace", "analysisClub"].includes(at) ? "mapAnalysis"
     : at === "nutritionWrite" ? "nutrition"        // « Rédaction »: Santé's authors' page, out of the menu
     : at;
 }
@@ -393,8 +397,8 @@ export function moduleMenus() {
       // without the country's data (no account, or the country not joined): the pages its public copy serves
       ].filter(([k]) => auth.sees(country.current()) || PUBLIC_STATS.has(k)),
     ],
-    // the two analyses each one page, its tabs a competition or a training (coachtabs.js); « Analyse multi » needs an account
-    coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
+    // the GPS analyses behind one page of four tiles (owner, 2026-11-01: « Analyse de carte », pages/mapanalysis.js)
+    coach: [["mapAnalysis", "#/analyse-carte", t("nav.mapAnalysis")],
       ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]

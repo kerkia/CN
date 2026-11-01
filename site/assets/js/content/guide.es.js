@@ -173,14 +173,27 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["solo", "Análisis individual"], ["multi", "Análisis de grupo"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Análisis de grupo"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Juegos"], ["vma", "VAM"], ...(admin ? [["routes", "Rutas calculadas"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
+      carte: () => html`
+        ${slide("Coach", "Análisis de mapa", html`
+          <p>El ${P("#/analyse-carte", "Análisis de mapa")} reúne los análisis de tracks GPS tras cuatro casillas, ordenadas según quién aporta el mapa.</p>
+          ${list([
+            html`<b>El organizador ha publicado el mapa y los recorridos</b>: <b>Comparar con los demás corredores</b> (el Análisis de grupo, tu track
+              compartido con los corredores del evento) o <b>Analizar mi carrera en solitario</b> (el Análisis individual sobre su mapa: solo sueltas tu
+              track, se coloca solo gracias a la calibración del organizador y no se envía nada). Necesitas una cuenta.`,
+            html`<b>Tienes tu propio mapa</b>: <b>Una competición</b> (una carrera de los últimos 60 días, sus resultados y parciales junto a tu track) o
+              <b>Un entrenamiento o una salida</b> (cualquier mapa, cualquier track).`,
+            html`<b>El evento</b> se elige en una lista, con el mapa del país al lado en un ordenador; un evento elegido indica lo que ofrece. Una
+              competición cuyo organizador ha publicado el mapa lo señala y propone analizarla sobre ese mapa.`,
+          ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Análisis individual", html`
-          <p>El ${P("#/analyse-solo", "Análisis individual")} reproduce tu carrera sobre tu mapa con tu track GPS. Dos pestañas: una competición (una carrera
-            pasada de Arena, cuyos tiempos parciales publicados afinan la calibración) o un entrenamiento, cualquier salida.</p>
+          <p>El ${P("#/analyse-solo", "Análisis individual")} reproduce tu carrera sobre tu mapa con tu track GPS. Se entra desde el ${P("#/analyse-carte", "Análisis de mapa")}: una competición (una carrera
+            pasada de Arena, cuyos tiempos parciales publicados afinan la calibración), un entrenamiento o cualquier salida, o el mapa que publicó el
+            organizador, sin mapa que aportar ni calibración que hacer.</p>
           ${list([
             html`<b>Los archivos</b>: el mapa (imagen, PDF, KMZ, o el propio archivo OCAD o Mapper), el track (GPX, FIT o TCX) y, si los tienes, la
               calibración del mapa (KMZ, archivo de georreferenciación) y los recorridos en IOF XML. En un móvil, «Fotografiar el mapa».`,
@@ -195,12 +208,12 @@ export function build(X) {
             lo dejaste.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Análisis de grupo", html`
-          <p>El ${P("#/analyse-competition", "Análisis de grupo")} muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
+          <p>El ${P("#/analyse-carte?choix=multi", "Análisis de grupo")} muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
             sobre el mapa que preparó el organizador (consulta la documentación de ${M("orga", "Orga")}). Elige la carrera, añade tu track —solo guarda las
             posiciones y las horas— y compara. Necesitas una cuenta.</p>
           ${list([
             html`<b>La reproducción</b>, como en Livelox: hora real, salida en masa, espera en los controles, un tramo cada vez.`,
-            html`<b>Bajo el mapa</b>: los tiempos parciales (los publicados en una competición), los tramos, las diferencias, las variantes de ruta y, en un
+            html`<b>A la izquierda del mapa</b>, en la pestaña «Análisis»: los tiempos parciales (los publicados en una competición), los tramos, las diferencias, las variantes de ruta y, en un
               entrenamiento, los ejercicios del organizador (pasillo, rumbo).`,
             html`<b>El acceso</b>: todas las cuentas, los miembros de un club o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
               solo para ti.`,
