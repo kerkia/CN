@@ -4076,7 +4076,6 @@ export default {
   "nut.from.de": "from German",
   "nut.from.es": "from Spanish",
   "nutw.lede": "Write, edit and sort the Health articles.",
-  "nutw.toBlog": "Open Health",
   "nutw.tab.posts": "Articles",
   "nutw.tab.themes": "Themes",
   "nutw.st.draft": "Draft",

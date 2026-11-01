@@ -3267,7 +3267,6 @@ export default {
   "nut.from.de": "de l'allemand",
   "nut.from.es": "de l'espagnol",
   "nutw.lede": "Écrire, modifier et classer les articles de Santé.",
-  "nutw.toBlog": "Voir Santé",
   "nutw.tab.posts": "Articles",
   "nutw.tab.themes": "Thèmes",
   "nutw.st.draft": "Brouillon",

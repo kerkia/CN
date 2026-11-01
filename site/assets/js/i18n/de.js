@@ -4296,7 +4296,6 @@ export default {
   "nut.from.de": "aus dem Deutschen",
   "nut.from.es": "aus dem Spanischen",
   "nutw.lede": "Die Gesundheitsartikel schreiben, bearbeiten und ordnen.",
-  "nutw.toBlog": "Gesundheit öffnen",
   "nutw.tab.posts": "Artikel",
   "nutw.tab.themes": "Themen",
   "nutw.st.draft": "Entwurf",

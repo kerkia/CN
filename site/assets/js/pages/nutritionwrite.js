@@ -56,7 +56,7 @@ async function lists(main, query) {
 
   main.innerHTML = html`<div class="nut-w">
     <div class="page-head"><div><h1>${t("nav.nutritionWrite")}</h1><p class="lede">${t("nutw.lede")}</p></div>
-      <div class="row"><a class="btn" href="#/sante">${t("nutw.toBlog")}</a><a class="btn btn-primary" href="#/redaction?nouveau=1">${t("nut.write")}</a></div></div>
+      <a class="btn btn-primary" href="#/redaction?nouveau=1">${t("nut.write")}</a></div>
     ${pageTabs(tabs, tab)}
     <div data-panel="articles">
       <div class="card"><div class="card-body">
