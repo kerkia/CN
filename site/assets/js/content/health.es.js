@@ -8,7 +8,7 @@ export const intro = {
     licenció en medicina en una de las mejores facultades del antiguo sistema soviético y ejerció varios años antes de mudarse a
     Canadá en 2002 para criar a su hijo y dedicarse a su pasión, la dietética y la cocina.`,
   // at the foot of the page, always (owner, 2026-11-01)
-  noAi: "Los artículos los escriben sus propios autores; no están producidos por una IA ni con su ayuda. Solo las traducciones que puedes pedir se hacen automáticamente.",
+  noAi: "Los artículos los escriben sus propios autores; no están producidos por una IA ni con su ayuda. Solo las traducciones se hacen automáticamente.",
   more: [
     `Su cocina tiene raíces profundas: aprendió a cocinar con su madre búlgara y después incorporó influencias rusas y rumanas.
     Su matrimonio con un francés y muchos viajes, entre ellos frecuentes estancias en Francia, le abrieron los secretos de la

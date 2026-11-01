@@ -28,13 +28,13 @@ const themeOf = (v) => (v === NONE ? NONE : Number(v) || null);
 const PERIODS = { mois: 1, trimestre: 3, annee: 12 };          // months back from today
 const periodOf = (v) => (v in PERIODS ? v : "");
 const since = (k) => { const d = new Date(); d.setMonth(d.getMonth() - PERIODS[k]); return d.toISOString().slice(0, 10); };
-const PREF = "ocn.nut.translate";        // "1": open the articles in the reader's language
-const wantsTranslation = () => { try { return localStorage.getItem(PREF) === "1"; } catch (e) { return false; } };
-const setWantsTranslation = (on) => { try { if (on) localStorage.setItem(PREF, "1"); else localStorage.removeItem(PREF); } catch (e) {} };
+// what a card or a link shows of an article: its translation's words when the server sent one (the reader's language, else English)
+const titleOf = (p) => p.tr?.title || p.title;
+const summaryOf = (p) => p.tr?.summary || p.summary;
 
 export async function render(main, { query }) {
   main.innerHTML = html`<div class="empty">${t("nut.loading")}</div>`;
-  const res = await call("");
+  const res = await call(`?lang=${lang()}`);
   if (!res.ok) {
     main.innerHTML = html`<div class="card"><div class="empty">${t(res.status === 403 ? "nut.err.forbidden" : "nut.err.load")}</div></div>`;
     return { title: t("nav.nutrition") };
@@ -64,7 +64,7 @@ export async function render(main, { query }) {
     if (period && dayOf(p.published) < since(period)) return false;
     if (st.q) {
       const q = normalise(st.q);
-      if (!normalise(`${p.title} ${p.summary} ${p.author} ${p.cats.map((c) => catName(cats.get(c))).join(" ")}`).includes(q)) return false;
+      if (!normalise(`${p.title} ${p.summary} ${p.tr?.title || ""} ${p.tr?.summary || ""} ${p.author} ${p.cats.map((c) => catName(cats.get(c))).join(" ")}`).includes(q)) return false;
     }
     return true;
   };
@@ -80,15 +80,15 @@ export async function render(main, { query }) {
   }
 
   const chips = (p) => html`${p.cats.map((c) => cats.get(c)).filter(Boolean).map((c) => html`<a class="nut-chip" href="#/sante?theme=${c.id}" data-chip="${c.id}">${catName(c)}</a>`)}`;
-  const meta = (p) => html`<span>${fmtDay(p.published)}</span><span>${t("nut.by", { a: p.author })}</span><span>${readingTime(p.words)}</span>${p.lang !== lang() ? html`<span class="nut-lang" title="${t("nut.written", { lang: langName(p.lang) })}">${p.lang.toUpperCase()}</span>` : ""}${p.likes ? html`<span class="nut-likes" title="${tn("nut.likes", p.likes)}">${raw(HEART)} ${p.likes}</span>` : ""}`;
+  const meta = (p) => html`<span>${fmtDay(p.published)}</span><span>${t("nut.by", { a: p.author })}</span><span>${readingTime(p.words)}</span>${(p.tr?.lang || p.lang) !== lang() ? html`<span class="nut-lang" title="${t("nut.shownIn", { lang: langName(p.tr?.lang || p.lang) })}">${(p.tr?.lang || p.lang).toUpperCase()}</span>` : ""}${p.likes ? html`<span class="nut-likes" title="${tn("nut.likes", p.likes)}">${raw(HEART)} ${p.likes}</span>` : ""}`;
 
   function card(p, big = false) {
     return html`<article class="nut-card${big ? " big" : ""}" data-open="${p.id}" tabindex="0">
       ${p.cover ? html`<img class="nut-cover" src="${p.cover}" alt="" loading="lazy">` : ""}
       <div class="nut-card-body">
         <div class="nut-chips">${p.pinned ? html`<span class="nut-chip pin">${t("nut.pinned")}</span>` : ""}${chips(p)}</div>
-        <h2><a href="#/sante?article=${p.id}">${p.title}</a></h2>
-        ${p.summary ? html`<p class="nut-summary">${p.summary}</p>` : ""}
+        <h2><a href="#/sante?article=${p.id}" lang="${p.tr?.lang || p.lang}">${titleOf(p)}</a></h2>
+        ${summaryOf(p) ? html`<p class="nut-summary" lang="${p.tr?.lang || p.lang}">${summaryOf(p)}</p>` : ""}
         <div class="nut-meta">${meta(p)}</div>
       </div></article>`;
   }
@@ -111,7 +111,7 @@ export async function render(main, { query }) {
   // short words of the four languages that say nothing about a subject (i18n-ignore-next 2)
   const STOP = new Set(["avec", "dans", "pour", "plus", "sans", "sont", "être", "avoir", "mais", "comme", "cette", "votre", "leurs", "after",
     "with", "your", "that", "this", "from", "have", "what", "when", "nach", "eine", "einen", "oder", "nicht", "para", "como", "pero", "antes"]);
-  const wordsOf = (p) => new Set(normalise(`${p.title} ${p.summary}`).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
+  const wordsOf = (p) => new Set(normalise(`${titleOf(p)} ${summaryOf(p)}`).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)));
   function related(p, n = 3) {
     const mine = wordsOf(p), t0 = Date.parse(p.published || 0);
     return posts.filter((x) => x.id !== p.id).map((x) => {
@@ -130,37 +130,31 @@ export async function render(main, { query }) {
     box.innerHTML = html`<div class="card nut-article"><div class="empty">${t("nut.loading")}</div></div>`;
     let p = cache.get(id);
     if (!p) {
-      const r = await call(`/posts/${id}`);
+      const r = await call(`/posts/${id}?lang=${lang()}`);
       if (st.article !== id) return;
       if (!r.ok) { box.innerHTML = html`<a class="nut-back" href="#/sante">${t("nut.back")}</a><div class="card"><div class="empty">${t("nut.err.missing")}</div></div>`; return; }
-      p = r.data; p.tr = {};
+      p = r.data;
+      p.view = p.translation ? "tr" : "orig";        // the translation by default, the original one click away
       cache.set(id, p);
     }
     const shown = posts.filter((x) => matches(x));
     const i = shown.findIndex((x) => x.id === id);
     const prev = i > 0 ? shown[i - 1] : null, next = i >= 0 && i < shown.length - 1 ? shown[i + 1] : null;
-    const other = p.lang !== lang();
-    const tr = p.tr[lang()];
-    const showTr = other && tr && !tr.error && p.view === "tr";
+    const tr = p.translation, showTr = !!tr && p.view === "tr";
     const title = showTr ? tr.title : p.title, summary = showTr ? tr.summary : p.summary, body = showTr ? tr.body : p.body;
     box.innerHTML = html`<a class="nut-back" href="#/sante${backQuery()}">${t("nut.back")}</a>
-      <article class="card nut-article${p.translating ? " translating" : ""}" lang="${showTr ? lang() : p.lang}">
+      <article class="card nut-article" lang="${showTr ? tr.lang : p.lang}">
         ${p.cover ? html`<img class="nut-article-cover" src="${p.cover}" alt="">` : ""}
         <div class="nut-article-in">
           <div class="nut-chips">${chips(p)}</div>
           <h1>${title}</h1>
           <div class="nut-meta">${meta(p)}${p.updated && dayOf(p.updated) > dayOf(p.published) ? html`<span>${t("nut.updated", { d: fmtDay(p.updated) })}</span>` : ""}
             ${p.canEdit ? html`<a href="#/redaction?id=${p.id}">${t("nut.edit")}</a>` : ""}</div>
-          ${other && p.translating ? html`<div class="nut-trwait" lang="${lang()}" role="status">
-            <span class="spinner" aria-hidden="true"></span>
-            <div class="nut-trwait-text"><b>${t("nut.tr.wait", { lang: langName(lang()) })}</b>
-              <span>${t("nut.tr.waitHint", { s: p.translating.est })} · <span id="nut-elapsed">0 s</span></span>
-              <div class="nut-prog" aria-hidden="true"><i style="animation-duration:${p.translating.est}s"></i></div></div></div>`
-          : other ? html`<div class="nut-trbar" lang="${lang()}">
-            ${showTr ? html`<span>${t("nut.tr.done", { from: t(`nut.from.${p.lang}`) })}</span><button type="button" class="btn btn-sm" data-view="orig">${t("nut.tr.orig")}</button>`
-              : html`<span>${t("nut.written", { lang: langName(p.lang) })}</span><button type="button" class="btn btn-sm" data-view="tr">${t("nut.tr.offer", { lang: langName(lang()) })}</button>`}
-            <label class="nut-always"><input type="checkbox" id="nut-always" ${wantsTranslation() ? "checked" : ""}> ${t("nut.tr.always")}</label>
-            <span id="nut-trmsg" class="muted">${tr?.error ? t(`nut.tr.err.${tr.error}`) : ""}</span></div>` : ""}
+
+          ${tr || p.lang !== lang() ? html`<div class="nut-trbar" lang="${lang()}">
+            ${showTr ? html`<span>${t(tr.lang === lang() ? "nut.tr.done" : "nut.tr.doneEn", { from: t(`nut.from.${p.lang}`) })}</span>
+                <button type="button" class="btn btn-sm" data-view="orig">${t("nut.tr.orig")}</button>`
+              : html`<span>${t("nut.written", { lang: langName(p.lang) })}</span>${tr ? html`<button type="button" class="btn btn-sm" data-view="tr">${t("nut.tr.show", { lang: langName(tr.lang) })}</button>` : ""}`}</div>` : ""}
           ${summary ? html`<p class="nut-lead">${summary}</p>` : ""}
           <div class="nut-body">${raw(sanitize(body))}</div>
           <div class="nut-likebar"><button type="button" class="nut-like" id="nut-like" aria-pressed="${p.liked}" title="${t(p.liked ? "nut.unlike" : "nut.like")}">${raw(HEART)}
@@ -168,17 +162,9 @@ export async function render(main, { query }) {
         </div>
       </article>
       ${related(p).length ? html`<section class="nut-related"><h2>${t("nut.related")}</h2><div class="nut-grid">${related(p).map((x) => card(x))}</div></section>` : ""}
-      <nav class="nut-pager">${prev ? html`<a href="#/sante?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${prev.title}</b></a>` : html`<span></span>`}
-        ${next ? html`<a class="next" href="#/sante?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${next.title}</b></a>` : ""}</nav>`;
-    $$("[data-view]", box).forEach((b) => b.addEventListener("click", () => translate(p, b.dataset.view)));
-    // the seconds since the translation was asked for, while it is made
-    if (p.translating) {
-      const t0 = p.translating.at, tick = setInterval(() => {
-        const el = $("#nut-elapsed");
-        if (!el || !p.translating) { clearInterval(tick); return; }
-        el.textContent = `${Math.round((Date.now() - t0) / 1000)} s`;
-      }, 1000);
-    }
+      <nav class="nut-pager">${prev ? html`<a href="#/sante?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${titleOf(prev)}</b></a>` : html`<span></span>`}
+        ${next ? html`<a class="next" href="#/sante?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${titleOf(next)}</b></a>` : ""}</nav>`;
+    $$("[data-view]", box).forEach((b) => b.addEventListener("click", () => { p.view = b.dataset.view; drawArticle(); }));
     $("#nut-like", box).addEventListener("click", async (e) => {
       const btn = e.currentTarget, on = !p.liked;
       btn.disabled = true;
@@ -191,24 +177,8 @@ export async function render(main, { query }) {
       btn.title = t(p.liked ? "nut.unlike" : "nut.like");
       $("#nut-likes", box).textContent = p.likes ? tn("nut.likes", p.likes) : "";
     });
-    $("#nut-always", box)?.addEventListener("change", (e) => { setWantsTranslation(e.target.checked); if (e.target.checked && !showTr) translate(p, "tr"); });
-    if (other && !p.view && wantsTranslation()) translate(p, "tr");
   }
 
-  async function translate(p, view) {
-    p.view = view;
-    if (view === "tr" && (!p.tr[lang()] || p.tr[lang()].error)) {
-      // made on the fly by the AI, a few seconds to a minute by the article's length: an estimate drives the bar, which
-      // waits at its end if the AI takes longer (owner, 2026-11-01: the reader saw the untranslated article and a line only)
-      p.translating = { at: Date.now(), est: Math.round(Math.min(90, Math.max(10, 6 + (p.words || 0) / 12))) };
-      if (st.article === p.id) drawArticle();
-      const r = await call(`/posts/${p.id}?lang=${lang()}`);
-      p.translating = null;
-      p.tr[lang()] = r.ok ? r.data.translation || { error: "model" } : { error: "model" };
-      if (p.tr[lang()].error) p.view = "orig";
-    }
-    if (st.article === p.id) drawArticle();
-  }
 
   const backQuery = (sep = "?") => {
     const q = new URLSearchParams(Object.entries({ theme: st.theme || "", periode: st.period, q: st.q }).filter(([, v]) => v)).toString();

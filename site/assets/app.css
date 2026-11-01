@@ -3071,7 +3071,6 @@ a.nut-chip:hover { filter: brightness(.95); }
 .nut-lead { font-size: 18px; color: var(--ink-2); line-height: 1.55; margin: 0 0 18px; }
 .nut-trbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface-2); border-radius: var(--radius-sm);
   padding: 8px 12px; margin-bottom: 18px; font-size: 14px; }
-.nut-always { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); }
 .nut-body { font-size: 17px; line-height: 1.7; overflow-wrap: anywhere; }
 .nut-body h2 { font-size: 24px; margin: 1.4em 0 .5em; }
 .nut-body h3 { font-size: 20px; margin: 1.3em 0 .4em; }
@@ -3213,16 +3212,3 @@ a.nut-chip:hover { filter: brightness(.95); }
 .nut-intro-more:hover { text-decoration: underline; }
 @media (max-width: 640px) { .nut-intro { padding: 14px 16px; gap: 12px; } .nut-intro-face { width: 40px; height: 40px; font-size: 18px; } }
 
-/* Santé: a translation being made (2026-11-01) */
-.nut-trwait { display: flex; gap: 12px; align-items: center; background: var(--accent-wash); border: 1px solid var(--focus); border-radius: var(--radius-sm);
-  padding: 10px 14px; margin-bottom: 18px; font-size: 14px; }
-.nut-trwait .spinner { flex: none; width: 24px; height: 24px; }
-.nut-trwait-text { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
-.nut-trwait-text > span { color: var(--ink-2); font-size: 13px; }
-#nut-elapsed { font-variant-numeric: tabular-nums; }
-.nut-prog { height: 5px; border-radius: 3px; background: var(--grid); overflow: hidden; margin-top: 4px; }
-.nut-prog i { display: block; height: 100%; width: 95%; background: var(--focus); border-radius: 3px; transform-origin: left;
-  animation: nutProg linear forwards; }
-@keyframes nutProg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.nut-article.translating .nut-body, .nut-article.translating .nut-lead, .nut-article.translating h1 { opacity: .45; transition: opacity .3s; }
-@media (prefers-reduced-motion: reduce) { .nut-prog i { animation: none; transform: scaleX(.5); } }

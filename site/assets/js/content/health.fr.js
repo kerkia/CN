@@ -8,7 +8,7 @@ export const intro = {
     en médecine, diplômée de l'une des meilleures facultés de médecine de l'ex-système soviétique, elle a exercé plusieurs années
     avant de s'installer au Canada en 2002 pour élever son enfant et se consacrer à sa passion, la diététique et la cuisine.`,
   // at the foot of the page, always (owner, 2026-11-01)
-  noAi: "Les articles sont écrits par leurs auteurs eux-mêmes, sans être produits par ou avec une IA. Seules les traductions que vous pouvez demander sont faites automatiquement.",
+  noAi: "Les articles sont écrits par leurs auteurs eux-mêmes, sans être produits par ou avec une IA. Seules les traductions sont faites automatiquement.",
   more: [
     `Sa cuisine a des racines profondes : elle a appris à cuisiner auprès de sa mère bulgare, puis y a mêlé des influences russes
     et roumaines. Son mariage avec un Français et de nombreux voyages, dont de fréquents séjours en France, lui ont ouvert les

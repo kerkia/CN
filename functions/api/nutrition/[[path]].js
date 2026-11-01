@@ -3,12 +3,15 @@
 // Who: an administrator (always an author), an account whose users.nutrition is 'author' (set on the admin page) writes;
 // 'reader' reads; NUTRITION_OPEN "1" (wrangler.toml) would let every account read. An author changes and deletes their own
 // articles, an administrator anyone's (and gives an article to another author); authors and administrators manage the themes.
-// An article is shown in the language it was written in; a reader may ask for it in their own, translated by Workers AI once
-// per article, language and version, kept in nut_translations.
+// An article is shown in the reader's language when a translation into it is kept, else in English (each article not written
+// in English is translated into English when published or changed: _lib/nutrition.js translateDue), the original one click
+// away; nut_translations keeps one per article, language and version (those into French, German or Spanish made on request
+// before 2026-11-01 are still used).
 //
-//   GET    /api/nutrition[?manage=1]          { role, categories, posts } — the published articles (manage: also the drafts
+//   GET    /api/nutrition[?manage=1][?lang=xx]          { role, categories, posts } — the published articles (manage: also the drafts
 //                                             one may change, and the authors an administrator may choose)
-//   GET    /api/nutrition/posts/<id>[?lang=xx]   an article with its body; lang: its translation (made if needed)
+//   GET    /api/nutrition/posts/<id>[?lang=xx]   an article with its body; lang: the reader's, its translation into it, else into
+//                                             English, when one is kept (none is made on request since 2026-11-01)
 //   POST   /api/nutrition/posts               a new article -> { post }
 //   PUT    /api/nutrition/posts/<id>          changed { …, version } (409 when another change came first) -> { post }
 //   DELETE /api/nutrition/posts/<id>
@@ -20,12 +23,11 @@
 
 import { allow, json, nowIso, nutritionRole, readBody, withUser } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
-import { ai, announceSoon, clean, excerpt, LANG_NAME, LANGS, saveTranslation, stripHtml, translatePost, translateSoon } from "../../_lib/nutrition.js";
+import { ai, announceSoon, clean, excerpt, LANG_NAME, LANGS, stripHtml, translateSoon } from "../../_lib/nutrition.js";
 
 const IMG = "nutrition/img/";
 const IMG_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 const MAX_IMG = 6 * 1024 * 1024;
-const TRANSLATIONS_PER_DAY = 30;           // AI translations an account may start a day (those already made cost nothing)
 
 const writes = (role) => role === "admin" || role === "author";
 const authorName = (u) => `${String(u.first_name || "").trim()} ${String(u.last_name || "").trim()}`.trim() || u.display_name || "";
@@ -58,6 +60,26 @@ async function catsOf(env, ids) {
     .bind(...ids).all();
   for (const r of results) out.get(r.post_id)?.push(r.cat_id);
   return out;
+}
+
+/** The translations to show of these articles to a reader of `lang`: into that language when one of the article's current
+ *  version exists, else into English (an article not written in English, in their language neither). id -> row. */
+async function translationsFor(env, posts, lang) {
+  const out = new Map();
+  if (!posts.length || !LANGS.includes(lang)) return out;
+  const { results } = await env.DB.prepare(`SELECT * FROM nut_translations WHERE lang IN (?, 'en') AND post_id IN (${posts.map(() => "?").join(",")})`)
+    .bind(lang, ...posts.map((p) => p.id)).all();
+  for (const p of posts) {
+    if (p.lang === lang) continue;
+    const mine = results.filter((r) => r.post_id === p.id && r.version === p.version);
+    const pick = mine.find((r) => r.lang === lang) || (p.lang !== "en" ? mine.find((r) => r.lang === "en") : null);
+    if (pick) out.set(p.id, pick);
+  }
+  return out;
+}
+async function translationFor(env, p, lang) {
+  const r = (await translationsFor(env, [p], lang)).get(p.id);
+  return r ? { lang: r.lang, title: r.title, summary: r.summary, body: r.body, at: r.created_at } : null;
 }
 
 /** Each article's likes and whether the account likes it: id -> [n, mine] (none before migration 0018). */
@@ -199,6 +221,14 @@ export const onRequest = withUser(async (ctx, me) => {
     const ids = results.map((p) => p.id);
     const [cats, likes] = await Promise.all([catsOf(env, ids), likesOf(env, ids, me)]);
     const out = { role, me: me.id, categories: await categories(env), posts: results.map((p) => listed(p, cats, me, role, likes)) };
+    // the readers' list: each article's title and summary in the language it is shown in (translationFor's rule)
+    if (!manage) {
+      const trs = await translationsFor(env, results, url.searchParams.get("lang"));
+      for (const o of out.posts) {
+        const r = trs.get(o.id);
+        if (r) o.tr = { lang: r.lang, title: r.title, summary: r.summary || excerpt(r.body) };
+      }
+    }
     announceSoon(ctx);           // an article whose publication day has come since: its readers are told
     translateSoon(ctx);          // and the translations still to make, one at a time
     if (manage && role === "admin") {
@@ -290,22 +320,9 @@ export const onRequest = withUser(async (ctx, me) => {
     if (method === "GET" && p) {
       if (!isLive(p) && !mayEdit) return json({ error: "not found" }, 404);
       const out = await full(env, p, me, role);
-      const to = url.searchParams.get("lang");
-      if (to && LANGS.includes(to) && to !== p.lang) {
-        let tr = await env.DB.prepare("SELECT * FROM nut_translations WHERE post_id = ? AND lang = ?").bind(p.id, to).first();
-        if (!tr || tr.version !== p.version) {
-          if (!env.AI) return json({ ...out, translation: { error: "ai" } });
-          if (role !== "admin" && !(await allow(env, `nuttr:${me.id}`, TRANSLATIONS_PER_DAY, 86400))) return json({ ...out, translation: { error: "rate" } });
-          try {
-            const t = await translatePost(env, p, to);
-            tr = await saveTranslation(env, p, to, t);
-          } catch (e) {
-            const msg = String(e?.message || e);
-            return json({ ...out, translation: { error: /neuron|quota|limit|429|capacity/i.test(msg) ? "quota" : "model" } });
-          }
-        }
-        out.translation = { lang: to, title: tr.title, summary: tr.summary, body: tr.body, at: tr.created_at };
-      }
+      // the reader's language when a translation into it exists, else English (owner, 2026-11-01); none is made here
+      const tr = await translationFor(env, p, url.searchParams.get("lang"));
+      if (tr) out.translation = tr;
       return json(out);
     }
     if (!writes(role)) return json({ error: "forbidden" }, 403);

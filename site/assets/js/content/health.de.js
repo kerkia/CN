@@ -9,7 +9,7 @@ export const intro = {
     gearbeitet, bevor sie 2002 nach Kanada zog, um ihr Kind großzuziehen und ihrer Leidenschaft für Ernährungslehre und Kochen
     nachzugehen.`,
   // at the foot of the page, always (owner, 2026-11-01)
-  noAi: "Die Artikel schreiben ihre Autoren selbst; sie werden weder von noch mit einer KI erstellt. Nur die Übersetzungen, die du anfordern kannst, entstehen automatisch.",
+  noAi: "Die Artikel schreiben ihre Autoren selbst; sie werden weder von noch mit einer KI erstellt. Nur die Übersetzungen entstehen automatisch.",
   more: [
     `Ihre Küche hat tiefe Wurzeln: Kochen lernte sie bei ihrer bulgarischen Mutter, später kamen russische und rumänische
     Einflüsse hinzu. Die Ehe mit einem Franzosen und viele Reisen, darunter häufige Aufenthalte in Frankreich, öffneten ihr die
