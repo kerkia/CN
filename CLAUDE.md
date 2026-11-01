@@ -774,7 +774,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   on the left, a search, cards (« à la une » first), an article with its previous / next; it opens in its own language, « Lire en … »
   asks for the reader's, translated by Workers AI (`DEFAULT_MODEL`, the HTML kept, markers @@TITLE@@ / @@SUMMARY@@ / @@BODY@@) once per
   article, language and version, kept in `nut_translations` (30 new a day an account; the free neurons shared with « IA »);
-  « Toujours traduire » kept in `localStorage ocn.nut.translate`. **Writing**: « Articles » (filters; ticked ones published, back to
+  « Toujours traduire » kept in `localStorage ocn.nut.translate`. **Translated ahead** (owner, 2026-11-01): every published article
+  into the three other languages (`_lib/nutrition.js` `translateDue` / `translateSoon`): its own at publication or change, in the
+  background of that request; the rest (the archive, one cut short, a changed article) one at a time behind /api/track and the list,
+  every 10 min an isolate, each claimed 15 min, 40 a day (`AUTO_PER_DAY`: the free neurons; the 2026 archive ≈ 1 500 a language).
+  Still shown in their own language by default (owner); the reader's « Lire en … » is then instant. **Writing**: « Articles » (filters; ticked ones published, back to
   draft, added to or taken out of a theme, given to another author — administrators —, deleted), « Thèmes » (a name per language),
   the editor (`?id=`, `?nouveau=1`): one ribbon (history, paragraph style, bold… colours, highlight, clear; lists, indents, alignment;
   link, image — also pasted or dropped —, table, line, emoji; a table's rows and columns and an image's width when one is chosen;

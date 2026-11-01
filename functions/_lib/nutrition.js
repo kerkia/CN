@@ -1,15 +1,17 @@
-// « Nutrition »: telling its readers that an article is out (owner, 2026-11-01; migration 0018). An article is announced once,
+// « Santé » (« Nutrition » until 2026-11-01): telling its readers that an article is out (owner, 2026-11-01; migration 0018). An article is announced once,
 // the first time it is published and its day has come (nut_posts.announced_at): at once when it is published for today, or —
 // for a date to come — by the first request that looks after that day (announceSoon: « Nutrition »'s own list, and the page
 // views every signed-in account posts to /api/track, at most every 10 minutes an isolate). Each account that may read the
 // articles (_lib/api.js nutritionRole), the author apart, gets one e-mail (users.nut_mail, with the administrator's e-mail
 // right, users.alerts_allowed, as every alert) and one notification (users.nut_push) for the articles announced together;
 // both are queued, then a few are sent at once (the rest by the next /api/notify, after a deploy, or the next announcement).
+// Also here: the articles' translations, made by Workers AI and kept, ahead of the readers (translateDue, below).
 
-import { adminEmails, nowIso, nutritionRole, userLang } from "./api.js";
+import { adminEmails, allow, nowIso, nutritionRole, userLang } from "./api.js";
 import { queueStatement, flushQueue } from "./mail.js";
 import { queuePush, flushPush, pushReady } from "./push.js";
 import { nutritionMail, nutritionPush } from "./templates.js";
+import { DEFAULT_MODEL } from "./ask.js";
 
 const DAYS_BACK = 14;               // an article whose day is further back is no news (published long after it was dated)
 let lastCheck = 0;
@@ -65,4 +67,99 @@ export function excerpt(h, max = 220) {
   if (s.length <= max) return s;
   const cut = s.slice(0, max), at = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(" "));
   return `${cut.slice(0, at > max / 2 ? at + (cut[at] === "." ? 1 : 0) : max).trim()}…`;
+}
+
+// ---- translations ------------------------------------------------------------------------------------------------
+export const LANGS = ["fr", "en", "de", "es"];
+export const LANG_NAME = { fr: "French", en: "English", de: "German", es: "Spanish" };
+const MAX_BODY = 400_000;                  // characters of HTML
+export const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").trim().slice(0, max);
+
+/** A first, cheap cleaning of the HTML (the browser cleans it again, with an allowlist, before showing it). */
+export function stripHtml(h) {
+  return String(h || "").slice(0, MAX_BODY)
+    .replace(/<\s*(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link|base|svg|math)\b[\s\S]*?(<\s*\/\s*\1\s*>|$)/gi, "")
+    .replace(/<\s*\/?\s*(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link|base|svg|math)\b[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/(href|src)\s*=\s*("|')\s*(javascript|vbscript|data):[^"']*\2/gi, '$1="#"');
+}
+
+// ---- translation -----------------------------------------------------------------------------------------------
+export async function ai(env, messages, maxTokens) {
+  const out = await env.AI.run(DEFAULT_MODEL, { messages, max_tokens: maxTokens, temperature: 0.1,
+    ...(DEFAULT_MODEL.includes("gpt-oss") ? { reasoning: { effort: "low" } } : {}) });
+  const text = out?.choices?.[0]?.message?.content ?? out?.response ?? (typeof out === "string" ? out : "");
+  return typeof text === "string" ? text : JSON.stringify(text);
+}
+
+/** An article in another language: { title, summary, body }, or throws. */
+export async function translatePost(env, p, to) {
+  const from = LANG_NAME[p.lang] || "French", into = LANG_NAME[to];
+  const messages = [
+    { role: "system", content: `You translate articles about nutrition for orienteers (orienteering is an outdoor running sport) from ${from} into ${into}.
+Translate only the visible text. Keep every HTML tag, attribute and URL exactly as it is, in the same order; never add, remove or reorder elements, never add comments or explanations.
+Keep units, numbers and quantities as they are. Use natural, idiomatic ${into}${to === "de" ? " (address the reader as « du »)" : to === "es" ? " (address the reader as « tú »)" : ""}.
+Answer with exactly three parts, each after its marker line, and nothing else:
+@@TITLE@@
+(the title)
+@@SUMMARY@@
+(the summary, or nothing when it is empty)
+@@BODY@@
+(the HTML body)` },
+    { role: "user", content: `@@TITLE@@\n${p.title}\n@@SUMMARY@@\n${p.summary || ""}\n@@BODY@@\n${p.body}` },
+  ];
+  const text = await ai(env, messages, Math.min(16000, 1500 + Math.ceil(p.body.length / 2)));
+  const m = /@@TITLE@@\s*([\s\S]*?)\s*@@SUMMARY@@\s*([\s\S]*?)\s*@@BODY@@\s*([\s\S]*)$/.exec(text);
+  if (!m || !m[1].trim() || (p.body.trim() && !m[3].trim())) throw new Error("unreadable");
+  return { title: clean(m[1], 300), summary: clean(m[2], 900), body: stripHtml(m[3].replace(/^```(?:html)?\s*|\s*```\s*$/g, "")) };
+}
+
+/** A translation kept (one per article and language, of the article's version it was made from). -> the row. */
+export async function saveTranslation(env, p, to, t) {
+  const row = { ...t, lang: to, version: p.version, created_at: nowIso() };
+  await env.DB.prepare(`INSERT INTO nut_translations (post_id, lang, version, title, summary, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (post_id, lang) DO UPDATE SET version = excluded.version, title = excluded.title, summary = excluded.summary, body = excluded.body, created_at = excluded.created_at`)
+    .bind(p.id, to, p.version, t.title, t.summary, t.body, row.created_at).run();
+  return row;
+}
+
+// Every published article is translated ahead of time into the site's other languages (owner, 2026-11-01: a reader should not
+// wait for it): its own languages at once when it is published or changed (in parallel, in the background of that request),
+// and whatever is still missing — the archive, a translation cut short, an article changed since — one at a time in the
+// background of the page views (/api/track) and of « Santé »'s list, at most every 10 minutes an isolate. Each (article,
+// language, version) is claimed for 15 minutes so that two requests do not make it twice, and at most AUTO_PER_DAY are made a
+// day: the account's free AI allowance (10 000 neurons, shared with « IA ») — the 2026-11-01 archive, 6 600 words in English,
+// costs about 1 500 a language.
+const AUTO_PER_DAY = 40;
+let lastTranslate = 0;
+
+/** Make up to `max` missing translations (of one article, or of any); -> how many were made. */
+export async function translateDue(env, { postId = null, max = 1 } = {}) {
+  if (!env.DB || !env.AI) return 0;
+  let posts, done;
+  try {
+    ({ results: posts } = await env.DB.prepare(`SELECT * FROM nut_posts WHERE status = 'published' AND published_at <= ?${postId ? " AND id = ?" : ""}
+      ORDER BY published_at DESC`).bind(nowIso(), ...(postId ? [postId] : [])).all());
+    ({ results: done } = await env.DB.prepare("SELECT post_id, lang, version FROM nut_translations").all());
+  } catch (e) { return 0; }
+  const have = new Set(done.map((d) => `${d.post_id}:${d.lang}:${d.version}`));
+  const todo = posts.flatMap((p) => LANGS.filter((l) => l !== p.lang && !have.has(`${p.id}:${l}:${p.version}`)).map((l) => [p, l]));
+  const picked = [];
+  for (const [p, l] of todo) {
+    if (picked.length >= max) break;
+    if (!(await allow(env, `nuttrlock:${p.id}:${l}:${p.version}`, 1, 900))) continue;      // being made by another request
+    if (!(await allow(env, "nuttrauto", AUTO_PER_DAY, 86400))) break;                      // the day's share is spent
+    picked.push([p, l]);
+  }
+  const made = await Promise.allSettled(picked.map(async ([p, l]) => saveTranslation(env, p, l, await translatePost(env, p, l))));
+  return made.filter((r) => r.status === "fulfilled").length;
+}
+
+/** translateDue in the background: an article's languages at once (`postId`), or one missing translation, at most every
+ *  10 minutes in this isolate (`now` skips the wait). */
+export function translateSoon(ctx, { postId = null, now = false } = {}) {
+  if (postId) { ctx.waitUntil(translateDue(ctx.env, { postId, max: LANGS.length }).catch(() => 0)); return; }
+  if (!now && Date.now() - lastTranslate < 10 * 60e3) return;
+  lastTranslate = Date.now();
+  ctx.waitUntil(translateDue(ctx.env).catch(() => 0));
 }

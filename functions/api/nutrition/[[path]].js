@@ -20,30 +20,17 @@
 
 import { allow, json, nowIso, nutritionRole, readBody, withUser } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
-import { DEFAULT_MODEL } from "../../_lib/ask.js";
-import { announceSoon, excerpt } from "../../_lib/nutrition.js";
+import { ai, announceSoon, clean, excerpt, LANG_NAME, LANGS, saveTranslation, stripHtml, translatePost, translateSoon } from "../../_lib/nutrition.js";
 
 const IMG = "nutrition/img/";
 const IMG_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 const MAX_IMG = 6 * 1024 * 1024;
-const MAX_BODY = 400_000;                  // characters of HTML
-const LANGS = ["fr", "en", "de", "es"];
-const LANG_NAME = { fr: "French", en: "English", de: "German", es: "Spanish" };
 const TRANSLATIONS_PER_DAY = 30;           // AI translations an account may start a day (those already made cost nothing)
 
 const writes = (role) => role === "admin" || role === "author";
 const authorName = (u) => `${String(u.first_name || "").trim()} ${String(u.last_name || "").trim()}`.trim() || u.display_name || "";
-const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u0008\u000b-\u001f]/g, " ").trim().slice(0, max);
 const newKey = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
 
-/** A first, cheap cleaning of the HTML (the browser cleans it again, with an allowlist, before showing it). */
-function stripHtml(h) {
-  return String(h || "").slice(0, MAX_BODY)
-    .replace(/<\s*(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link|base|svg|math)\b[\s\S]*?(<\s*\/\s*\1\s*>|$)/gi, "")
-    .replace(/<\s*\/?\s*(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link|base|svg|math)\b[^>]*>/gi, "")
-    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/(href|src)\s*=\s*("|')\s*(javascript|vbscript|data):[^"']*\2/gi, '$1="#"');
-}
 const textOf = (h) => String(h || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&[a-z#0-9]+;/gi, "x");
 const wordCount = (h) => (textOf(h).match(/[\p{L}\p{N}]+/gu) || []).length;
 const imgKeys = (s) => [...String(s || "").matchAll(/\/api\/nutrition\/img\/([a-z0-9]{8,40}\.(?:jpg|png|webp|gif))/g)].map((m) => m[1]);
@@ -150,36 +137,6 @@ async function deletePosts(env, posts) {
   if (env.BUCKET) await dropImages(env, posts);
 }
 
-// ---- translation -----------------------------------------------------------------------------------------------
-async function ai(env, messages, maxTokens) {
-  const out = await env.AI.run(DEFAULT_MODEL, { messages, max_tokens: maxTokens, temperature: 0.1,
-    ...(DEFAULT_MODEL.includes("gpt-oss") ? { reasoning: { effort: "low" } } : {}) });
-  const text = out?.choices?.[0]?.message?.content ?? out?.response ?? (typeof out === "string" ? out : "");
-  return typeof text === "string" ? text : JSON.stringify(text);
-}
-
-/** An article in another language: { title, summary, body }, or throws. */
-async function translatePost(env, p, to) {
-  const from = LANG_NAME[p.lang] || "French", into = LANG_NAME[to];
-  const messages = [
-    { role: "system", content: `You translate articles about nutrition for orienteers (orienteering is an outdoor running sport) from ${from} into ${into}.
-Translate only the visible text. Keep every HTML tag, attribute and URL exactly as it is, in the same order; never add, remove or reorder elements, never add comments or explanations.
-Keep units, numbers and quantities as they are. Use natural, idiomatic ${into}${to === "de" ? " (address the reader as « du »)" : to === "es" ? " (address the reader as « tú »)" : ""}.
-Answer with exactly three parts, each after its marker line, and nothing else:
-@@TITLE@@
-(the title)
-@@SUMMARY@@
-(the summary, or nothing when it is empty)
-@@BODY@@
-(the HTML body)` },
-    { role: "user", content: `@@TITLE@@\n${p.title}\n@@SUMMARY@@\n${p.summary || ""}\n@@BODY@@\n${p.body}` },
-  ];
-  const text = await ai(env, messages, Math.min(16000, 1500 + Math.ceil(p.body.length / 2)));
-  const m = /@@TITLE@@\s*([\s\S]*?)\s*@@SUMMARY@@\s*([\s\S]*?)\s*@@BODY@@\s*([\s\S]*)$/.exec(text);
-  if (!m || !m[1].trim() || (p.body.trim() && !m[3].trim())) throw new Error("unreadable");
-  return { title: clean(m[1], 300), summary: clean(m[2], 900), body: stripHtml(m[3].replace(/^```(?:html)?\s*|\s*```\s*$/g, "")) };
-}
-
 /** A theme's names in every language: those typed kept, the others asked of the AI (none when it fails). */
 async function fillNames(env, names) {
   const have = Object.keys(names);
@@ -243,6 +200,7 @@ export const onRequest = withUser(async (ctx, me) => {
     const [cats, likes] = await Promise.all([catsOf(env, ids), likesOf(env, ids, me)]);
     const out = { role, me: me.id, categories: await categories(env), posts: results.map((p) => listed(p, cats, me, role, likes)) };
     announceSoon(ctx);           // an article whose publication day has come since: its readers are told
+    translateSoon(ctx);          // and the translations still to make, one at a time
     if (manage && role === "admin") {
       const { results: au } = await env.DB.prepare(
         "SELECT id, first_name, last_name, display_name, email FROM users WHERE status = 'active' AND email_verified = 1 AND (nutrition = 'author' OR lower(email) IN (" +
@@ -281,7 +239,7 @@ export const onRequest = withUser(async (ctx, me) => {
     } else if (b.op === "unpublish") {
       await env.DB.prepare(`UPDATE nut_posts SET status = 'draft', updated_at = ? WHERE id IN (${qs})`).bind(now, ...keep).run();
     } else return json({ error: "bad request" }, 400);
-    if (b.op === "publish") announceSoon(ctx, { now: true });
+    if (b.op === "publish") { announceSoon(ctx, { now: true }); translateSoon(ctx, { now: true }); }
     return json({ ok: true, n: keep.length });
   }
 
@@ -340,10 +298,7 @@ export const onRequest = withUser(async (ctx, me) => {
           if (role !== "admin" && !(await allow(env, `nuttr:${me.id}`, TRANSLATIONS_PER_DAY, 86400))) return json({ ...out, translation: { error: "rate" } });
           try {
             const t = await translatePost(env, p, to);
-            tr = { ...t, lang: to, version: p.version, created_at: nowIso() };
-            await env.DB.prepare(`INSERT INTO nut_translations (post_id, lang, version, title, summary, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-              ON CONFLICT (post_id, lang) DO UPDATE SET version = excluded.version, title = excluded.title, summary = excluded.summary, body = excluded.body, created_at = excluded.created_at`)
-              .bind(p.id, to, p.version, t.title, t.summary, t.body, tr.created_at).run();
+            tr = await saveTranslation(env, p, to, t);
           } catch (e) {
             const msg = String(e?.message || e);
             return json({ ...out, translation: { error: /neuron|quota|limit|429|capacity/i.test(msg) ? "quota" : "model" } });
@@ -365,7 +320,7 @@ export const onRequest = withUser(async (ctx, me) => {
         .bind(me.id, authorName(me), f.lang, f.title, f.summary, f.body, f.cover, f.status, f.pinned,
           f.status === "published" ? f.published || now : f.published, f.words, now, now).first();
       await setCats(env, r.id, f.cats);
-      if (f.status === "published") announceSoon(ctx, { now: true });
+      if (f.status === "published") { announceSoon(ctx, { now: true }); translateSoon(ctx, { postId: r.id }); }
       return json({ post: await full(env, await onePost(env, r.id), me, role) });
     }
     if (method === "PUT" && p) {
@@ -392,7 +347,7 @@ export const onRequest = withUser(async (ctx, me) => {
       const kept = new Set(imgKeys(`${f.body} ${f.cover}`));
       const gone = imgKeys(`${before.body} ${before.cover}`).filter((k) => !kept.has(k));
       if (gone.length && env.BUCKET) await dropImages(env, [{ body: gone.map((k) => `/api/nutrition/img/${k}`).join(" "), cover: "" }]);
-      if (f.status === "published") announceSoon(ctx, { now: true });
+      if (f.status === "published") { announceSoon(ctx, { now: true }); translateSoon(ctx, { postId: p.id }); }
       return json({ post: await full(env, await onePost(env, p.id), me, role) });
     }
     if (method === "DELETE" && p) {
