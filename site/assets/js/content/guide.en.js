@@ -224,7 +224,7 @@ export function build(X) {
             html`<b>Importing</b>: the JPEGs QuickRoute exports (the ones DOMA keeps), Ozimut's files, one by one or in a zip, or dropped on the page. Importing
               straight from a DOMA is not open yet: its button sends the Ozimut team a ready-made request to turn it on.`,
             html`<b>Exporting</b>: each map becomes a JPEG anyone can open (the map with your routes), which also holds the original map and the races; Ozimut
-              reads it back as it was. “Export all” makes a zip of them.`,
+              reads it back as it was. Several maps ticked are exported together in a zip, shared by one link or deleted at once.`,
             html`<b>Personal data</b>: heart rate, altitude and cadence are kept only if you tick the box (unticked by default).`,
             html`<b>Sharing</b>: your maps are private. A link to all your maps, or to one, shows them to whoever gets it, even without an account, without the
               personal data; deleting the link ends the sharing.`,

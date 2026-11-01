@@ -229,7 +229,7 @@ export function build(X) {
             html`<b>Importar</b>: los JPEG que exporta QuickRoute (los que guarda DOMA), los archivos de Ozimut, uno a uno o en un zip, o soltados en la página.
               La importación directa desde un DOMA aún no está abierta: su botón envía al equipo de Ozimut una solicitud lista para activarla.`,
             html`<b>Exportar</b>: cada mapa se convierte en un JPEG que cualquiera puede abrir (el mapa con tus recorridos), que contiene también el mapa original
-              y las carreras; Ozimut lo vuelve a leer tal cual. «Exportar todo» hace un zip con ellos.`,
+              y las carreras; Ozimut lo vuelve a leer tal cual. Varios mapas marcados se exportan juntos en un zip, se comparten con un mismo enlace o se eliminan de una vez.`,
             html`<b>Datos personales</b>: la frecuencia cardiaca, la altitud y la cadencia solo se guardan si marcas la casilla (sin marcar por defecto).`,
             html`<b>Compartir</b>: tus mapas son privados. Un enlace a todos tus mapas, o a uno, los muestra a quien lo reciba, incluso sin cuenta, sin los datos
               personales; eliminar el enlace pone fin al uso compartido.`,

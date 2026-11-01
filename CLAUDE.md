@@ -853,7 +853,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   its picture, which the dialog says). **A map without a run** (owner, 2026-11-01: « Ajouter une carte »; the import takes them too):
   any JPEG, PNG or WebP, a PDF's first page (as a PNG, `mapfile.readMap`/`imageBlob`), a KMZ's image georeferenced by its overlay
   (`georef.kmlCorners`); in a zip only QuickRoute's and Ozimut's JPEGs count (a DOMA folder's « .blank.jpg » would make each map
-  twice). **No quota for now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
+  twice). **The page** (owner, 2026-11-01, second review: « import files » and « add a map » looked alike): « Ajouter des cartes »
+  lists the three ways one a line — Analyse solo first, « Recommandé » (all automatic, no file), a map with its route (QuickRoute's or
+  Ozimut's JPEG, the DOMA request beside it), a map alone (a photo, scan, PDF or KMZ) —, open while the library is empty, folded
+  after. **Actions on a selection**: each card has a tick box; once one is ticked a bar shows « Exporter la sélection » (one JPEG, or
+  a zip), « Partager la sélection » (one map: its link; several: a link to that set, `mymap_links.map_id` « set:<ids sorted> », the
+  same set again finds the same link), « Supprimer », « Désélectionner » (a tick updates the marks and the bar only: the cards are not
+  drawn again). The head has « Partager ma bibliothèque » (the whole library), whose dialog lists the other links (per map, per
+  selection) to copy or delete. No « Tout exporter » any more. **No quota for now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
   (`functions/api/mymaps/[[path]].js`, its header lists the routes; images cached a year: a map never changes under its id);
   account deletion removes all (`api/account/delete.js`); the privacy page's « Mes cartes ». Texts in the area catalogue
   `i18n/mymaps.{fr,en,de,es}.js` (`loadArea("mymaps")`); the Coach guide's chapter `cartes`. Local test: launch config

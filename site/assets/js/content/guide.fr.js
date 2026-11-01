@@ -230,7 +230,7 @@ export function build(X) {
             html`<b>Importer</b> : les JPEG que QuickRoute exporte (ceux que DOMA garde), les fichiers d'Ozimut, un par un ou dans un zip, ou déposés sur la page.
               L'import direct depuis un DOMA n'est pas encore ouvert : son bouton envoie à l'équipe Ozimut une demande toute prête pour l'activer.`,
             html`<b>Exporter</b> : chaque carte devient un JPEG que tout le monde peut ouvrir (la carte avec vos itinéraires), qui contient aussi la carte
-              d'origine et les courses ; Ozimut le relit tel quel. « Tout exporter » en fait un zip.`,
+              d'origine et les courses ; Ozimut le relit tel quel. Plusieurs cartes cochées s'exportent ensemble dans un zip, se partagent par un même lien ou se suppriment d'un coup.`,
             html`<b>Données personnelles</b> : la fréquence cardiaque, l'altitude et la cadence ne sont gardées que si vous cochez la case (décochée par défaut).`,
             html`<b>Partager</b> : vos cartes sont privées. Un lien vers toutes vos cartes, ou vers une seule, les montre à qui le reçoit, même sans compte, sans
               les données personnelles ; supprimer le lien arrête le partage.`,

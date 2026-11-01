@@ -232,7 +232,7 @@ export function build(X) {
               die Seite gezogen. Der direkte Import aus einem DOMA ist noch nicht freigeschaltet: Sein Knopf schickt dem Ozimut-Team eine fertige Anfrage, ihn
               freizuschalten.`,
             html`<b>Exportieren</b>: Jede Karte wird ein JPEG, das jeder öffnen kann (die Karte mit deinen Routen) und das auch die Originalkarte und die Läufe
-              enthält; Ozimut liest es unverändert wieder ein. „Alles exportieren“ macht daraus eine ZIP-Datei.`,
+              enthält; Ozimut liest es unverändert wieder ein. Mehrere angekreuzte Karten werden zusammen in einer ZIP-Datei exportiert, über einen Link geteilt oder auf einmal gelöscht.`,
             html`<b>Persönliche Daten</b>: Herzfrequenz, Höhe und Schrittfrequenz werden nur aufbewahrt, wenn du das Kästchen ankreuzt (standardmäßig nicht).`,
             html`<b>Teilen</b>: Deine Karten sind privat. Ein Link zu allen deinen Karten oder zu einer zeigt sie jedem, der ihn bekommt, auch ohne Konto, ohne
               die persönlichen Daten; das Löschen des Links beendet das Teilen.`,

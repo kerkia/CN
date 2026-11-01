@@ -111,7 +111,8 @@ export const updateMap = (id, fields) => call(`/maps/${id}`, { method: "PUT", bo
 export const deleteMap = (id) => call(`/maps/${id}`, { method: "DELETE" });
 export const updateRun = (id, fields) => call(`/runs/${id}`, { method: "PUT", body: fields });
 export const deleteRun = (id) => call(`/runs/${id}`, { method: "DELETE" });
-export const setLink = (map, on, traces = true) => call("/link", { method: "POST", body: { map: map || null, on, traces } });
+/** A link made, changed or deleted: { map | maps | token, on, traces } -> { token | null, traces }. */
+export const setLink = (body) => call("/link", { method: "POST", body });
 /** Where a map's image, a thumbnail or a run is read: one's own, or through a link. */
 export const mapUrl = (id, part, token) => (token ? `${API}/s/${token}/maps/${id}/${part}` : `${API}/maps/${id}/${part}`);
 export const runUrl = (id, token) => (token ? `${API}/s/${token}/runs/${id}` : `${API}/runs/${id}`);
