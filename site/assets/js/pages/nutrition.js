@@ -1,12 +1,12 @@
 // « Nutrition » (Coach; owner, 2026-11-01): a blog — articles by theme and by date, written by its authors (« Rédaction »,
 // pages/nutritionwrite.js). Shown to the accounts given the right on the admin page, its authors and the administrators
-// (app.js NUTRITION_ROUTES; the server checks the same). Left: a search, the themes, the months; right: the articles, those
+// (app.js NUTRITION_ROUTES; the server checks the same). Left: a search, the themes, the period; right: the articles, those
 // « à la une » first, or one article (?article=<id>). An article opens in the language it was written in; « Lire en … »
 // asks the server for its translation into the reader's language, made once by the AI and kept (functions/api/nutrition).
-// The address keeps the theme, the month, the search and the article (?theme=, ?mois=, ?q=, ?article=). Readers like an article
+// The address keeps the theme, the period, the search and the article (?theme=, ?periode=, ?q=, ?article=). Readers like an article
 // (one like an account; no comments: owner, 2026-11-01), and under it three related ones are offered (`related`).
 
-import { html, raw, $, $$, fmtDate, normalise, debounce } from "../util.js";
+import { html, raw, $, $$, normalise, debounce } from "../util.js";
 import { t, tn, lang } from "../i18n.js";
 import { replaceQuery } from "../app.js";
 import * as auth from "../auth.js";
@@ -23,6 +23,10 @@ const setIntroOpen = (on) => { try { if (on) localStorage.setItem(INTRO, "open")
 // the articles without a theme: a filter of their own, shown only while some are (owner, 2026-11-01); ?theme=sans
 const NONE = "sans";
 const themeOf = (v) => (v === NONE ? NONE : Number(v) || null);
+// the dates (owner, 2026-11-01: a month by month archive took too much room): all, or the last month, quarter or year
+const PERIODS = { mois: 1, trimestre: 3, annee: 12 };          // months back from today
+const periodOf = (v) => (v in PERIODS ? v : "");
+const since = (k) => { const d = new Date(); d.setMonth(d.getMonth() - PERIODS[k]); return d.toISOString().slice(0, 10); };
 const PREF = "ocn.nut.translate";        // "1": open the articles in the reader's language
 const wantsTranslation = () => { try { return localStorage.getItem(PREF) === "1"; } catch (e) { return false; } };
 const setWantsTranslation = (on) => { try { if (on) localStorage.setItem(PREF, "1"); else localStorage.removeItem(PREF); } catch (e) {} };
@@ -36,7 +40,7 @@ export async function render(main, { query }) {
   }
   const { posts, categories } = res.data;
   const cats = new Map(categories.map((c) => [c.id, c]));
-  const st = { theme: themeOf(query.theme), month: /^\d{4}-\d{2}$/.test(query.mois || "") ? query.mois : "", q: query.q || "", article: Number(query.article) || null };
+  const st = { theme: themeOf(query.theme), period: periodOf(query.periode), q: query.q || "", article: Number(query.article) || null };
   const cache = new Map();          // id -> the article with its body (and translations)
   const I = (await import(`../content/health.${lang()}.js`).catch(() => import("../content/health.en.js"))).intro;
 
@@ -48,33 +52,29 @@ export async function render(main, { query }) {
       <aside class="nut-side card">
         <input type="search" id="nut-q" class="nut-search" placeholder="${t("nut.search")}" aria-label="${t("nut.search")}" value="${st.q}">
         <h3>${t("nut.themes")}</h3><div id="nut-themes" class="nut-facets"></div>
-        <h3>${t("nut.archive")}</h3><div id="nut-months" class="nut-facets"></div>
+        <h3>${t("nut.period")}</h3><div id="nut-periods" class="nut-facets"></div>
       </aside>
       <section id="nut-main" class="nut-main"></section>
     </div></div>`;
 
-  const matches = (p, { theme = st.theme, month = st.month } = {}) => {
+  const matches = (p, { theme = st.theme, period = st.period } = {}) => {
     if (theme === NONE ? p.cats.length : theme && !p.cats.includes(theme)) return false;
-    if (month && dayOf(p.published).slice(0, 7) !== month) return false;
+    if (period && dayOf(p.published) < since(period)) return false;
     if (st.q) {
       const q = normalise(st.q);
       if (!normalise(`${p.title} ${p.summary} ${p.author} ${p.cats.map((c) => catName(cats.get(c))).join(" ")}`).includes(q)) return false;
     }
     return true;
   };
-  const monthLabel = (ym) => { const s = fmtDate(`${ym}-01`, "month"); return s.charAt(0).toUpperCase() + s.slice(1); };
 
   function drawFacets() {
     const byTheme = (id) => posts.filter((p) => matches(p, { theme: id })).length;
     $("#nut-themes").innerHTML = html`<button type="button" data-theme="" aria-pressed="${!st.theme}">${t("nut.allThemes")}<span>${posts.filter((p) => matches(p, { theme: null })).length}</span></button>
       ${[...categories].sort((a, b) => catName(a).localeCompare(catName(b), lang())).map((c) => html`<button type="button" data-theme="${c.id}" aria-pressed="${st.theme === c.id}">${catName(c)}<span>${byTheme(c.id)}</span></button>`)}
       ${byTheme(NONE) || st.theme === NONE ? html`<button type="button" data-theme="${NONE}" aria-pressed="${st.theme === NONE}" class="nut-none">${t("nut.noTheme")}<span>${byTheme(NONE)}</span></button>` : ""}`;
-    const months = new Map();
-    for (const p of posts) if (matches(p, { month: "" })) { const m = dayOf(p.published).slice(0, 7); months.set(m, (months.get(m) || 0) + 1); }
-    const years = new Map();
-    for (const m of [...months.keys()].sort().reverse()) { const y = m.slice(0, 4); if (!years.has(y)) years.set(y, []); years.get(y).push(m); }
-    $("#nut-months").innerHTML = html`<button type="button" data-month="" aria-pressed="${!st.month}">${t("nut.allDates")}</button>
-      ${[...years].map(([y, ms]) => html`<div class="nut-year">${y}</div>${ms.map((m) => html`<button type="button" data-month="${m}" aria-pressed="${st.month === m}">${monthLabel(m)}<span>${months.get(m)}</span></button>`)}`)}`;
+    const byPeriod = (k) => posts.filter((p) => matches(p, { period: k })).length;
+    $("#nut-periods").innerHTML = html`<button type="button" data-period="" aria-pressed="${!st.period}">${t("nut.allDates")}<span>${byPeriod("")}</span></button>
+      ${Object.keys(PERIODS).map((k) => html`<button type="button" data-period="${k}" aria-pressed="${st.period === k}">${t(`nut.period.${k}`)}<span>${byPeriod(k)}</span></button>`)}`;
   }
 
   const chips = (p) => html`${p.cats.map((c) => cats.get(c)).filter(Boolean).map((c) => html`<a class="nut-chip" href="#/sante?theme=${c.id}" data-chip="${c.id}">${catName(c)}</a>`)}`;
@@ -93,15 +93,15 @@ export async function render(main, { query }) {
 
   function drawList() {
     const list = posts.filter((p) => matches(p));
-    const filtered = st.theme || st.month || st.q;
+    const filtered = st.theme || st.period || st.q;
     const pinned = filtered ? [] : list.filter((p) => p.pinned);
     const rest = list.filter((p) => !pinned.includes(p));
-    const head = filtered ? html`<div class="nut-filterline">${tn("nut.count", list.length)}${st.theme ? html` · ${st.theme === NONE ? t("nut.noTheme") : catName(cats.get(st.theme))}` : ""}${st.month ? html` · ${monthLabel(st.month)}` : ""}${st.q ? html` · ${t("nut.query", { q: st.q })}` : ""}
+    const head = filtered ? html`<div class="nut-filterline">${tn("nut.count", list.length)}${st.theme ? html` · ${st.theme === NONE ? t("nut.noTheme") : catName(cats.get(st.theme))}` : ""}${st.period ? html` · ${t(`nut.period.${st.period}`)}` : ""}${st.q ? html` · ${t("nut.query", { q: st.q })}` : ""}
       <button type="button" class="btn btn-sm" id="nut-clear">${t("nut.clear")}</button></div>` : "";
     $("#nut-main").innerHTML = !posts.length ? html`<div class="card"><div class="empty">${t("nut.none")}</div></div>`
       : !list.length ? html`${head}<div class="card"><div class="empty">${t("nut.noneFilter")}</div></div>`
       : html`${head}${pinned.length ? html`<div class="nut-pinned">${pinned.map((p) => card(p, true))}</div>` : ""}<div class="nut-grid">${rest.map((p) => card(p))}</div>`;
-    $("#nut-clear")?.addEventListener("click", () => { st.theme = null; st.month = ""; st.q = ""; $("#nut-q").value = ""; sync(); });
+    $("#nut-clear")?.addEventListener("click", () => { st.theme = null; st.period = ""; st.q = ""; $("#nut-q").value = ""; sync(); });
   }
 
   // ---- related articles (owner, 2026-11-01): the themes shared count most, then the words their titles and summaries share,
@@ -195,7 +195,7 @@ export async function render(main, { query }) {
   }
 
   const backQuery = (sep = "?") => {
-    const q = new URLSearchParams(Object.entries({ theme: st.theme || "", mois: st.month, q: st.q }).filter(([, v]) => v)).toString();
+    const q = new URLSearchParams(Object.entries({ theme: st.theme || "", periode: st.period, q: st.q }).filter(([, v]) => v)).toString();
     return q ? sep + q : "";
   };
 
@@ -217,7 +217,7 @@ export async function render(main, { query }) {
     if (st.article) drawArticle(); else drawList();
   }
   function sync() {
-    replaceQuery({ theme: st.theme || "", mois: st.month, q: st.q, article: st.article || "" });
+    replaceQuery({ theme: st.theme || "", periode: st.period, q: st.q, article: st.article || "" });
     draw();
     if (st.article) window.scrollTo({ top: 0 });
   }
@@ -226,7 +226,7 @@ export async function render(main, { query }) {
     const b = e.target.closest("button");
     if (!b) return;
     if ("theme" in b.dataset) st.theme = themeOf(b.dataset.theme);
-    else if ("month" in b.dataset) st.month = b.dataset.month;
+    else if ("period" in b.dataset) st.period = periodOf(b.dataset.period);
     else return;
     st.article = null;
     sync();
@@ -246,7 +246,7 @@ export async function render(main, { query }) {
   // the address changed (a theme chip, an article, Back): drawn in place
   function onQuery(q) {
     const article = Number(q.article) || null;
-    Object.assign(st, { theme: themeOf(q.theme), month: /^\d{4}-\d{2}$/.test(q.mois || "") ? q.mois : "", q: q.q || "", article });
+    Object.assign(st, { theme: themeOf(q.theme), period: periodOf(q.periode), q: q.q || "", article });
     $("#nut-q").value = st.q;
     draw();
     window.scrollTo({ top: 0 });
