@@ -273,7 +273,17 @@ Courses and Calcul; ranking: no Progressions); the other Stats pages show `needC
 The login gate (`_middleware.js guestMay`) lets a request without a session GET the public copies and `DATA_FOR_ALL`, the
 countries whose access is "all" (Spain, the agendas' countries; `auth.sees` is true for them without a session too), the live
 results (`/api/live/list`, `/ws/*`) and `/api/tracking` (its GET serves visitors, `mine` false). Not excluded in `_routes.json`:
-every visitor's request goes through the gate, which judges the decoded path, and counts on the Workers' daily quota.
+every visitor's request goes through the gate, which judges the decoded path, and counts on the Workers' daily quota. **The guest
+pass** (owner, 2026-11-01: those reads were open to any script, unlimited): `guestMay`'s paths are served to a request without a
+session only with the cookie `ozg_pass` (`{ g: 1, exp }` signed with `SESSION_SECRET|guest`, 12 h, `_middleware.js` `guestPass`,
+else 401 `{ error: "guest" }`), which `POST /api/guest` gives after Cloudflare Turnstile (60 an hour an address); the browser
+(`guestpass.js` `ensurePass`) takes it on « Entrer sans compte » (`app.enterAsGuest`), before each page of a guest's visit when
+under half an hour is left (`ocn.guest.exp`), by a timer, and again on a refusal (`cnx:unauthorised` → `passRefused`, once a
+minute; none to be had ends the visit); the widget is invisible unless Cloudflare wants a click (`.guest-check`, « Vérification
+anti-robot »). Without Turnstile's keys no pass is asked. **Robots** (`site/robots.txt`, same day): search engines the home page
+only, AI crawlers and assistants nothing (each named), Cloudflare's content signals `ai-input=no, ai-train=no`; the rules forbid
+using the site's content for AI. Cloudflare's « Block AI bots » is the zone's setting (owner's); not Bot Fight Mode, which would
+challenge MeOS (`/api/live/mop`) and the CI's `/api/notify`.
 
 **Arena** is one page, the competitions (`#/agenda`; owner, 2026-10-30, third review): one list of today's, the coming and the
 past competitions — the Agenda's events and, from the provisional index, the last 60 days' races (`pastEvent`, an event of the

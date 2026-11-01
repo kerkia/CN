@@ -10,7 +10,7 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Nutzungsbedingungen</h2>
       <p>${SITE} läuft mit kostenlosen, begrenzten Ressourcen, die sich alle Nutzer teilen. Die Website ist für die persönliche
         Nutzung durch ${world ? "ihre Nutzer" : "die Lizenzinhaber"} mit einem Webbrowser bestimmt. Ohne vorherige Zustimmung des Herausgebers sind daher
-        untersagt: die automatisierte Erfassung (Robots, Skripte, Abgreifen von Seiten oder Datendateien), massenhafte Downloads,
+        untersagt: die automatisierte Erfassung (Robots, Skripte, Abgreifen von Seiten oder Datendateien), die Nutzung ihrer Inhalte zum Trainieren, Anpassen oder Speisen von KI-Modellen, massenhafte Downloads,
         die Weiterverwendung der Daten zu anderen Zwecken sowie jede Nutzung, die die Website zulasten der anderen Nutzer
         überlasten könnte. Ein Konto, das diese Regeln nicht einhält, kann gesperrt werden.</p>
       <p>Für einen besonderen Bedarf (eine Studie, die Bedürfnisse eines Vereins oder Regionalverbands, Daten für ein anderes
@@ -154,8 +154,8 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Die folgenden Dienstleister verarbeiten Daten im Auftrag des Herausgebers:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (USA) hostet die Website, ihre Kontendatenbank und ihren Dateispeicher und führt
-          das Sprachmodell der Seite „KI“ aus; bei der Registrierung prüft sein Dienst Turnstile, dass das Formular von einer
-          Person und nicht von einem Robot ausgefüllt wird, indem er den Browser ohne Werbe-Cookie und ohne seitenübergreifendes Tracking untersucht. Die
+          das Sprachmodell der Seite „KI“ aus; bei der Registrierung und beim Betreten ohne Konto prüft sein Dienst Turnstile, dass die Website von einer
+          Person und nicht von einem Robot genutzt wird, indem er den Browser ohne Werbe-Cookie und ohne seitenübergreifendes Tracking untersucht. Die
           Übermittlungen in die USA beruhen auf dem Datenschutzrahmen EU-USA (Data Privacy Framework),
           dem Cloudflare beigetreten ist.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., USA) versendet die E-Mails der Website, was die Adresse des
@@ -165,8 +165,9 @@ export const body = (SITE, { world = false } = {}) => `
           verarbeitet, ausgenommen die Kontodaten. Die Übermittlungen sind durch die Standardvertragsklauseln abgesichert.</li>
       </ul>
       <h2 style="font-size:16px">Cookies und lokale Speicherung</h2>
-      <p>Die Website setzt ein einziges Cookie, das für ihren Betrieb unbedingt erforderlich ist: Es hält deine Anmeldung aufrecht, höchstens 30 Tage
-        lang. Der Browser speichert außerdem auf deinem Gerät deine Anzeigeeinstellungen (Sprache, Thema, gewählte Disziplin und
+      <p>Die Website setzt ein Cookie, das für ihren Betrieb unbedingt erforderlich ist: Es hält deine Anmeldung aufrecht, höchstens 30 Tage
+        lang; ein Besuch ohne Konto erhält ein weiteres, das 12 Stunden lang bestätigt, dass die Prüfung gegen Robots bestanden
+        wurde, und sonst nichts enthält. Der Browser speichert außerdem auf deinem Gerät deine Anzeigeeinstellungen (Sprache, Thema, gewählte Disziplin und
         Methode), deine Eingaben im MAG-Rechner oder im Staffelsimulator und, für die Bahnlegung, ihre Anzeigeeinstellungen, den Schlüssel
         eines verschlüsselten Ereignisses, aus seiner Passphrase abgeleitet (für die Dauer des Tabs), die auf eine Netzverbindung wartenden Zustände des Geländemodus und, wenn du
         ein Ereignis behältst, um offline zu arbeiten, seine Kopie (Bahnen und Karte, verschlüsselt, falls das Ereignis verschlüsselt ist) und die Dateien der Website, die beim Abmelden gelöscht werden;
@@ -195,5 +196,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 30. Oktober 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 1. November 2026.</p>
 `;

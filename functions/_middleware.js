@@ -10,6 +10,7 @@
 // random string). Changing it logs everyone out.
 
 import { DATA_ACCESS } from "./_lib/access.js";
+import { turnstileOn } from "./_lib/turnstile.js";
 
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
@@ -18,7 +19,7 @@ export const COOKIE = "cnx_session";
 const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\/favicon\.[a-z]+$/, /^\/data\/meta\.json$/,
   /^\/data\/[a-z]{2}\/meta\.json$/, /^\/api\/logout$/,
   /^\/sw(-push)?\.js$/, /^\/manifest(\.(en|de|es))?\.webmanifest$/, /^\/offline(\.html)?$/,
-  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/,
+  /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/, /^\/api\/guest$/,
   /^\/api\/live\/mop$/];          // MeOS's online results: no session, the broadcast's MeOS password (api/live/mop.js)
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
@@ -37,6 +38,17 @@ const DATA_FOR_ALL = [/^\/data\/[a-z]{2}\/(competitions|agenda|evaluation|valida
 // account above, the countries whose results are all public (DATA_ACCESS "all": Spain, the agendas' countries), the live
 // results (the races' list and their WebSocket) and the competitions' GPS tracking links. Nothing about accounts.
 const GUEST = [/^\/api\/live\/list$/, /^\/ws\/[^/]+$/, /^\/api\/tracking$/];
+// ...and only with a guest pass (owner, 2026-11-01: the public data were open to any script, unlimited, on the Workers' daily
+// quota): a cookie /api/guest gives after Cloudflare Turnstile, valid GUEST_HOURS, naming nobody. Turnstile's keys missing
+// (_lib/turnstile.js): no pass asked.
+export const GUEST_COOKIE = "ozg_pass";
+export const GUEST_HOURS = 12;
+export const guestSecret = (env) => `${env.SESSION_SECRET}|guest`;
+async function guestPass(request, env) {
+  if (!turnstileOn(env)) return true;
+  const m = (request.headers.get("Cookie") || "").match(new RegExp(`(?:^|;\\s*)${GUEST_COOKIE}=([^;]+)`));
+  return !!(m && (await readToken(m[1], guestSecret(env)))?.g);
+}
 /** May a visitor without an account read this path? */
 export function guestMay(path) {
   if (GUEST.some((re) => re.test(path)) || DATA_FOR_ALL.some((re) => re.test(path))) return true;
@@ -136,7 +148,12 @@ export async function onRequest(context) {
   if (PUBLIC.some((re) => re.test(path))) return next();
   const s = await readSession(request, env.SESSION_SECRET);
   if (!s?.uid) {                      // only account sessions count (the name+licence login is gone)
-    if ((request.method === "GET" || request.method === "HEAD") && guestMay(path)) return next();
+    if ((request.method === "GET" || request.method === "HEAD") && guestMay(path)) {
+      if (await guestPass(request, env)) return next();
+      return new Response(JSON.stringify({ error: "guest" }), {
+        status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      });
+    }
     return new Response(JSON.stringify({ error: "login required" }), {
       status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     });

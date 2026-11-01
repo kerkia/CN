@@ -4147,6 +4147,8 @@ export default {
   "ma.g.own.lede": "A photo, a PDF, an image or an OCAD file of the map: Ozimut reads the course on it and lays your track on it.",
   "ma.who.one": "Alone, on your track",
   "ma.who.many": "With the other runners",
+  "guest.check": "Anti-robot check: tick the box to continue.",
+  "guest.fail": "The anti-robot check did not go through. Try again in a moment, or create an account.",
   "ma.need": "You need:",
   "ma.account": "With an account",
   "ma.foot": "Your files are read in your browser and sent nowhere, except the track you choose to share in “Compare with the other runners”.",

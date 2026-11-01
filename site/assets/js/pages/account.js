@@ -6,6 +6,7 @@ import { t, lang, setLang, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import { SITE } from "../app.js";
 import { membershipFields, bindMembershipFields, readMembership } from "../country.js";
+import { loadTurnstile } from "../turnstile.js";
 
 const VIEWS = {
   inscription: register, verifier: verify, "mot-de-passe": forgot, reinitialiser: reset,
@@ -44,16 +45,8 @@ const keepDraft = (form) => {
 };
 const dropDraft = () => { try { sessionStorage.removeItem(DRAFT); } catch (e) { /* nothing kept */ } };
 
-// Cloudflare Turnstile (owner, 2026-10-20; functions/_lib/turnstile.js): the one script the site loads from another host, on
-// this form only and only when the server has its keys — it cannot be served by the site itself (it is Cloudflare's check).
-// (A wrong site key shows nothing and logs Cloudflare's error 400020: the form then says so, `ac.reg.err.robotLoad`.)
-const TURNSTILE = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-let turnstileLoad = null;
-const loadTurnstile = () => turnstileLoad || (turnstileLoad = new Promise((ok, ko) => {
-  const s = document.createElement("script");
-  s.src = TURNSTILE; s.async = true; s.onload = () => ok(window.turnstile); s.onerror = () => { turnstileLoad = null; ko(new Error("turnstile")); };
-  document.head.append(s);
-}));
+// Cloudflare Turnstile on this form (owner, 2026-10-20; ../turnstile.js loads its script). A wrong site key shows nothing and
+// logs Cloudflare's error 400020: the form then says so, `ac.reg.err.robotLoad`.
 
 async function register(main) {
   // world: registration open to every orienteer (WORLD_OPEN; owner, 2026-10-20) — countries to join, none required; until

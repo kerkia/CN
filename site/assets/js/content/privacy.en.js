@@ -8,7 +8,7 @@ export const body = (SITE, { world = false } = {}) => `
         meaning of Regulation (EU) 2016/679 (GDPR). Contact: <b>contact@ozimut.com</b>.</p>
       <h2 style="font-size:16px">Terms of use</h2>
       <p>${SITE} runs on free, limited resources shared by all its users. It is meant to be consulted personally by ${world ? "its users" : "licence holders"}, with a web browser. Unless the publisher has agreed beforehand, the following are therefore forbidden: automated
-        collection (robots, scripts, scraping of pages or data files), mass downloads, reuse of the data for other purposes, and any
+        collection (robots, scripts, scraping of pages or data files), the use of its content to train, fine-tune or feed artificial intelligence models, mass downloads, reuse of the data for other purposes, and any
         use likely to overload the site at the expense of other users. An account that breaks these rules may be suspended.</p>
       <p>For a particular need (a study, the needs of a club or a region, data meant for another tool), you can write to the
         publisher, through the “Contact us” page or at contact@ozimut.com: the request will be considered.</p>
@@ -138,7 +138,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>The following providers process data on the publisher's behalf:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (United States) hosts the site, its account database and its file storage, and runs the language
-          model of the “AI” page; at registration, its Turnstile service checks that the form is filled in by a person rather
+          model of the “AI” page; at registration and when entering without an account, its Turnstile service checks that the site is used by a person rather
           than a robot, by examining the browser, with no advertising cookie and no tracking from one site to another. Transfers to the United States rely on the EU-US Data Privacy Framework, to which Cloudflare has
           signed up.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., United States) sends the site's emails, which involves the recipient's address and
@@ -147,7 +147,8 @@ export const body = (SITE, { world = false } = {}) => `
           but not the account data. Transfers are covered by the standard contractual clauses.</li>
       </ul>
       <h2 style="font-size:16px">Cookies and local storage</h2>
-      <p>The site sets a single cookie, strictly necessary for it to work: it keeps you logged in, for 30 days at most. The browser
+      <p>The site sets a cookie strictly necessary for it to work: it keeps you logged in, for 30 days at most; a visit without an
+        account gets another one, which for 12 hours attests that the anti-robot check was passed and holds nothing else. The browser
         also keeps, on your device, your display preferences (language, theme, chosen discipline and method), what you enter in the MAS
         calculator or the relay simulator and, for course setting, its display settings, the key of an encrypted event, derived from
         its passphrase (for the duration of the tab), the field-mode states waiting for the network and, if you keep an event to work
@@ -175,5 +176,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
         Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
-      <p class="muted">Last updated: 30 October 2026.</p>
+      <p class="muted">Last updated: 1 November 2026.</p>
 `;

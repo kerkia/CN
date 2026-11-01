@@ -12,6 +12,7 @@ import * as bridge from "./bridge.js";
 import * as pwa from "./pwa.js";
 import * as country from "./country.js";
 import { watchTables } from "./fit.js";
+import { ensurePass, forgetPass } from "./guestpass.js";
 
 export const SITE = "Ozimut";
 
@@ -836,6 +837,7 @@ async function route_() {
   // A visitor without an account (« Entrer sans compte », auth.guest) has the pages of public data (GUEST_ROUTES); any
   // other page leads to the modules page
   const me = auth.session(), guest = !me && auth.guest();
+  if (guest) await ensurePass().catch(() => {});        // the guest pass, renewed when it runs out (guestpass.js)
   if (!me && !guest && !["overview", "account"].includes(r.route)) {
     try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}
     history.replaceState(null, "", "#/");
@@ -993,6 +995,9 @@ function track(r) {
 
 /** « Entrer sans compte » (owner, 2026-10-30): a visit without an account, on the modules page or a module's first page. */
 export async function enterAsGuest(mod = "") {
+  // the guest pass first (guestpass.js): nothing of the public data reads without it
+  try { await ensurePass({ force: true }); }
+  catch (e) { alert(t("guest.fail")); return; }
   auth.setGuest(true);
   await data.reloadCountry();                   // the public copies now (data.setPublicRule)
   location.hash = MODULES.includes(mod) && mod !== "orga" ? moduleHome(mod) : homeOf();
@@ -1000,6 +1005,7 @@ export async function enterAsGuest(mod = "") {
 /** Leave a visit without an account: back to the home page. */
 export async function leaveGuest() {
   auth.setGuest(false);
+  forgetPass();
   await data.reloadCountry();
   location.hash = "#/";
 }
@@ -1015,7 +1021,16 @@ function signedOut() {
   history.replaceState(null, "", "#/");
   route_();
 }
-window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOut(); });
+window.addEventListener("cnx:unauthorised", () => { if (auth.session()) signedOut(); else if (auth.guest()) passRefused(); });
+/** A visit without an account whose pass the server no longer takes (run out, cookies cleared): a new one, then the page
+ *  again — at most once a minute; without one, the visit ends. */
+let lastRefused = 0;
+async function passRefused() {
+  if (Date.now() - lastRefused < 60e3) return;
+  lastRefused = Date.now();
+  try { await ensurePass({ force: true }); route_(); }
+  catch (e) { auth.setGuest(false); forgetPass(); await data.reloadCountry(); location.hash = "#/"; }
+}
 
 /** Called by the login page once the credentials are accepted: land on one's own page. */
 export async function signedIn(s) {
@@ -1051,6 +1066,8 @@ async function start() {
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   // a visitor without an account, or an account that has not joined a country, reads its public copy (data.js)
   data.setPublicRule((cc) => (!!auth.session() || auth.guest()) && data.site()?.countries?.[cc]?.access === "members" && !auth.sees(cc));
+  // a visit without an account reads the public data with its guest pass (guestpass.js); none to be had: the home page
+  if (auth.guest()) await ensurePass().catch(() => { auth.setGuest(false); forgetPass(); });
   await data.bootPublic();
   renderFooter();
   codeChanged();                                   // the version this visit runs

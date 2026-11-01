@@ -9,7 +9,7 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Condiciones de uso</h2>
       <p>${SITE} funciona con recursos gratuitos y limitados, compartidos entre todos sus usuarios. Está destinado a ser
         consultado personalmente por ${world ? "sus usuarios" : "los federados"}, mediante un navegador. Salvo acuerdo previo del editor, quedan por tanto
-        prohibidos: la recogida automatizada (robots, scripts, extracción de páginas o de archivos de datos), las descargas
+        prohibidos: la recogida automatizada (robots, scripts, extracción de páginas o de archivos de datos), el uso de sus contenidos para entrenar, ajustar o alimentar modelos de inteligencia artificial, las descargas
         masivas, la reutilización de los datos con otros fines y cualquier uso que pueda sobrecargar el sitio en detrimento de los demás
         usuarios. Una cuenta que no respete estas reglas puede ser suspendida.</p>
       <p>Para una necesidad particular (un estudio, las necesidades de un club o de una liga regional, datos destinados a otra herramienta), puedes
@@ -152,7 +152,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Los siguientes proveedores tratan datos por cuenta del editor:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (Estados Unidos) aloja el sitio, su base de cuentas y su espacio de almacenamiento de archivos, y ejecuta
-          el modelo de lenguaje de la página «IA»; en el registro, su servicio Turnstile comprueba que el formulario lo rellena una
+          el modelo de lenguaje de la página «IA»; en el registro y al entrar sin cuenta, su servicio Turnstile comprueba que quien usa el sitio es una
           persona y no un robot, examinando el navegador sin cookie publicitaria ni seguimiento entre sitios. Las
           transferencias a Estados Unidos se basan en el Marco de Privacidad de Datos UE-EE. UU. (Data Privacy Framework),
           al que Cloudflare se ha adherido.</li>
@@ -163,8 +163,9 @@ export const body = (SITE, { world = false } = {}) => `
           tratan allí, con exclusión de los datos de cuenta. Las transferencias están amparadas por las cláusulas contractuales tipo.</li>
       </ul>
       <h2 style="font-size:16px">Cookies y almacenamiento local</h2>
-      <p>El sitio instala una sola cookie, estrictamente necesaria para su funcionamiento: mantiene tu sesión iniciada, durante 30 días
-        como máximo. El navegador conserva también, en tu dispositivo, tus preferencias de visualización (idioma, tema, disciplina y
+      <p>El sitio instala una cookie estrictamente necesaria para su funcionamiento: mantiene tu sesión iniciada, durante 30 días
+        como máximo; una visita sin cuenta recibe otra, que durante 12 horas acredita que se superó la comprobación contra robots y
+        no contiene nada más. El navegador conserva también, en tu dispositivo, tus preferencias de visualización (idioma, tema, disciplina y
         método elegidos), lo que introduces en la calculadora de VAM o en el simulador de relevos y, para el trazado de recorridos, sus ajustes de visualización, la clave
         de un evento cifrado, obtenida de su frase de contraseña (mientras dure la pestaña), los estados del modo terreno pendientes de conexión y, si
         guardas un evento para trabajar sin conexión, su copia (recorridos y mapa, cifrados si el evento lo está) y los archivos del sitio, borrados al cerrar sesión;
@@ -193,5 +194,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 30 de octubre de 2026.</p>
+      <p class="muted">Última actualización: 1 de noviembre de 2026.</p>
 `;

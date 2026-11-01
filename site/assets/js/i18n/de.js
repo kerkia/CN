@@ -4367,6 +4367,8 @@ export default {
   "ma.g.own.lede": "Ein Foto, ein PDF, ein Bild oder eine OCAD-Datei der Karte: Ozimut liest darauf die Bahn und legt deinen Track darauf.",
   "ma.who.one": "Allein, mit deinem Track",
   "ma.who.many": "Mit den anderen Läufern",
+  "guest.check": "Prüfung gegen Robots: Kreuze das Kästchen an, um fortzufahren.",
+  "guest.fail": "Die Prüfung gegen Robots ist nicht gelungen. Versuche es gleich noch einmal oder erstelle ein Konto.",
   "ma.need": "Du brauchst:",
   "ma.account": "Mit Konto",
   "ma.foot": "Deine Dateien werden in deinem Browser gelesen und nirgends hingeschickt, außer dem Track, den du unter „Mit den anderen vergleichen“ teilst.",

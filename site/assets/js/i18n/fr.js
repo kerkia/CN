@@ -3307,6 +3307,8 @@ export default {
   "ma.g.own.lede": "Une photo, un PDF, une image ou un fichier OCAD de la carte : Ozimut y lit le circuit et y cale votre trace.",
   "ma.who.one": "Seul, sur votre trace",
   "ma.who.many": "Avec les autres coureurs",
+  "guest.check": "Vérification anti-robot : cochez la case pour continuer.",
+  "guest.fail": "La vérification anti-robot n'a pas abouti. Réessayez dans un instant, ou créez un compte.",
   "ma.need": "Il vous faut :",
   "ma.account": "Avec un compte",
   "ma.foot": "Vos fichiers sont lus dans votre navigateur et ne sont envoyés nulle part, sauf la trace que vous choisissez de partager dans « Comparer avec les autres coureurs ».",

@@ -10,7 +10,7 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Conditions d'utilisation</h2>
       <p>${SITE} fonctionne avec des ressources gratuites et limitées, partagées entre tous ses utilisateurs. Il est destiné à être
         consulté personnellement par ${world ? "ses utilisateurs" : "les licenciés"}, au moyen d'un navigateur. Sauf accord préalable de l'éditeur, sont en conséquence
-        interdits : la collecte automatisée (robots, scripts, aspiration des pages ou des fichiers de données), les téléchargements
+        interdits : la collecte automatisée (robots, scripts, aspiration des pages ou des fichiers de données), l'usage de ses contenus pour entraîner, ajuster ou alimenter des modèles d'intelligence artificielle, les téléchargements
         massifs, la réutilisation des données à d'autres fins et tout usage de nature à surcharger le site au détriment des autres
         utilisateurs. Un compte qui ne respecte pas ces règles peut être suspendu.</p>
       <p>Pour un besoin particulier (étude, besoins d'un club ou d'une ligue, données destinées à un autre outil), il est possible
@@ -153,7 +153,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Les prestataires suivants traitent des données pour le compte de l'éditeur :</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son espace de stockage de fichiers, et exécute
-          le modèle de langage de la page « IA » ; à l'inscription, son service Turnstile vérifie que le formulaire est rempli par une
+          le modèle de langage de la page « IA » ; à l'inscription et à l'entrée sans compte, son service Turnstile vérifie que le site est utilisé par une
           personne et non par un robot, en examinant le navigateur sans cookie publicitaire ni suivi d'un site à l'autre. Les
           transferts vers les États-Unis reposent sur le cadre de protection des données UE-États-Unis (Data Privacy Framework),
           auquel Cloudflare a adhéré.</li>
@@ -164,8 +164,9 @@ export const body = (SITE, { world = false } = {}) => `
           traités, à l'exclusion des données de compte. Les transferts sont encadrés par les clauses contractuelles types.</li>
       </ul>
       <h2 style="font-size:16px">Cookies et stockage local</h2>
-      <p>Le site dépose un seul cookie, strictement nécessaire à son fonctionnement : il maintient votre connexion, pendant 30 jours
-        au plus. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (langue, thème, discipline et
+      <p>Le site dépose un cookie strictement nécessaire à son fonctionnement : il maintient votre connexion, pendant 30 jours
+        au plus ; une visite sans compte en reçoit un autre, qui atteste pendant 12 heures le passage de la vérification anti-robot et
+        ne contient rien d'autre. Le navigateur conserve également, sur votre appareil, vos préférences d'affichage (langue, thème, discipline et
         méthode choisies), vos saisies dans le calculateur VMA ou le simulateur de relais et, pour le tracé des circuits, ses réglages d'affichage, la clé
         d'un événement chiffré, tirée de sa phrase de passe (le temps de l'onglet), les états du mode terrain en attente de réseau et, si vous
         gardez un événement pour travailler hors ligne, sa copie (circuits et carte, chiffrés s'il l'est) et les fichiers du site, effacés à la déconnexion ;
@@ -194,5 +195,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 30 octobre 2026.</p>
+      <p class="muted">Dernière mise à jour : 1er novembre 2026.</p>
 `;
