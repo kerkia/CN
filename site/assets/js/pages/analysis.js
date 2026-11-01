@@ -221,7 +221,7 @@ export async function render(main, { query = {}, route } = {}) {
   // the 3D view (trace/view3d.js, a prototype): off at each visit; its vertical exaggeration and relief kept
   let v3 = null, v3on = false, v3token = 0, v3grid = null, v3info = null, v3refined = {};
   // a map generated from IGN's LiDAR HD for a trace without one (trace/lidarmap.js, a prototype, administrators): its progress
-  let gen = null, genToken = 0;
+  let gen = null, genToken = 0, genStyle = "";
   let v3relief = prefs.relief3d === "contours" ? "contours" : "dem", v3interval = prefs.interval3d === 2.5 ? 2.5 : 5;
   let v3ex = Number.isFinite(prefs.ex3d) && prefs.ex3d >= 1 && prefs.ex3d <= 3 ? prefs.ex3d : 1.5;
   // the playback's layout (owner, 2026-11-01: the map always whole in the window): the controls above the map, a panel of tabs
@@ -470,40 +470,30 @@ export async function render(main, { query = {}, route } = {}) {
   function genBlock() {
     if (LM.isGenerated(files.map?.name)) return html`<p class="muted an-gen-credit-line">${genCredit()}${gen?.msg ? html` <b>${gen.msg}</b>` : ""}</p>`;
     if (!me?.admin || !track || (map && !gen?.busy)) return "";
+    const style = genStyle || (/sprint/i.test(`${race?.epreuve || ""} ${race?.name || ""}`) ? "sprint" : "forest");
     return html`<div class="an-gen"><b>${t("an.gen.title")}</b>
+      <label class="an-gen-style">${t("an.gen.style")} <select id="an-gen-style" ${raw(gen?.busy ? "disabled" : "")}>
+        <option value="forest" ${raw(style === "forest" ? "selected" : "")}>${t("an.gen.forest")}</option>
+        <option value="sprint" ${raw(style === "sprint" ? "selected" : "")}>${t("an.gen.sprint")}</option></select></label>
       <button type="button" class="btn btn-sm btn-primary" id="an-gen" ${raw(gen?.busy ? "disabled" : "")}>${t("an.gen.btn")}</button>
       ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}">${gen.msg}</span>` : ""}
       <p class="muted">${t("an.gen.hint")}</p></div>`;
   }
   async function genMap() {
     if (!track || gen?.busy) return;
+    const style = $("#an-gen-style")?.value === "sprint" ? "sprint" : "forest";
+    genStyle = style;
     const say = (msg, busy = true) => { if (my === genToken) { gen = { busy, msg }; filesCard(); } };
     const my = ++genToken;
     if (!LM.covered(track.lat0, track.lon0)) return say(t("an.gen.outside"), false);
     const area = LM.areaOf(track);
     if (area.ids.length > LM.MAX_TILES) return say(t("an.gen.tooBig", { n: fmt(area.km2, 1), max: LM.MAX_TILES }), false);
-    say(t("an.gen.asking"));
     try {
-      const r = await LM.ask(area.ids), tiles = { ...r.tiles };
-      if (r.req) {
-        say(t(r.started ? "an.gen.queued" : "an.gen.notStarted", { n: Object.values(tiles).filter((v) => v === "queued").length }));
-        for (;;) {
-          await new Promise((res) => setTimeout(res, 15000));
-          if (my !== genToken) return;
-          const p = await LM.poll(r.req);
-          if (p.status === "queued") continue;
-          for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
-          break;
-        }
-      }
-      const ready = area.ids.filter((id) => tiles[id] === "ready");
-      if (!ready.length) throw new Error(Object.values(tiles).every((v) => v === "none") ? "none" : "failed");
-      say(t("an.gen.composing", { p: 0 }));
-      const made = await LM.compose(area, ready, (f) => say(t("an.gen.composing", { p: Math.round(100 * f) })));
-      if (my !== genToken) return;
-      gen = ready.length < area.ids.length ? { busy: false, msg: t("an.gen.partial") } : null;
+      const made = await LM.make(area, style, (key, vars) => say(t(key, vars)), () => my !== genToken);
+      if (!made) return;
+      gen = made.partial ? { busy: false, msg: t("an.gen.partial") } : null;
       for (const role of ["map", "geo", "world", "prj"]) files[role] = null;
-      await take(made);
+      await take(made.files);
     } catch (e) {
       console.error(e);
       say(t(e.message === "none" ? "an.gen.none" : "an.gen.failed"), false);
@@ -1105,7 +1095,6 @@ export async function render(main, { query = {}, route } = {}) {
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
-    cutEnds();
     if (fit) {
       pxs = new Float64Array(track.n); pys = new Float64Array(track.n);
       fullPath = new Path2D();
@@ -1116,6 +1105,7 @@ export async function render(main, { query = {}, route } = {}) {
       }
       computeLegs();
     } else { pxs = pys = fullPath = null; legs = []; total = 0; }
+    cutEnds();
   }
   /** The race in legs: times and ranks from the class's splits when published, else the trace's; lengths from the trace. */
   function computeLegs() {

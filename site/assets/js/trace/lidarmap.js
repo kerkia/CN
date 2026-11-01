@@ -37,23 +37,34 @@ export function toLambert93(lat, lon) {
 /** Where IGN's LiDAR HD can be: metropolitan France and Corsica. */
 export const covered = (lat, lon) => lat >= 41.2 && lat <= 51.2 && lon >= -5.5 && lon <= 9.8;
 
-/**
- * The area a trace needs: its extent in Lambert 93 with a margin, and the 1 km tiles it touches by IGN's names (west and
- * north edges in km). { box: [X0, Y0, X1, Y1], ids, km2 }.
- */
-export function areaOf(track, margin = 150) {
-  let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
-  const step = Math.max(1, Math.floor(track.n / 4000));
-  for (let i = 0; i < track.n; i += step) {
-    const [x, y] = toLambert93(track.lat0 - track.y[i] / track.ky, track.lon0 + track.x[i] / track.kx);
-    X0 = Math.min(X0, x); Y0 = Math.min(Y0, y); X1 = Math.max(X1, x); Y1 = Math.max(Y1, y);
-  }
-  X0 -= margin; Y0 -= margin; X1 += margin; Y1 += margin;
+/** A box in Lambert 93 (X0, Y0, X1, Y1) and the 1 km tiles it touches by IGN's names (west and north edges in km). */
+function boxArea(X0, Y0, X1, Y1) {
   const ids = [];
   for (let ky = Math.ceil(Y1 / 1000); ky > Math.floor(Y0 / 1000); ky--) {
     for (let kx = Math.floor(X0 / 1000); kx < Math.ceil(X1 / 1000); kx++) ids.push(`${String(kx).padStart(4, "0")}_${String(ky).padStart(4, "0")}`);
   }
   return { box: [X0, Y0, X1, Y1], ids, km2: ((X1 - X0) * (Y1 - Y0)) / 1e6 };
+}
+/** The area a trace needs: its extent in Lambert 93 with a margin. { box: [X0, Y0, X1, Y1], ids, km2 }. */
+export function areaOf(track, margin = 150) {
+  const pts = [];
+  const step = Math.max(1, Math.floor(track.n / 4000));
+  for (let i = 0; i < track.n; i += step) pts.push([track.lat0 - track.y[i] / track.ky, track.lon0 + track.x[i] / track.kx]);
+  return areaOfPoints(pts, margin);
+}
+/** The area round points [[lat, lon]…] with a margin (m). */
+export function areaOfPoints(pts, margin = 150) {
+  let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity;
+  for (const [la, lo] of pts) {
+    const [x, y] = toLambert93(la, lo);
+    X0 = Math.min(X0, x); Y0 = Math.min(Y0, y); X1 = Math.max(X1, x); Y1 = Math.max(Y1, y);
+  }
+  return boxArea(X0 - margin, Y0 - margin, X1 + margin, Y1 + margin);
+}
+/** The area w × h metres centred on [lat, lon]. */
+export function areaAround(lat, lon, w, h) {
+  const [x, y] = toLambert93(lat, lon);
+  return boxArea(x - w / 2, y - h / 2, x + w / 2, y + h / 2);
 }
 
 async function call(url, opts) {
@@ -62,8 +73,8 @@ async function call(url, opts) {
   if (!r.ok) { const e = new Error(body.error || `http ${r.status}`); e.status = r.status; throw e; }
   return body;
 }
-/** The tiles' state, the missing ones asked for: { req?, tiles: { id: "ready" | "none" | "queued" }, started? }. */
-export const ask = (ids) => call(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tiles: ids }) });
+/** The tiles' state in a style ("forest" | "sprint"), the missing ones asked for: { req?, tiles: { id: "ready" | "none" | "queued" }, started? }. */
+export const ask = (ids, style = "forest") => call(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tiles: ids, style }) });
 /** A request's state: { status: "queued" | "done" | "failed", result: { id: "done" | "none" | "error…" } }. */
 export const poll = (req) => call(`${API}?req=${encodeURIComponent(req)}`);
 
@@ -76,10 +87,11 @@ async function bitmap(url) {
 }
 
 /**
- * The tiles put together over the area's box: the map image (PNG) with its world file and .prj, as File objects named
- * ozimut-lidar-<first tile>…, for the page to take as dropped files. onProgress(f) from 0 to 1.
+ * The tiles put together over the area's box, in a style: { files, wf, W, H, px } — the map image (PNG) with its world
+ * file and .prj, as File objects named ozimut-lidar-[sprint-]<first tile>…, for a page to take as dropped files; wf the world
+ * file's six numbers (Lambert 93). onProgress(f) from 0 to 1.
  */
-export async function compose(area, ids, onProgress) {
+export async function compose(area, ids, style = "forest", onProgress) {
   const [X0, Y0, X1, Y1] = area.box;
   // the image's pixel grid is the tiles' own (X = k × PX from a tile corner), every second pixel past MAX_PIXELS
   const k = (X1 - X0) * (Y1 - Y0) / (PX * PX) > MAX_PIXELS ? 2 : 1, px = PX * k;
@@ -95,15 +107,44 @@ export async function compose(area, ids, onProgress) {
     const [x0, y1] = corner(id);
     const dx = Math.round((x0 - ox) / px) - c0, dy = Math.round((oy - y1) / px) - r0, s = SIZE / k;
     if (dx + s > 0 && dy + s > 0 && dx < W && dy < H) {
-      try { g.drawImage(await bitmap(tileUrl(id, ".png")), dx, dy, s, s); } catch (e) { console.warn(id, e); }
+      try { g.drawImage(await bitmap(tileUrl(id, style === "sprint" ? ".s.png" : ".png")), dx, dy, s, s); } catch (e) { console.warn(id, e); }
     }
     onProgress?.(++done / ids.length);
   }
   const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
   // the world file: the first pixel's centre
-  const wf = [px, 0, 0, -px, ox + (c0 + 0.5) * px, oy - (r0 + 0.5) * px].map((v) => String(v)).join("\n");
-  const base = `${PREFIX}${ids[0]}${ids.length > 1 ? `-${ids[ids.length - 1]}` : ""}`;
-  return [new File([blob], `${base}.png`, { type: "image/png" }), new File([wf], `${base}.pgw`, { type: "text/plain" }), new File([PRJ], `${base}.prj`, { type: "text/plain" })];
+  const wf = [px, 0, 0, -px, ox + (c0 + 0.5) * px, oy - (r0 + 0.5) * px];
+  const base = `${PREFIX}${style === "sprint" ? "sprint-" : ""}${ids[0]}${ids.length > 1 ? `-${ids[ids.length - 1]}` : ""}`;
+  const files = [new File([blob], `${base}.png`, { type: "image/png" }), new File([wf.map(String).join("\n")], `${base}.pgw`, { type: "text/plain" }),
+    new File([PRJ], `${base}.prj`, { type: "text/plain" })];
+  return { files, wf, W, H, px };
+}
+
+/**
+ * The whole way to a map, for the pages: the tiles asked for, waited for (the request's state every 15 s) and put together.
+ * say(key, vars) reports each step by its catalogue key (an.gen.asking, queued, notStarted, composing); stop() true gives
+ * up (another request or a page left). Resolves { ...compose(), partial } or null when stopped; throws Error("none") when
+ * IGN has no LiDAR anywhere in the area, Error("failed") when no tile could be made.
+ */
+export async function make(area, style, say, stop = () => false) {
+  say("an.gen.asking");
+  const r = await ask(area.ids, style), tiles = { ...r.tiles };
+  if (r.req) {
+    say(r.started ? "an.gen.queued" : "an.gen.notStarted", { n: Object.values(tiles).filter((v) => v === "queued").length });
+    for (;;) {
+      await new Promise((res) => setTimeout(res, 15000));
+      if (stop()) return null;
+      const p = await poll(r.req);
+      if (p.status === "queued") continue;
+      for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
+      break;
+    }
+  }
+  const ready = area.ids.filter((id) => tiles[id] === "ready");
+  if (!ready.length) throw new Error(Object.values(tiles).every((v) => v === "none") ? "none" : "failed");
+  say("an.gen.composing", { p: 0 });
+  const out = await compose(area, ready, style, (f) => say("an.gen.composing", { p: Math.round(100 * f) }));
+  return stop() ? null : { ...out, partial: ready.length < area.ids.length };
 }
 
 /**

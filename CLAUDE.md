@@ -1159,10 +1159,31 @@ Every multiple-choice game was played through to its score page at phone size, w
   tiles' MNT (`lidarGrid`, source « lidar », credit « IGN – LiDAR HD® »), at once instead of IGN's elevation service. Measured on
   the PC (2026-11-01): karttapullautin 13 s a km² alone, 4 km² in 60-77 s in batch with 4 processes; a tile's point cloud ~250 MB
   (1.3 GB in 143 s); the Fougères forest's 9 tiles put together in ~2 s (3072 × 4457 px), the trace on OpenStreetMap's roads within
-  a few metres; Fougères' old town: buildings, streets, squares, the river and the ramparts' slopes. Not done: a sprint map's own
-  style (ISSprOM: streets as paved areas), tiles made again when OpenStreetMap changes, edges between tiles made in different runs
-  (possible seams), the generated map as the Tracer's base map; **route choices on LiDAR layers: never for runners** (owner: a route
-  is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
+  a few metres; Fougères' old town: buildings, streets, squares, the river and the ramparts' slopes.
+  **Two styles** (owner, 2026-11-01, the same day: « the sprint style for both Analyse solo and the Tracer »): every tile is drawn
+  twice over the same karttapullautin render (`run.STYLES`): `<id>.png` in ISOM 2017-2 at 1:10 000 (`osm._forest`) and `<id>.s.png`
+  in ISSprOM 2019-2 at 1:4 000 (`osm._sprint`: streets, squares, parkings and paved footways as paved area 501, brown 30 %, at their
+  width on the ground — OSM's `width`, else by class, `STREET_W` —; paved or not by OSM's `surface`, else by class, `paved`; unpaved
+  paths as 505 or 506; buildings grey 50 % (521), canopies 522 — `building=roof|carport` —, walls impassable 515, retaining walls and
+  fences passable, stairways hatched 532; the symbols' sizes in mm at the style's scale, `_Canvas.mm`). The tile's JSON lists its
+  `styles`; the API answers a tile ready only in the style asked (`POST { tiles, style }`; a tile of before, forest only, is made
+  again for a sprint request). « Analyse solo » offers the style beside the button (sprint by default for a race whose name says so),
+  the files named `ozimut-lidar-sprint-…`. The shared steps — ask, wait, put together — are `lidarmap.make(area, style, say, stop)`.
+  **The Tracer's base map** (use case 4): « Nouvel événement » has, for administrators, « Pas de carte ? Générer une carte d'après le
+  LiDAR (essai) » (`pages/tracer.js` `genHtml`/`bindGen`): no base map to pick from (no third-party map in the site), so the area is a
+  square of 0.5-3 km round a centre — the chosen competition's place from the agenda (`agendamap.where`: its GPS, else its town,
+  « approché »), the device's position, coordinates typed (« 48.3912, -1.1734 », or with decimal commas and « ; »), or a trace's
+  extent (GPX/FIT/TCX, `lidarmap.areaOf` + 150 m) —; the style follows the map standard chosen (Sprint 2019 → sprint). The map image
+  becomes the event's map file at its scale (1:4 000 sprint, 1:10 000 forest) and dpi (25.4 × scale / px: 240 and 600), the event
+  georeferenced from its world file (`geo.geoFromWorld` in Lambert 93) and the credit put on the map as a black text object
+  (`trc.gen.credit`, all courses). Checked on Fougères' old town at 1:4 000: 3.99-4.00 m on the ground a map mm.
+  **A Tracer bug fixed on the way**: the field mode's floating panel (`team.js`, a `div.tr-field`) and every dialog's field
+  (`dialogs.field`, `label.tr-field`) shared one class, and the panel's `position: absolute` (since 2026-10-15) sent the new-event
+  dialog's fields to the window's bottom; the panel's rule is now `div.tr-field`.
+  Not done: sprint maps' open land, gardens and private areas from OSM (the LiDAR's white and yellow stay between buildings), contours
+  at sprint's interval (karttapullautin's 5 m with 2.5 m form lines), passability of OSM's fences, tiles made again when OpenStreetMap
+  changes, edges between tiles made in different runs (possible seams); **route choices on LiDAR layers: never for runners** (owner: a
+  route is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
 - **After QuickRoute** (owner, 2026-11-01: QuickRoute's features compared; its manual route adjustment not wanted, the automatic
   calibration being stronger; an archive of one's traces and the import of QuickRoute JPEG / DOMA archives studied apart), in
   « Analyse solo »: **the trace coloured by any measure** (« Affichage › Trace »: plain, pace, heart rate, altitude, slope — the

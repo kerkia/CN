@@ -13,14 +13,14 @@ from PIL import Image, ImageDraw
 
 from . import lambert93
 
-# the main Overpass server, then another public one: either may answer 502/504 when busy
-OVERPASS = ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter")
+# public Overpass servers, tried in turn: any of them may answer 502/504 or time out when busy
+OVERPASS = ("https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter")
 UA = "Ozimut map generator (https://ozimut.com; contact@ozimut.com)"
 
 # ISOM 2017-2's colours (site/assets/js/isom.js)
 BLACK, BROWN50, BLUE, GREY65 = (28, 28, 28), (232, 191, 152), (0, 160, 226), (107, 107, 107)
 WHITE = (255, 255, 255)
-PX_MM = 1 / 0.04233333  # px a millimetre of map: 0.42333 m a pixel at 1:10 000
 
 WIDE = {"motorway", "trunk", "primary", "secondary", "tertiary", "motorway_link", "trunk_link", "primary_link",
         "secondary_link", "tertiary_link"}
@@ -54,7 +54,7 @@ out geom;"""
     try:
         for attempt in range(6):
             try:
-                r = http.post(OVERPASS[attempt % len(OVERPASS)], data={"data": q}, timeout=180)
+                r = http.post(OVERPASS[attempt % len(OVERPASS)], data={"data": q}, timeout=120)
                 r.raise_for_status()
                 return r.json()
             except (httpx.HTTPError, ValueError) as ex:
@@ -105,7 +105,9 @@ def features(data: dict) -> list[dict]:
             continue
         hw, ww = tg.get("highway"), tg.get("waterway")
         kind = None
-        if tg.get("building") not in (None, "no"):
+        if tg.get("building") in ("roof", "carport") or tg.get("building:part") == "roof":
+            kind = "canopy"
+        elif tg.get("building") not in (None, "no"):
             kind = "building"
         elif tg.get("natural") == "water" or tg.get("landuse") in ("reservoir", "basin") or ww == "riverbank":
             kind = "water"
@@ -128,13 +130,15 @@ def features(data: dict) -> list[dict]:
             kind = "rail"
         elif tg.get("power") == "line":
             kind = "power"
-        elif tg.get("barrier") in ("wall", "city_wall", "retaining_wall"):
+        elif tg.get("barrier") in ("wall", "city_wall"):
             kind = "wall"
+        elif tg.get("barrier") == "retaining_wall":
+            kind = "lowwall"
         elif tg.get("barrier") == "fence":
             kind = "fence"
         if not kind:
             continue
-        area = kind in ("building", "water", "paved")
+        area = kind in ("building", "canopy", "water", "paved")
         if el["type"] == "relation":
             if area:
                 out.append({"kind": kind, "rings": _rings(el)})
@@ -146,7 +150,7 @@ def features(data: dict) -> list[dict]:
             if pts[0] == pts[-1] and len(pts) >= 4:
                 out.append({"kind": kind, "rings": [("outer", pts)]})
         else:
-            out.append({"kind": kind, "line": pts})
+            out.append({"kind": kind, "line": pts, "hw": hw, "paved": paved(hw, tg.get("surface")), "width": _width(tg.get("width"))})
     return out
 
 
@@ -187,81 +191,210 @@ def _dashed(d: ImageDraw.ImageDraw, pts, w: int, col, dash: float, gap: float) -
         d.line(cur, fill=col, width=w, joint="curve")
 
 
-def draw(img: Image.Image, feats: list[dict], x0: float, y1: float, px: float) -> Image.Image:
-    """The features over a tile whose top-left corner is (x0, y1) in Lambert 93, px metres a pixel."""
-    W, H = img.size
-    img = img.convert("RGB")
-    d = ImageDraw.Draw(img)
+# ISSprOM 2019-2's sprint colours (site/assets/js/isom.js SC): paved areas, buildings, canopies
+BROWN30, GREY50, GREY20 = (243, 219, 196), (154, 154, 154), (214, 214, 214)
+PAVED = {"paved", "asphalt", "concrete", "concrete:plates", "concrete:lanes", "paving_stones", "sett", "cobblestone",
+         "unhewn_cobblestone", "metal", "wood", "bricks", "stone"}
+UNPAVED = {"unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "ground", "grass", "sand", "mud", "pebblestone",
+           "woodchips", "grass_paver", "rock"}
+# a street's width on the ground (m) when OSM gives none, by its class: what a sprint map draws as paved area
+STREET_W = {"motorway": 14, "trunk": 13, "primary": 12, "secondary": 10, "tertiary": 8, "residential": 6.5, "unclassified": 6,
+            "living_street": 5, "road": 6, "busway": 6, "service": 4, "pedestrian": 6, "footway": 2.5, "cycleway": 2.5,
+            "steps": 2.5, "path": 2, "bridleway": 2.5, "track": 3, "corridor": 2}
 
-    def tp(pts):
-        return [((x - x0) / px, (y1 - y) / px) for x, y in pts]
 
-    def mm(v):
-        return max(1, round(v * PX_MM))
+def paved(hw: str | None, surface: str | None) -> bool:
+    """Whether a way is paved: its surface when OSM says, else its class (roads and footways yes, paths and tracks no)."""
+    if surface in PAVED:
+        return True
+    if surface in UNPAVED:
+        return False
+    return hw not in ("path", "track", "bridleway")
 
-    margin = 200
-    def near(pts):
-        xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
-        return max(xs) > -margin and min(xs) < W + margin and max(ys) > -margin and min(ys) < H + margin
 
-    def areas(kind, fill, edge, ew):
-        mask = Image.new("L", (W, H), 0)
+def _width(v: str | None) -> float | None:
+    """OSM's width in metres (« 4 », « 4.5 m », « 4,5 »), else None."""
+    try:
+        w = float(str(v).replace(",", ".").replace("m", "").strip())
+        return w if 0.5 <= w <= 60 else None
+    except (TypeError, ValueError):
+        return None
+
+
+class _Canvas:
+    """A tile being drawn: its pixels' frame (top-left corner x0, y1 in Lambert 93, px metres a pixel) and what both styles
+    use. `scale` is the map's, for the symbols' sizes in mm (10 000 forest, 4 000 sprint)."""
+
+    def __init__(self, img: Image.Image, feats: list[dict], x0: float, y1: float, px: float, scale: float):
+        self.img = img.convert("RGB")
+        self.W, self.H = self.img.size
+        self.d = ImageDraw.Draw(self.img)
+        self.feats, self.x0, self.y1, self.px, self.scale = feats, x0, y1, px, scale
+
+    def tp(self, pts):
+        return [((x - self.x0) / self.px, (self.y1 - y) / self.px) for x, y in pts]
+
+    def mm(self, v: float) -> int:
+        """A width of v mm on the map, in pixels (1 at least)."""
+        return max(1, round(v * self.scale / 1000 / self.px))
+
+    def m(self, v: float) -> int:
+        """A width of v metres on the ground, in pixels."""
+        return max(1, round(v / self.px))
+
+    def near(self, q, margin=200):
+        xs = [p[0] for p in q]
+        ys = [p[1] for p in q]
+        return max(xs) > -margin and min(xs) < self.W + margin and max(ys) > -margin and min(ys) < self.H + margin
+
+    def areas(self, kinds, fill, edge=None, ew=0.0):
+        mask = Image.new("L", (self.W, self.H), 0)
         md = ImageDraw.Draw(mask)
         rings = []
-        for f in feats:
-            if f["kind"] != kind:
+        for f in self.feats:
+            if f["kind"] not in kinds:
                 continue
             for role, p in f["rings"]:
-                q = tp(p)
-                if not near(q):
+                q = self.tp(p)
+                if not self.near(q):
                     continue
                 md.polygon(q, fill=255 if role == "outer" else 0)
                 rings.append(q)
-        img.paste(fill, mask=mask)
-        for q in rings:
-            d.line(q + [q[0]], fill=edge, width=mm(ew), joint="curve")
+        self.img.paste(fill, mask=mask)
+        if edge:
+            for q in rings:
+                self.d.line(q + [q[0]], fill=edge, width=self.mm(ew), joint="curve")
 
-    areas("paved", BROWN50, BLACK, 0.14)
-    areas("water", BLUE, BLACK, 0.14)
+    def lines(self):
+        """The line features near the tile: [(feature, its pixels)]."""
+        out = []
+        for f in self.feats:
+            if "line" in f:
+                q = self.tp(f["line"])
+                if self.near(q):
+                    out.append((f, q))
+        return out
 
-    lines = {k: [] for k in ("wide", "road", "track", "path", "smallpath", "rail", "power", "wall", "fence")}
-    streams = []
-    for f in feats:
-        if "line" not in f:
-            continue
-        q = tp(f["line"])
-        if not near(q):
-            continue
-        if f["kind"].startswith("stream:"):
-            streams.append((WATER_LINE[f["kind"][7:]], f["kind"] in ("stream:ditch", "stream:drain"), q))
-        else:
-            lines[f["kind"]].append(q)
-    for w, dashed, q in streams:
-        if dashed:
-            _dashed(d, q, mm(w), BLUE, mm(1.0), mm(0.25))
-        else:
-            d.line(q, fill=BLUE, width=mm(w), joint="curve")
+    def streams(self, ls, widths):
+        for f, q in ls:
+            if not f["kind"].startswith("stream:"):
+                continue
+            kind = f["kind"][7:]
+            if kind in ("ditch", "drain"):
+                _dashed(self.d, q, self.mm(widths["minor"]), BLUE, self.mm(widths["dash"]), self.mm(0.25))
+            else:
+                self.d.line(q, fill=BLUE, width=self.mm(widths.get(kind, widths["stream"])), joint="curve")
+
+    def rail_power(self, ls):
+        for f, q in ls:
+            if f["kind"] == "power":
+                self.d.line(q, fill=BLACK, width=self.mm(0.14))
+            elif f["kind"] == "rail":
+                self.d.line(q, fill=BLACK, width=self.mm(0.35), joint="curve")
+                _dashed(self.d, q, self.mm(0.1), WHITE, self.mm(1.0), self.mm(1.5))
+
+
+def draw(img: Image.Image, feats: list[dict], x0: float, y1: float, px: float, style: str = "forest") -> Image.Image:
+    """The features over a tile whose top-left corner is (x0, y1) in Lambert 93, px metres a pixel, in the style of a forest
+    map (ISOM 2017-2 at 1:10 000) or of a sprint map (ISSprOM 2019-2 at 1:4 000)."""
+    sprint = style == "sprint"
+    return (_sprint if sprint else _forest)(_Canvas(img, feats, x0, y1, px, 4000 if sprint else 10000))
+
+
+def _forest(c: _Canvas) -> Image.Image:
+    d, mm = c.d, c.mm
+    c.areas({"paved"}, BROWN50, BLACK, 0.14)
+    c.areas({"water"}, BLUE, BLACK, 0.14)
+    ls = c.lines()
+    c.streams(ls, {"river": 0.5, "canal": 0.5, "stream": 0.25, "minor": 0.18, "dash": 1.0})
+    by = {}
+    for f, q in ls:
+        by.setdefault(f["kind"], []).append(q)
     # 502 wide road: two black edges round a brown fill, the fill drawn over every casing so that junctions open
-    for q in lines["wide"]:
+    for q in by.get("wide", []):
         d.line(q, fill=BLACK, width=mm(0.74 + 2 * 0.14), joint="curve")
-    for q in lines["wide"]:
+    for q in by.get("wide", []):
         d.line(q, fill=BROWN50, width=mm(0.74), joint="curve")
-    for q in lines["road"]:
+    for q in by.get("road", []):
         d.line(q, fill=BLACK, width=mm(0.35), joint="curve")
-    for q in lines["track"]:
+    for q in by.get("track", []):
         _dashed(d, q, mm(0.35), BLACK, mm(3.0), mm(0.25))
-    for q in lines["path"]:
+    for q in by.get("path", []):
         _dashed(d, q, mm(0.25), BLACK, mm(2.0), mm(0.25))
-    for q in lines["smallpath"]:
+    for q in by.get("smallpath", []):
         _dashed(d, q, mm(0.18), BLACK, mm(1.0), mm(0.25))
-    for q in lines["wall"]:
+    for q in by.get("wall", []) + by.get("lowwall", []):
         d.line(q, fill=BLACK, width=mm(0.25), joint="curve")
-    for q in lines["fence"]:
+    for q in by.get("fence", []):
         d.line(q, fill=BLACK, width=mm(0.14), joint="curve")
-    for q in lines["power"]:
-        d.line(q, fill=BLACK, width=mm(0.14))
-    for q in lines["rail"]:
-        d.line(q, fill=BLACK, width=mm(0.35), joint="curve")
-        _dashed(d, q, mm(0.1), WHITE, mm(1.0), mm(1.5))
-    areas("building", GREY65, BLACK, 0.14)
-    return img
+    c.rail_power(ls)
+    c.areas({"canopy"}, GREY20, BLACK, 0.1)
+    c.areas({"building"}, GREY65, BLACK, 0.14)
+    return c.img
+
+
+def _sprint(c: _Canvas) -> Image.Image:
+    """ISSprOM 2019-2: streets, squares and paved footways as paved area (501, brown 30 %) at their width on the ground,
+    unpaved paths as 505 (a narrow band with dashed edges) or 506, buildings grey 50 % (521), canopies (522), walls
+    impassable (515), retaining walls and fences passable (513, 516), stairways hatched (532)."""
+    d, mm, m = c.d, c.mm, c.m
+    ls = c.lines()
+    roadish = [(f, q) for f, q in ls if f["kind"] in ("wide", "road", "track", "path", "smallpath")]
+    c.areas({"paved"}, BROWN30)
+    # the paved ways, widest first, as bands of their own width
+    width = lambda f: f["width"] or STREET_W.get(f["hw"], 4)  # noqa: E731
+    bands = sorted(((f, q) for f, q in roadish if f["paved"]), key=lambda fq: -width(fq[0]))
+    for f, q in bands:
+        d.line(q, fill=BROWN30, width=m(width(f)), joint="curve")
+    c.areas({"water"}, BLUE, BLACK, 0.18)
+    c.streams(ls, {"river": 0.4, "canal": 0.4, "stream": 0.21, "minor": 0.21, "dash": 1.87})
+    # 532 stairway: the band crossed by thin lines every 0.3 mm
+    for f, q in bands:
+        if f["hw"] == "steps":
+            _rungs(d, q, m(width(f)) / 2, mm(0.1), mm(0.3))
+    # unpaved: 505 footpath (a 0.5 mm band with dashed edges), 506 small path (black, dashed)
+    for f, q in roadish:
+        if f["paved"]:
+            continue
+        if f["kind"] == "smallpath":
+            _dashed(d, q, mm(0.27), BLACK, mm(1.5), mm(0.37))
+        else:
+            d.line(q, fill=BROWN30, width=mm(0.5), joint="curve")
+            for side in (-1, 1):
+                _dashed(d, _offset(q, side * mm(0.25)), mm(0.12), BLACK, mm(2.0), mm(0.25))
+    c.areas({"canopy"}, GREY20, BLACK, 0.1)
+    c.areas({"building"}, GREY50, BLACK, 0.14)
+    for f, q in ls:
+        if f["kind"] == "wall":
+            d.line(q, fill=BLACK, width=mm(0.45), joint="curve")
+        elif f["kind"] in ("lowwall", "fence"):
+            d.line(q, fill=BLACK, width=mm(0.21), joint="curve")
+    c.rail_power(ls)
+    return c.img
+
+
+def _offset(q, off: float):
+    """A polyline moved sideways by off pixels (each point along the normal of its neighbours' chord)."""
+    out = []
+    for i, (x, y) in enumerate(q):
+        a, b = q[max(0, i - 1)], q[min(len(q) - 1, i + 1)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        n = math.hypot(dx, dy) or 1
+        out.append((x - dy / n * off, y + dx / n * off))
+    return out
+
+
+def _rungs(d: ImageDraw.ImageDraw, q, half: float, w: int, step: float) -> None:
+    """Lines across a polyline every `step` px, `half` px each side: a stairway's steps."""
+    left = step / 2
+    for (x0, y0), (x1, y1) in zip(q, q[1:]):
+        seg = math.hypot(x1 - x0, y1 - y0)
+        if not seg:
+            continue
+        ux, uy = (x1 - x0) / seg, (y1 - y0) / seg
+        t = left
+        while t <= seg:
+            px, py = x0 + ux * t, y0 + uy * t
+            d.line([(px - uy * half, py + ux * half), (px + uy * half, py - ux * half)], fill=BLACK, width=w)
+            t += step
+        left = t - seg

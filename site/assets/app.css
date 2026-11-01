@@ -1665,6 +1665,7 @@ body.an-theatre .an-right { grid-area: side; }
 .an-gen .btn { margin-left: 8px; }
 .an-gen p { font-size: 12.5px; margin: 6px 0 0; }
 .an-gen-state { margin-left: 8px; font-size: 13px; }
+.an-gen-style { margin-left: 8px; font-size: 13px; }
 .an-gen-state.busy { color: var(--ink-2); font-style: italic; }
 .an-gen-credit-line { font-size: 12.5px; margin: 8px 0 0; }
 .an-gen-credit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; z-index: 2; max-width: calc(100% - 200px); font-size: 10.5px; padding: 2px 8px; border-radius: 8px;
@@ -1672,6 +1673,11 @@ body.an-theatre .an-right { grid-area: side; }
 .an-gen-credit[hidden], .an-3d:not([hidden]) ~ .an-gen-credit { display: none; }
 .an-gen-credit a { color: inherit; }
 @media (max-width: 640px) { .an-gen-credit { max-width: calc(100% - 110px); left: auto; right: 8px; transform: none; bottom: 40px; } }
+/* The Tracer's new event: a map generated from LiDAR and OpenStreetMap (pages/tracer.js genHtml) */
+.tr-gen { margin: 6px 0 10px; padding: 8px 10px; border: 1px dashed var(--border-strong); border-radius: 8px; }
+.tr-gen > summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.tr-gen-from, .tr-gen-go { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.tr-gen-go .tr-hint { margin: 0; }
 /* Route choices computed (trace/routeplan.js, administrators only): the settings box of both analyses, the table's dots */
 .rc-box { margin-top: 8px; }
 .rc-pill { font-size: 10.5px; font-weight: 600; padding: 0 6px; vertical-align: 1px; }
@@ -2261,7 +2267,7 @@ body.full-win .tr-app { border: 0; }
 .tr-reply { margin-left: 14px !important; padding-left: 8px; border-left: 2px solid var(--border); }
 .tr-cmt-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .tr-tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 9px; background: var(--surface-2); color: var(--ink-2); }
-.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 40; width: min(520px, calc(100% - 16px)); background: var(--surface);
+div.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 40; width: min(520px, calc(100% - 16px)); background: var(--surface);
   border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow-pop); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
 .tr-field-head { display: flex; gap: 8px; align-items: center; }
 .tr-field-head small { color: var(--ink-3); flex: 1; }

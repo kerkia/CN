@@ -1,12 +1,15 @@
 // /api/lidarmap — generated orienteering maps (a prototype, 2026-11-01; administrators only): 1 km tiles of a map made
 // from IGN's LiDAR HD by karttapullautin, with OpenStreetMap's roads, paths, buildings and water over it, and the
 // ground's heights every 2 m. They are made by the GitHub workflow lidarmap.yml (mapgen/run.py), kept in R2 (cn-state):
-//   lidarmap/t/<id>.png       the map, 2362 px a side, 0.42333 m a pixel, from the tile's north-west corner
+//   lidarmap/t/<id>.png       the map, 2362 px a side, 0.42333 m a pixel, from the tile's north-west corner, in a forest
+//                             map's symbols (ISOM); <id>.s.png the same in a sprint map's (ISSprOM)
 //   lidarmap/t/<id>.dem.png   heights, Terrarium-encoded, 500 × 500 nodes every 2 m from that corner
-//   lidarmap/t/<id>.json      { id, x0, y1, px, size, dem, lidar, osm, made } — or { none: true }: no LiDAR there yet
+//   lidarmap/t/<id>.json      { id, x0, y1, px, size, dem, styles, lidar, osm, made } — or { none: true }: no LiDAR there yet
 //   lidarmap/req/<id>.json    a request: { id, tiles, by, at, status: queued | done | failed, result }
 // A tile's id is IGN's: its west and north edges in Lambert 93 kilometres ("0391_6819").
-//   POST { tiles: [ids] }     the tiles' state; the missing ones are asked of the workflow → { req?, tiles: { id: state } }
+//   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made before 2026-11-01's
+//                             sprint style has the forest one only, and is made again); the missing ones are asked of the
+//                             workflow → { req?, tiles: { id: state } }
 //   GET ?req=<id>             a request's state (the page asks every ~15 s while it waits)
 //   GET /t/<file>             a tile's file
 // Nothing of the trace is sent: the page asks for the tiles its trace's area touches.
@@ -14,17 +17,18 @@ import { allow, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 
 const T = "lidarmap/t/", Q = "lidarmap/req/";
 const ID = /^(\d{4})_(\d{4})$/;
-const FILE = /^(\d{4}_\d{4})(\.dem\.png|\.png|\.json)$/;
+const FILE = /^(\d{4}_\d{4})(\.dem\.png|\.s\.png|\.png|\.json)$/;
+const STYLES = ["forest", "sprint"];
 const MAX_TILES = 12;
 // metropolitan France and Corsica in Lambert 93 (km): IGN's LiDAR HD covers nothing else
 const inFrance = (id) => { const m = ID.exec(id); return !!m && +m[1] >= 50 && +m[1] <= 1250 && +m[2] >= 6040 && +m[2] <= 7120; };
 
-/** A tile's state: "ready", "none" (no LiDAR there yet) or "missing". */
-async function tileState(env, id) {
+/** A tile's state in a style: "ready", "none" (no LiDAR there yet) or "missing". */
+async function tileState(env, id, style) {
   const o = await env.BUCKET.get(`${T}${id}.json`);
   if (!o) return "missing";
   const m = await o.json().catch(() => ({}));
-  return m.none ? "none" : "ready";
+  return m.none ? "none" : (m.styles || ["forest"]).includes(style) ? "ready" : "missing";
 }
 
 /** The workflow started (GitHub workflow_dispatch); false without the token. */
@@ -43,9 +47,10 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (!env.BUCKET) return json({ error: "server not configured" }, 500);
   const body = await readBody(request);
   const ids = [...new Set(Array.isArray(body?.tiles) ? body.tiles.map(String) : [])];
+  const style = STYLES.includes(body?.style) ? body.style : "forest";
   if (!ids.length || ids.length > MAX_TILES || !ids.every(inFrance)) return json({ error: "bad tiles", max: MAX_TILES }, 400);
   const tiles = {};
-  for (const id of ids) tiles[id] = await tileState(env, id);
+  for (const id of ids) tiles[id] = await tileState(env, id, style);
   const missing = ids.filter((id) => tiles[id] === "missing");
   if (!missing.length) return json({ tiles });
   if (!(await allow(env, `lidarmap:${user.id}`, 20, 86400))) return json({ error: "too many requests" }, 429);

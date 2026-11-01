@@ -10,7 +10,7 @@ roads, paths, buildings and water drawn over it (osm.py). Beside it the ground's
 the 3D view, Terrarium-encoded (R × 256 + G + B / 256 − 32 768 m) as the elevation tiles the 3D view already reads.
 
 Out, per tile <id> (e.g. 0391_6819): t/<id>.png (2362 × 2362, 0.42333 m a pixel, the top-left corner at the tile's
-north-west corner), t/<id>.dem.png (500 × 500, a node every 2 m from that corner), t/<id>.json (what and when).
+north-west corner; a forest map's symbols) and t/<id>.s.png (the same in a sprint map's), t/<id>.dem.png (500 × 500, a node every 2 m from that corner), t/<id>.json (what and when).
 A tile IGN has no LiDAR for yet: t/<id>.json alone, {"none": true}."""
 from __future__ import annotations
 
@@ -37,6 +37,8 @@ UA = osm.UA
 PX = 0.4233333333333334          # karttapullautin's 600 dpi at 1:10 000
 SIZE = 2362                      # pixels a tile side: 999.9 m
 DEM_STEP, DEM_N = 2.0, 500
+# each tile in both styles (osm.draw), the same LiDAR render under them: a forest map's ISOM, a sprint map's ISSprOM
+STYLES = {"forest": ".png", "sprint": ".s.png"}
 KP_VERSION = "2.15.4"
 ID = re.compile(r"^(\d{4})_(\d{4})$")
 MAX_TILES = 16                   # a run's work at most (~4 GB of point clouds)
@@ -201,11 +203,13 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     for t in todo:
         try:
             x0, y1 = corner(t)
-            img = osm.draw(rendered(work, t), feats, x0, y1, PX)
-            img.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(tdir / f"{t}.png", optimize=True)
+            base = rendered(work, t)
+            for style, ext in STYLES.items():
+                img = osm.draw(base, feats, x0, y1, PX, style)
+                img.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(tdir / f"{t}{ext}", optimize=True)
             dem(work / f"mnt_{t}.tif").save(tdir / f"{t}.dem.png", optimize=True)
             (tdir / f"{t}.json").write_text(json.dumps({
-                "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N},
+                "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N}, "styles": list(STYLES),
                 "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
             res[t] = "done"
         except Exception as ex:
