@@ -3,7 +3,7 @@
 // multi » (with the reading's progress, a warning when the reading looks wrong, the terrain's legend), the routes and the
 // decision map drawn over the map, the reference pace from a runner's own legs.
 
-import { html, raw, $, fmt, pct } from "../util.js";
+import { html, raw, $, fmt, pct, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import { DEFAULTS, LEGEND, A } from "./routechoice.js";
 import { layers, VECTOR_ACCEPT } from "./vectorroutes.js";
@@ -145,6 +145,65 @@ export function chosen(m, routes) {
 }
 /** The routes a runner's route follows, by share: « A 62 % · B 31 % » (10 % or more). */
 export const sharesLabel = (m) => (m.shares || []).map((v, i) => [v, i]).filter(([v]) => v >= 0.1).sort((x, y) => y[0] - x[0]).map(([v, i]) => `${LETTERS[i]} ${pct(v)}`).join(" · ");
+// ---- the calibration on the runners' own legs (owner, 2026-11-01) -------------------------------------------------------------
+/** The fit's constants: legs needed, the residual (log) beyond which a leg is set aside, the prior's weight and spreads. */
+export const CAL = { minLegs: 5, trim: 0.25, prior: 0.12, sdPath: 0.2, sdClimb: 0.4 };
+/**
+ * The model calibrated on legs whose route is known (the runner's route laid on the map, trace/routechoice.js matchRoute):
+ * samples [{ who, actual (s), parts { path, off, up, down } (the route's model time at 1 s/m, split as segment does) }].
+ * A leg's time is taken as pace(who) × (path × α + off + up × γ + down): α scales the time on paths (a runner faster on tracks
+ * than the model has α < 1), γ the climb's cost, each runner has their own pace. α and γ are searched on a grid of their
+ * logarithms, each runner's log pace being the median of their legs' log residuals, the score the sum of the absolute residuals
+ * plus a prior holding α and γ at 1 (with few legs they move little). α is fitted only when two legs run mostly on paths and two
+ * mostly off them, γ when the climb is 4 % of the model's time over six legs or more. Then the legs over 25 % off the fit (a
+ * mistake, a stop, a map misread) are set aside and the fit made again. Returns { ok (enough legs), n (legs kept), total,
+ * alpha, gamma, fitPath, fitClimb, pace { who: s/m }, runners }.
+ */
+export function calibrate(samples) {
+  const S = samples.filter((x) => x.actual > 0 && x.parts && x.parts.path + x.parts.off > 0);
+  const out = { ok: false, n: S.length, total: S.length, alpha: 1, gamma: 1, fitPath: false, fitClimb: false, pace: {}, runners: 0 };
+  if (S.length < CAL.minLegs) return out;
+  const share = (x) => x.parts.path / (x.parts.path + x.parts.off);
+  const model = (x, a, g) => Math.max(1, x.parts.path * a + x.parts.off + x.parts.up * g + x.parts.down);
+  const median = (v) => { const s = [...v].sort((p, q) => p - q), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const grid = (lo, hi, st) => { const v = []; for (let x = Math.log(lo); x <= Math.log(hi) + 1e-9; x += st) v.push(x); return v; };
+  const fit = (set) => {
+    const fitPath = set.filter((x) => share(x) >= 0.3).length >= 2 && set.filter((x) => share(x) < 0.3).length >= 2;
+    const tot = set.reduce((s, x) => s + model(x, 1, 1), 0), up = set.reduce((s, x) => s + x.parts.up, 0);
+    const fitClimb = set.length >= 6 && up >= 0.04 * tot;
+    let best = null;
+    for (const la of fitPath ? grid(0.6, 1.6, 0.02) : [0]) for (const lg of fitClimb ? grid(0.4, 2.5, 0.05) : [0]) {
+      const a = Math.exp(la), g = Math.exp(lg), by = new Map();
+      for (const x of set) { const r = Math.log(x.actual / model(x, a, g)); if (!by.has(x.who)) by.set(x.who, []); by.get(x.who).push(r); }
+      let sc = CAL.prior * ((la / CAL.sdPath) ** 2 + (lg / CAL.sdClimb) ** 2);
+      const lp = new Map();
+      for (const [w, rs] of by) { const m = median(rs); lp.set(w, m); for (const r of rs) sc += Math.abs(r - m); }
+      if (!best || sc < best.sc) best = { sc, a, g, lp };
+    }
+    return { ...best, fitPath, fitClimb };
+  };
+  let f = fit(S);
+  const kept = S.filter((x) => Math.abs(Math.log(x.actual / model(x, f.a, f.g)) - f.lp.get(x.who)) <= CAL.trim);
+  if (kept.length >= CAL.minLegs) f = fit(kept);
+  const pace = {};
+  for (const [w, l] of f.lp) pace[w] = Math.max(0.18, Math.min(1.2, Math.exp(l)));
+  return { ok: kept.length >= CAL.minLegs, n: kept.length, total: S.length, alpha: f.a, gamma: f.g, fitPath: f.fitPath, fitClimb: f.fitClimb, pace, runners: f.lp.size };
+}
+/** The settings with a calibration applied: the paths' speeds divided by α, the climb's cost multiplied by γ. */
+export function calibrated(s, c) {
+  if (!c?.ok) return s;
+  const sp = { ...DEFAULTS.speeds, ...(s.speeds || {}) }, k = (v) => Math.max(5, Math.round(v / c.alpha));
+  return { ...s, speeds: { ...sp, track: k(sp.track), path: k(sp.path), small: k(sp.small) }, climb: Math.round(s.climb * c.gamma * 10) / 10 };
+}
+/** The calibration's line under the settings: what it found and on how many legs, or why it did not. */
+export function calibNote(s, c, multi) {
+  if (!s.calib || !c) return "";
+  if (!c.ok) return t("rc.cal.few", { n: c.n, m: CAL.minLegs });
+  const e = calibrated(s, c), def = ` ${t("rc.cal.default")}`;
+  const vals = { s: `${pctN(e.speeds.path)}${c.fitPath ? "" : def}`, c: `${fmt(e.climb, 1)} m${c.fitClimb ? "" : def}`, n: c.n, r: c.runners };
+  return multi ? t("rc.cal.doneMulti", vals) : t("rc.cal.done", { ...vals, p: minKm(Object.values(c.pace)[0] || 0.36) });
+}
+export const setCalib = (text) => { const el = $("#rc-cal"); if (el) { el.textContent = text; el.hidden = !text; } };
 /** A runner's reference pace (seconds per metre of white forest on the flat): the median of their legs' actual time over
  *  the model's time of the route they chose (`chosen`), kept between 3 and 20 min/km. */
 export function autoPace(pairs) {
@@ -161,7 +220,7 @@ export const minKm = (sPerM) => { const v = Math.round(sPerM * 1000); return `${
  * The settings panel (a <details> for the side panels). s: the settings; info: { status, pace (auto, s/m), picture }.
  * The panel's controls call onChange(s, what) after each change ("on", "picture", "pace" redraw only; others search again).
  */
-export function panelHtml(s, { on, picture, decision = false, status = "", progress = null, warn = "", auto = null, vector = null } = {}) {
+export function panelHtml(s, { on, picture, decision = false, status = "", progress = null, warn = "", auto = null, vector = null, calib = "" } = {}) {
   const range = (id, v, lo, hi, step, label, unit = "") => html`<label><span>${label}</span><span class="rc-range"><input type="range" id="${id}" min="${lo}" max="${hi}" step="${step}" value="${v}"><b id="${id}-v">${v}${unit}</b></span></label>`;
   return html`<details class="an-settings rc-box" id="rc-box" open><summary>${t("rc.title")} <span class="pill rc-pill">${t("rc.admin")}</span></summary>
     <label class="rc-on"><input type="checkbox" id="rc-on" ${raw(on ? "checked" : "")}> ${t("rc.on")}</label>
@@ -181,6 +240,8 @@ export function panelHtml(s, { on, picture, decision = false, status = "", progr
         <label><span>${t("rc.relief")}</span><select id="rc-relief">${["contours", "dem"].map((v) => html`<option value="${v}" ${raw(s.relief === v ? "selected" : "")}>${t(`rc.relief.${v}`)}</option>`)}</select></label>
         <label ${raw(s.relief === "dem" ? "hidden" : "")} id="rc-interval-row"><span>${t("rc.interval")}</span><select id="rc-interval">${[2.5, 5, 10].map((v) => html`<option value="${v}" ${raw(Number(s.interval) === v ? "selected" : "")}>${fmt(v, v % 1 ? 1 : 0)} m</option>`)}</select></label>
         <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
+        <label class="rc-on" title="${t("rc.calib.hint")}"><input type="checkbox" id="rc-calib" ${raw(s.calib ? "checked" : "")}> ${t("rc.calib")}</label>
+        <div class="muted rc-cal" id="rc-cal" ${raw(calib ? "" : "hidden")}>${calib || ""}</div>
         <label><span>${t("rc.variants")}</span><select id="rc-variants">${[1, 2, 3, 4].map((n) => html`<option value="${n}" ${raw(n === s.variants ? "selected" : "")}>${n}</option>`)}</select></label>
         ${range("rc-extra", s.extra, 5, 60, 5, t("rc.extra"), " %")}
       </div>
@@ -209,6 +270,7 @@ export function bindPanel(root, s, onChange) {
   $("#rc-map", box).addEventListener("change", (e) => { s.map = e.target.value; set("map"); });
   $("#rc-black", box).addEventListener("change", (e) => { s.black = e.target.value; set("search"); });
   $("#rc-variants", box).addEventListener("change", (e) => { s.variants = Number(e.target.value); set("search"); });
+  $("#rc-calib", box).addEventListener("change", (e) => { s.calib = e.target.checked; set("search"); });
   $("#rc-relief", box).addEventListener("change", (e) => { s.relief = e.target.value; $("#rc-interval-row", box).hidden = s.relief === "dem"; set("relief"); });
   $("#rc-interval", box).addEventListener("change", (e) => { s.interval = Number(e.target.value); set("relief"); });
   const slide = (id, apply) => {

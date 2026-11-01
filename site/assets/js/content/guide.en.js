@@ -321,7 +321,21 @@ export function build(X) {
             html`<b>Execution</b>: your actual time minus the route taken's time — what the running itself cost (hesitations, mistakes,
               terrain slower than the map says).`,
           ])}
-          <p>With the automatic pace, execution is zero at the median: it shows which legs were slower or faster than usual.</p>`)}`,
+          <p>With the automatic pace, execution is zero at the median: it shows which legs were slower or faster than usual.</p>`)}
+        ${slide("Coach · trial", "6. The calibration on the legs run", html`
+          <p>The default speeds are an average runner's. The legs whose route is known say what they are worth for this runner: we know how many
+            metres they ran on a path, off it, uphill, and in how much time. Ozimut draws three numbers from them (the box "Calibrate the speeds on the
+            legs run", ticked by default):</p>
+          ${list([
+            html`their <b>pace</b> in flat runnable forest;`,
+            html`their <b>speed on paths</b> against the forest — only when at least two legs run mostly on paths and two mostly off them;`,
+            html`the <b>climb's cost</b> — only when climbing is 4% of the time over at least six legs.`,
+          ])}
+          <p>With few legs these values move little: they leave the defaults only when the legs say so clearly. Legs over 25% off the model (a
+            mistake, a stop, a misread map) are set aside before a second fit: the calibration must not absorb the mistakes the execution is there
+            to show. The routes are then computed again with these speeds: A is the best route <i>for this runner</i>, the choice is measured against
+            it, the execution against their usual speeds. In Group analysis, the speed on paths and the climb are calibrated on the whole group
+            (every leg of every runner), and each runner keeps their own pace.</p>`)}`,
     });
   }
 

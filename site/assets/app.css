@@ -1664,6 +1664,8 @@ body.an-theatre .an-right { grid-area: side; }
 .rc-pill { font-size: 10.5px; font-weight: 600; padding: 0 6px; vertical-align: 1px; }
 .rc-on { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 6px 0; }
 .rc-status { font-size: 12px; margin: 2px 0 6px; min-height: 1em; }
+.rc-cal { font-size: 12px; margin: -2px 0 6px 22px; }
+.rc-cal[hidden] { display: none; }
 .rc-prog { display: block; width: 100%; height: 6px; margin: -2px 0 8px; accent-color: var(--flag); }
 .rc-prog[hidden], .rc-warn[hidden], .rc-legend[hidden], .rc-dec-key[hidden] { display: none; }
 .rc-warn { font-size: 12px; margin: 0 0 8px; }

@@ -333,7 +333,22 @@ export function build(X) {
             html`<b>Exécution</b> : votre temps réel moins le temps de l'itinéraire pris — ce que la course elle-même a coûté (hésitations,
               erreurs, terrain plus lent que la carte ne le dit).`,
           ])}
-          <p>Avec l'allure automatique, l'exécution est nulle en médiane : elle dit quels inter-postes ont été plus lents ou plus rapides que d'habitude.</p>`)}`,
+          <p>Avec l'allure automatique, l'exécution est nulle en médiane : elle dit quels inter-postes ont été plus lents ou plus rapides que d'habitude.</p>`)}
+        ${slide("Coach · essai", "6. La calibration sur les postes courus", html`
+          <p>Les vitesses par défaut sont celles d'un coureur moyen. Les postes dont on connaît l'itinéraire disent ce qu'elles valent pour ce
+            coureur-là : on sait combien de mètres il a couru sur un chemin, hors chemin, en montée, et en combien de temps. Ozimut en tire trois
+            nombres (case « Calibrer les vitesses sur les postes courus », cochée par défaut) :</p>
+          ${list([
+            html`son <b>allure</b> en forêt blanche à plat ;`,
+            html`sa <b>vitesse sur les chemins</b> comparée à la forêt — seulement si deux postes au moins se courent surtout sur chemin et deux
+              surtout hors chemin ;`,
+            html`le <b>coût de la montée</b> — seulement si la montée pèse 4 % du temps sur six postes au moins.`,
+          ])}
+          <p>Avec peu de postes, ces valeurs bougent peu : elles ne s'écartent des valeurs par défaut que si les postes le disent nettement. Les
+            postes à plus de 25 % du modèle (une erreur, un arrêt, une carte mal lue) sont mis de côté avant un second calcul : la calibration ne doit
+            pas absorber les erreurs que l'exécution veut montrer. Les itinéraires sont ensuite recalculés avec ces vitesses : A est le meilleur
+            itinéraire <i>pour ce coureur</i>, le choix se mesure contre lui, l'exécution contre ses vitesses habituelles. En Analyse multi, la
+            vitesse sur les chemins et la montée se calibrent sur tout le groupe (tous les postes de tous les coureurs), et chacun garde son allure.</p>`)}`,
     });
   }
 

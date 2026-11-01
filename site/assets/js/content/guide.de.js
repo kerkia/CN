@@ -334,7 +334,23 @@ export function build(X) {
             html`<b>Ausführung</b>: deine echte Zeit minus die Zeit der gewählten Route – was das Laufen selbst gekostet hat (Zögern,
               Fehler, Gelände langsamer, als die Karte sagt).`,
           ])}
-          <p>Mit dem automatischen Tempo ist die Ausführung im Median null: Sie zeigt, welche Teilstrecken langsamer oder schneller als üblich waren.</p>`)}`,
+          <p>Mit dem automatischen Tempo ist die Ausführung im Median null: Sie zeigt, welche Teilstrecken langsamer oder schneller als üblich waren.</p>`)}
+        ${slide("Coach · Test", "6. Die Kalibrierung an den gelaufenen Teilstrecken", html`
+          <p>Die Standardgeschwindigkeiten sind die eines durchschnittlichen Läufers. Die Teilstrecken, deren Route bekannt ist, sagen, was sie für
+            diesen Läufer wert sind: Man weiß, wie viele Meter er auf einem Weg, abseits davon, bergauf gelaufen ist und in welcher Zeit. Ozimut leitet
+            daraus drei Zahlen ab (Kästchen „Geschwindigkeiten an den gelaufenen Teilstrecken kalibrieren“, standardmäßig aktiviert):</p>
+          ${list([
+            html`sein <b>Tempo</b> im flachen, gut belaufbaren Wald;`,
+            html`seine <b>Geschwindigkeit auf Wegen</b> im Vergleich zum Wald – nur wenn mindestens zwei Teilstrecken überwiegend auf Wegen und zwei
+              überwiegend abseits davon verlaufen;`,
+            html`die <b>Kosten der Steigung</b> – nur wenn die Steigung auf mindestens sechs Teilstrecken 4 % der Zeit ausmacht.`,
+          ])}
+          <p>Mit wenigen Teilstrecken bewegen sich diese Werte kaum: Sie weichen nur von den Standardwerten ab, wenn die Teilstrecken es deutlich
+            sagen. Teilstrecken, die über 25 % vom Modell abweichen (ein Fehler, ein Halt, eine falsch gelesene Karte), werden vor einer zweiten
+            Anpassung beiseitegelassen: Die Kalibrierung darf die Fehler, die die Ausführung zeigen soll, nicht schlucken. Die Routen werden dann mit
+            diesen Geschwindigkeiten neu berechnet: A ist die beste Route <i>für diesen Läufer</i>, die Wahl wird an ihr gemessen, die Ausführung an
+            seinen üblichen Geschwindigkeiten. In der Gruppenanalyse werden die Geschwindigkeit auf Wegen und die Steigung an der ganzen Gruppe
+            kalibriert (jede Teilstrecke jedes Läufers), und jeder behält sein eigenes Tempo.</p>`)}`,
     });
   }
 

@@ -48,6 +48,7 @@ export const DEFAULTS = {
   variants: 3,              // routes shown per leg, 1-4
   extra: 25,                // a variant is kept up to this % slower than the best
   pace: 0,                  // seconds per km in white runnable forest on the flat; 0 = automatic
+  calib: true,              // the speeds on paths and the climb's cost calibrated on the runners' own legs (routeplan.calibrate)
   relief: "contours",       // the heights: "contours" (the map's contour lines, levelled on the model) or "dem" (the model only)
   interval: 5,              // the map's contour interval, metres
   speeds: { track: 130, path: 125, small: 110, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30 },
@@ -858,14 +859,15 @@ function measure(X, path) {
 
 /**
  * A straight line between two points in cell units (x, y; a cell's centre at i + 0.5) measured on the model, sampled every
- * half cell: { time, cost, len, onPath (metres), hs (the heights met) }; an impassable cell costs `cap` × white forest
- * (null: the line is refused).
+ * half cell: { time, cost, len, onPath (metres), hs (the heights met), parts }; an impassable cell costs `cap` × white forest
+ * (null: the line is refused). parts: the time on paths and off them on the flat, and what the slope adds — uphill (the climb
+ * setting scales it) and downhill — for the calibration on a runner's legs.
  */
 function segment(X, x0, y0, x1, y1, cap) {
   const { nx, ny } = X.G, climb = X.s.climb ?? DEFAULTS.climb, f = X.C.f, r = X.C.r;
   const at = (x, y) => Math.min(ny - 1, Math.max(0, Math.floor(y))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(x)));
   const u = x1 - x0, v = y1 - y0, d = Math.hypot(u * X.em[0][0] + v * X.em[1][0], u * X.em[0][1] + v * X.em[1][1]);
-  const out = { time: 0, cost: 0, len: d, onPath: 0, hs: [] };
+  const out = { time: 0, cost: 0, len: d, onPath: 0, hs: [], parts: { path: 0, off: 0, up: 0, down: 0 } };
   if (!d) return out;
   const n = Math.max(1, Math.ceil(d / (X.mpc / 2))), L = d / n;
   let ka = at(x0, y0);
@@ -874,22 +876,25 @@ function segment(X, x0, y0, x1, y1, cap) {
     let fa = f[ka], fb = f[kb];
     if (!(fa < Infinity) || !(fb < Infinity)) { if (cap == null) return null; fa = Math.min(cap, fa); fb = Math.min(cap, fb); }
     const g = X.h ? Math.max(-1, Math.min(1, (X.h[kb] - X.h[ka]) / L)) : 0;
-    const tm = L * ((fa + fb) / 2) * slopeFactor(g, climb);
+    const flat = L * ((fa + fb) / 2), tm = flat * slopeFactor(g, climb), onP = X.C.isPath[ka] && X.C.isPath[kb];
     out.time += tm; out.cost += tm * ((r[ka] + r[kb]) / 2);
-    if (X.C.isPath[ka] && X.C.isPath[kb]) out.onPath += L;
+    if (onP) { out.onPath += L; out.parts.path += flat; } else out.parts.off += flat;
+    if (g >= 0) out.parts.up += tm - flat; else out.parts.down += tm - flat;
     if (X.h) out.hs.push(X.h[kb]);
     ka = kb;
   }
   return out;
 }
-/** A polyline in cell units measured: time, cost, len, up, down (heights smoothed over ~9 samples), onPath (share). */
+/** A polyline in cell units measured: time, cost, len, up, down (heights smoothed over ~9 samples), onPath (share), parts
+ *  (segment's, summed). */
 function polyline(X, pts, cap) {
   let time = 0, cost = 0, len = 0, on = 0, up = 0, down = 0, hPrev = null;
-  const hs = [];
+  const hs = [], parts = { path: 0, off: 0, up: 0, down: 0 };
   for (let i = 1; i < pts.length; i++) {
     const s = segment(X, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cap);
     if (!s) return null;
     time += s.time; cost += s.cost; len += s.len; on += s.onPath;
+    for (const k in parts) parts[k] += s.parts[k];
     for (const v of s.hs) hs.push(v);
   }
   for (let i = 0; i < hs.length; i++) {
@@ -899,7 +904,7 @@ function polyline(X, pts, cap) {
     if (hPrev != null) { if (v > hPrev) up += v - hPrev; else down += hPrev - v; }
     hPrev = v;
   }
-  return { time, cost, len, up, down, onPath: len ? on / len : 0 };
+  return { time, cost, len, up, down, onPath: len ? on / len : 0, parts };
 }
 
 /** A route on the grid pulled tight, its zigzags between the 16 directions taken out: from each point kept, the farthest

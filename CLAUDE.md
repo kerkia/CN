@@ -1837,6 +1837,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   the time taken − A's (0 when A was taken); Exécution = the real time − the time taken; the automatic pace from the same times.
   On the Fougères photo 7 legs of 16 match a route outright (leg 1: A at 100 %, Choix 0). The worker's op `match`; `lineRoute`
   stays for any line.
+  **The calibration on the legs run** (owner, 2026-11-01; `calib` setting, on by default, « Calibrer les vitesses sur les postes
+  courus »): `segment`/`polyline` split a route's model time into `parts` (on paths, off them, what climbing and descending add);
+  `routeplan.calibrate(samples)` fits time = pace(runner) × (path × α + off + up × γ + down) on the runners' routes as laid on the
+  map — α, γ on a log grid, each runner's log pace the median of their residuals, the score the absolute residuals plus a prior
+  holding α and γ at 1 (`CAL`: 0.12, spreads 0.2 and 0.4); α only with two legs mostly on paths and two mostly off, γ only when
+  climbing is 4 % of the time over six legs; legs over 25 % off the fit set aside and the fit made again; 5 legs at least.
+  `calibrated(s, c)`: the paths' speeds ÷ α, the climb × γ. Solo: a first pass, the fit, then every leg again with the runner's
+  speeds (A becomes their best route), the pace the fitted one; Multi (`rcmCalibrate`): every leg of every runner laid on the map
+  once per settings, the group's α and γ, each runner's own pace for their Choix and Exécution. Measured: Fougères 8 of 16 legs,
+  paths 140 %, climb 9.6 m, both passes 17.6 s; « Test UI club » 4 runners, 25 of 52 legs, ~1 min for the group's pass.
   Pace: the one typed, else (solo) the median of the runner's legs' actual ÷ model time, (multi) the runners' median on the leg,
   clamped 3-20 min/km, else 6:00. Solo computes every leg (the current first) and adds the card « Itinéraires calculés » (Choix =
   model of one's route − A; Exécution = actual − model); multi computes the leg shown and lists the runners shown. Settings in

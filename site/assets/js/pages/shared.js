@@ -1236,7 +1236,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // fastest routes on the map as read, each runner's own route measured on the same model
   const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
     plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", prog: null, warn: "", dem: null, info: null,
-    decOn: RC.decisionOn(), dec: null, decAsk: "",
+    decOn: RC.decisionOn(), dec: null, decAsk: "", calib: null, calibKey: "", calibP: null,
     vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only
   // the map's pixels to metres and to longitude and latitude, from its georeference
   const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
@@ -1261,7 +1261,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!host) return;
     const vt = rcmVector();
     host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, decision: rcm.decOn, status: rcm.status, progress: rcm.prog, warn: rcm.warn, auto: rcm.auto[leg],
-      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null }))}`;
+      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null,
+      calib: RC.calibNote(rcm.s, rcm.calib, true) }))}`;
     RC.bindPanel(host, rcm.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
         if (what === "vector") {
@@ -1329,6 +1330,39 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     })();
     return rcm.demP;
   }
+  /**
+   * The group's calibration (owner, 2026-11-01): every leg of the circuit and every runner's route on it laid on the map, then
+   * the speeds on paths and the climb's cost fitted on the whole group, a pace for each runner (routeplan.calibrate). Once per
+   * settings, relief and map; the routes of the legs then follow the group's speeds.
+   */
+  function rcmCalibrate(my) {
+    const key = JSON.stringify([rcm.s, rcm.demKey, !!rcm.vec]);
+    if (rcm.calibKey === key) return rcm.calibP;
+    rcm.calibKey = key;
+    rcm.calibP = (async () => {
+      const samples = [];
+      await rcm.plan.settings(rcm.s);
+      for (let j = 1; j <= legsN; j++) {
+        if (my !== rcm.token) { rcm.calibKey = ""; return null; }
+        rcmStatus(t("rc.st.calibGroup", { n: j - 1, t: legsN }), (j - 1) / legsN);
+        const a = ctrls[j - 1], b = ctrls[j], routes = await rcm.plan.leg([a.x, a.y], [b.x, b.y]);
+        if (!routes) continue;
+        for (const r of runners) {
+          const d = legTime(r, j);
+          if (d == null) continue;
+          const i0 = indexAt(r.tr, r.passes[j - 1]), i1 = indexAt(r.tr, r.passes[j]), pts = [];
+          for (let i = i0; i <= i1; i++) pts.push([r.pxs[i], r.pys[i]]);
+          if (pts.length < 2) continue;
+          const m = await rcm.plan.match([a.x, a.y], [b.x, b.y], pts, RC.matchTol(null), routes);
+          if (m?.snapped !== false) samples.push({ who: r.uid, actual: d, parts: m.parts });
+        }
+      }
+      return RC.calibrate(samples);
+    })();
+    return rcm.calibP;
+  }
+  /** The settings the routes are searched with: the group's calibration applied when it holds. */
+  const rcmSettings = () => (rcm.s.calib && rcm.calib?.ok ? RC.calibrated(rcm.s, rcm.calib) : rcm.s);
   /** The leg shown: its routes, and each runner's measured (their median pace when none is typed). */
   async function rcmLeg() {
     if (!rcm.on) return;
@@ -1343,6 +1377,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       await rcm.plan.controls(ctrls.map((p) => [p.x, p.y]));
       if (my !== rcm.token) return;
       if (facts) { rcmFacts(facts); rcm.pic = null; }
+      rcm.calib = rcm.s.calib ? await rcmCalibrate(my) : null;
+      if (my !== rcm.token) return;
+      RC.setCalib(RC.calibNote(rcm.s, rcm.calib, true));
+      await rcm.plan.settings(rcmSettings());
+      if (my !== rcm.token) return;
       rcmStatus(t("rc.st.computing"), 0.5);
       const t0 = performance.now();
       const a = ctrls[j - 1], b = ctrls[j], routes = await rcm.plan.leg([a.x, a.y], [b.x, b.y]);
@@ -1358,10 +1397,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         const m = await rcm.plan.match([a.x, a.y], [b.x, b.y], pts, RC.matchTol(null), routes);
         if (my !== rcm.token) return;
         const c = RC.chosen(m, routes);
-        mine.set(r.uid, { ...m, ...c, actual: d });
+        mine.set(r.uid, { ...m, ...c, actual: d, pace: rcm.calib?.ok ? rcm.calib.pace[r.uid] : null });
         pairs.push({ actual: d, model: c.time });
       }
-      rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
+      rcm.mine[j] = mine;
+      // the leg's pace shown: the runners' median, from the group's calibration when it holds
+      const cp = rcm.calib?.ok ? [...mine.values()].map((m) => m.pace).filter(Boolean).sort((x, y) => x - y) : [];
+      rcm.auto[j] = cp.length ? cp[cp.length >> 1] : RC.autoPace(pairs);
       rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
         r: rcm.dem && rcm.dem !== "none" ? RC.reliefNote(CREDIT[rcm.dem]?.text || rcm.dem, rcm.pieces) : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
         + (rcm.info.north ? ` · ${tn("rc.st.north", rcm.info.north)}` : ""));
@@ -1370,7 +1412,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       rcmList(); mv.draw();
     } catch (e) { console.error(e); if (my === rcm.token) rcmStatus(t("rc.st.failed")); }
   }
-  window.anDebugRoutes = () => ({ on: rcm.on, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], settings: rcm.s });
+  window.anDebugRoutes = () => ({ on: rcm.on, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], mine: rcm.mine[leg], settings: rcm.s, calib: rcm.calib });
   async function rcmPicture() {
     try { await rcmPlan(); rcm.pic = await rcm.plan.picture(); } catch (e) { rcm.pic = null; }
     if (!rcm.picOn) rcm.pic = null;
@@ -1384,7 +1426,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const routes = rcm.on && leg ? rcm.routes[leg] : null;
     if (!routes?.length) { el.innerHTML = html`<p class="hint sp-hint">${t(!rcm.on ? "rc.tab.off" : !leg ? "rc.leg.none" : "rc.tab.wait")}</p>`; return; }
     const pace = rcmPace(), mine = rcm.mine[leg] || new Map();
-    const how = rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.auto[leg] ? t("rc.pace.median") : t("rc.pace.default");
+    const how = rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.calib?.ok ? t("rc.pace.calibMulti") : rcm.auto[leg] ? t("rc.pace.median") : t("rc.pace.default");
     const signed = (v) => `${v >= 0 ? "+" : "−"}${clock(Math.abs(v))}`;
     const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
     el.innerHTML = html`<p class="hint sp-hint">${t("rc.list.hint", { p: RC.minKm(pace), how })}</p>
@@ -1394,8 +1436,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb">
           <div class="rc-lb-row">${dot(m.variant)}<b>${m.matched ? RC.LETTERS[m.variant] : RC.sharesLabel(m) || t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
           <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m.facts, pace, clock)}</span>
-            <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * pace))}</b></span>
-            <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * pace))}</b></span></div></div>`; })}` : ""}`;
+            <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * (m.pace || pace)))}</b></span>
+            <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * (m.pace || pace)))}</b></span></div></div>`; })}` : ""}`;
   }
 
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs

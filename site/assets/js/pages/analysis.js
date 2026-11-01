@@ -1479,6 +1479,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (!host) return;
     const vr = rcVector(), vrec = files.map?.vec ? files.map : files.vector;
     host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, decision: rcs.decOn, status: rcs.status, progress: rcs.prog, warn: rcs.warn, auto: rcs.auto,
+      calib: RC.calibNote(rcs.s, rcs.calib, false),
       vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
     RC.bindPanel(host, rcs.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
@@ -1551,7 +1552,7 @@ export async function render(main, { query = {}, route } = {}) {
   async function rcRun() {
     if (!rcs.plan || !rcs.on || !rcs.info) return;
     const my = ++rcs.token;
-    rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = "";
+    rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = ""; rcs.calib = null; RC.setCalib("");
     try {
       const facts = await rcs.plan.settings(rcs.s, (f) => { if (my === rcs.token) rcReading(f); });
       if (my !== rcs.token) return;
@@ -1560,31 +1561,48 @@ export async function render(main, { query = {}, route } = {}) {
       if (my !== rcs.token) return;
       if (rcs.picOn) rcPicture();
       const n = targets.length - 1, now = Math.max(0, legAt(tNow));
-      const order = [...Array(Math.max(0, n)).keys()].sort((a, b) => (a === now ? -1 : b === now ? 1 : a - b));
-      let done = 0;
-      const t0 = performance.now();
-      for (const i of order) {
-        rcStatus(t("rc.st.legs", { n: done, t: n }), n ? done / n : null);
-        const a = targets[i]?.pos, b = targets[i + 1]?.pos;
-        if (a && b && !targets[i].missed && !targets[i + 1].missed) {
-          const routes = await rcs.plan.leg(a, b);
-          if (my !== rcs.token) return;
-          rcs.routes[i] = routes;
-          const l = legs[i];
-          if (routes && l?.t0 != null && l.t1 != null && offset != null) {
-            const i0 = indexAt(track, offset + l.t0), i1 = indexAt(track, offset + l.t1), pts = [];
-            for (let k = i0; k <= i1; k++) pts.push([pxs[k], pys[k]]);
-            if (pts.length > 1) {
-              const m = await rcs.plan.match(a, b, pts, RC.matchTol(rmsM), routes);
-              if (my !== rcs.token) return;
-              rcs.mine[i] = { ...m, ...RC.chosen(m, routes), actual: l.time };
+      const order = [...Array(Math.max(0, n)).keys()].sort((x, y) => (x === now ? -1 : y === now ? 1 : x - y));
+      const t0 = performance.now(), twice = !!rcs.s.calib;
+      // every leg: its routes, the runner's route laid on the map and matched (`label`, the progress from `from` over `span`)
+      const pass = async (label, from, span) => {
+        let done = 0;
+        for (const i of order) {
+          rcStatus(t(label, { n: done, t: n }), n ? from + (span * done) / n : null);
+          const a = targets[i]?.pos, b = targets[i + 1]?.pos;
+          if (a && b && !targets[i].missed && !targets[i + 1].missed) {
+            const routes = await rcs.plan.leg(a, b);
+            if (my !== rcs.token) return false;
+            rcs.routes[i] = routes;
+            const l = legs[i];
+            if (routes && l?.t0 != null && l.t1 != null && offset != null) {
+              const i0 = indexAt(track, offset + l.t0), i1 = indexAt(track, offset + l.t1), pts = [];
+              for (let k = i0; k <= i1; k++) pts.push([pxs[k], pys[k]]);
+              if (pts.length > 1) {
+                const m = await rcs.plan.match(a, b, pts, RC.matchTol(rmsM), routes);
+                if (my !== rcs.token) return false;
+                rcs.mine[i] = { ...m, ...RC.chosen(m, routes), actual: l.time };
+              }
             }
+            if (i === Math.max(0, legAt(tNow))) draw();
           }
-          if (i === Math.max(0, legAt(tNow))) draw();
+          done++;
         }
-        done++;
+        return true;
+      };
+      if (!(await pass("rc.st.legs", 0, twice ? 0.5 : 1))) return;
+      // the runner's own speeds on paths and climb from their legs (their routes as laid on the map), then the routes again
+      if (twice) {
+        const c = RC.calibrate(rcs.mine.map((m) => (m && m.snapped !== false ? { who: 0, actual: m.actual, parts: m.parts } : null)).filter(Boolean));
+        rcs.calib = c;
+        if (c.ok) {
+          await rcs.plan.settings(RC.calibrated(rcs.s, c));
+          if (my !== rcs.token) return;
+          rcs.routes = []; rcs.mine = [];
+          if (!(await pass("rc.st.calib", 0.5, 0.5))) return;
+        }
+        RC.setCalib(RC.calibNote(rcs.s, c, false));
       }
-      rcs.auto = RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
+      rcs.auto = rcs.calib?.ok ? rcs.calib.pace[0] : RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
       rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
         r: rcs.dem && rcs.dem !== "none" ? RC.reliefNote(CREDIT[rcs.dem]?.text || rcs.dem, rcs.pieces) : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : "")
@@ -1593,7 +1611,7 @@ export async function render(main, { query = {}, route } = {}) {
       rcTable(); draw();
     } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }
   }
-  window.anDebugRoutes = () => ({ on: rcs.on, info: rcs.info, dem: rcs.dem, routes: rcs.routes, mine: rcs.mine, auto: rcs.auto, settings: rcs.s });
+  window.anDebugRoutes = () => ({ on: rcs.on, info: rcs.info, dem: rcs.dem, routes: rcs.routes, mine: rcs.mine, auto: rcs.auto, settings: rcs.s, calib: rcs.calib });
   async function rcPicture() {
     if (!rcs.plan) return;
     try { rcs.pic = await rcs.plan.picture(); } catch (e) { rcs.pic = null; }
@@ -1608,7 +1626,7 @@ export async function render(main, { query = {}, route } = {}) {
     const rows = legs.map((l, i) => ({ l, i, routes: rcs.routes[i], mine: rcs.mine[i] })).filter((x) => x.routes?.length);
     if (!rcs.on || !rows.length) { el.innerHTML = html`<p class="hint sp-hint">${t(rcs.on ? "rc.tab.wait" : "rc.tab.off")}</p>`; return; }
     const pace = rcPace();
-    const how = rcs.s.pace > 0 ? "rc.pace.typed" : rcs.auto ? "rc.pace.auto" : "rc.pace.default";
+    const how = rcs.s.pace > 0 ? "rc.pace.typed" : rcs.calib?.ok ? "rc.pace.calib" : rcs.auto ? "rc.pace.auto" : "rc.pace.default";
     const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
     el.innerHTML = html`<p class="hint sp-hint">${t("rc.table.hint", { p: RC.minKm(pace), how: t(how) })}</p>
       ${rows.map(({ l, i, routes, mine }) => html`<div class="rc-lb" data-leg="${i}">

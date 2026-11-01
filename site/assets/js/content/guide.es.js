@@ -330,7 +330,23 @@ export function build(X) {
             html`<b>Ejecución</b>: tu tiempo real menos el tiempo de la ruta tomada: lo que ha costado la propia carrera (dudas, errores, terreno
               más lento de lo que dice el mapa).`,
           ])}
-          <p>Con el ritmo automático, la ejecución es nula en la mediana: indica qué tramos fueron más lentos o más rápidos de lo habitual.</p>`)}`,
+          <p>Con el ritmo automático, la ejecución es nula en la mediana: indica qué tramos fueron más lentos o más rápidos de lo habitual.</p>`)}
+        ${slide("Coach · prueba", "6. La calibración con los tramos corridos", html`
+          <p>Las velocidades por defecto son las de un corredor medio. Los tramos cuya ruta se conoce dicen lo que valen para este corredor: se sabe
+            cuántos metros corrió por un camino, fuera de él, en subida, y en cuánto tiempo. Ozimut saca de ellos tres números (la casilla «Calibrar
+            las velocidades con los tramos corridos», marcada por defecto):</p>
+          ${list([
+            html`su <b>ritmo</b> en bosque limpio y llano;`,
+            html`su <b>velocidad en los caminos</b> frente al bosque: solo si al menos dos tramos se corren sobre todo por caminos y dos sobre todo
+              fuera de ellos;`,
+            html`el <b>coste de la subida</b>: solo si la subida pesa un 4 % del tiempo en al menos seis tramos.`,
+          ])}
+          <p>Con pocos tramos, estos valores se mueven poco: solo se apartan de los valores por defecto si los tramos lo dicen claramente. Los tramos
+            a más de un 25 % del modelo (un error, una parada, un mapa mal leído) se dejan de lado antes de un segundo ajuste: la calibración no debe
+            absorber los errores que la ejecución quiere mostrar. Después, las rutas se recalculan con esas velocidades: A es la mejor ruta <i>para
+            este corredor</i>, la elección se mide frente a ella y la ejecución frente a sus velocidades habituales. En el Análisis de grupo, la
+            velocidad en los caminos y la subida se calibran con todo el grupo (todos los tramos de todos los corredores), y cada uno conserva su
+            ritmo.</p>`)}`,
     });
   }
 
