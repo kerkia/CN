@@ -703,9 +703,14 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   2026-10-31): every club
   FFCO lists with its website, as a tree — the ligues (their site), their départements (their committee's, the CDCO's), their
   clubs (their own) — beside a map of France's ligues and départements (`geo/departements.json` and `regions.json`, drawn as SVG;
-  hidden under 640 px). A node chosen in the tree lights up on the map with what it holds and the map zooms to its ligue; a click
-  on the map chooses the ligue, a second one inside it the département, and opens that node alone in the tree (`?sel=L:AR|D:69`);
-  the map is never zoomed, only coloured (owner, 2026-10-31: every ligue stays in reach).
+  hidden under 640 px). A node under the mouse in the tree (or chosen) lights up on the map as a chosen one does — a ligue its
+  départements, a département or a club its own (owner, 2026-11-01); the map is never zoomed, only coloured (owner, 2026-10-31:
+  every ligue stays in reach); a click on the map chooses the ligue, a second one inside it the département, and opens that node
+  alone in the tree (`?sel=L:AR|D:69|C:0109`). **A node chosen fills the card above the map** (owner, 2026-11-01: `.cdir-card`,
+  `drawCard`; the map and the card sticky on the right): its kind and place, website, size, figures, and the contacts below; a
+  club's card has « Page du club » (`link.club`), its name in the tree no longer links. The counts of known websites are one
+  line above the tree (`.cdir-sum`). **Under 900 px** the tree is alone and a choice shows the card (and the map above 640 px)
+  in its place, « ‹ Retour à la liste » above it leading back to the node (`.cdir.show-info`).
   A website not found is said (« site non trouvé »), as is a département without a committee. The data: `ffco_scraper/prov/clubdir.py`,
   run by every provisional run after the club directory: FFCO's structure pages on api.ffcorientation.fr (`/iframe/structures/`,
   `/iframe/ligues/<id>/`, `/iframe/comites/<id>/`; tables `prov_struct`, `prov_struct_club`), each read again every 7 days (the
@@ -715,9 +720,9 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   there, whose popups are now read every 14 days (30 before). **The contacts are FFCO's licensees' only** (owner, 2026-10-31):
   a file of their own, `fr/clubdir_contacts.json` (`{L, D, C}` by ligue, département, club), which the login gate refuses to a
   session without a licence or of a demo account (`_middleware.js`, 403 `licence`); the privacy page says what is kept and why.
-  Each opened node (and a club's ▸) shows them under its row. **Figures**, in the browser (`clubStats`): per club, the licensees
-  holding a value in the site's method at the last month-end, in any discipline (by discipline in the tooltip), and the runners
-  whose last race is within 12 months; summed by département and ligue, in the rows and under the map.
+  The card shows them. **Figures**, in the browser (`clubStats`): per club, the licensees holding a value in the site's method at
+  the last month-end, in any discipline (by discipline in the card and the tooltip), and the runners whose last race is within
+  12 months; summed by département and ligue, in the rows and the card.
   A club's site: FFCO's directory's, else the agenda's (`prov_clubs`, tagged « d'après l'agenda », payment and registration hosts
   and the structures' own sites left out). `clubdir.build` writes `fr/clubdir.json` and `fr/clubdir_contacts.json` only once every
   listed page was read and when their content changed (a deploy then). On 2026-10-31: 13 ligues (13 with a site), 95 committees (41), 189 clubs (163; 2 from the
