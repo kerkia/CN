@@ -2239,6 +2239,7 @@ export default {
   "an.cal.clear": "Clear all",
   "an.cal.done": "View the race",
   "an.st.finishFound": "Finish found on the map where the track stops.",
+  "an.st.mapOrder": "Control order read on the map, following the lines from the start to the finish.",
   "an.dropAll": "Drop your files: they replace those of the current analysis.",
   "an.st.otherDay": "The track is from {d1}, the chosen race from {d2}: its published times are not used; the race is read from the track.",
   "an.st.otherRunner": "{r}'s published start does not fall within the track: their times are not used; the race is read from the track.",

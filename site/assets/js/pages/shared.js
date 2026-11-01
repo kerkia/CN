@@ -30,7 +30,7 @@ import * as RC from "../trace/routeplan.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
-import { alignTrack, visitOrder } from "../trace/align.js";
+import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
 import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
@@ -512,9 +512,23 @@ async function editor(box, ctx) {
       const hit = ex >= 0 && ey >= 0 && ex <= W && ey <= H ? st.detect.probeFinish(ex, ey, 50 * f.scale) : null;
       if (hit) pts.push({ x: hit.x, y: hit.y, kind: "finish" });
     }
-    // the controls in order: the IOF course, else the trace's visiting order, else as read (to be checked)
+    // the controls in order: the IOF course, else the map's own (its legs, followed from the start: course.js `order`),
+    // else the trace's visiting order, else as read (to be checked)
     st.controls = [];
-    if (iofCourse && validGeo(st.geo)) {
+    const fin = pts.find((p) => p.kind === "finish");
+    const seq = !iofCourse && st.detect?.order ? st.detect.order({ finish: fin ? [fin.x, fin.y] : null }) : null;
+    if (seq && seq.points.filter((q) => q.kind === "control").length >= 2) {
+      let list = seq.points;
+      if (seq.reversible && st.track && validGeo(st.geo)) {
+        const rev = [...list.filter((q) => q.kind === "start"), ...list.filter((q) => q.kind === "control").reverse(), ...list.filter((q) => q.kind === "finish")];
+        const f = fitFromGeo(st.geo, st.track), a = passesInOrder(st.track, f, list, 20), b = passesInOrder(st.track, f, rev, 20);
+        if (b.count > a.count || (b.count === a.count && b.cost < a.cost)) list = rev;
+      }
+      st.controls = list.map((q) => ({ kind: q.kind, code: "", x: q.x, y: q.y }));
+      if (fin && !list.some((q) => q.kind === "finish")) st.controls.push({ ...fin });
+      const off = pts.filter((p) => p.kind === "control" && !list.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 1.2 * st.r));
+      if (off.length || !seq.complete) { st.controls.splice(st.controls.length - (st.controls[st.controls.length - 1].kind === "finish" ? 1 : 0), 0, ...off.map((p) => ({ ...p }))); st.notes.push(t("sh.e.checkOrder")); }
+    } else if (iofCourse && validGeo(st.geo)) {
       for (const cc of iofCourse.controls) {
         const c = st.iof.controls.get(cc.id);
         if (c?.lat == null) continue;

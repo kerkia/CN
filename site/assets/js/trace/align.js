@@ -109,32 +109,9 @@ export function alignTrack(track, pts, { rStar = null, northUp = true, tol = 20 
  * passed twice — run past on an earlier leg, then visited (the Fougères photo's 8, passed between 4 and 5: 2026-10-31)
  * — takes the pass that puts it, in time, next to the controls the legs join it to.
  */
-export function visitOrder(track, fit, pts, tol = 20, { leg = null } = {}) {
-  const n = track.n;
-  const passes = pts.map((p) => {
-    const [mx, my] = toM(fit, p.x, p.y), d = new Float32Array(n);
-    for (let k = 0; k < n; k++) d[k] = Math.hypot(track.x[k] - mx, track.y[k] - my);
-    const out = [];
-    for (let k = 0; k < n; k++) {
-      if (d[k] > 1.5 * tol) continue;
-      if ((k === 0 || d[k] < d[k - 1]) && (k === n - 1 || d[k] <= d[k + 1])) {
-        const last = out[out.length - 1];
-        if (last && track.t[k] - last.t < 20) { if (d[k] < last.d) { last.k = k; last.d = d[k]; last.t = track.t[k]; } }
-        else out.push({ k, d: d[k], t: track.t[k] });
-      }
-    }
-    return { d, out };
-  });
-  const inlier = (i) => passes[i].out.some((p) => p.d <= 1.5 * tol);           // a hand-placed point on a photo is rough
-  // the heading change around a point (over ± 10 s), in degrees: a runner punching turns away, a passer-by does not
-  const turnAt = (k) => {
-    const a = Math.max(0, k - 10), b = Math.min(n - 1, k + 10);
-    if (a === k || b === k) return 0;
-    const h1 = Math.atan2(track.y[k] - track.y[a], track.x[k] - track.x[a]), h2 = Math.atan2(track.y[b] - track.y[k], track.x[b] - track.x[k]);
-    let d = Math.abs(h2 - h1); if (d > Math.PI) d = 2 * Math.PI - d;
-    return (d * 180) / Math.PI;
-  };
-  const cost = (p) => p.d - 0.15 * Math.min(120, turnAt(p.k));
+export function visitOrder(track, fit, pts, tol = 20, { leg = null, ordered = false } = {}) {
+  if (ordered) return passesInOrder(track, fit, pts, tol);
+  const n = track.n, { passes, inlier, cost } = passesOf(track, fit, pts, tol);
   const cands = pts.map((p, i) => i).filter((i) => pts[i].kind === "control" && inlier(i))
     .map((i) => ({ i, list: passes[i].out.filter((p) => p.d <= 1.5 * tol) }));
   const pick = cands.map(({ list }) => list.reduce((a, p, j) => (cost(p) < cost(list[a]) ? j : a), 0));
@@ -190,4 +167,89 @@ export function visitOrder(track, fit, pts, tol = 20, { leg = null } = {}) {
   if (startT != null) pass.set(si, startT);
   if (finishT != null) pass.set(fi, finishT);
   return { order: controls.map((c) => c.i), pass, startT, finishT, inliers: pts.map((p, i) => i).filter(inlier) };
+}
+
+/** Each point's passes: the local minima of its distance along the trace within 1.5 tol (one per 20 s), and the cost of
+ *  a pass — its distance less a bonus for the heading change around it (± 10 s): a runner punching turns away, a
+ *  passer-by does not. */
+function passesOf(track, fit, pts, tol, reach = 1.5) {
+  const n = track.n;
+  const passes = pts.map((p) => {
+    const [mx, my] = toM(fit, p.x, p.y), d = new Float32Array(n);
+    for (let k = 0; k < n; k++) d[k] = Math.hypot(track.x[k] - mx, track.y[k] - my);
+    const out = [];
+    for (let k = 0; k < n; k++) {
+      if (d[k] > reach * tol) continue;
+      if ((k === 0 || d[k] < d[k - 1]) && (k === n - 1 || d[k] <= d[k + 1])) {
+        const last = out[out.length - 1];
+        if (last && track.t[k] - last.t < 20) { if (d[k] < last.d) { last.k = k; last.d = d[k]; last.t = track.t[k]; } }
+        else out.push({ k, d: d[k], t: track.t[k] });
+      }
+    }
+    return { d, out };
+  });
+  const inlier = (i) => passes[i].out.some((p) => p.d <= 1.5 * tol);           // a hand-placed point on a photo is rough
+  const turnAt = (k) => {
+    const a = Math.max(0, k - 10), b = Math.min(n - 1, k + 10);
+    if (a === k || b === k) return 0;
+    const h1 = Math.atan2(track.y[k] - track.y[a], track.x[k] - track.x[a]), h2 = Math.atan2(track.y[b] - track.y[k], track.x[b] - track.x[k]);
+    let d = Math.abs(h2 - h1); if (d > Math.PI) d = 2 * Math.PI - d;
+    return (d * 180) / Math.PI;
+  };
+  const cost = (p) => p.d - 0.15 * Math.min(120, turnAt(p.k));
+  return { passes, inlier, cost };
+}
+
+/**
+ * The passes of a course read in its order on the map (course.js `order`: start, controls, finish): each control takes
+ * the pass that keeps the times rising along the course — the most controls passed, then the least cost — so that a
+ * control run past on an earlier leg keeps its real visit (2026-11-01). The trace times the course; it does not order it.
+ * Returns visitOrder's shape: `order` the controls passed, in the course's order; `missed` the others.
+ */
+export function passesInOrder(track, fit, pts, tol = 20) {
+  const n = track.n, { passes, inlier, cost } = passesOf(track, fit, pts, tol, 2.5);
+  const idx = pts.map((p, i) => i).filter((i) => pts[i].kind === "control");
+  // within 1.5 tol as elsewhere; a control with none, within 2.5 (a circle read off its centre on a photo: the photo's
+  // 15, 7 px off; its neighbours in the course keep its time in place)
+  const cand = idx.map((i) => { const near = passes[i].out.filter((p) => p.d <= 1.5 * tol); return near.length ? near : passes[i].out; });
+  // best[j][m]: the best chain whose last control passed is j, at its pass m — [count, -cost], and where it came from
+  const best = cand.map((list) => list.map(() => null));
+  for (let j = 0; j < idx.length; j++) for (let m = 0; m < cand[j].length; m++) {
+    const p = cand[j][m];
+    let b = { count: 1, cost: cost(p), from: null };
+    for (let i = 0; i < j; i++) for (let l = 0; l < cand[i].length; l++) {
+      const q = best[i][l];
+      if (!q || cand[i][l].t >= p.t) continue;
+      const c = { count: q.count + 1, cost: q.cost + cost(p), from: [i, l] };
+      if (c.count > b.count || (c.count === b.count && c.cost < b.cost)) b = c;
+    }
+    best[j][m] = b;
+  }
+  let top = null;
+  best.forEach((row, j) => row.forEach((b, m) => { if (b && (!top || b.count > top.b.count || (b.count === top.b.count && b.cost < top.b.cost))) top = { j, m, b }; }));
+  const chosen = new Map();
+  for (let at = top && [top.j, top.m]; at; at = best[at[0]][at[1]].from) chosen.set(idx[at[0]], cand[at[0]][at[1]]);
+  const order = idx.filter((i) => chosen.has(i)), firstT = order.length ? chosen.get(order[0]).t : Infinity;
+  const lastT = order.length ? chosen.get(order[order.length - 1]).t : -Infinity;
+  let startT = null, finishT = null;
+  const si = pts.findIndex((p) => p.kind === "start"), fi = pts.findIndex((p) => p.kind === "finish");
+  if (si >= 0) {
+    const before = passes[si].out.filter((p) => p.d <= 1.5 * tol && p.t < firstT);
+    if (before.length) {
+      let k = before[before.length - 1].k;
+      while (k + 1 < n && passes[si].d[k + 1] <= 1.5 * tol && track.t[k + 1] < firstT) k++;
+      startT = track.t[k];
+    }
+  }
+  if (fi >= 0) {
+    let k0 = 0;
+    while (k0 < n && track.t[k0] < lastT) k0++;
+    const k = finishArrival(track, passes[fi].d, k0, 1.5 * tol);
+    if (k >= 0) finishT = track.t[k];
+  }
+  const pass = new Map(order.map((i) => [i, chosen.get(i).t]));
+  if (startT != null) pass.set(si, startT);
+  if (finishT != null) pass.set(fi, finishT);
+  return { order, pass, startT, finishT, inliers: pts.map((p, i) => i).filter(inlier), missed: idx.filter((i) => !chosen.has(i)),
+    count: order.length, cost: top ? top.b.cost : 0 };
 }

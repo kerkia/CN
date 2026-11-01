@@ -202,22 +202,169 @@ export async function detectCourse(image, { maxSide = 1800, debug = false } = {}
   /** The share of the straight way between two symbols (image points, each left at 1.3 r*) inked with the
    *  overprint, within a pixel and a half of the line: a leg printed from one to the other comes near 1 (ISOM cuts it
    *  here and there), two symbols no leg joins near 0. For the page: the legs say which controls follow each other. */
-  const leg = (A, B) => {
-    if (!rStar) return 0;
-    const ax = A[0] * s, ay = A[1] * s, bx = B[0] * s, by = B[1] * s, L = Math.hypot(bx - ax, by - ay), m = 1.3 * rStar;
-    if (L < 2 * m + 4) return 0;
+  const leg = (A, B) => (rStar ? legIn(A[0] * s, A[1] * s, B[0] * s, B[1] * s, 1.3 * rStar, 1.3 * rStar) : 0);
+  function legIn(ax, ay, bx, by, ma, mb) {
+    const L = Math.hypot(bx - ax, by - ay);
+    if (L < ma + mb + 4) return 0;
     const ux = (bx - ax) / L, uy = (by - ay) / L;
     let n = 0, on = 0;
-    for (let u = m; u <= L - m; u += 1) {
-      n++;
-      for (const o of [-1.5, 0, 1.5]) {
-        const X = Math.round(ax + u * ux - o * uy), Y = Math.round(ay + u * uy + o * ux);
-        if (X >= 0 && Y >= 0 && X < w && Y < h && ink[Y * w + X] >= tInk / 2) { on++; break; }
+    for (let u = ma; u <= L - mb; u += 1) { n++; if (inkNear(ax + u * ux, ay + u * uy, ux, uy)) on++; }
+    return n ? on / n : 0;
+  }
+  // ink at a point of a straight way, within a pixel and a half across it
+  function inkNear(x, y, ux, uy) {
+    for (const o of [-1.5, 0, 1.5]) {
+      const X = Math.round(x - o * uy), Y = Math.round(y + o * ux);
+      if (X >= 0 && Y >= 0 && X < w && Y < h && ink[Y * w + X] >= tInk / 2) return true;
+    }
+    return false;
+  }
+  // the course in its order, read as a runner reads the map — not from the trace (owner, 2026-11-01: the trace had
+  // numbered 8 before 5, 6, 7): from the start triangle along the legs, and back from the finish along them; where a
+  // leg leads to no circle found, the circle is looked for at its end (the photo's 15 and 16, 2026-11-01)
+  const sequence = rStar && start && controls.length >= 2 ? followCourse(finish) : null;
+  /** The course's order again, with a finish placed by the page (where the trace ends: a finish over water is not read
+   *  from the map) — `finish` [x, y] in the image's pixels. */
+  const order = ({ finish: F = null } = {}) => {
+    if (!rStar || !start || controls.length < 2) return null;
+    const q = followCourse(F ? { x: F[0] * s, y: F[1] * s, r2: finish?.r2 ?? 1.4 * rStar } : finish);
+    return { ...q, points: q.points.map(back) };
+  };
+  function followCourse(fin) {
+    const syms = [{ kind: "start", x: start.x, y: start.y, r: start.R }, ...controls.map((c) => ({ kind: "control", x: c.x, y: c.y, r: rStar, c })),
+      ...(fin ? [{ kind: "finish", x: fin.x, y: fin.y, r: fin.r2 }] : [])];
+    const used = new Set();
+    const margin = (p) => (p.kind === "control" ? 1.3 : 1.1) * p.r;
+    const linked = (a, b) => legIn(a.x, a.y, b.x, b.y, margin(a), margin(b));
+    // ISOM: the start triangle points at the first control — a leg leaving it off its tips is the finish's, when the
+    // start is drawn in the finish circle (the synthetic maps)
+    const tip = (from, p) => {
+      if (from.kind !== "start" || start.ang == null) return 0;
+      const b = Math.atan2(p.y - from.y, p.x - from.x);
+      let d = Math.PI;
+      for (let k = 0; k < 3; k++) { let x = Math.abs(b - start.ang - (2 * Math.PI * k) / 3) % (2 * Math.PI); d = Math.min(d, x, 2 * Math.PI - x); }
+      return Math.max(0, 1 - d / ((20 * Math.PI) / 180));                     // the closest to a tip wins
+    };
+    // the next symbol along a leg from `from`: one joined by a printed leg, else a circle at the end of a leg leaving it
+    // a leg ends at its next symbol, but the line seems to go on to any symbol beyond it: the nearest one joined (the
+    // start's tip first), and a circle not read yet on the way is the next one (the photo's 16, between its finish and 15)
+    const add = (c) => { const q = { kind: "control", x: c.x, y: c.y, r: rStar, c }; syms.push(q); controls.push(c); return q; };
+    const joinedTo = (from, cands, onWay) => {
+      let best = null;
+      for (const p of cands) {
+        if (linked(from, p) < 0.6) continue;
+        const k = [p.kind === "finish" ? 1 : 0, -tip(from, p), Math.hypot(p.x - from.x, p.y - from.y)];   // controls first
+        if (!best || k[0] < best.k[0] || (k[0] === best.k[0] && (k[1] < best.k[1] - 0.1 || (Math.abs(k[1] - best.k[1]) <= 0.1 && k[2] < best.k[2])))) best = { p, k };
+      }
+      if (!best) return null;
+      // a symbol placed on the way, its own end of the leg faint (the photo's 15, over yellow): it comes first
+      const L = Math.hypot(best.p.x - from.x, best.p.y - from.y), ux = (best.p.x - from.x) / L, uy = (best.p.y - from.y) / L;
+      const onWayTo = cands.filter((q) => q !== best.p && q.kind === "control").map((q) => ({ q, a: (q.x - from.x) * ux + (q.y - from.y) * uy, o: Math.abs((q.x - from.x) * uy - (q.y - from.y) * ux) }))
+        .filter((z) => z.a > 0 && z.a < L - rStar && z.o < 0.6 * rStar).sort((p1, p2) => p1.a - p2.a)[0];
+      if (onWayTo) return onWayTo.q;
+      const c = onWay ? ringOnWay(from, best.p, [...used]) : null;
+      return c ? add(c) : best.p;
+    };
+    const next = (from, kinds, onWay = false) => {
+      const p = joinedTo(from, syms.filter((q) => !used.has(q) && kinds.includes(q.kind)), onWay);
+      if (p) return p;
+      const c = alongLeg(from, [...used], syms.filter((q) => !used.has(q) && kinds.includes(q.kind)));
+      return c ? (c.sym || add(c)) : null;
+    };
+    const twoFromStart = syms.filter((p) => p.kind === "control" && linked(syms[0], p) >= 0.6).length >= 2;
+    const fwd = [syms[0]]; used.add(syms[0]);
+    for (let p = syms[0]; ;) {
+      const q = next(p, ["control", "finish"]);
+      if (!q) break;
+      fwd.push(q); used.add(q); p = q;
+      if (q.kind === "finish") break;
+    }
+    // back from the finish until the two ways meet: a leg, or two circles so close that no leg is drawn between them
+    const end = fwd[fwd.length - 1], close = (p) => Math.hypot(p.x - end.x, p.y - end.y) < 2.5 * rStar;
+    const rev = [];
+    let met = false;
+    if (fin && end.kind !== "finish") {
+      const f = syms.find((p) => p.kind === "finish");
+      rev.push(f); used.add(f);
+      for (let p = f; !(met = close(p));) {
+        const q = joinedTo(p, [...syms.filter((x) => !used.has(x) && x.kind === "control"), end], true) || ((c) => (c ? c.sym || add(c) : null))(alongLeg(p, [...used], [...syms.filter((x) => !used.has(x) && x.kind === "control"), end]));
+        if (!q) break;
+        if (q === end) { met = true; break; }
+        rev.push(q); used.add(q); p = q;
       }
     }
-    return n ? on / n : 0;
-  };
+    const seq = [...fwd, ...rev.reverse()];
+    const missing = syms.filter((p) => p.kind === "control" && !seq.includes(p)).length;
+    return { points: seq.map((p) => ({ kind: p.kind, x: p.x, y: p.y })), complete: !missing && seq[seq.length - 1].kind === "finish" && (!rev.length || met),
+      // the start drawn in the finish circle (two legs leave it): the triangle's tips may not tell the way round (the
+      // trace will)
+      reversible: (!!fin && Math.hypot(fin.x - start.x, fin.y - start.y) < 2 * rStar) || twoFromStart };
+  }
+  // a leg leaving `from` that no symbol ends: the straight inked run starting at its edge (gaps of up to 0.6 r*, 60 %
+  // inked, a radius long at least), not toward a symbol already placed; the ring of the control's size beyond its end
+  function alongLeg(from, placed, known = []) {
+    const r0 = from.kind === "control" ? 1.25 * rStar : 1.05 * from.r, gapMax = 0.6 * rStar, far = 30 * rStar;
+    let best = null;
+    for (let deg = 0; deg < 360; deg += 2) {
+      const ux = Math.cos((deg * Math.PI) / 180), uy = Math.sin((deg * Math.PI) / 180);
+      let first = -1, last = -1, on = 0;
+      for (let d = r0; d <= far; d += 1) {
+        if (inkNear(from.x + d * ux, from.y + d * uy, ux, uy)) { if (first < 0) first = d; last = d; on++; }
+        else if (first >= 0 && d - last > gapMax) break;
+        else if (first < 0 && d - r0 > 0.5 * rStar) break;                  // a leg starts at the symbol's edge
+      }
+      if (first < 0 || last - first < rStar || on < 0.6 * (last - first + 1)) continue;
+      // not the leg that came in, nor one toward a symbol placed: no placed symbol near the way out to its end
+      const toward = placed.some((p) => { const vx = p.x - from.x, vy = p.y - from.y, a = vx * ux + vy * uy, d = Math.hypot(vx, vy);
+        if (p === from || a <= 0) return false;
+        if (a < last + 2 * rStar && Math.abs(vx * uy - vy * ux) < Math.max(0.8 * rStar, 0.8 * p.r)) return true;
+        return Math.acos(Math.min(1, a / d)) < Math.atan2(rStar, d) + (4 * Math.PI) / 180;   // along the leg that came in
+      });
+      if (toward) continue;
+      const len = (last - first) * (on / (last - first + 1));
+      if (!best || len > best.len) best = { ux, uy, last, len };
+    }
+    if (!best) return null;
+    // a symbol already read that the leg points at, its own end of the leg too faint to join them (the photo's 15)
+    const hit = known.map((q) => ({ q, a: (q.x - from.x) * best.ux + (q.y - from.y) * best.uy, o: Math.abs((q.x - from.x) * best.uy - (q.y - from.y) * best.ux) }))
+      .filter((z) => z.a > 0 && z.a < best.last + 2 * rStar && z.o < 0.6 * Math.max(rStar, z.q.r)).sort((p1, p2) => p1.a - p2.a)[0];
+    // the first ring met along the leg (it points at the circle's centre): beyond its end, or on the way when the ink
+    // runs on through the circle (two overlapping circles, the photo's 15 and 16) — before the symbol it points at, if any
+    const stop = hit ? hit.a - 1.2 * rStar : best.last + 1.8 * rStar;
+    let ring = null;
+    for (let d = Math.max(r0 + rStar, 2 * rStar); d <= stop && !(ring && d > ring.d + rStar); d += 1) {
+      for (const lat of [-0.3, -0.15, 0, 0.15, 0.3]) {
+        const x = from.x + d * best.ux - lat * rStar * best.uy, y = from.y + d * best.uy + lat * rStar * best.ux;
+        const q = ridgeRing(ink, w, h, x, y, rStar, tInk), v = q.score + q.arcs;
+        if (v >= 0.8 && (!ring || v > ring.v)) ring = { x, y, v, d };
+      }
+    }
+    const c = ring ? legRing(ring, placed) : null;
+    return c || (hit ? { sym: hit.q } : null);
+  }
+  // a circle not read yet on the leg from `a` to `b`: the best ring on the way between their margins
+  function ringOnWay(a, b, placed) {
+    const L = Math.hypot(b.x - a.x, b.y - a.y), ux = (b.x - a.x) / L, uy = (b.y - a.y) / L, ma = (a.kind === "control" ? 1.3 : 1.1) * a.r;
+    const mb = (b.kind === "control" ? 1.3 : 1.1) * b.r;
+    let ring = null;
+    for (let d = ma + 0.8 * rStar; d <= L - mb - 0.8 * rStar; d += 1) for (const lat of [-0.3, -0.15, 0, 0.15, 0.3]) {
+      const x = a.x + d * ux - lat * rStar * uy, y = a.y + d * uy + lat * rStar * ux;
+      const q = ridgeRing(ink, w, h, x, y, rStar, tInk), v = q.score + q.arcs;
+      if (v >= 0.8 && (!ring || v > ring.v)) ring = { x, y, v };
+    }
+    return ring ? legRing(ring, [...placed, b]) : null;
+  }
+  // a ring where a leg says a control is: weaker evidence than anywhere else on the map, the course's colour, empty
+  // inside, no line across it (a leg stops at a control's circle), apart from the symbols placed
+  function legRing(ring, placed) {
+    const c = bestRidge(ink, w, h, Math.round(ring.x), Math.round(ring.y), rStar, tInk);
+    if (c.score + c.arcs < 0.8 || c.score < 0.45 || c.arcs < 0.25 || !purpleRing(ringColour(ink, dens, w, h, c.x, c.y, c.r))
+      || inkInside(ink, w, h, c.x, c.y, c.r, tInk) > 0.3 || lineAcross(ink, w, h, c.x, c.y, c.r, tInk) >= 0.8
+      || placed.concat(controls).some((p) => Math.hypot(p.x - c.x, p.y - c.y) < 1.2 * rStar)) return null;
+    return { x: c.x, y: c.y, r: c.r, score: c.score, raw: c.arcs, alongLeg: true };
+  }
   return { W, H, s, r: rStar ? rStar / s : null, controls: controls.map(back), probe, probeFinish, leg,
+    sequence: sequence && { ...sequence, points: sequence.points.map(back) }, order,
     finish: finish && { ...back(finish), r1: finish.r1 == null ? null : finish.r1 / s, r2: finish.r2 / s },
     start: start && { ...back(start), R: start.R / s }, nCircles: circles.length, lw,
     found: debug ? found.map(back) : undefined, added: debug && added ? added.map(back) : undefined, startCands: debug && startCands ? startCands.map(back) : undefined };
@@ -608,14 +755,14 @@ function inkInside(M, w, h, x, y, r, t) {
   }
   return n ? on / n : 0;
 }
-/** Whether a straight line crosses a circle's inside: of 36 chords (12 directions, through the centre and 0.4 r either
- *  side, within 0.75 r of it), the largest share inked at half the mask's level. Legs stop at a control's circle; a
+/** Whether a straight line crosses a circle's inside: of 84 chords (12 directions, through the centre and up to 0.6 r
+ *  either side, within 0.75 r of it), the largest share inked at half the mask's level. Legs stop at a control's circle; a
  *  crossing of legs, or a hatching, runs through. */
 function lineAcross(M, w, h, x, y, r, t) {
   let best = 0;
   for (let d = 0; d < 12; d++) {
     const c = Math.cos((Math.PI * d) / 12), s = Math.sin((Math.PI * d) / 12);
-    for (const o of [-0.4, 0, 0.4]) {
+    for (const o of [-0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6]) {
       const half = Math.sqrt(0.5625 - o * o) * r;
       let n = 0, on = 0;
       for (let u = -half; u <= half; u += 1) {

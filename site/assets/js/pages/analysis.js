@@ -29,7 +29,7 @@ import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from ".
 import { isVectorName, readVector, renderVector, latLonOf, ownImage, throughGeo, cover, VECTOR_ACCEPT } from "../trace/vectorroutes.js";
 import { detectCourse } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
-import { alignTrack, visitOrder } from "../trace/align.js";
+import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
 import { bestLegs, refLegs, legLoss } from "../trace/legs.js";
 import { parisOffsetMs } from "../trace/published.js";
@@ -196,6 +196,7 @@ export async function render(main, { query = {}, route } = {}) {
   let iofIndex = 0, northUp = true, restoredFiles = false;
   let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
+  let mapOrdered = false;                                                  // the targets in the course's order read on the map
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = prefs.colour === "speed" ? "speed" : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
@@ -589,7 +590,7 @@ export async function render(main, { query = {}, route } = {}) {
   // file after a cut one, 2026-10-15) has other passes — it starts afresh
   const traceSig = () => (track ? `${Math.round(track.ms0 / 1000)}:${track.n}` : null);
   function savePositions(done = calibrated) {
-    const rec = { v: 2, done, trace: traceSig(), items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
+    const rec = { v: 2, done, trace: traceSig(), mapOrdered, items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
       fit: fit && !geoFit ? { kind: fit.kind, m11: fit.m11, m12: fit.m12, m21: fit.m21, m22: fit.m22, tx: fit.tx, ty: fit.ty, scale: fit.scale, rotation: fit.rotation } : null };
     try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ }
   }
@@ -652,6 +653,7 @@ export async function render(main, { query = {}, route } = {}) {
     const my = ++prepToken;
     notes = [];
     mode = "auto";
+    mapOrdered = false;
     if (fresh) { try { localStorage.removeItem(calKey()); } catch (e) { /* nothing kept */ } }
     setStatus(t("an.st.reading"));
     await tick();
@@ -683,6 +685,7 @@ export async function render(main, { query = {}, route } = {}) {
       const taus = officialTaus();
       if (taus) { targets = officialTargets(null); if (kept.items.length === targets.length) kept.items.forEach((s, i) => { targets[i].pos = s.pos; }); }
       else targets = kept.items.map((s, i) => ({ i, kind: s.kind, code: s.code || "", pos: s.pos, tau: null, tEst: null, label: s.kind === "start" ? t("an.start") : s.kind === "finish" ? t("an.finish") : "" }));
+      mapOrdered = !!kept.mapOrdered && !taus;                             // kept in the map's order, timed again in it
       const geometry = geoFit || (kept.fit ? { ...kept.fit } : null);
       notes.push(t("an.st.restored"));
       recompute({ geometry });
@@ -772,15 +775,27 @@ export async function render(main, { query = {}, route } = {}) {
       side(); draw();
       return;
     }
-    const vo = visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg });
+    // the course's order as the map prints it — its legs, followed from the start (course.js `order`) — the trace only
+    // timing it (owner, 2026-11-01: the trace's own order had numbered 8 before 5, 6, 7); else the trace's order
+    const mapOrder = !iofCourse ? courseOrder(geometry, located) : null;
+    mapOrdered = !!mapOrder;
+    if (mapOrder) located = mapOrder;
+    const vo = mapOrder ? passesInOrder(track, geometry, ptsOf(located), TOL) : visitOrder(track, geometry, ptsOf(located), TOL, { leg: course?.leg });
     const passOf = (p) => { const i = located.indexOf(p); return i >= 0 && vo.pass.has(i) ? vo.pass.get(i) : null; };
     // two circles passed within 15 s are not two controls (a leg takes longer): the second is a phantom
     let prevT = -Infinity;
     const visited = vo.order.map((i) => located[i]).map((p) => { const tp = passOf(p); const ok = tp == null || tp - prevT >= 15; if (ok && tp != null) prevT = tp; return ok ? p : { ...p, missed: true }; });
     const slot = (kind) => pts.find((p) => p.kind === kind) || { kind, code: "", pos: null };
-    const ordered = iofCourse ? pts : [slot("start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), slot("finish")];
+    const ordered = iofCourse ? pts
+      : mapOrder ? located.map((p) => (p.kind === "control" && !visited.includes(p) ? { ...p, missed: true } : p))
+      : [slot("start"), ...visited, ...located.filter((p, i) => p.kind === "control" && !vo.order.includes(i)).map((p) => ({ ...p, missed: true })), slot("finish")];
+    if (mapOrder && !ordered.some((p) => p.kind === "start")) ordered.unshift(slot("start"));
+    if (mapOrder && !ordered.some((p) => p.kind === "finish")) ordered.push(slot("finish"));
+    // in the map's order a control keeps its number even if the trace missed it
     let seqTargets = ordered.map((p, i) => ({ i, kind: p.kind, code: p.code, pos: p.pos, tEst: passOf(p), tau: null, missed: !!p.missed,
-      label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : p.missed ? "?" : String(ordered.slice(0, i).filter((q) => q.kind === "control" && !q.missed).length + 1) }));
+      label: p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish")
+        : mapOrder ? String(ordered.slice(0, i).filter((q) => q.kind === "control").length + 1)
+        : p.missed ? "?" : String(ordered.slice(0, i).filter((q) => q.kind === "control" && !q.missed).length + 1) }));
     const taus = officialTaus();
     if (taus) {
       // the official sequence, each control placed by the detected one that passed at its time
@@ -827,6 +842,37 @@ export async function render(main, { query = {}, route } = {}) {
     }
     return out;
   }
+  /** The course in the map's order (course.js `order`, with the finish where the page placed it): the points placed, in
+   *  that order, those the legs led to added; a course the map reads both ways (the start drawn in the finish) the way
+   *  the trace runs; the controls no leg reaches (found where the trace turns) after the course's last control passed
+   *  before them. Null when the map gives no order. */
+  function courseOrder(geometry, located) {
+    if (!course?.order) return null;
+    const fin = located.find((p) => p.kind === "finish");
+    const seq = course.order({ finish: fin ? fin.pos : null });
+    if (!seq || seq.points.filter((q) => q.kind === "control").length < 2) return null;
+    const r0 = course.r || 20;
+    const take = (q) => located.find((p) => p.kind === q.kind && Math.hypot(p.pos[0] - q.x, p.pos[1] - q.y) < 1.2 * r0) || { kind: q.kind, code: "", pos: [q.x, q.y], legs: true };
+    let list = seq.points.map(take);
+    if (seq.reversible) {
+      const rev = [...list.filter((p) => p.kind === "start"), ...list.filter((p) => p.kind === "control").reverse(), ...list.filter((p) => p.kind === "finish")];
+      const a = passesInOrder(track, geometry, ptsOf(list), TOL), b = passesInOrder(track, geometry, ptsOf(rev), TOL);
+      if (b.count > a.count || (b.count === a.count && b.cost < a.cost)) list = rev;
+    }
+    const extra = located.filter((p) => p.kind === "control" && !list.includes(p));
+    if (extra.length) {
+      const vo = passesInOrder(track, geometry, ptsOf(list), TOL), tOf = new Map(list.map((p, i) => [p, vo.pass.get(i)]));
+      const beforeFinish = () => list.length - (list[list.length - 1].kind === "finish" ? 1 : 0);
+      for (const p of extra) {
+        const t0 = visitOrder(track, geometry, ptsOf([p]), TOL).pass.get(0);
+        let at = t0 == null ? -1 : list.findIndex((q) => q.kind === "control" && tOf.get(q) != null && tOf.get(q) > t0);
+        if (at < 0) at = beforeFinish();
+        list.splice(at, 0, p); tOf.set(p, t0);
+      }
+    }
+    notes.push(t("an.st.mapOrder"));
+    return list;
+  }
   /** The official sequence of targets (start, the controls with their codes, the finish), positions from a saved set. */
   function officialTargets(saved) {
     const k = klass(), r = runner();
@@ -862,16 +908,33 @@ export async function render(main, { query = {}, route } = {}) {
       else if (auto?.fit) fit = auto.fit;                                   // placed by hand: the geometry found stays
       else if (located.length >= 3) { auto = alignTrack(track, ptsOf(located), { rStar: course?.r || null, northUp, tol: TOL }); fit = auto?.fit || null; }
       if (fit) {
-        const v = visitOrder(track, fit, ptsOf(located), TOL, { leg: course?.leg });
+        // the course's order read on the map stays, the trace timing it; else the trace's own visiting order. In the
+        // map's order a control added by hand goes where the trace passes it, among the others
+        if (mapOrdered) {
+          for (const g of targets.filter((x) => x.added && x.pos)) {
+            const tg = visitOrder(track, fit, ptsOf([g]), TOL).pass.get(0);
+            if (tg == null) continue;
+            targets.splice(targets.indexOf(g), 1);
+            const at = targets.findIndex((x) => x.kind === "finish" || (x.kind === "control" && x.tEst != null && x.tEst > tg));
+            targets.splice(at < 0 ? targets.length : at, 0, g);
+          }
+          located.sort((a, b) => targets.indexOf(a) - targets.indexOf(b));
+        }
+        const v = mapOrdered ? passesInOrder(track, fit, ptsOf(located), TOL) : visitOrder(track, fit, ptsOf(located), TOL, { leg: course?.leg });
         located.forEach((g, i) => { g.tEst = v.pass.has(i) ? v.pass.get(i) : null; });
-        // the controls in the trace's visiting order, the unreached ones after, then renumbered
-        const ctrls = targets.filter((g) => g.kind === "control");
-        const byTime = ctrls.filter((g) => g.pos && g.tEst != null && !g.missed).sort((a, b) => a.tEst - b.tEst);
-        // two points passed within 15 s are one control (a leg takes longer): the second is set aside
-        const reached = byTime.filter((g, i) => !i || g.tEst - byTime[i - 1].tEst >= 15), rest = ctrls.filter((g) => !reached.includes(g));
-        targets = [...targets.filter((g) => g.kind === "start"), ...reached, ...rest, ...targets.filter((g) => g.kind === "finish")];
-        let n = 0;
-        targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = reached.includes(g) ? String(++n) : g.pos ? "?" : "+"; });
+        if (mapOrdered) {
+          let n = 0;
+          targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = String(++n); });
+        } else {
+          // the controls in the trace's visiting order, the unreached ones after, then renumbered
+          const ctrls = targets.filter((g) => g.kind === "control");
+          const byTime = ctrls.filter((g) => g.pos && g.tEst != null && !g.missed).sort((a, b) => a.tEst - b.tEst);
+          // two points passed within 15 s are one control (a leg takes longer): the second is set aside
+          const reached = byTime.filter((g, i) => !i || g.tEst - byTime[i - 1].tEst >= 15), rest = ctrls.filter((g) => !reached.includes(g));
+          targets = [...targets.filter((g) => g.kind === "start"), ...reached, ...rest, ...targets.filter((g) => g.kind === "finish")];
+          let n = 0;
+          targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = reached.includes(g) ? String(++n) : g.pos ? "?" : "+"; });
+        }
         const tot = totalOfficial();
         const passT = located.filter((g) => g.kind === "control" && g.tEst != null).map((g) => g.tEst);
         const firstPass = passT.length ? Math.min(...passT) : null;           // the earliest pass (the list is not in time order)
@@ -986,7 +1049,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-add")?.addEventListener("click", () => {
       // a new control before the finish (or at the end), then the controls renumbered
       const fi = targets.findIndex((g) => g.kind === "finish"), at = fi >= 0 ? fi : targets.length;
-      targets.splice(at, 0, { kind: "control", label: "", code: "", tau: null, tEst: null, pos: null });
+      targets.splice(at, 0, { kind: "control", label: "", code: "", tau: null, tEst: null, pos: null, added: true });
       let n = 0;
       targets.forEach((g, i) => { g.i = i; if (g.kind === "control") g.label = String(++n); });
       cur = at; side(); draw();

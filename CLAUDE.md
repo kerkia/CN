@@ -921,14 +921,27 @@ Every multiple-choice game was played through to its score page at phone size, w
   start (14/16, start and finish on the page with the FIT, fit 6 m); the « Entrainement Gif » course drawn on its scanned
   map clean 24/24 + finish, as a phone photo 24/24 (3 before), badly degraded 12/24 (0); no false control on any, nor on
   two maps without a course (2 before); probes at random spots 3 false rings in 150 (16). Leg-line ends as evidence were
-  tried and dropped (crossings and digits make ends). Controls 15 and 16 stay unread: two overlapping circles, each
-  cut where they meet, over yellow and a building and over the lake — at the trace's turns a rule loose enough for them
-  takes 11 false rings for 10 true ones, and the runner did not slow there more than elsewhere; a click there keeps its
-  place (`probe`'s `loose` snaps to a faint ring only within 0.5 r* of the click; it took one 18 px away). **The legs
-  order the controls** (owner, same day: the trace's order had numbered 8 before 5, 6, 7 — run past between 4 and 5):
-  `course.leg(a, b)` = the share of the way between two symbols inked (1.3 r* left at each end; the photo's true legs
-  0.78-1.00, other pairs ≤ 0.42), and `align.visitOrder(..., { leg })` picks each control's pass so that controls
-  consecutive in time are joined by legs (≥ 0.6), start and finish included, then the least cost (both pages).
+  tried and dropped (crossings and digits make ends). **The course's order is read on the map, the trace only times it**
+  (owner, 2026-11-01: « the trace should not define control numbers »; its visiting order had numbered 8 before 5, 6, 7 —
+  run past between 4 and 5): `course.js` `followCourse` follows the legs from the start triangle (`legIn` = the share of the
+  way between two symbols inked, 1.3 r* left at each end: the photo's true legs 0.78-1.00, other pairs ≤ 0.42; the nearest
+  symbol joined, a control before the finish, the triangle's tip for the first leg), and back from the finish until the two
+  ways meet (a leg, or circles under 2.5 r* apart: no leg is drawn between overlapping circles); at a dead end `alongLeg`
+  follows the inked run leaving the control (not toward a symbol placed, nor along the leg that came in) to the first ring
+  on it or a symbol read; back from the finish `ringOnWay` also looks for a ring on a leg (`legRing`: weaker evidence —
+  score + arcs ≥ 0.8 — but the course's colour, empty, no line across). `course.order({ finish })` reads it again with the
+  finish the page placed where the trace ends; `reversible` when the start is drawn in the finish (two legs leave it: the
+  tips cannot tell, measured 0.4-6° apart on the synthetic maps) — the page takes the way round the trace runs. The pages:
+  `analysis.js` `courseOrder` (controls no leg reaches slotted in by their pass time), `mapOrdered` kept with the
+  calibration, `align.passesInOrder` times them (each control's pass so that times rise along the course: most controls,
+  then least cost; a control with no pass within 1.5 tol takes one within 2.5), a control added by hand goes where its pass
+  falls; Analyse multi's circuit editor takes the map's order first (no trace needed). `align.visitOrder`'s `leg` option
+  stays for maps without a start. Measured: the photo S, 1-15, F in order (15 found along the 14 → 15 leg; 16 placed by
+  hand lands as 16), the synthetic map and photo and the GifCure course clean and as a phone photo all in order or
+  reversible; no false control. Control numbers read as digits (templates of six fonts on the ink blobs): 1-14 legible,
+  the faint or overlapping ones misread — not used. 16 stays unread (a dark arc over the lake, its colour shifted, a
+  ring score at the threshold of the map's texture); a click there keeps its place (`probe`'s `loose` snaps to a faint
+  ring only within 0.5 r* of the click; it took one 18 px away).
   Without split times the race clock is the runner's published start time, looked up in every list of
   the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
   less the published total. The finish on the lake

@@ -1582,7 +1582,7 @@ export default {
   "an.cal.backAuto": "Refaire le calage automatique", "an.cal.manual": "Corriger à la main", "an.northUp": "La carte est orientée au nord (± 30°)",
   "an.missed": "Cercle lu sur la carte que la trace n'atteint pas",
   "an.cal.add": "Ajouter un poste", "an.st.probed": "{n} poste(s) de plus trouvés sur la carte là où la trace tourne.",
-  "an.cal.skip": "Passer", "an.cal.undo": "Annuler le dernier", "an.cal.clear": "Tout effacer", "an.cal.done": "Voir la course", "an.st.finishFound": "Arrivée trouvée sur la carte là où la trace s'arrête.",
+  "an.cal.skip": "Passer", "an.cal.undo": "Annuler le dernier", "an.cal.clear": "Tout effacer", "an.cal.done": "Voir la course", "an.st.finishFound": "Arrivée trouvée sur la carte là où la trace s'arrête.", "an.st.mapOrder": "Ordre des postes lu sur la carte, en suivant les traits du départ à l'arrivée.",
   "an.dropAll": "Déposez vos fichiers : ils remplacent ceux de l'analyse en cours.",
   "an.st.otherDay": "La trace est du {d1}, la course choisie du {d2} : ses temps publiés ne sont pas utilisés, la course se lit sur la trace.",
   "an.st.otherRunner": "Le départ publié de {r} ne tombe pas dans la trace : ses temps ne sont pas utilisés, la course se lit sur la trace.",
