@@ -184,6 +184,9 @@ export function build(X) {
             html`<b>The fit</b> is automatic: the course is read on the map, the track laid on it; if the reading goes wrong, a few clicks correct it.`,
             html`<b>The race</b> then plays back, full screen if you wish, leg by leg, with the time lost, the pace and the watch's curves (heart rate,
               cadence, altitude…).`,
+            html`<b>The track</b> can be coloured by pace, heart rate, altitude, slope, cadence or power (what the watch recorded), with its legend;
+              its start and end can be cut off (the warm-up, the way back), and <b>a picture</b> of the map with the track, a title and the legend
+              exported, saved on your device.`,
           ])}
           <p>The map and the track are read in your browser and never leave it; only the controls' placing is kept, to find the analysis as you left
             it.</p>`)}`,

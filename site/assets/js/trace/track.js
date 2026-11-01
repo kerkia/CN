@@ -201,6 +201,20 @@ function build(P0, source) {
   }
   return tr;
 }
+/**
+ * The part of a track between its seconds s0 and s1 (« Couper la trace »: a warm-up, the walk back to the car): the
+ * same local frame — a calibration made on the whole trace still places it —, its time from 0 again. `cut` keeps where
+ * it was taken in the whole trace.
+ */
+export function cutTrack(tr, s0, s1) {
+  const a = indexAt(tr, s0), b = Math.max(a + 1, Math.min(tr.n - 1, indexAt(tr, s1)));
+  const t0 = tr.t[a], c0 = tr.cum[a], n = b - a + 1;
+  const t = tr.t.slice(a, b + 1).map((v) => v - t0), cum = tr.cum.slice(a, b + 1).map((v) => v - c0);
+  const ch = {};
+  for (const c of Object.keys(tr.ch)) ch[c] = tr.ch[c].slice(a, b + 1);
+  return { ...tr, ms0: tr.ms0 + t0 * 1000, t, x: tr.x.slice(a, b + 1), y: tr.y.slice(a, b + 1), cum, v: tr.v.slice(a, b + 1), n, dur: t[n - 1], ch,
+    cut: { s0: t0, s1: tr.t[b] } };
+}
 /** lat/lon -> the track's local metres. */
 export const toLocal = (tr, lat, lon) => [(lon - tr.lon0) * tr.kx, -(lat - tr.lat0) * tr.ky];
 /** The last index whose time is ≤ s (0 before the trace). */

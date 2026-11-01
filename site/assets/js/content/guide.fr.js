@@ -188,6 +188,9 @@ export function build(X) {
             html`<b>Le calage</b> se fait seul : le parcours est lu sur la carte, la trace posée dessus ; si la lecture se trompe, quelques clics la corrigent.`,
             html`<b>La course</b> se rejoue ensuite, plein écran si on veut, inter-poste par inter-poste, avec le temps perdu, l'allure et les courbes de la
               montre (fréquence cardiaque, cadence, altitude…).`,
+            html`<b>La trace</b> se colore par allure, fréquence cardiaque, altitude, pente, cadence ou puissance (ce que la montre a enregistré), avec sa
+              légende ; on peut en couper le début et la fin (l'échauffement, le retour) et <b>exporter une image</b> de la carte avec la trace, un titre et
+              la légende, enregistrée sur l'appareil.`,
           ])}
           <p>La carte et la trace sont lues dans votre navigateur et n'en sortent pas ; seul le calage des postes est gardé, pour retrouver l'analyse telle
             qu'on l'a laissée.</p>`)}`,

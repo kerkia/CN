@@ -1163,6 +1163,19 @@ Every multiple-choice game was played through to its score page at phone size, w
   style (ISSprOM: streets as paved areas), tiles made again when OpenStreetMap changes, edges between tiles made in different runs
   (possible seams), the generated map as the Tracer's base map; **route choices on LiDAR layers: never for runners** (owner: a route
   is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
+- **After QuickRoute** (owner, 2026-11-01: QuickRoute's features compared; its manual route adjustment not wanted, the automatic
+  calibration being stronger; an archive of one's traces and the import of QuickRoute JPEG / DOMA archives studied apart), in
+  « Analyse solo »: **the trace coloured by any measure** (« Affichage › Trace »: plain, pace, heart rate, altitude, slope — the
+  altitude's change over the distance run in ± 10 s —, cadence, power, temperature, those the file has; `trace/pacecolour.js`
+  `colourModes`, `seriesOf`, `rangeOf` — the pace's 10-90 %, the others' 5-95 % over the race, cadence and power when moving, the
+  slope even about 0 —, `colourOf`, `legendOf`; low in blue, high in red; the 3D view the same); **« Exporter une image »**
+  (`exportImage`: the map with the race's trace as displayed, at the map's resolution, 40 Mpx at most, the race's part with a
+  margin or the whole map, PNG or JPEG, a title — race, runner, day, time, distance, pace — and the legend drawn in; the line
+  0.4 mm × the width chosen, a millimetre read from the control circles; saved on the device, nothing sent; settings in
+  `ocn.an.prefs` `shotZone`, `shotType`, `shotLegend`); **« Couper la trace »** (`track.cutTrack`: the part kept in the whole
+  trace's frame, its time from 0; the files card's sliders over the whole trace's pace, and « Couper avant / après ce moment » in
+  the playback's display panel; kept per trace in `localStorage ocn.an.cut.<ms0 s>:<points>`; the calibration record follows the
+  cut — its geometry still holds — and a cut made during the playback goes back to it).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

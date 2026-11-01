@@ -19,18 +19,18 @@
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { coachTabs } from "../coachtabs.js";
-import { t, tn } from "../i18n.js";
+import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import { raceFilters } from "../racefilters.js";
 import { replaceQuery } from "../app.js";
-import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
+import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal, cutTrack } from "../trace/track.js";
 import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
 import { isVectorName, readVector, renderVector, latLonOf, ownImage, throughGeo, cover, VECTOR_ACCEPT } from "../trace/vectorroutes.js";
 import { detectCourse, READER } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
-import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
+import { colourModes, seriesOf, rangeOf, colourOf, legendOf, legendHtml, PACE_COLOURS } from "../trace/pacecolour.js";
 import { bestLegs, refLegs, legLoss } from "../trace/legs.js";
 import { parisOffsetMs } from "../trace/published.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
@@ -192,6 +192,7 @@ export async function render(main, { query = {}, route } = {}) {
   let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
+  let traceFull = null;                                 // the trace as read; `track` is it, or its part kept (« Couper la trace »)
   // { name, note, ... } per role; an OCAD or Mapper map is the map itself (files.map.vec) when no image of it is given, else read
   // for the computed routes only (files.vector)
   const files = { map: null, trace: null, geo: null, world: null, prj: null, iof: null, vector: null };
@@ -201,7 +202,7 @@ export async function render(main, { query = {}, route } = {}) {
   let mapOrdered = false;                                                  // the targets in the course's order read on the map
   let olderReading = false;                                                // the calibration restored was made by an earlier reading
   const prefs = loadPrefs();
-  let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = prefs.colour === "speed" ? "speed" : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
+  let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = typeof prefs.colour === "string" ? prefs.colour : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
   let future = prefs.future === "faint" ? "faint" : "hide";            // the trace still to run: hidden, or faded
   let traceColour = /^#[0-9a-f]{6}$/i.test(prefs.traceColour || "") ? prefs.traceColour : TRACE;
@@ -211,6 +212,8 @@ export async function render(main, { query = {}, route } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) && !oldDefault ? prefs.chans : ["pace", ...Object.keys(CHANNEL_COLOUR)]);
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
+  // the picture exported (« Exporter une image »): the race's part of the map or all of it, PNG or JPEG, with the title and legend
+  const shot = { zone: prefs.shotZone === "map" ? "map" : "race", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
   // the 3D view (trace/view3d.js, a prototype): off at each visit; its vertical exaggeration and relief kept
   let v3 = null, v3on = false, v3token = 0, v3grid = null, v3info = null, v3refined = {};
   // a map generated from IGN's LiDAR HD for a trace without one (trace/lidarmap.js, a prototype, administrators): its progress
@@ -223,12 +226,13 @@ export async function render(main, { query = {}, route } = {}) {
   let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22)))), sw = px(prefs.sw, 200, 700, 280);
   const lp = { tab: ["graphs", "legs", "routes"].includes(prefs.ltab) ? prefs.ltab : "graphs", collapsed: !!prefs.gcol };
   const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
+    shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
-  let vLo = 0, vHi = 1;                               // the pace colours' range (10-90 % of the trace's speeds)
+  let vLo = 0, vHi = 1, vSet = false;                 // the colours' range (rangeOf: the pace's 10-90 %, the other channels' 5-95 %)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
   const layoutEl = $("#an-layout");
   let lastBox = null;                                   // the map's box when the view was last set (its centre kept on a resize)
@@ -322,6 +326,7 @@ export async function render(main, { query = {}, route } = {}) {
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
+      ${cutBlock()}
       ${genBlock()}
       <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
         ${files.map || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
@@ -333,7 +338,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-forget")?.addEventListener("click", () => {
       stop(); prepToken++;                                  // a calibration under way stops with its files
       for (const role of Object.keys(files)) files[role] = null;
-      map = null; track = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
+      map = null; track = traceFull = null; courseCache = null; course = null; restoredFiles = false; memos[pageMode] = null;
       idbWrite(null, fileKey).catch(() => {});
       filesCard(); setup();
     });
@@ -343,6 +348,88 @@ export async function render(main, { query = {}, route } = {}) {
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
     $("#an-gen")?.addEventListener("click", () => genMap());
+    bindCut();
+  }
+  // ---- « Couper la trace » (owner, 2026-11-01, after QuickRoute): the trace's start and end left out — a warm-up, the walk
+  // back — kept per trace on this device (`ocn.an.cut.<the whole trace's signature>`: seconds from its first point); the part
+  // kept is in the whole trace's frame, so that a calibration made before the cut still holds (its record follows the cut)
+  const CUT_KEY = "ocn.an.cut";
+  const sigOf = (tr) => `${Math.round(tr.ms0 / 1000)}:${tr.n}`;
+  function savedCut(full) { try { const c = JSON.parse(localStorage.getItem(`${CUT_KEY}.${sigOf(full)}`) || "null"); return c && c.s1 > c.s0 ? c : null; } catch (e) { return null; } }
+  /** The trace with its saved cut, else the whole of it. */
+  function withCut(full) {
+    const c = full && savedCut(full);
+    return c && (c.s0 > 0 || c.s1 < full.dur) ? cutTrack(full, c.s0, c.s1) : full;
+  }
+  function traceDetail() {
+    const others = Object.keys(track.ch).filter((c) => c !== "ele");
+    return [t(`an.src.${track.source}`), `${fmt(track.n)} ${t("an.points")}`, clock(track.dur), ...(others.length ? [others.map((c) => t(CHANNEL_LABEL[c])).join(", ")] : []),
+      ...(track.cut ? [t("an.cut.done", { a: clock(track.cut.s0), b: clock(traceFull.dur - track.cut.s1) })] : [])].join(" · ");
+  }
+  const timeOfDay = (full, s) => new Date(full.ms0 + s * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  /** The files card's block: two sliders over the whole trace's pace, the parts left out shaded. */
+  function cutBlock() {
+    if (!traceFull) return "";
+    const D = Math.floor(traceFull.dur), a = track.cut ? Math.round(track.cut.s0) : 0, b = track.cut ? Math.round(track.cut.s1) : D;
+    return html`<details class="an-cut" ${raw(track.cut ? "open" : "")}><summary>✂ ${t("an.cut.title")}</summary>
+      <canvas class="an-cut-prof" id="an-cut-prof" height="44"></canvas>
+      <div class="an-cut-row"><label><span>${t("an.cut.start")}</span><input type="range" id="an-cut-a" min="0" max="${D}" step="1" value="${a}"></label><span class="an-cut-v" id="an-cut-a-v"></span></div>
+      <div class="an-cut-row"><label><span>${t("an.cut.end")}</span><input type="range" id="an-cut-b" min="0" max="${D}" step="1" value="${b}"></label><span class="an-cut-v" id="an-cut-b-v"></span></div>
+      <div class="an-cut-acts"><button type="button" class="btn btn-sm btn-primary" id="an-cut-apply">${t("an.cut.apply")}</button>
+        <button type="button" class="btn btn-sm" id="an-cut-reset" ${raw(track.cut ? "" : "disabled")}>${t("an.cut.whole")}</button></div>
+      <p class="muted an-cut-hint">${t("an.cut.hint")}</p></details>`;
+  }
+  function bindCut() {
+    const A = $("#an-cut-a"), B = $("#an-cut-b"), prof = $("#an-cut-prof");
+    if (!A || !traceFull) return;
+    const full = traceFull, D = full.dur;
+    const show = () => {
+      const a = Number(A.value), b = Number(B.value);
+      $("#an-cut-a-v").textContent = `${timeOfDay(full, a)} · +${clock(a)}`;
+      $("#an-cut-b-v").textContent = `${timeOfDay(full, b)} · −${clock(D - b)}`;
+      // the pace over the whole trace (its speed, capped at 6 m/s), the parts left out greyed
+      const dpr = window.devicePixelRatio || 1, w = prof.clientWidth, h = prof.clientHeight;
+      if (!w) return;
+      prof.width = Math.round(w * dpr); prof.height = Math.round(h * dpr);
+      const g = prof.getContext("2d");
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+      const X = (s) => (s / D) * w, top = Math.max(1, ...Array.from(full.v, (v) => Math.min(6, v)));
+      g.beginPath(); g.moveTo(0, h);
+      for (let i = 0; i < full.n; i++) g.lineTo(X(full.t[i]), h - (Math.min(6, full.v[i]) / top) * (h - 4));
+      g.lineTo(w, h); g.closePath();
+      g.fillStyle = curveColour("pace"); g.fill();
+      g.fillStyle = "rgba(128, 128, 128, 0.55)";
+      g.fillRect(0, 0, X(a), h); g.fillRect(X(b), 0, w - X(b), h);
+    };
+    const keep = (who) => { if (Number(B.value) - Number(A.value) < 60) { if (who === A) A.value = Math.max(0, Number(B.value) - 60); else B.value = Math.min(D, Number(A.value) + 60); } show(); };
+    A.addEventListener("input", () => keep(A)); B.addEventListener("input", () => keep(B));
+    $(".an-cut").addEventListener("toggle", show);
+    $("#an-cut-apply").addEventListener("click", () => applyCut(Number(A.value), Number(B.value)));
+    $("#an-cut-reset").addEventListener("click", () => applyCut(0, D));
+    show();
+  }
+  /** The cut set: the trace taken again from the whole one, the calibration carried over, the page redone (back to the
+   *  playback when it was on). s0, s1: seconds of the whole trace. */
+  function applyCut(s0, s1) {
+    if (!traceFull) return;
+    const full = traceFull, whole = s0 <= 0 && s1 >= full.dur - 0.5;
+    const oldSig = traceSig(), rec = savedPositions();
+    try { if (whole) localStorage.removeItem(`${CUT_KEY}.${sigOf(full)}`); else localStorage.setItem(`${CUT_KEY}.${sigOf(full)}`, JSON.stringify({ s0, s1 })); } catch (e) { /* not kept */ }
+    const back = calibrated;
+    track = withCut(full);
+    if (files.trace) files.trace.detail = traceDetail();
+    // the calibration's geometry is in the whole trace's metres: it holds for the part kept
+    if (rec && rec.trace === oldSig && traceSig() !== oldSig) { rec.trace = traceSig(); try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ } }
+    autoPlay = back;
+    filesCard(); setup();
+  }
+  /** During the playback: the trace cut before or after the moment shown. */
+  function cutHere(before) {
+    if (!traceFull || offset == null) return;
+    const base = track.cut ? track.cut.s0 : 0, now = base + offset + tNow;
+    const s0 = track.cut ? track.cut.s0 : 0, s1 = track.cut ? track.cut.s1 : traceFull.dur;
+    if (before) { if (s1 - now >= 60) applyCut(now, s1); }
+    else if (now - s0 >= 60) applyCut(s0, now);
   }
   // ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only)
   const genCredit = () => raw(t("an.gen.credit", { ign: html`<a href="${LM.CREDIT_LIDAR.url}" target="_blank" rel="noopener">${LM.CREDIT_LIDAR.text}</a>`,
@@ -407,8 +494,9 @@ export async function render(main, { query = {}, route } = {}) {
           newTrace = true;
           files.trace = { name, note: "" };
           filesCard();
-          track = parseTrace(name, await f.arrayBuffer());
-          files.trace.detail = `${t(`an.src.${track.source}`)} · ${fmt(track.n)} ${t("an.points")} · ${clock(track.dur)}${Object.keys(track.ch).filter((c) => c !== "ele").length ? ` · ${Object.keys(track.ch).filter((c) => c !== "ele").map((c) => t(CHANNEL_LABEL[c])).join(", ")}` : ""}`;
+          traceFull = parseTrace(name, await f.arrayBuffer());
+          track = withCut(traceFull);
+          files.trace.detail = traceDetail();
           if (race?.date_iso) { const day = parisDay(track.ms0); if (day !== race.date_iso) files.trace.note = t("an.date.diff", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }); }
         } else if (low.endsWith(".kmz")) {
           files.geo = { name, note: t("an.reading") }; filesCard();
@@ -435,7 +523,7 @@ export async function render(main, { query = {}, route } = {}) {
           const text = await f.text();
           const data = parseIofCourse(text);
           if (data) { files.iof = { name, data, note: data.courses.length ? "" : t("an.iof.noCourse"), detail: `${data.courses.length} ${t("an.iof.courses")} · ${data.controls.size} ${t("prov.controls")}${[...data.controls.values()].some((c) => c.lat != null) ? ` · ${t("an.iof.geo")}` : ""}` }; iofIndex = pickCourse(data); }
-          else if (/<gpx[\s>]/.test(text)) { files.trace = { name, note: "" }; track = parseTrace(name, new TextEncoder().encode(text).buffer); files.trace.detail = `GPX · ${fmt(track.n)} ${t("an.points")}`; }
+          else if (/<gpx[\s>]/.test(text)) { files.trace = { name, note: "" }; traceFull = parseTrace(name, new TextEncoder().encode(text).buffer); track = withCut(traceFull); files.trace.detail = traceDetail(); }
           else throw new Error("xml");
         } else if (isVectorName(name)) {
           const bytes = new Uint8Array(await f.arrayBuffer()), asMap = !map || !!files.map?.vec;
@@ -461,7 +549,7 @@ export async function render(main, { query = {}, route } = {}) {
       } catch (e) {
         e.__role = true;
         const msg = { time: "an.err.time", gpx: "an.err.gpx", pdf: "an.err.pdf", map: "an.err.map", kmz: "an.err.kmz", kml: "an.err.kml", world: "an.err.world", xml: "an.err.xml" }[e.message] || "an.err.gpx";
-        if (isTraceName(name) || e.message === "time" || e.message === "gpx") { track = null; files.trace = { name, note: t(msg) }; }
+        if (isTraceName(name) || e.message === "time" || e.message === "gpx") { track = traceFull = null; files.trace = { name, note: t(msg) }; }
         else if (low.endsWith(".kmz") || low.endsWith(".kml")) files.geo = { name, note: t(msg) };
         else if (isWorldFileName(name)) files.world = { name, note: t(msg) };
         else if (low.endsWith(".xml")) files.iof = { name, note: t(msg) };
@@ -479,7 +567,7 @@ export async function render(main, { query = {}, route } = {}) {
       matchedNote = "";
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
-    if (newTrace && track) cadence(track);             // once the race is known (a VTT race: pedal turns)
+    if (newTrace && traceFull) { cadence(traceFull); track = withCut(traceFull); }   // once the race is known (a VTT race: pedal turns)
     filesCard();
     setup();
   }
@@ -555,7 +643,7 @@ export async function render(main, { query = {}, route } = {}) {
   function setup() {
     stop();
     calibrated = false; fit = null; offset = null; rmsM = null; auto = null; mode = "auto"; targets = []; cur = 0; tNow = 0;
-    vLo = 0; vHi = 1;
+    vSet = false;
     hideResults();
     const r = runner();
     const work = $("#an-work");
@@ -1160,13 +1248,22 @@ export async function render(main, { query = {}, route } = {}) {
     rightP.pane("display").innerHTML = html`
       <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
-          <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
-          <label id="an-colour-row" ${raw(colour === "speed" ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
+          <label><span>${t("an.colour")}</span><select id="an-colour">${["plain", ...colourModes(track)].map((c) => html`<option value="${c}" ${raw(c === (colourBy() || "plain") ? "selected" : "")}>${t(`an.colour.${c}`)}</option>`)}</select></label>
+          <label id="an-colour-row" ${raw(colourBy() ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
           <label><span>${t("an.future")}</span><select id="an-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((v) => html`<option value="${v}" ${raw(v === tail ? "selected" : "")}>${v ? clock(v) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
         </div><div id="an-3d-opts" hidden></div>
+      <div class="an-opts an-shot"><b>${t("an.shot.title")}</b>
+        <label><span>${t("an.shot.zone")}</span><select id="an-shot-zone"><option value="race" ${raw(shot.zone === "race" ? "selected" : "")}>${t("an.shot.zone.race")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
+        <label><span>${t("an.shot.type")}</span><select id="an-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
+        <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="an-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
+        <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div>
+      <div class="an-opts an-cuthere"><b>✂ ${t("an.cut.title")}</b>
+        <div class="an-cut-acts"><button type="button" class="btn btn-sm" id="an-cut-before" title="${t("an.cut.before.hint")}">${t("an.cut.before")}</button>
+          <button type="button" class="btn btn-sm" id="an-cut-after" title="${t("an.cut.after.hint")}">${t("an.cut.after")}</button>
+          ${track.cut ? html`<button type="button" class="btn btn-sm" id="an-cut-whole">${t("an.cut.whole")}</button>` : ""}</div></div>
       ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     if (me?.admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
@@ -1179,8 +1276,14 @@ export async function render(main, { query = {}, route } = {}) {
     slider.addEventListener("pointerdown", () => { scrubbing = true; });
     slider.addEventListener("pointerup", () => { scrubbing = false; });
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
-    // the trace's colour applies to the plain trace only: hidden while it is coloured by pace
-    $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; $("#an-colour-row").hidden = colour === "speed"; savePrefs(); paceLegend(); draw(); });
+    // the trace's colour applies to the plain trace only: hidden while it is coloured by a measure
+    $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; vSet = false; $("#an-colour-row").hidden = colour !== "plain"; savePrefs(); paceLegend(); draw(); });
+    const shotSet = () => { shot.zone = $("#an-shot-zone").value; shot.type = $("#an-shot-type").value; shot.legend = $("#an-shot-legend").checked; savePrefs(); };
+    ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
+    $("#an-shot").addEventListener("click", () => exportImage());
+    $("#an-cut-before").addEventListener("click", () => cutHere(true));
+    $("#an-cut-after").addEventListener("click", () => cutHere(false));
+    $("#an-cut-whole")?.addEventListener("click", () => applyCut(0, traceFull.dur));
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });
@@ -1418,18 +1521,113 @@ export async function render(main, { query = {}, route } = {}) {
   themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   // the pace colours (trace/pacecolour.js): from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
-  function paceScale() { [vLo, vHi] = paceRange(track.v); }
+  /** What the trace is coloured by now: null (plain), "speed", or a measure the file has (else the pace). */
+  const colourBy = () => (!track || colour === "plain" ? null : colourModes(track).includes(colour) ? colour : "speed");
+  /** The race's points, for the colours' range: from the start to the finish when the race is known. */
+  const raceSpan = () => (offset == null ? [0, track.n - 1] : [Math.max(0, indexAt(track, offset)), indexAt(track, offset + total)]);
+  function paceScale() { vSet = true; [vLo, vHi] = rangeOf(track, colourBy() || "speed", ...raceSpan()); }
   /** The legend of the trace coloured by pace (owner, 2026-10-15: the colours said nothing without it): the colours
    *  from the fastest to the slowest, each with the pace it starts at, in the map's bottom right corner. */
   function paceLegend() {
     const el = $("#an-legend");
     if (!el) return;
-    el.hidden = !(calibrated && colour === "speed");
+    el.hidden = !(calibrated && colourBy());
     if (el.hidden) return;
-    if (!vHi || vHi === 1) paceScale();
-    el.innerHTML = paceLegendHtml(vLo, vHi);
+    if (!vSet) paceScale();
+    el.innerHTML = legendHtml(colourBy(), vLo, vHi, { cad: unitOf("cad") });
   }
-  const paceColour = (v) => paceColourOf(v, vLo, vHi);
+  /** The colour of point i, coloured by the measure chosen. */
+  const pointColour = (i, series = seriesOf(track, colourBy())) => colourOf(colourBy(), series[i], vLo, vHi);
+
+  // ---- « Exporter une image » (owner, 2026-11-01, after QuickRoute): the map with the race's trace as the display draws it —
+  // plain or coloured by its measure, its width and opacities —, at the map's own resolution (40 Mpx at most), the race's part
+  // of the map or all of it, with a title (the race, the runner, the day, the time, the distance) and the colours' legend.
+  // Made in the browser and saved on the device: nothing is sent.
+  function exportImage() {
+    if (!map || !fit || offset == null || !pxs) return;
+    const W = map.width, H = map.height;
+    const i0 = Math.max(0, indexAt(track, offset)), i1 = indexAt(track, offset + total);
+    let x0 = 0, y0 = 0, x1 = W, y1 = H;
+    if (shot.zone === "race") {
+      let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+      const add = (x, y) => { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); };
+      for (let i = i0; i <= i1; i++) add(pxs[i], pys[i]);
+      for (const g of targets) if (g.pos) add(g.pos[0], g.pos[1]);
+      const m = Math.max(40, 0.06 * Math.max(c - a, d - b));
+      const box = [Math.max(0, Math.floor(a - m)), Math.max(0, Math.floor(b - m)), Math.min(W, Math.ceil(c + m)), Math.min(H, Math.ceil(d + m))];
+      if (box[2] - box[0] > 20 && box[3] - box[1] > 20) [x0, y0, x1, y1] = box;          // else (the trace off the map) the whole map
+    }
+    const k = Math.min(1, Math.sqrt(40e6 / ((x1 - x0) * (y1 - y0))));
+    const cw = Math.round((x1 - x0) * k), ch = Math.round((y1 - y0) * k);
+    const cv = document.createElement("canvas");
+    cv.width = cw; cv.height = ch;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, cw, ch);
+    g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+    g.globalAlpha = mapAlpha / 100; g.drawImage(map, 0, 0); g.globalAlpha = traceAlpha / 100;
+    // the line in the map's millimetres: one from the control circles read (6 mm across), else the sheet's long side as an A4's
+    const rs = (course?.controls || []).map((q) => q.r).sort((p, q) => p - q);
+    const mm = rs.length ? rs[rs.length >> 1] / 3 : Math.max(W, H) / 297;
+    g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(1.5 / k, 0.4 * mm * width);
+    const by = colourBy();
+    if (by) {
+      if (!vSet) paceScale();
+      const s = seriesOf(track, by);
+      for (let i = i0 + 1; i <= i1; i++) { g.strokeStyle = colourOf(by, s[i], vLo, vHi); g.beginPath(); g.moveTo(pxs[i - 1], pys[i - 1]); g.lineTo(pxs[i], pys[i]); g.stroke(); }
+    } else {
+      g.strokeStyle = traceColour; g.beginPath(); g.moveTo(pxs[i0], pys[i0]);
+      for (let i = i0 + 1; i <= i1; i++) g.lineTo(pxs[i], pys[i]);
+      g.stroke();
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+    const rc = races.find((x) => x.key === key), day = parisDay(track.ms0 + offset * 1000);
+    const title = perso ? t("an.perso.title") : rc?.name || race?.name || "";
+    if (shot.legend) {
+      const fs = Math.max(12, Math.min(40, Math.round(Math.min(cw, ch) / 42))), pad = Math.round(fs * 0.6);
+      const panel = (x, y, w, h) => { g.fillStyle = "rgba(255, 255, 255, 0.9)"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, pad); else g.rect(x, y, w, h); g.fill(); };
+      const font = (px, bold) => { g.font = `${bold ? "650 " : ""}${px}px system-ui, sans-serif`; };
+      // the title, top left
+      const dist = cumAt(track, offset + total) - cumAt(track, offset);
+      const lines = [[title, true], [[perso ? "" : runner()?.name, fmtDate(day)].filter(Boolean).join(" · "), false],
+        [[clock(total), `${fmt(dist / 1000, 2)} km`, `${pace(dist / total)} ${t("an.unit.pace")}`, klass()?.name].filter(Boolean).join(" · "), false]].filter(([s]) => s);
+      g.textBaseline = "top";
+      let tw = 0;
+      for (const [s, b] of lines) { font(fs, b); tw = Math.max(tw, g.measureText(s).width); }
+      font(Math.round(fs * 0.7)); tw = Math.max(tw, g.measureText("ozimut.com").width);
+      const lh = Math.round(fs * 1.3), th = lines.length * lh + Math.round(fs * 0.9);
+      panel(pad, pad, Math.min(cw - 2 * pad, tw + 2 * pad), th + pad);
+      g.fillStyle = "#1d1d1d";
+      lines.forEach(([s, b], n) => { font(fs, b); g.fillText(s, 2 * pad, 1.5 * pad + n * lh, cw - 4 * pad); });
+      font(Math.round(fs * 0.7)); g.fillStyle = "#e8641c"; g.fillText("ozimut.com", 2 * pad, 1.5 * pad + lines.length * lh);
+      // the colours' legend, bottom right
+      if (by) {
+        const L = legendOf(by, vLo, vHi, { cad: unitOf("cad") }), bw = fs * 12, bh = Math.round(fs * 0.7), sf = Math.round(fs * 0.75);
+        font(fs, true); const lw2 = Math.max(bw, g.measureText(L.title).width);
+        const w = lw2 + 2 * pad, h = fs + bh + 2 * sf + 3 * pad, x = cw - w - pad, y = ch - h - pad;
+        panel(x, y, w, h);
+        g.fillStyle = "#1d1d1d"; g.fillText(L.title, x + pad, y + pad);
+        const by0 = y + pad + fs * 1.15;
+        PACE_COLOURS.forEach((c, n) => { g.fillStyle = c; g.fillRect(x + pad + (n * bw) / PACE_COLOURS.length, by0, bw / PACE_COLOURS.length + 0.5, bh); });
+        font(sf); g.fillStyle = "#1d1d1d";
+        const ty = by0 + bh + pad * 0.4;
+        g.textAlign = "left"; g.fillText(L.ticks[0], x + pad, ty); g.textAlign = "center"; g.fillText(L.ticks[1], x + pad + bw / 2, ty); g.textAlign = "right"; g.fillText(L.ticks[2], x + pad + bw, ty);
+        g.fillStyle = "#666666"; g.textAlign = "left"; g.fillText(L.ends[0], x + pad, ty + sf * 1.15); g.textAlign = "right"; g.fillText(L.ends[1], x + pad + bw, ty + sf * 1.15);
+        g.textAlign = "left";
+      }
+    }
+    const slug = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+    const type = shot.type === "jpeg" ? "jpeg" : "png", name = `ozimut-${day}${slug(title) ? `-${slug(title)}` : ""}${!perso && runner()?.name ? `-${slug(runner().name)}` : ""}.${type === "jpeg" ? "jpg" : "png"}`;
+    const state = $("#an-shot-state");
+    if (state) state.textContent = t("an.shot.making");
+    cv.toBlob((blob) => {
+      if (!blob) { if (state) state.textContent = t("an.shot.failed"); return; }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+      if (state) state.textContent = t("an.shot.done", { w: fmt(cw), h: fmt(ch) });
+    }, `image/${type}`, 0.92);
+  }
 
   function draw() {
     if (!map) return;
@@ -1457,17 +1655,17 @@ export async function render(main, { query = {}, route } = {}) {
     if (fit && fullPath && offset != null) {
       const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
       // the whole trace, faint; the part run so far, full; the tail, thicker
-      const bySpeed = calibrated && colour === "speed";
+      const bySpeed = calibrated && !!colourBy(), series = bySpeed ? seriesOf(track, colourBy()) : null;
       if (!bySpeed && (!calibrated || future === "faint")) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
       ctx.globalAlpha = ta;
       if (calibrated) {
         const iTail = tail ? Math.max(i0, indexAt(track, s - tail)) : i0;
-        if (bySpeed) {                                   // the whole race coloured by pace, the part to come faint
-          if (!vHi || vHi === 1) paceScale();
+        if (bySpeed) {                                   // the whole race coloured by pace (or a measure), the part to come faint
+          if (!vSet) paceScale();
           const iEnd = future === "faint" ? indexAt(track, offset + total) : iNow;
           for (let i = i0 + 1; i <= iEnd; i++) {
             ctx.globalAlpha = (i <= iNow ? 1 : 0.45) * ta;
-            ctx.strokeStyle = paceColour(track.v[i]); ctx.lineWidth = lw((i > iTail && i <= iNow ? 5 : 3) * width);
+            ctx.strokeStyle = pointColour(i, series); ctx.lineWidth = lw((i > iTail && i <= iNow ? 5 : 3) * width);
             ctx.beginPath(); ctx.moveTo(pxs[i - 1], pys[i - 1]); ctx.lineTo(pxs[i], pys[i]); ctx.stroke();
           }
           ctx.globalAlpha = ta;
@@ -1777,9 +1975,9 @@ export async function render(main, { query = {}, route } = {}) {
   /** The 2D's display settings passed on: the trace's colour or pace colours, width, the part to come, the tail. */
   function sync3d() {
     if (!v3) return;
-    if (!vHi || vHi === 1) paceScale();
-    const bySpeed = colour === "speed";
-    v3.setStyle({ colourOf: (i) => (bySpeed ? paceColour(track.v[i]) : traceColour), colourKey: bySpeed ? `speed:${vLo}:${vHi}` : traceColour, width, future, tail, mapAlpha });
+    if (!vSet) paceScale();
+    const by = colourBy(), series = by ? seriesOf(track, by) : null;
+    v3.setStyle({ colourOf: (i) => (by ? pointColour(i, series) : traceColour), colourKey: by ? `${by}:${vLo}:${vHi}` : traceColour, width, future, tail, mapAlpha });
     v3.setFollow(follow);
   }
   /** The 3D view's own settings, under « Affichage »: the vertical exaggeration, the relief's source. */
@@ -1833,7 +2031,7 @@ export async function render(main, { query = {}, route } = {}) {
   }
   function drawStrip() {
     if (!calibrated || !total) return;
-    if (!vHi || vHi === 1) paceScale();
+    if (!vSet) paceScale();
     const known = sequenceKnown();
     drawCurves(strip, { track, t0: offset, total, rows: stripRows(), cursor: tNow, units: { cad: unitOf("cad") },
       marks: targets.map((g, i) => { const tt = timeOf(g); return tt == null || !i ? null : { t: tt, label: known ? g.label : "" }; }).filter(Boolean),

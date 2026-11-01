@@ -189,6 +189,9 @@ export function build(X) {
             html`<b>Die Kalibrierung</b> erfolgt automatisch: Die Bahn wird auf der Karte gelesen, der Track darübergelegt; liegt das Lesen daneben, korrigieren es ein paar Klicks.`,
             html`<b>Der Lauf</b> wird dann abgespielt, auf Wunsch im Vollbild, Teilstrecke für Teilstrecke, mit Zeitverlust, Tempo und den Kurven der
               Uhr (Herzfrequenz, Schrittfrequenz, Höhe …).`,
+            html`<b>Der Track</b> lässt sich nach Tempo, Herzfrequenz, Höhe, Steigung, Kadenz oder Leistung einfärben (was die Uhr aufgezeichnet hat),
+              mit Legende; Anfang und Ende lassen sich abschneiden (Aufwärmen, Rückweg), und <b>ein Bild</b> der Karte mit Track, Titel und Legende
+              lässt sich exportieren und auf dem Gerät speichern.`,
           ])}
           <p>Karte und Track werden in deinem Browser gelesen und verlassen ihn nicht; nur die Kalibrierung der Posten wird gespeichert, damit du die Analyse
             so wiederfindest, wie du sie verlassen hast.</p>`)}`,

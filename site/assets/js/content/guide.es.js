@@ -187,6 +187,9 @@ export function build(X) {
             html`<b>La calibración</b> se hace sola: el recorrido se lee en el mapa y el track se coloca encima; si la lectura se equivoca, unos clics la corrigen.`,
             html`<b>La carrera</b> se reproduce después, a pantalla completa si quieres, tramo a tramo, con el tiempo perdido, el ritmo y las gráficas del
               reloj (frecuencia cardiaca, cadencia, altitud…).`,
+            html`<b>El track</b> se colorea por ritmo, frecuencia cardiaca, altitud, pendiente, cadencia o potencia (lo que registró el reloj), con su
+              leyenda; puedes recortar el principio y el final (el calentamiento, la vuelta) y <b>exportar una imagen</b> del mapa con el track, un título
+              y la leyenda, guardada en tu dispositivo.`,
           ])}
           <p>El mapa y el track se leen en tu navegador y no salen de él; solo se guarda la calibración de los controles, para recuperar el análisis tal como
             lo dejaste.</p>`)}`,
