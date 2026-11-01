@@ -3265,6 +3265,8 @@ export default {
   "nut.query": "« {q} »",
   "nut.themes": "Thèmes",
   "nut.archive": "Archives",
+  "nut.intro.more": "Lire la suite",
+  "nut.intro.less": "Réduire",
   "nut.allThemes": "Tous les thèmes",
   "nut.noTheme": "Sans thème",
   "nut.allDates": "Toutes les dates",

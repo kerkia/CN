@@ -13,6 +13,12 @@ import * as auth from "../auth.js";
 import { sanitize } from "../nutrition/sanitize.js";
 import { call, catName, readingTime, fmtDay, dayOf, langName } from "../nutrition/common.js";
 
+// the introduction above the articles (owner, 2026-11-01): who leads the editorial team, one module per language; its first
+// paragraph shown, the rest by « Lire la suite », kept open or folded on this device (ocn.nut.intro)
+const INTRO = "ocn.nut.intro";
+const introOpen = () => { try { return localStorage.getItem(INTRO) === "open"; } catch (e) { return false; } };
+const setIntroOpen = (on) => { try { if (on) localStorage.setItem(INTRO, "open"); else localStorage.removeItem(INTRO); } catch (e) {} };
+
 // the articles without a theme: a filter of their own, shown only while some are (owner, 2026-11-01); ?theme=sans
 const NONE = "sans";
 const themeOf = (v) => (v === NONE ? NONE : Number(v) || null);
@@ -31,10 +37,12 @@ export async function render(main, { query }) {
   const cats = new Map(categories.map((c) => [c.id, c]));
   const st = { theme: themeOf(query.theme), month: /^\d{4}-\d{2}$/.test(query.mois || "") ? query.mois : "", q: query.q || "", article: Number(query.article) || null };
   const cache = new Map();          // id -> the article with its body (and translations)
+  const I = (await import(`../content/health.${lang()}.js`).catch(() => import("../content/health.en.js"))).intro;
 
   main.innerHTML = html`<div class="nut">
     <div class="page-head"><div><h1>${t("nav.nutrition")}</h1><p class="lede">${t("nut.lede")}</p></div>
       ${auth.nutritionWrites() ? html`<a class="btn" href="#/redaction">${t("nut.toAuthoring")}</a>` : ""}</div>
+    <section id="nut-intro" class="card nut-intro"></section>
     <div class="nut-layout">
       <aside class="nut-side card">
         <input type="search" id="nut-q" class="nut-search" placeholder="${t("nut.search")}" aria-label="${t("nut.search")}" value="${st.q}">
@@ -190,7 +198,20 @@ export async function render(main, { query }) {
     return q ? sep + q : "";
   };
 
+  function drawIntro() {
+    const box = $("#nut-intro");
+    box.hidden = !!st.article;
+    if (st.article || !I) return;
+    const open = introOpen();
+    box.innerHTML = html`<div class="nut-intro-face" aria-hidden="true">${I.name.charAt(0)}</div>
+      <div class="nut-intro-text"><h2>${I.name}</h2><div class="nut-intro-role">${I.role}</div>
+        <p>${I.lead}</p><p class="nut-intro-noai">${I.noAi}</p>${open ? I.more.map((x) => html`<p>${x}</p>`) : ""}
+        <button type="button" class="nut-intro-more" aria-expanded="${open}">${t(open ? "nut.intro.less" : "nut.intro.more")}</button></div>`;
+    box.querySelector(".nut-intro-more").addEventListener("click", () => { setIntroOpen(!introOpen()); drawIntro(); });
+  }
+
   function draw() {
+    drawIntro();
     drawFacets();
     if (st.article) drawArticle(); else drawList();
   }
