@@ -4249,7 +4249,7 @@ export default {
   "nav.nutrition": "Salud",
   "nav.nutritionWrite": "Redacción",
   "mt.nutrition": "Alimentación, recuperación, forma: artículos por temas",
-  "nut.lede": "Comer bien, recuperarse bien, mantenerse en forma: artículos por temas y por fecha.",
+  "nut.lede": "Comer bien, recuperarse bien, mantenerse en forma y sano: artículos por temas y por fecha.",
   "nut.loading": "Cargando…",
   "nut.err.forbidden": "Esta página aún no está abierta para tu cuenta.",
   "nut.err.load": "No se han podido cargar los artículos. Inténtalo de nuevo en un momento.",

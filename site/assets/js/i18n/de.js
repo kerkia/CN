@@ -4249,7 +4249,7 @@ export default {
   "nav.nutrition": "Gesundheit",
   "nav.nutritionWrite": "Redaktion",
   "mt.nutrition": "Ernährung, Erholung, Fitness: Artikel nach Themen",
-  "nut.lede": "Gut essen, gut erholen, fit bleiben: Artikel nach Themen und Datum.",
+  "nut.lede": "Gut essen, gut erholen, fit und gesund bleiben: Artikel nach Themen und Datum.",
   "nut.loading": "Wird geladen …",
   "nut.err.forbidden": "Diese Seite ist für dein Konto noch nicht freigeschaltet.",
   "nut.err.load": "Die Artikel konnten nicht geladen werden. Versuch es gleich noch einmal.",

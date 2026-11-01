@@ -4029,7 +4029,7 @@ export default {
   "nav.nutrition": "Health",
   "nav.nutritionWrite": "Authoring",
   "mt.nutrition": "Food, recovery, fitness: articles by theme",
-  "nut.lede": "Eating well, recovering well, staying fit: articles by theme and by date.",
+  "nut.lede": "Eating well, recovering well, staying fit and well: articles by theme and by date.",
   "nut.loading": "Loading…",
   "nut.err.forbidden": "This page is not open to your account yet.",
   "nut.err.load": "The articles could not be loaded. Try again in a moment.",

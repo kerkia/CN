@@ -3220,7 +3220,7 @@ export default {
   "nav.nutrition": "Santé",
   "nav.nutritionWrite": "Rédaction",
   "mt.nutrition": "Alimentation, récupération, forme : articles par thème",
-  "nut.lede": "Bien manger, bien récupérer, rester en forme : articles par thème et par date.",
+  "nut.lede": "Bien manger, bien récupérer, rester en forme et en bonne santé : articles par thème et par date.",
   "nut.loading": "Chargement…",
   "nut.err.forbidden": "Cette page n'est pas encore ouverte à votre compte.",
   "nut.err.load": "Les articles n'ont pas pu être chargés. Réessayez dans un instant.",
