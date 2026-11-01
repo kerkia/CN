@@ -23,6 +23,7 @@ import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import { raceFilters } from "../racefilters.js";
+import * as country from "../country.js";
 import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal, cutTrack } from "../trace/track.js";
 import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
@@ -152,14 +153,17 @@ export async function render(main, { query = {}, route } = {}) {
   const perso = route === "analysisPerso", pageMode = perso ? "perso" : "race", fileKey = perso ? "files:perso" : "files";
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
+  // the list offers the site's country's races (country.js, as « Analyse de course »); a race of another country named in
+  // the address, or found from a trace's day, still opens
+  const here = races.filter((r) => country.of(r) === country.current());
   // the race's list narrowed by the lists of races' filters (racefilters.js, as on Résultats); the address is the race's own
-  const RF = perso || !races.length ? null : await raceFilters({ id: "anf", races, address: false, onChange: () => pickers() });
+  const RF = perso || !here.length ? null : await raceFilters({ id: "anf", races: here, address: false, onChange: () => pickers() });
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t(perso ? "an.perso.title" : "an.title")}</h1><p class="lede">${t(perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     ${coachTabs("solo", perso ? "free" : "race")}
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="an-brief" id="an-brief" hidden></div>
-    <div id="an-rf">${RF ? RF.html : ""}</div>
+    <div id="an-rf">${RF ? RF.html : ""}${perso ? "" : country.hint(races.map(country.of))}</div>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
     <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
@@ -179,7 +183,7 @@ export async function render(main, { query = {}, route } = {}) {
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
       </div>
     </div>`;
-  if (!perso && !races.length) {
+  if (!perso && !here.length && !races.some((r) => r.key === query.course)) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
     return { title: t("an.title") };
   }
@@ -188,8 +192,8 @@ export async function render(main, { query = {}, route } = {}) {
   // ---- state
   // the race, circuit and runner of the last visit (the menu's link carries no query): the tab's session remembers them
   const selKey = "ocn.an.sel";
-  if (!perso && !query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && races.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
-  let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (races.find((r) => (r.lics || []).includes(me?.lic)) || races[0]).key;
+  if (!perso && !query.course) { try { const sel = JSON.parse(sessionStorage.getItem(selKey) || "null"); if (sel?.course && here.some((r) => r.key === sel.course)) query = { ...sel, ...query }; } catch (e) { /* none */ } }
+  let key = perso ? "perso" : races.some((r) => r.key === query.course) ? query.course : (here.find((r) => (r.lics || []).includes(me?.lic)) || here[0]).key;
   let race = null, docs = [], di = 0, ci = 0, ri = 0;
   let map = null, track = null;
   let traceFull = null;                                 // the trace as read; `track` is it, or its part kept (« Couper la trace »)
@@ -297,7 +301,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (perso) { $("#an-pick").hidden = true; return; }
     const k = klass();
     $("#an-pick").innerHTML = html`
-      <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.filter((r) => r.key === key || !RF || RF.keep(r)).map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
+      <label class="field"><span>${t("prov.race")}</span><select id="an-race" style="max-width:420px">${races.filter((r) => r.key === key || (country.of(r) === country.current() && (!RF || RF.keep(r)))).map((r) => html`<option value="${r.key}" ${raw(r.key === key ? "selected" : "")}>${fmtDate(r.date_iso, "short")} · ${r.name}${r.splits ? "" : ` (${t("an.noSplitsShort")})`}</option>`)}</select></label>
       ${docs.length > 1 ? html`<label class="field"><span>${t("prov.doc")}</span><select id="an-doc" style="max-width:320px">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent((d.url || "").split("/").pop())}</option>`)}</select></label>` : ""}
       ${docs.length ? html`<label class="field"><span>${t("prov.circuit")}</span><select id="an-c">${docs[di].classes.map((x, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")}>${x.name} (${x.runners.length})</option>`)}</select></label>
       <label class="field"><span>${t("prov.runner")}</span><select id="an-r" style="max-width:300px">${k.runners.map((r, i) => html`<option value="${i}" ${raw(i === ri ? "selected" : "")}>${r.place ? `${r.place}. ` : ""}${r.name}${r.club ? ` (${r.club})` : ""}${r.splits ? "" : ` — ${t("an.noSplitsShort")}`}</option>`)}</select></label>`
