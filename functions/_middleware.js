@@ -11,6 +11,7 @@
 
 import { DATA_ACCESS } from "./_lib/access.js";
 import { turnstileOn } from "./_lib/turnstile.js";
+import { countRefused } from "./_lib/robots.js";
 
 export const COOKIE = "cnx_session";
 // Deny by default: only these (canonical) paths are served without a session.
@@ -151,6 +152,7 @@ export async function onRequest(context) {
   if (!s?.uid) {                      // only account sessions count (the name+licence login is gone)
     if ((request.method === "GET" || request.method === "HEAD") && guestMay(path)) {
       if (await guestPass(request, env)) return next();
+      countRefused(context);                     // counted for the admin page's « Robots » (_lib/robots.js)
       return new Response(JSON.stringify({ error: "guest" }), {
         status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
       });

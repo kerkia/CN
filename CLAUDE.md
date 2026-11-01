@@ -2512,6 +2512,18 @@ Every multiple-choice game was played through to its score page at phone size, w
   one shown « indisponible » with its error. Needs the Pages secret `CF_ANALYTICS_TOKEN` (read-only: Account Analytics, D1 and
   Pages: Read; the owner's), optionally `CF_ACCOUNT_ID`; without it only D1's figures show. The dataset and field names were
   written from Cloudflare's documentation and not yet run against a real token.
+  **« Robots »** (owner, 2026-11-01; a card under the table, `drawRobots`, `GET /api/admin/robots?days=30|90|365`): the AI bots
+  Cloudflare blocked or let through (the zone's « AI Crawler and Agent access policies »: Training and Agents blocked, Search
+  allowed) and the guest passes, from **Ozimut's own copy kept 13 months** (Cloudflare keeps 31 days): D1 `bot_daily` (day, bot,
+  action — Cloudflare's, or « allowed » —, source, n), `bot_recent` (the last day's AI requests acted on, 100 at most: time, bot,
+  path, country, never an address), `guest_daily` (passes given, failed, reads refused without a pass — the gate counts those in
+  the isolate and writes at most once a minute, `countRefused`), `bot_sync` (the copy's state); migration 0020. `_lib/robots.js`
+  `syncBots`: every 3 hours (asked by `/api/track`'s `robotsSoon` and by the card), a few UTC days a pass from the last one copied
+  (the first passes fill 30 days), each day's security events by `firewallEventsAdaptiveGroups` (else the raw events, a page,
+  marked approximate) sorted by user agent (`_lib/aibots.js`, the robots.txt list) and the AI requests answered under 400 by
+  `httpRequestsAdaptiveGroups`; each dataset's limits from the zone's `settings` node; queries with literal filters. Needs
+  `CF_ANALYTICS_TOKEN` with « Zone › Zone › Read » and « Zone › Analytics › Read » on ozimut.com (the zone from `CF_ZONE_ID`,
+  else found by name); written from Cloudflare's documentation, not yet run against a real token.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
   public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, the countries' flags (flag-icons' 4:3 SVGs, `vendor.flag`;
   `python tools/vendor.py build <package>` rebuilds one package alone), DuckDB-WASM (its browser module bundled with

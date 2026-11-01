@@ -6,7 +6,7 @@
 // federation, a league or a club that wants to see the site. The server enforces the role; this page only reads and acts.
 
 import { html, raw, $, $$, normalise, fmt, fmtDate, pctN } from "../util.js";
-import { t, LANGS, LANG_NAMES } from "../i18n.js";
+import { t, LANGS, LANG_NAMES, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { tile, seg, chartCard, bindChartCard, legend, setLede } from "../ui.js";
@@ -119,6 +119,11 @@ export async function render(main, { query = {} } = {}) {
       <p class="muted" style="margin:0 2px 12px">${t("ad.co.lede")}</p>
       <div id="co-note"></div>
       <section class="card"><div class="table-wrap" id="co-list"><div class="empty">${t("misc.loading")}</div></div></section>
+      <section class="card rb-card"><div class="card-body">
+        <div class="rb-head"><h2>${t("ad.rb.title")}</h2>
+          <label class="field rb-period"><span>${t("ad.rb.period")}</span><select id="rb-days">${[30, 90, 365].map((n) => html`<option value="${n}">${t("ad.rb.days", { n })}</option>`)}</select></label></div>
+        <p class="muted rb-lede">${t("ad.rb.lede")}</p>
+        <div id="rb-body"><div class="empty">${t("misc.loading")}</div></div></div></section>
     </div>`;
 
   function showTab() {
@@ -190,6 +195,47 @@ export async function render(main, { query = {} } = {}) {
         <td class="r num">${x.limit ? x.fmtv(x.limit) : "—"}</td>
         <td class="r num">${x.error || x.value == null ? "" : level(x.value, x.limit)}</td>
         <td>${x.daily ? spark(x.daily, x.fmtv === fmt ? x.limit : x.limit) : ""}</td></tr>`)}</tbody></table>`;
+    drawRobots();
+  }
+
+  // « Robots » (owner, 2026-11-01): the AI bots Cloudflare blocked or let through and the visits without an account, from
+  // Ozimut's own copy kept 13 months (functions/api/admin/robots.js, _lib/robots.js)
+  let rbBound = false;
+  async function drawRobots() {
+    const sel = $("#rb-days");
+    if (!rbBound) { rbBound = true; sel.addEventListener("change", drawRobots); }
+    const box = $("#rb-body");
+    const r = await fetch(`api/admin/robots?days=${sel.value}`, { credentials: "same-origin", cache: "no-store" });
+    const d = r.ok ? await r.json() : null;
+    if (!d) { box.innerHTML = html`<div class="empty">${t("err.load")}</div>`; return; }
+    if (!d.tables) { box.innerHTML = html`<div class="notice info">${t("ad.rb.noTables")}</div>`; return; }
+    const s = d.sync || {}, when = (ms) => new Date(ms).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
+    const sum = (a) => a.reduce((x, y) => x + y, 0);
+    const notes = [];
+    if (s.error === "no token") notes.push(html`<div class="notice info">${t("ad.rb.noToken")}</div>`);
+    else {
+      notes.push(html`<p class="muted rb-sync">${s.last && s.through ? t("ad.rb.sync", { when: when(s.last), through: fmtDate(s.through) }) : t("ad.rb.never")}
+        ${s.through && !s.done ? t("ad.rb.filling") : ""}</p>`);
+      if (s.error) notes.push(html`<div class="notice">${t("ad.rb.error", { e: s.error })}</div>`);
+      if (s.approx) notes.push(html`<p class="muted rb-sync">${t("ad.rb.approx")}</p>`);
+      if (s.allowedErr) notes.push(html`<p class="muted rb-sync">${t("ad.rb.allowedErr", { e: s.allowedErr })}</p>`);
+    }
+    const lines = [["blocked", d.blocked], ["allowed", d.allowed, t("ad.rb.allowed.note")], ["other", d.other],
+      ["passes", d.guests.passes], ["failed", d.guests.failed], ["refused", d.guests.refused]];
+    const bots = d.bots.length ? html`<h3>${t("ad.rb.bots")}</h3><div class="table-wrap"><table class="data compact">
+        <thead><tr><th>${t("ad.rb.col.bot")}</th><th class="r">${t("ad.rb.col.blocked")}</th><th class="r">${t("ad.rb.col.allowed")}</th><th>${t("ad.rb.col.last")}</th></tr></thead>
+        <tbody>${d.bots.map((b) => html`<tr><td><b>${b.bot}</b></td><td class="r num">${fmt(b.blocked)}</td><td class="r num">${fmt(b.allowed)}</td><td>${b.last ? fmtDate(b.last) : "—"}</td></tr>`)}</tbody></table></div>
+      ${d.sources.length ? html`<p class="muted rb-sync">${t("ad.rb.sources", { list: d.sources.map((x) => `${x.source || "?"} ${fmt(x.n)}`).join(" · ") })}</p>` : ""}`
+      : html`<p class="muted">${t("ad.rb.none")}</p>`;
+    const recent = d.recent.length ? html`<details class="rb-recent"><summary>${t("ad.rb.recent", { n: d.recent.length })}</summary><div class="table-wrap"><table class="data compact">
+        <thead><tr><th>${t("ad.rb.col.when")}</th><th>${t("ad.rb.col.bot")}</th><th>${t("ad.rb.col.action")}</th><th>${t("ad.rb.col.path")}</th><th>${t("ad.rb.col.country")}</th></tr></thead>
+        <tbody>${d.recent.map((x) => html`<tr><td class="num">${when(x.ts)}</td><td>${x.bot}</td><td>${x.action}</td><td class="rb-path">${x.path}</td><td>${x.country}</td></tr>`)}</tbody></table></div></details>` : "";
+    box.innerHTML = html`${notes}
+      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("ad.co.col.what")}</th><th class="r">${t("ad.rb.col.total")}</th><th>${t("ad.rb.col.days")}</th></tr></thead>
+        <tbody>${lines.map(([k, v, note]) => html`<tr><td><b>${t(`ad.rb.${k}`)}</b>${note ? html`<div class="muted" style="font-size:12px">${note}</div>` : ""}</td>
+          <td class="r num">${fmt(sum(v))}</td><td>${spark(v, 0)}</td></tr>`)}</tbody></table></div>
+      ${bots}${recent}
+      ${d.since ? html`<p class="muted rb-sync">${t("ad.rb.since", { d: fmtDate(d.since) })}</p>` : ""}`;
   }
 
   // « Démo »: the demo accounts. A password is shown once, when made or renewed: to be sent with the address and the site's link

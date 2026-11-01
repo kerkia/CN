@@ -1805,6 +1805,17 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
   background: var(--surface); border: 1px solid var(--border-strong); box-shadow: 0 8px 30px rgba(0, 0, 0, .35); text-align: center; }
 .guest-check p { margin: 0 0 8px; font-size: 13.5px; }
 .guest-check:not(.ask) { opacity: 0; pointer-events: none; }
+/* the admin page's « Robots » card (« Consommation »; owner, 2026-11-01) */
+.rb-card { margin-top: 14px; }
+.rb-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.rb-head h2 { font-size: 16px; margin: 0; }
+.rb-period { margin: 0; }
+.rb-lede { margin: 4px 0 10px; font-size: 13px; }
+.rb-sync { margin: 4px 0 8px; font-size: 12.5px; }
+.rb-card h3 { font-size: 14.5px; margin: 14px 0 6px; }
+.rb-recent { margin-top: 12px; }
+.rb-recent summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.rb-path { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ma-tile b { font-size: 16px; color: var(--course); line-height: 1.25; }
 .ma-tile-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
 .ma-need { margin-top: auto; padding-top: 6px; font-size: 12.5px; color: var(--ink); }

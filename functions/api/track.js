@@ -3,6 +3,7 @@
 // admin page; kept 13 months. Two upserts at most per page view, well within D1's free quota.
 import { json, readBody, withUser } from "../_lib/api.js";
 import { announceSoon, translateSoon } from "../_lib/nutrition.js";
+import { robotsSoon } from "../_lib/robots.js";
 
 // the site's pages (app.js routes; the Réseau views apart) — anything else is refused
 const PAGES = new Set(["overview", "ranking", "runner", "compare", "clubs", "club", "clubcompare", "courses", "agenda",
@@ -21,6 +22,7 @@ export const onRequestPost = withUser(async (ctx, user) => {
   // a « Santé » article whose day has come: its readers are told (at most every 10 minutes an isolate)
   announceSoon(ctx);
   translateSoon(ctx);            // and the Santé translations still to make, one at a time
+  robotsSoon(ctx);               // the copy of Cloudflare's figures on the AI bots, when due (admin › « Robots »)
   const b = await readBody(request);
   const page = String(b?.page || "");
   if (!PAGES.has(page)) return json({ error: "bad request" }, 400);
