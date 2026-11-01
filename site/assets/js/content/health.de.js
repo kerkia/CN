@@ -2,7 +2,7 @@
 // englischer Text, health.en.js, übersetzt). health.fr.js und .es.js sagen dasselbe.
 
 export const intro = {
-  name: "Nadya, Ärztin",
+  name: "Nadya (Nadejda Le Helloco), Ärztin",
   role: "Leitung der Redaktion",
   lead: `Nadya leitet die Redaktion von Ozimut: Sie schreibt die meisten Artikel und liest jeden Beitrag gegen. Sie hat an einer
     der besten medizinischen Fakultäten des ehemaligen sowjetischen Systems Medizin studiert und mehrere Jahre als Ärztin

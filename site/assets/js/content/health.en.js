@@ -2,7 +2,7 @@
 // health.fr.js, .de.js and .es.js say the same.
 
 export const intro = {
-  name: "Nadya, M.D.",
+  name: "Nadya (Nadejda Le Helloco), M.D.",
   role: "Editorial lead",
   lead: `Nadya leads Ozimut's editorial team—authoring most articles and reviewing every contribution. She holds an M.D. from one
     of the finest medical faculties of the former Soviet system and practiced medicine for several years before moving to Canada

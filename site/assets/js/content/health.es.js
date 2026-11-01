@@ -2,7 +2,7 @@
 // inglés, health.en.js, traducido). health.fr.js y .de.js dicen lo mismo.
 
 export const intro = {
-  name: "Nadya, doctora en medicina",
+  name: "Nadya (Nadejda Le Helloco), doctora en medicina",
   role: "Responsable de la redacción",
   lead: `Nadya dirige el equipo de redacción de Ozimut: escribe la mayoría de los artículos y revisa cada contribución. Se
     licenció en medicina en una de las mejores facultades del antiguo sistema soviético y ejerció varios años antes de mudarse a

@@ -3154,7 +3154,7 @@ a.nut-chip:hover { filter: brightness(.95); }
 .nut-intro h2 { margin: 0; font-size: 19px; }
 .nut-intro-role { color: var(--ink-3); font-size: 13px; margin: 2px 0 8px; }
 .nut-intro p { margin: 0 0 8px; line-height: 1.6; color: var(--ink-2); }
-.nut-intro p.nut-intro-noai { color: var(--ink); font-weight: 600; font-size: 14.5px; }
-.nut-intro-more { border: 0; background: none; padding: 0; color: var(--link); font: inherit; font-size: 14px; cursor: pointer; }
+.nut-intro p.nut-intro-noai { color: var(--ink); font-weight: 600; font-size: 14.5px; margin: 0; }
+.nut-intro-more { border: 0; background: none; padding: 0; color: var(--link); font: inherit; font-size: 13px; cursor: pointer; }
 .nut-intro-more:hover { text-decoration: underline; }
 @media (max-width: 640px) { .nut-intro { padding: 14px 16px; gap: 12px; } .nut-intro-face { width: 40px; height: 40px; font-size: 18px; } }
