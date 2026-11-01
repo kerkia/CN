@@ -15,6 +15,7 @@ import { loadSymbols, loadAllTexts, languageStrings, setCustomSymbols } from "./
 import { loadFonts, ensureText, setLanguage } from "./fonts.js";
 import * as OFF from "./offline.js";
 import * as FW from "../fullwin.js";
+import { bar } from "../waitbar.js";
 import { descPane } from "./panes.js";
 import * as A from "./actions.js";
 import * as D from "./dialogs.js";
@@ -73,7 +74,8 @@ export async function openEditor(ctx) {
   E.canvas = canvas;
 
   // ---- helpers exposed to the other modules -----------------------------------------------------------------------
-  E.status = (msg, kind = "") => { const s = $("#tr-status"); s.textContent = msg; s.dataset.kind = kind; };
+  // a busy state with its bar: the share done when the caller knows it (frac), else an hourglass (owner, 2026-11-01)
+  E.status = (msg, kind = "", frac = null) => { const s = $("#tr-status"); s.innerHTML = `${kind === "busy" ? bar(frac) : ""}${esc(msg)}`; s.dataset.kind = kind; };
   E.help = (msg) => { $("#tr-help").textContent = msg || toolHelp(E.tool); };
   E.toast = (msg, ms = 3500) => {
     const el = document.createElement("div"); el.className = "tr-toast"; el.textContent = msg; root.appendChild(el);

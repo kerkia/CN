@@ -1248,6 +1248,18 @@ Every multiple-choice game was played through to its score page at phone size, w
   ramparts (its unwooded patches) and the castle's grounds come out olive — a residential polygon covers them. Each run keeps its
   Overpass answer in the work folder (`osm_<first tile>_<n>.json`); `MAPGEN_OSM_CACHE=1` reads it back, to try a style without asking
   Overpass again (it answered in 3-8 minutes, or not at all, from the PC on 2026-11-01 evening).
+  **Progress shown** (owner, 2026-11-01: « wherever requests to IGN, OpenStreetMap or running karttapullautin may take time,
+  progress bars or hourglasses »): `site/assets/js/waitbar.js` (`bar(frac)`, `setBar`, `elapsed`; not `progress.js`, the runner
+  page's age-category progression) — the browser's own `<progress>`, its value the share done, none while unknown (the browsers
+  animate it: the hourglass), styled `.wait-bar`. The map generation: the workflow reports its stage and share done
+  (`run.Progress`: lidar 30 %, karttapullautin 35 %, OpenStreetMap 20 %, drawing 15 % of the bar; downloads and tiles counted,
+  karttapullautin and Overpass by 1 − e^(−elapsed / their usual time, `KP_EST`, `OSM_EST`), which never claims to be done) into the
+  request's record on R2 every 10 s (`ci --progress-to`, the workflow's aws CLI), `GET /api/lidarmap?req=` returns it, and
+  `lidarmap.make` shows the stage, the share (92 % of the bar, putting the tiles together the rest) and the time waited, every 2 s
+  (`an.gen.stage.<stage>`, `an.gen.waiting`; an hourglass before a run starts) — in « Analyse solo »'s files card (updated in
+  place) and the Tracer's « Générer » line (`#tr-gen-bar`). The 3D views' relief (Solo, Multi, the Tracer) show the IGN or tiles
+  load's share in their note, and the Tracer's status bar puts a bar before every busy state (`E.status(msg, "busy", frac)`; the
+  climb from IGN course by course).
   Not done: passability of OSM's fences, karttapullautin's black marks for walls and embankments in town, tiles made again when OpenStreetMap
   changes, edges between tiles made in different runs (possible seams); **route choices on LiDAR layers: never for runners** (owner: a
   route is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.

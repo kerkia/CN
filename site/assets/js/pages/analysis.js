@@ -40,6 +40,7 @@ import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 import { takeInbox } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
+import { bar, setBar } from "../waitbar.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
@@ -577,20 +578,26 @@ export async function render(main, { query = {}, route } = {}) {
         <option value="forest" ${raw(style === "forest" ? "selected" : "")}>${t("an.gen.forest")}</option>
         <option value="sprint" ${raw(style === "sprint" ? "selected" : "")}>${t("an.gen.sprint")}</option></select></label>
       <button type="button" class="btn btn-sm btn-primary" id="an-gen" ${raw(gen?.busy ? "disabled" : "")}>${t("an.gen.btn")}</button>
-      ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}">${gen.msg}</span>` : ""}
+      ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}" role="status">${gen.busy ? raw(bar(gen.frac)) : ""}<span class="an-gen-msg">${gen.msg}</span></span>` : ""}
       <p class="muted">${t("an.gen.hint")}</p></div>`;
   }
   async function genMap() {
     if (!track || gen?.busy) return;
     const style = $("#an-gen-style")?.value === "sprint" ? "sprint" : "forest";
     genStyle = style;
-    const say = (msg, busy = true) => { if (my === genToken) { gen = { busy, msg }; filesCard(); } };
+    // the wait shown: its line and bar updated in place while it lasts (every 2 s), the card drawn again when it starts or ends
+    const say = (msg, busy = true, frac = null) => {
+      if (my !== genToken) return;
+      const el = $(".an-gen-state.busy");
+      if (busy && gen?.busy && el) { gen = { busy, msg, frac }; el.querySelector(".an-gen-msg").textContent = msg; setBar(el.querySelector("progress"), frac); return; }
+      gen = { busy, msg, frac }; filesCard();
+    };
     const my = ++genToken;
     if (!LM.covered(track.lat0, track.lon0)) return say(t("an.gen.outside"), false);
     const area = LM.areaOf(track);
     if (area.ids.length > LM.MAX_TILES) return say(t("an.gen.tooBig", { n: fmt(area.km2, 1), max: LM.MAX_TILES }), false);
     try {
-      const made = await LM.make(area, style, (key, vars) => say(t(key, vars)), () => my !== genToken);
+      const made = await LM.make(area, style, (key, vars, frac) => say(t(key, vars), true, frac), () => my !== genToken);
       if (!made) return;
       gen = made.partial ? { busy: false, msg: t("an.gen.partial") } : null;
       for (const role of ["map", "geo", "world", "prj"]) files[role] = null;
@@ -2093,9 +2100,9 @@ export async function render(main, { query = {}, route } = {}) {
     v3on = true;
     $("#an-3d").setAttribute("aria-pressed", "true");
     $("#an-3d-host").hidden = false; canvas.hidden = true;
-    v3note(t("an.v3.loading"));
+    v3note(`${bar()} ${t("an.v3.loading")}`);
     try {
-      const g = await heights((f) => { if (my === v3token) v3note(t("an.v3.loadingPct", { p: Math.round(100 * f) })); });
+      const g = await heights((f) => { if (my === v3token) v3note(`${bar(f)} ${t("an.v3.loadingPct", { p: Math.round(100 * f) })}`); });
       if (my !== v3token) return;
       const { open3d } = await import("../trace/view3d.js");
       if (my !== v3token) return;

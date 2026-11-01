@@ -12,6 +12,7 @@ import { printBox } from "./pdf.js";
 import { where } from "./ribbon-data.js";
 import { svg } from "./icons.js";
 import { t, locale } from "./lang.js";
+import { bar } from "../waitbar.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 
 const EX_KEY = "ocn.tr.ex3d";
@@ -56,7 +57,7 @@ export async function view3d(E) {
   });
   try {
     // the course over the map at a resolution the view takes (its texture at most 4096 px on a phone, 6144 elsewhere)
-    note(esc(t("trc.v3.drawing")));
+    note(`${bar()} ${esc(t("trc.v3.drawing"))}`);
     // the course's print area, kept to the map (a small map on a large page: no blank paper around it)
     const clip = [0, 0, ev.map.w || 210, ev.map.h || 297], pb = printBox(E, cd, layoutCourse(ev, cd));
     const side = Math.max(Math.min(pb.box[2], clip[2]) - Math.max(pb.box[0], clip[0]), Math.min(pb.box[3], clip[3]) - Math.max(pb.box[1], clip[1]), 1);
@@ -75,9 +76,9 @@ export async function view3d(E) {
     // the heights
     const plan = gridPlan(W, H, toM);
     const key = `tr:${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((x) => x.toFixed(5)).join(",")).join(";")}`;
-    note(esc(t("trc.v3.loading", { p: 0 })));
+    note(`${bar(0)} ${esc(t("trc.v3.loading", { p: 0 }))}`);
     const grid = await loadGrid({ key, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
-      onProgress: (f) => { if (live) note(esc(t("trc.v3.loading", { p: Math.round(100 * f) }))); } });
+      onProgress: (f) => { if (live) note(`${bar(f)} ${esc(t("trc.v3.loading", { p: Math.round(100 * f) }))}`); } });
     if (!live) return;
     const { open3d } = await import("../trace/view3d.js");
     if (!live) return;

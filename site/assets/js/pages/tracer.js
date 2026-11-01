@@ -19,6 +19,7 @@ import { readOcn, isOcnFile, ACCEPT as OCN_ACCEPT } from "../tracer/ocnfile.js";
 import { openMap, isMapFile, mimeOf, imageDpi, isPdf, isVectorMap, MAP_ACCEPT } from "../tracer/mapsrc.js";
 import { geoFromWorld } from "../tracer/geo.js";
 import { LAMBERT93 } from "../trace/georef.js";
+import { setBar } from "../waitbar.js";
 import * as LM from "../trace/lidarmap.js";
 import { where } from "../agendamap.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
@@ -252,7 +253,7 @@ function genHtml() {
     <div class="tr-gen-from"><button type="button" class="btn btn-sm" data-gen-from="race">${escA(t("trc.gen.fromRace"))}</button>
       <button type="button" class="btn btn-sm" data-gen-from="here">${escA(t("trc.gen.fromHere"))}</button>
       <label class="btn btn-sm">${escA(t("trc.gen.fromTrace"))}<input type="file" data-gen-trace accept=".gpx,.fit,.tcx" hidden></label></div>
-    <div class="tr-gen-go"><button type="button" class="btn btn-primary" data-gen>${escA(t("trc.gen.btn"))}</button> <span class="tr-hint" id="tr-gen-state" role="status"></span></div>
+    <div class="tr-gen-go"><button type="button" class="btn btn-primary" data-gen>${escA(t("trc.gen.btn"))}</button> <progress class="wait-bar" id="tr-gen-bar" max="1" hidden></progress><span class="tr-hint" id="tr-gen-state" role="status"></span></div>
   </details>`;
 }
 /** The degrees of « 48.3912, -1.1734 » (or with decimal commas: « 48,3912 ; -1,1734 »), else null. */
@@ -265,7 +266,12 @@ function parseCentre(text) {
 function bindGen(f, races, onMade) {
   const box = f.querySelector("#tr-gen");
   if (!box) return;
-  const state = (text, bad = false) => { const el = box.querySelector("#tr-gen-state"); el.textContent = text; el.classList.toggle("tr-bad", bad); };
+  // the line under the button, and its bar while the map is made (frac: the share done, null an hourglass, undefined no bar)
+  const state = (text, bad = false, frac) => {
+    const el = box.querySelector("#tr-gen-state"), b = box.querySelector("#tr-gen-bar");
+    el.textContent = text; el.classList.toggle("tr-bad", bad);
+    b.hidden = frac === undefined; if (frac !== undefined) setBar(b, frac);
+  };
   const fmt1 = (v) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 4 }).format(v);
   let traceArea = null, busy = false;
   const setCentre = (lat, lon) => { f.elements.genCentre.value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`; traceArea = null; };
@@ -311,7 +317,7 @@ function bindGen(f, races, onMade) {
     if (area.ids.length > LM.MAX_TILES) { state(t("trc.gen.tooBig", { max: LM.MAX_TILES }), true); return; }
     busy = true; box.querySelector("[data-gen]").disabled = true;
     try {
-      const made = await LM.make(area, style, (key, vars) => state(t(key, vars)), () => !document.contains(box));
+      const made = await LM.make(area, style, (key, vars, frac) => state(t(key, vars), false, frac), () => !document.contains(box));
       if (!made) return;
       onMade(made, style);
       state(made.partial ? t("an.gen.partial") : t("trc.gen.made"), made.partial);

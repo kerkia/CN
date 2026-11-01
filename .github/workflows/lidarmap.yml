@@ -55,7 +55,7 @@ jobs:
             aws s3 sync "$BUCKET/lidarmap/req/" "$RUNNER_TEMP/req/" --endpoint-url "$R2" --only-show-errors || true
             # the tiles' records, so that a tile made in one style keeps the other style it was made in before
             aws s3 sync "$BUCKET/lidarmap/t/" "$RUNNER_TEMP/known/" --exclude "*" --include "*.json" --endpoint-url "$R2" --only-show-errors || true
-            python -m mapgen ci --requests "$RUNNER_TEMP/req" --out "$RUNNER_TEMP/out" --work "$RUNNER_TEMP/work" --known "$RUNNER_TEMP/known" --kp "$KP"
+            python -m mapgen ci --requests "$RUNNER_TEMP/req" --out "$RUNNER_TEMP/out" --work "$RUNNER_TEMP/work" --known "$RUNNER_TEMP/known" --progress-to "$BUCKET/lidarmap/req/" --kp "$KP"
             [ -d "$RUNNER_TEMP/out/req" ] || break
             if [ -d "$RUNNER_TEMP/out/t" ]; then
               aws s3 cp "$RUNNER_TEMP/out/t/" "$BUCKET/lidarmap/t/" --recursive --endpoint-url "$R2" --only-show-errors

@@ -28,6 +28,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +60,53 @@ MAX_TILES = 16                   # a run's work at most (~4 GB of point clouds)
 # karttapullautin's settings changed from its own defaults (pullauta.ini, written by the program at its first run)
 KP_SETTINGS = {"batch": "1", "lazfolder": "./laz", "batchoutfolder": "./out", "savetempfiles": "0",
                "savetempfolders": "0", "output_dxf": "0"}
+
+
+class Progress:
+    """The run's progress, for the page that waits (owner, 2026-11-01: « progress bars wherever IGN, OpenStreetMap or
+    karttapullautin take time »): four stages weighted by their usual share of the time; within a stage the share of its
+    files or tiles done, or, for the two that cannot tell (karttapullautin, Overpass), 1 − e^(−elapsed / the usual time),
+    which never claims to be done. report(stage, frac) is called every TICK seconds by a thread of its own and at each
+    stage's start."""
+    STAGES = (("lidar", 0.30), ("kp", 0.35), ("osm", 0.20), ("draw", 0.15))
+    TICK = 10.0
+
+    def __init__(self, report=None):
+        self.report, self.stage, self.t0, self.est, self.done, self.total = report, None, 0.0, None, 0, 1
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._tick, daemon=True) if report else None
+        if self._thread:
+            self._thread.start()
+
+    def start(self, stage: str, total: int = 1, est: float | None = None) -> None:
+        self.stage, self.t0, self.est, self.done, self.total = stage, time.monotonic(), est, 0, max(1, total)
+        self.send()
+
+    def step(self, n: int = 1) -> None:
+        self.done += n
+
+    def frac(self) -> float:
+        base = 0.0
+        for name, w in self.STAGES:
+            if name == self.stage:
+                inside = (1 - math.exp(-(time.monotonic() - self.t0) / self.est)) if self.est else self.done / self.total
+                return base + w * min(1.0, inside)
+            base += w
+        return 0.0
+
+    def send(self) -> None:
+        if self.report and self.stage:
+            try:
+                self.report(self.stage, self.frac())
+            except Exception as ex:                      # a progress not sent never stops the maps
+                print(f"progress: {ex}")
+
+    def _tick(self) -> None:
+        while not self._stop.wait(self.TICK):
+            self.send()
+
+    def close(self) -> None:
+        self._stop.set()
 
 
 def tile_ids(lat0: float, lon0: float, lat1: float, lon1: float) -> list[str]:
@@ -187,8 +235,14 @@ def dem(tif: Path) -> Image.Image:
     return Image.fromarray(np.stack([r, gg, b], axis=-1).astype(np.uint8), "RGB")
 
 
+# karttapullautin's usual time (s): a start, then each tile (measured on the PC, 2026-11-01: forest ~17 s a tile in batch,
+# sprint's render at 1:4000 ~40 s); Overpass's usual answer
+KP_EST = {"forest": (15, 18), "sprint": (15, 40)}
+OSM_EST = 60
+
+
 def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 4, log=print, style: str = "forest",
-             known: Path | None = None) -> dict[str, str]:
+             known: Path | None = None, progress: Progress | None = None) -> dict[str, str]:
     """The tiles' maps in a style into out/t/, each tile's record keeping the styles made before (its former record read
     from out/t, else from known/: the workflow's copy of R2's). Returns each tile's outcome: "done", "none" (no LiDAR
     there yet) or an error."""
@@ -196,6 +250,7 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     tdir.mkdir(parents=True, exist_ok=True)
     (work / "laz").mkdir(parents=True, exist_ok=True)
     res: dict[str, str] = {}
+    prog = progress or Progress()
     http = httpx.Client(timeout=120, headers={"User-Agent": UA})
     pace = Pace()
     t0 = time.monotonic()
@@ -207,11 +262,16 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     todo = [t for t in tids if t not in res]
     if not todo:
         return res
+    prog.start("lidar", total=2 * len(todo))
     for t in todo:
         fetch(http, cat[t]["laz"], work / "laz" / f"LHD_{t}.copc.laz", pace)
+        prog.step()
         fetch(http, cat[t]["mnt"], work / f"mnt_{t}.tif", pace)
+        prog.step()
     log(f"downloaded {len(todo)} tiles in {time.monotonic() - t0:.0f} s")
     t1 = time.monotonic()
+    a, b = KP_EST[style]
+    prog.start("kp", est=a + b * len(todo))
     home = karttapullautin(kp, work, processes, style)
     log(f"karttapullautin ({style}): {time.monotonic() - t1:.0f} s")
     xs, ys = zip(*(corner(t) for t in todo))
@@ -222,6 +282,7 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     # without OpenStreetMap the tiles fail (asked again, they are made again) rather than be kept without roads and paths
     # the answer is kept in the work folder: MAPGEN_OSM_CACHE=1 reads it back (trying a style without asking Overpass again)
     cache = work / f"osm_{todo[0]}_{len(todo)}.json"
+    prog.start("osm", est=OSM_EST)
     try:
         if os.environ.get("MAPGEN_OSM_CACHE") == "1" and cache.exists():
             data = json.loads(cache.read_text(encoding="utf-8"))
@@ -233,7 +294,9 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     except Exception as ex:
         log(f"OpenStreetMap: {ex}")
         return {**res, **{t: f"error: OpenStreetMap: {ex}"[:300] for t in todo}}
+    prog.start("draw", total=len(todo))
     for t in todo:
+        prog.step(0)
         try:
             x0, y1 = corner(t)
             # OpenStreetMap drawn on the render's own pixels (the ground's fill reads its colours, which averaging blurs),
@@ -253,6 +316,7 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
         except Exception as ex:
             log(f"{t}: {ex}")
             res[t] = f"error: {ex}"[:300]
+        prog.step()
     log(f"{len(todo)} tiles in {time.monotonic() - t0:.0f} s")
     return res
 
@@ -275,7 +339,24 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int, known: Path | None = None) -> None:
+def progress_to(dest: str | None, reqs: list[dict], out: Path):
+    """The requests' progress written while the tiles are made: each request's record with its "progress" (stage, share
+    done, when), copied to R2 at dest (the workflow's aws CLI and endpoint, env R2) — the page reads it there."""
+    pdir = out / "prog"
+
+    def report(stage: str, frac: float) -> None:
+        pdir.mkdir(parents=True, exist_ok=True)
+        for r in reqs:
+            f = pdir / f"{r['id']}.json"
+            f.write_text(json.dumps({**r, "progress": {"stage": stage, "frac": round(frac, 3), "at": _now()}}), encoding="utf-8")
+            if dest:
+                subprocess.run(["aws", "s3", "cp", str(f), f"{dest}{r['id']}.json", "--endpoint-url", os.environ.get("R2", ""),
+                                "--only-show-errors"], timeout=30, capture_output=True)
+    return report
+
+
+def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int, known: Path | None = None,
+       progress_dest: str | None = None) -> None:
     """The site's waiting requests (lidarmap/req/<id>.json, {id, tiles, style, status "queued"}): their tiles made in the
     oldest request's style, at most MAX_TILES a run (the rest, and the other style's, wait for the next round), each
     request's status written to out/req/."""
@@ -300,10 +381,13 @@ def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int, known: Path 
     print(f"{len(queued)} requests waiting, {len(take)} taken, {len(tids)} tiles ({style})")
     if not tids:
         return
+    prog = Progress(progress_to(progress_dest, take, out))
     try:
-        res = generate(tids, out, work, kp, processes, style=style, known=known)
+        res = generate(tids, out, work, kp, processes, style=style, known=known, progress=prog)
     except Exception as ex:
         res = {t: f"error: {ex}"[:300] for t in tids}
+    finally:
+        prog.close()
     (out / "req").mkdir(parents=True, exist_ok=True)
     for r in take:
         mine = {t: res.get(t, "error: not made") for t in r["tiles"]}
@@ -320,6 +404,7 @@ def main(argv: list[str] | None = None) -> None:
     b = sub.add_parser("area"); b.add_argument("box", nargs=4, type=float)
     c = sub.add_parser("ci"); c.add_argument("--requests", required=True, type=Path)
     c.add_argument("--known", type=Path, default=None)
+    c.add_argument("--progress-to", default=None, help="R2 address the requests' progress is copied to (s3://…/lidarmap/req/)")
     for p in (a, b):
         p.add_argument("--style", choices=list(STYLES), default="forest")
     for p in (a, b, c):
@@ -331,7 +416,7 @@ def main(argv: list[str] | None = None) -> None:
     work = args.work or args.out / "work"
     work.mkdir(parents=True, exist_ok=True)
     if args.cmd == "ci":
-        ci(args.requests, args.out, work, args.kp, args.processes, args.known)
+        ci(args.requests, args.out, work, args.kp, args.processes, args.known, args.progress_to)
         return
     ids = args.ids if args.cmd == "tiles" else tile_ids(*args.box)
     if len(ids) > MAX_TILES:

@@ -137,7 +137,8 @@ export async function climb(E) {
   const { inFrance } = await import("../trace/terrain.js");
   const tiles = E.pro && here && !inFrance(here[0], here[1]);
   try {
-    for (const id of ids) {
+    for (const [n, id] of ids.entries()) {
+      E.status(t("trc.race.ignBusy"), "busy", n / ids.length);
       const des = M.hasVariations(ev, id) ? M.allVariations(ev, id).map((x) => ({ cd: M.cdCourse(id, -1, x.path), code: x.code })) : [{ cd: M.cdCourse(id), code: "" }];
       let best = null;
       for (const d of des.slice(0, 12)) {

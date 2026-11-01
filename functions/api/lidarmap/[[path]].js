@@ -6,7 +6,8 @@
 //   lidarmap/t/<id>.dem.png   heights, Terrarium-encoded, 500 × 500 nodes every 2 m from that corner
 //   lidarmap/t/<id>.json      { id, x0, y1, px, size, dem, styles, v: { style: version }, lidar, osm, made } — or
 //                             { none: true }: no LiDAR there yet
-//   lidarmap/req/<id>.json    a request: { id, tiles, style, by, at, status: queued | done | failed, result }
+//   lidarmap/req/<id>.json    a request: { id, tiles, style, by, at, status: queued | done | failed, result, progress: { stage:
+//                             lidar | kp | osm | draw, frac, at } while the workflow makes it }
 // Each style has its own karttapullautin render (the sprint one 2.5 m contours drawn at 1:4000), made only when asked.
 // A tile's id is IGN's: its west and north edges in Lambert 93 kilometres ("0391_6819").
 //   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made in an older version
@@ -82,5 +83,6 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
   const o = await env.BUCKET.get(`${Q}${req}.json`);
   if (!o) return json({ error: "not found" }, 404);
   const r = await o.json();
-  return json({ req: r.id, status: r.status, at: r.at, done: r.done || null, result: r.result || null });
+  // progress: the workflow's stage and share done while it makes the tiles (mapgen/run.py Progress), else null
+  return json({ req: r.id, status: r.status, at: r.at, done: r.done || null, result: r.result || null, progress: r.status === "queued" ? r.progress || null : null });
 }, { admin: true });

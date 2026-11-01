@@ -44,6 +44,7 @@ import { videoPanel } from "./sharedvideo.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
+import { bar } from "../waitbar.js";
 import { replaceQuery } from "../app.js";
 
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -1454,9 +1455,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     v3on = true;
     $("#sh-3d").setAttribute("aria-pressed", "true");
     $("#sh-3d-host").hidden = false; $("#sh-canvas").hidden = true;
-    v3note(t("an.v3.loading"));
+    v3note(`${bar()} ${t("an.v3.loading")}`);
     try {
-      const g = await heights3d((f) => { if (my === v3token) v3note(t("an.v3.loadingPct", { p: Math.round(100 * f) })); });
+      const g = await heights3d((f) => { if (my === v3token) v3note(`${bar(f)} ${t("an.v3.loadingPct", { p: Math.round(100 * f) })}`); });
       if (my !== v3token) return;
       const { open3d } = await import("../trace/view3d.js");
       if (my !== v3token) return;

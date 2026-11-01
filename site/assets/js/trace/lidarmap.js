@@ -6,6 +6,7 @@
 // everything else (the calibration, the files kept for the visit, « ↗ ») works as for any georeferenced map. The tiles'
 // heights (IGN's MNT every 2 m) give the 3D view its relief (`lidarGrid`).
 
+import { elapsed } from "../waitbar.js";
 import { LAMBERT93 } from "./georef.js";
 
 export const PX = 0.4233333333333334;      // a tile's pixel, m: karttapullautin's 600 dpi at 1:10 000
@@ -124,29 +125,42 @@ export async function compose(area, ids, style = "forest", onProgress) {
 }
 
 /**
- * The whole way to a map, for the pages: the tiles asked for, waited for (the request's state every 15 s) and put together.
- * say(key, vars) reports each step by its catalogue key (an.gen.asking, queued, notStarted, composing); stop() true gives
- * up (another request or a page left). Resolves { ...compose(), partial } or null when stopped; throws Error("none") when
- * IGN has no LiDAR anywhere in the area, Error("failed") when no tile could be made.
+ * The whole way to a map, for the pages: the tiles asked for, waited for (the request's state every 10 s) and put together.
+ * say(key, vars, frac) reports each step by its catalogue key (an.gen.asking, queued, notStarted, waiting, stage.<lidar | kp |
+ * osm | draw>, composing; vars.t the time waited, « m:ss ») and the share done (null while unknown: the bar then shows an
+ * hourglass), again every 2 s so that the time waited moves; the workflow's progress (mapgen/run.py Progress) is 92 % of the
+ * bar, putting the tiles together the rest. stop() true gives up (another request or a page left). Resolves
+ * { ...compose(), partial } or null when stopped; throws Error("none") when IGN has no LiDAR anywhere in the area,
+ * Error("failed") when no tile could be made.
  */
 export async function make(area, style, say, stop = () => false) {
-  say("an.gen.asking");
+  say("an.gen.asking", {}, null);
   const r = await ask(area.ids, style), tiles = { ...r.tiles };
   if (r.req) {
-    say(r.started ? "an.gen.queued" : "an.gen.notStarted", { n: Object.values(tiles).filter((v) => v === "queued").length });
+    const n = Object.values(tiles).filter((v) => v === "queued").length, t0 = performance.now();
+    let p = null, lastPoll = performance.now();
+    const show = () => {
+      const t = elapsed((performance.now() - t0) / 1000);
+      if (p?.progress?.stage) say(`an.gen.stage.${p.progress.stage}`, { n, t }, 0.92 * (p.progress.frac || 0));
+      else say(!r.started ? "an.gen.notStarted" : performance.now() - t0 < 20000 ? "an.gen.queued" : "an.gen.waiting", { n, t }, null);
+    };
+    show();
     for (;;) {
-      await new Promise((res) => setTimeout(res, 15000));
+      await new Promise((res) => setTimeout(res, 2000));
       if (stop()) return null;
-      const p = await poll(r.req);
-      if (p.status === "queued") continue;
-      for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
-      break;
+      if (performance.now() - lastPoll >= 10000) {
+        lastPoll = performance.now();
+        p = await poll(r.req).catch(() => p);
+        if (p && p.status !== "queued") break;
+      }
+      show();
     }
+    for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
   }
   const ready = area.ids.filter((id) => tiles[id] === "ready");
   if (!ready.length) throw new Error(Object.values(tiles).every((v) => v === "none") ? "none" : "failed");
-  say("an.gen.composing", { p: 0 });
-  const out = await compose(area, ready, style, (f) => say("an.gen.composing", { p: Math.round(100 * f) }));
+  say("an.gen.composing", { p: 0 }, 0.92);
+  const out = await compose(area, ready, style, (f) => say("an.gen.composing", { p: Math.round(100 * f) }, 0.92 + 0.08 * f));
   return stop() ? null : { ...out, partial: ready.length < area.ids.length };
 }
 
