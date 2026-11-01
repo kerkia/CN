@@ -947,6 +947,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   the faint or overlapping ones misread — not used. 16 stays unread (a dark arc over the lake, its colour shifted, a
   ring score at the threshold of the map's texture); a click there keeps its place (`probe`'s `loose` snaps to a faint
   ring only within 0.5 r* of the click; it took one 18 px away).
+  Tried for 16 and dropped (2026-11-01): reading the legs' rings on the green absorbed beyond the red alone (the overprint
+  over yellow keeps it; 15's whole circle and 16's arc show) — it lights black and brown lines too, ring-like spots all
+  along the 14 → 15 leg, and the chain invented five controls on the photo (scratch `course_m2_tried.js`). **A calibration
+  made by an earlier reading** (`course.READER`, kept as `reader` with it; the owner saw 1-14 and no 15 from the one of
+  before) comes back with a note and « Refaire le calage automatique » beside « Corriger à la main » (`olderReading`).
   Without split times the race clock is the runner's published start time, looked up in every list of
   the race (liveresultat's gives it when the organiser's does not), else the start symbol's departure, else the finish
   less the published total. The finish on the lake

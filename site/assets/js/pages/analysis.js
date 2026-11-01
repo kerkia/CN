@@ -27,7 +27,7 @@ import { replaceQuery } from "../app.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal } from "../trace/track.js";
 import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
 import { isVectorName, readVector, renderVector, latLonOf, ownImage, throughGeo, cover, VECTOR_ACCEPT } from "../trace/vectorroutes.js";
-import { detectCourse } from "../trace/course.js";
+import { detectCourse, READER } from "../trace/course.js";
 import { CHANNEL_LABEL, CHANNEL_UNIT, CHANNEL_COLOUR, curveColour, pace, drawCurves, curveTimeAt } from "../trace/curves.js";
 import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { paceRange, paceColour as paceColourOf, paceLegend as paceLegendHtml } from "../trace/pacecolour.js";
@@ -197,6 +197,7 @@ export async function render(main, { query = {}, route } = {}) {
   let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
   let mapOrdered = false;                                                  // the targets in the course's order read on the map
+  let olderReading = false;                                                // the calibration restored was made by an earlier reading
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = prefs.colour === "speed" ? "speed" : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
@@ -590,7 +591,7 @@ export async function render(main, { query = {}, route } = {}) {
   // file after a cut one, 2026-10-15) has other passes — it starts afresh
   const traceSig = () => (track ? `${Math.round(track.ms0 / 1000)}:${track.n}` : null);
   function savePositions(done = calibrated) {
-    const rec = { v: 2, done, trace: traceSig(), mapOrdered, items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
+    const rec = { v: 2, done, trace: traceSig(), mapOrdered, reader: READER, items: targets.map((g) => ({ kind: g.kind, code: g.code || "", pos: g.pos || null })),
       fit: fit && !geoFit ? { kind: fit.kind, m11: fit.m11, m12: fit.m12, m21: fit.m21, m22: fit.m22, tx: fit.tx, ty: fit.ty, scale: fit.scale, rotation: fit.rotation } : null };
     try { localStorage.setItem(calKey(), JSON.stringify(rec)); } catch (e) { /* not kept */ }
   }
@@ -654,6 +655,7 @@ export async function render(main, { query = {}, route } = {}) {
     notes = [];
     mode = "auto";
     mapOrdered = false;
+    olderReading = false;
     if (fresh) { try { localStorage.removeItem(calKey()); } catch (e) { /* nothing kept */ } }
     setStatus(t("an.st.reading"));
     await tick();
@@ -688,6 +690,10 @@ export async function render(main, { query = {}, route } = {}) {
       mapOrdered = !!kept.mapOrdered && !taus;                             // kept in the map's order, timed again in it
       const geometry = geoFit || (kept.fit ? { ...kept.fit } : null);
       notes.push(t("an.st.restored"));
+      // made by an earlier reading of the map: « Refaire le calage automatique » reads it again (owner, 2026-11-01: the
+      // calibration of before came back without the controls the new reading finds)
+      olderReading = (kept.reader || 0) < READER && !files.iof;
+      if (olderReading) notes.push(t("an.st.newReader"));
       recompute({ geometry });
       cur = nextTarget(0);
       side(); draw();
@@ -1042,7 +1048,7 @@ export async function render(main, { query = {}, route } = {}) {
           <button type="button" class="btn btn-sm" id="an-undo">${t("an.cal.undo")}</button>
           <button type="button" class="btn btn-sm" id="an-clear">${t("an.cal.clear")}</button>
           <button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>`
-        : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>`}</div>`;
+        : html`<button type="button" class="btn btn-sm" id="an-manual">${t("an.cal.manual")}</button>${olderReading ? html`<button type="button" class="btn btn-sm" id="an-auto">${t("an.cal.backAuto")}</button>` : ""}`}</div>`;
     $$("[data-target]").forEach((b) => b.addEventListener("click", () => { cur = Number(b.dataset.target); if (mode !== "manual") { mode = "manual"; } side(); draw(); }));
     $("#an-switch")?.addEventListener("click", (e) => { const d = e.currentTarget.dataset; di = Number(d.di); ci = Number(d.ci); ri = Number(d.ri); pickers(); setup(); });
     $("#an-skip")?.addEventListener("click", () => { if (cur >= 0) cur = nextTarget(cur + 1); side(); draw(); });

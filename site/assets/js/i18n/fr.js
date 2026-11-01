@@ -1571,7 +1571,7 @@ export default {
   "an.iof.noCourse": "Aucun parcours dans ce fichier.", "an.iof.courses": "parcours", "an.iof.geo": "coordonnées géographiques",
   "an.date.diff": "La trace est du {d1}, la course du {d2}.",
   "an.private": "La carte et la trace sont lues dans votre navigateur et ne sont envoyées nulle part ; elles y restent le temps de votre visite — vous pouvez passer sur d'autres pages ou recharger — et s'oublient avec l'onglet ou avec « Oublier les fichiers ». Le calage (la position des postes) est gardé sur cet appareil.",
-  "an.files.kept": "fichiers de votre dernière visite", "an.forget": "Oublier les fichiers", "an.st.restored": "Calage de votre dernière visite retrouvé.",
+  "an.files.kept": "fichiers de votre dernière visite", "an.forget": "Oublier les fichiers", "an.st.restored": "Calage de votre dernière visite retrouvé.", "an.st.newReader": "Ozimut lit mieux les cartes depuis ce calage : « Refaire le calage automatique » pour en profiter (les postes placés à la main seront à replacer).",
   "an.st.reading": "Lecture du parcours sur la carte…", "an.st.aligning": "Calage de la trace sur les postes…",
   "an.st.noCourse": "Aucun parcours lu sur la carte (pas de cercles violets reconnus) : pointez les postes à la main.",
   "an.st.found": "Lu sur la carte : {n} cercles de poste, départ {s}, arrivée {f}.",

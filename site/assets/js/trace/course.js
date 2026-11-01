@@ -28,6 +28,9 @@
 // Positions come back in the image's own pixels.
 
 const RADII = [6, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19, 21, 23, 26, 29, 32, 36, 40, 45, 50];
+/** The reading's version, kept with a calibration: one made by an earlier reading says a better one exists. 2026-10-31:
+ *  the ink; 2026-11-01: the course's order and the controls found along the legs. */
+export const READER = 2;
 const ANGLES = 24, STRIDE = 4;
 
 export async function detectCourse(image, { maxSide = 1800, debug = false } = {}) {

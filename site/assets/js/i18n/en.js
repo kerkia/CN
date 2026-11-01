@@ -2217,6 +2217,7 @@ export default {
   "an.files.kept": "files from your last visit",
   "an.forget": "Forget the files",
   "an.st.restored": "Calibration from your last visit restored.",
+  "an.st.newReader": "Ozimut reads maps better since this calibration: “Redo the automatic calibration” to benefit (controls placed by hand will need placing again).",
   "an.st.reading": "Reading the course on the map…",
   "an.st.aligning": "Aligning the track with the controls…",
   "an.st.noCourse": "No course read on the map (no purple circles recognised): mark the controls by hand.",
