@@ -15,7 +15,8 @@ import { call, catName, readingTime, fmtDay, dayOf, langName } from "../nutritio
 
 // the introduction above the articles (owner, 2026-11-01): who leads the editorial team, one module per language; its first
 // name and title shown with « Lire la suite » beside them, the text behind it (owner, 2026-11-01), kept open or folded on this
-// device (ocn.nut.intro); the line saying the articles are not written by AI at the page's foot (owner, 2026-11-01)
+// device (ocn.nut.intro); the line saying the articles are not written by AI at the page's foot, and at the end of the
+// introduction once it is open (owner, 2026-11-01)
 const INTRO = "ocn.nut.intro";
 const introOpen = () => { try { return localStorage.getItem(INTRO) === "open"; } catch (e) { return false; } };
 const setIntroOpen = (on) => { try { if (on) localStorage.setItem(INTRO, "open"); else localStorage.removeItem(INTRO); } catch (e) {} };
@@ -223,7 +224,7 @@ export async function render(main, { query }) {
     box.innerHTML = html`<div class="nut-intro-face" aria-hidden="true">${I.name.charAt(0)}</div>
       <div class="nut-intro-text"><h2>${I.name}</h2>
         <div class="nut-intro-role">${I.role} · <button type="button" class="nut-intro-more" aria-expanded="${open}">${t(open ? "nut.intro.less" : "nut.intro.more")}</button></div>
-        ${open ? html`<p>${I.lead}</p>${I.more.map((x) => html`<p>${x}</p>`)}` : ""}</div>`;
+        ${open ? html`<p>${I.lead}</p>${I.more.map((x) => html`<p>${x}</p>`)}<p class="nut-intro-noai">${I.noAi}</p>` : ""}</div>`;
     box.querySelector(".nut-intro-more").addEventListener("click", () => { setIntroOpen(!introOpen()); drawIntro(); });
   }
 

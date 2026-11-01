@@ -3170,3 +3170,4 @@ a.nut-chip:hover { filter: brightness(.95); }
 @keyframes nutProg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .nut-article.translating .nut-body, .nut-article.translating .nut-lead, .nut-article.translating h1 { opacity: .45; transition: opacity .3s; }
 @media (prefers-reduced-motion: reduce) { .nut-prog i { animation: none; transform: scaleX(.5); } }
+.nut-intro p.nut-intro-noai { color: var(--ink); font-weight: 600; font-size: 14px; margin-top: 10px; }
