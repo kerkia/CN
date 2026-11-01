@@ -295,7 +295,7 @@ async function editor(main, query) {
         <div class="nut-field">${t("nut.themes")}<div id="ne-cats" class="nut-catpick"></div>
           <form id="ne-newcat" class="row"><input type="text" maxlength="60" placeholder="${t("nutw.th.newShort")}" aria-label="${t("nutw.th.newShort")}"><button class="btn btn-sm" type="submit">${t("nutw.th.add")}</button></form></div>
         <div class="nut-field">${t("nutw.f.cover")}<div id="ne-cover" class="nut-coverpick"></div></div>
-        <label class="nut-field">${t("nutw.f.summary")}<textarea id="ne-sum" rows="4" maxlength="600"></textarea><span class="hint">${t("nutw.f.summary.hint")}</span></label>
+        <label class="nut-field">${t("nutw.f.summary")}<textarea id="ne-sum" rows="3" maxlength="600"></textarea><span class="hint">${t("nutw.f.summary.hint")}</span></label>
       </div></aside>
     </div>
     <input type="file" id="ne-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
@@ -639,18 +639,20 @@ async function editor(main, query) {
   // sight; the footer goes (as the Tracer's). On a narrow screen (the settings under the text) the page scrolls as before.
   document.body.classList.add("nut-ed-open");
   const grid = main.querySelector(".nut-ed-grid");
+  // the room from the editor's top to the window's bottom, less what the page holds below it (its padding; the columns'
+  // own overflow does not count: they scroll inside — owner, 2026-11-01: an earlier measure left a band unused)
   const fit = () => {
-    const top = grid.getBoundingClientRect().top + window.scrollY;
-    let h = Math.floor(window.innerHeight - top - 12);
-    grid.style.setProperty("--nut-ed-h", `${Math.max(360, h)}px`);
-    // what the page still holds below the editor (its padding): taken off too, so that the window does not scroll
-    const extra = document.scrollingElement.scrollHeight - window.innerHeight;
-    if (extra > 0) { h -= extra; grid.style.setProperty("--nut-ed-h", `${Math.max(360, h)}px`); }
+    const r = grid.getBoundingClientRect();
+    const below = Math.max(0, document.scrollingElement.scrollHeight - (r.bottom + window.scrollY));
+    grid.style.setProperty("--nut-ed-h", `${Math.max(360, Math.floor(window.innerHeight - (r.top + window.scrollY) - below - 4))}px`);
   };
   fit();
+  requestAnimationFrame(fit);
+  const settle = setTimeout(fit, 400);               // once the fonts and the page around it are laid out
   window.addEventListener("resize", fit);
   return () => {
     document.body.classList.remove("nut-ed-open");
+    clearTimeout(settle);
     window.removeEventListener("resize", fit);
     document.removeEventListener("selectionchange", onSel);
     document.removeEventListener("mousedown", outside);
