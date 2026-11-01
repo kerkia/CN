@@ -3232,6 +3232,7 @@ export default {
   "nut.themes": "Thèmes",
   "nut.archive": "Archives",
   "nut.allThemes": "Tous les thèmes",
+  "nut.noTheme": "Sans thème",
   "nut.allDates": "Toutes les dates",
   "nut.pinned": "À la une",
   "nut.by": "par {a}",

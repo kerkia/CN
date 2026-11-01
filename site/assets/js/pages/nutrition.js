@@ -13,6 +13,9 @@ import * as auth from "../auth.js";
 import { sanitize } from "../nutrition/sanitize.js";
 import { call, catName, readingTime, fmtDay, dayOf, langName } from "../nutrition/common.js";
 
+// the articles without a theme: a filter of their own, shown only while some are (owner, 2026-11-01); ?theme=sans
+const NONE = "sans";
+const themeOf = (v) => (v === NONE ? NONE : Number(v) || null);
 const PREF = "ocn.nut.translate";        // "1": open the articles in the reader's language
 const wantsTranslation = () => { try { return localStorage.getItem(PREF) === "1"; } catch (e) { return false; } };
 const setWantsTranslation = (on) => { try { if (on) localStorage.setItem(PREF, "1"); else localStorage.removeItem(PREF); } catch (e) {} };
@@ -26,7 +29,7 @@ export async function render(main, { query }) {
   }
   const { posts, categories } = res.data;
   const cats = new Map(categories.map((c) => [c.id, c]));
-  const st = { theme: Number(query.theme) || null, month: /^\d{4}-\d{2}$/.test(query.mois || "") ? query.mois : "", q: query.q || "", article: Number(query.article) || null };
+  const st = { theme: themeOf(query.theme), month: /^\d{4}-\d{2}$/.test(query.mois || "") ? query.mois : "", q: query.q || "", article: Number(query.article) || null };
   const cache = new Map();          // id -> the article with its body (and translations)
 
   main.innerHTML = html`<div class="nut">
@@ -42,7 +45,7 @@ export async function render(main, { query }) {
     </div></div>`;
 
   const matches = (p, { theme = st.theme, month = st.month } = {}) => {
-    if (theme && !p.cats.includes(theme)) return false;
+    if (theme === NONE ? p.cats.length : theme && !p.cats.includes(theme)) return false;
     if (month && dayOf(p.published).slice(0, 7) !== month) return false;
     if (st.q) {
       const q = normalise(st.q);
@@ -55,7 +58,8 @@ export async function render(main, { query }) {
   function drawFacets() {
     const byTheme = (id) => posts.filter((p) => matches(p, { theme: id })).length;
     $("#nut-themes").innerHTML = html`<button type="button" data-theme="" aria-pressed="${!st.theme}">${t("nut.allThemes")}<span>${posts.filter((p) => matches(p, { theme: null })).length}</span></button>
-      ${[...categories].sort((a, b) => catName(a).localeCompare(catName(b), lang())).map((c) => html`<button type="button" data-theme="${c.id}" aria-pressed="${st.theme === c.id}">${catName(c)}<span>${byTheme(c.id)}</span></button>`)}`;
+      ${[...categories].sort((a, b) => catName(a).localeCompare(catName(b), lang())).map((c) => html`<button type="button" data-theme="${c.id}" aria-pressed="${st.theme === c.id}">${catName(c)}<span>${byTheme(c.id)}</span></button>`)}
+      ${byTheme(NONE) || st.theme === NONE ? html`<button type="button" data-theme="${NONE}" aria-pressed="${st.theme === NONE}" class="nut-none">${t("nut.noTheme")}<span>${byTheme(NONE)}</span></button>` : ""}`;
     const months = new Map();
     for (const p of posts) if (matches(p, { month: "" })) { const m = dayOf(p.published).slice(0, 7); months.set(m, (months.get(m) || 0) + 1); }
     const years = new Map();
@@ -83,7 +87,7 @@ export async function render(main, { query }) {
     const filtered = st.theme || st.month || st.q;
     const pinned = filtered ? [] : list.filter((p) => p.pinned);
     const rest = list.filter((p) => !pinned.includes(p));
-    const head = filtered ? html`<div class="nut-filterline">${tn("nut.count", list.length)}${st.theme ? html` · ${catName(cats.get(st.theme))}` : ""}${st.month ? html` · ${monthLabel(st.month)}` : ""}${st.q ? html` · ${t("nut.query", { q: st.q })}` : ""}
+    const head = filtered ? html`<div class="nut-filterline">${tn("nut.count", list.length)}${st.theme ? html` · ${st.theme === NONE ? t("nut.noTheme") : catName(cats.get(st.theme))}` : ""}${st.month ? html` · ${monthLabel(st.month)}` : ""}${st.q ? html` · ${t("nut.query", { q: st.q })}` : ""}
       <button type="button" class="btn btn-sm" id="nut-clear">${t("nut.clear")}</button></div>` : "";
     $("#nut-main").innerHTML = !posts.length ? html`<div class="card"><div class="empty">${t("nut.none")}</div></div>`
       : !list.length ? html`${head}<div class="card"><div class="empty">${t("nut.noneFilter")}</div></div>`
@@ -199,7 +203,7 @@ export async function render(main, { query }) {
   main.querySelector(".nut-side").addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
-    if ("theme" in b.dataset) st.theme = Number(b.dataset.theme) || null;
+    if ("theme" in b.dataset) st.theme = themeOf(b.dataset.theme);
     else if ("month" in b.dataset) st.month = b.dataset.month;
     else return;
     st.article = null;
@@ -220,7 +224,7 @@ export async function render(main, { query }) {
   // the address changed (a theme chip, an article, Back): drawn in place
   function onQuery(q) {
     const article = Number(q.article) || null;
-    Object.assign(st, { theme: Number(q.theme) || null, month: /^\d{4}-\d{2}$/.test(q.mois || "") ? q.mois : "", q: q.q || "", article });
+    Object.assign(st, { theme: themeOf(q.theme), month: /^\d{4}-\d{2}$/.test(q.mois || "") ? q.mois : "", q: q.q || "", article });
     $("#nut-q").value = st.q;
     draw();
     window.scrollTo({ top: 0 });

@@ -4261,6 +4261,7 @@ export default {
   "nut.themes": "Themen",
   "nut.archive": "Archiv",
   "nut.allThemes": "Alle Themen",
+  "nut.noTheme": "Ohne Thema",
   "nut.allDates": "Alle Daten",
   "nut.pinned": "Empfohlen",
   "nut.by": "von {a}",

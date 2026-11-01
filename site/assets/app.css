@@ -2975,6 +2975,7 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .nut-facets button span { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .nut-facets button:hover { background: var(--surface-2); }
 .nut-facets button[aria-pressed="true"] { background: var(--course-wash); color: var(--course); font-weight: 600; }
+.nut-facets button.nut-none { font-style: italic; }
 .nut-year { font-size: 12px; color: var(--ink-3); margin: 6px 8px 0; }
 .nut-filterline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--ink-2); margin-bottom: 12px; }
 .nut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }

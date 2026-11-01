@@ -79,10 +79,11 @@ async function lists(main, query) {
   const catOptions = (first) => html`${first ? html`<option value="">${first}</option>` : ""}${[...categories].sort((a, b) => catName(a).localeCompare(catName(b), lang()))
     .map((c) => html`<option value="${c.id}">${catName(c)}</option>`)}`;
   const visible = () => posts.filter((p) => (!f.q || normalise(`${p.title} ${p.summary} ${p.author}`).includes(normalise(f.q)))
-    && (!f.status || statusOf(p) === f.status) && (!f.theme || p.cats.includes(Number(f.theme))) && (!f.author || p.author === f.author));
+    && (!f.status || statusOf(p) === f.status) && (!f.theme || (f.theme === "sans" ? !p.cats.length : p.cats.includes(Number(f.theme)))) && (!f.author || p.author === f.author));
 
   function drawTable() {
-    $("#nw-theme").innerHTML = catOptions(t("nut.allThemes")).toString();
+    // « Sans thème »: the articles to classify (?theme=sans on the readers' page too)
+    $("#nw-theme").innerHTML = `${catOptions(t("nut.allThemes"))}${html`<option value="sans">${t("nut.noTheme")}</option>`}`;
     $("#nw-theme").value = f.theme;
     const rows = visible();
     for (const id of [...sel]) if (!rows.some((p) => p.id === id && p.canEdit)) sel.delete(id);

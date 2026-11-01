@@ -4041,6 +4041,7 @@ export default {
   "nut.themes": "Themes",
   "nut.archive": "Archive",
   "nut.allThemes": "All themes",
+  "nut.noTheme": "No theme",
   "nut.allDates": "All dates",
   "nut.pinned": "Featured",
   "nut.by": "by {a}",
