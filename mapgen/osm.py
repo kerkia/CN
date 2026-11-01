@@ -9,7 +9,8 @@ import math
 import time
 
 import httpx
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
 from . import lambert93
 
@@ -46,6 +47,11 @@ def query(s: float, w: float, n: float, e: float, http: httpx.Client | None = No
   way["amenity"="parking"]({b}); relation["amenity"="parking"]({b});
   way["area:highway"]({b});
   way["place"="square"]({b});
+  way["landuse"~"^(grass|village_green|recreation_ground|meadow|greenfield|residential)$"]({b});
+  relation["landuse"~"^(grass|village_green|recreation_ground|meadow|residential)$"]({b});
+  way["leisure"~"^(park|playground|pitch|garden|common|dog_park)$"]({b}); relation["leisure"~"^(park|garden|common)$"]({b});
+  way["natural"="grassland"]({b});
+  way[~"^(landuse|leisure|amenity)$"~"."]["access"~"^(private|no)$"]({b});
 );
 out geom;"""
     own = http is None
@@ -96,6 +102,28 @@ def _rings(rel: dict) -> list[tuple[str, list]]:
     return out
 
 
+# the ground a sprint map fills (only it: a forest map keeps the LiDAR's): public open land, pitches and playgrounds, private
+# ground, and the residential blocks whose unbuilt ground near the houses is gardens
+GROUND = ("open", "pitch", "private", "residential")
+OPEN_LANDUSE = {"grass", "village_green", "recreation_ground", "meadow", "greenfield"}
+SIDES = {"both": 2, "left": 1, "right": 1}           # a street's sidewalks its own way does not draw
+
+
+def _ground(tg: dict) -> str | None:
+    lu, le = tg.get("landuse"), tg.get("leisure")
+    if tg.get("access") in ("private", "no") and (lu or le or tg.get("amenity")):
+        return "private"
+    if le == "garden" and tg.get("garden:type") in ("residential", "private"):
+        return "private"
+    if le in ("pitch", "playground"):
+        return "pitch"
+    if lu in OPEN_LANDUSE or le in ("park", "common", "dog_park", "garden") or tg.get("natural") == "grassland":
+        return "open"
+    if lu == "residential":
+        return "residential"
+    return None
+
+
 def features(data: dict) -> list[dict]:
     """The drawable features: {kind, area?, rings | line} in [lat, lon], tunnels and things underground left out."""
     out = []
@@ -121,9 +149,10 @@ def features(data: dict) -> list[dict]:
         elif hw == "track":
             kind = "track"
         elif hw in PATH:
-            if tg.get("footway") in ("sidewalk", "crossing") or tg.get("path") == "sidewalk":
+            if tg.get("footway") == "crossing":
                 continue
-            kind = "smallpath" if tg.get("trail_visibility") in FAINT or tg.get("informal") == "yes" else "path"
+            # a sidewalk mapped as its own way: a sprint map's paved area, nothing on a forest map (the street says it)
+            kind = "sidewalk" if tg.get("footway") == "sidewalk" or tg.get("path") == "sidewalk" else "smallpath" if tg.get("trail_visibility") in FAINT or tg.get("informal") == "yes" else "path"
         elif ww in WATER_LINE:
             kind = "stream:" + ww
         elif tg.get("railway") in ("rail", "light_rail", "narrow_gauge", "tram", "subway"):
@@ -137,8 +166,10 @@ def features(data: dict) -> list[dict]:
         elif tg.get("barrier") == "fence":
             kind = "fence"
         if not kind:
+            kind = _ground(tg)
+        if not kind:
             continue
-        area = kind in ("building", "canopy", "water", "paved")
+        area = kind in ("building", "canopy", "water", "paved") or kind in GROUND
         if el["type"] == "relation":
             if area:
                 out.append({"kind": kind, "rings": _rings(el)})
@@ -150,7 +181,8 @@ def features(data: dict) -> list[dict]:
             if pts[0] == pts[-1] and len(pts) >= 4:
                 out.append({"kind": kind, "rings": [("outer", pts)]})
         else:
-            out.append({"kind": kind, "line": pts, "hw": hw, "paved": paved(hw, tg.get("surface")), "width": _width(tg.get("width"))})
+            out.append({"kind": kind, "line": pts, "hw": hw, "paved": paved(hw, tg.get("surface")), "width": _width(tg.get("width")),
+                        "sides": SIDES.get(tg.get("sidewalk") or tg.get("sidewalk:both") or "", 0)})
     return out
 
 
@@ -339,10 +371,11 @@ def _sprint(c: _Canvas) -> Image.Image:
     impassable (515), retaining walls and fences passable (513, 516), stairways hatched (532)."""
     d, mm, m = c.d, c.mm, c.m
     ls = c.lines()
-    roadish = [(f, q) for f, q in ls if f["kind"] in ("wide", "road", "track", "path", "smallpath")]
+    roadish = [(f, q) for f, q in ls if f["kind"] in ("wide", "road", "track", "path", "smallpath", "sidewalk")]
+    _ground_fill(c, [(f, q) for f, q in roadish if f["kind"] in ("wide", "road") and f["paved"]])
     c.areas({"paved"}, BROWN30)
     # the paved ways, widest first, as bands of their own width
-    width = lambda f: f["width"] or STREET_W.get(f["hw"], 4)  # noqa: E731
+    width = street_w
     bands = sorted(((f, q) for f, q in roadish if f["paved"]), key=lambda fq: -width(fq[0]))
     for f, q in bands:
         d.line(q, fill=BROWN30, width=m(width(f)), joint="curve")
@@ -371,6 +404,68 @@ def _sprint(c: _Canvas) -> Image.Image:
             d.line(q, fill=BLACK, width=mm(0.21), joint="curve")
     c.rail_power(ls)
     return c.img
+
+
+YELLOW, OLIVE = (255, 186, 54), (166, 165, 58)   # ISSprOM 401 open land, 520 area that shall not be entered
+NEAR_HOUSE = 20.0                                   # m: a residential block's gardens lie this close to its buildings
+KERB = 3.0                                          # m beyond a street's paved band: its sidewalk, paved, never a garden
+
+
+def street_w(f: dict) -> float:
+    """A paved way's width on the ground (m): OSM's, else its class's, and the sidewalks it says it has."""
+    return (f["width"] or STREET_W.get(f["hw"], 4)) + 1.5 * f.get("sides", 0)
+
+
+def _ground_fill(c: _Canvas, streets) -> None:
+    """A sprint map's ground where OpenStreetMap says what it is, on the LiDAR render's land only (white forest, its pale
+    yellow open land, its greens; contours, cliffs and water stay): public lawns, parks, commons and grassland — the LiDAR's
+    open land there becomes open land 401; pitches and playgrounds open land wherever no vegetation stands; the strip of KERB
+    metres along each street of a residential block paved (the sidewalk between the street and the façades); and olive (520,
+    not to be entered) the ground marked private, private gardens, and the unbuilt, unwooded ground of residential blocks
+    within NEAR_HOUSE of a building — the gardens behind the houses — unless public open land covers it (a wooded slope is
+    left to the LiDAR: a garden's trees cannot be told from a public wood). Streets, paved areas and buildings are drawn over
+    it afterwards."""
+    W, H = c.W, c.H
+    a = np.asarray(c.img, dtype=np.int16)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    white = (r > 245) & (g > 245) & (b > 245)
+    pale = (r > 245) & (abs(g - 219) < 12) & (abs(b - 166) < 14)
+    green = (g > r + 20) & (g > b + 20) & (g > 150)
+    land = white | pale | green
+
+    def mask(kinds):
+        mk = Image.new("L", (W, H), 0)
+        md = ImageDraw.Draw(mk)
+        for f in c.feats:
+            if f["kind"] in kinds:
+                for role, p in f["rings"]:
+                    q = c.tp(p)
+                    if c.near(q):
+                        md.polygon(q, fill=255 if role == "outer" else 0)
+        return np.asarray(mk) > 0
+
+    openl, pitch, private, resid, houses = (mask({k}) for k in ("open", "pitch", "private", "residential", "building"))
+    near = np.zeros((H, W), bool)
+    if houses.any() and resid.any():
+        # buildings grown by NEAR_HOUSE on a reduced copy (a max filter at full size is too slow), then back to size
+        k = 8
+        small = Image.fromarray((houses * 255).astype(np.uint8)).resize((max(1, W // k), max(1, H // k)), Image.Resampling.BOX)
+        n = 2 * round(NEAR_HOUSE / (c.px * k)) + 1
+        grown = small.point(lambda v: 255 if v else 0).filter(ImageFilter.MaxFilter(min(n, 31)))
+        near = np.asarray(grown.resize((W, H), Image.Resampling.NEAREST)) > 0
+    kerb_img = Image.new("L", (W, H), 0)
+    kd = ImageDraw.Draw(kerb_img)
+    for f, q in streets:
+        kd.line(q, fill=255, width=c.m(street_w(f) + 2 * KERB), joint="curve")
+    public = openl | pitch
+    kerb = land & resid & ~public & ~private & (np.asarray(kerb_img) > 0)
+    olive = land & ~kerb & (private | (resid & near & ~public & ~green))
+    yellow = ((openl & pale) | (pitch & (white | pale))) & ~private
+    out = a.astype(np.uint8).copy()
+    out[olive] = OLIVE
+    out[kerb] = BROWN30
+    out[yellow & ~olive] = YELLOW
+    c.img.paste(Image.fromarray(out, "RGB"))
 
 
 def _offset(q, off: float):

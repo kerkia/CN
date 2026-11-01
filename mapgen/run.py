@@ -194,8 +194,15 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     s2, w2 = lambert93.inverse(min(xs) - 50, max(ys) + 50)
     n2, e2 = lambert93.inverse(max(xs) + 1050, min(ys) - 1050)
     # without OpenStreetMap the tiles fail (asked again, they are made again) rather than be kept without roads and paths
+    # the answer is kept in the work folder: MAPGEN_OSM_CACHE=1 reads it back (trying a style without asking Overpass again)
+    cache = work / f"osm_{todo[0]}_{len(todo)}.json"
     try:
-        feats = osm.project(osm.features(osm.query(min(s, s2), min(w, w2), max(n, n2), max(e, e2), http)))
+        if os.environ.get("MAPGEN_OSM_CACHE") == "1" and cache.exists():
+            data = json.loads(cache.read_text(encoding="utf-8"))
+        else:
+            data = osm.query(min(s, s2), min(w, w2), max(n, n2), max(e, e2), http)
+            cache.write_text(json.dumps(data), encoding="utf-8")
+        feats = osm.project(osm.features(data))
         osm_at = _now()
     except Exception as ex:
         log(f"OpenStreetMap: {ex}")

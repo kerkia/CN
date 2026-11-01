@@ -1196,7 +1196,19 @@ Every multiple-choice game was played through to its score page at phone size, w
   **A Tracer bug fixed on the way**: the field mode's floating panel (`team.js`, a `div.tr-field`) and every dialog's field
   (`dialogs.field`, `label.tr-field`) shared one class, and the panel's `position: absolute` (since 2026-10-15) sent the new-event
   dialog's fields to the window's bottom; the panel's rule is now `div.tr-field`.
-  Not done: sprint maps' open land, gardens and private areas from OSM (the LiDAR's white and yellow stay between buildings), contours
+  **Sprint's ground** (owner, 2026-11-01, « fill sprint open land »; `osm._ground_fill`, on the LiDAR render's land pixels only —
+  its white, pale yellow and greens; contours, cliffs, water untouched): public lawns, parks, commons, grassland (`landuse` grass,
+  village_green, recreation_ground, meadow…, `leisure` park, common, garden) turn the LiDAR's open land into open land 401; pitches and
+  playgrounds are 401 wherever nothing grows; olive 520 for ground marked `access=private|no`, private gardens (`garden:type`), and
+  the unbuilt, unwooded ground of `landuse=residential` blocks within `NEAR_HOUSE` (20 m) of a building — the gardens behind the
+  houses —, except a `KERB` strip (3 m beyond a street's band, paved: the sidewalk to the façades) and public open land; wooded
+  ground stays the LiDAR's (a garden's trees cannot be told from a public wood). Sidewalks mapped as their own ways
+  (`footway=sidewalk`) are paved bands, and a street's `sidewalk=both|left|right` widens its band by 1.5 m a side. On Fougères' old
+  town: courtyards and back gardens olive, sidewalks paved, the lawns and the pitch yellow; part of the wooded slope below the
+  ramparts (its unwooded patches) and the castle's grounds come out olive — a residential polygon covers them. Each run keeps its
+  Overpass answer in the work folder (`osm_<first tile>_<n>.json`); `MAPGEN_OSM_CACHE=1` reads it back, to try a style without asking
+  Overpass again (it answered in 3-8 minutes, or not at all, from the PC on 2026-11-01 evening).
+  Not done: contours
   at sprint's interval (karttapullautin's 5 m with 2.5 m form lines), passability of OSM's fences, tiles made again when OpenStreetMap
   changes, edges between tiles made in different runs (possible seams); **route choices on LiDAR layers: never for runners** (owner: a
   route is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
