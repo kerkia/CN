@@ -227,7 +227,7 @@ export function build(X) {
         ${slide("Coach · trial, administrators", "Computed routes", html`
           <p>In both GPS analyses, an administrator can have Ozimut suggest, for each leg, the fastest routes on the map, with their length, climb and
             an estimated time — and measure each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
-            computed and a table under the map lists them; in ${P("#/analyse-club", "Group analysis")}, the leg shown, with the list of runners.
+            computed and the "Routes" tab, left of the map, lists them leg by leg (the settings are in the "Compute" tab, on the right); in ${P("#/analyse-club", "Group analysis")}, the leg shown, with the list of runners.
             It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong.</p>`)}
         ${slide("Coach · trial", "1. Reading the map by its colours", html`
           <p>The map is an image: Ozimut knows only its colours. Each pixel is classed: white (runnable forest), yellow (open land, lighter or

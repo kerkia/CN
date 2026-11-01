@@ -12,5 +12,5 @@ const TABS = {
 };
 
 /** The tabs of an analysis: tool "solo" or "multi", cur the tab shown. */
-export const coachTabs = (tool, cur) => html`<nav class="page-tabs" role="tablist">${TABS[tool].map(([k, href, key]) =>
+export const coachTabs = (tool, cur) => html`<nav class="page-tabs coach-tabs" role="tablist">${TABS[tool].map(([k, href, key]) =>
   html`<a role="tab" href="${href}" aria-selected="${k === cur}">${t(key)}</a>`)}</nav>`;

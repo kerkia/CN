@@ -1118,6 +1118,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   break them); Lake Sammamish's brown renders as rgb(128, 0, 0) and is not read. Not done: form lines (dashed half-interval lines,
   read as full contours), a map's brown learnt from the map itself, vector sources (OCAD/OMAP through `tracer/vmap/`, symbols
   101-103, or a PDF's brown paths: exact lines, the next step), Analyse multi.
+- **The analyses' playback layout** (owner, 2026-11-01: « the map is the key and should always be fully visible », « never need to
+  scroll down on a large screen »; supersedes the layout notes above for « Analyse solo » and « Analyse multi »): the controls above
+  the map (`.an-bar`: the race's line, play, speed, follow, the time slider, ⤢ ↗; Solo's figures of the moment on a second line —
+  time, leg, pace, distance, the file's channels, ⚠ for a cut trace —; Multi's leg, start mode and follow), then a panel of tabs
+  on each side of the map (`trace/sidepanel.js`: `panelHtml`, `bindPanel` — tabs, a fold button ‹ / › that leaves a rail of the
+  tabs' names, a click there reopens on that tab —, `bindSplitter`): Solo left « Courbes » (the curves), « Inter-postes » (the legs'
+  table, when the sequence is known), « Itinéraires » (administrators: the computed routes leg by leg, the current leg marked and
+  brought into view, the runner's own route measured on the same model — time, length, climb — with Choix and Exécution); right
+  « Affichage », « Calcul » (administrators: the routes' settings). Multi left « Coureurs », « Analyses » (sharedviews' five views,
+  formerly a card under the map), « Itinéraires » (administrators), « Mes courbes » (with one's own trace); right « Affichage »,
+  « Calcul ». Widths, folds and tabs kept in the pages' prefs (`gw`, `sw`, `gcol`, `rcol`, `ltab`, `rtab`; Multi `lw`, `rw`, `lcol`,
+  `rcol`, `ltab`, `rtab`); the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
+  « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
+  of its tabs). Full window also hides Coach's « Une compétition | Un entraînement » tabs (`.coach-tabs`).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

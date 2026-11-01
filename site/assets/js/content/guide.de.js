@@ -233,7 +233,7 @@ export function build(X) {
         ${slide("Coach · Test, Administratoren", "Die berechneten Routen", html`
           <p>In beiden GPS-Analysen kann ein Administrator Ozimut für jede Teilstrecke die schnellsten Routen auf der Karte vorschlagen lassen,
             mit Länge, Steigung und geschätzter Zeit – und mit demselben Modell die Route messen, die jeder Läufer genommen hat.
-            In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und eine Tabelle unter der Karte fasst sie zusammen; in
+            In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und der Reiter „Routen“ links der Karte führt sie Teilstrecke für Teilstrecke auf (die Einstellungen stehen im Reiter „Berechnung“ rechts); in
             der ${P("#/analyse-club", "Gruppenanalyse")} die angezeigte Teilstrecke, mit der Liste der Läufer. Es ist ein Prototyp: Die Routen folgen
             der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren.</p>`)}
         ${slide("Coach · Test", "1. Die Karte anhand ihrer Farben lesen", html`

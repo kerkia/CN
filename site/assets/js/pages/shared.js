@@ -27,6 +27,7 @@ import { raceFilters, provFacts } from "../racefilters.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
+import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
@@ -621,27 +622,48 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
   const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;
-  let curvesOpen = prefs.curvesOpen === true;              // one's own curves: folded to the left by default (owner, 2026-10-15)
+  // the layout (owner, 2026-11-01, as « Analyse solo »'s): the controls above the map, a panel of tabs on each side of it (the
+  // runners, the analyses, the computed routes, one's own curves; the display and the computing), resized and folded
+  const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
+  let lw = px(prefs.lw, 200, 1400, 320), rw = px(prefs.rw, 200, 700, 270);
+  const lp = { tab: ["runners", "views", "routes", "own"].includes(prefs.ltab) ? prefs.ltab : "runners", collapsed: !!prefs.lcol };
+  const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, curvesOpen, colourBy, strip: showStrip })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
+  const admin = !!auth.session()?.admin;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
-      <aside class="sh-panel sh-curves" id="sh-curves" hidden></aside>
-      <aside class="sh-panel" id="sh-left"></aside>
+      <div class="an-bar sh-bar" id="sh-bar"></div>
+      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "views", label: t("sh.tab.views") },
+        ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), { key: "own", label: t("sh.own.title") }],
+        inner: { runners: html`<div id="sh-left"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
+      <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="sh-map"><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
         <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
-      <aside class="sh-panel" id="sh-right"></aside></div>
-    <section class="card sh-views" id="sh-views" style="margin-top:12px"></section>`;
+      <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
+      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
+  const layEl = $("#sh-layout");
+  /** The panels' widths (a rail when folded), the window's height below the top line. */
+  function applyLayout() {
+    layEl.dataset.lcol = lp.collapsed ? "1" : "0"; layEl.dataset.rcol = rp.collapsed ? "1" : "0";
+    layEl.style.setProperty("--sh-lw", `${lp.collapsed ? 34 : lw}px`);
+    layEl.style.setProperty("--sh-rw", `${rp.collapsed ? 34 : rw}px`);
+    fit();
+  }
+  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") rcmList(); } });
+  const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
+  bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
+  bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
   const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y) => { if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
   let image;
@@ -904,30 +926,20 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   const overlaps = (tr) => me && tr.ms0 <= me.tr.ms0 + me.tr.dur * 1000 && tr.ms0 + tr.dur * 1000 >= me.tr.ms0;
   function drawOwn() {
     const cv = $("#sh-own-cv");
-    if (!me || !own || !cv || !curvesOpen) return;
+    if (!me || !own || !cv || lp.tab !== "own" || lp.collapsed) return;
     const delta = (me.tr.ms0 - own.ms0) / 1000, end = me.finish ?? me.tr.dur, s = sAt(me, T);
     drawCurves(cv, { track: own, t0: me.start + delta, total: Math.max(1, end - me.start), rows: curveRows(own), cursor: s == null ? null : s - me.start,
       units: { cad: own.cadUnit }, marks: me.passes.map((p, j) => (p == null || !j ? null : { t: p - me.start, label: ctrls[j].kind === "control" ? ctrlLabel(j) : "" })).filter(Boolean) });
   }
   function curvesPanel() {
-    const el = $("#sh-curves"), lay = $("#sh-layout");
-    if (!el || !lay) return;
-    el.hidden = !me;
-    lay.classList.toggle("with-curves", !!me);
+    const el = $("#sh-curves");
+    if (!el) return;
+    leftP.setTab("own", !!me);
     if (!me) return;
-    lay.style.setProperty("--sh-cw", curvesOpen ? "330px" : "36px");
-    el.classList.toggle("open", curvesOpen);
-    if (!curvesOpen) {
-      el.innerHTML = html`<button type="button" class="sh-curves-tab" id="sh-curves-open" title="${t("sh.own.open")}">${t("sh.own.title")} ›</button>`;
-      $("#sh-curves-open").addEventListener("click", () => { curvesOpen = true; savePrefs(); curvesPanel(); });
-      return;
-    }
-    el.innerHTML = html`<div class="sh-curves-head"><b>${t("sh.own.title")}</b><button type="button" class="btn btn-sm" id="sh-curves-close" title="${t("sh.own.close")}">‹</button></div>
-      ${own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
-        : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
+    el.innerHTML = own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
+      : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
           <p class="hint" style="margin:6px 0 0">${t("an.fitTip")}</p>
-          <p class="notice" id="sh-own-note" hidden></p>`}`;
-    $("#sh-curves-close").addEventListener("click", () => { curvesOpen = false; savePrefs(); curvesPanel(); });
+          <p class="notice" id="sh-own-note" hidden></p>`;
     $("#sh-own-file")?.addEventListener("change", async (e) => {
       const f = e.target.files[0];
       if (!f) return;
@@ -1056,22 +1068,24 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   }
   function right() {
     const fromOpts = ctrls.map((p, i) => [i, ctrlLabel(i)]).slice(0, legsN);
-    $("#sh-right").innerHTML = html`
-      <div class="an-transport">
-        <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
-        <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
-        <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
-        <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
+    const modeHint = t(`sh.mode.${leg ? "leg" : mode}.hint`);
+    $("#sh-bar").innerHTML = html`
+      <div class="an-bar-row">
+        <span class="an-transport">
+          <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
+          <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
+          <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
+          <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select></span>
+        <input type="range" class="an-bar-time" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" aria-label="${t("an.time")}">
+        <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         <span class="fw-btns">${raw(fwButtons())}</span></div>
-      <input type="range" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" style="width:100%;margin:6px 0">
-      <div class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></div>
-      <div class="an-opts" style="margin-top:8px">
+      <div class="an-bar-row sh-bar-opts">
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
-        ${leg ? "" : html`<label><span>${t("sh.mode")}</span><select id="sh-mode">${MODES.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
+        ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${MODES.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label></div>
-      <p class="hint" style="margin-top:8px">${t(`sh.mode.${leg ? "leg" : mode}.hint`)}</p>
-      <details class="an-settings" open><summary>${t("an.display")}</summary>
+        <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
+        <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span></div>`;
+    rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.future")}</span><select id="sh-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
@@ -1080,8 +1094,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
           <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
-          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div></details>
-      ${auth.session()?.admin ? html`<div id="rc-host"></div>` : ""}`;
+          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>`;
+    if (admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
@@ -1247,7 +1261,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!host) return;
     const vt = rcmVector();
     host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, decision: rcm.decOn, status: rcm.status, progress: rcm.prog, warn: rcm.warn, auto: rcm.auto[leg],
-      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null }))}<div class="rc-leg" id="rc-leg"></div>`;
+      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null }))}`;
     RC.bindPanel(host, rcm.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
         if (what === "vector") {
@@ -1359,19 +1373,26 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!rcm.picOn) rcm.pic = null;
     mv.draw();
   }
-  /** Under the settings: the leg's routes, then the runners shown with the route they took and its time on the model. */
+  /** The left panel's « Itinéraires »: the leg's routes, then the runners shown with the route they took measured on the same
+   *  model (time, length, climb), what their choice cost against A and what their running cost against the model. */
   function rcmList() {
     const el = $("#rc-leg");
     if (!el) return;
     const routes = rcm.on && leg ? rcm.routes[leg] : null;
-    if (!routes?.length) { el.innerHTML = ""; return; }
+    if (!routes?.length) { el.innerHTML = html`<p class="hint sp-hint">${t(!rcm.on ? "rc.tab.off" : !leg ? "rc.leg.none" : "rc.tab.wait")}</p>`; return; }
     const pace = rcmPace(), mine = rcm.mine[leg] || new Map();
     const how = rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.auto[leg] ? t("rc.pace.median") : t("rc.pace.default");
     const signed = (v) => `${v >= 0 ? "+" : "−"}${clock(Math.abs(v))}`;
-    el.innerHTML = html`<p class="muted" style="margin:0 0 4px">${t("rc.list.hint", { p: RC.minKm(pace), how })}</p>
-      ${routes.map((r, n) => html`<div><span class="rc-dot" style="background:${RC.ROUTE_COLOURS[n]}"></span><b>${RC.LETTERS[n]}</b> ${RC.routeFacts(r, pace, clock)} <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
-      ${mine.size ? html`<p class="muted" style="margin:6px 0 2px">${t("rc.runners")}</p>
-        ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div><span class="rc-dot" style="background:${m.variant >= 0 ? RC.ROUTE_COLOURS[m.variant] : "#999"}"></span>${m.variant >= 0 ? RC.LETTERS[m.variant] : t("rc.other")} · ${r.name} · ${clock(m.actual)} <span class="muted">(${clock(m.time * pace)}, ${signed(Math.round((m.time - routes[0].time) * pace))})</span></div>`; })}` : ""}`;
+    const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
+    el.innerHTML = html`<p class="hint sp-hint">${t("rc.list.hint", { p: RC.minKm(pace), how })}</p>
+      <div class="rc-lb cur"><div class="rc-lb-head"><b>${legName(leg)}</b></div>
+        ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}</div>
+      ${mine.size ? html`<p class="muted" style="margin:8px 0 2px">${t("rc.runners")}</p>
+        ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb">
+          <div class="rc-lb-row">${dot(m.variant)}<b>${m.variant >= 0 ? RC.LETTERS[m.variant] : t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
+          <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m, pace, clock)}</span>
+            <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * pace))}</b></span>
+            <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * pace))}</b></span></div></div>`; })}` : ""}`;
   }
 
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
@@ -1416,7 +1437,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   const bottom = bottomViews($("#sh-views"), X);
 
   // ---- the layout: the window's height below the top line
-  const fit = () => { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 14))}px`; };
+  function fit() { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 16))}px`; }
   window.addEventListener("resize", fit);
   $("#sh-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
@@ -1438,11 +1459,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); fitRoutes(); mv.draw(); });
   $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); mv.fitAll(); mv.draw(); });
   window.scrollTo(0, 0);
-  fit();
+  applyLayout();
   mv.setAlpha(mapAlpha / 100);
   mv.setImage(image);
   paceScale(); legend();
-  left(); right(); bottom.draw();
+  left(); right(); bottom.draw(); rcmList();
   if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else fitRoutes();
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console

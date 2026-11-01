@@ -39,6 +39,7 @@ import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabPar
 import { takeInbox } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import * as RC from "../trace/routeplan.js";
+import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -163,9 +164,10 @@ export async function render(main, { query = {}, route } = {}) {
     <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
     <div id="an-work" hidden>
       <div class="an-layout" id="an-layout">
-        <section class="an-graphs" id="an-strip-card" hidden>
-          <div class="an-graphs-head"><button type="button" class="btn btn-sm an-collapse" id="an-collapse"></button><span class="an-graphs-title">${t("an.graphs")}</span><div class="an-chips" id="an-chips"></div></div>
-          <canvas id="an-strip"></canvas></section>
+        <div class="an-bar" id="an-bar" hidden></div>
+        ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs") }, { key: "legs", label: t("an.tab.legs") },
+          ...(me?.admin ? [{ key: "routes", label: t("an.tab.routes") }] : [])],
+          inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
@@ -173,9 +175,8 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
+        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
       </div>
-      <section class="card" id="an-legs" hidden></section>
-      <section class="card" id="an-rc" hidden></section>
     </div>`;
   if (!perso && !races.length) {
     $("#an-pick").innerHTML = html`<div class="empty">${t("an.none")}</div>`;
@@ -213,13 +214,13 @@ export async function render(main, { query = {}, route } = {}) {
   let v3 = null, v3on = false, v3token = 0, v3grid = null, v3info = null, v3refined = {};
   let v3relief = prefs.relief3d === "contours" ? "contours" : "dem", v3interval = prefs.interval3d === 2.5 ? 2.5 : 5;
   let v3ex = Number.isFinite(prefs.ex3d) && prefs.ex3d >= 1 && prefs.ex3d <= 3 ? prefs.ex3d : 1.5;
-  // the playback's layout (owner, 2026-10-14): the curves on the left (or under the map), collapsible; the panels'
-  // sizes set by dragging the splitters
+  // the playback's layout (owner, 2026-11-01: the map always whole in the window): the controls above the map, a panel of tabs
+  // on each side of it (curves, legs, computed routes; display, computing), each resized by its splitter and folded to a rail
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
-  let glayout = prefs.glayout === "left" || prefs.glayout === "below" ? prefs.glayout : (innerWidth >= 1100 ? "left" : "below");
-  let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22))));
-  let gh = px(prefs.gh, 80, 900, 200), sw = px(prefs.sw, 200, 600, 270), gcol = !!prefs.gcol;
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, glayout, gw, gh, sw, gcol, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval })); } catch (e) { /* not kept */ } };
+  let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22)))), sw = px(prefs.sw, 200, 700, 280);
+  const lp = { tab: ["graphs", "legs", "routes"].includes(prefs.ltab) ? prefs.ltab : "graphs", collapsed: !!prefs.gcol };
+  const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]);
@@ -516,50 +517,29 @@ export async function render(main, { query = {}, route } = {}) {
   }
   const hideResults = () => {
     close3d(); $("#an-3d").hidden = true; rcReset();
-    $("#an-legs").hidden = true; $("#an-strip-card").hidden = true; $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
+    $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
+    $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
     $("#an-hud").textContent = ""; $("#an-legend").hidden = true; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
-  /** The playback's layout as set: where the curves are, collapsed or not, the panels' sizes, the height. */
+  /** The playback's layout as set: the panels' widths (a rail when folded), the height. */
   function applyLayout() {
-    layoutEl.dataset.layout = glayout;
-    layoutEl.dataset.graphs = gcol ? "collapsed" : "open";
-    layoutEl.style.setProperty("--an-gw", `${gcol ? 36 : gw}px`);
-    layoutEl.style.setProperty("--an-gh", `${gcol ? 36 : gh}px`);
-    layoutEl.style.setProperty("--an-sw", `${sw}px`);
-    const b = $("#an-collapse");
-    if (b) { b.textContent = glayout === "left" ? (gcol ? "›" : "‹") : (gcol ? "⌃" : "⌄"); b.title = t(gcol ? "an.graphs.open" : "an.graphs.close"); }
+    layoutEl.dataset.lcol = lp.collapsed ? "1" : "0";
+    layoutEl.dataset.rcol = rp.collapsed ? "1" : "0";
+    layoutEl.style.setProperty("--an-lw", `${lp.collapsed ? 34 : gw}px`);
+    layoutEl.style.setProperty("--an-rw", `${rp.collapsed ? 34 : sw}px`);
     fitHeight();
   }
   /** During the playback the layout fills the window below its top: no scrollbar on a desktop screen. */
   function fitHeight() {
     if (!document.body.classList.contains("an-theatre")) { layoutEl.style.removeProperty("--an-h"); return; }
     const top = layoutEl.getBoundingClientRect().top + window.scrollY;
-    layoutEl.style.setProperty("--an-h", `${Math.max(380, Math.floor(innerHeight - top - 14))}px`);
+    layoutEl.style.setProperty("--an-h", `${Math.max(380, Math.floor(innerHeight - top - 18))}px`);
   }
-  function bindSplit(el, kind) {
-    el.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
-      // the drag is followed on the window: a fast move leaves the thin splitter
-      e.preventDefault(); el.classList.add("dragging"); document.body.style.userSelect = "none";
-      const rect = layoutEl.getBoundingClientRect();
-      const move = (ev) => {
-        if (kind === "s") sw = Math.round(Math.min(560, Math.max(220, rect.right - ev.clientX - 5)));
-        else if (glayout === "left") { gw = Math.round(Math.min(rect.width - sw - 260, Math.max(180, ev.clientX - rect.left - 5))); gcol = false; }
-        else { gh = Math.round(Math.min(rect.height - 220, Math.max(90, rect.bottom - ev.clientY - 5))); gcol = false; }
-        applyLayout();
-      };
-      const up = () => {
-        el.classList.remove("dragging"); document.body.style.userSelect = "";
-        window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up);
-        savePrefs();
-      };
-      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
-    });
-  }
-  const toggleGraphs = () => { gcol = !gcol; savePrefs(); applyLayout(); };
-  bindSplit($("#an-split-g"), "g"); bindSplit($("#an-split-s"), "s");
-  $("#an-split-g").addEventListener("dblclick", toggleGraphs);
-  $("#an-collapse").addEventListener("click", toggleGraphs);
+  const leftP = bindPanel($("#an-left"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "graphs") { sizeStrip(); drawStrip(); } else if (k === "routes") rcCurrent(true); } });
+  const rightP = bindPanel($("#an-right"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
+  bindSplitter($("#an-split-g"), layoutEl, "left", (w, rect) => { gw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : sw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
+  bindSplitter($("#an-split-s"), layoutEl, "right", (w, rect) => { sw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : gw) - 300, Math.max(220, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
+  $("#an-left").hidden = true; $("#an-right").hidden = true;
   const onWinResize = () => fitHeight();
   window.addEventListener("resize", onWinResize);
   /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
@@ -570,7 +550,7 @@ export async function render(main, { query = {}, route } = {}) {
     // during the playback the race's line sits in the map's top left corner, so that the site's menus can stay as on
     // every page (owner, 2026-10-15: the second row hidden and a tab turned into a menu confused); back above after
     if (on) { $("#an-rf").before(brief); return; }
-    $(".an-map").prepend(brief);
+    ($("#an-bar-brief") || $(".an-map")).prepend(brief);
     const r = runner(), rc = races.find((x) => x.key === key);
     brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
       <span>${perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
@@ -1097,43 +1077,47 @@ export async function render(main, { query = {}, route } = {}) {
     calibrated = true; marks = false; tNow = 0;
     savePositions(true);
     steps(4);
-    showPanels(false);
     $("#an-side").classList.remove("an-cal");
     document.body.classList.add("an-theatre");           // the page head and the steps give way to the map; the menus stay
     window.scrollTo(0, 0);
     const avail = Object.keys(track.ch).filter((c) => CHANNEL_LABEL[c]);
     const known = sequenceKnown();
     const short = [traceShortNote(), timesNote()].filter(Boolean);
-    $("#an-side").innerHTML = html`
-      ${short.map((s) => html`<div class="notice" style="margin-bottom:6px">${s}</div>`)}
-      <div class="an-transport">
-        <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
-        <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
-        <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
-        <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
-        <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button>
+    const stat = (label, id, sub = "") => html`<span class="an-stat"><span class="muted">${label}</span> <b id="${id}">—</b>${sub ? raw(sub) : ""}</span>`;
+    // the controls above the map: the race's line, play, the time slider, and what the trace says now
+    $("#an-bar").innerHTML = html`
+      <div class="an-bar-row"><span class="an-bar-brief" id="an-bar-brief"></span>
+        <span class="an-transport">
+          <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
+          <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
+          <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
+          <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((v) => html`<option value="${v}" ${raw(v === speed ? "selected" : "")}>× ${v}</option>`)}</select>
+          <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button></span>
+        <input type="range" class="an-bar-time" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" aria-label="${t("an.time")}">
         <span class="fw-btns">${raw(fwButtons())}</span></div>
-      <input type="range" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" style="width:100%;margin:6px 0 4px">
-      <dl class="an-stats">
-        <dt>${t("an.time")}</dt><dd><b id="an-t">0:00</b> <span class="muted" id="an-t-sub"></span></dd>
-        <dt>${t(known ? "an.leg" : "an.legNear")}</dt><dd><b id="an-leg">—</b> <span class="muted" id="an-leg-sub"></span></dd>
-        <dt>${t("an.pace")}</dt><dd><b id="an-pace">—</b> <span class="muted">${t("an.pace.short")}</span></dd>
-        <dt>${t("an.dist")}</dt><dd><b id="an-dist">0 m</b> <span class="muted" id="an-dist-sub"></span></dd>
-        ${avail.filter((c) => c !== "ele").map((c) => html`<dt>${t(CHANNEL_LABEL[c])}</dt><dd><b id="an-ch-${c}">—</b> <span class="muted">${unitOf(c)}</span></dd>`)}
-      </dl>
-      <details class="an-settings" open><summary>${t("an.display")}</summary>
-        <div class="an-opts">
-          <label><span>${t("an.graphs.where")}</span><select id="an-glayout"><option value="left" ${raw(glayout === "left" ? "selected" : "")}>${t("an.graphs.left")}</option><option value="below" ${raw(glayout === "below" ? "selected" : "")}>${t("an.graphs.below")}</option></select></label>
+      <div class="an-bar-stats">
+        ${stat(t("an.time"), "an-t", html` <span class="muted" id="an-t-sub"></span>`)}
+        ${stat(t(known ? "an.leg" : "an.legNear"), "an-leg", html` <span class="muted" id="an-leg-sub"></span>`)}
+        ${stat(t("an.pace"), "an-pace", html` <span class="muted">${t("an.pace.short")}</span>`)}
+        ${stat(t("an.dist"), "an-dist", html` <span class="muted" id="an-dist-sub"></span>`)}
+        ${avail.filter((c) => c !== "ele").map((c) => stat(t(CHANNEL_LABEL[c]), `an-ch-${c}`, html` <span class="muted">${unitOf(c)}</span>`))}
+        ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}</div>`;
+    showPanels(false);
+    $("#an-bar").hidden = false; $("#an-side").hidden = true; $("#an-left").hidden = false; $("#an-right").hidden = false;
+    // the right panel: the display, and (administrators) the computed routes' settings
+    rightP.pane("display").innerHTML = html`
+      <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="an-colour"><option value="plain" ${raw(colour === "plain" ? "selected" : "")}>${t("an.colour.plain")}</option><option value="speed" ${raw(colour === "speed" ? "selected" : "")}>${t("an.colour.speed")}</option></select></label>
           <label id="an-colour-row" ${raw(colour === "speed" ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
           <label><span>${t("an.future")}</span><select id="an-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
-          <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>
+          <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((v) => html`<option value="${v}" ${raw(v === tail ? "selected" : "")}>${v ? clock(v) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-        </div><div id="an-3d-opts" hidden></div></details>
-      ${me?.admin ? html`<div id="rc-host"></div>` : ""}
+        </div><div id="an-3d-opts" hidden></div>
+      ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
+    if (me?.admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
     $("#an-next").addEventListener("click", () => jumpLeg(1));
@@ -1143,7 +1127,6 @@ export async function render(main, { query = {}, route } = {}) {
     slider.addEventListener("pointerdown", () => { scrubbing = true; });
     slider.addEventListener("pointerup", () => { scrubbing = false; });
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
-    $("#an-glayout").addEventListener("change", (e) => { glayout = e.target.value; savePrefs(); applyLayout(); });
     // the trace's colour applies to the plain trace only: hidden while it is coloured by pace
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; $("#an-colour-row").hidden = colour === "speed"; savePrefs(); paceLegend(); draw(); });
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
@@ -1162,9 +1145,10 @@ export async function render(main, { query = {}, route } = {}) {
     };
     drawChips();
     redrawChips = drawChips;
-    $("#an-strip-card").hidden = false; $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
+    $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
+    leftP.setTab("legs", known);
     applyLayout();
-    if (known) legsTable(); else { $("#an-legs").hidden = true; $("#an-legs").innerHTML = ""; }
+    if (known) legsTable(); else $("#an-legs").innerHTML = "";
     sizeStrip();
     paceLegend();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
@@ -1252,13 +1236,13 @@ export async function render(main, { query = {}, route } = {}) {
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
     for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
     $("#an-hud").textContent = `${clock(tNow)}${leg ? ` · ${leg.n}` : ""}`;
+    if (rcs.on) rcCurrent();
   }
   function legsTable() {
     const k = klass(), r = runner(), est = !officialTaus();
     const hasHr = !!track.ch.hr, hasCad = !!track.ch.cad;
     const sum = legs.reduce((a, l) => ({ dist: a.dist + (l.dist || 0), straight: a.straight + (l.straight || 0), lost: a.lost + (l.mistake ? l.lost : 0), n: a.n + (l.mistake ? 1 : 0) }), { dist: 0, straight: 0, lost: 0, n: 0 });
-    $("#an-legs").hidden = false;
-    $("#an-legs").innerHTML = html`<div class="card-head"><div><h2>${t("an.legs")}</h2><div class="hint">${t(est ? "an.legs.hint.est" : "an.legs.hint")}</div></div></div>
+    $("#an-legs").innerHTML = html`<p class="hint sp-hint">${t(est ? "an.legs.hint.est" : "an.legs.hint")}</p>
       <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
         <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th>`}<th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th>
         ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r" title="${unitOf("cad")}">${t("an.col.cad")} <span class="muted">${unitOf("cad")}</span></th>` : ""}</tr></thead>
@@ -1489,7 +1473,7 @@ export async function render(main, { query = {}, route } = {}) {
     }
     return null;
   }
-  function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) { c.hidden = true; c.innerHTML = ""; } }
+  function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) c.innerHTML = ""; }
   function rcPanel() {
     const host = $("#rc-host");
     if (!host) return;
@@ -1613,33 +1597,42 @@ export async function render(main, { query = {}, route } = {}) {
     if (!rcs.picOn) rcs.pic = null;
     draw();
   }
-  /** The legs' routes as a table: each variant's time at the pace, length and climb; the runner's own, measured alike. */
+  /** The legs' routes, leg by leg (the left panel's « Itinéraires »): each variant's time at the pace, length and climb, and
+   *  the runner's own route measured on the same model, with what the choice and the running cost. The current leg marked. */
   function rcTable() {
     const el = $("#an-rc");
     if (!el) return;
     const rows = legs.map((l, i) => ({ l, i, routes: rcs.routes[i], mine: rcs.mine[i] })).filter((x) => x.routes?.length);
-    if (!rcs.on || !rows.length) { el.hidden = true; el.innerHTML = ""; return; }
-    const pace = rcPace(), nV = Math.max(...rows.map((x) => x.routes.length));
+    if (!rcs.on || !rows.length) { el.innerHTML = html`<p class="hint sp-hint">${t(rcs.on ? "rc.tab.wait" : "rc.tab.off")}</p>`; return; }
+    const pace = rcPace();
     const how = rcs.s.pace > 0 ? "rc.pace.typed" : rcs.auto ? "rc.pace.auto" : "rc.pace.default";
-    el.hidden = false;
-    el.innerHTML = html`<div class="card-head"><div><h2>${t("rc.table")} <span class="pill rc-pill">${t("rc.admin")}</span></h2>
-        <div class="hint">${t("rc.table.hint", { p: RC.minKm(pace), how: t(how) })}</div></div></div>
-      <div class="table-wrap"><table class="data compact" data-freeze="1" data-freeze-phone="1"><thead><tr><th>${t("an.col.leg")}</th>
-        ${Array.from({ length: nV }, (_, n) => html`<th><span class="rc-dot" style="background:${RC.ROUTE_COLOURS[n]}"></span> ${RC.LETTERS[n]}</th>`)}
-        <th>${t("rc.col.mine")}</th><th class="r" title="${t("rc.col.choice.hint")}">${t("rc.col.choice")}</th><th class="r" title="${t("rc.col.exec.hint")}">${t("rc.col.exec")}</th></tr></thead>
-      <tbody>${rows.map(({ l, i, routes, mine }) => {
-        const best = routes[0].time;                    // the route suggested at the caution chosen
-        return html`<tr data-leg="${i}" style="cursor:pointer"><td>${l.label}${l.code ? html` <span class="muted">${l.code}</span>` : ""}</td>
-          ${Array.from({ length: nV }, (_, n) => { const r = routes[n]; return html`<td class="num">${r ? html`${RC.routeFacts(r, pace, clock)} <span class="muted">· ${RC.sideLabel(r)}</span>` : ""}</td>`; })}
-          <td class="num">${mine ? html`${mine.variant >= 0 ? html`<span class="rc-dot" style="background:${RC.ROUTE_COLOURS[mine.variant]}"></span> ${RC.LETTERS[mine.variant]}` : t("rc.other")} · ${clock(mine.time * pace)} · ${fmt(Math.round(mine.len / 10) * 10)} m` : "—"}</td>
-          <td class="r num">${mine ? signed(Math.round((mine.time - best) * pace)) : "—"}</td>
-          <td class="r num">${mine && mine.actual != null ? signed(Math.round(mine.actual - mine.time * pace)) : "—"}</td></tr>`;
-      })}</tbody></table></div>`;
-    $$("#an-rc tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => {
-      const l = legs[Number(tr.dataset.leg)];
+    const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
+    el.innerHTML = html`<p class="hint sp-hint">${t("rc.table.hint", { p: RC.minKm(pace), how: t(how) })}</p>
+      ${rows.map(({ l, i, routes, mine }) => html`<div class="rc-lb" data-leg="${i}">
+        <div class="rc-lb-head"><b>${l.label}</b>${l.code ? html` <span class="muted">${l.code}</span>` : ""}</div>
+        ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
+        ${mine ? html`<div class="rc-lb-row rc-lb-mine">${dot(mine.variant)}<b>${t("rc.col.mine")}</b> <span class="num">${RC.routeFacts(mine, pace, clock)}</span>
+            <span class="muted">· ${mine.variant >= 0 ? RC.LETTERS[mine.variant] : t("rc.other")}</span></div>
+          <div class="rc-lb-gaps"><span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((mine.time - routes[0].time) * pace))}</b></span>
+            ${mine.actual != null ? html`<span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(mine.actual - mine.time * pace))}</b></span>` : ""}</div>` : ""}
+      </div>`)}`;
+    $$("#an-rc .rc-lb").forEach((b) => b.addEventListener("click", () => {
+      const l = legs[Number(b.dataset.leg)];
       if (l?.t0 == null) return;
       stop(); zoomTo(l); seek(l.t0);
     }));
+    rcLegShown = -2;
+    rcCurrent(true);
+  }
+  let rcLegShown = -2;
+  /** The current leg's block marked in « Itinéraires », brought into view when the tab shows. */
+  function rcCurrent(force) {
+    const j = Math.max(0, legAt(tNow));
+    if (j === rcLegShown && !force) return;
+    rcLegShown = j;
+    let cur = null;
+    $$("#an-rc .rc-lb").forEach((b) => { const on = Number(b.dataset.leg) === j; b.classList.toggle("cur", on); if (on) cur = b; });
+    if (cur && !lp.collapsed && lp.tab === "routes") cur.scrollIntoView({ block: "nearest" });
   }
 
   // ---- the 3D view (a prototype, 2026-10-24): the map over the ground's heights, on the playback's own clock --------------

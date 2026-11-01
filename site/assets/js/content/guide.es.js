@@ -231,7 +231,7 @@ export function build(X) {
         ${slide("Coach · prueba, administradores", "Las rutas calculadas", html`
           <p>En los dos análisis GPS, un administrador puede pedir a Ozimut que proponga, para cada tramo, las rutas más rápidas sobre el mapa,
             con su longitud, su desnivel y un tiempo estimado, y que mida con el mismo modelo la ruta que tomó cada corredor.
-            En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y una tabla los recoge bajo el mapa; en
+            En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y la pestaña «Rutas», a la izquierda del mapa, los recoge tramo a tramo (los ajustes están en la pestaña «Cálculo», a la derecha); en
             el ${P("#/analyse-club", "Análisis de grupo")}, el tramo mostrado, con la lista de corredores. Es un prototipo: las rutas siguen
             el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse.</p>`)}
         ${slide("Coach · prueba", "1. Leer el mapa por sus colores", html`
