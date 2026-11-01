@@ -4144,6 +4144,8 @@ export default {
   "mt.nutrition": "Food, recovery, fitness: articles by theme",
   "nav.mapAnalysis": "Map analysis",
   "mt.mapAnalysis": "Replay your race on the map, alone or with the other runners",
+  "nav.myMaps": "My maps",
+  "mt.myMaps": "Your maps and the routes you ran on them, kept and shared",
   "ma.title": "Map analysis",
   "ma.lede": "Replay your GPS track on your map to analyse your race. First choose who provides the map: the organiser, or you.",
   "ma.g.orga": "The organiser has published the map and the courses",

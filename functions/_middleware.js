@@ -37,7 +37,8 @@ const DATA_FOR_ALL = [/^\/data\/[a-z]{2}\/(competitions|agenda|evaluation|valida
 // What a visitor without an account may read (owner, 2026-10-30: « Entrer sans compte »), by GET only: what is open to every
 // account above, the countries whose results are all public (DATA_ACCESS "all": Spain, the agendas' countries), the live
 // results (the races' list and their WebSocket) and the competitions' GPS tracking links. Nothing about accounts.
-const GUEST = [/^\/api\/live\/list$/, /^\/ws\/[^/]+$/, /^\/api\/tracking$/];
+const GUEST = [/^\/api\/live\/list$/, /^\/ws\/[^/]+$/, /^\/api\/tracking$/,
+  /^\/api\/mymaps\/s\/[a-z2-9]+(\/[a-z0-9.]+)*$/];    // « Mes cartes »: the maps an account shares by a link (api/mymaps)
 // ...and only with a guest pass (owner, 2026-11-01: the public data were open to any script, unlimited, on the Workers' daily
 // quota): a cookie /api/guest gives after Cloudflare Turnstile, valid GUEST_HOURS, naming nobody. Turnstile's keys missing
 // (_lib/turnstile.js): no pass asked.

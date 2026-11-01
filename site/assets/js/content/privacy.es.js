@@ -88,6 +88,16 @@ export const body = (SITE, { world = false } = {}) => `
         mapas de un análisis se conservan mientras este exista; si el organizador elimina su cuenta, el análisis se mantiene,
         sin su nombre. En un «Análisis de grupo», tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
         archivo, guardado en tu navegador en este dispositivo: no se transmite, y solo tú tienes acceso a él.</p>
+      <h2 style="font-size:16px">Mis mapas</h2>
+      <p>«Mis mapas» guarda los mapas que guardas allí (desde «Análisis individual») o importas (archivos JPEG de QuickRoute o de
+        Ozimut), y los recorridos que hiciste en ellos, en el almacenamiento del sitio (Cloudflare): la imagen del mapa tal como la
+        diste, su título, su fecha, su lugar y tus notas, y para cada carrera las posiciones en el mapa y las horas, nunca el archivo
+        GPS en sí. La frecuencia cardiaca, la altitud y la cadencia solo se guardan si marcas la casilla prevista (sin marcar por
+        defecto): son datos de salud, guardados con tu consentimiento, que retiras eliminando la carrera. Solo tú ves estos mapas. Si
+        creas un enlace para compartir (a todos tus mapas o a uno), cualquiera que tenga el enlace los ve con tu nombre, incluso sin
+        cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
+        eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
+        mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
       <h2 style="font-size:16px">Trazado de recorridos</h2>
       <p>Un evento de la página «Trazado» (sus recorridos, su mapa, sus versiones, los comentarios del equipo y los estados de los
         controles anotados en modo terreno) se conserva en el espacio de almacenamiento del sitio (Cloudflare) y solo es accesible para su equipo:

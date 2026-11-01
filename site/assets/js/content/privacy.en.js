@@ -80,6 +80,15 @@ export const body = (SITE, { world = false } = {}) => `
         analysis and with their account. An analysis's maps are kept as long as it exists; if the organiser deletes their account,
         the analysis remains, without their name. In a “Group analysis”, your own graphs (pace, heart rate, cadence, etc.) come from
         your file, kept in your browser on this device: it is not sent, and only you have access to it.</p>
+      <h2 style="font-size:16px">My maps</h2>
+      <p>“My maps” keeps the maps you save there (from “Solo analysis”) or import (QuickRoute or Ozimut JPEG files), and the routes
+        you ran on them, in the site's storage (Cloudflare): the map's image as you gave it, its title, date, place and your notes, and
+        for each race the positions on the map and the times, never the GPS file itself. Heart rate, altitude and cadence are kept only
+        if you tick the box for it (unticked by default): these are health data, kept with your consent, which you withdraw by deleting
+        the race. These maps are visible to you alone. If you create a sharing link (to all your maps or to one), anyone holding the
+        link sees them with your name, even without an account, but never your heart rate or other personal data; deleting the link
+        ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
+        DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
       <h2 style="font-size:16px">Course setting</h2>
       <p>An event of the “Course setting” page (its courses, its map, its versions, the team's comments and the states of the
         controls noted in field mode) is kept in the site's storage (Cloudflare) and is only accessible to its team: its creator and

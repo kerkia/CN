@@ -26,7 +26,7 @@ function pageName(k) {
     club: "ad.pg.club", clubcompare: "ad.pg.clubcompare", courses: "nav.courses", agenda: "nav.agenda", methods: "nav.methods",
     settings: "st.link", contact: "ct.title", admin: "ad.title", provisional: "prov.title", splits: "spl.title",
     deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "nav.analysis.long", games: "nav.games", vma: "nav.vma",
-    analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long", mapAnalysis: "nav.mapAnalysis", analysisOrga: "an.orga.title",
+    analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long", mapAnalysis: "nav.mapAnalysis", myMaps: "nav.myMaps", analysisOrga: "an.orga.title",
     orgRace: "sh.org.race.title", orgTraining: "sh.org.club.title", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", categories: "cg.title", relayHistory: "rh.title", needCountry: "cty.need.title",
     descriptions: "nav.descriptions", mapkey: "nav.mapkey", nutrition: "nav.nutrition", nutritionWrite: "nav.nutritionWrite", hub: "mod.pick", modtiles: "ad.modtiles" };
   if (k.startsWith("network:")) {

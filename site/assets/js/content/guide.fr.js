@@ -174,7 +174,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Analyse multi"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Analyse multi"], ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
@@ -218,6 +218,22 @@ export function build(X) {
               pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
             html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
               pour vous seul.`,
+          ])}`)}`,
+      cartes: () => html`
+        ${slide("Coach", "Mes cartes", html`
+          <p>${P("#/mes-cartes", "Mes cartes")} garde vos cartes et les itinéraires que vous y avez courus, comme un DOMA à vous : une galerie à chercher par
+            titre, lieu ou année, et chaque carte avec ses courses dessinées dessus, d'une couleur chacune ou selon l'allure. Il faut un compte.</p>
+          ${list([
+            html`<b>Ajouter une course</b> : dans l'Analyse solo, une fois la course calée, « Enregistrer dans Mes cartes ». Sont gardés la carte telle que vous
+              l'avez donnée et l'itinéraire tel qu'il est dessiné (positions sur la carte et heures, postes), jamais le fichier GPS. La même carte n'est gardée
+              qu'une fois : une autre course dessus s'y ajoute.`,
+            html`<b>Importer</b> : les JPEG que QuickRoute exporte (ceux que DOMA garde), les fichiers d'Ozimut, un par un ou dans un zip, ou déposés sur la page.
+              L'import direct depuis un DOMA n'est pas encore ouvert : son bouton envoie à l'équipe Ozimut une demande toute prête pour l'activer.`,
+            html`<b>Exporter</b> : chaque carte devient un JPEG que tout le monde peut ouvrir (la carte avec vos itinéraires), qui contient aussi la carte
+              d'origine et les courses ; Ozimut le relit tel quel. « Tout exporter » en fait un zip.`,
+            html`<b>Données personnelles</b> : la fréquence cardiaque, l'altitude et la cadence ne sont gardées que si vous cochez la case (décochée par défaut).`,
+            html`<b>Partager</b> : vos cartes sont privées. Un lien vers toutes vos cartes, ou vers une seule, les montre à qui le reçoit, même sans compte, sans
+              les données personnelles ; supprimer le lien arrête le partage.`,
           ])}`)}`,
       definitions: () => html`
         ${slide("Coach", "Définitions de postes", html`

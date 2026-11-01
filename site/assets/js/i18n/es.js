@@ -4364,6 +4364,8 @@ export default {
   "mt.nutrition": "Alimentación, recuperación, forma: artículos por temas",
   "nav.mapAnalysis": "Análisis de mapa",
   "mt.mapAnalysis": "Revivir tu carrera en el mapa, solo o con los demás corredores",
+  "nav.myMaps": "Mis mapas",
+  "mt.myMaps": "Tus mapas y los recorridos que hiciste en ellos, guardados y compartidos",
   "ma.title": "Análisis de mapa",
   "ma.lede": "Reproduce tu track GPS sobre tu mapa para analizar tu carrera. Elige primero quién aporta el mapa: el organizador o tú.",
   "ma.g.orga": "El organizador ha publicado el mapa y los recorridos",

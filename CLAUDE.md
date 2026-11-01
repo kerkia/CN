@@ -826,6 +826,33 @@ Every multiple-choice game was played through to its score page at phone size, w
   marked announced (no alerts), their categories mapped by name to the 8 themes, the 16 without one given themes by the owner.
   A deleted account's articles stay under the name they were published with. Local test: launch configs `pages-dev-nutrition`
   (8797, the test account an administrator) and `pages-dev-nutrition-user` (8798, not).
+- **Mes cartes / My maps** (`#/mes-cartes`, route `myMaps`, `pages/mymaps.js`, Coach's menu after « Analyse de carte »; owner,
+  2026-11-01, after the study of the same day, private artifact https://claude.ai/artifact/73o9XNbXo526WspSERhLhR): each account's
+  archive of its maps and the routes it ran on them, as DOMA keeps them — a gallery (search, year), a map drawn with its runs (one
+  colour each or by pace, the controls placed), its title, day, place and notes editable. **What is kept is what is drawn** (owner:
+  « keep what is plotted, not the FIT/GPX »): the map as it came (byte for byte; a PDF's or a generated map's page as a PNG, as
+  `mapfile.imageBlob`), and per run its points in the map's pixels with their times (`trace/mymaps.js` record v1: `t0`, `dt` tenths
+  of a second, `x`/`y` tenths of a pixel, deltas; `br` segment starts, `laps`, `ctl` the controls), never the trace's file. **Heart
+  rate, altitude, cadence (`ch`) only when the runner ticks the box** (off by default; health data on consent), and never through a
+  link. A map is kept once per account (`mymaps.sha`, the image's SHA-256): the same map again adds its run. Sources: « Analyse
+  solo »'s « Enregistrer dans Mes cartes » (`trace/mymapsave.js`, in the playback's « Affichage » panel: the race's window `offset` …
+  `offset + total` of `pxs`/`pys`, the georeference `geoFromFit`), **QuickRoute's JPEGs** (the files DOMA keeps; `trace/mapjpeg.js`
+  `readQuickRoute`, written from the format's description — QuickRoute is GPL, none of its code: APP0 « QuickRoute » segments, TLV;
+  each waypoint by the matrix of the last handle at or before it, the last but one at most — checked on two real DOMA files, the
+  route through the controls; the map cropped out of QuickRoute's header, its route painted on it) and **Ozimut's own file**: a JPEG
+  anyone opens (the map with the routes drawn) whose APP9 « Ozimut » segments carry a zip — `ozimut-map.json` (`format:
+  "ozimut-map"`, `version` 1: the map's fields, `geo`, the runs' records) and `map.<ext>`, the original map byte for byte —, one map a
+  file or all in a zip (« Tout exporter »; personal data only when ticked), read back as it was (`readFile`: a JPEG or a zip of them;
+  a newer `version` refused). **DOMA**: no import yet (owner); « Importer depuis DOMA » opens a form (the DOMA's address, the user
+  name there, a note) that posts a ready message to `/api/contact` (« Demande d'aide », the account, language and map count). **Sharing**
+  (owner: private by default): a link to the whole archive or to one map (`mymap_links`; `#/mes-cartes?partage=<token>[&carte=<id>]`),
+  opened by anyone holding it — a visitor without an account enters as a guest (`app.route_`, the guest pass; the gate's `GUEST`
+  lets `/api/mymaps/s/…` through) —, showing the owner's name, never the personal channels; deleting the link ends it. **No quota for
+  now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
+  (`functions/api/mymaps/[[path]].js`, its header lists the routes; images cached a year: a map never changes under its id);
+  account deletion removes all (`api/account/delete.js`); the privacy page's « Mes cartes ». Texts in the area catalogue
+  `i18n/mymaps.{fr,en,de,es}.js` (`loadArea("mymaps")`); the Coach guide's chapter `cartes`. Local test: launch config
+  `pages-dev-mymaps` (8799); DOMA samples in the git-ignored `site/data/_trtest/mymaps/`.
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from

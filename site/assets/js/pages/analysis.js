@@ -19,7 +19,7 @@
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { backLine } from "./mapanalysis.js";
-import { fitFromGeo } from "../trace/share.js";
+import { fitFromGeo, geoFromFit } from "../trace/share.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -1406,7 +1406,7 @@ export async function render(main, { query = {}, route } = {}) {
         <label><span>${t("an.shot.zone")}</span><select id="an-shot-zone"><option value="race" ${raw(shot.zone === "race" ? "selected" : "")}>${t("an.shot.zone.race")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
         <label><span>${t("an.shot.type")}</span><select id="an-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
         <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="an-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
-        <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div>
+        <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div><div id="an-mymaps"></div>
       ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
     if (me?.admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
@@ -1424,6 +1424,10 @@ export async function render(main, { query = {}, route } = {}) {
     const shotSet = () => { shot.zone = $("#an-shot-zone").value; shot.type = $("#an-shot-type").value; shot.legend = $("#an-shot-legend").checked; savePrefs(); };
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
     $("#an-shot").addEventListener("click", () => exportImage());
+    // « Enregistrer dans Mes cartes » (owner, 2026-11-01): the map and the run as drawn here (trace/mymapsave.js)
+    import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), () => ({ file: files.map?.file || null, image: map, track, pxs, pys, offset, total,
+      geo: fit ? geoFromFit(fit, track) : null, title: orgaMode ? orga.A.title : perso ? "" : [race?.name, klass()?.name].filter(Boolean).join(" · "),
+      controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) }))).catch((e) => console.error(e));
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });

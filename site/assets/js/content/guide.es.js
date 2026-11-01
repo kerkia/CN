@@ -173,7 +173,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Análisis de grupo"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Análisis de grupo"], ["cartes", "Mis mapas"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Juegos"], ["vma", "VAM"], ...(admin ? [["routes", "Rutas calculadas"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
@@ -217,6 +217,22 @@ export function build(X) {
               entrenamiento, los ejercicios del organizador (pasillo, rumbo).`,
             html`<b>El acceso</b>: todas las cuentas, los miembros de un club o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
               solo para ti.`,
+          ])}`)}`,
+      cartes: () => html`
+        ${slide("Coach", "Mis mapas", html`
+          <p>${P("#/mes-cartes", "Mis mapas")} guarda tus mapas y los recorridos que hiciste en ellos, como un DOMA propio: una galería para buscar por título,
+            lugar o año, y cada mapa con sus carreras dibujadas encima, de un color cada una o según el ritmo. Necesitas una cuenta.</p>
+          ${list([
+            html`<b>Añadir una carrera</b>: en el Análisis individual, una vez calibrada la carrera, «Guardar en Mis mapas». Se guarda el mapa tal como lo diste
+              y el recorrido tal como está dibujado (posiciones en el mapa y horas, controles), nunca el archivo GPS. El mismo mapa se guarda una sola vez: otra
+              carrera en él se le añade.`,
+            html`<b>Importar</b>: los JPEG que exporta QuickRoute (los que guarda DOMA), los archivos de Ozimut, uno a uno o en un zip, o soltados en la página.
+              La importación directa desde un DOMA aún no está abierta: su botón envía al equipo de Ozimut una solicitud lista para activarla.`,
+            html`<b>Exportar</b>: cada mapa se convierte en un JPEG que cualquiera puede abrir (el mapa con tus recorridos), que contiene también el mapa original
+              y las carreras; Ozimut lo vuelve a leer tal cual. «Exportar todo» hace un zip con ellos.`,
+            html`<b>Datos personales</b>: la frecuencia cardiaca, la altitud y la cadencia solo se guardan si marcas la casilla (sin marcar por defecto).`,
+            html`<b>Compartir</b>: tus mapas son privados. Un enlace a todos tus mapas, o a uno, los muestra a quien lo reciba, incluso sin cuenta, sin los datos
+              personales; eliminar el enlace pone fin al uso compartido.`,
           ])}`)}`,
       definitions: () => html`
         ${slide("Coach", "Descripciones de control", html`

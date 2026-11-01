@@ -41,6 +41,7 @@ const PAGES = {
   analysisPerso: () => import("./pages/analysis.js"),   // « Analyse solo » (Entrainement): the same page, no race
   analysisOrga: () => import("./pages/analysis.js"),    // « Analyse solo » on an organiser's published map and circuits (2026-11-01)
   mapAnalysis: () => import("./pages/mapanalysis.js"),  // « Analyse de carte » (2026-11-01): the four ways into the GPS analyses
+  myMaps: () => import("./pages/mymaps.js"),           // « Mes cartes » (2026-11-01): one's maps and the routes run on them, kept and shared
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
   // « Organisation » (2026-10-15): the organisers' pages — a competition's multi analysis, a training event's, the results
@@ -93,7 +94,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "mapAnalysis", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "mapAnalysis", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
@@ -145,6 +146,7 @@ function parseHash(hash = location.hash) {
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
+    : head === "mes-cartes" ? "myMaps"
     : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
     : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
     : head === "analyse-club" ? "analysisClub"
@@ -400,6 +402,8 @@ export function moduleMenus() {
     ],
     // the GPS analyses behind one page of four tiles (owner, 2026-11-01: « Analyse de carte », pages/mapanalysis.js)
     coach: [["mapAnalysis", "#/analyse-carte", t("nav.mapAnalysis")],
+      // « Mes cartes » (owner, 2026-11-01): an account's own archive (a link shared opens it to anyone: GUEST_ROUTES)
+      ...(me ? [["myMaps", "#/mes-cartes", t("nav.myMaps")]] : []),
       ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
@@ -411,7 +415,7 @@ export function moduleMenus() {
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
 const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga",
-  agenda: "arena", provisional: "arena", splits: "arena", live: "arena" };
+  agenda: "arena", provisional: "arena", splits: "arena", live: "arena", myMaps: "coach" };
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
 // Coach and Orga open on their pages as tiles, Stats too on a phone (owner, 2026-10-31: every choice in sight at once; a
@@ -836,7 +840,12 @@ async function route_() {
   // the gate: logged out, only the home (login) page exists; the page asked for (a link in an e-mail…) opens after the login.
   // A visitor without an account (« Entrer sans compte », auth.guest) has the pages of public data (GUEST_ROUTES); any
   // other page leads to the modules page
-  const me = auth.session(), guest = !me && auth.guest();
+  const me = auth.session();
+  // a link to someone's maps (« Mes cartes », #/mes-cartes?partage=…) opened without an account: the visit goes on as a visitor's
+  if (!me && !auth.guest() && r.route === "myMaps" && r.query.partage) {
+    try { await ensurePass({ force: true }); auth.setGuest(true); await data.reloadCountry(); } catch (e) { /* the login page then */ }
+  }
+  const guest = !me && auth.guest();
   if (guest) await ensurePass().catch(() => {});        // the guest pass, renewed when it runs out (guestpass.js)
   if (!me && !guest && !["overview", "account"].includes(r.route)) {
     try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}

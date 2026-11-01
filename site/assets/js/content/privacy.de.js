@@ -90,6 +90,17 @@ export const body = (SITE, { world = false } = {}) => `
         Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
         ohne seinen Namen. In einer „Gruppenanalyse“ stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
         Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
+      <h2 style="font-size:16px">Meine Karten</h2>
+      <p>„Meine Karten“ bewahrt die Karten, die du dort speicherst (aus der „Einzelanalyse“) oder importierst (JPEG-Dateien aus
+        QuickRoute oder Ozimut), und die Routen, die du darauf gelaufen bist, im Speicher der Website (Cloudflare) auf: das Bild der
+        Karte so, wie du es gegeben hast, ihren Titel, ihr Datum, ihren Ort und deine Notizen und für jeden Lauf die Positionen auf der
+        Karte und die Zeiten, nie die GPS-Datei selbst. Herzfrequenz, Höhe und Schrittfrequenz werden nur aufbewahrt, wenn du das dafür
+        vorgesehene Kästchen ankreuzt (standardmäßig nicht angekreuzt): Es sind Gesundheitsdaten, die mit deiner Einwilligung aufbewahrt
+        werden; du widerrufst sie, indem du den Lauf löschst. Diese Karten siehst nur du. Erstellst du einen Link zum Teilen (zu allen
+        deinen Karten oder zu einer), sieht sie jeder, der den Link hat, mit deinem Namen, auch ohne Konto, aber nie die Herzfrequenz
+        oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
+        alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
+        „Kontakt“.</p>
       <h2 style="font-size:16px">Bahnlegung</h2>
       <p>Ein Ereignis der Seite „Bahnlegung“ (seine Bahnen, seine Karte, seine Versionen, die Kommentare des Teams und die im Geländemodus
         notierten Postenzustände) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur seinem Team zugänglich:

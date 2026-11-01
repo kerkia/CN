@@ -89,6 +89,17 @@ export const body = (SITE, { world = false } = {}) => `
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
         sans son nom. Dans une « Analyse multi », vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
+      <h2 style="font-size:16px">Mes cartes</h2>
+      <p>« Mes cartes » garde les cartes que vous y enregistrez (depuis « Analyse solo ») ou importez (fichiers JPEG de QuickRoute ou
+        d'Ozimut), et les itinéraires que vous y avez courus, dans l'espace de stockage du site (Cloudflare)  l'image de la carte telle
+        que vous l'avez donnée, son titre, sa date, son lieu et vos notes, et pour chaque course les positions sur la carte et les
+        heures, jamais le fichier GPS lui-même. La fréquence cardiaque, l'altitude et la cadence ne sont gardées que si vous cochez la
+        case prévue (décochée par défaut)  ce sont des données de santé, conservées sur votre consentement, que vous retirez en
+        supprimant la course. Ces cartes ne sont visibles que de vous. Si vous créez un lien de partage (vers toutes vos cartes ou
+        vers une seule), toute personne qui a ce lien les voit avec votre nom, même sans compte, mais jamais la fréquence cardiaque
+        ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
+        moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
+        ceux de « Nous écrire ».</p>
       <h2 style="font-size:16px">Tracé des circuits</h2>
       <p>Un événement de la page « Tracer » (ses circuits, sa carte, ses versions, les commentaires de l'équipe et les états des
         postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :

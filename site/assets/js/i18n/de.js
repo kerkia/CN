@@ -4364,6 +4364,8 @@ export default {
   "mt.nutrition": "Ernährung, Erholung, Fitness: Artikel nach Themen",
   "nav.mapAnalysis": "Kartenanalyse",
   "mt.mapAnalysis": "Deinen Lauf auf der Karte nachspielen, allein oder mit den anderen",
+  "nav.myMaps": "Meine Karten",
+  "mt.myMaps": "Deine Karten und die Routen, die du darauf gelaufen bist, aufbewahrt und geteilt",
   "ma.title": "Kartenanalyse",
   "ma.lede": "Spiele deinen GPS-Track auf deiner Karte ab, um deinen Lauf zu analysieren. Wähle zuerst, wer die Karte liefert: der Veranstalter oder du.",
   "ma.g.orga": "Der Veranstalter hat die Karte und die Bahnen veröffentlicht",

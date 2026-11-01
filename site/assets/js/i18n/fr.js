@@ -3304,6 +3304,8 @@ export default {
   "mt.nutrition": "Alimentation, récupération, forme : articles par thème",
   "nav.mapAnalysis": "Analyse de carte",
   "mt.mapAnalysis": "Rejouer sa course sur la carte, seul ou avec les autres coureurs",
+  "nav.myMaps": "Mes cartes",
+  "mt.myMaps": "Ses cartes et les itinéraires qu'on y a courus, gardés et partagés",
   "ma.title": "Analyse de carte",
   "ma.lede": "Rejouez votre trace GPS sur votre carte pour analyser votre course. Choisissez d'abord qui fournit la carte : l'organisateur, ou vous.",
   "ma.g.orga": "L'organisateur a publié la carte et les circuits",
