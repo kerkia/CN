@@ -5,7 +5,7 @@
 //   firewallEventsAdaptive up to a page — then marked approximate), each user agent sorted by _lib/aibots.js, and the AI bots'
 //   requests that went through (httpRequestsAdaptiveGroups by user agent and status, status < 400). A day is copied again
 //   until it is over (the last day copied and the current one at each pass); a few days a pass (the Functions' 50 subrequests
-//   and 10 ms of CPU), the oldest missing first; the first passes fill the last 30 days. Due every 3 hours, asked by
+//   and 10 ms of CPU), the oldest missing first; the first passes fill the last 30 days, every 10 minutes. Due every 3 hours, asked by
 //   /api/track (robotsSoon) and by the admin page itself. The account's read-only token CF_ANALYTICS_TOKEN (« Consommation »)
 //   with « Zone › Analytics › Read » and « Zone › Zone › Read » on the site's zone; the zone from CF_ZONE_ID, else found by
 //   the site's name (SITE_URL's host, else ozimut.com).
@@ -130,7 +130,9 @@ export async function syncBots(env, { force = false, maxDays = 3, recent = false
   const state = await readState(env);
   if (state === null) return null;
   if (!env.CF_ANALYTICS_TOKEN) return { ...state, error: "no token" };
-  if (!force && Date.now() - (state.last || 0) < DUE_MS) return state;
+  // while the first 30 days are filling in, a pass every 10 minutes; then every 3 hours
+  const due = state.through && !state.done ? 10 * 60e3 : DUE_MS;
+  if (!force && Date.now() - (state.last || 0) < due) return state;
   const s = { ...state, last: Date.now() };
   await saveState(env, s);                                  // taken: another isolate does not start the same pass
   try {
@@ -165,9 +167,9 @@ export async function syncBots(env, { force = false, maxDays = 3, recent = false
 }
 
 let lastCheck = 0;
-/** From /api/track: the copy, when due (an isolate looks at most every 30 minutes). */
+/** From /api/track: the copy, when due (an isolate looks at most every 10 minutes). */
 export function robotsSoon(ctx) {
-  if (!ctx.env.CF_ANALYTICS_TOKEN || Date.now() - lastCheck < 30 * 60e3) return;
+  if (!ctx.env.CF_ANALYTICS_TOKEN || Date.now() - lastCheck < 10 * 60e3) return;
   lastCheck = Date.now();
   ctx.waitUntil(syncBots(ctx.env).catch(() => null));
 }
