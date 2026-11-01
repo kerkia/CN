@@ -4145,6 +4145,8 @@ export default {
   "ma.g.orga.lede": "The map is already placed and the controls set: all you need is your GPS track.",
   "ma.g.own": "You have your own map",
   "ma.g.own.lede": "A photo, a PDF, an image or an OCAD file of the map: Ozimut reads the course on it and lays your track on it.",
+  "ma.who.one": "Alone, on your track",
+  "ma.who.many": "With the other runners",
   "ma.need": "You need:",
   "ma.account": "With an account",
   "ma.foot": "Your files are read in your browser and sent nowhere, except the track you choose to share in “Compare with the other runners”.",

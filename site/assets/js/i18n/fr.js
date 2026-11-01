@@ -3305,6 +3305,8 @@ export default {
   "ma.g.orga.lede": "La carte est déjà calée et les postes placés : il vous suffit de votre trace GPS.",
   "ma.g.own": "Vous avez votre propre carte",
   "ma.g.own.lede": "Une photo, un PDF, une image ou un fichier OCAD de la carte : Ozimut y lit le circuit et y cale votre trace.",
+  "ma.who.one": "Seul, sur votre trace",
+  "ma.who.many": "Avec les autres coureurs",
   "ma.need": "Il vous faut :",
   "ma.account": "Avec un compte",
   "ma.foot": "Vos fichiers sont lus dans votre navigateur et ne sont envoyés nulle part, sauf la trace que vous choisissez de partager dans « Comparer avec les autres coureurs ».",

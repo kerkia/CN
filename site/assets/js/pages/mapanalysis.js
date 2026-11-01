@@ -31,7 +31,8 @@ export async function render(main, r) {
 }
 
 // ---- the four tiles -----------------------------------------------------------------------------------------------
-// Each tile: what it does, what one needs (« votre trace » / « votre carte et votre trace »), its number in the order read.
+// Each tile: what it does, what one needs (« votre trace » / « votre carte et votre trace »), and in its corner whether one
+// analyses alone or with the other runners (owner, 2026-11-01: a number meant nothing).
 const ICONS = {
   // the traces of several runners between two controls
   multi: '<circle cx="8" cy="9" r="3.2"/><circle cx="32" cy="31" r="3.2"/><path d="M10.5 11.5 C 16 14, 18 24, 29.5 28.5"/><path d="M10.8 10 C 20 8, 30 14, 30.5 28" stroke-dasharray="3 2.4"/><path d="M9.5 12 C 9 22, 20 30, 29 30.5" stroke-dasharray="1 2.4"/>',
@@ -43,15 +44,18 @@ const ICONS = {
   free: '<path d="M6 30 L 6 10 L 16 6 L 24 10 L 34 6 L 34 26 L 24 30 L 16 26 Z"/><path d="M16 6 V 26 M24 10 V 30"/><path d="M10 24 C 14 16, 22 22, 30 12" stroke-dasharray="2 2"/>',
 };
 const icon = (k) => raw(`<svg class="ma-ico" viewBox="0 0 40 40" aria-hidden="true">${ICONS[k]}</svg>`);
+// a running figure, 24 units high: one runner, or three for the analysis with the others
+const RUNNER = '<circle cx="14.5" cy="4.2" r="2.3" class="ma-who-head"/><path d="M13.6 7.6 L 11 14 M13.2 8.6 L 16.8 10.6 L 19.6 9.2 M12.6 9.2 L 9.2 10.2 L 7.2 12.8 M11 14 L 15 17 L 14 22 M11 14 L 8.6 18.2 L 4.6 19.2"/>';
+const who = (many) => raw(`<span class="ma-who" title="${t(many ? "ma.who.many" : "ma.who.one")}" role="img" aria-label="${t(many ? "ma.who.many" : "ma.who.one")}">${many
+  ? `<svg viewBox="0 0 40 24"><g transform="translate(0 4) scale(0.82)">${RUNNER}</g><g transform="translate(20 4) scale(0.82)">${RUNNER}</g><g transform="translate(9 0)">${RUNNER}</g></svg>`
+  : `<svg viewBox="0 0 24 24">${RUNNER}</svg>`}</span>`);
 
 function tiles(main) {
   const me = auth.session();
-  let n = 0;
   const tile = (k, href, account) => {
     const off = account && !me;
-    n++;
     return html`<a class="ma-tile${off ? " off" : ""}" data-tile="${k}" href="${off ? "#/compte/inscription" : href}">
-      <span class="ma-tile-top">${icon(k)}<span class="ma-tile-n">${n}</span></span>
+      <span class="ma-tile-top">${icon(k)}${who(k === "multi")}</span>
       <b>${t(`ma.${k}.title`)}</b><span class="ma-tile-desc">${t(`ma.${k}.desc`)}</span>
       <span class="ma-need"><i>${t("ma.need")}</i> ${t(`ma.${k}.need`)}</span>
       ${off ? html`<span class="ma-acc">${t("ma.account")}</span>` : ""}</a>`;

@@ -1791,8 +1791,10 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .ma-tile:focus-visible { outline: 2px solid var(--course); outline-offset: 2px; }
 .ma-tile-top { display: flex; align-items: center; justify-content: space-between; }
 .ma-ico { width: 40px; height: 40px; fill: none; stroke: var(--course); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; color: var(--course); }
-.ma-tile-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700;
-  color: var(--course); border: 1.5px solid var(--course); }
+.ma-who { display: inline-flex; align-items: center; height: 30px; padding: 0 7px; border-radius: 999px; color: var(--course);
+  background: color-mix(in srgb, var(--course) 10%, var(--surface)); }
+.ma-who svg { height: 23px; width: auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ma-who .ma-who-head { fill: currentColor; stroke: none; }
 .ma-tile b { font-size: 16px; color: var(--course); line-height: 1.25; }
 .ma-tile-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
 .ma-need { margin-top: auto; padding-top: 6px; font-size: 12.5px; color: var(--ink); }

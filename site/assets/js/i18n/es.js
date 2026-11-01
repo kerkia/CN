@@ -4365,6 +4365,8 @@ export default {
   "ma.g.orga.lede": "El mapa ya está calibrado y las balizas colocadas: solo necesitas tu track GPS.",
   "ma.g.own": "Tienes tu propio mapa",
   "ma.g.own.lede": "Una foto, un PDF, una imagen o un archivo OCAD del mapa: Ozimut lee en él el recorrido y coloca tu track.",
+  "ma.who.one": "Solo, con tu track",
+  "ma.who.many": "Con los demás corredores",
   "ma.need": "Necesitas:",
   "ma.account": "Con una cuenta",
   "ma.foot": "Tus archivos se leen en tu navegador y no se envían a ninguna parte, salvo el track que decidas compartir en «Comparar con los demás corredores».",
