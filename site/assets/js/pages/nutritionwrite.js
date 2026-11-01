@@ -333,12 +333,19 @@ async function editor(main, query) {
     const live = post?.status === "published";
     $("#ne-pub").textContent = live ? t("nutw.update") : c.published && c.published > new Date().toISOString().slice(0, 10) ? t("nutw.schedule") : t("nutw.publish");
     $("#ne-save").textContent = live ? t("nutw.unpublish") : t("nutw.saveDraft");
+    // nothing to save (owner, 2026-11-01): « Mettre à jour » of a published article and « Enregistrer le brouillon » of a saved
+    // draft greyed out until something changes; publishing a draft or taking an article back to draft stay offered
+    const same = !!post && !dirty();
+    $("#ne-pub").disabled = busy || (live && same);
+    $("#ne-save").disabled = busy || (!live && same);
   }
-  const keepLocal = debounce(() => {
+  const keepLocalLater = debounce(() => {
     if (dirty()) writeDraft(post?.id, { at: Date.now(), base: post?.version || 0, a: current() });
     else writeDraft(post?.id, null);
     drawState();
   }, 600);
+  // a change offers the buttons at once (the check that it really differs from what is saved follows)
+  const keepLocal = () => { if (!busy) $("#ne-pub").disabled = $("#ne-save").disabled = false; keepLocalLater(); };
 
   // a copy kept in this browser and never saved: offered back
   const local = readDraft(post?.id);
