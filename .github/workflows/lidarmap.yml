@@ -1,0 +1,63 @@
+# Generated orienteering maps (a prototype, 2026-11-01): makes the 1 km tiles the site asked for — « Analyse solo »'s
+# « Générer une carte » posts a request to R2 (functions/api/lidarmap/[[path]].js, lidarmap/req/<id>.json) and starts
+# this workflow (workflow_dispatch, GH_DISPATCH_TOKEN) —, from IGN's LiDAR HD through karttapullautin with
+# OpenStreetMap's features drawn over it (mapgen/run.py), into R2 lidarmap/t/. Runs never overlap; each run takes the
+# requests waiting, again until none is left (a request posted while a run was making others).
+#
+# karttapullautin (GPL-3) is downloaded from its own release, checked against its checksum, and run as it is: it is a
+# program of its own, never part of Ozimut's code or site.
+
+name: lidarmap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: lidarmap
+      cancel-in-progress: false
+    env:
+      BUCKET: s3://cn-state
+      R2: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      KP_VERSION: "2.15.4"
+      KP_SHA256: daf256834818d17dc1a0b2cbae289e96e0c88a2f7bd1ec818c15fb1df5e67b6d
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - run: pip install "httpx>=0.27" "numpy>=2.0" "pillow>=11"
+
+      - name: karttapullautin
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/kp.tgz" "https://github.com/karttapullautin/karttapullautin/releases/download/v$KP_VERSION/karttapullautin-x86_64-linux.tar.gz"
+          echo "$KP_SHA256  $RUNNER_TEMP/kp.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/kp" && tar -xzf "$RUNNER_TEMP/kp.tgz" -C "$RUNNER_TEMP/kp"
+          echo "KP=$(find "$RUNNER_TEMP/kp" -type f -name pullauta | head -1)" >> "$GITHUB_ENV"
+
+      - name: Maps
+        run: |
+          for round in 1 2 3 4; do
+            rm -rf "$RUNNER_TEMP/req" "$RUNNER_TEMP/out" && mkdir -p "$RUNNER_TEMP/req" "$RUNNER_TEMP/out"
+            aws s3 sync "$BUCKET/lidarmap/req/" "$RUNNER_TEMP/req/" --endpoint-url "$R2" --only-show-errors || true
+            python -m mapgen ci --requests "$RUNNER_TEMP/req" --out "$RUNNER_TEMP/out" --work "$RUNNER_TEMP/work" --kp "$KP"
+            [ -d "$RUNNER_TEMP/out/req" ] || break
+            if [ -d "$RUNNER_TEMP/out/t" ]; then
+              aws s3 cp "$RUNNER_TEMP/out/t/" "$BUCKET/lidarmap/t/" --recursive --endpoint-url "$R2" --only-show-errors
+            fi
+            aws s3 cp "$RUNNER_TEMP/out/req/" "$BUCKET/lidarmap/req/" --recursive --endpoint-url "$R2" --only-show-errors
+            rm -rf "$RUNNER_TEMP/work/laz" "$RUNNER_TEMP/work/out" "$RUNNER_TEMP"/work/mnt_*.tif
+          done

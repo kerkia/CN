@@ -19,6 +19,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2), `api/tracer/[[path]].js` (the Tracer's course-setting events, in R2) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
+| `mapgen/` | **Generated maps** (a prototype, 2026-11-01): 1 km tiles of an orienteering map from IGN's LiDAR HD through karttapullautin, with OpenStreetMap's features drawn over (`run.py`, `osm.py`, `lambert93.py`; `python -m mapgen tiles|area|ci`), made by `.github/workflows/lidarmap.yml` on the site's request (see « Generated maps ») |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
 | `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango, O'Live or SPORTident Center race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
@@ -1135,6 +1136,33 @@ Every multiple-choice game was played through to its score page at phone size, w
   `rcol`, `ltab`, `rtab`); the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
   « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
   of its tabs). Full window also hides Coach's « Une compétition | Un entraînement » tabs (`.coach-tabs`).
+- **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
+  solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
+  `genBlock`/`genMap`). The map: IGN's LiDAR HD point clouds (COPC LAZ, Licence Ouverte 2.0; each 1 km tile's addresses from IGN's
+  public WFS `IGNF_LIDAR-HD_METADONNEE:metadata`, its download service taking one request a second) through **karttapullautin**
+  (GPL-3, MapAnt's tool: release v2.15.4 downloaded and checked against its checksum, run as a program of its own in batch mode —
+  each tile with its neighbours' edges —, never bundled in the site or the repository; allowed by the owner), then OpenStreetMap's
+  roads (502/503), tracks, paths and small paths (by `trail_visibility`/`informal`), buildings, water, walls, fences, railways and
+  power lines drawn over it in ISOM 2017-2 at 1:10 000 (`mapgen/osm.py`, the Overpass API, two servers tried in turn; tunnels and
+  sidewalks left out; © OpenStreetMap contributors, ODbL, said under the files and on the map, `.an-gen-credit`). A tile: 2362 px at
+  0.42333 m (karttapullautin's 600 dpi) from its north-west corner, ~200 KB; beside it IGN's MNT every 2 m (500 × 500, Terrarium,
+  ~310 KB) for the 3D view; a tile without LiDAR yet: `{none: true}`; without OpenStreetMap a tile fails rather than be kept without
+  its roads. **The flow**: the page sends the ids of the tiles its trace's area (+ 150 m) touches (≤ 12; never the trace) to
+  `functions/api/lidarmap/[[path]].js` (POST; admin), which answers the tiles R2 holds (`lidarmap/t/<id>.png|.dem.png|.json`) and
+  writes a request for the others (`lidarmap/req/<id>.json`, 20 a day an account) and starts `lidarmap.yml` (workflow_dispatch with
+  `GH_DISPATCH_TOKEN`; without it the request waits for a run started by hand); the workflow makes the queued tiles (≤ 16 a round,
+  rounds until none waits) and writes them and the requests' outcome to R2; the page asks `?req=` every 15 s, then puts the tiles
+  together over the area (`trace/lidarmap.js` `compose`: every second pixel past 30 Mpx) and takes them **as dropped files** —
+  `ozimut-lidar-<tiles>.png` + `.pgw` + `.prj` (Lambert 93) —, so the calibration, the files kept for the visit and « ↗ » work as for
+  any georeferenced map. A map with nothing on it (no course read, no control placed) plays the whole trace (`recompute`: the start
+  at the trace's beginning; before, « Voir la course » waited for a start). **3D**: on a generated map the view's heights are the
+  tiles' MNT (`lidarGrid`, source « lidar », credit « IGN – LiDAR HD® »), at once instead of IGN's elevation service. Measured on
+  the PC (2026-11-01): karttapullautin 13 s a km² alone, 4 km² in 60-77 s in batch with 4 processes; a tile's point cloud ~250 MB
+  (1.3 GB in 143 s); the Fougères forest's 9 tiles put together in ~2 s (3072 × 4457 px), the trace on OpenStreetMap's roads within
+  a few metres; Fougères' old town: buildings, streets, squares, the river and the ramparts' slopes. Not done: a sprint map's own
+  style (ISSprOM: streets as paved areas), tiles made again when OpenStreetMap changes, edges between tiles made in different runs
+  (possible seams), the generated map as the Tracer's base map; **route choices on LiDAR layers: never for runners** (owner: a route
+  is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

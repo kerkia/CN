@@ -38,6 +38,7 @@ import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 import { takeInbox } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
+import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
 
@@ -172,7 +173,7 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
-          <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div></div>
+          <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
@@ -212,6 +213,8 @@ export async function render(main, { query = {}, route } = {}) {
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
   // the 3D view (trace/view3d.js, a prototype): off at each visit; its vertical exaggeration and relief kept
   let v3 = null, v3on = false, v3token = 0, v3grid = null, v3info = null, v3refined = {};
+  // a map generated from IGN's LiDAR HD for a trace without one (trace/lidarmap.js, a prototype, administrators): its progress
+  let gen = null, genToken = 0;
   let v3relief = prefs.relief3d === "contours" ? "contours" : "dem", v3interval = prefs.interval3d === 2.5 ? 2.5 : 5;
   let v3ex = Number.isFinite(prefs.ex3d) && prefs.ex3d >= 1 && prefs.ex3d <= 3 ? prefs.ex3d : 1.5;
   // the playback's layout (owner, 2026-11-01: the map always whole in the window): the controls above the map, a panel of tabs
@@ -319,6 +322,7 @@ export async function render(main, { query = {}, route } = {}) {
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
+      ${genBlock()}
       <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
         ${files.map || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
       <details class="an-formats"><summary>${t("an.formats")}</summary><ul>
@@ -338,6 +342,53 @@ export async function render(main, { query = {}, route } = {}) {
     drop.addEventListener("dragleave", () => drop.classList.remove("over"));
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
+    $("#an-gen")?.addEventListener("click", () => genMap());
+  }
+  // ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only)
+  const genCredit = () => raw(t("an.gen.credit", { ign: html`<a href="${LM.CREDIT_LIDAR.url}" target="_blank" rel="noopener">${LM.CREDIT_LIDAR.text}</a>`,
+    osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` }));
+  /** The files card's block: the credit of a generated map shown, else, for a trace without a map, the offer to make one. */
+  function genBlock() {
+    if (LM.isGenerated(files.map?.name)) return html`<p class="muted an-gen-credit-line">${genCredit()}${gen?.msg ? html` <b>${gen.msg}</b>` : ""}</p>`;
+    if (!me?.admin || !track || (map && !gen?.busy)) return "";
+    return html`<div class="an-gen"><b>${t("an.gen.title")}</b>
+      <button type="button" class="btn btn-sm btn-primary" id="an-gen" ${raw(gen?.busy ? "disabled" : "")}>${t("an.gen.btn")}</button>
+      ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}">${gen.msg}</span>` : ""}
+      <p class="muted">${t("an.gen.hint")}</p></div>`;
+  }
+  async function genMap() {
+    if (!track || gen?.busy) return;
+    const say = (msg, busy = true) => { if (my === genToken) { gen = { busy, msg }; filesCard(); } };
+    const my = ++genToken;
+    if (!LM.covered(track.lat0, track.lon0)) return say(t("an.gen.outside"), false);
+    const area = LM.areaOf(track);
+    if (area.ids.length > LM.MAX_TILES) return say(t("an.gen.tooBig", { n: fmt(area.km2, 1), max: LM.MAX_TILES }), false);
+    say(t("an.gen.asking"));
+    try {
+      const r = await LM.ask(area.ids), tiles = { ...r.tiles };
+      if (r.req) {
+        say(t(r.started ? "an.gen.queued" : "an.gen.notStarted", { n: Object.values(tiles).filter((v) => v === "queued").length }));
+        for (;;) {
+          await new Promise((res) => setTimeout(res, 15000));
+          if (my !== genToken) return;
+          const p = await LM.poll(r.req);
+          if (p.status === "queued") continue;
+          for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
+          break;
+        }
+      }
+      const ready = area.ids.filter((id) => tiles[id] === "ready");
+      if (!ready.length) throw new Error(Object.values(tiles).every((v) => v === "none") ? "none" : "failed");
+      say(t("an.gen.composing", { p: 0 }));
+      const made = await LM.compose(area, ready, (f) => say(t("an.gen.composing", { p: Math.round(100 * f) })));
+      if (my !== genToken) return;
+      gen = ready.length < area.ids.length ? { busy: false, msg: t("an.gen.partial") } : null;
+      for (const role of ["map", "geo", "world", "prj"]) files[role] = null;
+      await take(made);
+    } catch (e) {
+      console.error(e);
+      say(t(e.message === "none" ? "an.gen.none" : "an.gen.failed"), false);
+    }
   }
   /** An image of the map replaces an OCAD or Mapper map shown: the vector map is kept for the computed routes. */
   function keepVector() {
@@ -926,10 +977,11 @@ export async function render(main, { query = {}, route } = {}) {
         const firstPass = passT.length ? Math.min(...passT) : null;           // the earliest pass (the list is not in time order)
         // the published start time first (the clock the results keep); else the start symbol's departure; else the
         // finish's arrival less the published total time; else the trace's own beginning when the first control comes
-        // within 10 minutes (the watch started at the start), else the first control's pass
+        // within 10 minutes (the watch started at the start), else the first control's pass; nothing on the map at all (a
+        // generated map, a map without its course): the whole trace
         let published = guessOffset();
         if (published != null && (runner()?.status === "dns" || (firstPass != null && (firstPass < published || firstPass - published > 1800)))) published = null;
-        offset = published ?? v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass);
+        offset = published ?? v.startT ?? (v.finishT != null && tot ? v.finishT - tot : null) ?? (firstPass != null && firstPass <= 600 ? 0 : firstPass) ?? (located.length ? null : 0);
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
@@ -1154,6 +1206,9 @@ export async function render(main, { query = {}, route } = {}) {
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
     $("#an-3d").hidden = false;
+    const gc = $("#an-gen-credit");
+    gc.hidden = !LM.isGenerated(files.map?.name);
+    if (!gc.hidden) gc.innerHTML = t("an.gen.short", { osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` });
     if (autoV3) { autoV3 = false; toggle3d(); }
     rcPanel();
     if (rcs.on) rcStart();
@@ -1670,6 +1725,11 @@ export async function render(main, { query = {}, route } = {}) {
     const key = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => pxLatLon(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
     if (v3grid?.key === key) return v3grid;
     v3refined = {};
+    if (LM.isGenerated(files.map?.name) && files.world?.wf) {
+      const g = await LM.lidarGrid({ wf: files.world.wf, W, H, ...plan });
+      v3grid = { ...g, key, plan };
+      return v3grid;
+    }
     const g = await loadGrid({ key, ...plan, node: (i, j) => pxLatLon((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H), onProgress });
     v3grid = { ...g, key, plan };
     return v3grid;
@@ -1694,7 +1754,7 @@ export async function render(main, { query = {}, route } = {}) {
       v3 = v; v3info = g;
       v3.setExaggeration(v3ex);
       if (v3relief === "contours") applyRelief();
-      const c = CREDIT[g.source];
+      const c = g.source === "lidar" ? LM.CREDIT_LIDAR : CREDIT[g.source];
       v3note(html`${t("an.v3.relief")} <a href="${c.url}" target="_blank" rel="noopener">${c.text}</a>`);
       opts3d(); sync3d();
     } catch (e) {
@@ -1732,7 +1792,7 @@ export async function render(main, { query = {}, route } = {}) {
       <label><span>${t("an.v3.ex")}</span><span class="an-3d-ex"><input type="range" id="an-ex" min="1" max="3" step="0.25" value="${v3ex}"><b id="an-ex-v">× ${fmt(v3ex, 2)}</b></span></label></div>
       <label><span>${t("an.v3.relief.choice")}</span><select id="an-relief"><option value="dem" ${raw(v3relief === "dem" ? "selected" : "")}>${t("an.v3.relief.dem")}</option><option value="contours" ${raw(v3relief === "contours" ? "selected" : "")}>${t("an.v3.relief.contours")}</option></select></label>
       <label id="an-interval-row" ${raw(v3relief === "contours" ? "" : "hidden")}><span>${t("an.v3.interval")}</span><select id="an-interval"><option value="5" ${raw(v3interval === 5 ? "selected" : "")}>5 m</option><option value="2.5" ${raw(v3interval === 2.5 ? "selected" : "")}>${fmt(2.5, 1)} m</option></select></label></div>
-      <p class="muted an-3d-info">${t(g.source === "tiles" ? "an.v3.info.tiles" : "an.v3.info.ign", { nx: g.nx, ny: g.ny, step: fmt(g.step, 1), s: g.cached ? t("an.v3.cached") : `${fmt(g.ms / 1000, 1)} s` })}</p>
+      <p class="muted an-3d-info">${t(g.source === "tiles" ? "an.v3.info.tiles" : g.source === "lidar" ? "an.v3.info.lidar" : "an.v3.info.ign", { nx: g.nx, ny: g.ny, step: fmt(g.step, 1), s: g.cached ? t("an.v3.cached") : `${fmt(g.ms / 1000, 1)} s` })}</p>
       <p class="muted an-3d-info" id="an-relief-info"></p>`;
     $("#an-ex").addEventListener("input", (e) => { v3ex = Number(e.target.value); $("#an-ex-v").textContent = `× ${fmt(v3ex, 2)}`; v3?.setExaggeration(v3ex); savePrefs(); });
     $("#an-relief").addEventListener("change", (e) => { v3relief = e.target.value; $("#an-interval-row").hidden = v3relief !== "contours"; savePrefs(); applyRelief(); });

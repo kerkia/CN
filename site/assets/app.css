@@ -1660,6 +1660,18 @@ body.an-theatre .an-right { grid-area: side; }
 .an-3d-ex { display: inline-flex; align-items: center; gap: 6px; }
 .an-3d-info { font-size: 12px; margin: 6px 0 0; }
 @media (max-width: 640px) { .an-3d-credit { max-width: calc(100% - 110px); left: auto; right: 8px; transform: none; bottom: 40px; } }
+/* A map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js, a prototype): the offer, its progress, the credit */
+.an-gen { margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 10px; }
+.an-gen .btn { margin-left: 8px; }
+.an-gen p { font-size: 12.5px; margin: 6px 0 0; }
+.an-gen-state { margin-left: 8px; font-size: 13px; }
+.an-gen-state.busy { color: var(--ink-2); font-style: italic; }
+.an-gen-credit-line { font-size: 12.5px; margin: 8px 0 0; }
+.an-gen-credit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; z-index: 2; max-width: calc(100% - 200px); font-size: 10.5px; padding: 2px 8px; border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-gen-credit[hidden], .an-3d:not([hidden]) ~ .an-gen-credit { display: none; }
+.an-gen-credit a { color: inherit; }
+@media (max-width: 640px) { .an-gen-credit { max-width: calc(100% - 110px); left: auto; right: 8px; transform: none; bottom: 40px; } }
 /* Route choices computed (trace/routeplan.js, administrators only): the settings box of both analyses, the table's dots */
 .rc-box { margin-top: 8px; }
 .rc-pill { font-size: 10.5px; font-weight: 600; padding: 0 6px; vertical-align: 1px; }
