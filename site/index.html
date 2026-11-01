@@ -27,18 +27,32 @@
   </script>
   <script src="/assets/vendor/echarts@5.5.1/dist/echarts.min.js" defer></script>
   <script src="/assets/vendor/echarts@5.5.1/i18n/langFR.js" defer></script>
+  <script src="/assets/vendor/echarts@5.5.1/i18n/langDE.js" defer></script>
+  <script src="/assets/vendor/echarts@5.5.1/i18n/langES.js" defer></script>
   <script type="module" src="assets/js/app.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Aller au contenu</a>
+  <a class="skip-link" href="#main" data-fr="Aller au contenu" data-en="Skip to content" data-de="Zum Inhalt springen" data-es="Ir al contenido">Aller au contenu</a>
   <header class="topbar" id="topbar"></header>
   <main id="main" class="page" tabindex="-1">
     <div class="boot">
       <div class="spinner" aria-hidden="true"></div>
-      <p>Chargement…</p>
+      <p data-fr="Chargement…" data-en="Loading…" data-de="Wird geladen…" data-es="Cargando…">Chargement…</p>
     </div>
   </main>
   <footer class="footer" id="footer"></footer>
-  <noscript><p class="noscript">Ce site nécessite JavaScript. · This site needs JavaScript.</p></noscript>
+  <noscript><p class="noscript">Ce site nécessite JavaScript. · This site needs JavaScript. · Diese Website benötigt JavaScript. · Este sitio necesita JavaScript.</p></noscript>
+  <script>
+    // the skip link and the loading line in the reader's language before the catalogues load: the language chosen (ocn.lang),
+    // else the browser's first that the site has, else English — as i18n.js decides (offline.html does the same)
+    (() => {
+      const LG = ["fr", "en", "de", "es"];
+      let lg = null;
+      try { lg = new URLSearchParams(location.search).get("lang") || localStorage.getItem("ocn.lang"); } catch (e) {}
+      if (!LG.includes(lg)) lg = (navigator.languages || [navigator.language]).map((l) => String(l || "").slice(0, 2).toLowerCase()).find((l) => LG.includes(l)) || "en";
+      document.documentElement.lang = lg;
+      for (const el of document.querySelectorAll("[data-fr]")) el.textContent = el.dataset[lg];
+    })();
+  </script>
 </body>
 </html>

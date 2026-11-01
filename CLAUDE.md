@@ -1787,10 +1787,20 @@ Every multiple-choice game was played through to its score page at phone size, w
 - **Languages: French, English, German and Spanish** (owner, 2026-10-17 French and English, open to everyone since 2026-10-18,
   `i18n.OPEN` true; **German and Spanish since 2026-11-01**: `i18n.LANGS`, catalogues `i18n/de.js`, `es.js`, `tracer.de.js`,
   `tracer.es.js`, long texts `content/<name>.de.js` / `.es.js`, e-mails in `_lib/templates.js`, `manifest.de|es.webmanifest`;
-  a key missing in German or Spanish falls back to English, then French; vocabulary and register in
+  Purple Pen's symbol names and texts in `tracer/symbols.json` (`docs/tracer/symbols.py` `MAIN_LANGS`); vocabulary and register in
   `docs/i18n/glossary.de-es.md` — German « du », Spanish « tú », classes H/D kept in German, M/F in Spanish (`util.fmtCat`),
-  `de-DE` / `es-ES`; their tour pictures and the white paper are the English ones; `node tools/i18n_check.mjs` checks all
-  three translations. A change of French text now means four catalogues). **Never write UI
+  `de-DE` / `es-ES`. **The owner's rule (2026-11-01): a German or Spanish reader never sees French, anywhere** — English is
+  acceptable only for the white paper and the home page's pictures (and a few Purple Pen symbols it has no German or Spanish
+  for); every tool (the Tracer, the analyses, the games…) is localised like the rest. So **every change of UI text is made in
+  the four languages in the same commit**: a key added or reworded in `fr.js` gets `en.js`, `de.js`, `es.js` (and an area's
+  `<area>.*.js`) at once; a long-text module gets its `.de.js` / `.es.js`; an e-mail or push in `_lib/templates.js` gets its
+  four versions (`pick(lang, { fr, en, de, es })`); a code path that chooses a language never has a French « else » for
+  the others (`lang() === "fr" ? French : …`, never `lang() === "en" ? English : French`); text the Python side writes into
+  the data and a page shows is translated through the catalogues. A missing German or Spanish key falls back to English
+  (the long-text modules too), French only as a last resort that the check forbids. **A pre-commit hook enforces the
+  catalogues**: `tools/git-hooks/pre-commit` (`git config core.hooksPath tools/git-hooks`, set on the PC) runs
+  `node tools/i18n_check.mjs --strict` on the staged files and stops a commit with a key missing in any language, a
+  placeholder or tag that differs, or French written in the code — never skip it (`--no-verify`); translate instead). **Never write UI
   text in the code**: every text goes in the catalogues, `site/assets/js/i18n/fr.js` (the reference: a key exists there
   first) and `i18n/en.js` (same keys, same `{placeholders}`), read with `t(key, vars)` (and `tn(key, n)` for counts: keys
   `x.one` / `x.other`) from `i18n.js`; an area's own catalogues `i18n/<area>.fr.js` / `.en.js` (`loadArea`, the Tracer's);

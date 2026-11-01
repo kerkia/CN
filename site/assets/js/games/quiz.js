@@ -236,7 +236,7 @@ export function runGame(root, spec) {
     const best = saveBest(spec.key, tot.value, tot.label, tot.higher);
     root.innerHTML = html`<div class="g-summary">
       <h3>${t("g.done")} <span class="g-total">${tot.label}</span></h3>
-      <p class="muted">${t("g.best")} : ${best.label}${best.label === tot.label ? ` — ${t("g.newBest")}` : ""}</p>
+      <p class="muted">${t("ui.colon", { a: t("g.best") })} ${best.label}${best.label === tot.label ? ` — ${t("g.newBest")}` : ""}</p>
       <div class="table-wrap" style="--table-max: 50vh"><table class="data compact"><thead><tr><th>#</th><th>${t("g.yourAnswer")}</th><th>${t("g.answer")}</th><th class="num">${t("g.time")}</th><th class="num">${t("g.pts")}</th></tr></thead>
         <tbody>${R.map((x, i) => html`<tr><td>${i + 1}</td><td class="${x.ok ? "g-ok" : "g-ko"}">${x.label ?? x.choice ?? "—"}</td><td>${x.answer}</td><td class="num">${fmtS(x.ms)}</td><td class="num">${x.points ?? "—"}</td></tr>`)}</tbody></table></div>
       <div class="row"><button class="btn btn-primary" type="button" id="g-again">${t("g.again")}</button>

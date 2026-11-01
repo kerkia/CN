@@ -208,7 +208,7 @@ export async function render(main) {
           </div>
         </details>
       </div>
-      <aside class="ia-examples" aria-label="Exemples de questions"><div class="ia-ex-head">Exemples</div>
+      <aside class="ia-examples" aria-label="${t("ia.examplesAria")}"><div class="ia-ex-head">${t("ia.examples")}</div>
         ${EXAMPLES.map((e) => html`<button type="button" class="chip" data-ex="${e}">${e}</button>`)}</aside>
     </div></section>
     <div id="ia-answers"></div>

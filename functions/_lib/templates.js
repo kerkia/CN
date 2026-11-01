@@ -167,7 +167,7 @@ Administration (pour désactiver cette alerte) : ${url}`,
 }
 
 /** To the administrators (each in their language): an organiser uploaded a results file on « Résultats » (or, kind
- *  "courses", the course setter's circuits from « Organisation › Tracer »). */
+ *  "courses", the course setter's circuits from « Orga › Tracer »). */
 export function uploadMail(env, user, up, lang) {
   const url = `${siteUrl(env)}/#/admin?onglet=depots`;
   const courses = up.kind === "courses", starts = up.kind === "startlist";
@@ -177,7 +177,7 @@ export function uploadMail(env, user, up, lang) {
       `Uploaded by: ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
     const head = courses ? "Courses uploaded" : starts ? "Start list uploaded" : "Results uploaded";
     const intro = courses ? "The courses of a race (the course setter's IOF XML file) have just been uploaded to “Results”."
-      : starts ? "An organiser has just uploaded the start list of a coming race (“Organisation › Start times”)."
+      : starts ? "An organiser has just uploaded the start list of a coming race (“Orga › Start times”)."
       : "A results file has just been uploaded to “Results”.";
     const when = courses ? "They complete the race's results lists (length, climb, controls), once the race is over."
       : "It is published at the next collection run.";
@@ -196,7 +196,7 @@ The uploads (to remove one): ${url}`,
       `Hochgeladen von: ${user.first_name} ${user.last_name} — ${user.email} — Lizenz ${user.licence}`];
     const head = courses ? "Bahnen hochgeladen" : starts ? "Startliste hochgeladen" : "Ergebnisse hochgeladen";
     const intro = courses ? "Soeben wurden die Bahnen eines Laufs (die IOF-XML-Datei des Bahnlegers) in „Ergebnisse“ hochgeladen."
-      : starts ? "Ein Veranstalter hat soeben die Startliste eines kommenden Laufs hochgeladen („Organisation › Startzeiten“)."
+      : starts ? "Ein Veranstalter hat soeben die Startliste eines kommenden Laufs hochgeladen („Orga › Startzeiten“)."
       : "Soeben wurde eine Ergebnisdatei in „Ergebnisse“ hochgeladen.";
     const when = courses ? "Sie ergänzen die Ergebnislisten des Laufs (Länge, Steigung, Posten), sobald der Lauf vorbei ist."
       : "Sie wird beim nächsten Datenabruf veröffentlicht.";
@@ -215,7 +215,7 @@ Die Uploads (um einen zu entfernen): ${url}`,
       `Subido por: ${user.first_name} ${user.last_name} — ${user.email} — licencia ${user.licence}`];
     const head = courses ? "Recorridos subidos" : starts ? "Lista de salida subida" : "Resultados subidos";
     const intro = courses ? "Se acaban de subir a «Resultados» los recorridos de una carrera (el archivo IOF XML del trazador)."
-      : starts ? "Un organizador acaba de subir la lista de salida de una próxima carrera («Organización › Horarios»)."
+      : starts ? "Un organizador acaba de subir la lista de salida de una próxima carrera («Orga › Horarios»)."
       : "Se acaba de subir un archivo de resultados a «Resultados».";
     const when = courses ? "Completan las listas de resultados de la carrera (longitud, desnivel, controles) una vez pasada la carrera."
       : "Se publicará en la próxima recogida de datos.";
@@ -233,7 +233,7 @@ Los archivos subidos (para retirar uno): ${url}`,
     `Déposé par : ${user.first_name} ${user.last_name} — ${user.email} — licence ${user.licence}`];
   const head = courses ? "Circuits déposés" : starts ? "Horaires de départ déposés" : "Résultats déposés";
   const intro = courses ? "Les circuits d'une course (fichier IOF XML du traceur) viennent d'être déposés sur « Résultats »."
-    : starts ? "Un organisateur vient de déposer les horaires de départ d'une course à venir (« Organisation › Horaires »)."
+    : starts ? "Un organisateur vient de déposer les horaires de départ d'une course à venir (« Orga › Horaires »)."
     : "Un fichier de résultats vient d'être déposé sur « Résultats ».";
   const when = courses ? "Ils complètent les listes de résultats de la course (longueur, dénivelé, postes), une fois la course passée."
     : "Il est publié au prochain passage de la collecte.";
@@ -717,13 +717,13 @@ export function welcomeMail(env, user, { fr = false } = {}) {
   const W = pick(user.lang, { en: {
     subject: "Welcome to Ozimut",
     greet: (n) => `Hello${n ? ` ${n}` : ""},`,
-    intro: "Your account is active. Ozimut gathers in one place what surrounds an orienteering race:",
+    intro: "Your account is active. Ozimut gathers in four modules what surrounds an orienteering race:",
     items: [
-      ["Races", "the calendar of competitions, the results as soon as the organiser publishes them, the split times, and live results."],
-      fr ? ["Ranking", "your runner's page, the official national ranking and the Ozimut index, clubs, comparisons and statistics."]
-        : ["Rankings", "a federation's rankings open to its licence holders, from Settings › My countries."],
-      ["Training", "your GPS track replayed on the race's map, orienteering games, and a VMA calculator."],
-      ["Organising", "post results and start times, broadcast live results, set courses, and share a GPS analysis with your runners."],
+      ["Arena", "today's, coming and past competitions — the calendar, the results as soon as the organiser publishes them, live results and the split-time analysis."],
+      fr ? ["Stats", "the rankings and their analyses — your runner's page, the official CN and the Ozimut index, clubs, comparisons and statistics."]
+        : ["Stats", "the rankings and their analyses — a federation's rankings open to its licence holders, from Settings › My countries."],
+      ["Coach", "training — your GPS track replayed on the map, alone or with your club mates, orienteering games and a MAS calculator."],
+      ["Orga", "for organisers — post results and start times, broadcast live results, set courses and share a GPS analysis with your runners (Settings › Modules)."],
     ],
     alerts: "In Settings, choose your alerts: one of your races online, your start time, new races in your regions — as notifications on your phone or computer. Ozimut also installs as an app.",
     feedback: ["Ozimut is young and changes every week. An idea, a mistake, a page that is unclear? Just reply to this message, or write to us from the ", "Contact us", " page. Every message is read."],
@@ -734,13 +734,13 @@ export function welcomeMail(env, user, { fr = false } = {}) {
   }, fr: {
     subject: "Bienvenue sur Ozimut",
     greet: (n) => `Bonjour${n ? ` ${n}` : ""},`,
-    intro: `Votre compte est activé. Ozimut rassemble en un seul endroit ce qui entoure une course d'orientation${NB}:`,
+    intro: `Votre compte est activé. Ozimut rassemble en quatre modules ce qui entoure une course d'orientation${NB}:`,
     items: [
-      ["Courses", "l'agenda des compétitions, les résultats dès que l'organisateur les publie, les temps intermédiaires et le direct."],
-      fr ? ["Classement", "votre page de coureur, le classement national officiel et l'indice Ozimut, les clubs, les comparaisons et les statistiques."]
-        : ["Classements", "ceux d'une fédération s'ouvrent à ses licenciés, depuis Réglages › Mes pays."],
-      ["Entraînement", "votre trace GPS rejouée sur la carte de la course, des jeux d'orientation et un calculateur de VMA."],
-      ["Organisation", "déposer résultats et horaires, diffuser un direct, tracer des circuits, partager une analyse GPS avec vos coureurs."],
+      ["Arena", `les compétitions du jour, à venir et passées — l'agenda, les résultats dès que l'organisateur les publie, le direct et l'analyse des temps intermédiaires.`],
+      fr ? ["Stats", `les classements et leurs analyses — votre page de coureur, le CN officiel et l'indice Ozimut, les clubs, les comparaisons et les statistiques.`]
+        : ["Stats", `les classements et leurs analyses — ceux d'une fédération s'ouvrent à ses licenciés, depuis Réglages › Mes pays.`],
+      ["Coach", `l'entraînement — votre trace GPS rejouée sur la carte, seul ou avec votre club, des jeux d'orientation et un calculateur de VMA.`],
+      ["Orga", `pour les organisateurs — déposer résultats et horaires, diffuser un direct, tracer des circuits, partager une analyse GPS avec vos coureurs (Réglages › Modules).`],
     ],
     alerts: `Dans Réglages, choisissez vos alertes${NB}: une de vos courses en ligne, votre heure de départ, les nouvelles courses de vos régions — par notification sur votre téléphone ou votre ordinateur. Ozimut s'installe aussi comme une application.`,
     feedback: [`Ozimut est jeune et évolue chaque semaine. Une idée, une erreur, une page peu claire${NB}? Répondez simplement à ce message, ou écrivez-nous depuis la page «${NB}`, "Nous écrire", `${NB}». Chaque message est lu.`],
@@ -751,13 +751,13 @@ export function welcomeMail(env, user, { fr = false } = {}) {
   }, de: {
     subject: "Willkommen bei Ozimut",
     greet: (n) => `Hallo${n ? ` ${n}` : ""},`,
-    intro: "dein Konto ist aktiv. Ozimut vereint an einem Ort alles rund um einen OL-Wettkampf:",
+    intro: "dein Konto ist aktiv. Ozimut vereint in vier Modulen alles rund um einen OL-Wettkampf:",
     items: [
-      ["Läufe", "der Wettkampfkalender, die Ergebnisse, sobald der Veranstalter sie veröffentlicht, die Zwischenzeiten und Live-Ergebnisse."],
-      fr ? ["Rangliste", "deine Läuferseite, die offizielle nationale Rangliste und der Ozimut-Index, Vereine, Vergleiche und Statistiken."]
-        : ["Ranglisten", "die Ranglisten eines Verbands stehen seinen Lizenzinhabern offen, über Einstellungen › Meine Länder."],
-      ["Training", "dein GPS-Track, abgespielt auf der Karte des Laufs, OL-Spiele und ein MAG-Rechner."],
-      ["Organisation", "Ergebnisse und Startzeiten hochladen, Live-Ergebnisse übertragen, Bahnen legen und eine GPS-Analyse mit deinen Läufern teilen."],
+      ["Arena", "die heutigen, kommenden und vergangenen Wettkämpfe — der Kalender, die Ergebnisse, sobald der Veranstalter sie veröffentlicht, Live-Ergebnisse und die Zwischenzeitenanalyse."],
+      fr ? ["Stats", "die Ranglisten und ihre Auswertungen — deine Läuferseite, der offizielle CN und der Ozimut-Index, Vereine, Vergleiche und Statistiken."]
+        : ["Stats", "die Ranglisten und ihre Auswertungen — die Ranglisten eines Verbands stehen seinen Lizenzinhabern offen, über Einstellungen › Meine Länder."],
+      ["Coach", "das Training — dein GPS-Track, abgespielt auf der Karte, allein oder mit deinen Vereinskollegen, OL-Spiele und ein MAG-Rechner."],
+      ["Orga", "für Veranstalter — Ergebnisse und Startzeiten hochladen, Live-Ergebnisse übertragen, Bahnen legen und eine GPS-Analyse mit deinen Läufern teilen (Einstellungen › Module)."],
     ],
     alerts: "Wähle in den Einstellungen deine Benachrichtigungen: einer deiner Läufe ist online, deine Startzeit, neue Läufe in deinen Regionen — als Mitteilung auf deinem Handy oder Computer. Ozimut lässt sich auch als App installieren.",
     feedback: ["Ozimut ist jung und entwickelt sich jede Woche weiter. Eine Idee, ein Fehler, eine unklare Seite? Antworte einfach auf diese Nachricht oder schreib uns über die Seite „", "Kontakt", "“. Jede Nachricht wird gelesen."],
@@ -768,13 +768,13 @@ export function welcomeMail(env, user, { fr = false } = {}) {
   }, es: {
     subject: "Te damos la bienvenida a Ozimut",
     greet: (n) => (n ? `Hola, ${n}:` : "¡Hola!"),
-    intro: "Tu cuenta está activada. Ozimut reúne en un solo lugar todo lo que rodea a una carrera de orientación:",
+    intro: "Tu cuenta está activada. Ozimut reúne en cuatro módulos todo lo que rodea a una carrera de orientación:",
     items: [
-      ["Carreras", "el calendario de competiciones, los resultados en cuanto el organizador los publica, los tiempos parciales y el directo."],
-      fr ? ["Clasificación", "tu página de corredor, la clasificación nacional oficial y el índice Ozimut, los clubes, las comparaciones y las estadísticas."]
-        : ["Clasificaciones", "las de una federación se abren a sus federados, desde Ajustes › Mis países."],
-      ["Entrenamiento", "tu track GPS reproducido sobre el mapa de la carrera, juegos de orientación y una calculadora de VAM."],
-      ["Organización", "subir resultados y horarios, emitir en directo, trazar recorridos y compartir un análisis GPS con tus corredores."],
+      ["Arena", "las competiciones de hoy, próximas y pasadas — el calendario, los resultados en cuanto el organizador los publica, el directo y el análisis de los tiempos parciales."],
+      fr ? ["Stats", "las clasificaciones y sus análisis — tu página de corredor, el CN oficial y el índice Ozimut, los clubes, las comparaciones y las estadísticas."]
+        : ["Stats", "las clasificaciones y sus análisis — las de una federación se abren a sus federados, desde Ajustes › Mis países."],
+      ["Coach", "el entrenamiento — tu track GPS reproducido sobre el mapa, solo o con tu club, juegos de orientación y una calculadora de VAM."],
+      ["Orga", "para los organizadores — subir resultados y horarios, emitir en directo, trazar recorridos y compartir un análisis GPS con tus corredores (Ajustes › Módulos)."],
     ],
     alerts: "En Ajustes, elige tus alertas: una de tus carreras en línea, tu hora de salida, las nuevas carreras de tus regiones — como notificaciones en tu móvil o tu ordenador. Ozimut también se instala como aplicación.",
     feedback: ["Ozimut es joven y cambia cada semana. ¿Una idea, un error, una página poco clara? Responde simplemente a este mensaje o escríbenos desde la página «", "Contacto", "». Leemos todos los mensajes."],
@@ -784,7 +784,7 @@ export function welcomeMail(env, user, { fr = false } = {}) {
     colon: ": ",
   } });
   const hello = W.greet(user.first_name);
-  const contact = `${site}/#/contact`, home = `${site}/#/agenda`;
+  const contact = `${site}/#/contact`, home = `${site}/#/modules`;
   const [f0, fLink, f1] = W.feedback;
   const html = `<p>${esc(hello)}</p><p>${esc(W.intro)}</p>
 <ul style="padding-left:20px;margin:0 0 12px">${W.items.map(([k, v]) => `<li style="margin:0 0 6px"><b>${esc(k)}</b>${esc(W.colon)}${esc(v)}</li>`).join("")}</ul>

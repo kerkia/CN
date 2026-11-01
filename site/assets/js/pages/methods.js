@@ -145,7 +145,7 @@ async function methodsContent(main, replaceQuery, fr) {
     <div style="margin-top:10px">${body}</div></details>`;
 
   // the words: one module per language (content/methods.fr.js, methods.en.js), given the helpers and data above
-  const C = (await import(`../content/methods.${lang()}.js`).catch(() => import("../content/methods.fr.js"))).build({ html, raw, $, $$, fmt, fmtSigned, mean, t, data, timeChart,
+  const C = (await import(`../content/methods.${lang()}.js`).catch(() => import("../content/methods.en.js"))).build({ html, raw, $, $$, fmt, fmtSigned, mean, t, data, timeChart,
     scatterChart, methodColor, terrainColor, METHOD_SLOT, css, TERRAINS, available, chartCard, bindChartCard, legend, methodKey,
     methodLabel, methodShort, seg, cnLabel, replaceQuery, TR, TRD, PDF, cvar, MINUS, EXAMPLE, pearson, roundHalfUp, sg, ci, neg,
     tickStep, tickDec, est, star, SEP, main, meta, pf, p6, M, analyst, tops, fmtW, own, TNAME, v, ev, study, season, VM, ref, entry,
@@ -196,7 +196,7 @@ export async function render(main, { query = {} } = {}) {
   const fr = sees("FR");                      // France's ranking: its official CN and the ranking's calculations
   // one documentation per module (owner, 2026-10-31): `?module=` names it; without, the documentation's home
   const mod = MODULES.includes(query.module) ? query.module : null;
-  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.fr.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin, owner: owner() });
+  const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.en.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin, owner: owner() });
   if (!mod) return home(main, G, query);
   // the address keeps the module: every change of tab or chapter writes it again
   const rq = (q) => replaceQuery({ module: mod, ...q });

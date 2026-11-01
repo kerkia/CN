@@ -490,7 +490,7 @@ function renderHeader(r) {
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
   // the site's name lead to the choice of module, the module's name under the site's to the module's first page
   $("#topbar").innerHTML = html`<canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="topbar-inner${visitor ? "" : " guest"}">
-    ${items.length || mod === "arena" ? html`<button class="icon-btn menu-btn" type="button" aria-label="Menu" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
+    ${items.length || mod === "arena" ? html`<button class="icon-btn menu-btn" type="button" aria-label="${t("app.menu")}" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
     <div class="brand"><a class="brand-home" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
@@ -1039,7 +1039,9 @@ async function start() {
   // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
   if ((await bridge.arrive()) || (await bridge.leave())) return;
   watchTables();                                   // tables that scroll fit in the window
-  pwa.boot();                                      // the service worker, the manifest's language, files opened with the app
+  // the page's description in the reader's language (index.html carries the French one, for robots)
+  document.querySelector('meta[name="description"]')?.setAttribute("content", t("home.metaDesc"));
+  pwa.boot();                                     // the service worker, the manifest's language, files opened with the app
   // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
   if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   // a visitor without an account, or an account that has not joined a country, reads its public copy (data.js)

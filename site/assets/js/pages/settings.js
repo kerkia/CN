@@ -2,7 +2,7 @@
 // grants, push open to all) —, this device's notifications, the language, password change, account deletion (e-mail
 // accounts only).
 
-import { html, $, $$, displayName, fmtDate } from "../util.js";
+import { html, $, $$, displayName, fmtDate, fmtRegion } from "../util.js";
 import { t, tn, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -96,7 +96,7 @@ export async function render(main, { query = {} } = {}) {
           <div class="row" style="gap:8px;margin-bottom:8px"><b style="font-size:13.5px">${t("st.ag.regions")}</b>
             <button type="button" class="btn btn-ghost btn-sm" id="ag-all">${t("st.ag.all")}</button>
             <button type="button" class="btn btn-ghost btn-sm" id="ag-none">${t("st.ag.clear")}</button></div>
-          <div class="ag-grid">${REGIONS.map((r) => html`<label class="check"><input type="checkbox" data-region="${r}" ${user.agendaRegions.includes(r) ? "checked" : ""}><span>${r}</span></label>`)}</div>
+          <div class="ag-grid">${REGIONS.map((r) => html`<label class="check"><input type="checkbox" data-region="${r}" ${user.agendaRegions.includes(r) ? "checked" : ""}><span>${fmtRegion(r)}</span></label>`)}</div>
         </div>
         <div class="notice" id="ag-hint" hidden>${t("st.ag.none")}</div>
         <div class="notice ok" id="alerts-ok" hidden>${t("st.saved")}</div>

@@ -4,7 +4,7 @@
 // The data (site/data/prov/) is served to the accounts that joined France; the others read its copy without CNs, scores or
 // licences (prov/pub/, auth.provDir).
 
-import { html, raw, $, $$, fmt, fmtDate, fmtFormat, pctN, fmtCat } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtFormat, fmtRegion, pctN, fmtCat } from "../util.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
@@ -97,7 +97,7 @@ async function list(main, idx, query) {
     ${country.hint(idx.races.filter((r) => !r.soon).map(country.of))}
     <section class="card"><div class="table-wrap" id="pv-table"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("prov.def")} ${t("prov.generated")} ${when(idx.generated)}.</p>
-    ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("prov.runs")} : ${runLine(idx.runs[idx.runs.length - 1])}
+    ${idx.runs?.length ? html`<details class="muted" style="font-size:12.5px;margin:8px 2px 0"><summary>${t("ui.colon", { a: t("prov.runs") })} ${runLine(idx.runs[idx.runs.length - 1])}
         ${idx.due ? html` · ${t("prov.dueNow")} ${fmt(idx.due)}` : ""}</summary>
       <div class="table-wrap" style="margin-top:6px;max-width:640px"><table class="data compact"><thead><tr><th>${t("prov.run.at")}</th><th class="r">${t("prov.run.looked")}</th>
         <th class="r">${t("prov.run.changed")}</th><th class="r">${t("prov.run.requests")}</th><th class="r">${t("prov.run.seconds")}</th><th></th></tr></thead>
@@ -136,7 +136,7 @@ async function list(main, idx, query) {
           : r.ffco_id ? html`<span>${r.name}</span> <span class="tag" title="${t("prov.ffcoResults")}">${t("prov.ffcoTag")}</span>` : html`<span>${r.name}</span>`}
           ${r.soon ? html` <span class="tag" style="color:var(--accent)">${t("prov.soon")}</span>` : ""}
           ${r.ongoing ? html` <span class="lv-badge" title="${t("prov.ongoing.tip")}">${t("prov.ongoing")}</span>` : ""}
-          <div class="muted" style="font-size:12px">${[r.place, r.org, r.region].filter(Boolean).join(" · ")}</div></td>
+          <div class="muted" style="font-size:12px">${[r.place, r.org, fmtRegion(r.region)].filter(Boolean).join(" · ")}</div></td>
         <td class="pv-wrap">${parts(fmtFormat(r.epreuve), fmtFormat(r.terrain))}${r.cn || !FR || country.of(r) !== "FR" ? "" : html` <span class="tag">${t("prov.notCn")}</span>`}</td>
         <td class="pv-wrap">${r.sources.length ? r.sources.map((s) => html`<span class="tag">${SOURCE[s] || s}</span> `)
           : r.ffco_id ? html`<span class="muted">—</span>` : html`<span>${r.refused ? t("prov.refusedOnly") : t("prov.noResult")}</span>`}
@@ -288,7 +288,7 @@ async function detail(main, idx, query) {
           key: `s_${m}`, label: html`<span title="${t("res.score.hint")}">${subHead(scoreLabel(m), t("res.gap"))}</span>`,
           align: "r", cls: "num", sort: (r) => gap(r, m),
           render: (r) => scoreCell(ok(r) ? r.scores?.[m] ?? null : null, r.cnj15?.[m],
-            { title: r.cnAfter?.[m] ? `${t("rn.cnAfter")} : ${fmt(r.cnAfter[m])}` : "", below: pubLine(r, m) }),
+            { title: r.cnAfter?.[m] ? `${t("ui.colon", { a: t("rn.cnAfter") })} ${fmt(r.cnAfter[m])}` : "", below: pubLine(r, m) }),
         }]) : []),
       ],
     });

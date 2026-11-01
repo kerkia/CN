@@ -39,7 +39,7 @@ export async function render(main, { query }) {
     other: num(m.other, 250), laps: num(m.laps, ""), extra: num(m.extra, ""), dist: num(m.dist, ""),
   };
   const save = () => { try { localStorage.setItem(MEM, JSON.stringify(st)); } catch (e) {} };
-  const C = await import(`../content/vma.${lang()}.js`);
+  const C = await import(`../content/vma.${lang()}.js`).catch(() => import("../content/vma.en.js"));
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.vma")}</h1><p class="lede">${t("vma.lede")}</p></div></div>

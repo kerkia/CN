@@ -59,6 +59,13 @@ export const fmtCat = (c) => (c && SEX[lang()] ? String(c).replace(/^([HD])(?=\d
  *  catalogue's « format.<word> » (Nuit -> Night, Pédestre -> Foot, VTT MD -> MTB MD), unknown words kept. */
 export const fmtFormat = (s) => (s && lang() !== "fr"
   ? String(s).replace(/[\p{L}']+/gu, (w) => (has(`format.${w}`) ? t(`format.${w}`) : w)).replace(/\s{2,}/g, " ").trim() : s ?? "");
+/** A French region of the data as shown: its name, but for the overseas départements grouped under one word in France's
+ *  agenda (ffco_scraper/agenda.py OUTRE_MER), worded in the reader's language. */
+const OVERSEAS = "Outre-mer";                                       // the data's value (i18n-ignore)
+/** FFCO's competition type (the agenda's « manif », « Régionale Moyenne Distance »…) in the reader's language: the whole
+ *  phrase from the catalogue's « manif.<phrase> », else word by word as fmtFormat. */
+export const fmtManif = (s) => (!s || lang() === "fr" ? s ?? "" : has(`manif.${s}`) ? t(`manif.${s}`) : fmtFormat(s));
+export const fmtRegion = (r) => (r === OVERSEAS ? t("region.overseas") : r ?? "");
 /** The sex letter of a class as shown: H / D in French and German, M / W in English, M / F in Spanish. */
 export const fmtSex = (x) => (SEX[lang()]?.[x] || x);
 export const fmtSigned =(n) => (n == null ? "—" : (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n)));

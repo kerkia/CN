@@ -92,7 +92,7 @@ export function spec() {
       };
       return {
         options: LETTERS.slice(0, routes.length), answer: LETTERS[best],
-        info: routes.map((x, k) => `${LETTERS[k]} : ${fmt(times[k])}`).join(" · "),
+        info: routes.map((x, k) => `${t("ui.colon", { a: LETTERS[k] })} ${fmt(times[k])}`).join(" · "),
         render(stage) {
           const [c, ctx, view, o] = mapCanvas(map, cx, cy, size, 440);
           draw(ctx, view, o);

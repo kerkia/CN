@@ -5,7 +5,8 @@ notice and licence travel with the data (site/assets/tracer/LICENSE-PurplePen.tx
 
     python docs/tracer/symbols.py <path to symbols.xml>
 
-Writes site/assets/tracer/symbols.json (the drawings, the languages, the names and texts in French and English) and
+Writes site/assets/tracer/symbols.json (the drawings, the languages, the names and texts in the site's languages: French, English,
+German, Spanish) and
 site/assets/tracer/symbol-texts.json (the names and texts in every language, loaded when an event describes its
 controls in another one). Coordinates stay Purple Pen's: a box of 200 x 200 units centred on 0, y up; instruction
 lines (kinds W to Z) are 1600 units wide.
@@ -17,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "site" / "assets" / "tracer"
-MAIN_LANGS = ("fr", "en")
+MAIN_LANGS = ("fr", "en", "de", "es")      # the site's languages (2026-11-01: German and Spanish)
 
 
 def num(v):

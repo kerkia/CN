@@ -58,7 +58,7 @@ function makeSpec(kind) {
       const times = V.map((v) => Math.round((1000 * v.cost) / SPEED[kind]));
       const best = times.indexOf(Math.min(...times));
       const fmt = (ms) => `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, "0")}`;
-      const info = V.map((v, k) => `${k + 1} : ${Math.round(v.length)} m${kind === "forest" ? ` (${fmt(times[k])})` : ""}`).join(" · ");
+      const info = V.map((v, k) => `${t("ui.colon", { a: k + 1 })} ${Math.round(v.length)} m${kind === "forest" ? ` (${fmt(times[k])})` : ""}`).join(" · ");
       const [cx, cy, size] = windowOf(V.flatMap((v) => v.pts), 35, 200);
       return {
         options: ["1", "2", "3"], answer: String(best + 1), times, info,

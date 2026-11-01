@@ -19,7 +19,7 @@ SPLIT = 25 * 2**20
 
 # npm name -> (version, folder under vendor/, files kept from the package)
 PACKAGES = {
-    "echarts": ("5.5.1", "echarts", ["dist/echarts.min.js", "i18n/langFR.js", "NOTICE"]),
+    "echarts": ("5.5.1", "echarts", ["dist/echarts.min.js", "i18n/langFR.js", "i18n/langDE.js", "i18n/langES.js", "NOTICE"]),
     "pdfjs-dist": ("4.10.38", "pdfjs-dist", ["build/pdf.min.mjs", "build/pdf.worker.min.mjs"]),
     "pdf-lib": ("1.17.1", "pdf-lib", ["dist/pdf-lib.min.js"]),
     "@pdf-lib/fontkit": ("1.1.1", "pdf-lib-fontkit", ["dist/fontkit.umd.min.js"]),

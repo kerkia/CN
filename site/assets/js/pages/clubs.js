@@ -239,7 +239,7 @@ async function listView(main, query, mode) {
       ],
     });
     $("#csv").onclick = () => downloadCsv(`clubs_${terrain}_${sel.base}_${month}.csv`,
-      ["n", "code", "club", "ligue", ...ms],
+      ["n", "code", t("csv.club"), t("csv.ligue"), ...ms],
       table.rows().map((g, i) => [i + 1, g.code, clubName(g.code), g.ligue || "", ...ms.map((m) => valOf(g, m) ?? "")]));
     updateCmp();
   }

@@ -10,9 +10,9 @@
 // --strict exits 1 when anything is found; --list prints every finding, else the first ones of each kind.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const JS = join(ROOT, "site", "assets", "js");
 const CAT = join(JS, "i18n");
 const strict = process.argv.includes("--strict"), all = process.argv.includes("--list");

@@ -3,7 +3,7 @@
 // including the online-registration deadline and the number of registrants. On a computer, the country's map above the
 // details (agendamap.js; owner, 2026-10-25): the event under the mouse, and the one selected, shown on it.
 
-import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat, normalise } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, isoDay, fmtFormat, fmtRegion, fmtManif, normalise } from "../util.js";
 import { t, tn, locale, has } from "../i18n.js";
 import * as data from "../data.js";
 import { replaceQuery } from "../app.js";
@@ -99,6 +99,9 @@ export async function render(main, { query }) {
   // the country's places, when its agenda has them (France: regions and départements; Spain: communities and provinces)
   const places = (A.regions || []).length > 0;
   const deptName = (c) => A.depts[c] || c;
+  // an event FFCO lists without a name of its own carries its type as its name (« Régionale Sprint (sans qualif) »):
+  // shown in the reader's language, as the type is
+  const nameOf = (e) => (e.manif && e.name === e.manif ? fmtManif(e.name) : e.name);
   // a unit's code and name (« 35 · Ille-et-Vilaine », « TI · Ticino »), its name alone where the name is its code
   const deptLabel = (c) => (deptName(c) === c ? c : `${c} · ${deptName(c)}`);
   // beside a place: a short code in brackets, a name after a dot; nothing when the place already says it (« Val Canali (TN) »)
@@ -215,9 +218,9 @@ export async function render(main, { query }) {
         <label class="field"><span>${t("agd.spec")}</span><select id="f-spec"><option value="">${t("agd.allF")}</option>
           ${A.specs.map((s) => html`<option value="${s}" ${raw(st.spec === s ? "selected" : "")}>${fmtFormat(s)}</option>`)}</select></label>
         ${places ? html`<div class="field field-wide"><span>${levelName("region")}</span>${multi("m-regions", regionSummary(),
-          A.regions.map((r) => opt("m-regions", r.name, r.name, regionState(r))))}</div>
+          A.regions.map((r) => opt("m-regions", r.name, fmtRegion(r.name), regionState(r))))}</div>
         ${allDepts.length ? html`<div class="field field-wide"><span>${levelName("dept")}</span>${multi("m-depts", summary(st.depts.size, allDepts.length, t("agd.allM"), t("agd.noneM")),
-          A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${r.name}</div>
+          A.regions.filter((r) => r.depts.length).map((r) => html`<div class="multi-group">${fmtRegion(r.name)}</div>
             ${r.depts.map((d) => opt("m-depts", d, deptLabel(d), st.depts.has(d) ? "on" : "off"))}`))}</div>` : ""}` : ""}
         <button type="button" class="btn btn-sm" id="f-reset">${t("agd.reset")}</button>
       </div>
@@ -295,9 +298,9 @@ export async function render(main, { query }) {
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${e.name}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
+        <td class="n">${nameOf(e)}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
         <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
-        ${places ? html`<td class="r">${e.region || ""}</td>` : ""}
+        ${places ? html`<td class="r">${fmtRegion(e.region)}</td>` : ""}
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
     const back = key0 && $(`#table tr[data-key="${CSS.escape(key0)}"]`);
     if (back) box0.scrollTop += back.getBoundingClientRect().top - top0 - at0;
@@ -536,20 +539,20 @@ export async function render(main, { query }) {
     const region = e.region || (e.dep && regionOfDept.get(e.dep)) || "";
     box.innerHTML = html`
       <div class="detail-nav">${backBtn}</div>
-      <div class="card-head"><div><h2>${e.name}</h2>
+      <div class="card-head"><div><h2>${nameOf(e)}</h2>
         <div class="hint">${e.end ? t("agd.range", { a: longDate(e.date), b: longDate(e.end) }) : longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
         <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
-          <span class="tag">${typeLabel(e)}</span>${e.groupe && e.kind === "c" ? html`<span class="tag">${e.groupe}</span>` : ""}</div>
+          <span class="tag">${typeLabel(e)}</span>${groupOf(e) ? html`<span class="tag">${t("agd.groupTag", { g: groupOf(e) })}</span>` : ""}</div>
         ${actions(e)}
         ${registration(e)}
         <dl>
           ${row(t("agd.access"), accessText(e))}
-          ${row(t("agd.d.manif"), e.manif)}
+          ${row(t("agd.d.manif"), fmtManif(e.manif))}
           ${row(t("agd.d.league"), e.league)}
           ${row(t("agd.d.level"), e.level)}
           ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${deptLabel(e.dep)})` : ""}` : e.dep ? deptLabel(e.dep) : "")}
-          ${row(t("agd.d.region"), region)}
+          ${row(t("agd.d.region"), fmtRegion(region))}
           ${row(t("agd.d.spec"), fmtFormat(e.spec))}
           ${row(t("agd.d.epr"), fmtFormat(e.epr))}
           ${row(t("agd.d.org"), e.org)}

@@ -157,7 +157,7 @@ export async function render(main) {
   const me = auth.session();
   const canPick = typeof window.showOpenFilePicker === "function";
   const today = new Date().toLocaleDateString("sv-SE");
-  const text = await import(`../content/orgdirect.${lang()}.js`);
+  const text = await import(`../content/orgdirect.${lang()}.js`).catch(() => import("../content/orgdirect.en.js"));
   const st = { id: pref.get().id || null, every: pref.get().every || 15, handle: null, running: false, sent: new Map(), order: "",
     seen: null, reads: 0, pushes: 0, last: null, lastPush: null, error: null, stats: null, info: null, viewers: null, busy: false,
     via: pref.get().via || null };
@@ -248,7 +248,11 @@ export async function render(main) {
   comps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
   tcomps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
   const compLabel = (c) => `${fmtDate(c.date)} · ${c.name}${c.org ? ` · ${c.org}` : ""}`;
-  const errWord = (e) => (e === "not organiser" ? t("od.notOrganiser") : e);
+  // the server's error codes in the reader's language (a number is an HTTP status)
+  const errWord = (e) => {
+    const k = `od.err.${String(e).replace(/\s+/g, "_")}`;
+    return e === "not organiser" ? t("od.notOrganiser") : has(k) ? t(k) : typeof e === "number" ? String(e) : t("od.err.other");
+  };
   const current = () => list.find((b) => b.id === st.id) || null;
   function drawRace() {
     const b = current();
@@ -363,7 +367,7 @@ export async function render(main) {
       const r = await fetch("/api/live/broadcasts", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ op: "mopkey", id: b.id }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.mop) { $("#od-meos-status").textContent = t("od.meos.failed", { e: d.error || r.status }); return; }
+      if (!r.ok || !d.mop) { $("#od-meos-status").textContent = t("od.meos.failed", { e: errWord(d.error || r.status) }); return; }
       b.mop = d.mop;
       drawMeos();
     });

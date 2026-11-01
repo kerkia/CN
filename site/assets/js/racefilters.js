@@ -4,7 +4,7 @@
 // (no link to their page: the filter is not a way there) and shown with a cross that removes them. The state lives in the
 // address under the same names on every page: f, t, reg, r, who, q.
 
-import { html, raw, $, $$, normalise, displayName } from "./util.js";
+import { html, raw, $, $$, normalise, displayName, fmtRegion } from "./util.js";
 import { t } from "./i18n.js";
 import * as auth from "./auth.js";
 import * as data from "./data.js";
@@ -68,7 +68,7 @@ export async function raceFilters({ id, query = {}, races = [], facts = provFact
     ${show && has("show") ? html`<div class="field"><span>${t("prov.show")}</span><div id="${id}-f">${raw(seg(`${id}f`, show, st.shown))}</div></div>` : ""}
     ${specs.length && has("spec") ? html`<div class="field"><span>${t("f.terrain")}</span><div id="${id}-t">${raw(seg(`${id}t`, [["all", t("f.all")], ...specs.map((s) => [s, t(`terrain.${s}`)])], st.spec))}</div></div>` : ""}
     ${regions.length && has("reg") ? html`<label class="field"><span>${t("prov.region")}</span><select id="${id}-reg"><option value="">${t("f.all")}</option>
-      ${regions.map((x) => html`<option value="${x}" ${raw(x === st.reg ? "selected" : "")}>${x}</option>`)}</select></label>` : ""}
+      ${regions.map((x) => html`<option value="${x}" ${raw(x === st.reg ? "selected" : "")}>${fmtRegion(x)}</option>`)}</select></label>` : ""}
     ${withRunner && has("runner") ? html`<div class="field"><span>${t("prov.runner")}</span><div class="row rf-runner" id="${id}-who">${raw(runnerField())}</div></div>` : ""}
     ${has("q") ? html`<label class="field"><span>${t("prov.search")}</span><input type="search" id="${id}-q" value="${st.q}" placeholder="${t("rf.q")}" style="width:200px"></label>` : ""}
   </div>`;

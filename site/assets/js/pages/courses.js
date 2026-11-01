@@ -230,7 +230,7 @@ export async function render(main, { arg, query }) {
           ${tile(t("co.finishers"), fmt(stats.finishers))}
           ${tile(t("nav.clubs"), fmt(stats.clubs))}
         </div>
-        <div class="hint circuit-values" style="margin-top:10px">${t("co.value")} :
+        <div class="hint circuit-values" style="margin-top:10px">${t("ui.colon", { a: t("co.value") })}
           ${methods.map((m, i) => html`${i ? " · " : ""}<b class="num">${fmt(circ.value?.[m])}</b>`)}</div>
       </div>
       ${toggles && cats.length > 1 ? html`<div class="card-body" style="padding-bottom:0"><div class="chips" role="group" aria-label="${t("rk.col.cat")}">

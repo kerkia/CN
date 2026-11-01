@@ -54,6 +54,9 @@ const FOLLOW_DEFAULT = { t1: 7, t2: 20 };   // seconds apart: together (t1), the
 // the time of day, from seconds after midnight
 const hm = (s, sec = false) => { s = Math.round(s); const h = Math.floor(s / 3600) % 24, m = Math.floor((s % 3600) / 60);
   return `${h}:${String(m).padStart(2, "0")}${sec ? `:${String(s % 60).padStart(2, "0")}` : ""}`; };
+// a class as shown: O'Live's relay legs are read as « <category> · Relayeur <n> » (ffco_scraper/prov/sources/olive.py), the leg
+// worded in the reader's language (i18n-ignore-next 1)
+const kName = (n) => String(n ?? "").replace(/ · Relayeur (\d+)$/, (m, l) => ` · ${t("spl.relayLeg", { n: l })}`);
 const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "together"
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const GRAPHS = ["gap", "pos", "legpos"];
@@ -127,7 +130,7 @@ export async function render(main, { query = {} } = {}) {
     $("#sp-pick").innerHTML = html`
       ${key === local.LOCAL ? html`<span class="pill" title="${t("dep.file")}">${r?.name || ""}</span>` : ""}
       ${docs.length > 1 && auth.session()?.admin ? html`<select id="sp-doc" aria-label="${t("prov.doc")}" title="${t("prov.doc")}">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select>` : ""}
-      <select id="sp-c" aria-label="${t("prov.circuit")}" title="${t("prov.circuit")}">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${k.name} (${k.runners.length})</option>`)}</select>
+      <select id="sp-c" aria-label="${t("prov.circuit")}" title="${t("prov.circuit")}">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${kName(k.name)} (${k.runners.length})</option>`)}</select>
       <select id="sp-club" aria-label="${t("spl.club")}" title="${t("spl.club")}"><option value="">${t("ag.allClubs")}</option>
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`;
     // a race's page in Arena (owner, 2026-10-30): its results as the first tab, then the analysis's views (not for a live race,
@@ -335,7 +338,7 @@ export async function render(main, { query = {} } = {}) {
 
     if (view === "table") {
       body.innerHTML = html`
-        <section class="card"><div class="card-head"><div><h2>${k.name} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
+        <section class="card"><div class="card-head"><div><h2>${kName(k.name)} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
           <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
             <th class="r">${t("prov.time")}</th><th class="r" title="${t("spl.lost.hint")}">${t("spl.lost")}</th>
             ${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
@@ -356,7 +359,7 @@ export async function render(main, { query = {} } = {}) {
               const f = fol?.get(x);
               const behindOf = f && f.follow[i] >= 0.5 ? f.behind[i] : null;
               const shadow = [mk ? "inset 0 0 0 2px var(--amber)" : "", behindOf ? "inset 3px 0 0 var(--s3)" : ""].filter(Boolean).join(",");
-              const tip = [d == null ? "" : `${t(asIdeal ? "spl.lost.off" : "spl.lost.leg")} : ${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`,
+              const tip = [d == null ? "" : `${t("ui.colon", { a: t(asIdeal ? "spl.lost.off" : "spl.lost.leg") })} ${asIdeal || d < 0 ? "−" : "+"}${clock(Math.abs(d))}`,
                 mk ? `⚠ ${markText(mk)}` : "", behindOf ? t("spl.fol.cell", { who: behindOf.r.name }) : ""].filter(Boolean).join("\n");
               return html`<td class="r num" style="${raw([slow ? BAD : "", shadow ? `box-shadow:${shadow}` : ""].filter(Boolean).join(";"))}" title="${tip}">
                 ${v == null ? "—" : html`<span style="${raw(isBest ? "color:var(--good);font-weight:650" : slow ? "color:var(--bad);font-weight:650" : "")}">${clock(v)}</span> <span class="muted" style="font-size:11px">${x.legRank[i]}</span>`}
@@ -433,7 +436,7 @@ export async function render(main, { query = {} } = {}) {
       });
       body.innerHTML = html`
         ${chartCard({ id: "sp-legs", title: t("spl.legs.chart") })}
-        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.legs.title")} · ${k.name}</h2></div></div><div id="sp-legs-list"></div></section>
+        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.legs.title")} · ${kName(k.name)}</h2></div></div><div id="sp-legs-list"></div></section>
         ${foot(t("spl.legs.hint"), t("spl.legs.tableHint"), t("spl.legs.def", { rule: errRule() }), t("spl.def"))}`;
       bindChartCard(main, "sp-legs");
       columnChart($("#sp-legs"), { categories: rows.map((r) => r.label),
@@ -471,12 +474,12 @@ export async function render(main, { query = {} } = {}) {
         $("#sp-prof-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.pace")}</th><th>${t("spl.prof.order")}</th></tr></thead>
           <tbody>${xs.map((x) => html`<tr><td style="white-space:nowrap">${x.r.name}</td><td class="r num">${pct(behind(x.ratio))}</td>
             <td style="font-size:12px">${x.ratios.map((v, i) => [v, i]).filter(([v]) => v != null).sort((a, b) => a[0] - b[0])
-              .map(([v, i]) => html`<span class="tag" style="${raw(x.mistake[i] ? BAD : v === 1 ? GOOD : "")}" title="${label(i)} : ${pct(behind(v))}">${i === n ? t("spl.finish") : i + 1}</span> `)}</td></tr>`)}</tbody></table>`;
+              .map(([v, i]) => html`<span class="tag" style="${raw(x.mistake[i] ? BAD : v === 1 ? GOOD : "")}" title="${t("ui.colon", { a: label(i) })} ${pct(behind(v))}">${i === n ? t("spl.finish") : i + 1}</span> `)}</td></tr>`)}</tbody></table>`;
       };
     }
 
     if (view === "h2h") {
-      body.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("spl.h2h")} · ${k.name}</h2></div></div><div class="table-wrap" id="sp-h2h"></div></section>${chooser()}${foot(t("spl.h2h.hint"))}`;
+      body.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("spl.h2h")} · ${kName(k.name)}</h2></div></div><div class="table-wrap" id="sp-h2h"></div></section>${chooser()}${foot(t("spl.h2h.hint"))}`;
       redraw = () => {
         const xs = sel();
         $("#sp-h2h").innerHTML = xs.length < 2 ? html`<div class="empty">${t("spl.h2h.few")}</div>` : html`<table class="data compact"${raw(freezeAttrs(1, 1))}>
@@ -552,12 +555,12 @@ export async function render(main, { query = {} } = {}) {
       });
       const legHead = Array.from({ length: n - 1 }, (_, j) => `${j + 1}–${j + 2}`);
       body.innerHTML = !timed.length ? html`<div class="card"><div class="empty">${t("spl.grp.none")}</div></div>` : html`
-        <section class="card"><div class="card-head"><div><h2>${t("spl.grp.title")} · ${k.name}</h2></div></div><div id="sp-grp"></div></section>
+        <section class="card"><div class="card-head"><div><h2>${t("spl.grp.title")} · ${kName(k.name)}</h2></div></div><div id="sp-grp"></div></section>
         <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.grp.map")}</h2></div></div>
           <div class="table-wrap"><table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th>${legHead.map((h) => html`<th class="c" style="font-size:11px">${h}</th>`)}</tr></thead>
           <tbody>${[...rows].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((g) => html`<tr><td style="white-space:nowrap">${g.place ? `${g.place}. ` : ""}${g.x.r.name}</td>
             ${g.legs.map((c) => (!c ? html`<td class="c muted">·</td>` : !c.mates.length ? html`<td></td>`
-              : html`<td class="c num" style="${raw(c.front ? GOOD : BAD)}" title="${c.mates.map((o) => o.r.name + (o.cls === k.name ? "" : ` (${o.cls})`)).join(", ")}">${c.mates.length}</td>`))}</tr>`)}</tbody></table></div></section>
+              : html`<td class="c num" style="${raw(c.front ? GOOD : BAD)}" title="${c.mates.map((o) => o.r.name + (o.cls === k.name ? "" : ` (${kName(o.cls)})`)).join(", ")}">${c.mates.length}</td>`))}</tr>`)}</tbody></table></div></section>
         ${foot(`${t("spl.grp.hint1")} ${tol} ${t("spl.grp.hint2")}`, t("spl.grp.map.hint"), t("spl.grp.def"))}`;
       if (timed.length) {
         dataTable($("#sp-grp"), {
@@ -573,7 +576,7 @@ export async function render(main, { query = {} } = {}) {
             { key: "follow", label: t("spl.grp.follow"), align: "r num", sort: (r) => r.follow, render: (r) => (r.follow == null ? "—" : pctN(r.follow, 0)) },
             { key: "gain", label: t("spl.grp.gain"), align: "r num", sort: (r) => r.gain, render: (r) => (r.gain == null ? "—" : signed(r.gain)) },
             { key: "mates", label: t("spl.grp.with"), sort: (r) => r.mates.length,
-              render: (r) => (r.mates.length ? html`<div style="font-size:12px;min-width:220px">${r.mates.slice(0, 4).map((m) => html`<div>${m.name}${m.cls ? html` <span class="muted">(${m.cls})</span>` : ""} <span class="muted">· ${t("spl.grp.ctl")} ${m.span}</span></div>`)}
+              render: (r) => (r.mates.length ? html`<div style="font-size:12px;min-width:220px">${r.mates.slice(0, 4).map((m) => html`<div>${m.name}${m.cls ? html` <span class="muted">(${kName(m.cls)})</span>` : ""} <span class="muted">· ${t("spl.grp.ctl")} ${m.span}</span></div>`)}
                 ${r.mates.length > 4 ? html`<div class="muted">+ ${r.mates.length - 4}</div>` : ""}</div>` : html`<span class="muted">—</span>`) },
           ],
         });
@@ -612,7 +615,7 @@ export async function render(main, { query = {} } = {}) {
           nf: f.legsFollowed.length, nl: f.legsLed.length, of: f.follow.filter((v) => v != null).length };
       });
       body.innerHTML = !fol ? empty(t("spl.fol.none")) : html`
-        <section class="card"><div class="card-head"><div><h2>${t("spl.fol.title")} · ${k.name}</h2></div></div><div id="sp-fol"></div></section>
+        <section class="card"><div class="card-head"><div><h2>${t("spl.fol.title")} · ${kName(k.name)}</h2></div></div><div id="sp-fol"></div></section>
         ${foot(t("spl.fol.hint", { t1: fmt(ft1), t2: fmt(ft2) }), t("spl.fol.def"))}`;
       const share = (s, x) => (x.f.total ? html` <span class="muted" style="font-size:11.5px">${pctN((100 * s) / x.f.total, 0)}</span>` : "");
       // legs in a row said once: « D → 12, 14 → 15 »
@@ -659,7 +662,7 @@ export async function render(main, { query = {} } = {}) {
       });
       body.innerHTML = !reg.runners.length ? empty(t("spl.reg.none")) : html`
         ${chartCard({ id: "sp-reg", title: t("spl.reg.chart") })}
-        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.reg.title")} · ${k.name}</h2></div></div><div id="sp-reg-list"></div></section>
+        <section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.reg.title")} · ${kName(k.name)}</h2></div></div><div id="sp-reg-list"></div></section>
         ${foot(t("spl.reg.chartHint"), t("spl.reg.hint", { n: fmt(reg.runners.length), of: fmt(R.length) }), t("spl.reg.def"))}`;
       if (reg.runners.length) {
         bindChartCard(main, "sp-reg");
@@ -704,7 +707,7 @@ export async function render(main, { query = {} } = {}) {
           duels: duels.filter(([w, l]) => w > l).length, of: duels.length,
           perKm: km && x.r.status === "ok" ? x.r.time_s / km : null };
       });
-      body.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("spl.sum")} · ${k.name}</h2></div></div><div id="sp-sum"></div></section>
+      body.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("spl.sum")} · ${kName(k.name)}</h2></div></div><div id="sp-sum"></div></section>
         ${foot(t("spl.sum.hint"), t("spl.sum.def"), t("spl.def"))}`;
       dataTable($("#sp-sum"), {
         compact: true, sortKey: "place", sortDir: 1, rows,

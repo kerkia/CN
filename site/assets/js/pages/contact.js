@@ -3,7 +3,7 @@
 // The message goes through /api/contact, which knows the administrator's address: the page never shows it.
 // Pictures are reduced in the browser and travel as attachments, like the files (4 Mo in all).
 
-import { html, raw, $, $$ } from "../util.js";
+import { html, raw, $, $$, fmt } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { seg } from "../ui.js";
@@ -13,7 +13,7 @@ const MAX_BYTES = 4 * 1024 * 1024;
 const MAX_FILES = 10;
 const MAX_SIDE = 1600;                       // a pasted picture wider or taller than this is reduced
 
-const kb = (n) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / 1024 / 1024).toFixed(1).replace(".", ",")} Mo`);
+const kb = (n) => (n < 1024 * 1024 ? t("unit.kb", { n: fmt(Math.max(1, Math.round(n / 1024))) }) : t("unit.mb", { n: fmt(n / 1024 / 1024, 1) }));
 const readAsDataUrl = (blob) => new Promise((res, rej) => {
   const r = new FileReader();
   r.onload = () => res(r.result);
@@ -168,9 +168,9 @@ export async function render(main, { query }) {
         const ext = (src.match(/^data:image\/(\w+)/) || [, "png"])[1].replace("jpeg", "jpg");
         const name = `image-${++n}.${ext}`;
         attachments.push({ name, data: src.slice(src.indexOf(",") + 1) });
-        p.textContent = `[${t("ct.picture")} ${n} : ${name}]`;
+        p.textContent = `[${t("ui.colon", { a: `${t("ct.picture")} ${n}` })} ${name}]`;
       } else {
-        p.textContent = `[${t("ct.picture")} : ${src}]`;
+        p.textContent = `[${t("ui.colon", { a: t("ct.picture") })} ${src}]`;
       }
       img.replaceWith(p);
     });

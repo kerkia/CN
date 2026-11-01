@@ -310,7 +310,7 @@ export async function render(main, { query }) {
           // the runner taken out of the teams: a « ✕ » in a column of its own (owner, 2026-10-14: a word « indispo » after
           // each name read as that runner's status)
           const outBtn = r ? html`<button type="button" class="btn btn-sm rl-out" data-out="${r.lic}" title="${t("rl.out.mark")} : ${r.name}"
-            aria-label="${t("rl.out.mark")} : ${r.name}">✕</button>` : "";
+            aria-label="${t("ui.colon", { a: t("rl.out.mark") })} ${r.name}">✕</button>` : "";
           return html`<tr ${raw(editable ? `data-leg="${i}"` : "")}>${editable ? html`<td class="c rl-move"><span class="rl-grip" draggable="true" data-grip="${i}" title="${t("rl.grip")}">⋮⋮</span>
               <button type="button" class="btn btn-ghost btn-sm" data-move="${i}:-1" title="${t("rl.move.up")}" ${raw(i ? "" : "disabled")}>▲</button><button type="button" class="btn btn-ghost btn-sm" data-move="${i}:1" title="${t("rl.move.down")}" ${raw(i < rs.length - 1 ? "" : "disabled")}>▼</button></td>` : ""}
             <td class="r num">${i + 1}</td><td class="r num">${fmt(f.legs[i].ref)}′</td><td class="muted" style="font-size:12.5px">${slot}</td>

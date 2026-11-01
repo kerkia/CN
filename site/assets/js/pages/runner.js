@@ -3,7 +3,7 @@
 // category, full race history and per-season summary.
 
 import { html, raw, esc, $, $$, fmt, fmtSigned, fmtDate, fmtTime, displayName, initials, addDays, ord, plural, fmtFormat, pctN, fmtCat } from "../util.js";
-import { t } from "../i18n.js";
+import { t, lang } from "../i18n.js";
 import * as store from "../store.js";
 import * as data from "../data.js";
 import { R, SCORE_COL, CNAFTER_COL, CNJ15_COL } from "../data.js";
@@ -425,6 +425,8 @@ export async function render(main, { arg, query }) {
       if (saved) [card.querySelector(".big").innerHTML, card.querySelector(".calc-formula").innerHTML] = saved;
       return;
     }
+    // FFCO's own line above its table, quoted in French; its usual « no CN: too few races » worded in the reader's language
+    const ffcoNote = (s) => (lang() !== "fr" && /^Pas de CN.*pas assez de course/i.test(s) ? t("calc.official.tooFew") : s);
     const keptMin = Math.min(...res.rows.filter((x) => x.kept).map((x) => x.points));
     const rows = res.rows.map((x) => ({
       ...x, race: ourRace(x.id, x.date, x.title),
@@ -433,7 +435,7 @@ export async function render(main, { arg, query }) {
     const url = `https://cn.ffcorientation.fr/cn/${lic}/?specialite=${res.spe}&jour=${Number(iso.slice(8))}&mois=${Number(iso.slice(5, 7))}&annee=${iso.slice(0, 4)}`;
     card.querySelector(".big").textContent = res.cn == null ? "—" : fmt(res.cn);
     card.querySelector(".calc-formula").innerHTML = html`${t("calc.official.ffco")}
-      <a href="${url}" target="_blank" rel="noopener">${t("calc.official.page")} ↗</a>${res.cn == null && res.note ? html`<br>${res.note}` : ""}`;
+      <a href="${url}" target="_blank" rel="noopener">${t("calc.official.page")} ↗</a>${res.cn == null && res.note ? html`<br>${ffcoNote(res.note)}` : ""}`;
     card.querySelector(".calc-body").innerHTML = rows.length ? html`<div class="calc-table" id="calc-t-official"></div>` : html`<div class="empty">${t("rn.calc.none")}</div>`;
     if (!rows.length) return;
     const ROLE = (role) => ({ kept: 0, best10: 1, worst40: 2 }[role] ?? 3);
@@ -767,7 +769,7 @@ export async function render(main, { arg, query }) {
       tip: (f) => {
         const g = by.get(code(f));
         return String(html`<b>${data.deptName(code(f))}</b> <span style="color:var(--ink-3)">${code(f)}</span><br>
-          <b>${fmt(g?.n || 0)}</b> ${t("rn.map.races")}${g ? html`<br><span style="color:var(--ink-3)">${t("rn.map.last")} : ${fmtDate(g.last, "short")} · ${g.title}</span>` : ""}`);
+          <b>${fmt(g?.n || 0)}</b> ${t("rn.map.races")}${g ? html`<br><span style="color:var(--ink-3)">${t("ui.colon", { a: t("rn.map.last") })} ${fmtDate(g.last, "short")} · ${g.title}</span>` : ""}`);
       },
     });
   }

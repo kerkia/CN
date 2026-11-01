@@ -208,7 +208,7 @@ async function orgListPage(main, kind) {
     });
   }
   if (me?.admin) {
-    const mb = (b) => (b >= 1e9 ? `${fmt(b / 1e9, 2)} Go` : `${fmt(b / 1e6, 1)} Mo`);
+    const mb = (b) => (b >= 1e9 ? t("unit.gb", { n: fmt(b / 1e9, 2) }) : t("unit.mb", { n: fmt(b / 1e6, 1) }));
     api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
   }
   return { title: t(`sh.org.${kind}.title`) };
@@ -1030,7 +1030,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         if (k >= 999) throw Object.assign(new Error(t("sh.test.full")), { local: true });
         await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, test: ++k, trace: encodeTrace(tr, crop[0], crop[1]) }, key: keyOf(id) });
         ok++;
-      } catch (e) { errs.push(`${file.name} : ${e.code ? errText(e) : e.local ? e.message : t(e.message === "time" ? "an.err.time" : "an.err.gpx")}`); }
+      } catch (e) { errs.push(`${t("ui.colon", { a: file.name })} ${e.code ? errText(e) : e.local ? e.message : t(e.message === "time" ? "an.err.time" : "an.err.gpx")}`); }
     }
     if (ok) reload();
     else boxU.innerHTML = "";
@@ -1369,7 +1369,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
     saveExercises: async (list) => { await saveExercises(list); mv.draw(); bottom.draw(); },
     pickExercise: (e) => { state.ex = e?.id || null; if (e?.leg && e.leg !== leg) setLeg(e.leg); else { mv.draw(); bottom.draw(); } saveUrl(); },
-    redrawMap: () => mv.draw(),
+    redrawMap: () => mv.draw(), errText,
     variants: () => (leg ? variantsOf(leg) : null),
     setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
     shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },

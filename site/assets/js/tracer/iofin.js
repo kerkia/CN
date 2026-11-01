@@ -207,7 +207,7 @@ export async function importDialog(E, preset = null) {
     ${field(t("trc.imp.place"), sel("place", [["map", t("trc.imp.placeMap")], ["geo", t("trc.imp.placeGeo")]], "map"), t("trc.imp.placeHint"))}`,
   onOpen: (f) => {
     const show = () => {
-      f.querySelector("#tr-imp-what").textContent = !file ? t("trc.imp.noFile") : err ? `${file.name} : ${err}` : `${file.name} — ${summary(data)}`;
+      f.querySelector("#tr-imp-what").textContent = !file ? t("trc.imp.noFile") : err ? `${t("ui.colon", { a: file.name })} ${err}` : `${file.name} — ${summary(data)}`;
       f.elements.place.disabled = !geoOk(); if (!geoOk()) f.elements.place.value = "map";
     };
     dropZone(f.querySelector("#tr-imp-drop"), async (list) => { file = list[0]; await read(file); show(); });

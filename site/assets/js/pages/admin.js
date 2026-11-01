@@ -287,7 +287,7 @@ export async function render(main, { query = {} } = {}) {
       <tbody>${list.map((u) => html`<tr${raw(u.status === "removed" ? ' style="opacity:.55"' : "")}>
         <td class="num">${fmtDate(u.created_at.slice(0, 10), "short")} ${u.created_at.slice(11, 16)}</td>
         <td style="white-space:normal;max-width:320px">${raceOf(u)}</td>
-        <td style="white-space:normal;max-width:260px">${u.filename} <span class="muted">· ${fmt(Math.max(1, Math.round(u.size / 1024)))} Ko</span></td>
+        <td style="white-space:normal;max-width:260px">${u.filename} <span class="muted">· ${t("unit.kb", { n: fmt(Math.max(1, Math.round(u.size / 1024))) })}</span></td>
         <td style="white-space:normal">${u.email ? html`${u.first_name} ${u.last_name}<div class="muted" style="font-size:12px">${u.email} · ${u.licence}</div>` : "—"}</td>
         <td>${u.status === "removed" ? html`<span class="tag">${t("ad.up.removed")}</span>`
           : html`<button type="button" class="btn btn-sm" data-up-remove="${u.id}">${t("ad.up.remove")}</button>`}</td></tr>`)}</tbody></table>`

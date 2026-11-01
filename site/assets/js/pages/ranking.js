@@ -396,7 +396,7 @@ export async function render(main, { query }) {
     updateCompareBtn();
 
     $("#export").onclick = () => downloadCsv(`cn_${terrain}_${f.month}.csv`,
-      ["place", "nom", ...(fr ? ["licence"] : []), "categorie", "club", ...methods.map((m) => `cn_${m}`)],
+      [t("csv.place"), t("csv.name"), ...(fr ? [t("csv.licence")] : []), t("csv.cat"), t("csv.club"), ...methods.map((m) => `cn_${m}`)],
       table.rows().map((r) => [r.pos ?? "", r.nom, ...(fr ? [r.lic] : []), r.cat, fr ? r.club : data.clubName(r.club), ...methods.map((m) => r.cn[m] ?? "")]));
   }
   function updateCompareBtn() {

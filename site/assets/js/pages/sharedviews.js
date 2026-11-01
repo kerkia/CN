@@ -193,7 +193,7 @@ function variantsView(el, X) {
   });
   $("#sh-var-colour", el).addEventListener("change", (e) => X.setColourBy(e.target.checked ? "variant" : "runner"));
   $("#sh-var-reset", el)?.addEventListener("click", () => X.setTags(j, null));
-  $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alert(err.message); } });
+  $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alert(X.errText(err)); } });
   $$("[data-vname]", el).forEach((inp) => inp.addEventListener("change", () => edit((tags) => { if (inp.value.trim()) tags.names[inp.dataset.vname] = inp.value.trim(); else delete tags.names[inp.dataset.vname]; })));
   $$("[data-vmerge]", el).forEach((s) => s.addEventListener("change", () => { const from = s.dataset.vmerge, into = s.value; if (!into) return;
     edit((tags) => { for (const u of Object.keys(tags.assign)) if (tags.assign[u] === from) tags.assign[u] = into; delete tags.names[from]; }); }));
@@ -222,7 +222,7 @@ function exercisesView(el, X) {
     $("#sh-ex-cancel", el).addEventListener("click", () => X.setDraft(null));
     $("#sh-ex-save", el).addEventListener("click", async () => {
       const e = { id: Math.random().toString(36).slice(2, 10), kind: d.kind, leg: d.leg || 0, w: d.w, name: d.name.trim(), ...(d.kind === "corridor" ? { pts: d.pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]) } : {}) };
-      try { await X.saveExercises([...list, e]); state.ex = e.id; X.setDraft(null); X.changed(); } catch (err) { $("#sh-ex-note", el).textContent = err.message; }
+      try { await X.saveExercises([...list, e]); state.ex = e.id; X.setDraft(null); X.changed(); } catch (err) { $("#sh-ex-note", el).textContent = X.errText(err); }
     });
     return;
   }

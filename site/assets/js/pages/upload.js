@@ -13,7 +13,7 @@ import * as local from "../local.js";
 const TERRAINS = [["Forêt", "terrain.For"], ["Sprint", "terrain.Spr"], ["VTT", "terrain.VTT"], ["Ski", "terrain.Ski"]];     // the values sent (i18n-ignore)
 const FORMATS = ["Sprint", "MD", "LD", "Nuit", "Autre"];
 const day = (d) => d.toISOString().slice(0, 10);
-export const mb = (n) => `${fmt(n / 1024 / 1024, 1)} Mo`;
+export const mb = (n) => t("unit.mb", { n: fmt(n / 1024 / 1024, 1) });
 
 /** The form, in `container`. races: the list's races (index.json); preset: a race's key to choose first; organiser: sent
  *  as the preset race's organiser (« Organisation › Résultats »: the race is then no longer looked for elsewhere). */

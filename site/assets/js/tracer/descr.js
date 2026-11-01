@@ -17,6 +17,9 @@ const RANDOM = {                                                  // i18n-ignore
   cs: "Kontroly {a}–{b} v libovolném pořadí", pl: "Punkty {a}–{b} w dowolnej kolejności", pt: "Pontos {a}–{b} por qualquer ordem",
   hu: "{a}–{b}. pont tetszőleges sorrendben", ro: "Posturile {a}–{b} în orice ordine", et: "Punktid {a}–{b} vabas järjekorras",
 };
+// the variations' header, in the sheet's language (English else; i18n-ignore-next 2)
+const VARIATIONS = { fr: "Toutes variantes", en: "All variations", de: "Alle Varianten", es: "Todas las variantes" };
+const variationsText = (lang) => VARIATIONS[lang] || VARIATIONS[String(lang).split("-")[0]] || VARIATIONS.en;
 const randomText = (lang, a, b) => (RANDOM[lang] || RANDOM[String(lang).split("-")[0]] || RANDOM.en).replace("{a}", a).replace("{b}", b);
 const km = (m) => `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 const lengthText = (min, max) => (Math.abs(max - min) < 50 ? km(min) : `${(min / 1000).toFixed(1).replace(".", ",")}–${km(max)}`);
@@ -52,7 +55,7 @@ export function describe(ev, cd, { purpose = "map", createKey = false, variation
     lines.push({ kind: "header2", boxes: [symbolText(S("all_controls"), lang), n], textual: n });
   } else if (kind === "variations") {
     const n = fmt(symbolText(S("number_controls"), lang), v.normalControls);
-    lines.push({ kind: "header2", boxes: [lang === "fr" ? "Toutes variantes" : "All variations", n], textual: n });
+    lines.push({ kind: "header2", boxes: [variationsText(lang), n], textual: n });
   } else {
     const n = v.points > 0 ? fmt(symbolText(S("number_points"), lang), v.points) : fmt(symbolText(S("number_controls"), lang), v.normalControls);
     lines.push({ kind: "header2", boxes: [fullName, n], textual: n });
