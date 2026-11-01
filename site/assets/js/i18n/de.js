@@ -2529,6 +2529,8 @@ export default {
   "sh.tab.views": "Analysen",
   "rc.tab.off": "Aktiviere „Routen für jede Teilstrecke vorschlagen“ im Reiter „Berechnung“.",
   "rc.tab.wait": "Routen werden berechnet…",
+  "rc.busy.title": "Routen werden berechnet",
+  "rc.busy.hint": "Ozimut liest die Karte – ihre Farben, Wege und ihr Relief –, sucht dann für jede Teilstrecke die schnellsten Routen und misst deine darauf. Je nach Karte dauert das einige Sekunden bis ein, zwei Minuten; der Lauf lässt sich währenddessen abspielen, und die Routen erscheinen hier, sobald sie fertig sind.",
   "rc.relief": "Relief",
   "rc.relief.contours": "Höhenlinien der Karte, am Modell ausgerichtet",
   "rc.relief.dem": "nur das Modell (IGN oder weltweite Kacheln)",

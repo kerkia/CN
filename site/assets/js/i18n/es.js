@@ -2529,6 +2529,8 @@ export default {
   "sh.tab.views": "Análisis",
   "rc.tab.off": "Marca «Proponer rutas para cada tramo» en la pestaña «Cálculo».",
   "rc.tab.wait": "Calculando las rutas…",
+  "rc.busy.title": "Calculando las rutas",
+  "rc.busy.hint": "Ozimut lee el mapa —sus colores, caminos y relieve— y luego busca en cada tramo las rutas más rápidas y mide la tuya sobre ellas. Según el mapa tarda desde unos segundos hasta uno o dos minutos; mientras tanto puedes reproducir la carrera, y las rutas aparecen aquí en cuanto están listas.",
   "rc.relief": "Relieve",
   "rc.relief.contours": "curvas del mapa, niveladas con el modelo",
   "rc.relief.dem": "solo el modelo (IGN o teselas mundiales)",

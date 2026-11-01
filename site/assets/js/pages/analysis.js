@@ -172,7 +172,7 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-bar" id="an-bar" hidden></div>
         ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs") }, { key: "legs", label: t("an.tab.legs") },
           ...(me?.admin ? [{ key: "routes", label: t("an.tab.routes") }] : [])],
-          inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div id="an-rc"></div>` } }))}
+          inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div class="rc-busy" id="an-rc-busy" hidden></div><div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
@@ -1318,6 +1318,9 @@ export async function render(main, { query = {}, route } = {}) {
     redrawChips = drawChips;
     $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
     leftP.setTab("legs", known);
+    // the curves first when there are some to show (owner, 2026-11-01: the computed routes take a while, and their tab, kept
+    // from a visit before, opened on an empty pane)
+    if (["pace", ...avail].some((c) => chans.has(c))) leftP.show("graphs", true);
     applyLayout();
     if (known) legsTable(); else $("#an-legs").innerHTML = "";
     sizeStrip();
@@ -1726,7 +1729,21 @@ export async function render(main, { query = {}, route } = {}) {
     routes: [], mine: [], auto: null, token: 0, status: "", prog: null, warn: "", decOn: RC.decisionOn(), dec: null, decAsk: "",
     on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
   const rcPace = () => RC.paceOf(rcs.s, rcs.auto);
-  const rcStatus = (text, frac = null) => { rcs.status = text; rcs.prog = frac; RC.setStatus(text, frac); };
+  const rcStatus = (text, frac = null) => { rcs.status = text; rcs.prog = frac; RC.setStatus(text, frac); rcBusyPane(); };
+  /** While the routes are computed, « Itinéraires » says so (owner, 2026-11-01: it stayed empty a minute): what is done now,
+   *  a progress bar (moving without a measure while the relief is read), and what the computation does. */
+  function rcBusy(on) { rcs.busy = on; rcBusyPane(); }
+  function rcBusyPane() {
+    const box = $("#an-rc-busy"), list = $("#an-rc");
+    if (!box) return;
+    box.hidden = !rcs.busy;
+    if (list) list.hidden = !!rcs.busy;
+    if (!rcs.busy) return;
+    box.innerHTML = html`<b>${t("rc.busy.title")}</b>
+      <div class="muted rc-busy-now">${rcs.status}</div>
+      ${raw(rcs.prog == null ? `<progress class="rc-prog"></progress>` : `<progress class="rc-prog" max="1" value="${rcs.prog}"></progress>`)}
+      <p class="hint">${t("rc.busy.hint")}</p>`;
+  }
   /** The reading's facts: kept, and the warning when the map as read looks wrong. */
   const rcFacts = (facts) => { rcs.info = { ...rcs.info, ...facts }; rcs.warn = RC.readingWarning(rcs.info, rcs.s); RC.setWarning(rcs.warn); };
   const rcReading = (f) => rcStatus(t("rc.st.readingPct", { p: Math.round(100 * f) }), f);
@@ -1742,7 +1759,7 @@ export async function render(main, { query = {}, route } = {}) {
     }
     return null;
   }
-  function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) c.innerHTML = ""; }
+  function rcReset() { rcs.token++; rcs.routes = []; rcs.mine = []; rcs.auto = null; const c = $("#an-rc"); if (c) c.innerHTML = ""; rcBusy(false); }
   function rcPanel() {
     const host = $("#rc-host");
     if (!host) return;
@@ -1796,6 +1813,7 @@ export async function render(main, { query = {}, route } = {}) {
       rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y), vr, { map: rcs.s.map, onProgress: (f) => { if (my === rcs.token) rcReading(f); } });
       rcs.planFor = sig; rcs.planMap = map; rcs.dem = null; rcs.pic = null;
     }
+    rcBusy(true);
     rcStatus(t("rc.st.reading"), 0);
     try {
       rcs.info = null;
@@ -1816,11 +1834,12 @@ export async function render(main, { query = {}, route } = {}) {
       }
       if (rcs.picOn) rcPicture();
       await rcRun();
-    } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }
+    } catch (e) { console.error(e); if (my === rcs.token) { rcBusy(false); rcStatus(t("rc.st.failed")); } }
   }
   async function rcRun() {
     if (!rcs.plan || !rcs.on || !rcs.info) return;
     const my = ++rcs.token;
+    rcBusy(true);
     rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = ""; rcs.calib = null; RC.setCalib("");
     try {
       const facts = await rcs.plan.settings(rcs.s, (f) => { if (my === rcs.token) rcReading(f); });
@@ -1873,12 +1892,13 @@ export async function render(main, { query = {}, route } = {}) {
       }
       rcs.auto = rcs.calib?.ok ? rcs.calib.pace[0] : RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
+      rcBusy(false);
       rcStatus(t("rc.st.done", { n: found, t: n, s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcs.info.mpc, 1),
         r: rcs.dem && rcs.dem !== "none" ? RC.reliefNote(CREDIT[rcs.dem]?.text || rcs.dem, rcs.pieces) : t("rc.st.flat") }) + (rcs.info.vector ? ` · ${t("rc.st.symbols", { f: rcs.info.vector.name })}` : "")
         + (rcs.info.north ? ` · ${tn("rc.st.north", rcs.info.north)}` : ""));
       const p = $("#rc-pace"); if (p && rcs.auto) p.placeholder = RC.minKm(rcs.auto);
       rcTable(); draw();
-    } catch (e) { console.error(e); if (my === rcs.token) rcStatus(t("rc.st.failed")); }
+    } catch (e) { console.error(e); if (my === rcs.token) { rcBusy(false); rcStatus(t("rc.st.failed")); } }
   }
   window.anDebugRoutes = () => ({ on: rcs.on, info: rcs.info, dem: rcs.dem, routes: rcs.routes, mine: rcs.mine, auto: rcs.auto, settings: rcs.s, calib: rcs.calib });
   async function rcPicture() {

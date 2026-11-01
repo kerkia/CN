@@ -2389,6 +2389,8 @@ export default {
   "sh.tab.views": "Analyses",
   "rc.tab.off": "Tick “Suggest routes for each leg” in the “Compute” tab.",
   "rc.tab.wait": "Computing the routes…",
+  "rc.busy.title": "Computing the routes",
+  "rc.busy.hint": "Ozimut reads the map — its colours, paths and relief —, then looks for the fastest routes on each leg and measures yours on them. Depending on the map this takes from a few seconds to a minute or two; the race plays meanwhile, and the routes show here as soon as they are ready.",
   "rc.relief": "Relief",
   "rc.relief.contours": "the map's contours, levelled on the model",
   "rc.relief.dem": "model only (IGN, or worldwide tiles)",
