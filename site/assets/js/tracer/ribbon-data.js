@@ -91,6 +91,7 @@ export const TABS = [
     { id: "symbols", title: t("trc.rd.gSymbols"), launcher: "appearance", items: [stack({ t: "field", id: "circle" }, { t: "field", id: "line" }, { t: "field", id: "number" }),
       stack({ t: "field", id: "mapStandard" })] },
     { id: "view", title: t("trc.rd.gView"), items: [
+      B("view-3d", t("trc.rd.view3d"), "mountain", { tip: t("trc.rd.view3dTip") }),
       stack(S("view-course", t("trc.rd.viewCourse"), "fit", { tip: t("trc.rd.viewCourseTip") }), S("view-map", t("trc.rd.viewMap"), "map", { tip: t("trc.rd.viewMapTip") }),
         S("view-all", t("trc.rd.viewAll"), "view", { toggle: "allControls", tip: t("trc.rd.viewAllTip") })),
       stack(S("view-others", t("trc.rd.viewOthers"), "layers", { tip: t("trc.rd.viewOthersTip") }), { t: "field", id: "intensity" })] },

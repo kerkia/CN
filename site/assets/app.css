@@ -1843,6 +1843,9 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .sh-lp [data-pane="own"]:not([hidden]) { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .sh-map { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; min-height: 0; }
 .sh-map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.sh-map canvas[hidden] { display: none; }
+.sh-map .an-3d-canvas { cursor: grab; }
+.sh-map .an-3d-canvas:active { cursor: grabbing; }
 .sh-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; overflow-y: auto; font-size: 13px; min-height: 0; }
 .sh-runners { display: flex; flex-direction: column; gap: 1px; }
 .sh-runner { display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) auto; gap: 2px 6px; align-items: center; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
@@ -2243,6 +2246,17 @@ body.full-win .tr-app { border: 0; }
 .tr-mapwrap { position: relative; min-width: 0; min-height: 0; }
 .tr-mapwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; outline: none; cursor: grab; }
 .tr-mapwrap canvas:not([data-tool="select"]) { cursor: crosshair; }
+/* the 3D view of the course shown (tracer/relief3d.js), over the map pane */
+.tr-3d { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--surface); }
+.tr-3d-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.tr-3d-bar > b { margin-right: auto; }
+.tr-3d-ex { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.tr-3d-host { position: relative; flex: 1 1 auto; min-height: 0; }
+.tr-3d-host canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+.tr-3d-host canvas:active { cursor: grabbing; }
+.tr-3d-note { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; max-width: calc(100% - 24px); font-size: 11px; padding: 2px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink-2); }
+.tr-3d-note:empty { display: none; }
+.tr-3d-note a { color: inherit; }
 .tr-zoombox { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; background: color-mix(in srgb, var(--surface) 90%, transparent);
   border: 1px solid var(--border); border-radius: 9px; padding: 4px; align-items: center; }
 .tr-intensity input { writing-mode: vertical-lr; direction: rtl; height: 90px; width: 22px; }

@@ -1105,8 +1105,22 @@ Every multiple-choice game was played through to its score page at phone size, w
   dark ring, light, dark ring, light; 36 rays, half of them and three quarters of the circle), colour-blind — found at
   2 px, score 0.75. Shape alone is not unique on a forest map (texture, knolls' contours: up to 0.72 elsewhere on the
   same photo), so it is only looked for within 50 m of where the trace ends (`prepare`, the circuit editor's `auto`).
-  **3D view, a prototype** (2026-10-24, owner: after the study of World of O's 3DRerun; on branch `claude/solo-3d-view-*`, not
-  merged until the owner has reviewed it): « 3D » on the playback's map (`an-3d`) drapes the map over the ground. The heights:
+  **3D view** (2026-10-24, owner: after the study of World of O's 3DRerun; on main since that day, commit da06beb, every account and
+  visitor of « Analyse solo »; « prototype » dropped from its labels on 2026-11-01): « 3D » on the playback's map (`an-3d`) drapes
+  the map over the ground. **Also in « Analyse multi » and the Tracer** (owner, 2026-11-01: « make this 3D thing available to all,
+  bring it to analyse multi and to the tracer »): `view3d.open3d` takes one trace (`track`, Solo), several (`traces: [{ track, i0,
+  i1, colour, label }]`, `now()` → each one's time or null) or none (the Tracer), `setTraces`, `setFollow(true | "chase" | "group" |
+  false, k)`, `setStyle({ colourOf(i, k), …, traceAlpha })`, `fitTrace(pxBox)`, `setImage`. « Analyse multi » (`shared.js`, « 3D »
+  with the map's tools): every runner shown, in their colour with their initials (`initials`), each one's route in the view's one
+  frame (`rcmFrame`, the points through the map's pixels: `track3d`), on the replay's clock (`now3d`, the mode's `sAt`); a leg's view
+  draws its leg and reframes; « Suivre » the selected runner chases them, « tous les coureurs » keeps the orbit's centre on the group;
+  the colours as the 2D's (runner, pace, leg time, variant); the heights the computed routes' grid (`heights3d`, one load for both);
+  « Exagération du relief » under « Affichage » (`ocn.sh.prefs` `ex3d`). The Tracer (`tracer/relief3d.js`, ribbon Carte › Affichage
+  › « Vue 3D », `view-3d`): the course shown — the map and its overprint by `exports.courseImage` (its print area clipped to the map,
+  `clip`), at most 6144 px (4096 on a phone) — over the heights read at the event's georeference (`geo.toLatLon`; a map without one
+  gets a message naming « Géoréférencer »), over the map pane, its exaggeration in `localStorage ocn.tr.ex3d`, Échap or ✕ closes it;
+  the course's controls framed. Checked locally on « Test UI club » (four runners, a leg, pace colours) and a generated sprint map
+  of Fougères. The heights:
   `trace/terrain.js` lays a grid on the map image (its nodes at map pixels, so the image is the mesh's texture as it is; ~40 000
   nodes, a step of 5 m at least, 320 a side at most: `gridPlan`), each node's lat/lon through the calibration (`pxLatLon`: the fit to
   the trace's metres, then the trace's own lat0/lon0), from IGN's RGE ALTI in France (`elevation.json` POST, 5 000 points a request

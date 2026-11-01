@@ -2433,7 +2433,7 @@ export default {
   "rc.col.choice.hint": "The time of the route you took minus route A's", "rc.col.exec": "Execution", "rc.col.exec.hint": "Your actual time minus the time of the route you took",
   "rc.other": "other", "rc.leg.none": "Choose a leg to see its computed routes.", "rc.runners": "Runners (the route taken)",
   "rc.pace.median": "the runners' median pace on this leg",
-  "an.v3.hint": "3D view (prototype): the map laid over the terrain, the track on it", "an.v3.title": "3D view (prototype)",
+  "an.v3.hint": "3D view: the map laid over the terrain, the tracks on it", "an.v3.title": "3D view",
   "an.v3.loading": "Terrain: loading…", "an.v3.loadingPct": "Terrain: loading… {p}%", "an.v3.relief": "Terrain:",
   "an.v3.noWebgl": "The 3D view needs WebGL, which this browser does not offer.", "an.v3.failed": "The terrain could not be loaded: the 3D view is not available for now.",
   "an.v3.ex": "Vertical exaggeration", "an.v3.cached": "already loaded",

@@ -203,10 +203,18 @@ ${folders.join("\n")}</Document></kml>\n`, "application/vnd.google-earth.kml+xml
 }
 
 // ---- images of the courses ---------------------------------------------------------------------------------------------------------
-/** A course drawn over the map into a canvas at dpi (paper), its print area; returns { canvas, box (map mm), pxPerMm }. */
-export async function courseImage(E, cd, dpi, { withMap = true } = {}) {
+/**
+ * A course drawn over the map into a canvas at dpi (paper), its print area (clipped to a box of map mm when given: the 3D
+ * view keeps to the map); returns { canvas, box (map mm), pxPerMm }.
+ */
+export async function courseImage(E, cd, dpi, { withMap = true, clip = null } = {}) {
   const ev = E.ev, layout = layoutCourse(ev, cd), items = itemsFor(ev, layout);
-  const { box, k } = printBox(E, cd, layout);
+  const pb = printBox(E, cd, layout), k = pb.k;
+  let box = pb.box;
+  if (clip) {
+    const b = [Math.max(box[0], clip[0]), Math.max(box[1], clip[1]), Math.min(box[2], clip[2]), Math.min(box[3], clip[3])];
+    if (b[2] > b[0] && b[3] > b[1]) box = b;
+  }
   const pxPerMm = (dpi / 25.4) * k;                            // image px per map mm
   const W = Math.round((box[2] - box[0]) * pxPerMm), H = Math.round((box[3] - box[1]) * pxPerMm);
   if (W * H > 120e6) throw new Error(t("trc.exp.tooBig"));

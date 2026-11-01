@@ -589,10 +589,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed })); } catch (e) { /* not kept */ } };
+  let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
+  let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
@@ -601,11 +603,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), { key: "own", label: t("sh.own.title") }],
         inner: { runners: html`<div id="sh-left"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
-      <div class="sh-mapcol"><div class="sh-map"><canvas id="sh-canvas"></canvas>
-        <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
+      <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
+        <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
-        <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div></div>
+        <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
@@ -789,13 +791,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
       if (shown.length > 1 || r === sel) {
-        const label = r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3);   // a test runner: its number
+        const label = initials(r);
         g.font = `700 ${lw(11)}px system-ui, sans-serif`; g.textBaseline = "middle";
         g.strokeStyle = "#fff"; g.lineWidth = lw(3); g.strokeText(label, x + lw(9), y); g.fillStyle = r.colour; g.fillText(label, x + lw(9), y);
       }
     }
     g.globalAlpha = 1;
+    if (v3) sync3d();
   }
+  const initials = (r) => (r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3));   // a test runner: its number
   function followView() {
     if (follow === "none") return;
     const pts = (follow === "sel" && sel ? [sel] : runners.filter((r) => r.visible)).map((r) => { const s = sAt(r, T); if (s == null) return null; return toPx(r.fit, ...posAt(r.tr, s)); }).filter(Boolean);
@@ -1051,7 +1055,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
           <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
-          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>`;
+          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
+        <div id="sh-3d-opts" hidden></div>`;
     if (admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
@@ -1070,7 +1075,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
     $("#sh-strip-on").addEventListener("change", (e) => { showStrip = e.target.checked; savePrefs(); $("#sh-strip").hidden = !showStrip; drawStrip(); });
-    rcmPanel();
+    rcmPanel(); opts3d();
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
@@ -1397,6 +1402,107 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
             <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * (m.pace || pace)))}</b></span></div></div>`; })}` : ""}`;
   }
 
+  // ---- the 3D view (trace/view3d.js; 2026-11-01, as « Analyse solo »'s): the map over the ground's heights, every runner
+  // shown on it, on the replay's own clock. The heights are the model's grid the computed routes use (one IGN or tiles request,
+  // kept in IndexedDB); the runners' metres in one frame (rcmFrame), through the map's pixels.
+  const v3note = (text) => { const el = $("#sh-3d-credit"); el.hidden = !text; el.innerHTML = text || ""; };
+  async function heights3d(onProgress) {
+    if (rcm.grid) return rcm.grid;
+    const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
+    const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
+    const gkey = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
+    const g = await loadGrid({ key: gkey, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H), onProgress });
+    if (rcm.grid === undefined) rcm.grid = g;                     // the computed routes take it too
+    return g;
+  }
+  /** Runner r's trace in the 3D view's frame (its points through the map's pixels), made once. */
+  function track3d(r) {
+    if (!r.tr3) {
+      const X = new Float32Array(r.tr.n), Y = new Float32Array(r.tr.n);
+      for (let i = 0; i < r.tr.n; i++) { const [a, b] = toM(rcmFrame, r.pxs[i], r.pys[i]); X[i] = a; Y[i] = b; }
+      r.tr3 = { ...r.tr, x: X, y: Y };
+    }
+    return r.tr3;
+  }
+  /** Each runner's part drawn: a leg's view its leg, else their race. */
+  const range3d = (r) => (leg ? [r.passes[leg - 1], r.passes[leg]] : [r.start, r.finish ?? r.tr.dur]);
+  function sync3d() {
+    if (!v3) return;
+    const list = runners.filter((r) => r.visible && range3d(r).every((v) => v != null));
+    const sig = `${leg}|${list.map((r) => r.uid).join(",")}`;
+    if (sig !== v3sig) {
+      v3sig = sig; v3list = list;
+      v3.setTraces(list.map((r) => { const [a, b] = range3d(r); return { track: track3d(r), i0: indexAt(r.tr, a), i1: indexAt(r.tr, b), colour: r.colour, label: initials(r) }; }));
+      if (leg !== v3leg) { v3leg = leg; leg ? v3.fitTrace() : v3.fitTrace(ctrlBox()); }   // another leg: the camera on it, as the 2D's
+    }
+    const m = cmode();
+    if (m === "pace") paceScale();
+    const key = `${sig}|${m}|${vLo}|${vHi}|${m === "runner" || m === "pace" ? "" : v3list.map(routeColour).join(",")}`;
+    v3.setStyle({ colourOf: (i, k) => (m === "pace" ? paceColour(v3list[k].tr.v[i], vLo, vHi) : routeColour(v3list[k])), colourKey: key,
+      width, future, tail: leg ? 0 : tail, mapAlpha, traceAlpha });
+    const k = sel ? v3list.indexOf(sel) : -1;
+    v3.setFollow(follow === "sel" && k >= 0 ? "chase" : follow === "none" ? false : "group", Math.max(0, k));
+  }
+  /** Each runner's trace time now, null when not drawn (not shown, or not started yet at the clock's time). */
+  const now3d = () => v3list.map((r) => {
+    const s = sAt(r, playing ? Math.min(T1, T + ((performance.now() - last) / 1000) * speed) : T);
+    return s == null || (mode === "clock" && !leg && s < r.start - 1) ? null : s;
+  });
+  async function toggle3d() {
+    if (v3on) { close3d(); return; }
+    const my = ++v3token;
+    v3on = true;
+    $("#sh-3d").setAttribute("aria-pressed", "true");
+    $("#sh-3d-host").hidden = false; $("#sh-canvas").hidden = true;
+    v3note(t("an.v3.loading"));
+    try {
+      const g = await heights3d((f) => { if (my === v3token) v3note(t("an.v3.loadingPct", { p: Math.round(100 * f) })); });
+      if (my !== v3token) return;
+      const { open3d } = await import("../trace/view3d.js");
+      if (my !== v3token) return;
+      v3sig = ""; v3list = []; v3leg = leg;
+      const v = await open3d($("#sh-3d-host"), { image, W: image.width, H: image.height, grid: g, toM: (x, y) => toM(rcmFrame, x, y), toPx: (x, y) => toPx(rcmFrame, x, y),
+        traces: [], now: now3d, onUserMove: () => { follow = "none"; const el = $("#sh-follow"); if (el) el.value = "none"; } });
+      if (my !== v3token) { v.dispose(); return; }
+      v3 = v;
+      v3.setExaggeration(ex3d);
+      sync3d();
+      leg ? v3.fitTrace() : v3.fitTrace(ctrlBox());
+      const c = CREDIT[g.source];
+      v3note(html`${t("an.v3.relief")} <a href="${c.url}" target="_blank" rel="noopener">${c.text}</a>`);
+      opts3d();
+    } catch (e) {
+      console.error(e);
+      if (my !== v3token) return;
+      close3d();
+      v3note(t(e.message === "webgl" ? "an.v3.noWebgl" : "an.v3.failed"));
+      setTimeout(() => { if (!v3on) v3note(""); }, 8000);
+    }
+  }
+  const ctrlBox = () => { const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y); return [Math.min(...xs) - 40, Math.min(...ys) - 40, Math.max(...xs) + 40, Math.max(...ys) + 40]; };
+  function close3d() {
+    v3token++;
+    if (v3) { v3.dispose(); v3 = null; }
+    if (!v3on) return;
+    v3on = false;
+    $("#sh-3d").setAttribute("aria-pressed", "false");
+    $("#sh-3d-host").hidden = true; $("#sh-canvas").hidden = false; v3note("");
+    opts3d(); mv.draw();
+  }
+  /** The 3D view's setting under « Affichage »: the vertical exaggeration, and where the heights come from. */
+  function opts3d() {
+    const el = $("#sh-3d-opts");
+    if (!el) return;
+    el.hidden = !v3;
+    if (!v3) { el.innerHTML = ""; return; }
+    const g = rcm.grid;
+    el.innerHTML = html`<div class="an-3d-head">${t("an.v3.title")}</div><div class="an-opts">
+      <label><span>${t("an.v3.ex")}</span><span class="an-3d-ex"><input type="range" id="sh-ex" min="1" max="3" step="0.25" value="${ex3d}"><b id="sh-ex-v">× ${fmt(ex3d, 2)}</b></span></label></div>
+      ${g ? html`<p class="muted an-3d-info">${t(g.source === "tiles" ? "an.v3.info.tiles" : "an.v3.info.ign", { nx: g.nx, ny: g.ny, step: fmt(g.step, 1), s: g.cached ? t("an.v3.cached") : `${fmt((g.ms || 0) / 1000, 1)} s` })}</p>` : ""}`;
+    $("#sh-ex").addEventListener("input", (e) => { ex3d = Number(e.target.value); $("#sh-ex-v").textContent = `× ${fmt(ex3d, 2)}`; v3?.setExaggeration(ex3d); savePrefs(); });
+  }
+  window.anDebug3d = () => ({ on: v3on, view: v3?.stats(), grid: rcm.grid && { nx: rcm.grid.nx, ny: rcm.grid.ny, source: rcm.grid.source } });
+
   // ---- the views under the replay (sharedviews.js): the splits against a reference, one runner's legs
   const state = { tab: TABS.includes(init.v) ? init.v : TABS[0], ref: runners.find((r) => r.uid === Number(init.ref)) || null, legsOf: int(init.lo, 0, 1e12, null),
     ex: /^[a-z0-9]{1,12}$/.test(init.ex || "") ? init.ex : null,
@@ -1458,8 +1564,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
   const stripRo = new ResizeObserver(() => drawStrip());
   stripRo.observe(strip);
-  $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); fitRoutes(); mv.draw(); });
-  $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); mv.fitAll(); mv.draw(); });
+  $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); if (v3) { v3.setFollow(false); v3.fitTrace(); } else { fitRoutes(); mv.draw(); } });
+  $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); if (v3) { v3.setFollow(false); v3.fitMap(); } else { mv.fitAll(); mv.draw(); } });
+  $("#sh-zin").addEventListener("click", () => v3?.zoom(1.4));
+  $("#sh-zout").addEventListener("click", () => v3?.zoom(1 / 1.4));
+  $("#sh-3d").addEventListener("click", () => toggle3d());
   window.scrollTo(0, 0);
   applyLayout();
   mv.setAlpha(mapAlpha / 100);
@@ -1470,5 +1579,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { stop(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

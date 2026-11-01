@@ -222,6 +222,7 @@ export async function action(E, act, btn, at = {}) {
     case "field-states": if (!ro()) fieldStates(E); break;
     case "view-course": E.fitCourse(); break;
     case "view-map": E.fitMap(); break;
+    case "view-3d": (await import("./relief3d.js")).view3d(E); break;
     case "view-all": E.opts.allControls = !E.opts.allControls; E.refresh(); E.toast(E.opts.allControls ? t("trc.dlg.allShown") : t("trc.dlg.othersHidden")); break;
     case "view-printarea": E.opts.printArea = !E.opts.printArea; E.redraw(); break;
     case "save-to": { const v = await modal(E, { title: t("trc.dlg.severalFiles"), body: `<label class="tr-check"><input type="radio" name="how" value="folder"> ${esc(t("trc.dlg.saveToFolder"))}</label>

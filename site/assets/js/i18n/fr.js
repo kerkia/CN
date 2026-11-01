@@ -1706,7 +1706,7 @@ export default {
   "rc.col.choice.hint": "Le temps de l’itinéraire que vous avez pris moins celui de l’itinéraire A", "rc.col.exec": "Exécution", "rc.col.exec.hint": "Votre temps réel moins le temps de l’itinéraire que vous avez pris",
   "rc.other": "autre", "rc.leg.none": "Choisissez un poste pour voir ses itinéraires calculés.", "rc.runners": "Coureurs (l’itinéraire pris)",
   "rc.pace.median": "l’allure médiane des coureurs sur ce poste",
-  "an.v3.hint": "Vue en 3D (prototype) : la carte posée sur le relief, la trace dessus", "an.v3.title": "Vue 3D (prototype)",
+  "an.v3.hint": "Vue en 3D : la carte posée sur le relief, les traces dessus", "an.v3.title": "Vue 3D",
   "an.v3.loading": "Relief : chargement…", "an.v3.loadingPct": "Relief : chargement… {p} %", "an.v3.relief": "Relief :",
   "an.v3.noWebgl": "La vue 3D demande WebGL, que ce navigateur n’offre pas.", "an.v3.failed": "Le relief n’a pas pu être chargé : la vue 3D n’est pas disponible pour le moment.",
   "an.v3.ex": "Exagération du relief", "an.v3.cached": "déjà chargé",
