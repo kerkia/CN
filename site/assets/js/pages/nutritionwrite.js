@@ -56,7 +56,7 @@ async function lists(main, query) {
 
   main.innerHTML = html`<div class="nut-w">
     <div class="page-head"><div><h1>${t("nav.nutritionWrite")}</h1><p class="lede">${t("nutw.lede")}</p></div>
-      <div class="row"><a class="btn" href="#/nutrition">${t("nutw.toBlog")}</a><a class="btn btn-primary" href="#/redaction?nouveau=1">${t("nut.write")}</a></div></div>
+      <div class="row"><a class="btn" href="#/sante">${t("nutw.toBlog")}</a><a class="btn btn-primary" href="#/redaction?nouveau=1">${t("nut.write")}</a></div></div>
     ${pageTabs(tabs, tab)}
     <div data-panel="articles">
       <div class="card"><div class="card-body">
@@ -101,7 +101,7 @@ async function lists(main, query) {
         <td>${p.lang.toUpperCase()}</td>
         <td class="r num">${p.words}</td>
         <td class="r num">${p.likes || ""}</td>
-        <td><div class="row" style="gap:6px;flex-wrap:nowrap">${isLive(p) ? html`<a class="btn btn-sm" href="#/nutrition?article=${p.id}">${t("nutw.view")}</a>` : ""}
+        <td><div class="row" style="gap:6px;flex-wrap:nowrap">${isLive(p) ? html`<a class="btn btn-sm" href="#/sante?article=${p.id}">${t("nutw.view")}</a>` : ""}
           ${p.canEdit ? html`<a class="btn btn-sm" href="#/redaction?id=${p.id}">${t("nut.edit")}</a>` : ""}</div></td>
       </tr>`)}</tbody></table>` : html`<div class="empty">${posts.length ? t("nut.noneFilter") : t("nutw.none")}</div>`;
     $("#nw-all")?.addEventListener("change", (e) => { for (const p of editable) e.target.checked ? sel.add(p.id) : sel.delete(p.id); drawTable(); });

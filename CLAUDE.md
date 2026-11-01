@@ -755,7 +755,9 @@ in multi-pick games), the answers and the result stay at the screen's bottom (st
 the Labyrinthe's view is nearly square on a narrow screen, hedge height tied to the lens (`WALL`), the start facing an open way, the
 buttons a pad, the view itself tapped (left/right third turns, middle steps, a swipe down steps back), its map as large as the view.
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
-- **Nutrition** (`#/nutrition`, `pages/nutrition.js`, and its authors' « Rédaction », `#/redaction`, `pages/nutritionwrite.js`; Coach,
+- **Santé / Health** (« Nutrition » until 2026-11-01, owner: more general — the name only: the code, the tables `nut_*`, the right
+  `users.nutrition` and the route key `nutrition` keep it; `#/sante`, the old `#/nutrition` still opens it), formerly **Nutrition**
+  (`pages/nutrition.js`, and its authors' « Rédaction », `#/redaction`, `pages/nutritionwrite.js`; Coach,
   after VMA; owner, 2026-11-01): a blog of articles by theme and by date. **Who**: D1 `users.nutrition` (migration 0017: '' / 'reader' /
   'author', the admin page's « Nutrition » column; Nadejda Le Helloco author and Alec Le Helloco reader from the start), the
   administrators always authors (`_lib/api.js` `nutritionRole`, `publicUser.nutrition`, `auth.nutritionReads` / `nutritionWrites`,
@@ -786,6 +788,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   Likes: `nut_likes`, one per account and published article (`POST …/posts/<id>/like`), counted on the cards, the article and
   « Rédaction »; no comments (owner). « À lire aussi »: three articles under each, by shared themes (×3), the words their titles
   and summaries share, then the nearer date (`nutrition.js` `related`).
+  Imported on 2026-11-01: the 21 posts of Nadejda's former blog Nutriami (BlogEngine.NET XML, comments left out), dated 2009-2012,
+  marked announced (no alerts), their categories mapped by name to the 8 themes, the 16 without one given themes by the owner.
   A deleted account's articles stay under the name they were published with. Local test: launch configs `pages-dev-nutrition`
   (8797, the test account an administrator) and `pages-dev-nutrition-user` (8798, not).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and

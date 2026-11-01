@@ -154,7 +154,7 @@ function parseHash(hash = location.hash) {
     : head === "coach" || head === "stats" || head === "orga" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31)
     : head === "definitions" ? "descriptions"
     : head === "symboles" ? "mapkey"
-    : head === "nutrition" ? "nutrition"
+    : head === "sante" || head === "nutrition" ? "nutrition"     // « Santé » (« Nutrition » until 2026-11-01: old links)
     : head === "redaction" ? "nutritionWrite"
     : "overview";
   return { route, arg: arg ? decodeURIComponent(arg) : null, query, path };
@@ -396,7 +396,7 @@ export function moduleMenus() {
     coach: [["analysisPerso", "#/analyse-solo", t("nav.analysisPerso")], ...(me ? [["analysisClub", "#/analyse-competition", t("nav.analysisClub")]] : []),
       ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       // « Nutrition » to the accounts given it, « Rédaction » to its authors alone (owner, 2026-11-01)
-      ["nutrition", "#/nutrition", t("nav.nutrition")], ["nutritionWrite", "#/redaction", t("nav.nutritionWrite")]]
+      ["nutrition", "#/sante", t("nav.nutrition")], ["nutritionWrite", "#/redaction", t("nav.nutritionWrite")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
     orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],

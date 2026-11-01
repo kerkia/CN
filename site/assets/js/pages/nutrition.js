@@ -64,7 +64,7 @@ export async function render(main, { query }) {
       ${[...years].map(([y, ms]) => html`<div class="nut-year">${y}</div>${ms.map((m) => html`<button type="button" data-month="${m}" aria-pressed="${st.month === m}">${monthLabel(m)}<span>${months.get(m)}</span></button>`)}`)}`;
   }
 
-  const chips = (p) => html`${p.cats.map((c) => cats.get(c)).filter(Boolean).map((c) => html`<a class="nut-chip" href="#/nutrition?theme=${c.id}" data-chip="${c.id}">${catName(c)}</a>`)}`;
+  const chips = (p) => html`${p.cats.map((c) => cats.get(c)).filter(Boolean).map((c) => html`<a class="nut-chip" href="#/sante?theme=${c.id}" data-chip="${c.id}">${catName(c)}</a>`)}`;
   const meta = (p) => html`<span>${fmtDay(p.published)}</span><span>${t("nut.by", { a: p.author })}</span><span>${readingTime(p.words)}</span>${p.lang !== lang() ? html`<span class="nut-lang" title="${t("nut.written", { lang: langName(p.lang) })}">${p.lang.toUpperCase()}</span>` : ""}${p.likes ? html`<span class="nut-likes" title="${tn("nut.likes", p.likes)}">${raw(HEART)} ${p.likes}</span>` : ""}`;
 
   function card(p, big = false) {
@@ -72,7 +72,7 @@ export async function render(main, { query }) {
       ${p.cover ? html`<img class="nut-cover" src="${p.cover}" alt="" loading="lazy">` : html`<div class="nut-cover nut-cover-none" aria-hidden="true">${raw(LEAF)}</div>`}
       <div class="nut-card-body">
         <div class="nut-chips">${p.pinned ? html`<span class="nut-chip pin">${t("nut.pinned")}</span>` : ""}${chips(p)}</div>
-        <h2><a href="#/nutrition?article=${p.id}">${p.title}</a></h2>
+        <h2><a href="#/sante?article=${p.id}">${p.title}</a></h2>
         ${p.summary ? html`<p class="nut-summary">${p.summary}</p>` : ""}
         <div class="nut-meta">${meta(p)}</div>
       </div></article>`;
@@ -117,7 +117,7 @@ export async function render(main, { query }) {
     if (!p) {
       const r = await call(`/posts/${id}`);
       if (st.article !== id) return;
-      if (!r.ok) { box.innerHTML = html`<a class="nut-back" href="#/nutrition">${t("nut.back")}</a><div class="card"><div class="empty">${t("nut.err.missing")}</div></div>`; return; }
+      if (!r.ok) { box.innerHTML = html`<a class="nut-back" href="#/sante">${t("nut.back")}</a><div class="card"><div class="empty">${t("nut.err.missing")}</div></div>`; return; }
       p = r.data; p.tr = {};
       cache.set(id, p);
     }
@@ -128,7 +128,7 @@ export async function render(main, { query }) {
     const tr = p.tr[lang()];
     const showTr = other && tr && !tr.error && p.view === "tr";
     const title = showTr ? tr.title : p.title, summary = showTr ? tr.summary : p.summary, body = showTr ? tr.body : p.body;
-    box.innerHTML = html`<a class="nut-back" href="#/nutrition${backQuery()}">${t("nut.back")}</a>
+    box.innerHTML = html`<a class="nut-back" href="#/sante${backQuery()}">${t("nut.back")}</a>
       <article class="card nut-article" lang="${showTr ? lang() : p.lang}">
         ${p.cover ? html`<img class="nut-article-cover" src="${p.cover}" alt="">` : ""}
         <div class="nut-article-in">
@@ -148,8 +148,8 @@ export async function render(main, { query }) {
         </div>
       </article>
       ${related(p).length ? html`<section class="nut-related"><h2>${t("nut.related")}</h2><div class="nut-grid">${related(p).map((x) => card(x))}</div></section>` : ""}
-      <nav class="nut-pager">${prev ? html`<a href="#/nutrition?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${prev.title}</b></a>` : html`<span></span>`}
-        ${next ? html`<a class="next" href="#/nutrition?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${next.title}</b></a>` : ""}</nav>`;
+      <nav class="nut-pager">${prev ? html`<a href="#/sante?article=${prev.id}${backQuery("&")}">${t("nut.prev")}<b>${prev.title}</b></a>` : html`<span></span>`}
+        ${next ? html`<a class="next" href="#/sante?article=${next.id}${backQuery("&")}">${t("nut.next")}<b>${next.title}</b></a>` : ""}</nav>`;
     $$("[data-view]", box).forEach((b) => b.addEventListener("click", () => translate(p, b.dataset.view)));
     $("#nut-like", box).addEventListener("click", async (e) => {
       const btn = e.currentTarget, on = !p.liked;
@@ -209,11 +209,11 @@ export async function render(main, { query }) {
   $("#nut-main").addEventListener("click", (e) => {
     if (e.target.closest("a")) return;
     const c = e.target.closest("[data-open]");
-    if (c) location.hash = `#/nutrition?article=${c.dataset.open}${backQuery("&")}`;
+    if (c) location.hash = `#/sante?article=${c.dataset.open}${backQuery("&")}`;
   });
   $("#nut-main").addEventListener("keydown", (e) => {
     const c = e.target.closest?.("[data-open]");
-    if (c && e.key === "Enter") location.hash = `#/nutrition?article=${c.dataset.open}${backQuery("&")}`;
+    if (c && e.key === "Enter") location.hash = `#/sante?article=${c.dataset.open}${backQuery("&")}`;
   });
   draw();
 
