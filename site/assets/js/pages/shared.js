@@ -1355,10 +1355,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         const i0 = indexAt(r.tr, r.passes[j - 1]), i1 = indexAt(r.tr, r.passes[j]), pts = [];
         for (let i = i0; i <= i1; i++) pts.push([r.pxs[i], r.pys[i]]);
         if (pts.length < 2) continue;
-        const m = await rcm.plan.line(pts);
+        const m = await rcm.plan.match([a.x, a.y], [b.x, b.y], pts, RC.matchTol(null), routes);
         if (my !== rcm.token) return;
-        mine.set(r.uid, { ...m, variant: RC.nearestRoute(routes, pts, 25 * pxPerM), actual: d });
-        pairs.push({ actual: d, model: m.time });
+        const c = RC.chosen(m, routes);
+        mine.set(r.uid, { ...m, ...c, actual: d });
+        pairs.push({ actual: d, model: c.time });
       }
       rcm.mine[j] = mine; rcm.auto[j] = RC.autoPace(pairs);
       rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
@@ -1391,8 +1392,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}</div>
       ${mine.size ? html`<p class="muted" style="margin:8px 0 2px">${t("rc.runners")}</p>
         ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb">
-          <div class="rc-lb-row">${dot(m.variant)}<b>${m.variant >= 0 ? RC.LETTERS[m.variant] : t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
-          <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m, pace, clock)}</span>
+          <div class="rc-lb-row">${dot(m.variant)}<b>${m.matched ? RC.LETTERS[m.variant] : RC.sharesLabel(m) || t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
+          <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m.facts, pace, clock)}</span>
             <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * pace))}</b></span>
             <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * pace))}</b></span></div></div>`; })}` : ""}`;
   }

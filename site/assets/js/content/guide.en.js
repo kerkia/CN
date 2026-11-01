@@ -311,11 +311,14 @@ export function build(X) {
             orange up to the variants' margin; nothing beyond. It shows at a glance the corridors of the good choices and what leaving them costs.</p>
           <p>Each variant says whether it goes left, right or straight against the line between the controls.</p>`)}
         ${slide("Coach · trial", "5. Your route", html`
-          <p>The runner's track between two controls is measured on the same model, then matched to the nearest variant (within 25 m on average,
-            else "other"). Solo analysis's table draws two gaps from it:</p>
+          <p>A GPS track runs a few metres beside the path it follows (the GPS's error and the calibration's): measured as it is, it would go
+            through the forest and cost more than the path. Ozimut therefore lays it on the map: the model's fastest way that keeps within its margin
+            of error (12 to 25 m, from the calibration), on the path when the track runs along it. Then it measures the share of that route following
+            each computed route. When it follows one for at least 80% of its length, that is the <b>route taken</b> and its time counts; otherwise
+            the list shows the share of each ("A 60% · B 35%") and the laid track's own time counts.</p>
           ${list([
-            html`<b>Choice</b>: the model's time on your route, minus route A's — what your choice cost (or gained) at equal running;`,
-            html`<b>Execution</b>: your actual time minus the model's time on your route — what the running itself cost (hesitations, mistakes,
+            html`<b>Choice</b>: the route taken's time minus route A's — zero when you took A;`,
+            html`<b>Execution</b>: your actual time minus the route taken's time — what the running itself cost (hesitations, mistakes,
               terrain slower than the map says).`,
           ])}
           <p>With the automatic pace, execution is zero at the median: it shows which legs were slower or faster than usual.</p>`)}`,

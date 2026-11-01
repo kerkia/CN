@@ -1575,9 +1575,9 @@ export async function render(main, { query = {}, route } = {}) {
             const i0 = indexAt(track, offset + l.t0), i1 = indexAt(track, offset + l.t1), pts = [];
             for (let k = i0; k <= i1; k++) pts.push([pxs[k], pys[k]]);
             if (pts.length > 1) {
-              const m = await rcs.plan.line(pts);
+              const m = await rcs.plan.match(a, b, pts, RC.matchTol(rmsM), routes);
               if (my !== rcs.token) return;
-              rcs.mine[i] = { ...m, variant: RC.nearestRoute(routes, pts, 25 * fit.scale), actual: l.time };
+              rcs.mine[i] = { ...m, ...RC.chosen(m, routes), actual: l.time };
             }
           }
           if (i === Math.max(0, legAt(tNow))) draw();
@@ -1614,8 +1614,9 @@ export async function render(main, { query = {}, route } = {}) {
       ${rows.map(({ l, i, routes, mine }) => html`<div class="rc-lb" data-leg="${i}">
         <div class="rc-lb-head"><b>${l.label}</b>${l.code ? html` <span class="muted">${l.code}</span>` : ""}</div>
         ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
-        ${mine ? html`<div class="rc-lb-row rc-lb-mine">${dot(mine.variant)}<b>${t("rc.col.mine")}</b> <span class="num">${RC.routeFacts(mine, pace, clock)}</span>
-            <span class="muted">· ${mine.variant >= 0 ? RC.LETTERS[mine.variant] : t("rc.other")}</span></div>
+        ${mine ? html`<div class="rc-lb-row rc-lb-mine">${dot(mine.variant)}<b>${t("rc.col.mine")}</b>
+            <span class="muted">${mine.matched ? RC.LETTERS[mine.variant] : RC.sharesLabel(mine) || t("rc.other")}</span>
+            <span class="num">${RC.routeFacts(mine.facts, pace, clock)}</span></div>
           <div class="rc-lb-gaps"><span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((mine.time - routes[0].time) * pace))}</b></span>
             ${mine.actual != null ? html`<span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(mine.actual - mine.time * pace))}</b></span>` : ""}</div>` : ""}
       </div>`)}`;

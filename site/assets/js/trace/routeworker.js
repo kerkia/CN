@@ -5,7 +5,7 @@
 // decision (the leg's decision map), line (a runner's route), picture (the terrain as read), controls (the course's controls:
 // the overprint near them is theirs).
 
-import { classify, cells, costs, context, legSearch, lineRoute, picture, decisionPicture, releaseAround, DEFAULTS } from "./routechoice.js";
+import { classify, cells, costs, context, legSearch, lineRoute, matchRoute, picture, decisionPicture, releaseAround, DEFAULTS } from "./routechoice.js";
 import { heightAt } from "./terrain.js";
 
 let G = null, h = null, em = null, mpc = 1, cs = 1, W = 0, H = 0, settings = { ...DEFAULTS }, X = null;
@@ -83,6 +83,7 @@ const ops = {
     return { rgba: decisionPicture(dec, settings.extra ?? DEFAULTS.extra), i0: dec.i0, j0: dec.j0, rw: dec.rw, rh: dec.rh, cs };
   },
   line({ pts }) { return { route: X ? lineRoute(X, pts) : null }; },
+  match({ a, b, pts, tol, routes }) { return { route: X ? matchRoute(X, a, b, pts, tol, routes) : null }; },
   picture() { return { rgba: picture(X), nx: G.nx, ny: G.ny, cs }; },
   controls({ pts }) { ctrlPts = pts || []; if (G) { G.release = releaseAround(G, em, ctrlPts); rebuild(); } return {}; },
 };

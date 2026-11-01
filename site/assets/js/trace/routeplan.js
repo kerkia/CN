@@ -3,7 +3,7 @@
 // multi » (with the reading's progress, a warning when the reading looks wrong, the terrain's legend), the routes and the
 // decision map drawn over the map, the reference pace from a runner's own legs.
 
-import { html, raw, $, fmt } from "../util.js";
+import { html, raw, $, fmt, pct } from "../util.js";
 import { t } from "../i18n.js";
 import { DEFAULTS, LEGEND, A } from "./routechoice.js";
 import { layers, VECTOR_ACCEPT } from "./vectorroutes.js";
@@ -111,6 +111,13 @@ export function planner(image, toM, vector = null, opts = {}) {
     },
     /** A route drawn by a runner measured on the same model. */
     async line(pts) { await ready; return (await ask("line", { pts: pts.map(S) })).route; },
+    /** A runner's route on the leg a → b as the model runs it, within tol metres of their trace, and its share along each of
+     *  the leg's routes (trace/routechoice.js matchRoute). */
+    async match(a, b, pts, tol, routes) {
+      await ready;
+      const r = (await ask("match", { a: S(a), b: S(b), pts: pts.map(S), tol, routes: (routes || []).map((x) => x.pts.map(S)) })).route;
+      return r && { ...r, pts: r.pts.map(U) };
+    },
     /** The terrain as read, a canvas of one pixel a cell, and the cell's size in map pixels. */
     async picture() {
       await ready;
@@ -123,8 +130,23 @@ export function planner(image, toM, vector = null, opts = {}) {
   };
 }
 
+/** The matching's tolerance, metres: the GPS's error and the calibration's together (its fit, metres), 12 to 25 m. */
+export const matchTol = (rms) => Math.max(12, Math.min(25, 8 + (Number.isFinite(rms) ? rms : 6)));
+/**
+ * What a runner chose on a leg: the computed route their route follows for 80 % of its length — that route's time counts, so
+ * the choice of A costs nothing —, else their route itself as the model runs it. Returns { variant (-1: none named), share,
+ * matched, time (s at 1 s/m), facts (the route whose time, length and climb are shown) }.
+ */
+export function chosen(m, routes) {
+  let n = -1, sh = 0;
+  (m.shares || []).forEach((v, i) => { if (v > sh) { sh = v; n = i; } });
+  if (n >= 0 && sh >= 0.8 && routes?.[n]) return { variant: n, share: sh, matched: true, time: routes[n].time, facts: routes[n] };
+  return { variant: sh >= 0.5 ? n : -1, share: sh, matched: false, time: m.time, facts: m };
+}
+/** The routes a runner's route follows, by share: « A 62 % · B 31 % » (10 % or more). */
+export const sharesLabel = (m) => (m.shares || []).map((v, i) => [v, i]).filter(([v]) => v >= 0.1).sort((x, y) => y[0] - x[0]).map(([v, i]) => `${LETTERS[i]} ${pct(v)}`).join(" · ");
 /** A runner's reference pace (seconds per metre of white forest on the flat): the median of their legs' actual time over
- *  the model's time of the route they ran, kept between 3 and 20 min/km. */
+ *  the model's time of the route they chose (`chosen`), kept between 3 and 20 min/km. */
 export function autoPace(pairs) {
   const r = pairs.filter((p) => p.actual > 0 && p.model > 0).map((p) => p.actual / p.model).sort((a, b) => a - b);
   if (!r.length) return null;

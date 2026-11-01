@@ -1140,6 +1140,75 @@ export function lineRoute(X, pts) {
   return polyline(X, pts.map(([x, y]) => [x / cs, y / cs]), 4);
 }
 
+/**
+ * A runner's route on a leg as the model runs it (owner, 2026-11-01: a trace a few metres beside a track, the GPS's error and
+ * the calibration's, was measured in the forest and cost 44 s more than the route it followed): the fastest way from control
+ * pa to control pb within tolM metres of the trace pts (map px) — on the track when the trace runs along it. Then its share
+ * along each of the leg's routes (their pts, map px): the share of its length within tolM of that route. Returns the route
+ * measured as legSearch's are ({ pts, time, cost, len, up, down, onPath }) with shares [0-1 per route], or the trace itself
+ * measured (snapped false) when no way keeps within the corridor.
+ */
+export function matchRoute(X, pa, pb, pts, tolM, routes = []) {
+  const { nx, ny, cs } = X.G;
+  const cell = (p) => Math.min(ny - 1, Math.max(0, Math.floor(p[1] / cs))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(p[0] / cs)));
+  const a = cell(pa), b = cell(pb);
+  // the trace's cells every half cell, from the start control to the finish control
+  const line = [], seq = [pa, ...pts, pb];
+  for (let i = 1; i < seq.length; i++) {
+    const [x0, y0] = seq[i - 1], [x1, y1] = seq[i], n = Math.max(1, Math.ceil((Math.hypot(x1 - x0, y1 - y0) * 2) / cs));
+    for (let s = 0; s <= n; s++) { const k = cell([x0 + ((x1 - x0) * s) / n, y0 + ((y1 - y0) * s) / n]); if (line[line.length - 1] !== k) line.push(k); }
+  }
+  const saved = [];
+  for (const k0 of [a, b]) near(X, [k0], 3, (k) => { if (!(X.C.f[k] < Infinity)) { saved.push([k, X.C.f[k]]); X.C.f[k] = 2; } });
+  let q = null;
+  try {
+    // the corridor, widened once if the trace crosses what the model takes for impassable
+    for (const f of [1, 2]) { q = astar(X, a, b, around(X, line, (f * tolM) / X.mpc)); if (q) break; }
+  } finally { for (const [k, v] of saved) X.C.f[k] = v; }
+  let P, m, snapped = !!q;
+  if (q) { P = tighten(X, q, measure(X, q).cum); m = polyline(X, P, 4); }
+  else { P = seq.map(([x, y]) => [x / cs, y / cs]); m = polyline(X, P, 4); }
+  const out = P.map(([x, y]) => [x * cs, y * cs]);
+  // its share along each route: points every ~2 m, within tolM of the route's polyline
+  const ppm = cs / X.mpc, tol = tolM * ppm;
+  const samples = [];
+  for (let i = 1; i < out.length; i++) {
+    const [x0, y0] = out[i - 1], [x1, y1] = out[i], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (2 * ppm)));
+    for (let s = 0; s < n; s++) samples.push([x0 + ((x1 - x0) * (s + 0.5)) / n, y0 + ((y1 - y0) * (s + 0.5)) / n]);
+  }
+  const dist = (p, poly) => {
+    let d = Infinity;
+    for (let i = 1; i < poly.length; i++) {
+      const [ax, ay] = poly[i - 1], [bx, by] = poly[i], ux = bx - ax, uy = by - ay, l2 = ux * ux + uy * uy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p[0] - ax) * ux + (p[1] - ay) * uy) / l2)) : 0;
+      d = Math.min(d, Math.hypot(ax + t * ux - p[0], ay + t * uy - p[1]));
+    }
+    return d;
+  };
+  const shares = routes.map((r) => (samples.length ? samples.filter((p) => dist(p, r) <= tol).length / samples.length : 0));
+  return { pts: out, ...m, shares, snapped };
+}
+/** A search region: the cells within r cells of a route's cells. */
+function around(X, path, r) {
+  const { nx } = X.G, rr = Math.ceil(r);
+  let i0 = Infinity, j0 = Infinity, i1 = -1, j1 = -1;
+  for (const k of path) { const i = k % nx, j = (k - i) / nx; i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
+  const reg = { i0: Math.max(0, i0 - rr), j0: Math.max(0, j0 - rr), i1: Math.min(nx - 1, i1 + rr), j1: Math.min(X.G.ny - 1, j1 + rr) };
+  reg.rw = reg.i1 - reg.i0 + 1;
+  reg.inside = new Uint8Array(reg.rw * (reg.j1 - reg.j0 + 1));
+  const step = Math.max(1, Math.floor(r / 2));
+  for (let q = 0; q < path.length; q += step) {
+    const k = path[q], ci = k % nx, cj = (k - ci) / nx;
+    for (let j = Math.max(reg.j0, cj - rr); j <= Math.min(reg.j1, cj + rr); j++) for (let i = Math.max(reg.i0, ci - rr); i <= Math.min(reg.i1, ci + rr); i++) {
+      if ((i - ci) ** 2 + (j - cj) ** 2 <= r * r) reg.inside[(j - reg.j0) * reg.rw + i - reg.i0] = 1;
+    }
+  }
+  // the last cell too, whatever the step
+  const k = path[path.length - 1], ci = k % nx, cj = (k - ci) / nx;
+  for (let j = Math.max(reg.j0, cj - rr); j <= Math.min(reg.j1, cj + rr); j++) for (let i = Math.max(reg.i0, ci - rr); i <= Math.min(reg.i1, ci + rr); i++) if ((i - ci) ** 2 + (j - cj) ** 2 <= r * r) reg.inside[(j - reg.j0) * reg.rw + i - reg.i0] = 1;
+  return reg;
+}
+
 /** The colours of the terrain as read, for a picture of the cells (RGBA, one pixel a cell): the areas, the three path kinds,
  *  a black line that blocks, a north line taken out. */
 export const CLASS_RGB = [[255, 255, 255], [255, 186, 54], [255, 228, 150], [196, 234, 180], [120, 200, 100], [40, 140, 60], [40, 120, 230], [140, 190, 245], [205, 160, 110], [130, 130, 20], [70, 40, 110], [150, 150, 150], [80, 170, 190]];

@@ -1828,7 +1828,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   optimal under the caution (the caution pulls toward the track), so it is not offered. Scratch: `rc/` in that session's scratchpad
   (`fnew.mjs`, `synth_new.mjs`, `gpic.mjs`), copied to `C:\kerkia\cn-data\scratch-scripts`. Not done: the line network as a graph
   of its own for the search (the raster's path cells carry it), form lines, dashed contours.
-  A runner's route is measured on the same model (`lineRoute`), matched to a variant within 25 m.
+  **A runner's route** (owner, 2026-11-01: on leg 1 the runner took A along the track, yet « Choix » said +0:43 — the GPS line, a
+  few metres beside the track, was measured in the forest): `matchRoute` lays the trace on the map — the model's fastest way from
+  control to control within `matchTol` (8 m + the calibration's fit, 12-25 m; 15 m in Multi) of the trace, on the track when the
+  trace runs along it, the corridor doubled once if the trace crosses what reads impassable — and measures its share along each
+  computed route (points every ~2 m within the tolerance). `routeplan.chosen`: a route followed for 80 % of the length is the
+  route taken (its letter, its time); else the shares are listed (« B 64 % · A 10 % ») and the laid trace's time counts. Choix =
+  the time taken − A's (0 when A was taken); Exécution = the real time − the time taken; the automatic pace from the same times.
+  On the Fougères photo 7 legs of 16 match a route outright (leg 1: A at 100 %, Choix 0). The worker's op `match`; `lineRoute`
+  stays for any line.
   Pace: the one typed, else (solo) the median of the runner's legs' actual ÷ model time, (multi) the runners' median on the leg,
   clamped 3-20 min/km, else 6:00. Solo computes every leg (the current first) and adds the card « Itinéraires calculés » (Choix =
   model of one's route − A; Exécution = actual − model); multi computes the leg shown and lists the runners shown. Settings in

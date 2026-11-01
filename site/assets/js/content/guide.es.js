@@ -320,12 +320,14 @@ export function build(X) {
             elecciones y lo que cuesta salirse de ellos.</p>
           <p>Cada variante indica si pasa por la izquierda, por la derecha o recto respecto a la línea entre los controles.</p>`)}
         ${slide("Coach · prueba", "5. Tu ruta", html`
-          <p>El track del corredor entre dos controles se mide con el mismo modelo y luego se asocia a la variante más cercana (a menos de 25 m de media;
-            si no, «otra»). La tabla del Análisis individual saca de ello dos diferencias:</p>
+          <p>Un track GPS pasa a unos metros del camino que sigue (el error del GPS y el de la calibración): medido tal cual, iría por el bosque y
+            costaría más que el camino. Por eso Ozimut lo coloca sobre el mapa: el camino más rápido del modelo que se mantiene dentro de su margen de
+            error (de 12 a 25 m, según la calibración), sobre el camino cuando el track lo sigue. Luego mide la parte de esa ruta que sigue cada ruta
+            calculada. Si sigue una en al menos el 80 % de su longitud, esa es la <b>ruta tomada</b> y cuenta su tiempo; si no, la lista muestra la parte
+            de cada una («A 60 % · B 35 %») y cuenta el tiempo del track colocado.</p>
           ${list([
-            html`<b>Elección</b>: el tiempo del modelo en tu ruta menos el de la ruta A: lo que tu elección ha costado (o aportado) a igualdad de
-              carrera;`,
-            html`<b>Ejecución</b>: tu tiempo real menos el tiempo del modelo en tu ruta: lo que ha costado la propia carrera (dudas, errores, terreno
+            html`<b>Elección</b>: el tiempo de la ruta tomada menos el de la ruta A: nulo cuando tomaste A;`,
+            html`<b>Ejecución</b>: tu tiempo real menos el tiempo de la ruta tomada: lo que ha costado la propia carrera (dudas, errores, terreno
               más lento de lo que dice el mapa).`,
           ])}
           <p>Con el ritmo automático, la ejecución es nula en la mediana: indica qué tramos fueron más lentos o más rápidos de lo habitual.</p>`)}`,

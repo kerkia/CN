@@ -324,12 +324,14 @@ export function build(X) {
             Entscheidungen und was es kostet, sie zu verlassen.</p>
           <p>Jede Variante sagt, ob sie gegenüber der Linie zwischen den Posten links, rechts oder geradeaus verläuft.</p>`)}
         ${slide("Coach · Test", "5. Deine Route", html`
-          <p>Der Track des Läufers zwischen zwei Posten wird mit demselben Modell gemessen und dann der nächstgelegenen Variante zugeordnet (im Mittel auf
-            25 m genau, sonst „andere“). Die Tabelle der Einzelanalyse leitet daraus zwei Differenzen ab:</p>
+          <p>Ein GPS-Track verläuft ein paar Meter neben dem Weg, dem er folgt (der Fehler des GPS und der Kalibrierung): So gemessen ginge er durch
+            den Wald und kostete mehr als der Weg. Ozimut legt ihn deshalb auf die Karte: der schnellste Weg des Modells, der innerhalb seiner
+            Fehlergrenze bleibt (12 bis 25 m, nach der Kalibrierung), auf dem Weg, wenn der Track ihm folgt. Dann misst es, welcher Anteil dieser Route
+            jeder berechneten Route folgt. Folgt sie einer auf mindestens 80 % ihrer Länge, ist das die <b>gewählte Route</b> und ihre Zeit zählt;
+            sonst zeigt die Liste den Anteil jeder („A 60 % · B 35 %“) und es zählt die Zeit des aufgelegten Tracks.</p>
           ${list([
-            html`<b>Wahl</b>: die Modellzeit auf deiner Route minus die von Route A – was deine Wahl bei gleichem Laufen gekostet (oder gebracht)
-              hat;`,
-            html`<b>Ausführung</b>: deine echte Zeit minus die Modellzeit auf deiner Route – was das Laufen selbst gekostet hat (Zögern,
+            html`<b>Wahl</b>: die Zeit der gewählten Route minus die von Route A – null, wenn du A gewählt hast;`,
+            html`<b>Ausführung</b>: deine echte Zeit minus die Zeit der gewählten Route – was das Laufen selbst gekostet hat (Zögern,
               Fehler, Gelände langsamer, als die Karte sagt).`,
           ])}
           <p>Mit dem automatischen Tempo ist die Ausführung im Median null: Sie zeigt, welche Teilstrecken langsamer oder schneller als üblich waren.</p>`)}`,

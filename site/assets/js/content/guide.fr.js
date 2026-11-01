@@ -323,15 +323,17 @@ export function build(X) {
             de s'en écarter.</p>
           <p>Chaque variante dit si elle passe à gauche, à droite ou tout droit par rapport à la ligne entre les postes.</p>`)}
         ${slide("Coach · essai", "5. Votre itinéraire", html`
-          <p>La trace du coureur entre deux postes est mesurée sur le même modèle, puis rapprochée de la variante la plus proche (à 25 m en moyenne près,
-            sinon « autre »). Le tableau de l'Analyse solo en tire deux écarts :</p>
+          <p>Une trace GPS court quelques mètres à côté du chemin qu'elle suit (l'erreur du GPS et celle du calage) : mesurée telle quelle, elle passerait
+            en forêt et coûterait plus que le chemin. Ozimut la recale donc sur la carte : le chemin le plus rapide du modèle qui reste à sa marge
+            d'erreur près (12 à 25 m, d'après le calage), sur le chemin quand la trace le longe. Puis il mesure la part de cet itinéraire qui suit
+            chaque itinéraire calculé. S'il en suit un sur 80 % de sa longueur au moins, c'est l'<b>itinéraire pris</b> et son temps compte ; sinon,
+            la liste montre la part de chacun (« A 60 % · B 35 % ») et c'est le temps de la trace recalée qui compte.</p>
           ${list([
-            html`<b>Choix</b> : le temps du modèle sur votre itinéraire, moins celui de l'itinéraire A — ce que votre choix a coûté (ou rapporté) à
-              course égale ;`,
-            html`<b>Exécution</b> : votre temps réel moins le temps du modèle sur votre itinéraire — ce que la course elle-même a coûté (hésitations,
+            html`<b>Choix</b> : le temps de l'itinéraire pris, moins celui de l'itinéraire A — nul quand vous avez pris A ;`,
+            html`<b>Exécution</b> : votre temps réel moins le temps de l'itinéraire pris — ce que la course elle-même a coûté (hésitations,
               erreurs, terrain plus lent que la carte ne le dit).`,
           ])}
-          <p>Avec l'allure automatique, l'exécution est nulle en médiane : elle dit quels inter-postes ont été plus lents ou plus rapides que d'habitude.</p>`)}`,
+          <p>Avec l'allure automatique, l'exécution est nulle en médiane : elle dit quels inter-postes ont été plus lents ou plus rapides que d'habitude.</p>`)}`,
     });
   }
 
