@@ -20,7 +20,7 @@
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { backLine } from "./mapanalysis.js";
 import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
-import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock } from "../trace/drawroute.js";
+import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock, pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
@@ -792,7 +792,7 @@ export async function render(main, { query = {}, route } = {}) {
     const r = runner();
     const work = $("#an-work");
     if (drawing && map) { work.hidden = false; steps(3); size(); fitView(); drawSide(); draw(); return; }
-    drawing = null;
+    endDraw();
     work.hidden = !(map && track && r);
     steps(stage());
     if (work.hidden) return;
@@ -935,7 +935,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the georeferencing
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
-    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); geoHow = t(track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow"); }
+    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); notes.push(t(track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow")); }
     else if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
     else if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
     else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }
@@ -967,7 +967,7 @@ export async function render(main, { query = {}, route } = {}) {
       // ready, not played: the page opens on the files and the calibration (« Voir la course » plays it), so that new
       // files can be dropped — it went straight to the playback, and the files could no longer be changed (owner, 2026-10-15);
       // except in a tab opened by « ↗ » during the playback, which goes on with it
-      if (autoPlay && fit && offset != null) { autoPlay = false; finish(); }
+      if ((autoPlay || orgaGo) && fit && offset != null) { autoPlay = false; orgaGo = false; finish(); }
       return;
     }
     // the course's points
@@ -1442,6 +1442,7 @@ export async function render(main, { query = {}, route } = {}) {
       if (drawing.force) { k = "control"; drawing.force = false; }
       if (k && Math.hypot(p[0] - d.pts[n - 1][0], p[1] - d.pts[n - 1][1]) < 1) return;   // the same circle again
       d.pts.push(p); d.kind.push(k);
+      drawing.raw = null; drawing.snapNote = "";
       if (k === "finish") toTimes();
     }
     drawing.err = ""; drawSide(); draw();
@@ -1476,7 +1477,7 @@ export async function render(main, { query = {}, route } = {}) {
         ${status ? html`<p class="muted">${status}</p>` : ""}
         <p class="hint">${t(d.pts.length ? "an.draw.help" : "an.draw.help0")}</p>
         <p class="muted">${t("an.draw.count", { n: d.pts.length, c: ctl })}${course || files.orga || status ? "" : html` · ${t("an.draw.noCircles")}`}</p>
-        ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}</div>
+        ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}${snapBox()}</div>
         <div class="an-actions">
           <button type="button" class="btn btn-primary" id="an-dr-fin" ${raw(d.pts.length >= 2 ? "" : "disabled")}>${t("an.draw.finishHere")}</button>
           <button type="button" class="btn btn-sm" id="an-dr-force" aria-pressed="${drawing.force}" ${raw(d.pts.length ? "" : "disabled")}>◎ ${t("an.draw.force")}</button>
@@ -1488,6 +1489,7 @@ export async function render(main, { query = {}, route } = {}) {
       $("#an-dr-undo").addEventListener("click", () => drawUndo());
       $("#an-dr-clear").addEventListener("click", () => { d.pts = []; d.kind = []; d.at = {}; drawSide(); draw(); });
       $("#an-dr-cancel").addEventListener("click", () => cancelDraw());
+      bindSnap();
       return;
     }
     const pub = withTimes && ri >= 0 && race?.date_iso && startOf(runner()) != null;
@@ -1500,7 +1502,7 @@ export async function render(main, { query = {}, route } = {}) {
         <label><span>${t("an.draw.start")}</span><input type="time" id="an-dr-start" value="${hm(drawing.startS)}"></label></div>`}
       ${georef ? "" : html`<label class="an-dr-km"><span>${t("an.draw.km")}</span><input type="text" inputmode="decimal" id="an-dr-km" value="${drawing.km != null ? fmt(drawing.km, 2) : ""}" placeholder="4,5"></label>
         <p class="hint">${t("an.draw.km.hint")}</p>`}
-      ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}</div>
+      ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}${snapBox()}</div>
       <div class="an-actions"><button type="button" class="btn btn-primary" id="an-dr-ok">${t("an.draw.ok")}</button>
         <button type="button" class="btn btn-sm" id="an-dr-back">✎ ${t("an.draw.back")}</button>
         <button type="button" class="btn btn-sm" id="an-dr-cancel">${t("an.draw.cancel")}</button></div>`;
@@ -1517,6 +1519,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-dr-ok").addEventListener("click", () => { if (!read()) { drawing.err = t("an.draw.err.times"); drawSide(); return; } buildDrawn(); });
     $("#an-dr-back").addEventListener("click", () => { read(); drawing.step = "draw"; drawing.err = ""; drawSide(); draw(); });
     $("#an-dr-cancel").addEventListener("click", () => cancelDraw());
+    bindSnap(read);
   }
   function drawUndo() {
     if (!drawing) return;
@@ -1525,7 +1528,9 @@ export async function render(main, { query = {}, route } = {}) {
     else if (d.pts.length) { delete d.at[d.pts.length - 1]; d.pts.pop(); d.kind.pop(); }
     drawSide(); draw();
   }
-  function cancelDraw() { drawing = null; filesCard(); setup(); }
+  function cancelDraw() { endDraw(); filesCard(); setup(); }
+  /** The drawing ends: its map reader (the snapping's) goes with it. */
+  function endDraw() { drawing?.plan?.destroy(); drawing = null; }
   /** The map's georeference (lon, lat -> px) from the files given, for a route drawn on it: { geo }, or null. */
   function mapGeo() {
     if (!map) return null;
@@ -1540,26 +1545,87 @@ export async function render(main, { query = {}, route } = {}) {
       return validGeo(g) ? { geo: g } : null;
     } catch (e) { console.error(e); return null; }
   }
+  /** A map without georeference: its pixels a metre — the course's length the runner gives (else the class's) over the course
+   *  drawn from control to control; else the circles' size, 7.5 mm across at 1:10 000 in forest, 6 mm at 1:4 000 in sprint. */
+  function ownScale(d) {
+    const sp = straightPx(d), rr = files.orga?.r || course?.r || null, sprint = /sprint/i.test(`${race?.name || ""} ${klass()?.name || ""}`);
+    return drawing.km > 0 && sp > 0 ? sp / (drawing.km * 1000) : rr ? rr / (sprint ? 12 : 37.5) : 1;
+  }
+
+  // ---- « Coller aux chemins » (owner, 2026-11-02): each leg of the sketch laid on the way the map's reading runs nearest to it —
+  // the computed routes' engine (trace/routeplan.js, routechoice.js matchRoute: the fastest way within a corridor round the line
+  // drawn, widened once when it crosses what reads impassable) —, the controls kept where they are; « Revenir à mon dessin »
+  // brings the sketch back. The map is read once per drawing, in a worker.
+  async function snapDrawing() {
+    const d = drawing.d, A = anchorsOf(d);
+    if (A.length < 2 || drawing.snapping) return;
+    const W = map.width, H = map.height, g = mapGeo()?.geo || ownGeo(ownScale(d), W, H);
+    const [la0, lo0] = pxToLatLon(g, W / 2, H / 2), F = frameAt(la0, lo0);
+    const toMp = (x, y) => { const [la, lo] = pxToLatLon(g, x, y); return [(lo - lo0) * F.kx, -(la - la0) * F.ky]; };
+    const sprint = RC.isSprint(race) || /sprint/i.test(klass()?.name || "");
+    const say = (text, frac = null) => { if (!drawing) return; drawing.snapping = text; drawing.snapProg = frac; drawSide(); };
+    const me = drawing;
+    try {
+      say(t("an.draw.snap.reading"), 0);
+      if (!me.plan) me.plan = RC.planner(map, toMp, null, { map: sprint ? "sprint" : "forest", onProgress: (f) => { if (drawing === me) say(t("an.draw.snap.reading"), f); } });
+      await me.plan.ready;
+      await me.plan.controls(A.map((a) => d.pts[a.i]));
+      if (drawing !== me) return;
+      const raw0 = me.raw || { pts: d.pts.map((p) => [...p]), kind: [...d.kind], at: { ...d.at } };
+      const out = { pts: [[...d.pts[A[0].i]]], kind: [A[0].k], at: {} }, tol = sprint ? 15 : 30;
+      let done = 0;
+      for (let j = 1; j < A.length; j++) {
+        say(t("an.draw.snap.leg", { n: j, t: A.length - 1 }), (j - 1) / (A.length - 1));
+        const a = A[j - 1].i, b = A[j].i, inner = d.pts.slice(a + 1, b);
+        const r = await me.plan.match(d.pts[a], d.pts[b], inner, tol, []);
+        if (drawing !== me) return;
+        const mid = r?.snapped && r.pts.length > 2 ? r.pts.slice(1, -1) : inner;
+        if (r?.snapped) done++;
+        for (const p of mid) { out.pts.push([p[0], p[1]]); out.kind.push(""); }
+        out.pts.push([...d.pts[b]]); out.kind.push(A[j].k);
+        if (Number.isFinite(d.at[b])) out.at[out.pts.length - 1] = d.at[b];
+      }
+      for (let i = A[A.length - 1].i + 1; i < d.pts.length; i++) { out.pts.push([...d.pts[i]]); out.kind.push(d.kind[i]); }    // after the last control
+      me.raw = raw0; me.d = out;
+      me.snapNote = t("an.draw.snap.done", { n: done, t: A.length - 1 });
+    } catch (e) { console.error(e); me.snapNote = t("an.draw.snap.failed"); }
+    if (drawing === me) { me.snapping = ""; me.snapProg = null; drawSide(); draw(); }
+  }
+  /** The sketch as drawn before the snapping, the times typed since kept for its controls. */
+  function unsnapDrawing() {
+    if (!drawing?.raw) return;
+    const cur = drawing.d, raw0 = drawing.raw, A = anchorsOf(cur), R = anchorsOf(raw0);
+    if (A.length === R.length) A.forEach((a, j) => { if (Number.isFinite(cur.at[a.i])) raw0.at[R[j].i] = cur.at[a.i]; else delete raw0.at[R[j].i]; });
+    drawing.d = raw0; drawing.raw = null; drawing.snapNote = "";
+    drawSide(); draw();
+  }
+  /** The snapping's line in the drawing's panel: its button, or where it is, and what it does. */
+  function snapBox() {
+    if (anchorsOf(drawing.d).length < 2) return "";
+    return html`<div class="an-dr-snap">${drawing.snapping
+      ? html`<div class="muted">${drawing.snapping}</div>${raw(drawing.snapProg == null ? "<progress></progress>" : `<progress max="1" value="${drawing.snapProg}"></progress>`)}`
+      : html`<div class="an-dr-snap-btns"><button type="button" class="btn btn-sm" id="an-dr-snap">⤳ ${t("an.draw.snap")}</button>
+        ${drawing.raw ? html`<button type="button" class="btn btn-sm" id="an-dr-unsnap">↶ ${t("an.draw.unsnap")}</button>` : ""}</div>`}
+      <p class="hint">${drawing.snapNote || t("an.draw.snap.hint")}</p></div>`;
+  }
+  const bindSnap = (before = null) => {
+    $("#an-dr-snap")?.addEventListener("click", () => { before?.(); snapDrawing(); });
+    $("#an-dr-unsnap")?.addEventListener("click", () => { before?.(); unsnapDrawing(); });
+  };
   /** The drawing made a GPX, then taken as a trace dropped on the page. */
   async function buildDrawn() {
     const d = drawing.d, T = timeline(d);
     if (!T) { drawing.err = t("an.draw.err.times"); drawSide(); return; }
     const W = map.width, H = map.height, mg = mapGeo();
     let geo = mg?.geo || null, nogeo = false;
-    if (!geo) {
-      // the scale: the course's length the runner gives (else the class's), over the course drawn from control to control; else
-      // the circles' size — 7.5 mm across at 1:10 000 in forest, 6 mm at 1:4 000 in sprint
-      const sp = straightPx(d), rr = files.orga?.r || course?.r || null, sprint = /sprint/i.test(`${race?.name || ""} ${klass()?.name || ""}`);
-      const pxPerM = drawing.km > 0 && sp > 0 ? sp / (drawing.km * 1000) : rr ? rr / (sprint ? 12 : 37.5) : 1;
-      geo = ownGeo(pxPerM, W, H); nogeo = true;
-    }
+    if (!geo) { geo = ownGeo(ownScale(d), W, H); nogeo = true; }
     const pub = withTimes && ri >= 0 && race?.date_iso ? startOf(runner()) : null;
     const day = pub != null ? race.date_iso : drawing.day;
     const startMs = Date.parse(`${day}T00:00:00Z`) - parisOffsetMs(day) + (pub ?? drawing.startS) * 1000;
     const name = [race?.name, withTimes && ri >= 0 ? runner()?.name : ""].filter(Boolean).join(" · ") || t("an.draw.name");
     const gpx = toGpx({ d, T, geo, nogeo, startMs, w: W, h: H, name, km: drawing.km });
     const file = new File([gpx], `ozimut-${day}-${t("an.draw.file")}.gpx`, { type: "application/gpx+xml" });
-    drawing = null;
+    endDraw();
     orgaGo = true;                                                   // placed by its own making: straight to its playback
     await take([file]);
   }
