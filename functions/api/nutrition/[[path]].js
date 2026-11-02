@@ -360,6 +360,10 @@ export const onRequest = withUser(async (ctx, me) => {
         published_at = ?, words = ?, version = version + 1, updated_at = ? WHERE id = ?`)
         .bind(author[0], author[1], f.lang, f.title, f.summary, f.body, f.cover, f.status, f.pinned, published, f.words, now, p.id).run();
       await setCats(env, p.id, f.cats);
+      // a change that leaves the text as it was (the date, the themes, the author…) keeps its translations: they follow the new
+      // version instead of being made again (owner, 2026-11-02: authors re-date articles)
+      if (f.title === p.title && f.summary === (p.summary || "") && f.body === p.body && f.lang === p.lang)
+        await env.DB.prepare("UPDATE nut_translations SET version = ? WHERE post_id = ? AND version = ?").bind(p.version + 1, p.id, p.version).run();
       // the images the change took out
       const kept = new Set(imgKeys(`${f.body} ${f.cover}`));
       const gone = imgKeys(`${before.body} ${before.cover}`).filter((k) => !kept.has(k));

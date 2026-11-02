@@ -807,7 +807,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   / `translateSoon`; what is missing, one at a time behind /api/track and the list, every 10 min an isolate, 40 a day). A reader
   sees an article in their language when a translation of its current version into it is kept, else in English, « Voir
   l'original » one click away (`translationsFor`, the list's titles too); nothing is translated on request any more, nor offered.
-  The translations into French, German or Spanish made on request before stay in use. **Writing**: « Articles » (filters; ticked ones published, back to
+  The translations into French, German or Spanish made on request before stay in use. A change leaving the title, summary, body and language as they were
+  (the date, themes, author…) moves the kept translations to the new version instead of making them again (2026-11-02). The
+  « Date de publication » can be changed at any time: a past date backdates the article. **Writing**: « Articles » (filters; ticked ones published, back to
   draft, added to or taken out of a theme, given to another author — administrators —, deleted), « Thèmes » (a name per language),
   the editor (`?id=`, `?nouveau=1`): one ribbon (history, paragraph style, bold… colours, highlight, clear; lists, indents, alignment;
   link, image — also pasted or dropped —, table, line, emoji; a table's rows and columns and an image's width when one is chosen;

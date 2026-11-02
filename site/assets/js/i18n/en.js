@@ -4368,7 +4368,7 @@ export default {
   "nutw.f.body": "Article text",
   "nutw.f.lang": "Article language",
   "nutw.f.date": "Publication date",
-  "nutw.f.date.hint": "Empty: the day it is published. A date to come publishes it on that day.",
+  "nutw.f.date.hint": "The day shown on the article, which you can change at any time: a past date backdates it, a date to come publishes it on that day, empty: the day it is published.",
   "nutw.f.pinned": "Featured (at the top of the list)",
   "nutw.f.cover": "Cover image",
   "nutw.f.summary": "Summary",

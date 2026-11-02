@@ -4588,7 +4588,7 @@ export default {
   "nutw.f.body": "Text des Artikels",
   "nutw.f.lang": "Sprache des Artikels",
   "nutw.f.date": "Veröffentlichungsdatum",
-  "nutw.f.date.hint": "Leer: der Tag der Veröffentlichung. Ein künftiges Datum veröffentlicht ihn an diesem Tag.",
+  "nutw.f.date.hint": "Der Tag, den der Artikel zeigt, jederzeit änderbar: ein vergangenes Datum datiert ihn zurück, ein künftiges veröffentlicht ihn an diesem Tag, leer: der Tag der Veröffentlichung.",
   "nutw.f.pinned": "Empfohlen (oben in der Liste)",
   "nutw.f.cover": "Titelbild",
   "nutw.f.summary": "Zusammenfassung",

@@ -3528,7 +3528,7 @@ export default {
   "nutw.f.body": "Texte de l'article",
   "nutw.f.lang": "Langue de l'article",
   "nutw.f.date": "Date de publication",
-  "nutw.f.date.hint": "Vide : le jour où il est publié. Une date à venir le publie ce jour-là.",
+  "nutw.f.date.hint": "Le jour affiché sur l'article, modifiable à tout moment : une date passée l'antidate, une date à venir le publie ce jour-là, vide : le jour où il est publié.",
   "nutw.f.pinned": "À la une (en tête de la liste)",
   "nutw.f.cover": "Image de couverture",
   "nutw.f.summary": "Résumé",
