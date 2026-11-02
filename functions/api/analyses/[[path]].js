@@ -20,6 +20,7 @@
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
+//   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment: { note } (the trace itself unchanged)
 //   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin); an admin's
 //                                                      PUT { test: k } adds a test runner « <name> #k », DELETE …/tests
 //                                                      removes that admin's test traces of circuit n
@@ -178,6 +179,19 @@ function cleanTrace(b) {
   if (!ints(b.dt) || !ints(b.la) || !ints(b.lo) || b.dt.some((v, i) => i && v <= 0)) return null;
   return { v: 1, t0: Math.round(b.t0), dt: b.dt, la: b.la, lo: b.lo };
 }
+
+/** A route drawn by hand (trace/drawroute.js): its points in the map's pixels, which are controls, their times — kept with the
+ *  trace so that its runner edits it again and the page tags it « drawn ». Null when malformed. */
+function cleanDrawn(d) {
+  if (!d || !Array.isArray(d.pts) || !Array.isArray(d.kind) || d.pts.length !== d.kind.length || d.pts.length < 2 || d.pts.length > 3000) return null;
+  if (!d.pts.every((p) => Array.isArray(p) && p.length === 2 && p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e6))) return null;
+  if (!d.kind.every((k) => ["", "start", "control", "finish"].includes(k))) return null;
+  const at = {};
+  for (const [k, v] of Object.entries(d.at || {})) if (/^\d{1,4}$/.test(k) && Number.isFinite(v) && v >= 0 && v < 86400 * 2) at[k] = Math.round(v * 10) / 10;
+  return { pts: d.pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]), kind: d.kind, at };
+}
+/** A runner's comment on their race (owner, 2026-11-02, after RouteGadget): plain text, its lines kept. */
+const cleanNote = (s) => String(s ?? "").replace(/\r/g, "").replace(/[\u0000-\u0009\u000b-\u001f<>]/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000);
 
 export const onRequest = withUser(async (ctx, user) => {
   const { request, env, params } = ctx;
@@ -397,11 +411,25 @@ export const onRequest = withUser(async (ctx, user) => {
       if (k != null && !(isAdmin(env, user) && Number.isInteger(k) && k >= 1 && k <= TEST_MAX)) return json({ error: "forbidden" }, 403);
       const uid = k != null ? testUid(user.id, k) : user.id;
       const name = (user.display_name || "") + (k != null ? ` #${k}` : "");
-      const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}) };
+      const drawn = b.drawn != null ? cleanDrawn(b.drawn) : null, note = cleanNote(b.note);
+      if (b.drawn != null && !drawn) return json({ error: "trace" }, 400);
+      const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}),
+        ...(drawn ? { drawn } : {}), ...(note ? { note } : {}) };
       await env.BUCKET.put(`${DATA}${id}/trace-${n}-${uid}.json`, JSON.stringify(rec), {
         httpMetadata: { contentType: "application/json" },
         customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}) } });
       return json({ ok: true, uid });
+    }
+    if (method === "PATCH") {                                                 // one's own comment, the trace unchanged
+      const b = await readBody(request);
+      const key = `${DATA}${id}/trace-${n}-${user.id}.json`, o = await env.BUCKET.get(key);
+      if (!o) return json({ error: "not found" }, 404);
+      const rec = await o.json().catch(() => null);
+      if (!rec) return json({ error: "not found" }, 404);
+      const note = cleanNote(b?.note);
+      if (note) rec.note = note; else delete rec.note;
+      await env.BUCKET.put(key, JSON.stringify(rec), { httpMetadata: { contentType: "application/json" }, customMetadata: o.customMetadata || {} });
+      return json({ ok: true, note });
     }
     if (method === "DELETE" && parts[3] === "tests") {                        // an administrator's test traces on circuit n
       if (!isAdmin(env, user)) return json({ error: "forbidden" }, 403);

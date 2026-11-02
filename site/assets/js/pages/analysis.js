@@ -20,7 +20,7 @@
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { backLine } from "./mapanalysis.js";
 import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
-import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf } from "../trace/drawroute.js";
+import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock } from "../trace/drawroute.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -1461,14 +1461,6 @@ export async function render(main, { query = {}, route } = {}) {
     if (drawing.km == null && withTimes && klass()?.length_m) drawing.km = klass().length_m / 1000;
     drawing.step = "times";
   }
-  /** « 52:10 », « 1:02:30 », « 52 » (minutes): seconds; null when empty, NaN when unreadable. */
-  const parseClock = (s) => {
-    const v = String(s || "").trim().replace(",", ".");
-    if (!v) return null;
-    const p = v.split(/[:h']/).map((q) => q.trim()).filter((q) => q !== "");
-    if (!p.length || p.some((q) => !/^\d+(\.\d+)?$/.test(q))) return NaN;
-    return p.reduce((a, q) => a * 60 + Number(q), 0) * (p.length === 1 ? 60 : 1);
-  };
   const hm = (s) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
   function drawSide() {
     if (!drawing) return;

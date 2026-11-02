@@ -1892,6 +1892,13 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .sh-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
 .sh-behind { color: var(--bad); font-size: 11.5px; }
 .sh-mine { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+/* a runner's comment under their row, one's own comment's box, the drawing's buttons */
+.sh-runner .sh-note { grid-column: 3 / 5; padding-left: 6px; border-left: 2px solid var(--border); font-size: 12px; font-style: italic; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+.sh-note-box { flex-direction: column; gap: 4px; }
+.sh-note-box textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit; font-size: 13px; }
+.sh-draw-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sh-dr-consent { margin-top: 8px; font-size: 12.5px; }
+#sh-dr-force[aria-pressed="true"] { background: var(--flag); color: #fff; border-color: var(--flag); }
 .sh-consent { margin-top: 8px; font-size: 12.5px; }
 .sh-clock { font-size: 15px; font-variant-numeric: tabular-nums; }
 .sh-splits td { white-space: nowrap; }
