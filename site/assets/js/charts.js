@@ -436,15 +436,17 @@ export function networkChart(el, { nodes, links, onClick, tip, edgeTip }) {
  * Population pyramid: one row per category (first at the bottom), `left` drawn to
  * the left of the axis, `right` to the right; values are positive. `refLeft` /
  * `refRight` (optional) are drawn as outlines over the bars, for comparison.
- * tip(i) returns the tooltip HTML of row i.
+ * tip(i) returns the tooltip HTML of row i. `spans` (optional): each row's [from, to) on a
+ * continuous axis (a category's ages), its height then that span's.
  */
-export function pyramidChart(el, { categories, left, right, refLeft, refRight, tip, unit = " %", digits = 1 }) {
+export function pyramidChart(el, { categories, left, right, refLeft, refRight, tip, unit = " %", digits = 1, spans }) {
   const th = theme();
   const c = init(el);
   const all = [...left.data, ...right.data, ...(refLeft || []), ...(refRight || [])];
   const top = Math.max(1, ...all);
   const step = top > 20 ? 10 : top > 10 ? 5 : top > 4 ? 2 : 1;      // round ends, symmetric
   const max = Math.ceil((top * 1.02) / step) * step;
+  if (spans) return spanPyramid(c, th, { categories, left, right, refLeft, refRight, tip, unit, digits, spans, max, step });
   const bar = (s, sign) => ({
     name: s.name, type: "bar", data: s.data.map((v) => sign * v), barCategoryGap: "22%", barGap: "-100%", z: 2,
     itemStyle: { color: s.color, borderRadius: sign < 0 ? [3, 0, 0, 3] : [0, 3, 3, 0] },
@@ -476,6 +478,66 @@ export function pyramidChart(el, { categories, left, right, refLeft, refRight, t
     series: [
       bar(left, -1), bar(right, 1),
       ...(refLeft ? [outline(refLeft, -1)] : []), ...(refRight ? [outline(refRight, 1)] : []),
+    ],
+  });
+  return c;
+}
+
+// The pyramid on a continuous axis: each row a band as tall as its span (owner, 2026-11-02: an age category's height is
+// the years it covers), drawn by custom series — the bars, the reference outlines, the row's label at the axis, and a band
+// across the whole width that takes the pointer for the tooltip.
+function spanPyramid(c, th, { categories, left, right, refLeft, refRight, tip, unit, digits, spans, max, step }) {
+  const font = css("--font") || "system-ui";
+  const lo = spans[0][0], hi = spans[spans.length - 1][1];
+  const rect = (api, v, i) => {
+    const [x0, yTop] = api.coord([0, spans[i][1]]), [x1, yBot] = api.coord([v, spans[i][0]]);
+    const h = yBot - yTop, gap = Math.min(3, h * 0.2);
+    return { x: Math.min(x0, x1), y: yTop + gap / 2, width: Math.abs(x1 - x0), height: Math.max(1, h - gap) };
+  };
+  const rows = (data, sign) => data.map((v, i) => [sign * v, i]);
+  const bars = (s, sign) => ({
+    type: "custom", name: s.name, data: rows(s.data, sign), silent: true, z: 2,
+    renderItem: (p, api) => ({ type: "rect", shape: { ...rect(api, api.value(0), api.value(1)), r: sign < 0 ? [3, 0, 0, 3] : [0, 3, 3, 0] },
+      style: { fill: s.color } }),
+  });
+  const outline = (data, sign) => ({
+    type: "custom", data: rows(data, sign), silent: true, z: 3,
+    renderItem: (p, api) => ({ type: "rect", shape: rect(api, api.value(0), api.value(1)),
+      style: { fill: "none", stroke: th.ink, lineWidth: 1.5, lineDash: [4, 3], opacity: 0.75 } }),
+  });
+  c.setOption({
+    animationDuration: 300,
+    textStyle: { fontFamily: font },
+    grid: { left: 44, right: 28, top: 30, bottom: 30 },
+    tooltip: baseTooltip(th, { trigger: "item", formatter: (p) => tip(p.value[1]) }),
+    xAxis: {
+      type: "value", min: -max, max, interval: step, ...axisCommon(th),
+      axisLabel: { color: th.ink3, fontSize: 12, formatter: (v) => `${fmt(Math.abs(v), Number.isInteger(v) ? 0 : digits)}${unit}` },
+    },
+    yAxis: { type: "value", min: lo, max: hi, show: false },
+    graphic: [
+      { type: "text", left: 20, top: 4, style: { text: left.name, fill: left.color, font: `600 13px ${font}` } },
+      { type: "text", right: 20, top: 4, style: { text: right.name, fill: right.color, font: `600 13px ${font}`, align: "right" } },
+    ],
+    series: [
+      {   // the row under the pointer: the tooltip and a faint shade, over the whole width
+        type: "custom", data: categories.map((_, i) => [0, i]), z: 1,
+        renderItem: (p, api) => {
+          const i = api.value(1), r = rect(api, max, i), l = rect(api, -max, i);
+          return { type: "rect", shape: { x: l.x, y: r.y, width: l.width + r.width, height: r.height },
+            style: { fill: "transparent" }, emphasis: { style: { fill: "rgba(127,127,127,.08)" } } };
+        },
+      },
+      bars(left, -1), bars(right, 1),
+      ...(refLeft ? [outline(refLeft, -1)] : []), ...(refRight ? [outline(refRight, 1)] : []),
+      {   // the rows' names at the left of the grid, in the middle of their bands
+        type: "custom", data: categories.map((_, i) => [0, i]), silent: true, z: 4,
+        renderItem: (p, api) => {
+          const i = api.value(1), [, y] = api.coord([0, (spans[i][0] + spans[i][1]) / 2]);
+          return { type: "text", x: p.coordSys.x - 8, y,
+            style: { text: categories[i], fill: th.ink2, font: `12px ${font}`, align: "right", verticalAlign: "middle" } };
+        },
+      },
     ],
   });
   return c;

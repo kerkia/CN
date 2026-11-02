@@ -197,8 +197,12 @@ export async function render(main, query) {
     const line = (color, label, tl, s, a) => `<div style="display:flex;gap:8px;align-items:center;margin-top:3px">
       <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color}"></span><b>${pctN(pct(tl, s, a), 1)}</b>
       <span style="color:var(--ink-2)">${label} · ${fmt(n(tl, s, a))}</span></div>`;
+    // each category as tall as the ages it covers (owner, 2026-11-02): a junior's « 20 » 19-20, « 21 » 21-34, a veteran's
+    // five years from its own, the last five too; the chart grows with them, ~8 px a year
+    const spans = ages.map((a, i) => (a <= 20 ? [a - 1, a + 1] : [a, ages[i + 1] ?? a + 5]));
+    $("#pyr").style.height = `${Math.max(420, Math.round((spans[spans.length - 1][1] - spans[0][0]) * 8 + 60))}px`;
     pyramidChart($("#pyr"), {
-      categories: ages.map(String),
+      categories: ages.map(String), spans,
       left: { name: t("ag.women"), color: cD, data: ages.map((a) => pct(cur, "D", a)) },
       right: { name: t("ag.men"), color: cH, data: ages.map((a) => pct(cur, "H", a)) },
       refLeft: ref && ages.map((a) => pct(ref, "D", a)),
