@@ -444,8 +444,9 @@ export function pyramidChart(el, { categories, left, right, refLeft, refRight, t
   const c = init(el);
   const all = [...left.data, ...right.data, ...(refLeft || []), ...(refRight || [])];
   const top = Math.max(1, ...all);
-  const step = top > 20 ? 10 : top > 10 ? 5 : top > 4 ? 2 : 1;      // round ends, symmetric
+  const step = top > 20 ? 10 : top > 10 ? 5 : top > 4 ? 2 : top > 2 || !spans ? 1 : top > 1 ? 0.5 : 0.25;   // round ends, symmetric
   const max = Math.ceil((top * 1.02) / step) * step;
+  if (step < 0.5) digits = 2;
   if (spans) return spanPyramid(c, th, { categories, left, right, refLeft, refRight, tip, unit, digits, spans, max, step });
   const bar = (s, sign) => ({
     name: s.name, type: "bar", data: s.data.map((v) => sign * v), barCategoryGap: "22%", barGap: "-100%", z: 2,

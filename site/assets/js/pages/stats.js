@@ -189,24 +189,25 @@ export async function render(main, query) {
     }
     $("#pyr .empty")?.remove();
     const cD = css("--s2"), cH = css("--s1");
-    $("#pyr-legend").innerHTML = legend([
-      { color: cD, label: t("ag.women") }, { color: cH, label: t("ag.men") },
-      ...(filtered ? [{ color: `repeating-linear-gradient(90deg, ${css("--ink")} 0 4px, transparent 4px 7px)`, label: t("ag.ref") }] : []),
-    ]);
+    // the chart names women and men on its two sides: the legend only explains the reference's outline (owner, 2026-11-02)
+    $("#pyr-legend").innerHTML = filtered
+      ? legend([{ color: `repeating-linear-gradient(90deg, ${css("--ink")} 0 4px, transparent 4px 7px)`, label: t("ag.ref") }]) : "";
     const n = (tl, s, a) => tl.count[s].get(a) || 0;
     const line = (color, label, tl, s, a) => `<div style="display:flex;gap:8px;align-items:center;margin-top:3px">
       <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color}"></span><b>${pctN(pct(tl, s, a), 1)}</b>
       <span style="color:var(--ink-2)">${label} · ${fmt(n(tl, s, a))}</span></div>`;
     // each category as tall as the ages it covers (owner, 2026-11-02): a junior's « 20 » 19-20, « 21 » 21-34, a veteran's
-    // five years from its own, the last five too; the chart grows with them, ~8 px a year
+    // five years from its own, the last five too; the chart grows with them, ~8 px a year. A bar's area is the category's
+    // share, so its length is that share per year of age (the tooltip and the table keep the share itself)
     const spans = ages.map((a, i) => (a <= 20 ? [a - 1, a + 1] : [a, ages[i + 1] ?? a + 5]));
+    const perYear = (tl, s) => ages.map((a, i) => pct(tl, s, a) / (spans[i][1] - spans[i][0]));
     $("#pyr").style.height = `${Math.max(420, Math.round((spans[spans.length - 1][1] - spans[0][0]) * 8 + 60))}px`;
     pyramidChart($("#pyr"), {
-      categories: ages.map(String), spans,
-      left: { name: t("ag.women"), color: cD, data: ages.map((a) => pct(cur, "D", a)) },
-      right: { name: t("ag.men"), color: cH, data: ages.map((a) => pct(cur, "H", a)) },
-      refLeft: ref && ages.map((a) => pct(ref, "D", a)),
-      refRight: ref && ages.map((a) => pct(ref, "H", a)),
+      categories: ages.map(String), spans, unit: t("ag.unitYear"),
+      left: { name: t("ag.women"), color: cD, data: perYear(cur, "D") },
+      right: { name: t("ag.men"), color: cH, data: perYear(cur, "H") },
+      refLeft: ref && perYear(ref, "D"),
+      refRight: ref && perYear(ref, "H"),
       tip: (i) => {
         const a = ages[i];
         return `<div style="color:var(--ink-3);font-size:12px">${t("ag.cat")} ${fmtCat("D" + a)} · ${fmtCat("H" + a)}</div>
