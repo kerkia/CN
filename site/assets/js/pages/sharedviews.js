@@ -50,8 +50,22 @@ export function views(el, X) {
   return { draw, tab: () => X.state.tab };
 }
 
+// ---- a score course (owner, 2026-11-02, after RouteGadget): each runner's controls in the order run, the most first, then the
+// fastest; a control named by its code when it has one
+function scoreView(el, X) {
+  const R = X.runners.filter((r) => r.visible).map((r) => ({ r, v: X.visitsOf(r), tot: X.total(r) }))
+    .sort((a, b) => b.v.length - a.v.length || (a.tot ?? 1e9) - (b.tot ?? 1e9));
+  if (!R.length) { el.innerHTML = html`<div class="empty">${t("sh.noTraces")}</div>`; return; }
+  const name = (j) => X.ctrls[j].code || X.ctrlLabel(j);
+  el.innerHTML = html`<div class="card-head"><div class="hint">${t("sh.score.view.hint")}</div></div>
+    <div class="table-wrap"><table class="data compact sh-score"><thead><tr><th>${t("prov.runner")}</th><th class="r">${t("sh.score.col.n")}</th><th class="r">${t("sh.score.col.time")}</th><th>${t("sh.score.col.order")}</th></tr></thead>
+    <tbody>${R.map(({ r, v, tot }) => html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}</td><td class="r num">${v.length} / ${X.scoreN}</td>
+      <td class="r num">${tot != null ? clock(tot) : "—"}</td><td class="sh-score-order">${v.map((x) => html`<span class="sh-score-c"><b>${name(x.j)}</b> <span class="muted">${clock(x.s)}</span></span>`)}</td></tr>`)}</tbody></table></div>`;
+}
+
 // ---- the splits table, against a reference (the duel)
 function splitsView(el, X) {
+  if (X.score) { scoreView(el, X); return; }
   const { legsN, ctrlLabel, legTime, total } = X;
   const R = X.runners.filter((r) => r.visible), ref = X.state.ref;
   if (!R.length || legsN < 1) { el.innerHTML = html`<div class="empty">${t("sh.noTraces")}</div>`; return; }

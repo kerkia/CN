@@ -34,7 +34,7 @@ import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
 import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
-import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses } from "../trace/share.js";
+import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses, scorePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
 import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../trace/pacecolour.js";
@@ -329,7 +329,8 @@ async function editor(box, ctx) {
     <h2 style="font-size:16px;margin:14px 0 8px">${course ? t("sh.course.edit", { c: course.name }) : t("sh.course.add")}</h2>
     <div class="filters" style="align-items:flex-end">
       <label class="field"><span>${t("sh.course.name")}</span><input id="sh-e-name" value="${st.name}" style="width:200px" maxlength="60"></label>
-      ${circuits.length ? html`<label class="field"><span>${t("sh.course.circuit")}</span><select id="sh-e-circuit"><option value="">—</option>${circuits.map((c) => html`<option ${raw(c === st.circuit ? "selected" : "")}>${c}</option>`)}</select></label>` : ""}</div>
+      ${circuits.length ? html`<label class="field"><span>${t("sh.course.circuit")}</span><select id="sh-e-circuit"><option value="">—</option>${circuits.map((c) => html`<option ${raw(c === st.circuit ? "selected" : "")}>${c}</option>`)}</select></label>` : ""}
+      <label class="an-opt" title="${t("sh.score.hint")}"><input type="checkbox" id="sh-e-score" ${raw(course?.score ? "checked" : "")}> ${t("sh.score")}</label></div>
     <label class="dropzone an-drop" id="sh-e-drop"><input type="file" id="sh-e-in" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
       <strong>${t("sh.e.drop")}</strong><span class="muted">${t("sh.e.drop.hint")}</span></label>
     <div class="muted" id="sh-e-files" style="font-size:13px;margin:6px 0"></div>
@@ -542,7 +543,8 @@ async function editor(box, ctx) {
         map: { w: st.image.width, h: st.image.height, type, v: st.mapFile || !course ? Date.now() : course.map.v }, geo: st.geo,
         controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })),
         // what the runners share besides (the route choices…) goes on with the circuit
-        ...(course?.variants ? { variants: course.variants } : {}), ...(course?.exercises ? { exercises: course.exercises } : {}) };
+        ...(course?.variants ? { variants: course.variants } : {}), ...(course?.exercises ? { exercises: course.exercises } : {}),
+        ...($("#sh-e-score").checked ? { score: true } : {}) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -552,11 +554,11 @@ async function editor(box, ctx) {
 }
 
 /** The course drawn over the map: the start triangle, the circles, the finish's double circle, the legs, the numbers. */
-function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0) {
+function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0, lines = true) {
   if (!controls?.length) return;
   g.save(); g.globalAlpha = alpha; g.strokeStyle = COURSE; g.fillStyle = COURSE; g.lineWidth = lw(2);
   const R = (p) => (p.kind === "finish" ? r * 1.3 : r);
-  for (let i = 1; i < controls.length; i++) {
+  for (let i = 1; lines && i < controls.length; i++) {           // a score course: no legs drawn
     const a = controls[i - 1], b = controls[i], d = Math.hypot(b.x - a.x, b.y - a.y);
     if (d < R(a) + R(b) + 2) continue;
     const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
@@ -580,7 +582,9 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0) {
 // ---- the replay --------------------------------------------------------------------------------------------------
 async function replay(box, { A, id, course, race, init = {}, traces, you, reload }) {
   document.body.classList.add("an-theatre");
-  const ctrls = course.controls, legsN = ctrls.length - 1;
+  // a score course (owner, 2026-11-02): its controls in any order — no legs, each runner's visits timed wherever they come
+  const score = !!course.score, ctrls = course.controls, legsN = score ? 0 : ctrls.length - 1;
+  const modes = score ? MODES.filter((m) => m === "clock" || m === "mass") : MODES;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
   const ctrlLabel = (i) => { const p = ctrls[i]; if (p.kind === "start") return t("an.start"); if (p.kind === "finish") return t("an.finish"); return String(ctrls.slice(0, i + 1).filter((q) => q.kind === "control").length); };
   // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
@@ -600,7 +604,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
   const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
-  let mode = MODES.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
+  let mode = modes.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
@@ -671,23 +675,28 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (!tr) return null;
     const fit = fitFromGeo(course.geo, tr), pxs = new Float32Array(tr.n), pys = new Float32Array(tr.n);
     for (let i = 0; i < tr.n; i++) { const [x, y] = toPx(fit, tr.x[i], tr.y[i]); pxs[i] = x; pys[i] = y; }
-    const guess = coursePasses(tr, fit, ctrls, TOL), off = official(rec);
+    const guess = score ? scorePasses(tr, fit, ctrls, TOL) : coursePasses(tr, fit, ctrls, TOL), off = official(rec);
     // a competition's published split times (trace/published.js): the passes from them rather than the trace's 25 m guesses
     let pub = null;
-    if (off?.row?.splits?.length) {
+    if (off?.row?.splits?.length && !score) {
       const map = matchControls(ctrls, off.klass.controls || [], off.row.splits.length);
       const startT = off.startS != null && race?.date_iso ? startOnTrace(race.date_iso, off.startS, tr.ms0) : null;
       pub = publishedPasses(map, publishedTaus(off.row), guess, startT, tr.dur);
     }
     // a route drawn by hand: its passes are the drawing's own times (its track starts at the start, at 0)
-    const drawnP = rec.drawn ? drawnPasses(rec.drawn, ctrls) : null;
+    const drawnP = rec.drawn ? drawnPasses(rec.drawn, ctrls, score) : null;
     const passes = pub?.passes || (drawnP && drawnP.filter((v) => v != null).length >= 2 ? drawnP.map((v, j) => v ?? guess[j]) : guess);
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
-    const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
+    const si = ctrls.findIndex((p) => p.kind === "start"), fi = ctrls.findIndex((p) => p.kind === "finish");
+    const start = si >= 0 ? passes[si] ?? tr.t[0] : tr.t[0], finish = fi >= 0 ? passes[fi] : null;
     return { uid: rec.uid, name: rec.name, lic: rec.lic, test: !!rec.test, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
       published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null, note: rec.note || "", drawing: rec.drawn || null, visitors: !!rec.visitors };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
+  // a score course: a runner's controls visited, in the order run ({ j: the course's index, s: race seconds })
+  const scoreN = ctrls.filter((p) => p.kind === "control").length;
+  const visitsOf = (r) => ctrls.map((p, j) => ({ j, p })).filter(({ p, j }) => p.kind === "control" && r.passes[j] != null)
+    .map(({ j }) => ({ j, s: r.passes[j] - r.start })).sort((a, b) => a.s - b.s);
   const visKey = `ocn.an.vis.${id}.${course.n}`;
   try { const hidden = JSON.parse(sessionStorage.getItem(visKey) || "[]"); runners.forEach((r) => { r.visible = !hidden.includes(r.uid); }); } catch (e) { /* all shown */ }
   const saveVis = () => { try { sessionStorage.setItem(visKey, JSON.stringify(runners.filter((r) => !r.visible).map((r) => r.uid))); } catch (e) { /* this visit only */ } };
@@ -790,7 +799,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       RC.drawDecision(g, rcmDecision(leg));
       RC.drawRoutes(g, rcm.routes[leg], lw, rcmPace(), clock);
     }
-    if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0);
+    if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0, !score);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
     g.lineCap = "round"; g.lineJoin = "round";
     for (const r of shown) {
@@ -831,7 +840,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   }
   /** The map's turn: the leg shown up — a leg's view its leg, else the leg of the runner followed —, else north up. */
   function mapTurn() {
-    if (orient !== "leg" || drawM) return 0;
+    if (orient !== "leg" || drawM || score) return 0;
     let j = leg;
     if (!j && sel) { const s = sAt(sel, T); if (s != null) { j = 1; while (j < legsN && sel.passes[j] != null && s >= sel.passes[j]) j++; } }
     const a = j ? ctrls[j - 1] : null, b = j ? ctrls[j] : null;
@@ -1120,7 +1129,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
-          ${leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
+          ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
           ${r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}
       ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
@@ -1238,7 +1247,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         <span class="fw-btns">${raw(fwButtons())}</span></div>
       <div class="an-bar-row sh-bar-opts">
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
-        ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${MODES.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
+        ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
         <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
         <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span></div>`;
@@ -1729,7 +1738,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       left(); right(); frame(); saveUrl();
     },
     get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
-    tabOk: (k) => k !== "exercises" || A.kind === "club",
+    tabOk: (k) => (score ? k === "splits" : k !== "exercises" || A.kind === "club"), score, visitsOf, scoreN,
     exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
     setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
     setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },

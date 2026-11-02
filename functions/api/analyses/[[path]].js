@@ -125,7 +125,7 @@ function cleanCourses(list) {
     const m = c.map || {};
     out.push({ n, name: clean(c.name, 60) || `Circuit ${n + 1}`, circuit: clean(c.circuit, 80), r: num(c.r) || 20,
       map: { w: Math.round(num(m.w) || 0), h: Math.round(num(m.h) || 0), type: /^image\/(png|jpeg|webp)$/.test(m.type) ? m.type : "image/jpeg", v: Math.round(num(m.v) || 0) },
-      geo, controls: ctrls, ...cleanExtras(c) });
+      geo, controls: ctrls, ...(c.score === true ? { score: true } : {}), ...cleanExtras(c) });
   }
   return out;
 }

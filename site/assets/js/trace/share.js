@@ -82,6 +82,43 @@ export function frameAt(lat, lon) {
 export const validGeo = (g) => !!g && ["a", "b", "c", "d", "e", "f"].every((k) => Number.isFinite(g[k])) && Math.abs(g.a * g.e - g.b * g.d) > 1e-6;
 
 /**
+ * A score course's passes (owner, 2026-11-02, after RouteGadget: the controls in any order): each control's first visit
+ * (within tol, its closest point) wherever it comes; the start's departure before the first control visited; the finish's
+ * arrival after the last one. Trace seconds by the course's controls, null where not visited.
+ */
+export function scorePasses(track, fit, controls, tol = 25) {
+  const n = track.n, out = new Array(controls.length).fill(null);
+  const dist = (c) => { const [mx, my] = toM(fit, c.x, c.y), d = new Float32Array(n); for (let k = 0; k < n; k++) d[k] = Math.hypot(track.x[k] - mx, track.y[k] - my); return d; };
+  let lastK = -1, firstT = Infinity;
+  controls.forEach((c, j) => {
+    if (c.kind !== "control") return;
+    const d = dist(c);
+    let k = 0;
+    while (k < n && d[k] > tol) k++;
+    if (k >= n) return;
+    let best = k;
+    while (k < n && d[k] <= 1.6 * tol) { if (d[k] < d[best]) best = k; k++; }
+    out[j] = track.t[best]; lastK = Math.max(lastK, best); firstT = Math.min(firstT, track.t[best]);
+  });
+  const si = controls.findIndex((c) => c.kind === "start");
+  if (si >= 0) {
+    const d = dist(controls[si]);
+    let last = -1;
+    for (let k = 0; k < n && track.t[k] < firstT; k++) if (d[k] <= tol) last = k;
+    if (last >= 0) out[si] = track.t[last];
+  }
+  const fi = controls.findIndex((c) => c.kind === "finish");
+  if (fi >= 0) {
+    const d = dist(controls[fi]), from = Math.max(0, lastK);
+    let k = finishArrival(track, d, from, tol);
+    if (k < 0) k = finishArrival(track, d, from, 1.6 * tol);
+    if (k < 0) k = finishAfterAll(track, d, from, 1.6 * tol);
+    if (k >= 0) out[fi] = track.t[k];
+  }
+  return out;
+}
+
+/**
  * The passes at a course's controls (px, in order: start, controls, finish), in trace seconds, null where not found.
  * tol: metres. A control's pass is the closest approach on the first visit (within tol, else 1.6 tol) after the
  * previous control's pass; the start's, the departure before control 1; the finish's, the arrival after the last one.
