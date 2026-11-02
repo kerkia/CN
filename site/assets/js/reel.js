@@ -130,15 +130,19 @@ function vClubs() {
 }
 
 // 6. an age pyramid: women on the left, men on the right
+// each band as tall as its years and as long as its runners per year, so that its area is its runners (as the site's, 2026-11-02)
 function vPyramid() {
   const bands = ["10-14", "15-19", "20-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75+"];
+  const years = [5, 5, 5, 10, 10, 10, 10, 10, 10];
   const f = [34, 27, 12, 18, 31, 36, 29, 17, 6], m = [41, 33, 17, 24, 38, 45, 40, 26, 10];
-  const cx = W / 2, sc = 4.3;
+  const cx = W / 2, sc = 22, py = 243 / years.reduce((a, b) => a + b, 0);
+  let bottom = 268;
   const rows = bands.map((b, i) => {
-    const y = 268 - (i + 1) * 27;
-    return `<rect class="rv-grow-x rv-from-right" x="${cx - 26 - f[i] * sc}" y="${y}" width="${f[i] * sc}" height="21" rx="4" fill="var(--s5)" ${d(0.05 * i)}/>
-      <rect class="rv-grow-x" x="${cx + 26}" y="${y}" width="${m[i] * sc}" height="21" rx="4" fill="var(--s1)" ${d(0.05 * i)}/>
-      ${label(cx, y + 15, b, `text-anchor="middle" class="rv-lab rv-small"`)}`;
+    const h = years[i] * py, y = bottom - h, fw = (f[i] / years[i]) * sc, mw = (m[i] / years[i]) * sc;
+    bottom = y;
+    return `<rect class="rv-grow-x rv-from-right" x="${cx - 26 - fw}" y="${y + 1.5}" width="${fw}" height="${h - 3}" rx="3" fill="var(--s5)" ${d(0.05 * i)}/>
+      <rect class="rv-grow-x" x="${cx + 26}" y="${y + 1.5}" width="${mw}" height="${h - 3}" rx="3" fill="var(--s1)" ${d(0.05 * i)}/>
+      ${label(cx, y + h / 2 + 4, b, `text-anchor="middle" class="rv-lab rv-small"`)}`;
   }).join("");
   return svg(`${rows}${label(cx - 40, 290, t("reel.women"), `text-anchor="end" class="rv-lab rv-strong"`)}
     ${label(cx + 40, 290, t("reel.men"), `class="rv-lab rv-strong"`)}`);

@@ -411,7 +411,8 @@ sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\7c7246a6-efbb
 Retaken the same evening with the modules' bar, plus `multi` and `multi-gaps`: the local test analysis « Test UI club » (circuit
 « Bleu », the reel's invented map; `multi` at 23:00, nobody followed, every runner's whole route in thick lines — `ocn.sh.prefs` tail 0, width 2.4 — so that the four routes and their variants show, owner 2026-10-31), whose title, organiser and runners `lib.mjs` replaces with invented ones
 (`/api/analyses/<id>` and `/traces/<n>`, fetched with the page's cookies) — never take them without that. `past` must open in a
-fresh page: an Agenda address opened from the Agenda keeps the page's periods.
+fresh page: an Agenda address opened from the Agenda keeps the page's periods. `stats-ages` retaken on 2026-11-02 (the pyramid's rows as tall as their
+categories' years, its bars' areas their shares; `tour2.mjs` scrolls its card under the bar), the reel's `vPyramid` alike.
 
 ## Provisional results (« Résultats »)
 
