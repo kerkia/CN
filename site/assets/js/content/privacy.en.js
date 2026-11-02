@@ -80,7 +80,7 @@ export const body = (SITE, { world = false } = {}) => `
         analysis and with their account. An analysis's maps are kept as long as it exists; if the organiser deletes their account,
         the analysis remains, without their name. In a “Group analysis”, your own graphs (pace, heart rate, cadence, etc.) come from
         your file, kept in your browser on this device: it is not sent, and only you have access to it.</p>
-      <p>A route drawn by hand, without GPS, is kept there as a trace, with its drawing. The comment you write on your race is seen by
+      <p>The comment you write on your race is seen by
         the same people as your trace; you change or delete it at any time. If the organiser opens the analysis to visitors without an
         account, your trace and your comment are shown to them only if you agree (a box unticked by default), with your name but
         without your licence number; you withdraw that agreement at any time. In « My maps », the comment you write on a run is kept

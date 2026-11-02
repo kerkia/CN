@@ -89,7 +89,7 @@ export const body = (SITE, { world = false } = {}) => `
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
         sans son nom. Dans une « Analyse multi », vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
-      <p>Un itinéraire dessiné à la main, sans GPS, y est gardé comme une trace, avec son dessin. Le commentaire que vous écrivez sur
+      <p>Le commentaire que vous écrivez sur
         votre course est visible des mêmes personnes que votre trace ; vous le modifiez ou l'effacez à tout moment. Si l'organisateur
         ouvre l'analyse aux visiteurs sans compte, votre trace et votre commentaire ne leur sont montrés que si vous l'acceptez (une case
         décochée par défaut), avec votre nom mais sans votre numéro de licence ; vous retirez cet accord à tout moment. Dans « Mes

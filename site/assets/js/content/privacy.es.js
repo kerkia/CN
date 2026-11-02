@@ -88,7 +88,7 @@ export const body = (SITE, { world = false } = {}) => `
         mapas de un análisis se conservan mientras este exista; si el organizador elimina su cuenta, el análisis se mantiene,
         sin su nombre. En un «Análisis de grupo», tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
         archivo, guardado en tu navegador en este dispositivo: no se transmite, y solo tú tienes acceso a él.</p>
-      <p>Una ruta dibujada a mano, sin GPS, se guarda allí como un track, con su dibujo. El comentario que escribes sobre tu carrera lo ven
+      <p>El comentario que escribes sobre tu carrera lo ven
         las mismas personas que tu track; lo cambias o lo borras cuando quieras. Si el organizador abre el análisis a los visitantes sin
         cuenta, tu track y tu comentario solo se les muestran si lo aceptas (una casilla sin marcar por defecto), con tu nombre pero sin tu
         número de licencia; retiras ese acuerdo cuando quieras. En « Mis mapas », el comentario que escribes sobre una carrera se guarda

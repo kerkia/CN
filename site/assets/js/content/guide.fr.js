@@ -205,7 +205,8 @@ export function build(X) {
               légende ; on peut en couper le début et la fin (l'échauffement, le retour) et <b>exporter une image</b> de la carte avec la trace, un titre et
               la légende, enregistrée sur l'appareil.`,
             html`<b>Pas de trace GPS ?</b> « Dessiner mon itinéraire » : cliquez votre itinéraire sur la carte, poste après poste ; les temps intermédiaires publiés
-              (ou ceux que vous tapez, l'arrivée au moins) le font courir comme une trace de montre. <b>📏</b> mesure une distance sur la carte, et
+              (ou ceux que vous tapez, l'arrivée au moins) le font courir comme une trace de montre ; « Coller aux chemins » pose ensuite chaque inter-poste
+              sur le passage le plus proche que lit la carte. Un itinéraire dessiné ne s'ajoute pas à une Analyse multi. <b>📏</b> mesure une distance sur la carte, et
               « Orientation de la carte » peut tourner l'inter-poste en cours vers le haut.`,
           ])}
           <p>La carte et la trace sont lues dans votre navigateur et n'en sortent pas ; seul le calage des postes est gardé, pour retrouver l'analyse telle
@@ -221,7 +222,7 @@ export function build(X) {
               pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
             html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
               pour vous seul.`,
-            html`<b>Sans GPS</b>, on y dessine aussi son itinéraire ; chacun peut <b>commenter</b> sa course (« Mon commentaire »), lu par tous ceux qui voient les traces.
+            html`Chacun peut <b>commenter</b> sa course (« Mon commentaire »), lu par tous ceux qui voient les traces.
               L'organisateur peut ouvrir l'analyse <b>aux visiteurs sans compte</b> : ils ne voient que les traces des coureurs qui l'ont accepté. Un circuit
               <b>au score</b> (postes dans n'importe quel ordre) montre l'ordre de chacun.`,
           ])}`)}`,

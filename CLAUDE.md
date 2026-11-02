@@ -1327,8 +1327,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   calibration saves has none yet, and a cut at mid-race laid the part kept afresh, 29° off — and a cut made from the playback's
   « Course et fichiers » goes back to it).
 - **After RouteGadget** (owner, 2026-11-02: RouteGadget's features compared; its archive import left out). **A route drawn by hand**
-  (`trace/drawroute.js`), for a runner without a GPS track: « Dessiner mon itinéraire » in « Analyse solo »'s files card (any map) and
-  in « Analyse multi »'s runners panel — the start, then each turn; a click within 1.3 r of a control's circle (read on the map, the
+  (`trace/drawroute.js`), for a runner without a GPS track: « Dessiner mon itinéraire » in « Analyse solo »'s files card (any map;
+  **never in « Analyse multi »**, owner 2026-11-02: comparing it with real traces would not be fair — Multi refuses a drawn GPX and the
+  API a trace carrying a drawing, and leaves out one shared in the hour it was allowed) — the start, then each turn; a click within 1.3 r of a control's circle (read on the map, the
   organiser's, the circuit's) points it, Shift + click never does, « Le prochain point est un poste » forces one, « Arrivée ici » ends
   it (a click on the finish too); then the controls' times: the published split times when their count is the drawing's, else typed
   (the finish's at least; the others spread by the distance drawn), the day and start time when nothing is published. The route runs at
@@ -1338,8 +1339,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`drawnHere`), times its controls by the drawing (offset 0, `tEst` from the timeline), never smooths its distance, and « Modifier le
   dessin » edits it again. A map without georeference gets a frame of its own round (0, 0) (`ownGeo`, `nogeo`: no GPX download), its
   scale the straight course drawn over the course's length typed (else the class's `length_m`), else the circles (7.5 mm at 1:10 000
-  forest, 6 mm at 1:4 000 sprint). Multi turns it through the circuit's `geo` into a shared trace, the drawing in its record
-  (`cleanDrawn`), tagged « dessiné », its passes the drawing's (`drawnPasses`). **A comment on one's race**: Multi's « Mon commentaire »
+  forest, 6 mm at 1:4 000 sprint). **« Coller aux chemins »** (`snapDrawing`): each leg laid by the computed routes' engine
+  (`RC.planner(...).match` = `routechoice.matchRoute`: the fastest way within 30 m of the line drawn in forest, 15 m in sprint, the
+  corridor widened once across what reads impassable; the map read once per drawing, its overprint released round the controls), the
+  controls and times kept, a leg it cannot place left as drawn; « Revenir à mon dessin » restores the sketch (`drawing.raw`); open to
+  every account, though the engine's computed routes stay the administrators'. **A comment on one's race**: Multi's « Mon commentaire »
   (the trace record's `note`, 1 000 characters, `PATCH /api/analyses/<id>/trace/<n>`, kept when the trace is replaced), shown under
   the runner's name; Mes cartes' run comment (**migration 0022**, `mymap_runs.note`; written when « Analyse solo » saves the run, read
   and edited under the run, carried by Ozimut's file; before the migration a run is saved without it and editing answers « not
