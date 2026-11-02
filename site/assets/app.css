@@ -1756,6 +1756,16 @@ body.an-theatre .an-right { grid-area: side; }
 .an-cut-row input[type="range"] { flex: 1; }
 .an-cut-v { font-variant-numeric: tabular-nums; color: var(--ink-3); min-width: 150px; }
 .an-cut-hint { margin: 6px 0 0; font-size: 12px; }
+/* a route drawn by hand: the files card's offer, the times' fields in the side panel */
+.an-drawbox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0 0; font-size: 13px; }
+.an-drawbox .muted { flex-basis: 100%; }
+.an-dr-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin: 8px 0; }
+.an-dr-times label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.an-dr-times label b { min-width: 3.2em; }
+.an-dr-times input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
+.an-dr-when, .an-dr-km { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; font-size: 13px; }
+.an-dr-when label, .an-dr-km { display: flex; flex-direction: column; gap: 2px; }
+#an-dr-force[aria-pressed="true"] { background: var(--flag); color: #fff; border-color: var(--flag); }
 #an-legs { margin-top: 0; }
 tr.an-mistake td.an-lost { color: var(--bad); font-weight: 650; }
 tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }

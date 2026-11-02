@@ -19,7 +19,8 @@
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { backLine } from "./mapanalysis.js";
-import { fitFromGeo, geoFromFit } from "../trace/share.js";
+import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
+import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf } from "../trace/drawroute.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -35,7 +36,7 @@ import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { colourModes, seriesOf, rangeOf, colourOf, legendOf, legendHtml, PACE_COLOURS } from "../trace/pacecolour.js";
 import { bestLegs, refLegs, legLoss } from "../trace/legs.js";
 import { parisOffsetMs, matchControls } from "../trace/published.js";
-import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
+import { readZip, parseKml, fitFromKml, kmlCorners, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
 import { takeInbox } from "../pwa.js";
@@ -232,6 +233,9 @@ export async function render(main, { query = {}, route } = {}) {
   let course = null, courseCache = null, geoFit = null, geoHow = "", auto = null, prepToken = 0, status = "";
   let targets = [], cur = 0, fit = null, offset = null, rmsM = null, calibrated = false, mode = "auto", notes = [];
   let mapOrdered = false;                                                  // the targets in the course's order read on the map
+  // a route drawn by hand (owner, 2026-11-02, after RouteGadget: the runners without a GPS track): the drawing under way, else null
+  // — { d: { pts, kind, at } (trace/drawroute.js), step: "draw" | "times", force (the next point a control), km, day, startS, err }
+  let drawing = null;
   let olderReading = false;                                                // the calibration restored was made by an earlier reading
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = typeof prefs.colour === "string" ? prefs.colour : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
@@ -262,7 +266,7 @@ export async function render(main, { query = {}, route } = {}) {
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
-  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga;
+  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga || drawnHere();
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
   let vLo = 0, vHi = 1, vSet = false;                 // the colours' range (rangeOf: the pace's 10-90 %, the other channels' 5-95 %)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
@@ -431,6 +435,7 @@ export async function render(main, { query = {}, route } = {}) {
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${orgaMode ? "" : html`${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}`}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
+      ${drawBlock()}
       ${cutBlock()}
       ${genBlock()}
       <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
@@ -454,6 +459,8 @@ export async function render(main, { query = {}, route } = {}) {
     drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
     $("#an-iof-course")?.addEventListener("change", (e) => { iofIndex = Number(e.target.value); setup(); });
     $("#an-gen")?.addEventListener("click", () => genMap());
+    $("#an-draw-go")?.addEventListener("click", () => startDraw());
+    $("#an-draw-gpx")?.addEventListener("click", () => downloadDrawn());
     bindCut();
   }
   // ---- « Couper la trace » (owner, 2026-11-01, after QuickRoute): the trace's start and end left out — a warm-up, the walk
@@ -475,6 +482,7 @@ export async function render(main, { query = {}, route } = {}) {
   const timeOfDay = (full, s) => new Date(full.ms0 + s * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   /** The files card's block: two sliders over the whole trace's pace, the parts left out shaded. */
   function cutBlock() {
+    if (traceFull?.drawn) return "";
     if (!traceFull) return "";
     const D = Math.floor(traceFull.dur), a = track.cut ? Math.round(track.cut.s0) : 0, b = track.cut ? Math.round(track.cut.s1) : D;
     return html`<details class="an-cut" ${raw(track.cut ? "open" : "")}><summary>✂ ${t("an.cut.title")}${track.cut ? html` <span class="an-cut-now">· ${t("an.cut.done", { a: clock(track.cut.s0), b: clock(traceFull.dur - track.cut.s1) })}</span>` : ""}</summary>
@@ -779,6 +787,8 @@ export async function render(main, { query = {}, route } = {}) {
     hideResults();
     const r = runner();
     const work = $("#an-work");
+    if (drawing && map) { work.hidden = false; steps(3); size(); fitView(); drawSide(); draw(); return; }
+    drawing = null;
     work.hidden = !(map && track && r);
     steps(stage());
     if (work.hidden) return;
@@ -917,11 +927,12 @@ export async function render(main, { query = {}, route } = {}) {
     }
     if (my !== prepToken) return;
     course = files.orga ? null : courseCache.course;
-    if (!course && !files.orga) notes.push(t("an.st.noCourse"));
+    if (!course && !files.orga && !drawnHere()) notes.push(t("an.st.noCourse"));
     // the georeferencing
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
-    if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
+    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); geoHow = t(track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow"); }
+    else if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
     else if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
     else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }
     else if (files.world?.wf) {
@@ -960,7 +971,9 @@ export async function render(main, { query = {}, route } = {}) {
     const iofData = files.orga ? null : files.iof?.data, iofCourse = iofData?.courses[iofIndex] || null;
     const r = files.orga ? files.orga.r : course?.r || null;
     // the organiser's course: its controls placed on the map, in its order
-    const orgaPts = files.orga ? files.orga.controls.map((c) => ({ kind: c.kind, code: c.code || "", pos: [c.x, c.y] })) : null;
+    // a drawn route: its controls as the runner pointed them, in that order (on the organiser's map, the organiser's own)
+    const orgaPts = files.orga ? files.orga.controls.map((c) => ({ kind: c.kind, code: c.code || "", pos: [c.x, c.y] }))
+      : drawnHere() ? anchorsOf(track.drawn).map((a) => ({ kind: a.k, code: "", pos: track.drawn.pts[a.i] })) : null;
     if (orgaPts) pts.push(...orgaPts);
     else if (iofCourse) {
       const seq = iofCourse.controls.map((cc) => ({ ...(iofData.controls.get(cc.id) || { id: cc.id }), type: cc.type }));
@@ -1219,6 +1232,15 @@ export async function render(main, { query = {}, route } = {}) {
         rmsM = auto ? auto.rms / fit.scale : null;
       }
     }
+    if (fit && drawnHere()) {                                               // a drawn route begins at the start, its controls timed by
+      offset = 0;                                                           // the drawing itself (not by the closest approach)
+      const D = track.drawn, T = timeline(D), A = anchorsOf(D), used = new Set();
+      if (T) for (const g of targets) {
+        if (!g.pos) continue;
+        const a = A.find((q) => !used.has(q.i) && q.k === g.kind && Math.hypot(D.pts[q.i][0] - g.pos[0], D.pts[q.i][1] - g.pos[1]) < 1);
+        if (a) { used.add(a.i); g.tEst = T[a.i]; }
+      }
+    }
     if (fit) {
       pxs = new Float64Array(track.n); pys = new Float64Array(track.n);
       fullPath = new Path2D();
@@ -1357,6 +1379,228 @@ export async function render(main, { query = {}, route } = {}) {
     side();
     draw();
   }
+
+  // ---- a route drawn by hand ------------------------------------------------------------------------------------------
+  // (owner, 2026-11-02, after RouteGadget): no GPS track — the runner clicks the route on the map, control to control, and the
+  // controls' times make it run (trace/drawroute.js). The result is a GPX made here and taken as a dropped trace: everything
+  // after (the legs, the curves, the image, Mes cartes) works as for a watch's file.
+  /** The trace is a route drawn on this map (its drawing kept in the GPX, for a map of the same size). */
+  function drawnHere() { return !!(track?.drawn && map && track.drawn.w === map.width && track.drawn.h === map.height && validGeo(track.drawn.geo)); }
+  function drawBlock() {
+    if (!map || (track && !track.drawn)) return "";
+    const own = !!track?.drawn;
+    return html`<div class="an-drawbox"><b>${t(own ? "an.draw.own" : "an.draw.box")}</b>
+      <button type="button" class="btn btn-sm${own ? "" : " btn-primary"}" id="an-draw-go">✎ ${t(own ? "an.draw.edit" : "an.draw.go")}</button>
+      ${own && !track.drawn.nogeo ? html`<button type="button" class="btn btn-sm" id="an-draw-gpx">⤓ ${t("an.draw.gpx")}</button>` : ""}
+      <span class="muted">${t("an.draw.hint")}</span></div>`;
+  }
+  /** The circles the drawing snaps to: the organiser's controls, else those read on the map. */
+  function snapPts() {
+    if (files.orga) return files.orga.controls.map((c) => ({ kind: c.kind, x: c.x, y: c.y }));
+    if (!course) return [];
+    return [...(course.start ? [{ kind: "start", x: course.start.x, y: course.start.y }] : []), ...course.controls.map((c) => ({ kind: "control", x: c.x, y: c.y })),
+      ...(course.finish ? [{ kind: "finish", x: course.finish.x, y: course.finish.y }] : [])];
+  }
+  const snapR = () => 1.3 * (files.orga?.r || course?.r || 20);
+  const today = () => parisDay(Date.now());
+  async function startDraw() {
+    if (!map) return;
+    stop(); prepToken++;
+    const m = drawnHere() ? track.drawn : null;
+    const pub = withTimes && ri >= 0 ? startOf(runner()) : null;
+    const dayOf = (ms) => parisDay(ms), secOf = (ms) => Math.round((ms - (Date.parse(`${dayOf(ms)}T00:00:00Z`) - parisOffsetMs(dayOf(ms)))) / 1000);
+    drawing = { d: m ? drawingOf(m) : { pts: [], kind: [], at: {} }, step: m ? "times" : "draw", force: false, km: m?.km ?? null,
+      day: m ? dayOf(m.start) : race?.date_iso || today(), startS: m ? secOf(m.start) : pub ?? 36000, err: "", pubNote: "" };
+    calibrated = false; hideResults();
+    $("#an-work").hidden = false;
+    steps(3); size(); fitView();
+    if (!files.orga && (!courseCache || courseCache.image !== map)) {
+      status = t("an.st.reading"); drawSide(); draw();
+      let c = null;
+      try { c = await detectCourse(map); } catch (e) { console.error(e); }
+      courseCache = { image: map, course: c };
+    }
+    course = files.orga ? null : courseCache?.course || null;
+    status = "";
+    window.anDebugDraw = () => ({ drawing, view, snap: snapPts(), click: (x, y, free) => drawClick(x, y, free) });     // support, in the console
+    if (drawing) { drawSide(); draw(); }
+  }
+  /** A click while drawing: the start first, then the route's points; one near a control's circle points it. */
+  function drawClick(x, y, free) {
+    const d = drawing.d, n = d.pts.length, R = snapR();
+    const near = free ? null : snapPts().map((p) => [Math.hypot(p.x - x, p.y - y), p]).filter(([v]) => v <= R).sort((a, b) => a[0] - b[0])[0]?.[1] || null;
+    if (!n) {
+      d.pts.push(near ? [near.x, near.y] : [x, y]); d.kind.push("start");
+    } else {
+      let k = "", p = [x, y];
+      if (near && near.kind !== "start") { p = [near.x, near.y]; k = near.kind; }
+      else if (near?.kind === "start" && n > 2) { p = [near.x, near.y]; k = "finish"; }        // the finish drawn round the start
+      if (drawing.force) { k = "control"; drawing.force = false; }
+      if (k && Math.hypot(p[0] - d.pts[n - 1][0], p[1] - d.pts[n - 1][1]) < 1) return;   // the same circle again
+      d.pts.push(p); d.kind.push(k);
+      if (k === "finish") toTimes();
+    }
+    drawing.err = ""; drawSide(); draw();
+  }
+  function toTimes() {
+    const d = drawing.d;
+    if (d.pts.length < 2) { drawing.err = t("an.draw.err.points"); return; }
+    if (d.kind[d.kind.length - 1] !== "finish") {
+      if (d.kind[d.kind.length - 1] === "") d.kind[d.kind.length - 1] = "finish";
+      else { d.pts.push([...d.pts[d.pts.length - 1]]); d.kind.push("finish"); }
+    }
+    // the published split times, when the race has them for as many controls as the drawing points
+    const x = withTimes && ri >= 0 ? runner() : null;
+    const taus = x?.splits ? [0, ...x.splits, x.status === "ok" ? x.time_s : null] : null;
+    const A = anchorsOf(d);
+    drawing.pubNote = "";
+    if (taus && !Object.keys(d.at).length) {
+      if (taus.length === A.length) { A.forEach((a, j) => { if (j && taus[j] != null) d.at[a.i] = taus[j]; }); drawing.pubNote = t("an.draw.published", { r: x.name || "" }); }
+      else drawing.pubNote = t("an.draw.publishedCount", { n: taus.length - 2, m: A.length - 2 });
+    } else if (!taus && x?.status === "ok" && x.time_s != null && !Number.isFinite(d.at[A[A.length - 1].i])) d.at[A[A.length - 1].i] = x.time_s;
+    if (drawing.km == null && withTimes && klass()?.length_m) drawing.km = klass().length_m / 1000;
+    drawing.step = "times";
+  }
+  /** « 52:10 », « 1:02:30 », « 52 » (minutes): seconds; null when empty, NaN when unreadable. */
+  const parseClock = (s) => {
+    const v = String(s || "").trim().replace(",", ".");
+    if (!v) return null;
+    const p = v.split(/[:h']/).map((q) => q.trim()).filter((q) => q !== "");
+    if (!p.length || p.some((q) => !/^\d+(\.\d+)?$/.test(q))) return NaN;
+    return p.reduce((a, q) => a * 60 + Number(q), 0) * (p.length === 1 ? 60 : 1);
+  };
+  const hm = (s) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
+  function drawSide() {
+    if (!drawing) return;
+    const d = drawing.d, A = anchorsOf(d), ctl = A.filter((a) => a.k === "control").length, side = $("#an-side");
+    side.hidden = false; side.classList.add("an-cal");
+    const labelOf = (a) => (a.k === "start" ? t("an.start") : a.k === "finish" ? t("an.finish") : String(A.filter((b) => b.k === "control" && b.i <= a.i).length));
+    if (drawing.step === "draw") {
+      side.innerHTML = html`<div class="an-side-body"><div class="an-side-title">✎ ${t("an.draw.title")}</div>
+        ${status ? html`<p class="muted">${status}</p>` : ""}
+        <p class="hint">${t(d.pts.length ? "an.draw.help" : "an.draw.help0")}</p>
+        <p class="muted">${t("an.draw.count", { n: d.pts.length, c: ctl })}${course || files.orga || status ? "" : html` · ${t("an.draw.noCircles")}`}</p>
+        ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}</div>
+        <div class="an-actions">
+          <button type="button" class="btn btn-primary" id="an-dr-fin" ${raw(d.pts.length >= 2 ? "" : "disabled")}>${t("an.draw.finishHere")}</button>
+          <button type="button" class="btn btn-sm" id="an-dr-force" aria-pressed="${drawing.force}" ${raw(d.pts.length ? "" : "disabled")}>◎ ${t("an.draw.force")}</button>
+          <button type="button" class="btn btn-sm" id="an-dr-undo" ${raw(d.pts.length ? "" : "disabled")}>↶ ${t("an.draw.undo")}</button>
+          <button type="button" class="btn btn-sm" id="an-dr-clear" ${raw(d.pts.length ? "" : "disabled")}>${t("an.draw.clear")}</button>
+          <button type="button" class="btn btn-sm" id="an-dr-cancel">${t("an.draw.cancel")}</button></div>`;
+      $("#an-dr-fin").addEventListener("click", () => { toTimes(); drawSide(); draw(); });
+      $("#an-dr-force").addEventListener("click", () => { drawing.force = !drawing.force; drawSide(); });
+      $("#an-dr-undo").addEventListener("click", () => drawUndo());
+      $("#an-dr-clear").addEventListener("click", () => { d.pts = []; d.kind = []; d.at = {}; drawSide(); draw(); });
+      $("#an-dr-cancel").addEventListener("click", () => cancelDraw());
+      return;
+    }
+    const pub = withTimes && ri >= 0 && race?.date_iso && startOf(runner()) != null;
+    const georef = !!mapGeo();
+    side.innerHTML = html`<div class="an-side-body"><div class="an-side-title">✎ ${t("an.draw.times")}</div>
+      <p class="hint">${t("an.draw.times.help")}</p>
+      ${drawing.pubNote ? html`<p class="muted">${drawing.pubNote}</p>` : ""}
+      <div class="an-dr-times">${A.slice(1).map((a) => html`<label><b>${labelOf(a)}</b><input type="text" inputmode="numeric" data-at="${a.i}" placeholder="${a.k === "finish" ? "52:10" : "—"}" value="${Number.isFinite(d.at[a.i]) ? clock(d.at[a.i]) : ""}"></label>`)}</div>
+      ${pub ? "" : html`<div class="an-dr-when"><label><span>${t("an.draw.day")}</span><input type="date" id="an-dr-day" value="${drawing.day}"></label>
+        <label><span>${t("an.draw.start")}</span><input type="time" id="an-dr-start" value="${hm(drawing.startS)}"></label></div>`}
+      ${georef ? "" : html`<label class="an-dr-km"><span>${t("an.draw.km")}</span><input type="text" inputmode="decimal" id="an-dr-km" value="${drawing.km != null ? fmt(drawing.km, 2) : ""}" placeholder="4,5"></label>
+        <p class="hint">${t("an.draw.km.hint")}</p>`}
+      ${drawing.err ? html`<div class="notice">${drawing.err}</div>` : ""}</div>
+      <div class="an-actions"><button type="button" class="btn btn-primary" id="an-dr-ok">${t("an.draw.ok")}</button>
+        <button type="button" class="btn btn-sm" id="an-dr-back">✎ ${t("an.draw.back")}</button>
+        <button type="button" class="btn btn-sm" id="an-dr-cancel">${t("an.draw.cancel")}</button></div>`;
+    const read = () => {
+      let bad = false;
+      $$("[data-at]", side).forEach((el) => { const v = parseClock(el.value); if (Number.isNaN(v)) bad = true; if (v == null || Number.isNaN(v)) delete d.at[el.dataset.at]; else d.at[el.dataset.at] = v; });
+      const day = $("#an-dr-day")?.value, st = $("#an-dr-start")?.value;
+      if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) drawing.day = day;
+      if (st && /^\d{1,2}:\d{2}/.test(st)) { const [h, m] = st.split(":").map(Number); drawing.startS = h * 3600 + m * 60; }
+      if ($("#an-dr-km")) { const km = Number(String($("#an-dr-km").value).replace(",", ".")); drawing.km = Number.isFinite(km) && km > 0 ? km : null; }
+      return !bad;
+    };
+    $$("input", side).forEach((el) => el.addEventListener("change", read));
+    $("#an-dr-ok").addEventListener("click", () => { if (!read()) { drawing.err = t("an.draw.err.times"); drawSide(); return; } buildDrawn(); });
+    $("#an-dr-back").addEventListener("click", () => { read(); drawing.step = "draw"; drawing.err = ""; drawSide(); draw(); });
+    $("#an-dr-cancel").addEventListener("click", () => cancelDraw());
+  }
+  function drawUndo() {
+    if (!drawing) return;
+    const d = drawing.d;
+    if (drawing.step === "times") drawing.step = "draw";
+    else if (d.pts.length) { delete d.at[d.pts.length - 1]; d.pts.pop(); d.kind.pop(); }
+    drawSide(); draw();
+  }
+  function cancelDraw() { drawing = null; filesCard(); setup(); }
+  /** The map's georeference (lon, lat -> px) from the files given, for a route drawn on it: { geo }, or null. */
+  function mapGeo() {
+    if (!map) return null;
+    const W = map.width, H = map.height;
+    try {
+      if (files.orga?.geo && validGeo(files.orga.geo)) return { geo: files.orga.geo };
+      let F = frameAt(46.5, 2.5), fitG = null;
+      if (files.geo?.overlay) { const c = kmlCorners(files.geo.overlay)[0]; F = frameAt(c[0], c[1]); fitG = fitFromKml(files.geo.overlay, W, H, F); }
+      else if (files.geo?.corners) { F = frameAt(...files.geo.corners[0]); fitG = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(F, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); }
+      else if (files.world?.wf) { const crs = files.prj?.crs || guessCrs(files.world.wf[4], files.world.wf[5], F.lon0); if (crs) fitG = fitFromWorld(files.world.wf, crs, W, H, F); }
+      const g = fitG ? geoFromFit(fitG, F) : null;
+      return validGeo(g) ? { geo: g } : null;
+    } catch (e) { console.error(e); return null; }
+  }
+  /** The drawing made a GPX, then taken as a trace dropped on the page. */
+  async function buildDrawn() {
+    const d = drawing.d, T = timeline(d);
+    if (!T) { drawing.err = t("an.draw.err.times"); drawSide(); return; }
+    const W = map.width, H = map.height, mg = mapGeo();
+    let geo = mg?.geo || null, nogeo = false;
+    if (!geo) {
+      // the scale: the course's length the runner gives (else the class's), over the course drawn from control to control; else
+      // the circles' size — 7.5 mm across at 1:10 000 in forest, 6 mm at 1:4 000 in sprint
+      const sp = straightPx(d), rr = files.orga?.r || course?.r || null, sprint = /sprint/i.test(`${race?.name || ""} ${klass()?.name || ""}`);
+      const pxPerM = drawing.km > 0 && sp > 0 ? sp / (drawing.km * 1000) : rr ? rr / (sprint ? 12 : 37.5) : 1;
+      geo = ownGeo(pxPerM, W, H); nogeo = true;
+    }
+    const pub = withTimes && ri >= 0 && race?.date_iso ? startOf(runner()) : null;
+    const day = pub != null ? race.date_iso : drawing.day;
+    const startMs = Date.parse(`${day}T00:00:00Z`) - parisOffsetMs(day) + (pub ?? drawing.startS) * 1000;
+    const name = [race?.name, withTimes && ri >= 0 ? runner()?.name : ""].filter(Boolean).join(" · ") || t("an.draw.name");
+    const gpx = toGpx({ d, T, geo, nogeo, startMs, w: W, h: H, name, km: drawing.km });
+    const file = new File([gpx], `ozimut-${day}-${t("an.draw.file")}.gpx`, { type: "application/gpx+xml" });
+    drawing = null;
+    orgaGo = true;                                                   // placed by its own making: straight to its playback
+    await take([file]);
+  }
+  function downloadDrawn() {
+    const f = files.trace?.file;
+    if (!f) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(f); a.download = f.name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  }
+  /** The drawing on the map: the circles it snaps to, its line, its points, the controls pointed numbered. */
+  function paintDrawing(lw) {
+    const d = drawing.d, R = snapR();
+    ctx.strokeStyle = "rgba(166, 38, 164, 0.5)"; ctx.lineWidth = lw(1.5);
+    for (const p of snapPts()) { ctx.beginPath(); ctx.arc(p.x, p.y, R / 1.3, 0, Math.PI * 2); ctx.stroke(); }
+    if (!d.pts.length) return;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = lw(6); ctx.beginPath(); d.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    ctx.strokeStyle = "#e8641c"; ctx.lineWidth = lw(3); ctx.stroke();
+    ctx.font = `${lw(13)}px system-ui, sans-serif`; ctx.textBaseline = "middle";
+    let n = 0;
+    d.pts.forEach(([x, y], i) => {
+      const k = d.kind[i];
+      if (!k) { ctx.beginPath(); ctx.arc(x, y, lw(3), 0, Math.PI * 2); ctx.fillStyle = "#e8641c"; ctx.fill(); return; }
+      ctx.beginPath(); ctx.arc(x, y, lw(10), 0, Math.PI * 2); ctx.strokeStyle = "#a626a4"; ctx.lineWidth = lw(3); ctx.stroke();
+      const label = k === "start" ? t("an.start") : k === "finish" ? t("an.finish") : String(++n);
+      ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = lw(3); ctx.strokeText(label, x + lw(13), y);
+      ctx.fillStyle = "#a626a4"; ctx.fillText(label, x + lw(13), y);
+    });
+  }
+  const onDrawKey = (e) => {
+    if (!drawing || e.target.closest?.("input, textarea, select")) return;
+    if ((e.key === "z" && (e.ctrlKey || e.metaKey)) || e.key === "Backspace") { e.preventDefault(); drawUndo(); }
+    else if (e.key === "Escape" && drawing.step === "draw" && drawing.force) { drawing.force = false; drawSide(); }
+  };
+  document.addEventListener("keydown", onDrawKey);
 
   // ---- 4. the playback ----------------------------------------------------------------------------------------------
   function finish() {
@@ -1640,7 +1884,8 @@ export async function render(main, { query = {}, route } = {}) {
   const up = (e) => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
-    if (drag && !drag.moved && !calibrated) placeClick(...toImg(e.offsetX, e.offsetY));
+    if (drag && !drag.moved && drawing) { if (drawing.step === "draw") drawClick(...toImg(e.offsetX, e.offsetY), e.shiftKey || e.altKey); }
+    else if (drag && !drag.moved && !calibrated) placeClick(...toImg(e.offsetX, e.offsetY));
     if (!pointers.size) drag = null;
   };
   canvas.addEventListener("pointerup", up);
@@ -1799,7 +2044,7 @@ export async function render(main, { query = {}, route } = {}) {
       RC.drawRoutes(ctx, rcs.routes[Math.max(0, legAt(tNow))], lw, rcPace(), clock);
     }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    if (fit && fullPath && offset != null) {
+    if (fit && fullPath && offset != null && !drawing) {
       const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
       // the whole trace, faint; the part run so far, full; the tail, thicker
       const bySpeed = calibrated && !!colourBy(), series = bySpeed ? seriesOf(track, colourBy()) : null;
@@ -1830,7 +2075,8 @@ export async function render(main, { query = {}, route } = {}) {
       }
       ctx.globalAlpha = 1;
     }
-    if (marks || !calibrated) {
+    if (drawing) paintDrawing(lw);
+    else if (marks || !calibrated) {
       // the circles read on the map, faint
       if (course && !calibrated) {
         ctx.strokeStyle = "rgba(166, 38, 164, 0.45)"; ctx.lineWidth = lw(1.5);
@@ -2246,6 +2492,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
+    document.removeEventListener("keydown", onDrawKey);
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };

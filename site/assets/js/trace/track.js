@@ -16,7 +16,7 @@ export function parseTrace(name, buf) {
   const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml");
   if (doc.querySelector("parsererror")) throw new Error("gpx");
   const root = doc.documentElement.localName;
-  if (root === "gpx") return build(parseGpx(doc), "gpx");
+  if (root === "gpx") { const P = parseGpx(doc); return build(P, P.drawn ? "drawn" : "gpx"); }
   if (root === "TrainingCenterDatabase") return build(parseTcx(doc), "tcx");
   throw new Error("gpx");
 }
@@ -43,6 +43,7 @@ function activityOf(v) {
 function parseGpx(doc) {
   const pts = [];
   pts.activity = activityOf(find(doc.documentElement, "trk") && text(find(doc.documentElement, "trk"), "type"));
+  pts.drawn = drawnOf(doc);
   for (const p of doc.getElementsByTagName("trkpt")) {
     const time = text(p, "time");
     const r = { lat: num(p.getAttribute("lat")), lon: num(p.getAttribute("lon")), ms: time ? Date.parse(time) : NaN, ele: num(text(p, "ele")) };
@@ -51,6 +52,14 @@ function parseGpx(doc) {
     pts.push(r);
   }
   return pts;
+}
+/** A route drawn by hand on Ozimut (trace/drawroute.js): the drawing its GPX carries, or null. */
+function drawnOf(doc) {
+  for (const el of doc.getElementsByTagName("*")) {
+    if (el.localName !== "drawn" || el.namespaceURI !== "https://ozimut.com/gpx/drawn/1") continue;
+    try { const m = JSON.parse(el.textContent); return m?.v === 1 && Array.isArray(m.pts) && Array.isArray(m.kind) && m.pts.length === m.kind.length ? m : null; } catch (e) { return null; }
+  }
+  return null;
 }
 function parseTcx(doc) {
   const pts = [];
@@ -175,12 +184,13 @@ function build(P0, source) {
     x[i] = (P[i].lon - lon0) * kx;
     y[i] = -(P[i].lat - lat0) * ky;
   }
-  const tr = { ms0: P[0].ms, t: tt, x, y, cum, v, n, lat0, lon0, kx, ky, dur: tt[n - 1], ch: {}, source, activity: P0.activity || null };
+  const tr = { ms0: P[0].ms, t: tt, x, y, cum, v, n, lat0, lon0, kx, ky, dur: tt[n - 1], ch: {}, source, activity: P0.activity || null, drawn: P0.drawn || null };
   // the distance run: along the track smoothed over ± 3 s — the jitter of a 1 Hz trace adds metres at every step
-  // (the trace is drawn raw); the pace: that distance over a window of ± 5 s
+  // (the trace is drawn raw); the pace: that distance over a window of ± 5 s. A route drawn by hand has no jitter: its own length
+  const win = source === "drawn" ? 0 : 3;
   let sx = x[0], sy = y[0];
   for (let i = 0; i < n; i++) {
-    const a = indexAt(tr, tt[i] - 3), b = Math.min(n - 1, indexAt(tr, tt[i] + 3) + 1);
+    const a = indexAt(tr, tt[i] - win), b = win ? Math.min(n - 1, indexAt(tr, tt[i] + win) + 1) : i;
     let mx = 0, my = 0;
     for (let j = a; j <= b; j++) { mx += x[j]; my += y[j]; }
     mx /= b - a + 1; my /= b - a + 1;
