@@ -255,11 +255,11 @@ tabs (CN officiel, Méthode Ozimut, Coureurs et clubs, and « L'étude »), Orga
 naming only `?onglet=` is sent to its module by `app.docAddress` (`DOC_TAB_MODULE`; the GPS analyses are Coach's).
 
 **Three profiles**: a **visitor without an account** (« Entrer sans compte »: `auth.guest()`, `localStorage ocn.guest`; the
-router keeps them to `GUEST_ROUTES`: Arena, Coach but Analyse multi, Stats' runner, ranking and races), a **signed-in account**,
+router keeps them to `GUEST_ROUTES`: Arena, Coach — Analyse multi only where its organiser opened it to visitors —, Stats' runner, ranking and races), a **signed-in account**,
 and a signed-in account **with Orga** (`users.orga`, migration 0016 — at registration, in Réglages › Modules, or « Activer Orga »
 on the modules page; `_lib/api.js publicUser` treats a database without the column as Orga for all). Orga is never offered on a
 phone (`app.isPhone`: coarse pointer and ≤ 900 px; an Orga address shows `orgaOff`, hub.js; the modules page has no Orga tile
-there, and its bottom line no « Se connecter », which the bar has — owner, 2026-10-30). Analyse multi needs an account.
+there, and its bottom line no « Se connecter », which the bar has — owner, 2026-10-30). Adding a trace to Analyse multi needs an account.
 
 **Public data for visitors** (`data.setPublicRule`, set by `app.start`): a visitor, or an account that has not joined a country
 whose access is "members" (France), reads its **public copy** `data/<cc>/pub/` (`site_public.py`, written by `build_site` for
@@ -1326,6 +1326,35 @@ Every multiple-choice game was played through to its score page at phone size, w
   calibration in hand is saved for the cut trace, geometry included — its geometry still holds; the record the automatic
   calibration saves has none yet, and a cut at mid-race laid the part kept afresh, 29° off — and a cut made from the playback's
   « Course et fichiers » goes back to it).
+- **After RouteGadget** (owner, 2026-11-02: RouteGadget's features compared; its archive import left out). **A route drawn by hand**
+  (`trace/drawroute.js`), for a runner without a GPS track: « Dessiner mon itinéraire » in « Analyse solo »'s files card (any map) and
+  in « Analyse multi »'s runners panel — the start, then each turn; a click within 1.3 r of a control's circle (read on the map, the
+  organiser's, the circuit's) points it, Shift + click never does, « Le prochain point est un poste » forces one, « Arrivée ici » ends
+  it (a click on the finish too); then the controls' times: the published split times when their count is the drawing's, else typed
+  (the finish's at least; the others spread by the distance drawn), the day and start time when nothing is published. The route runs at
+  an even pace between two timed points, one point a second (`timeline`, `sample`). Solo makes it a **GPX** (`toGpx`) taken as a
+  dropped file — its `ozimut:drawn` metadata extension (namespace `https://ozimut.com/gpx/drawn/1`, read by `track.js` into `tr.drawn`,
+  source « drawn ») keeps the drawing, the map's size and the georeference used, so the page lays it back through that georeference
+  (`drawnHere`), times its controls by the drawing (offset 0, `tEst` from the timeline), never smooths its distance, and « Modifier le
+  dessin » edits it again. A map without georeference gets a frame of its own round (0, 0) (`ownGeo`, `nogeo`: no GPX download), its
+  scale the straight course drawn over the course's length typed (else the class's `length_m`), else the circles (7.5 mm at 1:10 000
+  forest, 6 mm at 1:4 000 sprint). Multi turns it through the circuit's `geo` into a shared trace, the drawing in its record
+  (`cleanDrawn`), tagged « dessiné », its passes the drawing's (`drawnPasses`). **A comment on one's race**: Multi's « Mon commentaire »
+  (the trace record's `note`, 1 000 characters, `PATCH /api/analyses/<id>/trace/<n>`, kept when the trace is replaced), shown under
+  the runner's name; Mes cartes' run comment (**migration 0022**, `mymap_runs.note`; written when « Analyse solo » saves the run, read
+  and edited under the run, carried by Ozimut's file; before the migration a run is saved without it and editing answers « not
+  ready »). **« 📏 » Mesurer** (`trace/measure.js`): clicks lay a line, its length by the calibration (Solo) or the circuit's
+  georeference (Multi), at its end and in a box at the map's top; the button or Escape ends it. **The map turned to the leg**
+  (« Orientation de la carte », north up by default, `orient` in the prefs): Solo the leg being run, Multi the leg shown or the
+  followed runner's; the turn is applied about the canvas's centre after the view, which stays north up (`mapView.setRotation`,
+  `unrot` for the pointers, `fitPoints` / `zoomTo` measure as turned), a north arrow in the corner. **Multi open to visitors**: an
+  analysis open to every account may also be opened to visitors without an account (`meta.visitors`, « Ouverte aussi aux visiteurs
+  sans compte »); visitors read it through `GET /api/analyses/v[/<id>[/map|traces/<n>]]` (the gate's `GUEST`, with the guest pass),
+  only the traces whose runners agreed (`visitors` in the record, custom metadata `vis`: a box unticked by default when sharing or
+  drawing, or under one's comment) and without licence; « Analyse de carte »'s first tile lists those events to visitors; the privacy
+  page says so. **Score courses** (the circuit editor's « Score », `course.score`): the passes are each control's first visit wherever
+  it comes (`share.scorePasses`), no legs (the leg views, variants, exercises, the « from » and « wait » modes, the turn), no leg lines,
+  and « Analyses » shows each runner's controls in the order run (`sharedviews.scoreView`).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

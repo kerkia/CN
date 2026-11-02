@@ -203,6 +203,9 @@ export function build(X) {
             html`<b>El track</b> se colorea por ritmo, frecuencia cardiaca, altitud, pendiente, cadencia o potencia (lo que registró el reloj), con su
               leyenda; puedes recortar el principio y el final (el calentamiento, la vuelta) y <b>exportar una imagen</b> del mapa con el track, un título
               y la leyenda, guardada en tu dispositivo.`,
+            html`<b>¿Sin track GPS?</b> « Dibujar mi ruta »: haz clic en tu ruta sobre el mapa, control tras control; los parciales publicados (o los que
+              escribas, al menos el de meta) la hacen correr como el track de un reloj. <b>📏</b> mide una distancia en el mapa, y « Orientación del mapa »
+              puede girar el tramo en curso hacia arriba.`,
           ])}
           <p>El mapa y el track se leen en tu navegador y no salen de él; solo se guarda la calibración de los controles, para recuperar el análisis tal como
             lo dejaste.</p>`)}`,
@@ -217,6 +220,9 @@ export function build(X) {
               entrenamiento, los ejercicios del organizador (pasillo, rumbo).`,
             html`<b>El acceso</b>: todas las cuentas, los miembros de un club o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
               solo para ti.`,
+            html`<b>Sin GPS</b> también puedes dibujar allí tu ruta; cada uno puede <b>comentar</b> su carrera (« Mi comentario »), que leen todos los que ven
+              los tracks. El organizador puede abrir el análisis <b>a los visitantes sin cuenta</b>: solo ven los tracks de los corredores que lo aceptaron.
+              Un recorrido <b>score</b> (controles en cualquier orden) muestra el orden de cada uno.`,
           ])}`)}`,
       cartes: () => html`
         ${slide("Coach", "Mis mapas", html`

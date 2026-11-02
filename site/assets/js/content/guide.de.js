@@ -205,6 +205,9 @@ export function build(X) {
             html`<b>Der Track</b> lässt sich nach Tempo, Herzfrequenz, Höhe, Steigung, Kadenz oder Leistung einfärben (was die Uhr aufgezeichnet hat),
               mit Legende; Anfang und Ende lassen sich abschneiden (Aufwärmen, Rückweg), und <b>ein Bild</b> der Karte mit Track, Titel und Legende
               lässt sich exportieren und auf dem Gerät speichern.`,
+            html`<b>Kein GPS-Track?</b> « Meine Route zeichnen »: klicke deine Route auf der Karte, Posten für Posten; die veröffentlichten Zwischenzeiten
+              (oder die, die du eingibst, mindestens die Zielzeit) lassen sie laufen wie den Track einer Uhr. <b>📏</b> misst eine Strecke auf der Karte, und
+              « Kartenausrichtung » kann die aktuelle Teilstrecke nach oben drehen.`,
           ])}
           <p>Karte und Track werden in deinem Browser gelesen und verlassen ihn nicht; nur die Kalibrierung der Posten wird gespeichert, damit du die Analyse
             so wiederfindest, wie du sie verlassen hast.</p>`)}`,
@@ -219,6 +222,9 @@ export function build(X) {
               bei einem Training die Übungen des Veranstalters (Korridor, Kompassstrecke).`,
             html`<b>Der Zugang</b>: alle Konten, die Mitglieder eines Vereins oder ein Passwort. Deine eigene Datei zeigt zudem deine Kurven neben der Karte,
               nur für dich.`,
+            html`<b>Ohne GPS</b> kannst du deine Route dort ebenfalls zeichnen; jeder kann seinen Lauf <b>kommentieren</b> (« Mein Kommentar »), lesbar für alle,
+              die die Tracks sehen. Der Veranstalter kann die Analyse <b>für Besucher ohne Konto</b> öffnen: sie sehen nur die Tracks der Läufer, die
+              zugestimmt haben. Eine <b>Score-Bahn</b> (Posten in beliebiger Reihenfolge) zeigt die Reihenfolge jedes Läufers.`,
           ])}`)}`,
       cartes: () => html`
         ${slide("Coach", "Meine Karten", html`

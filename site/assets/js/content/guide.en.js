@@ -200,6 +200,9 @@ export function build(X) {
             html`<b>The track</b> can be coloured by pace, heart rate, altitude, slope, cadence or power (what the watch recorded), with its legend;
               its start and end can be cut off (the warm-up, the way back), and <b>a picture</b> of the map with the track, a title and the legend
               exported, saved on your device.`,
+            html`<b>No GPS track?</b> « Draw my route »: click your route on the map, control after control; the published split times (or those you type,
+              the finish's at least) make it run like a watch's track. <b>📏</b> measures a distance on the map, and « Map orientation » can turn the
+              current leg up.`,
           ])}
           <p>The map and the track are read in your browser and never leave it; only the controls' placing is kept, to find the analysis as you left
             it.</p>`)}`,
@@ -213,6 +216,9 @@ export function build(X) {
             html`<b>Left of the map</b>, the “Analyses” tab: the split times (those published for a competition), the legs, the gaps, the route variants, and for a training
               session the organiser's exercises (corridor, compass leg).`,
             html`<b>Access</b>: every account, a club's members, or a password. Your own file also shows your curves beside the map, for you alone.`,
+            html`<b>Without GPS</b>, you can draw your route there too; everyone can <b>comment</b> on their race (« My comment »), read by all who see the
+              traces. The organiser can open the analysis <b>to visitors without an account</b>: they see only the traces of the runners who agreed. A
+              <b>score</b> course (controls in any order) shows everyone's order.`,
           ])}`)}`,
       cartes: () => html`
         ${slide("Coach", "My maps", html`
