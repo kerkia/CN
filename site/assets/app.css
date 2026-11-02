@@ -1766,6 +1766,11 @@ body.an-theatre .an-right { grid-area: side; }
 .an-dr-when, .an-dr-km { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; font-size: 13px; }
 .an-dr-when label, .an-dr-km { display: flex; flex-direction: column; gap: 2px; }
 #an-dr-force[aria-pressed="true"] { background: var(--flag); color: #fff; border-color: var(--flag); }
+/* « Mesurer » on the analyses' maps: pressed while measuring, the map's cursor a crosshair */
+.an-measure[aria-pressed="true"] { background: var(--water); color: #fff; border-color: var(--water); }
+body.measuring #an-canvas, body.measuring #sh-canvas { cursor: crosshair; }
+.an-measure-out { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 3px 10px; border-radius: 6px; background: var(--surface); color: var(--water); font-weight: 650; font-size: 13px; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); pointer-events: none; font-variant-numeric: tabular-nums; }
+.an-measure-out:empty::before { content: "📏"; }
 #an-legs { margin-top: 0; }
 tr.an-mistake td.an-lost { color: var(--bad); font-weight: 650; }
 tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }

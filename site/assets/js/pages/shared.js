@@ -23,7 +23,8 @@ import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
 import * as country from "../country.js";
 import { parseTrace, isTraceName, indexAt, posAt, cumAt, fromPoints } from "../trace/track.js";
-import { anchorsOf, timeline, latLonPoints, parseClock, drawnPasses } from "../trace/drawroute.js";
+import { anchorsOf, timeline, latLonPoints, parseClock, drawnPasses, pxToLatLon } from "../trace/drawroute.js";
+import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
@@ -608,8 +609,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
-          <button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
-        <div class="an-hud" id="sh-hud"></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
+          <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button><button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
+        <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
@@ -625,7 +626,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
-  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (drawM) { if (drawM.step === "draw") drawClickM(x, y, e?.shiftKey || e?.altKey); return; } if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (drawM) { if (drawM.step === "draw") drawClickM(x, y, e?.shiftKey || e?.altKey); return; } if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+  // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
+  const RAD = Math.PI / 180;
+  const measure = measureTool($("#sh-measure"), { redraw: () => mv.draw(), out: $("#sh-measure-out"), metres: (a, b) => {
+    const [la1, lo1] = pxToLatLon(course.geo, a[0], a[1]), [la2, lo2] = pxToLatLon(course.geo, b[0], b[1]);
+    const s = Math.sin(((la2 - la1) * RAD) / 2) ** 2 + Math.cos(la1 * RAD) * Math.cos(la2 * RAD) * Math.sin(((lo2 - lo1) * RAD) / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.sqrt(s));
+  } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
   let image;
   try { image = await createImageBitmap(await api(`/${id}/map/${course.n}?v=${course.map.v}`, { key: keyOf(id) })); }
@@ -802,6 +810,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     }
     g.globalAlpha = 1;
     if (drawM) paintDrawM(g, lw);
+    measure?.paint(g, lw);
     if (v3) sync3d();
   }
   const initials = (r) => (r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3));   // a test runner: its number
@@ -1741,5 +1750,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { document.removeEventListener("keydown", onDrawKeyM); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { document.removeEventListener("keydown", onDrawKeyM); measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

@@ -21,6 +21,7 @@ import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
 import { backLine } from "./mapanalysis.js";
 import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
 import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock } from "../trace/drawroute.js";
+import { measureTool } from "../trace/measure.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
@@ -199,9 +200,9 @@ export async function render(main, { query = {}, route } = {}) {
           inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div class="rc-busy" id="an-rc-busy" hidden></div><div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
-          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
+          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
-          <div class="an-hud" id="an-hud"></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
+          <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
@@ -797,7 +798,7 @@ export async function render(main, { query = {}, route } = {}) {
     prepare();
   }
   const hideResults = () => {
-    close3d(); $("#an-3d").hidden = true; rcReset();
+    close3d(); $("#an-3d").hidden = true; rcReset(); measure.stop(); $("#an-measure").hidden = true;
     $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
     $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
     $("#an-hud").textContent = ""; $("#an-legend").hidden = true; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
@@ -1691,7 +1692,7 @@ export async function render(main, { query = {}, route } = {}) {
     paceLegend();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
-    $("#an-3d").hidden = false;
+    $("#an-3d").hidden = false; $("#an-measure").hidden = false;
     const gc = $("#an-gen-credit");
     gc.hidden = !LM.isGenerated(files.map?.name);
     if (!gc.hidden) gc.innerHTML = t("an.gen.short", { osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` });
@@ -1876,11 +1877,15 @@ export async function render(main, { query = {}, route } = {}) {
   const up = (e) => {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
-    if (drag && !drag.moved && drawing) { if (drawing.step === "draw") drawClick(...toImg(e.offsetX, e.offsetY), e.shiftKey || e.altKey); }
+    if (drag && !drag.moved && measure.on) measure.click(...toImg(e.offsetX, e.offsetY));
+    else if (drag && !drag.moved && drawing) { if (drawing.step === "draw") drawClick(...toImg(e.offsetX, e.offsetY), e.shiftKey || e.altKey); }
     else if (drag && !drag.moved && !calibrated) placeClick(...toImg(e.offsetX, e.offsetY));
     if (!pointers.size) drag = null;
   };
   canvas.addEventListener("pointerup", up);
+  // « Mesurer »: a line clicked on the map, its length in metres by the calibration (trace/measure.js)
+  const measure = measureTool($("#an-measure"), { redraw: () => draw(), out: $("#an-measure-out"),
+    metres: (a, b) => { if (!fit) return null; const p = toM(fit, a[0], a[1]), q = toM(fit, b[0], b[1]); return Math.hypot(p[0] - q[0], p[1] - q[1]); } });
   canvas.addEventListener("pointercancel", up);
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.offsetX, e.offsetY); }, { passive: false });
   canvas.addEventListener("dblclick", (e) => zoomBy(1.6, e.offsetX, e.offsetY));
@@ -2067,6 +2072,7 @@ export async function render(main, { query = {}, route } = {}) {
       }
       ctx.globalAlpha = 1;
     }
+    measure.paint(ctx, lw);
     if (drawing) paintDrawing(lw);
     else if (marks || !calibrated) {
       // the circles read on the map, faint
@@ -2484,7 +2490,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
-    document.removeEventListener("keydown", onDrawKey);
+    document.removeEventListener("keydown", onDrawKey); measure.destroy();
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };

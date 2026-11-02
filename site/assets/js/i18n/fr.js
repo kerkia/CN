@@ -1644,6 +1644,7 @@ export default {
   "an.draw.file": "itineraire-dessine",
   "an.draw.geoHow": "itinéraire dessiné sur la carte",
   "an.draw.geoOwn": "itinéraire dessiné sur la carte (non géoréférencée : échelle d'après la longueur du circuit)",
+  "an.measure.hint": "Mesurer une distance : cliquez sur la carte, point après point ; Échap ou ce bouton pour finir",
   "an.reading": "lecture…",
   "an.err.map": "Ce fichier n'est pas une image lisible (PNG, JPEG, WebP, GIF) ni un PDF.",
   "an.err.pdf": "Le PDF n'a pas pu être rendu : exportez la carte en image (PNG ou JPEG).",

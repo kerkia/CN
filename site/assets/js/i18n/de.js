@@ -2397,6 +2397,7 @@ export default {
   "an.draw.file": "gezeichnete-route",
   "an.draw.geoHow": "auf der Karte gezeichnete Route",
   "an.draw.geoOwn": "auf der Karte gezeichnete Route (nicht georeferenziert: Maßstab aus der Bahnlänge)",
+  "an.measure.hint": "Eine Strecke messen: klicke Punkt für Punkt auf die Karte; Esc oder diese Schaltfläche zum Beenden",
   "an.src.tcx": "TCX",
   "an.src.fit": "FIT",
   "an.points": "Punkte",

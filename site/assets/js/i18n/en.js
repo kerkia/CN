@@ -2278,6 +2278,7 @@ export default {
   "an.draw.file": "drawn-route",
   "an.draw.geoHow": "route drawn on the map",
   "an.draw.geoOwn": "route drawn on the map (not georeferenced: scale from the course length)",
+  "an.measure.hint": "Measure a distance: click on the map, point after point; Escape or this button to finish",
   "an.src.tcx": "TCX",
   "an.src.fit": "FIT",
   "an.points": "points",

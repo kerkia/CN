@@ -2397,6 +2397,7 @@ export default {
   "an.draw.file": "ruta-dibujada",
   "an.draw.geoHow": "ruta dibujada sobre el mapa",
   "an.draw.geoOwn": "ruta dibujada sobre el mapa (no georreferenciado: escala según la longitud del recorrido)",
+  "an.measure.hint": "Medir una distancia: haz clic en el mapa, punto tras punto; Esc o este botón para terminar",
   "an.src.tcx": "TCX",
   "an.src.fit": "FIT",
   "an.points": "puntos",
