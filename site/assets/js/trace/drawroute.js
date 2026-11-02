@@ -88,23 +88,6 @@ ${pts.join("\n")}
 </gpx>
 `;
 }
-/** A course's passes (race seconds, as its track's own) timed by the drawing: each control the drawing pointed on its spot, in
- *  order, else null — or null altogether when the drawing cannot be timed. */
-export function drawnPasses(d, ctrls, anyOrder = false) {
-  const T = timeline(d);
-  if (!T) return null;
-  const A = anchorsOf(d), used = new Set();
-  let k = 0;
-  return ctrls.map((c) => {
-    for (let j = anyOrder ? 0 : k; j < A.length; j++) {             // a score course: its controls in any order
-      const p = d.pts[A[j].i];
-      if (!used.has(j) && A[j].k === c.kind && Math.hypot(p[0] - c.x, p[1] - c.y) < 1) { used.add(j); k = j + 1; return T[A[j].i]; }
-    }
-    return null;
-  });
-}
-/** The drawing's points one a second in degrees and ms: [{ lat, lon, ms }] (track.js fromPoints makes them a track). */
-export const latLonPoints = ({ d, T, geo, startMs }) => sample(d, T).map((p) => { const [lat, lon] = pxToLatLon(geo, p.x, p.y); return { lat, lon, ms: startMs + p.s * 1000 }; });
 /** A time typed — « 52:10 », « 1:02:30 », « 52 » (minutes) — in seconds; null when empty, NaN when unreadable. */
 export function parseClock(s) {
   const v = String(s || "").trim().replace(",", ".");

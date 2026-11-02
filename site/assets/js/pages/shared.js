@@ -22,8 +22,8 @@ import * as auth from "../auth.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
 import * as country from "../country.js";
-import { parseTrace, isTraceName, indexAt, posAt, cumAt, fromPoints } from "../trace/track.js";
-import { anchorsOf, timeline, latLonPoints, parseClock, drawnPasses, pxToLatLon } from "../trace/drawroute.js";
+import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
+import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
@@ -43,7 +43,7 @@ import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { views as bottomViews, TABS } from "./sharedviews.js";
 import { videoPanel } from "./sharedvideo.js";
-import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs, parisOffsetMs } from "../trace/published.js";
+import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 import { bar } from "../waitbar.js";
@@ -635,7 +635,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
-  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (drawM) { if (drawM.step === "draw") drawClickM(x, y, e?.shiftKey || e?.altKey); return; } if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
   // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
   const RAD = Math.PI / 180;
   const measure = measureTool($("#sh-measure"), { redraw: () => mv.draw(), out: $("#sh-measure-out"), metres: (a, b) => {
@@ -670,6 +670,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     return all.find((k) => k.name === course.circuit) || null;
   })();
   const splitsN = (k) => { const n = k?.runners?.map((x) => x.splits?.length || 0) || []; return n.length ? Math.max(...n) : 0; };
+  // a route drawn by hand is never compared with real traces (owner, 2026-11-02): one shared while it was allowed is left out
+  recs = recs.filter((rec) => !rec.drawn);
   let runners = recs.map((rec) => {
     const tr = decodeTrace(rec);
     if (!tr) return null;
@@ -683,14 +685,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       const startT = off.startS != null && race?.date_iso ? startOnTrace(race.date_iso, off.startS, tr.ms0) : null;
       pub = publishedPasses(map, publishedTaus(off.row), guess, startT, tr.dur);
     }
-    // a route drawn by hand: its passes are the drawing's own times (its track starts at the start, at 0)
-    const drawnP = rec.drawn ? drawnPasses(rec.drawn, ctrls, score) : null;
-    const passes = pub?.passes || (drawnP && drawnP.filter((v) => v != null).length >= 2 ? drawnP.map((v, j) => v ?? guess[j]) : guess);
+    const passes = pub?.passes || guess;
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
     const si = ctrls.findIndex((p) => p.kind === "start"), fi = ctrls.findIndex((p) => p.kind === "finish");
     const start = si >= 0 ? passes[si] ?? tr.t[0] : tr.t[0], finish = fi >= 0 ? passes[fi] : null;
     return { uid: rec.uid, name: rec.name, lic: rec.lic, test: !!rec.test, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
-      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null, note: rec.note || "", drawing: rec.drawn || null, visitors: !!rec.visitors };
+      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null, note: rec.note || "", visitors: !!rec.visitors };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
   // a score course: a runner's controls visited, in the order run ({ j: the course's index, s: race seconds })
@@ -823,7 +823,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       }
     }
     g.globalAlpha = 1;
-    if (drawM) paintDrawM(g, lw);
     measure?.paint(g, lw);
     if (v3) sync3d();
   }
@@ -840,7 +839,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   }
   /** The map's turn: the leg shown up — a leg's view its leg, else the leg of the runner followed —, else north up. */
   function mapTurn() {
-    if (orient !== "leg" || drawM || score) return 0;
+    if (orient !== "leg" || score) return 0;
     let j = leg;
     if (!j && sel) { const s = sAt(sel, T); if (s != null) { j = 1; while (j < legsN && sel.passes[j] != null && s >= sel.passes[j]) j++; } }
     const a = j ? ctrls[j - 1] : null, b = j ? ctrls[j] : null;
@@ -963,143 +962,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
 
   // ---- the panels
   const routeVar = (r) => { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return { key: k, name: V.list[i]?.name || k, c: VARIANT_COLOURS[Math.max(0, i) % VARIANT_COLOURS.length] }; };
-  // ---- one's route drawn by hand (owner, 2026-11-02, after RouteGadget): no GPS track — clicked on the circuit's map, control to
-  // control (trace/drawroute.js), the controls' times the published split times or typed, the route then shared as a trace: its
-  // points through the circuit's own georeference, at an even pace leg by leg; the drawing kept with it, to be edited again
-  let drawM = null;                                       // { d: { pts, kind, at }, step: "draw" | "times", force, day, startS, err, pubNote }
-  const dayOf = (ms) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
-  const secOfDay = (ms) => Math.round((ms - (Date.parse(`${dayOf(ms)}T00:00:00Z`) - parisOffsetMs(dayOf(ms)))) / 1000);
-  const meOff = () => { const me = auth.session(); return me ? official({ lic: me.lic || "", name: me.nom || "" }) : null; };
-  function startDrawM() {
-    const mine = runners.find((r) => r.mine && !r.test), off = meOff();
-    drawM = { d: mine?.drawing ? { pts: mine.drawing.pts.map((p) => [...p]), kind: [...mine.drawing.kind], at: { ...mine.drawing.at } } : { pts: [], kind: [], at: {} },
-      step: mine?.drawing ? "times" : "draw", force: false, err: "", pubNote: "",
-      day: race?.date_iso || A.date || dayOf(Date.now()),
-      startS: off?.startS ?? (mine?.drawing ? secOfDay(mine.tr.ms0) : 36000) };
-    if (playing) stop();
-    window.shDebugDraw = () => ({ drawM, ctrls, click: (x, y, free) => drawClickM(x, y, free) });     // support, in the console
-    leftP.show("runners", true);
-    left(); mv.draw();
-  }
-  function drawClickM(x, y, free) {
-    const d = drawM.d, n = d.pts.length, R = 1.3 * (course.r || 20);
-    const near = free ? null : ctrls.map((p) => [Math.hypot(p.x - x, p.y - y), p]).filter(([v]) => v <= R).sort((a, b) => a[0] - b[0])[0]?.[1] || null;
-    if (!n) { d.pts.push(near ? [near.x, near.y] : [x, y]); d.kind.push("start"); }
-    else {
-      let k = "", p = [x, y];
-      if (near && near.kind !== "start") { p = [near.x, near.y]; k = near.kind; }
-      else if (near?.kind === "start" && n > 2) { p = [near.x, near.y]; k = "finish"; }
-      if (drawM.force) { k = "control"; drawM.force = false; }
-      if (k && Math.hypot(p[0] - d.pts[n - 1][0], p[1] - d.pts[n - 1][1]) < 1) return;
-      d.pts.push(p); d.kind.push(k);
-      if (k === "finish") timesM();
-    }
-    drawM.err = ""; left(); mv.draw();
-  }
-  function timesM() {
-    const d = drawM.d;
-    if (d.pts.length < 2) { drawM.err = t("an.draw.err.points"); return; }
-    if (d.kind[d.kind.length - 1] !== "finish") {
-      if (d.kind[d.kind.length - 1] === "") d.kind[d.kind.length - 1] = "finish";
-      else { d.pts.push([...d.pts[d.pts.length - 1]]); d.kind.push("finish"); }
-    }
-    const off = meOff(), taus = off?.row?.splits?.length ? publishedTaus(off.row) : null, Q = anchorsOf(d);
-    drawM.pubNote = "";
-    if (taus && !Object.keys(d.at).length) {
-      if (taus.length === Q.length) { Q.forEach((a, j) => { if (j && taus[j] != null) d.at[a.i] = taus[j]; }); drawM.pubNote = t("an.draw.published", { r: off.row.name || "" }); }
-      else drawM.pubNote = t("an.draw.publishedCount", { n: taus.length - 2, m: Q.length - 2 });
-    } else if (!taus && off?.time != null && off.status === "ok" && !Number.isFinite(d.at[Q[Q.length - 1].i])) d.at[Q[Q.length - 1].i] = off.time;
-    drawM.step = "times";
-  }
-  function drawLeftM() {
-    const d = drawM.d, Q = anchorsOf(d), box = $("#sh-left");
-    const labelOf = (a) => (a.k === "start" ? t("an.start") : a.k === "finish" ? t("an.finish") : String(Q.filter((b) => b.k === "control" && b.i <= a.i).length));
-    const hm = (s) => `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
-    if (drawM.step === "draw") {
-      box.innerHTML = html`<div class="an-side-title">✎ ${t("an.draw.title")}</div>
-        <p class="hint">${t(d.pts.length ? "an.draw.help" : "an.draw.help0")}</p>
-        <p class="muted">${t("an.draw.count", { n: d.pts.length, c: Q.filter((a) => a.k === "control").length })}</p>
-        ${drawM.err ? html`<div class="notice">${drawM.err}</div>` : ""}
-        <div class="sh-draw-acts"><button type="button" class="btn btn-sm btn-primary" id="sh-dr-fin" ${raw(d.pts.length >= 2 ? "" : "disabled")}>${t("an.draw.finishHere")}</button>
-          <button type="button" class="btn btn-sm" id="sh-dr-force" aria-pressed="${drawM.force}" ${raw(d.pts.length ? "" : "disabled")}>◎ ${t("an.draw.force")}</button>
-          <button type="button" class="btn btn-sm" id="sh-dr-undo" ${raw(d.pts.length ? "" : "disabled")}>↶ ${t("an.draw.undo")}</button>
-          <button type="button" class="btn btn-sm" id="sh-dr-clear" ${raw(d.pts.length ? "" : "disabled")}>${t("an.draw.clear")}</button>
-          <button type="button" class="btn btn-sm" id="sh-dr-cancel">${t("an.draw.cancel")}</button></div>`;
-      $("#sh-dr-fin").addEventListener("click", () => { timesM(); left(); mv.draw(); });
-      $("#sh-dr-force").addEventListener("click", () => { drawM.force = !drawM.force; left(); });
-      $("#sh-dr-undo").addEventListener("click", () => undoM());
-      $("#sh-dr-clear").addEventListener("click", () => { d.pts = []; d.kind = []; d.at = {}; left(); mv.draw(); });
-      $("#sh-dr-cancel").addEventListener("click", () => { drawM = null; left(); mv.draw(); });
-      return;
-    }
-    const pub = meOff()?.startS != null && !!race?.date_iso;
-    box.innerHTML = html`<div class="an-side-title">✎ ${t("an.draw.times")}</div>
-      <p class="hint">${t("an.draw.times.help")}</p>
-      ${drawM.pubNote ? html`<p class="muted">${drawM.pubNote}</p>` : ""}
-      <div class="an-dr-times">${Q.slice(1).map((a) => html`<label><b>${labelOf(a)}</b><input type="text" inputmode="numeric" data-at="${a.i}" placeholder="${a.k === "finish" ? "52:10" : "—"}" value="${Number.isFinite(d.at[a.i]) ? clock(d.at[a.i]) : ""}"></label>`)}</div>
-      ${pub ? "" : html`<div class="an-dr-when"><label><span>${t("an.draw.day")}</span><input type="date" id="sh-dr-day" value="${drawM.day}"></label>
-        <label><span>${t("an.draw.start")}</span><input type="time" id="sh-dr-start" value="${hm(drawM.startS)}"></label></div>`}
-      ${drawM.err ? html`<div class="notice">${drawM.err}</div>` : ""}
-      <label class="an-opt sh-dr-consent"><input type="checkbox" id="sh-dr-consent"> ${t("sh.trace.consent")}</label>
-      ${A.visitors ? html`<label class="an-opt sh-dr-consent"><input type="checkbox" id="sh-dr-vis" ${raw(myRun()?.visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}
-      <div class="sh-draw-acts"><button type="button" class="btn btn-sm btn-primary" id="sh-dr-ok">${t("sh.draw.send")}</button>
-        <button type="button" class="btn btn-sm" id="sh-dr-back">✎ ${t("an.draw.back")}</button>
-        <button type="button" class="btn btn-sm" id="sh-dr-cancel">${t("an.draw.cancel")}</button></div>`;
-    const read = () => {
-      let bad = false;
-      $$("[data-at]", box).forEach((el) => { const v = parseClock(el.value); if (Number.isNaN(v)) bad = true; if (v == null || Number.isNaN(v)) delete d.at[el.dataset.at]; else d.at[el.dataset.at] = v; });
-      const day = $("#sh-dr-day")?.value, st = $("#sh-dr-start")?.value;
-      if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) drawM.day = day;
-      if (st && /^\d{1,2}:\d{2}/.test(st)) { const [h, m] = st.split(":").map(Number); drawM.startS = h * 3600 + m * 60; }
-      return !bad;
-    };
-    $$("input", box).forEach((el) => el.addEventListener("change", read));
-    $("#sh-dr-vis")?.addEventListener("change", (e) => { drawM.vis = e.target.checked; });
-    $("#sh-dr-ok").addEventListener("click", () => { if (!read()) { drawM.err = t("an.draw.err.times"); left(); return; } if (!$("#sh-dr-consent").checked) { drawM.err = t("sh.draw.consent"); left(); return; } sendDrawM(); });
-    $("#sh-dr-back").addEventListener("click", () => { read(); drawM.step = "draw"; drawM.err = ""; left(); mv.draw(); });
-    $("#sh-dr-cancel").addEventListener("click", () => { drawM = null; left(); mv.draw(); });
-  }
-  function undoM() {
-    const d = drawM.d;
-    if (drawM.step === "times") drawM.step = "draw";
-    else if (d.pts.length) { delete d.at[d.pts.length - 1]; d.pts.pop(); d.kind.pop(); }
-    left(); mv.draw();
-  }
-  async function sendDrawM() {
-    const d = drawM.d, T = timeline(d);
-    if (!T) { drawM.err = t("an.draw.err.times"); left(); return; }
-    const off = meOff(), useOff = off?.startS != null && race?.date_iso, day = useOff ? race.date_iso : drawM.day;
-    const startMs = Date.parse(`${day}T00:00:00Z`) - parisOffsetMs(day) + (useOff ? off.startS : drawM.startS) * 1000;
-    let tr;
-    try { tr = fromPoints(latLonPoints({ d, T, geo: course.geo, startMs }), "drawn"); } catch (e) { drawM.err = t("an.draw.err.times"); left(); return; }
-    const note = runners.find((r) => r.mine && !r.test)?.note || "";
-    try {
-      await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: encodeTrace(tr), drawn: d, note, visitors: !!(drawM.vis ?? myRun()?.visitors) }, key: keyOf(id) });
-      drawM = null; reload();
-    } catch (e) { drawM.err = errText(e); left(); }
-  }
-  function paintDrawM(g, lw) {
-    const d = drawM.d;
-    if (!d.pts.length) return;
-    g.save(); g.lineCap = "round"; g.lineJoin = "round"; g.globalAlpha = 1;
-    g.strokeStyle = "#ffffff"; g.lineWidth = lw(6); g.beginPath(); d.pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
-    g.strokeStyle = "#e8641c"; g.lineWidth = lw(3); g.stroke();
-    let n = 0;
-    g.font = `${lw(13)}px system-ui, sans-serif`; g.textBaseline = "middle";
-    d.pts.forEach(([x, y], i) => {
-      const k = d.kind[i];
-      if (!k) { g.beginPath(); g.arc(x, y, lw(3), 0, Math.PI * 2); g.fillStyle = "#e8641c"; g.fill(); return; }
-      g.beginPath(); g.arc(x, y, lw(10), 0, Math.PI * 2); g.strokeStyle = "#a626a4"; g.lineWidth = lw(3); g.stroke();
-      const label = k === "start" ? t("an.start") : k === "finish" ? t("an.finish") : String(++n);
-      g.strokeStyle = "#ffffff"; g.lineWidth = lw(3); g.strokeText(label, x + lw(13), y); g.fillStyle = "#a626a4"; g.fillText(label, x + lw(13), y);
-    });
-    g.restore();
-  }
-  const onDrawKeyM = (e) => {
-    if (!drawM || drawM.step !== "draw" || e.target.closest?.("input, textarea, select")) return;
-    if ((e.key === "z" && (e.ctrlKey || e.metaKey)) || e.key === "Backspace") { e.preventDefault(); undoM(); }
-  };
-  document.addEventListener("keydown", onDrawKeyM);
   /** One's comment on one's race, seen by all who see the traces (owner, 2026-11-02, after RouteGadget). */
   async function saveNote(text) {
     const state = $("#sh-note-state");
@@ -1113,7 +975,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   }
 
   function left() {
-    if (drawM) { drawLeftM(); return; }
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
     const nShown = runners.filter((r) => r.visible).length;
@@ -1125,7 +986,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
           <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
-          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}${r.test ? html` <span class="tag">${t("sh.test.tag")}</span>` : ""}${r.drawing ? html` <span class="tag" title="${t("sh.drawn.hint")}">✎ ${t("sh.drawn")}</span>` : ""}</span>
+          <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}${r.test ? html` <span class="tag">${t("sh.test.tag")}</span>` : ""}</span>
           <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
@@ -1135,7 +996,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
         ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
-        <button type="button" class="btn btn-sm" id="sh-draw">✎ ${t(myRun()?.drawing ? "an.draw.edit" : myRun() ? "sh.draw.instead" : "an.draw.go")}</button>
         <input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
       ${myRun() ? html`<div class="sh-mine sh-note-box"><label for="sh-note"><b>${t("sh.note.mine")}</b></label>
@@ -1177,7 +1037,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
     if (you.visitor) return;
     $("#sh-add").addEventListener("click", () => $("#sh-file").click());
-    $("#sh-draw").addEventListener("click", () => startDrawM());
     $("#sh-mine-vis")?.addEventListener("change", async (e) => {
       try { const r = await api(`/${id}/trace/${course.n}`, { method: "PATCH", body: { visitors: e.target.checked }, key: keyOf(id) }); myRun().visitors = !!r.visitors; }
       catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
@@ -1203,6 +1062,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       boxU.innerHTML = html`<div class="notice">${t("sh.test.progress", { i: i + 1, n: files.length })}</div>`;
       try {
         const tr = parseTrace(file.name, await file.arrayBuffer());
+        if (tr.source === "drawn") throw Object.assign(new Error(t("sh.trace.drawn")), { local: true });
         const crop = cropToMap(tr, course.geo, course.map.w, course.map.h);
         if (!crop) throw Object.assign(new Error(t("sh.trace.offMap")), { local: true });
         if (k >= 999) throw Object.assign(new Error(t("sh.test.full")), { local: true });
@@ -1218,6 +1078,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const boxU = $("#sh-upload");
     let tr;
     try { tr = parseTrace(file.name, await file.arrayBuffer()); } catch (e) { boxU.innerHTML = html`<div class="notice">${t(e.message === "time" ? "an.err.time" : "an.err.gpx")}</div>`; return; }
+    // a route drawn by hand on Ozimut (its GPX says so): not compared with the others' GPS traces (owner, 2026-11-02)
+    if (tr.source === "drawn") { boxU.innerHTML = html`<div class="notice">${t("sh.trace.drawn")}</div>`; return; }
     const crop = cropToMap(tr, course.geo, course.map.w, course.map.h);
     if (!crop) { boxU.innerHTML = html`<div class="notice">${t("sh.trace.offMap")}</div>`; return; }
     const enc = encodeTrace(tr, crop[0], crop[1]), t0 = enc.t0, t1 = t0 + enc.dt.reduce((s, v) => s + v, 0);
@@ -1787,5 +1649,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { document.removeEventListener("keydown", onDrawKeyM); measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

@@ -184,16 +184,6 @@ function cleanTrace(b) {
   return { v: 1, t0: Math.round(b.t0), dt: b.dt, la: b.la, lo: b.lo };
 }
 
-/** A route drawn by hand (trace/drawroute.js): its points in the map's pixels, which are controls, their times — kept with the
- *  trace so that its runner edits it again and the page tags it « drawn ». Null when malformed. */
-function cleanDrawn(d) {
-  if (!d || !Array.isArray(d.pts) || !Array.isArray(d.kind) || d.pts.length !== d.kind.length || d.pts.length < 2 || d.pts.length > 3000) return null;
-  if (!d.pts.every((p) => Array.isArray(p) && p.length === 2 && p.every((v) => Number.isFinite(v) && Math.abs(v) < 1e6))) return null;
-  if (!d.kind.every((k) => ["", "start", "control", "finish"].includes(k))) return null;
-  const at = {};
-  for (const [k, v] of Object.entries(d.at || {})) if (/^\d{1,4}$/.test(k) && Number.isFinite(v) && v >= 0 && v < 86400 * 2) at[k] = Math.round(v * 10) / 10;
-  return { pts: d.pts.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]), kind: d.kind, at };
-}
 /** A runner's comment on their race (owner, 2026-11-02, after RouteGadget): plain text, its lines kept. */
 const cleanNote = (s) => String(s ?? "").replace(/\r/g, "").replace(/[\u0000-\u0009\u000b-\u001f<>]/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000);
 
@@ -466,11 +456,12 @@ const forUsers = withUser(async (ctx, user) => {
       if (k != null && !(isAdmin(env, user) && Number.isInteger(k) && k >= 1 && k <= TEST_MAX)) return json({ error: "forbidden" }, 403);
       const uid = k != null ? testUid(user.id, k) : user.id;
       const name = (user.display_name || "") + (k != null ? ` #${k}` : "");
-      const drawn = b.drawn != null ? cleanDrawn(b.drawn) : null, note = cleanNote(b.note);
-      if (b.drawn != null && !drawn) return json({ error: "trace" }, 400);
+      // a route drawn by hand is not a trace to compare with the others' (owner, 2026-11-02): refused
+      if (b.drawn != null) return json({ error: "drawn" }, 400);
+      const note = cleanNote(b.note);
       const vis = b.visitors === true && !!meta.visitors;                     // the runner agreed to be seen by visitors too
       const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}),
-        ...(drawn ? { drawn } : {}), ...(note ? { note } : {}), ...(vis ? { visitors: true } : {}) };
+        ...(note ? { note } : {}), ...(vis ? { visitors: true } : {}) };
       await env.BUCKET.put(`${DATA}${id}/trace-${n}-${uid}.json`, JSON.stringify(rec), {
         httpMetadata: { contentType: "application/json" },
         customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}), ...(vis ? { vis: "1" } : {}) } });
