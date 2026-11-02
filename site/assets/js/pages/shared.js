@@ -84,6 +84,8 @@ const keyOf = (id) => { try { return sessionStorage.getItem(`ocn.an.key.${id}`) 
 const setKey = (id, k) => { try { sessionStorage.setItem(`ocn.an.key.${id}`, k); } catch (e) { /* this visit only */ } };
 
 async function api(path, { method = "GET", body, type, key } = {}) {
+  // a visitor without an account (owner, 2026-11-02): read only, the analyses their organiser opened to visitors
+  if (!auth.session() && method === "GET") path = `/v${path}`;
   const headers = {};
   if (key) headers["X-Analysis-Key"] = key;
   let payload;
@@ -284,6 +286,7 @@ function setup(box, ctx) {
       <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
       <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
       <label class="field"><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
+      <label class="an-opt sh-s-visitors" title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")} ${raw(A.vis === "public" ? "" : "disabled")}> ${t("sh.visitors")}</label>
       <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div>
     <h2 style="font-size:16px;margin:14px 0 8px">${t("sh.courses")}</h2>
     <table class="data compact" style="max-width:720px"><tbody>
@@ -295,11 +298,12 @@ function setup(box, ctx) {
       <button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div>
     <div id="sh-editor"></div></div>`;
   $("#sh-s-save").addEventListener("click", async () => {
-    const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value };
+    const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
     if ($("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
     try { await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); $("#sh-s-note").textContent = t("sh.saved"); onChange(); }
     catch (e) { $("#sh-s-note").textContent = errText(e); }
   });
+  $("#sh-s-vis").addEventListener("change", (e) => { const v = $("#sh-s-visitors"); v.disabled = e.target.value !== "public"; if (v.disabled) v.checked = false; });
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
     try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE[ctx.kind]; } catch (e) { alert(errText(e)); }
@@ -604,7 +608,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     <div class="sh-layout" id="sh-layout">
       <div class="an-bar sh-bar" id="sh-bar"></div>
       ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "views", label: t("sh.tab.views") },
-        ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), { key: "own", label: t("sh.own.title") }],
+        ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
         inner: { runners: html`<div id="sh-left"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
@@ -681,7 +685,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     // a circuit without its start or its finish: the race from the trace's start, to the trace's end
     const start = ctrls[0].kind === "start" ? passes[0] ?? tr.t[0] : tr.t[0], finish = ctrls[legsN].kind === "finish" ? passes[legsN] : null;
     return { uid: rec.uid, name: rec.name, lic: rec.lic, test: !!rec.test, tr, fit, pxs, pys, passes, start, finish, mine: rec.uid === you.uid, visible: true, official: off, abs0: tr.ms0 / 1000,
-      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null, note: rec.note || "", drawing: rec.drawn || null };
+      published: !!pub, pubFrom: pub?.from || null, klass: off?.klass || null, note: rec.note || "", drawing: rec.drawn || null, visitors: !!rec.visitors };
   }).filter(Boolean);
   const total = (r) => (r.finish != null ? r.finish - r.start : null);
   const visKey = `ocn.an.vis.${id}.${course.n}`;
@@ -946,7 +950,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     });
   }
   const ownRo = new ResizeObserver(() => drawOwn());
-  ownRo.observe($("#sh-curves"));
+  if ($("#sh-curves")) ownRo.observe($("#sh-curves"));                 // a visitor has no « Mes courbes »
 
   // ---- the panels
   const routeVar = (r) => { const V = variantsOf(leg), k = V.of.get(r.uid), i = V.list.findIndex((v) => v.key === k); return { key: k, name: V.list[i]?.name || k, c: VARIANT_COLOURS[Math.max(0, i) % VARIANT_COLOURS.length] }; };
@@ -1028,6 +1032,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         <label><span>${t("an.draw.start")}</span><input type="time" id="sh-dr-start" value="${hm(drawM.startS)}"></label></div>`}
       ${drawM.err ? html`<div class="notice">${drawM.err}</div>` : ""}
       <label class="an-opt sh-dr-consent"><input type="checkbox" id="sh-dr-consent"> ${t("sh.trace.consent")}</label>
+      ${A.visitors ? html`<label class="an-opt sh-dr-consent"><input type="checkbox" id="sh-dr-vis" ${raw(myRun()?.visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}
       <div class="sh-draw-acts"><button type="button" class="btn btn-sm btn-primary" id="sh-dr-ok">${t("sh.draw.send")}</button>
         <button type="button" class="btn btn-sm" id="sh-dr-back">✎ ${t("an.draw.back")}</button>
         <button type="button" class="btn btn-sm" id="sh-dr-cancel">${t("an.draw.cancel")}</button></div>`;
@@ -1040,6 +1045,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       return !bad;
     };
     $$("input", box).forEach((el) => el.addEventListener("change", read));
+    $("#sh-dr-vis")?.addEventListener("change", (e) => { drawM.vis = e.target.checked; });
     $("#sh-dr-ok").addEventListener("click", () => { if (!read()) { drawM.err = t("an.draw.err.times"); left(); return; } if (!$("#sh-dr-consent").checked) { drawM.err = t("sh.draw.consent"); left(); return; } sendDrawM(); });
     $("#sh-dr-back").addEventListener("click", () => { read(); drawM.step = "draw"; drawM.err = ""; left(); mv.draw(); });
     $("#sh-dr-cancel").addEventListener("click", () => { drawM = null; left(); mv.draw(); });
@@ -1059,7 +1065,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     try { tr = fromPoints(latLonPoints({ d, T, geo: course.geo, startMs }), "drawn"); } catch (e) { drawM.err = t("an.draw.err.times"); left(); return; }
     const note = runners.find((r) => r.mine && !r.test)?.note || "";
     try {
-      await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: encodeTrace(tr), drawn: d, note }, key: keyOf(id) });
+      await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: encodeTrace(tr), drawn: d, note, visitors: !!(drawM.vis ?? myRun()?.visitors) }, key: keyOf(id) });
       drawM = null; reload();
     } catch (e) { drawM.err = errText(e); left(); }
   }
@@ -1117,7 +1123,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           ${leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
           ${r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}
-      <div class="sh-mine">${runners.some((r) => r.mine)
+      ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
         ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
         <button type="button" class="btn btn-sm" id="sh-draw">✎ ${t(myRun()?.drawing ? "an.draw.edit" : myRun() ? "sh.draw.instead" : "an.draw.go")}</button>
@@ -1126,12 +1132,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       ${myRun() ? html`<div class="sh-mine sh-note-box"><label for="sh-note"><b>${t("sh.note.mine")}</b></label>
         <textarea id="sh-note" rows="3" maxlength="1000" placeholder="${t("sh.note.ph")}">${myRun().note || ""}</textarea>
         <div class="row" style="gap:6px;align-items:center"><button type="button" class="btn btn-sm" id="sh-note-save">${t("sh.note.save")}</button><span class="muted" id="sh-note-state"></span></div>
-        <p class="hint" style="margin:0">${t("sh.note.hint")}</p></div>` : ""}
+        <p class="hint" style="margin:0">${t("sh.note.hint")}</p>
+        ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-mine-vis" ${raw(myRun().visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}</div>` : ""}
       ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
         <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
         ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
         <input type="file" id="sh-test-file" accept="${fileAccept(".gpx,.tcx,.fit")}" multiple hidden>
-        <p class="hint" style="margin:6px 0 0">${t("sh.test.hint")}</p></div>` : ""}
+        <p class="hint" style="margin:6px 0 0">${t("sh.test.hint")}</p></div>` : ""}`}
       <div id="sh-upload"></div>`;
     const shownChanged = () => {
       saveVis();
@@ -1159,8 +1166,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-none").addEventListener("click", () => { runners.forEach((r) => { r.visible = false; }); sel = null; shownChanged(); });
     $("#sh-invert").addEventListener("click", () => { runners.forEach((r) => { r.visible = !r.visible; }); if (sel && !sel.visible) sel = null; shownChanged(); });
     $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
+    if (you.visitor) return;
     $("#sh-add").addEventListener("click", () => $("#sh-file").click());
     $("#sh-draw").addEventListener("click", () => startDrawM());
+    $("#sh-mine-vis")?.addEventListener("change", async (e) => {
+      try { const r = await api(`/${id}/trace/${course.n}`, { method: "PATCH", body: { visitors: e.target.checked }, key: keyOf(id) }); myRun().visitors = !!r.visitors; }
+      catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
+    });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
     $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
@@ -1202,11 +1214,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     const enc = encodeTrace(tr, crop[0], crop[1]), t0 = enc.t0, t1 = t0 + enc.dt.reduce((s, v) => s + v, 0);
     boxU.innerHTML = html`<div class="notice sh-consent"><p>${t("sh.trace.confirm", { a: hms(t0), b: hms(t1), n: enc.dt.length })}</p>
       <label class="an-opt"><input type="checkbox" id="sh-consent"> ${t("sh.trace.consent")}</label>
+      ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-consent-vis" ${raw(myRun()?.visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}
       <div class="row" style="gap:6px;margin-top:6px"><button type="button" class="btn btn-sm btn-primary" id="sh-send">${t("sh.trace.send")}</button><button type="button" class="btn btn-sm" id="sh-cancel">${t("sh.cancel")}</button></div></div>`;
     $("#sh-cancel").addEventListener("click", () => { boxU.innerHTML = ""; });
     $("#sh-send").addEventListener("click", async () => {
       if (!$("#sh-consent").checked) return;
-      try { await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: enc, note: myRun()?.note || "" }, key: keyOf(id) }); await ownPut(ownKey(id, course.n), file); reload(); }
+      try { await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: enc, note: myRun()?.note || "", visitors: !!$("#sh-consent-vis")?.checked }, key: keyOf(id) }); await ownPut(ownKey(id, course.n), file); reload(); }
       catch (e) { boxU.innerHTML = html`<div class="notice">${errText(e)}</div>`; }
     });
   }

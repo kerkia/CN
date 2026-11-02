@@ -20,7 +20,10 @@
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
-//   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment: { note } (the trace itself unchanged)
+//   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment and visitors' consent: { note?, visitors? }
+//   GET    /api/analyses/v[/<id>[/map/<n> | /traces/<n>]]   visitors without an account (owner, 2026-11-02, after RouteGadget):
+//                                                      the analyses an organiser opened to them (public, `visitors`), each
+//                                                      only with the traces whose runners agreed (`visitors`), no licence
 //   PUT|DELETE /api/analyses/<id>/trace/<n>[/<uid>]    one's own trace (DELETE <uid>: the organiser, an admin); an admin's
 //                                                      PUT { test: k } adds a test runner « <name> #k », DELETE …/tests
 //                                                      removes that admin's test traces of circuit n
@@ -56,6 +59,7 @@ async function unlockKey(env, meta, uid) {
 }
 
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
+  visitors: m.visitors && m.vis === "public" ? "1" : "",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
 /** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
 function centreOf(m) {
@@ -193,7 +197,56 @@ function cleanDrawn(d) {
 /** A runner's comment on their race (owner, 2026-11-02, after RouteGadget): plain text, its lines kept. */
 const cleanNote = (s) => String(s ?? "").replace(/\r/g, "").replace(/[\u0000-\u0009\u000b-\u001f<>]/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000);
 
-export const onRequest = withUser(async (ctx, user) => {
+// ---- visitors without an account (owner, 2026-11-02, after RouteGadget): read only, the analyses their organiser opened to
+// them, the traces whose runners agreed, no licence; reached with the guest pass (_middleware.js GUEST)
+async function visitors(ctx, parts) {
+  const { request, env } = ctx;
+  if (request.method !== "GET") return json({ error: "method" }, 405);
+  const open = (m) => !!m && m.vis === "public" && !!m.visitors;
+  if (!parts.length) {
+    const metas = (await listAll(env, META)).map((o) => o.customMetadata || {}).filter((m) => m.vis === "public" && m.visitors === "1");
+    return json({ analyses: metas.map((m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, courses: Number(m.courses) || 0,
+      pos: m.pos || "", access: "open", organiser: false, visitors: true })) }, 200, { "Cache-Control": "private, max-age=60" });
+  }
+  const id = parts[0];
+  if (!/^[a-z0-9-]{4,64}$/.test(id)) return json({ error: "not found" }, 404);
+  const meta = await loadMeta(env, id);
+  if (!open(meta)) return json({ error: "not found" }, 404);
+  const n = parts[2] != null ? Number(parts[2]) : null;
+  if (parts.length === 1) {
+    const traces = (await listAll(env, `${DATA}${id}/trace-`)).filter((o) => o.customMetadata?.vis === "1").map((o) => {
+      const m = o.customMetadata || {};
+      return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: "", updated: m.updated || "", size: o.size };
+    });
+    const { owner, ownerName, pw, ...rest } = meta;
+    return json({ analysis: rest, traces, you: { uid: 0, organiser: false, visitor: true } });
+  }
+  if (parts.length !== 3 || !Number.isInteger(n) || !(meta.courses || []).some((c) => c.n === n)) return json({ error: "not found" }, 404);
+  if (parts[1] === "map") {
+    const o = await env.BUCKET.get(`${DATA}${id}/map-${n}`);
+    if (!o) return json({ error: "not found" }, 404);
+    return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "private, max-age=3600" } });
+  }
+  if (parts[1] === "traces") {
+    const objs = (await listAll(env, `${DATA}${id}/trace-${n}-`)).filter((o) => o.customMetadata?.vis === "1");
+    const bodies = [];
+    for (const o of objs) {
+      const b = await env.BUCKET.get(o.key);
+      if (!b) continue;
+      const rec = await b.json().catch(() => null);
+      if (rec?.visitors) { rec.lic = ""; bodies.push(rec); }
+    }
+    return json(bodies, 200, { "Cache-Control": "no-store" });
+  }
+  return json({ error: "not found" }, 404);
+}
+
+export const onRequest = (ctx) => {
+  const parts = [].concat(ctx.params.path || []).map(String).filter(Boolean);
+  return parts[0] === "v" ? visitors(ctx, parts.slice(1)) : forUsers(ctx);
+};
+
+const forUsers = withUser(async (ctx, user) => {
   const { request, env, params } = ctx;
   if (!env.BUCKET) return json({ error: "storage not configured" }, 500);
   const parts = [].concat(params.path || []).map(String).filter(Boolean);
@@ -310,6 +363,8 @@ export const onRequest = withUser(async (ctx, user) => {
         if (b.vis === "club" && !meta.club) { meta.club = (await lazyClub()) || ""; if (!meta.club) return json({ error: "noclub" }, 400); }
         meta.vis = b.vis;
       }
+      if (b.visitors != null) meta.visitors = !!b.visitors;
+      if (meta.vis !== "public") meta.visitors = false;                     // open to visitors only when open to every account
       if (b.password) {
         const p = String(b.password);
         if (p.length < 4 || p.length > 100) return json({ error: "password" }, 400);
@@ -413,11 +468,12 @@ export const onRequest = withUser(async (ctx, user) => {
       const name = (user.display_name || "") + (k != null ? ` #${k}` : "");
       const drawn = b.drawn != null ? cleanDrawn(b.drawn) : null, note = cleanNote(b.note);
       if (b.drawn != null && !drawn) return json({ error: "trace" }, 400);
+      const vis = b.visitors === true && !!meta.visitors;                     // the runner agreed to be seen by visitors too
       const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}),
-        ...(drawn ? { drawn } : {}), ...(note ? { note } : {}) };
+        ...(drawn ? { drawn } : {}), ...(note ? { note } : {}), ...(vis ? { visitors: true } : {}) };
       await env.BUCKET.put(`${DATA}${id}/trace-${n}-${uid}.json`, JSON.stringify(rec), {
         httpMetadata: { contentType: "application/json" },
-        customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}) } });
+        customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}), ...(vis ? { vis: "1" } : {}) } });
       return json({ ok: true, uid });
     }
     if (method === "PATCH") {                                                 // one's own comment, the trace unchanged
@@ -426,10 +482,11 @@ export const onRequest = withUser(async (ctx, user) => {
       if (!o) return json({ error: "not found" }, 404);
       const rec = await o.json().catch(() => null);
       if (!rec) return json({ error: "not found" }, 404);
-      const note = cleanNote(b?.note);
-      if (note) rec.note = note; else delete rec.note;
-      await env.BUCKET.put(key, JSON.stringify(rec), { httpMetadata: { contentType: "application/json" }, customMetadata: o.customMetadata || {} });
-      return json({ ok: true, note });
+      if (b && "note" in b) { const note = cleanNote(b.note); if (note) rec.note = note; else delete rec.note; }
+      const cm = { ...(o.customMetadata || {}) };
+      if (b && "visitors" in b) { if (b.visitors === true && meta.visitors) { rec.visitors = true; cm.vis = "1"; } else { delete rec.visitors; delete cm.vis; } }
+      await env.BUCKET.put(key, JSON.stringify(rec), { httpMetadata: { contentType: "application/json" }, customMetadata: cm });
+      return json({ ok: true, note: rec.note || "", visitors: !!rec.visitors });
     }
     if (method === "DELETE" && parts[3] === "tests") {                        // an administrator's test traces on circuit n
       if (!isAdmin(env, user)) return json({ error: "forbidden" }, 403);

@@ -90,6 +90,11 @@ export const body = (SITE, { world = false } = {}) => `
         Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
         ohne seinen Namen. In einer „Gruppenanalyse“ stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
         Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
+      <p>Eine von Hand gezeichnete Route, ohne GPS, wird dort wie ein Track gespeichert, mit ihrer Zeichnung. Dein Kommentar zu deinem
+        Lauf ist für dieselben Personen sichtbar wie dein Track; du kannst ihn jederzeit ändern oder löschen. Öffnet der Veranstalter die
+        Analyse für Besucher ohne Konto, werden ihnen dein Track und dein Kommentar nur gezeigt, wenn du zustimmst (ein standardmäßig
+        nicht angekreuztes Kästchen), mit deinem Namen, aber ohne deine Lizenznummer; du kannst diese Zustimmung jederzeit zurückziehen.
+        In « Meine Karten » wird dein Kommentar zu einem Lauf mit ihm gespeichert und folgt denselben Regeln.</p>
       <h2 style="font-size:16px">Meine Karten</h2>
       <p>„Meine Karten“ bewahrt die Karten, die du dort speicherst (aus der „Einzelanalyse“) oder importierst (JPEG-Dateien aus
         QuickRoute oder Ozimut), und die Routen, die du darauf gelaufen bist, im Speicher der Website (Cloudflare) auf: das Bild der

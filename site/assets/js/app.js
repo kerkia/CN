@@ -94,7 +94,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "mapAnalysis", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
