@@ -14,9 +14,10 @@
 //   DELETE /api/mymaps/maps/<id>                the map, its runs, its link
 //   PUT    /api/mymaps/maps/<id>/thumb          the thumbnail as the body
 //   GET    /api/mymaps/maps/<id>/map | /thumb
-//   POST   /api/mymaps/maps/<id>/runs           { title, day, start, dur, dist, source, rec } -> { run }
+//   POST   /api/mymaps/maps/<id>/runs           { title, day, start, dur, dist, source, note, rec } -> { run }
 //   GET    /api/mymaps/runs/<id>                the run's record
-//   PUT    /api/mymaps/runs/<id>                { title } -> { run };  DELETE /api/mymaps/runs/<id>
+//   PUT    /api/mymaps/runs/<id>                { title?, note? } -> { run };  DELETE /api/mymaps/runs/<id>
+//                                               (note: the run's comment, migration 0022; 503 « not ready » before it)
 //   POST   /api/mymaps/link                     { map: id | null | maps: [ids] | token, on: true | false, traces } -> { token | null, traces }
 //                                               (maps: a selection, one link per set of maps; token: that link; traces: the
 //                                               routes shared with the maps, else the maps alone; changed on the link kept)
@@ -38,6 +39,13 @@ const ID = /^[a-z2-9]{8,40}$/;
 const clean = (s, n) => String(s ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
 const cleanDay = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || "")) ? String(s) : null);
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+/** A run's comment: plain text, its lines kept. */
+const cleanNote = (s) => String(s ?? "").replace(/\r/g, "").replace(/[\u0000-\u0009\u000b-\u001f]/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000);
+/** A run's comment written; false when the column is not there yet (migration 0022 not applied). */
+async function setNote(env, id, note) {
+  try { await env.DB.prepare("UPDATE mymap_runs SET note = ? WHERE id = ?").bind(note, id).run(); return true; }
+  catch (e) { if (/no such column/i.test(String(e?.message))) return false; throw e; }
+}
 function cleanGeo(g) {
   if (!g || typeof g !== "object") return null;
   const o = {};
@@ -55,7 +63,7 @@ const key = (uid, map, rest) => `mymaps/${uid}/${map}/${rest}`;
 const mapOut = (m) => ({ id: m.id, sha: m.sha, title: m.title, day: m.day, place: m.place, notes: m.notes, type: m.type, bytes: m.bytes,
   w: m.w, h: m.h, geo: m.geo ? JSON.parse(m.geo) : null, thumb: !!m.thumb, created: m.created_at, updated: m.updated_at });
 const runOut = (r, shared = false) => ({ id: r.id, map: r.map_id, title: r.title, day: r.day, start: r.start_ms, dur: r.dur, dist: r.dist,
-  source: r.source, personal: shared ? false : !!r.personal, bytes: shared ? undefined : r.bytes });
+  source: r.source, personal: shared ? false : !!r.personal, bytes: shared ? undefined : r.bytes, note: r.note || "" });
 
 // A link's maps (mymap_links.map_id): NULL every map of the account; a map's id that map; « set:<id>,<id>… » a selection (owner,
 // 2026-11-01: « Partager la sélection »), its ids sorted, so that the same selection again finds the same link.
@@ -252,6 +260,7 @@ export async function onRequest(ctx) {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(rid, id, uid, clean(b.title, 200), day, num(b.start), num(b.dur), num(b.dist),
           clean(b.source, 20), rec.ch ? 1 : 0, body.length, nowIso()).run();
         if (!m.day && day) await env.DB.prepare("UPDATE mymaps SET day = ? WHERE id = ?").bind(day, id).run();
+        if (cleanNote(b.note)) await setNote(env, rid, cleanNote(b.note));
         return json({ run: runOut(await env.DB.prepare("SELECT * FROM mymap_runs WHERE id = ?").bind(rid).first()) });
       }
       return json({ error: "not found" }, 404);
@@ -264,7 +273,8 @@ export async function onRequest(ctx) {
       if (method === "GET") return serve(env, k, { cache: "private, max-age=31536000, immutable" });
       if (method === "PUT") {
         const b = await readBody(request);
-        await env.DB.prepare("UPDATE mymap_runs SET title = ? WHERE id = ?").bind(clean(b?.title, 200), r.id).run();
+        if (b && "title" in b) await env.DB.prepare("UPDATE mymap_runs SET title = ? WHERE id = ?").bind(clean(b.title, 200), r.id).run();
+        if (b && "note" in b && !(await setNote(env, r.id, cleanNote(b.note)))) return json({ error: "not ready" }, 503);
         return json({ run: runOut(await env.DB.prepare("SELECT * FROM mymap_runs WHERE id = ?").bind(r.id).first()) });
       }
       if (method === "DELETE") {

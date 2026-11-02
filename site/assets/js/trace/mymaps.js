@@ -142,7 +142,7 @@ export async function save(entry, { personal = false } = {}) {
   for (const r of entry.runs || []) {
     const rec = personal ? r.rec : { ...r.rec, ch: undefined };
     runs.push((await call(`/maps/${map.id}/runs`, { method: "POST", body: { title: r.title || "", day: r.day || null, start: r.start ?? rec.t0, dur: r.dur, dist: r.dist,
-      source: r.source || "", personal: personal && !!rec.ch, rec } })).run);
+      source: r.source || "", note: r.note || "", personal: personal && !!rec.ch, rec } })).run);
   }
   return { map, existed, runs };
 }
@@ -249,7 +249,7 @@ async function readOzimut(bytes, name) {
   return { blob, name: m.file || `${stem(name)}.jpg`, image, title: m.title || stem(name), day: m.day || null, place: m.place || "", notes: m.notes || "",
     geo: m.geo || null, from: "ozimut",
     runs: (doc.runs || []).filter((r) => r?.rec?.v === 1).map((r) => ({ title: r.title || "", day: r.day || null, source: r.source || "ozimut", start: r.start, dur: r.dur,
-      dist: r.dist, personal: !!r.rec.ch, rec: r.rec })) };
+      dist: r.dist, note: typeof r.note === "string" ? r.note : "", personal: !!r.rec.ch, rec: r.rec })) };
 }
 
 // ---- writing Ozimut's file --------------------------------------------------------------------------------------------
@@ -287,7 +287,7 @@ export async function ozimutFile(map, blob, image, runs, { personal = false } = 
     map: { title: map.title || "", day: map.day || null, place: map.place || "", notes: map.notes || "", geo: map.geo || null, w: image.width, h: image.height,
       type: blob.type || "image/jpeg", file: `map.${ext}` },
     runs: runs.map((r) => ({ title: r.title || "", day: r.day || null, source: r.source || "", start: r.start ?? r.rec.t0, dur: r.dur ?? null, dist: r.dist ?? null,
-      rec: personal ? r.rec : { ...r.rec, ch: undefined } })) };
+      ...(r.note ? { note: r.note } : {}), rec: personal ? r.rec : { ...r.rec, ch: undefined } })) };
   const ff = await fflate();
   // the map stored as it is (already compressed), the description deflated
   const zip = ff.zipSync({ "ozimut-map.json": [new TextEncoder().encode(JSON.stringify(doc)), { level: 6 }], [doc.map.file]: [new Uint8Array(await blob.arrayBuffer()), { level: 0 }] });

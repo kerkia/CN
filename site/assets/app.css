@@ -3411,6 +3411,11 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
 .mm-src { font-size: 12px; }
 .mm-run-acts { display: flex; gap: 4px; }
 .mm-run-acts .btn { padding: 2px 6px; font-size: 12px; }
+/* a run's comment, read and written in place; the one written when « Analyse solo » saves the run */
+.mm-run-note { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--border); font-size: 12.5px; font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }
+.mm-note-edit { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.mm-note-edit textarea, .mm-s-note textarea { width: 100%; resize: vertical; font: inherit; font-size: 13px; }
+.mm-s-note { flex-direction: column; align-items: stretch !important; }
 .mm-dlg { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 16px; background: var(--surface); color: var(--ink); width: min(480px, calc(100vw - 24px));
   max-height: calc(100dvh - 32px); box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
 .mm-dlg.wide { width: min(680px, calc(100vw - 24px)); }

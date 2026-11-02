@@ -180,13 +180,18 @@ export async function render(main, { query = {} } = {}) {
     const cv = $("#mm-canvas"), g = cv.getContext("2d");
     let image = null, view = null, runs = new Map();          // run id -> decoded
     const colours = new Map(m.runs.map((r, i) => [r.id, MM.COLOURS[i % MM.COLOURS.length]]));
+    let noteOpen = null;                                  // the run whose comment is being written
     const drawSide = () => {
       $("#mm-runs").innerHTML = html`${m.runs.map((r) => html`<li class="mm-run ${raw(hidden.has(r.id) ? "off" : "")}" data-id="${r.id}">
         <label><input type="checkbox" ${raw(hidden.has(r.id) ? "" : "checked")} data-show="${r.id}"><span class="mm-sw" style="background:${colours.get(r.id)}"></span>
           <b>${r.title || t("mm.untitledRun")}</b></label>
         <span class="muted">${[r.day ? fmtDate(r.day) : "", r.dur ? fmtTime(Math.round(r.dur)) : "", km(r.dist), pace(r.dur, r.dist)].filter((x) => x && x !== "—").join(" · ")}</span>
         <span class="muted mm-src">${t(`mm.src.${r.source}`) !== `mm.src.${r.source}` ? t(`mm.src.${r.source}`) : ""}${r.personal ? ` · ${t("mm.personal.kept")}` : ""}</span>
+        ${r.note && noteOpen !== r.id ? html`<p class="mm-run-note">${r.note}</p>` : ""}
+        ${mine && noteOpen === r.id ? html`<div class="mm-note-edit"><textarea id="mm-note-ta" rows="3" maxlength="1000" placeholder="${t("mm.note.ph")}">${r.note || ""}</textarea>
+          <span><button type="button" class="btn btn-sm btn-primary" data-note-save="${r.id}">${t("mm.note.save")}</button> <button type="button" class="btn btn-sm" data-note-cancel>${t("mm.note.cancel")}</button></span></div>` : ""}
         ${mine ? html`<span class="mm-run-acts"><button type="button" class="btn btn-ghost btn-sm" data-ren="${r.id}">${t("mm.rename")}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-note="${r.id}">${t(r.note ? "mm.note.edit" : "mm.note.add")}</button>
           <button type="button" class="btn btn-ghost btn-sm" data-rm="${r.id}">${t("mm.remove")}</button></span>` : ""}</li>`)}`;
       $$("[data-show]").forEach((b) => b.addEventListener("change", () => { if (b.checked) hidden.delete(b.dataset.show); else hidden.add(b.dataset.show); drawSide(); paint(); }));
       $$("[data-ren]").forEach((b) => b.addEventListener("click", async () => {
@@ -194,6 +199,13 @@ export async function render(main, { query = {} } = {}) {
         if (v == null) return;
         try { Object.assign(r, (await MM.updateRun(r.id, { title: v.trim() })).run); drawSide(); } catch (e) { alert(t("mm.err.save")); }
       }));
+      $$("[data-note]").forEach((b) => b.addEventListener("click", () => { noteOpen = b.dataset.note; drawSide(); $("#mm-note-ta")?.focus(); }));
+      $("[data-note-cancel]")?.addEventListener("click", () => { noteOpen = null; drawSide(); });
+      $("[data-note-save]")?.addEventListener("click", async (e) => {
+        const r = m.runs.find((x) => x.id === e.currentTarget.dataset.noteSave);
+        try { Object.assign(r, (await MM.updateRun(r.id, { note: $("#mm-note-ta").value })).run); noteOpen = null; drawSide(); }
+        catch (err) { alert(t(err.status === 503 ? "mm.err.notReady" : "mm.err.save")); }
+      });
       $$("[data-rm]").forEach((b) => b.addEventListener("click", async () => {
         if (!confirm(t("mm.remove.ask"))) return;
         try { await MM.deleteRun(b.dataset.rm); m.runs = m.runs.filter((x) => x.id !== b.dataset.rm); runs.delete(b.dataset.rm); drawSide(); paint(); } catch (e) { alert(t("mm.err.save")); }

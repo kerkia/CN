@@ -24,6 +24,7 @@ export function mount(el, state) {
   const chans = Object.keys(PERSONAL).filter((c) => s0.track?.ch?.[c]);
   el.innerHTML = html`<div class="an-opts mm-save"><b>${t("mm.solo.box")}</b>
     <label><span>${t("mm.f.title")}</span><input type="text" id="mm-s-title" maxlength="200" value="${s0.title || ""}"></label>
+    <label class="mm-s-note"><span>${t("mm.note")}</span><textarea id="mm-s-note" rows="2" maxlength="1000" placeholder="${t("mm.note.ph")}"></textarea></label>
     ${chans.length ? html`<label class="mm-check"><input type="checkbox" id="mm-s-personal"> <span>${t("mm.personal.ask")}</span></label>` : ""}
     <button type="button" class="btn btn-sm btn-primary" id="mm-s-go">${t("mm.solo.save")}</button><span class="muted" id="mm-s-state"></span></div>`;
   $("#mm-s-go", el).addEventListener("click", async () => {
@@ -53,7 +54,7 @@ export function mount(el, state) {
       const title = $("#mm-s-title", el).value.trim();
       const blob = await imageBlob(s.file || null, s.image);      // the map as it came; a PDF's or a generated map's page as a PNG
       const { map, existed } = await MM.save({ blob, name: s.file?.name || "", image: s.image, title, day, geo: s.geo || null,
-        runs: [{ title, day, source: "solo", start: startMs, dur: (pts.at(-1).ms - pts[0].ms) / 1000, dist: MM.lengthOf(pts), rec }] }, { personal });
+        runs: [{ title, day, source: tr.source === "drawn" ? "drawn" : "solo", note: $("#mm-s-note", el).value.trim(), start: startMs, dur: (pts.at(-1).ms - pts[0].ms) / 1000, dist: MM.lengthOf(pts), rec }] }, { personal });
       out.innerHTML = html`${t(existed ? "mm.solo.addedTo" : "mm.solo.saved")} <a href="#/mes-cartes?carte=${map.id}">${t("mm.solo.open")}</a>`.toString();
     } catch (e) {
       console.error(e);
