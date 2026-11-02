@@ -100,6 +100,26 @@ export const body = (SITE, { world = false } = {}) => `
         ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
+      <h2 style="font-size:16px">Santé : articles et droits d'auteur</h2>
+      <p>La page « Santé », ouverte aux comptes que l'éditeur y autorise, publie des articles écrits par leurs auteurs. Un article est
+        conservé dans la base du site (Cloudflare) avec le nom de son auteur, affiché avec lui, et ses images dans l'espace de stockage
+        du site ; il est effacé quand son auteur ou l'éditeur le supprime. Si l'auteur supprime son compte, ses articles restent publiés
+        sous son nom, sauf s'il en demande le retrait (contact@ozimut.com). Les « j'aime » sont enregistrés par compte ; seul leur nombre
+        est affiché. Un article qui n'est pas écrit en anglais est traduit automatiquement en anglais par le modèle de langage d'Ozimut,
+        exécuté par Cloudflare (Workers AI), qui ne le conserve pas ; la traduction est conservée avec l'article et signalée comme
+        telle.</p>
+      <p><b>Droits d'auteur.</b> Chaque auteur reste titulaire de tous les droits d'auteur sur ses articles (les textes et les images
+        qu'il a créés), y compris son droit moral, et reste libre de les publier ailleurs, sous la forme et aux conditions qu'il
+        choisit. En publiant un article sur ${SITE}, il accorde seulement à l'éditeur une autorisation gratuite et non exclusive, pour
+        la durée de sa publication, de le conserver, de l'afficher aux lecteurs de la page « Santé », de le traduire automatiquement
+        dans les langues du site, d'en reprendre le titre, le résumé et les premières lignes dans les listes et les alertes, et d'en
+        adapter la présentation (mise en page, taille des images) sans en changer le sens. Cette autorisation prend fin quand
+        l'article est supprimé ; les alertes déjà envoyées ne peuvent être reprises. L'auteur garantit que les textes et les images
+        qu'il publie sont les siens ou qu'il a le droit de les utiliser.</p>
+      <p>Toute reproduction, représentation ou diffusion d'un article, en tout ou en partie, par une autre personne demande l'accord
+        préalable de son auteur, sous réserve des exceptions prévues par la loi, notamment les courtes citations qui mentionnent
+        l'auteur et la source (article L. 122-5 du Code de la propriété intellectuelle). Les traductions automatiques sont des
+        adaptations de l'article et suivent les mêmes règles.</p>
       <h2 style="font-size:16px">Tracé des circuits</h2>
       <p>Un événement de la page « Tracer » (ses circuits, sa carte, ses versions, les commentaires de l'équipe et les états des
         postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :
@@ -164,7 +184,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Les prestataires suivants traitent des données pour le compte de l'éditeur :</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (États-Unis) héberge le site, sa base de comptes et son espace de stockage de fichiers, et exécute
-          le modèle de langage de la page « IA » ; à l'inscription et à l'entrée sans compte, son service Turnstile vérifie que le site est utilisé par une
+          le modèle de langage de la page « IA » et celui qui traduit les articles de la page « Santé » ; à l'inscription et à l'entrée sans compte, son service Turnstile vérifie que le site est utilisé par une
           personne et non par un robot, en examinant le navigateur sans cookie publicitaire ni suivi d'un site à l'autre. Les
           transferts vers les États-Unis reposent sur le cadre de protection des données UE-États-Unis (Data Privacy Framework),
           auquel Cloudflare a adhéré.</li>
@@ -205,8 +225,13 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Éditeur et directeur de la publication :</b> Yann Le Helloco, particulier, publication à titre non professionnel ;
         contact : contact@ozimut.com.<br>
         <b>Hébergeur :</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis ; téléphone : +1 888 993 5273.</p>
+      <p><b>Propriété intellectuelle :</b> les textes, les illustrations, la présentation et le code du site sont protégés par le droit
+        d'auteur ; sauf mention contraire, ils appartiennent à l'éditeur, et leur reproduction demande son accord. Les articles de la
+        page « Santé » appartiennent à leurs auteurs (voir « Santé : articles et droits d'auteur »). Les résultats, classements
+        officiels et calendriers repris par le site restent ceux de leurs sources (voir « Indépendance et sources ») ; les éléments
+        venus de tiers sont cités ci-dessous.</p>
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 1er novembre 2026.</p>
+      <p class="muted">Dernière mise à jour : 2 novembre 2026.</p>
 `;

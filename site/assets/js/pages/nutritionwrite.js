@@ -296,6 +296,7 @@ async function editor(main, query) {
           <form id="ne-newcat" class="row"><input type="text" maxlength="60" placeholder="${t("nutw.th.newShort")}" aria-label="${t("nutw.th.newShort")}"><button class="btn btn-sm" type="submit">${t("nutw.th.add")}</button></form></div>
         <div class="nut-field">${t("nutw.f.cover")}<div id="ne-cover" class="nut-coverpick"></div></div>
         <label class="nut-field">${t("nutw.f.summary")}<textarea id="ne-sum" rows="3" maxlength="600"></textarea><span class="hint">${t("nutw.f.summary.hint")}</span></label>
+        <p class="nut-rights">${t("nutw.rights")} <a href="#/compte/confidentialite" target="_blank" rel="noopener">${t("nut.copy.terms")}</a></p>
       </div></aside>
     </div>
     <input type="file" id="ne-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>

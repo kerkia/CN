@@ -101,6 +101,26 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
+      <h2 style="font-size:16px">Gesundheit: Artikel und Urheberrecht</h2>
+      <p>Die Seite „Gesundheit“, offen für die Konten, die der Herausgeber dafür freigibt, veröffentlicht Artikel, die ihre Autorinnen
+        und Autoren geschrieben haben. Ein Artikel wird in der Datenbank der Website (Cloudflare) mit dem Namen seines Autors gespeichert,
+        der mit ihm angezeigt wird, seine Bilder im Dateispeicher der Website; er wird gelöscht, wenn sein Autor oder der Herausgeber ihn
+        löscht. Löscht der Autor sein Konto, bleiben seine Artikel unter seinem Namen veröffentlicht, es sei denn, er verlangt ihre
+        Entfernung (contact@ozimut.com). „Gefällt mir“ wird pro Konto gespeichert; nur ihre Anzahl wird angezeigt. Ein Artikel, der nicht
+        auf Englisch geschrieben ist, wird vom Sprachmodell von Ozimut, das Cloudflare ausführt (Workers AI) und das ihn nicht speichert,
+        automatisch ins Englische übersetzt; die Übersetzung wird mit dem Artikel gespeichert und als solche gekennzeichnet.</p>
+      <p><b>Urheberrecht.</b> Jeder Autor behält alle Urheberrechte an seinen Artikeln (den Texten und Bildern, die er geschaffen hat),
+        einschließlich des Urheberpersönlichkeitsrechts, und kann sie frei anderswo veröffentlichen, in der Form und zu den Bedingungen
+        seiner Wahl. Mit der Veröffentlichung eines Artikels auf ${SITE} gewährt er dem Herausgeber nur eine unentgeltliche, nicht
+        ausschließliche Erlaubnis, für die Dauer der Veröffentlichung, ihn zu speichern, ihn den Lesern der Seite „Gesundheit“ zu zeigen,
+        ihn automatisch in die Sprachen der Website zu übersetzen, seinen Titel, seine Zusammenfassung und seine ersten Zeilen in Listen
+        und Benachrichtigungen zu übernehmen und seine Darstellung (Layout, Bildgröße) anzupassen, ohne seinen Sinn zu ändern. Diese
+        Erlaubnis endet, wenn der Artikel gelöscht wird; bereits versandte Benachrichtigungen lassen sich nicht zurückholen. Der Autor
+        sichert zu, dass die Texte und Bilder, die er veröffentlicht, von ihm stammen oder dass er sie verwenden darf.</p>
+      <p>Jede Vervielfältigung, Wiedergabe oder Verbreitung eines Artikels, ganz oder teilweise, durch eine andere Person braucht die
+        vorherige Zustimmung seines Autors, vorbehaltlich der gesetzlichen Ausnahmen, insbesondere kurzer Zitate mit Angabe des Autors
+        und der Quelle (Artikel L. 122-5 des französischen Gesetzbuchs über geistiges Eigentum). Die automatischen Übersetzungen sind
+        Bearbeitungen des Artikels und folgen denselben Regeln.</p>
       <h2 style="font-size:16px">Bahnlegung</h2>
       <p>Ein Ereignis der Seite „Bahnlegung“ (seine Bahnen, seine Karte, seine Versionen, die Kommentare des Teams und die im Geländemodus
         notierten Postenzustände) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur seinem Team zugänglich:
@@ -165,7 +185,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Die folgenden Dienstleister verarbeiten Daten im Auftrag des Herausgebers:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (USA) hostet die Website, ihre Kontendatenbank und ihren Dateispeicher und führt
-          das Sprachmodell der Seite „KI“ aus; bei der Registrierung und beim Betreten ohne Konto prüft sein Dienst Turnstile, dass die Website von einer
+          das Sprachmodell der Seite „KI“ und das Modell aus, das die Artikel der Seite „Gesundheit“ übersetzt; bei der Registrierung und beim Betreten ohne Konto prüft sein Dienst Turnstile, dass die Website von einer
           Person und nicht von einem Robot genutzt wird, indem er den Browser ohne Werbe-Cookie und ohne seitenübergreifendes Tracking untersucht. Die
           Übermittlungen in die USA beruhen auf dem Datenschutzrahmen EU-USA (Data Privacy Framework),
           dem Cloudflare beigetreten ist.</li>
@@ -206,8 +226,13 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Herausgeber und verantwortlich für den Inhalt:</b> Yann Le Helloco, Privatperson, nicht berufliche Veröffentlichung;
         Kontakt: contact@ozimut.com.<br>
         <b>Hoster:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, USA; Telefon: +1 888 993 5273.</p>
+      <p><b>Geistiges Eigentum:</b> Die Texte, Abbildungen, die Gestaltung und der Code der Website sind urheberrechtlich geschützt;
+        sofern nicht anders angegeben, gehören sie dem Herausgeber, und ihre Vervielfältigung braucht seine Zustimmung. Die Artikel der
+        Seite „Gesundheit“ gehören ihren Autorinnen und Autoren (siehe „Gesundheit: Artikel und Urheberrecht“). Die Ergebnisse,
+        offiziellen Ranglisten und Kalender, die die Website übernimmt, bleiben die ihrer Quellen (siehe „Unabhängigkeit und Quellen“);
+        Bestandteile Dritter sind unten genannt.</p>
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 1. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 2. November 2026.</p>
 `;

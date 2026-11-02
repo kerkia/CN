@@ -159,6 +159,8 @@ export async function render(main, { query }) {
           <div class="nut-body">${raw(sanitize(body))}</div>
           <div class="nut-likebar"><button type="button" class="nut-like" id="nut-like" aria-pressed="${p.liked}" title="${t(p.liked ? "nut.unlike" : "nut.like")}">${raw(HEART)}
             <span>${t("nut.like")}</span></button><span class="muted" id="nut-likes">${p.likes ? tn("nut.likes", p.likes) : ""}</span></div>
+          <p class="nut-copy" lang="${lang()}">© ${(p.published || p.updated || "").slice(0, 4)} ${p.author}. ${t("nut.copy")}${showTr ? ` ${t("nut.copy.tr")}` : ""}
+            <a href="#/compte/confidentialite">${t("nut.copy.terms")}</a></p>
         </div>
       </article>
       ${related(p).length ? html`<section class="nut-related"><h2>${t("nut.related")}</h2><div class="nut-grid">${related(p).map((x) => card(x))}</div></section>` : ""}

@@ -98,6 +98,25 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
+      <h2 style="font-size:16px">Salud: artículos y derechos de autor</h2>
+      <p>La página «Salud», abierta a las cuentas que el editor autoriza, publica artículos escritos por sus autores. Un artículo se
+        conserva en la base de datos del sitio (Cloudflare) con el nombre de su autor, que se muestra con él, y sus imágenes en el
+        espacio de almacenamiento del sitio; se borra cuando su autor o el editor lo eliminan. Si el autor elimina su cuenta, sus
+        artículos siguen publicados con su nombre, salvo que pida su retirada (contact@ozimut.com). Los «me gusta» se registran por
+        cuenta; solo se muestra su número. Un artículo que no está escrito en inglés se traduce automáticamente al inglés con el modelo
+        de lenguaje de Ozimut, ejecutado por Cloudflare (Workers AI), que no lo conserva; la traducción se conserva con el artículo y se
+        indica como tal.</p>
+      <p><b>Derechos de autor.</b> Cada autor conserva todos los derechos de autor sobre sus artículos (los textos y las imágenes que ha
+        creado), incluido su derecho moral, y sigue libre de publicarlos en otro lugar, en la forma y con las condiciones que elija. Al
+        publicar un artículo en ${SITE}, solo concede al editor una autorización gratuita y no exclusiva, mientras esté publicado, para
+        conservarlo, mostrarlo a los lectores de la página «Salud», traducirlo automáticamente a los idiomas del sitio, usar su título,
+        su resumen y sus primeras líneas en las listas y los avisos, y adaptar su presentación (maquetación, tamaño de las imágenes) sin
+        cambiar su sentido. Esta autorización termina cuando se elimina el artículo; los avisos ya enviados no pueden recuperarse. El
+        autor garantiza que los textos y las imágenes que publica son suyos o que tiene derecho a usarlos.</p>
+      <p>Cualquier reproducción, comunicación o difusión de un artículo, total o parcial, por otra persona requiere el permiso previo de
+        su autor, salvo las excepciones que prevé la ley, en particular las citas breves que mencionan al autor y la fuente (artículo
+        L. 122-5 del Código de la propiedad intelectual francés). Las traducciones automáticas son adaptaciones del artículo y siguen las
+        mismas reglas.</p>
       <h2 style="font-size:16px">Trazado de recorridos</h2>
       <p>Un evento de la página «Trazado» (sus recorridos, su mapa, sus versiones, los comentarios del equipo y los estados de los
         controles anotados en modo terreno) se conserva en el espacio de almacenamiento del sitio (Cloudflare) y solo es accesible para su equipo:
@@ -162,7 +181,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Los siguientes proveedores tratan datos por cuenta del editor:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (Estados Unidos) aloja el sitio, su base de cuentas y su espacio de almacenamiento de archivos, y ejecuta
-          el modelo de lenguaje de la página «IA»; en el registro y al entrar sin cuenta, su servicio Turnstile comprueba que quien usa el sitio es una
+          el modelo de lenguaje de la página «IA» y el que traduce los artículos de la página «Salud»; en el registro y al entrar sin cuenta, su servicio Turnstile comprueba que quien usa el sitio es una
           persona y no un robot, examinando el navegador sin cookie publicitaria ni seguimiento entre sitios. Las
           transferencias a Estados Unidos se basan en el Marco de Privacidad de Datos UE-EE. UU. (Data Privacy Framework),
           al que Cloudflare se ha adherido.</li>
@@ -203,8 +222,13 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Editor y director de la publicación:</b> Yann Le Helloco, particular, publicación a título no profesional;
         contacto: contact@ozimut.com.<br>
         <b>Proveedor de alojamiento:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, Estados Unidos; teléfono: +1 888 993 5273.</p>
+      <p><b>Propiedad intelectual:</b> los textos, las ilustraciones, el diseño y el código del sitio están protegidos por los derechos
+        de autor; salvo que se indique otra cosa, pertenecen al editor, y su reproducción requiere su permiso. Los artículos de la página
+        «Salud» pertenecen a sus autores (véase «Salud: artículos y derechos de autor»). Los resultados, clasificaciones oficiales y
+        calendarios que recoge el sitio siguen siendo los de sus fuentes (véase «Independencia y fuentes»); los elementos de terceros se
+        citan a continuación.</p>
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 1 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 2 de noviembre de 2026.</p>
 `;

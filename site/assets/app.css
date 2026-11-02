@@ -3312,6 +3312,8 @@ a.nut-chip:hover { filter: brightness(.95); }
 /* « Nutrition »: likes and related articles (2026-11-01) */
 .nut-likes { display: inline-flex; align-items: center; gap: 3px; color: var(--bad); }
 .nut-likes svg { width: 13px; height: 13px; }
+.nut-copy { margin: 14px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.nut-rights { margin: 2px 0 0; font-size: 12px; line-height: 1.45; color: var(--ink-3); }
 .nut-likebar { display: flex; align-items: center; gap: 12px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
 .nut-like { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border-strong);
   background: var(--surface); color: var(--ink-2); font: inherit; font-size: 14px; cursor: pointer; transition: transform .12s; }
@@ -3347,9 +3349,9 @@ a.nut-chip:hover { filter: brightness(.95); }
   .nut .nut-side { top: calc(var(--nut-bar, 0px) + var(--nut-head, 0px) + 8px); max-height: calc(100vh - var(--nut-bar, 0px) - var(--nut-head, 0px) - 20px); overflow-y: auto; }
 }
 body.nut-ed-open #footer { display: none; }
+body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under the editor go to the text */
 @media (min-width: 981px) {
   .nut-ed .nut-ed-grid { height: var(--nut-ed-h, auto); align-items: stretch; grid-template-rows: minmax(0, 1fr); }
-body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under the editor go to the text */
   .nut-ed .nut-ed-main { display: flex; flex-direction: column; min-height: 0; }
   .nut-ed .nut-ed-main > .nut-ed-body, .nut-ed .nut-ed-main > .nut-ed-src, .nut-ed .nut-ed-main > .nut-ed-preview { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
   .nut-ed .nut-ed-main > .nut-ed-src { height: auto !important; resize: none; }

@@ -826,7 +826,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   and summaries share, then the nearer date (`nutrition.js` `related`).
   Imported on 2026-11-01: the 21 posts of Nadejda's former blog Nutriami (BlogEngine.NET XML, comments left out), dated 2009-2012,
   marked announced (no alerts), their categories mapped by name to the 8 themes, the 16 without one given themes by the owner.
-  A deleted account's articles stay under the name they were published with. Local test: launch configs `pages-dev-nutrition`
+  A deleted account's articles stay under the name they were published with. **Copyright** (owner, 2026-11-02): each article ends with
+  « © <year of publication> <author's name>. Tous droits réservés… » (`nut.copy`, « Traduction automatique par Ozimut. » when the
+  translation is shown, a link to the rules); the rules page has « Santé : articles et droits d'auteur » (the authors keep every
+  right and only grant a free, non-exclusive permission to show, translate, excerpt and lay out while published; reproduction by
+  others needs the author's permission, short quotations apart) and a « Propriété intellectuelle » line in the legal notices; the
+  editor's settings end with the reminder `nutw.rights`. Local test: launch configs `pages-dev-nutrition`
   (8797, the test account an administrator) and `pages-dev-nutrition-user` (8798, not).
 - **Mes cartes / My maps** (`#/mes-cartes`, route `myMaps`, `pages/mymaps.js`, Coach's menu after « Analyse de carte »; owner,
   2026-11-01, after the study of the same day, private artifact https://claude.ai/artifact/73o9XNbXo526WspSERhLhR): each account's

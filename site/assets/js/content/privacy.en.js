@@ -89,6 +89,24 @@ export const body = (SITE, { world = false } = {}) => `
         link sees them with your name, even without an account, but never your heart rate or other personal data; deleting the link
         ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
         DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
+      <h2 style="font-size:16px">Health: articles and copyright</h2>
+      <p>The “Health” page, open to the accounts the publisher allows, publishes articles written by their authors. An article is
+        kept in the site's database (Cloudflare) with its author's name, shown with it, and its images in the site's file storage; it
+        is erased when its author or the publisher deletes it. If the author deletes their account, their articles stay published
+        under their name, unless they ask for them to be withdrawn (contact@ozimut.com). Likes are recorded per account; only their
+        number is shown. An article not written in English is translated automatically into English by Ozimut's language model, run
+        by Cloudflare (Workers AI), which does not keep it; the translation is kept with the article and marked as such.</p>
+      <p><b>Copyright.</b> Each author keeps all the copyright in their articles (the texts and images they created), moral rights
+        included, and remains free to publish them elsewhere, in the form and on the terms they choose. By publishing an article on
+        ${SITE}, they only grant the publisher a free, non-exclusive permission, for as long as it is published, to store it, to show it
+        to the readers of the “Health” page, to translate it automatically into the site's languages, to use its title, summary and
+        opening lines in lists and alerts, and to adapt its presentation (layout, image sizes) without changing its meaning. This
+        permission ends when the article is deleted; alerts already sent cannot be recalled. The author warrants that the texts and
+        images they publish are their own or that they have the right to use them.</p>
+      <p>Any reproduction, performance or distribution of an article, in whole or in part, by anyone else requires its author's prior
+        permission, subject to the exceptions the law provides, in particular short quotations naming the author and the source
+        (article L. 122-5 of the French Intellectual Property Code). The automatic translations are adaptations of the article and
+        follow the same rules.</p>
       <h2 style="font-size:16px">Course setting</h2>
       <p>An event of the “Course setting” page (its courses, its map, its versions, the team's comments and the states of the
         controls noted in field mode) is kept in the site's storage (Cloudflare) and is only accessible to its team: its creator and
@@ -147,7 +165,7 @@ export const body = (SITE, { world = false } = {}) => `
       <p>The following providers process data on the publisher's behalf:</p>
       <ul>
         <li><b>Cloudflare, Inc.</b> (United States) hosts the site, its account database and its file storage, and runs the language
-          model of the “AI” page; at registration and when entering without an account, its Turnstile service checks that the site is used by a person rather
+          model of the “AI” page and the one that translates the articles of the “Health” page; at registration and when entering without an account, its Turnstile service checks that the site is used by a person rather
           than a robot, by examining the browser, with no advertising cookie and no tracking from one site to another. Transfers to the United States rely on the EU-US Data Privacy Framework, to which Cloudflare has
           signed up.</li>
         <li><b>Resend</b> (Plus Five Five, Inc., United States) sends the site's emails, which involves the recipient's address and
@@ -184,8 +202,12 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Publisher and publication director:</b> Yann Le Helloco, private individual, non-professional publication;
         contact: contact@ozimut.com.<br>
         <b>Host:</b> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, United States; telephone: +1 888 993 5273.</p>
+      <p><b>Intellectual property:</b> the site's texts, illustrations, design and code are protected by copyright; unless stated
+        otherwise they belong to the publisher, and reproducing them requires the publisher's permission. The articles of the “Health” page belong
+        to their authors (see “Health: articles and copyright”). The results, official rankings and calendars the site takes up remain
+        those of their sources (see “Independence and sources”); elements from third parties are credited below.</p>
       <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
         Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
-      <p class="muted">Last updated: 1 November 2026.</p>
+      <p class="muted">Last updated: 2 November 2026.</p>
 `;
