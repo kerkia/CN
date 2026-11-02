@@ -202,7 +202,7 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
-          <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
+          <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
@@ -242,6 +242,9 @@ export async function render(main, { query = {}, route } = {}) {
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = typeof prefs.colour === "string" ? prefs.colour : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
   let future = prefs.future === "faint" ? "faint" : "hide";            // the trace still to run: hidden, or faded
+  // the map turned so that the leg being run points up (owner, 2026-11-02, after RouteGadget), else north up; `rot` the angle
+  // (radians, clockwise on the screen) about the canvas's centre, after the view — the view itself stays north up
+  let orient = prefs.orient === "leg" ? "leg" : "north", rot = 0;
   let traceColour = /^#[0-9a-f]{6}$/i.test(prefs.traceColour || "") ? prefs.traceColour : TRACE;
   // the curves: all of the file's by default — there is room for them (owner, 2026-10-15); the former default (pace and
   // heart rate) counts as no choice made
@@ -264,7 +267,7 @@ export async function render(main, { query = {}, route } = {}) {
   const lp = { tab: ["graphs", "legs", "routes"].includes(prefs.ltab) ? prefs.ltab : "graphs", collapsed: !!prefs.gcol };
   const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
   const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
-    shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend })); } catch (e) { /* not kept */ } };
+    shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga || drawnHere();
@@ -1634,6 +1637,7 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="an-colour">${["plain", ...colourModes(track)].map((c) => html`<option value="${c}" ${raw(c === (colourBy() || "plain") ? "selected" : "")}>${t(`an.colour.${c}`)}</option>`)}</select></label>
           <label id="an-colour-row" ${raw(colourBy() ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
+          <label><span>${t("an.orient")}</span><select id="an-orient"><option value="north" ${raw(orient === "north" ? "selected" : "")}>${t("an.orient.north")}</option><option value="leg" ${raw(orient === "leg" ? "selected" : "")}>${t("an.orient.leg")}</option></select></label>
           <label><span>${t("an.future")}</span><select id="an-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((v) => html`<option value="${v}" ${raw(v === tail ? "selected" : "")}>${v ? clock(v) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
@@ -1670,6 +1674,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-tail").addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); draw(); });
     $("#an-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); draw(); });
+    $("#an-orient").addEventListener("change", (e) => { orient = e.target.value; savePrefs(); draw(); });
     const setColour = (c) => { traceColour = c; savePrefs(); $$(".an-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.colour === c))); $("#an-colour-pick").value = c; draw(); drawChips(); };
     $$(".an-swatch").forEach((b) => b.addEventListener("click", () => setColour(b.dataset.colour)));
     $("#an-colour-pick").addEventListener("input", (e) => setColour(e.target.value));
@@ -1727,6 +1732,18 @@ export async function render(main, { query = {}, route } = {}) {
     lastBox = { w, h };
   }
   function setFollow(on) { follow = on; savePrefs(); const b = $("#an-follow"); if (b) b.setAttribute("aria-pressed", String(on)); }
+  /** The map's turn: the leg being run up (its controls from one to the other), else north up; kept between legs it cannot read. */
+  let lastTurn = 0;
+  /** Leg j's turn (its first control to its second up), or null when they are not both placed. */
+  function turnOf(j) {
+    const a = targets[j]?.pos, b = targets[j + 1]?.pos;
+    return a && b && Math.hypot(b[0] - a[0], b[1] - a[1]) > 1 ? -Math.PI / 2 - Math.atan2(b[1] - a[1], b[0] - a[0]) : null;
+  }
+  function mapTurn() {
+    if (orient !== "leg" || !calibrated || drawing) return 0;
+    lastTurn = turnOf(Math.max(0, legAt(tNow))) ?? lastTurn;
+    return lastTurn;
+  }
   const legAt = (s) => { let j = -1; for (let i = 0; i < legs.length; i++) if (legs[i].t0 != null && s >= legs[i].t0) j = i; return j; };
   function jumpLeg(dir) {
     const j = legAt(tNow);
@@ -1814,15 +1831,18 @@ export async function render(main, { query = {}, route } = {}) {
   function zoomTo(l, margin = 1.3, pad = 40) {
     if (!fit || l.t1 == null) return;
     const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + l.t1);
+    // the map turned to this leg: its extent measured as it will be on the screen, its centre turned back
+    const r = orient === "leg" ? turnOf(legs.indexOf(l)) ?? lastTurn : 0, rc = Math.cos(r), rs = Math.sin(r);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = a; i <= b; i++) { x0 = Math.min(x0, pxs[i]); y0 = Math.min(y0, pys[i]); x1 = Math.max(x1, pxs[i]); y1 = Math.max(y1, pys[i]); }
+    for (let i = a; i <= b; i++) { const u = rc * pxs[i] - rs * pys[i], v = rs * pxs[i] + rc * pys[i]; x0 = Math.min(x0, u); y0 = Math.min(y0, v); x1 = Math.max(x1, u); y1 = Math.max(y1, v); }
     const { w, h } = box();
     // a map without a size yet (being laid out) would give a zoom of 0, which no zooming could undo: done once it has one
     if (!w || !h || !(x1 >= x0)) { pendingFit = () => zoomTo(l, margin, pad); return; }
     pendingFit = null;
     const top = topReserved(), hh = Math.max(60, h - top);
     const k = Math.min(w / Math.max(60, (x1 - x0) * margin + pad), hh / Math.max(60, (y1 - y0) * margin + pad), 5);
-    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: top + hh / 2 - ((y0 + y1) / 2) * k };
+    const uc = (x0 + x1) / 2, vc = (y0 + y1) / 2, cx = rc * uc + rs * vc, cy = -rs * uc + rc * vc;
+    view = { k, ox: w / 2 - cx * k, oy: top + hh / 2 - cy * k };
     lastBox = { w, h };
     setFollow(false);
   }
@@ -1850,18 +1870,20 @@ export async function render(main, { query = {}, route } = {}) {
     view = { k, ox: cx - ((cx - view.ox) / view.k) * k, oy: cy - ((cy - view.oy) / view.k) * k };
     draw();
   }
-  const toImg = (sx, sy) => [(sx - view.ox) / view.k, (sy - view.oy) / view.k];
+  /** A point of the canvas as it would be with the map north up. */
+  const unrot = (sx, sy) => { if (!rot) return [sx, sy]; const { w, h } = box(), c = Math.cos(rot), s = Math.sin(rot), x = sx - w / 2, y = sy - h / 2; return [c * x + s * y + w / 2, -s * x + c * y + h / 2]; };
+  const toImg = (sx0, sy0) => { const [sx, sy] = unrot(sx0, sy0); return [(sx - view.ox) / view.k, (sy - view.oy) / view.k]; };
   let drag = null, pinch = null;
   const pointers = new Map();
   canvas.addEventListener("pointerdown", (e) => {
-    pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+    pointers.set(e.pointerId, unrot(e.offsetX, e.offsetY));
     canvas.setPointerCapture(e.pointerId);
-    if (pointers.size === 1) drag = { x: e.offsetX, y: e.offsetY, ox: view.ox, oy: view.oy, moved: false };
+    if (pointers.size === 1) { const [x, y] = unrot(e.offsetX, e.offsetY); drag = { x, y, ox: view.ox, oy: view.oy, moved: false }; }
     else if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: view.k }; drag = null; }
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, [e.offsetX, e.offsetY]);
+    pointers.set(e.pointerId, unrot(e.offsetX, e.offsetY));
     if (pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
       const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2;
@@ -1869,7 +1891,7 @@ export async function render(main, { query = {}, route } = {}) {
       view = { k, ox: cx - ((cx - view.ox) / view.k) * k, oy: cy - ((cy - view.oy) / view.k) * k };
       draw();
     } else if (drag) {
-      const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y;
+      const [ux, uy] = unrot(e.offsetX, e.offsetY), dx = ux - drag.x, dy = uy - drag.y;
       if (Math.hypot(dx, dy) > 4) drag.moved = true;
       if (drag.moved) { view = { ...view, ox: drag.ox + dx, oy: drag.oy + dy }; if (follow) setFollow(false); draw(); }
     }
@@ -1887,8 +1909,8 @@ export async function render(main, { query = {}, route } = {}) {
   const measure = measureTool($("#an-measure"), { redraw: () => draw(), out: $("#an-measure-out"),
     metres: (a, b) => { if (!fit) return null; const p = toM(fit, a[0], a[1]), q = toM(fit, b[0], b[1]); return Math.hypot(p[0] - q[0], p[1] - q[1]); } });
   canvas.addEventListener("pointercancel", up);
-  canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.0015), e.offsetX, e.offsetY); }, { passive: false });
-  canvas.addEventListener("dblclick", (e) => zoomBy(1.6, e.offsetX, e.offsetY));
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(Math.exp(-e.deltaY * 0.0015), ...unrot(e.offsetX, e.offsetY)); }, { passive: false });
+  canvas.addEventListener("dblclick", (e) => zoomBy(1.6, ...unrot(e.offsetX, e.offsetY)));
   $("#an-zin").addEventListener("click", () => (v3 ? v3.zoom(1.4) : zoomBy(1.4)));
   $("#an-zout").addEventListener("click", () => (v3 ? v3.zoom(1 / 1.4) : zoomBy(1 / 1.4)));
   $("#an-fit").addEventListener("click", () => { if (!map) return; if (v3) { setFollow(false); v3.setFollow(false); v3.fitTrace(); return; } if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
@@ -2028,7 +2050,11 @@ export async function render(main, { query = {}, route } = {}) {
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#e9e6dc"; ctx.fillRect(0, 0, w, h);
-    ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.ox, dpr * view.oy);
+    rot = mapTurn();
+    const na = $("#an-northarrow");
+    if (na) { na.hidden = !rot; na.style.transform = `rotate(${rot}rad)`; }
+    const rc = Math.cos(rot), rs = Math.sin(rot), RX = view.ox - w / 2, RY = view.oy - h / 2;
+    ctx.setTransform(dpr * view.k * rc, dpr * view.k * rs, -dpr * view.k * rs, dpr * view.k * rc, dpr * (rc * RX - rs * RY + w / 2), dpr * (rs * RX + rc * RY + h / 2));
     ctx.imageSmoothingEnabled = view.k < 1;
     ctx.globalAlpha = calibrated ? mapAlpha / 100 : 1;
     ctx.drawImage(map, 0, 0);

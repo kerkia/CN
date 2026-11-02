@@ -1771,6 +1771,10 @@ body.an-theatre .an-right { grid-area: side; }
 body.measuring #an-canvas, body.measuring #sh-canvas { cursor: crosshair; }
 .an-measure-out { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 3px 10px; border-radius: 6px; background: var(--surface); color: var(--water); font-weight: 650; font-size: 13px; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); pointer-events: none; font-variant-numeric: tabular-nums; }
 .an-measure-out:empty::before { content: "📏"; }
+/* the map turned to the leg: an arrow pointing north, top left */
+.an-northarrow { position: absolute; top: 10px; left: 10px; z-index: 4; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 4px rgba(0, 0, 0, .25); pointer-events: none; transform-origin: 50% 50%; }
+.an-northarrow::before { content: ""; position: absolute; left: 50%; top: 3px; transform: translateX(-50%); border: 6px solid transparent; border-bottom: 10px solid var(--bad); border-top: 0; }
+.an-northarrow span { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 10px; font-weight: 700; line-height: 1; }
 #an-legs { margin-top: 0; }
 tr.an-mistake td.an-lost { color: var(--bad); font-weight: 650; }
 tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
