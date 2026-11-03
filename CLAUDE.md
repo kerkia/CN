@@ -58,7 +58,7 @@ commit results, personal data, secrets or credentials.
   open kept running old code after a fix. `update.deploy` writes `site/assets/build.txt` (`write_build_stamp`: a hash
   of site/ without data/ and auth/, unchanged by data-only deploys; git-ignored); `app.codeChanged` reads it at a change
   of page, at most once a minute, and reloads the page when it differs. No file on the local server: nothing happens.
-- A push only triggers a run when it touches `site/**` or `functions/**`. A Python-only change is picked up by
+- A push only triggers a run when it touches `site/**`, `functions/**` or `wrangler.toml`. A Python-only change is picked up by
   the next hourly run (it checks out `main`), or trigger it with `workflow_dispatch`.
 - `gh` is not installed on the PC; read run status with the public API, e.g.
   `curl -s "https://api.github.com/repos/kerkia/CN/actions/runs?per_page=5"` and `/runs/<id>/jobs`.

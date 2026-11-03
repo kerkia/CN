@@ -5,7 +5,7 @@
 #   06:00 Paris time   agenda run: upcoming events, registrations (site/data/<cc>/agenda.json, each country's)
 #   Sat/Sun evenings   provisional-results run every 20 min (organisers publish results
 #                      on the evening of the race; live results are complete by then)
-#   push to main       publish the site's new code (site/, functions/) with the
+#   push to main       publish the site's new code (site/, functions/, wrangler.toml) with the
 #                      stored data
 #   an upload          a provisional-results run, started by functions/api/upload.js
 #                      (workflow_dispatch, mode prov) when the GH_DISPATCH_TOKEN secret is set
@@ -33,7 +33,7 @@ on:
     - cron: "*/20 16-22 * * 6,0"   # provisional results, Sat/Sun 18:00-00:40 Paris in summer, 17:00-23:40 in winter
   push:
     branches: [main]
-    paths: ["site/**", "functions/**"]
+    paths: ["site/**", "functions/**", "wrangler.toml"]
   workflow_dispatch:
     inputs:
       mode:

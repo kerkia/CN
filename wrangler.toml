@@ -77,7 +77,7 @@ RESEND_WAIT_HOURS = "48"
 # Scaleway TEM: its project (the secret key is SCW_SECRET_KEY), and at most this many e-mails a month: Scaleway's quota for an
 # organisation whose payment method and identity are validated (its « Organization quotas » page; 10 000 with the payment method
 # alone). 300 free, then about 0.25 EUR the 1 000
-SCW_PROJECT_ID = ""
+SCW_PROJECT_ID = "909e25f6-23da-4b9a-9c8e-9765b7573459"
 TEM_MONTHLY_LIMIT = "50000"
 # of the day's quota, this many e-mails are kept for account mails (confirmation, reset): digests stop short of it
 ACCOUNT_EMAIL_RESERVE = "20"
