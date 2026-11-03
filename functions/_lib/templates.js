@@ -876,3 +876,61 @@ export function nutritionPush(lang, posts) {
     url: n === 1 ? `/#/sante?article=${p.id}` : "/#/sante", tag: n === 1 ? `nutrition-${p.id}` : "nutrition",
   };
 }
+
+// « Mes horaires réservés » (owner, 2026-11-03; users.book_mail / book_push, _lib/booking.js tellBookers): a start the
+// organisers moved or cancelled, and the reminder the day before. No mail when one books (the page confirms it).
+// race: { key, name, date, place }; items: [{ name, circuit, start }] (a moved one: its new start)
+const BOOK = {
+  fr: { moved: "Horaire de départ modifié", cancelled: "Réservation d'horaire annulée", reminder: "Vos départs de demain",
+    introMoved: (r) => `Les organisateurs de ${r} ont modifié ces horaires de départ :`,
+    introCancelled: (r) => `Les organisateurs de ${r} ont annulé ces réservations :`,
+    introReminder: (r) => `Rappel de vos horaires de départ réservés pour ${r} :`,
+    line: (x) => `${x.name} · ${x.circuit} · ${x.start}`, lineCancelled: (x) => `${x.name} · ${x.circuit} (était à ${x.start})`,
+    open: "Voir les horaires", why: (s) => `Vous recevez ce message parce que l'alerte « Mes horaires réservés » est cochée dans vos ${s}.`,
+    settings: "réglages", stop: "Pour ne plus le recevoir :" },
+  en: { moved: "Start time changed", cancelled: "Start time booking cancelled", reminder: "Your starts tomorrow",
+    introMoved: (r) => `The organisers of ${r} changed these start times:`,
+    introCancelled: (r) => `The organisers of ${r} cancelled these bookings:`,
+    introReminder: (r) => `A reminder of the start times you booked for ${r}:`,
+    line: (x) => `${x.name} · ${x.circuit} · ${x.start}`, lineCancelled: (x) => `${x.name} · ${x.circuit} (was at ${x.start})`,
+    open: "See the start times", why: (s) => `You receive this message because the alert “My booked start times” is ticked in your ${s}.`,
+    settings: "settings", stop: "To stop receiving it:" },
+  de: { moved: "Startzeit geändert", cancelled: "Startzeit-Reservierung storniert", reminder: "Deine Starts morgen",
+    introMoved: (r) => `Die Veranstalter von ${r} haben diese Startzeiten geändert:`,
+    introCancelled: (r) => `Die Veranstalter von ${r} haben diese Reservierungen storniert:`,
+    introReminder: (r) => `Zur Erinnerung deine reservierten Startzeiten für ${r}:`,
+    line: (x) => `${x.name} · ${x.circuit} · ${x.start}`, lineCancelled: (x) => `${x.name} · ${x.circuit} (war um ${x.start})`,
+    open: "Startzeiten ansehen", why: (s) => `Du erhältst diese Nachricht, weil die Benachrichtigung „Meine reservierten Startzeiten“ in deinen ${s} angekreuzt ist.`,
+    settings: "Einstellungen", stop: "Um sie nicht mehr zu erhalten:" },
+  es: { moved: "Hora de salida modificada", cancelled: "Reserva de hora de salida anulada", reminder: "Tus salidas de mañana",
+    introMoved: (r) => `Los organizadores de ${r} han modificado estas horas de salida:`,
+    introCancelled: (r) => `Los organizadores de ${r} han anulado estas reservas:`,
+    introReminder: (r) => `Recordatorio de las horas de salida que reservaste para ${r}:`,
+    line: (x) => `${x.name} · ${x.circuit} · ${x.start}`, lineCancelled: (x) => `${x.name} · ${x.circuit} (era a las ${x.start})`,
+    open: "Ver las horas de salida", why: (s) => `Recibes este mensaje porque la alerta «Mis horas de salida reservadas» está marcada en tus ${s}.`,
+    settings: "ajustes", stop: "Para dejar de recibirlo:" },
+};
+const bookIntro = (T, kind, r) => (kind === "moved" ? T.introMoved(r) : kind === "cancelled" ? T.introCancelled(r) : T.introReminder(r));
+export function bookingMail(env, user, race, items, kind) {
+  const lang = L(user.lang), T = BOOK[lang], base = siteUrl(env);
+  const link = `${base}/#/horaire?course=${encodeURIComponent(race.key)}`, settings = `${base}/#/reglages`;
+  const title = T[kind] || T.reminder, what = `${race.name} (${longDate(race.date, lang)}${race.place ? `, ${race.place}` : ""})`;
+  const line = (x) => (kind === "cancelled" ? T.lineCancelled(x) : T.line(x));
+  return {
+    subject: `${title}${lang === "fr" ? " : " : ": "}${race.name}`,
+    html: wrap(env, title, `<p>${esc(greet(lang, user.first_name))}</p><p>${esc(bookIntro(T, kind, what))}</p>
+<ul style="padding-left:20px;margin:0 0 12px">${items.map((x) => `<li style="margin:0 0 4px">${esc(line(x))}</li>`).join("")}</ul>
+${button(link, T.open, lang)}<p style="font-size:13px;color:#5b6675">${T.why(a(settings, T.settings))}</p>`, lang),
+    text: `${greet(lang, user.first_name)}\n\n${bookIntro(T, kind, what)}\n\n${items.map((x) => `- ${line(x)}`).join("\n")}\n\n${T.open}: ${link}\n\n${T.stop} ${settings}`,
+  };
+}
+/** The push twin of bookingMail. */
+export function bookingPush(lang, race, items, kind) {
+  const T = BOOK[L(lang)];
+  const line = (x) => (kind === "cancelled" ? T.lineCancelled(x) : T.line(x));
+  return {
+    title: `${T[kind] || T.reminder} · ${race.name}`,
+    body: items.slice(0, 4).map(line).join("\n") + (items.length > 4 ? "\n…" : ""),
+    url: `/#/horaire?course=${encodeURIComponent(race.key)}`, tag: `book-${race.key}-${kind}`,
+  };
+}

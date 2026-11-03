@@ -66,6 +66,7 @@ export const publicUser = (env, u, countries = []) => ({
   preview: previewOf(u),
   nutrition: nutritionRole(env, u),          // « Nutrition » (migration 0017): admin | author | reader | ""
   nutMail: u.nut_mail === 1, pushNut: u.nut_push !== 0,    // its alert when an article is out (migration 0018)
+  bookMail: u.book_mail === 1, pushBook: u.book_push !== 0,  // « Mes horaires réservés » (migration 0023)
   // the Orga module, chosen by the account (migration 0016; owner, 2026-10-30); before the migration, every account has it
   orga: u.orga === undefined ? true : u.orga === 1,
   // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data

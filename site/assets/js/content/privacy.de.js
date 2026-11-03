@@ -106,6 +106,15 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
+      <h2 style="font-size:16px">Reservierung der Startzeiten</h2>
+      <p>Wenn die Veranstalter eines Wettkampfs die Reservierung der Startzeiten öffnen, reserviert ein Konto einen Start für sich
+        und für die Läufer, die es unter „Meine Läufer“ hinzufügt (seine Familie, Freunde, mit oder ohne Verein): ihr Vor- und
+        Nachname, der Verein und sein Land, die FFCO-Lizenznummer, falls angegeben, und die Chipnummer, falls die Veranstalter danach
+        fragen. Das Konto, das sie hinzufügt, verpflichtet sich, dies mit ihrem Einverständnis zu tun. Das Raster der Startzeiten
+        (Name und Verein jedes Läufers) ist öffentlich, wie eine Startliste; Lizenz- und Chipnummer sehen nur das Konto, das
+        reserviert hat, und die Veranstalter. Bei Schluss der Reservierung werden die Reservierungen zur veröffentlichten Startliste
+        des Wettkampfs. „Meine Läufer“ und die Reservierungen für kommende Wettkämpfe werden mit dem Konto gelöscht; die vergangener
+        Wettkämpfe bleiben in deren Startliste.</p>
       <h2 style="font-size:16px">Von deinem Handy</h2>
       <p>„Vom Handy“ bringt ein Foto der Karte oder eine Datei (einen Track) von deinem Handy auf deinen Computer: Die Datei wartet im Speicher der Website (Cloudflare) unter einem Einmal-Link, 15 Minuten gültig, und wird gelöscht, sobald der Computer sie empfangen hat oder du das Fenster mit dem Code schließt; eine nie empfangene Datei wird spätestens am nächsten Tag gelöscht. Weder der Link noch die Datei tragen deinen Namen, und auf dem Handy ist kein Konto nötig.</p>
       <h2 style="font-size:16px">Gesundheit: Artikel und Urheberrecht</h2>

@@ -125,12 +125,17 @@ function grid(head, above) {
   const labels = [...above].reverse().find((r) => r.filter((x) => x && wordy(x)).length >= 2) || [];
   const before = (ni) => Math.max(...times.filter((t) => t < ni));
   const starts = names.map((ni, k) => { const ti = before(ni); return k === 0 || ti > names[k - 1] ? ti : ni; });
+  // a circuit's name sits over its own columns (O'Bugey), else in the blank column before them (Balise 77, 2026-11-03: each
+  // circuit's title one column left of its time column; read as the circuit before it, every name shifted by one)
+  let prevEnd = -1;
   return { groups: names.map((ni, k) => {
     const ti = before(ni), stop = k + 1 < starts.length ? starts[k + 1] : head.length;
     let fi = null, ci = null;
     for (let j = ni + 1; j < stop; j++) { if (fi == null && keys[j] === "first") fi = j; if (ci == null && keys[j] === "club") ci = j; }
-    let label = "";
-    for (let j = starts[k]; j < Math.min(stop, labels.length); j++) if (labels[j] && wordy(labels[j])) { label = labels[j]; break; }
+    const end = Math.max(ni, fi ?? -1, ci ?? -1);
+    const lab = (a, b) => { for (let j = a; j <= Math.min(b, labels.length - 1); j++) if (labels[j] && wordy(labels[j])) return labels[j]; return ""; };
+    const label = lab(starts[k], end) || lab(prevEnd + 1, starts[k] - 1);
+    prevEnd = end;
     return [ti, ni, fi, ci, label || `Circuit ${k + 1}`];
   }) };
 }

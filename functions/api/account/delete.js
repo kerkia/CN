@@ -97,6 +97,14 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   try { await env.DB.prepare("DELETE FROM nut_likes WHERE user_id = ?").bind(user.id).run(); } catch (e) {}      // its likes go
   // the relay simulator's added runners (a table that may not exist yet: migration 0008)
   try { await env.DB.prepare("DELETE FROM relay_runners WHERE user_id = ?").bind(user.id).run(); } catch (e) {}
+  // « Réservation des horaires » (migration 0023): its runners go, and its bookings of races still to come (their slots free
+  // again); those of past races, now in the published start lists, keep the runners' names but no longer the account
+  try {
+    await env.DB.batch([env.DB.prepare("DELETE FROM booking_runners WHERE user_id = ?").bind(user.id),
+      env.DB.prepare(`DELETE FROM bookings WHERE user_id = ? AND by_org = 0 AND race_key IN
+        (SELECT race_key FROM booking_events WHERE race_date >= date('now'))`).bind(user.id),
+      env.DB.prepare("UPDATE bookings SET user_id = 0 WHERE user_id = ?").bind(user.id)]);
+  } catch (e) { /* before migration 0023 */ }
   try {                                       // the devices' push subscriptions and what was sent to them (migration 0010)
     await env.DB.batch([env.DB.prepare("DELETE FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM push_sent WHERE user_id = ?").bind(user.id),

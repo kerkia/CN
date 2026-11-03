@@ -433,6 +433,11 @@ export function build(X) {
             html`Die Datei wird zuerst in deinem Browser gelesen und geprüft: zwei Läufer desselben Vereins direkt nacheinander, eine geteilte Startminute,
               Läufer ohne Startzeit, ohne Chip oder ohne Bahn, die Intervalle und die freien Startplätze.`,
             html`„Prüfen und exportieren“ schreibt auch die Startdatei für die App O Checklist.`,
+            html`„Reservierung öffnen“ ersetzt die geteilte Tabelle, in die sich die Läufer für eine Startzeit eintragen: du legst die Bahnen fest
+              (erster und letzter Start, Intervall), den Abstand zwischen zwei Läufern desselben Vereins, den Schluss; jeder Läufer reserviert auf
+              Ozimut mit seinem Konto, für sich und für andere (seine Familie, mit oder ohne Lizenz, aus jedem Verein oder ohne Verein); eine schon
+              ausgefüllte Google-Tabelle wird mit allen Tabellenblättern importiert. Bei Schluss werden die Reservierungen zur veröffentlichten
+              Startliste, und du lädst die CSV- oder IOF-XML-Datei für MeOS oder OE herunter.`,
             html`Nach der Veröffentlichung erscheint die Liste in Arena (die Startliste des Wettkampfs), und jeder Läufer, der es gewünscht hat, erhält seine
               Startzeit per Push-Mitteilung oder per E-Mail.`,
           ])}`)}`,

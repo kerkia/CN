@@ -103,6 +103,14 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
+      <h2 style="font-size:16px">Reserva de horas de salida</h2>
+      <p>Cuando los organizadores de una competición abren la reserva de sus horas de salida, una cuenta reserva una salida para sí
+        misma y para los corredores que añade a «Mis corredores» (su familia, amigos, federados o no): su nombre y apellidos, el club
+        y su país, el número de licencia FFCO si se indica y el número de tarjeta si los organizadores lo piden. La cuenta que los
+        añade se compromete a hacerlo con su consentimiento. La parrilla de horas (nombre y club de cada corredor) es pública, como
+        una lista de salida; los números de licencia y de tarjeta solo los ven la cuenta que reservó y los organizadores. Al cierre,
+        las reservas pasan a ser la lista de salida publicada de la competición. «Mis corredores» y las reservas de las competiciones
+        futuras se eliminan con la cuenta; las de competiciones pasadas permanecen en su lista de salida.</p>
       <h2 style="font-size:16px">Desde tu móvil</h2>
       <p>«Desde mi móvil» lleva una foto del mapa o un archivo (un track) de tu móvil a tu ordenador: el archivo espera en el almacenamiento del sitio (Cloudflare) con un enlace de un solo uso, válido 15 minutos, y se borra en cuanto el ordenador lo ha recibido o cierras la ventana del código; un archivo nunca recibido se borra como muy tarde al día siguiente. Ni el enlace ni el archivo llevan tu nombre, y no hace falta cuenta en el móvil.</p>
       <h2 style="font-size:16px">Salud: artículos y derechos de autor</h2>

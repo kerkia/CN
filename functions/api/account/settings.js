@@ -1,6 +1,7 @@
 // POST /api/account/settings { notify?: bool, agendaAlert?: bool, deadlineAlert?: bool, agendaRegions?: [region names],
 //   lang?: "fr" | "en" | "de" | "es", startsAlert?: bool, pushStarts?: bool, pushResults?: bool, pushAgenda?: bool, pushDeadline?: bool,
-//   orga?: bool, nutMail?: bool, pushNut?: bool, movedNoticeSeen?: true }  (nutMail / pushNut: a new article in « Nutrition »,
+//   orga?: bool, nutMail?: bool, pushNut?: bool, bookMail?: bool, pushBook?: bool, movedNoticeSeen?: true }  (bookMail / pushBook:
+//   « Mes horaires réservés », migration 0023)  (nutMail / pushNut: a new article in « Nutrition »,
 //   migration 0018, for the accounts that read it)  (orga: the Orga module, migration 0016; movedNoticeSeen: the window about the move
 //   to ozimut.com, seen: assets/js/moved.js)
 // Every alert by e-mail and/or push (2026-10-18): the push ones are open to every account.
@@ -16,10 +17,10 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const sets = [], vals = [];
   for (const [field, column] of [["notify", "notify"], ["agendaAlert", "agenda_alert"], ["deadlineAlert", "deadline_alert"],
     ["startsAlert", "starts_alert"], ["pushStarts", "push_starts"], ["pushResults", "push_results"], ["pushAgenda", "push_agenda"], ["pushDeadline", "push_deadline"], ["orga", "orga"],
-    ["nutMail", "nut_mail"], ["pushNut", "nut_push"]]) {
+    ["nutMail", "nut_mail"], ["pushNut", "nut_push"], ["bookMail", "book_mail"], ["pushBook", "book_push"]]) {
     if (field in b) {
       if (typeof b[field] !== "boolean") return json({ error: "bad request" }, 400);
-      if (["notify", "agendaAlert", "deadlineAlert", "startsAlert", "nutMail"].includes(field) && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);
+      if (["notify", "agendaAlert", "deadlineAlert", "startsAlert", "nutMail", "bookMail"].includes(field) && b[field] && !alertsAllowed(env, user)) return json({ error: "not allowed" }, 403);
       sets.push(`${column} = ?`); vals.push(b[field] ? 1 : 0);
     }
   }

@@ -94,6 +94,14 @@ export const body = (SITE, { world = false } = {}) => `
         link sees them with your name, even without an account, but never your heart rate or other personal data; deleting the link
         ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
         DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
+      <h2 style="font-size:16px">Start time booking</h2>
+      <p>When a competition's organisers open its start times to booking, an account books a start for itself and for the runners
+        it adds to “My runners” (its family, friends, members of a club or not): their first and last names, the club and its
+        country, the FFCO licence number if given, and the card number if the organisers ask for it. The account that adds them
+        undertakes to do so with their agreement. The grid of start times (each runner's name and club) is public, as a start list
+        is; the licence and card numbers are seen only by the account that booked and by the organisers. At the closing, the
+        bookings become the competition's published start list. “My runners” and the bookings of competitions still to come are
+        deleted with the account; those of past competitions stay in their start list.</p>
       <h2 style="font-size:16px">From your phone</h2>
       <p>“From my phone” takes a photo of the map or a file (a trace) from your phone to your computer: the file waits in the site's storage (Cloudflare) under a one-time link, valid for 15 minutes, and is deleted as soon as the computer has received it or you close the code's window; a file never received is deleted the next day at the latest. Neither the link nor the file carries your name, and no account is needed on the phone.</p>
       <h2 style="font-size:16px">Health: articles and copyright</h2>

@@ -105,6 +105,14 @@ export const body = (SITE, { world = false } = {}) => `
         ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
+      <h2 style="font-size:16px">Réservation des horaires de départ</h2>
+      <p>Quand les organisateurs d'une compétition ouvrent la réservation de ses horaires de départ, un compte réserve un départ pour
+        lui-même et pour les coureurs qu'il ajoute à « Mes coureurs » (sa famille, des amis, licenciés ou non) : leur prénom, leur nom,
+        le club et son pays, le numéro de licence FFCO s'il est donné, et le numéro de puce si les organisateurs le demandent. Le compte
+        qui les ajoute s'engage à le faire avec leur accord. La grille des horaires (nom et club de chaque coureur) est publique, comme
+        une liste de départ ; le numéro de licence et le numéro de puce ne sont vus que du compte qui a réservé et des organisateurs. À la
+        clôture, les réservations deviennent la liste de départ publiée de la compétition. « Mes coureurs » et les réservations des
+        compétitions à venir sont supprimés avec le compte ; celles des compétitions passées restent dans leur liste de départ.</p>
       <h2 style="font-size:16px">Depuis votre téléphone</h2>
       <p>« Depuis mon téléphone » fait passer une photo de la carte ou un fichier (une trace) de votre téléphone à votre ordinateur : le fichier attend dans l'espace de stockage du site (Cloudflare) sous un lien à usage unique, valable 15 minutes, et il est effacé dès que l'ordinateur l'a reçu ou que vous fermez la fenêtre du code ; un fichier jamais reçu est effacé au plus tard le lendemain. Ni le lien ni le fichier ne portent votre nom, et aucun compte n'est demandé sur le téléphone.</p>
       <h2 style="font-size:16px">Santé : articles et droits d'auteur</h2>

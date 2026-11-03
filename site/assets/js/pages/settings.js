@@ -24,6 +24,8 @@ const ALERTS = [
   { key: "deadline", mail: "deadlineAlert", push: "pushDeadline", gated: true },
   // a new article in « Nutrition »: to the accounts that read it (auth.nutritionReads; owner, 2026-11-01)
   { key: "nutrition", mail: "nutMail", push: "pushNut", gated: true, nut: true },
+  // « Mes horaires réservés »: a start the organisers moved or cancelled, the day before's reminder (owner, 2026-11-03)
+  { key: "booking", mail: "bookMail", push: "pushBook", gated: true },
 ];
 
 // Same names as the regions of the Agenda page (ffco_scraper/agenda.py).

@@ -1651,6 +1651,35 @@ Every multiple-choice game was played through to its score page at phone size, w
   file to its organisers). `localstart.js` keeps card numbers and bibs (IOF `ControlCard` / `BibNumber`, « Puce », « SI », « Dossard »
   columns, OE's chip in PDFs) and a table's rows without a start time (`nostart`), the browser's only: the server drops them. A race's
   published start list on « Résultats » gives its organisers (and administrators) the same file, without card numbers.
+- **Réservation des horaires** (owner, 2026-11-03: the Google Sheets clubs pass round for runners to put their names down for a start
+  time — Balise 77's: three tabs of three circuits, a start every 2 minutes, long and short on the odd minutes, the middle one on the
+  even, « 4 minutes between two runners of a club »): **Orga › Horaires › « Ouvrir la réservation »** (`#/orga-horaires?course=<key>&resa=1`,
+  `pages/bookingorg.js`, organisers as for the start lists: `_lib/club.js` `organises`; competitions `a<agenda id>` and `d<declared id>`)
+  sets the circuits (first and last start, interval: `{ id, name, first, last, step }` in seconds), the gap between two runners of a
+  club — **whatever their circuits** —, the closing time (Paris), runners per account (10), the card number asked or not (owner: the
+  timing software finds it from the name; optional), a note; draft / open / closed. A sheet or file already filled in is imported
+  (every tab: `sheettabs.js`; its circuits inferred over one window and interval, each on its own minute; its runners booked as the
+  organisers' own, `by_org`, France's club numbers named from the federation's list). The organisers move (`force` past the club
+  rule), cancel, add by hand, keep a slot back (`blocked`), publish now, download CSV / IOF XML 3.0 StartList (Paris offset) / O
+  Checklist. **The runners' page** `#/horaire?course=<key>` (route `booking`, `pages/booking.js`, Arena; `#/horaire` alone: the open
+  bookings and one's own), reached from the Agenda's « Réserver un horaire » and from the link the organisers hand out: the grid
+  (names and clubs) is **public** — a signed-out visitor opening the link becomes a guest (`app.route_`, the guest pass; `_middleware.js`
+  GUEST `/api/booking(/<key>)?`) —; **booking needs an account** (owner: no account, no booking; no e-mail asked, no private link). An
+  account books for its **« Mes coureurs »** (`booking_runners`: the holder added the first time from the account — FFCO club from the
+  data, else a club typed for another country —, then anyone: family, friends, licensed or not, a club of France or Spain from the
+  federation's list, **a foreign club typed**, or none); one start a runner and competition (licence, else name + club), the club rule
+  between clubs of the same key — `FR:<number>`, else `<country>:<name normalised>` (owner, 2026-11-03: a foreign runner picks their
+  foreign club and the gap applies to it; `bookingcore.clubKey` = `_lib/booking.clubKey`) —, enforced in one SQL statement (`INSERT …
+  WHERE NOT EXISTS`, D1's unique keys for the slot and the runner). Confirmation on the page only (owner: no confirmation e-mail).
+  **The alert « Mes horaires réservés »** (Réglages › Alertes; `users.book_mail` off — the administrator's e-mail right — and
+  `book_push` on): a start the organisers moved or cancelled, and the reminder the day before (`templates.bookingMail`/`bookingPush`).
+  **Closing**: `_lib/booking.js bookingSoon` (from `/api/track`, every 10 min an isolate) closes an open booking past its time, publishes
+  its start list as an organiser's deposit (`uploads/<id>/` CSV `Heure;Nom;Club;Circuit;Puce`, meta `booking: true`, then a `prov` run:
+  the race's page, the Agenda, the start-time alerts) and again after a change, and sends the reminders. D1 **migration 0023**
+  (`booking_events`, `bookings`, `booking_runners`, `users.book_*`; before it the API answers 503 « not ready »). Account deletion: its
+  runners and its bookings to come go. Texts: area `i18n/booking.*.js`; the privacy page « Réservation des horaires de départ ».
+  Also fixed that day: the start-list grids named each circuit by the next one's title when titles sit in the blank column before a
+  circuit (`localstart.grid` = `startlist._grid`, `parsers.VERSION` 11), and `/api/sheet?all=1` reads every tab of a Google Sheet.
 - **GPS tracking by another service** (owner, 2026-10-24, after the live tracking study, private artifact
   https://claude.ai/artifact/Y2kZZiMHpZsiPBczSaTVcb: no service grants a third party the right to show its positions, and a web
   page cannot track a phone once its screen locks): Ozimut tracks nobody; a competition's organisers give the link to the

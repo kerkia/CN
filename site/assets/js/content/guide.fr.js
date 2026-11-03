@@ -430,6 +430,11 @@ export function build(X) {
             html`Le fichier est d'abord lu et vérifié dans votre navigateur : deux coureurs d'un même club qui se suivent, une minute de départ partagée,
               des coureurs sans heure, sans puce ou sans circuit, les intervalles et les places libres.`,
             html`« Vérifier et exporter » écrit aussi le fichier du départ pour l'application O Checklist.`,
+            html`« Ouvrir la réservation » remplace le tableau partagé où les coureurs s'inscrivent à un horaire : vous réglez les circuits (premier et
+              dernier départ, intervalle), l'écart entre deux coureurs d'un même club, la clôture ; chaque coureur réserve sur Ozimut avec son compte,
+              pour lui et pour d'autres (sa famille, des licenciés ou non, de n'importe quel club ou sans club) ; un tableau Google Sheets déjà rempli
+              s'importe avec tous ses onglets. À la clôture, les réservations deviennent la liste de départ publiée, et vous téléchargez le CSV ou
+              l'IOF XML pour MeOS ou OE.`,
             html`Une fois publiée, la liste paraît dans Arena (la liste de départ de la compétition), et chaque coureur qui l'a demandé reçoit son heure de
               départ par notification ou par e-mail.`,
           ])}`)}`,

@@ -416,6 +416,10 @@ export function build(X) {
             html`The file is first read and checked in your browser: two runners of one club one after the other, a start minute shared, runners
               without a time, a card or a course, the intervals and the vacant places.`,
             html`“Check and export” also writes the start's file for the O Checklist app.`,
+            html`“Open the booking” replaces the shared sheet where runners put their names down for a start time: you set the courses (first and
+              last start, interval), the gap between two runners of the same club, the closing; each runner books on Ozimut with their account, for
+              themselves and for others (their family, members of a club or not, of any club or none); a Google Sheet already filled in is imported
+              with all its tabs. At the closing, the bookings become the published start list, and you download the CSV or the IOF XML for MeOS or OE.`,
             html`Once published, the list appears in Arena (the competition's start list), and every runner who asked for it gets their start time by
               notification or by e-mail.`,
           ])}`)}`,

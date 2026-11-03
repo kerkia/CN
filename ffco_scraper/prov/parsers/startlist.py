@@ -163,12 +163,18 @@ def _grid(head: list[str], above: list[list[str]]) -> dict | None:
         ti = max(t for t in times if t < ni)
         starts.append(ti if k == 0 or ti > names[k - 1] else ni)     # a time column of its own opens the circuit
     groups = []
+    prev_end = -1
+    lab = lambda a, b: next((labels[j] for j in range(a, min(b + 1, len(labels))) if labels[j] and _wordy(labels[j])), "")
     for k, ni in enumerate(names):
         ti = max(t for t in times if t < ni)
         stop = starts[k + 1] if k + 1 < len(starts) else len(head)
         fi = next((j for j in range(ni + 1, stop) if keys[j] == "first"), None)
         ci = next((j for j in range(ni + 1, stop) if keys[j] == "club"), None)
-        label = next((labels[j] for j in range(starts[k], min(stop, len(labels))) if labels[j] and _wordy(labels[j])), "")
+        # its name over its own columns (O'Bugey), else in the blank column before them (Balise 77, 2026-11-03: each title one
+        # column left of its time column, read as the circuit before it)
+        end = max(ni, fi if fi is not None else -1, ci if ci is not None else -1)
+        label = lab(starts[k], end) or lab(prev_end + 1, starts[k] - 1)
+        prev_end = end
         groups.append((ti, ni, fi, ci, label or f"Circuit {k + 1}"))
     return {"groups": groups}
 

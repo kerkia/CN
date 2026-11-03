@@ -4,10 +4,11 @@
 import { json, readBody, withUser } from "../_lib/api.js";
 import { announceSoon, translateSoon } from "../_lib/nutrition.js";
 import { robotsSoon } from "../_lib/robots.js";
+import { bookingSoon } from "../_lib/booking.js";
 
 // the site's pages (app.js routes; the Réseau views apart) — anything else is refused
 const PAGES = new Set(["overview", "ranking", "runner", "compare", "clubs", "club", "clubcompare", "courses", "agenda",
-  "methods", "settings", "contact", "admin", "provisional", "splits", "deposit", "live", "relays", "analysis", "analysisPerso", "analysisOrga", "mapAnalysis", "myMaps", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "orgDirect", "orgTracer", "needCountry", "categories", "relayHistory", "games", "vma", "descriptions", "mapkey", "nutrition", "nutritionWrite", "hub", "modtiles", "ask", "network:ego", "network:leaders", "network:territories", "network:stats"]);
+  "methods", "settings", "contact", "admin", "provisional", "splits", "deposit", "live", "relays", "analysis", "analysisPerso", "analysisOrga", "mapAnalysis", "myMaps", "analysisClub", "analysisRace", "orgRace", "orgTraining", "orgResults", "orgStarts", "booking", "orgDirect", "orgTracer", "needCountry", "categories", "relayHistory", "games", "vma", "descriptions", "mapkey", "nutrition", "nutritionWrite", "hub", "modtiles", "ask", "network:ego", "network:leaders", "network:territories", "network:stats"]);
 const KEEP_DAYS = 400;
 
 /** Today's date in Paris, YYYY-MM-DD; `plus` days later (negative: earlier). */
@@ -23,6 +24,7 @@ export const onRequestPost = withUser(async (ctx, user) => {
   announceSoon(ctx);
   translateSoon(ctx);            // and the Santé translations still to make, one at a time
   robotsSoon(ctx);               // the copy of Cloudflare's figures on the AI bots, when due (admin › « Robots »)
+  bookingSoon(ctx);              // the start-time bookings closing, their start lists published, the day before's reminders
   const b = await readBody(request);
   const page = String(b?.page || "");
   if (!PAGES.has(page)) return json({ error: "bad request" }, 400);

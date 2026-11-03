@@ -3503,3 +3503,40 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
 #ph-prog .wait-bar { flex: 1; min-width: 120px; }
 .ph-ok { color: var(--forest); font-weight: 600; margin: 0; }
 .an-cam-row .ph-btn { align-self: flex-start; }
+
+/* « Réserver un horaire » (pages/booking.js) and « Orga › Horaires › Réservation des horaires » (pages/bookingorg.js), 2026-11-03 */
+.bk-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.bk-layout > .card { margin: 0; }
+.bk-grid { position: sticky; top: 72px; }
+@media (max-width: 900px) { .bk-layout { grid-template-columns: minmax(0, 1fr); } .bk-grid { position: static; } }
+.bk-state .muted { margin-top: 4px; font-size: 13px; }
+.bk-note { white-space: pre-line; }
+.bk-msg ul { margin: 6px 0 0; padding-left: 18px; }
+.bk-runners { list-style: none; margin: 0 0 12px; padding: 0; }
+.bk-runner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; background: var(--surface); }
+.bk-runner.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.bk-who { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; cursor: pointer; }
+.bk-who input { flex: none; }
+.bk-club { display: block; font-size: 12.5px; }
+.bk-side { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.bk-pick, .bk-booked { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.bk-pick select { max-width: 180px; }
+.bk-rform { flex-basis: 100%; padding: 10px 0 2px; }
+.bk-form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.bk-form-row .field { flex: 1 1 160px; min-width: 0; }
+.bk-form-row .field input, .bk-form-row .field select { width: 100%; }
+.bk-form-err:not(:empty) { color: var(--bad); font-size: 13px; margin-bottom: 8px; }
+.bk-small { font-size: 12.5px; margin: 6px 0 0; }
+.bk-go { margin-top: 14px; }
+.bk-table tr.bk-free td { color: var(--ink-3); }
+.bk-table tr.bk-mine td, table tr.bk-mine td { background: var(--accent-wash); }
+tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
+.bo-status { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.bo-fields { margin: 0 0 8px; padding: 0; border: 0; background: none; gap: 12px; flex-wrap: wrap; }
+.bo-h { font-size: 15px; margin: 6px 0 8px; }
+.bo-circuits input { padding: 4px 6px; }
+.os-bk .card-head { flex-wrap: wrap; gap: 10px; }
+@media (max-width: 640px) {
+  .bk-pick select, .bk-form-row .field input, .bk-form-row .field select { font-size: 16px; }
+  .bk-pick select { max-width: none; flex: 1 1 140px; }
+}

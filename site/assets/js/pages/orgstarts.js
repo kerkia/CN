@@ -18,6 +18,7 @@ import { getProv } from "./provisional.js";
 import * as declare from "../declare.js";
 import { parse as readStarts } from "../localstart.js";
 import { check as drawChecks, oChecklist, saveOChecklist } from "../startchecks.js";
+import { sheetTabs } from "../sheettabs.js";
 
 const ORG_DAYS = 90;                     // as far ahead as the collection publishes an organiser's start list
 const MAX = 10 * 1024 * 1024;            // functions/api/upload.js STARTS_MAX
@@ -48,6 +49,8 @@ export async function render(main, { query = {} } = {}) {
       main.innerHTML = html`<div class="card"><div class="empty">${t("os.notMine")}</div></div>`;
       return { title: t("os.title") };
     }
+    // the start times opened to booking (2026-11-03): pages/bookingorg.js
+    if (query.resa) return (await import("./bookingorg.js")).renderBooking(main, race);
     return deposit(main, race);
   }
   main.innerHTML = html`
@@ -56,11 +59,16 @@ export async function render(main, { query = {} } = {}) {
     ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="os-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="os-list"></div></section>
     <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("os.hint")}</p>`;
+  // the competitions whose start times are open to booking, or were (api/booking: the coming ones, open or closed)
+  const booked = new Map(((await fetch("api/booking", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null))?.events || [])
+    .map((x) => [x.key, x.status]));
   const status = (x) => {
-    if (!x.p?.startlist) return html`<span class="muted">${t("os.st.none")}</span>`;
+    const bk = booked.get(x.key);
+    const tag = bk ? html` <span class="tag ${bk === "open" ? "tag-in" : ""}">${t(bk === "open" ? "os.bk.open" : "os.bk.closed")}</span>` : "";
+    if (!x.p?.startlist) return html`<span class="muted">${t("os.st.none")}</span>${tag}`;
     const src = x.p.sources || [];
-    return src.includes("upload") ? html`<span class="tag">${t("os.st.yours")}</span>`
-      : html`${t("os.st.found")}${src.length ? html` <span class="muted">(${src.map((s) => (s === "site" ? t("src.site") : s === "direct" ? t("src.direct") : s)).join(", ")})</span>` : ""}`;
+    return src.includes("upload") ? html`<span class="tag">${t("os.st.yours")}</span>${tag}`
+      : html`${t("os.st.found")}${src.length ? html` <span class="muted">(${src.map((s) => (s === "site" ? t("src.site") : s === "direct" ? t("src.direct") : s)).join(", ")})</span>` : ""}${tag}`;
   };
   const draw = (q = "") => {
     const list = q ? mine.filter((x) => norm(`${x.e.name} ${x.e.org || ""} ${x.e.place || ""}`).includes(norm(q))) : mine;
@@ -89,6 +97,8 @@ async function deposit(main, race) {
       <p class="lede meta"><span>${fmtDate(e.date)}</span>${e.place ? html`<span>${e.place}</span>` : ""}${e.org ? html`<span>${e.org}</span>` : ""}
         ${e.reg?.count ? html`<span>${tn("os.reg", e.reg.count, { n: fmt(e.reg.count) })}</span>` : ""}</p></div></div>
     <div id="os-current"></div>
+    <section class="card os-bk" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("os.bk.title")}</h2><div class="hint">${t("os.bk.hint")}</div></div>
+      <a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(race.key)}&resa=1">${t("os.bk.go")}</a></div></section>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("os.step1")}</h2></div>
       <div class="card-body upload-grid">
         <div class="upload-form">
@@ -175,14 +185,10 @@ async function deposit(main, race) {
     if (!/^https:\/\/docs\.google\.com\/spreadsheets\/d\//.test(url)) return err(t("os.sheet.bad"));
     const b = $("#os-sheet-read");
     b.disabled = true;
-    const r = await fetch(`api/sheet?url=${encodeURIComponent(url)}`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+    const got = await sheetTabs(url);
     b.disabled = false;
-    if (!r?.ok) {
-      const j = r ? await r.json().catch(() => ({})) : {};
-      return err(j.error === "not shared" ? t("os.sheet.private") : j.error === "too many" ? t("up.err.many") : t("os.sheet.fail"));
-    }
-    const bytes = await r.arrayBuffer();
-    take(new File([bytes], `horaires-${race.key}.csv`, { type: "text/csv" }), t("os.sheet.name"));
+    if (got.error) return err(got.error === "not shared" ? t("os.sheet.private") : got.error === "too many" ? t("up.err.many") : got.error === "read" ? t("os.err.read") : t("os.sheet.fail"));
+    take(new File([got.csv], `horaires-${race.key}.csv`, { type: "text/csv" }), t("os.sheet.name"));
   });
 
   // 2. the check: the list as read, and what deserves a look

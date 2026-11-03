@@ -428,6 +428,10 @@ export function build(X) {
             html`El archivo se lee y se comprueba primero en tu navegador: dos corredores del mismo club seguidos, un minuto de salida compartido,
               corredores sin hora, sin pinza o sin recorrido, los intervalos y los huecos libres.`,
             html`«Comprobar y exportar» escribe también el archivo de salida para la aplicación O Checklist.`,
+            html`«Abrir la reserva» sustituye a la tabla compartida en la que los corredores se apuntan a una hora: fijas los recorridos (primera y
+              última salida, intervalo), la separación entre dos corredores del mismo club, el cierre; cada corredor reserva en Ozimut con su cuenta,
+              para sí y para otros (su familia, federados o no, de cualquier club o sin club); una hoja de Google Sheets ya rellenada se importa con
+              todas sus pestañas. Al cierre, las reservas pasan a ser la lista de salida publicada, y descargas el CSV o el IOF XML para MeOS u OE.`,
             html`Una vez publicada, la lista aparece en Arena (la lista de salida de la competición), y cada corredor que lo ha pedido recibe su hora de
               salida por notificación o por correo electrónico.`,
           ])}`)}`,

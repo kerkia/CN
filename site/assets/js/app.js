@@ -50,6 +50,7 @@ const PAGES = {
   orgTraining: () => import("./pages/shared.js"),
   orgResults: () => import("./pages/orgresults.js"),
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
+  booking: () => import("./pages/booking.js"),        // « Réserver un horaire » (Arena): the start times its organisers opened to booking (2026-11-03)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),
   modtiles: () => import("./pages/modtiles.js"),   // Coach's and Stats' pages as tiles: their landing on a phone (2026-10-31)
@@ -95,7 +96,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend"]);
+  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend", "booking"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
@@ -144,6 +145,7 @@ function parseHash(hash = location.hash) {
     : head === "resultats" || head === "recemment" || head === "provisoires" ? "provisional"     // #/recemment, #/provisoires: old addresses
     : head === "analyse-course" || head === "temps-inter" ? "splits"     // « Analyse de course » (« Temps intermédiaires » until 2026-10-23)
     : head === "direct" ? "live"
+    : head === "horaire" || head === "horaires" ? "booking"
     : head === "deposer" ? "deposit"
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
@@ -417,7 +419,7 @@ export function moduleMenus() {
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
 const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga",
-  agenda: "arena", provisional: "arena", splits: "arena", live: "arena", myMaps: "coach" };
+  agenda: "arena", provisional: "arena", splits: "arena", live: "arena", booking: "arena", myMaps: "coach" };
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
 // Coach and Orga open on their pages as tiles, Stats too on a phone (owner, 2026-10-31: every choice in sight at once; a
@@ -844,7 +846,8 @@ async function route_() {
   // other page leads to the modules page
   const me = auth.session();
   // a link to someone's maps (« Mes cartes », #/mes-cartes?partage=…) opened without an account: the visit goes on as a visitor's
-  if (!me && !auth.guest() && r.route === "myMaps" && r.query.partage) {
+  // (and a competition's start times opened to booking, #/horaire?course=…: its link goes round the clubs; its grid is public)
+  if (!me && !auth.guest() && ((r.route === "myMaps" && r.query.partage) || (r.route === "booking" && r.query.course))) {
     try { await ensurePass({ force: true }); auth.setGuest(true); await data.reloadCountry(); } catch (e) { /* the login page then */ }
   }
   const guest = !me && auth.guest();
