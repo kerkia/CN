@@ -106,6 +106,8 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
+      <h2 style="font-size:16px">Von deinem Handy</h2>
+      <p>„Vom Handy“ bringt ein Foto der Karte oder eine Datei (einen Track) von deinem Handy auf deinen Computer: Die Datei wartet im Speicher der Website (Cloudflare) unter einem Einmal-Link, 15 Minuten gültig, und wird gelöscht, sobald der Computer sie empfangen hat oder du das Fenster mit dem Code schließt; eine nie empfangene Datei wird kurz nach dem Ende des Links gelöscht. Weder der Link noch die Datei tragen deinen Namen, und auf dem Handy ist kein Konto nötig.</p>
       <h2 style="font-size:16px">Gesundheit: Artikel und Urheberrecht</h2>
       <p>Die Seite „Gesundheit“, offen für die Konten, die der Herausgeber dafür freigibt, veröffentlicht Artikel, die ihre Autorinnen
         und Autoren geschrieben haben. Ein Artikel wird in der Datenbank der Website (Cloudflare) mit dem Namen seines Autors gespeichert,
@@ -239,5 +241,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 2. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 3. November 2026.</p>
 `;

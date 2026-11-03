@@ -103,6 +103,8 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
+      <h2 style="font-size:16px">Desde tu móvil</h2>
+      <p>«Desde mi móvil» lleva una foto del mapa o un archivo (un track) de tu móvil a tu ordenador: el archivo espera en el almacenamiento del sitio (Cloudflare) con un enlace de un solo uso, válido 15 minutos, y se borra en cuanto el ordenador lo ha recibido o cierras la ventana del código; un archivo nunca recibido se borra poco después de que el enlace caduque. Ni el enlace ni el archivo llevan tu nombre, y no hace falta cuenta en el móvil.</p>
       <h2 style="font-size:16px">Salud: artículos y derechos de autor</h2>
       <p>La página «Salud», abierta a las cuentas que el editor autoriza, publica artículos escritos por sus autores. Un artículo se
         conserva en la base de datos del sitio (Cloudflare) con el nombre de su autor, que se muestra con él, y sus imágenes en el
@@ -235,5 +237,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 2 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 3 de noviembre de 2026.</p>
 `;

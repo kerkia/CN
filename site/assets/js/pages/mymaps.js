@@ -11,6 +11,7 @@ import { t, tn, loadArea, lang } from "../i18n.js";
 import * as auth from "../auth.js";
 import { replaceQuery } from "../app.js";
 import * as MM from "../trace/mymaps.js";
+import * as phone from "../phonelink.js";
 
 await loadArea("mymaps");
 
@@ -65,6 +66,7 @@ export async function render(main, { query = {} } = {}) {
         <label class="btn btn-sm" for="mm-files">${t("mm.add.trace.go")}</label><input type="file" id="mm-files" multiple hidden accept="${fileAccept(ACCEPT_TRACE)}"></div>
       <div class="mm-way"><div><b>${t("mm.add.map")}</b><p>${t("mm.add.map.text")}</p></div>
         <label class="btn btn-sm" for="mm-blank">${t("mm.add.map.go")}</label><input type="file" id="mm-blank" multiple hidden accept="${fileAccept(ACCEPT_MAP)}"></div>
+      ${phone.offered() ? html`<div class="mm-way"><div><b>${t("ph.mm.title")}</b><p>${t("ph.mm.text")}</p></div>${phone.button("mm-phone")}</div>` : ""}
       <p class="muted mm-drop-hint">${t("mm.add.drop")}</p></div></details>`;
   function drawList() {
     for (const id of [...sel]) if (!byId(id)) sel.delete(id);
@@ -110,6 +112,8 @@ export async function render(main, { query = {} } = {}) {
     $("#mm-sel-share")?.addEventListener("click", () => shareDialog(sel.size === 1 ? { map: byId([...sel][0]) } : { ids: [...sel] }));
     $("#mm-sel-del")?.addEventListener("click", deleteSelection);
     for (const id of ["#mm-files", "#mm-blank"]) $(id).addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importFiles(f); });
+    // a photo or a file from the phone (phonelink.js): the import's own dialog takes over
+    phone.bind("mm-phone", { kind: "map", multiple: false, onFiles: (f) => { importFiles(f); } });
     $("#mm-doma").addEventListener("click", domaDialog);
     $("#mm-share").addEventListener("click", () => shareDialog({}));
     dropZone($("#mm"));

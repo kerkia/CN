@@ -21,7 +21,8 @@ const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/robots\.txt$/, /^\/assets\//, /^\
   /^\/data\/[a-z]{2}\/meta\.json$/, /^\/api\/logout$/,
   /^\/sw(-push)?\.js$/, /^\/manifest(\.(en|de|es))?\.webmanifest$/, /^\/offline(\.html)?$/,
   /^\/api\/notify$/, /^\/api\/account\/(status|register|resend|verify|login|forgot|reset|handoff)$/, /^\/api\/guest$/,
-  /^\/api\/live\/mop$/];          // MeOS's online results: no session, the broadcast's MeOS password (api/live/mop.js)
+  /^\/api\/live\/mop$/,           // MeOS's online results: no session, the broadcast's MeOS password (api/live/mop.js)
+  /^\/api\/phone(\/[a-z2-9]{12}(\/file(\/\d{1,3})?)?)?$/];   // « Depuis mon téléphone »: the link's own keys (api/phone)
 const RECHECK_MS = 3600e3;       // how often a session is re-validated against the accounts database
 // A demo account (admin page, « Démo »; 2026-10-18) only reads: any other method is refused, but for these
 const DEMO_WRITES = [/^\/api\/track$/, /^\/api\/ask$/];
@@ -47,7 +48,7 @@ const GUEST = [/^\/api\/live\/list$/, /^\/ws\/[^/]+$/, /^\/api\/tracking$/,
 export const GUEST_COOKIE = "ozg_pass";
 export const GUEST_HOURS = 12;
 export const guestSecret = (env) => `${env.SESSION_SECRET}|guest`;
-async function guestPass(request, env) {
+export async function guestPass(request, env) {
   if (!turnstileOn(env)) return true;
   const m = (request.headers.get("Cookie") || "").match(new RegExp(`(?:^|;\\s*)${GUEST_COOKIE}=([^;]+)`));
   return !!(m && (await readToken(m[1], guestSecret(env)))?.g);

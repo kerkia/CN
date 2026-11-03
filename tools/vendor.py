@@ -38,6 +38,8 @@ PACKAGES = {
     "flag-icons": ("7.5.0", "flag-icons", ["flags/4x3/*.svg"]),
     # the 3D view of « Analyse solo » (2026-10-24): the ES module and the core it imports
     "three": ("0.185.1", "three", ["build/three.module.min.js", "build/three.core.min.js"]),
+    # « Depuis mon téléphone » (2026-11-03): the QR code the computer shows (MIT, its notice in the file's head)
+    "qrcode-generator": ("2.0.4", "qrcode-generator", ["dist/qrcode.mjs", "README.md"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 

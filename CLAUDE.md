@@ -1361,6 +1361,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   page says so. **Score courses** (the circuit editor's « Score », `course.score`): the passes are each control's first visit wherever
   it comes (`share.scorePasses`), no legs (the leg views, variants, exercises, the « from » and « wait » modes, the turn), no leg lines,
   and « Analyses » shows each runner's controls in the order run (`sharedviews.scoreView`).
+- **« Depuis mon téléphone » / From my phone** (owner, 2026-11-03: a computer had no camera button): on a computer
+  (`phonelink.offered`: not a coarse pointer) a button beside the files shows a QR code (`phonelink.js`, qrcode-generator 2.0.4
+  vendored, `vendor.QRCODE`, black on white whatever the theme) — « Analyse solo »'s file card (map and trace; the organiser's
+  map mode a trace only), « Mes cartes »' « Ajouter des cartes » (its import dialog takes over), « Analyse multi »'s circuit
+  editor and its « Ajouter ma trace ». The phone opens `#/envoi/<id>.<pk>` (route `phoneSend`, `pages/phonesend.js`; no account,
+  open to the signed-out in `app.route_`): « Photographier la carte » (rear camera) or any file, sent as it is (never reduced),
+  with a progress bar. `functions/api/phone/[[path]].js` (public in the gate; its header lists the routes): a link is made by an
+  account or a guest-pass holder (40 a day), lives 15 min (`LINK_MIN`), two keys — the phone's sends (8 files, 60 MB each), the
+  computer's reads; R2 `phone/<id>.json` + `phone/<id>/<n>`; the computer asks every 2 s, takes each file once (deleted at once)
+  as if dropped (`onFiles`), the link deleted when its dialog closes; links an hour past their end swept at each new link.
+  Tested locally (an image and a GPX from a phone-sized tab into Analyse solo, Mes cartes' import; the keys refused crossed).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,
   2026-10-25: the MeOS and the file instructions were one block, « Le jour de la course » read as MeOS's too): 1. the race, 2. the

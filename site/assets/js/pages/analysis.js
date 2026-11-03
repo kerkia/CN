@@ -43,6 +43,7 @@ import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabPar
 import { takeInbox } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { bar, setBar } from "../waitbar.js";
+import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
@@ -435,6 +436,7 @@ export async function render(main, { query = {}, route } = {}) {
         <strong>${t(orgaMode ? "an.orga.drop" : "an.drop")}</strong><span class="muted">${t(orgaMode ? "an.orga.drop.hint" : "an.drop.hint")}</span></label>
       ${matchMedia("(pointer: coarse)").matches && !orgaMode ? html`<div class="an-cam-row"><label class="btn btn-primary an-cam"><input type="file" id="an-cam" accept="image/*" capture="environment" hidden>${t("an.cam")}</label>
         <span class="muted">${t("an.cam.hint")}</span></div>` : ""}
+      ${phone.offered() ? html`<div class="an-cam-row">${phone.button("an-phone")}<span class="muted">${t(orgaMode ? "ph.hint.trace" : "ph.hint.any")}</span></div>` : ""}
       <p class="hint an-fit-tip">${t("an.fitTip")}</p>
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${orgaMode ? "" : html`${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}`}${files.vector ? row("vector", files.vector) : ""}
@@ -449,6 +451,7 @@ export async function render(main, { query = {}, route } = {}) {
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     $("#an-cam")?.addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+    phone.bind("an-phone", { kind: orgaMode ? "trace" : "any", multiple: !orgaMode, onFiles: (f) => take(f) });
     $("#an-forget")?.addEventListener("click", () => {
       stop(); prepToken++;                                  // a calibration under way stops with its files
       for (const role of Object.keys(files)) if (!(orgaMode && (role === "map" || role === "orga"))) files[role] = null;   // the organiser's map stays

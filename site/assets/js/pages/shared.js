@@ -47,6 +47,7 @@ import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs 
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
 import { betaNotice, betaTag, betaNote } from "../beta.js";
 import { bar } from "../waitbar.js";
+import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
 
 const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
@@ -333,6 +334,7 @@ async function editor(box, ctx) {
       <label class="an-opt" title="${t("sh.score.hint")}"><input type="checkbox" id="sh-e-score" ${raw(course?.score ? "checked" : "")}> ${t("sh.score")}</label></div>
     <label class="dropzone an-drop" id="sh-e-drop"><input type="file" id="sh-e-in" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
       <strong>${t("sh.e.drop")}</strong><span class="muted">${t("sh.e.drop.hint")}</span></label>
+    ${phone.offered() ? html`<div class="an-cam-row">${phone.button("sh-e-phone")}<span class="muted">${t("ph.hint.any")}</span></div>` : ""}
     <div class="muted" id="sh-e-files" style="font-size:13px;margin:6px 0"></div>
     <div class="sh-e-work"><div class="sh-map sh-e-map"><canvas id="sh-e-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-e-zin">+</button><button type="button" class="btn btn-sm" id="sh-e-zout">−</button><button type="button" class="btn btn-sm" id="sh-e-fit">▭</button></div></div>
@@ -515,6 +517,7 @@ async function editor(box, ctx) {
   }
   const norm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   $("#sh-e-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+  phone.bind("sh-e-phone", { kind: "any", onFiles: (f) => take(f) }, box);
   const drop = $("#sh-e-drop");
   drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
@@ -996,6 +999,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
         ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
         : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
+        ${phone.button("sh-phone")}
         <input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
       ${myRun() ? html`<div class="sh-mine sh-note-box"><label for="sh-note"><b>${t("sh.note.mine")}</b></label>
@@ -1043,6 +1047,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
     $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
+    phone.bind("sh-phone", { kind: "trace", multiple: false, onFiles: (f) => { upload(f[0]); } });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
     $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
     $("#sh-test-file")?.addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) uploadTests(fs); });

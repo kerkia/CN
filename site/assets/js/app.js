@@ -42,6 +42,7 @@ const PAGES = {
   analysisOrga: () => import("./pages/analysis.js"),    // « Analyse solo » on an organiser's published map and circuits (2026-11-01)
   mapAnalysis: () => import("./pages/mapanalysis.js"),  // « Analyse de carte » (2026-11-01): the four ways into the GPS analyses
   myMaps: () => import("./pages/mymaps.js"),           // « Mes cartes » (2026-11-01): one's maps and the routes run on them, kept and shared
+  phoneSend: () => import("./pages/phonesend.js"),     // « Depuis mon téléphone » (2026-11-03): the phone's side of the QR code (phonelink.js)
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
   // « Organisation » (2026-10-15): the organisers' pages — a competition's multi analysis, a training event's, the results
@@ -94,7 +95,7 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry"]);
+  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend"]);
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
@@ -147,6 +148,7 @@ function parseHash(hash = location.hash) {
     : head === "analyse" ? "analysis"
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
     : head === "mes-cartes" ? "myMaps"
+    : head === "envoi" ? "phoneSend"
     : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
     : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
     : head === "analyse-club" ? "analysisClub"
@@ -847,7 +849,8 @@ async function route_() {
   }
   const guest = !me && auth.guest();
   if (guest) await ensurePass().catch(() => {});        // the guest pass, renewed when it runs out (guestpass.js)
-  if (!me && !guest && !["overview", "account"].includes(r.route)) {
+  // (the phone's page of « Depuis mon téléphone » too: its link is the permission, no account on the phone)
+  if (!me && !guest && !["overview", "account", "phoneSend"].includes(r.route)) {
     try { sessionStorage.setItem("ocn.after", location.hash); } catch (e) {}
     history.replaceState(null, "", "#/");
     r.route = "overview"; r.arg = null; r.query = {};
