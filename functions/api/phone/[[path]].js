@@ -1,7 +1,7 @@
 // /api/phone — « Depuis mon téléphone » (owner, 2026-11-03): a computer shows a QR code, the phone that scans it sends a photo
 // of the map or a trace file, and the computer takes it as a file dropped on the page. Nothing else goes through: the file
 // waits in R2 (cn-state, binding BUCKET) under a one-time link and is deleted as soon as the computer has it, or with the link
-// (LINK_MIN, then the next sweep). Two keys: the phone's (in the QR code: it may only send) and the computer's (returned to
+// (LINK_MIN, then the next sweep; R2's lifecycle rule « phone-transfers » deletes whatever is left under phone/ after a day). Two keys: the phone's (in the QR code: it may only send) and the computer's (returned to
 // it alone: it may only read and delete). Neither names anyone; the phone needs no account.
 //
 //   POST   /api/phone                      { kind } -> { id, pk, dk, exp }   (a signed-in account, or a visitor with the guest pass)

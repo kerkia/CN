@@ -95,7 +95,7 @@ export const body = (SITE, { world = false } = {}) => `
         ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
         DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
       <h2 style="font-size:16px">From your phone</h2>
-      <p>“From my phone” takes a photo of the map or a file (a trace) from your phone to your computer: the file waits in the site's storage (Cloudflare) under a one-time link, valid for 15 minutes, and is deleted as soon as the computer has received it or you close the code's window; a file never received is deleted shortly after the link ends. Neither the link nor the file carries your name, and no account is needed on the phone.</p>
+      <p>“From my phone” takes a photo of the map or a file (a trace) from your phone to your computer: the file waits in the site's storage (Cloudflare) under a one-time link, valid for 15 minutes, and is deleted as soon as the computer has received it or you close the code's window; a file never received is deleted the next day at the latest. Neither the link nor the file carries your name, and no account is needed on the phone.</p>
       <h2 style="font-size:16px">Health: articles and copyright</h2>
       <p>The “Health” page, open to the accounts the publisher allows, publishes articles written by their authors. An article is
         kept in the site's database (Cloudflare) with its author's name, shown with it, and its images in the site's file storage; it

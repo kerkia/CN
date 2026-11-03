@@ -1370,7 +1370,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   with a progress bar. `functions/api/phone/[[path]].js` (public in the gate; its header lists the routes): a link is made by an
   account or a guest-pass holder (40 a day), lives 15 min (`LINK_MIN`), two keys — the phone's sends (8 files, 60 MB each), the
   computer's reads; R2 `phone/<id>.json` + `phone/<id>/<n>`; the computer asks every 2 s, takes each file once (deleted at once)
-  as if dropped (`onFiles`), the link deleted when its dialog closes; links an hour past their end swept at each new link.
+  as if dropped (`onFiles`), the link deleted when its dialog closes; links an hour past their end swept at each new link, and R2's lifecycle rule « phone-transfers » (prefix `phone/`, 1 day; added with the owner's go-ahead) deletes what is left.
   Tested locally (an image and a GPX from a phone-sized tab into Analyse solo, Mes cartes' import; the keys refused crossed).
 - **Organisation › Direct** (`#/orga-direct`, `pages/orgdirect.js`; every account since 2026-10-15, owner — administrators
   only the same morning): an organiser feeds « En direct » from their timing software without liveresultat. **The page in three steps** (owner,

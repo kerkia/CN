@@ -106,7 +106,7 @@ export const body = (SITE, { world = false } = {}) => `
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
       <h2 style="font-size:16px">Depuis votre téléphone</h2>
-      <p>« Depuis mon téléphone » fait passer une photo de la carte ou un fichier (une trace) de votre téléphone à votre ordinateur : le fichier attend dans l'espace de stockage du site (Cloudflare) sous un lien à usage unique, valable 15 minutes, et il est effacé dès que l'ordinateur l'a reçu ou que vous fermez la fenêtre du code ; un fichier jamais reçu est effacé peu après la fin du lien. Ni le lien ni le fichier ne portent votre nom, et aucun compte n'est demandé sur le téléphone.</p>
+      <p>« Depuis mon téléphone » fait passer une photo de la carte ou un fichier (une trace) de votre téléphone à votre ordinateur : le fichier attend dans l'espace de stockage du site (Cloudflare) sous un lien à usage unique, valable 15 minutes, et il est effacé dès que l'ordinateur l'a reçu ou que vous fermez la fenêtre du code ; un fichier jamais reçu est effacé au plus tard le lendemain. Ni le lien ni le fichier ne portent votre nom, et aucun compte n'est demandé sur le téléphone.</p>
       <h2 style="font-size:16px">Santé : articles et droits d'auteur</h2>
       <p>La page « Santé », ouverte aux comptes que l'éditeur y autorise, publie des articles écrits par leurs auteurs. Un article est
         conservé dans la base du site (Cloudflare) avec le nom de son auteur, affiché avec lui, et ses images dans l'espace de stockage

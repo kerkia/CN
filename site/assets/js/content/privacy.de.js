@@ -107,7 +107,7 @@ export const body = (SITE, { world = false } = {}) => `
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
       <h2 style="font-size:16px">Von deinem Handy</h2>
-      <p>„Vom Handy“ bringt ein Foto der Karte oder eine Datei (einen Track) von deinem Handy auf deinen Computer: Die Datei wartet im Speicher der Website (Cloudflare) unter einem Einmal-Link, 15 Minuten gültig, und wird gelöscht, sobald der Computer sie empfangen hat oder du das Fenster mit dem Code schließt; eine nie empfangene Datei wird kurz nach dem Ende des Links gelöscht. Weder der Link noch die Datei tragen deinen Namen, und auf dem Handy ist kein Konto nötig.</p>
+      <p>„Vom Handy“ bringt ein Foto der Karte oder eine Datei (einen Track) von deinem Handy auf deinen Computer: Die Datei wartet im Speicher der Website (Cloudflare) unter einem Einmal-Link, 15 Minuten gültig, und wird gelöscht, sobald der Computer sie empfangen hat oder du das Fenster mit dem Code schließt; eine nie empfangene Datei wird spätestens am nächsten Tag gelöscht. Weder der Link noch die Datei tragen deinen Namen, und auf dem Handy ist kein Konto nötig.</p>
       <h2 style="font-size:16px">Gesundheit: Artikel und Urheberrecht</h2>
       <p>Die Seite „Gesundheit“, offen für die Konten, die der Herausgeber dafür freigibt, veröffentlicht Artikel, die ihre Autorinnen
         und Autoren geschrieben haben. Ein Artikel wird in der Datenbank der Website (Cloudflare) mit dem Namen seines Autors gespeichert,
