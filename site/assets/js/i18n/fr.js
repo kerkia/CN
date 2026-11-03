@@ -1210,6 +1210,7 @@ export default {
   "ad.u.days": "Jours actifs", "ad.u.last": "Dernière activité", "ad.u.top": "Page la plus vue", "ad.u.pick": "Ne voir que ce compte (cliquer à nouveau pour tous)",
   "ad.u.admin": "admin", "ad.u.none": "Aucune activité sur cette période.",
   "ad.u.def": "Une visite commence à la première page ouverte dans un onglet du navigateur ; chaque page ouverte compte une vue (les onglets d'une page, comme ceux de Méthodes, ne comptent pas à part). Jours en heure de Paris ; données conservées 13 mois, visibles des seuls administrateurs.",
+  "ad.u.sortHint": "Cliquez sur un en-tête pour trier par cette colonne (de nouveau : dans l'autre sens) ; Maj + clic pour ajouter un critère de tri, puis l'inverser, puis le retirer.",
 
   // results uploaded by organisers (« Récemment »)
   "lv.title": "En direct",

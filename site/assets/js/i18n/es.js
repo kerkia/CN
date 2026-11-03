@@ -1791,6 +1791,7 @@ export default {
   "ad.u.admin": "admin",
   "ad.u.none": "Ninguna actividad en este periodo.",
   "ad.u.def": "Una visita empieza con la primera página abierta en una pestaña del navegador; cada página abierta cuenta como una vista (las pestañas de una página, como las de la Documentación, no cuentan aparte). Días en hora de París; datos conservados 13 meses, visibles solo para los administradores.",
+  "ad.u.sortHint": "Haz clic en un encabezado para ordenar por esa columna (de nuevo: en el otro sentido); Mayús + clic para añadir otro criterio de orden, luego invertirlo y después quitarlo.",
   "lv.title": "En directo",
   "lv.lede": "Las carreras en curso o a punto de empezar publicadas en directo en liveresultat, O'Live, SPORTident Center o una web MeOSDjango, en el país elegido arriba en la página. Para cada corredor reconocido: su {cnLow} y el puesto que cabe esperar de él.",
   "lv.loading": "Cargando…",

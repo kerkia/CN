@@ -1791,6 +1791,7 @@ export default {
   "ad.u.admin": "Admin",
   "ad.u.none": "Keine Aktivität in diesem Zeitraum.",
   "ad.u.def": "Ein Besuch beginnt mit der ersten in einem Browser-Tab geöffneten Seite; jede geöffnete Seite zählt als ein Aufruf (die Tabs einer Seite, etwa die der Dokumentation, zählen nicht einzeln). Tage nach Pariser Zeit; Daten 13 Monate aufbewahrt, nur für Administratoren sichtbar.",
+  "ad.u.sortHint": "Klicke auf eine Spaltenüberschrift, um nach dieser Spalte zu sortieren (erneut: in umgekehrter Richtung); Umschalt + Klick fügt ein weiteres Sortierkriterium hinzu, kehrt es dann um und entfernt es schließlich.",
   "lv.title": "Live",
   "lv.lede": "Die laufenden oder bald beginnenden Läufe, live veröffentlicht auf liveresultat, O'Live, SPORTident Center oder einer MeOSDjango-Website, im oben auf der Seite gewählten Land. Für jeden erkannten Läufer: sein {cnLow} und der Platz, den man von ihm erwarten kann.",
   "lv.loading": "Wird geladen…",

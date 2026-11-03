@@ -1741,6 +1741,7 @@ export default {
   "ad.u.admin": "admin",
   "ad.u.none": "No activity in this period.",
   "ad.u.def": "A visit begins with the first page opened in a browser tab; each page opened counts as one view (a page's tabs, such as those of Documentation, do not count separately). Days in Paris time; data kept for 13 months, visible to administrators only.",
+  "ad.u.sortHint": "Click a heading to sort by that column (again: the other way); Shift + click to add a further sort key, then to reverse it, then to remove it.",
   "lv.title": "Live",
   "lv.lede": "Races under way or about to start, published live on liveresultat, O'Live, SPORTident Center or a MeOSDjango site, in the country chosen at the top of the page. For each runner recognised: their {cnLow} and the place it predicts.",
   "lv.loading": "Loading…",

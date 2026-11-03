@@ -75,7 +75,8 @@ export async function render(main, { query = {} } = {}) {
           <div class="table-wrap" id="u-users"></div></section>
         <section class="card"><div class="card-head"><h2>${t("ad.u.byPage")}</h2></div><div class="table-wrap" id="u-pages"></div></section>
       </div>
-      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ad.u.def")}</p>
+      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${t("ad.u.sortHint")}</p>
+      <p class="muted" style="font-size:12.5px;margin:6px 2px 0">${t("ad.u.def")}</p>
     </div>
     <div data-panel="sites" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.st.lede")}</p>
@@ -672,6 +673,44 @@ export async function render(main, { query = {} } = {}) {
   }
   async function reload() { await loadUsage(); saveUsage(); drawUsageFilters(); drawUsage(); }
 
+  // Sorting the usage tables (owner, 2026-11-03: by any column, several at once). A click on a heading sorts by that column
+  // alone (again: the other way); Shift + click adds it as a further key, then turns it the other way, then takes it out.
+  // Texts start from A, numbers and dates from the largest. Kept for the visit.
+  const usageSort = { time: [{ key: "bucket", dir: -1 }], users: [{ key: "views", dir: -1 }, { key: "visits", dir: -1 }],
+    pages: [{ key: "views", dir: -1 }] };
+  const TEXT_COLS = new Set(["name", "top", "page"]);
+  const firstDir = (key) => (TEXT_COLS.has(key) ? 1 : -1);
+  function sortRows(rows, table, value) {
+    const coll = new Intl.Collator(locale(), { sensitivity: "base", numeric: true });
+    return [...rows].sort((a, b) => {
+      for (const { key, dir } of usageSort[table]) {
+        const x = value(a, key), y = value(b, key);
+        if (x == null && y == null) continue;
+        if (x == null) return 1;                      // the empty ones last, whichever way
+        if (y == null) return -1;
+        const c = typeof x === "string" ? coll.compare(x, y) : x - y;
+        if (c) return c * dir;
+      }
+      return 0;
+    });
+  }
+  function sortHead(table, key, label, cls = "") {
+    const order = usageSort[table], i = order.findIndex((o) => o.key === key);
+    const mark = i < 0 ? "" : html`<span class="arrow">${order[i].dir > 0 ? "▲" : "▼"}${order.length > 1 ? html`<sup>${i + 1}</sup>` : ""}</span>`;
+    return html`<th scope="col" class="sortable ${cls}" data-usort="${table}" data-key="${key}" title="${t("ad.u.sortHint")}"
+      aria-sort="${i === 0 ? (order[0].dir > 0 ? "ascending" : "descending") : "none"}">${label}${mark}</th>`;
+  }
+  function bindSort(box) {
+    $$("th[data-usort]", box).forEach((th) => th.addEventListener("click", (e) => {
+      const table = th.dataset.usort, key = th.dataset.key, order = usageSort[table], i = order.findIndex((o) => o.key === key);
+      if (!e.shiftKey) usageSort[table] = [{ key, dir: i === 0 ? -order[0].dir : firstDir(key) }];
+      else if (i < 0) order.push({ key, dir: firstDir(key) });
+      else if (order[i].dir === firstDir(key) || order.length === 1) order[i].dir = -order[i].dir;
+      else order.splice(i, 1);
+      drawUsage();
+    }));
+  }
+
   function drawUsage() {
     if (!usage) { $("#u-tiles").innerHTML = html`<div class="notice">${t("ad.u.error")}</div>`; return; }
     const admins = new Set(usage.users.filter((u) => u.admin).map((u) => u.user_id));
@@ -716,9 +755,13 @@ export async function render(main, { query = {} } = {}) {
     $("#u-chart-legend").innerHTML = legend(series.map((s) => ({ label: s.name, color: s.color })));
     $("#u-chart-title").textContent = `${t("ad.u.chart")} · ${t(`ad.u.unit.${unit}`)}`;
     columnChart($("#u-chart"), { categories: buckets.map(label), series });
-    $("#u-chart-table").innerHTML = html`<table class="data compact"><thead><tr><th>${t(`ad.u.unit.${unit}`)}</th>
-      ${series.map((s) => html`<th class="r">${s.name}</th>`)}</tr></thead>
-      <tbody>${[...buckets].reverse().map((b, i, all) => html`<tr><td>${label(b)}</td>${series.map((s) => html`<td class="r num">${fmt(s.data[all.length - 1 - i])}</td>`)}</tr>`)}</tbody></table>`;
+    const SERIES_KEYS = ["views", "visits", "active"];
+    const rowsT = sortRows(buckets.map((b, i) => ({ b, v: series.map((s) => s.data[i]) })), "time",
+      (r, key) => (key === "bucket" ? r.b : r.v[SERIES_KEYS.indexOf(key)]));
+    $("#u-chart-table").innerHTML = html`<table class="data compact"><thead><tr>${sortHead("time", "bucket", t(`ad.u.unit.${unit}`))}
+      ${series.map((s, k) => sortHead("time", SERIES_KEYS[k], s.name, "r"))}</tr></thead>
+      <tbody>${rowsT.map((r) => html`<tr><td>${label(r.b)}</td>${r.v.map((v) => html`<td class="r num">${fmt(v)}</td>`)}</tr>`)}</tbody></table>`;
+    bindSort($("#u-chart-table"));
 
     // per account: visits, views, active days, last activity, the page they open most
     const per = new Map(people.map((u) => [u.user_id, { ...u, visits: 0, views: 0, top: null }]));
@@ -729,16 +772,19 @@ export async function render(main, { query = {} } = {}) {
       const cur = topOf.get(p.user_id);
       if (!cur || p.views > cur.views) topOf.set(p.user_id, p);
     }
-    const rowsU = [...per.values()].sort((a, b) => b.views - a.views || b.visits - a.visits);
-    $("#u-users").innerHTML = rowsU.length ? html`<table class="data compact"><thead><tr><th>${t("ad.col.name")}</th>
-      <th class="r">${t("ad.u.visits")}</th><th class="r">${t("ad.u.views")}</th><th class="r">${t("ad.u.days")}</th>
-      <th>${t("ad.u.last")}</th><th>${t("ad.u.top")}</th></tr></thead>
+    const topName = (u) => (topOf.has(u.user_id) ? pageName(topOf.get(u.user_id).page) : null);
+    const rowsU = sortRows([...per.values()], "users", (u, key) => (key === "name" ? u.display_name || null
+      : key === "top" ? topName(u) : key === "last" ? u.last || null : u[key]));
+    $("#u-users").innerHTML = rowsU.length ? html`<table class="data compact"><thead><tr>${sortHead("users", "name", t("ad.col.name"))}
+      ${sortHead("users", "visits", t("ad.u.visits"), "r")}${sortHead("users", "views", t("ad.u.views"), "r")}${sortHead("users", "days", t("ad.u.days"), "r")}
+      ${sortHead("users", "last", t("ad.u.last"))}${sortHead("users", "top", t("ad.u.top"))}</tr></thead>
       <tbody>${rowsU.map((u) => html`<tr data-uid="${u.user_id}" style="cursor:pointer" title="${t("ad.u.pick")}">
         <td>${u.display_name || t("ad.u.deleted")}${u.admin ? html` <span class="tag">${t("ad.u.admin")}</span>` : ""}
           <div class="muted" style="font-size:12px">${u.email || ""}</div></td>
         <td class="r num">${fmt(u.visits)}</td><td class="r num">${fmt(u.views)}</td><td class="r num">${fmt(u.days)}</td>
-        <td class="num">${fmtDate(u.last, "short")}</td><td>${topOf.has(u.user_id) ? pageName(topOf.get(u.user_id).page) : "—"}</td></tr>`)}</tbody></table>`
+        <td class="num">${fmtDate(u.last, "short")}</td><td>${topName(u) ?? "—"}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t("ad.u.none")}</div>`;
+    bindSort($("#u-users"));
     $$("[data-uid]", $("#u-users")).forEach((tr) => tr.addEventListener("click", () => {
       account = account === tr.dataset.uid ? "" : tr.dataset.uid;
       saveUsage(); drawUsageFilters(); drawUsage();
@@ -752,15 +798,16 @@ export async function render(main, { query = {} } = {}) {
       a.views += p.views; a.users.add(p.user_id);
       byPage.set(p.page, a);
     }
-    const rowsP = [...byPage].sort((a, b) => b[1].views - a[1].views);
-    const top = rowsP[0]?.[1].views || 1;
-    $("#u-pages").innerHTML = rowsP.length ? html`<table class="data compact"><thead><tr><th>${t("ad.u.page")}</th>
-      <th class="r">${t("ad.u.views")}</th><th class="r">%</th><th class="r">${t("ad.u.accounts")}</th></tr></thead>
+    const rowsP = sortRows([...byPage], "pages", ([k, a], key) => (key === "page" ? pageName(k) : key === "accounts" ? a.users.size : a.views));
+    const top = Math.max(1, ...rowsP.map(([, a]) => a.views));
+    $("#u-pages").innerHTML = rowsP.length ? html`<table class="data compact"><thead><tr>${sortHead("pages", "page", t("ad.u.page"))}
+      ${sortHead("pages", "views", t("ad.u.views"), "r")}${sortHead("pages", "share", "%", "r")}${sortHead("pages", "accounts", t("ad.u.accounts"), "r")}</tr></thead>
       <tbody>${rowsP.map(([k, a]) => html`<tr><td>${pageName(k)}
           <div style="height:4px;border-radius:2px;background:var(--s1);opacity:.55;margin-top:4px;width:${(100 * a.views) / top}%"></div></td>
         <td class="r num">${fmt(a.views)}</td><td class="r num">${fmt((100 * a.views) / (views || 1), 1)}</td>
         <td class="r num">${fmt(a.users.size)}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t("ad.u.none")}</div>`;
+    bindSort($("#u-pages"));
   }
 
   async function startUsage() {
