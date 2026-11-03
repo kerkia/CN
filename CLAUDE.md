@@ -74,7 +74,8 @@ commit results, personal data, secrets or credentials.
   build_site.main(['--out','site/data/fr','--db', <db>, '--auth', <a folder>])"` (France's folder; `--auth` keeps a test
   build's login index away from `site/auth`), then `python -c "import countries; countries.write_index()"`. Test engine changes on a **copy** of
   `C:\kerkia\cn-data\ffco_results.sqlite3`, never on the original.
-- To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler.
+- To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler. wrangler 4.157.0 (2026-11-03)
+  crashed workerd on the PC (« access violation »): launch config `pages-dev-admin-4156` (8796) pins 4.156.2.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
   modules — hard-reload.
 
@@ -2256,7 +2257,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   `SCW_PROJECT_ID` (wrangler.toml), ozimut.com verified in Scaleway (DKIM; Scaleway's SPF include written directly in ozimut.com's
   SPF record beside Proton's — its checker does not follow nested includes); without them mail waits for Resend as before. Its
   API takes 2 MB a message and a fixed list of attachment types: a contact message with others stays on Resend. Tested on a
-  simulated D1 and providers, not yet against Scaleway itself.
+  simulated D1 and providers. **« Essai d'envoi »** (owner, 2026-11-03; the admin page's « Consommation », `/api/admin/mailtest`,
+  `mail.sendTest`): one e-mail to the administrator through Resend or Scaleway, whatever the quotas, the provider's refusal
+  shown as it came — to check a key after its renewal (Scaleway's API keys expire within a year, the organisation's limit).
 - **Countries** (owner, 2026-10-20: Ozimut open to every orienteer; the plan in nine steps — data model, access by path in
   `_middleware.js`, a CN-free copy of the provisional results, the front end by profile, registration and Réglages « Mes pays »,
   admin, texts, an admin « Consommation » tab, a global country selector): an account joins countries (D1 `user_countries`,

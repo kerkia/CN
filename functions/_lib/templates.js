@@ -625,6 +625,32 @@ export function startPush(lang, s, changed) {
 ${what}`, url: `/#/resultats?course=${encodeURIComponent(s.key)}`, tag: `start-${s.key}`,
   };
 }
+/** The admin page's « Envoyer un essai » (Consommation): the provider named, so that the headers can be checked. */
+export function testMail(env, user, provider) {
+  const name = provider === "tem" ? "Scaleway Transactional Email" : "Resend";
+  const lang = user.lang;
+  const T = pick(lang, {
+    fr: { subject: `Essai d'envoi par ${name} — Ozimut`, title: "Essai d'envoi",
+      body: `Cet e-mail d'essai a été envoyé par ${name}, depuis la page d'administration.`,
+      check: "Pour vérifier l'authentification, affichez l'original du message (Gmail : ⋮ › Afficher l'original) : SPF, DKIM (ozimut.com) et DMARC doivent indiquer PASS." },
+    en: { subject: `Test e-mail through ${name} — Ozimut`, title: "Test e-mail",
+      body: `This test e-mail was sent through ${name}, from the administration page.`,
+      check: "To check its authentication, show the original message (Gmail: ⋮ › Show original): SPF, DKIM (ozimut.com) and DMARC should all say PASS." },
+    de: { subject: `Test-E-Mail über ${name} — Ozimut`, title: "Test-E-Mail",
+      body: `Diese Test-E-Mail wurde über ${name} von der Verwaltungsseite aus gesendet.`,
+      check: "Um die Authentifizierung zu prüfen, zeige die Originalnachricht an (Gmail: ⋮ › Original anzeigen): SPF, DKIM (ozimut.com) und DMARC sollten PASS anzeigen." },
+    es: { subject: `Correo de prueba a través de ${name} — Ozimut`, title: "Correo de prueba",
+      body: `Este correo de prueba se ha enviado a través de ${name}, desde la página de administración.`,
+      check: "Para comprobar su autenticación, muestra el mensaje original (Gmail: ⋮ › Mostrar original): SPF, DKIM (ozimut.com) y DMARC deben indicar PASS." },
+  });
+  const hello = greet(lang, user.first_name);
+  return {
+    subject: T.subject,
+    html: wrap(env, T.title, `<p>${esc(hello)}</p><p>${esc(T.body)}</p><p style="font-size:13px;color:#5b6675">${esc(T.check)}</p>`, lang),
+    text: `${hello}\n\n${T.body}\n\n${T.check}`,
+  };
+}
+
 /** Réglages' « Envoyer un essai ». */
 export function testPush(lang) {
   return { title: "Ozimut", body: PUSH[L(lang)].test, url: "/#/reglages", tag: "test" };

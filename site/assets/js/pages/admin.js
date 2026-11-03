@@ -119,6 +119,13 @@ export async function render(main, { query = {} } = {}) {
       <p class="muted" style="margin:0 2px 12px">${t("ad.co.lede")}</p>
       <div id="co-note"></div>
       <section class="card"><div class="table-wrap" id="co-list"><div class="empty">${t("misc.loading")}</div></div></section>
+      <section class="card"><div class="card-body">
+        <h2 style="margin:0 0 6px">${t("ad.mt.title")}</h2>
+        <p class="muted" style="margin:0 0 10px">${t("ad.mt.lede")}</p>
+        <div class="mt-btns" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" type="button" data-mail-test="resend">${t("ad.mt.resend")}</button>
+          <button class="btn" type="button" data-mail-test="tem">${t("ad.mt.tem")}</button></div>
+        <div id="mt-out" style="margin-top:10px"></div></div></section>
       <section class="card rb-card"><div class="card-body">
         <div class="rb-head"><h2>${t("ad.rb.title")}</h2>
           <label class="field rb-period"><span>${t("ad.rb.period")}</span><select id="rb-days">${[30, 90, 365].map((n) => html`<option value="${n}">${t("ad.rb.days", { n })}</option>`)}</select></label></div>
@@ -157,6 +164,26 @@ export async function render(main, { query = {} } = {}) {
     const p = (100 * v) / limit;
     return html`<span class="co-pct" style="color:${raw(p >= 100 ? "var(--bad)" : p >= 80 ? "var(--warn, #c77700)" : "var(--good)")}">${pctN(p, p < 10 ? 1 : 0)}</span>`;
   };
+  // « Essai d'envoi » (owner, 2026-11-03): one e-mail to oneself through Resend or Scaleway, whatever the quotas — to check a
+  // provider's key and domain (functions/api/admin/mailtest.js)
+  $$("[data-mail-test]", main).forEach((b) => b.addEventListener("click", async () => {
+    const out = $("#mt-out"), name = t(`ad.mt.name.${b.dataset.mailTest}`);
+    $$("[data-mail-test]", main).forEach((x) => { x.disabled = true; });
+    out.innerHTML = html`<span class="muted">${t("ad.mt.sending", { name })}</span>`;
+    const res = await auth.api("api/admin/mailtest", { provider: b.dataset.mailTest });
+    $$("[data-mail-test]", main).forEach((x) => { x.disabled = false; });
+    const d = res.data || {};
+    if (res.ok && d.ok) {
+      out.innerHTML = html`<div class="notice ok">${t("ad.mt.sent", { name, to: d.to })}</div>`;
+      consoLoaded = false;          // the counts include it
+      drawConso();
+    } else {
+      const why = res.status === 429 ? t("ad.mt.rate") : d.detail === "missing" ? t("ad.mt.missing", { name })
+        : d.detail ? t("ad.mt.refused", { name, e: d.detail }) : t("err.load");
+      out.innerHTML = html`<div class="notice">${why}</div>`;
+    }
+  }));
+
   let consoLoaded = false;
   async function drawConso() {
     if (consoLoaded) return;

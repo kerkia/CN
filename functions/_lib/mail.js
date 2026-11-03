@@ -80,9 +80,10 @@ async function viaResend(env, m) {
       }),
     });
     if (r.ok) return { ok: true };
-    return { ok: false, permanent: r.status === 400 || r.status === 422, rateLimited: r.status === 429 };
+    return { ok: false, permanent: r.status === 400 || r.status === 422, rateLimited: r.status === 429,
+      detail: `${r.status} ${(await r.text().catch(() => "")).slice(0, 300)}` };
   } catch (e) {
-    return { ok: false };
+    return { ok: false, detail: String(e?.message || e) };
   }
 }
 
@@ -130,10 +131,11 @@ async function viaTem(env, m) {
       }),
     });
     if (r.ok) return { ok: true };
-    console.log(`[mail tem] ${r.status} ${(await r.text().catch(() => "")).slice(0, 300)}`);
-    return { ok: false, rateLimited: r.status === 429 };
+    const detail = `${r.status} ${(await r.text().catch(() => "")).slice(0, 300)}`;
+    console.log(`[mail tem] ${detail}`);
+    return { ok: false, rateLimited: r.status === 429, detail };
   } catch (e) {
-    return { ok: false };
+    return { ok: false, detail: String(e?.message || e) };
   }
 }
 
@@ -184,6 +186,19 @@ export async function sendNow(env, m) {
   if (!r.ok) return "failed";
   await logStatement(env, m.kind, r.provider).run();
   return "sent";
+}
+
+/**
+ * The admin page's test (owner, 2026-11-03): one message through the provider named, whatever the quotas, never queued, so
+ * that a provider's key and domain can be checked (a renewed Scaleway key, say). -> { ok, detail? } (detail: the provider's
+ * answer when it refused, « missing » without its key).
+ */
+export async function sendTest(env, provider, m) {
+  const tem = provider === TEM;
+  if (!(tem ? hasTem(env) : hasResend(env))) return { ok: false, detail: "missing" };
+  const r = await (tem ? viaTem : viaResend)(env, withReplyTo(env, m));
+  if (r.ok) await logStatement(env, m.kind, tem ? TEM : RESEND).run();
+  return { ok: !!r.ok, detail: r.detail };
 }
 
 /** m: { to, subject, html, text, kind, priority, token?: { hash, ttl } }. -> "sent" | "queued". */
