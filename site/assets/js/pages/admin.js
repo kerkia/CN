@@ -122,9 +122,18 @@ export async function render(main, { query = {} } = {}) {
       <section class="card"><div class="card-body">
         <h2 style="margin:0 0 6px">${t("ad.mt.title")}</h2>
         <p class="muted" style="margin:0 0 10px">${t("ad.mt.lede")}</p>
+        <form id="mt-form" style="display:grid;gap:8px;max-width:680px;margin-bottom:10px" onsubmit="return false">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label class="field" style="flex:1 1 220px"><span>${t("ad.mt.from")}</span><input id="mt-from" type="email" maxlength="120" required></label>
+            <label class="field" style="flex:1 1 220px"><span>${t("ad.mt.to")}</span><input id="mt-to" type="email" maxlength="120" required></label></div>
+          <label class="field"><span>${t("ad.mt.subject")}</span><input id="mt-subject" type="text" maxlength="200" minlength="10" required></label>
+          <label class="field"><span>${t("ad.mt.text")}</span><textarea id="mt-text" rows="7" maxlength="5000" required
+            style="padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;resize:vertical"></textarea></label>
+        </form>
         <div class="mt-btns" style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" type="button" data-mail-test="resend">${t("ad.mt.resend")}</button>
-          <button class="btn" type="button" data-mail-test="tem">${t("ad.mt.tem")}</button></div>
+          <button class="btn" type="button" data-mail-test="tem">${t("ad.mt.tem")}</button>
+          <button class="btn btn-ghost" type="button" id="mt-reset">${t("ad.mt.reset")}</button></div>
         <div id="mt-out" style="margin-top:10px"></div></div></section>
       <section class="card rb-card"><div class="card-body">
         <div class="rb-head"><h2>${t("ad.rb.title")}</h2>
@@ -164,13 +173,23 @@ export async function render(main, { query = {} } = {}) {
     const p = (100 * v) / limit;
     return html`<span class="co-pct" style="color:${raw(p >= 100 ? "var(--bad)" : p >= 80 ? "var(--warn, #c77700)" : "var(--good)")}">${pctN(p, p < 10 ? 1 : 0)}</span>`;
   };
-  // « Essai d'envoi » (owner, 2026-11-03): one e-mail to oneself through Resend or Scaleway, whatever the quotas — to check a
-  // provider's key and domain (functions/api/admin/mailtest.js)
+  // « Essai d'envoi » (owner, 2026-11-03): one e-mail through Resend or Scaleway, whatever the quotas — to check a provider's
+  // key and domain (functions/api/admin/mailtest.js). The form starts with the site's sender, one's own address and a generic
+  // test e-mail in one's language, all of which may be changed (the sender within the site's domain)
+  let mtDefaults = null;
+  const mtFill = (d) => { $("#mt-from").value = d.from || ""; $("#mt-to").value = d.to || ""; $("#mt-subject").value = d.subject || ""; $("#mt-text").value = d.text || ""; };
+  (async () => {
+    const r = await fetch("api/admin/mailtest", { credentials: "same-origin", cache: "no-store" });
+    if (r.ok) { mtDefaults = await r.json(); mtFill(mtDefaults); }
+  })();
+  $("#mt-reset").addEventListener("click", () => { if (mtDefaults) mtFill(mtDefaults); $("#mt-out").innerHTML = ""; });
   $$("[data-mail-test]", main).forEach((b) => b.addEventListener("click", async () => {
     const out = $("#mt-out"), name = t(`ad.mt.name.${b.dataset.mailTest}`);
+    if (!$("#mt-form").reportValidity()) return;
     $$("[data-mail-test]", main).forEach((x) => { x.disabled = true; });
     out.innerHTML = html`<span class="muted">${t("ad.mt.sending", { name })}</span>`;
-    const res = await auth.api("api/admin/mailtest", { provider: b.dataset.mailTest });
+    const res = await auth.api("api/admin/mailtest", { provider: b.dataset.mailTest, from: $("#mt-from").value,
+      to: $("#mt-to").value, subject: $("#mt-subject").value, text: $("#mt-text").value });
     $$("[data-mail-test]", main).forEach((x) => { x.disabled = false; });
     const d = res.data || {};
     if (res.ok && d.ok) {
@@ -178,8 +197,9 @@ export async function render(main, { query = {} } = {}) {
       consoLoaded = false;          // the counts include it
       drawConso();
     } else {
-      const why = res.status === 429 ? t("ad.mt.rate") : d.detail === "missing" ? t("ad.mt.missing", { name })
-        : d.detail ? t("ad.mt.refused", { name, e: d.detail }) : t("err.load");
+      const why = res.status === 429 ? t("ad.mt.rate") : d.error === "from" ? t("ad.mt.badFrom", { domain: d.domain })
+        : d.error === "to" ? t("ad.mt.badTo") : d.error === "subject" ? t("ad.mt.shortSubject") : d.error === "text" ? t("ad.mt.noText")
+        : d.detail === "missing" ? t("ad.mt.missing", { name }) : d.detail ? t("ad.mt.refused", { name, e: d.detail }) : t("err.load");
       out.innerHTML = html`<div class="notice">${why}</div>`;
     }
   }));

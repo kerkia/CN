@@ -2258,7 +2258,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   SPF record beside Proton's — its checker does not follow nested includes); without them mail waits for Resend as before. Its
   API takes 2 MB a message and a fixed list of attachment types: a contact message with others stays on Resend. Tested on a
   simulated D1 and providers. **« Essai d'envoi »** (owner, 2026-11-03; the admin page's « Consommation », `/api/admin/mailtest`,
-  `mail.sendTest`): one e-mail to the administrator through Resend or Scaleway, whatever the quotas, the provider's refusal
+  `mail.sendTest`): one e-mail through Resend or Scaleway, whatever the quotas — its sender (an address of the site's domain), recipient,
+  subject and text pre-filled (`templates.testMail`, the administrator's address) and editable —, the provider's refusal
   shown as it came — to check a key after its renewal (Scaleway's API keys expire within a year, the organisation's limit).
 - **Countries** (owner, 2026-10-20: Ozimut open to every orienteer; the plan in nine steps — data model, access by path in
   `_middleware.js`, a CN-free copy of the provisional results, the front end by profile, registration and Réglages « Mes pays »,

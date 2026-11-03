@@ -625,29 +625,38 @@ export function startPush(lang, s, changed) {
 ${what}`, url: `/#/resultats?course=${encodeURIComponent(s.key)}`, tag: `start-${s.key}`,
   };
 }
-/** The admin page's « Envoyer un essai » (Consommation): the provider named, so that the headers can be checked. */
-export function testMail(env, user, provider) {
-  const name = provider === "tem" ? "Scaleway Transactional Email" : "Resend";
+/** The admin page's test e-mail (Consommation) as its form starts: a generic subject and text, which the administrator may
+ *  change before sending it (plainMail puts it in the site's frame). -> { subject, text } */
+export function testMail(user) {
   const lang = user.lang;
   const T = pick(lang, {
-    fr: { subject: `Essai d'envoi par ${name} — Ozimut`, title: "Essai d'envoi",
-      body: `Cet e-mail d'essai a été envoyé par ${name}, depuis la page d'administration.`,
+    fr: { subject: "E-mail d'essai — Ozimut",
+      body: "Cet e-mail d'essai a été envoyé depuis la page d'administration d'Ozimut.",
       check: "Pour vérifier l'authentification, affichez l'original du message (Gmail : ⋮ › Afficher l'original) : SPF, DKIM (ozimut.com) et DMARC doivent indiquer PASS." },
-    en: { subject: `Test e-mail through ${name} — Ozimut`, title: "Test e-mail",
-      body: `This test e-mail was sent through ${name}, from the administration page.`,
+    en: { subject: "Test e-mail — Ozimut",
+      body: "This test e-mail was sent from Ozimut's administration page.",
       check: "To check its authentication, show the original message (Gmail: ⋮ › Show original): SPF, DKIM (ozimut.com) and DMARC should all say PASS." },
-    de: { subject: `Test-E-Mail über ${name} — Ozimut`, title: "Test-E-Mail",
-      body: `Diese Test-E-Mail wurde über ${name} von der Verwaltungsseite aus gesendet.`,
+    de: { subject: "Test-E-Mail — Ozimut",
+      body: "Diese Test-E-Mail wurde von der Verwaltungsseite von Ozimut aus gesendet.",
       check: "Um die Authentifizierung zu prüfen, zeige die Originalnachricht an (Gmail: ⋮ › Original anzeigen): SPF, DKIM (ozimut.com) und DMARC sollten PASS anzeigen." },
-    es: { subject: `Correo de prueba a través de ${name} — Ozimut`, title: "Correo de prueba",
-      body: `Este correo de prueba se ha enviado a través de ${name}, desde la página de administración.`,
+    es: { subject: "Correo de prueba — Ozimut",
+      body: "Este correo de prueba se ha enviado desde la página de administración de Ozimut.",
       check: "Para comprobar su autenticación, muestra el mensaje original (Gmail: ⋮ › Mostrar original): SPF, DKIM (ozimut.com) y DMARC deben indicar PASS." },
   });
-  const hello = greet(lang, user.first_name);
+  return { subject: T.subject, text: `${greet(lang, user.first_name)}
+
+${T.body}
+
+${T.check}` };
+}
+
+/** A text typed on the admin page, in the site's frame: paragraphs at the blank lines, its own line breaks kept. */
+export function plainMail(env, subject, text, lang) {
+  const paras = String(text).split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   return {
-    subject: T.subject,
-    html: wrap(env, T.title, `<p>${esc(hello)}</p><p>${esc(T.body)}</p><p style="font-size:13px;color:#5b6675">${esc(T.check)}</p>`, lang),
-    text: `${hello}\n\n${T.body}\n\n${T.check}`,
+    subject,
+    html: wrap(env, subject, paras.map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join(""), lang),
+    text,
   };
 }
 

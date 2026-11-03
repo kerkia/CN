@@ -73,7 +73,7 @@ async function viaResend(env, m) {
       method: "POST",
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: `${env.MAIL_FROM_NAME || "Ozimut"} <${env.MAIL_FROM}>`,
+        from: `${env.MAIL_FROM_NAME || "Ozimut"} <${m.from || env.MAIL_FROM}>`,
         to: [m.to], subject: m.subject, html: m.html, text: m.text,
         ...(m.replyTo ? { reply_to: m.replyTo } : {}),
         ...(m.attachments?.length ? { attachments: m.attachments } : {}),   // [{ filename, content: base64 }]
@@ -124,7 +124,7 @@ async function viaTem(env, m) {
       method: "POST",
       headers: { "X-Auth-Token": env.SCW_SECRET_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: { email: env.MAIL_FROM, name: env.MAIL_FROM_NAME || "Ozimut" },
+        from: { email: m.from || env.MAIL_FROM, name: env.MAIL_FROM_NAME || "Ozimut" },
         to: [{ email: m.to }], subject: m.subject, html: m.html, text: m.text, project_id: env.SCW_PROJECT_ID,
         ...(m.replyTo ? { additional_headers: [{ key: "Reply-To", value: m.replyTo }] } : {}),
         ...(attachments.length ? { attachments } : {}),
@@ -190,8 +190,8 @@ export async function sendNow(env, m) {
 
 /**
  * The admin page's test (owner, 2026-11-03): one message through the provider named, whatever the quotas, never queued, so
- * that a provider's key and domain can be checked (a renewed Scaleway key, say). -> { ok, detail? } (detail: the provider's
- * answer when it refused, « missing » without its key).
+ * that a provider's key and domain can be checked (a renewed Scaleway key, say); m.from may name another sender of the site's
+ * domain. -> { ok, detail? } (detail: the provider's answer when it refused, « missing » without its key).
  */
 export async function sendTest(env, provider, m) {
   const tem = provider === TEM;
