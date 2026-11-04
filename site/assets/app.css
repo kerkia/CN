@@ -2423,6 +2423,10 @@ div.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translate
 .tr-start-list > .muted, .tr-start-list > .tr-err { padding: 10px; }
 .tr-start-list ul { list-style: none; margin: 0; padding: 0; }
 .tr-start-list li + li { border-top: 1px solid var(--border); }
+.tr-start-list li { display: flex; align-items: stretch; }
+.tr-start-list li > button[data-open] { flex: 1; min-width: 0; }
+.tr-start-list .tr-start-del { width: auto; flex: none; align-items: center; justify-content: center; padding: 0 12px; color: var(--ink-3); }
+.tr-start-list .tr-start-del:hover, .tr-start-list .tr-start-del:focus-visible { color: var(--bad); }
 .tr-start-list button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 7px 10px; border: 0; background: transparent;
   color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
 .tr-start-list button:hover, .tr-start-list button:focus-visible { background: var(--surface-2); outline: none; }

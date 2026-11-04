@@ -1789,7 +1789,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   map inside, or a .ppen and its map), Ouvrir un événement (one's events, listed inside); each card says what it needs; files dropped
   on it choose (a map alone: new; a .ocnt or .ppen: import); Échap or « × » closes it; « Événements » (the top bar's first button)
   and Fichier › Nouvel / Ouvrir / Importer bring it back (`ctx.onStart`), over the open event; a link with `?id=` opens the event
-  directly; a dialog given up with no event open goes back to it. Switching events closes the open one first (`closeEditor`:
+  directly; a dialog given up with no event open goes back to it. **Deleting an event** (owner, 2026-11-04: there was no way to):
+  the bin on one's own events in « Ouvrir un événement » (`deleteEvent`; the owner only, as the API's DELETE), after a confirmation
+  — gone for the whole team, its offline copy on this device too (`offline.dropEvent`); an analysis published from it stays; the
+  event open here gives way to the empty editor. Switching events closes the open one first (`closeEditor`:
   saved, lock released); the editor closing by itself (↗) leaves the empty editor and the start screen; the analyses' « ⤢ » / « ↗ » (`fullwin.js`) — ↗
   saves, opens the event alone in a tab and closes it here (`setTabHandler`; one event, one tab), Échap first cancels the
   editor's own pick, drawing, tool or selection (`setEscapeOwner`); a

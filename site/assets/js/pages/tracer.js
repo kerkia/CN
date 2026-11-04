@@ -160,10 +160,11 @@ async function fillOpenList(el) {
   catch (e) { box.innerHTML = html`<div class="tr-err">${t("trc.page.listErr", { err: e.code || e.message })}</div>`; return; }
   if (!document.contains(box)) return;
   const openId = window.__tracer?.blank ? null : window.__tracer?.meta?.id;
+  // one's own events can be deleted here (owner, 2026-11-04: there was no way to); the team's are its owner's to delete
   box.innerHTML = events.length ? html`<ul>${events.map((e) => html`<li><button type="button" data-open="${e.id}" ${raw(e.id === openId ? 'aria-current="true"' : "")}>
       <span class="tr-start-t">${e.title}${e.encrypted ? " 🔒" : ""}</span>
       <span class="tr-start-m">${fmtDate(e.date, "short")} · ${e.kind === "race" ? t("trc.page.kindRace") : t("trc.page.kindTraining")}${e.mine ? "" : ` · ${e.ownerName || t("trc.page.team")}`}${e.offline ? ` · ${t("trc.page.tagOffline")}` : ""}${e.pending ? ` · ${t("trc.page.tagPending")}` : ""}${e.id === openId ? ` · ${t("trc.page.tagOpen")}` : ""}</span>
-    </button></li>`)}</ul>`
+    </button>${e.mine ? html`<button type="button" class="tr-start-del" data-del="${e.id}" title="${t("trc.page.del", { title: e.title })}" aria-label="${t("trc.page.del", { title: e.title })}">🗑</button>` : ""}</li>`)}</ul>`
     : html`<div class="muted">${t("trc.page.noEvents")}</div>`;
   box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
     closeStart();
@@ -171,6 +172,24 @@ async function fillOpenList(el) {
     history.replaceState(null, "", `#/orga-tracer?id=${b.dataset.open}${inOwnTab() ? "&fen=1" : ""}`);
     openEvent(b.dataset.open);
   }));
+  box.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => deleteEvent(el, events.find((e) => e.id === b.dataset.del), openId)));
+}
+/** An event deleted for good, by its owner: its card, map, versions, comments, photos (the server's DELETE), and this device's
+ *  offline copy; an analysis published from it stays (it is Orga's). The event open here gives way to the empty editor. */
+async function deleteEvent(el, e, openId) {
+  if (!e) return;
+  const ok = await modal({ title: t("trc.page.delTitle", { title: e.title }), ok: t("trc.page.delOk"), body: `<p>${escA(t("trc.page.delBody"))}</p>` });
+  if (!ok) return;
+  try { await S.api(`/${e.id}`, { method: "DELETE" }); }
+  catch (err) { alertBox(t("trc.page.delErr", { err: err.code || err.message })); return; }
+  await OFF.dropEvent(e.id).catch(() => {});
+  if (e.id === openId) {
+    history.replaceState(null, "", listHash());
+    await openBlank();
+    startScreen("open");
+    return;
+  }
+  fillOpenList(el);
 }
 
 // ---- a modal outside the editor (same look) -------------------------------------------------------------------------------

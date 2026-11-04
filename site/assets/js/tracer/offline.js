@@ -126,6 +126,12 @@ async function dropSiteIfUnused() {
   try { if (window.caches) await caches.delete(CACHE); } catch (e) { /* none */ }
   try { tell(await navigator.serviceWorker?.getRegistration("/"), false); } catch (e) { /* none */ }
 }
+/** An event deleted: its copy on this device goes, its waiting changes too. */
+export async function dropEvent(id) {
+  for (const store of ["events", "maps", "pending"]) await IDB.del(store, id).catch(() => {});
+  try { localStorage.removeItem(FLAG(id)); } catch (e) { /* none */ }
+  await dropSiteIfUnused();
+}
 /** At logout: the copies go, except those whose changes still wait for the network. */
 export async function dropCopies() {
   try {
