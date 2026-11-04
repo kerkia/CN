@@ -1614,9 +1614,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   event shows still depends on its team, not on the account's rights) were for the administrators (or the `users.live` right) until then;
   the gates are gone from `app.js` (the right stays in D1, unused). The admin page alone stays the administrators'.
 - **Organisation** (menu group `orga`, the control flag's orange; owner, 2026-10-15): the organisers' pages —
-  « Compétitions » (`#/orga-competitions`, route `orgRace`: the competitions of the last 60 days organised by one's
-  club, one multi analysis each, « Ouvrir l'analyse multi » then its circuits), « Entraînements » (`#/orga-entrainements`,
-  `orgTraining`: one's training events, « Nouvel entraînement »), « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
+  « Analyses de carte » (`#/orga-analyses`, route `orgAnalyses`, `pages/shared.js` `orgListPage`; owner, 2026-11-04: the former
+  « Compétitions » and « Entraînements » as one list, « analyse multi » no longer said in Orga — `#/orga-competitions` and
+  `#/orga-entrainements` still open it): the competitions of the last 60 days organised by one's club (one analysis each,
+  « Ouvrir l'analyse de carte » then its circuits), the competition analyses older than that, and one's training events
+  (« Nouvel entraînement »), by date with a « Type » column and a search; an analysis opens at `#/orga-analyses?id=` whatever
+  its kind (read with it), « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
   the club's races with what « Résultats » shows of them, « Déposer les résultats » = `#/deposer?course=…&orga=1`), and
   « Direct » and « Tracer » (below). **An organiser** is a member of the
   race's organising club — the club of the account's latest race in the site's data against the race's `org` number

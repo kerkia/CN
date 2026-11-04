@@ -46,8 +46,7 @@ const PAGES = {
   analysisClub: () => import("./pages/shared.js"),      // « Analyse club » (Entrainement): an organiser's circuits, the runners' traces compared
   analysisRace: () => import("./pages/shared.js"),      // « Analyse multi » (Courses): the same for a race of « Résultats »
   // « Organisation » (2026-10-15): the organisers' pages — a competition's multi analysis, a training event's, the results
-  orgRace: () => import("./pages/shared.js"),
-  orgTraining: () => import("./pages/shared.js"),
+  orgAnalyses: () => import("./pages/shared.js"),     // « Analyses de carte »: competitions and trainings in one list (2026-11-04)
   orgResults: () => import("./pages/orgresults.js"),
   orgStarts: () => import("./pages/orgstarts.js"),    // « Horaires »: an organiser publishes a coming race's start list (2026-10-18)
   booking: () => import("./pages/booking.js"),        // « Réserver un horaire » (Arena): the start times its organisers opened to booking (2026-11-03)
@@ -78,7 +77,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
-  orgRace: "sh.org.race.lede", orgTraining: "sh.org.club.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
+  orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 // The pages of a country's ranked data (owner, 2026-10-20; by country since 2026-10-22): the rankings and everything they
 // hold, and « IA ». They show the site's country's (data.js reads its folder); an account that may not read it (France:
@@ -103,11 +102,11 @@ const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
-const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgRace", "orgTraining", "orgDirect", "orgTracer"]);
+const BETA_ROUTES = new Set(["analysisClub", "analysisRace", "orgAnalyses", "orgDirect", "orgTracer"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
-  || ((r.route === "orgRace" || r.route === "orgTraining") && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
+  || (r.route === "orgAnalyses" && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
 // ranked by a CN): there the switch also offers "Toutes", and its choice lives in the address
 // (?t=For|Spr|VTT|Ski, none = all). Around one runner = a runner in the address, or the last one seen.
@@ -152,7 +151,8 @@ function parseHash(hash = location.hash) {
     : head === "mes-cartes" ? "myMaps"
     : head === "envoi" ? "phoneSend"
     : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
-    : head === "orga-competitions" ? "orgRace" : head === "orga-entrainements" ? "orgTraining" : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
+    : head === "orga-analyses" || head === "orga-competitions" || head === "orga-entrainements" ? "orgAnalyses"     // one list since 2026-11-04 (old addresses)
+    : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -412,7 +412,7 @@ export function moduleMenus() {
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
-    orga: [["orgRace", "#/orga-competitions", t("nav.orgRace")], ["orgTraining", "#/orga-entrainements", t("nav.orgTraining")],
+    orga: [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
   };

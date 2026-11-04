@@ -2,8 +2,9 @@
 // « Entrainement » (#/analyse-club: training events) and « Courses » (#/analyse-competition: competitions), the events
 // their organisers have set up — pick one, add one's trace, compare; one's own curves (heart rate, cadence…) beside the
 // map, from one's own file kept on this device, never sent and never shown to others. For the organisers, under
-// « Organisation » (#/orga-competitions: the competitions of their club, one analysis each; #/orga-entrainements: their
-// training events), the same pages manage them. An organiser sets up one or more circuits — the map, its georeference (a KMZ/KML, a world file, an IOF
+// « Orga › Analyses de carte » (#/orga-analyses; owner, 2026-11-04: one list for the competitions of their club, one
+// analysis each, and their training events — #/orga-competitions and #/orga-entrainements before, still opened), the
+// same pages manage them. An organiser sets up one or more circuits — the map, its georeference (a KMZ/KML, a world file, an IOF
 // XML with coordinates, or the organiser's own GPS trace laid over the controls read on the map), the controls in
 // order — and chooses who may open the analysis (every logged-in account, the members of the organiser's club, or a
 // password). Each runner then adds their own trace (positions and times only, cropped to the map's area), and the
@@ -50,7 +51,7 @@ import { bar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
 
-const ORG_ROUTE = { club: "#/orga-entrainements", race: "#/orga-competitions" };  // the organisers' pages
+const ORG_ROUTE = "#/orga-analyses";                     // the organisers' page: competitions and trainings in one list
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), as the server's _lib/club.js. */
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 // one's own file, kept on this device for one's own curves (the same IndexedDB as « Analyse solo »)
@@ -103,79 +104,81 @@ const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.er
 export async function render(main, r) {
   bindFull();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
-  const org = r.route === "orgRace" || r.route === "orgTraining";
-  const kind = r.route === "analysisRace" || r.route === "orgRace" ? "race" : "club";
+  const org = r.route === "orgAnalyses";
+  const kind = r.route === "analysisRace" ? "race" : "club";
   betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
-  if (org) return r.query.id ? eventPage(main, kind, r.query.id, true, r.query) : orgListPage(main, kind);
+  // the organisers' page: an analysis's kind is its own (read with it)
+  if (org) return r.query.id ? eventPage(main, null, r.query.id, true, r.query) : orgListPage(main);
   // the runners' lists are « Analyse de carte »'s since 2026-11-01 (pages/mapanalysis.js: competitions and trainings in one
   // list, a map beside it); an address of before without an event goes there
   if (!r.query.id) { location.replace("#/analyse-carte?choix=multi"); return { title: t("ma.multi.title") }; }
   return eventPage(main, kind, r.query.id, false, r.query);
 }
 
-// ---- the organisers' list: their club's competitions (one analysis each), or their training events ----------------
-async function orgListPage(main, kind) {
+// ---- the organisers' list: their club's competitions (one analysis each) and their training events, in one list ------
+// (owner, 2026-11-04: « Compétitions » and « Entraînements » were two pages of one workflow)
+async function orgListPage(main) {
   const me = auth.session();
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t(`sh.org.${kind}.title`)} ${raw(betaTag())}</h1><p class="lede">${t(`sh.org.${kind}.lede`)}</p></div>
-      ${kind === "club" ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.org.new")}</button>` : ""}</div>
+    <div class="page-head"><div><h1>${t("sh.org.title")} ${raw(betaTag())}</h1><p class="lede">${t("sh.org.lede")}</p></div>
+      <button type="button" class="btn btn-sm btn-primary" id="sh-new">${t("sh.org.new")}</button></div>
     ${raw(betaNote("multi"))}
     <section class="card sh-create" id="sh-create" hidden></section>
-    ${kind === "race" ? html`<div id="dc-card"></div>` : ""}
-    ${kind === "race" && me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
+    <div id="dc-card"></div>
+    <div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
   let data;
-  try { data = await api(`?kind=${kind}`); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t(`sh.org.${kind}.title`) }; }
+  try { data = await api(""); } catch (e) { $("#sh-list").innerHTML = html`<div class="empty">${errText(e)}</div>`; return { title: t("sh.org.title") }; }
   const club = data.club;
-  if (kind === "race") {
-    // the competitions of the last 60 days organised by one's club (all of them for an administrator)
-    const today = new Date().toISOString().slice(0, 10);
-    const all = ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon && x.date_iso <= today)
-      .sort((a, b) => b.date_iso.localeCompare(a.date_iso) || a.name.localeCompare(b.name, "fr"));
-    // with those the account declared (outside France; declare.js), once their results are on « Résultats »
-    const decl = new Set((await declare.load()).competitions.map((d) => d.key));
-    const mine = me?.admin ? all : all.filter((x) => (club && orgCode(x.org) === club) || decl.has(x.key));
-    const byRace = new Map(data.analyses.map((a) => [a.race, a]));
-    const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const draw = (q = "") => {
-      const list = q ? mine.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""}`).includes(norm(q))) : mine;
-      // the page's width, no sideways scroll (owner, 2026-10-30): the race's and the organiser's names cut, whole on hover
-      $("#sh-list").innerHTML = list.length ? html`<table class="data compact sh-orglist"><colgroup><col class="c-date"><col><col class="c-org"><col class="c-status"><col class="c-act"></colgroup>
-        <thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
-        <tbody>${list.map((x) => { const a = byRace.get(x.key);
-          return html`<tr><td class="num">${fmtDate(x.date_iso, "short")}</td><td class="cut" title="${x.place ? `${x.name} · ${x.place}` : x.name}">${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
-            <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
-            <td>${a ? t("sh.org.status.n", { n: a.courses }) : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
-            <td class="r">${a ? html`<a class="btn btn-sm" href="${ORG_ROUTE.race}?id=${a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`; })}</tbody></table>`
-        : html`<div class="empty">${club || me?.admin ? t("sh.org.race.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
-      $$("[data-activate]").forEach((b) => b.addEventListener("click", async () => {
-        const x = mine.find((r) => r.key === b.dataset.activate);
-        b.disabled = true;
-        try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date_iso, vis: "public" } }); location.hash = `${ORG_ROUTE.race}?id=${r.id}`; }
-        catch (e) { b.disabled = false; alert(errText(e)); }
-      }));
-    };
-    draw();
-    $("#sh-filter")?.addEventListener("input", (e) => draw(e.target.value));
-    declare.card($("#dc-card"));
-  } else {
-    const mine = data.analyses.filter((a) => a.organiser);
-    $("#sh-list").innerHTML = mine.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("sh.col.title")}</th><th>${t("sh.col.access")}</th><th class="r">${t("sh.col.courses")}</th><th></th></tr></thead>
-      <tbody>${mine.map((a) => html`<tr><td class="num">${fmtDate(a.date, "short")}</td><td>${a.title}</td><td>${t(`sh.vis.${a.vis}`)}</td><td class="r num">${a.courses}</td>
-        <td class="r"><a class="btn btn-sm" href="${ORG_ROUTE.club}?id=${a.id}">${t("sh.org.manage")}</a></td></tr>`)}</tbody></table>`
-      : html`<div class="empty">${t("sh.org.club.none")}</div>`;
-    $("#sh-new").addEventListener("click", () => {
-      const box = $("#sh-create");
-      box.hidden = !box.hidden;
-      if (!box.hidden) createForm(box, "club", [], club);
-    });
-  }
+  // the competitions of the last 60 days organised by one's club (all of them for an administrator), with those the
+  // account declared (outside France; declare.js) once their results are on « Résultats »
+  const today = new Date().toISOString().slice(0, 10);
+  const races = ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon && x.date_iso <= today);
+  const decl = new Set((await declare.load()).competitions.map((d) => d.key));
+  const mine = me?.admin ? races : races.filter((x) => (club && orgCode(x.org) === club) || decl.has(x.key));
+  const own = data.analyses.filter((a) => a.organiser);
+  const byRace = new Map(own.filter((a) => a.kind === "race").map((a) => [a.race, a]));
+  // one row an event: a competition (its analysis, or none yet), a competition's analysis older than the list, a training
+  const rows = [
+    ...mine.map((x) => ({ kind: "race", date: x.date_iso, name: x.name, place: x.place, org: x.org, key: x.key, a: byRace.get(x.key) })),
+    ...own.filter((a) => a.kind === "race" && !mine.some((x) => x.key === a.race)).map((a) => ({ kind: "race", date: a.date, name: a.title, a })),
+    ...own.filter((a) => a.kind === "club").map((a) => ({ kind: "club", date: a.date, name: a.title, org: a.ownerName, a })),
+  ].sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.name.localeCompare(b.name, "fr"));
+  const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const draw = (q = "") => {
+    const list = q ? rows.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""} ${t(`sh.org.type.${x.kind}`)}`).includes(norm(q))) : rows;
+    // the page's width, no sideways scroll (owner, 2026-10-30): the event's and the organiser's names cut, whole on hover
+    $("#sh-list").innerHTML = list.length ? html`<table class="data compact sh-orglist"><colgroup><col class="c-date"><col class="c-type"><col><col class="c-org"><col class="c-status"><col class="c-act"></colgroup>
+      <thead><tr><th>${t("f.date")}</th><th>${t("sh.org.col.type")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
+      <tbody>${list.map((x) => html`<tr><td class="num">${x.date ? fmtDate(x.date, "short") : "—"}</td>
+          <td><span class="tag">${t(`sh.org.type.${x.kind}`)}</span></td>
+          <td class="cut" title="${x.place ? `${x.name} · ${x.place}` : x.name}">${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
+          <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
+          <td>${x.a ? html`${t("sh.org.status.n", { n: x.a.courses })}${x.kind === "club" ? html` <span class="muted">· ${t(`sh.vis.${x.a.vis}`)}</span>` : ""}` : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
+          <td class="r">${x.a ? html`<a class="btn btn-sm" href="${ORG_ROUTE}?id=${x.a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`)}</tbody></table>`
+      : q ? html`<div class="empty">${t("lv.find.none")}</div>`
+      : html`<div class="empty">${club || me?.admin ? t("sh.org.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
+    $$("[data-activate]").forEach((b) => b.addEventListener("click", async () => {
+      const x = mine.find((r) => r.key === b.dataset.activate);
+      b.disabled = true;
+      try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date_iso, vis: "public" } }); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
+      catch (e) { b.disabled = false; alert(errText(e)); }
+    }));
+  };
+  draw();
+  $("#sh-filter").addEventListener("input", (e) => draw(e.target.value));
+  $("#sh-new").addEventListener("click", () => {
+    const box = $("#sh-create");
+    box.hidden = !box.hidden;
+    if (!box.hidden) createForm(box, "club", [], club);
+  });
+  declare.card($("#dc-card"));
   if (me?.admin) {
     const mb = (b) => (b >= 1e9 ? t("unit.gb", { n: fmt(b / 1e9, 2) }) : t("unit.mb", { n: fmt(b / 1e6, 1) }));
     api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
   }
-  return { title: t(`sh.org.${kind}.title`) };
+  return { title: t("sh.org.title") };
 }
 
 function createForm(box, kind, races, club) {
@@ -194,14 +197,14 @@ function createForm(box, kind, races, club) {
   $("#sh-create-go").addEventListener("click", async () => {
     const vis = $("input[name=sh-vis]:checked").value;
     const body = { kind, title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value, race: $("#sh-race")?.value };
-    try { const r = await api("", { method: "POST", body }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE[kind]}?id=${r.id}`; }
+    try { const r = await api("", { method: "POST", body }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
     catch (e) { $("#sh-create-note").textContent = errText(e); }
   });
 }
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
 async function eventPage(main, kind, id, org = false, query = {}) {
-  const home = org ? ORG_ROUTE[kind] : "#/analyse-carte?choix=multi", homeTitle = t(org ? `sh.org.${kind}.title` : "ma.multi.title");
+  const home = org ? ORG_ROUTE : "#/analyse-carte?choix=multi", homeTitle = t(org ? "nav.orgAnalyses" : "ma.multi.title");
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
@@ -211,6 +214,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     return { title: homeTitle };
   }
   const A = data.analysis, organiser = data.you.organiser;
+  kind = kind || A.kind;                                  // the organisers' page opens either kind
   if (org && !organiser) {
     main.innerHTML = html`<div class="card"><div class="empty">${t("sh.org.notOrg")}</div></div>`;
     return { title: homeTitle };
@@ -274,7 +278,7 @@ function unlockPage(main, kind, id) {
   };
   $("#sh-unlock").addEventListener("click", go);
   $("#sh-unlock-pw").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
-  return { title: t(`sh.${kind}.title`) };
+  return { title: t(kind ? `sh.${kind}.title` : "sh.org.title") };
 }
 
 // ---- the organiser: the analysis's settings, its circuits ------------------------------------------------------------
@@ -307,7 +311,7 @@ function setup(box, ctx) {
   $("#sh-s-vis").addEventListener("change", (e) => { const v = $("#sh-s-visitors"); v.disabled = e.target.value !== "public"; if (v.disabled) v.checked = false; });
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
-    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE[ctx.kind]; } catch (e) { alert(errText(e)); }
+    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alert(errText(e)); }
   });
   $$("[data-del]", box).forEach((b) => b.addEventListener("click", async () => {
     if (!confirm(t("sh.course.remove.confirm"))) return;

@@ -571,7 +571,7 @@ export async function publish(E) {
     // the event's card remembers its analysis: « Bilan après la course » reads its shared traces
     try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
     E.status(t("trc.race.ready"), "ok");
-    const link = isRace ? `#/orga-competitions?id=${aid}` : `#/orga-entrainements?id=${aid}`;
+    const link = `#/orga-analyses?id=${aid}`;
     await modal(E, { title: t("trc.race.published"), ok: null, cancel: t("trc.race.close"), body: `<p>${tn(created.existing ? "trc.race.pubDoneExisting" : "trc.race.pubDone", pick.length)}</p><p><a href="${link}" target="_blank" rel="noopener">${t("trc.race.pubOpen")}</a></p>` });
   } catch (err) {
     E.status(t("trc.race.failed"), "err");

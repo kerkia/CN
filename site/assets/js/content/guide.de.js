@@ -407,7 +407,7 @@ export function build(X) {
             genutzt. Veranstalter eines Wettkampfs ist ${fr ? "jedes Mitglied seines veranstaltenden Vereins – des Vereins seines letzten bekannten Laufs – oder" : ""}
             das Konto, das ihn eingetragen hat, außerhalb Frankreichs. Ein Training dagegen kann jedes Konto anlegen.</p>
           ${list([
-            html`${P("#/orga-competitions", "Wettkämpfe")} und ${P("#/orga-entrainements", "Trainings")}: die Gruppenanalysen vorbereiten.`,
+            html`${P("#/orga-analyses", "Kartenanalysen")}: die Kartenanalyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`,
             html`${P("#/orga-resultats", "Ergebnisse")} und ${P("#/orga-horaires", "Startzeiten")}: die Ergebnisse und die Startliste hochladen.`,
             html`${P("#/orga-direct", "Live-Übertragung")}: die Ergebnisse live aus der Zeitmessungssoftware übertragen und den Link zum GPS-Tracking angeben.`,
             html`${P("#/orga-tracer", "Bahnlegung")}: die Bahnen legen; die Anleitung dazu ist der Reiter ${D("tracer", "Die Bahnlegung")}.`,
@@ -460,8 +460,8 @@ export function build(X) {
             und seinem Live-Bereich. Nur der Link wird veröffentlicht.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Eine Gruppenanalyse vorbereiten", html`
-          <p>In ${P("#/orga-competitions", "Wettkämpfe")} (die Wettkämpfe deines Vereins der letzten 60 Tage) oder ${P("#/orga-entrainements", "Trainings")}
-            („Neues Training“) wird eine Gruppenanalyse Bahn für Bahn vorbereitet:</p>
+          <p>In ${P("#/orga-analyses", "Kartenanalysen")} (die Wettkämpfe deines Vereins der letzten 60 Tage und deine Trainings:
+            „Neues Training“) wird eine Kartenanalyse Bahn für Bahn vorbereitet:</p>
           ${list([
             html`<b>Die Karte</b>: ein Bild, ein PDF oder ein KMZ, unverändert gespeichert, ohne Qualitätsverlust.`,
             html`<b>Ihre Kalibrierung</b>: aus einem KMZ, einer Georeferenzierungsdatei, einem IOF XML mit Koordinaten oder deinem eigenen Track.`,

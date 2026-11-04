@@ -390,7 +390,7 @@ export function build(X) {
             competition's organiser is ${fr ? "any member of its organising club — the club of their latest known race — or " : ""}the account that
             declared it, outside France. A training session can be created by any account.</p>
           ${list([
-            html`${P("#/orga-competitions", "Competitions")} and ${P("#/orga-entrainements", "Training sessions")}: preparing the group analyses.`,
+            html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`,
             html`${P("#/orga-resultats", "Results")} and ${P("#/orga-horaires", "Start times")}: uploading the results and the start list.`,
             html`${P("#/orga-direct", "Live feed")}: broadcasting the results live from the timing software, and giving the GPS tracking link.`,
             html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,
@@ -442,8 +442,8 @@ export function build(X) {
             published.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Preparing a group analysis", html`
-          <p>In ${P("#/orga-competitions", "Competitions")} (your club's competitions of the last 60 days) or ${P("#/orga-entrainements", "Training sessions")}
-            (“New training session”), a group analysis is prepared course by course:</p>
+          <p>In ${P("#/orga-analyses", "Map analyses")} (your club's competitions of the last 60 days, and your training sessions:
+            “New training session”), a map analysis is prepared course by course:</p>
           ${list([
             html`<b>The map</b>: an image, a PDF or a KMZ, kept as it is, with no loss of quality.`,
             html`<b>Its placing</b>: from a KMZ, a world file, an IOF XML with coordinates, or your own track.`,

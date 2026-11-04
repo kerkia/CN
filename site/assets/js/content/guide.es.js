@@ -402,7 +402,7 @@ export function build(X) {
             Es organizador de una competición ${fr ? "cualquier miembro de su club organizador —el club de su última carrera conocida— o" : ""}
             la cuenta que la ha declarado, fuera de Francia. Un entrenamiento, en cambio, puede crearlo cualquier cuenta.</p>
           ${list([
-            html`${P("#/orga-competitions", "Competiciones")} y ${P("#/orga-entrainements", "Entrenamientos")}: preparar los análisis de grupo.`,
+            html`${P("#/orga-analyses", "Análisis de mapa")}: preparar el análisis de mapa de las competiciones del club y de sus entrenamientos.`,
             html`${P("#/orga-resultats", "Resultados")} y ${P("#/orga-horaires", "Horarios")}: subir los resultados y la lista de salida.`,
             html`${P("#/orga-direct", "Emisión en directo")}: emitir los resultados en directo desde el programa de cronometraje y dar el enlace del seguimiento GPS.`,
             html`${P("#/orga-tracer", "Trazado")}: trazar los recorridos; su guía es la pestaña ${D("tracer", "El trazado")}.`,
@@ -454,8 +454,8 @@ export function build(X) {
             su directo. Solo se publica el enlace.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Preparar un análisis de grupo", html`
-          <p>En ${P("#/orga-competitions", "Competiciones")} (las competiciones de tu club de los últimos 60 días) o ${P("#/orga-entrainements", "Entrenamientos")}
-            («Nuevo entrenamiento»), un análisis de grupo se prepara recorrido por recorrido:</p>
+          <p>En ${P("#/orga-analyses", "Análisis de mapa")} (las competiciones de tu club de los últimos 60 días, y tus entrenamientos:
+            «Nuevo entrenamiento»), un análisis de mapa se prepara recorrido por recorrido:</p>
           ${list([
             html`<b>El mapa</b>: una imagen, un PDF o un KMZ, guardado tal cual, sin pérdida de calidad.`,
             html`<b>Su calibración</b>: a partir de un KMZ, de un archivo de georreferenciación, de un IOF XML con coordenadas o de tu propio track.`,

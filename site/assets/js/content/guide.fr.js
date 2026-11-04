@@ -404,7 +404,7 @@ export function build(X) {
             Est organisateur d'une compétition ${fr ? "tout membre de son club organisateur — le club de sa dernière course connue — ou" : ""}
             le compte qui l'a déclarée, hors de France. Un entraînement, lui, peut être créé par n'importe quel compte.</p>
           ${list([
-            html`${P("#/orga-competitions", "Compétitions")} et ${P("#/orga-entrainements", "Entraînements")} : préparer les analyses multi.`,
+            html`${P("#/orga-analyses", "Analyses de carte")} : préparer l'analyse de carte des compétitions du club et de ses entraînements.`,
             html`${P("#/orga-resultats", "Résultats")} et ${P("#/orga-horaires", "Horaires")} : déposer les résultats et la liste de départ.`,
             html`${P("#/orga-direct", "Direct")} : diffuser les résultats en direct depuis le logiciel de chronométrage, et donner le lien du suivi GPS.`,
             html`${P("#/orga-tracer", "Tracer")} : tracer les circuits ; son guide est l'onglet ${D("tracer", "Le tracé")}.`,
@@ -457,8 +457,8 @@ export function build(X) {
             direct. Seul le lien est publié.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Préparer une analyse multi", html`
-          <p>Dans ${P("#/orga-competitions", "Compétitions")} (les compétitions de votre club des 60 derniers jours) ou ${P("#/orga-entrainements", "Entraînements")}
-            (« Nouvel entraînement »), une analyse multi se prépare circuit par circuit :</p>
+          <p>Dans ${P("#/orga-analyses", "Analyses de carte")} (les compétitions de votre club des 60 derniers jours, et vos entraînements :
+            « Nouvel entraînement »), une analyse de carte se prépare circuit par circuit :</p>
           ${list([
             html`<b>La carte</b> : une image, un PDF ou un KMZ, gardée telle quelle, sans perte de qualité.`,
             html`<b>Son calage</b> : d'un KMZ, d'un fichier de géoréférencement, d'un IOF XML avec coordonnées, ou de votre propre trace.`,
