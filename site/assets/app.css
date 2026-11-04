@@ -3022,7 +3022,14 @@ button.cd-letter:hover { background: var(--grp, var(--ink)); color: var(--surfac
 .tour-feat-note + .tour-feat-note { margin-top: 0; }
 /* Orga › Analyses de carte: the list at the page's width (2026-10-30; competitions and trainings in one list, 2026-11-04) */
 .sh-orglist { table-layout: fixed; width: 100%; }
-.sh-orglist .c-date { width: 96px; } .sh-orglist .c-type { width: 130px; } .sh-orglist .c-org { width: 18%; } .sh-orglist .c-status { width: 170px; } .sh-orglist .c-by { width: 16%; } .sh-orglist .c-act { width: 220px; }
+.sh-orglist .c-date { width: 96px; } .sh-orglist .c-type { width: 130px; } .sh-orglist .c-org { width: 18%; } .sh-orglist .c-status { width: 220px; } .sh-orglist .c-by { width: 16%; } .sh-orglist .c-act { width: 220px; }
+.sh-orglist .c-sel { width: 34px; } .sh-orglist td.c-sel { text-align: center; }
+.sh-orglist tbody tr[data-k] { cursor: pointer; }
+.sh-orglist tbody tr.sh-sel > td { background: var(--row-sel, color-mix(in srgb, var(--flag) 14%, var(--surface))); }
+.sh-pick-bar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; margin: 0 0 10px; }
+.sh-pick-act { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sh-pick-act > .muted { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-tab-intro { margin: 0 0 10px; max-width: 900px; }
 .sh-orglist .sh-by-via { font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
 .sh-m-by { font-size: 13px; }
 .sh-orglist td.cut { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

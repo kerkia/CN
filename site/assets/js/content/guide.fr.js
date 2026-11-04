@@ -396,7 +396,7 @@ export function build(X) {
   // Orga (« Le tracé », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Qui organise"], ["resultats", "Résultats"], ["horaires", "Horaires"], ["direct", "Direct"], ["suivi", "Suivi GPS"],
-    ...(admin ? [["analyses", "Analyses de carte"]] : []), ["declarer", "Compétitions déclarées"]];
+    ...(admin ? [["analyses", "Analyses de carte"]] : []), ["declarer", "Compétitions créées"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -458,8 +458,10 @@ export function build(X) {
             direct. Seul le lien est publié.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Préparer une analyse de carte", html`
-          <p>Dans ${P("#/orga-analyses", "Analyses de carte")} (les compétitions de votre club des 60 derniers jours, et vos entraînements :
-            « Nouvel entraînement »), une analyse de carte se prépare circuit par circuit :</p>
+          <p>${P("#/orga-analyses", "Analyses de carte")} a quatre onglets : « Analyses ouvertes » (celles déjà ouvertes, la page s'ouvre
+            sur elles : on en choisit une, puis « Gérer l'analyse »), « Ouvrir une compétition » (les compétitions de votre club des 60 derniers
+            jours dont l'analyse n'est pas encore ouverte : on en choisit une, puis « Ouvrir l'analyse de carte »), « Nouvelle compétition »
+            (hors de France) et « Nouvel entraînement ». Une analyse de carte se prépare ensuite circuit par circuit :</p>
           ${list([
             html`<b>La carte</b> : une image, un PDF ou un KMZ, gardée telle quelle, sans perte de qualité.`,
             html`<b>Son calage</b> : d'un KMZ, d'un fichier de géoréférencement, d'un IOF XML avec coordonnées, ou de votre propre trace.`,
@@ -475,11 +477,11 @@ export function build(X) {
           <p>Les coureurs la trouvent dans Coach (« Analyse de carte › Comparer avec les autres coureurs »). Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse de carte (après
             la course pour une compétition).</p>`)}`,
       declarer: () => html`
-        ${slide("Orga", "Déclarer une compétition, hors de France", html`
-          <p>Les compétitions françaises viennent du calendrier de ${fr ? "la FFCO" : "la fédération française"}. Dans les autres pays, un compte membre du pays déclare lui-même sa
-            compétition, dans l'encadré « Mes compétitions déclarées » des pages Résultats, Horaires et Compétitions : pays, club, nom, date, lieu,
+        ${slide("Orga", "Créer une compétition, hors de France", html`
+          <p>Les compétitions françaises viennent du calendrier de ${fr ? "la FFCO" : "la fédération française"}. Dans les autres pays, un compte membre du pays crée lui-même sa
+            compétition, dans l'encadré « Mes compétitions créées » des pages Résultats et Horaires, et dans l'onglet « Nouvelle compétition » d'Analyses de carte : pays, club, nom, date, lieu,
             spécialité, format, site web. Elle paraît alors dans Arena, avec les compétitions de son pays, et son organisateur peut y déposer liste de départ,
-            résultats et analyses. Qui l'a déclarée n'est pas publié.</p>`)}`,
+            résultats et analyses. Qui l'a créée n'est pas publié.</p>`)}`,
     });
   }
 

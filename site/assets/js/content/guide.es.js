@@ -394,7 +394,7 @@ export function build(X) {
   // Orga (« El trazado », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Quién organiza"], ["resultats", "Resultados"], ["horaires", "Horarios"], ["direct", "Emisión en directo"], ["suivi", "Seguimiento GPS"],
-    ...(admin ? [["analyses", "Análisis de mapa"]] : []), ["declarer", "Competiciones declaradas"]];
+    ...(admin ? [["analyses", "Análisis de mapa"]] : []), ["declarer", "Competiciones creadas"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -455,8 +455,10 @@ export function build(X) {
             su directo. Solo se publica el enlace.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Preparar un análisis de mapa", html`
-          <p>En ${P("#/orga-analyses", "Análisis de mapa")} (las competiciones de tu club de los últimos 60 días, y tus entrenamientos:
-            «Nuevo entrenamiento»), un análisis de mapa se prepara recorrido por recorrido:</p>
+          <p>${P("#/orga-analyses", "Análisis de mapa")} tiene cuatro pestañas: «Análisis abiertos» (los ya abiertos, donde se abre la página: elige
+            uno y luego «Gestionar el análisis»), «Abrir una competición» (las competiciones de tu club de los últimos 60 días cuyo análisis aún no está
+            abierto: elige una y luego «Abrir el análisis de mapa»), «Nueva competición» (fuera de Francia) y «Nuevo entrenamiento». Después, un
+            análisis de mapa se prepara recorrido por recorrido:</p>
           ${list([
             html`<b>El mapa</b>: una imagen, un PDF o un KMZ, guardado tal cual, sin pérdida de calidad.`,
             html`<b>Su calibración</b>: a partir de un KMZ, de un archivo de georreferenciación, de un IOF XML con coordenadas o de tu propio track.`,
@@ -472,11 +474,11 @@ export function build(X) {
           <p>Los corredores lo encuentran en Coach («Análisis de mapa › Comparar con los demás corredores»). El trazado también puede publicar sus recorridos, mapa incluido, en un análisis de
             mapa (en el caso de una competición, después de la carrera).</p>`)}`,
       declarer: () => html`
-        ${slide("Orga", "Declarar una competición, fuera de Francia", html`
-          <p>Las competiciones francesas proceden del calendario de ${fr ? "la FFCO" : "la federación francesa"}. En los demás países, una cuenta miembro del país declara ella misma su
-            competición, en el recuadro «Mis competiciones declaradas» de las páginas Resultados, Horarios y Competiciones: país, club, nombre, fecha, lugar,
+        ${slide("Orga", "Crear una competición, fuera de Francia", html`
+          <p>Las competiciones francesas proceden del calendario de ${fr ? "la FFCO" : "la federación francesa"}. En los demás países, una cuenta miembro del país crea ella misma su
+            competición, en el recuadro «Mis competiciones creadas» de las páginas Resultados y Horarios, y en la pestaña «Nueva competición» de Análisis de mapa: país, club, nombre, fecha, lugar,
             disciplina, formato, sitio web. Entonces aparece en Arena, con las competiciones de su país, y su organizador puede subir en ella la lista de
-            salida, los resultados y los análisis. No se publica quién la declaró.</p>`)}`,
+            salida, los resultados y los análisis. No se publica quién la creó.</p>`)}`,
     });
   }
 

@@ -399,7 +399,7 @@ export function build(X) {
   // Orga (« Die Bahnlegung », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Wer veranstaltet"], ["resultats", "Ergebnisse"], ["horaires", "Startzeiten"], ["direct", "Live-Übertragung"], ["suivi", "GPS-Tracking"],
-    ...(admin ? [["analyses", "Kartenanalysen"]] : []), ["declarer", "Eingetragene Wettkämpfe"]];
+    ...(admin ? [["analyses", "Kartenanalysen"]] : []), ["declarer", "Erstellte Wettkämpfe"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -461,8 +461,10 @@ export function build(X) {
             und seinem Live-Bereich. Nur der Link wird veröffentlicht.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Eine Kartenanalyse vorbereiten", html`
-          <p>In ${P("#/orga-analyses", "Kartenanalysen")} (die Wettkämpfe deines Vereins der letzten 60 Tage und deine Trainings:
-            „Neues Training“) wird eine Kartenanalyse Bahn für Bahn vorbereitet:</p>
+          <p>${P("#/orga-analyses", "Kartenanalysen")} hat vier Reiter: „Geöffnete Analysen“ (die bereits geöffneten, dort öffnet die Seite: eine
+            wählen, dann „Analyse verwalten“), „Wettkampf öffnen“ (die Wettkämpfe deines Vereins der letzten 60 Tage, deren Analyse noch nicht geöffnet
+            ist: einen wählen, dann „Kartenanalyse öffnen“), „Neuer Wettkampf“ (außerhalb Frankreichs) und „Neues Training“. Eine Kartenanalyse wird
+            dann Bahn für Bahn vorbereitet:</p>
           ${list([
             html`<b>Die Karte</b>: ein Bild, ein PDF oder ein KMZ, unverändert gespeichert, ohne Qualitätsverlust.`,
             html`<b>Ihre Kalibrierung</b>: aus einem KMZ, einer Georeferenzierungsdatei, einem IOF XML mit Koordinaten oder deinem eigenen Track.`,
@@ -478,11 +480,11 @@ export function build(X) {
           <p>Die Läufer finden sie in Coach („Kartenanalyse › Mit den anderen vergleichen“). Die Bahnlegung kann ihre Bahnen auch samt Karte in eine Kartenanalyse veröffentlichen (bei einem
             Wettkampf nach dem Lauf).</p>`)}`,
       declarer: () => html`
-        ${slide("Orga", "Einen Wettkampf eintragen, außerhalb Frankreichs", html`
-          <p>Die französischen Wettkämpfe kommen aus dem Kalender ${fr ? "der FFCO" : "des französischen Verbands"}. In den anderen Ländern trägt ein Konto, das Mitglied des Landes ist, seinen
-            Wettkampf selbst ein, im Kasten „Meine eingetragenen Wettkämpfe“ der Seiten Ergebnisse, Startzeiten und Wettkämpfe: Land, Verein, Name, Datum, Ort,
+        ${slide("Orga", "Einen Wettkampf erstellen, außerhalb Frankreichs", html`
+          <p>Die französischen Wettkämpfe kommen aus dem Kalender ${fr ? "der FFCO" : "des französischen Verbands"}. In den anderen Ländern erstellt ein Konto, das Mitglied des Landes ist, seinen
+            Wettkampf selbst, im Kasten „Meine erstellten Wettkämpfe“ der Seiten Ergebnisse und Startzeiten und im Reiter „Neuer Wettkampf“ der Kartenanalysen: Land, Verein, Name, Datum, Ort,
             Disziplin, Format, Website. Er erscheint dann in Arena bei den Wettkämpfen seines Landes, und sein Veranstalter kann dort Startliste,
-            Ergebnisse und Analysen hochladen. Wer ihn eingetragen hat, wird nicht veröffentlicht.</p>`)}`,
+            Ergebnisse und Analysen hochladen. Wer ihn erstellt hat, wird nicht veröffentlicht.</p>`)}`,
     });
   }
 

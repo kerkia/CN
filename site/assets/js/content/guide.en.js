@@ -382,7 +382,7 @@ export function build(X) {
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ...(admin ? [["analyses", "Map analyses"]] : []), ["declarer", "Declared competitions"]];
+    ...(admin ? [["analyses", "Map analyses"]] : []), ["declarer", "Created competitions"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -443,8 +443,10 @@ export function build(X) {
             published.</p>`)}`,
       analyses: () => html`
         ${slide("Orga", "Preparing a map analysis", html`
-          <p>In ${P("#/orga-analyses", "Map analyses")} (your club's competitions of the last 60 days, and your training sessions:
-            “New training session”), a map analysis is prepared course by course:</p>
+          <p>${P("#/orga-analyses", "Map analyses")} has four tabs: “Opened analyses” (those already opened, where the page opens: choose one,
+            then “Manage the analysis”), “Open a competition” (your club's competitions of the last 60 days whose analysis is not opened yet: choose
+            one, then “Open the map analysis”), “New competition” (outside France) and “New training session”. A map analysis is then prepared
+            course by course:</p>
           ${list([
             html`<b>The map</b>: an image, a PDF or a KMZ, kept as it is, with no loss of quality.`,
             html`<b>Its placing</b>: from a KMZ, a world file, an IOF XML with coordinates, or your own track.`,
@@ -458,11 +460,11 @@ export function build(X) {
           <p>Runners find it in Coach (“Map analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to a map analysis (after the race for
             a competition).</p>`)}`,
       declarer: () => html`
-        ${slide("Orga", "Declaring a competition, outside France", html`
-          <p>French competitions come from ${fr ? "FFCO's" : "the French federation's"} calendar. In the other countries, an account that is a member of the country declares its competition
-            itself, in the “My declared competitions” box of the Results, Start times and Competitions pages: country, club, name, date, place,
+        ${slide("Orga", "Creating a competition, outside France", html`
+          <p>French competitions come from ${fr ? "FFCO's" : "the French federation's"} calendar. In the other countries, an account that is a member of the country creates its competition
+            itself, in the “My created competitions” box of the Results and Start times pages, and in the “New competition” tab of Map analyses: country, club, name, date, place,
             discipline, format, website. It then appears in Arena among its country's competitions, and its organiser can upload its start list, results
-            and analyses. Who declared it is not published.</p>`)}`,
+            and analyses. Who created it is not published.</p>`)}`,
     });
   }
 
