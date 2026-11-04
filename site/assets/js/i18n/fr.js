@@ -2355,7 +2355,6 @@ export default {
   "agd.wre.tip": "Compétition du classement mondial IOF (World Ranking Event)",
   "agd.wc": "Coupe du monde",
   "agd.wc.tip": "Manche de la Coupe du monde IOF",
-  "agd.wre.inCountry": "Voir dans la liste de ce pays",
   "agd.d.league": "Ligue",
   "agd.d.level": "Niveau",
   "agd.reg.byCat": "Par catégorie",

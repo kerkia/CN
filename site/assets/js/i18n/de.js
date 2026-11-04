@@ -3356,7 +3356,6 @@ export default {
   "agd.wre.tip": "Wettkampf der IOF-Weltrangliste (World Ranking Event)",
   "agd.wc": "Weltcup",
   "agd.wc.tip": "Ein Lauf des IOF-Weltcups",
-  "agd.wre.inCountry": "In der Liste dieses Landes ansehen",
   "agd.d.league": "Regionalverband",
   "agd.d.level": "Niveau",
   "agd.reg.byCat": "Nach Kategorie",

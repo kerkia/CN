@@ -3196,7 +3196,6 @@ export default {
   "agd.wre.tip": "IOF World Ranking Event",
   "agd.wc": "World Cup",
   "agd.wc.tip": "A round of the IOF World Cup",
-  "agd.wre.inCountry": "See in this country's list",
   "agd.d.league": "League",
   "agd.d.level": "Level",
   "agd.reg.byCat": "By category",

@@ -608,14 +608,6 @@ export async function render(main, { query }) {
     return out.length ? html`<p class="row" style="margin:0;gap:8px;flex-wrap:wrap">${out}</p>` : "";
   };
 
-  /** In the WRE list, the event in its host country's agenda: the country becomes the site's, the event opened there. */
-  const hostLink = (e) => html`<p style="margin:0"><button type="button" class="btn btn-sm" data-host="${e.host}" data-host-id="${e.same || e.id}">${t("agd.wre.inCountry")}</button></p>`;
-  $("#detail").addEventListener("click", (ev) => {
-    const b = ev.target.closest("[data-host]");
-    if (!b) return;
-    history.replaceState(null, "", `#/agenda?id=${encodeURIComponent(b.dataset.hostId)}`);
-    window.dispatchEvent(new CustomEvent("ocn:country", { detail: b.dataset.host }));
-  });
   function drawDetail() {
     const e = st.selected && byKey.get(st.selected);
     const box = $("#detail");
@@ -654,7 +646,6 @@ export async function render(main, { query }) {
           ${(e.extra || []).map(([l, v]) => row(l, v))}
           ${row(t("agd.d.obs"), e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
-        ${inWre && e.host ? hostLink(e) : ""}
         ${fr && e.id != null && !e.declared && !e.host ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
         ${sourceLinks(e)}
         <div class="detail-nav">${backBtn}</div>

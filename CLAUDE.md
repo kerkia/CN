@@ -2571,8 +2571,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   unless its format is known and another — measured 2026-11-04 on the local agendas: 61 of 191 matched, the misses mostly
   2027 events the host calendars do not list yet); the match's id is kept (`same`) with its place, organiser, website, entries.
   The index's XW entry lists its `hosts` (`countries.summary`), which the menu offers (`country.withData`). The Agenda page
-  (`pages/agenda.js`): in XW's list the host's flag and name in a « Pays » column, « Voir dans la liste de ce pays » in the details
-  (`pickCountry` on the host, the event opened there); in a host's list the matched row tagged « WRE » (`.tag-wre`), « Coupe du
+  (`pages/agenda.js`): in XW's list the host's flag and name in a « Pays » column and in the details (no link to the host's list:
+  owner, 2026-11-04 — the details already carry what its row has); in a host's list the matched row tagged « WRE » (`.tag-wre`), « Coupe du
   monde » for a World Cup round, the unmatched WREs added as rows of their own (no FFCO link, no « no online entries » box) — a
   country whose calendar Ozimut cannot read (Sweden, Norway, Finland, Australia…) gets an agenda of its WREs alone. **Maps**
   (owner, 2026-11-04: « Australia has no map », « for IOF WRE, a world map »): `tools/countrymaps.py build` makes an outline for
