@@ -1636,7 +1636,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   `#/orga-entrainements` still open it): the competitions of the last 60 days organised by one's club (one analysis each,
   « Ouvrir l'analyse de carte » then its circuits), the competition analyses older than that, and one's training events
   (« Nouvel entraînement »), by date with a « Type » column and a search; an analysis opens at `#/orga-analyses?id=` whatever
-  its kind (read with it), « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
+  its kind (read with it). An analysis's settings show the new password only for « mot de passe » and « Ouverte aussi aux visiteurs
+  sans compte » only for « tous » (owner, 2026-11-04). **« Importer un fichier OCAD (carte et circuits) »** beside « Ajouter un
+  circuit » (owner, 2026-11-04; `shared.js` `ocadImport`, `tracer/circuits.js` `readCourseFiles`): an OCAD course-setting project —
+  the courses file (its `courseSetting`) and the background map it names as its first OCAD/Mapper template (« …P.ocd » over
+  « …F.ocd », same OCAD coordinates, as the Tracer's `ocadCourses`), dropped together or one after the other (the panel asks for the
+  map by name) — each course ticked a circuit: its map printed with the course at 150 dpi, controls and georeference (the map's
+  grid, else the courses file's) by the Tracer's engine (`circuitOf`, shared with the Tracer's « Publier vers l'analyse de
+  carte »); a circuit of the same name replaced, its variants and exercises kept; an .ocd/.omap/.xmap dropped on the circuit
+  editor opens it, and a file the editor refuses says so in its panel (it was silent). Checked on the Desquinemarre project of
+  2026-11-08 (5 courses, Lambert 93). « Résultats » (`#/orga-resultats`, `pages/orgresults.js`:
   the club's races with what « Résultats » shows of them, « Déposer les résultats » = `#/deposer?course=…&orga=1`), and
   « Direct » and « Tracer » (below). **An organiser** is a member of the
   race's organising club — the club of the account's latest race in the site's data against the race's `org` number

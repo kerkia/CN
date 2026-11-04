@@ -520,11 +520,8 @@ export async function publish(E) {
   if (isRace && E.meta.date && E.meta.date > today) { E.toast(t("trc.race.pubSecret", { date: E.meta.date }), 6000); return; }
   const info = isRace ? await raceInfo(E).catch(() => ({})) : {};
   if (isRace && !info.provKey) { E.toast(t("trc.race.pubNotInResults")); return; }
-  const des = [];
-  for (const id of M.courseIds(ev, false)) {
-    if (M.hasVariations(ev, id)) for (const x of M.allVariations(ev, id)) des.push({ cd: M.cdCourse(id, -1, x.path), name: `${ev.courses[id].name} ${x.code}`, id });
-    else des.push({ cd: M.cdCourse(id), name: ev.courses[id].name, id });
-  }
+  const { designs, circuitOf } = await import("./circuits.js");
+  const des = designs(ev);
   const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
   const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t("trc.race.publish"), body: `
@@ -553,19 +550,13 @@ export async function publish(E) {
     const aid = created.id;
     const cur = await call(`/${aid}`);
     const courses = (cur.analysis?.courses || []).filter((c) => !pick.some((_, j) => c.n === j));
-    const { courseImage } = await import("./exports.js");
     const dpi = Math.max(72, Math.min(300, Math.round(num(v.dpi)) || 150));
     for (let j = 0; j < pick.length; j++) {
       const d = pick[j];
       E.status(t("trc.race.pubCourseBusy", { i: j + 1, n: pick.length, name: d.name }), "busy");
-      const { canvas, box, pxPerMm: k } = await courseImage(E, d.cd, dpi, { withMap: true });
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
-      await call(`/${aid}/map/${j}`, { method: "PUT", body: blob, headers: { "Content-Type": "image/png" } });
-      const g = ev.geo, geo = { a: g.a * k, b: g.b * k, c: (g.c - box[0]) * k, d: -g.d * k, e: -g.e * k, f: (box[3] - g.f) * k };
-      const r = M.controlRadius(ev) * M.objRatio(ev, ev.courses[d.id].printScale) * k;
-      const controls = M.ccIds(ev, d.cd).map((cc) => ev.controls[ev.courseControls[cc].control]).filter((c) => ["start", "normal", "finish"].includes(c.kind))
-        .map((c) => ({ kind: c.kind === "normal" ? "control" : c.kind, code: c.code || "", x: Math.round((c.x - box[0]) * k * 10) / 10, y: Math.round((box[3] - c.y) * k * 10) / 10 }));
-      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: Math.round(r * 10) / 10, map: { w: canvas.width, h: canvas.height, type: "image/png", v: Date.now() }, geo, controls });
+      const c = await circuitOf(E, d, dpi);
+      await call(`/${aid}/map/${j}`, { method: "PUT", body: c.blob, headers: { "Content-Type": "image/png" } });
+      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls });
     }
     await call(`/${aid}`, { method: "PUT", body: { courses: courses.sort((a, b) => a.n - b.n) } });
     // the event's card remembers its analysis: « Bilan après la course » reads its shared traces

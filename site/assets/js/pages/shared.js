@@ -282,6 +282,8 @@ function unlockPage(main, kind, id) {
 }
 
 // ---- the organiser: the analysis's settings, its circuits ------------------------------------------------------------
+// the password field and the visitors' box only when the access chosen uses them (owner, 2026-11-04: an analysis kept to the
+// club showed « Ouverte aussi aux visiteurs sans compte », greyed)
 function setup(box, ctx) {
   const { A, id, onChange } = ctx;
   box.innerHTML = html`<div class="card-body">
@@ -290,8 +292,8 @@ function setup(box, ctx) {
       <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" style="width:280px" maxlength="120"></label>
       <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
       <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
-      <label class="field"><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
-      <label class="an-opt sh-s-visitors" title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")} ${raw(A.vis === "public" ? "" : "disabled")}> ${t("sh.visitors")}</label>
+      <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
+      <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
       <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div>
     <h2 style="font-size:16px;margin:14px 0 8px">${t("sh.courses")}</h2>
     <table class="data compact" style="max-width:720px"><tbody>
@@ -300,15 +302,20 @@ function setup(box, ctx) {
         <td><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`)}
     </tbody></table>
     <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.course.add")}</button>
+      <button type="button" class="btn btn-sm" id="sh-ocad" title="${t("sh.ocad.tip")}">${t("sh.ocad.add")}</button>
       <button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div>
     <div id="sh-editor"></div></div>`;
   $("#sh-s-save").addEventListener("click", async () => {
     const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
-    if ($("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
+    if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
     try { await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); $("#sh-s-note").textContent = t("sh.saved"); onChange(); }
     catch (e) { $("#sh-s-note").textContent = errText(e); }
   });
-  $("#sh-s-vis").addEventListener("change", (e) => { const v = $("#sh-s-visitors"); v.disabled = e.target.value !== "public"; if (v.disabled) v.checked = false; });
+  $("#sh-s-vis").addEventListener("change", (e) => {
+    const v = e.target.value;
+    $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;
+    $("#sh-s-pwf").hidden = v !== "password";
+  });
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
     try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alert(errText(e)); }
@@ -321,6 +328,100 @@ function setup(box, ctx) {
   }));
   $$("[data-edit]", box).forEach((b) => b.addEventListener("click", () => editor($("#sh-editor"), { ...ctx, course: A.courses.find((c) => c.n === Number(b.dataset.edit)) })));
   $("#sh-add").addEventListener("click", () => editor($("#sh-editor"), { ...ctx, course: null }));
+  $("#sh-ocad").addEventListener("click", () => ocadImport($("#sh-editor"), ctx));
+}
+
+/** An OCAD course-setting file: the map and every course in one file, each course a circuit (owner, 2026-11-04: the circuit
+ *  editor took several courses in an IOF XML but one circuit at a time, and an OCAD file dropped there did nothing). The courses
+ *  are drawn by the Tracer's engine (tracer/circuits.js), as its « Publier vers l'analyse de carte » does; a circuit of the same
+ *  name is replaced, its route choices and exercises kept. */
+async function ocadImport(box, ctx, preset = null) {
+  const { A, id, race, onChange } = ctx;
+  const circuits = race ? [...new Set((race.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))] : [];
+  const nm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  let read = null;
+  box.innerHTML = html`<div class="sh-editor">
+    <h2 style="font-size:16px;margin:14px 0 8px">${t("sh.ocad.title")}</h2>
+    <p class="hint" style="max-width:760px">${t("sh.ocad.intro")}</p>
+    <label class="dropzone an-drop" id="sh-o-drop"><input type="file" id="sh-o-in" hidden multiple accept=".ocd,.omap,.xmap">
+      <strong>${t("sh.ocad.drop")}</strong><span class="muted">${t("sh.ocad.drop.hint")}</span></label>
+    <div class="muted" id="sh-o-state" style="font-size:13px;margin:6px 0"></div>
+    <div id="sh-o-list"></div>
+    <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="sh-o-consent"> ${t("sh.e.consent")}</label>
+    <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn btn-primary" id="sh-o-go" disabled>${t("sh.ocad.create")}</button>
+      <button type="button" class="btn btn-sm" id="sh-o-cancel">${t("sh.cancel")}</button><span class="muted" id="sh-o-note"></span></div></div>`;
+  const state = $("#sh-o-state"), note = $("#sh-o-note");
+  const drawList = () => {
+    const { designs } = read;
+    const taken = new Set(A.courses.map((c) => nm(c.name)));
+    let room = 12 - A.courses.length;                       // the analysis's 12 circuits: those of the same name are replaced
+    $("#sh-o-list").innerHTML = html`<table class="data compact" style="max-width:760px"><thead><tr><th></th><th>${t("sh.ocad.col.course")}</th><th>${t("prov.controls")}</th>
+        ${circuits.length ? html`<th>${t("sh.course.circuit")}</th>` : ""}<th></th></tr></thead><tbody>
+      ${designs.map((d, i) => {
+        const same = taken.has(nm(d.name)), on = same || room-- > 0;
+        return html`<tr><td><input type="checkbox" data-o="${i}" ${raw(on ? "checked" : "")}></td><td><b>${d.name}</b></td><td class="num">${d.nCtrl}</td>
+          ${circuits.length ? html`<td><select data-k="${i}"><option value="">—</option>${circuits.map((c) => html`<option ${raw(nm(c) === nm(d.name) || nm(c).split(" ")[0] === nm(d.name).split(" ")[0] ? "selected" : "")}>${c}</option>`)}</select></td>` : ""}
+          <td class="muted">${same ? t("sh.ocad.replaces") : ""}</td></tr>`; })}</tbody></table>`;
+    $("#sh-o-go").disabled = false;
+  };
+  // the files dropped so far: the courses file and its background map, together or one after the other (a file of the same
+  // name replaces the one before)
+  let got = [];
+  const take = async (list) => {
+    list = [...(list || [])].filter((f) => /\.(ocd|omap|xmap)$/i.test(f.name));
+    if (!list.length) return;
+    got = [...got.filter((g) => !list.some((f) => f.name === g.name)), ...list];
+    read = null; $("#sh-o-list").innerHTML = ""; $("#sh-o-go").disabled = true; note.textContent = "";
+    state.textContent = t("sh.ocad.reading", { f: got.map((f) => f.name).join(", ") });
+    try {
+      const C = await import("../tracer/circuits.js");
+      const r = await C.readCourseFiles(got);
+      for (const d of r.designs) d.nCtrl = C.controlCount(r.E.ev, d);
+      read = { ...r, C };
+      state.textContent = t("sh.ocad.info", { f: r.info.courses, map: r.info.map, format: r.info.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${r.info.version}`, scale: fmt(r.info.scale), n: r.designs.length, geo: r.info.geo || "—" });
+      drawList();
+    } catch (e) {
+      const f = got.map((x) => x.name).join(", ");
+      state.textContent = ["unreadable", "noCourses", "noGeo", "needMap"].includes(e.code) ? t(`sh.ocad.err.${e.code}`, { f, map: e.name || "?" }) : `${f} — ${e.message || e}`;
+    }
+  };
+  $("#sh-o-in").addEventListener("change", (e) => { take(e.target.files); e.target.value = ""; });
+  const drop = $("#sh-o-drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take(e.dataTransfer.files); });
+  $("#sh-o-cancel").addEventListener("click", () => { box.innerHTML = ""; });
+  $("#sh-o-go").addEventListener("click", async () => {
+    if (!read) return;
+    const pick = read.designs.map((d, i) => ({ d, i })).filter(({ i }) => $(`[data-o="${i}"]`)?.checked);
+    if (!pick.length) return (note.textContent = t("sh.ocad.none"));
+    if (!$("#sh-o-consent").checked) return (note.textContent = t("sh.e.consentNeeded"));
+    const byName = new Map(A.courses.map((c) => [nm(c.name), c]));
+    const fresh = pick.filter(({ d }) => !byName.has(nm(d.name))).length;
+    if (A.courses.length + fresh > 12) return (note.textContent = t("sh.ocad.max"));
+    $("#sh-o-go").disabled = true;
+    try {
+      let next = Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
+      const out = [];
+      for (let j = 0; j < pick.length; j++) {
+        const { d, i } = pick[j];
+        note.textContent = t("sh.ocad.busy", { i: j + 1, n: pick.length, name: d.name });
+        const old = byName.get(nm(d.name)), n = old ? old.n : next++;
+        const c = await read.C.circuitOf(read.E, d, 150);
+        if (c.blob.size > MAX_MAP) { $("#sh-o-go").disabled = false; note.textContent = t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) }); return; }
+        await api(`/${id}/map/${n}`, { method: "PUT", body: c.blob, type: "image/png", key: keyOf(id) });
+        out.push({ n, name: d.name.slice(0, 60), circuit: $(`[data-k="${i}"]`)?.value || old?.circuit || "", r: c.r,
+          map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls,
+          ...(old?.variants ? { variants: old.variants } : {}), ...(old?.exercises ? { exercises: old.exercises } : {}),
+          ...(read.E.ev.courses[d.id]?.kind === "score" ? { score: true } : {}) });
+      }
+      const courses = [...A.courses.filter((c) => !out.some((o) => o.n === c.n)), ...out].sort((a, b) => a.n - b.n);
+      await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
+      box.innerHTML = "";
+      onChange();
+    } catch (e) { $("#sh-o-go").disabled = false; note.textContent = errText(e); }
+  });
+  if (preset) take(preset);                                // the files dropped on the circuit editor
 }
 
 /** A circuit: its map, its georeference, its controls in order. */
@@ -336,7 +437,7 @@ async function editor(box, ctx) {
       <label class="field"><span>${t("sh.course.name")}</span><input id="sh-e-name" value="${st.name}" style="width:200px" maxlength="60"></label>
       ${circuits.length ? html`<label class="field"><span>${t("sh.course.circuit")}</span><select id="sh-e-circuit"><option value="">—</option>${circuits.map((c) => html`<option ${raw(c === st.circuit ? "selected" : "")}>${c}</option>`)}</select></label>` : ""}
       <label class="an-opt" title="${t("sh.score.hint")}"><input type="checkbox" id="sh-e-score" ${raw(course?.score ? "checked" : "")}> ${t("sh.score")}</label></div>
-    <label class="dropzone an-drop" id="sh-e-drop"><input type="file" id="sh-e-in" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
+    <label class="dropzone an-drop" id="sh-e-drop"><input type="file" id="sh-e-in" multiple hidden accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,.ocd,.omap,.xmap,image/*,application/pdf">
       <strong>${t("sh.e.drop")}</strong><span class="muted">${t("sh.e.drop.hint")}</span></label>
     ${phone.offered() ? html`<div class="an-cam-row">${phone.button("sh-e-phone")}<span class="muted">${t("ph.hint.any")}</span></div>` : ""}
     <div class="muted" id="sh-e-files" style="font-size:13px;margin:6px 0"></div>
@@ -404,6 +505,8 @@ async function editor(box, ctx) {
   labels(); side();
 
   async function take(list) {
+    const vec = [...list].find((f) => /\.(ocd|omap|xmap)$/i.test(f.name));
+    if (vec) { mv.destroy(); return ocadImport(box, ctx, list); }
     for (const f of list) {
       const low = f.name.toLowerCase();
       try {
@@ -424,7 +527,7 @@ async function editor(box, ctx) {
       } catch (e) { st.notes = [t(`an.err.${e.message}`, { f: f.name }) || f.name]; }
     }
     files();
-    if (st.image) { mv.setImage(st.image); await auto(); }
+    if (st.image) { mv.setImage(st.image); await auto(); } else side();     // a file refused said so in the panel (it was silent)
   }
   /** The circuit read automatically: the circles, the georeference, the controls in order. */
   async function auto() {
