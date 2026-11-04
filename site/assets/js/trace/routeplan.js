@@ -1,4 +1,4 @@
-// Route choices on the analyses' maps (a prototype, administrators only; 2026-10-24): the page's side of trace/routechoice.js
+// Route choices on the analyses' maps (a prototype, 2026-10-24; every account's since 2026-11-04): the page's side of trace/routechoice.js
 // — the worker that reads the map and searches the legs, the settings panel shared by « Analyse solo » and « Analyse
 // multi » (with the reading's progress, a warning when the reading looks wrong, the terrain's legend), the routes and the
 // decision map drawn over the map, the reference pace from a runner's own legs.

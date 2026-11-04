@@ -176,7 +176,7 @@ export function build(X) {
   // Coach
   // ======================================================================================================
   const COACH = [["carte", "Kartenanalyse"], ["solo", "Einzelanalyse"], ["multi", "Mit den anderen vergleichen"], ["cartes", "Meine Karten"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
-    ["jeux", "Spiele"], ["vma", "MAG"], ...(admin ? [["routes", "Berechnete Routen"]] : [])];     // (a prototype, for the administrators)
+    ["jeux", "Spiele"], ["vma", "MAG"], ["routes", "Berechnete Routen"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
@@ -270,12 +270,13 @@ export function build(X) {
             die maximale aerobe Geschwindigkeit aus einem halben Cooper-Test (6 Minuten) oder einem Cooper-Test (12 Minuten) – die Bahn im Stadion zählt, ebenso
             die letzte unvollständige Runde –, leitet daraus die Trainingstempi ab und schlägt kostenlose Apps für die Tests vor.</p>`)}`,
       routes: () => html`
-        ${slide("Coach · Test, Administratoren", "Die berechneten Routen", html`
-          <p>In beiden GPS-Analysen kann ein Administrator Ozimut für jede Teilstrecke die schnellsten Routen auf der Karte vorschlagen lassen,
-            mit Länge, Steigung und geschätzter Zeit – und mit demselben Modell die Route messen, die jeder Läufer genommen hat.
+        ${slide("Coach · Test", "Die berechneten Routen", html`
+          <p>In beiden GPS-Analysen schlägt Ozimut für jede Teilstrecke die schnellsten Routen auf der Karte vor,
+            mit Länge, Steigung und geschätzter Zeit – und misst mit demselben Modell die Route, die jeder Läufer genommen hat.
             In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und der Reiter „Routen“ links der Karte führt sie Teilstrecke für Teilstrecke auf (die Einstellungen stehen im Reiter „Berechnung“ rechts); in
             „${P("#/analyse-club", "Mit den anderen vergleichen")}“ die angezeigte Teilstrecke, mit der Liste der Läufer. Es ist ein Prototyp: Die Routen folgen
-            der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren.</p>`)}
+            der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren. Die Berechnung startet von selbst; man stoppt sie im Reiter „Berechnung“,
+            und der Veranstalter einer Kartenanalyse kann sie für seine Veranstaltung abschalten.</p>`)}
         ${slide("Coach · Test", "1. Die Karte anhand ihrer Farben lesen", html`
           <p>Die Karte ist ein Bild: Ozimut kennt nur ihre Farben. Jeder Punkt wird eingeordnet: Weiß (gut belaufbarer Wald), Gelb
             (offenes Gelände, mehr oder weniger licht), die drei Grüntöne nach ihrer Intensität, Oliv (Sperrgebiet) und die darübergedruckten „Druckfarben“ –

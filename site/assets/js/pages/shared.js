@@ -524,7 +524,7 @@ async function managePage(main, id, data, race) {
           <td><b>${c.name}</b>${c.circuit ? html` <span class="muted">· ${c.circuit}</span>` : ""}${c.score ? html` <span class="tag">${t("sh.score")}</span>` : ""}</td>
           <td class="r num">${c.controls.filter((p) => p.kind === "control").length}</td>
           <td class="r num">${len ? fmt(len / 1000, 1) : "—"}</td>
-          <td class="r num">${s ? s.traces : "…"}</td><td class="r num">${s ? s.solo : "…"}</td>
+          <td class="r num">${s ? html`${s.traces}${s.tests ? html` <span class="muted">${tn("sh.m.plusTests", s.tests)}</span>` : ""}` : "…"}</td><td class="r num">${s ? s.solo : "…"}</td>
           <td class="r sh-m-act"><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`; })}</tbody></table></div>
         <p class="hint">${t("sh.m.courses.hint")}</p>` : html`<p class="muted">${t("sh.m.courses.none")}</p>`}
       <label class="dropzone an-drop" id="sh-drop" style="margin-top:10px"><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
@@ -579,21 +579,23 @@ async function managePage(main, id, data, race) {
   function statsCard() {
     const box = $("#sh-m-stats");
     if (!stats) { box.innerHTML = html`<div class="card-body"><h2 class="sh-m-h">${t("sh.m.stats")}</h2><p class="muted">${t("misc.loading")}</p></div>`; return; }
-    const S = stats, admin = !!auth.session()?.admin, tests = S.courses.reduce((s, c) => s + c.tests, 0);
+    // an administrator's test traces (« Traces de test ») are counted apart: they are no runner's (owner, 2026-11-04: « I still see 0
+    // traces »)
+    const S = stats, tests = S.courses.reduce((s, c) => s + c.tests, 0);
     const tile = (label, value, sub = "") => html`<div class="tile"><div class="tile-label">${label}</div><div class="tile-value num">${value}</div>${sub ? html`<div class="tile-sub">${sub}</div>` : ""}</div>`;
     const day = (iso) => (iso ? fmtDate(String(iso).slice(0, 10), "short") : "—");
     box.innerHTML = html`<div class="card-body">
       <h2 class="sh-m-h">${t("sh.m.stats")}</h2>
       <div class="tiles tiles-compact sh-m-tiles">
         ${tile(t("sh.m.s.viewers"), S.viewers, S.viewers ? t("sh.m.s.viewers.sub", { n: S.recent, last: day(S.lastView) }) : "")}
-        ${tile(t("sh.m.s.runners"), S.runners, S.viewers ? t("sh.m.s.runners.sub", { p: Math.round((100 * S.runners) / Math.max(S.viewers, S.runners)) }) : S.lastTrace ? t("sh.m.s.last", { d: day(S.lastTrace) }) : "")}
+        ${tile(t("sh.m.s.runners"), S.runners, [S.viewers ? t("sh.m.s.runners.sub", { p: Math.round((100 * S.runners) / Math.max(S.viewers, S.runners)) }) : S.lastTrace ? t("sh.m.s.last", { d: day(S.lastTrace) }) : "", tests ? tn("sh.m.s.tests", tests) : ""].filter(Boolean).join(" · "))}
         ${tile(t("sh.m.s.solo"), S.soloOnly, t("sh.m.s.solo.sub", { n: S.solo }))}
         ${A.visitors ? tile(t("sh.m.s.guests"), S.guests) : ""}</div>
       ${S.courses.length ? html`<div class="table-wrap" style="margin-top:10px"><table class="data compact"><thead><tr><th>${t("sh.m.col.course")}</th>
           <th class="r" title="${t("sh.m.col.traces.tip")}">${t("sh.m.col.traces")}</th><th class="r">${t("sh.m.col.notes")}</th>${A.visitors ? html`<th class="r" title="${t("sh.m.col.vis.tip")}">${t("sh.m.col.vis")}</th>` : ""}
-          <th class="r" title="${t("sh.m.col.solo.tip")}">${t("sh.m.col.solo")}</th><th class="r" title="${t("sh.m.col.soloOnly.tip")}">${t("sh.m.col.soloOnly")}</th><th class="r">${t("sh.m.col.last")}</th>${admin && tests ? html`<th class="r">${t("sh.m.col.tests")}</th>` : ""}</tr></thead>
+          <th class="r" title="${t("sh.m.col.solo.tip")}">${t("sh.m.col.solo")}</th><th class="r" title="${t("sh.m.col.soloOnly.tip")}">${t("sh.m.col.soloOnly")}</th><th class="r">${t("sh.m.col.last")}</th>${tests ? html`<th class="r" title="${t("sh.m.col.tests.tip")}">${t("sh.m.col.tests")}</th>` : ""}</tr></thead>
         <tbody>${S.courses.map((c) => html`<tr><td>${c.name}</td><td class="r num">${c.traces}</td><td class="r num">${c.notes}</td>${A.visitors ? html`<td class="r num">${c.visitors}</td>` : ""}
-          <td class="r num">${c.solo}</td><td class="r num">${c.soloOnly}</td><td class="r num">${day(c.last)}</td>${admin && tests ? html`<td class="r num">${c.tests}</td>` : ""}</tr>`)}</tbody></table></div>` : ""}
+          <td class="r num">${c.solo}</td><td class="r num">${c.soloOnly}</td><td class="r num">${day(c.last)}</td>${tests ? html`<td class="r num">${c.tests}</td>` : ""}</tr>`)}</tbody></table></div>` : ""}
       <p class="hint">${t("sh.m.stats.note")}</p></div>`;
   }
   async function loadStats() {
@@ -1005,9 +1007,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
-  // the features the organisers switched (owner, 2026-11-04; api/analyses OPTS): the computed routes (the administrators always),
+  // the features the organisers switched (owner, 2026-11-04; api/analyses OPTS): the computed routes (every account's since the same
+  // evening, on by default; the administrators always),
   // adding a trace (the organisers always), comments, route choices, the 3D view, a headcam video, saving one's run in « Mes cartes »
-  const O = A.opts || {}, routesOn = admin || !!O.routes, canAdd = !!you.organiser || O.upload !== false, notesOn = O.notes !== false,
+  const O = A.opts || {}, routesOn = admin || O.routes !== false, canAdd = !!you.organiser || O.upload !== false, notesOn = O.notes !== false,
     variantsOn = O.variants !== false, view3dOn = O.view3d !== false, videoOn = O.video !== false, mymapsOn = O.mymaps !== false;
   if (!variantsOn && colourBy === "variant") colourBy = "runner";
   box.innerHTML = html`
@@ -1704,7 +1707,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
 
   // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24): the leg shown's
   // fastest routes on the map as read, each runner's own route measured on the same model
-  const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: routesOn && (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
+  const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: routesOn && (() => { try { return localStorage.getItem("ocn.rc.on") !== "0"; } catch (e) { return true; } })(),
     plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", prog: null, warn: "", dem: null, info: null,
     decOn: RC.decisionOn(), dec: null, decAsk: "", calib: null, calibKey: "", calibP: null,
     vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only

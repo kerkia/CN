@@ -179,10 +179,10 @@ export async function render(main, { query = {}, route } = {}) {
     } catch (e) { orgaErr = "an.orga.err"; }
   }
   const orgaRace = orga?.A?.kind === "race" && orga.A.race ? orga.A.race : null;
-  // the organisers' switches on their map (api/analyses OPTS): the computed routes (the administrators always), the 3D view,
-  // saving the run in « Mes cartes »
+  // the organisers' switches on their map (api/analyses OPTS): the computed routes (every account's since 2026-11-04, on by default;
+  // the administrators always), the 3D view, saving the run in « Mes cartes »
   const orgaOpt = (k, d) => (orgaMode && orga ? (typeof orga.A.opts?.[k] === "boolean" ? orga.A.opts[k] : d) : true);
-  const routesOk = !!me?.admin || (orgaMode && orgaOpt("routes", false));
+  const routesOk = !!me?.admin || orgaOpt("routes", true);
   /** A replay on the organiser's map counted for its organisers (once a visit and circuit; never who: api/analyses stats). */
   const soloSeen = () => {
     if (!orgaMode || !orga || orga.organiser) return;
@@ -2210,7 +2210,7 @@ export async function render(main, { query = {}, route } = {}) {
   // each leg's fastest routes on the map as read, the route the runner took measured on the same model
   const rcs = { s: RC.loadSettings(), mapSet: false, pic: null, picOn: false, plan: null, planFor: "", planMap: null, dem: null, info: null,
     routes: [], mine: [], auto: null, token: 0, status: "", prog: null, warn: "", decOn: RC.decisionOn(), dec: null, decAsk: "",
-    on: routesOk && (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
+    on: routesOk && (() => { try { return localStorage.getItem("ocn.rc.on") !== "0"; } catch (e) { return true; } })() };
   const rcPace = () => RC.paceOf(rcs.s, rcs.auto);
   const rcStatus = (text, frac = null) => { rcs.status = text; rcs.prog = frac; RC.setStatus(text, frac); rcBusyPane(); };
   /** While the routes are computed, « Itinéraires » says so (owner, 2026-11-01: it stayed empty a minute): what is done now,

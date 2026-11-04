@@ -171,7 +171,7 @@ export function build(X) {
   // Coach
   // ======================================================================================================
   const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
-    ["jeux", "Games"], ["vma", "MAS"], ...(admin ? [["routes", "Computed routes"]] : [])];     // (a prototype, for the administrators)
+    ["jeux", "Games"], ["vma", "MAS"], ["routes", "Computed routes"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
@@ -262,11 +262,12 @@ export function build(X) {
             the maximal aerobic speed from a half-Cooper (6 minutes) or a Cooper (12 minutes) — the track's lane counts, as does the last incomplete lap —,
             gives the training paces it implies, and suggests free apps to run the tests.</p>`)}`,
       routes: () => html`
-        ${slide("Coach · trial, administrators", "Computed routes", html`
-          <p>In both GPS analyses, an administrator can have Ozimut suggest, for each leg, the fastest routes on the map, with their length, climb and
-            an estimated time — and measure each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
+        ${slide("Coach · trial", "Computed routes", html`
+          <p>In both GPS analyses, Ozimut suggests, for each leg, the fastest routes on the map, with their length, climb and
+            an estimated time — and measures each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
             computed and the "Routes" tab, left of the map, lists them leg by leg (the settings are in the "Compute" tab, on the right); in “${P("#/analyse-club", "Compare with the other runners")}”, the leg shown, with the list of runners.
-            It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong.</p>`)}
+            It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong. The computing starts by itself; it is stopped in
+            the "Compute" tab, and the organiser of a map analysis can switch it off for their event.</p>`)}
         ${slide("Coach · trial", "1. Reading the map by its colours", html`
           <p>The map is an image: Ozimut knows only its colours. Each pixel is classed: white (runnable forest), yellow (open land, lighter or
             darker), the three greens by their depth, olive (out of bounds), and the "inks" printed over them — black, grey, brown, blue and the

@@ -1611,12 +1611,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   (on; off: « Analyse solo » on the organiser's map refused, `an.orga.closed`, and the analysis left out of tile 2's picker — summary
   `solo` "0"), `mymaps` (on: « Enregistrer dans Mes cartes » in Solo's orga mode and, new, in the multi replay for one's own trace,
   `trace/mymapsave.js` with the map as stored), `notes` (on; off: comments neither shown nor written, PATCH note 403), `variants` (on:
-  the « Variantes » tab and colouring), `view3d` (on), `video` (on), `routes` (off: the computed routes for the runners; administrators
-  always). The server enforces upload, notes and drafts; the others are the pages'. **Counts** (`GET …/stats`, organisers only, numbers
+  the « Variantes » tab and colouring), `view3d` (on), `video` (on), `routes` (on since the same evening — the computed routes, every
+  account's, below; administrators always; `rv` marks a record whose `routes` was saved after that change, the older `routes: false`
+  being the old default and ignored). The server enforces upload, notes and drafts; the others are the pages'. **Counts** (`GET …/stats`, organisers only, numbers
   only): R2 `analyses/<id>/view-<uid>.json` (an account's GET of the analysis, not an organiser's nor Solo's `?for=solo`; first/last
   day and days in custom metadata, written once a day), `solo-<n>-<uid>.json` (`POST …/solo/<n>`, sent once a visit by Solo's orga mode
   when the playback starts), `gview-<day>.json` (visitors without an account, a count); traces' custom metadata `note: "1"` from then
-  on (comments counted from 2026-11-04). Removed with the analysis, the circuit and the account (`api/account/delete.js`); the privacy
+  on (comments counted from 2026-11-04). An administrator's test traces are counted apart (« +N de test », a « Tests » column), never
+  as runners. Removed with the analysis, the circuit and the account (`api/account/delete.js`); the privacy
   page says so.
 - **« Analyse multi » is no longer said** (owner, 2026-11-04), in any language: what an organiser opens for an event and the
   runners add their trace to is its « analyse de carte » (map analysis, Kartenanalyse, análisis de mapa; Orga's page « Analyses de
@@ -2124,7 +2126,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   with synthetic traces on the reel's invented map (scratch `mkmulti.mjs`, `mkrace.mjs`: four accounts, a route variant, a
   mistake loop, traces time-warped to a local race's published splits).
 - **Computed route choices** (owner, 2026-10-24: « the best routes for each control, with time and climb »; a prototype,
-  **administrators only**: the box « Itinéraires calculés » under « Affichage » of « Analyse solo »'s playback and of « Analyse
+  administrators only until 2026-11-04, **every account's since then, computing on by default** — owner: « enable computed routes for
+  all, on by default »; `ocn.rc.on` "0" alone turns it off; an organiser's analysis may switch it off, `opts.routes`; before: the box « Itinéraires calculés » under « Affichage » of « Analyse solo »'s playback and of « Analyse
   multi »'s right panel, `me.admin`): `trace/routechoice.js` (pure, run in the worker `trace/routeworker.js`), `trace/routeplan.js`
   (the planner, the settings panel shared by both pages, the routes drawn, `autoPace`, `nearestRoute`). The map is read **by its
   colours only** (no vector map in the analyses): areas (white, the two yellows, three greens by depth, olive) and inks (purple,

@@ -174,7 +174,7 @@ export function build(X) {
   // Coach
   // ======================================================================================================
   const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Comparar con los demás corredores"], ["cartes", "Mis mapas"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
-    ["jeux", "Juegos"], ["vma", "VAM"], ...(admin ? [["routes", "Rutas calculadas"]] : [])];     // (a prototype, for the administrators)
+    ["jeux", "Juegos"], ["vma", "VAM"], ["routes", "Rutas calculadas"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
@@ -267,12 +267,13 @@ export function build(X) {
             velocidad aeróbica máxima a partir de un medio Cooper (6 minutos) o de un Cooper (12 minutos) —la calle de la pista cuenta, igual que la última
             vuelta incompleta—, deduce de ella los ritmos de entrenamiento y propone aplicaciones gratuitas para hacer los tests.</p>`)}`,
       routes: () => html`
-        ${slide("Coach · prueba, administradores", "Las rutas calculadas", html`
-          <p>En los dos análisis GPS, un administrador puede pedir a Ozimut que proponga, para cada tramo, las rutas más rápidas sobre el mapa,
-            con su longitud, su desnivel y un tiempo estimado, y que mida con el mismo modelo la ruta que tomó cada corredor.
+        ${slide("Coach · prueba", "Las rutas calculadas", html`
+          <p>En los dos análisis GPS, Ozimut propone, para cada tramo, las rutas más rápidas sobre el mapa,
+            con su longitud, su desnivel y un tiempo estimado, y mide con el mismo modelo la ruta que tomó cada corredor.
             En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y la pestaña «Rutas», a la izquierda del mapa, los recoge tramo a tramo (los ajustes están en la pestaña «Cálculo», a la derecha); en
             «${P("#/analyse-club", "Comparar con los demás corredores")}», el tramo mostrado, con la lista de corredores. Es un prototipo: las rutas siguen
-            el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse.</p>`)}
+            el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse. El cálculo arranca solo; se detiene en la pestaña «Cálculo», y el organizador
+            de un análisis de mapa puede cerrarlo para su evento.</p>`)}
         ${slide("Coach · prueba", "1. Leer el mapa por sus colores", html`
           <p>El mapa es una imagen: Ozimut solo conoce sus colores. Cada punto se clasifica: el blanco (bosque por el que se corre bien), el amarillo
             (terreno abierto, más o menos claro), los tres verdes según su intensidad, el oliva (zona prohibida) y las «tintas» impresas encima: el

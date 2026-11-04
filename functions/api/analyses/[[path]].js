@@ -59,9 +59,12 @@ const testUid = (account, k) => TEST_BASE + account * 1000 + k;
 const testOwner = (uid) => (uid > TEST_BASE ? Math.floor((uid - TEST_BASE) / 1000) : null);
 // the runners' features an organiser switches (owner, 2026-11-04), and their defaults: replaying alone on the organiser's map,
 // adding one's trace, saving one's run in « Mes cartes », comments, the route choices, the 3D view, a headcam video, the
-// computed routes (a prototype: off unless the organiser opens them; the administrators always see them)
-const OPTS = { solo: true, upload: true, mymaps: true, notes: true, variants: true, view3d: true, video: true, routes: false };
-const optsOf = (m) => Object.fromEntries(Object.entries(OPTS).map(([k, d]) => [k, typeof m?.opts?.[k] === "boolean" ? m.opts[k] : d]));
+// computed routes (every account's and on by default since the same evening, owner: « enable computed routes for all, on by default »;
+// the administrators always see them). `rv` marks a record whose `routes` was set after that: before it every switch saved wrote
+// the old default (off), which is not the organiser's choice
+const OPTS = { solo: true, upload: true, mymaps: true, notes: true, variants: true, view3d: true, video: true, routes: true };
+const optsOf = (m) => Object.fromEntries(Object.entries(OPTS).map(([k, d]) => [k,
+  typeof m?.opts?.[k] === "boolean" && (k !== "routes" || m.opts.rv) ? m.opts[k] : d]));
 const parisDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
 const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
 
@@ -394,7 +397,7 @@ const forUsers = withUser(async (ctx, user) => {
       if (b.draft != null) { if (b.draft) meta.draft = true; else delete meta.draft; }
       if (b.opts != null) {
         if (typeof b.opts !== "object" || Array.isArray(b.opts)) return json({ error: "fields" }, 400);
-        const o = optsOf(meta);
+        const o = { ...optsOf(meta), rv: 1 };
         for (const k of Object.keys(OPTS)) if (typeof b.opts[k] === "boolean") o[k] = b.opts[k];
         meta.opts = o;
       }

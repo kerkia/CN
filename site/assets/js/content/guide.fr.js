@@ -175,7 +175,7 @@ export function build(X) {
   // Coach
   // ======================================================================================================
   const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Comparer avec les autres coureurs"], ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
-    ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
+    ["jeux", "Jeux"], ["vma", "VMA"], ["routes", "Itinéraires calculés"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
@@ -268,12 +268,13 @@ export function build(X) {
             maximale aérobie d'après un demi-Cooper (6 minutes) ou un Cooper (12 minutes) — le couloir de la piste compte, comme le dernier tour incomplet —,
             en déduit les allures d'entraînement, et propose des applications gratuites pour faire les tests.</p>`)}`,
       routes: () => html`
-        ${slide("Coach · essai, administrateurs", "Les itinéraires calculés", html`
-          <p>Dans les deux analyses GPS, un administrateur peut faire proposer par Ozimut, pour chaque inter-poste, les itinéraires les plus rapides
-            sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesurer sur le même modèle l'itinéraire que chaque coureur a pris.
+        ${slide("Coach · essai", "Les itinéraires calculés", html`
+          <p>Dans les deux analyses GPS, Ozimut propose, pour chaque inter-poste, les itinéraires les plus rapides
+            sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesure sur le même modèle l'itinéraire que chaque coureur a pris.
             Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et l'onglet « Itinéraires », à gauche de la carte, les reprend poste par poste (les réglages sont dans l'onglet « Calcul », à droite) ; dans
             « ${P("#/analyse-club", "Comparer avec les autres coureurs")} », l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
-            la carte telle qu'Ozimut la lit, et cette lecture peut se tromper.</p>`)}
+            la carte telle qu'Ozimut la lit, et cette lecture peut se tromper. Le calcul se lance de lui-même ; on l'arrête dans l'onglet « Calcul », et l'organisateur
+            d'une analyse de carte peut le fermer pour son événement.</p>`)}
         ${slide("Coach · essai", "1. Lire la carte d'après ses couleurs", html`
           <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
             (terrain découvert, plus ou moins clair), les trois verts selon leur intensité, l'olive (zone interdite), et les « encres » posées par-dessus —
