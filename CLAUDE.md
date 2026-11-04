@@ -255,13 +255,6 @@ Arena, Coach and Orga's « Les outils » are `content/guide.*.js` (`arena`, `coa
 tabs (CN officiel, Méthode Ozimut, Coureurs et clubs, and « L'étude »), Orga's « Le tracé » the methods' `tracerDoc`. A link of before
 naming only `?onglet=` is sent to its module by `app.docAddress` (`DOC_TAB_MODULE`; the GPS analyses are Coach's).
 
-**The shared map analyses are the administrators' for now** (owner, 2026-11-04): Coach's « Comparer avec les autres coureurs » and
-« Analyser seul ma course » on an organiser's map, Orga's « Analyses de carte » (`app.ADMIN_ROUTES`: `analysisClub`, `analysisRace`,
-`analysisOrga`, `orgAnalyses`; out of the menus and tiles, their addresses lead others to the modules page), the Tracer's « Publier
-vers l'analyse de carte » (`pro`), « Analyse de carte »'s first two tiles (`mapanalysis.js`: the own-map tiles alone, `ma.lede.own`),
-and their chapters in the guides (`admin`). « Analyse solo » on one's own map stays everyone's. Local test as a regular account:
-launch config `pages-dev-user-4156` (8793, wrangler 4.156.2, ADMIN_EMAILS overridden).
-
 **Three profiles**: a **visitor without an account** (« Entrer sans compte »: `auth.guest()`, `localStorage ocn.guest`; the
 router keeps them to `GUEST_ROUTES`: Arena, Coach — Analyse multi only where its organiser opened it to visitors —, Stats' runner, ranking and races), a **signed-in account**,
 and a signed-in account **with Orga** (`users.orga`, migration 0016 — at registration, in Réglages › Modules, or « Activer Orga »
@@ -341,27 +334,40 @@ there offers (`hub.js ARENA_STEPS`: agenda, results, live, split analysis — th
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
 provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.
-**Coach**: **« Analyse de carte »** (`#/analyse-carte`, route `mapAnalysis`, `pages/mapanalysis.js`; owner, 2026-11-01: « grouping
-solo and multi analyses into one workflow ») is Coach's one menu entry for the GPS analyses: four tiles in two rows by who gives
-the map — « L'organisateur a publié la carte et les circuits »: 1. « Comparer avec les autres coureurs » (the multi analysis,
-`#/analyse-competition?id=` / `#/analyse-club?id=`), 2. « Analyser seul ma course » (**« Analyse solo » on the organiser's map**,
-route `analysisOrga`, `#/analyse-orga?id=&c=`), both for an account; « Vous avez votre propre carte »: 3. « Une compétition »
-(`#/analyse?course=`, the published times beside the trace), 4. « Un entraînement ou une sortie » (`#/analyse-solo`). Each tile
-says what one needs (`ma.<tile>.need`). Tiles 1-3 open on a picker (`?choix=multi|orga|course`): a list beside the country's map
-(`agendamap.js`, as the Agenda; a computer only), the event chosen in a card with its way in (`?id=`); 1-2 list the published
-events, competitions of the site's country and every training, a password's event asked in the card (the key in
-`sessionStorage ocn.an.key.<id>`, as Multi's); 3 the races of « Résultats » (`raceFilters`), a race whose organiser published its
-map tagged and its card offering tile 2. An event's place: its race's `pos`, else the middle of its first circuit's map
+**Coach**: **« Analyse de carte »** (`#/analyse-carte`, route `mapAnalysis`, `pages/mapanalysis.js`) is Coach's one menu entry for
+the GPS analyses. **Since 2026-11-04 (owner, second design: « the first thing the page must show is the list of open events »)** it
+opens on the events whose organisers opened a map analysis (a circuit at least; competitions and trainings, `/api/analyses`, `/v` for
+visitors): filters Période (3 mois | 12 mois, the default | Tout; `?per=`), the site's country (`country.hint`; an analysis's `cc` — a
+competition's race's country, a training's creator's site country sent at creation, `country`; none = every country's list), Type
+(`?type=race|club`), « Club organisateur » (`?club=`, the analysis's `orgName`: a competition's race's `org`, a training's creator's
+club as the results write it, `_lib/club.js clubLabel`), a search (`?q=`); columns date, event, type, club, circuits, runners (traces
+shared, test traces apart); the country's map beside it (`agendamap.js`, a computer only); **a thumbnail** of the first circuit's map
+under the mouse (`.ma-pop`) and in the chosen event's card: `analyses/<id>/thumb-<n>` (~480 px, the course drawn, WebP ≤ 400 KB;
+`GET|PUT /api/analyses/<id>/thumb/<n>`, the visitors' `/v/<id>/thumb/<n>`), made by the organisers' browser — `shared.js
+courseThumb`, the organisers' page making those missing (`thumbsDue`, from the analysis's `thumbs`) — and dropped by the server when a
+circuit's map or controls change; the list's `thumb` (the first circuit with one), `runners`, `upload`, `cc`, `orgName` come from one
+listing of `analyses/` (`dataCounts`). The chosen event (`?id=`) offers three ways in: « Voir avec tous les coureurs » (the shared
+analysis), « Ajouter ma trace et comparer » (the same page with `ajout=1`: its track drop opens at once, `offerTrack`, a track handed
+over taken by it), « Analyser ma trace seule sur cette carte » (**« Analyse solo » on the organiser's map**, route `analysisOrga`,
+`#/analyse-orga?id=&c=`) — each as the organisers' switches `upload` / `solo` allow, the last two for an account; a password's event
+asked in the card (the key in `sessionStorage ocn.an.key.<id>`). « Ajouter mon propre événement » (head) opens `#/analyse-solo`. The
+four tiles of 2026-11-01 are gone, « Une compétition » with them (`?choix=` addresses open the list; `#/analyse?course=` stays
+Arena's). **The race a track seems to be of** (`analysis.js` `findLikely`, `likelyBlock`; « Analyse solo » on one's own map): a track
+just dropped whose day and place fit a race of « Résultats » (one the account is listed in, or its `pos` within 40 km) or an event
+with an opened map analysis (its `pos` within 25 km) is offered in the files card: the race's published times (the files handed over
+to `#/analyse?course=`, `pwa.handOver`; that page then matches the runner in that race only, `matchRace`'s pinned race), the event
+with the others (`ajout=1`, the track handed over) or alone on the organiser's map. The shared map analyses were the administrators'
+for a few hours on 2026-11-04 (cdc8cf9), every account's again since. An event's place: its race's `pos`, else the middle of its first circuit's map
 (`/api/analyses` list `pos`, the summary's `centreOf` from the circuit's `geo`; an analysis saved before has its summary written
-again at the first list). The organiser's mode of `analysis.js` (`orgaMode`, `perso` true,
+again at the first list, its `cc` and `orgName` too). The organiser's mode of `analysis.js` (`orgaMode`, `perso` true,
 `pageMode` « orga », IndexedDB key `files:orga`; a competition's analysis reads its race's published results as tile 3 does —
 `withTimes`, `loadOrgaRace`: the runner the address names, else the account's row, else the run that fits the trace, « — » for
 none; the organiser's controls matched to the class's sequence by `published.matchControls`, the geometry kept and the clock
 offset fitted on the split times —, a training's is read on the trace alone): the circuit chosen above the files, its stored map (`/api/analyses/<id>/map/<n>`,
 never re-encoded), its controls in order and its `geo` (`files.orga`: `fitFromGeo`, nothing read on the map, `passesInOrder`);
-only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every analysis has « ‹ <its tile> » on top (`ma-crumb`,
+only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every analysis has « ‹ Analyse de carte » on top (`ma-crumb`,
 `mapanalysis.backLine`; hidden during the playback and in full window); the runners' lists of Multi and `coachtabs.js` are gone
-(`#/analyse-club` / `#/analyse-competition` without `id` lead to the picker). « Définitions de postes »
+(`#/analyse-club` / `#/analyse-competition` without `id` lead to the list). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`; it and « Symboles de carte » shown only to the accounts whose last name
 is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
 the home page's Coach section, its picture and Tarifs line, the modules page, the tiles, Coach's documentation — have a « .lim »

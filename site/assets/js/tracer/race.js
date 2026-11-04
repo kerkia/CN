@@ -18,6 +18,7 @@ import { ctrlName, csv } from "./reports.js";
 import { where } from "./ribbon-data.js";
 import { t, tn, locale } from "./lang.js";
 import { provDir, sees } from "../auth.js";
+import { current as siteCountry } from "../country.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -546,7 +547,7 @@ export async function publish(E) {
   try {
     E.status(t("trc.race.pubCreating"), "busy");
     const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: E.meta.title, date: E.meta.date || today, vis: "public", via: "tracer" }
-      : { kind: "club", title: E.meta.title, date: E.meta.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer" } });
+      : { kind: "club", title: E.meta.title, date: E.meta.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer", country: siteCountry() } });
     const aid = created.id;
     const cur = await call(`/${aid}`);
     const courses = (cur.analysis?.courses || []).filter((c) => !pick.some((_, j) => c.n === j));

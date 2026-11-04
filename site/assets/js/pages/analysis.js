@@ -18,7 +18,7 @@
 // Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
 import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
-import { backLine } from "./mapanalysis.js";
+import { backLine, multiHref, orgaHref } from "./mapanalysis.js";
 import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
 import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock, pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
@@ -40,7 +40,7 @@ import { parisOffsetMs, matchControls } from "../trace/published.js";
 import { readZip, parseKml, fitFromKml, kmlCorners, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse } from "../trace/georef.js";
 import { readMap, isImage } from "../trace/mapfile.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab, setTabParams } from "../fullwin.js";
-import { takeInbox } from "../pwa.js";
+import { takeInbox, handOver } from "../pwa.js";
 import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
 import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
@@ -199,7 +199,7 @@ export async function render(main, { query = {}, route } = {}) {
   // the race's list narrowed by the lists of races' filters (racefilters.js, as on Résultats); the address is the race's own
   const RF = perso || !here.length ? null : await raceFilters({ id: "anf", races: here, address: false, onChange: () => pickers() });
   main.innerHTML = html`
-    ${backLine(orgaMode ? "orga" : perso ? "" : "course")}
+    ${backLine()}
     <div class="page-head"><div><h1>${t(titleKey)}</h1><p class="lede">${t(orgaMode ? "an.orga.lede" : perso ? "an.perso.lede" : "an.lede")}</p></div></div>
     <ol class="dep-steps" id="an-steps"></ol>
     <div class="an-brief" id="an-brief" hidden></div>
@@ -228,7 +228,7 @@ export async function render(main, { query = {}, route } = {}) {
     return { title: t("an.title") };
   }
   if (orgaMode && !orga) {
-    $("#an-pick").innerHTML = html`<div class="empty">${t(orgaErr)} <a href="#/analyse-carte?choix=orga">${t("an.orga.back")}</a></div>`;
+    $("#an-pick").innerHTML = html`<div class="empty">${t(orgaErr)} <a href="#/analyse-carte">${t("an.orga.back")}</a></div>`;
     $("#an-files").hidden = true;
     return { title: t(titleKey) };
   }
@@ -329,6 +329,7 @@ export async function render(main, { query = {}, route } = {}) {
     return day !== race.date_iso ? t("an.st.otherDay", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }) : t("an.st.otherRunner", { r: runner()?.name || "" });
   }
   let matchedNote = "";
+  let likely = null;                                       // « Analyse solo »: the race or the map analysis a track seems to be of
 
   // ---- 1. the race, the circuit, the runner
   async function loadRace() {
@@ -458,6 +459,7 @@ export async function render(main, { query = {}, route } = {}) {
       <table class="data compact an-filelist"><tbody>
         ${row("map", files.map)}${row("trace", files.trace)}${orgaMode ? "" : html`${row("geo", files.geo || files.world, files.world && files.prj ? html` <span class="muted">+ ${files.prj.name}</span>` : "")}${row("iof", files.iof, courseSel)}`}${files.vector ? row("vector", files.vector) : ""}
       </tbody></table>
+      ${likelyBlock()}
       ${drawBlock()}
       ${cutBlock()}
       ${genBlock()}
@@ -486,6 +488,58 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-draw-go")?.addEventListener("click", () => startDraw());
     $("#an-draw-gpx")?.addEventListener("click", () => downloadDrawn());
     bindCut();
+    bindLikely();
+  }
+  // ---- the race a track seems to be of (owner, 2026-11-04: « Une compétition » left « Analyse de carte »'s first page): on one's own
+  // map, a track whose day and place fit a race of « Résultats » — one the account is listed in, or within 40 km — or an event
+  // whose organiser opened a map analysis — its map within 25 km — is offered there: the race with its published times
+  // (#/analyse, the files handed over), the event with the other runners or alone on the organiser's map (the track handed over)
+  const distKm = (a, b) => {
+    const k = Math.PI / 180, dLat = (b[0] - a[0]) * k, dLon = (b[1] - a[1]) * k;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * k) * Math.cos(b[0] * k) * Math.sin(dLon / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
+  };
+  async function findLikely(tr) {
+    likely = null;
+    const day = parisDay(tr.ms0), here = [tr.lat0, tr.lon0];
+    const all = idx ? races : ((await getProv("index.json").catch(() => null))?.races || []).filter((r) => r.docs && !r.soon);   // « Analyse solo » reads none at first
+    const rcs = all.filter((r) => r.date_iso === day).map((r) => ({ r, d: r.pos ? distKm(here, r.pos) : null, mine: !!me?.lic && (r.lics || []).includes(me.lic) }))
+      .filter((x) => x.mine || (x.d != null && x.d <= 40)).sort((a, b) => (b.mine - a.mine) || (a.d ?? 99) - (b.d ?? 99)).slice(0, 2);
+    let ans = [];
+    try {
+      const res = await fetch(`api/analyses${me ? "" : "/v"}`, { credentials: "same-origin" });
+      const d = res.ok ? await res.json() : null;
+      ans = (d?.analyses || []).filter((a) => a.date === day && a.courses > 0 && !a.draft && a.pos && distKm(here, a.pos) <= 25)
+        .sort((a, b) => distKm(here, a.pos) - distKm(here, b.pos)).slice(0, 2);
+    } catch (e) { /* the races alone */ }
+    if (traceFull !== tr) return;                          // another track since
+    if (rcs.length || ans.length) likely = { races: rcs.map((x) => x.r), analyses: ans };
+    filesCard();
+  }
+  function likelyBlock() {
+    if (!likely || !perso || orgaMode) return "";
+    const rows = [
+      ...likely.analyses.map((a) => html`<div class="an-likely-row"><div><b>${a.title}</b> <span class="muted">· ${fmtDate(a.date)} · ${t("an.likely.map")}</span></div>
+        <div class="an-likely-acts">${me && a.upload !== false ? html`<button type="button" class="btn btn-sm btn-primary" data-likely-multi="${a.id}">${t("ma.go.add")}</button>` : ""}
+          ${me && a.solo !== false ? html`<button type="button" class="btn btn-sm" data-likely-solo="${a.id}">${t("an.likely.orgaMap")}</button>` : ""}
+          ${!me ? html`<a class="btn btn-sm" href="${multiHref(a)}">${t("ma.go.view")}</a>` : ""}</div></div>`),
+      ...likely.races.filter((r) => !likely.analyses.some((a) => a.race === r.key)).map((r) => html`<div class="an-likely-row"><div><b>${r.name}</b> <span class="muted">· ${[fmtDate(r.date_iso), r.place].filter(Boolean).join(" · ")} · ${t(r.splits ? "an.likely.splits" : "an.likely.results")}</span></div>
+        <div class="an-likely-acts"><button type="button" class="btn btn-sm btn-primary" data-likely-race="${r.key}">${t("an.likely.times")}</button></div></div>`),
+    ];
+    if (!rows.length) return "";
+    return html`<div class="notice an-likely"><p class="an-likely-h"><b>${t("an.likely.title")}</b>
+      <button type="button" class="btn btn-sm an-likely-x" id="an-likely-x" title="${t("an.likely.dismiss")}" aria-label="${t("an.likely.dismiss")}">×</button></p>${rows}</div>`;
+  }
+  function bindLikely() {
+    $("#an-likely-x")?.addEventListener("click", () => { likely = null; filesCard(); });
+    const all = () => Object.values(files).map((f) => f?.file).filter(Boolean);
+    const traceFile = () => (files.trace?.file ? [files.trace.file] : []);
+    $$("[data-likely-race]").forEach((b) => b.addEventListener("click", () => handOver([...new Set(all())], `#/analyse?course=${encodeURIComponent(b.dataset.likelyRace)}`)));
+    $$("[data-likely-multi]").forEach((b) => b.addEventListener("click", () => {
+      const a = likely.analyses.find((x) => x.id === b.dataset.likelyMulti);
+      handOver(traceFile(), multiHref(a, true));
+    }));
+    $$("[data-likely-solo]").forEach((b) => b.addEventListener("click", () => handOver(traceFile(), orgaHref(b.dataset.likelySolo))));
   }
   // ---- « Couper la trace » (owner, 2026-11-01, after QuickRoute): the trace's start and end left out — a warm-up, the walk
   // back — kept per trace on this device (`ocn.an.cut.<the whole trace's signature>`: seconds from its first point); the part
@@ -733,6 +787,7 @@ export async function render(main, { query = {}, route } = {}) {
       if (await matchRace() && files.trace) files.trace.note = race?.date_iso && parisDay(track.ms0) !== race.date_iso ? t("an.date.diff", { d1: fmtDate(parisDay(track.ms0)), d2: fmtDate(race.date_iso) }) : "";
     }
     if (newTrace && traceFull) { cadence(traceFull); track = withCut(traceFull); }
+    if (newTrace && perso && !orgaMode && remember && traceFull && !traceFull.drawn) findLikely(traceFull);
     if (newTrace && orgaMode && remember) { if (withTimes && ri < 0) { pickOrgaRunner(null); pickers(); } orgaGo = true; }                    // a trace just dropped: straight to its playback   // once the race is known (a VTT race: pedal turns)
     filesCard();
     setup();
@@ -745,8 +800,12 @@ export async function render(main, { query = {}, route } = {}) {
   async function matchRace() {
     if (perso || !track || timesApply()) return false;
     const day = parisDay(track.ms0), t0 = traceStartS(), sameDay = races.filter((r) => r.date_iso === day);
+    // the race chosen first, then the day's others — none when the address names it (« Analyse solo » handed the files over to it)
+    const pinned = sameDay.filter((r) => r.key === key);
     let best = null;
-    for (const rc of sameDay) {
+    for (const pool of !pinned.length ? [sameDay] : query.course === key ? [pinned] : [pinned, sameDay.filter((r) => r.key !== key)]) {
+    if (best) break;
+    for (const rc of pool) {
       let data = null;
       try { data = await getProv(`${encodeURIComponent(rc.key)}.json`); } catch (e) { continue; }
       // a runner's start from any list of the race (liveresultat's gives it when the organiser's does not)
@@ -761,7 +820,8 @@ export async function render(main, { query = {}, route } = {}) {
         if (score != null && (!best || score < best.score)) best = { key: rc.key, name: x.name, score, race: rc.name };
       }
     }
-    if (!best && sameDay.length) { const rc = sameDay.find((r) => (r.lics || []).includes(me?.lic)) || sameDay[0]; best = { key: rc.key, name: null, race: rc.name }; }
+    }
+    if (!best && sameDay.length) { const rc = pinned[0] || sameDay.find((r) => (r.lics || []).includes(me?.lic)) || sameDay[0]; best = { key: rc.key, name: null, race: rc.name }; }
     if (!best) return false;
     key = best.key; query = best.name ? { r: best.name } : {};
     await loadRace(); pickers();

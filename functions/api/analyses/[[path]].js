@@ -2,6 +2,8 @@
 // georeferences, controls) and the runners' own GPS traces, kept in R2 (bucket cn-state, binding BUCKET):
 //   analyses-meta/<id>.json                — the analysis (its summary also in the object's custom metadata: one list)
 //   analyses/<id>/map-<n>                  — a circuit's map image
+//   analyses/<id>/thumb-<n>                — its thumbnail (~480 px, the course drawn; made by the organiser's browser), for
+//                                            « Analyse de carte »'s list (owner, 2026-11-04)
 //   analyses/<id>/trace-<n>-<uid>.json     — one account's trace on circuit n: positions and times only, cropped to
 //                                            the map by the browser; the name and licence are the account's
 //   analyses/<id>/view-<uid>.json          — an account opened the analysis (not its organisers): its first and last day and
@@ -30,6 +32,7 @@
 //   DELETE /api/analyses/<id>                          the organiser: the analysis, its maps and traces
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
+//   GET|PUT /api/analyses/<id>/thumb/<n>               its thumbnail (PUT: the organiser, an image of 400 KB at most)
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
 //   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment and visitors' consent: { note?, visitors? }
 //   GET    /api/analyses/v[/<id>[/map/<n> | /traces/<n>]]   visitors without an account (owner, 2026-11-02, after RouteGadget):
@@ -45,12 +48,13 @@
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
-import { clubOf, findRace, orgCode, organises } from "../../_lib/club.js";
+import { clubOf, clubLabel, findRace, orgCode, organises } from "../../_lib/club.js";
 
 const META = "analyses-meta/";
 const DATA = "analyses/";
 const KINDS = ["club", "race"];
 const VIS = ["public", "club", "password"];
+const MAX_THUMB = 400 * 1024;
 const MAX_MAP = 80 * 1024 * 1024, MAX_TRACE = 3 * 1024 * 1024, MAX_POINTS = 40000;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -79,8 +83,10 @@ async function unlockKey(env, meta, uid) {
 }
 
 const VIA = ["list", "form", "tracer"];
+// `cc` the event's country (a competition's, else its creator's site country), `orgName` its organising club as written
+// (« 0109 - O'BUGEY »), `up` whether the runners may add their trace: « Analyse de carte »'s filters and actions (2026-11-04)
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
-  created: m.created || "", via: m.via || "",
+  created: m.created || "", via: m.via || "", cc: m.cc || "", orgName: m.orgName || "", up: optsOf(m).upload ? "1" : "0",
   visitors: m.visitors && m.vis === "public" && !m.draft ? "1" : "", draft: m.draft ? "1" : "", solo: optsOf(m).solo ? "1" : "0",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
 /** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
@@ -115,6 +121,21 @@ async function listAll(env, prefix, include = true) {
   } while (cursor);
   return out;
 }
+
+/** Per analysis, from one listing of its data: the runners who shared a trace (`visible`: those visitors may see) and the
+ *  circuits with a thumbnail. */
+async function dataCounts(env) {
+  const by = new Map(), of = (id) => (by.has(id) ? by.get(id) : by.set(id, { runners: new Set(), visible: new Set(), thumbs: [] }).get(id));
+  for (const o of await listAll(env, DATA)) {
+    const x = /^analyses\/([a-z0-9-]+)\/(trace|thumb)-(\d+)(?:-(\d+)\.json)?$/.exec(o.key);
+    if (!x) continue;
+    const c = of(x[1]);
+    if (x[2] === "thumb") c.thumbs.push(Number(x[3]));
+    else if (x[4] && o.customMetadata?.test !== "1") { c.runners.add(x[4]); if (o.customMetadata?.vis === "1") c.visible.add(x[4]); }
+  }
+  return (id) => by.get(id) || { runners: new Set(), visible: new Set(), thumbs: [] };
+}
+const firstThumb = (c) => (c.thumbs.length ? Math.min(...c.thumbs) : null);
 
 /** "open", "locked" (a password to give) or null (not for this account). */
 async function access(ctx, user, meta, lazyClub) {
@@ -217,8 +238,11 @@ async function visitors(ctx, parts) {
   const open = (m) => !!m && m.vis === "public" && !!m.visitors && !m.draft;
   if (!parts.length) {
     const metas = (await listAll(env, META)).map((o) => o.customMetadata || {}).filter((m) => m.vis === "public" && m.visitors === "1" && m.draft !== "1");
+    const counts = await dataCounts(env);
     return json({ analyses: metas.map((m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, courses: Number(m.courses) || 0,
-      pos: m.pos || "", access: "open", organiser: false, visitors: true })) }, 200, { "Cache-Control": "private, max-age=60" });
+      pos: m.pos ? m.pos.split(",").map(Number) : null, access: "open", organiser: false, visitors: true, cc: m.cc || "", orgName: m.orgName || "",
+      runners: counts(m.id).visible.size, thumb: firstThumb(counts(m.id)), upload: false, solo: false })) },
+      200, { "Cache-Control": "private, max-age=60" });
   }
   const id = parts[0];
   if (!/^[a-z0-9-]{4,64}$/.test(id)) return json({ error: "not found" }, 404);
@@ -235,8 +259,8 @@ async function visitors(ctx, parts) {
     return json({ analysis: { ...rest, opts: optsOf(meta) }, traces, you: { uid: 0, organiser: false, visitor: true } });
   }
   if (parts.length !== 3 || !Number.isInteger(n) || !(meta.courses || []).some((c) => c.n === n)) return json({ error: "not found" }, 404);
-  if (parts[1] === "map") {
-    const o = await env.BUCKET.get(`${DATA}${id}/map-${n}`);
+  if (parts[1] === "map" || parts[1] === "thumb") {
+    const o = await env.BUCKET.get(`${DATA}${id}/${parts[1]}-${n}`);
     if (!o) return json({ error: "not found" }, 404);
     return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "private, max-age=3600" } });
   }
@@ -295,6 +319,7 @@ const forUsers = withUser(async (ctx, user) => {
           maps: an.filter((o) => o.key.includes("/map-")).length, traces: an.filter((o) => o.key.includes("/trace-")).length });
       }
       const objs = await listAll(env, META);
+      const counts = await dataCounts(env);
       const out = [];
       for (const o of objs) {
         const m = o.customMetadata || {};
@@ -302,8 +327,13 @@ const forUsers = withUser(async (ctx, user) => {
         if (race && m.race !== race) continue;
         // an analysis saved before its summary had a position, or its creation's date: its summary written again once (its date of
         // change kept)
-        if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined) {
+        if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined || m.cc === undefined) {
           const full = await loadMeta(env, m.id);
+          // its country and organising club (2026-11-04): a competition's from its race; a training of before has neither
+          if (full && full.cc === undefined) {
+            const r = full.kind === "race" && full.race ? await findRace(env, request, full.race) : null;
+            full.cc = r ? r.country || "FR" : ""; full.orgName = r ? clean(r.org, 80) : full.orgName || "";
+          }
           if (full) { await env.BUCKET.put(o.key, JSON.stringify(full), { httpMetadata: { contentType: "application/json" }, customMetadata: custom(full) }); Object.assign(m, custom(full)); }
         }
         const meta = { ...m, owner: Number(m.owner), courses: [] };
@@ -316,7 +346,8 @@ const forUsers = withUser(async (ctx, user) => {
         if (!acc) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, ownerName: m.ownerName,
           courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
-          draft: m.draft === "1", solo: m.solo !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null,
+          draft: m.draft === "1", solo: m.solo !== "0", upload: m.up !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null,
+          cc: m.cc || "", orgName: m.orgName || "", runners: counts(m.id).runners.size, thumb: firstThumb(counts(m.id)),
           // who opened it (owner, 2026-11-04: « I need a way for an admin to see which organisers own and opened which map
           // analyses »): shown to its organisers; the account's e-mail to the administrators only (below)
           ...(org ? { owner: meta.owner, created: m.created || "", via: m.via || "" } : {}) });
@@ -345,6 +376,10 @@ const forUsers = withUser(async (ctx, user) => {
       }
       const club = await lazyClub();
       if (vis === "club" && !club) return json({ error: "noclub" }, 400);
+      // its country and organising club: a competition's own; a training's the creator's site country and club
+      let cc = "", orgName = "";
+      if (kind === "race") { const r = await findRace(env, request, race); cc = r?.country || "FR"; orgName = clean(r?.org, 80); }
+      else { cc = /^[A-Z]{2}$/.test(String(b.country || "")) ? b.country : ""; orgName = clean((await clubLabel(env, request, user.licence)) || b.orgName, 80); }
       let pw = null;
       if (vis === "password") {
         const p = String(b.password || "");
@@ -352,7 +387,7 @@ const forUsers = withUser(async (ctx, user) => {
         const h = await hashPassword(p, env);
         pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
-      const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, vis, pw, owner: user.id, ownerName: user.display_name || "",
+      const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, cc, orgName, vis, pw, owner: user.id, ownerName: user.display_name || "",
         created: nowIso(), updated: nowIso(), courses: [], draft: true, ...(VIA.includes(b.via) ? { via: b.via } : {}) };
       await saveMeta(env, meta);
       return json({ id: meta.id });
@@ -387,11 +422,12 @@ const forUsers = withUser(async (ctx, user) => {
         const m = o.customMetadata || {};
         return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: m.lic || "", updated: m.updated || "", size: o.size };
       });
+      const thumbs = organiser ? (await listAll(env, `${DATA}${id}/thumb-`, false)).map((o) => Number(o.key.slice(o.key.lastIndexOf("-") + 1))) : undefined;
       // a runner's visit counted (not the organisers', nor « Analyse solo »'s own read: it counts itself, POST …/solo/<n>)
       if (!organiser && new URL(request.url).searchParams.get("for") !== "solo") ctx.waitUntil?.(countUse(env, id, "view", user.id));
       // the administrators: the e-mail of the account that opened it
       const creator = isAdmin(env, user) ? (await withEmails(env, [{ owner: meta.owner }]))[0] : null;
-      return json({ analysis: publicMeta(meta), traces, you: { uid: user.id, organiser }, ...(creator?.ownerEmail ? { ownerEmail: creator.ownerEmail } : {}) });
+      return json({ analysis: publicMeta(meta), traces, you: { uid: user.id, organiser }, ...(thumbs ? { thumbs } : {}), ...(creator?.ownerEmail ? { ownerEmail: creator.ownerEmail } : {}) });
     }
     if (!organiser) return json({ error: "forbidden" }, 403);
     if (method === "PUT") {
@@ -427,9 +463,12 @@ const forUsers = withUser(async (ctx, user) => {
         const gone = (meta.courses || []).filter((c) => !cs.some((x) => x.n === c.n)).map((c) => c.n);
         if (gone.length) {
           const keys = (await listAll(env, `${DATA}${id}/`, false)).map((o) => o.key)
-            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`) || k.startsWith(`${DATA}${id}/solo-${n}-`)));
+            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k === `${DATA}${id}/thumb-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`) || k.startsWith(`${DATA}${id}/solo-${n}-`)));
           for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
         }
+        const sig = (c) => JSON.stringify([c.map?.v, c.map?.w, c.map?.h, c.r, c.score, (c.controls || []).map((q) => [q.kind, Math.round(q.x), Math.round(q.y)])]);
+        const stale = cs.filter((c) => { const o = (meta.courses || []).find((x) => x.n === c.n); return o && sig(o) !== sig(c); }).map((c) => `${DATA}${id}/thumb-${c.n}`);
+        if (stale.length) await env.BUCKET.delete(stale);
         meta.courses = cs;
       }
       await saveMeta(env, meta);
@@ -475,6 +514,26 @@ const forUsers = withUser(async (ctx, user) => {
       if (size > MAX_MAP) return json({ error: "too big" }, 413);
       if (!(await allow(env, `anmap:${user.id}`, 60, 86400))) return json({ error: "too many" }, 429);
       await env.BUCKET.put(key, request.body, { httpMetadata: { contentType: type } });
+      return json({ ok: true });
+    }
+    return json({ error: "method" }, 405);
+  }
+
+  if (sub === "thumb") {
+    const key = `${DATA}${id}/thumb-${n}`;
+    if (method === "GET") {
+      const o = await env.BUCKET.get(key);
+      if (!o) return json({ error: "not found" }, 404);
+      return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "image/webp", "Cache-Control": "private, max-age=3600" } });
+    }
+    if (method === "PUT") {
+      if (!organiser || !course) return json({ error: "forbidden" }, 403);
+      const type = (request.headers.get("Content-Type") || "").split(";")[0].trim();
+      if (!/^image\/(png|jpeg|webp)$/.test(type)) return json({ error: "type" }, 415);
+      const body = await request.arrayBuffer();
+      if (!body.byteLength) return json({ error: "empty" }, 400);
+      if (body.byteLength > MAX_THUMB) return json({ error: "too big" }, 413);
+      await env.BUCKET.put(key, body, { httpMetadata: { contentType: type } });
       return json({ ok: true });
     }
     return json({ error: "method" }, 405);

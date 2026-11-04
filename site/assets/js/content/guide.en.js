@@ -170,27 +170,27 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ...(admin ? [["multi", "Compare with the other runners"]] : []), ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ["routes", "Computed routes"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Map analysis", html`
-          <p>The ${P("#/analyse-carte", "Map analysis")} gathers the GPS track analyses behind ${admin ? "four tiles, arranged by who provides the map" : "two tiles"}.</p>
+          <p>${P("#/analyse-carte", "Map analysis")} opens on the list of the competitions and training sessions whose organiser has published the map and courses.</p>
           ${list([
-            ...(admin ? [html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (your track shared with
-              the event's runners) or <b>Analyse my race alone</b> (the Solo analysis on their map: you drop only your track, it lays itself on the map from
-              the organiser's calibration, and nothing is sent; for a competition, your published split times time it). It needs an account.`] : []),
-            html`<b>You have your own map</b>: <b>A competition</b> (a race of the last 60 days, its results and split times beside your track) or <b>A
-              training or an outing</b> (any map, any track).`,
-            html`<b>The event</b> is chosen in a list, with the country's map beside it on a computer; an event chosen says what it offers.${admin ? html` A competition whose
-              organiser has published the map says so, and offers to analyse it on that map.` : ""}`,
+            html`<b>The list</b> is filtered by period, by country (above the list), by type (competitions or training sessions), by organising club and by name;
+              on a computer, the country's map is beside it, and the event's map shows as a thumbnail under the mouse.`,
+            html`<b>An event chosen</b> offers three ways in: <b>View with all runners</b> (the shared tracks, replayed together), <b>Add my track and compare</b>
+              (your track joins the others', with your consent) or <b>Analyse my track alone on this map</b> (Solo analysis on the organiser's map: you only drop
+              your track, it places itself, and nothing is sent). Adding a track needs an account, and the organiser can close either way.`,
+            html`<b>Add my own event</b> opens Solo analysis on your map and your track, for a training session or any outing. If the track is from a race whose
+              results are published, or from an event whose organiser has published the map, the page offers it.`,
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Solo analysis", html`
-          <p>The ${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from the ${P("#/analyse-carte", "Map analysis")}: a competition (a past race of
-            Arena, whose published split times refine the fit), a training session or any outing, or the map the organiser published, with no map to
-            provide and no calibration to do.</p>
+          <p>${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from ${P("#/analyse-carte", "Map analysis")}:
+            “Add my own event” (a training session, any outing, or a competition whose map you have: the page offers its published split times when the track is
+            from it), or the map the organiser has published, with no map to provide and no calibration to do.</p>
           ${list([
             html`<b>The files</b>: the map (image, PDF, KMZ, or the OCAD or Mapper file itself), the track (GPX, FIT or TCX) and, if you have them, the
               map's georeferencing (KMZ, world file) and the courses in IOF XML. On a phone, “Photograph the map”.`,
@@ -209,7 +209,7 @@ export function build(X) {
             it.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Compare with the other runners", html`
-          <p>“${P("#/analyse-carte?choix=multi", "Compare with the other runners")}” shows side by side the tracks of everyone who ran a competition or a training session, on the
+          <p>“${P("#/analyse-carte", "Compare with the other runners")}” shows side by side the tracks of everyone who ran a competition or a training session, on the
             map its organiser prepared (see ${M("orga", "Orga")}'s documentation). Choose the race, add your track — it keeps only positions and times —,
             and compare. It needs an account.</p>
           ${list([
@@ -382,7 +382,7 @@ export function build(X) {
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ...(admin ? [["analyses", "Map analyses"]] : []), ["declarer", "Created competitions"]];
+    ["analyses", "Map analyses"], ["declarer", "Created competitions"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -391,7 +391,7 @@ export function build(X) {
             competition's organiser is ${fr ? "any member of its organising club — the club of their latest known race — or " : ""}the account that
             declared it, outside France. A training session can be created by any account.</p>
           ${list([
-            ...(admin ? [html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`] : []),
+            html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`,
             html`${P("#/orga-resultats", "Results")} and ${P("#/orga-horaires", "Start times")}: uploading the results and the start list.`,
             html`${P("#/orga-direct", "Live feed")}: broadcasting the results live from the timing software, and giving the GPS tracking link.`,
             html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,

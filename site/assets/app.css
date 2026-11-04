@@ -1806,26 +1806,12 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
   .sp[data-collapsed="1"] .sp-rail { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; padding: 4px 6px; }
   .sp-rail-tab, .sp-left .sp-rail-tab { writing-mode: horizontal-tb; transform: none; padding: 6px 10px; }
 }
-/* « Analyse de carte » (pages/mapanalysis.js; owner, 2026-11-01): four tiles in two rows by who gives the map, then a list of
-   events beside a map; every analysis it leads to has its line back at the top, hidden in full window */
+/* « Analyse de carte » (pages/mapanalysis.js; owner, 2026-11-04): the events opened by their organisers beside a map, a row's map
+   as a thumbnail under the mouse, the chosen one's card with its three ways in; every analysis it leads to has its line back at
+   the top, hidden in full window */
 .ma-crumb { margin: 0 0 6px; font-size: 13.5px; }
 .ma-crumb a { color: var(--course); font-weight: 600; }
 body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
-.ma-groups { display: grid; gap: 18px; max-width: 1100px; }
-.ma-group { border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px 16px; background: var(--surface); }
-.ma-group h2 { margin: 0; font-size: 16.5px; }
-.ma-group-lede { margin: 3px 0 12px; color: var(--ink-2); font-size: 13.5px; max-width: 70ch; }
-.ma-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.ma-tile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: 12px;
-  color: var(--ink); background: var(--surface-2); text-decoration: none; transition: border-color .15s, background .15s; }
-.ma-tile:hover { text-decoration: none; border-color: var(--course); background: color-mix(in srgb, var(--course) 7%, var(--surface)); }
-.ma-tile:focus-visible { outline: 2px solid var(--course); outline-offset: 2px; }
-.ma-tile-top { display: flex; align-items: center; justify-content: space-between; }
-.ma-ico { width: 40px; height: 40px; fill: none; stroke: var(--course); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; color: var(--course); }
-.ma-who { display: inline-flex; align-items: center; height: 30px; padding: 0 7px; border-radius: 999px; color: var(--course);
-  background: color-mix(in srgb, var(--course) 10%, var(--surface)); }
-.ma-who svg { height: 23px; width: auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.ma-who .ma-who-head { fill: currentColor; stroke: none; }
 /* the guest pass's Turnstile check (guestpass.js; owner, 2026-11-01): out of sight unless Cloudflare asks for a click */
 .guest-check { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 2000; padding: 12px 14px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--border-strong); box-shadow: 0 8px 30px rgba(0, 0, 0, .35); text-align: center; }
@@ -1842,13 +1828,6 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .rb-recent { margin-top: 12px; }
 .rb-recent summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
 .rb-path { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ma-tile b { font-size: 16px; color: var(--course); line-height: 1.25; }
-.ma-tile-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
-.ma-need { margin-top: auto; padding-top: 6px; font-size: 12.5px; color: var(--ink); }
-.ma-need i { font-style: normal; color: var(--ink-2); }
-.ma-acc { align-self: flex-start; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--flag) 18%, var(--surface)); }
-.ma-tile.off { opacity: .8; }
-.ma-foot { max-width: 1100px; font-size: 12.5px; margin: 12px 2px 0; }
 .ma-filters { align-items: flex-end; }
 .ma-pick { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); gap: 14px; align-items: start; }
 .ma-side { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -1859,17 +1838,28 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .ma-sub { font-size: 12px; }
 .ma-d-title { margin: 0 0 2px; font-size: 16px; }
 .ma-detail p { margin: 6px 0; }
-.ma-cross { margin-top: 12px; }
-.ma-cross p { margin: 0 0 6px; }
-.ma-tag-orga { background: color-mix(in srgb, var(--course) 15%, var(--surface)); }
+.ma-d-thumb { margin: 8px 0 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.ma-d-thumb img { display: block; width: 100%; max-height: 300px; object-fit: contain; }
+.ma-ways { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ma-go { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 12px; text-align: left; white-space: normal; height: auto; }
+.ma-go b { font-size: 14px; }
+.ma-go span { font-size: 12.5px; font-weight: 400; opacity: .85; }
+.ma-pop { position: fixed; z-index: 900; pointer-events: none; width: 260px; padding: 3px; border-radius: 8px; background: #fff;
+  border: 1px solid var(--border-strong); box-shadow: 0 8px 26px rgba(0, 0, 0, .3); }
+.ma-pop img { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: 5px; }
+.ma-how { margin: 10px 4px 2px; font-size: 12.5px; }
+.ma-table td.ma-club { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-table .ma-name { min-width: 180px; }
+/* « Analyse solo »: the race or the map analysis a track seems to be of (pages/analysis.js likelyBlock) */
+.an-likely { display: block; margin: 10px 0; }
+.an-likely-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 6px; }
+.an-likely-x { padding: 0 8px; line-height: 1.4; }
+.an-likely-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+.an-likely-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .an-orga-ev { font-size: 14.5px; }
 @media (max-width: 979px) {
   .ma-pick { grid-template-columns: 1fr; }
   .ma-side { position: static; }
-}
-@media (max-width: 640px) {
-  .ma-tiles { grid-template-columns: 1fr; }
-  .ma-group { padding: 12px; }
 }
 /* « Analyse club » / « Analyse compétition » (pages/shared.js) */
 .sh-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; font-size: 13.5px; }

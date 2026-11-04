@@ -51,6 +51,7 @@ import { betaNotice, betaTag, betaNote } from "../beta.js";
 import { bar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
+import { takeInbox } from "../pwa.js";
 
 const ORG_ROUTE = "#/orga-analyses";                     // the organisers' page: competitions and trainings in one list
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), as the server's _lib/club.js. */
@@ -114,7 +115,7 @@ export async function render(main, r) {
   if (org) return r.query.id ? eventPage(main, null, r.query.id, true, r.query) : orgListPage(main, r.query);
   // the runners' lists are « Analyse de carte »'s since 2026-11-01 (pages/mapanalysis.js: competitions and trainings in one
   // list, a map beside it); an address of before without an event goes there
-  if (!r.query.id) { location.replace("#/analyse-carte?choix=multi"); return { title: t("ma.multi.title") }; }
+  if (!r.query.id) { location.replace("#/analyse-carte"); return { title: t("ma.title") }; }
   return eventPage(main, kind, r.query.id, false, r.query);
 }
 
@@ -329,7 +330,7 @@ function createForm(box, club) {
   $("#sh-title").value = t("sh.club.default", { d: fmtDate(today()) });
   $("#sh-create-go").addEventListener("click", async () => {
     const vis = $("input[name=sh-vis]:checked").value;
-    const body = { kind: "club", title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value };
+    const body = { kind: "club", title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value, country: country.current() };
     try { const r = await api("", { method: "POST", body: { ...body, via: "form" } }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
     catch (e) { $("#sh-create-note").textContent = errText(e); }
   });
@@ -337,7 +338,7 @@ function createForm(box, club) {
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
 async function eventPage(main, kind, id, org = false, query = {}) {
-  const home = org ? ORG_ROUTE : "#/analyse-carte?choix=multi", homeTitle = t(org ? "nav.orgAnalyses" : "ma.multi.title");
+  const home = org ? ORG_ROUTE : "#/analyse-carte", homeTitle = t(org ? "nav.orgAnalyses" : "ma.title");
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
@@ -422,8 +423,12 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   // analysis yet; once per analysis and browser, closed or not
   const you = data.you || {};
   const allowed = !you.visitor && (you.organiser || (A.opts || {}).upload !== false);
-  if (allowed && A.courses.length && !data.traces.some((x) => x.uid === you.uid) && !offered(id)) {
-    betaShown.then(() => { if (document.contains(main) && !document.querySelector(".tr-modal")) offerTrack({ A, id, onDone: async (n) => {
+  const asked = query.ajout === "1";
+  if (asked) { const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || "")); delete q.ajout; replaceQuery(q); }
+  // a track handed over by « Analyse solo » (its suggestion of the event a track is of): taken by the offer at once
+  const handed = asked ? (await takeInbox()).find((f) => isTraceName(f.name)) || null : null;
+  if (allowed && A.courses.length && (asked || (!data.traces.some((x) => x.uid === you.uid) && !offered(id)))) {
+    betaShown.then(() => { if (document.contains(main) && !document.querySelector(".tr-modal")) offerTrack({ A, id, initial: handed, onDone: async (n) => {
       data = await api(`/${id}`, { key: keyOf(id) }); courseN = n; drawTabs(); openViewer();
     } }); });
   }
@@ -500,7 +505,7 @@ export function sureCircuit(fits) {
   return a?.crop && r(a) >= 0.6 && (!b || r(a) - r(b) >= 0.2) ? a : null;
 }
 
-function offerTrack({ A, id, onDone }) {
+function offerTrack({ A, id, onDone, initial = null }) {
   const m = document.createElement("div");
   m.className = "tr-modal sh-offer";
   let file = null, track = null, fits = [];
@@ -567,6 +572,7 @@ function offerTrack({ A, id, onDone }) {
   document.addEventListener("keydown", onKey, true);
   document.body.appendChild(m);
   $(".sh-offer-drop", m)?.focus();
+  if (initial) take(initial);
 }
 
 function unlockPage(main, kind, id) {
@@ -809,13 +815,31 @@ async function managePage(main, id, data, race) {
     try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alert(errText(e)); return; }
     Object.assign(A, data.analysis);
     if (!A.courses.some((c) => c.n === sel)) sel = A.courses[A.courses.length - 1]?.n ?? null;
-    editing(false); head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats();
+    editing(false); head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats(); thumbsDue();
+  }
+  // « Analyse de carte » shows each event's first circuit as a thumbnail (owner, 2026-11-04): the server cannot draw one, so the
+  // organisers' page makes those missing — a circuit new or whose map or controls changed (the server dropped its thumbnail)
+  let thumbing = false;
+  async function thumbsDue() {
+    if (thumbing || !Array.isArray(data.thumbs)) return;
+    thumbing = true;
+    try {
+      for (const c of A.courses) {
+        if (data.thumbs.includes(c.n)) continue;
+        try {
+          let img = images.get(`${c.n}:${c.map?.v}`);
+          if (!img) { img = await createImageBitmap(await api(`/${id}/map/${c.n}?v=${c.map?.v || 0}`, { key: keyOf(id) })); images.set(`${c.n}:${c.map?.v}`, img); }
+          const blob = await courseThumb(img, c);
+          if (blob) { await api(`/${id}/thumb/${c.n}`, { method: "PUT", body: blob, type: blob.type, key: keyOf(id) }); data.thumbs.push(c.n); }
+        } catch (e) { console.warn("thumbnail", c.n, e); }
+      }
+    } finally { thumbing = false; }
   }
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
     try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alert(errText(e)); }
   });
-  head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats();
+  head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats(); thumbsDue();
   return { title: A.title, cleanup: () => mv.destroy() };
 }
 
@@ -1176,6 +1200,34 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0, lines = true) {
     }
   }
   g.restore();
+}
+
+/** A circuit's thumbnail: its course and a margin cut out of the map, the course drawn over it, 480 px on its longer side, as
+ *  WebP (else JPEG); null when nothing comes out under the server's 400 KB. */
+export async function courseThumb(img, c, side = 480) {
+  const P = c.controls || [], r = c.r || 20;
+  let x0 = 0, y0 = 0, x1 = img.width, y1 = img.height;
+  if (P.length) {
+    const xs = P.map((p) => p.x), ys = P.map((p) => p.y), pad = r * 3 + 0.06 * Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    x0 = Math.max(0, Math.min(...xs) - pad); y0 = Math.max(0, Math.min(...ys) - pad);
+    x1 = Math.min(img.width, Math.max(...xs) + pad); y1 = Math.min(img.height, Math.max(...ys) + pad);
+  }
+  // a little wider than tall, as the list's pop-up (the course's own shape when far from it)
+  const w = x1 - x0, h = y1 - y0, k = side / Math.max(w, h);
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
+  const g = cv.getContext("2d");
+  g.imageSmoothingQuality = "high";
+  g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height);
+  g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+  g.drawImage(img, 0, 0);
+  drawCourse(g, P, r, (v) => (v * 0.7) / k, 0.9, 0, !c.score);
+  const out = (type, q) => new Promise((ok) => cv.toBlob((b) => ok(b && b.type === type ? b : null), type, q));
+  for (const [type, q] of [["image/webp", 0.8], ["image/jpeg", 0.8], ["image/jpeg", 0.6]]) {
+    const b = await out(type, q);
+    if (b && b.size <= 400 * 1024) return b;
+  }
+  return null;
 }
 
 // ---- the replay --------------------------------------------------------------------------------------------------

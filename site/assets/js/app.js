@@ -99,11 +99,6 @@ const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods
 // « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
 const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
 const ownerOnly = auth.owner;
-// the map analyses shared with others — Coach's « Comparer avec les autres coureurs » and « Analyser seul ma course » on an
-// organiser's map, Orga's « Analyses de carte » — the administrators' for now (owner, 2026-11-04); « Analyse solo » on one's own
-// map stays everyone's. Out of the menus, and their addresses lead the others to the modules page
-export const ADMIN_ROUTES = new Set(["analysisClub", "analysisRace", "analysisOrga", "orgAnalyses"]);
-export const adminOnly = () => !!auth.session()?.admin;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
@@ -417,7 +412,7 @@ export function moduleMenus() {
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
-    orga: [...(adminOnly() ? [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")]] : []),
+    orga: [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
   };
@@ -865,7 +860,7 @@ async function route_() {
   }
   // a right granted since this device signed in (« Nutrition »): read the account again before turning the address away
   if (me && NUTRITION_ROUTES[r.route] && !NUTRITION_ROUTES[r.route]()) await auth.refresh();
-  if ((OWNER_ROUTES.has(r.route) && !ownerOnly()) || (ADMIN_ROUTES.has(r.route) && !adminOnly()) || (NUTRITION_ROUTES[r.route] && !NUTRITION_ROUTES[r.route]())) {
+  if ((OWNER_ROUTES.has(r.route) && !ownerOnly()) || (NUTRITION_ROUTES[r.route] && !NUTRITION_ROUTES[r.route]())) {
     history.replaceState(null, "", "#/modules");
     r = parseHash();
   }

@@ -86,8 +86,13 @@ export function boot() {
 /** Files given to « Analyse solo » from another page (« Mes cartes »'s « Rejouer »): kept in the inbox, then the page opened —
  *  on the playback at once when `play`. */
 export async function toSolo(files, { play = false } = {}) {
+  await handOver(files, `#/analyse-solo${play ? "?play=1" : ""}`);
+}
+/** Files given to another analysis page (« Analyse solo »'s suggestion of the race a track belongs to): kept in the inbox, then
+ *  that page opened; it takes them as if dropped. */
+export async function handOver(files, hash) {
   await inbox("put", { at: Date.now(), via: "page", files });
-  location.hash = `#/analyse-solo${play ? "?play=1" : ""}`;
+  location.hash = hash;
 }
 /** Files are waiting: « Analyse solo » takes them, open or opened now. */
 function received() {

@@ -19,6 +19,19 @@ export async function clubOf(env, request, licence) {
   } catch (e) { return null; }
 }
 
+/** The account's club as the results write it (« 0109 - O'BUGEY »): that of its latest race in the site's data, or null. */
+export async function clubLabel(env, request, licence) {
+  const lic = String(licence || "");
+  if (!/^\d+$/.test(lic)) return null;
+  try {
+    const res = await env.ASSETS.fetch(new URL(`/data/fr/r/${Math.floor(Number(lic) / 10)}.json`, request.url));
+    const rows = res.ok ? (await res.json())[lic] || [] : [];
+    let best = null;
+    for (const r of rows) if (r && typeof r[4] === "string" && (!best || r[4] > best[4])) best = r;
+    return typeof best?.[9] === "string" && best[9].trim() ? best[9].trim() : null;
+  } catch (e) { return null; }
+}
+
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), or null. */
 export const orgCode = (org) => {
   const m = /^\s*(\d{3,4})\b/.exec(String(org || ""));
