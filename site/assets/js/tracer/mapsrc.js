@@ -143,6 +143,7 @@ async function openVector(u8, name, origin = null) {
   const oom = !(u8[0] === 0xad && u8[1] === 0x0c);
   const mod = oom ? await import("./vmap/oom.js") : await import("./vmap/ocad.js");
   const { map, version } = oom ? mod.readOom(u8) : mod.readOcad(u8);
+  await map.ready;                                               // its layout images (logos) decoded: drawn from the first image on
   const { CanvasTarget } = await import("./vmap/target.js");
   const { Matrix } = await import("./vmap/geom.js");
   // the frame: 2 mm around what the map draws, rounded to the mm, or the event's own origin (its course stays where it was set)

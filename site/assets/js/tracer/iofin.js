@@ -146,11 +146,55 @@ export function fromOcad(cs) {
   return out;
 }
 
+/** An image object's picture ({ format, data: base64 }) from an OCAD layout image (vmap/map.js LayerBitmap): PNG and JPEG as they
+ *  are, any other format (BMP, GIF) as a PNG of its decoded picture. */
+async function imageObject(b) {
+  let bytes = b.bytes, format = bytes[0] === 0x89 && bytes[1] === 0x50 ? "png" : bytes[0] === 0xff && bytes[1] === 0xd8 ? "jpeg" : "";
+  if (!format) {
+    await b.ready;
+    if (!b.image || typeof document === "undefined") return null;
+    const c = document.createElement("canvas"); c.width = b.image.width; c.height = b.image.height;
+    c.getContext("2d").drawImage(b.image, 0, 0);
+    const blob = await new Promise((res) => c.toBlob(res, "image/png"));
+    if (!blob) return null;
+    bytes = new Uint8Array(await blob.arrayBuffer()); format = "png";
+  }
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { format, data: btoa(s) };
+}
+/** An OCAD course file's layout images — the club's, the league's, the sponsors' logos (owner, 2026-11-04: never left out of a
+ *  display of the map) — ready to place: [{ box: [l, b, r, t] in the file's mm, image }], hidden ones apart. */
+export async function layoutPictures(map) {
+  const out = [];
+  for (const b of map?.layoutImages || []) {
+    if (b.visible === false || !(b.w > 0 && b.h > 0)) continue;
+    const image = await imageObject(b).catch(() => null);
+    if (image) out.push({ box: b.bbox.slice(), image });
+  }
+  return out;
+}
+/** Those pictures as image objects of the event, on every course, where OCAD shows them. fileMm: the boxes are the map file's own
+ *  mm (an OCAD map's event frame is shifted by its origin). Returns how many were added. */
+export function placeLayoutImages(ev, pics, { fileMm = true } = {}) {
+  const [fx, fy] = fileMm ? M.fileOffset(ev) : [0, 0];
+  const near = (p, q) => Math.abs(p[0] - q[0]) < 0.1 && Math.abs(p[1] - q[1]) < 0.1;
+  let n = 0;
+  for (const { box: [l, b, r, tp], image } of pics) {
+    const pts = [[l - fx, tp - fy], [r - fx, b - fy]];
+    // the same picture at the same place already (a course file imported again): not twice
+    if (Object.values(ev.specials).some((s) => s.kind === "image" && s.image?.data === image.data && near(s.pts[0], pts[0]))) continue;
+    M.addSpecial(ev, "image", pts, { image, text: t("trc.imp.logo", { n: ++n }) });
+  }
+  return n;
+}
+export async function addLayoutImages(ev, map, opts) { return placeLayoutImages(ev, await layoutPictures(map), opts); }
+
 /** What the import holds, in a few words (the dialog). */
-export function summary(data) {
+export function summary(data, logos = 0) {
   const ok = data.controls.filter((c) => c.code).length;
   return [tn("trc.imp.nControls", ok), tn("trc.imp.nCourses", data.courses.length), data.classes.length ? tn("trc.imp.nClasses", data.classes.length) : "",
-    data.teams.length ? tn("trc.imp.nTeams", data.teams.length) : ""].filter(Boolean).join(" · ");
+    data.teams.length ? tn("trc.imp.nTeams", data.teams.length) : "", logos ? tn("trc.imp.nLogos", logos) : ""].filter(Boolean).join(" · ");
 }
 
 /**
@@ -224,16 +268,18 @@ export function importInto(ev, data, { replace = false, place = "map", fileMm = 
 /** « Importer des circuits » (IOF XML, OCAD course setting): the file, what it holds, how to place it, then the import. */
 export async function importDialog(E, preset = null) {
   const { modal, dropHtml, dropZone, field, sel } = await import("./dialogs.js");
-  let file = preset, data = null, err = "";
+  let file = preset, data = null, err = "", pics = [];
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const read = async (f) => {
-    data = null; err = "";
+    data = null; err = ""; pics = [];
     try {
       if (/\.(ocd)$/i.test(f.name)) {
         const { readOcad } = await import("./vmap/ocad.js");
         const { map } = readOcad(new Uint8Array(await f.arrayBuffer()));
         data = fromOcad(map.courseSetting);
         if (!data.courses.length && !data.controls.length) err = t("trc.imp.noOcadCourses");
+        // its logos, unless this very file is the event's map (they are drawn with it)
+        else if (String(E.ev.map?.file || "").toLowerCase() !== f.name.toLowerCase()) pics = await layoutPictures(map);
       } else {
         const text = await f.text();
         if (!iofKind(text)) throw new Error(t("trc.imp.notIof"));
@@ -251,7 +297,7 @@ export async function importDialog(E, preset = null) {
     ${field(t("trc.imp.place"), sel("place", [["map", t("trc.imp.placeMap")], ["geo", t("trc.imp.placeGeo")]], "map"), t("trc.imp.placeHint"))}`,
   onOpen: (f) => {
     const show = () => {
-      f.querySelector("#tr-imp-what").textContent = !file ? t("trc.imp.noFile") : err ? `${t("ui.colon", { a: file.name })} ${err}` : `${file.name} — ${summary(data)}`;
+      f.querySelector("#tr-imp-what").textContent = !file ? t("trc.imp.noFile") : err ? `${t("ui.colon", { a: file.name })} ${err}` : `${file.name} — ${summary(data, pics.length)}`;
       f.elements.place.disabled = !geoOk(); if (!geoOk()) f.elements.place.value = "map";
     };
     dropZone(f.querySelector("#tr-imp-drop"), async (list) => { file = list[0]; await read(file); show(); });
@@ -260,7 +306,7 @@ export async function importDialog(E, preset = null) {
   validate: () => (!file ? t("trc.imp.noFile") : err || (!data ? t("trc.imp.unreadable") : null)) });
   if (!v || !data) return;
   let res;
-  E.change((x) => { res = importInto(x, data, { replace: v.mode === "replace", place: v.place }); }, t("trc.imp.undo"));
+  E.change((x) => { res = importInto(x, data, { replace: v.mode === "replace", place: v.place }); placeLayoutImages(x, pics); }, t("trc.imp.undo"));
   if (!res) return;
   const first = M.courseIds(E.ev)[0];
   if (first) E.setCourse(first);

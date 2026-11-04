@@ -69,14 +69,16 @@ export class LayerArea {
   draw(g) { g.fill(this.area.commands(), this.color); }
 }
 export class LayerBitmap {
-  /** An image of the layout (OCAD 11+): its top-left corner and size in mm, its file bytes. */
+  /** An image of the layout (OCAD 11+: a club's or a sponsor's logo, owner 2026-11-04: never left out of a display of the map):
+   *  its top-left corner and size in mm, its file bytes. `ready` settles once it is decoded (mapsrc waits for it before drawing). */
   constructor(def, x, y, w, h, bytes, type, visible = true, order = 0) {
     Object.assign(this, { def, x, y, w, h, visible, order }); this.bbox = [x, y - h, x + w, y];
     this.image = null;
-    if (bytes && typeof createImageBitmap === "function") createImageBitmap(new Blob([bytes], { type })).then((im) => { this.image = im; }).catch(() => {});
     this.bytes = bytes; this.type = type;
+    this.ready = bytes && typeof createImageBitmap === "function"
+      ? createImageBitmap(new Blob([bytes], { type })).then((im) => { this.image = im; }).catch(() => {}) : Promise.resolve();
   }
-  draw(g) { if (this.image) g.image(this.image, this.bbox); }
+  draw(g) { if (this.image || this.bytes) g.image(this.image, this.bbox, this); }
 }
 
 // ---- the map ------------------------------------------------------------------------------------------------------------------
@@ -120,7 +122,9 @@ export class VMap {
       if (!on && begin === c.id) on = true;
       if (on && end === c.id) on = false;
     }
-    if (on && !this.hideLayout) this.drawColor(g, this.layoutColor, rect, ro, false);
+    // the layout (logos, titles, frames) always: OCAD's « hide layout » is a view setting of the program, not of the map (owner,
+    // 2026-11-04: logos are never removed from a display of the map); `hideLayout` is kept as read
+    if (on) this.drawColor(g, this.layoutColor, rect, ro, false);
   }
   drawColor(g, c, rect, ro, blend) {
     let any = false;

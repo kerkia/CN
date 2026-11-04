@@ -1957,9 +1957,18 @@ Every multiple-choice game was played through to its score page at phone size, w
   decimals (« 1.013 » = 1.13), a direction as three more digits (« 12.306 » = 12.3 + direction 6), the directions counter-clockwise,
   cardinals first — N, W, S, E, NW, SW, SE, NE — read against the map (0.102 the western of two pits, 0.208 the north-eastern of three
   boulders, 12.306 a depression's SW part; OCAD's documentation says nothing); ISCD numbers turned into Purple Pen's ids
-  (`FROM_ISCD`, the inverse of `iscd.js` `RENUMBER`). A course ending at its start (« s S2 » again) gets a finish there. Not done:
-  variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps and layout images (logos)
-  are left out, classes (the advanced level's) for administrators only, a single file holding both map and courses not met yet.
+  (`FROM_ISCD`, the inverse of `iscd.js` `RENUMBER`). A course ending at its start (« s S2 » again) gets a finish there. **Logos**
+  (owner, 2026-11-04: « logos are never removed from any display of the map »): a course file's layout images (the test file's 5
+  JPEG logos) become image objects on every course where OCAD shows them (`iofin.layoutPictures` / `placeLayoutImages`, also from the
+  editor's « Importer des circuits », not twice at the same place; none when the course file is the map: drawn with it). Not done:
+  variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps are left out, classes
+  (the advanced level's) for administrators only, a single file holding both map and courses not met yet.
+- **Logos on OCAD maps, everywhere** (owner, 2026-11-04): an OCAD map's layout images (`vmap/map.js` `LayerBitmap`) are sized from
+  their file's header when read (`ocad.js` `imageSize`: the map's extent holds them from the start), `map.ready` settles once all are
+  decoded and `mapsrc.openVector` waits for it before drawing (they could miss the base image before); the layout is drawn whatever
+  OCAD's view setting « hide layout » says (`map.hideLayout` read, not used); PDFs print them (`PdfTarget.image`: PNG/JPEG embedded
+  as they are, BMP/GIF as a PNG — before, « layout bitmaps are not printed »). Templates (other files a map refers to) are still not
+  drawn: a logo kept outside the .ocd cannot be shown.
 - **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse

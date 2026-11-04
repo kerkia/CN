@@ -237,9 +237,11 @@ async function ocadCourses(file) {
   ev.title = file.name.replace(/\.ocd$/i, "");
   iof.importInto(ev, got, { fileMm: false });
   const self = map.mapObjects > 0;
+  // its layout images (logos): drawn with the map when the file is the map, else image objects of the event where OCAD shows them
+  const logos = self ? 0 : await iof.addLayoutImages(ev, map, { fileMm: false });
   const tpl = (map.templates || []).find((x) => /\.(ocd|omap|xmap)$/i.test(x.file));
   ev.map.file = self ? file.name : tpl ? tpl.file.split(/[\\/]/).pop() : "";
-  return { ev, self, forked: got.forked };
+  return { ev, self, forked: got.forked, logos };
 }
 const fmtN = (v) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(v);
 /** A file's size in megabytes, one decimal, in the interface's language. */
@@ -446,6 +448,7 @@ async function importEvent(main, files = []) {
       else if (st.ocad && ev) {
         const self = st.ocad.self && st.map === st.ppen;
         lines.push(`<li class="ok">${t("trc.page.ocadLine", { ...fileVars(st.ppen.name, self), map: self ? t("trc.page.mapInside") : expected ? t("trc.page.itsMap", { file: escA(expected), scale: ev.map.scale }) : "" })}</li>`);
+        if (st.ocad.logos) lines.push(`<li class="ok">${tn("trc.page.ocadLogos", st.ocad.logos)}</li>`);
         if (st.ocad.forked.length) lines.push(`<li class="warn">${t("trc.page.ocadForked", { list: escA(st.ocad.forked.join(", ")) })}</li>`);
       }
       else if (st.ppen && ev) lines.push(`<li class="ok">${t("trc.page.ppenLine", fileVars(st.ppen.name, false))}</li>`);

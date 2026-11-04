@@ -995,7 +995,8 @@ export function build(X) {
             mit ihrer Karte; eine mit OCADs Bahnlegungsmodul vorbereitete OCAD-Datei mit ihrer Karte: der OCAD-Datei, die sie darunter zeigt
             und die das Fenster nennt (unnötig, wenn Karte und Bahnen in einer Datei sind). Ihre Posten, deren Postenbeschreibungen und ihre
             Bahnen werden übernommen, und eine Bahn, die zu ihrem Start zurückkehrt, bekommt dort ein Ziel; Gabelungen behalten nur ihren
-            ersten Zweig (das Fenster sagt es), und OCADs Layout-Bilder (Logos) werden nicht übernommen. Ist die angegebene Karte nicht die der Datei (zum Beispiel ein PDF statt der OCAD-Karte),
+            ersten Zweig (das Fenster sagt es), und ihre Logos (die Bilder ihres Layouts) werden an ihrer Stelle zu Bildern auf allen Bahnen: Ein Logo
+            wird nie von der Karte entfernt, weder am Bildschirm noch in PDFs. Ist die angegebene Karte nicht die der Datei (zum Beispiel ein PDF statt der OCAD-Karte),
             richtest du die Posten anschließend mit zwei Klicks aus.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Wer sie sieht</h3><p>Nur ihr Team: ihr Ersteller und die Personen, die ihr über einen Einladungslink beitreten, als Bahnleger,

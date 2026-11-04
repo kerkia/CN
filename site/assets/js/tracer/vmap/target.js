@@ -123,6 +123,7 @@ export class CanvasTarget {
     paint(g, s, x * s, (y + m.ascent) * s);
   }
   image(img, [l, b, r, t]) {
+    if (!img) return;
     this.flush();
     const m = this.cur, g = this.ctx;
     g.save(); g.setTransform(m.a, m.b, m.c, m.d, m.e, m.f); g.transform(1, 0, 0, -1, 0, b + t); g.drawImage(img, l, b, r - l, t - b); g.restore();
@@ -212,10 +213,34 @@ export class PdfTarget {
     this.ops.push(slot);
     this.texts.push({ slot, str, m, x, y, how });
   }
-  image() { /* layout bitmaps are not printed */ }
+  /** A layout image (a logo): a slot in the operators, filled once the image is embedded (finish()); PNG and JPEG as they are,
+   *  any other format (BMP, GIF) as a PNG of its decoded picture. */
+  image(img, box, src = null) {
+    const slot = [];
+    this.ops.push(slot);
+    (this.images ||= []).push({ slot, img, box, bytes: src?.bytes || null, type: src?.type || "" });
+  }
+  async embedImage(it) {
+    const doc = this.page.doc;
+    if (!doc) return null;
+    const b = it.bytes;
+    if (b && b[0] === 0x89 && b[1] === 0x50) return doc.embedPng(b);
+    if (b && b[0] === 0xff && b[1] === 0xd8) return doc.embedJpg(b);
+    if (!it.img || typeof document === "undefined") return null;
+    const c = document.createElement("canvas"); c.width = it.img.width; c.height = it.img.height;
+    c.getContext("2d").drawImage(it.img, 0, 0);
+    const blob = await new Promise((res) => c.toBlob(res, "image/png"));
+    return blob ? doc.embedPng(new Uint8Array(await blob.arrayBuffer())) : null;
+  }
   /** Resolve the text slots and push everything onto the page. */
   async finish() {
     const L = this.L;
+    for (const it of this.images || []) {
+      const emb = await this.embedImage(it).catch(() => null);
+      if (!emb) continue;
+      const [l, b, r, t] = it.box, name = this.page.node.newXObject("Image", emb.ref);
+      it.slot.push(L.pushGraphicsState(), L.concatTransformationMatrix(r - l, 0, 0, t - b, l, b), L.drawObject(name), L.popGraphicsState());
+    }
     for (const t of this.texts) {
       const runs = this.fonts ? await this.fonts.runs(t.str, t.m.fam, t.m.bold, t.m.italic) : [];
       if (!runs.length) continue;

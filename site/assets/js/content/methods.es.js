@@ -995,7 +995,8 @@ export function build(X) {
             con su mapa; un archivo OCAD preparado con su módulo de trazado, con su mapa: el archivo OCAD que muestra debajo, que la ventana
             nombra (no hace falta si mapa y recorridos están en un mismo archivo). Se toman sus controles, sus descripciones y sus recorridos, y
             un recorrido que vuelve a su salida recibe una meta en el mismo lugar; las variantes solo conservan su primera rama (la ventana lo
-            indica), y las imágenes de maquetación de OCAD (logotipos) no se toman. Si el mapa dado no es el del archivo (un PDF en lugar del mapa
+            indica), y sus logotipos (las imágenes de su maquetación) pasan a ser imágenes en todos los recorridos, en su sitio: un
+            logotipo nunca se quita del mapa, ni en pantalla ni en los PDF. Si el mapa dado no es el del archivo (un PDF en lugar del mapa
             OCAD, por ejemplo), después se calibran los controles en dos clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Quién lo ve</h3><p>Solo su equipo: su creador y las personas que se unen a él con un enlace de invitación, como trazador,

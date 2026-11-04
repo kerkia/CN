@@ -994,8 +994,8 @@ export function build(X) {
             saved, with its map (a file saved earlier as .ocnt opens the same way); a Purple Pen file (.ppen) with its map; an OCAD file prepared
             with its course-setting module, with its map: the OCAD file it shows underneath, which the box names (not needed when map and courses
             are in one file). Its controls, their descriptions and its courses are taken, and a course that comes back to its start gets a
-            finish at the same place; variations keep only their first branch (the box says so), and OCAD's layout images (logos) are not
-            taken. If the map given is not the file's own (a PDF instead of the OCAD
+            finish at the same place; variations keep only their first branch (the box says so), and its logos (the images of its layout) become images on every course, in their place: a logo is
+            never removed from the map, on screen or in PDFs. If the map given is not the file's own (a PDF instead of the OCAD
             map, for example), you then align the controls in two clicks.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Who sees it</h3><p>Its team only: its creator and the people who join it by an invitation link, as course setter,

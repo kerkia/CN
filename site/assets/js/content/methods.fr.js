@@ -995,7 +995,8 @@ export function build(X) {
             avec sa carte ; un fichier OCAD préparé avec son module de traçage, avec sa carte : le fichier OCAD qu'il affiche dessous, que
             la boîte nomme (inutile quand carte et circuits sont dans un même fichier). Ses postes, leurs définitions et ses circuits sont
             repris, et un circuit qui revient à son départ reçoit une arrivée au même endroit ; les variations n'en gardent que la première
-            branche (la boîte le signale), et les images de mise en page d'OCAD (logos) ne sont pas reprises. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
+            branche (la boîte le signale), et ses logos (les images de sa mise en page) deviennent des images sur tous les circuits, à leur place : un logo
+            n'est jamais retiré de la carte, à l'écran comme dans les PDF. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
             OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les personnes qui la rejoignent par un lien d'invitation, comme traceur,

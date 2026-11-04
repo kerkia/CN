@@ -171,18 +171,40 @@ export function readOcad(bytes) {
   }
   map.courseSetting = courseSetting(ctx);
   map.mapObjects = ctx.mapObjects || 0;                       // objects of the map itself (not 7xx course symbols)
-  // layout bitmaps (OCAD 11+: embedded in the parameter strings)
+  // layout bitmaps (OCAD 11+: embedded in the parameter strings): logos and the like, never left out (owner, 2026-11-04). Their size
+  // from the file's header (u × v mm a pixel), so that the map's extent holds them from the start; `map.ready` once all are decoded.
+  map.layoutImages = [];
   for (const b of ctx.layoutBitmaps) {
     if (!b.data) continue;
-    const def = layoutDef(ctx, "layout");
-    // the image's size is known once decoded: kept as a box of its pixels at u × v mm
-    const bm = new LayerBitmap(def, b.x, b.y, 0, 0, b.data, b.type, b.visible, b.order);
-    if (typeof createImageBitmap === "function") createImageBitmap(new Blob([b.data], { type: b.type })).then((im) => {
-      bm.w = im.width * b.u; bm.h = im.height * b.v; bm.bbox = [b.x, b.y - bm.h, b.x + bm.w, b.y]; bm.image = im;
-    }).catch(() => {});
+    const def = layoutDef(ctx, "layout"), px = imageSize(b.data);
+    const bm = new LayerBitmap(def, b.x, b.y, px ? px[0] * b.u : 0, px ? px[1] * b.v : 0, b.data, b.type, b.visible, b.order);
+    bm.ready = bm.ready.then(() => {
+      if (!px && bm.image) { bm.w = bm.image.width * b.u; bm.h = bm.image.height * b.v; bm.bbox = [b.x, b.y - bm.h, b.x + bm.w, b.y]; }
+    });
     map.add(bm);
+    map.layoutImages.push(bm);
   }
+  map.ready = Promise.all(map.layoutImages.map((x) => x.ready));
   return { map, version };
+}
+
+/** An image's [width, height] in pixels from its header (PNG, JPEG, GIF, BMP), or null. */
+function imageSize(u) {
+  const be16 = (i) => (u[i] << 8) | u[i + 1], le16 = (i) => u[i] | (u[i + 1] << 8);
+  const be32 = (i) => ((u[i] << 24) >>> 0) + (u[i + 1] << 16) + (u[i + 2] << 8) + u[i + 3], le32 = (i) => (u[i] | (u[i + 1] << 8) | (u[i + 2] << 16) | (u[i + 3] << 24));
+  if (u.length > 24 && u[0] === 0x89 && u[1] === 0x50) return [be32(16), be32(20)];
+  if (u.length > 10 && u[0] === 0x47 && u[1] === 0x49) return [le16(6), le16(8)];
+  if (u.length > 26 && u[0] === 0x42 && u[1] === 0x4d) return [Math.abs(le32(18)), Math.abs(le32(22))];
+  if (u[0] === 0xff && u[1] === 0xd8) {
+    for (let i = 2; i + 9 < u.length;) {
+      if (u[i] !== 0xff) { i++; continue; }
+      const m = u[i + 1];
+      if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return [be16(i + 7), be16(i + 5)];
+      i += 2 + be16(i + 2);
+    }
+  }
+  return null;
 }
 
 /** OCAD's course setting, read for the Tracer's import (iofin.js fromOcad): { controls: [{ code, kind, x, y, descr: { c, d, e, f,
