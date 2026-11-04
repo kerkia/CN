@@ -101,12 +101,14 @@ async function api(path, { method = "GET", body, type, key } = {}) {
 }
 const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.err.${e.code}`) : `${t("sh.err.other")} (${e?.code || e?.message || ""})`;
 
+let betaShown = Promise.resolve();                         // the beta notice's answer: the offer to add one's track waits for it
+
 export async function render(main, r) {
   bindFull();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   const org = r.route === "orgAnalyses";
   const kind = r.route === "analysisRace" ? "race" : "club";
-  betaNotice("multi");                                    // beta.js (owner, 2026-10-16): little tested yet
+  betaShown = betaNotice("multi");                        // beta.js (owner, 2026-10-16): little tested yet
   // the organisers' page: an analysis's kind is its own (read with it)
   if (org) return r.query.id ? eventPage(main, null, r.query.id, true, r.query) : orgListPage(main);
   // the runners' lists are « Analyse de carte »'s since 2026-11-01 (pages/mapanalysis.js: competitions and trainings in one
@@ -245,12 +247,129 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       return;
     }
     const init = initial; initial = {};                    // the address's state for the first circuit opened only
-    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
-      data = await api(`/${id}`, { key: keyOf(id) }); openViewer(); } });
+    viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), allTraces: data.traces, you: data.you, reload: async (n) => {
+      data = await api(`/${id}`, { key: keyOf(id) });
+      if (n != null && n !== courseN && A.courses.some((x) => x.n === n)) { courseN = n; drawTabs(); }     // a track sent to its own circuit
+      openViewer(); } });
   };
   drawTabs();
   await openViewer();
-  return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); } };
+  // the first visit: the offer to add one's track (owner, 2026-11-04) — to an account allowed to add one, with none in this
+  // analysis yet; once per analysis and browser, closed or not
+  const you = data.you || {};
+  const allowed = !you.visitor && (you.organiser || (A.opts || {}).upload !== false);
+  if (allowed && A.courses.length && !data.traces.some((x) => x.uid === you.uid) && !offered(id)) {
+    betaShown.then(() => { if (document.contains(main) && !document.querySelector(".tr-modal")) offerTrack({ A, id, onDone: async (n) => {
+      data = await api(`/${id}`, { key: keyOf(id) }); courseN = n; drawTabs(); openViewer();
+    } }); });
+  }
+  return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
+}
+
+// ---- the offer to add one's track, at the first visit of an analysis (owner, 2026-11-04) -------------------------------
+// the file read here, in the browser; the circuit found by the controls the track passes in the circuit's order; asked when
+// two circuits fit as well or none fits well; then the usual consent, and the trace sent as « Ajouter ma trace » sends it
+const OFFER_KEY = (id) => `ocn.sh.offered.${id}`;
+const offered = (id) => { try { return localStorage.getItem(OFFER_KEY(id)) === "1"; } catch (e) { return false; } };
+const markOffered = (id) => { try { localStorage.setItem(OFFER_KEY(id), "1"); } catch (e) { /* not kept */ } };
+
+/** How well a track fits each circuit: [{ course, k (controls passed), n (controls), crop }], best first. A circuit is passed in
+ *  its order (a score course in any order); a track that never comes on a circuit's map fits none of its controls. */
+export function matchCircuits(track, courses) {
+  const out = [];
+  for (const c of courses) {
+    const n = (c.controls || []).filter((p) => p.kind === "control").length;
+    if (!n || !validGeo(c.geo)) { out.push({ course: c, k: 0, n, crop: null }); continue; }
+    const crop = cropToMap(track, c.geo, c.map.w, c.map.h);
+    if (!crop) { out.push({ course: c, k: 0, n, crop: null }); continue; }
+    const fit = fitFromGeo(c.geo, track);
+    const passes = (c.score ? scorePasses : coursePasses)(track, fit, c.controls, 25);
+    const k = c.controls.reduce((s, p, j) => s + (p.kind === "control" && passes[j] != null ? 1 : 0), 0);
+    out.push({ course: c, k, n, crop });
+  }
+  return out.sort((a, b) => b.k / (b.n || 1) - a.k / (a.n || 1) || b.n - a.n);
+}
+/** The circuit a track surely belongs to, or null: the only one passed at 90 % of its controls — or, several so passed (a short
+ *  circuit run inside a long one), the longest passed at 95 % — or the best at 60 % with 20 points over the next. */
+export function sureCircuit(fits) {
+  const r = (f) => f.k / (f.n || 1);
+  const high = fits.filter((f) => f.crop && r(f) >= 0.9);
+  if (high.length === 1) return high[0];
+  if (high.length > 1) {
+    const longest = [...high].sort((a, b) => b.n - a.n);
+    return r(longest[0]) >= 0.95 && longest[0].n > longest[1].n ? longest[0] : null;
+  }
+  const [a, b] = fits;
+  return a?.crop && r(a) >= 0.6 && (!b || r(a) - r(b) >= 0.2) ? a : null;
+}
+
+function offerTrack({ A, id, onDone }) {
+  const m = document.createElement("div");
+  m.className = "tr-modal sh-offer";
+  let file = null, track = null, fits = [];
+  const close = () => { markOffered(id); m.remove(); document.removeEventListener("keydown", onKey, true); };
+  const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  const first = () => {
+    m.innerHTML = html`<div class="tr-dialog" role="dialog" aria-modal="true" aria-labelledby="sh-offer-t"><h2 id="sh-offer-t">${t("sh.offer.title")}</h2>
+      <div class="tr-form"><p>${t("sh.offer.body")}</p>
+        <label class="dropzone an-drop sh-offer-drop"><input type="file" id="sh-offer-in" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
+          <strong>${t("sh.offer.drop")}</strong><span class="muted">${t("sh.fitTip")}</span></label>
+        <p class="notice" id="sh-offer-note" hidden></p>
+        <div class="tr-dlg-btns"><button type="button" class="btn" data-close>${t("sh.offer.later")}</button></div></div></div>`;
+    const drop = $(".sh-offer-drop", m);
+    $("#sh-offer-in", m).addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) take(f); });
+    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer?.files?.[0]; if (f) take(f); });
+    $("[data-close]", m).addEventListener("click", close);
+  };
+  const note = (text) => { const p = $("#sh-offer-note", m); if (p) { p.textContent = text; p.hidden = !text; } };
+  async function take(f) {
+    note(t("sh.offer.reading", { name: f.name }));
+    try { track = parseTrace(f.name, await f.arrayBuffer()); } catch (e) { note(t(e.message === "time" ? "an.err.time" : "an.err.gpx")); return; }
+    if (track.source === "drawn") { note(t("sh.trace.drawn")); return; }
+    fits = matchCircuits(track, A.courses);
+    if (!fits.some((x) => x.crop)) { note(t("sh.trace.offMap")); return; }
+    file = f;
+    confirmStep(sureCircuit(fits));
+  }
+  function confirmStep(sure) {
+    const pick = sure || fits.find((x) => x.crop);
+    m.innerHTML = html`<div class="tr-dialog" role="dialog" aria-modal="true" aria-labelledby="sh-offer-t"><h2 id="sh-offer-t">${t("sh.offer.title")}</h2>
+      <div class="tr-form"><p>${sure ? t("sh.offer.found", { course: sure.course.name, k: sure.k, n: sure.n }) : t("sh.offer.choose")}</p>
+        <label class="field"><span>${t("sh.offer.course")}</span><select id="sh-offer-c">${fits.filter((x) => x.crop).map((x) => html`<option value="${x.course.n}" ${raw(x === pick ? "selected" : "")}>${t("sh.offer.opt", { course: x.course.name, k: x.k, n: x.n })}</option>`)}</select></label>
+        <p class="muted" id="sh-offer-span"></p>
+        <label class="an-opt"><input type="checkbox" id="sh-offer-consent"> ${t("sh.trace.consent")}</label>
+        ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-offer-vis"> ${t("sh.visitors.mine")}</label>` : ""}
+        <p class="notice" id="sh-offer-note" hidden></p>
+        <div class="tr-dlg-btns"><button type="button" class="btn" data-close>${t("sh.offer.later")}</button>
+          <button type="button" class="btn btn-primary" id="sh-offer-send" disabled>${t("sh.trace.send")}</button></div></div></div>`;
+    const sel = $("#sh-offer-c", m), send = $("#sh-offer-send", m);
+    const fitOf = () => fits.find((x) => String(x.course.n) === sel.value);
+    const span = () => {
+      const x = fitOf(), enc = encodeTrace(track, x.crop[0], x.crop[1]), t1 = enc.t0 + enc.dt.reduce((s, v) => s + v, 0);
+      $("#sh-offer-span", m).textContent = t("sh.trace.confirm", { a: hms(enc.t0), b: hms(t1), n: enc.dt.length });
+      return enc;
+    };
+    span();
+    sel.addEventListener("change", span);
+    $("#sh-offer-consent", m).addEventListener("change", (e) => { send.disabled = !e.target.checked; });
+    $("[data-close]", m).addEventListener("click", close);
+    send.addEventListener("click", async () => {
+      const x = fitOf();
+      send.disabled = true;
+      try {
+        await api(`/${id}/trace/${x.course.n}`, { method: "PUT", body: { consent: true, trace: span(), note: "", visitors: !!$("#sh-offer-vis", m)?.checked }, key: keyOf(id) });
+        await ownPut(ownKey(id, x.course.n), file);
+        close();
+        onDone(x.course.n);
+      } catch (e) { note(errText(e)); send.disabled = false; }
+    });
+  }
+  first();
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(m);
+  $(".sh-offer-drop", m)?.focus();
 }
 
 function unlockPage(main, kind, id) {
@@ -857,7 +976,7 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0, lines = true) {
 }
 
 // ---- the replay --------------------------------------------------------------------------------------------------
-async function replay(box, { A, id, course, race, init = {}, traces, you, reload }) {
+async function replay(box, { A, id, course, race, init = {}, traces, allTraces = [], you, reload }) {
   document.body.classList.add("an-theatre");
   // a score course (owner, 2026-11-02): its controls in any order — no legs, each runner's visits timed wherever they come
   const score = !!course.score, ctrls = course.controls, legsN = score ? 0 : ctrls.length - 1;
@@ -871,8 +990,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // runners, the analyses, the computed routes, one's own curves; the display and the computing), resized and folded
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
   let lw = px(prefs.lw, 200, 1400, 320), rw = px(prefs.rw, 200, 700, 270);
-  // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
-  const lp = { tab: "legs", collapsed: false };
+  // both panels unfolded at every opening, « Coureurs » and « Affichage » (owner, 2026-11-04: « Coureurs », where one adds one's
+  // track, rather than « Inter-postes » chosen earlier that day); their widths stay remembered
+  const lp = { tab: "runners", collapsed: false };
   const rp = { tab: "display", collapsed: false };
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let orient = prefs.orient === "leg" ? "leg" : "north", lastTurn = 0;      // the map turned to the leg (as « Analyse solo »)
@@ -1349,24 +1469,34 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   function myRun() { return runners.find((r) => r.mine && !r.test) || null; }
   function myTests() { return runners.filter((r) => r.uid > 1e9 && Math.floor((r.uid - 1e9) / 1000) === you.uid); }
   async function uploadTests(files) {
-    const boxU = $("#sh-upload"), errs = [];
-    let k = Math.max(0, ...myTests().map((r) => (r.uid - 1e9) % 1000)), ok = 0;
+    const boxU = $("#sh-upload"), errs = [], placed = new Map();
+    // each file goes to the circuit it runs (owner, 2026-11-04: test tracks all sent to the circuit shown left the others' analyses
+    // empty), else to the circuit shown; its number after the account's test tracks already there
+    const testsOn = (n) => (allTraces || []).filter((x) => x.course === n && x.uid > 1e9 && Math.floor((x.uid - 1e9) / 1000) === you.uid).map((x) => (x.uid - 1e9) % 1000);
+    const next = new Map();
+    let ok = 0;
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     for (const [i, file] of files.entries()) {
       boxU.innerHTML = html`<div class="notice">${t("sh.test.progress", { i: i + 1, n: files.length })}</div>`;
       try {
         const tr = parseTrace(file.name, await file.arrayBuffer());
         if (tr.source === "drawn") throw Object.assign(new Error(t("sh.trace.drawn")), { local: true });
-        const crop = cropToMap(tr, course.geo, course.map.w, course.map.h);
+        const sure = A.courses.length > 1 ? sureCircuit(matchCircuits(tr, A.courses)) : null, to = sure?.course || course;
+        const crop = sure ? sure.crop : cropToMap(tr, to.geo, to.map.w, to.map.h);
         if (!crop) throw Object.assign(new Error(t("sh.trace.offMap")), { local: true });
-        if (k >= 999) throw Object.assign(new Error(t("sh.test.full")), { local: true });
-        await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, test: ++k, trace: encodeTrace(tr, crop[0], crop[1]) }, key: keyOf(id) });
+        if (!next.has(to.n)) next.set(to.n, Math.max(0, ...testsOn(to.n), ...(to.n === course.n ? myTests().map((r) => (r.uid - 1e9) % 1000) : [])));
+        const k = next.get(to.n) + 1;
+        if (k > 999) throw Object.assign(new Error(t("sh.test.full")), { local: true });
+        await api(`/${id}/trace/${to.n}`, { method: "PUT", body: { consent: true, test: k, trace: encodeTrace(tr, crop[0], crop[1]) }, key: keyOf(id) });
+        next.set(to.n, k); placed.set(to.name, (placed.get(to.name) || 0) + 1);
         ok++;
       } catch (e) { errs.push(`${t("ui.colon", { a: file.name })} ${e.code ? errText(e) : e.local ? e.message : t(e.message === "time" ? "an.err.time" : "an.err.gpx")}`); }
     }
-    if (ok) reload();
+    const elsewhere = [...placed].filter(([name]) => name !== course.name);
+    if (errs.length || elsewhere.length) alert([t("sh.test.done", { ok, n: files.length }), ...[...placed].map(([name, n]) => t("sh.test.placed", { course: name, n })), ...errs].join("\n"));
+    // none on the circuit shown: the page goes to the one that got most
+    if (ok) reload(placed.has(course.name) ? undefined : A.courses.find((c) => c.name === [...placed].sort((a, b) => b[1] - a[1])[0][0])?.n);
     else boxU.innerHTML = "";
-    if (errs.length) alert([t("sh.test.done", { ok, n: files.length }), ...errs].join("\n"));
   }
   async function upload(file) {
     const boxU = $("#sh-upload");
@@ -1374,17 +1504,19 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     try { tr = parseTrace(file.name, await file.arrayBuffer()); } catch (e) { boxU.innerHTML = html`<div class="notice">${t(e.message === "time" ? "an.err.time" : "an.err.gpx")}</div>`; return; }
     // a route drawn by hand on Ozimut (its GPX says so): not compared with the others' GPS traces (owner, 2026-11-02)
     if (tr.source === "drawn") { boxU.innerHTML = html`<div class="notice">${t("sh.trace.drawn")}</div>`; return; }
-    const crop = cropToMap(tr, course.geo, course.map.w, course.map.h);
+    // the circuit the track runs, when it is surely another than the one shown: sent there, and said
+    const sure = A.courses.length > 1 ? sureCircuit(matchCircuits(tr, A.courses)) : null, to = sure && sure.course.n !== course.n ? sure.course : course;
+    const crop = to !== course ? sure.crop : cropToMap(tr, course.geo, course.map.w, course.map.h);
     if (!crop) { boxU.innerHTML = html`<div class="notice">${t("sh.trace.offMap")}</div>`; return; }
     const enc = encodeTrace(tr, crop[0], crop[1]), t0 = enc.t0, t1 = t0 + enc.dt.reduce((s, v) => s + v, 0);
-    boxU.innerHTML = html`<div class="notice sh-consent"><p>${t("sh.trace.confirm", { a: hms(t0), b: hms(t1), n: enc.dt.length })}</p>
+    boxU.innerHTML = html`<div class="notice sh-consent">${to !== course ? html`<p><b>${t("sh.offer.other", { course: to.name, k: sure.k, n: sure.n })}</b></p>` : ""}<p>${t("sh.trace.confirm", { a: hms(t0), b: hms(t1), n: enc.dt.length })}</p>
       <label class="an-opt"><input type="checkbox" id="sh-consent"> ${t("sh.trace.consent")}</label>
       ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-consent-vis" ${raw(myRun()?.visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}
       <div class="row" style="gap:6px;margin-top:6px"><button type="button" class="btn btn-sm btn-primary" id="sh-send">${t("sh.trace.send")}</button><button type="button" class="btn btn-sm" id="sh-cancel">${t("sh.cancel")}</button></div></div>`;
     $("#sh-cancel").addEventListener("click", () => { boxU.innerHTML = ""; });
     $("#sh-send").addEventListener("click", async () => {
       if (!$("#sh-consent").checked) return;
-      try { await api(`/${id}/trace/${course.n}`, { method: "PUT", body: { consent: true, trace: enc, note: myRun()?.note || "", visitors: !!$("#sh-consent-vis")?.checked }, key: keyOf(id) }); await ownPut(ownKey(id, course.n), file); reload(); }
+      try { await api(`/${id}/trace/${to.n}`, { method: "PUT", body: { consent: true, trace: enc, note: myRun()?.note || "", visitors: !!$("#sh-consent-vis")?.checked }, key: keyOf(id) }); await ownPut(ownKey(id, to.n), file); reload(to.n); }
       catch (e) { boxU.innerHTML = html`<div class="notice">${errText(e)}</div>`; }
     });
   }
