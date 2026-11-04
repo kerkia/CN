@@ -295,16 +295,16 @@ function setup(box, ctx) {
       <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
       <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
       <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div>
-    <h2 style="font-size:16px;margin:14px 0 8px">${t("sh.courses")}</h2>
+    ${A.courses.length ? html`<h2 style="font-size:16px;margin:14px 0 8px">${t("sh.courses")}</h2>
     <table class="data compact" style="max-width:720px"><tbody>
       ${A.courses.map((c) => html`<tr><td><b>${c.name}</b>${c.circuit ? html` <span class="muted">· ${c.circuit}</span>` : ""}</td>
         <td class="muted">${c.controls.filter((p) => p.kind === "control").length} ${t("prov.controls")}</td>
         <td><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`)}
-    </tbody></table>
-    <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.course.add")}</button>
-      <button type="button" class="btn btn-sm" id="sh-ocad" title="${t("sh.ocad.tip")}">${t("sh.ocad.add")}</button>
-      <button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div>
-    <div id="sh-editor"></div></div>`;
+    </tbody></table>` : ""}
+    <label class="dropzone an-drop" id="sh-drop" style="margin-top:12px"><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
+      <strong>${t(A.courses.length ? "sh.drop.more" : "sh.drop")}</strong><span class="muted">${t("sh.drop.hint")}</span></label>
+    <div id="sh-editor"></div>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div></div>`;
   $("#sh-s-save").addEventListener("click", async () => {
     const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
     if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
@@ -326,9 +326,26 @@ function setup(box, ctx) {
     try { await api(`/${id}`, { method: "PUT", body: { courses: A.courses.filter((c) => c.n !== n) }, key: keyOf(id) }); onChange(); setup(box, ctx); }
     catch (e) { alert(errText(e)); }
   }));
-  $$("[data-edit]", box).forEach((b) => b.addEventListener("click", () => editor($("#sh-editor"), { ...ctx, course: A.courses.find((c) => c.n === Number(b.dataset.edit)) })));
-  $("#sh-add").addEventListener("click", () => editor($("#sh-editor"), { ...ctx, course: null }));
-  $("#sh-ocad").addEventListener("click", () => ocadImport($("#sh-editor"), ctx));
+  // one drop zone for every way in (owner, 2026-11-04: « Ajouter un circuit » and « Importer un fichier OCAD » were two ways to
+  // one place): an OCAD course-setting project gives every circuit at once, a map (with its georeference, course file or one's
+  // trace) one circuit in the editor; the zone gives way to the panel it opened, and comes back when that one is given up
+  const zone = $("#sh-drop", box);
+  const done = () => { zone.hidden = false; };
+  const open = (list) => {
+    list = [...(list || [])];
+    if (!list.length) return;
+    zone.hidden = true;
+    if (list.some((f) => /\.(ocd|omap|xmap)$/i.test(f.name))) ocadImport($("#sh-editor"), { ...ctx, done }, list);
+    else editor($("#sh-editor"), { ...ctx, course: null, files: list, done });
+  };
+  $("#sh-drop-in").addEventListener("change", (e) => { open(e.target.files); e.target.value = ""; });
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", (e) => { e.preventDefault(); zone.classList.remove("over"); open(e.dataTransfer.files); });
+  $$("[data-edit]", box).forEach((b) => b.addEventListener("click", () => {
+    zone.hidden = true;
+    editor($("#sh-editor"), { ...ctx, course: A.courses.find((c) => c.n === Number(b.dataset.edit)), done });
+  }));
 }
 
 /** An OCAD course-setting file: the map and every course in one file, each course a circuit (owner, 2026-11-04: the circuit
@@ -390,7 +407,7 @@ async function ocadImport(box, ctx, preset = null) {
   drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take(e.dataTransfer.files); });
-  $("#sh-o-cancel").addEventListener("click", () => { box.innerHTML = ""; });
+  $("#sh-o-cancel").addEventListener("click", () => { box.innerHTML = ""; ctx.done?.(); });
   $("#sh-o-go").addEventListener("click", async () => {
     if (!read) return;
     const pick = read.designs.map((d, i) => ({ d, i })).filter(({ i }) => $(`[data-o="${i}"]`)?.checked);
@@ -503,6 +520,7 @@ async function editor(box, ctx) {
     catch (e) { st.notes.push(errText(e)); }
   }
   labels(); side();
+  if (ctx.files?.length) queueMicrotask(() => take(ctx.files));   // the files dropped on the analysis's zone
 
   async function take(list) {
     const vec = [...list].find((f) => /\.(ocd|omap|xmap)$/i.test(f.name));
@@ -630,7 +648,7 @@ async function editor(box, ctx) {
   drop.addEventListener("dragleave", () => drop.classList.remove("over"));
   drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take([...e.dataTransfer.files]); });
   $("#sh-e-circuit")?.addEventListener("change", (e) => { st.circuit = e.target.value; if (!$("#sh-e-name").value) $("#sh-e-name").value = st.circuit; });
-  $("#sh-e-cancel").addEventListener("click", () => { mv.destroy(); box.innerHTML = ""; });
+  $("#sh-e-cancel").addEventListener("click", () => { mv.destroy(); box.innerHTML = ""; ctx.done?.(); });
   $("#sh-e-save").addEventListener("click", async () => {
     const note = $("#sh-e-note");
     labels();

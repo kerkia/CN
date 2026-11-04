@@ -1637,8 +1637,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   « Ouvrir l'analyse de carte » then its circuits), the competition analyses older than that, and one's training events
   (« Nouvel entraînement »), by date with a « Type » column and a search; an analysis opens at `#/orga-analyses?id=` whatever
   its kind (read with it). An analysis's settings show the new password only for « mot de passe » and « Ouverte aussi aux visiteurs
-  sans compte » only for « tous » (owner, 2026-11-04). **« Importer un fichier OCAD (carte et circuits) »** beside « Ajouter un
-  circuit » (owner, 2026-11-04; `shared.js` `ocadImport`, `tracer/circuits.js` `readCourseFiles`): an OCAD course-setting project —
+  sans compte » only for « tous » (owner, 2026-11-04). **The circuits come in by one drop zone** (owner, 2026-11-04: « Ajouter un
+  circuit » and « Importer un fichier OCAD » were two buttons to one place; `setup`'s `#sh-drop`, no « Circuits » heading until there
+  is one): an OCAD/Mapper file among the files dropped opens the OCAD import, anything else the circuit editor with those files
+  (`ctx.files`); the zone hides while its panel is open (`ctx.done` gives it back). **The OCAD import** (`shared.js` `ocadImport`,
+  `tracer/circuits.js` `readCourseFiles`): an OCAD course-setting project —
   the courses file (its `courseSetting`) and the background map it names as its first OCAD/Mapper template (« …P.ocd » over
   « …F.ocd », same OCAD coordinates, as the Tracer's `ocadCourses`), dropped together or one after the other (the panel asks for the
   map by name) — each course ticked a circuit: its map printed with the course at 150 dpi, controls and georeference (the map's
