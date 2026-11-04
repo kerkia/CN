@@ -1927,8 +1927,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   hidden }); `ev.mapHidden`; `ev.fieldStates`; `ev.date`, `ev.dateInHeader`; specials `mtbo-*`, `inset` (src, factor), `mask`
   (holes). **.ppen is lossy**: `ppen.js` `ppenLosses` (listed before the export) and `ppenFlatten` (diamonds become forks, the rest
   left out); the .ozmt keeps everything, other maps as `maps/<n>/<file>`. **Modules**: `iofin.js` (IOF XML CourseData 3.0/2.0.3,
-  ClassList, OCAD course-setting strings from `vmap/ocad.js` `map.courseSetting` — read after OCAD's format description, **not yet
-  tried on a real OCAD course-setting file**; the start screen imports an IOF XML with its map), `classes.js`, `mysymbols.js` (SVG →
+  ClassList, OCAD course-setting strings from `vmap/ocad.js` `map.courseSetting` — see « OCAD course files » below; the start screen
+  imports an IOF XML with its map), `classes.js`, `mysymbols.js` (SVG →
   Purple Pen's symbol strokes), `advview.js` (attack angles, close controls), `layoutx.js` (insets, mask holes), `printx.js`
   (imposition, backs, registration marks, ISO 32000 geospatial pages), `exportx.js` (GeoTIFF, SVG, KMZ with the map, MapRun, OCAD
   text, IOF 2.0.3 by variation, the Livelox package), `maps.js` (other maps: storage `tracer/<id>/maps/<n>` — API `maps/<n>`
@@ -1940,6 +1940,22 @@ Every multiple-choice game was played through to its score page at phone size, w
   the package stands in), more interface languages (with the site's), EPS and IOF XML 1.0. Local tests: launch configs
   `pages-dev-tracer` (8781, the test account an administrator) and `pages-dev-tracer-user` (8782, not); the guide's chapter « Le niveau
   avancé » (`?onglet=tracer&voir=avance`).
+- **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
+  level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
+  start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds
+  map objects (`map.mapObjects`: objects outside 700-799), else the OCAD/Mapper template OCAD shows under the courses (`map.templates`),
+  which the dialog asks for by name (a PDF or image of it: aligned in two clicks). Both files share the OCAD frame: the controls keep
+  their file mm (`iofin.importInto` `fileMm: false`, then `transformAll(-ox, -oy)` as for an IOF XML). **What OCAD 12+ writes**
+  (checked on an OCAD 2018 file, `C:\kerkia\cn-data\Test files\ent opa 8 nov26 deski P.ocd` on `deski 8 nov 26 F.ocd`): no type-1
+  parameter strings; each control is an object of view type 1 and object-string type 1 whose own string is « <sort key> → Y<kind> →
+  a<code> → c/d/e/f/g/h<symbol> » (`ocad.js` collects them in `ctx.csObjs`, and never draws view types 1-4: the Tracer draws the
+  courses); « Yd » is the description sheet's box. **Description symbols** (`iofin.ocadSymbol`): ISCD 2018 numbers with three
+  decimals (« 1.013 » = 1.13), a direction as three more digits (« 12.306 » = 12.3 + direction 6), the directions counter-clockwise,
+  cardinals first — N, W, S, E, NW, SW, SE, NE — read against the map (0.102 the western of two pits, 0.208 the north-eastern of three
+  boulders, 12.306 a depression's SW part; OCAD's documentation says nothing); ISCD numbers turned into Purple Pen's ids
+  (`FROM_ISCD`, the inverse of `iscd.js` `RENUMBER`). A course ending at its start (« s S2 » again) gets a finish there. Not done:
+  variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps and layout images (logos)
+  are left out, classes (the advanced level's) for administrators only, a single file holding both map and courses not met yet.
 - **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse

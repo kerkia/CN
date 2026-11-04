@@ -974,11 +974,11 @@ export function build(X) {
           <p>Die Seite „Bahnlegung“ öffnet sofort den Bildschirm der Bahnlegung, leer, und darüber drei Möglichkeiten:</p>
           <ul class="mx-list">
             <li><b>Neue Veranstaltung</b>: die Bahnen eines Wettkampfs deines Vereins oder eines Trainings legen. Dafür brauchst du die Karte.</li>
-            <li><b>Veranstaltung importieren</b>: eine anderswo vorbereitete Veranstaltung übernehmen, aus einem anderen Konto, einem anderen Verein oder aus Purple Pen. Dafür brauchst du eine
-              Ozimut-Datei (.ozmt), die die Karte schon enthält, oder eine Purple-Pen-Datei (.ppen) und die Datei ihrer Karte.</li>
+            <li><b>Veranstaltung importieren</b>: eine anderswo vorbereitete Veranstaltung übernehmen, aus einem anderen Konto, einem anderen Verein aus Purple Pen oder aus OCAD. Dafür brauchst du eine
+              Ozimut-Datei (.ozmt), die die Karte schon enthält, eine Purple-Pen-Datei (.ppen) und die Datei ihrer Karte oder die OCAD-Bahnendatei und die ihrer Karte.</li>
             <li><b>Veranstaltung öffnen</b>: eine von denen, die du angelegt hast oder zu deren Team du gehörst, aus der Liste.</li>
           </ul>
-          <p>Auf diesem Bildschirm abgelegte Dateien wählen für dich: eine Karte allein beginnt eine neue Veranstaltung, eine .ozmt- oder .ppen-Datei einen Import. Der Button
+          <p>Auf diesem Bildschirm abgelegte Dateien wählen für dich: eine Karte allein beginnt eine neue Veranstaltung, eine .ozmt- oder .ppen-Datei oder eine OCAD-Datei mit Bahnen einen Import. Der Button
             „Veranstaltungen“ oben links und die Seite Datei (Neu, Öffnen, Importieren) bringen diese drei Möglichkeiten jederzeit zurück; Esc schließt sie. Ein Link, der eine Veranstaltung nennt, öffnet sie
             direkt.</p>
           <h3>Eine Veranstaltung anlegen</h3>
@@ -992,7 +992,10 @@ export function build(X) {
           </ul>
           <p>„Veranstaltung importieren“ fragt nach denselben Angaben (Wettkampf oder Training) und nach der Datei: Eine Ozimut-Datei (.ozmt) öffnet sich so, wie sie
             gespeichert wurde, mit ihrer Karte (eine früher als .ocnt gespeicherte Datei öffnet sich ebenso); eine Purple-Pen-Datei (.ppen)
-            mit ihrer Karte. Ist die angegebene Karte nicht die der Datei (zum Beispiel ein PDF statt der OCAD-Karte),
+            mit ihrer Karte; eine mit OCADs Bahnlegungsmodul vorbereitete OCAD-Datei mit ihrer Karte: der OCAD-Datei, die sie darunter zeigt
+            und die das Fenster nennt (unnötig, wenn Karte und Bahnen in einer Datei sind). Ihre Posten, deren Postenbeschreibungen und ihre
+            Bahnen werden übernommen, und eine Bahn, die zu ihrem Start zurückkehrt, bekommt dort ein Ziel; Gabelungen behalten nur ihren
+            ersten Zweig (das Fenster sagt es), und OCADs Layout-Bilder (Logos) werden nicht übernommen. Ist die angegebene Karte nicht die der Datei (zum Beispiel ein PDF statt der OCAD-Karte),
             richtest du die Posten anschließend mit zwei Klicks aus.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Wer sie sieht</h3><p>Nur ihr Team: ihr Ersteller und die Personen, die ihr über einen Einladungslink beitreten, als Bahnleger,
@@ -1360,7 +1363,7 @@ export function build(X) {
           <h3>Von einem anderen Programm kommen</h3>
           <p>${W("import-courses")} übernimmt die Posten, die Bahnen, die Kategorien und die Staffelteams aus einem IOF XML (3.0 oder
             2.0.3), exportiert aus Condes, OCAD, Purple Pen oder einer Zeitmessungssoftware, oder die Bahnen einer OCAD-Karte, die
-            mit dessen Bahnlegungsmodul vorbereitet wurde (gelesen nach der Formatbeschreibung von OCAD: an einer echten Datei zu prüfen). Ein IOF XML,
+            mit dessen Bahnlegungsmodul vorbereitet wurde (geprüft an einer Datei aus OCAD 2018: Posten, Postenbeschreibungen, Start, Bahnen). Ein IOF XML,
             mit seiner Karte unter „Veranstaltung importieren“ abgelegt, erstellt die Veranstaltung. Die Varianten kommen als eigene Bahnen an.</p>
           <h3>Die Kategorien</h3>
           <p>${W("classes")}: jede Kategorie, ihre Bahn und ihre erwarteten Teilnehmer. Die Liste der Kategorien einer Bahn und ihre

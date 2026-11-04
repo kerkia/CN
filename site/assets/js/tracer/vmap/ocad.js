@@ -141,7 +141,7 @@ export function readOcad(bytes) {
       const e = { objIndex, ll: { x: r.i32(), y: r.i32() }, ur: { x: r.i32(), y: r.i32() } };
       if (version <= 8) { e.pos = r.i32(); e.len = r.i16(); e.sym = r.i16(); e.status = 1; }
       else {
-        e.pos = r.i32(); e.len = r.i32(); e.sym = r.i32(); e.objType = r.u8(); r.u8(); e.status = r.u8(); r.u8(); r.i16();
+        e.pos = r.i32(); e.len = r.i32(); e.sym = r.i32(); e.objType = r.u8(); r.u8(); e.status = r.u8(); e.viewType = r.u8(); r.i16();
         r.i16(); r.i16();
         e.layoutFont = r.u8(); r.u8();
       }
@@ -153,11 +153,24 @@ export function readOcad(bytes) {
       try {
         const o = readObject(r, version);
         if (ctx.cs?.controls.length && o.coords?.length) (ctx.objPos ||= new Map()).set(e.objIndex, { x: coordX(o.coords[0]), y: coordY(o.coords[0]), sym: o.sym });
+        // OCAD 12 and later: a course-setting object (view type 1, object string type 1) carries its control's string itself
+        // (« 1031 → Yc → a31 → d1.003… »); the Tracer draws the courses, so the object is not drawn with the map
+        if (version >= 12 && (e.viewType === 1 || o.objStrType === 1)) {
+          if (o.objStr && o.coords?.length) {
+            const p = parseParam(o.objStr, 1);
+            if (p.codes.Y != null) (ctx.csObjs ||= []).push({ p, x: coordX(o.coords[0]), y: coordY(o.coords[0]), sym: o.sym });
+          }
+          continue;
+        }
+        if (version >= 12 && e.viewType >= 2 && e.viewType <= 4) continue;   // OCAD's course previews and temporary objects
+        const num = o.sym > 0 ? Math.floor(o.sym / (version >= 9 ? 1000 : 10)) : 0;
+        if (num && (num < 700 || num > 799)) ctx.mapObjects = (ctx.mapObjects || 0) + 1;
         createObject(e, o, ctx);
       } catch (err) { /* a damaged object is skipped */ }
     }
   }
   map.courseSetting = courseSetting(ctx);
+  map.mapObjects = ctx.mapObjects || 0;                       // objects of the map itself (not 7xx course symbols)
   // layout bitmaps (OCAD 11+: embedded in the parameter strings)
   for (const b of ctx.layoutBitmaps) {
     if (!b.data) continue;
@@ -172,21 +185,32 @@ export function readOcad(bytes) {
   return { map, version };
 }
 
-/** OCAD's course setting, read for the Tracer's import (iofin.js fromOcad): { controls: [{ code, kind, x, y }], courses: [{ name, climb,
- *  parts: [[code letter, value]] }], classes: [{ name, course, runners }] } in the file's mm, or null. Read after OCAD's file format
- *  description (« si_Course »: s start, c control, k crossing point, g map change, f finish, l/b/p and r/v/q variations); a
- *  control's kind from its string's « Y » or, failing that, its object's course-setting symbol (701 start, 706 finish, 708 crossing). */
+/** OCAD's course setting, read for the Tracer's import (iofin.js fromOcad): { controls: [{ code, kind, x, y, descr: { c, d, e, f,
+ *  g, h } }], courses: [{ name, climb, scale, parts: [[code letter, value]] }], classes: [{ name, course, runners }] } in the file's
+ *  mm, or null. Read after OCAD's file format description (« si_Course »: s start, c control, k crossing point, g map change, f
+ *  finish, l/b/p and r/v/q variations; the control string: Y its type, c-h the description's columns). Up to OCAD 11 a control
+ *  is a parameter string tied to its object (« First » its code); from OCAD 12 the object carries the string itself (« First » a
+ *  sort key, « a » the code: checked on an OCAD 2018 course-setting file, 2026-11-04). A control's kind from its string's « Y »
+ *  or, failing that, its object's course-setting symbol (701 start, 706 finish, 708 crossing). */
 function courseSetting(ctx) {
-  const cs = ctx.cs;
-  if (!cs || (!cs.controls.length && !cs.courses.length)) return null;
+  const cs = ctx.cs || { controls: [], courses: [], classes: [] };
+  if (!cs.controls.length && !cs.courses.length && !ctx.csObjs?.length) return null;
   const KIND = { s: "start", c: "normal", f: "finish", k: "crossing", w: "crossing" };
-  const controls = [];
+  const div = ctx.version >= 9 ? 1000 : 10;
+  const kindOf = (p, sym) => KIND[(p.codes.Y || "")[0]] || (sym === 701 ? "start" : sym === 706 ? "finish" : sym === 708 ? "crossing" : sym === 703 ? "normal" : null);
+  const descr = (p) => Object.fromEntries("cdefgh".split("").filter((k) => p.codes[k]).map((k) => [k, p.codes[k].trim()]));
+  const controls = [], seen = new Set();
   for (const p of cs.controls) {
-    const o = ctx.objPos?.get(p.objIndex), sym = o ? Math.floor(Math.abs(o.sym) / (ctx.version >= 9 ? 1000 : 10)) : 0;
-    const kind = KIND[(p.codes.Y || "")[0]] || (sym === 701 ? "start" : sym === 706 ? "finish" : sym === 708 ? "crossing" : "normal");
-    if (p.first) controls.push({ code: p.first.trim(), kind, x: o ? o.x : null, y: o ? o.y : null });
+    const o = ctx.objPos?.get(p.objIndex), sym = o ? Math.floor(Math.abs(o.sym) / div) : 0;
+    const code = (p.codes.a || p.first || "").trim(), kind = kindOf(p, sym) || "normal";
+    if (code && !seen.has(code)) { seen.add(code); controls.push({ code, kind, x: o ? o.x : null, y: o ? o.y : null, descr: descr(p) }); }
   }
-  const courses = cs.courses.map((p) => ({ name: p.first, climb: p.codes.C ?? null, parts: p.parts || [] }));
+  for (const { p, x, y, sym } of ctx.csObjs || []) {
+    const code = (p.codes.a || p.first || "").trim(), kind = kindOf(p, Math.floor(Math.abs(sym) / div));
+    if (!code || !kind || seen.has(code)) continue;          // « d » (the description sheet), « n » (a course's name), « t »…: not controls
+    seen.add(code); controls.push({ code, kind, x, y, descr: descr(p) });
+  }
+  const courses = cs.courses.map((p) => ({ name: p.first, climb: p.codes.C ?? null, scale: pnum(p, "S", 0) || null, parts: p.parts || [] }));
   const classes = cs.classes.map((p) => ({ name: p.first, course: p.codes.c || null, runners: pint(p, "r", 0) }));
   return { controls, courses, classes };
 }

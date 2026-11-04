@@ -219,6 +219,28 @@ async function createEvent(v, races) {
   catch (e) { alertBox(e.code === "not organiser" ? t("trc.page.notOrganiser") : t("trc.page.createErr", { err: e.code || e.message })); return null; }
 }
 const isPpenFile = (f) => /\.(ppen|xml)$/i.test(f.name);
+/** An OCAD file's course setting (OCAD's « Course Setting » projects; owner, 2026-11-04): the event its courses make — controls
+ *  with their descriptions, courses, a finish where a course ends at its start —, its map's name (the file itself when it holds
+ *  a map, else the background map OCAD shows under the courses, its first OCAD or Mapper template), or null when it has no
+ *  course. Classes, the advanced level's, for administrators only. */
+async function ocadCourses(file) {
+  if (!/\.ocd$/i.test(file.name)) return null;
+  let map;
+  try { ({ map } = (await import("../tracer/vmap/ocad.js")).readOcad(new Uint8Array(await file.arrayBuffer()))); } catch (e) { return null; }
+  const cs = map.courseSetting;
+  if (!cs?.courses.length) return null;
+  const iof = await import("../tracer/iofin.js");
+  await (await import("../tracer/symbols.js")).loadSymbols().catch(() => {});
+  const got = iof.fromOcad(cs);
+  if (!auth.session()?.admin) got.classes = [];
+  const ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: map.scale || 10000 } });
+  ev.title = file.name.replace(/\.ocd$/i, "");
+  iof.importInto(ev, got, { fileMm: false });
+  const self = map.mapObjects > 0;
+  const tpl = (map.templates || []).find((x) => /\.(ocd|omap|xmap)$/i.test(x.file));
+  ev.map.file = self ? file.name : tpl ? tpl.file.split(/[\\/]/).pop() : "";
+  return { ev, self, forked: got.forked };
+}
 const fmtN = (v) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 }).format(v);
 /** A file's size in megabytes, one decimal, in the interface's language. */
 const fmtMb = (bytes) => t("trc.page.mb", { n: new Intl.NumberFormat(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(bytes / 1e6) });
@@ -348,6 +370,8 @@ async function newEvent(main, files = null) {
       mapFile = file; vec = null; gen = null;
       if (isVectorMap(file.name)) {
         show(t("trc.page.reading", { name: escA(file.name) }));
+        // an OCAD file holding courses, dropped here with its map or alone: an import (its courses, on itself or on the map it names)
+        for (const x of list) if (/\.ocd$/i.test(x.name) && await ocadCourses(x)) { handed = true; done(null); importEvent(main, list).then((id) => { if (!id) backToStart(); }); return; }
         const r = await openVectorFile(file);
         if (mapFile !== file) return;                        // another file chosen meanwhile
         if (!r.src) { mapFile = null; show(escA(mapError(r.err)), true); return; }
@@ -402,7 +426,7 @@ async function newEvent(main, files = null) {
 // ---- an imported event: an Ozimut file (.ozmt or .ocnt, which holds its map), or a Purple Pen file (.ppen) and its map, dropped together or one after the other
 async function importEvent(main, files = []) {
   const races = await clubRaces();
-  const st = { ppen: null, ocn: null, iof: false, ev: null, map: null, mapFromOcn: false, notes: [] };
+  const st = { ppen: null, ocn: null, ocad: null, iof: false, ev: null, map: null, mapFromOcn: false, notes: [] };
   const v = await modal({ title: t("trc.page.importEvent"), wide: true, ok: t("trc.page.import"), body: `
     <p>${t("trc.page.importBody")}</p>
     ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `${OCN_ACCEPT},.ppen,.xml,${MAP_ACCEPT}`)}
@@ -419,14 +443,21 @@ async function importEvent(main, files = []) {
         courses: tn("trc.page.nCourses", Object.keys(ev.courses).length), controls: tn("trc.page.nControls", Object.values(ev.controls).filter((c) => c.kind === "normal").length),
         map: `${expected ? t("trc.page.itsMap", { file: escA(expected), scale: ev.map.scale }) : ""}${inside ? t("trc.page.mapInside") : ""}` });
       if (st.ocn && ev) lines.push(`<li class="ok">${t("trc.page.ocnLine", fileVars(st.ocn.name, st.mapFromOcn))}</li>`);
+      else if (st.ocad && ev) {
+        const self = st.ocad.self && st.map === st.ppen;
+        lines.push(`<li class="ok">${t("trc.page.ocadLine", { ...fileVars(st.ppen.name, self), map: self ? t("trc.page.mapInside") : expected ? t("trc.page.itsMap", { file: escA(expected), scale: ev.map.scale }) : "" })}</li>`);
+        if (st.ocad.forked.length) lines.push(`<li class="warn">${t("trc.page.ocadForked", { list: escA(st.ocad.forked.join(", ")) })}</li>`);
+      }
       else if (st.ppen && ev) lines.push(`<li class="ok">${t("trc.page.ppenLine", fileVars(st.ppen.name, false))}</li>`);
       else lines.push(`<li class="todo">${escA(t("trc.page.fileTodo"))}</li>`);
-      if (st.map && st.mapFromOcn) { /* the .ozmt's own map: said on its line */ } else if (st.map) {
+      if (st.map && (st.mapFromOcn || (st.ocad && st.map === st.ppen))) { /* the file's own map: said on its line */ }
+      else if (st.map && st.ocad && !expected) lines.push(`<li class="ok">${t("trc.page.mapLine", { name: escA(st.map.name), info: escA(`${isVectorMap(st.map.name) ? t("trc.page.ocadOrMapper") : isPdf(st.map.name, st.map.type) ? "PDF" : t("trc.page.image")}, ${fmtMb(st.map.size)}`) })}</li>`);
+      else if (st.map) {
         const vec = isVectorMap(st.map.name), same = !expected || baseName(expected) === baseName(st.map.name);
         lines.push(`<li class="ok">${t("trc.page.mapLine", { name: escA(st.map.name), info: escA(`${vec ? t("trc.page.ocadOrMapper") : isPdf(st.map.name, st.map.type) ? "PDF" : t("trc.page.image")}, ${fmtMb(st.map.size)}`) })}</li>`);
-        if (vec && ocad && !same) lines.push(`<li class="ok">${t("trc.page.otherVersion", { file: escA(expected) })}</li>`);
-        else if (!same || (vec && !ocad && ev)) lines.push(`<li class="warn">${t("trc.page.notPpenMap", { file: escA(expected) })}</li>`);
-      } else lines.push(`<li class="todo">${ocad ? t("trc.page.mapTodoOcad", { file: escA(expected) }) : expected ? t("trc.page.mapTodoFile", { file: escA(expected) }) : escA(t("trc.page.mapTodo"))}</li>`);
+        if (vec && ocad && !same) lines.push(`<li class="ok">${t(st.ocad ? "trc.page.ocadOtherMap" : "trc.page.otherVersion", { file: escA(expected) })}</li>`);
+        else if (!same || (vec && !ocad && ev)) lines.push(`<li class="warn">${t(st.ocad ? "trc.page.ocadNotMap" : "trc.page.notPpenMap", { file: escA(expected) })}</li>`);
+      } else lines.push(`<li class="todo">${st.ocad && expected ? t("trc.page.mapTodoOcadCs", { file: escA(expected) }) : ocad ? t("trc.page.mapTodoOcad", { file: escA(expected) }) : expected ? t("trc.page.mapTodoFile", { file: escA(expected) }) : escA(t("trc.page.mapTodo"))}</li>`);
       for (const n of st.notes) lines.push(`<li class="bad">${n}</li>`);
       f.querySelector("#tr-imp-files").innerHTML = lines.join("");
     };
@@ -436,14 +467,14 @@ async function importEvent(main, files = []) {
         if (isOcnFile(file)) {
           try {
             const r = await readOcn(await file.arrayBuffer());
-            st.ev = r.ev; st.ocn = file; st.ppen = null;
+            st.ev = r.ev; st.ocn = file; st.ppen = null; st.ocad = null;
             if (r.map) { st.map = new File([r.map.bytes], r.map.name, { type: r.map.type || mimeOf(r.map.name, "") }); st.mapFromOcn = true; }
             st.extra = r.extra || [];
             if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || "";
           } catch (e) { st.notes.push(t("trc.page.fileErr", { name: escA(file.name), err: escA(e.message) })); }
         } else if (isPpenFile(file)) {
           const text = await file.text();
-          try { st.ev = readPpen(text); st.ppen = file; st.ocn = null; st.iof = false; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
+          try { st.ev = readPpen(text); st.ppen = file; st.ocn = null; st.ocad = null; st.iof = false; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
           catch (e) {
             // an IOF XML CourseData (Condes, OCAD, MeOS…): the advanced level's import, for administrators for now
             const iof = auth.session()?.admin && /\.xml$/i.test(file.name) ? await import("../tracer/iofin.js") : null;
@@ -452,11 +483,21 @@ async function importEvent(main, files = []) {
               const data = iof.readIof(text), ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: data.scale || 10000 } });
               ev.title = file.name.replace(/\.xml$/i, "");
               iof.importInto(ev, data, { fileMm: false });
-              st.ev = ev; st.ppen = file; st.ocn = null; st.iof = true; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; }
+              st.ev = ev; st.ppen = file; st.ocn = null; st.ocad = null; st.iof = true; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; }
               if (f.elements.title && !f.elements.title.value) f.elements.title.value = ev.title;
             } else st.notes.push(t("trc.page.badPpen", { name: escA(file.name) }));
           }
-        } else if (isMapFile(file)) { st.map = file; st.mapFromOcn = false; }
+        } else if (isMapFile(file)) {
+          // an OCAD course-setting file: the event (its courses), and its own map when it holds one
+          const oc = /\.ocd$/i.test(file.name) ? await ocadCourses(file) : null;
+          if (oc) {
+            const wasSelf = st.ocad?.self && st.map === st.ppen;
+            st.ev = oc.ev; st.ppen = file; st.ocad = oc; st.ocn = null; st.iof = true;
+            if (st.mapFromOcn || wasSelf) { st.map = null; st.mapFromOcn = false; }
+            if (oc.self) st.map = file;
+            if (f.elements.title && !f.elements.title.value) f.elements.title.value = oc.ev.title;
+          } else { st.map = file; st.mapFromOcn = false; }
+        }
         else st.notes.push(t("trc.page.badFile", { name: escA(file.name) }));
       }
       render();

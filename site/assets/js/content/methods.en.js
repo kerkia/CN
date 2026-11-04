@@ -974,11 +974,11 @@ export function build(X) {
           <p>The “Course setting” page opens the course-setting screen straight away, empty, and over it three choices:</p>
           <ul class="mx-list">
             <li><b>New event</b>: set the courses of a competition of your club or of a training session. You need the map.</li>
-            <li><b>Import event</b>: take up an event prepared elsewhere, on another account, in another club or in Purple Pen. You need an
-              Ozimut file (.ozmt), which already holds the map, or a Purple Pen file (.ppen) and its map file.</li>
+            <li><b>Import event</b>: take up an event prepared elsewhere, on another account, in another club in Purple Pen or in OCAD. You need an
+              Ozimut file (.ozmt), which already holds the map, a Purple Pen file (.ppen) and its map file, or the OCAD course file and its map's.</li>
             <li><b>Open event</b>: one of those you created or whose team includes you, from the list.</li>
           </ul>
-          <p>Files dropped on this screen choose for you: a map alone starts a new event, a .ozmt or a .ppen an import. The
+          <p>Files dropped on this screen choose for you: a map alone starts a new event, a .ozmt, a .ppen or an OCAD file holding courses an import. The
             “Events” button, top left, and the File page (New, Open, Import) bring these three choices back at any time; Esc closes them. A link that names an event opens it
             directly.</p>
           <h3>Creating an event</h3>
@@ -991,7 +991,11 @@ export function build(X) {
               of the circles and numbers.</li>
           </ul>
           <p>“Import event” asks for the same details (competition or training session) and the file: an Ozimut file (.ozmt) reopens just as it was
-            saved, with its map (a file saved earlier as .ocnt opens the same way); a Purple Pen file (.ppen) with its map. If the map given is not the file's own (a PDF instead of the OCAD
+            saved, with its map (a file saved earlier as .ocnt opens the same way); a Purple Pen file (.ppen) with its map; an OCAD file prepared
+            with its course-setting module, with its map: the OCAD file it shows underneath, which the box names (not needed when map and courses
+            are in one file). Its controls, their descriptions and its courses are taken, and a course that comes back to its start gets a
+            finish at the same place; variations keep only their first branch (the box says so), and OCAD's layout images (logos) are not
+            taken. If the map given is not the file's own (a PDF instead of the OCAD
             map, for example), you then align the controls in two clicks.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Who sees it</h3><p>Its team only: its creator and the people who join it by an invitation link, as course setter,
@@ -1357,8 +1361,8 @@ export function build(X) {
             these additions: the export says first what it leaves out; the Ozimut file (.ozmt) keeps everything.</p>
           <h3>Coming from another program</h3>
           <p>${W("import-courses")} takes the controls, courses, classes and relay teams of an IOF XML file (3.0 or 2.0.3) exported from
-            Condes, OCAD, Purple Pen or a timing program, or the courses of an OCAD map prepared with its course-setting module (read
-            after OCAD's description of its format: to be checked on a real file). An IOF XML dropped with its map on “Import an event”
+            Condes, OCAD, Purple Pen or a timing program, or the courses of an OCAD map prepared with its
+            course-setting module (checked on an OCAD 2018 file: controls, descriptions, start, courses). An IOF XML dropped with its map on “Import an event”
             creates the event. Variations arrive as courses of their own.</p>
           <h3>Classes</h3>
           <p>${W("classes")}: each class, its course and its expected entries. A course's class list and entries follow from them, and

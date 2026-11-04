@@ -974,11 +974,11 @@ export function build(X) {
           <p>La page « Tracer » ouvre tout de suite l'écran du tracé, vide, et par-dessus trois choix :</p>
           <ul class="mx-list">
             <li><b>Nouvel événement</b> : tracer les circuits d'une compétition de votre club ou d'un entraînement. Il faut la carte.</li>
-            <li><b>Importer un événement</b> : reprendre un événement préparé ailleurs, sur un autre compte, dans un autre club ou dans Purple Pen. Il faut un fichier
-              Ozimut (.ozmt), qui contient déjà la carte, ou un fichier Purple Pen (.ppen) et le fichier de sa carte.</li>
+            <li><b>Importer un événement</b> : reprendre un événement préparé ailleurs, sur un autre compte, dans un autre club dans Purple Pen ou dans OCAD. Il faut un fichier
+              Ozimut (.ozmt), qui contient déjà la carte, un fichier Purple Pen (.ppen) et le fichier de sa carte, ou le fichier OCAD des circuits et celui de sa carte.</li>
             <li><b>Ouvrir un événement</b> : un de ceux que vous avez créés ou dont l'équipe vous compte, dans la liste.</li>
           </ul>
-          <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ozmt ou un .ppen un import. Le bouton
+          <p>Des fichiers déposés sur cet écran choisissent pour vous : une carte seule commence un nouvel événement, un .ozmt, un .ppen ou un fichier OCAD qui contient des circuits un import. Le bouton
             « Événements », en haut à gauche, et la page Fichier (Nouveau, Ouvrir, Importer) ramènent ces trois choix à tout moment ; Échap les ferme. Un lien qui nomme un événement l'ouvre
             directement.</p>
           <h3>Créer un événement</h3>
@@ -992,7 +992,10 @@ export function build(X) {
           </ul>
           <p>« Importer un événement » demande les mêmes renseignements (compétition ou entraînement) et le fichier : un fichier Ozimut (.ozmt) se rouvre tel qu'il a
             été enregistré, avec sa carte (un fichier enregistré plus tôt en .ocnt s'ouvre de même) ; un fichier Purple Pen (.ppen)
-            avec sa carte. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
+            avec sa carte ; un fichier OCAD préparé avec son module de traçage, avec sa carte : le fichier OCAD qu'il affiche dessous, que
+            la boîte nomme (inutile quand carte et circuits sont dans un même fichier). Ses postes, leurs définitions et ses circuits sont
+            repris, et un circuit qui revient à son départ reçoit une arrivée au même endroit ; les variations n'en gardent que la première
+            branche (la boîte le signale), et les images de mise en page d'OCAD (logos) ne sont pas reprises. Si la carte donnée n'est pas celle du fichier (un PDF au lieu de la carte
             OCAD, par exemple), on cale ensuite les postes en deux clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Qui le voit</h3><p>Son équipe seulement : son créateur et les personnes qui la rejoignent par un lien d'invitation, comme traceur,
@@ -1360,7 +1363,7 @@ export function build(X) {
           <h3>Venir d'un autre logiciel</h3>
           <p>${W("import-courses")} reprend les postes, les circuits, les catégories et les équipes de relais d'un IOF XML (3.0 ou
             2.0.3) exporté de Condes, d'OCAD, de Purple Pen ou d'un logiciel de chronométrage, ou les circuits d'une carte OCAD préparée
-            avec son module de traçage (lu d'après la description du format par OCAD : à vérifier sur un vrai fichier). Un IOF XML
+            avec son module de traçage (vérifié sur un fichier d'OCAD 2018 : postes, définitions, départ, circuits). Un IOF XML
             déposé avec sa carte sur « Importer un événement » crée l'événement. Les variantes arrivent comme des circuits à part.</p>
           <h3>Les catégories</h3>
           <p>${W("classes")} : chaque catégorie, son circuit et ses concurrents attendus. La liste des catégories d'un circuit et ses

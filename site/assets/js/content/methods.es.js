@@ -974,11 +974,11 @@ export function build(X) {
           <p>La página «Trazado» abre enseguida la pantalla del trazado, vacía, y encima tres opciones:</p>
           <ul class="mx-list">
             <li><b>Nuevo evento</b>: trazar los recorridos de una competición de tu club o de un entrenamiento. Hace falta el mapa.</li>
-            <li><b>Importar un evento</b>: retomar un evento preparado en otro sitio, en otra cuenta, en otro club o en Purple Pen. Hace falta un archivo
-              Ozimut (.ozmt), que ya contiene el mapa, o un archivo Purple Pen (.ppen) y el archivo de su mapa.</li>
+            <li><b>Importar un evento</b>: retomar un evento preparado en otro sitio, en otra cuenta, en otro club en Purple Pen o en OCAD. Hace falta un archivo
+              Ozimut (.ozmt), que ya contiene el mapa, un archivo Purple Pen (.ppen) y el archivo de su mapa, o el archivo de recorridos de OCAD y el de su mapa.</li>
             <li><b>Abrir un evento</b>: uno de los que has creado o cuyo equipo te incluye, en la lista.</li>
           </ul>
-          <p>Los archivos que sueltes en esta pantalla eligen por ti: un mapa solo empieza un evento nuevo, un .ozmt o un .ppen una importación. El botón
+          <p>Los archivos que sueltes en esta pantalla eligen por ti: un mapa solo empieza un evento nuevo, un .ozmt, un .ppen o un archivo OCAD con recorridos una importación. El botón
             «Eventos», arriba a la izquierda, y la página Archivo (Nuevo, Abrir, Importar) vuelven a mostrar estas tres opciones en cualquier momento; Esc las cierra. Un enlace que nombra un evento lo abre
             directamente.</p>
           <h3>Crear un evento</h3>
@@ -992,7 +992,10 @@ export function build(X) {
           </ul>
           <p>«Importar un evento» pide los mismos datos (competición o entrenamiento) y el archivo: un archivo Ozimut (.ozmt) se vuelve a abrir tal como se
             guardó, con su mapa (un archivo guardado antes como .ocnt se abre igual); un archivo Purple Pen (.ppen)
-            con su mapa. Si el mapa dado no es el del archivo (un PDF en lugar del mapa
+            con su mapa; un archivo OCAD preparado con su módulo de trazado, con su mapa: el archivo OCAD que muestra debajo, que la ventana
+            nombra (no hace falta si mapa y recorridos están en un mismo archivo). Se toman sus controles, sus descripciones y sus recorridos, y
+            un recorrido que vuelve a su salida recibe una meta en el mismo lugar; las variantes solo conservan su primera rama (la ventana lo
+            indica), y las imágenes de maquetación de OCAD (logotipos) no se toman. Si el mapa dado no es el del archivo (un PDF en lugar del mapa
             OCAD, por ejemplo), después se calibran los controles en dos clics.</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Quién lo ve</h3><p>Solo su equipo: su creador y las personas que se unen a él con un enlace de invitación, como trazador,
@@ -1360,7 +1363,7 @@ export function build(X) {
           <h3>Venir de otro programa</h3>
           <p>${W("import-courses")} toma los controles, los recorridos, las categorías y los equipos de relevos de un IOF XML (3.0 o
             2.0.3) exportado de Condes, de OCAD, de Purple Pen o de un programa de cronometraje, o los recorridos de un mapa de OCAD preparado
-            con su módulo de trazado (leído según la descripción del formato de OCAD: pendiente de comprobar con un archivo real). Un IOF XML
+            con su módulo de trazado (comprobado con un archivo de OCAD 2018: controles, descripciones, salida, recorridos). Un IOF XML
             depositado con su mapa en «Importar un evento» crea el evento. Las variantes llegan como recorridos aparte.</p>
           <h3>Las categorías</h3>
           <p>${W("classes")}: cada categoría, su recorrido y sus participantes previstos. De ahí se deducen la lista de categorías de un recorrido y sus

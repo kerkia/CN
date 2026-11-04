@@ -1,8 +1,9 @@
 // Courses brought in from other course-setting programs (the advanced level; owner, 2026-10-24, after the Condes study):
 // IOF XML CourseData 3.0 and 2.0.3 (Condes, OCAD, Purple Pen, MeOS, SportSoftware…) with their classes and relay teams, an IOF
 // XML ClassList (the classes alone), and the courses of an OCAD course-setting map (OCAD's parameter strings: a control per
-// course-setting object, a course per « Course » string — read after OCAD's file format description, not yet checked on a
-// real OCAD course-setting file). Every source becomes one shape — { controls, courses, classes, teams, scale, geo } — that
+// course-setting object, with its description, a course per « Course » string — read after OCAD's file format description,
+// checked on an OCAD 2018 course-setting file on 2026-11-04: controls, start, courses ending at the start; variations and
+// classes not yet met in a real file). Every source becomes one shape — { controls, courses, classes, teams, scale, geo } — that
 // importInto() puts into the event: controls matched by code to those already there (or added), courses added or replacing
 // the event's, a course's variations as courses of their own (a CourseFamily names them), classes as data (ev.classes),
 // relay teams kept with their courses' names (ev.relayTeams, written back by the IOF export).
@@ -10,6 +11,7 @@
 import * as M from "./model.js";
 import { hasGeo, toMm } from "./geo.js";
 import { t, tn } from "./lang.js";
+import { symbolsLoaded, existsIn } from "./symbols.js";
 
 const num = (s) => { const v = parseFloat(String(s ?? "").replace(",", ".")); return Number.isFinite(v) ? v : null; };
 const kids = (el, name) => [...(el?.children || [])].filter((c) => c.localName === name);
@@ -81,24 +83,64 @@ function readIof2(root) {
   return out;
 }
 
-/** An OCAD course-setting map's courses (vmap/ocad.js: map.courseSetting) in the import shape, positions in the file's mm. */
+// OCAD's description symbols are its course-setting symbol numbers: the ISCD 2018 number with three decimals (« d1.003 » = 1.3,
+// « d1.013 » = 1.13), a symbol with directions three digits more (« g12.306 » = 12.3, direction 6; « c0.208 » = 0.2, direction 8).
+// The directions are numbered counter-clockwise, the cardinal ones first: N, W, S, E, then NW, SW, SE, NE — read on an OCAD 2018
+// file against its map (2026-11-04: « 0.102 » the western of two pits, « 0.208 » the north-eastern of three boulders, « 12.306 »
+// a depression's south-western part), OCAD's documentation saying nothing of it.
+const OCAD_DIRS = ["N", "W", "S", "E", "NW", "SW", "SE", "NE"];
+// ISCD 2018 numbers that Purple Pen's ids (the Tracer's) keep from 2004 (iscd.js gives the other way)
+const FROM_ISCD = {
+  "5.21": "5.23", "5.22": "5.24", "5.23": "5.25", "5.24": "5.26", "11.1": "11.7",
+  "12.1": "11.1", "12.2": "11.2", "12.3": "11.3", "12.4": "11.4", "12.5": "11.5", "12.6": "11.6", "12.7": "11.8", "12.8": "11.9",
+  "12.9": "11.10", "12.10": "11.11", "12.11": "11.13", "12.12": "11.14", "12.13": "11.12", "12.14": "11.15",
+  "13.1": "12.1", "13.2": "12.2", "13.3": "12.4", "14.1": "13.6", "15.1": "13.1", "15.2": "13.2", "15.3": "13.3", "15.4": "13.4",
+  "15.5": "13.5", "16.1": "14.1", "16.2": "14.2", "16.3": "14.3", "9.1": "9.1high", "9.3": "9.3high",
+};
+/** The Tracer's (Purple Pen's) symbol id of an OCAD description symbol number, or null. */
+export function ocadSymbol(raw) {
+  const m = /^(\d+)\.(\d{3})$/.exec(String(raw || "").trim());
+  if (!m) return null;
+  const sub = Number(m[2]), minor = sub >= 100 ? Math.floor(sub / 100) : sub, dir = sub >= 100 ? sub % 100 : 0;
+  if (!minor) return null;
+  const ref = `${Number(m[1])}.${minor}`, id = FROM_ISCD[ref] || ref;
+  if (!dir) return id;
+  return OCAD_DIRS[dir - 1] ? `${id}${OCAD_DIRS[dir - 1]}` : null;
+}
+
+/** An OCAD course-setting map's courses (vmap/ocad.js: map.courseSetting) in the import shape, positions in the file's mm. A course
+ *  that ends at its start (« s S2 » again: a finish at the start) gets a finish there. Variations keep their first branch only:
+ *  `forked` names those courses. */
 export function fromOcad(cs) {
-  const out = { controls: [], courses: [], classes: [], teams: [] };
+  const out = { controls: [], courses: [], classes: [], teams: [], forked: [] };
   if (!cs) return out;
   const KIND = { s: "start", c: "normal", f: "finish", k: "crossing", w: "crossing" };
-  for (const c of cs.controls) out.controls.push({ code: c.code, kind: c.kind, x: c.x, y: c.y });
+  const at = new Map();
+  for (const c of cs.controls) {
+    const symbols = c.kind === "normal" ? ["c", "d", "e", "f", "g", "h"].map((k) => ocadSymbol(c.descr?.[k])) : null;
+    out.controls.push({ code: c.code, kind: c.kind, x: c.x, y: c.y, symbols: symbols?.some(Boolean) ? symbols : null });
+    at.set(c.code, c);
+  }
   for (const co of cs.courses) {
     const seq = [];
-    let depth = 0, branch = 0;
+    let depth = 0, branch = 0, forked = false;
     for (const [k, v] of co.parts) {
-      if (k === "l" || k === "r") { depth++; branch = 0; continue; }      // a variation: its first branch only
+      if (k === "l" || k === "r") { depth++; branch = 0; forked = true; continue; }      // a variation: its first branch only
       if (k === "b" || k === "v") { branch++; continue; }
       if (k === "p" || k === "q") { depth = Math.max(0, depth - 1); continue; }
       if (depth && branch > 1) continue;
       if (KIND[k]) seq.push({ kind: KIND[k], code: v.trim(), points: 0, exchange: false });
       else if (k === "g" && seq.length) seq[seq.length - 1].exchange = true;
     }
-    out.courses.push({ name: co.name, family: null, length: null, climb: num(co.climb), score: false, seq });
+    // back to the start at the end: a finish drawn at the start's place (one for every course that does it)
+    const last = seq[seq.length - 1];
+    if (seq.length > 1 && last.kind === "start" && last.code === seq[0].code) {
+      const code = `${last.code}→`;                      // the start's code and an arrow: no control's code
+      if (!out.controls.some((c) => c.code === code)) { const s = at.get(last.code); out.controls.push({ code, kind: "finish", x: s?.x ?? null, y: s?.y ?? null }); }
+      seq[seq.length - 1] = { kind: "finish", code, points: 0, exchange: false };
+    }
+    if (forked) out.forked.push(co.name);
+    out.courses.push({ name: co.name, family: null, length: null, climb: num(co.climb), scale: co.scale || null, score: false, seq });
   }
   for (const k of cs.classes) out.classes.push({ name: k.name, course: k.course || null, est: k.runners > 0 ? k.runners : -1 });
   return out;
@@ -138,6 +180,8 @@ export function importInto(ev, data, { replace = false, place = "map", fileMm = 
     if (!pos) { res.unplaced.push(c.code); pos = [0, 0]; }
     id = M.addControl(ev, c.kind, pos, { code: c.kind === "normal" ? c.code : null });
     if (c.kind !== "normal") ev.controls[id].importCode = c.code;
+    // its description (OCAD's): the symbols the description standard has, the others left empty
+    if (c.symbols && c.kind === "normal") ev.controls[id].symbols = c.symbols.map((s) => (s && (!symbolsLoaded() || existsIn(s, ev.descStandard)) ? s : null));
     byCode.set(c.code, id); res.added++;
   }
   // the courses, in the file's order
@@ -145,7 +189,7 @@ export function importInto(ev, data, { replace = false, place = "map", fileMm = 
   for (const co of data.courses) {
     if (!co.seq.length) { res.skipped.push(co.name); continue; }
     const id = M.createCourse(ev, { name: co.name || t("trc.imp.course"), kind: co.score ? "score" : "normal", addStartFinish: false,
-      climb: co.climb > 0 ? co.climb : -1, scoreColumn: co.score ? 0 : null });
+      climb: co.climb > 0 ? co.climb : -1, scoreColumn: co.score ? 0 : null, ...(co.scale > 100 ? { printScale: co.scale } : {}) });
     courseByName.set(co.name, id);
     if (co.family && !courseByName.has(co.family)) courseByName.set(co.family, id);
     let last = 0;
