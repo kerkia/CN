@@ -233,10 +233,9 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
     <div id="sh-viewer"></div>`;
-  const drawTabs = () => {
-    $("#sh-tabs").innerHTML = A.courses.length > 1 ? html`${A.courses.map((c) => html`<button type="button" class="an-chip" data-course="${c.n}" aria-pressed="${c.n === courseN}" style="--chip:${COURSE}">${c.name}</button>`)}` : "";
-    $$("[data-course]").forEach((b) => b.addEventListener("click", () => { courseN = Number(b.dataset.course); drawTabs(); openViewer(); }));
-  };
+  // the circuit is chosen in the left panel's « Circuits » tab (owner, 2026-11-04: chips by the title would not scale)
+  const drawTabs = () => {};
+  const pickCourse = (n) => { if (n !== courseN && A.courses.some((x) => x.n === n)) { courseN = n; openViewer(); } };
   const openViewer = async () => {
     viewer?.destroy();
     viewer = null;
@@ -250,7 +249,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), allTraces: data.traces, you: data.you, reload: async (n) => {
       data = await api(`/${id}`, { key: keyOf(id) });
       if (n != null && n !== courseN && A.courses.some((x) => x.n === n)) { courseN = n; drawTabs(); }     // a track sent to its own circuit
-      openViewer(); } });
+      openViewer(); }, onCourse: pickCourse });
   };
   drawTabs();
   await openViewer();
@@ -976,7 +975,7 @@ function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0, lines = true) {
 }
 
 // ---- the replay --------------------------------------------------------------------------------------------------
-async function replay(box, { A, id, course, race, init = {}, traces, allTraces = [], you, reload }) {
+async function replay(box, { A, id, course, race, init = {}, traces, allTraces = [], you, reload, onCourse = null }) {
   document.body.classList.add("an-theatre");
   // a score course (owner, 2026-11-02): its controls in any order — no legs, each runner's visits timed wherever they come
   const score = !!course.score, ctrls = course.controls, legsN = score ? 0 : ctrls.length - 1;
@@ -1014,7 +1013,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <div class="an-bar sh-bar" id="sh-bar"></div>
-      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "legs", label: t("an.tab.legs") }, { key: "views", label: t("sh.tab.views") },
+      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits") }, { key: "legs", label: t("an.tab.legs") }, { key: "views", label: t("sh.tab.views") },
         ...(routesOn ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
         inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
@@ -1034,7 +1033,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     layEl.style.setProperty("--sh-rw", `${rp.collapsed ? 34 : rw}px`);
     fit();
   }
-  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views" || k === "legs") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") rcmList(); } });
+  // « Itinéraires » opened: the routes computed at once (owner, 2026-11-04: nothing showed until a box of « Calcul » was ticked)
+  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views" || k === "legs") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") { if (rcm.on) rcmList(); else rcmTurnOn(); } } });
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
@@ -1381,10 +1381,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
     const nShown = runners.filter((r) => r.visible).length;
-    $("#sh-left").innerHTML = html`<div class="an-side-title">${leg ? legName(leg) : t("sh.runners.shown", { k: nShown, n: runners.length })}</div>
+    // the circuit, chosen here (owner, 2026-11-04: a row of chips by the title would not scale; as « En direct »'s course picker),
+    // each with its number of tracks; the list's columns named by a header row rather than a sentence
+    const nOn = (n) => (allTraces || []).filter((x) => x.course === n).length;
+    $("#sh-left").innerHTML = html`${A.courses.length > 1 ? html`<label class="field sh-course-pick"><span>${t("prov.circuit")}</span><select id="sh-course">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === course.n ? "selected" : "")}>${tn("sh.course.opt", nOn(c.n), { c: c.name })}</option>`)}</select></label>` : ""}
+      <div class="an-side-title">${leg ? legName(leg) : t("sh.runners.shown", { k: nShown, n: runners.length })}</div>
       <div class="row" style="gap:4px;margin-bottom:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button>
         <button type="button" class="btn btn-sm" id="sh-invert">${t("sh.invert")}</button>${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-mine-only">${t("sh.meOnly")}</button>` : ""}</div>
-      <p class="hint" style="margin:0 0 6px">${t("sh.pick.hint")}</p>
+      ${rowsL.length ? html`<div class="sh-runner sh-runner-head" aria-hidden="true"><span class="sh-h-show">${t("sh.col.show")}</span><span>${t("prov.runner")}</span><span class="sh-h-follow">${t("sh.col.follow")}</span><span>${t("prov.time")}</span></div>` : ""}
       ${rowsL.length ? html`<div class="sh-runners">${rowsL.map((r) => {
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
@@ -1436,6 +1440,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       else { sel = r; r.visible = true; follow = "sel"; }
       shownChanged();
     }));
+    $("#sh-course")?.addEventListener("change", (e) => onCourse?.(Number(e.target.value)));
     $("#sh-all").addEventListener("click", () => { runners.forEach((r) => { r.visible = true; }); shownChanged(); });
     $("#sh-none").addEventListener("click", () => { runners.forEach((r) => { r.visible = false; }); sel = null; shownChanged(); });
     $("#sh-invert").addEventListener("click", () => { runners.forEach((r) => { r.visible = !r.visible; }); if (sel && !sel.visible) sel = null; shownChanged(); });
@@ -1828,11 +1833,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   /** The settings the routes are searched with: the group's calibration applied when it holds. */
   const rcmSettings = () => (rcm.s.calib && rcm.calib?.ok ? RC.calibrated(rcm.s, rcm.calib) : rcm.s);
-  /** The leg shown: its routes, and each runner's measured (their median pace when none is typed). */
+  /** The leg shown: its routes, and each runner's measured (their median pace when none is typed); the whole course shown, every
+   *  leg in turn, listed as they come (owner, 2026-11-04: « I would expect to see the route choices calculated below »). */
   async function rcmLeg() {
     if (!rcm.on) return;
-    const my = ++rcm.token, j = leg;
-    if (!j) { rcmStatus(t("rc.leg.none")); rcmList(); mv.draw(); return; }
+    const my = ++rcm.token;
     try {
       await rcmPlan();
       await rcmDem();
@@ -1847,10 +1852,36 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       RC.setCalib(RC.calibNote(rcm.s, rcm.calib, true));
       await rcm.plan.settings(rcmSettings());
       if (my !== rcm.token) return;
-      rcmStatus(t("rc.st.computing"), 0.5);
       const t0 = performance.now();
+      const todo = leg ? [leg] : Array.from({ length: legsN }, (_, i) => i + 1);
+      for (const [i, j] of todo.entries()) {
+        if (my !== rcm.token) return;
+        if (rcm.routes[j] === undefined || !rcm.mine[j]) {
+          rcmStatus(leg ? t("rc.st.computing") : t("rc.st.legsOf", { k: i + 1, n: todo.length }), leg ? 0.5 : i / todo.length);
+          if (!(await rcmOne(j, my))) return;
+        }
+        if (!leg) rcmList();
+      }
+      rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
+        r: rcm.dem && rcm.dem !== "none" ? RC.reliefNote(CREDIT[rcm.dem]?.text || rcm.dem, rcm.pieces) : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
+        + (rcm.info.north ? ` · ${tn("rc.st.north", rcm.info.north)}` : ""));
+      const p = $("#rc-pace"); if (p && rcm.auto[leg]) p.placeholder = RC.minKm(rcm.auto[leg]);
+      if (rcm.picOn && !rcm.pic) rcmPicture();
+      rcmList(); mv.draw();
+    } catch (e) { console.error(e); if (my === rcm.token) rcmStatus(t("rc.st.failed")); }
+  }
+  /** The routes switched on (as « Calcul »'s box does), and computed. */
+  function rcmTurnOn() {
+    rcm.on = true;
+    try { localStorage.setItem("ocn.rc.on", "1"); } catch (e) { /* this visit */ }
+    rcmPanel();
+    rcmLeg();
+  }
+  /** One leg's routes and the runners' own on it; false when a newer computation took over. */
+  async function rcmOne(j, my) {
+    {
       const a = ctrls[j - 1], b = ctrls[j], routes = await rcm.plan.leg([a.x, a.y], [b.x, b.y]);
-      if (my !== rcm.token) return;
+      if (my !== rcm.token) return false;
       rcm.routes[j] = routes;
       const mine = new Map(), pairs = [];
       for (const r of runners) {
@@ -1860,7 +1891,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         for (let i = i0; i <= i1; i++) pts.push([r.pxs[i], r.pys[i]]);
         if (pts.length < 2) continue;
         const m = await rcm.plan.match([a.x, a.y], [b.x, b.y], pts, RC.matchTol(null), routes);
-        if (my !== rcm.token) return;
+        if (my !== rcm.token) return false;
         const c = RC.chosen(m, routes);
         mine.set(r.uid, { ...m, ...c, actual: d, pace: rcm.calib?.ok ? rcm.calib.pace[r.uid] : null });
         pairs.push({ actual: d, model: c.time });
@@ -1869,13 +1900,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       // the leg's pace shown: the runners' median, from the group's calibration when it holds
       const cp = rcm.calib?.ok ? [...mine.values()].map((m) => m.pace).filter(Boolean).sort((x, y) => x - y) : [];
       rcm.auto[j] = cp.length ? cp[cp.length >> 1] : RC.autoPace(pairs);
-      rcmStatus(t("rc.st.leg", { s: fmt((performance.now() - t0) / 1000, 1), c: fmt(rcm.info.mpc, 1),
-        r: rcm.dem && rcm.dem !== "none" ? RC.reliefNote(CREDIT[rcm.dem]?.text || rcm.dem, rcm.pieces) : t("rc.st.flat") }) + (rcm.info.vector ? ` · ${t("rc.st.symbols", { f: rcm.info.vector.name })}` : "")
-        + (rcm.info.north ? ` · ${tn("rc.st.north", rcm.info.north)}` : ""));
-      const p = $("#rc-pace"); if (p && rcm.auto[j]) p.placeholder = RC.minKm(rcm.auto[j]);
-      if (rcm.picOn && !rcm.pic) rcmPicture();
-      rcmList(); mv.draw();
-    } catch (e) { console.error(e); if (my === rcm.token) rcmStatus(t("rc.st.failed")); }
+      return true;
+    }
   }
   window.anDebugRoutes = () => ({ on: rcm.on, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], mine: rcm.mine[leg], settings: rcm.s, calib: rcm.calib });
   async function rcmPicture() {
@@ -1888,21 +1914,34 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function rcmList() {
     const el = $("#rc-leg");
     if (!el) return;
-    const routes = rcm.on && leg ? rcm.routes[leg] : null;
-    if (!routes?.length) { el.innerHTML = html`<p class="hint sp-hint">${t(!rcm.on ? "rc.tab.off" : !leg ? "rc.leg.none" : "rc.tab.wait")}</p>`; return; }
-    const pace = rcmPace(), mine = rcm.mine[leg] || new Map();
-    const how = rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.calib?.ok ? t("rc.pace.calibMulti") : rcm.auto[leg] ? t("rc.pace.median") : t("rc.pace.default");
+    // off (routes computed for administrators and where the organisers switched them on): a button here, not a box elsewhere
+    if (!rcm.on) {
+      el.innerHTML = html`<p class="hint sp-hint">${t("rc.tab.offHint")}</p><button type="button" class="btn btn-sm btn-primary" id="rc-go">${t("rc.tab.go")}</button>`;
+      $("#rc-go").addEventListener("click", () => rcmTurnOn());
+      return;
+    }
+    const legs = leg ? [leg] : Array.from({ length: legsN }, (_, i) => i + 1).filter((j) => rcm.routes[j]?.length);
+    if (!legs.length || !rcm.routes[legs[0]]?.length) { el.innerHTML = html`<p class="hint sp-hint">${t("rc.tab.wait")}</p>`; return; }
     const signed = (v) => `${v >= 0 ? "+" : "−"}${clock(Math.abs(v))}`;
     const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
-    el.innerHTML = html`<p class="hint sp-hint">${t("rc.list.hint", { p: RC.minKm(pace), how })}</p>
-      <div class="rc-lb cur"><div class="rc-lb-head"><b>${legName(leg)}</b></div>
-        ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}</div>
-      ${mine.size ? html`<p class="muted" style="margin:8px 0 2px">${t("rc.runners")}</p>
-        ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb">
-          <div class="rc-lb-row">${dot(m.variant)}<b>${m.matched ? RC.LETTERS[m.variant] : RC.sharesLabel(m) || t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
-          <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m.facts, pace, clock)}</span>
-            <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * (m.pace || pace)))}</b></span>
-            <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * (m.pace || pace)))}</b></span></div></div>`; })}` : ""}`;
+    const how = (j) => (rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.calib?.ok ? t("rc.pace.calibMulti") : rcm.auto[j] ? t("rc.pace.median") : t("rc.pace.default"));
+    // one leg: its routes, then the runners shown with the route they took
+    const block = (j) => {
+      const routes = rcm.routes[j], pace = RC.paceOf(rcm.s, rcm.auto[j]), mine = rcm.mine[j] || new Map();
+      return html`<div class="rc-lb${j === leg ? " cur" : ""}"><div class="rc-lb-head">${leg ? html`<b>${legName(j)}</b>` : html`<button type="button" class="rc-leg-go" data-rc-leg="${j}" title="${t("rc.leg.show")}"><b>${legName(j)}</b> ›</button>`}</div>
+        ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
+        ${mine.size ? html`<p class="muted" style="margin:6px 0 2px">${t("rc.runners")}</p>
+          ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb-run">
+            <div class="rc-lb-row">${dot(m.variant)}<b>${m.matched ? RC.LETTERS[m.variant] : RC.sharesLabel(m) || t("rc.other")}</b> ${r.name} · <span class="num">${clock(m.actual)}</span></div>
+            <div class="rc-lb-gaps"><span class="num">${RC.routeFacts(m.facts, pace, clock)}</span>
+              <span title="${t("rc.col.choice.hint")}">${t("rc.col.choice")} <b class="num">${signed(Math.round((m.time - routes[0].time) * (m.pace || pace)))}</b></span>
+              <span title="${t("rc.col.exec.hint")}">${t("rc.col.exec")} <b class="num">${signed(Math.round(m.actual - m.time * (m.pace || pace)))}</b></span></div></div>`; })}` : ""}</div>`;
+    };
+    const first = legs[0];
+    el.innerHTML = html`<p class="hint sp-hint">${t("rc.list.hint", { p: RC.minKm(RC.paceOf(rcm.s, rcm.auto[first])), how: how(first) })}</p>
+      ${legs.length < legsN && !leg ? html`<p class="muted">${t("rc.st.legsOf", { k: legs.length, n: legsN })}</p>` : ""}
+      ${legs.map(block)}`;
+    $$("[data-rc-leg]", el).forEach((b) => b.addEventListener("click", () => setLeg(Number(b.dataset.rcLeg))));
   }
 
   // ---- the 3D view (trace/view3d.js; 2026-11-01, as « Analyse solo »'s): the map over the ground's heights, every runner
