@@ -42,7 +42,7 @@ import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../tr
 import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
-import { views as bottomViews, TABS } from "./sharedviews.js";
+import { views as bottomViews, legsPanel, TABS } from "./sharedviews.js";
 import { videoPanel } from "./sharedvideo.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
@@ -722,8 +722,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   // runners, the analyses, the computed routes, one's own curves; the display and the computing), resized and folded
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
   let lw = px(prefs.lw, 200, 1400, 320), rw = px(prefs.rw, 200, 700, 270);
-  const lp = { tab: ["runners", "views", "routes", "own"].includes(prefs.ltab) ? prefs.ltab : "runners", collapsed: !!prefs.lcol };
-  const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
+  // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
+  const lp = { tab: "legs", collapsed: false };
+  const rp = { tab: "display", collapsed: false };
   let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
   let orient = prefs.orient === "leg" ? "leg" : "north", lastTurn = 0;      // the map turned to the leg (as « Analyse solo »)
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
@@ -739,9 +740,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <div class="an-bar sh-bar" id="sh-bar"></div>
-      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "views", label: t("sh.tab.views") },
+      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "legs", label: t("an.tab.legs") }, { key: "views", label: t("sh.tab.views") },
         ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
-        inner: { runners: html`<div id="sh-left"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
+        inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
         <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
@@ -759,7 +760,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     layEl.style.setProperty("--sh-rw", `${rp.collapsed ? 34 : rw}px`);
     fit();
   }
-  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") rcmList(); } });
+  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views" || k === "legs") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") rcmList(); } });
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
@@ -1730,7 +1731,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       left(); right(); frame(); saveUrl();
     },
     get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
-    tabOk: (k) => (score ? k === "splits" : k !== "exercises" || A.kind === "club"), score, visitsOf, scoreN,
+    tabOk: (k) => (score ? k === "splits" : k !== "legs" && (k !== "exercises" || A.kind === "club")), score, visitsOf, scoreN,
     exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
     setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
     setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
@@ -1742,7 +1743,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
     colourBy: () => cmode(), setColourBy: (c) => { colourBy = c; savePrefs(); legend(); right(); mv.draw(); },
     extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
-  const bottom = bottomViews($("#sh-views"), X);
+  // the views under « Analyses », and one runner's legs in a tab of its own (« Inter-postes »; none for a score course)
+  const views = bottomViews($("#sh-views"), X), legsTab = legsPanel($("#sh-legs"), X);
+  const bottom = { draw: () => { views.draw(); legsTab.draw(); }, tab: () => views.tab() };
+  leftP.setTab("legs", !score);
 
   // ---- the layout: the window's height below the top line
   function fit() { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 16))}px`; }

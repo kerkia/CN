@@ -25,6 +25,7 @@ export function panelHtml({ id, side, tabs, inner = {}, cls = "" }) {
  */
 export function bindPanel(el, state, { onChange = () => {}, onShow = () => {} } = {}) {
   const visible = (k) => { const b = $(`[data-tab="${k}"]`, el); return b && !b.hidden; };
+  let want = state.tab;                                    // the tab asked for: shown as soon as it is offered, until the reader picks one
   const first = () => $$(".sp-tab", el).find((b) => !b.hidden)?.dataset.tab;
   function show(key, quiet) {
     if (!visible(key)) key = first();
@@ -41,10 +42,10 @@ export function bindPanel(el, state, { onChange = () => {}, onShow = () => {} } 
     if (!quiet) onChange(state);
     if (!on && !quiet) onShow(state.tab);
   }
-  $$(".sp-tab", el).forEach((b) => b.addEventListener("click", () => show(b.dataset.tab)));
+  $$(".sp-tab", el).forEach((b) => b.addEventListener("click", () => { want = b.dataset.tab; show(b.dataset.tab); }));
   $(".sp-fold", el).addEventListener("click", () => fold(true));
   $(".sp-unfold", el).addEventListener("click", () => fold(false));
-  $$(".sp-rail-tab", el).forEach((b) => b.addEventListener("click", () => { state.collapsed = false; el.dataset.collapsed = "0"; show(b.dataset.rail); }));
+  $$(".sp-rail-tab", el).forEach((b) => b.addEventListener("click", () => { want = b.dataset.rail; state.collapsed = false; el.dataset.collapsed = "0"; show(b.dataset.rail); }));
   fold(state.collapsed, true);
   show(state.tab, true);
   return {
@@ -55,7 +56,7 @@ export function bindPanel(el, state, { onChange = () => {}, onShow = () => {} } 
       if (b) b.hidden = !on;
       if (r) r.hidden = !on;
       if (!on && state.tab === key) show(first(), true);
-      else if (on && !visible(state.tab)) show(key, true);
+      else if (on && (key === want || !visible(state.tab))) show(key, true);
     },
   };
 }

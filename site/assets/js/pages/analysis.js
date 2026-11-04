@@ -265,13 +265,16 @@ export async function render(main, { query = {}, route } = {}) {
   // on each side of it (curves, legs, computed routes; display, computing), each resized by its splitter and folded to a rail
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
   let gw = px(prefs.gw, 160, 1400, Math.round(Math.min(440, Math.max(260, innerWidth * 0.22)))), sw = px(prefs.sw, 200, 700, 280);
-  const lp = { tab: ["graphs", "legs", "routes"].includes(prefs.ltab) ? prefs.ltab : "graphs", collapsed: !!prefs.gcol };
-  const rp = { tab: ["display", "compute"].includes(prefs.rtab) ? prefs.rtab : "display", collapsed: !!prefs.rcol };
+  // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
+  const lp = { tab: "legs", collapsed: false };
+  const rp = { tab: "display", collapsed: false };
   const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
-  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga || drawnHere();
+  // the controls' order is known: published splits, an IOF course, the organiser's, a drawing, or the course's legs followed on
+  // the map (course.js `order`, since 2026-11-01; owner 2026-11-04: « Inter-postes » for the trainings read on their map too)
+  const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga || drawnHere() || mapOrdered;
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
   let vLo = 0, vHi = 1, vSet = false;                 // the colours' range (rangeOf: the pace's 10-90 %, the other channels' 5-95 %)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
@@ -1756,10 +1759,7 @@ export async function render(main, { query = {}, route } = {}) {
     drawChips();
     redrawChips = drawChips;
     $("#an-split-g").hidden = false; $("#an-split-s").hidden = false;
-    leftP.setTab("legs", known);
-    // the curves first when there are some to show (owner, 2026-11-01: the computed routes take a while, and their tab, kept
-    // from a visit before, opened on an empty pane)
-    if (["pace", ...avail].some((c) => chans.has(c))) leftP.show("graphs", true);
+    leftP.setTab("legs", known);                          // the panel opens on it when offered, else on the curves
     applyLayout();
     if (known) legsTable(); else $("#an-legs").innerHTML = "";
     sizeStrip();

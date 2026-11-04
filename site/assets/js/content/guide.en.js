@@ -214,7 +214,7 @@ export function build(X) {
             and compare. It needs an account.</p>
           ${list([
             html`<b>The replay</b>, as on Livelox: real time, mass start, waiting at controls, one leg at a time.`,
-            html`<b>Left of the map</b>, the “Analyses” tab: the split times (those published for a competition), the legs, the gaps, the route variants, and for a training
+            html`<b>Left of the map</b>, the “Legs” tab (open from the start) details one runner's legs, and the “Analyses” tab the split times (those published for a competition), the gaps, the route variants, and for a training
               session the organiser's exercises (corridor, compass leg).`,
             html`<b>Access</b>: every account, a club's members, or a password. Your own file also shows your curves beside the map, for you alone.`,
             html`Everyone can <b>comment</b> on their race (« My comment »), read by all who see the

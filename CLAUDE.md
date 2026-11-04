@@ -1234,10 +1234,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   tabs' names, a click there reopens on that tab —, `bindSplitter`): Solo left « Courbes » (the curves), « Inter-postes » (the legs'
   table, when the sequence is known), « Itinéraires » (administrators: the computed routes leg by leg, the current leg marked and
   brought into view, the runner's own route measured on the same model — time, length, climb — with Choix and Exécution); right
-  « Affichage », « Calcul » (administrators: the routes' settings). Multi left « Coureurs », « Analyses » (sharedviews' five views,
-  formerly a card under the map), « Itinéraires » (administrators), « Mes courbes » (with one's own trace); right « Affichage »,
-  « Calcul ». Widths, folds and tabs kept in the pages' prefs (`gw`, `sw`, `gcol`, `rcol`, `ltab`, `rtab`; Multi `lw`, `rw`, `lcol`,
-  `rcol`, `ltab`, `rtab`); the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
+  « Affichage », « Calcul » (administrators: the routes' settings). Multi left « Coureurs », « Inter-postes » (one runner's legs,
+  `sharedviews.legsPanel`; a tab of its own since 2026-11-04), « Analyses » (sharedviews' other views, formerly a card under the
+  map), « Itinéraires » (administrators), « Mes courbes » (with one's own trace); right « Affichage », « Calcul ». **Every analysis
+  opens with both panels unfolded, on « Inter-postes » and « Affichage »** (owner, 2026-11-04; Solo's curves while its sequence is
+  not known — `sequenceKnown` also counts the course's order read on the map, `mapOrdered`, since that day —, `sidepanel.bindPanel`
+  showing the tab asked for as soon as it is offered); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
+  folds and tabs only for the visit; the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
   « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
   of its tabs). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse

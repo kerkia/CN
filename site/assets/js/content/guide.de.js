@@ -219,7 +219,7 @@ export function build(X) {
             Positionen und Uhrzeiten – und vergleiche. Du brauchst dafür ein Konto.</p>
           ${list([
             html`<b>Die Wiedergabe</b>, wie bei Livelox: echte Uhrzeit, Massenstart, Warten an den Posten, eine Teilstrecke nach der anderen.`,
-            html`<b>Links der Karte</b>, im Reiter „Analysen“: die Zwischenzeiten (bei einem Wettkampf die veröffentlichten), die Teilstrecken, die Rückstände, die Routenvarianten und
+            html`<b>Links der Karte</b> zeigt der Reiter „Teilstrecken“ (gleich zu Beginn geöffnet) die Teilstrecken eines Läufers, der Reiter „Analysen“ die Zwischenzeiten (bei einem Wettkampf die veröffentlichten), die Rückstände, die Routenvarianten und
               bei einem Training die Übungen des Veranstalters (Korridor, Kompassstrecke).`,
             html`<b>Der Zugang</b>: alle Konten, die Mitglieder eines Vereins oder ein Passwort. Deine eigene Datei zeigt zudem deine Kurven neben der Karte,
               nur für dich.`,

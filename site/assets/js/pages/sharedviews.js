@@ -49,6 +49,10 @@ export function views(el, X) {
   }
   return { draw, tab: () => X.state.tab };
 }
+/** One runner's legs alone (« Analyse multi »'s « Inter-postes » tab, owner 2026-11-04). */
+export function legsPanel(el, X) {
+  return { draw: () => { if (!X.score) legsView(el, X); } };
+}
 
 // ---- a score course (owner, 2026-11-02, after RouteGadget): each runner's controls in the order run, the most first, then the
 // fastest; a control named by its code when it has one

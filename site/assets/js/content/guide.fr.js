@@ -218,7 +218,7 @@ export function build(X) {
             positions et les heures —, et comparez. Il faut un compte.</p>
           ${list([
             html`<b>Le rejeu</b>, comme sur Livelox : heure réelle, départ en masse, attente aux postes, un inter-poste à la fois.`,
-            html`<b>À gauche de la carte</b>, l'onglet « Analyses » : les temps intermédiaires (ceux publiés pour une compétition), les inter-postes, les écarts, les variantes d'itinéraire, et
+            html`<b>À gauche de la carte</b>, l'onglet « Inter-postes » (ouvert d'emblée) détaille les inter-postes d'un coureur, et l'onglet « Analyses » les temps intermédiaires (ceux publiés pour une compétition), les écarts, les variantes d'itinéraire, et
               pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
             html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
               pour vous seul.`,

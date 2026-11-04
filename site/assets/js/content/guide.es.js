@@ -217,7 +217,7 @@ export function build(X) {
             posiciones y las horas— y compara. Necesitas una cuenta.</p>
           ${list([
             html`<b>La reproducción</b>, como en Livelox: hora real, salida en masa, espera en los controles, un tramo cada vez.`,
-            html`<b>A la izquierda del mapa</b>, en la pestaña «Análisis»: los tiempos parciales (los publicados en una competición), los tramos, las diferencias, las variantes de ruta y, en un
+            html`<b>A la izquierda del mapa</b>, la pestaña «Tramos» (abierta desde el principio) detalla los tramos de un corredor, y la pestaña «Análisis» los tiempos parciales (los publicados en una competición), las diferencias, las variantes de ruta y, en un
               entrenamiento, los ejercicios del organizador (pasillo, rumbo).`,
             html`<b>El acceso</b>: todas las cuentas, los miembros de un club o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
               solo para ti.`,
