@@ -650,6 +650,190 @@ export const FORBIDDEN_SPRINT = new Set(["301", "307", "411", "515", "518", "520
 /** The sprint map's own symbols, which a forest map (ISOM 2017-2) does not have. */
 export const SPRINT_ONLY = new Set(["105.2", "411", "501.1", "501.2", "501.3", "509.2", "512.2", "512.3", "513.2", "522.1", "533", "710.2", "714", "715"]);
 
+// ---- a control's feature on the map (« Définitions de postes », column D; owner, 2026-11-04: « a Colline would show contour
+// lines that draw a colline »): the feature drawn with the map symbol in question — its line widths, tags, fills and
+// patterns as above, the specification's —, in the shape the feature has on a map, the control circle at its centre. A
+// feature the symbol alone shows (a boulder, a path, a fence) is the symbol as above. Coordinates in circle radii from the
+// centre (y down, north up, downhill to the south).
+let sceneR = 2.5, sceneN = 0;
+const at = (x, y) => [cx() + x * sceneR, cy() + y * sceneR];
+/** A smooth curve through points (Catmull-Rom), as a dense polyline in mm. */
+function curve(pts, closed = false, k = 10) {
+  const q = pts.map(([x, y]) => at(x, y)), m = q.length;
+  const p = (i) => (closed ? q[((i % m) + m) % m] : q[Math.max(0, Math.min(m - 1, i))]);
+  const out = [];
+  for (let i = 0; i < (closed ? m : m - 1); i++) {
+    const p0 = p(i - 1), p1 = p(i), p2 = p(i + 1), p3 = p(i + 2);
+    for (let j = 0; j < k; j++) {
+      const t = j / k, t2 = t * t, t3 = t2 * t;
+      out.push([0, 1].map((a) => 0.5 * (2 * p1[a] + (p2[a] - p0[a]) * t + (2 * p0[a] - 5 * p1[a] + 4 * p2[a] - p3[a]) * t2 + (3 * p1[a] - p0[a] - 3 * p2[a] + p3[a]) * t3)));
+    }
+  }
+  if (!closed) out.push(q[m - 1]);
+  return out;
+}
+const pathOf = (pts, closed = false) => `M${P(pts)}${closed ? "Z" : ""}`;
+/** A closed outline round (x, y), radii rx, ry, wobbling a little (fixed by its seed). */
+const blob = (x, y, rx, ry, seed = 1, k = 9, wob = 0.08) => curve(Array.from({ length: k }, (_, i) => {
+  const a = (i / k) * Math.PI * 2, f = 1 + wob * Math.sin(seed * 7.3 + i * 2.1) * Math.cos(seed * 3.1 + i * 1.3);
+  return [x + Math.cos(a) * rx * f, y + Math.sin(a) * ry * f];
+}), true);
+/** Ticks along a polyline every `step` mm, `len` long from its centre line, `w` wide, on its right (side 1: south of a line
+ *  running east) or its left. */
+function tagsAlong(pts, step, len, w, col, side = 1, start = step / 2) {
+  let d = "", carry = start;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = Math.hypot(x1 - x0, y1 - y0);
+    if (L < 1e-9) continue;
+    const ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+    let s = carry;
+    for (; s <= L; s += step) { const x = x0 + ux * s, y = y0 + uy * s; d += `M${n(x)},${n(y)}L${n(x - uy * len * side)},${n(y + ux * len * side)}`; }
+    carry = s - L;
+  }
+  return d ? line(d, col, w, ' stroke-linecap="butt"') : "";
+}
+/** One tick at the point of the polyline nearest to (x, y) (in radii), on its right or left. */
+function tagNear(pts, x, y, len, w, col, side = 1) {
+  const [tx, ty] = at(x, y);
+  let best = 1;
+  pts.forEach((q, i) => { if (i && i < pts.length - 1 && Math.hypot(q[0] - tx, q[1] - ty) < Math.hypot(pts[best][0] - tx, pts[best][1] - ty)) best = i; });
+  const a = pts[best - 1], b = pts[best + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, [px, py] = pts[best];
+  return line(`M${n(px)},${n(py)}L${n(px - uy * len * side)},${n(py + ux * len * side)}`, col, w, ' stroke-linecap="butt"');
+}
+/** The line symbols the scenes draw along their own shapes: contours (colour, width, dashes), slope lines (width, length
+ *  from the contour's centre), and the tagged lines (line, tags, their spacing and length from the line's centre). */
+const LS = {
+  forest: { 101: [C.brown, 0.14], 102: [C.brown, 0.25], 103: [C.brown, 0.1, dash(2, 0.2)], slope: [0.14, 0.47],
+    104: [C.brown, 0.18, 0.14, 0.5, 0.49], 201: [C.black, 0.35, 0.12, 0.5, 0.575], 202: [C.black, 0.25, 0.12, 0.5, 0.525],
+    415: [C.black, 0.14], 416: [C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`] },
+  sprint: { 101: [C.brown, 0.21], 102: [C.brown, 0.3], 103: [C.brown, 0.15, dash(3, 0.3)], slope: [0.21, 0.86],
+    104: [C.brown, 0.27, 0.21, 0.75, 0.75], 201: [C.black, 0.5, 0.18, 0.75, 0.75], 202: [C.black, 0.3, 0.18, 0.75, 0.75],
+    415: [C.black, 0.15], 416: [C.black, 0.25, ` stroke-linecap="round"${dash(0.001, 0.6)}`] },
+};
+/** The outlines areas have where they end (the bank of water, an uncrossable marsh's border, a paved area's edge). */
+const EDGE = { forest: { 301: [C.black, 0.18], 302: [C.blue, 0.1], 307: [C.black, 0.18], 501: [C.black, 0.14] },
+  sprint: { 301: [C.black, 0.18], 302: [C.blue, 0.18], 307: [C.black, 0.18], 501: [C.black, 0.1] } };
+const CONTOURS = new Set(["101", "102", "103"]);
+/** The green screens without the stripes their swatches add for a better direction of running (a thicket is one green). */
+const PLAIN = { 406: () => area(C.green30), 408: () => area(C.green60), 410: () => area(C.green) };
+
+/** Everything a scene needs: the symbol drawn as a line along a polyline, an area cut to a shape. */
+function sceneKit(sprint) {
+  const ls = LS[sprint ? "sprint" : "forest"], edge = EDGE[sprint ? "sprint" : "forest"], draws = sprint ? SP : S;
+  const stroke = (code, pts, closed = false) => { const [col, w, extra = ""] = ls[code];
+    return line(pathOf(pts, closed), col, w, ` stroke-linejoin="round"${extra}`); };
+  const tagged = (code, pts, side = 1) => { const [col, w, tw, step, len] = ls[code];
+    return line(pathOf(pts), col, w, ' stroke-linejoin="round"') + tagsAlong(pts, step, len, tw, col, side, step / 2); };
+  const slope = (pts, x, y, side = 1) => tagNear(pts, x, y, ls.slope[1], ls.slope[0], C.brown, side);
+  /** The area symbol `code` as above, cut to `shape` (polylines in mm; even-odd, so a second one is a hole), with the edge
+   *  it has when `edged`. */
+  const areaIn = (code, shapes, edged = true) => {
+    const draw = PLAIN[code] || draws[code];
+    if (!draw) return "";
+    const id = `isc${++sceneN}`, d = shapes.map((s) => pathOf(s, true)).join("");
+    areaK = ((W - 0.8) * (H - 0.8)) / (6.2 * 2.2);
+    const body = draw();
+    areaK = 1;
+    const e = edged && edge[code];
+    return `<clipPath id="${id}"><path d="${d}" clip-rule="evenodd"/></clipPath><g clip-path="url(#${id})">${body}</g>`
+      + (e ? shapes.map((s) => line(pathOf(s, true), e[0], e[1], ' stroke-linejoin="round"')).join("") : "");
+  };
+  const full = (code) => areaIn(code, [[[0, 0], [W, 0], [W, H], [0, H]]], false);
+  /** A band `h` radii wide along a curve, as a closed shape. */
+  const band = (pts, h) => {
+    const q = curve(pts), up = [], down = [];
+    q.forEach((p, i) => { const a = q[Math.max(0, i - 1)], b = q[Math.min(q.length - 1, i + 1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, o = (h / 2) * sceneR; up.push([p[0] + nx * o, p[1] + ny * o]); down.unshift([p[0] - nx * o, p[1] - ny * o]); });
+    return [...up, ...down];
+  };
+  const poly = (pts) => pts.map(([x, y]) => at(x, y));
+  return { ls, stroke, tagged, slope, areaIn, full, band, poly, has: (code) => !!draws[code] };
+}
+
+// contours across the square, bent down (a spur, rounded) or up (a re-entrant, sharper) at the middle
+const bent = (y0, d, up = false) => { const s = up ? -1 : 1, k = up ? 0.35 : 0.6;
+  return [[-1.7, y0], [-1, y0 + s * 0.08 * d], [-k, y0 + s * 0.55 * d], [0, y0 + s * d], [k, y0 + s * 0.55 * d], [1, y0 + s * 0.08 * d], [1.7, y0]]; };
+/** A landform drawn with contours: the feature's own line in the symbol in question (contour, index contour or form line),
+ *  the others ordinary contours. */
+function contoured(code, k, lines) {
+  if (!CONTOURS.has(code)) return null;
+  return lines.map(({ pts, closed, main, slope }) => {
+    const style = main ? code : "101";
+    return k.stroke(style, pts, closed) + (slope ? k.slope(pts, slope[0], slope[1], slope[2] ?? 1) : "");
+  }).join("");
+}
+/** Each feature's scene, by ISCD number: (map symbol, kit) → SVG, or null to show the symbol itself. */
+const SCENE = {
+  // terrace: a level shelf on a slope, the contour pushed out round it
+  "1.1": (c, k) => contoured(c, k, [
+    { pts: curve([[-1.7, -1.05], [-0.6, -1.1], [0.6, -1], [1.7, -1.05]]) },
+    { pts: curve([[-1.7, -0.6], [-0.8, -0.58], [-0.62, -0.25], [-0.5, 0.28], [0, 0.36], [0.5, 0.28], [0.62, -0.25], [0.8, -0.58], [1.7, -0.6]]), main: true, slope: [0, 0.36] },
+    { pts: curve([[-1.7, 0.62], [-0.5, 0.7], [0.6, 0.66], [1.7, 0.6]]) }]),
+  "1.2": (c, k) => contoured(c, k, [{ pts: curve(bent(-1.25, 0.55)) }, { pts: curve(bent(-0.55, 0.62)), main: true }, { pts: curve(bent(0.25, 0.7)) }]),
+  "1.3": (c, k) => contoured(c, k, [{ pts: curve(bent(1.25, 0.55, true)) }, { pts: curve(bent(0.55, 0.62, true)), main: true, slope: [0, -0.07] }, { pts: curve(bent(-0.25, 0.7, true)) }]),
+  "1.4": (c, k) => (c === "104" ? k.tagged("104", curve([[-1.7, -0.12], [-0.6, 0.06], [0.4, -0.08], [1.7, 0.05]])) : null),
+  // quarry: a bank round a pit open to the south, its tags inside
+  "1.5": (c, k) => (c === "104" ? k.tagged("104", curve([[-0.78, 1.6], [-0.85, 0.1], [-0.45, -0.7], [0.45, -0.7], [0.85, 0.1], [0.78, 1.6]])) : null),
+  "1.9": (c, k) => contoured(c, k, [{ pts: blob(0, 0, 1.04, 0.86, 2), closed: true, main: c === "102" }, { pts: blob(0.05, 0, 0.62, 0.46, 3), closed: true, main: c !== "102" }]),
+  // saddle: the low point between two hills, one contour round both
+  "1.11": (c, k) => contoured(c, k, [
+    { pts: blob(-1.02, 0, 0.42, 0.32, 1), closed: true, main: c === "103" }, { pts: blob(1.02, 0, 0.42, 0.32, 2), closed: true, main: c === "103" },
+    { pts: curve([[0, -0.32], [0.7, -0.68], [1.4, -0.6], [1.75, 0], [1.4, 0.62], [0.7, 0.68], [0, 0.32], [-0.7, 0.68], [-1.4, 0.62], [-1.75, 0], [-1.4, -0.6], [-0.7, -0.68]], true), closed: true, main: c !== "103" }]),
+  // depression: a closed contour with its slope lines inside
+  "1.12": (c, k) => { const ring = blob(0, 0, 0.78, 0.6, 4);
+    return CONTOURS.has(c) ? contoured(c, k, [{ pts: ring, closed: true, main: true, slope: [0, -0.6] }]) + k.slope(ring, 0, 0.6) : null; },
+  // pit, cave: the sprint map's second form of 203 (pointing into a cave) left beside its first
+  "1.14": (c, k, sprint) => (sprint && c === "203" ? spVee(1.1, 1.25, 0.25, C.black) : null),
+  "2.3": (c, k, sprint) => (sprint && c === "203" ? spVee(1.1, 1.25, 0.25, C.black) : null),
+  // a boulder cluster: one (the sprint swatch shows a second, larger, beside it)
+  "2.6": (c, k, sprint) => (sprint && c === "207" ? spEqui(cx(), cy(), 1.2, C.black) : null),
+  // a narrow passage between two rock faces, their tags toward it
+  "2.9": (c, k) => (c === "201" || c === "202" ? k.tagged(c, curve([[-0.48, -1.7], [-0.42, -0.6], [-0.5, 0.4], [-0.44, 1.7]]), -1)
+    + k.tagged(c, curve([[0.48, 1.7], [0.43, 0.5], [0.5, -0.5], [0.44, -1.7]]), -1) : null),
+  "3.1": (c, k) => (c === "301" ? k.areaIn(c, [blob(1.05, 1.0, 1.75, 1.55, 2)]) : null),
+  "3.2": (c, k) => (c === "301" || c === "302" ? k.areaIn(c, [blob(0, 0, 0.5, 0.36, 3)]) : null),
+  "3.4": (c, k) => (c === "301" ? (() => { const b = k.band([[-1.7, -0.45], [-0.5, -0.05], [0.5, 0.05], [1.7, 0.4]], 0.42); return k.areaIn(c, [b], false)
+    + line(pathOf(b.slice(0, b.length / 2)), C.black, 0.18) + line(pathOf(b.slice(b.length / 2)), C.black, 0.18); })() : null),
+  "3.7": (c, k) => (["307", "308", "310"].includes(c) ? k.areaIn(c, [blob(0, 0, 1.2, 0.9, 5)]) : null),
+  // firm ground: an island in the marsh
+  "3.8": (c, k) => (["307", "308", "310"].includes(c) ? k.areaIn(c, [k.poly([[-2, -2], [2, -2], [2, 2], [-2, 2]]), blob(0, 0, 0.52, 0.38, 5)], false) : null),
+  // spring: at the centre, its stream flowing away
+  "3.10": (c, k, sprint) => (sprint && c === "312" ? `<g transform="translate(1.5 0)">${SP[312]()}</g>` : null),
+  // forest corner: the wood (white forest on open land, or a green on white forest) reaching a corner at the circle's centre
+  "4.3": (c, k) => (k.has(c) ? (c === "405" ? k.full("401") : "") + k.areaIn(c, [k.poly([[-2, -2], [0.08, -2], [0.04, -0.5], [0, 0], [-0.5, 0.05], [-2, 0.02]])]) : null),
+  "4.4": (c, k) => (c === "401" || c === "403" ? k.areaIn(c, [blob(0, 0, 0.62, 0.48, 1)]) : null),
+  "4.5": (c, k) => (["406", "408", "410", "411"].includes(c) ? k.areaIn(c, [blob(0, 0, 0.66, 0.5, 3)]) : null),
+  "4.6": (c, k) => (c === "410" || c === "411" ? k.areaIn(c, [k.band([[-1.7, 0.3], [-0.5, 0.04], [0.5, -0.04], [1.7, -0.3]], 0.3)]) : null),
+  // vegetation boundary: open land to the north, forest to the south, the boundary between them
+  "4.7": (c, k) => { if (c !== "415" && c !== "416") return null; const b = curve([[-1.7, -0.1], [-0.6, 0.06], [0.5, -0.05], [1.7, 0.08]]);
+    return k.areaIn("401", [[...b, at(1.7, -2), at(-1.7, -2)]], false) + k.stroke(c, b); },
+  // copse: a small wood in open land
+  "4.8": (c, k) => (["405", "406", "408", "410"].includes(c) ? k.full("401") + k.areaIn(c, [blob(0, 0, 0.62, 0.48, 4)]) : null),
+  // ride: a narrow clearing through the forest
+  "5.3": (c, k) => (c === "401" || c === "403" ? k.areaIn(c, [k.band([[-1.7, 0.28], [-0.5, 0.05], [0.5, -0.05], [1.7, -0.28]], 0.2)]) : null),
+  // building: one, at the centre (the forest swatch shows its two forms side by side)
+  "5.11": (c, k, sprint) => (!sprint && c === "521" ? rect(cx() - 0.7, cy() - 0.5, cx() + 0.7, cy() + 0.5, C.black) : null),
+  // power line pylon: the line, the pylon at the centre
+  "5.6": (c, k, sprint) => {
+    if (c === "510") return line(`M${X0},${cy()}H${n(X1())}`, C.black, 0.14) + line(`M${cx()},${n(cy() - 0.37)}V${n(cy() + 0.37)}`, C.black, 0.14);
+    if (c !== "511") return null;
+    const g = sprint ? 0.75 : 0.2, b = g + (sprint ? 0.37 : 0.37);
+    return line(`M${X0},${n(cy() - g)}H${n(X1())}M${X0},${n(cy() + g)}H${n(X1())}`, C.black, 0.14) + line(`M${cx()},${n(cy() - b)}V${n(cy() + b)}`, C.black, 0.2)
+      + (sprint ? `<rect x="${n(cx() - 0.3)}" y="${n(cy() - 0.3)}" width="0.6" height="0.6" fill="${C.paper}" stroke="${C.black}" stroke-width="0.2"/>` : "");
+  },
+};
+/** A feature's scene for a map symbol, its body for a square `side` mm wide, or "" when the symbol alone shows it. */
+function sceneOf(ref, code, sprint, side) {
+  const scene = SCENE[ref];
+  if (!scene) return "";
+  W = H = side;
+  sceneR = sprint ? 3 : 2.5;
+  const body = scene(String(code), sceneKit(sprint), sprint);
+  if (!body) return "";
+  const id = `isc${++sceneN}`;
+  return `<clipPath id="${id}"><rect x="0.5" y="0.5" width="${n(side - 1)}" height="${n(side - 1)}"/></clipPath><g clip-path="url(#${id})">${body}</g>`;
+}
+
 /** A symbol's swatch as SVG markup, `width` pixels wide: the map's symbols at 18 px a mm, the course's (much larger) at 7.6
  *  (sprint's at 7), from the forest map's specification or, with `sprint`, the sprint map's. */
 export function isomSvg(code, width = 126, cls = "ms-sw", sprint = false) {
@@ -660,12 +844,15 @@ export function isomSvg(code, width = 126, cls = "ms-sw", sprint = false) {
   const w = width, h = Math.round((H * width) / W);
   return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" width="${w}" height="${h}" aria-hidden="true"><rect width="${W}" height="${H}" fill="${C.paper}"/>${ownIds(draw())}</svg>`;
 }
-/** A map symbol as a control would show it: drawn as above, at the map's scale, in a square a little larger than the control
+/** A map symbol as a control would show it (for ISCD number `ref`: the feature drawn with it, `SCENE`): drawn as above, at the map's scale, in a square a little larger than the control
  *  circle (703: ø 5.0 mm on a forest map, 6.0 on a sprint map), the circle over it at its own size, `width` pixels wide. */
-export function isomInCircle(code, width = 64, cls = "ms-sw", sprint = false) {
+export function isomInCircle(code, width = 64, cls = "ms-sw", sprint = false, ref = "") {
   const draw = (sprint ? SP : S)[code];
   if (!draw || parseFloat(code) >= 700) return "";
   const side = sprint ? 8.4 : 7.4, circle = (sprint ? SP_COURSE : COURSE)[703];
+  // the feature in its own shape (a hill's closed contours, a forest corner), else the symbol as its swatch shows it
+  const scene = ref ? ownIds(sceneOf(ref, code, sprint, side)) : "";
+  if (scene) { W = H = side; return `<svg class="${cls}" viewBox="0 0 ${side} ${side}" width="${width}" height="${width}" aria-hidden="true"><rect width="${side}" height="${side}" fill="${C.paper}"/>${scene}${circle()}</svg>`; }
   // an area fills the square; a point or a line is drawn in its swatch's band, centred
   const area = (sprint ? AREA_SPRINT : AREA).has(String(code));
   let body;

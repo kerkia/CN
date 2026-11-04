@@ -71,5 +71,5 @@ export function mapCodes(ref, sprint = false) {
 export function mapSwatches(ref, sprint = false, width = 64) {
   const codes = mapCodes(ref, sprint);
   if (!codes.length) return "";
-  return `<span class="cd-maps">${codes.map((c) => `<span class="cd-sw">${isomInCircle(c, width, "cd-map", sprint)}<span class="cd-swn">${c}</span></span>`).join("")}</span>`;
+  return `<span class="cd-maps">${codes.map((c) => `<span class="cd-sw">${isomInCircle(c, width, "cd-map", sprint, ref)}<span class="cd-swn">${c}</span></span>`).join("")}</span>`;
 }

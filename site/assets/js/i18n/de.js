@@ -3956,7 +3956,7 @@ export default {
   "cd.col.C": "Spalte C · Welches der ähnlichen Objekte",
   "cd.col.C.hint": "Wenn mehrere ähnliche Objekte im Kreis liegen.",
   "cd.col.D": "Spalte D · Das Objekt: {f}",
-  "cd.col.D.hint": "Das Objekt in der Kreismitte, wie die Karte es darstellt. Darunter die Kartensymbole, die die Spezifikation ihm zuordnet, mit ihren Nummern, in einem Postenkreis: beide im Maßstab der Karte (Kreis von 5 mm im Wald, 6 mm im Sprint).",
+  "cd.col.D.hint": "Das Objekt in der Kreismitte, wie die Karte es darstellt. Darunter die Kartensymbole, die die Spezifikation ihm zuordnet, mit ihren Nummern: das Objekt mit jedem von ihnen in einem Postenkreis gezeichnet, im Maßstab der Karte (Kreis von 5 mm im Wald, 6 mm im Sprint).",
   "cd.fam.1": "Geländeformen",
   "cd.fam.2": "Felsen und Steine",
   "cd.fam.3": "Gewässer und Sümpfe",

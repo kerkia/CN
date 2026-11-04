@@ -2926,7 +2926,7 @@ export default {
   "cd.letter.G": "Où se trouve la balise par rapport à l'objet", "cd.letter.H": "D'autres informations : secours, ravitaillement, poste contrôlé",
   "cd.source": "Numéros, noms, descriptions et correspondances avec les cartes : spécification internationale des définitions de postes de l'IOF (ISCD 2024) ; le français reprend les termes de la traduction de la FFCO (2018). Dessins des symboles de définition : Purple Pen. Symboles de carte : dessinés par Ozimut d'après ISOM 2017-2 et ISSprOM 2019-2, comme sur la page « Symboles de carte ».",
   "cd.col.C": "Colonne C · Lequel des objets semblables", "cd.col.C.hint": "Quand plusieurs objets semblables se trouvent dans le cercle.",
-  "cd.col.D": "Colonne D · L'objet : {f}", "cd.col.D.hint": "L'objet au centre du cercle, tel que la carte le représente. Sous chacun, les symboles de carte que la spécification lui fait correspondre, avec leur numéro, dans un cercle de poste : tous deux à l'échelle de la carte (cercle de 5 mm en forêt, de 6 mm en sprint).",
+  "cd.col.D": "Colonne D · L'objet : {f}", "cd.col.D.hint": "L'objet au centre du cercle, tel que la carte le représente. Sous chacun, les symboles de carte que la spécification lui fait correspondre, avec leur numéro : l'objet dessiné avec chacun d'eux dans un cercle de poste, à l'échelle de la carte (cercle de 5 mm en forêt, de 6 mm en sprint).",
   "cd.fam.1": "reliefs", "cd.fam.2": "rochers et pierres", "cd.fam.3": "eau et marais", "cd.fam.4": "végétation", "cd.fam.5": "objets artificiels",
   "cd.fam.6": "objets particuliers",
   "cd.col.E": "Colonne E · Précisions sur l'objet", "cd.col.E.hint": "Son aspect, quand il faut le préciser.",
