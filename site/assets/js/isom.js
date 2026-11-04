@@ -24,6 +24,10 @@ const dot = (x, y, d, col) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n(d / 2)}"
 const ring = (x, y, d, col, w) => `<circle cx="${n(x)}" cy="${n(y)}" r="${n((d - w) / 2)}" fill="none" stroke="${col}" stroke-width="${w}"/>`;
 const cross = (x, y, s, col, w) => line(`M${n(x - s / 2)},${n(y - s / 2)}L${n(x + s / 2)},${n(y + s / 2)}M${n(x - s / 2)},${n(y + s / 2)}L${n(x + s / 2)},${n(y - s / 2)}`, col, w);
 const text = (x, y, s, size, col) => `<text x="${n(x)}" y="${n(y)}" font-family="Arial, Helvetica, sans-serif" font-size="${size}" fill="${col}" text-anchor="middle">${s}</text>`;
+/** Digits `h` mm high, as the specifications measure a text symbol (704's « Arial, 4.0 mm » and 603's « 1.5 » are drawn against
+ *  the digits' height): Arial's digits stand 0.716 of the font size. Centred on (x, y), or starting at x with `start`. */
+const ARIAL_DIGIT = 0.716;
+const digits = (x, y, s, h, col, start = false) => `<text x="${n(x)}" y="${n(y + h / 2)}" font-family="Arial, Helvetica, sans-serif" font-size="${n(h / ARIAL_DIGIT)}" fill="${col}" text-anchor="${start ? "start" : "middle"}">${s}</text>`;
 // the area of a swatch
 const X0 = 0.4, Y0 = 0.4, X1 = () => W - 0.4, Y1 = () => H - 0.4;
 const area = (col, edge = "", ew = 0.1) => `<rect x="${X0}" y="${Y0}" width="${n(X1() - X0)}" height="${n(Y1() - Y0)}" fill="${col}"${edge ? ` stroke="${edge}" stroke-width="${ew}"` : ""}/>`;
@@ -263,14 +267,14 @@ const S = {
   // 6 technical symbols
   601: () => line(`M${cx() - 2},${Y0}V${n(Y1())}M${cx() + 2},${Y0}V${n(Y1())}`, C.black, 0.1) + line(`M${cx()},${Y0}V${n(Y1())}`, C.blue, 0.18),
   602: () => line(`M${cx() - 1.1},${cy()}H${cx() + 1.1}M${cx()},${cy() - 1.1}V${cy() + 1.1}`, C.black, 0.1),
-  603: () => dot(cx() - 1.3, cy() + 0.15, 0.3, C.black) + text(cx() + 0.1, cy() + 0.55, "219", 1.5, C.black),
+  603: () => dot(cx() - 1.85, cy() + 0.45, 0.3, C.black) + digits(cx() - 1.55, cy(), "219", 1.5, C.black, true),
 };
 // 7 course planning symbols (purple): drawn in a larger frame, so smaller (they are much larger than the map's symbols)
 const COURSE = {
   701: () => line(`M${P([[cx() - 3, cy() + 1.732], [cx() + 3, cy() + 1.732], [cx(), cy() - 3.464]])}Z`, C.purple, 0.35, ' stroke-linejoin="miter"'),
   702: () => line(`M${cx()},${cy() - 1.25}V${cy() + 1.25}`, C.purple, 0.6), // a bar 2.5 × 0.6
   703: () => ring(cx(), cy(), 5.35, C.purple, 0.35), // ø 5.0 centre to centre
-  704: () => text(cx(), cy() + 1.45, "8", 4, C.purple),
+  704: () => digits(cx(), cy(), "8", 4, C.purple),
   705: () => line(`M1,${H - 1}L${W - 1},1`, C.purple, 0.35),
   706: () => ring(cx(), cy(), 6.35, C.purple, 0.35) + ring(cx(), cy(), 4.35, C.purple, 0.35), // ø 6.0 and 4.0 centre to centre
   707: () => line(straight(cy(), 0.8, W - 0.8), C.purple, 0.35, dash(2, 0.5)),
@@ -581,7 +585,7 @@ const SP_COURSE = {
   702: () => line(`M${cx() - 3},${cy() - 1.25}V${cy() + 1.25}`, C.purple, 0.6) + line(`M${cx() - 2.7},${cy()}H${W - 0.8}`, C.purple, 0.35, dash(2, 0.5)),
   // ø 6.0 mm centre to centre of the line, line 0.35
   703: () => ring(cx(), cy(), 6.35, C.purple, 0.35),
-  704: () => text(cx(), cy() + 1.45, "8", 4, C.purple),
+  704: () => digits(cx(), cy(), "8", 4, C.purple),
   705: () => line(`M1,${H - 1}L${W - 1},1`, C.purple, 0.35),
   // two circles ø 5.0 and 7.0 mm centre to centre of the line, line 0.35
   706: () => ring(cx(), cy(), 7.35, C.purple, 0.35) + ring(cx(), cy(), 5.35, C.purple, 0.35),
